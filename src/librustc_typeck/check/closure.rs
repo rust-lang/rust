@@ -377,7 +377,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     ) -> ClosureSignatures<'tcx> {
         debug!("sig_of_closure_no_expectation()");
 
-        let bound_sig = self.supplied_sig_of_closure(decl);
+        let bound_sig = self.supplied_sig_of_closure(expr_def_id, decl);
 
         self.closure_sigs(expr_def_id, body, bound_sig)
     }
@@ -479,7 +479,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Along the way, it also writes out entries for types that the user
         // wrote into our tables, which are then later used by the privacy
         // check.
-        match self.check_supplied_sig_against_expectation(decl, &closure_sigs) {
+        match self.check_supplied_sig_against_expectation(expr_def_id, decl, &closure_sigs) {
             Ok(infer_ok) => self.register_infer_ok_obligations(infer_ok),
             Err(_) => return self.sig_of_closure_no_expectation(expr_def_id, decl, body),
         }
@@ -521,6 +521,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// strategy.
     fn check_supplied_sig_against_expectation(
         &self,
+        expr_def_id: DefId,
         decl: &hir::FnDecl,
         expected_sigs: &ClosureSignatures<'tcx>,
     ) -> InferResult<'tcx, ()> {
@@ -528,7 +529,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //
         // (See comment on `sig_of_closure_with_expectation` for the
         // meaning of these letters.)
-        let supplied_sig = self.supplied_sig_of_closure(decl);
+        let supplied_sig = self.supplied_sig_of_closure(expr_def_id, decl);
 
         debug!(
             "check_supplied_sig_against_expectation: supplied_sig={:?}",
@@ -598,7 +599,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     /// If there is no expected signature, then we will convert the
     /// types that the user gave into a signature.
-    fn supplied_sig_of_closure(&self, decl: &hir::FnDecl) -> ty::PolyFnSig<'tcx> {
+    ///
+    /// Also, record this closure signature for later.
+    fn supplied_sig_of_closure(
+        &self,
+        expr_def_id: DefId,
+        decl: &hir::FnDecl,
+    ) -> ty::PolyFnSig<'tcx> {
         let astconv: &dyn AstConv = self;
 
         // First, convert the types that the user supplied (if any).
@@ -617,6 +624,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ));
 
         debug!("supplied_sig_of_closure: result={:?}", result);
+
+        let c_result = self.inh.infcx.canonicalize_response(&result);
+        self.tables.borrow_mut().user_provided_sigs.insert(
+            expr_def_id,
+            c_result,
+        );
 
         result
     }
