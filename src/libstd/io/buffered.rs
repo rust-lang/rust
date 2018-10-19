@@ -525,6 +525,25 @@ impl<W: Write> BufWriter<W> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut W { self.inner.as_mut().unwrap() }
 
+    /// Returns a reference to the internally buffered data.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![feature(bufreader_buffer)]
+    /// use std::io::BufWriter;
+    /// use std::net::TcpStream;
+    ///
+    /// let mut buf_writer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    ///
+    /// // See how many bytes are currently buffered
+    /// let bytes_buffered = buf_writer.buffer().len();
+    /// ```
+    #[unstable(feature = "bufreader_buffer", issue = "45323")]
+    pub fn buffer(&self) -> &[u8] {
+        &self.buf[..]
+    }
+
     /// Unwraps this `BufWriter`, returning the underlying writer.
     ///
     /// The buffer is written out before returning the writer.
