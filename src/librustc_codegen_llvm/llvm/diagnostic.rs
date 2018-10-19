@@ -98,7 +98,7 @@ impl OptimizationDiagnostic<'ll> {
 pub struct InlineAsmDiagnostic<'ll> {
     pub cookie: c_uint,
     pub message: &'ll Twine,
-    pub instruction: &'ll Value,
+    pub instruction: Option<&'ll Value>,
 }
 
 impl InlineAsmDiagnostic<'ll> {
@@ -117,7 +117,7 @@ impl InlineAsmDiagnostic<'ll> {
         InlineAsmDiagnostic {
             cookie,
             message: message.unwrap(),
-            instruction: instruction.unwrap(),
+            instruction,
         }
     }
 }
