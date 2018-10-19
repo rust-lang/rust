@@ -1543,10 +1543,14 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    /// Checks whether a type is definitely uninhabited. This is
+    /// conservative: for some types that are uninhabited we return `false`,
+    /// but we only return `true` for types that are definitely uninhabited.
+    /// `ty.conservative_is_uninhabited` implies that any value of type `ty`
+    /// will be `Abi::Uninhabited`.
     pub fn conservative_is_uninhabited(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        // Checks whether a type is definitely uninhabited. This is
-        // conservative: for some types that are uninhabited we return `false`,
-        // but we only return `true` for types that are definitely uninhabited.
+        // FIXME(varkor): we can make this less conversative by substituting concrete
+        // type arguments.
         match self.sty {
             ty::Never => true,
             ty::Adt(def, _) if def.is_union() => {
