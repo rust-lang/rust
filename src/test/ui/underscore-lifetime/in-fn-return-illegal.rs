@@ -12,6 +12,6 @@
 
 use std::fmt::Debug;
 
-fn foo(x: &u32, y: &u32) -> &'_ u32 { loop { } } //~ ERROR
+fn foo(x: &u32, y: &u32) -> &'_ u32 { loop { } } //~ ERROR missing lifetime specifier
 
 fn main() { }

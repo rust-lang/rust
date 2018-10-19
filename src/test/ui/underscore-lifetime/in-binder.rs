@@ -10,36 +10,36 @@ struct IceCube<'a> {
 }
 
 impl<'_> IceCube<'_> {}
-//[Rust2015]~^ ERROR
-//[Rust2015]~| ERROR
-//[Rust2018]~^^^ ERROR
+//[Rust2015]~^ ERROR `'_` cannot be used here
+//[Rust2015]~| ERROR missing lifetime specifier
+//[Rust2018]~^^^ ERROR `'_` cannot be used here
 
 struct Struct<'_> {
-//[Rust2015]~^ ERROR
-//[Rust2018]~^^ ERROR
+//[Rust2015]~^ ERROR `'_` cannot be used here
+//[Rust2018]~^^ ERROR `'_` cannot be used here
     v: Vec<&'static char>
 }
 
 enum Enum<'_> {
-//[Rust2015]~^ ERROR
-//[Rust2018]~^^ ERROR
+//[Rust2015]~^ ERROR `'_` cannot be used here
+//[Rust2018]~^^ ERROR `'_` cannot be used here
     Variant
 }
 
 union Union<'_> {
-//[Rust2015]~^ ERROR
-//[Rust2018]~^^ ERROR
+//[Rust2015]~^ ERROR `'_` cannot be used here
+//[Rust2018]~^^ ERROR `'_` cannot be used here
     a: u32
 }
 
 trait Trait<'_> {
-//[Rust2015]~^ ERROR
-//[Rust2018]~^^ ERROR
+//[Rust2015]~^ ERROR `'_` cannot be used here
+//[Rust2018]~^^ ERROR `'_` cannot be used here
 }
 
 fn foo<'_>() {
-    //[Rust2015]~^ ERROR
-    //[Rust2018]~^^ ERROR
+    //[Rust2015]~^ ERROR `'_` cannot be used here
+    //[Rust2018]~^^ ERROR `'_` cannot be used here
 }
 
 fn main() {}

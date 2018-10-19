@@ -13,11 +13,11 @@
 use std::fmt::Debug;
 
 struct Foo {
-    x: &'_ u32, //~ ERROR
+    x: &'_ u32, //~ ERROR missing lifetime specifier
 }
 
 enum Bar {
-    Variant(&'_ u32), //~ ERROR
+    Variant(&'_ u32), //~ ERROR missing lifetime specifier
 }
 
 fn main() { }

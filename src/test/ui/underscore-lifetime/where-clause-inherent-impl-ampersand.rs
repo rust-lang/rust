@@ -11,8 +11,8 @@ struct Foo<T> {
 impl<T> Foo<T>
 where
     T: WithType<&u32>
-//[rust2015]~^ ERROR
-//[rust2018]~^^ ERROR
+//[rust2015]~^ ERROR `&` without an explicit lifetime name cannot be used here
+//[rust2018]~^^ ERROR `&` without an explicit lifetime name cannot be used here
 { }
 
 fn main() {}
