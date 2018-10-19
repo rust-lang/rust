@@ -661,7 +661,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
             "std::io::_print" |
             "std::io::_eprint" => {
                 warn!(
-                    "Ignoring output.  To run programs that print, make sure you have a libstd with full MIR."
+                    "Ignoring output.  To run programs that prints, make sure you have a libstd with full MIR."
                 );
             }
             "std::thread::Builder::new" => {
