@@ -28,6 +28,10 @@ exit 1
 }
 
 TARGET=$1
+#ARCH=$1
+#TARGET=linux-musl-$ARCH
+ARCH=x86_64
+
 OUTPUT=/usr/local
 shift
 
@@ -38,6 +42,13 @@ hide_output make -j$(nproc) TARGET=$TARGET
 hide_output make install TARGET=$TARGET OUTPUT=$OUTPUT
 
 cd ..
+
+# Make musl binaries executable
+
+ln -s $OUTPUT/$TARGET/lib/ld-musl-$ARCH.so.1 /lib
+ln -s $OUTPUT/$TARGET/lib/libc.so /lib
+echo $OUTPUT/$TARGET/lib >> /etc/ld-musl-$ARCH.path
+
 
 export CC=$TARGET-gcc
 export CXX=$TARGET-g++
