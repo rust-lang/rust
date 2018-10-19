@@ -86,5 +86,11 @@ error: called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec
    |
    = note: `-D clippy::iter-cloned-collect` implied by `-D warnings`
 
-error: aborting due to 12 previous errors
+error: using `clone` on a `Copy` type
+   --> $DIR/unnecessary_clone.rs:110:20
+    |
+110 |         let _: E = a.clone();
+    |                    ^^^^^^^^^ help: try dereferencing it: `*****a`
+
+error: aborting due to 13 previous errors
 

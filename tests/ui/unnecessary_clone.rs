@@ -79,3 +79,35 @@ fn iter_clone_collect() {
     let v3 : HashSet<isize> = v.iter().cloned().collect();
     let v4 : VecDeque<isize> = v.iter().cloned().collect();
 }
+
+mod many_derefs {
+    struct A;
+    struct B;
+    struct C;
+    struct D;
+    #[derive(Copy, Clone)]
+    struct E;
+
+    macro_rules! impl_deref {
+        ($src:ident, $dst:ident) => {
+            impl std::ops::Deref for $src {
+                type Target = $dst;
+                fn deref(&self) -> &Self::Target { &$dst }
+            }
+        }
+    }
+
+    impl_deref!(A, B);
+    impl_deref!(B, C);
+    impl_deref!(C, D);
+    impl std::ops::Deref for D {
+        type Target = &'static E;
+        fn deref(&self) -> &Self::Target { &&E }
+    }
+
+    fn go1() {
+        let a = A;
+        let _: E = a.clone();
+        let _: E = *****a;
+    }
+}
