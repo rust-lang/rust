@@ -42,7 +42,7 @@ use rustc::traits::query::type_op::custom::CustomTypeOp;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{Subst, UnpackedKind};
+use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
 use std::rc::Rc;
 use std::{fmt, iter};
@@ -2075,12 +2075,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             // desugaring. A closure gets desugared to a struct, and
             // these extra requirements are basically like where
             // clauses on the struct.
-            AggregateKind::Closure(def_id, substs) => {
-                self.prove_closure_bounds(tcx, *def_id, *substs, location)
-            }
-
-            AggregateKind::Generator(def_id, substs, _) => {
-                tcx.predicates_of(*def_id).instantiate(tcx, substs.substs)
+            AggregateKind::Closure(def_id, ty::ClosureSubsts { substs })
+            | AggregateKind::Generator(def_id, ty::GeneratorSubsts { substs }, _) => {
+                self.prove_closure_bounds(tcx, *def_id, substs, location)
             }
 
             AggregateKind::Array(_) | AggregateKind::Tuple => ty::InstantiatedPredicates::empty(),
@@ -2096,7 +2093,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         &mut self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         def_id: DefId,
-        substs: ty::ClosureSubsts<'tcx>,
+        substs: &'tcx Substs<'tcx>,
         location: Location,
     ) -> ty::InstantiatedPredicates<'tcx> {
         if let Some(closure_region_requirements) =
@@ -2155,7 +2152,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             );
         }
 
-        tcx.predicates_of(def_id).instantiate(tcx, substs.substs)
+        tcx.predicates_of(def_id).instantiate(tcx, substs)
     }
 
     fn prove_trait_ref(
