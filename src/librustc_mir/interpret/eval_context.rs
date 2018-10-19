@@ -47,7 +47,7 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     pub(crate) param_env: ty::ParamEnv<'tcx>,
 
     /// The virtual memory system.
-    pub memory: Memory<'a, 'mir, 'tcx, M>,
+    pub(crate) memory: Memory<'a, 'mir, 'tcx, M>,
 
     /// The virtual call stack.
     pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag>>,
