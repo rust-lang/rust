@@ -16,7 +16,11 @@
 fn foo() -> bool { true }
 
 fn main() {
-    // weird `else if` formatting:
+    // weird `else` formatting:
+    if foo() {
+    } {
+    }
+
     if foo() {
     } if foo() {
     }
@@ -43,6 +47,17 @@ fn main() {
 
     if foo() {
     } else
+    {
+    }
+
+    if foo() {
+    }
+    else
+    {
+    }
+
+    if foo() {
+    } else
     if foo() { // the span of the above error should continue here
     }
 
@@ -53,6 +68,20 @@ fn main() {
     }
 
     // those are ok:
+    if foo() {
+    }
+    {
+    }
+
+    if foo() {
+    } else {
+    }
+
+    if foo() {
+    }
+    else {
+    }
+
     if foo() {
     }
     if foo() {
