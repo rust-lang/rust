@@ -1250,7 +1250,8 @@ fn lint_clone_on_copy(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::Exp
     if is_copy(cx, ty) {
         let snip;
         if let Some(snippet) = sugg::Sugg::hir_opt(cx, arg) {
-            if let ty::Ref(..) = cx.tables.expr_ty(arg).sty {
+            // x.clone() might have dereferenced x, possibly through a Deref impl
+            if cx.tables.expr_ty(arg) != ty {
                 let parent = cx.tcx.hir.get_parent_node(expr.id);
                 match cx.tcx.hir.get(parent) {
                     hir::Node::Expr(parent) => match parent.node {

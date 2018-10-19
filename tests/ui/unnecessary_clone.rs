@@ -13,6 +13,7 @@
 #![warn(clippy::clone_on_ref_ptr)]
 #![allow(unused)]
 
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 use std::rc::{self, Rc};
@@ -30,6 +31,9 @@ fn clone_on_copy() {
     vec![1].clone(); // ok, not a Copy type
     Some(vec![1]).clone(); // ok, not a Copy type
     (&42).clone();
+
+    let rc = RefCell::new(0);
+    rc.borrow().clone();
 }
 
 fn clone_on_ref_ptr() {
