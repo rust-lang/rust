@@ -36,6 +36,7 @@ use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitStatus, Output, Stdio};
 use std::str;
+use std::env::consts::DLL_EXTENSION;
 
 use extract_gdb_version;
 use is_android_gdb_target;
@@ -1577,7 +1578,9 @@ impl<'test> TestCx<'test> {
             rustc.arg(format!("{}={}/lib{}",
                               aux_crate.key,
                               aux_dir.display(),
-                              &aux_crate.value.replace(".rs", ".so").replace("-","_")));
+                              aux_crate.value.replace(".rs", &format!(".{}", DLL_EXTENSION))
+                              .replace("-","_")
+                              ));
         }
 
         self.compose_and_run(
