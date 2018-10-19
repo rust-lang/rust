@@ -707,7 +707,7 @@ where
         mutability: Mutability,
     ) -> EvalResult<'tcx> {
         trace!(
-            "mark_static_initialized {:?}, mutability: {:?}",
+            "intern_static {:?}, mutability: {:?}",
             alloc_id,
             mutability
         );
