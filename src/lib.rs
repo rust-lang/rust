@@ -119,12 +119,12 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         // FIXME: extract main source file path
         // Third argument (argv): &[b"foo"]
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        let foo = ecx.memory.allocate_static_bytes(b"foo\0");
+        let foo = ecx.memory_mut().allocate_static_bytes(b"foo\0");
         let foo_ty = ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8);
         let foo_layout = ecx.layout_of(foo_ty)?;
         let foo_place = ecx.allocate(foo_layout, MiriMemoryKind::Env.into())?;
         ecx.write_scalar(Scalar::Ptr(foo), foo_place.into())?;
-        ecx.memory.mark_immutable(foo_place.to_ptr()?.alloc_id)?;
+        ecx.memory_mut().mark_immutable(foo_place.to_ptr()?.alloc_id)?;
         ecx.write_scalar(foo_place.ptr, dest)?;
 
         assert!(args.next().is_none(), "start lang item has more arguments than expected");

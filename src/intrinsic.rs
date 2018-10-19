@@ -153,7 +153,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 // erase tags: this is a raw ptr operation
                 let src = self.read_scalar(args[0])?.not_undef()?.erase_tag();
                 let dest = self.read_scalar(args[1])?.not_undef()?.erase_tag();
-                self.memory.copy(
+                self.memory_mut().copy(
                     src.with_default_tag(),
                     elem_align,
                     dest.with_default_tag(),
@@ -260,7 +260,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                             // Do it in memory
                             let mplace = self.force_allocation(dest)?;
                             assert!(mplace.meta.is_none());
-                            self.memory.write_repeat(mplace.ptr, 0, dest.layout.size)?;
+                            self.memory_mut().write_repeat(mplace.ptr, 0, dest.layout.size)?;
                         }
                     }
                 }
@@ -423,7 +423,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                             // Do it in memory
                             let mplace = self.force_allocation(dest)?;
                             assert!(mplace.meta.is_none());
-                            self.memory.mark_definedness(mplace.ptr.to_ptr()?, dest.layout.size, false)?;
+                            self.memory_mut().mark_definedness(mplace.ptr.to_ptr()?, dest.layout.size, false)?;
                         }
                     }
                 }
@@ -435,8 +435,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 let val_byte = self.read_scalar(args[1])?.to_u8()?;
                 let ptr = self.read_scalar(args[0])?.not_undef()?.erase_tag().with_default_tag();
                 let count = self.read_scalar(args[2])?.to_usize(&self)?;
-                self.memory.check_align(ptr, ty_layout.align)?;
-                self.memory.write_repeat(ptr, val_byte, ty_layout.size * count)?;
+                self.memory().check_align(ptr, ty_layout.align)?;
+                self.memory_mut().write_repeat(ptr, val_byte, ty_layout.size * count)?;
             }
 
             name => return err!(Unimplemented(format!("unimplemented intrinsic: {}", name))),

@@ -372,11 +372,11 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             ref_kind, ptr, pointee_ty, size.bytes(), new_bor);
 
         // Make sure this reference is not dangling or so
-        self.memory.check_bounds(ptr, size, false)?;
+        self.memory().check_bounds(ptr, size, false)?;
 
         // Update the stacks.  We cannot use `get_mut` becuse this might be immutable
         // memory.
-        let alloc = self.memory.get(ptr.alloc_id).expect("We checked that the ptr is fine!");
+        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
         let permit_redundant = ref_kind == RefKind::Shr; // redundant shared refs are okay
         alloc.extra.reborrow(ptr, size, new_bor, permit_redundant)?;
 
@@ -435,8 +435,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         }
         // Even if we don't touch the tag, this operation is only okay if we *could*
         // activate it.  Also it must not be dangling.
-        self.memory.check_bounds(ptr, size, false)?;
-        let alloc = self.memory.get(ptr.alloc_id).expect("We checked that the ptr is fine!");
+        self.memory().check_bounds(ptr, size, false)?;
+        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
         let mut stacks = alloc.extra.stacks.borrow_mut();
         // We need `iter_mut` because `iter` would skip gaps!
         for stack in stacks.iter_mut(ptr.offset, size) {
