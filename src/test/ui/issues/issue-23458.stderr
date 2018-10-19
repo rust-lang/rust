@@ -1,0 +1,17 @@
+error: invalid operand in inline asm: 'int $3'
+  --> $DIR/issue-23458.rs:7:9
+   |
+LL |         asm!("int $3");
+   |         ^^^^^^^^^^^^^^^
+
+error: <inline asm>:1:2: error: too few operands for instruction
+        int 
+        ^
+
+  --> $DIR/issue-23458.rs:7:9
+   |
+LL |         asm!("int $3");
+   |         ^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
