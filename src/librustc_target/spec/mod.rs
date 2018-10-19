@@ -1272,7 +1272,8 @@ impl ToJson for Target {
 
 fn maybe_jemalloc() -> Option<String> {
     if cfg!(feature = "jemalloc") {
-        Some("alloc_jemalloc".to_string())
+        None
+        // Some("alloc_jemalloc".to_string())
     } else {
         None
     }
