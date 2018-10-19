@@ -1156,6 +1156,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::CheckMatch => { force!(check_match, def_id!()); }
 
         DepKind::ParamEnv => { force!(param_env, def_id!()); }
+        DepKind::Environment => { force!(environment, def_id!()); }
         DepKind::DescribeDef => { force!(describe_def, def_id!()); }
         DepKind::DefSpan => { force!(def_span, def_id!()); }
         DepKind::LookupStability => { force!(lookup_stability, def_id!()); }

@@ -1,0 +1,25 @@
+error: program clause dump
+  --> $DIR/lower_env2.rs:16:1
+   |
+LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: FromEnv(T: Foo) :- FromEnv(S<'a, T>).
+   = note: FromEnv(T: std::marker::Sized) :- FromEnv(S<'a, T>).
+   = note: TypeOutlives(T : 'a) :- FromEnv(S<'a, T>).
+   = note: WellFormed(S<'a, T>) :- Implemented(T: std::marker::Sized), Implemented(T: Foo), TypeOutlives(T : 'a).
+
+error: program clause dump
+  --> $DIR/lower_env2.rs:21:1
+   |
+LL | #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: FromEnv(T: Foo) :- FromEnv(S<'a, T>).
+   = note: FromEnv(T: std::marker::Sized) :- FromEnv(S<'a, T>).
+   = note: Implemented(Self: Foo) :- FromEnv(Self: Foo).
+   = note: Implemented(Self: std::marker::Sized) :- FromEnv(Self: std::marker::Sized).
+   = note: TypeOutlives(T : 'a) :- FromEnv(S<'a, T>).
+
+error: aborting due to 2 previous errors
+

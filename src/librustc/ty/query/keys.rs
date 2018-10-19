@@ -12,6 +12,7 @@
 
 use infer::canonical::Canonical;
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE, DefIndex};
+use traits;
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Substs;
 use ty::fast_reject::SimplifiedType;
@@ -178,6 +179,15 @@ impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
     }
     fn default_span(&self, tcx: TyCtxt<'_, '_, '_>) -> Span {
         self.value.default_span(tcx)
+    }
+}
+
+impl<'tcx> Key for traits::Environment<'tcx> {
+    fn query_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+    fn default_span(&self, _: TyCtxt<'_, '_, '_>) -> Span {
+        DUMMY_SP
     }
 }
 

@@ -664,8 +664,11 @@ define_queries! { <'tcx>
         [] fn program_clauses_for: ProgramClausesFor(DefId) -> Clauses<'tcx>,
 
         [] fn program_clauses_for_env: ProgramClausesForEnv(
-            ty::ParamEnv<'tcx>
+            traits::Environment<'tcx>
         ) -> Clauses<'tcx>,
+
+        // Get the chalk-style environment of the given item.
+        [] fn environment: Environment(DefId) -> traits::Environment<'tcx>,
     },
 
     Linking {

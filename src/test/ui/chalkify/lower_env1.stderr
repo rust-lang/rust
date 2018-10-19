@@ -18,9 +18,6 @@ LL | #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
    = note: Implemented(Self: Bar) :- FromEnv(Self: Bar).
    = note: Implemented(Self: Foo) :- FromEnv(Self: Foo).
    = note: Implemented(Self: std::marker::Sized) :- FromEnv(Self: std::marker::Sized).
-   = note: WellFormed(Self: Bar) :- Implemented(Self: Bar), WellFormed(Self: Foo).
-   = note: WellFormed(Self: Foo) :- Implemented(Self: Foo).
-   = note: WellFormed(Self: std::marker::Sized) :- Implemented(Self: std::marker::Sized).
 
 error: aborting due to 2 previous errors
 

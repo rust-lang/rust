@@ -278,6 +278,8 @@ pub type TraitObligations<'tcx> = Vec<TraitObligation<'tcx>>;
 /// * `DomainGoal`
 /// * `Goal`
 /// * `Clause`
+/// * `Environment`
+/// * `InEnvironment`
 /// are used for representing the trait system in the form of
 /// logic programming clauses. They are part of the interface
 /// for the chalk SLG solver.
@@ -335,6 +337,14 @@ impl<'tcx> DomainGoal<'tcx> {
     pub fn into_goal(self) -> GoalKind<'tcx> {
         GoalKind::DomainGoal(self)
     }
+
+    pub fn into_program_clause(self) -> ProgramClause<'tcx> {
+        ProgramClause {
+            goal: self,
+            hypotheses: ty::List::empty(),
+            category: ProgramClauseCategory::Other,
+        }
+    }
 }
 
 impl<'tcx> GoalKind<'tcx> {
@@ -360,6 +370,15 @@ pub enum Clause<'tcx> {
     ForAll(ty::Binder<ProgramClause<'tcx>>),
 }
 
+impl Clause<'tcx> {
+    pub fn category(self) -> ProgramClauseCategory {
+        match self {
+            Clause::Implies(clause) => clause.category,
+            Clause::ForAll(clause) => clause.skip_binder().category,
+        }
+    }
+}
+
 /// Multiple clauses.
 pub type Clauses<'tcx> = &'tcx List<Clause<'tcx>>;
 
@@ -376,6 +395,38 @@ pub struct ProgramClause<'tcx> {
 
     /// ...if we can prove these hypotheses (there may be no hypotheses at all):
     pub hypotheses: Goals<'tcx>,
+
+    /// Useful for filtering clauses.
+    pub category: ProgramClauseCategory,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum ProgramClauseCategory {
+    ImpliedBound,
+    WellFormed,
+    Other,
+}
+
+/// A set of clauses that we assume to be true.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct Environment<'tcx> {
+    pub clauses: Clauses<'tcx>,
+}
+
+impl Environment<'tcx> {
+    pub fn with<G>(self, goal: G) -> InEnvironment<'tcx, G> {
+        InEnvironment {
+            environment: self,
+            goal,
+        }
+    }
+}
+
+/// Something (usually a goal), along with an environment.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub struct InEnvironment<'tcx, G> {
+    pub environment: Environment<'tcx>,
+    pub goal: G,
 }
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
