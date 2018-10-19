@@ -966,6 +966,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 }
             }
 
+            // if return type is mutable pointer
+            if let TyKind::RawPtr(ty::TypeAndMut{ty: ret_type, ..}) = ret_ty.sty {
+                // then the pointer must point to Self
+                if same_tys(cx, ty, ret_type) { return; }
+            }
+
             if name == "new" && !same_tys(cx, ret_ty, ty) {
                 span_lint(cx,
                           NEW_RET_NO_SELF,

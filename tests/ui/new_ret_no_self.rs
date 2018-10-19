@@ -119,3 +119,24 @@ impl TupleReturnerBad {
     // should trigger lint
     pub fn new() -> (u32, u32) { unimplemented!(); }
 }
+
+struct MutPointerReturnerOk;
+
+impl MutPointerReturnerOk {
+    // should not trigger lint
+    pub fn new() -> *mut Self { unimplemented!(); }
+}
+
+struct MutPointerReturnerOk2;
+
+impl MutPointerReturnerOk2 {
+    // should not trigger lint
+    pub fn new() -> *const Self { unimplemented!(); }
+}
+
+struct MutPointerReturnerBad;
+
+impl MutPointerReturnerBad {
+    // should trigger lint
+    pub fn new() -> *mut V { unimplemented!(); }
+}
