@@ -91,3 +91,31 @@ impl V {
         unimplemented!();
     }
 }
+
+struct TupleReturnerOk;
+
+impl TupleReturnerOk {
+    // should not trigger lint
+    pub fn new() -> (Self, u32) { unimplemented!(); }
+}
+
+struct TupleReturnerOk2;
+
+impl TupleReturnerOk2 {
+    // should not trigger lint (it doesn't matter which element in the tuple is Self)
+    pub fn new() -> (u32, Self) { unimplemented!(); }
+}
+
+struct TupleReturnerOk3;
+
+impl TupleReturnerOk3 {
+    // should not trigger lint (tuple can contain multiple Self)
+    pub fn new() -> (Self, Self) { unimplemented!(); }
+}
+
+struct TupleReturnerBad;
+
+impl TupleReturnerBad {
+    // should trigger lint
+    pub fn new() -> (u32, u32) { unimplemented!(); }
+}

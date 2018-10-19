@@ -936,6 +936,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if let hir::ImplItemKind::Method(_, _) = implitem.node {
             let ret_ty = return_ty(cx, implitem.id);
 
+//            println!("ret_ty: {:?}", ret_ty);
+//            println!("ret_ty.sty {:?}", ret_ty.sty);
+
             // if return type is impl trait
             if let TyKind::Opaque(def_id, _) = ret_ty.sty {
 
@@ -952,6 +955,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         },
                         (_, _) => {},
                     }
+                }
+            }
+
+            // if return type is tuple
+            if let TyKind::Tuple(list) = ret_ty.sty {
+                // then at least one of the types in the tuple must be Self
+                for ret_type in list {
+                    if same_tys(cx, ty, ret_type) { return; }
                 }
             }
 
