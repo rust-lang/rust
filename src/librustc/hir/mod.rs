@@ -208,13 +208,18 @@ pub enum ParamName {
     /// where `'f` is something like `Fresh(0)`. The indices are
     /// unique per impl, but not necessarily continuous.
     Fresh(usize),
+
+    /// Indicates an illegal name was given and an error has been
+    /// repored (so we should squelch other derived errors). Occurs
+    /// when e.g. `'_` is used in the wrong place.
+    Error,
 }
 
 impl ParamName {
     pub fn ident(&self) -> Ident {
         match *self {
             ParamName::Plain(ident) => ident,
-            ParamName::Fresh(_) => keywords::UnderscoreLifetime.ident(),
+            ParamName::Error | ParamName::Fresh(_) => keywords::UnderscoreLifetime.ident(),
         }
     }
 
@@ -234,6 +239,10 @@ pub enum LifetimeName {
     /// User typed nothing. e.g. the lifetime in `&u32`.
     Implicit,
 
+    /// Indicates an error during lowering (usually `'_` in wrong place)
+    /// that was already reported.
+    Error,
+
     /// User typed `'_`.
     Underscore,
 
@@ -245,6 +254,7 @@ impl LifetimeName {
     pub fn ident(&self) -> Ident {
         match *self {
             LifetimeName::Implicit => keywords::Invalid.ident(),
+            LifetimeName::Error => keywords::Invalid.ident(),
             LifetimeName::Underscore => keywords::UnderscoreLifetime.ident(),
             LifetimeName::Static => keywords::StaticLifetime.ident(),
             LifetimeName::Param(param_name) => param_name.ident(),
@@ -260,7 +270,7 @@ impl LifetimeName {
             // in the compiler is concerned -- `Fresh(_)` variants act
             // equivalently to "some fresh name". They correspond to
             // early-bound regions on an impl, in other words.
-            LifetimeName::Param(_) | LifetimeName::Static => false,
+            LifetimeName::Error | LifetimeName::Param(_) | LifetimeName::Static => false,
         }
     }
 
@@ -513,6 +523,9 @@ pub enum LifetimeParamKind {
     // Indication that the lifetime was elided like both cases here:
     // `fn foo(x: &u8) -> &'_ u8 { x }`
     Elided,
+
+    // Indication that the lifetime name was somehow in error.
+    Error,
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

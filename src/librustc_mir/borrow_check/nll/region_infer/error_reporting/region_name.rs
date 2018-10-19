@@ -562,6 +562,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let lifetime = self.try_match_adt_and_generic_args(substs, needle_fr, args, search_stack)?;
         match lifetime.name {
             hir::LifetimeName::Param(_)
+            | hir::LifetimeName::Error
             | hir::LifetimeName::Static
             | hir::LifetimeName::Underscore => {
                 let region_name = self.synthesize_region_name(counter);

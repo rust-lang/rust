@@ -1,0 +1,39 @@
+error[E0637]: `'_` cannot be used here
+  --> $DIR/in-binder.rs:12:6
+   |
+LL | impl<'_> IceCube<'_> {}
+   |      ^^ `'_` is a reserved lifetime name
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/in-binder.rs:17:15
+   |
+LL | struct Struct<'_> {
+   |               ^^ `'_` is a reserved lifetime name
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/in-binder.rs:23:11
+   |
+LL | enum Enum<'_> {
+   |           ^^ `'_` is a reserved lifetime name
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/in-binder.rs:29:13
+   |
+LL | union Union<'_> {
+   |             ^^ `'_` is a reserved lifetime name
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/in-binder.rs:35:13
+   |
+LL | trait Trait<'_> {
+   |             ^^ `'_` is a reserved lifetime name
+
+error[E0637]: `'_` cannot be used here
+  --> $DIR/in-binder.rs:40:8
+   |
+LL | fn foo<'_>() {
+   |        ^^ `'_` is a reserved lifetime name
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0637`.

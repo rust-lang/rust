@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo<'a: '_>(&'a u8); //~ ERROR cannot be used here
-fn foo<'a: '_>(_: &'a u8) {} //~ ERROR cannot be used here
+// Check that the `'_` used in structs/enums gives an error.
 
-struct Bar<'a>(&'a u8);
-impl<'a: '_> Bar<'a> { //~ ERROR cannot be used here
-  fn bar() {}
+use std::fmt::Debug;
+
+struct Foo {
+    x: &'_ u32, //~ ERROR missing lifetime specifier
 }
 
-fn main() {}
+enum Bar {
+    Variant(&'_ u32), //~ ERROR missing lifetime specifier
+}
+
+fn main() { }

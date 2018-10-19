@@ -2074,6 +2074,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExplicitOutlivesRequirements {
                     hir::GenericParamKind::Type { .. } => {
                         match param.name {
                             hir::ParamName::Fresh(_) => { continue; },
+                            hir::ParamName::Error => { continue; },
                             hir::ParamName::Plain(name) => name.to_string()
                         }
                     }

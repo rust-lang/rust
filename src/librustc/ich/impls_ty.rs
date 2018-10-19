@@ -755,8 +755,9 @@ for ::middle::resolve_lifetime::Set1<T>
 }
 
 impl_stable_hash_for!(enum ::middle::resolve_lifetime::LifetimeDefOrigin {
-    Explicit,
-    InBand
+    ExplicitOrElided,
+    InBand,
+    Error,
 });
 
 impl_stable_hash_for!(enum ::middle::resolve_lifetime::Region {

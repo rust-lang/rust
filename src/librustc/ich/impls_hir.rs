@@ -144,7 +144,8 @@ impl<'a> HashStable<StableHashingContext<'a>> for hir::ImplItemId {
 
 impl_stable_hash_for!(enum hir::ParamName {
     Plain(name),
-    Fresh(index)
+    Fresh(index),
+    Error,
 });
 
 impl_stable_hash_for!(enum hir::LifetimeName {
@@ -152,6 +153,7 @@ impl_stable_hash_for!(enum hir::LifetimeName {
     Implicit,
     Underscore,
     Static,
+    Error,
 });
 
 impl_stable_hash_for!(struct hir::Label {
@@ -210,7 +212,8 @@ impl_stable_hash_for!(struct hir::GenericParam {
 impl_stable_hash_for!(enum hir::LifetimeParamKind {
     Explicit,
     InBand,
-    Elided
+    Elided,
+    Error,
 });
 
 impl<'a> HashStable<StableHashingContext<'a>> for hir::GenericParamKind {
