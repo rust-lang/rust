@@ -2669,6 +2669,9 @@ impl<'a> LoweringContext<'a> {
                 let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple struct");
                 hir::PatKind::TupleStruct(qpath, pats, ddpos)
             }
+            PatKind::Or(ref pats) => {
+                hir::PatKind::Or(pats.iter().map(|x| self.lower_pat(x)).collect())
+            }
             PatKind::Path(ref qself, ref path) => {
                 let qpath = self.lower_qpath(
                     p.id,

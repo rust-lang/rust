@@ -4,7 +4,7 @@ use syntax::source_map::{SourceMap, Spanned};
 use syntax::parse::ParseSess;
 use syntax::print::pp::{self, Breaks};
 use syntax::print::pp::Breaks::{Consistent, Inconsistent};
-use syntax::print::pprust::{self, Comments, PrintState};
+use syntax::print::pprust::{self, Comments, PrintState, SeparatorSpacing};
 use syntax::symbol::kw;
 use syntax::util::parser::{self, AssocOp, Fixity};
 use syntax_pos::{self, BytePos, FileName};
@@ -1686,6 +1686,10 @@ impl<'a> State<'a> {
                 }
                 self.s.space();
                 self.s.word("}");
+            }
+            PatKind::Or(ref pats) => {
+                let spacing = SeparatorSpacing::Both;
+                self.strsep("|", spacing, Inconsistent, &pats[..], |s, p| s.print_pat(&p))?;
             }
             PatKind::Tuple(ref elts, ddpos) => {
                 self.popen();

@@ -75,9 +75,6 @@
 ///                     D((r_1, p_(i,2), .., p_(i,n)))
 ///                     D((r_2, p_(i,2), .., p_(i,n)))
 ///
-///     Note that the OR-patterns are not always used directly in Rust, but are used to derive
-///     the exhaustive integer matching rules, so they're written here for posterity.
-///
 /// The algorithm for computing `U`
 /// -------------------------------
 /// The algorithm is inductive (on the number of columns: i.e., components of tuple patterns).
@@ -1359,6 +1356,9 @@ fn pat_constructors<'tcx>(cx: &mut MatchCheckCtxt<'_, 'tcx>,
                 Some(vec![Slice(pat_len)])
             }
         }
+        PatternKind::Or { .. } => {
+            bug!("support for or-patterns has not been fully implemented yet.");
+        }
     }
 }
 
@@ -1883,6 +1883,10 @@ fn specialize<'p, 'a: 'p, 'tcx>(
                 _ => span_bug!(pat.span,
                     "unexpected ctor {:?} for slice pat", constructor)
             }
+        }
+
+        PatternKind::Or { .. } => {
+            bug!("support for or-patterns has not been fully implemented yet.");
         }
     };
     debug!("specialize({:#?}, {:#?}) = {:#?}", r[0], wild_patterns, head);

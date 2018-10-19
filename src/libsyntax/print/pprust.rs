@@ -431,21 +431,46 @@ impl std::ops::DerefMut for State<'_> {
     }
 }
 
+pub enum SeparatorSpacing {
+    After,
+    Both,
+}
+
 pub trait PrintState<'a>: std::ops::Deref<Target=pp::Printer> + std::ops::DerefMut {
     fn comments(&mut self) -> &mut Option<Comments<'a>>;
     fn print_ident(&mut self, ident: ast::Ident);
     fn print_generic_args(&mut self, args: &ast::GenericArgs, colons_before_params: bool);
 
-    fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], mut op: F)
+    fn strsep<T, F>(
+        &mut self,
+        sep: &'static str,
+        spacing: SeparatorSpacing,
+        b: Breaks,
+        elts: &[T],
+        mut op: F
+    ) -> io::Result<()>
         where F: FnMut(&mut Self, &T),
     {
         self.rbox(0, b);
         let mut first = true;
         for elt in elts {
-            if first { first = false; } else { self.word_space(","); }
+            if first {
+                first = false;
+            } else {
+                if let SeparatorSpacing::Both = spacing {
+                    self.writer().space();
+                }
+                self.word_space(sep);
+            }
             op(self, elt);
         }
         self.end();
+    }
+
+    fn commasep<T, F>(&mut self, b: Breaks, elts: &[T], mut op: F)
+        where F: FnMut(&mut Self, &T),
+    {
+        self.strsep(",", SeparatorSpacing::After, b, elts, op)
     }
 
     fn maybe_print_comment(&mut self, pos: BytePos) {
@@ -2352,6 +2377,10 @@ impl<'a> State<'a> {
                 self.popen();
                 self.commasep(Inconsistent, &elts[..], |s, p| s.print_pat(p));
                 self.pclose();
+            }
+            PatKind::Or(ref pats) => {
+                let spacing = SeparatorSpacing::Both;
+                self.strsep("|", spacing, Inconsistent, &pats[..], |s, p| s.print_pat(p))?;
             }
             PatKind::Path(None, ref path) => {
                 self.print_path(path, true, 0);
