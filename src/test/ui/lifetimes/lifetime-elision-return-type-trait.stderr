@@ -1,7 +1,3 @@
-error[E0601]: `main` function not found in crate `lifetime_elision_return_type_trait`
-   |
-   = note: consider adding a `main` function to `$DIR/lifetime-elision-return-type-trait.rs`
-
 error[E0106]: missing lifetime specifier
   --> $DIR/lifetime-elision-return-type-trait.rs:8:44
    |
@@ -10,7 +6,6 @@ LL | fn foo() -> impl Future<Item=(), Error=Box<Error>> {
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors occurred: E0106, E0601.
-For more information about an error, try `rustc --explain E0106`.
+For more information about this error, try `rustc --explain E0106`.

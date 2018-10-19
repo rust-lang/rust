@@ -2252,7 +2252,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     fn suggest_lifetime(&self, db: &mut DiagnosticBuilder<'_>, span: Span, msg: &str) -> bool {
         match self.tcx.sess.source_map().span_to_snippet(span) {
             Ok(ref snippet) => {
-                let (sugg, applicability) = if &snippet[..] == "&" {
+                let (sugg, applicability) = if snippet == "&" {
                     ("&'static ".to_owned(), Applicability::MachineApplicable)
                 } else if snippet == "'_" {
                     ("'static".to_owned(), Applicability::MachineApplicable)
