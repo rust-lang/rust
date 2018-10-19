@@ -4,7 +4,7 @@ use languageserver_types::{
     CodeActionResponse, Command, CompletionItem, CompletionItemKind, Diagnostic,
     DiagnosticSeverity, DocumentSymbol, FoldingRange, FoldingRangeKind, FoldingRangeParams,
     InsertTextFormat, Location, Position, SymbolInformation, TextDocumentIdentifier, TextEdit,
-    RenameParams, WorkspaceEdit
+    RenameParams, WorkspaceEdit, PrepareRenameResponse
 };
 use ra_analysis::{FileId, FoldKind, JobToken, Query, RunnableKind};
 use ra_syntax::text_utils::contains_offset_nonstrict;
@@ -461,6 +461,28 @@ pub fn handle_signature_help(
     } else {
         Ok(None)
     }
+}
+
+pub fn handle_prepare_rename(
+    world: ServerWorld,
+    params: req::TextDocumentPositionParams,
+    token: JobToken,
+) -> Result<Option<PrepareRenameResponse>> {
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(file_id);
+    let offset = params.position.conv_with(&line_index);
+
+    // We support renaming references like handle_rename does.
+    // In the future we may want to reject the renaming of things like keywords here too.
+    let refs = world.analysis().find_all_refs(file_id, offset, &token);
+    if refs.is_empty() {
+        return Ok(None);
+    }
+
+    let r = refs.first().unwrap();
+    let loc = to_location(r.0, r.1, &world, &line_index)?;
+
+    Ok(Some(PrepareRenameResponse::Range(loc.range)))
 }
 
 pub fn handle_rename(
