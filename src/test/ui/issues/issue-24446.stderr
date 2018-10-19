@@ -1,33 +1,12 @@
-error[E0308]: mismatched types
-  --> $DIR/issue-24446.rs:12:31
-   |
-LL |       static foo: Fn() -> u32 = || -> u32 {
-   |  _______________________________^
-LL | |         //~^ ERROR mismatched types
-LL | |         //~| ERROR the size for values of type
-LL | |         0
-LL | |     };
-   | |_____^ expected trait std::ops::Fn, found closure
-   |
-   = note: expected type `(dyn std::ops::Fn() -> u32 + 'static)`
-              found type `[closure@$DIR/issue-24446.rs:12:31: 16:6]`
-
 error[E0277]: the size for values of type `(dyn std::ops::Fn() -> u32 + 'static)` cannot be known at compilation time
-  --> $DIR/issue-24446.rs:12:31
+  --> $DIR/issue-24446.rs:12:17
    |
-LL |       static foo: Fn() -> u32 = || -> u32 {
-   |  _______________________________^
-LL | |         //~^ ERROR mismatched types
-LL | |         //~| ERROR the size for values of type
-LL | |         0
-LL | |     };
-   | |_____^ doesn't have a size known at compile-time
+LL |     static foo: Fn() -> u32 = || -> u32 {
+   |                 ^^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `std::marker::Sized` is not implemented for `(dyn std::ops::Fn() -> u32 + 'static)`
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
-   = note: constant expressions must have a statically known size
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors occurred: E0277, E0308.
-For more information about an error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0277`.

@@ -118,12 +118,17 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
         hir::ItemKind::Fn(..) => {
             check_item_fn(tcx, item);
         }
-        hir::ItemKind::Static(..) => {
-            check_item_type(tcx, item);
+        hir::ItemKind::Static(ref ty, ..) => {
+            check_item_type(tcx, item.id, ty.span);
         }
-        hir::ItemKind::Const(..) => {
-            check_item_type(tcx, item);
+        hir::ItemKind::Const(ref ty, ..) => {
+            check_item_type(tcx, item.id, ty.span);
         }
+        hir::ItemKind::ForeignMod(ref module) => for it in module.items.iter() {
+            if let hir::ForeignItemKind::Static(ref ty, ..) = it.node {
+                check_item_type(tcx, it.id, ty.span);
+            }
+        },
         hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {
             check_type_defn(tcx, item, false, |fcx| {
                 vec![fcx.non_enum_variant(struct_def)]
@@ -335,14 +340,23 @@ fn check_item_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
     })
 }
 
-fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
-    debug!("check_item_type: {:?}", item);
+fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId, ty_span: Span) {
+    debug!("check_item_type: {:?}", item_id);
 
-    for_item(tcx, item).with_fcx(|fcx, _this| {
-        let ty = fcx.tcx.type_of(fcx.tcx.hir.local_def_id(item.id));
-        let item_ty = fcx.normalize_associated_types_in(item.span, &ty);
+    for_id(tcx, item_id, ty_span).with_fcx(|fcx, _this| {
+        let ty = fcx.tcx.type_of(fcx.tcx.hir.local_def_id(item_id));
+        let item_ty = fcx.normalize_associated_types_in(ty_span, &ty);
 
-        fcx.register_wf_obligation(item_ty, item.span, ObligationCauseCode::MiscObligation);
+        fcx.register_wf_obligation(item_ty, ty_span, ObligationCauseCode::MiscObligation);
+        fcx.register_bound(
+            item_ty,
+            fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
+            traits::ObligationCause::new(
+                ty_span,
+                fcx.body_id,
+                traits::MiscObligation,
+            ),
+        );
 
         vec![] // no implied bounds in a const etc
     });
