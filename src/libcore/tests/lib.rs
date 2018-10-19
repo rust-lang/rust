@@ -34,8 +34,6 @@
 #![feature(trusted_len)]
 #![feature(try_from)]
 #![feature(try_trait)]
-#![feature(chunks_exact)]
-#![feature(rchunks)]
 #![feature(align_offset)]
 #![feature(reverse_bits)]
 #![feature(inner_deref)]

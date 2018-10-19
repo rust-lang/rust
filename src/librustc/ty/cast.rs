@@ -58,6 +58,8 @@ pub enum CastKind {
 }
 
 impl<'tcx> CastTy<'tcx> {
+    /// Returns `Some` for integral/pointer casts.
+    /// casts like unsizing casts will return `None`
     pub fn from_ty(t: Ty<'tcx>) -> Option<CastTy<'tcx>> {
         match t.sty {
             ty::Bool => Some(CastTy::Int(IntTy::Bool)),

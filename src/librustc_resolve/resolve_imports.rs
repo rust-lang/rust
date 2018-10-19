@@ -672,7 +672,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 };
 
                 let has_explicit_self =
-                    import.module_path.len() > 0 &&
+                    !import.module_path.is_empty() &&
                     import.module_path[0].name == keywords::SelfValue.name();
 
                 self.per_ns(|_, ns| {
@@ -703,9 +703,8 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 if let SingleImport { source, ref result, .. } = import.subclass {
                     if source.name == "self" {
                         // Silence `unresolved import` error if E0429 is already emitted
-                        match result.value_ns.get() {
-                            Err(Determined) => continue,
-                            _ => {},
+                        if let Err(Determined) = result.value_ns.get() {
+                            continue;
                         }
                     }
                 }
@@ -822,20 +821,19 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     fn throw_unresolved_import_error(&self, error_vec: Vec<(Span, String, String)>,
                                      span: Option<MultiSpan>) {
         let max_span_label_msg_count = 10;  // upper limit on number of span_label message.
-        let (span,msg) = match error_vec.is_empty() {
-            true => (span.unwrap(), "unresolved import".to_string()),
-            false => {
-                let span = MultiSpan::from_spans(error_vec.clone().into_iter()
-                                    .map(|elem: (Span, String, String)| { elem.0 }
-                                    ).collect());
-                let path_vec: Vec<String> = error_vec.clone().into_iter()
-                                .map(|elem: (Span, String, String)| { format!("`{}`", elem.1) }
-                                ).collect();
-                let path = path_vec.join(", ");
-                let msg = format!("unresolved import{} {}",
-                                if path_vec.len() > 1 { "s" } else { "" },  path);
-                (span, msg)
-            }
+        let (span, msg) = if error_vec.is_empty() {
+            (span.unwrap(), "unresolved import".to_string())
+        } else {
+            let span = MultiSpan::from_spans(error_vec.clone().into_iter()
+                .map(|elem: (Span, String, String)| { elem.0 })
+                .collect());
+            let path_vec: Vec<String> = error_vec.clone().into_iter()
+                .map(|elem: (Span, String, String)| { format!("`{}`", elem.1) })
+                .collect();
+            let path = path_vec.join(", ");
+            let msg = format!("unresolved import{} {}",
+                if path_vec.len() > 1 { "s" } else { "" }, path);
+            (span, msg)
         };
         let mut err = struct_span_err!(self.resolver.session, span, E0432, "{}", &msg);
         for span_error in error_vec.into_iter().take(max_span_label_msg_count) {
@@ -1026,9 +1024,8 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         if all_ns_err {
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
-                match this.resolve_ident_in_module(module, ident, ns, record_used, span) {
-                    Ok(_) => all_ns_failed = false,
-                    _ => {}
+                if this.resolve_ident_in_module(module, ident, ns, record_used, span).is_ok() {
+                    all_ns_failed = false;
                 }
             });
 
@@ -1247,65 +1244,62 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 }
             }
 
-            match binding.kind {
-                NameBindingKind::Import { binding: orig_binding, directive, .. } => {
-                    if ns == TypeNS && orig_binding.is_variant() &&
-                        !orig_binding.vis.is_at_least(binding.vis, &*self) {
-                            let msg = match directive.subclass {
-                                ImportDirectiveSubclass::SingleImport { .. } => {
-                                    format!("variant `{}` is private and cannot be re-exported",
-                                            ident)
-                                },
-                                ImportDirectiveSubclass::GlobImport { .. } => {
-                                    let msg = "enum is private and its variants \
-                                               cannot be re-exported".to_owned();
-                                    let error_id = (DiagnosticMessageId::ErrorId(0), // no code?!
-                                                    Some(binding.span),
-                                                    msg.clone());
-                                    let fresh = self.session.one_time_diagnostics
-                                        .borrow_mut().insert(error_id);
-                                    if !fresh {
-                                        continue;
-                                    }
-                                    msg
-                                },
-                                ref s @ _ => bug!("unexpected import subclass {:?}", s)
-                            };
-                            let mut err = self.session.struct_span_err(binding.span, &msg);
+            if let NameBindingKind::Import { binding: orig_binding, directive, .. } = binding.kind {
+                if ns == TypeNS && orig_binding.is_variant() &&
+                    !orig_binding.vis.is_at_least(binding.vis, &*self) {
+                        let msg = match directive.subclass {
+                            ImportDirectiveSubclass::SingleImport { .. } => {
+                                format!("variant `{}` is private and cannot be re-exported",
+                                        ident)
+                            },
+                            ImportDirectiveSubclass::GlobImport { .. } => {
+                                let msg = "enum is private and its variants \
+                                           cannot be re-exported".to_owned();
+                                let error_id = (DiagnosticMessageId::ErrorId(0), // no code?!
+                                                Some(binding.span),
+                                                msg.clone());
+                                let fresh = self.session.one_time_diagnostics
+                                    .borrow_mut().insert(error_id);
+                                if !fresh {
+                                    continue;
+                                }
+                                msg
+                            },
+                            ref s @ _ => bug!("unexpected import subclass {:?}", s)
+                        };
+                        let mut err = self.session.struct_span_err(binding.span, &msg);
 
-                            let imported_module = match directive.imported_module.get() {
-                                Some(ModuleOrUniformRoot::Module(module)) => module,
-                                _ => bug!("module should exist"),
-                            };
-                            let resolutions = imported_module.parent.expect("parent should exist")
-                                .resolutions.borrow();
-                            let enum_path_segment_index = directive.module_path.len() - 1;
-                            let enum_ident = directive.module_path[enum_path_segment_index];
+                        let imported_module = match directive.imported_module.get() {
+                            Some(ModuleOrUniformRoot::Module(module)) => module,
+                            _ => bug!("module should exist"),
+                        };
+                        let resolutions = imported_module.parent.expect("parent should exist")
+                            .resolutions.borrow();
+                        let enum_path_segment_index = directive.module_path.len() - 1;
+                        let enum_ident = directive.module_path[enum_path_segment_index];
 
-                            let enum_resolution = resolutions.get(&(enum_ident, TypeNS))
-                                .expect("resolution should exist");
-                            let enum_span = enum_resolution.borrow()
-                                .binding.expect("binding should exist")
-                                .span;
-                            let enum_def_span = self.session.source_map().def_span(enum_span);
-                            let enum_def_snippet = self.session.source_map()
-                                .span_to_snippet(enum_def_span).expect("snippet should exist");
-                            // potentially need to strip extant `crate`/`pub(path)` for suggestion
-                            let after_vis_index = enum_def_snippet.find("enum")
-                                .expect("`enum` keyword should exist in snippet");
-                            let suggestion = format!("pub {}",
-                                                     &enum_def_snippet[after_vis_index..]);
+                        let enum_resolution = resolutions.get(&(enum_ident, TypeNS))
+                            .expect("resolution should exist");
+                        let enum_span = enum_resolution.borrow()
+                            .binding.expect("binding should exist")
+                            .span;
+                        let enum_def_span = self.session.source_map().def_span(enum_span);
+                        let enum_def_snippet = self.session.source_map()
+                            .span_to_snippet(enum_def_span).expect("snippet should exist");
+                        // potentially need to strip extant `crate`/`pub(path)` for suggestion
+                        let after_vis_index = enum_def_snippet.find("enum")
+                            .expect("`enum` keyword should exist in snippet");
+                        let suggestion = format!("pub {}",
+                                                 &enum_def_snippet[after_vis_index..]);
 
-                            self.session
-                                .diag_span_suggestion_once(&mut err,
-                                                           DiagnosticMessageId::ErrorId(0),
-                                                           enum_def_span,
-                                                           "consider making the enum public",
-                                                           suggestion);
-                            err.emit();
-                    }
+                        self.session
+                            .diag_span_suggestion_once(&mut err,
+                                                       DiagnosticMessageId::ErrorId(0),
+                                                       enum_def_span,
+                                                       "consider making the enum public",
+                                                       suggestion);
+                        err.emit();
                 }
-                _ => {}
             }
         }
 

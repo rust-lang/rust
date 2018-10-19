@@ -203,9 +203,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
         self.current_module = invocation.module.get();
         self.current_module.unresolved_invocations.borrow_mut().remove(&mark);
         self.current_module.unresolved_invocations.borrow_mut().extend(derives);
-        for &derive in derives {
-            self.invocations.insert(derive, invocation);
-        }
+        self.invocations.extend(derives.iter().map(|&derive| (derive, invocation)));
         let mut visitor = BuildReducedGraphVisitor {
             resolver: self,
             current_legacy_scope: invocation.parent_legacy_scope.get(),
@@ -277,11 +275,12 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
                     if traits.is_empty() {
                         attrs.remove(i);
                     } else {
-                        let mut tokens = Vec::new();
+                        let mut tokens = Vec::with_capacity(traits.len() - 1);
                         for (j, path) in traits.iter().enumerate() {
                             if j > 0 {
                                 tokens.push(TokenTree::Token(attrs[i].span, Token::Comma).into());
                             }
+                            tokens.reserve((path.segments.len() * 2).saturating_sub(1));
                             for (k, segment) in path.segments.iter().enumerate() {
                                 if k > 0 {
                                     tokens.push(TokenTree::Token(path.span, Token::ModSep).into());

@@ -115,12 +115,10 @@
 #![feature(unsize)]
 #![feature(allocator_internals)]
 #![feature(on_unimplemented)]
-#![feature(chunks_exact)]
 #![feature(rustc_const_unstable)]
 #![feature(const_vec_new)]
 #![feature(slice_partition_dedup)]
 #![feature(maybe_uninit)]
-#![feature(rchunks)]
 
 // Allow testing this library
 
