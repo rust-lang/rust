@@ -198,6 +198,35 @@ impl f32 {
         }
     }
 
+    /// Returns a number composed of the magnitude of one number and the sign of
+    /// another.
+    ///
+    /// Equal to `self` if the sign of `self` and `y` are the same, otherwise
+    /// equal to `-y`. If `self` is a `NAN`, then a `NAN` with the sign of `y`
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(copysign)]
+    /// use std::f32;
+    ///
+    /// let f = 3.5_f32;
+    ///
+    /// assert_eq!(f.copysign(0.42), 3.5_f32);
+    /// assert_eq!(f.copysign(-0.42), -3.5_f32);
+    /// assert_eq!((-f).copysign(0.42), 3.5_f32);
+    /// assert_eq!((-f).copysign(-0.42), -3.5_f32);
+    ///
+    /// assert!(f32::NAN.copysign(1.0).is_nan());
+    /// ```
+    #[inline]
+    #[must_use]
+    #[unstable(feature="copysign", issue="55169")]
+    pub fn copysign(self, y: f32) -> f32 {
+        unsafe { intrinsics::copysignf32(self, y) }
+    }
+
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error, yielding a more accurate result than an unfused multiply-add.
     ///
