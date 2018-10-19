@@ -240,7 +240,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         end_block.unit()
     }
 
-    pub fn expr_into_pattern(
+    pub(super) fn expr_into_pattern(
         &mut self,
         mut block: BasicBlock,
         irrefutable_pat: Pattern<'tcx>,
@@ -488,7 +488,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         );
     }
 
-    pub fn visit_bindings(
+    pub(super) fn visit_bindings(
         &mut self,
         pattern: &Pattern<'tcx>,
         mut pattern_user_ty: Option<(UserTypeAnnotation<'tcx>, Span)>,
