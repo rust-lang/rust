@@ -291,7 +291,7 @@ impl<Tag> Operand<Tag> {
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct OpTy<'tcx, Tag=()> {
-    pub op: Operand<Tag>, // This is used by [priroda](https://github.com/oli-obk/priroda)
+    crate op: Operand<Tag>, // ideally we'd make this private, but const_prop needs this
     pub layout: TyLayout<'tcx>,
 }
 
@@ -772,4 +772,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         })
     }
 
+    /// This is used by [priroda](https://github.com/oli-obk/priroda) to get an OpTy from a local
+    pub fn read_local_of_frame(
+        &self,
+        frame: &super::Frame,
+        local: mir::Local
+    ) -> EvalResult<'tcx, OpTy<'tcx>> {
+        let op = frame.locals[local].access()?;
+        let layout = self.layout_of_local(frame, local)?;
+        OpTy { op, layout }
+    }
 }
