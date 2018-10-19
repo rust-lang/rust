@@ -230,7 +230,7 @@ LLVM version: 4.0
 
 ### Suggested workflows for faster builds of the compiler
 
-There are two workflows that are useful for faster builders of the
+There are two workflows that are useful for faster builds of the
 compiler.
 
 **Check, check, and check again.** The first workflow, which is useful
