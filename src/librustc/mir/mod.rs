@@ -2425,15 +2425,16 @@ pub struct Constant<'tcx> {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum UserTypeAnnotation<'tcx> {
     Ty(CanonicalTy<'tcx>),
-    FnDef(DefId, CanonicalUserSubsts<'tcx>),
-    AdtDef(&'tcx AdtDef, CanonicalUserSubsts<'tcx>),
+
+    /// The canonical type is the result of `type_of(def_id)` with the
+    /// given substitutions applied.
+    TypeOf(DefId, CanonicalUserSubsts<'tcx>),
 }
 
 EnumTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for UserTypeAnnotation<'tcx> {
         (UserTypeAnnotation::Ty)(ty),
-        (UserTypeAnnotation::FnDef)(def, substs),
-        (UserTypeAnnotation::AdtDef)(def, substs),
+        (UserTypeAnnotation::TypeOf)(def, substs),
     }
 }
 

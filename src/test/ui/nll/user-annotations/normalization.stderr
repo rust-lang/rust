@@ -1,0 +1,13 @@
+error[E0597]: `a` does not live long enough
+  --> $DIR/normalization.rs:12:31
+   |
+LL |     let b: <() as Foo>::Out = &a; //~ ERROR
+   |                               ^^ borrowed value does not live long enough
+LL | }
+   | - `a` dropped here while still borrowed
+   |
+   = note: borrowed value must be valid for the static lifetime...
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

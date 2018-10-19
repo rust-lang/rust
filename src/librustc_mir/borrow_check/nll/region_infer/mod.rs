@@ -25,7 +25,7 @@ use rustc::mir::{
 use rustc::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable};
 use rustc::util::common;
 use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_errors::{Diagnostic, DiagnosticBuilder};
@@ -67,10 +67,8 @@ pub struct RegionInferenceContext<'tcx> {
     constraint_sccs: Rc<Sccs<RegionVid, ConstraintSccIndex>>,
 
     /// Map closure bounds to a `Span` that should be used for error reporting.
-    closure_bounds_mapping: FxHashMap<
-        Location,
-        FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>,
-    >,
+    closure_bounds_mapping:
+        FxHashMap<Location, FxHashMap<(RegionVid, RegionVid), (ConstraintCategory, Span)>>,
 
     /// Contains the minimum universe of any variable within the same
     /// SCC. We will ensure that no SCC contains values that are not
@@ -580,6 +578,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         let tcx = infcx.tcx;
 
+        // Sometimes we register equivalent type-tests that would
+        // result in basically the exact same error being reported to
+        // the user. Avoid that.
+        let mut deduplicate_errors = FxHashSet::default();
+
         for type_test in &self.type_tests {
             debug!("check_type_test: {:?}", type_test);
 
@@ -605,11 +608,31 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 }
             }
 
-            // Oh the humanity. Obviously we will do better than this error eventually.
+            // Type-test failed. Report the error.
+
+            // Try to convert the lower-bound region into something named we can print for the user.
             let lower_bound_region = self.to_error_region(type_test.lower_bound);
+
+            // Skip duplicate-ish errors.
+            let type_test_span = type_test.locations.span(mir);
+            let erased_generic_kind = tcx.erase_regions(&type_test.generic_kind);
+            if !deduplicate_errors.insert((
+                erased_generic_kind,
+                lower_bound_region,
+                type_test.locations,
+            )) {
+                continue;
+            } else {
+                debug!(
+                    "check_type_test: reporting error for erased_generic_kind={:?}, \
+                     lower_bound_region={:?}, \
+                     type_test.locations={:?}",
+                    erased_generic_kind, lower_bound_region, type_test.locations,
+                );
+            }
+
             if let Some(lower_bound_region) = lower_bound_region {
                 let region_scope_tree = &tcx.region_scope_tree(mir_def_id);
-                let type_test_span = type_test.locations.span(mir);
                 infcx
                     .construct_generic_bound_failure(
                         region_scope_tree,
@@ -629,7 +652,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 // to report it; we could probably handle it by
                 // iterating over the universal regions and reporting
                 // an error that multiple bounds are required.
-                let type_test_span = type_test.locations.span(mir);
                 tcx.sess
                     .struct_span_err(
                         type_test_span,

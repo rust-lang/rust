@@ -139,17 +139,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
             ExprKind::PlaceTypeAscription { source, user_ty } => {
                 let place = unpack!(block = this.as_place(block, source));
-                this.cfg.push(
-                    block,
-                    Statement {
-                        source_info,
-                        kind: StatementKind::AscribeUserType(
-                            place.clone(),
-                            Variance::Invariant,
-                            user_ty,
-                        ),
-                    },
-                );
+                if let Some(user_ty) = user_ty {
+                    this.cfg.push(
+                        block,
+                        Statement {
+                            source_info,
+                            kind: StatementKind::AscribeUserType(
+                                place.clone(),
+                                Variance::Invariant,
+                                user_ty,
+                            ),
+                        },
+                    );
+                }
                 block.and(place)
             }
             ExprKind::ValueTypeAscription { source, user_ty } => {
@@ -157,17 +159,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let temp = unpack!(
                     block = this.as_temp(block, source.temp_lifetime, source, mutability)
                 );
-                this.cfg.push(
-                    block,
-                    Statement {
-                        source_info,
-                        kind: StatementKind::AscribeUserType(
-                            Place::Local(temp.clone()),
-                            Variance::Invariant,
-                            user_ty,
-                        ),
-                    },
-                );
+                if let Some(user_ty) = user_ty {
+                    this.cfg.push(
+                        block,
+                        Statement {
+                            source_info,
+                            kind: StatementKind::AscribeUserType(
+                                Place::Local(temp.clone()),
+                                Variance::Invariant,
+                                user_ty,
+                            ),
+                        },
+                    );
+                }
                 block.and(Place::Local(temp))
             }
 

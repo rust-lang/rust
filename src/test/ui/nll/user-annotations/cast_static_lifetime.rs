@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![warn(const_err)]
-
-const X: u32 = 5;
-const Y: u32 = 6;
-const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
-//~^ WARN this constant cannot be used
+#![allow(warnings)]
+#![feature(nll)]
 
 fn main() {
-    println!("{}", FOO);
-    //~^ ERROR
-    //~| ERROR
+    let x = 22_u32;
+    let y: &u32 = (&x) as &'static u32;
 }

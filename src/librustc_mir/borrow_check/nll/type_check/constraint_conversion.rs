@@ -142,6 +142,7 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
     }
 
     fn add_type_test(&mut self, type_test: TypeTest<'tcx>) {
+        debug!("add_type_test(type_test={:?})", type_test);
         self.type_tests.push(type_test);
     }
 }

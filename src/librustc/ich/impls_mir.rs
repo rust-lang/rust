@@ -597,11 +597,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::UserTypeAnnotation<
             mir::UserTypeAnnotation::Ty(ref ty) => {
                 ty.hash_stable(hcx, hasher);
             }
-            mir::UserTypeAnnotation::FnDef(ref def_id, ref substs) => {
-                def_id.hash_stable(hcx, hasher);
-                substs.hash_stable(hcx, hasher);
-            }
-            mir::UserTypeAnnotation::AdtDef(ref def_id, ref substs) => {
+            mir::UserTypeAnnotation::TypeOf(ref def_id, ref substs) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }

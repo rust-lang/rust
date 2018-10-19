@@ -276,12 +276,12 @@ pub enum ExprKind<'tcx> {
     PlaceTypeAscription {
         source: ExprRef<'tcx>,
         /// Type that the user gave to this expression
-        user_ty: UserTypeAnnotation<'tcx>,
+        user_ty: Option<UserTypeAnnotation<'tcx>>,
     },
     ValueTypeAscription {
         source: ExprRef<'tcx>,
         /// Type that the user gave to this expression
-        user_ty: UserTypeAnnotation<'tcx>,
+        user_ty: Option<UserTypeAnnotation<'tcx>>,
     },
     Closure {
         closure_id: DefId,
