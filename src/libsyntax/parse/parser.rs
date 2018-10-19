@@ -6426,6 +6426,17 @@ impl<'a> Parser<'a> {
             self.directory.path.to_mut().push(&path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
         } else {
+            // We have to push on the current module name in the case of relative
+            // paths in order to ensure that any additional module paths from inline
+            // `mod x { ... }` come after the relative extension.
+            //
+            // For example, a `mod z { ... }` inside `x/y.rs` should set the current
+            // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
+            if let DirectoryOwnership::Owned { relative } = &mut self.directory.ownership {
+                if let Some(ident) = relative.take() { // remove the relative offset
+                    self.directory.path.to_mut().push(ident.as_str());
+                }
+            }
             self.directory.path.to_mut().push(&id.as_str());
         }
     }
