@@ -44,7 +44,7 @@ moves `a` into the call, and hence it becomes uninitialized again.
 To make it easier to peruse, this section is broken into a number of
 subsections:
 
-- [Move paths](./moves_and_initialization/move_paths.html the
+- [Move paths](./moves_and_initialization/move_paths.html) the
   *move path* concept that we use to track which local variables (or parts of
   local variables, in some cases) are initialized.
 - TODO *Rest not yet written* =)
