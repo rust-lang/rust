@@ -43,7 +43,8 @@ use operator::EvalContextExt as OperatorEvalContextExt;
 use intrinsic::EvalContextExt as IntrinsicEvalContextExt;
 use tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 use range_map::RangeMap;
-use helpers::FalibleScalarExt;
+#[allow(unused_imports)] // FIXME rustc bug https://github.com/rust-lang/rust/issues/53682
+use helpers::{ScalarExt, EvalContextExt as HelpersEvalContextExt};
 use mono_hash_map::MonoHashMap;
 
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
