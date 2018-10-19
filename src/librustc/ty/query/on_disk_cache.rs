@@ -174,10 +174,13 @@ impl<'sess> OnDiskCache<'sess> {
         tcx.dep_graph.with_ignore(|| {
             // Allocate SourceFileIndices
             let (file_to_file_index, file_index_to_stable_id) = {
-                let mut file_to_file_index = FxHashMap::default();
-                let mut file_index_to_stable_id = FxHashMap::default();
+                let files = tcx.sess.source_map().files();
+                let mut file_to_file_index = FxHashMap::with_capacity_and_hasher(
+                    files.len(), Default::default());
+                let mut file_index_to_stable_id = FxHashMap::with_capacity_and_hasher(
+                    files.len(), Default::default());
 
-                for (index, file) in tcx.sess.source_map().files().iter().enumerate() {
+                for (index, file) in files.iter().enumerate() {
                     let index = SourceFileIndex(index as u32);
                     let file_ptr: *const SourceFile = &**file as *const _;
                     file_to_file_index.insert(file_ptr, index);

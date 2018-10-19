@@ -3510,10 +3510,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields")
         };
 
-        let mut remaining_fields = FxHashMap::default();
-        for (i, field) in variant.fields.iter().enumerate() {
-            remaining_fields.insert(field.ident.modern(), (i, field));
-        }
+        let mut remaining_fields = variant.fields.iter().enumerate().map(|(i, field)|
+            (field.ident.modern(), (i, field))
+        ).collect::<FxHashMap<_, _>>();
 
         let mut seen_fields = FxHashMap::default();
 
@@ -5051,10 +5050,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // provided (if any) into their appropriate spaces. We'll also report
         // errors if type parameters are provided in an inappropriate place.
 
-        let mut generic_segs = FxHashSet::default();
-        for PathSeg(_, index) in &path_segs {
-            generic_segs.insert(index);
-        }
+        let generic_segs = path_segs.iter().map(|PathSeg(_, index)| index)
+            .collect::<FxHashSet<_>>();
         AstConv::prohibit_generics(self, segments.iter().enumerate().filter_map(|(index, seg)| {
             if !generic_segs.contains(&index) {
                 Some(seg)
