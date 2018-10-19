@@ -1,3 +1,6 @@
+// Validation detects that we are casting & to &mut and so it changes why we fail
+// compile-flags: -Zmir-emit-validate=0 -Zmiri-disable-validation
+
 static X: usize = 5;
 
 #[allow(mutable_transmutes)]

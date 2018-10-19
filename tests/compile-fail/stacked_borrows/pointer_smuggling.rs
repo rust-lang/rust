@@ -18,5 +18,5 @@ fn main() {
     fun1(val);
     *val = 2; // this invalidates any raw ptrs `fun1` might have created.
     fun2(); // if they now use a raw ptr they break our reference
-    *val = 3; //~ ERROR does not exist on the stack
+    *val = 3; //~ ERROR Mut reference with non-reactivatable tag Mut(Uniq
 }

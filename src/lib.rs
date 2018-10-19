@@ -434,7 +434,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn memory_deallocated(
-        alloc: &mut Allocation<Self::PointerTag, Self::AllocExtra>,
+        alloc: &mut Allocation<Borrow, Self::AllocExtra>,
         ptr: Pointer<Borrow>,
     ) -> EvalResult<'tcx> {
         alloc.extra.memory_deallocated(ptr)
@@ -443,32 +443,38 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     #[inline(always)]
     fn tag_reference(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer<Borrow>,
-        pointee_ty: Ty<'tcx>,
-        pointee_size: Size,
+        place: MemPlace<Borrow>,
+        ty: Ty<'tcx>,
+        size: Size,
         mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, Borrow> {
-        if !ecx.machine.validate {
+    ) -> EvalResult<'tcx, MemPlace<Borrow>> {
+        if !ecx.machine.validate || size == Size::ZERO {
             // No tracking
-            Ok(Borrow::default())
+            Ok(place)
         } else {
-            ecx.tag_reference(ptr, pointee_ty, pointee_size, mutability)
+            let ptr = place.ptr.to_ptr()?;
+            let tag = ecx.tag_reference(ptr, ty, size, mutability.into())?;
+            let ptr = Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag));
+            Ok(MemPlace { ptr, ..place })
         }
     }
 
     #[inline(always)]
     fn tag_dereference(
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer<Borrow>,
-        pointee_ty: Ty<'tcx>,
-        pointee_size: Size,
+        place: MemPlace<Borrow>,
+        ty: Ty<'tcx>,
+        size: Size,
         mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, Borrow> {
-        if !ecx.machine.validate {
+    ) -> EvalResult<'tcx, MemPlace<Borrow>> {
+        if !ecx.machine.validate || size == Size::ZERO {
             // No tracking
-            Ok(Borrow::default())
+            Ok(place)
         } else {
-            ecx.tag_dereference(ptr, pointee_ty, pointee_size, mutability)
+            let ptr = place.ptr.to_ptr()?;
+            let tag = ecx.tag_dereference(ptr, ty, size, mutability.into())?;
+            let ptr = Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag));
+            Ok(MemPlace { ptr, ..place })
         }
     }
 }

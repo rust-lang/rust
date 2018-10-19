@@ -6,5 +6,5 @@ fn main() {
     drop(&mut *target); // reborrow
     // Now make sure our ref is still the only one
     unsafe { *target2 = 13; } // invalidate our ref
-    let _val = *target; //~ ERROR does not exist on the stack
+    let _val = *target; //~ ERROR Mut reference with non-reactivatable tag Mut(Uniq
 }

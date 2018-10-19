@@ -1,5 +1,5 @@
 #![allow(unused_variables)]
-// error-pattern: encountered undefined data in pointer
+// error-pattern: encountered undefined address in pointer
 
 use std::mem;
 
