@@ -26,6 +26,9 @@ pub fn target() -> TargetResult {
         linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
 
         options: TargetOptions {
+            // ARMv8-M baseline doesn't support unaligned loads/stores so we disable them
+            // with +strict-align.
+            features: "+strict-align".to_string(),
             max_atomic_width: Some(32),
             .. super::thumb_base::opts()
         },
