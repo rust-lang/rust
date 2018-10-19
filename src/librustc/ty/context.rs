@@ -51,7 +51,7 @@ use ty::steal::Steal;
 use ty::BindingMode;
 use ty::CanonicalTy;
 use ty::CanonicalPolyFnSig;
-use util::nodemap::{DefIdSet, ItemLocalMap};
+use util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
@@ -362,7 +362,7 @@ pub struct TypeckTables<'tcx> {
 
     /// Stores the canonicalized types provided by the user. See also
     /// `AscribeUserType` statement in MIR.
-    user_provided_sigs: ItemLocalMap<CanonicalPolyFnSig<'tcx>>,
+    pub user_provided_sigs: DefIdMap<CanonicalPolyFnSig<'tcx>>,
 
     /// Stores the substitutions that the user explicitly gave (if any)
     /// attached to `id`. These will not include any inferred
@@ -516,20 +516,6 @@ impl<'tcx> TypeckTables<'tcx> {
         LocalTableInContextMut {
             local_id_root: self.local_id_root,
             data: &mut self.user_provided_tys
-        }
-    }
-
-    pub fn user_provided_sigs(&self) -> LocalTableInContext<'_, CanonicalPolyFnSig<'tcx>> {
-        LocalTableInContext {
-            local_id_root: self.local_id_root,
-            data: &self.user_provided_sigs
-        }
-    }
-
-    pub fn user_provided_sigs_mut(&mut self) -> LocalTableInContextMut<'_, CanonicalPolyFnSig<'tcx>> {
-        LocalTableInContextMut {
-            local_id_root: self.local_id_root,
-            data: &mut self.user_provided_sigs
         }
     }
 
