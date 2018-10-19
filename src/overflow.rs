@@ -690,7 +690,7 @@ fn need_block_indent(s: &str, shape: Shape) -> bool {
     })
 }
 
-fn can_be_overflowed<'a>(context: &RewriteContext, items: &[OverflowableItem]) -> bool {
+fn can_be_overflowed(context: &RewriteContext, items: &[OverflowableItem]) -> bool {
     items
         .last()
         .map_or(false, |x| x.can_be_overflowed(context, items.len()))

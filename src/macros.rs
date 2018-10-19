@@ -429,7 +429,7 @@ pub fn rewrite_macro_def(
             Some(v) => Some(v),
             // if the rewrite returned None because a macro could not be rewritten, then return the
             // original body
-            None if *context.macro_rewrite_failure.borrow() == true => {
+            None if *context.macro_rewrite_failure.borrow() => {
                 Some(context.snippet(branch.body).trim().to_string())
             }
             None => None,
@@ -981,7 +981,7 @@ fn format_macro_args(
 ) -> Option<String> {
     if !context.config.format_macro_matchers() {
         let token_stream: TokenStream = toks.into();
-        let span = span_for_token_stream(token_stream);
+        let span = span_for_token_stream(&token_stream);
         return Some(match span {
             Some(span) => context.snippet(span).to_owned(),
             None => String::new(),
@@ -991,7 +991,7 @@ fn format_macro_args(
     wrap_macro_args(context, &parsed_args, shape)
 }
 
-fn span_for_token_stream(token_stream: TokenStream) -> Option<Span> {
+fn span_for_token_stream(token_stream: &TokenStream) -> Option<Span> {
     token_stream.trees().next().map(|tt| tt.span())
 }
 
