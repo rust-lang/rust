@@ -12,6 +12,5 @@
 #![allow(const_err)]
 
 fn main() {
-    let _n = 2i64 << -1; //~ ERROR constant evaluation error
-    //~^ NOTE attempt to shift left with overflow
+    let _n = 2i64 << -1; //~ ERROR attempt to shift left with overflow
 }

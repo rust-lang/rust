@@ -95,7 +95,7 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
                     if i.attrs.iter().any(|attr| attr.name() == "test") {
                         let did = self.0.hir.body_owner_def_id(body_id);
                         println!("running test: {}", self.0.def_path_debug_str(did));
-                        miri::eval_main(self.0, did, None, /*validate*/true);
+                        miri::eval_main(self.0, did, /*validate*/true);
                         self.1.session.abort_if_errors();
                     }
                 }
@@ -106,7 +106,7 @@ fn after_analysis<'a, 'tcx>(state: &mut CompileState<'a, 'tcx>) {
         state.hir_crate.unwrap().visit_all_item_likes(&mut Visitor(tcx, state));
     } else if let Some((entry_node_id, _, _)) = *state.session.entry_fn.borrow() {
         let entry_def_id = tcx.hir.local_def_id(entry_node_id);
-        miri::eval_main(tcx, entry_def_id, None, /*validate*/true);
+        miri::eval_main(tcx, entry_def_id, /*validate*/true);
 
         state.session.abort_if_errors();
     } else {

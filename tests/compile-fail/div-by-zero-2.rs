@@ -11,6 +11,5 @@
 #![allow(const_err)]
 
 fn main() {
-    let _n = 1 / 0; //~ ERROR constant evaluation error
-    //~^ NOTE attempt to divide by zero
+    let _n = 1 / 0; //~ ERROR attempt to divide by zero
 }

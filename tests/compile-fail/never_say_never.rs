@@ -7,8 +7,7 @@
 fn main() {
     let y = &5;
     let x: ! = unsafe {
-        *(y as *const _ as *const !)  //~ ERROR constant evaluation error
-        //~^ NOTE entered unreachable code
+        *(y as *const _ as *const !)  //~ ERROR entered unreachable code
     };
     f(x)
 }

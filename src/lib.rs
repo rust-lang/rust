@@ -43,13 +43,13 @@ use operator::EvalContextExt as OperatorEvalContextExt;
 use intrinsic::EvalContextExt as IntrinsicEvalContextExt;
 use tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 use range_map::RangeMap;
-use helpers::FalibleScalarExt;
+#[allow(unused_imports)] // FIXME rustc bug https://github.com/rust-lang/rust/issues/53682
+use helpers::{ScalarExt, EvalContextExt as HelpersEvalContextExt};
 use mono_hash_map::MonoHashMap;
 
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
-    start_wrapper: Option<DefId>,
     validate: bool,
 ) -> EvalResult<'tcx, EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>> {
     let mut ecx = EvalContext::new(
@@ -69,8 +69,14 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         ));
     }
 
-    if let Some(start_id) = start_wrapper {
-        let main_ret_ty = ecx.tcx.fn_sig(main_id).output();
+    let libstd_has_mir = {
+        let rustc_panic = ecx.resolve_path(&["std", "panicking", "rust_panic"])?;
+        ecx.load_mir(rustc_panic.def).is_ok()
+    };
+
+    if libstd_has_mir {
+        let start_id = tcx.lang_items().start_fn().unwrap();
+        let main_ret_ty = tcx.fn_sig(main_id).output();
         let main_ret_ty = main_ret_ty.no_late_bound_regions().unwrap();
         let start_instance = ty::Instance::resolve(
             ecx.tcx.tcx,
@@ -145,10 +151,9 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
 pub fn eval_main<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
-    start_wrapper: Option<DefId>,
     validate: bool,
 ) {
-    let mut ecx = create_ecx(tcx, main_id, start_wrapper, validate).expect("Couldn't create ecx");
+    let mut ecx = create_ecx(tcx, main_id, validate).expect("Couldn't create ecx");
 
     let res: EvalResult = (|| {
         ecx.run()?;

@@ -7,7 +7,7 @@ use rustc_mir::interpret::{EvalContext, PlaceTy, OpTy};
 
 use super::{
     Value, Scalar, ScalarMaybeUndef,
-    FalibleScalarExt, OperatorEvalContextExt
+    ScalarExt, OperatorEvalContextExt
 };
 
 pub trait EvalContextExt<'tcx> {

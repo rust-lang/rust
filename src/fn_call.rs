@@ -1,10 +1,8 @@
 use rustc::ty;
 use rustc::ty::layout::{Align, LayoutOf, Size};
-use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
+use rustc::hir::def_id::DefId;
 use rustc::mir;
 use syntax::attr;
-
-use std::mem;
 
 use super::*;
 
@@ -18,8 +16,6 @@ pub trait EvalContextExt<'tcx, 'mir> {
         dest: PlaceTy<'tcx>,
         ret: mir::BasicBlock,
     ) -> EvalResult<'tcx>;
-
-    fn resolve_path(&self, path: &[&str]) -> EvalResult<'tcx, ty::Instance<'tcx>>;
 
     /// Emulate a function that should have MIR but does not.
     /// This is solely to support execution without full MIR.
@@ -638,40 +634,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
         Ok(())
     }
 
-    /// Get an instance for a path.
-    fn resolve_path(&self, path: &[&str]) -> EvalResult<'tcx, ty::Instance<'tcx>> {
-        self.tcx
-            .crates()
-            .iter()
-            .find(|&&krate| self.tcx.original_crate_name(krate) == path[0])
-            .and_then(|krate| {
-                let krate = DefId {
-                    krate: *krate,
-                    index: CRATE_DEF_INDEX,
-                };
-                let mut items = self.tcx.item_children(krate);
-                let mut path_it = path.iter().skip(1).peekable();
-
-                while let Some(segment) = path_it.next() {
-                    for item in mem::replace(&mut items, Default::default()).iter() {
-                        if item.ident.name == *segment {
-                            if path_it.peek().is_none() {
-                                return Some(ty::Instance::mono(self.tcx.tcx, item.def.def_id()));
-                            }
-
-                            items = self.tcx.item_children(item.def.def_id());
-                            break;
-                        }
-                    }
-                }
-                None
-            })
-            .ok_or_else(|| {
-                let path = path.iter().map(|&s| s.to_owned()).collect();
-                EvalErrorKind::PathNotFound(path).into()
-            })
-    }
-
     fn emulate_missing_fn(
         &mut self,
         path: String,
@@ -699,7 +661,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for EvalContext<'a, '
             "std::io::_print" |
             "std::io::_eprint" => {
                 warn!(
-                    "Ignoring output.  To run programs that print, make sure you have a libstd with full MIR."
+                    "Ignoring output.  To run programs that prints, make sure you have a libstd with full MIR."
                 );
             }
             "std::thread::Builder::new" => {

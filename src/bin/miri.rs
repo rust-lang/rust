@@ -26,11 +26,6 @@ use std::path::PathBuf;
 struct MiriCompilerCalls {
     default: Box<RustcDefaultCalls>,
 
-    /// Whether to begin interpretation at the start_fn lang item or not.
-    ///
-    /// If false, the interpretation begins at the `main` function.
-    start_fn: bool,
-
     /// Whether to enforce the validity invariant.
     validate: bool,
 }
@@ -90,10 +85,9 @@ impl<'a> CompilerCalls<'a> for MiriCompilerCalls {
         let this = *self;
         let mut control = this.default.build_controller(sess, matches);
         control.after_hir_lowering.callback = Box::new(after_hir_lowering);
-        let start_fn = this.start_fn;
         let validate = this.validate;
         control.after_analysis.callback =
-            Box::new(move |state| after_analysis(state, start_fn, validate));
+            Box::new(move |state| after_analysis(state, validate));
         control.after_analysis.stop = Compilation::Stop;
         control
     }
@@ -109,7 +103,6 @@ fn after_hir_lowering(state: &mut CompileState) {
 
 fn after_analysis<'a, 'tcx>(
     state: &mut CompileState<'a, 'tcx>,
-    use_start_fn: bool,
     validate: bool,
 ) {
     state.session.abort_if_errors();
@@ -134,7 +127,7 @@ fn after_analysis<'a, 'tcx>(
                             "running test: {}",
                             self.tcx.def_path_debug_str(did),
                         );
-                        miri::eval_main(self.tcx, did, None, self.validate);
+                        miri::eval_main(self.tcx, did, self.validate);
                         self.state.session.abort_if_errors();
                     }
                 }
@@ -147,13 +140,7 @@ fn after_analysis<'a, 'tcx>(
         );
     } else if let Some((entry_node_id, _, _)) = *state.session.entry_fn.borrow() {
         let entry_def_id = tcx.hir.local_def_id(entry_node_id);
-        // Use start_fn lang item if we have -Zmiri-start-fn set
-        let start_wrapper = if use_start_fn {
-            Some(tcx.lang_items().start_fn().unwrap())
-        } else {
-            None
-        };
-        miri::eval_main(tcx, entry_def_id, start_wrapper, validate);
+        miri::eval_main(tcx, entry_def_id, validate);
 
         state.session.abort_if_errors();
     } else {
@@ -231,14 +218,9 @@ fn main() {
         args.push(find_sysroot());
     }
 
-    let mut start_fn = false;
     let mut validate = true;
     args.retain(|arg| {
         match arg.as_str() {
-            "-Zmiri-start-fn" => {
-                start_fn = true;
-                false
-            },
             "-Zmiri-disable-validation" => {
                 validate = false;
                 false
@@ -251,7 +233,6 @@ fn main() {
     let result = rustc_driver::run(move || {
         rustc_driver::run_compiler(&args, Box::new(MiriCompilerCalls {
             default: Box::new(RustcDefaultCalls),
-            start_fn,
             validate,
         }), None, None)
     });
