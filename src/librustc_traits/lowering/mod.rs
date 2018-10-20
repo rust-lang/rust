@@ -433,7 +433,7 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(placeholder_ty)),
         hypotheses: tcx.mk_goals(iter::once(hypothesis)),
-        category: ProgramClauseCategory::Other,
+        category: ProgramClauseCategory::WellFormed,
     };
 
     // Rule Implied-Trait-From-AssocTy

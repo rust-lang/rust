@@ -162,7 +162,9 @@ fn main() {
     }
 
     build_helper::rerun_if_changed_anything_in_dir(Path::new("../rustllvm"));
-    cfg.file("../rustllvm/PassWrapper.cpp")
+    cfg
+       .file("../rustllvm/DemoteSimd.cpp")
+       .file("../rustllvm/PassWrapper.cpp")
        .file("../rustllvm/RustWrapper.cpp")
        .file("../rustllvm/ArchiveWrapper.cpp")
        .file("../rustllvm/Linker.cpp")
