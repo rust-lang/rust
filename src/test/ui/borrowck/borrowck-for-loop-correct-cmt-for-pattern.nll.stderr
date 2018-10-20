@@ -1,13 +1,3 @@
-error[E0507]: cannot move out of `*__next` which is behind a `&` reference
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:22:10
-   |
-LL |     for &a in x.iter() {    //~ ERROR cannot move out
-   |         -^
-   |         ||
-   |         |cannot move out of `*__next` which is behind a `&` reference
-   |         |`__next` is a `&` reference, so the data it refers to cannot be moved
-   |         help: consider changing this to be a mutable reference: `&mut a`
-
 error[E0507]: cannot move out of borrowed content
   --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:22:15
    |
@@ -22,16 +12,6 @@ note: move occurs because `a` has type `&mut i32`, which does not implement the 
    |
 LL |     for &a in x.iter() {    //~ ERROR cannot move out
    |          ^
-
-error[E0507]: cannot move out of `*__next` which is behind a `&` reference
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:28:10
-   |
-LL |     for &a in &f.a {  //~ ERROR cannot move out
-   |         -^
-   |         ||
-   |         |cannot move out of `*__next` which is behind a `&` reference
-   |         |`__next` is a `&` reference, so the data it refers to cannot be moved
-   |         help: consider changing this to be a mutable reference: `&mut a`
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:28:15
@@ -48,16 +28,6 @@ note: move occurs because `a` has type `std::boxed::Box<isize>`, which does not 
 LL |     for &a in &f.a {  //~ ERROR cannot move out
    |          ^
 
-error[E0507]: cannot move out of `*__next` which is behind a `&` reference
-  --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:32:10
-   |
-LL |     for &a in x.iter() {    //~ ERROR cannot move out
-   |         -^
-   |         ||
-   |         |cannot move out of `*__next` which is behind a `&` reference
-   |         |`__next` is a `&` reference, so the data it refers to cannot be moved
-   |         help: consider changing this to be a mutable reference: `&mut a`
-
 error[E0507]: cannot move out of borrowed content
   --> $DIR/borrowck-for-loop-correct-cmt-for-pattern.rs:32:15
    |
@@ -73,6 +43,6 @@ note: move occurs because `a` has type `std::boxed::Box<i32>`, which does not im
 LL |     for &a in x.iter() {    //~ ERROR cannot move out
    |          ^
 
-error: aborting due to 6 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0507`.

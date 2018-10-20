@@ -1831,7 +1831,10 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             | Write(wk @ WriteKind::StorageDeadOrDrop)
             | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
             | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow)) => {
-                if let Err(_place_err) = self.is_mutable(place, is_local_mutation_allowed) {
+                if let (Err(_place_err), true) = (
+                    self.is_mutable(place, is_local_mutation_allowed),
+                    self.errors_buffer.is_empty()
+                ) {
                     if self.infcx.tcx.migrate_borrowck() {
                         // rust-lang/rust#46908: In pure NLL mode this
                         // code path should be unreachable (and thus
@@ -1855,12 +1858,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                             location,
                         );
                     } else {
-                        self.infcx.tcx.sess.delay_span_bug(
+                        span_bug!(
                             span,
-                            &format!(
-                                "Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
-                                place, kind
-                            ),
+                            "Accessing `{:?}` with the kind `{:?}` shouldn't be possible",
+                            place,
+                            kind,
                         );
                     }
                 }
