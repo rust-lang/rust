@@ -324,14 +324,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
 
     pub fn layout_of_local(
         &self,
-        frame: usize,
+        frame: &Frame<'mir, 'tcx, M::PointerTag>,
         local: mir::Local
     ) -> EvalResult<'tcx, TyLayout<'tcx>> {
-        let local_ty = self.stack[frame].mir.local_decls[local].ty;
-        let local_ty = self.monomorphize(
-            local_ty,
-            self.stack[frame].instance.substs
-        );
+        let local_ty = frame.mir.local_decls[local].ty;
+        let local_ty = self.monomorphize(local_ty, frame.instance.substs);
         self.layout_of(local_ty)
     }
 
@@ -579,7 +576,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         assert!(local != mir::RETURN_PLACE, "Cannot make return place live");
         trace!("{:?} is now live", local);
 
-        let layout = self.layout_of_local(self.cur_frame(), local)?;
+        let layout = self.layout_of_local(self.frame(), local)?;
         let init = LocalValue::Live(self.uninit_operand(layout)?);
         // StorageLive *always* kills the value that's currently stored
         Ok(mem::replace(&mut self.frame_mut().locals[local], init))
@@ -733,4 +730,3 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         truncate(value, ty.size)
     }
 }
-
