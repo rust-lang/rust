@@ -18,6 +18,7 @@
 //! contain revealed `impl Trait` values).
 
 use borrow_check::nll::universal_regions::UniversalRegions;
+use rustc::infer::LateBoundRegionConversionTime;
 use rustc::mir::*;
 use rustc::ty::Ty;
 
@@ -36,9 +37,47 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let (&normalized_output_ty, normalized_input_tys) =
             normalized_inputs_and_output.split_last().unwrap();
 
+        // If the user explicitly annotated the input types, extract
+        // those.
+        //
+        // e.g. `|x: FxHashMap<_, &'static u32>| ...`
+        let user_provided_sig;
+        if !self.tcx().is_closure(self.mir_def_id) {
+            user_provided_sig = None;
+        } else {
+            let typeck_tables = self.tcx().typeck_tables_of(self.mir_def_id);
+            user_provided_sig = match typeck_tables.user_provided_sigs.get(&self.mir_def_id) {
+                None => None,
+                Some(user_provided_poly_sig) => {
+                    // Instantiate the canonicalized variables from
+                    // user-provided signature (e.g. the `_` in the code
+                    // above) with fresh variables.
+                    let (poly_sig, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
+                        mir.span,
+                        &user_provided_poly_sig,
+                    );
+
+                    // Replace the bound items in the fn sig with fresh
+                    // variables, so that they represent the view from
+                    // "inside" the closure.
+                    Some(
+                        self.infcx
+                            .replace_late_bound_regions_with_fresh_var(
+                                mir.span,
+                                LateBoundRegionConversionTime::FnCall,
+                                &poly_sig,
+                            )
+                            .0,
+                    )
+                }
+            }
+        };
+
         // Equate expected input tys with those in the MIR.
-        let argument_locals = (1..).map(Local::new);
-        for (&normalized_input_ty, local) in normalized_input_tys.iter().zip(argument_locals) {
+        for (&normalized_input_ty, argument_index) in normalized_input_tys.iter().zip(0..) {
+            // In MIR, argument N is stored in local N+1.
+            let local = Local::new(argument_index + 1);
+
             debug!(
                 "equate_inputs_and_outputs: normalized_input_ty = {:?}",
                 normalized_input_ty
@@ -51,6 +90,27 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 mir_input_ty,
                 mir_input_span,
             );
+        }
+
+        if let Some(user_provided_sig) = user_provided_sig {
+            for (&user_provided_input_ty, argument_index) in
+                user_provided_sig.inputs().iter().zip(0..)
+            {
+                // In MIR, closures begin an implicit `self`, so
+                // argument N is stored in local N+2.
+                let local = Local::new(argument_index + 2);
+                let mir_input_ty = mir.local_decls[local].ty;
+                let mir_input_span = mir.local_decls[local].source_info.span;
+
+                // If the user explicitly annotated the input types, enforce those.
+                let user_provided_input_ty =
+                    self.normalize(user_provided_input_ty, Locations::All(mir_input_span));
+                self.equate_normalized_input_or_output(
+                    user_provided_input_ty,
+                    mir_input_ty,
+                    mir_input_span,
+                );
+            }
         }
 
         assert!(
@@ -83,6 +143,18 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 terr
             );
         };
+
+        // If the user explicitly annotated the output types, enforce those.
+        if let Some(user_provided_sig) = user_provided_sig {
+            let user_provided_output_ty = user_provided_sig.output();
+            let user_provided_output_ty =
+                self.normalize(user_provided_output_ty, Locations::All(output_span));
+            self.equate_normalized_input_or_output(
+                user_provided_output_ty,
+                mir_output_ty,
+                output_span,
+            );
+        }
     }
 
     fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: Span) {
