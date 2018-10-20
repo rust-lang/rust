@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use back::bytecode::{DecodedBytecode, RLIB_BYTECODE_EXTENSION};
-use back::symbol_export;
 use back::write::{ModuleConfig, with_llvm_pmb, CodegenContext};
 use back::write::{self, DiagnosticHandlers, pre_lto_bitcode_filename};
 use errors::{FatalError, Handler};
@@ -24,6 +23,7 @@ use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::session::config::{self, Lto};
 use rustc::util::common::time_ext;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_codegen_utils::symbol_export;
 use time_graph::Timeline;
 use {ModuleCodegen, ModuleLlvm, ModuleKind};
 
