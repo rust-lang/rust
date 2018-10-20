@@ -1,4 +1,5 @@
-use crate::{imp::FileResolverImp, FileId};
+use std::collections::BTreeMap;
+
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
     text_utils::is_subrange,
@@ -6,7 +7,7 @@ use ra_syntax::{
 };
 use relative_path::RelativePathBuf;
 
-use std::collections::BTreeMap;
+use crate::{imp::FileResolverImp, FileId};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct ModuleDescriptor {

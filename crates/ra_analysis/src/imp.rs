@@ -19,8 +19,8 @@ use rustc_hash::FxHashSet;
 use crate::{
     descriptors::{FnDescriptor, ModuleTreeDescriptor, Problem},
     roots::{ReadonlySourceRoot, SourceRoot, WritableSourceRoot},
-    CrateGraph, CrateId, Diagnostic, FileId, FileResolver, FileSystemEdit, JobToken, Position,
-    Query, SourceChange, SourceFileEdit,
+    CrateGraph, CrateId, Diagnostic, FileId, FileResolver, FileSystemEdit, Position,
+    Query, SourceChange, SourceFileEdit, Cancelable,
 };
 
 #[derive(Clone, Debug)]
@@ -148,19 +148,21 @@ impl AnalysisImpl {
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
         self.root(file_id).lines(file_id)
     }
-    pub fn world_symbols(&self, query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
+    pub fn world_symbols(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let mut buf = Vec::new();
         if query.libs {
-            self.data.libs.iter().for_each(|it| it.symbols(&mut buf));
+            for lib in self.data.libs.iter() {
+                lib.symbols(&mut buf)?;
+            }
         } else {
-            self.data.root.symbols(&mut buf);
+            self.data.root.symbols(&mut buf)?;
         }
-        query.search(&buf, token)
+        Ok(query.search(&buf))
     }
-    pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
+    pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let root = self.root(file_id);
-        let module_tree = root.module_tree();
-        module_tree
+        let module_tree = root.module_tree()?;
+        let res = module_tree
             .parent_modules(file_id)
             .iter()
             .map(|link| {
@@ -174,10 +176,11 @@ impl AnalysisImpl {
                 };
                 (file_id, sym)
             })
-            .collect()
+            .collect();
+        Ok(res)
     }
-    pub fn crate_for(&self, file_id: FileId) -> Vec<CrateId> {
-        let module_tree = self.root(file_id).module_tree();
+    pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
+        let module_tree = self.root(file_id).module_tree()?;
         let crate_graph = &self.data.crate_graph;
         let mut res = Vec::new();
         let mut work = VecDeque::new();
@@ -195,7 +198,7 @@ impl AnalysisImpl {
                 .filter(|&id| visited.insert(id));
             work.extend(parents);
         }
-        res
+        Ok(res)
     }
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
         self.data.crate_graph.crate_roots[&crate_id]
@@ -204,15 +207,14 @@ impl AnalysisImpl {
         &self,
         file_id: FileId,
         offset: TextUnit,
-        token: &JobToken,
-    ) -> Vec<(FileId, FileSymbol)> {
+    ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let root = self.root(file_id);
-        let module_tree = root.module_tree();
+        let module_tree = root.module_tree()?;
         let file = root.syntax(file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
             // First try to resolve the symbol locally
-            if let Some((name, range)) = resolve_local_name(&file, offset, name_ref) {
+            return if let Some((name, range)) = resolve_local_name(&file, offset, name_ref) {
                 let mut vec = vec![];
                 vec.push((
                     file_id,
@@ -222,12 +224,11 @@ impl AnalysisImpl {
                         kind: NAME,
                     },
                 ));
-
-                return vec;
+                Ok(vec)
             } else {
                 // If that fails try the index based approach.
-                return self.index_resolve(name_ref, token);
-            }
+                self.index_resolve(name_ref)
+            };
         }
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
@@ -250,14 +251,14 @@ impl AnalysisImpl {
                         })
                         .collect();
 
-                    return res;
+                    return Ok(res);
                 }
             }
         }
-        vec![]
+        Ok(vec![])
     }
 
-    pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit, _token: &JobToken) -> Vec<(FileId, TextRange)> {
+    pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit) -> Vec<(FileId, TextRange)> {
         let root = self.root(file_id);
         let file = root.syntax(file_id);
         let syntax = file.syntax();
@@ -289,9 +290,9 @@ impl AnalysisImpl {
         ret
     }
 
-    pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
+    pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
         let root = self.root(file_id);
-        let module_tree = root.module_tree();
+        let module_tree = root.module_tree()?;
         let syntax = root.syntax(file_id);
 
         let mut res = ra_editor::diagnostics(&syntax)
@@ -346,7 +347,7 @@ impl AnalysisImpl {
             };
             res.push(diag)
         }
-        res
+        Ok(res)
     }
 
     pub fn assists(&self, file_id: FileId, range: TextRange) -> Vec<SourceChange> {
@@ -379,18 +380,23 @@ impl AnalysisImpl {
         &self,
         file_id: FileId,
         offset: TextUnit,
-        token: &JobToken,
-    ) -> Option<(FnDescriptor, Option<usize>)> {
+    ) -> Cancelable<Option<(FnDescriptor, Option<usize>)>> {
         let root = self.root(file_id);
         let file = root.syntax(file_id);
         let syntax = file.syntax();
 
         // Find the calling expression and it's NameRef
-        let calling_node = FnCallNode::with_node(syntax, offset)?;
-        let name_ref = calling_node.name_ref()?;
+        let calling_node = match FnCallNode::with_node(syntax, offset) {
+            Some(node) => node,
+            None => return Ok(None),
+        };
+        let name_ref = match calling_node.name_ref() {
+            Some(name) => name,
+            None => return Ok(None),
+        };
 
         // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
-        let file_symbols = self.index_resolve(name_ref, token);
+        let file_symbols = self.index_resolve(name_ref)?;
         for (_, fs) in file_symbols {
             if fs.kind == FN_DEF {
                 if let Some(fn_def) = find_node_at_offset(syntax, fs.node_range.start()) {
@@ -432,21 +438,21 @@ impl AnalysisImpl {
                             }
                         }
 
-                        return Some((descriptor, current_parameter));
+                        return Ok(Some((descriptor, current_parameter)));
                     }
                 }
             }
         }
 
-        None
+        Ok(None)
     }
 
-    fn index_resolve(&self, name_ref: ast::NameRef, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
+    fn index_resolve(&self, name_ref: ast::NameRef) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let name = name_ref.text();
         let mut query = Query::new(name.to_string());
         query.exact();
         query.limit(4);
-        self.world_symbols(query, token)
+        self.world_symbols(query)
     }
 
     fn resolve_module(

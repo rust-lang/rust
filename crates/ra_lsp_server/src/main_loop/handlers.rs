@@ -1,12 +1,13 @@
-use rustc_hash::FxHashMap;
+use std::collections::HashMap;
 
+use rustc_hash::FxHashMap;
 use languageserver_types::{
     CodeActionResponse, Command, CompletionItem, CompletionItemKind, Diagnostic,
     DiagnosticSeverity, DocumentSymbol, FoldingRange, FoldingRangeKind, FoldingRangeParams,
     InsertTextFormat, Location, Position, SymbolInformation, TextDocumentIdentifier, TextEdit,
     RenameParams, WorkspaceEdit, PrepareRenameResponse
 };
-use ra_analysis::{FileId, FoldKind, JobToken, Query, RunnableKind};
+use ra_analysis::{FileId, FoldKind, Query, RunnableKind};
 use ra_syntax::text_utils::contains_offset_nonstrict;
 use serde_json::to_value;
 
@@ -18,12 +19,9 @@ use crate::{
     Result,
 };
 
-use std::collections::HashMap;
-
 pub fn handle_syntax_tree(
     world: ServerWorld,
     params: req::SyntaxTreeParams,
-    _token: JobToken,
 ) -> Result<String> {
     let id = params.text_document.try_conv_with(&world)?;
     let res = world.analysis().syntax_tree(id);
@@ -33,7 +31,6 @@ pub fn handle_syntax_tree(
 pub fn handle_extend_selection(
     world: ServerWorld,
     params: req::ExtendSelectionParams,
-    _token: JobToken,
 ) -> Result<req::ExtendSelectionResult> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let file = world.analysis().file_syntax(file_id);
@@ -51,7 +48,6 @@ pub fn handle_extend_selection(
 pub fn handle_find_matching_brace(
     world: ServerWorld,
     params: req::FindMatchingBraceParams,
-    _token: JobToken,
 ) -> Result<Vec<Position>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let file = world.analysis().file_syntax(file_id);
@@ -74,7 +70,6 @@ pub fn handle_find_matching_brace(
 pub fn handle_join_lines(
     world: ServerWorld,
     params: req::JoinLinesParams,
-    _token: JobToken,
 ) -> Result<req::SourceChange> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
@@ -88,7 +83,6 @@ pub fn handle_join_lines(
 pub fn handle_on_enter(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,
-    _token: JobToken,
 ) -> Result<Option<req::SourceChange>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
@@ -102,7 +96,6 @@ pub fn handle_on_enter(
 pub fn handle_on_type_formatting(
     world: ServerWorld,
     params: req::DocumentOnTypeFormattingParams,
-    _token: JobToken,
 ) -> Result<Option<Vec<TextEdit>>> {
     if params.ch != "=" {
         return Ok(None);
@@ -122,7 +115,6 @@ pub fn handle_on_type_formatting(
 pub fn handle_document_symbol(
     world: ServerWorld,
     params: req::DocumentSymbolParams,
-    _token: JobToken,
 ) -> Result<Option<req::DocumentSymbolResponse>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
@@ -161,7 +153,6 @@ pub fn handle_document_symbol(
 pub fn handle_workspace_symbol(
     world: ServerWorld,
     params: req::WorkspaceSymbolParams,
-    token: JobToken,
 ) -> Result<Option<Vec<SymbolInformation>>> {
     let all_symbols = params.query.contains("#");
     let libs = params.query.contains("*");
@@ -181,11 +172,11 @@ pub fn handle_workspace_symbol(
         q.limit(128);
         q
     };
-    let mut res = exec_query(&world, query, &token)?;
+    let mut res = exec_query(&world, query)?;
     if res.is_empty() && !all_symbols {
         let mut query = Query::new(params.query);
         query.limit(128);
-        res = exec_query(&world, query, &token)?;
+        res = exec_query(&world, query)?;
     }
 
     return Ok(Some(res));
@@ -193,10 +184,9 @@ pub fn handle_workspace_symbol(
     fn exec_query(
         world: &ServerWorld,
         query: Query,
-        token: &JobToken,
     ) -> Result<Vec<SymbolInformation>> {
         let mut res = Vec::new();
-        for (file_id, symbol) in world.analysis().symbol_search(query, token) {
+        for (file_id, symbol) in world.analysis().symbol_search(query)? {
             let line_index = world.analysis().file_line_index(file_id);
             let info = SymbolInformation {
                 name: symbol.name.to_string(),
@@ -214,7 +204,6 @@ pub fn handle_workspace_symbol(
 pub fn handle_goto_definition(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,
-    token: JobToken,
 ) -> Result<Option<req::GotoDefinitionResponse>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
@@ -222,7 +211,7 @@ pub fn handle_goto_definition(
     let mut res = Vec::new();
     for (file_id, symbol) in world
         .analysis()
-        .approximately_resolve_symbol(file_id, offset, &token)
+        .approximately_resolve_symbol(file_id, offset)?
     {
         let line_index = world.analysis().file_line_index(file_id);
         let location = to_location(file_id, symbol.node_range, &world, &line_index)?;
@@ -234,11 +223,10 @@ pub fn handle_goto_definition(
 pub fn handle_parent_module(
     world: ServerWorld,
     params: TextDocumentIdentifier,
-    _token: JobToken,
 ) -> Result<Vec<Location>> {
     let file_id = params.try_conv_with(&world)?;
     let mut res = Vec::new();
-    for (file_id, symbol) in world.analysis().parent_module(file_id) {
+    for (file_id, symbol) in world.analysis().parent_module(file_id)? {
         let line_index = world.analysis().file_line_index(file_id);
         let location = to_location(file_id, symbol.node_range, &world, &line_index)?;
         res.push(location);
@@ -249,20 +237,19 @@ pub fn handle_parent_module(
 pub fn handle_runnables(
     world: ServerWorld,
     params: req::RunnablesParams,
-    _token: JobToken,
 ) -> Result<Vec<req::Runnable>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     let offset = params.position.map(|it| it.conv_with(&line_index));
     let mut res = Vec::new();
-    for runnable in world.analysis().runnables(file_id) {
+    for runnable in world.analysis().runnables(file_id)? {
         if let Some(offset) = offset {
             if !contains_offset_nonstrict(runnable.range, offset) {
                 continue;
             }
         }
 
-        let args = runnable_args(&world, file_id, &runnable.kind);
+        let args = runnable_args(&world, file_id, &runnable.kind)?;
 
         let r = req::Runnable {
             range: runnable.range.conv_with(&line_index),
@@ -282,9 +269,9 @@ pub fn handle_runnables(
     }
     return Ok(res);
 
-    fn runnable_args(world: &ServerWorld, file_id: FileId, kind: &RunnableKind) -> Vec<String> {
-        let spec = if let Some(&crate_id) = world.analysis().crate_for(file_id).first() {
-            let file_id = world.analysis().crate_root(crate_id);
+    fn runnable_args(world: &ServerWorld, file_id: FileId, kind: &RunnableKind) -> Result<Vec<String>> {
+        let spec = if let Some(&crate_id) = world.analysis().crate_for(file_id)?.first() {
+            let file_id = world.analysis().crate_root(crate_id)?;
             let path = world.path_map.get_path(file_id);
             world
                 .workspaces
@@ -319,7 +306,7 @@ pub fn handle_runnables(
                 }
             }
         }
-        res
+        Ok(res)
     }
 
     fn spec_args(pkg_name: &str, tgt_name: &str, tgt_kind: TargetKind, buf: &mut Vec<String>) {
@@ -353,21 +340,19 @@ pub fn handle_runnables(
 pub fn handle_decorations(
     world: ServerWorld,
     params: TextDocumentIdentifier,
-    _token: JobToken,
 ) -> Result<Vec<Decoration>> {
     let file_id = params.try_conv_with(&world)?;
-    Ok(highlight(&world, file_id))
+    highlight(&world, file_id)
 }
 
 pub fn handle_completion(
     world: ServerWorld,
     params: req::CompletionParams,
-    _token: JobToken,
 ) -> Result<Option<req::CompletionResponse>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     let offset = params.position.conv_with(&line_index);
-    let items = match world.analysis().completions(file_id, offset) {
+    let items = match world.analysis().completions(file_id, offset)? {
         None => return Ok(None),
         Some(items) => items,
     };
@@ -394,7 +379,6 @@ pub fn handle_completion(
 pub fn handle_folding_range(
     world: ServerWorld,
     params: FoldingRangeParams,
-    _token: JobToken,
 ) -> Result<Option<Vec<FoldingRange>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
@@ -427,7 +411,6 @@ pub fn handle_folding_range(
 pub fn handle_signature_help(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,
-    token: JobToken,
 ) -> Result<Option<req::SignatureHelp>> {
     use languageserver_types::{ParameterInformation, SignatureInformation};
 
@@ -436,7 +419,7 @@ pub fn handle_signature_help(
     let offset = params.position.conv_with(&line_index);
 
     if let Some((descriptor, active_param)) =
-        world.analysis().resolve_callable(file_id, offset, &token)
+        world.analysis().resolve_callable(file_id, offset)?
     {
         let parameters: Vec<ParameterInformation> = descriptor
             .params
@@ -466,7 +449,6 @@ pub fn handle_signature_help(
 pub fn handle_prepare_rename(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,
-    token: JobToken,
 ) -> Result<Option<PrepareRenameResponse>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
@@ -474,7 +456,7 @@ pub fn handle_prepare_rename(
 
     // We support renaming references like handle_rename does.
     // In the future we may want to reject the renaming of things like keywords here too.
-    let refs = world.analysis().find_all_refs(file_id, offset, &token);
+    let refs = world.analysis().find_all_refs(file_id, offset)?;
     if refs.is_empty() {
         return Ok(None);
     }
@@ -488,7 +470,6 @@ pub fn handle_prepare_rename(
 pub fn handle_rename(
     world: ServerWorld,
     params: RenameParams,
-    token: JobToken,
 ) -> Result<Option<WorkspaceEdit>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
@@ -498,7 +479,7 @@ pub fn handle_rename(
         return Ok(None);
     }
 
-    let refs = world.analysis().find_all_refs(file_id, offset, &token);
+    let refs = world.analysis().find_all_refs(file_id, offset)?;
     if refs.is_empty() {
         return Ok(None);
     }
@@ -525,13 +506,12 @@ pub fn handle_rename(
 pub fn handle_references(
     world: ServerWorld,
     params: req::ReferenceParams,
-    token: JobToken,
 ) -> Result<Option<Vec<Location>>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     let offset = params.position.conv_with(&line_index);
 
-    let refs = world.analysis().find_all_refs(file_id, offset, &token);
+    let refs = world.analysis().find_all_refs(file_id, offset)?;
 
     Ok(Some(refs.into_iter()
         .filter_map(|r| to_location(r.0, r.1, &world, &line_index).ok())
@@ -541,16 +521,15 @@ pub fn handle_references(
 pub fn handle_code_action(
     world: ServerWorld,
     params: req::CodeActionParams,
-    _token: JobToken,
 ) -> Result<Option<CodeActionResponse>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     let range = params.range.conv_with(&line_index);
 
-    let assists = world.analysis().assists(file_id, range).into_iter();
+    let assists = world.analysis().assists(file_id, range)?.into_iter();
     let fixes = world
         .analysis()
-        .diagnostics(file_id)
+        .diagnostics(file_id)?
         .into_iter()
         .filter_map(|d| Some((d.range, d.fix?)))
         .filter(|(range, _fix)| contains_offset_nonstrict(*range, range.start()))
@@ -579,7 +558,7 @@ pub fn publish_diagnostics(
     let line_index = world.analysis().file_line_index(file_id);
     let diagnostics = world
         .analysis()
-        .diagnostics(file_id)
+        .diagnostics(file_id)?
         .into_iter()
         .map(|d| Diagnostic {
             range: d.range.conv_with(&line_index),
@@ -600,19 +579,20 @@ pub fn publish_decorations(
     let uri = world.file_id_to_uri(file_id)?;
     Ok(req::PublishDecorationsParams {
         uri,
-        decorations: highlight(&world, file_id),
+        decorations: highlight(&world, file_id)?,
     })
 }
 
-fn highlight(world: &ServerWorld, file_id: FileId) -> Vec<Decoration> {
+fn highlight(world: &ServerWorld, file_id: FileId) -> Result<Vec<Decoration>> {
     let line_index = world.analysis().file_line_index(file_id);
-    world
+    let res = world
         .analysis()
-        .highlight(file_id)
+        .highlight(file_id)?
         .into_iter()
         .map(|h| Decoration {
             range: h.range.conv_with(&line_index),
             tag: h.tag,
         })
-        .collect()
+        .collect();
+    Ok(res)
 }

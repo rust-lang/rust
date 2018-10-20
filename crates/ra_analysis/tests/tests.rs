@@ -7,14 +7,14 @@ extern crate test_utils;
 
 use std::sync::Arc;
 
-use ra_analysis::{
-    Analysis, AnalysisHost, CrateGraph, CrateId, FileId, FileResolver, FnDescriptor, JobHandle,
-};
 use ra_syntax::TextRange;
-
 use relative_path::{RelativePath, RelativePathBuf};
 use rustc_hash::FxHashMap;
 use test_utils::{assert_eq_dbg, extract_offset};
+
+use ra_analysis::{
+    Analysis, AnalysisHost, CrateGraph, CrateId, FileId, FileResolver, FnDescriptor,
+};
 
 #[derive(Debug)]
 struct FileMap(Vec<(FileId, RelativePathBuf)>);
@@ -64,24 +64,22 @@ fn get_signature(text: &str) -> (FnDescriptor, Option<usize>) {
     let (offset, code) = extract_offset(text);
     let code = code.as_str();
 
-    let (_handle, token) = JobHandle::new();
     let snap = analysis(&[("/lib.rs", code)]);
 
-    snap.resolve_callable(FileId(1), offset, &token).unwrap()
+    snap.resolve_callable(FileId(1), offset).unwrap().unwrap()
 }
 
 #[test]
 fn test_resolve_module() {
     let snap = analysis(&[("/lib.rs", "mod foo;"), ("/foo.rs", "")]);
-    let (_handle, token) = JobHandle::new();
-    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into(), &token);
+    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into()).unwrap();
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
         &symbols,
     );
 
     let snap = analysis(&[("/lib.rs", "mod foo;"), ("/foo/mod.rs", "")]);
-    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into(), &token);
+    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into()).unwrap();
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
         &symbols,
@@ -91,7 +89,7 @@ fn test_resolve_module() {
 #[test]
 fn test_unresolved_module_diagnostic() {
     let snap = analysis(&[("/lib.rs", "mod foo;")]);
-    let diagnostics = snap.diagnostics(FileId(1));
+    let diagnostics = snap.diagnostics(FileId(1)).unwrap();
     assert_eq_dbg(
         r#"[Diagnostic {
             message: "unresolved module",
@@ -108,14 +106,14 @@ fn test_unresolved_module_diagnostic() {
 #[test]
 fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
     let snap = analysis(&[("/lib.rs", "mod foo {}")]);
-    let diagnostics = snap.diagnostics(FileId(1));
+    let diagnostics = snap.diagnostics(FileId(1)).unwrap();
     assert_eq_dbg(r#"[]"#, &diagnostics);
 }
 
 #[test]
 fn test_resolve_parent_module() {
     let snap = analysis(&[("/lib.rs", "mod foo;"), ("/foo.rs", "")]);
-    let symbols = snap.parent_module(FileId(2));
+    let symbols = snap.parent_module(FileId(2)).unwrap();
     assert_eq_dbg(
         r#"[(FileId(1), FileSymbol { name: "foo", node_range: [0; 8), kind: MODULE })]"#,
         &symbols,
@@ -126,7 +124,7 @@ fn test_resolve_parent_module() {
 fn test_resolve_crate_root() {
     let mut host = analysis_host(&[("/lib.rs", "mod foo;"), ("/foo.rs", "")]);
     let snap = host.analysis();
-    assert!(snap.crate_for(FileId(2)).is_empty());
+    assert!(snap.crate_for(FileId(2)).unwrap().is_empty());
 
     let crate_graph = CrateGraph {
         crate_roots: {
@@ -138,7 +136,7 @@ fn test_resolve_crate_root() {
     host.set_crate_graph(crate_graph);
     let snap = host.analysis();
 
-    assert_eq!(snap.crate_for(FileId(2)), vec![CrateId(1)],);
+    assert_eq!(snap.crate_for(FileId(2)).unwrap(), vec![CrateId(1)],);
 }
 
 #[test]
@@ -232,10 +230,9 @@ fn get_all_refs(text: &str) -> Vec<(FileId, TextRange)> {
     let (offset, code) = extract_offset(text);
     let code = code.as_str();
 
-    let (_handle, token) = JobHandle::new();
     let snap = analysis(&[("/lib.rs", code)]);
 
-    snap.find_all_refs(FileId(1), offset, &token)
+    snap.find_all_refs(FileId(1), offset).unwrap()
 }
 
 #[test]

@@ -1,17 +1,20 @@
-use crate::{
-    module_map::{ModuleDescriptorQuery, ModuleTreeQuery, ModulesDatabase},
-    symbol_index::SymbolIndex,
-    FileId, FileResolverImp,
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
 };
+
 use ra_editor::LineIndex;
 use ra_syntax::File;
 use rustc_hash::FxHashSet;
 use salsa;
 
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-    sync::Arc,
+use crate::{
+    db,
+    Cancelable, Canceled,
+    module_map::{ModuleDescriptorQuery, ModuleTreeQuery, ModulesDatabase},
+    symbol_index::SymbolIndex,
+    FileId, FileResolverImp,
 };
 
 #[derive(Default)]
@@ -28,6 +31,14 @@ impl fmt::Debug for RootDatabase {
 impl salsa::Database for RootDatabase {
     fn salsa_runtime(&self) -> &salsa::Runtime<RootDatabase> {
         &self.runtime
+    }
+}
+
+pub(crate) fn check_canceled(db: &impl salsa::Database) -> Cancelable<()> {
+    if db.salsa_runtime().is_current_revision_canceled() {
+        Err(Canceled)
+    } else {
+        Ok(())
     }
 }
 
@@ -98,7 +109,7 @@ salsa::query_group! {
         fn file_lines(file_id: FileId) -> Arc<LineIndex> {
             type FileLinesQuery;
         }
-        fn file_symbols(file_id: FileId) -> Arc<SymbolIndex> {
+        fn file_symbols(file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
             type FileSymbolsQuery;
         }
     }
@@ -112,7 +123,8 @@ fn file_lines(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id);
     Arc::new(LineIndex::new(&*text))
 }
-fn file_symbols(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<SymbolIndex> {
+fn file_symbols(db: &impl SyntaxDatabase, file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
+    db::check_canceled(db)?;
     let syntax = db.file_syntax(file_id);
-    Arc::new(SymbolIndex::for_file(file_id, syntax))
+    Ok(Arc::new(SymbolIndex::for_file(file_id, syntax)))
 }

@@ -1,8 +1,8 @@
+use std::path::{Component, Path, PathBuf};
+
 use im;
 use ra_analysis::{FileId, FileResolver};
 use relative_path::RelativePath;
-
-use std::path::{Component, Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Root {

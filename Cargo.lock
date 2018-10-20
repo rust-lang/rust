@@ -609,7 +609,6 @@ dependencies = [
 name = "ra_analysis"
 version = "0.1.0"
 dependencies = [
- "crossbeam-channel 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "fst 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "im 12.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",

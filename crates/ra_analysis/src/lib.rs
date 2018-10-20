@@ -7,8 +7,6 @@ extern crate ra_editor;
 extern crate ra_syntax;
 extern crate rayon;
 extern crate relative_path;
-#[macro_use]
-extern crate crossbeam_channel;
 extern crate im;
 extern crate rustc_hash;
 extern crate salsa;
@@ -16,26 +14,39 @@ extern crate salsa;
 mod db;
 mod descriptors;
 mod imp;
-mod job;
 mod module_map;
 mod roots;
 mod symbol_index;
 
 use std::{fmt::Debug, sync::Arc};
 
-use crate::imp::{AnalysisHostImpl, AnalysisImpl, FileResolverImp};
 use ra_syntax::{AtomEdit, File, TextRange, TextUnit};
 use relative_path::{RelativePath, RelativePathBuf};
 use rustc_hash::FxHashMap;
 
+use crate::imp::{AnalysisHostImpl, AnalysisImpl, FileResolverImp};
+
 pub use crate::{
     descriptors::FnDescriptor,
-    job::{JobHandle, JobToken},
 };
 pub use ra_editor::{
     CompletionItem, FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable,
     RunnableKind, StructureNode,
 };
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Canceled;
+
+pub type Cancelable<T> = Result<T, Canceled>;
+
+impl std::fmt::Display for Canceled {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fmt.write_str("Canceled")
+    }
+}
+
+impl std::error::Error for Canceled {
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(pub u32);
@@ -205,60 +216,57 @@ impl Analysis {
         let file = self.imp.file_syntax(file_id);
         ra_editor::file_structure(&file)
     }
-    pub fn symbol_search(&self, query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
-        self.imp.world_symbols(query, token)
-    }
-    pub fn approximately_resolve_symbol(
-        &self,
-        file_id: FileId,
-        offset: TextUnit,
-        token: &JobToken,
-    ) -> Vec<(FileId, FileSymbol)> {
-        self.imp
-            .approximately_resolve_symbol(file_id, offset, token)
-    }
-    pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit, token: &JobToken) -> Vec<(FileId, TextRange)> {
-        self.imp.find_all_refs(file_id, offset, token)
-    }
-    pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
-        self.imp.parent_module(file_id)
-    }
-    pub fn crate_for(&self, file_id: FileId) -> Vec<CrateId> {
-        self.imp.crate_for(file_id)
-    }
-    pub fn crate_root(&self, crate_id: CrateId) -> FileId {
-        self.imp.crate_root(crate_id)
-    }
-    pub fn runnables(&self, file_id: FileId) -> Vec<Runnable> {
-        let file = self.imp.file_syntax(file_id);
-        ra_editor::runnables(&file)
-    }
-    pub fn highlight(&self, file_id: FileId) -> Vec<HighlightedRange> {
-        let file = self.imp.file_syntax(file_id);
-        ra_editor::highlight(&file)
-    }
-    pub fn completions(&self, file_id: FileId, offset: TextUnit) -> Option<Vec<CompletionItem>> {
-        let file = self.imp.file_syntax(file_id);
-        ra_editor::scope_completion(&file, offset)
-    }
-    pub fn assists(&self, file_id: FileId, range: TextRange) -> Vec<SourceChange> {
-        self.imp.assists(file_id, range)
-    }
-    pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
-        self.imp.diagnostics(file_id)
-    }
     pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
         let file = self.imp.file_syntax(file_id);
         ra_editor::folding_ranges(&file)
     }
-
+    pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+        self.imp.world_symbols(query)
+    }
+    pub fn approximately_resolve_symbol(
+        &self,
+        file_id: FileId,
+        offset: TextUnit
+    ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+        self.imp
+            .approximately_resolve_symbol(file_id, offset)
+    }
+    pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit, ) -> Cancelable<Vec<(FileId, TextRange)>> {
+        Ok(self.imp.find_all_refs(file_id, offset))
+    }
+    pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+        self.imp.parent_module(file_id)
+    }
+    pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
+        self.imp.crate_for(file_id)
+    }
+    pub fn crate_root(&self, crate_id: CrateId) -> Cancelable<FileId> {
+        Ok(self.imp.crate_root(crate_id))
+    }
+    pub fn runnables(&self, file_id: FileId) -> Cancelable<Vec<Runnable>> {
+        let file = self.imp.file_syntax(file_id);
+        Ok(ra_editor::runnables(&file))
+    }
+    pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
+        let file = self.imp.file_syntax(file_id);
+        Ok(ra_editor::highlight(&file))
+    }
+    pub fn completions(&self, file_id: FileId, offset: TextUnit) -> Cancelable<Option<Vec<CompletionItem>>> {
+        let file = self.imp.file_syntax(file_id);
+        Ok(ra_editor::scope_completion(&file, offset))
+    }
+    pub fn assists(&self, file_id: FileId, range: TextRange) -> Cancelable<Vec<SourceChange>> {
+        Ok(self.imp.assists(file_id, range))
+    }
+    pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
+        self.imp.diagnostics(file_id)
+    }
     pub fn resolve_callable(
         &self,
         file_id: FileId,
         offset: TextUnit,
-        token: &JobToken,
-    ) -> Option<(FnDescriptor, Option<usize>)> {
-        self.imp.resolve_callable(file_id, offset, token)
+    ) -> Cancelable<Option<(FnDescriptor, Option<usize>)>> {
+        self.imp.resolve_callable(file_id, offset)
     }
 }
 

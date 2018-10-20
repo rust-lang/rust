@@ -8,6 +8,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Database;
 
 use crate::{
+    Cancelable,
     db::{self, FilesDatabase, SyntaxDatabase},
     descriptors::{ModuleDescriptor, ModuleTreeDescriptor},
     imp::FileResolverImp,
@@ -18,10 +19,10 @@ use crate::{
 
 pub(crate) trait SourceRoot {
     fn contains(&self, file_id: FileId) -> bool;
-    fn module_tree(&self) -> Arc<ModuleTreeDescriptor>;
+    fn module_tree(&self) -> Cancelable<Arc<ModuleTreeDescriptor>>;
     fn lines(&self, file_id: FileId) -> Arc<LineIndex>;
     fn syntax(&self, file_id: FileId) -> File;
-    fn symbols(&self, acc: &mut Vec<Arc<SymbolIndex>>);
+    fn symbols(&self, acc: &mut Vec<Arc<SymbolIndex>>) -> Cancelable<()>;
 }
 
 #[derive(Default, Debug, Clone)]
@@ -64,7 +65,7 @@ impl WritableSourceRoot {
 }
 
 impl SourceRoot for WritableSourceRoot {
-    fn module_tree(&self) -> Arc<ModuleTreeDescriptor> {
+    fn module_tree(&self) -> Cancelable<Arc<ModuleTreeDescriptor>> {
         self.db.module_tree()
     }
     fn contains(&self, file_id: FileId) -> bool {
@@ -76,14 +77,12 @@ impl SourceRoot for WritableSourceRoot {
     fn syntax(&self, file_id: FileId) -> File {
         self.db.file_syntax(file_id)
     }
-    fn symbols<'a>(&'a self, acc: &mut Vec<Arc<SymbolIndex>>) {
-        let db = &self.db;
-        let symbols = db.file_set();
-        let symbols = symbols
-            .files
-            .iter()
-            .map(|&file_id| db.file_symbols(file_id));
-        acc.extend(symbols);
+    fn symbols<'a>(&'a self, acc: &mut Vec<Arc<SymbolIndex>>) -> Cancelable<()> {
+        for &file_id in self.db.file_set().files.iter() {
+            let symbols = self.db.file_symbols(file_id)?;
+            acc.push(symbols)
+        }
+        Ok(())
     }
 }
 
@@ -167,8 +166,8 @@ impl ReadonlySourceRoot {
 }
 
 impl SourceRoot for ReadonlySourceRoot {
-    fn module_tree(&self) -> Arc<ModuleTreeDescriptor> {
-        Arc::clone(&self.module_tree)
+    fn module_tree(&self) -> Cancelable<Arc<ModuleTreeDescriptor>> {
+        Ok(Arc::clone(&self.module_tree))
     }
     fn contains(&self, file_id: FileId) -> bool {
         self.file_map.contains_key(&file_id)
@@ -179,7 +178,8 @@ impl SourceRoot for ReadonlySourceRoot {
     fn syntax(&self, file_id: FileId) -> File {
         self.data(file_id).syntax().clone()
     }
-    fn symbols(&self, acc: &mut Vec<Arc<SymbolIndex>>) {
-        acc.push(Arc::clone(&self.symbol_index))
+    fn symbols(&self, acc: &mut Vec<Arc<SymbolIndex>>) -> Cancelable<()> {
+        acc.push(Arc::clone(&self.symbol_index));
+        Ok(())
     }
 }
