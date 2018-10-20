@@ -238,7 +238,7 @@ pub fn handle_parent_module(
 ) -> Result<Vec<Location>> {
     let file_id = params.try_conv_with(&world)?;
     let mut res = Vec::new();
-    for (file_id, symbol) in world.analysis().parent_module(file_id) {
+    for (file_id, symbol) in world.analysis().parent_module(file_id)? {
         let line_index = world.analysis().file_line_index(file_id);
         let location = to_location(file_id, symbol.node_range, &world, &line_index)?;
         res.push(location);

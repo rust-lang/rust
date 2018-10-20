@@ -42,6 +42,15 @@ pub struct Cancel;
 
 pub type Cancelable<T> = Result<T, Cancel>;
 
+impl std::fmt::Display for Cancel {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        fmt.write_str("Canceled")
+    }
+}
+
+impl std::error::Error for Cancel {
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(pub u32);
 
@@ -225,7 +234,7 @@ impl Analysis {
     pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit, token: &JobToken) -> Vec<(FileId, TextRange)> {
         self.imp.find_all_refs(file_id, offset, token)
     }
-    pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
+    pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         self.imp.parent_module(file_id)
     }
     pub fn crate_for(&self, file_id: FileId) -> Vec<CrateId> {

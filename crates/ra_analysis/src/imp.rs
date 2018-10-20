@@ -20,7 +20,7 @@ use crate::{
     descriptors::{FnDescriptor, ModuleTreeDescriptor, Problem},
     roots::{ReadonlySourceRoot, SourceRoot, WritableSourceRoot},
     CrateGraph, CrateId, Diagnostic, FileId, FileResolver, FileSystemEdit, JobToken, Position,
-    Query, SourceChange, SourceFileEdit,
+    Query, SourceChange, SourceFileEdit, Cancelable,
 };
 
 #[derive(Clone, Debug)]
@@ -157,10 +157,10 @@ impl AnalysisImpl {
         }
         query.search(&buf, token)
     }
-    pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
+    pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let root = self.root(file_id);
         let module_tree = root.module_tree();
-        module_tree
+        let res = module_tree
             .parent_modules(file_id)
             .iter()
             .map(|link| {
@@ -174,7 +174,8 @@ impl AnalysisImpl {
                 };
                 (file_id, sym)
             })
-            .collect()
+            .collect();
+        Ok(res)
     }
     pub fn crate_for(&self, file_id: FileId) -> Vec<CrateId> {
         let module_tree = self.root(file_id).module_tree();
