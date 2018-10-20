@@ -50,7 +50,7 @@ impl WritableSourceRoot {
                 }
             }
         }
-        let file_set = self.db.file_set(());
+        let file_set = self.db.file_set();
         let mut files: FxHashSet<FileId> = file_set.files.clone();
         for file_id in removed {
             files.remove(&file_id);
@@ -65,10 +65,10 @@ impl WritableSourceRoot {
 
 impl SourceRoot for WritableSourceRoot {
     fn module_tree(&self) -> Arc<ModuleTreeDescriptor> {
-        self.db.module_tree(())
+        self.db.module_tree()
     }
     fn contains(&self, file_id: FileId) -> bool {
-        self.db.file_set(()).files.contains(&file_id)
+        self.db.file_set().files.contains(&file_id)
     }
     fn lines(&self, file_id: FileId) -> Arc<LineIndex> {
         self.db.file_lines(file_id)
@@ -78,7 +78,7 @@ impl SourceRoot for WritableSourceRoot {
     }
     fn symbols<'a>(&'a self, acc: &mut Vec<Arc<SymbolIndex>>) {
         let db = &self.db;
-        let symbols = db.file_set(());
+        let symbols = db.file_set();
         let symbols = symbols
             .files
             .iter()

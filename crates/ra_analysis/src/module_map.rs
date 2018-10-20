@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 salsa::query_group! {
     pub(crate) trait ModulesDatabase: SyntaxDatabase {
-        fn module_tree(key: ()) -> Arc<ModuleTreeDescriptor> {
+        fn module_tree() -> Arc<ModuleTreeDescriptor> {
             type ModuleTreeQuery;
         }
         fn module_descriptor(file_id: FileId) -> Arc<ModuleDescriptor> {
@@ -22,8 +22,8 @@ fn module_descriptor(db: &impl ModulesDatabase, file_id: FileId) -> Arc<ModuleDe
     Arc::new(ModuleDescriptor::new(file.ast()))
 }
 
-fn module_tree(db: &impl ModulesDatabase, (): ()) -> Arc<ModuleTreeDescriptor> {
-    let file_set = db.file_set(());
+fn module_tree(db: &impl ModulesDatabase) -> Arc<ModuleTreeDescriptor> {
+    let file_set = db.file_set();
     let mut files = Vec::new();
     for &file_id in file_set.files.iter() {
         let module_descr = db.module_descriptor(file_id);

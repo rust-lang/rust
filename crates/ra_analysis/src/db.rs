@@ -16,7 +16,7 @@ use std::{
 
 #[derive(Default)]
 pub(crate) struct RootDatabase {
-    runtime: salsa::runtime::Runtime<RootDatabase>,
+    runtime: salsa::Runtime<RootDatabase>,
 }
 
 impl fmt::Debug for RootDatabase {
@@ -26,7 +26,7 @@ impl fmt::Debug for RootDatabase {
 }
 
 impl salsa::Database for RootDatabase {
-    fn salsa_runtime(&self) -> &salsa::runtime::Runtime<RootDatabase> {
+    fn salsa_runtime(&self) -> &salsa::Runtime<RootDatabase> {
         &self.runtime
     }
 }
@@ -69,7 +69,7 @@ salsa::query_group! {
             type FileTextQuery;
             storage input;
         }
-        fn file_set(key: ()) -> Arc<FileSet> {
+        fn file_set() -> Arc<FileSet> {
             type FileSetQuery;
             storage input;
         }
