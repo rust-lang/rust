@@ -1,4 +1,4 @@
-use crate::{FileId, JobToken, Query};
+use crate::{FileId, Query};
 use fst::{self, Streamer};
 use ra_editor::{file_symbols, FileSymbol};
 use ra_syntax::{
@@ -59,7 +59,6 @@ impl Query {
     pub(crate) fn search(
         self,
         indices: &[Arc<SymbolIndex>],
-        token: &JobToken,
     ) -> Vec<(FileId, FileSymbol)> {
         let mut op = fst::map::OpBuilder::new();
         for file_symbols in indices.iter() {
@@ -69,7 +68,7 @@ impl Query {
         let mut stream = op.union();
         let mut res = Vec::new();
         while let Some((_, indexed_values)) = stream.next() {
-            if res.len() >= self.limit || token.is_canceled() {
+            if res.len() >= self.limit {
                 break;
             }
             for indexed_value in indexed_values {

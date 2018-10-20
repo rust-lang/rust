@@ -219,47 +219,46 @@ impl Analysis {
         let file = self.imp.file_syntax(file_id);
         ra_editor::file_structure(&file)
     }
-    pub fn symbol_search(&self, query: Query, token: &JobToken) -> Vec<(FileId, FileSymbol)> {
-        self.imp.world_symbols(query, token)
+    pub fn symbol_search(&self, query: Query) -> Vec<(FileId, FileSymbol)> {
+        self.imp.world_symbols(query)
     }
     pub fn approximately_resolve_symbol(
         &self,
         file_id: FileId,
-        offset: TextUnit,
-        token: &JobToken,
+        offset: TextUnit
     ) -> Vec<(FileId, FileSymbol)> {
         self.imp
-            .approximately_resolve_symbol(file_id, offset, token)
+            .approximately_resolve_symbol(file_id, offset)
     }
-    pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit, token: &JobToken) -> Vec<(FileId, TextRange)> {
-        self.imp.find_all_refs(file_id, offset, token)
+    pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit, ) -> Vec<(FileId, TextRange)> {
+        self.imp.find_all_refs(file_id, offset)
     }
     pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         self.imp.parent_module(file_id)
     }
-    pub fn crate_for(&self, file_id: FileId) -> Vec<CrateId> {
-        self.imp.crate_for(file_id)
+    pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
+        Ok(self.imp.crate_for(file_id))
     }
-    pub fn crate_root(&self, crate_id: CrateId) -> FileId {
-        self.imp.crate_root(crate_id)
+    pub fn crate_root(&self, crate_id: CrateId) -> Cancelable<FileId> {
+        Ok(self.imp.crate_root(crate_id))
     }
-    pub fn runnables(&self, file_id: FileId) -> Vec<Runnable> {
+    pub fn runnables(&self, file_id: FileId) -> Cancelable<Vec<Runnable>> {
         let file = self.imp.file_syntax(file_id);
-        ra_editor::runnables(&file)
+        Ok(ra_editor::runnables(&file))
     }
-    pub fn highlight(&self, file_id: FileId) -> Vec<HighlightedRange> {
+    pub fn highlight(&self, file_id: FileId) -> Cancelable<Vec<HighlightedRange>> {
         let file = self.imp.file_syntax(file_id);
-        ra_editor::highlight(&file)
+        Ok(ra_editor::highlight(&file))
     }
-    pub fn completions(&self, file_id: FileId, offset: TextUnit) -> Option<Vec<CompletionItem>> {
+    pub fn completions(&self, file_id: FileId, offset: TextUnit) -> Cancelable<Option<Vec<CompletionItem>>> {
         let file = self.imp.file_syntax(file_id);
-        ra_editor::scope_completion(&file, offset)
+        Ok(ra_editor::scope_completion(&file, offset))
     }
-    pub fn assists(&self, file_id: FileId, range: TextRange) -> Vec<SourceChange> {
-        self.imp.assists(file_id, range)
+    pub fn assists(&self, file_id: FileId, range: TextRange) -> Cancelable<Vec<SourceChange>> {
+        Ok(self.imp.assists(file_id, range))
     }
-    pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
-        self.imp.diagnostics(file_id)
+    pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
+        Ok(self.imp.diagnostics(file_id))
     }
     pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
         let file = self.imp.file_syntax(file_id);
@@ -270,9 +269,8 @@ impl Analysis {
         &self,
         file_id: FileId,
         offset: TextUnit,
-        token: &JobToken,
     ) -> Option<(FnDescriptor, Option<usize>)> {
-        self.imp.resolve_callable(file_id, offset, token)
+        self.imp.resolve_callable(file_id, offset)
     }
 }
 
