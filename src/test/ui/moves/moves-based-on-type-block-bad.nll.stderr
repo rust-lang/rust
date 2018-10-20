@@ -16,18 +16,6 @@ note: move occurs because `x` has type `std::boxed::Box<isize>`, which does not 
 LL |                 box E::Bar(x) => println!("{}", x.to_string()),
    |                            ^
 
-error[E0507]: cannot move out of `hellothere.x.0` which is behind a `&` reference
-  --> $DIR/moves-based-on-type-block-bad.rs:37:28
-   |
-LL |         f(&s, |hellothere| {
-   |                ---------- help: consider changing this to be a mutable reference: `&mut S`
-...
-LL |                 box E::Bar(x) => println!("{}", x.to_string()),
-   |                            ^
-   |                            |
-   |                            cannot move out of `hellothere.x.0` which is behind a `&` reference
-   |                            `hellothere` is a `&` reference, so the data it refers to cannot be moved
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0507`.

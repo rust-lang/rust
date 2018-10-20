@@ -7,15 +7,6 @@ LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
    |             cannot move out of borrowed content
    |             help: consider removing the `*`: `&x`
 
-error[E0507]: cannot move out of data in a `&` reference
-  --> $DIR/std-uncopyable-atomics.rs:19:13
-   |
-LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
-   |             ^^^
-   |             |
-   |             cannot move out of data in a `&` reference
-   |             cannot move
-
 error[E0507]: cannot move out of borrowed content
   --> $DIR/std-uncopyable-atomics.rs:21:13
    |
@@ -24,15 +15,6 @@ LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
    |             |
    |             cannot move out of borrowed content
    |             help: consider removing the `*`: `&x`
-
-error[E0507]: cannot move out of data in a `&` reference
-  --> $DIR/std-uncopyable-atomics.rs:21:13
-   |
-LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
-   |             ^^^
-   |             |
-   |             cannot move out of data in a `&` reference
-   |             cannot move
 
 error[E0507]: cannot move out of borrowed content
   --> $DIR/std-uncopyable-atomics.rs:23:13
@@ -43,15 +25,6 @@ LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
    |             cannot move out of borrowed content
    |             help: consider removing the `*`: `&x`
 
-error[E0507]: cannot move out of data in a `&` reference
-  --> $DIR/std-uncopyable-atomics.rs:23:13
-   |
-LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
-   |             ^^^
-   |             |
-   |             cannot move out of data in a `&` reference
-   |             cannot move
-
 error[E0507]: cannot move out of borrowed content
   --> $DIR/std-uncopyable-atomics.rs:25:13
    |
@@ -61,15 +34,6 @@ LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
    |             cannot move out of borrowed content
    |             help: consider removing the `*`: `&x`
 
-error[E0507]: cannot move out of data in a `&` reference
-  --> $DIR/std-uncopyable-atomics.rs:25:13
-   |
-LL |     let x = *&x; //~ ERROR: cannot move out of borrowed content
-   |             ^^^
-   |             |
-   |             cannot move out of data in a `&` reference
-   |             cannot move
-
-error: aborting due to 8 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0507`.

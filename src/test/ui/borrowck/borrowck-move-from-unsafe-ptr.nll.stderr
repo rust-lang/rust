@@ -7,17 +7,6 @@ LL |     let y = *x; //~ ERROR cannot move out of dereference of raw pointer
    |             cannot move out of dereference of raw pointer
    |             help: consider removing the `*`: `x`
 
-error[E0507]: cannot move out of `*x` which is behind a `*const` pointer
-  --> $DIR/borrowck-move-from-unsafe-ptr.rs:13:13
-   |
-LL | unsafe fn foo(x: *const Box<isize>) -> Box<isize> {
-   |                  ----------------- help: consider changing this to be a mutable pointer: `*mut std::boxed::Box<isize>`
-LL |     let y = *x; //~ ERROR cannot move out of dereference of raw pointer
-   |             ^^
-   |             |
-   |             cannot move out of `*x` which is behind a `*const` pointer
-   |             `x` is a `*const` pointer, so the data it refers to cannot be moved
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0507`.
