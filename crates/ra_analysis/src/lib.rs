@@ -37,6 +37,11 @@ pub use ra_editor::{
     RunnableKind, StructureNode,
 };
 
+#[derive(Clone, Copy, Debug)]
+pub struct Cancel;
+
+pub type Cancelable<T> = Result<T, Cancel>;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(pub u32);
 
