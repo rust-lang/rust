@@ -222,7 +222,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     ns == TypeNS &&
                     !ident.is_path_segment_keyword()
                 {
-                    if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
+                    if let Some(binding) = self.extern_prelude_get(ident, !record_used, false) {
                         let module = self.get_module(binding.def().def_id());
                         self.populate_module_if_necessary(module);
                         return Ok(binding);
@@ -742,7 +742,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         for ((span, _, ns), results) in uniform_paths_canaries {
             let name = results.name;
             let external_crate = if ns == TypeNS {
-                self.extern_prelude_get(Ident::with_empty_ctxt(name), true)
+                self.extern_prelude_get(Ident::with_empty_ctxt(name), true, false)
                     .map(|binding| binding.def())
             } else {
                 None
@@ -1021,6 +1021,13 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                     if let ModuleOrUniformRoot::Module(module) = module {
                         this.resolution(module, ident, ns).borrow_mut().binding =
                             Some(this.dummy_binding);
+                    }
+                }
+                if record_used && ns == TypeNS {
+                    if let ModuleOrUniformRoot::UniformRoot(..) = module {
+                        // Make sure single-segment import is resolved non-speculatively
+                        // at least once to report the feature error.
+                        this.extern_prelude_get(ident, false, false);
                     }
                 }
             }

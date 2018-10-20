@@ -476,7 +476,9 @@ pub fn run_core(search_paths: SearchPaths,
             trait_map: resolver.trait_map.clone(),
             maybe_unused_trait_imports: resolver.maybe_unused_trait_imports.clone(),
             maybe_unused_extern_crates: resolver.maybe_unused_extern_crates.clone(),
-            extern_prelude: resolver.extern_prelude.clone(),
+            extern_prelude: resolver.extern_prelude.iter().map(|(ident, entry)| {
+                (ident.name, entry.introduced_by_item)
+            }).collect(),
         };
         let analysis = ty::CrateAnalysis {
             access_levels: Lrc::new(AccessLevels::default()),

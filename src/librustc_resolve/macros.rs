@@ -693,7 +693,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 WhereToResolve::ExternPrelude => {
                     let mut result = Err(Determinacy::Determined);
                     if use_prelude {
-                        if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
+                        if let Some(binding) = self.extern_prelude_get(ident, !record_used,
+                                                                       innermost_result.is_some()) {
                             result = Ok((binding, Flags::PRELUDE, Flags::empty()));
                         }
                     }

@@ -1,6 +1,7 @@
 // compile-pass
 // compile-flags:--cfg my_feature
 
+#![feature(extern_crate_item_prelude)]
 #![no_std]
 
 #[cfg(my_feature)]

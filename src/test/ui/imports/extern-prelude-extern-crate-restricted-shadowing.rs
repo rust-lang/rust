@@ -1,5 +1,7 @@
 // aux-build:two_macros.rs
 
+#![feature(extern_crate_item_prelude)]
+
 macro_rules! define_vec {
     () => {
         extern crate std as Vec;

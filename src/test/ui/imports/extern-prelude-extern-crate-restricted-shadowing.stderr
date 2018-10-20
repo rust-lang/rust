@@ -1,11 +1,11 @@
 error[E0659]: `Vec` is ambiguous
-  --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:13:9
+  --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:15:9
    |
 LL |         Vec::panic!(); //~ ERROR `Vec` is ambiguous
    |         ^^^ ambiguous name
    |
 note: `Vec` could refer to the name defined here
-  --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:5:9
+  --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:7:9
    |
 LL |         extern crate std as Vec;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
