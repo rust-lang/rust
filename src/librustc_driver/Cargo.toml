@@ -38,3 +38,5 @@ syntax = { path = "../libsyntax" }
 smallvec = { version = "0.6.5", features = ["union"] }
 syntax_ext = { path = "../libsyntax_ext" }
 syntax_pos = { path = "../libsyntax_pos" }
+jemalloc-sys = { version = "0.1.8", features = ['unprefixed_malloc_on_supported_platforms'] }
+

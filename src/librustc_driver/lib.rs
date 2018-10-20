@@ -30,6 +30,8 @@
 
 #![recursion_limit="256"]
 
+extern crate jemalloc_sys;
+
 extern crate arena;
 pub extern crate getopts;
 extern crate graphviz;
