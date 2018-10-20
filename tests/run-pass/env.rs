@@ -1,3 +1,6 @@
+//ignore-windows: env var emulation not implemented on Windows
+//ignore-macos: env var emulation not implemented on macOS
+
 use std::env;
 
 fn main() {
