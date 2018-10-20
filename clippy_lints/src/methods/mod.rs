@@ -936,13 +936,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if let hir::ImplItemKind::Method(_, _) = implitem.node {
             let ret_ty = return_ty(cx, implitem.id);
 
-//            println!("ret_ty: {:?}", ret_ty);
-//            println!("ret_ty.sty {:?}", ret_ty.sty);
+            // walk the return type and check for Self (this does not check associated types)
+            for inner_type in ret_ty.walk() {
+                if same_tys(cx, ty, inner_type) { return; }
+            }
 
-            // if return type is impl trait
+            // if return type is impl trait, check the associated types
             if let TyKind::Opaque(def_id, _) = ret_ty.sty {
 
-                // then one of the associated types must be Self
+                // one of the associated types must be Self
                 for predicate in cx.tcx.predicates_of(def_id).predicates.iter() {
                     match predicate {
                         (Predicate::Projection(poly_projection_predicate), _) => {
@@ -956,20 +958,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         (_, _) => {},
                     }
                 }
-            }
-
-            // if return type is tuple
-            if let TyKind::Tuple(list) = ret_ty.sty {
-                // then at least one of the types in the tuple must be Self
-                for ret_type in list {
-                    if same_tys(cx, ty, ret_type) { return; }
-                }
-            }
-
-            // if return type is mutable pointer
-            if let TyKind::RawPtr(ty::TypeAndMut{ty: ret_type, ..}) = ret_ty.sty {
-                // then the pointer must point to Self
-                if same_tys(cx, ty, ret_type) { return; }
             }
 
             if name == "new" && !same_tys(cx, ret_ty, ty) {
