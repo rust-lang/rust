@@ -7,8 +7,6 @@ extern crate ra_editor;
 extern crate ra_syntax;
 extern crate rayon;
 extern crate relative_path;
-#[macro_use]
-extern crate crossbeam_channel;
 extern crate im;
 extern crate rustc_hash;
 extern crate salsa;
@@ -16,7 +14,6 @@ extern crate salsa;
 mod db;
 mod descriptors;
 mod imp;
-mod job;
 mod module_map;
 mod roots;
 mod symbol_index;
@@ -31,7 +28,6 @@ use crate::imp::{AnalysisHostImpl, AnalysisImpl, FileResolverImp};
 
 pub use crate::{
     descriptors::FnDescriptor,
-    job::{JobHandle, JobToken},
 };
 pub use ra_editor::{
     CompletionItem, FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable,

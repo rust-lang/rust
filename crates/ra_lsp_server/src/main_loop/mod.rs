@@ -8,9 +8,9 @@ use gen_lsp_server::{
     handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse,
 };
 use languageserver_types::NumberOrString;
-use ra_analysis::{FileId, JobHandle, JobToken, LibraryData};
+use ra_analysis::{FileId, LibraryData};
 use rayon::{self, ThreadPool};
-use rustc_hash::FxHashMap;
+use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
@@ -47,7 +47,7 @@ pub fn main_loop(
     info!("server initialized, serving requests");
     let mut state = ServerWorldState::new();
 
-    let mut pending_requests = FxHashMap::default();
+    let mut pending_requests = FxHashSet::default();
     let mut subs = Subscriptions::new();
     let main_res = main_loop_inner(
         internal_mode,
@@ -92,7 +92,7 @@ fn main_loop_inner(
     fs_worker: Worker<PathBuf, (PathBuf, Vec<FileEvent>)>,
     ws_worker: Worker<PathBuf, Result<CargoWorkspace>>,
     state: &mut ServerWorldState,
-    pending_requests: &mut FxHashMap<u64, JobHandle>,
+    pending_requests: &mut FxHashSet<u64>,
     subs: &mut Subscriptions,
 ) -> Result<()> {
     let (libdata_sender, libdata_receiver) = unbounded();
@@ -204,14 +204,13 @@ fn main_loop_inner(
 fn on_task(
     task: Task,
     msg_sender: &Sender<RawMessage>,
-    pending_requests: &mut FxHashMap<u64, JobHandle>,
+    pending_requests: &mut FxHashSet<u64>,
 ) {
     match task {
         Task::Respond(response) => {
-            if let Some(handle) = pending_requests.remove(&response.id) {
-                assert!(handle.has_completed());
+            if pending_requests.remove(&response.id) {
+                msg_sender.send(RawMessage::Response(response))
             }
-            msg_sender.send(RawMessage::Response(response))
         }
         Task::Notify(n) => msg_sender.send(RawMessage::Notification(n)),
     }
@@ -219,7 +218,7 @@ fn on_task(
 
 fn on_request(
     world: &mut ServerWorldState,
-    pending_requests: &mut FxHashMap<u64, JobHandle>,
+    pending_requests: &mut FxHashSet<u64>,
     pool: &ThreadPool,
     sender: &Sender<Task>,
     req: RawRequest,
@@ -253,8 +252,8 @@ fn on_request(
         .on::<req::References>(handlers::handle_references)?
         .finish();
     match req {
-        Ok((id, handle)) => {
-            let inserted = pending_requests.insert(id, handle).is_none();
+        Ok(id) => {
+            let inserted = pending_requests.insert(id);
             assert!(inserted, "duplicate request: {}", id);
             Ok(None)
         }
@@ -265,7 +264,7 @@ fn on_request(
 fn on_notification(
     msg_sender: &Sender<RawMessage>,
     state: &mut ServerWorldState,
-    pending_requests: &mut FxHashMap<u64, JobHandle>,
+    pending_requests: &mut FxHashSet<u64>,
     subs: &mut Subscriptions,
     not: RawNotification,
 ) -> Result<()> {
@@ -277,9 +276,7 @@ fn on_notification(
                     panic!("string id's not supported: {:?}", id);
                 }
             };
-            if let Some(handle) = pending_requests.remove(&id) {
-                handle.cancel();
-            }
+            pending_requests.remove(&id);
             return Ok(());
         }
         Err(not) => not,
@@ -336,7 +333,7 @@ fn on_notification(
 
 struct PoolDispatcher<'a> {
     req: Option<RawRequest>,
-    res: Option<(u64, JobHandle)>,
+    res: Option<u64>,
     pool: &'a ThreadPool,
     world: &'a ServerWorldState,
     sender: &'a Sender<Task>,
@@ -345,7 +342,7 @@ struct PoolDispatcher<'a> {
 impl<'a> PoolDispatcher<'a> {
     fn on<'b, R>(
         &'b mut self,
-        f: fn(ServerWorld, R::Params, JobToken) -> Result<R::Result>,
+        f: fn(ServerWorld, R::Params) -> Result<R::Result>,
     ) -> Result<&'b mut Self>
     where
         R: req::Request,
@@ -358,11 +355,10 @@ impl<'a> PoolDispatcher<'a> {
         };
         match req.cast::<R>() {
             Ok((id, params)) => {
-                let (handle, token) = JobHandle::new();
                 let world = self.world.snapshot();
                 let sender = self.sender.clone();
                 self.pool.spawn(move || {
-                    let resp = match f(world, params, token) {
+                    let resp = match f(world, params) {
                         Ok(resp) => RawResponse::ok::<R>(id, &resp),
                         Err(e) => {
                             RawResponse::err(id, ErrorCode::InternalError as i32, e.to_string())
@@ -371,14 +367,14 @@ impl<'a> PoolDispatcher<'a> {
                     let task = Task::Respond(resp);
                     sender.send(task);
                 });
-                self.res = Some((id, handle));
+                self.res = Some(id);
             }
             Err(req) => self.req = Some(req),
         }
         Ok(self)
     }
 
-    fn finish(&mut self) -> ::std::result::Result<(u64, JobHandle), RawRequest> {
+    fn finish(&mut self) -> ::std::result::Result<u64, RawRequest> {
         match (self.res.take(), self.req.take()) {
             (Some(res), None) => Ok(res),
             (None, Some(req)) => Err(req),
