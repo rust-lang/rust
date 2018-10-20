@@ -1,35 +1,35 @@
 error[E0637]: `'_` cannot be used here
-  --> $DIR/in-binder.rs:12:6
+  --> $DIR/in-binder.rs:9:6
    |
 LL | impl<'_> IceCube<'_> {}
    |      ^^ `'_` is a reserved lifetime name
 
 error[E0637]: `'_` cannot be used here
-  --> $DIR/in-binder.rs:17:15
+  --> $DIR/in-binder.rs:12:15
    |
 LL | struct Struct<'_> {
    |               ^^ `'_` is a reserved lifetime name
 
 error[E0637]: `'_` cannot be used here
-  --> $DIR/in-binder.rs:23:11
+  --> $DIR/in-binder.rs:17:11
    |
 LL | enum Enum<'_> {
    |           ^^ `'_` is a reserved lifetime name
 
 error[E0637]: `'_` cannot be used here
-  --> $DIR/in-binder.rs:29:13
+  --> $DIR/in-binder.rs:22:13
    |
 LL | union Union<'_> {
    |             ^^ `'_` is a reserved lifetime name
 
 error[E0637]: `'_` cannot be used here
-  --> $DIR/in-binder.rs:35:13
+  --> $DIR/in-binder.rs:27:13
    |
 LL | trait Trait<'_> {
    |             ^^ `'_` is a reserved lifetime name
 
 error[E0637]: `'_` cannot be used here
-  --> $DIR/in-binder.rs:40:8
+  --> $DIR/in-binder.rs:31:8
    |
 LL | fn foo<'_>() {
    |        ^^ `'_` is a reserved lifetime name
