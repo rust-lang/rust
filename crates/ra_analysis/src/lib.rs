@@ -38,17 +38,17 @@ pub use ra_editor::{
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Cancel;
+pub struct Canceled;
 
-pub type Cancelable<T> = Result<T, Cancel>;
+pub type Cancelable<T> = Result<T, Canceled>;
 
-impl std::fmt::Display for Cancel {
+impl std::fmt::Display for Canceled {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         fmt.write_str("Canceled")
     }
 }
 
-impl std::error::Error for Cancel {
+impl std::error::Error for Canceled {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]

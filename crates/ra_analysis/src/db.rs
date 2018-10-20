@@ -10,7 +10,8 @@ use rustc_hash::FxHashSet;
 use salsa;
 
 use crate::{
-    Cancelable,
+    db,
+    Cancelable, Canceled,
     module_map::{ModuleDescriptorQuery, ModuleTreeQuery, ModulesDatabase},
     symbol_index::SymbolIndex,
     FileId, FileResolverImp,
@@ -30,6 +31,14 @@ impl fmt::Debug for RootDatabase {
 impl salsa::Database for RootDatabase {
     fn salsa_runtime(&self) -> &salsa::Runtime<RootDatabase> {
         &self.runtime
+    }
+}
+
+pub(crate) fn check_canceled(db: &impl salsa::Database) -> Cancelable<()> {
+    if db.salsa_runtime().is_current_revision_canceled() {
+        Err(Canceled)
+    } else {
+        Ok(())
     }
 }
 
@@ -115,6 +124,7 @@ fn file_lines(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<LineIndex> {
     Arc::new(LineIndex::new(&*text))
 }
 fn file_symbols(db: &impl SyntaxDatabase, file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
+    db::check_canceled(db)?;
     let syntax = db.file_syntax(file_id);
     Ok(Arc::new(SymbolIndex::for_file(file_id, syntax)))
 }

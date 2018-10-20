@@ -1,11 +1,12 @@
+use std::sync::Arc;
+
 use crate::{
+    db,
     Cancelable,
     db::SyntaxDatabase,
     descriptors::{ModuleDescriptor, ModuleTreeDescriptor},
     FileId,
 };
-
-use std::sync::Arc;
 
 salsa::query_group! {
     pub(crate) trait ModulesDatabase: SyntaxDatabase {
@@ -19,11 +20,13 @@ salsa::query_group! {
 }
 
 fn module_descriptor(db: &impl ModulesDatabase, file_id: FileId) -> Cancelable<Arc<ModuleDescriptor>> {
+    db::check_canceled(db)?;
     let file = db.file_syntax(file_id);
     Ok(Arc::new(ModuleDescriptor::new(file.ast())))
 }
 
 fn module_tree(db: &impl ModulesDatabase) -> Cancelable<Arc<ModuleTreeDescriptor>> {
+    db::check_canceled(db)?;
     let file_set = db.file_set();
     let mut files = Vec::new();
     for &file_id in file_set.files.iter() {
