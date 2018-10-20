@@ -1,17 +1,19 @@
-use crate::{
-    module_map::{ModuleDescriptorQuery, ModuleTreeQuery, ModulesDatabase},
-    symbol_index::SymbolIndex,
-    FileId, FileResolverImp,
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+    sync::Arc,
 };
+
 use ra_editor::LineIndex;
 use ra_syntax::File;
 use rustc_hash::FxHashSet;
 use salsa;
 
-use std::{
-    fmt,
-    hash::{Hash, Hasher},
-    sync::Arc,
+use crate::{
+    Cancelable,
+    module_map::{ModuleDescriptorQuery, ModuleTreeQuery, ModulesDatabase},
+    symbol_index::SymbolIndex,
+    FileId, FileResolverImp,
 };
 
 #[derive(Default)]
@@ -98,7 +100,7 @@ salsa::query_group! {
         fn file_lines(file_id: FileId) -> Arc<LineIndex> {
             type FileLinesQuery;
         }
-        fn file_symbols(file_id: FileId) -> Arc<SymbolIndex> {
+        fn file_symbols(file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
             type FileSymbolsQuery;
         }
     }
@@ -112,7 +114,7 @@ fn file_lines(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id);
     Arc::new(LineIndex::new(&*text))
 }
-fn file_symbols(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<SymbolIndex> {
+fn file_symbols(db: &impl SyntaxDatabase, file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
     let syntax = db.file_syntax(file_id);
-    Arc::new(SymbolIndex::for_file(file_id, syntax))
+    Ok(Arc::new(SymbolIndex::for_file(file_id, syntax)))
 }

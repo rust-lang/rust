@@ -224,7 +224,7 @@ impl Analysis {
         ra_editor::folding_ranges(&file)
     }
     pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        Ok(self.imp.world_symbols(query))
+        self.imp.world_symbols(query)
     }
     pub fn approximately_resolve_symbol(
         &self,
@@ -269,7 +269,7 @@ impl Analysis {
         file_id: FileId,
         offset: TextUnit,
     ) -> Cancelable<Option<(FnDescriptor, Option<usize>)>> {
-        Ok(self.imp.resolve_callable(file_id, offset))
+        self.imp.resolve_callable(file_id, offset)
     }
 }
 

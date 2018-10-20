@@ -148,14 +148,16 @@ impl AnalysisImpl {
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
         self.root(file_id).lines(file_id)
     }
-    pub fn world_symbols(&self, query: Query) -> Vec<(FileId, FileSymbol)> {
+    pub fn world_symbols(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let mut buf = Vec::new();
         if query.libs {
-            self.data.libs.iter().for_each(|it| it.symbols(&mut buf));
+            for lib in self.data.libs.iter() {
+                lib.symbols(&mut buf)?;
+            }
         } else {
-            self.data.root.symbols(&mut buf);
+            self.data.root.symbols(&mut buf)?;
         }
-        query.search(&buf)
+        Ok(query.search(&buf))
     }
     pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let root = self.root(file_id);
@@ -212,7 +214,7 @@ impl AnalysisImpl {
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
             // First try to resolve the symbol locally
-            if let Some((name, range)) = resolve_local_name(&file, offset, name_ref) {
+            return if let Some((name, range)) = resolve_local_name(&file, offset, name_ref) {
                 let mut vec = vec![];
                 vec.push((
                     file_id,
@@ -222,12 +224,11 @@ impl AnalysisImpl {
                         kind: NAME,
                     },
                 ));
-
-                return Ok(vec);
+                Ok(vec)
             } else {
                 // If that fails try the index based approach.
-                return Ok(self.index_resolve(name_ref));
-            }
+                self.index_resolve(name_ref)
+            };
         }
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
@@ -379,17 +380,23 @@ impl AnalysisImpl {
         &self,
         file_id: FileId,
         offset: TextUnit,
-    ) -> Option<(FnDescriptor, Option<usize>)> {
+    ) -> Cancelable<Option<(FnDescriptor, Option<usize>)>> {
         let root = self.root(file_id);
         let file = root.syntax(file_id);
         let syntax = file.syntax();
 
         // Find the calling expression and it's NameRef
-        let calling_node = FnCallNode::with_node(syntax, offset)?;
-        let name_ref = calling_node.name_ref()?;
+        let calling_node = match FnCallNode::with_node(syntax, offset) {
+            Some(node) => node,
+            None => return Ok(None),
+        };
+        let name_ref = match calling_node.name_ref() {
+            Some(name) => name,
+            None => return Ok(None),
+        };
 
         // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
-        let file_symbols = self.index_resolve(name_ref);
+        let file_symbols = self.index_resolve(name_ref)?;
         for (_, fs) in file_symbols {
             if fs.kind == FN_DEF {
                 if let Some(fn_def) = find_node_at_offset(syntax, fs.node_range.start()) {
@@ -431,16 +438,16 @@ impl AnalysisImpl {
                             }
                         }
 
-                        return Some((descriptor, current_parameter));
+                        return Ok(Some((descriptor, current_parameter)));
                     }
                 }
             }
         }
 
-        None
+        Ok(None)
     }
 
-    fn index_resolve(&self, name_ref: ast::NameRef) -> Vec<(FileId, FileSymbol)> {
+    fn index_resolve(&self, name_ref: ast::NameRef) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let name = name_ref.text();
         let mut query = Query::new(name.to_string());
         query.exact();
