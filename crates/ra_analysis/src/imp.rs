@@ -362,7 +362,7 @@ impl AnalysisImpl {
         for (_, fs) in file_symbols {
             if fs.kind == FN_DEF {
                 if let Some(fn_def) = find_node_at_offset(syntax, fs.node_range.start()) {
-                    if let Some(descriptor) = FnDescriptor::new_opt(fn_def) {
+                    if let Some(descriptor) = FnDescriptor::new(fn_def) {
                         // If we have a calling expression let's find which argument we are on
                         let mut current_parameter = None;
 

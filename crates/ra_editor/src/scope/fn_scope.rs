@@ -63,7 +63,7 @@ impl FnScopes {
             .syntax()
             .descendants()
             .filter_map(ast::BindPat::cast)
-            .filter_map(ScopeEntry::new_opt);
+            .filter_map(ScopeEntry::new);
         self.scopes[scope].entries.extend(entries);
     }
     fn add_params_bindings(&mut self, scope: ScopeId, params: Option<ast::ParamList>) {
@@ -88,7 +88,7 @@ pub struct ScopeEntry {
 }
 
 impl ScopeEntry {
-    fn new_opt(pat: ast::BindPat) -> Option<ScopeEntry> {
+    fn new(pat: ast::BindPat) -> Option<ScopeEntry> {
         if pat.name().is_some() {
             Some(ScopeEntry {
                 syntax: pat.syntax().owned(),
