@@ -1,4 +1,8 @@
-use crate::{FileId, Query};
+use std::{
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
+
 use fst::{self, Streamer};
 use ra_editor::{file_symbols, FileSymbol};
 use ra_syntax::{
@@ -7,10 +11,7 @@ use ra_syntax::{
 };
 use rayon::prelude::*;
 
-use std::{
-    hash::{Hash, Hasher},
-    sync::Arc,
-};
+use crate::{FileId, Query};
 
 #[derive(Debug)]
 pub(crate) struct SymbolIndex {

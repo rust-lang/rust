@@ -23,10 +23,11 @@ mod symbol_index;
 
 use std::{fmt::Debug, sync::Arc};
 
-use crate::imp::{AnalysisHostImpl, AnalysisImpl, FileResolverImp};
 use ra_syntax::{AtomEdit, File, TextRange, TextUnit};
 use relative_path::{RelativePath, RelativePathBuf};
 use rustc_hash::FxHashMap;
+
+use crate::imp::{AnalysisHostImpl, AnalysisImpl, FileResolverImp};
 
 pub use crate::{
     descriptors::FnDescriptor,

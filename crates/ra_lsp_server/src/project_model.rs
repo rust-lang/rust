@@ -1,8 +1,8 @@
+use std::path::{Path, PathBuf};
+
 use cargo_metadata::{metadata_run, CargoOpt};
 use ra_syntax::SmolStr;
 use rustc_hash::{FxHashMap, FxHashSet};
-
-use std::path::{Path, PathBuf};
 
 use crate::{
     thread_watcher::{ThreadWatcher, Worker},

@@ -1,5 +1,6 @@
-use rustc_hash::FxHashMap;
+use std::collections::HashMap;
 
+use rustc_hash::FxHashMap;
 use languageserver_types::{
     CodeActionResponse, Command, CompletionItem, CompletionItemKind, Diagnostic,
     DiagnosticSeverity, DocumentSymbol, FoldingRange, FoldingRangeKind, FoldingRangeParams,
@@ -17,8 +18,6 @@ use crate::{
     server_world::ServerWorld,
     Result,
 };
-
-use std::collections::HashMap;
 
 pub fn handle_syntax_tree(
     world: ServerWorld,

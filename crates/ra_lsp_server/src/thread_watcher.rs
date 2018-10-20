@@ -1,8 +1,9 @@
-use crate::Result;
+use std::thread;
+
 use crossbeam_channel::{bounded, unbounded, Receiver, Sender};
 use drop_bomb::DropBomb;
 
-use std::thread;
+use crate::Result;
 
 pub struct Worker<I, O> {
     pub inp: Sender<I>,
