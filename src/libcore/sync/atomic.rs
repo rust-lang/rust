@@ -170,10 +170,48 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// Atomic memory orderings
 ///
 /// Memory orderings limit the ways that both the compiler and CPU may reorder
-/// instructions around atomic operations. At its most restrictive,
-/// "sequentially consistent" atomics allow neither reads nor writes
-/// to be moved either before or after the atomic operation; on the other end
-/// "relaxed" atomics allow all reorderings.
+/// instructions and optimize around atomic operations.
+///
+/// An operation on an atomic variable can do three things:
+///
+/// * Make the atomic itself safe to use from multiple threads. This happens always, even with the
+///   lowest `Relaxed` ordering and an atomic variable always forms a "sane" time line of its own
+///   operations. Note that `Relaxed` doesn't provide any guarantees at all about how different
+///   threads see the relative orders of operations on *different* atomics (which is not something
+///   human brain interprets as remotely "sane").
+/// * Additionally, synchronize other (even non-atomic) memory. A store with `Release` ordering
+///   forms a synchronization (unidirectional) edge with any thread that does a load with `Acquire`
+///   *on the written value*. Conceptually, imagine the threads being independent entities, the
+///   value being tagged with a snapshot of all the memory on release and acquire waiting for all
+///   that bulk of data to arrive (this is of course not what actually happens in the hardware, but
+///   about the least broken intuitive understanding of the model).
+/// * Finally, a `SeqCst` operation participates in a globally consistent time line (in addition to
+///   being `AcqRel`). Two `SeqCst` operations have a well defined relation which one happened
+///   earlier and which one later. This allows to synchronize memory without the need to "meet" on
+///   the common value or even the same atomic variable ‒ a `SeqCst` load acquires from any
+///   previous `SeqCst` store.
+///
+/// # Common traps for the unaware
+///
+/// The rules of the memory model have some very unintuitive consequences.
+///
+/// * Load-only operations never "publish". Even `load(Ordering::SeqCst)` has only acquire
+///   semantics, reads and writes of other memory can be reordered after that operation.
+/// * Similarly, store-only operations allow reordering before them.
+/// * Some operations (`compare_and_swap`) may fail. In such case they don't write any value and
+///   are load-only and therefore don't have the "release" semantics (again, even if they are marked
+///   as `SeqCst`).
+/// * The release-acquire synchronization of other memory happens only on the one specific value,
+///   not on the atomic variable. If one value released by thread `A` is overwritten by another
+///   one by thread `B` (even when computed from the first one), an acquire load in `C` seeing the
+///   second value acquires only the data from `B` (if `B` released). To make this work properly,
+///   either use `SeqCst` for everything or chain the synchronization. `B` must acquire from `A`
+///   and then release again, even if `B` is not interested in the other memory from `A`.
+///
+/// # More details
+///
+/// This is only an intuitive introduction. If doing anything even slightly complex, be sure to
+/// study the exact definitions and prove your algorithm correct.
 ///
 /// Rust's memory orderings are [the same as
 /// LLVM's](https://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations).
