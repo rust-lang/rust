@@ -178,14 +178,14 @@ impl<'a, 'gcx, 'tcx> TypeRelation<'a, 'gcx, 'tcx> for MismatchRelation<'a, 'gcx,
             },
             (&TyKind::Dynamic(a_obj, a_r), &TyKind::Dynamic(b_obj, b_r)) => {
                 let _ = self.relate(&a_r, &b_r)?;
+                let a = a_obj.principal();
+                let b = b_obj.principal();
 
-                match (a_obj.principal(), b_obj.principal()) {
-                    (Some(a), Some(b)) if self.check_substs(a.skip_binder().substs,
-                                                            b.skip_binder().substs) => {
-                        let _ = self.relate(&a.skip_binder().substs, &b.skip_binder().substs)?;
-                        Some((a.skip_binder().def_id, b.skip_binder().def_id))
-                    },
-                    _ => None,
+                if self.check_substs(a.skip_binder().substs, b.skip_binder().substs) {
+                    let _ = self.relate(&a.skip_binder().substs, &b.skip_binder().substs)?;
+                    Some((a.skip_binder().def_id, b.skip_binder().def_id))
+                } else {
+                    None
                 }
             },
             (&TyKind::Tuple(as_), &TyKind::Tuple(bs)) => {
