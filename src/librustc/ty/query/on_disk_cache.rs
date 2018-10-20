@@ -342,7 +342,7 @@ impl<'sess> OnDiskCache<'sess> {
             &self.prev_diagnostics_index,
             "diagnostics");
 
-        diagnostics.unwrap_or(Vec::new())
+        diagnostics.unwrap_or_default()
     }
 
     /// Store a diagnostic emitted during the current compilation session.

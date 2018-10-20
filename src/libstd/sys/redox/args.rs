@@ -85,7 +85,7 @@ mod imp {
     }
 
     pub fn args() -> Args {
-        let bytes = clone().unwrap_or(Vec::new());
+        let bytes = clone().unwrap_or_default();
         let v: Vec<OsString> = bytes.into_iter().map(|v| {
             OsStringExt::from_vec(v)
         }).collect();

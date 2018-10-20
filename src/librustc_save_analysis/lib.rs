@@ -367,7 +367,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                                 .as_ref()
                                 .and_then(|t| self.lookup_ref_id(t.ref_id))
                                 .map(id_from_def_id)
-                                .unwrap_or(null_id()),
+                                .unwrap_or_else(|| null_id()),
                         },
                         Impl {
                             id: impl_id,
@@ -632,7 +632,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     ref_id: def_id
                         .or(decl_id)
                         .map(|id| id_from_def_id(id))
-                        .unwrap_or(null_id()),
+                        .unwrap_or_else(|| null_id()),
                 }))
             }
             ast::ExprKind::Path(_, ref path) => {

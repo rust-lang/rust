@@ -163,7 +163,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     .to_fingerprint()
                     .as_value(),
             },
-            crate_root: crate_root.unwrap_or("<no source>".to_owned()),
+            crate_root: crate_root.unwrap_or_else(|| "<no source>".to_owned()),
             external_crates: self.save_ctxt.get_external_crates(),
             span: self.span_from_span(krate.span),
         };
@@ -650,7 +650,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         .iter()
                         .enumerate()
                         .map(|(i, f)| {
-                            f.ident.map(|i| i.to_string()).unwrap_or(i.to_string())
+                            f.ident.map(|i| i.to_string()).unwrap_or_else(|| i.to_string())
                         })
                         .collect::<Vec<_>>()
                         .join(", ");
@@ -1030,7 +1030,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                         .tables
                         .node_id_to_type_opt(hir_id)
                         .map(|t| t.to_string())
-                        .unwrap_or(String::new());
+                        .unwrap_or_default();
                     value.push_str(": ");
                     value.push_str(&typ);
 
@@ -1737,7 +1737,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> Visitor<'l> for DumpVisitor<'l, 'tc
         let value = l.init
             .as_ref()
             .map(|i| self.span.snippet(i.span))
-            .unwrap_or(String::new());
+            .unwrap_or_default();
         self.process_var_decl(&l.pat, value);
 
         // Just walk the initialiser and type (don't want to walk the pattern again).

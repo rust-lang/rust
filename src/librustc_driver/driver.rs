@@ -882,7 +882,7 @@ where
         )
     });
 
-    let mut registry = registry.unwrap_or(Registry::new(sess, krate.span));
+    let mut registry = registry.unwrap_or_else(|| Registry::new(sess, krate.span));
 
     time(sess, "plugin registration", || {
         if sess.features_untracked().rustc_diagnostic_macros {

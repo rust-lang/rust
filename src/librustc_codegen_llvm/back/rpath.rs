@@ -109,7 +109,7 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig, lib: &Path) -> String 
     };
 
     let cwd = env::current_dir().unwrap();
-    let mut lib = fs::canonicalize(&cwd.join(lib)).unwrap_or(cwd.join(lib));
+    let mut lib = fs::canonicalize(&cwd.join(lib)).unwrap_or_else(|_| cwd.join(lib));
     lib.pop();
     let mut output = cwd.join(&config.out_filename);
     output.pop();

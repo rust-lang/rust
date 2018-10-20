@@ -847,7 +847,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     fn resolve_import(&mut self, directive: &'b ImportDirective<'b>) -> bool {
         debug!("(resolving import for module) resolving import `{}::...` in `{}`",
                names_to_string(&directive.module_path[..]),
-               module_to_string(self.current_module).unwrap_or("???".to_string()));
+               module_to_string(self.current_module).unwrap_or_else(|| "???".to_string()));
 
         self.current_module = directive.parent;
 

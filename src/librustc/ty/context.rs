@@ -551,7 +551,7 @@ impl<'tcx> TypeckTables<'tcx> {
 
     pub fn node_substs(&self, id: hir::HirId) -> &'tcx Substs<'tcx> {
         validate_hir_id_for_typeck_tables(self.local_id_root, id, false);
-        self.node_substs.get(&id.local_id).cloned().unwrap_or(Substs::empty())
+        self.node_substs.get(&id.local_id).cloned().unwrap_or_else(|| Substs::empty())
     }
 
     pub fn node_substs_opt(&self, id: hir::HirId) -> Option<&'tcx Substs<'tcx>> {

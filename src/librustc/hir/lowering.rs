@@ -1598,7 +1598,7 @@ impl<'a> LoweringContext<'a> {
 
         let resolution = self.resolver
             .get_resolution(id)
-            .unwrap_or(PathResolution::new(Def::Err));
+            .unwrap_or_else(|| PathResolution::new(Def::Err));
 
         let proj_start = p.segments.len() - resolution.unresolved_segments();
         let path = P(hir::Path {

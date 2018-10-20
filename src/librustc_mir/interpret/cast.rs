@@ -245,7 +245,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         match dest_ty.sty {
             // float -> uint
             Uint(t) => {
-                let width = t.bit_width().unwrap_or(self.pointer_size().bits() as usize);
+                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits() as usize);
                 let v = match fty {
                     FloatTy::F32 => Single::from_bits(bits).to_u128(width).value,
                     FloatTy::F64 => Double::from_bits(bits).to_u128(width).value,
@@ -255,7 +255,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             },
             // float -> int
             Int(t) => {
-                let width = t.bit_width().unwrap_or(self.pointer_size().bits() as usize);
+                let width = t.bit_width().unwrap_or_else(|| self.pointer_size().bits() as usize);
                 let v = match fty {
                     FloatTy::F32 => Single::from_bits(bits).to_i128(width).value,
                     FloatTy::F64 => Double::from_bits(bits).to_i128(width).value,

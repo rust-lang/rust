@@ -96,7 +96,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 span,
                 desired_action.as_noun(),
                 &self.describe_place_with_options(moved_place, IncludingDowncast(true))
-                    .unwrap_or("_".to_owned()),
+                    .unwrap_or_else(|| "_".to_owned()),
                 Origin::Mir,
             );
             err.span_label(span, format!("use of possibly uninitialized {}", item_msg));
@@ -260,7 +260,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let mut err = tcx.cannot_move_when_borrowed(
             span,
-            &self.describe_place(place).unwrap_or("_".to_owned()),
+            &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
             Origin::Mir,
         );
         err.span_label(borrow_span, format!("borrow of {} occurs here", borrow_msg));
@@ -299,16 +299,16 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let mut err = tcx.cannot_use_when_mutably_borrowed(
             span,
-            &self.describe_place(place).unwrap_or("_".to_owned()),
+            &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
             borrow_span,
             &self.describe_place(&borrow.borrowed_place)
-                .unwrap_or("_".to_owned()),
+                .unwrap_or_else(|| "_".to_owned()),
             Origin::Mir,
         );
 
         borrow_spans.var_span_label(&mut err, {
             let place = &borrow.borrowed_place;
-            let desc_place = self.describe_place(place).unwrap_or("_".to_owned());
+            let desc_place = self.describe_place(place).unwrap_or_else(|| "_".to_owned());
 
             format!("borrow occurs due to use of `{}`{}", desc_place, borrow_spans.describe())
         });
@@ -337,7 +337,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             "closure"
         };
 
-        let desc_place = self.describe_place(place).unwrap_or("_".to_owned());
+        let desc_place = self.describe_place(place).unwrap_or_else(|| "_".to_owned());
         let tcx = self.infcx.tcx;
 
         let first_borrow_desc;
@@ -490,7 +490,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
         } else {
             let borrow_place = &issued_borrow.borrowed_place;
-            let borrow_place_desc = self.describe_place(borrow_place).unwrap_or("_".to_owned());
+            let borrow_place_desc = self.describe_place(borrow_place)
+                                        .unwrap_or_else(|| "_".to_owned());
             issued_spans.var_span_label(
                 &mut err,
                 format!(
@@ -943,7 +944,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             tcx.cannot_mutate_in_match_guard(
                 span,
                 loan_span,
-                &self.describe_place(place).unwrap_or("_".to_owned()),
+                &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
                 "assign",
                 Origin::Mir,
             )
@@ -951,7 +952,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             tcx.cannot_assign_to_borrowed(
                 span,
                 loan_span,
-                &self.describe_place(place).unwrap_or("_".to_owned()),
+                &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
                 Origin::Mir,
             )
         };

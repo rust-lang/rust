@@ -937,7 +937,8 @@ impl SourceMap {
                 } else {
                     format!("{}<", &snippet[..offset])
                 };
-                new_snippet.push_str(&self.span_to_snippet(span).unwrap_or("T".to_string()));
+                new_snippet.push_str(
+                    &self.span_to_snippet(span).unwrap_or_else(|_| "T".to_string()));
                 new_snippet.push('>');
 
                 return Some((sugg_span, new_snippet));

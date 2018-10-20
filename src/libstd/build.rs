@@ -97,8 +97,8 @@ fn build_libbacktrace(target: &str) -> Result<(), ()> {
         .file("../libbacktrace/sort.c")
         .file("../libbacktrace/state.c");
 
-    let any_debug = env::var("RUSTC_DEBUGINFO").unwrap_or(String::new()) == "true" ||
-        env::var("RUSTC_DEBUGINFO_LINES").unwrap_or(String::new()) == "true";
+    let any_debug = env::var("RUSTC_DEBUGINFO").unwrap_or_default() == "true" ||
+        env::var("RUSTC_DEBUGINFO_LINES").unwrap_or_default() == "true";
     build.debug(any_debug);
 
     if target.contains("darwin") {

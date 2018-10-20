@@ -482,7 +482,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             source_info: terminator.source_info
         };
 
-        let unwind = unwind.unwrap_or(self.patch.resume_block());
+        let unwind = unwind.unwrap_or_else(|| self.patch.resume_block());
         let unwind = self.patch.new_block(BasicBlockData {
             statements: vec![assign.clone()],
             terminator: Some(Terminator {

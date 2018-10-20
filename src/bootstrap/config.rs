@@ -430,7 +430,7 @@ impl Config {
             }
         }).unwrap_or_else(|| TomlConfig::default());
 
-        let build = toml.build.clone().unwrap_or(Build::default());
+        let build = toml.build.clone().unwrap_or_default();
         // set by bootstrap.py
         config.hosts.push(config.build.clone());
         for host in build.host.iter() {
@@ -524,7 +524,7 @@ impl Config {
             set(&mut config.llvm_link_shared, llvm.link_shared);
             config.llvm_targets = llvm.targets.clone();
             config.llvm_experimental_targets = llvm.experimental_targets.clone()
-                .unwrap_or("WebAssembly;RISCV".to_string());
+                .unwrap_or_else(|| "WebAssembly;RISCV".to_string());
             config.llvm_link_jobs = llvm.link_jobs;
             config.llvm_version_suffix = llvm.version_suffix.clone();
             config.llvm_clang_cl = llvm.clang_cl.clone();
