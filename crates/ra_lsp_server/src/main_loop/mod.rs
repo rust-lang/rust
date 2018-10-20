@@ -248,6 +248,9 @@ fn on_request(
         .on::<req::CodeActionRequest>(handlers::handle_code_action)?
         .on::<req::FoldingRangeRequest>(handlers::handle_folding_range)?
         .on::<req::SignatureHelpRequest>(handlers::handle_signature_help)?
+        .on::<req::PrepareRenameRequest>(handlers::handle_prepare_rename)?
+        .on::<req::Rename>(handlers::handle_rename)?
+        .on::<req::References>(handlers::handle_references)?
         .finish();
     match req {
         Ok((id, handle)) => {

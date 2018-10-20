@@ -217,6 +217,9 @@ impl Analysis {
         self.imp
             .approximately_resolve_symbol(file_id, offset, token)
     }
+    pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit, token: &JobToken) -> Vec<(FileId, TextRange)> {
+        self.imp.find_all_refs(file_id, offset, token)
+    }
     pub fn parent_module(&self, file_id: FileId) -> Vec<(FileId, FileSymbol)> {
         self.imp.parent_module(file_id)
     }

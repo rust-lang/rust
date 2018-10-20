@@ -270,7 +270,6 @@ pub fn resolve_local_name<'a>(
         .filter(|entry| shadowed.insert(entry.name()))
         .filter(|entry| entry.name() == name_ref.text())
         .nth(0);
-    eprintln!("ret = {:?}", ret);
     ret
 }
 

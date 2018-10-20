@@ -7,7 +7,7 @@ pub use languageserver_types::{
     CompletionResponse, DocumentOnTypeFormattingParams, DocumentSymbolParams,
     DocumentSymbolResponse, ExecuteCommandParams, Hover, InitializeResult,
     PublishDiagnosticsParams, SignatureHelp, TextDocumentEdit, TextDocumentPositionParams,
-    TextEdit, WorkspaceSymbolParams,
+    TextEdit, WorkspaceSymbolParams, ReferenceParams,
 };
 
 pub enum SyntaxTree {}
