@@ -1,0 +1,8 @@
+error: expected `,`
+  --> $DIR/bind-struct-early-modifiers.rs:16:19
+   |
+LL |         Foo { ref x: ref x } => {}, //~ ERROR expected `,`
+   |                   ^
+
+error: aborting due to previous error
+

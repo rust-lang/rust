@@ -1,0 +1,8 @@
+error: unexpected lifetime `'a` in pattern
+  --> $DIR/lifetime-in-pattern.rs:11:10
+   |
+LL | fn test(&'a str) {
+   |          ^^ unexpected lifetime
+
+error: aborting due to previous error
+

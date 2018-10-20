@@ -1,0 +1,8 @@
+error: expected one of `<`, `where`, or `{`, found `=`
+  --> $DIR/removed-syntax-enum-newtype.rs:13:8
+   |
+LL | enum e = isize; //~ ERROR expected one of `<`, `where`, or `{`, found `=`
+   |        ^ expected one of `<`, `where`, or `{` here
+
+error: aborting due to previous error
+

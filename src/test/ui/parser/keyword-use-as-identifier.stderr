@@ -1,0 +1,8 @@
+error: expected pattern, found keyword `use`
+  --> $DIR/keyword-use-as-identifier.rs:16:9
+   |
+LL |     let use = "foo"; //~ error: expected pattern, found keyword `use`
+   |         ^^^ expected pattern
+
+error: aborting due to previous error
+

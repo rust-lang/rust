@@ -1,0 +1,8 @@
+error: expected expression, found `%`
+  --> $DIR/multiline-comment-line-tracking.rs:18:3
+   |
+LL |   %; // parse error on line 18, but is reported on line 6 instead.
+   |   ^ expected expression
+
+error: aborting due to previous error
+

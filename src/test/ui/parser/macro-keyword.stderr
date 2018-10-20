@@ -1,0 +1,8 @@
+error: expected identifier, found reserved keyword `macro`
+  --> $DIR/macro-keyword.rs:13:4
+   |
+LL | fn macro() {  //~ ERROR expected identifier, found reserved keyword `macro`
+   |    ^^^^^ expected identifier, found reserved keyword
+
+error: aborting due to previous error
+

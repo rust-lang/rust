@@ -1,0 +1,8 @@
+error: expected identifier, found keyword `break`
+  --> $DIR/keyword.rs:13:9
+   |
+LL | pub mod break {
+   |         ^^^^^ expected identifier, found keyword
+
+error: aborting due to previous error
+

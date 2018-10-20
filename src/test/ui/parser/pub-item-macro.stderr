@@ -1,0 +1,13 @@
+error: can't qualify macro invocation with `pub`
+  --> $DIR/pub-item-macro.rs:18:5
+   |
+LL |     pub priv_x!(); //~ ERROR can't qualify macro invocation with `pub`
+   |     ^^^
+...
+LL |     pub_x!();
+   |     --------- in this macro invocation
+   |
+   = help: try adjusting the macro to put `pub` inside the invocation
+
+error: aborting due to previous error
+

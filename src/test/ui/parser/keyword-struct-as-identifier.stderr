@@ -1,0 +1,8 @@
+error: expected pattern, found keyword `struct`
+  --> $DIR/keyword-struct-as-identifier.rs:16:9
+   |
+LL |     let struct = "foo"; //~ error: expected pattern, found keyword `struct`
+   |         ^^^^^^ expected pattern
+
+error: aborting due to previous error
+

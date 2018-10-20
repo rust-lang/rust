@@ -1,0 +1,8 @@
+error: expected item, found `virtual`
+  --> $DIR/virtual-structs.rs:15:1
+   |
+LL | virtual struct SuperStruct { //~ ERROR expected item, found `virtual`
+   | ^^^^^^^ expected item
+
+error: aborting due to previous error
+

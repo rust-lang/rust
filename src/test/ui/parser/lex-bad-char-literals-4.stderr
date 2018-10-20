@@ -1,0 +1,8 @@
+error: character literal may only contain one codepoint: '●
+  --> $DIR/lex-bad-char-literals-4.rs:15:5
+   |
+LL |     '●  //~ ERROR: character literal may only contain one codepoint: '●
+   |     ^^
+
+error: aborting due to previous error
+

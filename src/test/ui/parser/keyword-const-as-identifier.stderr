@@ -1,0 +1,8 @@
+error: expected pattern, found keyword `const`
+  --> $DIR/keyword-const-as-identifier.rs:16:9
+   |
+LL |     let const = "foo"; //~ error: expected pattern, found keyword `const`
+   |         ^^^^^ expected pattern
+
+error: aborting due to previous error
+

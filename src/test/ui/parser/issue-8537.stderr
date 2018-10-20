@@ -1,0 +1,11 @@
+error[E0703]: invalid ABI: found `invalid-ab_isize`
+  --> $DIR/issue-8537.rs:14:3
+   |
+LL |   "invalid-ab_isize" //~ ERROR invalid ABI
+   |   ^^^^^^^^^^^^^^^^^^ invalid ABI
+   |
+   = help: valid ABIs: cdecl, stdcall, fastcall, vectorcall, thiscall, aapcs, win64, sysv64, ptx-kernel, msp430-interrupt, x86-interrupt, amdgpu-kernel, Rust, C, system, rust-intrinsic, rust-call, platform-intrinsic, unadjusted
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0703`.

@@ -1,0 +1,8 @@
+error: expected one of `!` or `::`, found `<eof>`
+  --> $DIR/trait-plusequal-splitting.rs:20:1
+   |
+LL | FAIL //~ ERROR
+   | ^^^^ expected one of `!` or `::` here
+
+error: aborting due to previous error
+

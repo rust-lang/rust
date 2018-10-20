@@ -1,0 +1,14 @@
+error: expected identifier, found keyword `let`
+  --> $DIR/removed-syntax-field-let.rs:14:5
+   |
+LL |     let foo: (),
+   |     ^^^ expected identifier, found keyword
+
+error: expected `:`, found `foo`
+  --> $DIR/removed-syntax-field-let.rs:14:9
+   |
+LL |     let foo: (),
+   |         ^^^ expected `:`
+
+error: aborting due to 2 previous errors
+

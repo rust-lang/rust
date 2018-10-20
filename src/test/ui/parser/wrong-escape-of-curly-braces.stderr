@@ -1,0 +1,31 @@
+error: unknown character escape: {
+  --> $DIR/wrong-escape-of-curly-braces.rs:13:17
+   |
+LL |     let bad = "/{it is wrong/}";
+   |                 ^
+   |
+help: if used in a formatting string, curly braces are escaped with `{{` and `}}`
+  --> $DIR/wrong-escape-of-curly-braces.rs:13:17
+   |
+LL |     let bad = "/{it is wrong/}";
+   |                 ^
+
+error: unknown character escape: }
+  --> $DIR/wrong-escape-of-curly-braces.rs:13:30
+   |
+LL |     let bad = "/{it is wrong/}";
+   |                              ^
+   |
+help: if used in a formatting string, curly braces are escaped with `{{` and `}}`
+  --> $DIR/wrong-escape-of-curly-braces.rs:13:30
+   |
+LL |     let bad = "/{it is wrong/}";
+   |                              ^
+
+error[E0601]: `main` function not found in crate `wrong_escape_of_curly_braces`
+   |
+   = note: consider adding a `main` function to `$DIR/wrong-escape-of-curly-braces.rs`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

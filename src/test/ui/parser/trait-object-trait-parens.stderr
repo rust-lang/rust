@@ -1,0 +1,8 @@
+error: expected one of `!` or `::`, found `<eof>`
+  --> $DIR/trait-object-trait-parens.rs:21:1
+   |
+LL | FAIL //~ ERROR
+   | ^^^^ expected one of `!` or `::` here
+
+error: aborting due to previous error
+

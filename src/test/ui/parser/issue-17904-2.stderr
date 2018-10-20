@@ -1,0 +1,8 @@
+error: expected item, found `where`
+  --> $DIR/issue-17904-2.rs:13:24
+   |
+LL | struct Bar<T> { x: T } where T: Copy //~ ERROR expected item, found `where`
+   |                        ^^^^^ expected item
+
+error: aborting due to previous error
+

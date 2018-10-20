@@ -1,0 +1,8 @@
+error: expected one of `,` or `@`, found `..`
+  --> $DIR/match-vec-invalid.rs:16:25
+   |
+LL |         [1, tail.., tail..] => {}, //~ ERROR: expected one of `,` or `@`, found `..`
+   |                         ^^ expected one of `,` or `@` here
+
+error: aborting due to previous error
+

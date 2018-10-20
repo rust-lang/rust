@@ -1,0 +1,8 @@
+error: expected pattern, found keyword `pub`
+  --> $DIR/keyword-pub-as-identifier.rs:16:9
+   |
+LL |     let pub = "foo"; //~ error: expected pattern, found keyword `pub`
+   |         ^^^ expected pattern
+
+error: aborting due to previous error
+

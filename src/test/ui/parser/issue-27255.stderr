@@ -1,0 +1,8 @@
+error: missing `for` in a trait impl
+  --> $DIR/issue-27255.rs:13:7
+   |
+LL | impl A .. {} //~ ERROR
+   |       ^
+
+error: aborting due to previous error
+

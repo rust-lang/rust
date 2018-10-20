@@ -1,0 +1,12 @@
+error: character literal may only contain one codepoint
+  --> $DIR/lex-bad-char-literals-3.rs:15:5
+   |
+LL |     '●●' //~ ERROR: character literal may only contain one codepoint
+   |     ^^^^
+help: if you meant to write a `str` literal, use double quotes
+   |
+LL |     "●●" //~ ERROR: character literal may only contain one codepoint
+   |     ^^^^
+
+error: aborting due to previous error
+

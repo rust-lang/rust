@@ -1,0 +1,8 @@
+error: expected pattern, found keyword `as`
+  --> $DIR/keyword-as-as-identifier.rs:16:9
+   |
+LL |     let as = "foo"; //~ error: expected pattern, found keyword `as`
+   |         ^^ expected pattern
+
+error: aborting due to previous error
+

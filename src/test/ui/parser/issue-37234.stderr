@@ -1,0 +1,11 @@
+error: expected one of `.`, `;`, `?`, or an operator, found `""`
+  --> $DIR/issue-37234.rs:13:19
+   |
+LL |         let x = 5 ""; //~ ERROR found `""`
+   |                   ^^ expected one of `.`, `;`, `?`, or an operator here
+...
+LL |     failed!();
+   |     ---------- in this macro invocation
+
+error: aborting due to previous error
+
