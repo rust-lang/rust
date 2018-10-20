@@ -539,9 +539,9 @@ pub fn run_core(search_paths: SearchPaths,
                 lt_substs: Default::default(),
                 impl_trait_bounds: Default::default(),
                 send_trait: send_trait,
-                fake_def_ids: RefCell::new(FxHashMap()),
-                all_fake_def_ids: RefCell::new(FxHashSet()),
-                generated_synthetics: RefCell::new(FxHashSet()),
+                fake_def_ids: Default::default(),
+                all_fake_def_ids: Default::default(),
+                generated_synthetics: Default::default(),
                 all_traits: tcx.all_traits(LOCAL_CRATE).to_vec(),
             };
             debug!("crate: {:?}", tcx.hir.krate());

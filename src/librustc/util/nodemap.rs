@@ -22,9 +22,9 @@ pub use rustc_data_structures::fx::FxHashSet;
 macro_rules! define_id_collections {
     ($map_name:ident, $set_name:ident, $key:ty) => {
         pub type $map_name<T> = FxHashMap<$key, T>;
-        pub fn $map_name<T>() -> $map_name<T> { FxHashMap() }
+        pub fn $map_name<T>() -> $map_name<T> { Default::default() }
         pub type $set_name = FxHashSet<$key>;
-        pub fn $set_name() -> $set_name { FxHashSet() }
+        pub fn $set_name() -> $set_name { Default::default() }
     }
 }
 

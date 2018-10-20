@@ -155,7 +155,7 @@ impl<'a, 'v, 'tcx> ItemLikeVisitor<'v> for LanguageItemCollector<'a, 'tcx> {
 
 impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> LanguageItemCollector<'a, 'tcx> {
-        let mut item_refs = FxHashMap();
+        let mut item_refs = FxHashMap::default();
 
         $( item_refs.insert($name, ($variant as usize, $target)); )*
 

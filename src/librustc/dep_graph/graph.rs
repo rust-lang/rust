@@ -101,11 +101,11 @@ impl DepGraph {
         DepGraph {
             data: Some(Lrc::new(DepGraphData {
                 previous_work_products: prev_work_products,
-                dep_node_debug: Lock::new(FxHashMap()),
+                dep_node_debug: Lock::new(Default::default()),
                 current: Lock::new(CurrentDepGraph::new()),
                 previous: prev_graph,
                 colors: Lock::new(DepNodeColorMap::new(prev_graph_node_count)),
-                loaded_from_cache: Lock::new(FxHashMap()),
+                loaded_from_cache: Lock::new(Default::default()),
             })),
             fingerprints: Lrc::new(Lock::new(fingerprints)),
         }
@@ -209,7 +209,7 @@ impl DepGraph {
             |key| OpenTask::Regular(Lock::new(RegularOpenTask {
                 node: key,
                 reads: SmallVec::new(),
-                read_set: FxHashSet(),
+                read_set: Default::default(),
             })),
             |data, key, task| data.borrow_mut().complete_task(key, task))
     }
@@ -353,7 +353,7 @@ impl DepGraph {
             let (result, open_task) = ty::tls::with_context(|icx| {
                 let task = OpenTask::Anon(Lock::new(AnonOpenTask {
                     reads: SmallVec::new(),
-                    read_set: FxHashSet(),
+                    read_set: Default::default(),
                 }));
 
                 let r = {
@@ -937,7 +937,7 @@ impl CurrentDepGraph {
         CurrentDepGraph {
             nodes: IndexVec::new(),
             edges: IndexVec::new(),
-            node_to_node_index: FxHashMap(),
+            node_to_node_index: Default::default(),
             anon_id_seed: stable_hasher.finish(),
             forbidden_edge,
             total_read_count: 0,

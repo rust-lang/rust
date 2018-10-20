@@ -11,7 +11,6 @@
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 use rustc::mir::tcx::RvalueInitializationState;
-use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
 
 use std::collections::hash_map::Entry;
@@ -53,7 +52,7 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
                             v,
                         )
                     }).collect(),
-                    projections: FxHashMap(),
+                    projections: Default::default(),
                 },
                 move_paths,
                 path_map,

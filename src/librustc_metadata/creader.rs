@@ -1133,7 +1133,7 @@ impl<'a> CrateLoader<'a> {
                         path_len,
                         direct: true,
                     },
-                    &mut FxHashSet(),
+                    &mut FxHashSet::default(),
                 );
                 self.cstore.add_extern_mod_stmt_cnum(item.id, cnum);
                 cnum
@@ -1160,7 +1160,7 @@ impl<'a> CrateLoader<'a> {
                 path_len: usize::max_value(),
                 direct: true,
             },
-            &mut FxHashSet(),
+            &mut FxHashSet::default(),
         );
 
         cnum
@@ -1184,7 +1184,7 @@ impl<'a> CrateLoader<'a> {
                 path_len: usize::max_value(),
                 direct: true,
             },
-            &mut FxHashSet(),
+            &mut FxHashSet::default(),
         );
 
         Some(cnum)

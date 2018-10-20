@@ -55,7 +55,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         // these maps are empty to start; cases are
                         // added below in add_cases_to_switch
                         options: vec![],
-                        indices: FxHashMap(),
+                        indices: Default::default(),
                     }
                 }
             }

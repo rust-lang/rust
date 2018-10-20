@@ -62,7 +62,7 @@ impl<'a, 'gcx, 'tcx> TypeFreshener<'a, 'gcx, 'tcx> {
         TypeFreshener {
             infcx,
             freshen_count: 0,
-            freshen_map: FxHashMap(),
+            freshen_map: Default::default(),
         }
     }
 

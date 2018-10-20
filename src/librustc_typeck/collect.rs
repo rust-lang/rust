@@ -561,7 +561,7 @@ fn convert_variant<'a, 'tcx>(
     adt_kind: ty::AdtKind,
     attribute_def_id: DefId
 ) -> ty::VariantDef {
-    let mut seen_fields: FxHashMap<ast::Ident, Span> = FxHashMap();
+    let mut seen_fields: FxHashMap<ast::Ident, Span> = Default::default();
     let node_id = tcx.hir.as_local_node_id(did).unwrap();
     let fields = def
         .fields()

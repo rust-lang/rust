@@ -382,9 +382,9 @@ impl Handler {
             emitter: Lock::new(e),
             continue_after_error: LockCell::new(true),
             delayed_span_bugs: Lock::new(Vec::new()),
-            taught_diagnostics: Lock::new(FxHashSet()),
-            emitted_diagnostic_codes: Lock::new(FxHashSet()),
-            emitted_diagnostics: Lock::new(FxHashSet()),
+            taught_diagnostics: Default::default(),
+            emitted_diagnostic_codes: Default::default(),
+            emitted_diagnostics: Default::default(),
         }
     }
 
@@ -398,7 +398,8 @@ impl Handler {
     /// tools that want to reuse a `Parser` cleaning the previously emitted diagnostics as well as
     /// the overall count of emitted error diagnostics.
     pub fn reset_err_count(&self) {
-        *self.emitted_diagnostics.borrow_mut() = FxHashSet();
+        // actually frees the underlying memory (which `clear` would not do)
+        *self.emitted_diagnostics.borrow_mut() = Default::default();
         self.err_count.store(0, SeqCst);
     }
 

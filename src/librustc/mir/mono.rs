@@ -121,7 +121,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     pub fn new(name: InternedString) -> CodegenUnit<'tcx> {
         CodegenUnit {
             name: name,
-            items: FxHashMap(),
+            items: Default::default(),
             size_estimate: None,
         }
     }
@@ -251,7 +251,7 @@ impl<'a, 'gcx: 'tcx, 'tcx: 'a> CodegenUnitNameBuilder<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Self {
         CodegenUnitNameBuilder {
             tcx,
-            cache: FxHashMap(),
+            cache: Default::default(),
         }
     }
 

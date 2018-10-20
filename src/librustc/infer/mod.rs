@@ -478,7 +478,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
     pub fn infer_ctxt(self) -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         InferCtxtBuilder {
             global_tcx: self,
-            arena: SyncDroplessArena::new(),
+            arena: SyncDroplessArena::default(),
             fresh_tables: None,
         }
     }
@@ -526,15 +526,15 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             f(InferCtxt {
                 tcx,
                 in_progress_tables,
-                projection_cache: RefCell::new(traits::ProjectionCache::new()),
+                projection_cache: Default::default(),
                 type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
                 int_unification_table: RefCell::new(ut::UnificationTable::new()),
                 float_unification_table: RefCell::new(ut::UnificationTable::new()),
                 region_constraints: RefCell::new(Some(RegionConstraintCollector::new())),
                 lexical_region_resolutions: RefCell::new(None),
-                selection_cache: traits::SelectionCache::new(),
-                evaluation_cache: traits::EvaluationCache::new(),
-                reported_trait_errors: RefCell::new(FxHashMap()),
+                selection_cache: Default::default(),
+                evaluation_cache: Default::default(),
+                reported_trait_errors: Default::default(),
                 tainted_by_errors_flag: Cell::new(false),
                 err_count_on_creation: tcx.sess.err_count(),
                 in_snapshot: Cell::new(false),

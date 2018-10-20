@@ -502,7 +502,7 @@ fn thin_lto(cgcx: &CodegenContext,
             // If we don't compile incrementally, we don't need to load the
             // import data from LLVM.
             assert!(green_modules.is_empty());
-            ThinLTOImports::new()
+            ThinLTOImports::default()
         };
         info!("thin LTO import map loaded");
         timeline.record("import-map-loaded");
@@ -873,19 +873,13 @@ impl ThinModule {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ThinLTOImports {
     // key = llvm name of importing module, value = list of modules it imports from
     imports: FxHashMap<String, Vec<String>>,
 }
 
 impl ThinLTOImports {
-    fn new() -> ThinLTOImports {
-        ThinLTOImports {
-            imports: FxHashMap(),
-        }
-    }
-
     fn modules_imported_by(&self, llvm_module_name: &str) -> &[String] {
         self.imports.get(llvm_module_name).map(|v| &v[..]).unwrap_or(&[])
     }
@@ -910,9 +904,7 @@ impl ThinLTOImports {
                .unwrap()
                .push(imported_module_name.to_owned());
         }
-        let mut map = ThinLTOImports {
-            imports: FxHashMap(),
-        };
+        let mut map = ThinLTOImports::default();
         llvm::LLVMRustGetThinLTOModuleImports(data,
                                               imported_module_callback,
                                               &mut map as *mut _ as *mut libc::c_void);

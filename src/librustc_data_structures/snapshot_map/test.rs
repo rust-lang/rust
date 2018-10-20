@@ -12,7 +12,7 @@ use super::SnapshotMap;
 
 #[test]
 fn basic() {
-    let mut map = SnapshotMap::new();
+    let mut map = SnapshotMap::default();
     map.insert(22, "twenty-two");
     let snapshot = map.snapshot();
     map.insert(22, "thirty-three");
@@ -29,7 +29,7 @@ fn basic() {
 #[test]
 #[should_panic]
 fn out_of_order() {
-    let mut map = SnapshotMap::new();
+    let mut map = SnapshotMap::default();
     map.insert(22, "twenty-two");
     let snapshot1 = map.snapshot();
     let _snapshot2 = map.snapshot();
@@ -38,7 +38,7 @@ fn out_of_order() {
 
 #[test]
 fn nested_commit_then_rollback() {
-    let mut map = SnapshotMap::new();
+    let mut map = SnapshotMap::default();
     map.insert(22, "twenty-two");
     let snapshot1 = map.snapshot();
     let snapshot2 = map.snapshot();

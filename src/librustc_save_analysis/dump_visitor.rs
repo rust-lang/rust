@@ -110,7 +110,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             span: span_utils.clone(),
             cur_scope: CRATE_NODE_ID,
             // mac_defs: FxHashSet::default(),
-            macro_calls: FxHashSet(),
+            macro_calls: FxHashSet::default(),
         }
     }
 
@@ -176,7 +176,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         // (and don't include remapping args anymore)
         let (program, arguments) = {
             let remap_arg_indices = {
-                let mut indices = FxHashSet();
+                let mut indices = FxHashSet::default();
                 // Args are guaranteed to be valid UTF-8 (checked early)
                 for (i, e) in env::args().enumerate() {
                     if e.starts_with("--remap-path-prefix=") {

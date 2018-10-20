@@ -124,6 +124,7 @@ impl StableFilemapId {
 // SourceMap
 //
 
+#[derive(Default)]
 pub(super) struct SourceMapFiles {
     pub(super) file_maps: Vec<Lrc<SourceFile>>,
     stable_id_to_source_file: FxHashMap<StableFilemapId, Lrc<SourceFile>>
@@ -143,10 +144,7 @@ pub struct SourceMap {
 impl SourceMap {
     pub fn new(path_mapping: FilePathMapping) -> SourceMap {
         SourceMap {
-            files: Lock::new(SourceMapFiles {
-                file_maps: Vec::new(),
-                stable_id_to_source_file: FxHashMap(),
-            }),
+            files: Default::default(),
             file_loader: Box::new(RealFileLoader),
             path_mapping,
             doctest_offset: None,
@@ -166,10 +164,7 @@ impl SourceMap {
                             path_mapping: FilePathMapping)
                             -> SourceMap {
         SourceMap {
-            files: Lock::new(SourceMapFiles {
-                file_maps: Vec::new(),
-                stable_id_to_source_file: FxHashMap(),
-            }),
+            files: Default::default(),
             file_loader: file_loader,
             path_mapping,
             doctest_offset: None,

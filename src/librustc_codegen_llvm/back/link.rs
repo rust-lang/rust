@@ -1313,7 +1313,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
     // for the current implementation of the standard library.
     let mut group_end = None;
     let mut group_start = None;
-    let mut end_with = FxHashSet();
+    let mut end_with = FxHashSet::default();
     let info = &codegen_results.crate_info;
     for &(cnum, _) in deps.iter().rev() {
         if let Some(missing) = info.missing_lang_items.get(&cnum) {

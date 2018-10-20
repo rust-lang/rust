@@ -51,7 +51,7 @@ impl<'a, 'hir: 'a> OuterVisitor<'a, 'hir> {
         HirIdValidator {
             hir_map,
             owner_def_index: None,
-            hir_ids_seen: FxHashMap(),
+            hir_ids_seen: Default::default(),
             errors: Vec::new(),
         }
     }

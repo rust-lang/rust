@@ -32,7 +32,7 @@ for &'gcx ty::List<T>
                                           hasher: &mut StableHasher<W>) {
         thread_local! {
             static CACHE: RefCell<FxHashMap<(usize, usize), Fingerprint>> =
-                RefCell::new(FxHashMap());
+                RefCell::new(Default::default());
         }
 
         let hash = CACHE.with(|cache| {

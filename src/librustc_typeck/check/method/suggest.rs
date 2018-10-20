@@ -750,7 +750,7 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
         });
 
         // Cross-crate:
-        let mut external_mods = FxHashSet();
+        let mut external_mods = FxHashSet::default();
         fn handle_external_def(tcx: TyCtxt,
                                traits: &mut Vec<DefId>,
                                external_mods: &mut FxHashSet<DefId>,

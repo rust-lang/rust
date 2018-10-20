@@ -459,7 +459,7 @@ impl<'a> Context<'a> {
         let mut candidates: FxHashMap<
             _,
             (FxHashMap<_, _>, FxHashMap<_, _>, FxHashMap<_, _>),
-        > = FxHashMap();
+        > = Default::default();
         let mut staticlibs = vec![];
 
         // First, find all possible candidate rlibs and dylibs purely based on
@@ -528,7 +528,7 @@ impl<'a> Context<'a> {
         // A Library candidate is created if the metadata for the set of
         // libraries corresponds to the crate id and hash criteria that this
         // search is being performed for.
-        let mut libraries = FxHashMap();
+        let mut libraries = FxHashMap::default();
         for (_hash, (rlibs, rmetas, dylibs)) in candidates {
             let mut slot = None;
             let rlib = self.extract_one(rlibs, CrateFlavor::Rlib, &mut slot);
@@ -771,9 +771,9 @@ impl<'a> Context<'a> {
         // rlibs/dylibs.
         let sess = self.sess;
         let dylibname = self.dylibname();
-        let mut rlibs = FxHashMap();
-        let mut rmetas = FxHashMap();
-        let mut dylibs = FxHashMap();
+        let mut rlibs = FxHashMap::default();
+        let mut rmetas = FxHashMap::default();
+        let mut dylibs = FxHashMap::default();
         {
             let locs = locs.map(|l| PathBuf::from(l)).filter(|loc| {
                 if !loc.exists() {

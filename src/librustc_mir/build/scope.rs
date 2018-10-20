@@ -358,7 +358,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             needs_cleanup: false,
             drops: vec![],
             cached_generator_drop: None,
-            cached_exits: FxHashMap(),
+            cached_exits: Default::default(),
             cached_unwind: CachedBlock::default(),
         });
     }

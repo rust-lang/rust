@@ -301,10 +301,10 @@ fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              -> PreInliningPartitioning<'tcx>
     where I: Iterator<Item = MonoItem<'tcx>>
 {
-    let mut roots = FxHashSet();
-    let mut codegen_units = FxHashMap();
+    let mut roots = FxHashSet::default();
+    let mut codegen_units = FxHashMap::default();
     let is_incremental_build = tcx.sess.opts.incremental.is_some();
-    let mut internalization_candidates = FxHashSet();
+    let mut internalization_candidates = FxHashSet::default();
 
     // Determine if monomorphizations instantiated in this crate will be made
     // available to downstream crates. This depends on whether we are in
@@ -314,7 +314,7 @@ fn place_root_mono_items<'a, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           tcx.local_crate_exports_generics();
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
-    let cgu_name_cache = &mut FxHashMap();
+    let cgu_name_cache = &mut FxHashMap::default();
 
     for mono_item in mono_items {
         match mono_item.instantiation_mode(tcx) {
@@ -602,7 +602,7 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
                                   inlining_map: &InliningMap<'tcx>)
                                   -> PostInliningPartitioning<'tcx> {
     let mut new_partitioning = Vec::new();
-    let mut mono_item_placements = FxHashMap();
+    let mut mono_item_placements = FxHashMap::default();
 
     let PreInliningPartitioning {
         codegen_units: initial_cgus,
@@ -614,7 +614,7 @@ fn place_inlined_mono_items<'tcx>(initial_partitioning: PreInliningPartitioning<
 
     for old_codegen_unit in initial_cgus {
         // Collect all items that need to be available in this codegen unit
-        let mut reachable = FxHashSet();
+        let mut reachable = FxHashSet::default();
         for root in old_codegen_unit.items().keys() {
             follow_inlining(*root, inlining_map, &mut reachable);
         }
@@ -703,7 +703,7 @@ fn internalize_symbols<'a, 'tcx>(_tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Build a map from every monomorphization to all the monomorphizations that
     // reference it.
-    let mut accessor_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>> = FxHashMap();
+    let mut accessor_map: FxHashMap<MonoItem<'tcx>, Vec<MonoItem<'tcx>>> = Default::default();
     inlining_map.iter_accesses(|accessor, accessees| {
         for accessee in accessees {
             accessor_map.entry(*accessee)

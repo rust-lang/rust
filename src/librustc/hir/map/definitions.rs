@@ -421,10 +421,10 @@ impl Definitions {
             node_to_def_index: NodeMap(),
             def_index_to_node: [vec![], vec![]],
             node_to_hir_id: IndexVec::new(),
-            parent_modules_of_macro_defs: FxHashMap(),
-            expansions_that_defined: FxHashMap(),
-            next_disambiguator: FxHashMap(),
-            def_index_to_span: FxHashMap(),
+            parent_modules_of_macro_defs: Default::default(),
+            expansions_that_defined: Default::default(),
+            next_disambiguator: Default::default(),
+            def_index_to_span: Default::default(),
         }
     }
 

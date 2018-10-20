@@ -370,7 +370,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
             // recursing every time.
             thread_local! {
                 static CACHE: RefCell<FxHashMap<hygiene::Mark, u64>> =
-                    RefCell::new(FxHashMap());
+                    RefCell::new(Default::default());
             }
 
             let sub_hash: u64 = CACHE.with(|cache| {

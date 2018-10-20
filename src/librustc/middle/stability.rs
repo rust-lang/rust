@@ -401,13 +401,13 @@ impl<'a, 'tcx> Index<'tcx> {
         let is_staged_api =
             tcx.sess.opts.debugging_opts.force_unstable_if_unmarked ||
             tcx.features().staged_api;
-        let mut staged_api = FxHashMap();
+        let mut staged_api = FxHashMap::default();
         staged_api.insert(LOCAL_CRATE, is_staged_api);
         let mut index = Index {
             staged_api,
-            stab_map: FxHashMap(),
-            depr_map: FxHashMap(),
-            active_features: FxHashSet(),
+            stab_map: Default::default(),
+            depr_map: Default::default(),
+            active_features: Default::default(),
         };
 
         let ref active_lib_features = tcx.features().declared_lib_features;
@@ -814,7 +814,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 
     let declared_lang_features = &tcx.features().declared_lang_features;
-    let mut lang_features = FxHashSet();
+    let mut lang_features = FxHashSet::default();
     for &(feature, span, since) in declared_lang_features {
         if let Some(since) = since {
             // Warn if the user has enabled an already-stable lang feature.
@@ -828,7 +828,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     }
 
     let declared_lib_features = &tcx.features().declared_lib_features;
-    let mut remaining_lib_features = FxHashMap();
+    let mut remaining_lib_features = FxHashMap::default();
     for (feature, span) in declared_lib_features {
         if remaining_lib_features.contains_key(&feature) {
             // Warn if the user enables a lib feature multiple times.

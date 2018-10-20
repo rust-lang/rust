@@ -753,7 +753,7 @@ impl LateBoundRegionsCollector {
     fn new(just_constrained: bool) -> Self {
         LateBoundRegionsCollector {
             current_index: ty::INNERMOST,
-            regions: FxHashSet(),
+            regions: Default::default(),
             just_constrained,
         }
     }

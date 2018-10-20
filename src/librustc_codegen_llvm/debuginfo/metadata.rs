@@ -96,6 +96,7 @@ pub struct UniqueTypeId(ast::Name);
 // created so far. The metadata nodes are indexed by UniqueTypeId, and, for
 // faster lookup, also by Ty. The TypeMap is responsible for creating
 // UniqueTypeIds.
+#[derive(Default)]
 pub struct TypeMap<'ll, 'tcx> {
     // The UniqueTypeIds created so far
     unique_id_interner: Interner,
@@ -108,15 +109,6 @@ pub struct TypeMap<'ll, 'tcx> {
 }
 
 impl TypeMap<'ll, 'tcx> {
-    pub fn new() -> Self {
-        TypeMap {
-            unique_id_interner: Interner::new(),
-            type_to_metadata: FxHashMap(),
-            unique_id_to_metadata: FxHashMap(),
-            type_to_unique_id: FxHashMap(),
-        }
-    }
-
     // Adds a Ty to metadata mapping to the TypeMap. The method will fail if
     // the mapping already exists.
     fn register_type_with_metadata(

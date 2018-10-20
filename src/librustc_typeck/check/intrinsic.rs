@@ -416,7 +416,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         return
                     }
 
-                    let mut structural_to_nomimal = FxHashMap();
+                    let mut structural_to_nomimal = FxHashMap::default();
 
                     let sig = tcx.fn_sig(def_id);
                     let sig = sig.no_late_bound_regions().unwrap();

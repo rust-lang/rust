@@ -113,7 +113,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn ty_inhabitedness_forest(self, ty: Ty<'tcx>) -> DefIdForest {
-        ty.uninhabited_from(&mut FxHashMap(), self)
+        ty.uninhabited_from(&mut FxHashMap::default(), self)
     }
 
     pub fn is_enum_variant_uninhabited_from(self,
@@ -140,7 +140,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let adt_kind = self.adt_def(adt_def_id).adt_kind();
 
         // Compute inhabitedness forest:
-        variant.uninhabited_from(&mut FxHashMap(), self, substs, adt_kind)
+        variant.uninhabited_from(&mut FxHashMap::default(), self, substs, adt_kind)
     }
 }
 

@@ -22,7 +22,7 @@
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashSet;
 use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
 use ty::subst::{Subst, Substs};
@@ -282,26 +282,6 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
             }
         }
     })
-}
-
-pub struct SpecializesCache {
-    map: FxHashMap<(DefId, DefId), bool>,
-}
-
-impl SpecializesCache {
-    pub fn new() -> Self {
-        SpecializesCache {
-            map: FxHashMap()
-        }
-    }
-
-    pub fn check(&self, a: DefId, b: DefId) -> Option<bool> {
-        self.map.get(&(a, b)).cloned()
-    }
-
-    pub fn insert(&mut self, a: DefId, b: DefId, result: bool) {
-        self.map.insert((a, b), result);
-    }
 }
 
 // Query provider for `specialization_graph_of`.

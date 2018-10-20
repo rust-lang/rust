@@ -28,7 +28,6 @@ use std::path::Path;
 use std::sync::{mpsc, Arc};
 
 use rustc_data_structures::owning_ref::OwningRef;
-use rustc_data_structures::sync::Lrc;
 use flate2::Compression;
 use flate2::write::DeflateEncoder;
 
@@ -42,7 +41,6 @@ use rustc::middle::cstore::EncodedMetadata;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::dep_graph::DepGraph;
 use rustc_target::spec::Target;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_mir::monomorphize::collector;
 use link::out_filename;
 
@@ -132,7 +130,7 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
         ::symbol_names::provide(providers);
 
         providers.target_features_whitelist = |_tcx, _cnum| {
-            Lrc::new(FxHashMap()) // Just a dummy
+            Default::default() // Just a dummy
         };
         providers.is_reachable_non_generic = |_tcx, _defid| true;
         providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());

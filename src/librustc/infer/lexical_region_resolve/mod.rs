@@ -614,7 +614,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
             dup_found: bool,
         }
         let mut state = WalkState {
-            set: FxHashSet(),
+            set: Default::default(),
             stack: vec![orig_node_idx],
             result: Vec::new(),
             dup_found: false,

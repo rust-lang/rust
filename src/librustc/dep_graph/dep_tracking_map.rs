@@ -36,7 +36,7 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
         DepTrackingMap {
             phantom: PhantomData,
             graph,
-            map: FxHashMap(),
+            map: Default::default(),
         }
     }
 }

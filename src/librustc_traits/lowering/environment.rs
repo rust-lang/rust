@@ -142,7 +142,7 @@ crate fn program_clauses_for_env<'a, 'tcx>(
 ) -> Clauses<'tcx> {
     debug!("program_clauses_for_env(environment={:?})", environment);
 
-    let mut last_round = FxHashSet();
+    let mut last_round = FxHashSet::default();
     {
         let mut visitor = ClauseVisitor::new(tcx, &mut last_round);
         for &clause in environment.clauses {
@@ -151,7 +151,7 @@ crate fn program_clauses_for_env<'a, 'tcx>(
     }
 
     let mut closure = last_round.clone();
-    let mut next_round = FxHashSet();
+    let mut next_round = FxHashSet::default();
     while !last_round.is_empty() {
         let mut visitor = ClauseVisitor::new(tcx, &mut next_round);
         for clause in last_round.drain() {

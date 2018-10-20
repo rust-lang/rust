@@ -54,14 +54,12 @@ pub struct TypeSizeInfo {
     pub variants: Vec<VariantInfo>,
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Default)]
 pub struct CodeStats {
     type_sizes: FxHashSet<TypeSizeInfo>,
 }
 
 impl CodeStats {
-    pub fn new() -> Self { CodeStats { type_sizes: FxHashSet() } }
-
     pub fn record_type_size<S: ToString>(&mut self,
                                          kind: DataTypeKind,
                                          type_desc: S,

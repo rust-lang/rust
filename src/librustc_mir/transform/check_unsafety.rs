@@ -57,7 +57,7 @@ impl<'a, 'gcx, 'tcx> UnsafetyChecker<'a, 'tcx> {
             },
             tcx,
             param_env,
-            used_unsafe: FxHashSet(),
+            used_unsafe: Default::default(),
             inherited_blocks: vec![],
         }
     }

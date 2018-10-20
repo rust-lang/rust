@@ -89,7 +89,7 @@ pub struct RefTracking<'tcx, Tag> {
 impl<'tcx, Tag: Copy+Eq+Hash> RefTracking<'tcx, Tag> {
     pub fn new(op: OpTy<'tcx, Tag>) -> Self {
         let mut ref_tracking = RefTracking {
-            seen: FxHashSet(),
+            seen: FxHashSet::default(),
             todo: vec![(op, Vec::new())],
         };
         ref_tracking.seen.insert(op);

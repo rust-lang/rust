@@ -182,7 +182,7 @@ impl PrintContext {
     fn prepare_late_bound_region_info<'tcx, T>(&mut self, value: &ty::Binder<T>)
     where T: TypeFoldable<'tcx>
     {
-        let mut collector = LateBoundRegionNameCollector(FxHashSet());
+        let mut collector = LateBoundRegionNameCollector(Default::default());
         value.visit_with(&mut collector);
         self.used_region_names = Some(collector.0);
         self.region_index = 0;

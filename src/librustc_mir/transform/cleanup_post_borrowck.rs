@@ -41,6 +41,7 @@ use transform::{MirPass, MirSource};
 
 pub struct CleanEndRegions;
 
+#[derive(Default)]
 struct GatherBorrowedRegions {
     seen_regions: FxHashSet<region::Scope>,
 }
@@ -56,9 +57,7 @@ impl MirPass for CleanEndRegions {
                           mir: &mut Mir<'tcx>) {
         if !tcx.emit_end_regions() { return; }
 
-        let mut gather = GatherBorrowedRegions {
-            seen_regions: FxHashSet()
-        };
+        let mut gather = GatherBorrowedRegions::default();
         gather.visit_mir(mir);
 
         let mut delete = DeleteTrivialEndRegions { seen_regions: &mut gather.seen_regions };
@@ -139,6 +138,7 @@ impl<'tcx> MutVisitor<'tcx> for DeleteAscribeUserType {
 
 pub struct CleanFakeReadsAndBorrows;
 
+#[derive(Default)]
 pub struct DeleteAndRecordFakeReads {
     fake_borrow_temporaries: FxHashSet<Local>,
 }
@@ -153,9 +153,7 @@ impl MirPass for CleanFakeReadsAndBorrows {
                           _tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           _source: MirSource,
                           mir: &mut Mir<'tcx>) {
-        let mut delete_reads = DeleteAndRecordFakeReads {
-            fake_borrow_temporaries: FxHashSet(),
-        };
+        let mut delete_reads = DeleteAndRecordFakeReads::default();
         delete_reads.visit_mir(mir);
         let mut delete_borrows = DeleteFakeBorrows {
             fake_borrow_temporaries: delete_reads.fake_borrow_temporaries,

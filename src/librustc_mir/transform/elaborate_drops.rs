@@ -75,7 +75,7 @@ impl MirPass for ElaborateDrops {
                 env: &env,
                 flow_inits,
                 flow_uninits,
-                drop_flags: FxHashMap(),
+                drop_flags: Default::default(),
                 patch: MirPatch::new(mir),
             }.elaborate()
         };

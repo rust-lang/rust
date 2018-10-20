@@ -169,19 +169,21 @@ impl Ord for Interned<String> {
     }
 }
 
-struct TyIntern<T> {
+struct TyIntern<T: Hash + Clone + Eq> {
     items: Vec<T>,
     set: HashMap<T, Interned<T>>,
 }
 
-impl<T: Hash + Clone + Eq> TyIntern<T> {
-    fn new() -> TyIntern<T> {
+impl<T: Hash + Clone + Eq> Default for TyIntern<T> {
+    fn default() -> Self {
         TyIntern {
             items: Vec::new(),
-            set: HashMap::new(),
+            set: Default::default(),
         }
     }
+}
 
+impl<T: Hash + Clone + Eq> TyIntern<T> {
     fn intern_borrow<B>(&mut self, item: &B) -> Interned<T>
     where
         B: Eq + Hash + ToOwned<Owned=T> + ?Sized,
@@ -212,19 +214,13 @@ impl<T: Hash + Clone + Eq> TyIntern<T> {
     }
 }
 
+#[derive(Default)]
 pub struct Interner {
     strs: Mutex<TyIntern<String>>,
     paths: Mutex<TyIntern<PathBuf>>,
 }
 
 impl Interner {
-    fn new() -> Interner {
-        Interner {
-            strs: Mutex::new(TyIntern::new()),
-            paths: Mutex::new(TyIntern::new()),
-        }
-    }
-
     pub fn intern_str(&self, s: &str) -> Interned<String> {
         self.strs.lock().unwrap().intern_borrow(s)
     }
@@ -238,7 +234,7 @@ impl Interner {
 }
 
 lazy_static! {
-    pub static ref INTERNER: Interner = Interner::new();
+    pub static ref INTERNER: Interner = Interner::default();
 }
 
 /// This is essentially a HashMap which allows storing any type in its input and

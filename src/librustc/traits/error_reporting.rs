@@ -1258,7 +1258,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             trait_str);
         err.span_label(span, format!("the trait `{}` cannot be made into an object", trait_str));
 
-        let mut reported_violations = FxHashSet();
+        let mut reported_violations = FxHashSet::default();
         for violation in violations {
             if reported_violations.insert(violation.clone()) {
                 err.note(&violation.error_msg());
@@ -1404,7 +1404,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
             let cleaned_pred = pred.fold_with(&mut ParamToVarFolder {
                 infcx: self,
-                var_map: FxHashMap()
+                var_map: Default::default()
             });
 
             let cleaned_pred = super::project::normalize(

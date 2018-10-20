@@ -45,7 +45,7 @@ struct UnusedMutCx<'a, 'tcx: 'a> {
 impl<'a, 'tcx> UnusedMutCx<'a, 'tcx> {
     fn check_unused_mut_pat(&self, pats: &[P<hir::Pat>]) {
         let tcx = self.bccx.tcx;
-        let mut mutables: FxHashMap<_, Vec<_>> = FxHashMap();
+        let mut mutables: FxHashMap<_, Vec<_>> = Default::default();
         for p in pats {
             p.each_binding(|_, hir_id, span, ident| {
                 // Skip anything that looks like `_foo`

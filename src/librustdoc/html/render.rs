@@ -513,7 +513,7 @@ pub fn run(mut krate: clean::Crate,
         src_root,
         passes,
         include_sources: true,
-        local_sources: FxHashMap(),
+        local_sources: Default::default(),
         issue_tracker_base_url: None,
         layout: layout::Layout {
             logo: String::new(),
@@ -522,7 +522,7 @@ pub fn run(mut krate: clean::Crate,
             krate: krate.name.clone(),
         },
         css_file_extension: css_file_extension.clone(),
-        created_dirs: RefCell::new(FxHashSet()),
+        created_dirs: Default::default(),
         sort_modules_alphabetically,
         themes,
         resource_suffix,
@@ -591,29 +591,29 @@ pub fn run(mut krate: clean::Crate,
         .collect();
 
     let mut cache = Cache {
-        impls: FxHashMap(),
+        impls: Default::default(),
         external_paths,
         exact_paths,
-        paths: FxHashMap(),
-        implementors: FxHashMap(),
+        paths: Default::default(),
+        implementors: Default::default(),
         stack: Vec::new(),
         parent_stack: Vec::new(),
         search_index: Vec::new(),
         parent_is_trait_impl: false,
-        extern_locations: FxHashMap(),
-        primitive_locations: FxHashMap(),
+        extern_locations: Default::default(),
+        primitive_locations: Default::default(),
         stripped_mod: false,
         access_levels,
         crate_version: krate.version.take(),
         orphan_impl_items: Vec::new(),
         orphan_trait_impls: Vec::new(),
-        traits: krate.external_traits.lock().replace(FxHashMap()),
+        traits: krate.external_traits.lock().replace(Default::default()),
         deref_trait_did,
         deref_mut_trait_did,
         owned_box_did,
-        masked_crates: mem::replace(&mut krate.masked_crates, FxHashSet()),
+        masked_crates: mem::replace(&mut krate.masked_crates, Default::default()),
         typarams: external_typarams,
-        aliases: FxHashMap(),
+        aliases: Default::default(),
     };
 
     // Cache where all our extern crates are located
@@ -674,7 +674,7 @@ pub fn run(mut krate: clean::Crate,
 
 /// Build the search index from the collected metadata
 fn build_index(krate: &clean::Crate, cache: &mut Cache) -> String {
-    let mut nodeid_to_pathid = FxHashMap();
+    let mut nodeid_to_pathid = FxHashMap::default();
     let mut crate_items = Vec::with_capacity(cache.search_index.len());
     let mut crate_paths = Vec::<Json>::new();
 
@@ -1448,7 +1448,7 @@ impl DocFolder for Cache {
                 // Figure out the id of this impl. This may map to a
                 // primitive rather than always to a struct/enum.
                 // Note: matching twice to restrict the lifetime of the `i` borrow.
-                let mut dids = FxHashSet();
+                let mut dids = FxHashSet::default();
                 if let clean::Item { inner: clean::ImplItem(ref i), .. } = item {
                     match i.for_ {
                         clean::ResolvedPath { did, .. } |
@@ -2940,7 +2940,7 @@ fn item_trait(
     if let Some(implementors) = cache.implementors.get(&it.def_id) {
         // The DefId is for the first Type found with that name. The bool is
         // if any Types with the same name but different DefId have been found.
-        let mut implementor_dups: FxHashMap<&str, (DefId, bool)> = FxHashMap();
+        let mut implementor_dups: FxHashMap<&str, (DefId, bool)> = FxHashMap::default();
         for implementor in implementors {
             match implementor.inner_impl().for_ {
                 clean::ResolvedPath { ref path, did, is_generic: false, .. } |
@@ -3793,7 +3793,7 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
                             out.push_str("<span class=\"where fmt-newline\">    ");
                             assoc_type(&mut out, it, &[],
                                        Some(&tydef.type_),
-                                       AssocItemLink::GotoSource(t_did, &FxHashSet()))?;
+                                       AssocItemLink::GotoSource(t_did, &FxHashSet::default()))?;
                             out.push_str(";</span>");
                         }
                     }
@@ -4703,7 +4703,7 @@ fn get_index_type(clean_type: &clean::Type) -> Type {
 /// picked up the impl
 fn collect_paths_for_type(first_ty: clean::Type) -> Vec<String> {
     let mut out = Vec::new();
-    let mut visited = FxHashSet();
+    let mut visited = FxHashSet::default();
     let mut work = VecDeque::new();
     let cache = cache();
 

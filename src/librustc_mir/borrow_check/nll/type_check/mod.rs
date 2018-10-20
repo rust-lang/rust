@@ -128,7 +128,7 @@ pub(crate) fn type_check<'gcx, 'tcx>(
     let mut constraints = MirTypeckRegionConstraints {
         liveness_constraints: LivenessValues::new(elements),
         outlives_constraints: ConstraintSet::default(),
-        closure_bounds_mapping: FxHashMap(),
+        closure_bounds_mapping: Default::default(),
         type_tests: Vec::default(),
     };
     let mut placeholder_indices = PlaceholderIndices::default();
@@ -845,7 +845,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             region_bound_pairs,
             implicit_region_bound,
             borrowck_context,
-            reported_errors: FxHashSet(),
+            reported_errors: Default::default(),
             universal_region_relations,
         }
     }

@@ -453,8 +453,8 @@ pub struct AllocMap<'tcx, M> {
 impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
     pub fn new() -> Self {
         AllocMap {
-            id_to_type: FxHashMap(),
-            type_interner: FxHashMap(),
+            id_to_type: Default::default(),
+            type_interner: Default::default(),
             next_id: AllocId(0),
         }
     }

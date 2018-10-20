@@ -48,7 +48,7 @@ impl LoadResult<(PreviousDepGraph, WorkProductMap)> {
         match self {
             LoadResult::Error { message } => {
                 sess.warn(&message);
-                (PreviousDepGraph::new(SerializedDepGraph::new()), FxHashMap())
+                Default::default()
             },
             LoadResult::DataOutOfDate => {
                 if let Err(err) = delete_all_session_dir_contents(sess) {
@@ -56,7 +56,7 @@ impl LoadResult<(PreviousDepGraph, WorkProductMap)> {
                                       incremental compilation session directory contents `{}`: {}.",
                                       dep_graph_path(sess).display(), err));
                 }
-                (PreviousDepGraph::new(SerializedDepGraph::new()), FxHashMap())
+                Default::default()
             }
             LoadResult::Ok { data } => data
         }
@@ -117,7 +117,7 @@ pub fn load_dep_graph(sess: &Session) ->
     if sess.opts.incremental.is_none() {
         // No incremental compilation.
         return MaybeAsync::Sync(LoadResult::Ok {
-            data: (PreviousDepGraph::new(SerializedDepGraph::new()), FxHashMap())
+            data: Default::default(),
         });
     }
 
@@ -127,7 +127,7 @@ pub fn load_dep_graph(sess: &Session) ->
     let report_incremental_info = sess.opts.debugging_opts.incremental_info;
     let expected_hash = sess.opts.dep_tracking_hash();
 
-    let mut prev_work_products = FxHashMap();
+    let mut prev_work_products = FxHashMap::default();
 
     // If we are only building with -Zquery-dep-graph but without an actual
     // incr. comp. session directory, we skip this. Otherwise we'd fail

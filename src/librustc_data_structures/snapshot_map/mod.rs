@@ -35,16 +35,20 @@ enum UndoLog<K, V> {
     Noop,
 }
 
-impl<K, V> SnapshotMap<K, V>
+impl<K, V> Default for SnapshotMap<K, V>
     where K: Hash + Clone + Eq
 {
-    pub fn new() -> Self {
+    fn default() -> Self {
         SnapshotMap {
-            map: FxHashMap(),
+            map: FxHashMap::default(),
             undo_log: vec![],
         }
     }
+}
 
+impl<K, V> SnapshotMap<K, V>
+    where K: Hash + Clone + Eq
+{
     pub fn clear(&mut self) {
         self.map.clear();
         self.undo_log.clear();

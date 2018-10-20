@@ -18,7 +18,7 @@ pub(super) struct TaintSet<'tcx> {
 
 impl<'tcx> TaintSet<'tcx> {
     pub(super) fn new(directions: TaintDirections, initial_region: ty::Region<'tcx>) -> Self {
-        let mut regions = FxHashSet();
+        let mut regions = FxHashSet::default();
         regions.insert(initial_region);
         TaintSet {
             directions: directions,

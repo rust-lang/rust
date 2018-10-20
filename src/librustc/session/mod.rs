@@ -1147,7 +1147,7 @@ pub fn build_session_(
         working_dir,
         lint_store: RwLock::new(lint::LintStore::new()),
         buffered_lints: Lock::new(Some(lint::LintBuffer::new())),
-        one_time_diagnostics: Lock::new(FxHashSet()),
+        one_time_diagnostics: Default::default(),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         plugin_attributes: OneThread::new(RefCell::new(Vec::new())),
         crate_types: Once::new(),
@@ -1173,7 +1173,7 @@ pub fn build_session_(
             normalize_ty_after_erasing_regions: AtomicUsize::new(0),
             normalize_projection_ty: AtomicUsize::new(0),
         },
-        code_stats: Lock::new(CodeStats::new()),
+        code_stats: Default::default(),
         optimization_fuel_crate,
         optimization_fuel_limit,
         print_fuel_crate,
@@ -1207,7 +1207,7 @@ pub fn build_session_(
         },
         has_global_allocator: Once::new(),
         has_panic_handler: Once::new(),
-        driver_lint_caps: FxHashMap(),
+        driver_lint_caps: Default::default(),
     };
 
     validate_commandline_args_with_session_available(&sess);

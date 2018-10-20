@@ -47,7 +47,7 @@ impl<'a> HasId for &'a usize { fn count(&self) -> usize { 1 } }
 fn f<'a>(_arena: &'a TypedArena<C<'a>>) {}
 
 fn main() {
-    let arena: TypedArena<C> = TypedArena::new();
+    let arena: TypedArena<C> = TypedArena::default();
     f(&arena);
 } //~^ ERROR `arena` does not live long enough
 

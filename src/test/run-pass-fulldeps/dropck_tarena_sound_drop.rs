@@ -46,6 +46,6 @@ impl<'a> HasId for &'a usize { fn count(&self) -> usize { 1 } }
 fn f<'a, 'b>(_arena: &'a TypedArena<C<'b>>) {}
 
 fn main() {
-    let arena: TypedArena<C> = TypedArena::new();
+    let arena: TypedArena<C> = TypedArena::default();
     f(&arena);
 }

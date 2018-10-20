@@ -3510,12 +3510,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields")
         };
 
-        let mut remaining_fields = FxHashMap();
+        let mut remaining_fields = FxHashMap::default();
         for (i, field) in variant.fields.iter().enumerate() {
             remaining_fields.insert(field.ident.modern(), (i, field));
         }
 
-        let mut seen_fields = FxHashMap();
+        let mut seen_fields = FxHashMap::default();
 
         let mut error_happened = false;
 

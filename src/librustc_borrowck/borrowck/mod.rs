@@ -103,7 +103,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
             // tuple structs/variants) do not have an associated body
             // and do not need borrowchecking.
             return Lrc::new(BorrowCheckResult {
-                used_mut_nodes: FxHashSet(),
+                used_mut_nodes: Default::default(),
                 signalled_any_error: SignalledError::NoErrorsSeen,
             })
         }
@@ -120,7 +120,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
         region_scope_tree,
         owner_def_id,
         body,
-        used_mut_nodes: RefCell::new(FxHashSet()),
+        used_mut_nodes: Default::default(),
         signalled_any_error: Cell::new(SignalledError::NoErrorsSeen),
     };
 
@@ -235,7 +235,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
         region_scope_tree,
         owner_def_id,
         body,
-        used_mut_nodes: RefCell::new(FxHashSet()),
+        used_mut_nodes: Default::default(),
         signalled_any_error: Cell::new(SignalledError::NoErrorsSeen),
     };
 

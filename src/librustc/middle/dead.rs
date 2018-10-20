@@ -50,7 +50,7 @@ struct MarkSymbolVisitor<'a, 'tcx: 'a> {
     worklist: Vec<ast::NodeId>,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tables: &'a ty::TypeckTables<'tcx>,
-    live_symbols: Box<FxHashSet<ast::NodeId>>,
+    live_symbols: FxHashSet<ast::NodeId>,
     repr_has_repr_c: bool,
     in_pat: bool,
     inherited_pub_visibility: bool,
@@ -131,7 +131,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
     }
 
     fn mark_live_symbols(&mut self) {
-        let mut scanned = FxHashSet();
+        let mut scanned = FxHashSet::default();
         while let Some(id) = self.worklist.pop() {
             if !scanned.insert(id) {
                 continue
@@ -423,13 +423,13 @@ fn create_and_seed_worklist<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn find_live<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        access_levels: &privacy::AccessLevels,
                        krate: &hir::Crate)
-                       -> Box<FxHashSet<ast::NodeId>> {
+                       -> FxHashSet<ast::NodeId> {
     let worklist = create_and_seed_worklist(tcx, access_levels, krate);
     let mut symbol_visitor = MarkSymbolVisitor {
         worklist,
         tcx,
         tables: &ty::TypeckTables::empty(None),
-        live_symbols: box FxHashSet(),
+        live_symbols: Default::default(),
         repr_has_repr_c: false,
         in_pat: false,
         inherited_pub_visibility: false,
@@ -450,7 +450,7 @@ fn get_struct_ctor_id(item: &hir::Item) -> Option<ast::NodeId> {
 
 struct DeadVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    live_symbols: Box<FxHashSet<ast::NodeId>>,
+    live_symbols: FxHashSet<ast::NodeId>,
 }
 
 impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {

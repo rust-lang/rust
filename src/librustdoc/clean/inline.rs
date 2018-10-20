@@ -368,7 +368,7 @@ pub fn build_impl(cx: &DocContext, did: DefId, ret: &mut Vec<clean::Item>) {
            .into_iter()
            .map(|meth| meth.ident.to_string())
            .collect()
-    }).unwrap_or(FxHashSet());
+    }).unwrap_or_default();
 
     debug!("build_impl: impl {:?} for {:?}", trait_.def_id(), for_.def_id());
 

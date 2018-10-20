@@ -55,11 +55,11 @@ impl<T> QueryValue<T> {
     }
 }
 
-impl<'tcx, M: QueryConfig<'tcx>> QueryCache<'tcx, M> {
-    pub(super) fn new() -> QueryCache<'tcx, M> {
+impl<'tcx, M: QueryConfig<'tcx>> Default for QueryCache<'tcx, M> {
+    fn default() -> QueryCache<'tcx, M> {
         QueryCache {
-            results: FxHashMap(),
-            active: FxHashMap(),
+            results: FxHashMap::default(),
+            active: FxHashMap::default(),
         }
     }
 }
@@ -699,7 +699,7 @@ macro_rules! define_queries_inner {
                     providers,
                     fallback_extern_providers: Box::new(fallback_extern_providers),
                     on_disk_cache,
-                    $($name: Lock::new(QueryCache::new())),*
+                    $($name: Default::default()),*
                 }
             }
 

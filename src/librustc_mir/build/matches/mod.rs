@@ -178,7 +178,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // If there are no match guards then we don't need any fake borrows,
         // so don't track them.
         let mut fake_borrows = if has_guard && tcx.generate_borrow_of_any_match_input() {
-            Some(FxHashMap())
+            Some(FxHashMap::default())
         } else {
             None
         };

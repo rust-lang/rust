@@ -156,7 +156,7 @@ impl Mark {
     pub fn least_ancestor(mut a: Mark, mut b: Mark) -> Mark {
         HygieneData::with(|data| {
             // Compute the path from a to the root
-            let mut a_path = FxHashSet::<Mark>();
+            let mut a_path = FxHashSet::<Mark>::default();
             while a != Mark::root() {
                 a_path.insert(a);
                 a = data.marks[a.0 as usize].parent;
