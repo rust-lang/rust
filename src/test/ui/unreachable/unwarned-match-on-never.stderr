@@ -1,0 +1,28 @@
+error: unreachable expression
+  --> $DIR/unwarned-match-on-never.rs:10:5
+   |
+LL |     match x {} //~ ERROR unreachable expression
+   |     ^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/unwarned-match-on-never.rs:1:9
+   |
+LL | #![deny(unreachable_code)]
+   |         ^^^^^^^^^^^^^^^^
+
+error: unreachable arm
+  --> $DIR/unwarned-match-on-never.rs:15:15
+   |
+LL |         () => () //~ ERROR unreachable arm
+   |               ^^
+
+error: unreachable expression
+  --> $DIR/unwarned-match-on-never.rs:21:5
+   |
+LL | /     match () { //~ ERROR unreachable expression
+LL | |         () => (),
+LL | |     }
+   | |_____^
+
+error: aborting due to 3 previous errors
+

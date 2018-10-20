@@ -608,19 +608,20 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             self.check_expr_has_type_or_error(discrim, discrim_ty);
         };
 
-        // If the discriminant diverges, the match is pointless (e.g.,
-        // `match (return) { }`).
-        self.warn_if_unreachable(expr.id, expr.span, "expression");
-
         // If there are no arms, that is a diverging match; a special case.
         if arms.is_empty() {
             self.diverges.set(self.diverges.get() | Diverges::Always);
             return tcx.types.never;
         }
 
+        if self.diverges.get().always() {
+            for arm in arms {
+                self.warn_if_unreachable(arm.body.id, arm.body.span, "arm");
+            }
+        }
+
         // Otherwise, we have to union together the types that the
         // arms produce and so forth.
-
         let discrim_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
 
