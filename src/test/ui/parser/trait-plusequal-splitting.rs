@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z parse-only
 // Fixes issue where `+` in generics weren't parsed if they were part of a `+=`.
+
+// compile-pass
+// compile-flags: -Z parse-only
 
 struct Whitespace<T: Clone + = ()> { t: T }
 struct TokenSplit<T: Clone +=  ()> { t: T }
 
-fn main() {
-}
-
-FAIL //~ ERROR
+fn main() {}

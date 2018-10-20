@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-pass
 // compile-flags: -Z parse-only -Z continue-parse-after-error
 
 use std::fmt::Debug;
@@ -15,6 +16,3 @@ use std::fmt::Debug;
 fn main() {
     let x: Box<Debug+> = box 3 as Box<Debug+>; // Trailing `+` is OK
 }
-
-FAIL
-//~^ ERROR

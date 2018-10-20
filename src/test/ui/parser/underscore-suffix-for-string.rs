@@ -8,13 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-pass
+
 fn main() {
     let _ = "Foo"_;
     //~^ WARNING underscore literal suffix is not allowed
     //~| WARNING this was previously accepted
     //~| NOTE issue #42326
 }
-
-FAIL
-//~^ ERROR
-//~| NOTE

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-pass
 // compile-flags: -Z parse-only
 
 fn f<T: (Copy) + (?Sized) + (for<'a> Trait<'a>)>() {}
@@ -17,5 +18,3 @@ fn main() {
     let _: Box<(?Sized) + (for<'a> Trait<'a>) + (Copy)>;
     let _: Box<(for<'a> Trait<'a>) + (Copy) + (?Sized)>;
 }
-
-FAIL //~ ERROR

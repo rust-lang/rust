@@ -1,8 +1,0 @@
-error: expected one of `!` or `::`, found `<eof>`
-  --> $DIR/impl-qpath.rs:18:1
-   |
-LL | FAIL //~ ERROR
-   | ^^^^ expected one of `!` or `::` here
-
-error: aborting due to previous error
-
