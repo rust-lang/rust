@@ -605,7 +605,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     /// This is used by [priroda](https://github.com/oli-obk/priroda)
-    pub fn alloc_map_ref(&self) -> &M::MemoryMap {
+    pub fn alloc_map(&self) -> &M::MemoryMap {
         &self.alloc_map
     }
 }
