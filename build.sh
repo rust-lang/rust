@@ -12,26 +12,8 @@ else
    exit 1
 fi
 
-extract_data() {
-    pushd target/out/
-    ar x $1 data.o
-    chmod +rw data.o
-    mv data.o $2
-    popd
-}
-
-link_and_run() {
-    target=$1
-    shift
-    pushd target/out
-    gcc $@ -o $target
-    sh -c ./$target || true
-    popd
-}
-
 build_lib() {
     SHOULD_CODEGEN=1 $RUSTC $2 --crate-name $1 --crate-type lib
-    extract_data lib$1.rlib $1.o
 }
 
 run_bin() {
@@ -40,9 +22,11 @@ run_bin() {
 
 build_example_bin() {
     $RUSTC $2 --crate-name $1 --crate-type bin
-    extract_data $1 $1.o
 
-    link_and_run $1 mini_core.o $1.o
+    pushd target/out
+    gcc libmini_core.rlib $1 -o $1_bin
+    sh -c ./$1_bin || true
+    popd
 }
 
 if [[ "$1" == "--release" ]]; then
@@ -80,4 +64,3 @@ time SHOULD_CODEGEN=1 xargo build --color always
 popd
 
 cat target/out/log.txt | sort | uniq -c
-#extract_data libcore.rlib core.o

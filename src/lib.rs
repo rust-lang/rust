@@ -298,6 +298,21 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     );
                     let file = File::create(&output_name).unwrap();
                     let mut builder = ar::Builder::new(file);
+
+                    if should_codegen(sess) {
+                        // Add main object file
+                        let obj = artifact.emit().unwrap();
+                        builder
+                            .append(
+                                &ar::Header::new(b"data.o".to_vec(), obj.len() as u64),
+                                ::std::io::Cursor::new(obj),
+                            )
+                            .unwrap();
+                    }
+
+                    // Non object files need to be added after object files, because ranlib will
+                    // try to read the native architecture from the first file, even if it isn't
+                    // an object file
                     builder
                         .append(
                             &ar::Header::new(
@@ -307,14 +322,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
                             ::std::io::Cursor::new(metadata.clone()),
                         )
                         .unwrap();
-                    if should_codegen(sess) {
-                        let obj = artifact.emit().unwrap();
-                        builder
-                            .append(
-                                &ar::Header::new(b"data.o".to_vec(), obj.len() as u64),
-                                ::std::io::Cursor::new(obj),
-                            )
-                            .unwrap();
+
+                    // Finalize archive
+                    std::mem::drop(builder);
+
+                    // Run ranlib to be able to link the archive
+                    let status = std::process::Command::new("ranlib")
+                        .arg(output_name)
+                        .status()
+                        .expect("Couldn't run ranlib");
+                    if !status.success() {
+                        sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
                     }
                 }
                 _ => sess.fatal(&format!("Unsupported crate type: {:?}", crate_type)),
