@@ -12,8 +12,6 @@ use back::wasm;
 use cc::windows_registry;
 use super::archive::{ArchiveBuilder, ArchiveConfig};
 use super::bytecode::RLIB_BYTECODE_EXTENSION;
-use super::linker::Linker;
-use super::command::Command;
 use super::rpath::RPathConfig;
 use super::rpath;
 use metadata::METADATA_FILENAME;
@@ -31,6 +29,8 @@ use rustc::hir::def_id::CrateNum;
 use tempfile::{Builder as TempFileBuilder, TempDir};
 use rustc_target::spec::{PanicStrategy, RelroLevel, LinkerFlavor};
 use rustc_data_structures::fx::FxHashSet;
+use rustc_codegen_utils::linker::Linker;
+use rustc_codegen_utils::command::Command;
 use context::get_reloc_model;
 use llvm;
 
@@ -701,7 +701,8 @@ fn link_natively(sess: &Session,
     }
 
     {
-        let mut linker = codegen_results.linker_info.to_linker(cmd, &sess, flavor);
+        let target_cpu = ::llvm_util::target_cpu(sess);
+        let mut linker = codegen_results.linker_info.to_linker(cmd, &sess, flavor, target_cpu);
         link_args(&mut *linker, flavor, sess, crate_type, tmpdir,
                   out_filename, codegen_results);
         cmd = linker.finalize();
