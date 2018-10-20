@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // compile-pass
+// compile-flags: -Z parse-only
 
 fn main() {
     let _ = "Foo"_;

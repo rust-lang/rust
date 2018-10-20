@@ -10,6 +10,8 @@
 
 // Issue #18317
 
+// compile-flags: -Z parse-only
+
 mod bleh {
     macro_rules! defn {
         ($n:ident) => (

@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z continue-parse-after-error
+// compile-flags: -Z parse-only -Z continue-parse-after-error
+
 fn /// document
 foo() {}
 //~^^ ERROR expected identifier, found `/// document`

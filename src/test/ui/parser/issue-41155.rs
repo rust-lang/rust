@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-impl S { //~ ERROR cannot find type
+// compile-flags: -Z parse-only
+
+impl S {
     pub
 } //~ ERROR expected one of
 

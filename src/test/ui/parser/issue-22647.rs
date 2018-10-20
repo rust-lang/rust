@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 fn main() {
     let caller<F> = |f: F|  //~ ERROR expected one of `:`, `;`, `=`, or `@`, found `<`
     where F: Fn() -> i32

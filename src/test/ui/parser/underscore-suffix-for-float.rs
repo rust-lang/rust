@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 fn main() {
     let a = 42._; //~ ERROR expected identifier, found reserved identifier `_`
-                  //~^ ERROR `{integer}` is a primitive type and therefore doesn't have fields
 }

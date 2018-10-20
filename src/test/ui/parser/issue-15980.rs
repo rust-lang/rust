@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 use std::io;
 
 fn main(){
     let x: io::IoResult<()> = Ok(());
-    //~^ ERROR cannot find type `IoResult` in module `io`
-    //~| NOTE did you mean `Result`?
     match x {
         Err(ref e) if e.kind == io::EndOfFile {
             //~^ NOTE while parsing this struct

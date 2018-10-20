@@ -1,13 +1,8 @@
 error: expected item after doc comment
-  --> $DIR/doc-before-mod-rbrace.rs:13:5
+  --> $DIR/doc-before-mod-rbrace.rs:14:5
    |
 LL |     /// document
    |     ^^^^^^^^^^^^
 
-error[E0601]: `main` function not found in crate `doc_before_mod_rbrace`
-   |
-   = note: consider adding a `main` function to `$DIR/doc-before-mod-rbrace.rs`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0601`.

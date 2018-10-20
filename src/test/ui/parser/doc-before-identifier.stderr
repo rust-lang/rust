@@ -1,5 +1,5 @@
 error: expected identifier, found `/// document`
-  --> $DIR/doc-before-identifier.rs:12:4
+  --> $DIR/doc-before-identifier.rs:13:4
    |
 LL | fn /// document
    |    ^^^^^^^^^^^^ expected identifier

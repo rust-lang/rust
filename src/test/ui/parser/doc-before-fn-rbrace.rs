@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z continue-parse-after-error
+// compile-flags: -Z parse-only -Z continue-parse-after-error
+
 fn main() {
     /// document
     //~^ ERROR found a documentation comment that doesn't document anything

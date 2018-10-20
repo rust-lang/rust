@@ -1,5 +1,5 @@
 error: unexpected lifetime `'a` in pattern
-  --> $DIR/lifetime-in-pattern.rs:11:10
+  --> $DIR/lifetime-in-pattern.rs:13:10
    |
 LL | fn test(&'a str) {
    |          ^^ unexpected lifetime

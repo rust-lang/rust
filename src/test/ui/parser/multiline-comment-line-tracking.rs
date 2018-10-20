@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:18:3
+// compile-flags: -Z parse-only
+// error-pattern:19:3
 
 /* 1
  * 2
  * 3
  */
 fn main() {
-  %; // parse error on line 18, but is reported on line 6 instead.
+  %; // parse error on line 19, but is reported on line 6 instead.
 }

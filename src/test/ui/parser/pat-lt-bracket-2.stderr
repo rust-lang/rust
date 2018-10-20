@@ -1,13 +1,8 @@
 error: expected one of `:` or `@`, found `<`
-  --> $DIR/pat-lt-bracket-2.rs:11:7
+  --> $DIR/pat-lt-bracket-2.rs:13:7
    |
 LL | fn a(B<) {}
    |       ^ expected one of `:` or `@` here
 
-error[E0601]: `main` function not found in crate `pat_lt_bracket_2`
-   |
-   = note: consider adding a `main` function to `$DIR/pat-lt-bracket-2.rs`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0601`.

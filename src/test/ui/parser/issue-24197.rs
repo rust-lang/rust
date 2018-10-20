@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 fn main() {
     let buf[0] = 0; //~ ERROR expected one of `:`, `;`, `=`, or `@`, found `[`
 }
