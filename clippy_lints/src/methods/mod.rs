@@ -745,6 +745,51 @@ declare_clippy_lint! {
     "using `filter_map` when a more succinct alternative exists"
 }
 
+/// **What it does:** Checks for `into_iter` calls on types which should be replaced by `iter` or
+/// `iter_mut`.
+///
+/// **Why is this bad?** Arrays and `PathBuf` do not yet have an `into_iter` method which move out
+/// their content into an iterator. Calling `into_iter` instead just forwards to `iter` or
+/// `iter_mut` due to auto-referencing, of which only yield references. Furthermore, when the
+/// standard library actually [implements the `into_iter` method][25725] which moves the content out
+/// of the array, the original use of `into_iter` got inferred with the wrong type and the code will
+/// be broken.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+///
+/// ```rust
+/// let _ = [1, 2, 3].into_iter().map(|x| *x).collect::<Vec<u32>>();
+/// ```
+///
+/// [25725]: https://github.com/rust-lang/rust/issues/25725
+declare_clippy_lint! {
+    pub INTO_ITER_ON_ARRAY,
+    correctness,
+    "using `.into_iter()` on an array"
+}
+
+/// **What it does:** Checks for `into_iter` calls on references which should be replaced by `iter`
+/// or `iter_mut`.
+///
+/// **Why is this bad?** Readability. Calling `into_iter` on a reference will not move out its
+/// content into the resulting iterator, which is confusing. It is better just call `iter` or
+/// `iter_mut` directly.
+///
+/// **Known problems:** None
+///
+/// **Example:**
+///
+/// ```rust
+/// let _ = (&vec![3, 4, 5]).into_iter();
+/// ```
+declare_clippy_lint! {
+    pub INTO_ITER_ON_REF,
+    style,
+    "using `.into_iter()` on a reference"
+}
+
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(
@@ -779,7 +824,9 @@ impl LintPass for Pass {
             ITER_CLONED_COLLECT,
             USELESS_ASREF,
             UNNECESSARY_FOLD,
-            UNNECESSARY_FILTER_MAP
+            UNNECESSARY_FILTER_MAP,
+            INTO_ITER_ON_ARRAY,
+            INTO_ITER_ON_REF,
         )
     }
 }
@@ -842,6 +889,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         if method_call.ident.name == method && args.len() > pos {
                             lint_single_char_pattern(cx, expr, &args[pos]);
                         }
+                    },
+                    ty::Ref(..) if method_call.ident.name == "into_iter" => {
+                        lint_into_iter(cx, expr, self_ty, *method_span);
                     },
                     _ => (),
                 }
@@ -2083,6 +2133,71 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr, call_name: &str, as_re
         }
     }
 }
+
+fn ty_has_iter_method(cx: &LateContext<'_, '_>, self_ref_ty: ty::Ty<'_>) -> Option<(&'static Lint, &'static str, &'static str)> {
+    let (self_ty, mutbl) = match self_ref_ty.sty {
+        ty::TyKind::Ref(_, self_ty, mutbl) => (self_ty, mutbl),
+        _ => unreachable!(),
+    };
+    let method_name = match mutbl {
+        hir::MutImmutable => "iter",
+        hir::MutMutable => "iter_mut",
+    };
+
+    let def_id = match self_ty.sty {
+        ty::TyKind::Array(..) => return Some((INTO_ITER_ON_ARRAY, "array", method_name)),
+        ty::TyKind::Slice(..) => return Some((INTO_ITER_ON_REF, "slice", method_name)),
+        ty::Adt(adt, _) => adt.did,
+        _ => return None,
+    };
+
+    // FIXME: instead of this hard-coded list, we should check if `<adt>::iter`
+    // exists and has the desired signature. Unfortunately FnCtxt is not exported
+    // so we can't use its `lookup_method` method.
+    static INTO_ITER_COLLECTIONS: [(&Lint, &[&str]); 13] = [
+        (INTO_ITER_ON_REF, &paths::VEC),
+        (INTO_ITER_ON_REF, &paths::OPTION),
+        (INTO_ITER_ON_REF, &paths::RESULT),
+        (INTO_ITER_ON_REF, &paths::BTREESET),
+        (INTO_ITER_ON_REF, &paths::BTREEMAP),
+        (INTO_ITER_ON_REF, &paths::VEC_DEQUE),
+        (INTO_ITER_ON_REF, &paths::LINKED_LIST),
+        (INTO_ITER_ON_REF, &paths::BINARY_HEAP),
+        (INTO_ITER_ON_REF, &paths::HASHSET),
+        (INTO_ITER_ON_REF, &paths::HASHMAP),
+        (INTO_ITER_ON_ARRAY, &["std", "path", "PathBuf"]),
+        (INTO_ITER_ON_REF, &["std", "path", "Path"]),
+        (INTO_ITER_ON_REF, &["std", "sync", "mpsc", "Receiver"]),
+    ];
+
+    for (lint, path) in &INTO_ITER_COLLECTIONS {
+        if match_def_path(cx.tcx, def_id, path) {
+            return Some((lint, path.last().unwrap(), method_name))
+        }
+    }
+    None
+}
+
+fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: ty::Ty<'_>, method_span: Span) {
+    if !match_trait_method(cx, expr, &paths::INTO_ITERATOR) {
+        return;
+    }
+    if let Some((lint, kind, method_name)) = ty_has_iter_method(cx, self_ref_ty) {
+        span_lint_and_sugg(
+            cx,
+            lint,
+            method_span,
+            &format!(
+                "this .into_iter() call is equivalent to .{}() and will not move the {}",
+                method_name,
+                kind,
+            ),
+            "call directly",
+            method_name.to_owned(),
+        );
+    }
+}
+
 
 /// Given a `Result<T, E>` type, return its error type (`E`).
 fn get_error_type<'a>(cx: &LateContext<'_, '_>, ty: Ty<'a>) -> Option<Ty<'a>> {
