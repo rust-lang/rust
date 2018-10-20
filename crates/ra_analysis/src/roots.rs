@@ -8,6 +8,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Database;
 
 use crate::{
+    Cancelable,
     db::{self, FilesDatabase, SyntaxDatabase},
     descriptors::{ModuleDescriptor, ModuleTreeDescriptor},
     imp::FileResolverImp,
@@ -18,7 +19,7 @@ use crate::{
 
 pub(crate) trait SourceRoot {
     fn contains(&self, file_id: FileId) -> bool;
-    fn module_tree(&self) -> Arc<ModuleTreeDescriptor>;
+    fn module_tree(&self) -> Cancelable<Arc<ModuleTreeDescriptor>>;
     fn lines(&self, file_id: FileId) -> Arc<LineIndex>;
     fn syntax(&self, file_id: FileId) -> File;
     fn symbols(&self, acc: &mut Vec<Arc<SymbolIndex>>);
@@ -64,7 +65,7 @@ impl WritableSourceRoot {
 }
 
 impl SourceRoot for WritableSourceRoot {
-    fn module_tree(&self) -> Arc<ModuleTreeDescriptor> {
+    fn module_tree(&self) -> Cancelable<Arc<ModuleTreeDescriptor>> {
         self.db.module_tree()
     }
     fn contains(&self, file_id: FileId) -> bool {
@@ -167,8 +168,8 @@ impl ReadonlySourceRoot {
 }
 
 impl SourceRoot for ReadonlySourceRoot {
-    fn module_tree(&self) -> Arc<ModuleTreeDescriptor> {
-        Arc::clone(&self.module_tree)
+    fn module_tree(&self) -> Cancelable<Arc<ModuleTreeDescriptor>> {
+        Ok(Arc::clone(&self.module_tree))
     }
     fn contains(&self, file_id: FileId) -> bool {
         self.file_map.contains_key(&file_id)

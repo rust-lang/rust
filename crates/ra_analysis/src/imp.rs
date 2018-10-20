@@ -159,7 +159,7 @@ impl AnalysisImpl {
     }
     pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let root = self.root(file_id);
-        let module_tree = root.module_tree();
+        let module_tree = root.module_tree()?;
         let res = module_tree
             .parent_modules(file_id)
             .iter()
@@ -177,8 +177,8 @@ impl AnalysisImpl {
             .collect();
         Ok(res)
     }
-    pub fn crate_for(&self, file_id: FileId) -> Vec<CrateId> {
-        let module_tree = self.root(file_id).module_tree();
+    pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
+        let module_tree = self.root(file_id).module_tree()?;
         let crate_graph = &self.data.crate_graph;
         let mut res = Vec::new();
         let mut work = VecDeque::new();
@@ -196,7 +196,7 @@ impl AnalysisImpl {
                 .filter(|&id| visited.insert(id));
             work.extend(parents);
         }
-        res
+        Ok(res)
     }
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
         self.data.crate_graph.crate_roots[&crate_id]
@@ -205,9 +205,9 @@ impl AnalysisImpl {
         &self,
         file_id: FileId,
         offset: TextUnit,
-    ) -> Vec<(FileId, FileSymbol)> {
+    ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let root = self.root(file_id);
-        let module_tree = root.module_tree();
+        let module_tree = root.module_tree()?;
         let file = root.syntax(file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
@@ -223,10 +223,10 @@ impl AnalysisImpl {
                     },
                 ));
 
-                return vec;
+                return Ok(vec);
             } else {
                 // If that fails try the index based approach.
-                return self.index_resolve(name_ref);
+                return Ok(self.index_resolve(name_ref));
             }
         }
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, offset) {
@@ -250,11 +250,11 @@ impl AnalysisImpl {
                         })
                         .collect();
 
-                    return res;
+                    return Ok(res);
                 }
             }
         }
-        vec![]
+        Ok(vec![])
     }
 
     pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit) -> Vec<(FileId, TextRange)> {
@@ -289,9 +289,9 @@ impl AnalysisImpl {
         ret
     }
 
-    pub fn diagnostics(&self, file_id: FileId) -> Vec<Diagnostic> {
+    pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
         let root = self.root(file_id);
-        let module_tree = root.module_tree();
+        let module_tree = root.module_tree()?;
         let syntax = root.syntax(file_id);
 
         let mut res = ra_editor::diagnostics(&syntax)
@@ -346,7 +346,7 @@ impl AnalysisImpl {
             };
             res.push(diag)
         }
-        res
+        Ok(res)
     }
 
     pub fn assists(&self, file_id: FileId, range: TextRange) -> Vec<SourceChange> {

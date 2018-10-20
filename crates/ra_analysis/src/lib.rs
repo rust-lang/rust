@@ -37,7 +37,7 @@ pub use ra_editor::{
     RunnableKind, StructureNode,
 };
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Cancel;
 
 pub type Cancelable<T> = Result<T, Cancel>;
@@ -231,8 +231,8 @@ impl Analysis {
         file_id: FileId,
         offset: TextUnit
     ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        Ok(self.imp
-            .approximately_resolve_symbol(file_id, offset))
+        self.imp
+            .approximately_resolve_symbol(file_id, offset)
     }
     pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit, ) -> Cancelable<Vec<(FileId, TextRange)>> {
         Ok(self.imp.find_all_refs(file_id, offset))
@@ -241,7 +241,7 @@ impl Analysis {
         self.imp.parent_module(file_id)
     }
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        Ok(self.imp.crate_for(file_id))
+        self.imp.crate_for(file_id)
     }
     pub fn crate_root(&self, crate_id: CrateId) -> Cancelable<FileId> {
         Ok(self.imp.crate_root(crate_id))
@@ -262,7 +262,7 @@ impl Analysis {
         Ok(self.imp.assists(file_id, range))
     }
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        Ok(self.imp.diagnostics(file_id))
+        self.imp.diagnostics(file_id)
     }
     pub fn resolve_callable(
         &self,
