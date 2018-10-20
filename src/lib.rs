@@ -53,6 +53,7 @@ mod base;
 mod common;
 mod constant;
 mod intrinsics;
+mod main_shim;
 mod metadata;
 mod pretty_clif;
 mod vtable;
@@ -270,11 +271,12 @@ impl CodegenBackend for CraneliftCodegenBackend {
             .downcast::<OngoingCodegen>()
             .expect("Expected CraneliftCodegenBackend's OngoingCodegen, found Box<Any>");
 
-        let mut artifact = ongoing_codegen.product.artifact;
+        let artifact = ongoing_codegen.product.artifact;
         let metadata = ongoing_codegen.metadata;
 
         let metadata_name =
             ".rustc.clif_metadata".to_string() + &ongoing_codegen.crate_hash.to_string();
+        /*
         artifact
             .declare_with(
                 &metadata_name,
@@ -285,6 +287,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 metadata.clone(),
             )
             .unwrap();
+        */
 
         for &crate_type in sess.opts.crate_types.iter() {
             match crate_type {
@@ -313,15 +316,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     // Non object files need to be added after object files, because ranlib will
                     // try to read the native architecture from the first file, even if it isn't
                     // an object file
-                    builder
-                        .append(
-                            &ar::Header::new(
-                                metadata_name.as_bytes().to_vec(),
-                                metadata.len() as u64,
-                            ),
-                            ::std::io::Cursor::new(metadata.clone()),
-                        )
-                        .unwrap();
+                    if crate_type != CrateType::Executable {
+                        builder
+                            .append(
+                                &ar::Header::new(
+                                    metadata_name.as_bytes().to_vec(),
+                                    metadata.len() as u64,
+                                ),
+                                ::std::io::Cursor::new(metadata.clone()),
+                            )
+                            .unwrap();
+                    }
 
                     // Finalize archive
                     std::mem::drop(builder);
@@ -383,7 +388,7 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
         }
     }
 
-    maybe_create_entry_wrapper(tcx, module);
+    crate::main_shim::maybe_create_entry_wrapper(tcx, module);
 
     ccx.finalize(tcx, module);
 
@@ -401,107 +406,4 @@ fn save_incremental<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 #[no_mangle]
 pub fn __rustc_codegen_backend() -> Box<CodegenBackend> {
     Box::new(CraneliftCodegenBackend)
-}
-
-/// Create the `main` function which will initialize the rust runtime and call
-/// users main function.
-fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    module: &mut Module<impl Backend + 'static>,
-) {
-    use crate::rustc::middle::lang_items::StartFnLangItem;
-    use crate::rustc::session::config::EntryFnType;
-
-    let (main_def_id, use_start_lang_item) = match *tcx.sess.entry_fn.borrow() {
-        Some((id, _, entry_ty)) => (
-            tcx.hir.local_def_id(id),
-            match entry_ty {
-                EntryFnType::Main => true,
-                EntryFnType::Start => false,
-            },
-        ),
-        None => return,
-    };
-
-    create_entry_fn(tcx, module, main_def_id, use_start_lang_item);;
-
-    fn create_entry_fn<'a, 'tcx: 'a>(
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        m: &mut Module<impl Backend + 'static>,
-        rust_main_def_id: DefId,
-        use_start_lang_item: bool,
-    ) {
-        let main_ret_ty = tcx.fn_sig(rust_main_def_id).output();
-        // Given that `main()` has no arguments,
-        // then its return type cannot have
-        // late-bound regions, since late-bound
-        // regions must appear in the argument
-        // listing.
-        let main_ret_ty = tcx.erase_regions(&main_ret_ty.no_late_bound_regions().unwrap());
-
-        let cmain_sig = Signature {
-            params: vec![
-                AbiParam::new(m.pointer_type()),
-                AbiParam::new(m.pointer_type()),
-            ],
-            returns: vec![AbiParam::new(m.pointer_type() /*isize*/)],
-            call_conv: CallConv::SystemV,
-        };
-
-        let cmain_func_id = m
-            .declare_function("main", Linkage::Export, &cmain_sig)
-            .unwrap();
-
-        let instance = Instance::mono(tcx, rust_main_def_id);
-
-        let (main_name, main_sig) = get_function_name_and_sig(tcx, instance);
-
-        let main_func_id = m
-            .declare_function(&main_name, Linkage::Import, &main_sig)
-            .unwrap();
-
-        let mut ctx = Context::new();
-        ctx.func = Function::with_name_signature(ExternalName::user(0, 0), cmain_sig.clone());
-        {
-            let mut func_ctx = FunctionBuilderContext::new();
-            let mut bcx: FunctionBuilder = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
-
-            let ebb = bcx.create_ebb();
-            bcx.switch_to_block(ebb);
-            let arg_argc = bcx.append_ebb_param(ebb, m.pointer_type());
-            let arg_argv = bcx.append_ebb_param(ebb, m.pointer_type());
-
-            let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
-
-            let call_inst = if use_start_lang_item {
-                let start_def_id = tcx.require_lang_item(StartFnLangItem);
-                let start_instance = Instance::resolve(
-                    tcx,
-                    ParamEnv::reveal_all(),
-                    start_def_id,
-                    tcx.intern_substs(&[main_ret_ty.into()]),
-                )
-                .unwrap();
-
-                let (start_name, start_sig) = get_function_name_and_sig(tcx, start_instance);
-                let start_func_id = m
-                    .declare_function(&start_name, Linkage::Import, &start_sig)
-                    .unwrap();
-
-                let main_val = bcx.ins().func_addr(m.pointer_type(), main_func_ref);
-
-                let func_ref = m.declare_func_in_func(start_func_id, &mut bcx.func);
-                bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv])
-            } else {
-                // using user-defined start fn
-                bcx.ins().call(main_func_ref, &[arg_argc, arg_argv])
-            };
-
-            let result = bcx.inst_results(call_inst)[0];
-            bcx.ins().return_(&[result]);
-            bcx.seal_all_blocks();
-            bcx.finalize();
-        }
-        m.define_function(cmain_func_id, &mut ctx).unwrap();
-    }
 }
