@@ -11,7 +11,7 @@
 use borrow_check::nll::type_check;
 use build;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::mir::{Mir, Promoted};
+use rustc::mir::{Mir, MirPhase, Promoted};
 use rustc::ty::TyCtxt;
 use rustc::ty::query::Providers;
 use rustc::ty::steal::Steal;
@@ -155,9 +155,22 @@ pub trait MirPass {
                           mir: &mut Mir<'tcx>);
 }
 
-pub macro run_passes($tcx:ident, $mir:ident, $def_id:ident, $suite_index:expr; $($pass:expr,)*) {{
+pub macro run_passes(
+    $tcx:ident,
+    $mir:ident,
+    $def_id:ident,
+    $suite_index:expr,
+    $mir_phase:expr;
+    $($pass:expr,)*
+) {{
     let suite_index: usize = $suite_index;
     let run_passes = |mir: &mut _, promoted| {
+        let mir: &mut Mir<'_> = mir;
+
+        if mir.phase >= $mir_phase {
+            return;
+        }
+
         let source = MirSource {
             def_id: $def_id,
             promoted
@@ -175,6 +188,8 @@ pub macro run_passes($tcx:ident, $mir:ident, $def_id:ident, $suite_index:expr; $
             index += 1;
         };
         $(run_pass(&$pass);)*
+
+        mir.phase = $mir_phase;
     };
 
     run_passes(&mut $mir, None);
@@ -192,7 +207,7 @@ fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
     let _ = tcx.unsafety_check_result(def_id);
 
     let mut mir = tcx.mir_built(def_id).steal();
-    run_passes![tcx, mir, def_id, 0;
+    run_passes![tcx, mir, def_id, 0, MirPhase::Const;
         // Remove all `EndRegion` statements that are not involved in borrows.
         cleanup_post_borrowck::CleanEndRegions,
 
@@ -214,7 +229,7 @@ fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     }
 
     let mut mir = tcx.mir_const(def_id).steal();
-    run_passes![tcx, mir, def_id, 1;
+    run_passes![tcx, mir, def_id, 1, MirPhase::Validated;
         // What we need to run borrowck etc.
         qualify_consts::QualifyAndPromoteConstants,
         simplify::SimplifyCfg::new("qualify-consts"),
@@ -232,7 +247,7 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     }
 
     let mut mir = tcx.mir_validated(def_id).steal();
-    run_passes![tcx, mir, def_id, 2;
+    run_passes![tcx, mir, def_id, 2, MirPhase::Optimized;
         // Remove all things not needed by analysis
         no_landing_pads::NoLandingPads,
         simplify_branches::SimplifyBranches::new("initial"),
