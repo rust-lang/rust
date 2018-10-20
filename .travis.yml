@@ -1,4 +1,10 @@
 cache: cargo
+before_cache:
+  - find ./target/debug -type f -maxdepth 1 -delete
+  - rm -f ./target/debug/deps/*ra_*
+
+env:
+  - CARGO_INCREMENTAL=0
 
 matrix:
   include:
