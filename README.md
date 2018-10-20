@@ -54,13 +54,33 @@ above:
 
 1. Run `cargo clean` to eliminate any cached dependencies that were built against
 the non-MIR `libstd`.
-2. For a binary project, run `MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri` to
-build and run your project; for a binary or library, use `MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri test`
-to run all tests in your project through Miri.
+2. To run all tests in your project through, Miri, use
+`MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri test`.
+3. If you have a binary project, you can run it through Miri using
+`MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri`.
 
-If you forget to set `MIRI_SYSROOT`, be sure to run `cargo clean` again before
-correcting it. Otherwise you are likely to get "dependency was built against possibly
-newer std" errors.
+### Common Problems
+
+When modifying the above instructions, you may encounter a number of confusing compiler
+errors.
+
+#### "constant evaluation error: no mir for `<function>`"
+
+You may have forgotten to set `MIRI_SYSROOT` when calling `cargo miri test`, and
+your program called into `std` or `core`. Be sure to set `MIRI_SYSROOT=~/.xargo/HOST`.
+
+#### "found possibly newer version of crate `std` which `<dependency>` depends on"
+
+Your build directory may contain artifacts from an earlier build that did/did not
+have `MIRI_SYSROOT` set. Run `cargo clean` before switching from non-Miri to Miri
+builds and vice-versa.
+
+#### "found crate `std` compiled by an incompatible version of rustc"
+
+You may be running `cargo miri test` with a different compiler version than the one
+used to build the MIR-enabled `std`. Be sure to consistently use the same toolchain,
+perhaps by following the below instructions to specify a specific nightly for use
+with Miri.
 
 ## Using Rustup To Specify a Specific Nightly
 
@@ -68,12 +88,8 @@ To target a specific nightly, modify the above instructions as follows.
 
 1. Install Miri using `cargo +nightly-2018-10-15 install --all-features --path .`,
 with the date replaced as appropriate.
-2. Run `xargo/build.sh` as `rustup run nightly-2018-10-15 build.sh`.
+2. Run `xargo/build.sh` as `rustup run nightly-2018-10-15 xargo/build.sh`.
 3. When running tests, use `MIRI_SYSROOT=~/.xargo/HOST cargo +nightly-2018-10-15 miri test`.
-
-You may prefer to do this rather than depending on the rustup default toolchain,
-if you routinely update the default, since **it is essential that `xargo/build.sh`
-is run with the same toolchain as `cargo miri`.**
 
 ## Miri `-Z` flags
 
