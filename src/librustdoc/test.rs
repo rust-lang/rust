@@ -378,7 +378,7 @@ pub fn make_test(s: &str,
                  dont_insert_main: bool,
                  opts: &TestOptions)
                  -> (String, usize) {
-    let (crate_attrs, everything_else) = partition_source(s);
+    let (crate_attrs, everything_else, crates) = partition_source(s);
     let everything_else = everything_else.trim();
     let mut line_offset = 0;
     let mut prog = String::new();
@@ -409,7 +409,7 @@ pub fn make_test(s: &str,
         use crate::syntax_pos::FileName;
 
         let filename = FileName::Anon;
-        let source = s.to_owned();
+        let source = crates + &everything_else;
         let sess = ParseSess::new(FilePathMapping::empty());
 
         let mut parser = parse::new_parser_from_source_str(&sess, filename, source);
@@ -417,30 +417,39 @@ pub fn make_test(s: &str,
         let mut found_main = false;
         let mut found_extern_crate = cratename.is_none();
 
-        while let Ok(Some(item)) = parser.parse_item() {
-            if !found_main {
-                if let ast::ItemKind::Fn(..) = item.node {
-                    if item.ident.as_str() == "main" {
-                        found_main = true;
+        loop {
+            match parser.parse_item() {
+                Ok(Some(item)) => {
+                    if !found_main {
+                        if let ast::ItemKind::Fn(..) = item.node {
+                            if item.ident.as_str() == "main" {
+                                found_main = true;
+                            }
+                        }
+                    }
+
+                    if !found_extern_crate {
+                        if let ast::ItemKind::ExternCrate(original) = item.node {
+                            // This code will never be reached if `cratename` is none because
+                            // `found_extern_crate` is initialized to `true` if it is none.
+                            let cratename = cratename.unwrap();
+
+                            match original {
+                                Some(name) => found_extern_crate = name.as_str() == cratename,
+                                None => found_extern_crate = item.ident.as_str() == cratename,
+                            }
+                        }
+                    }
+
+                    if found_main && found_extern_crate {
+                        break;
                     }
                 }
-            }
-
-            if !found_extern_crate {
-                if let ast::ItemKind::ExternCrate(original) = item.node {
-                    // This code will never be reached if `cratename` is none because
-                    // `found_extern_crate` is initialized to `true` if it is none.
-                    let cratename = cratename.unwrap();
-
-                    match original {
-                        Some(name) => found_extern_crate = name.as_str() == cratename,
-                        None => found_extern_crate = item.ident.as_str() == cratename,
-                    }
+                Ok(None) => break,
+                Err(mut e) => {
+                    e.cancel();
+                    break;
                 }
-            }
-
-            if found_main && found_extern_crate {
-                break;
             }
         }
 
@@ -474,9 +483,10 @@ pub fn make_test(s: &str,
 }
 
 // FIXME(aburka): use a real parser to deal with multiline attributes
-fn partition_source(s: &str) -> (String, String) {
+fn partition_source(s: &str) -> (String, String, String) {
     let mut after_header = false;
     let mut before = String::new();
+    let mut crates = String::new();
     let mut after = String::new();
 
     for line in s.lines() {
@@ -490,12 +500,16 @@ fn partition_source(s: &str) -> (String, String) {
             after.push_str(line);
             after.push_str("\n");
         } else {
+            if trimline.starts_with("#[macro_use] extern crate")
+                || trimline.starts_with("extern crate") {
+                crates.push_str(line);
+            }
             before.push_str(line);
             before.push_str("\n");
         }
     }
 
-    (before, after)
+    (before, after, crates)
 }
 
 pub trait Tester {
