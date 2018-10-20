@@ -19,10 +19,10 @@ struct S6;
 #[cfg(a())] //~ ERROR invalid predicate `a`
 struct S7;
 
-#[cfg(a = 10)] //~ ERROR unsupported literal
+#[cfg(a = 10)] //~ ERROR literal in `cfg` predicate value must be a string
 struct S8;
 
-#[deprecated(since = b"1.30", note = "hi")] //~ ERROR E0565
+#[cfg(a = b"hi")]
 struct S9;
 
 macro_rules! generate_s10 {

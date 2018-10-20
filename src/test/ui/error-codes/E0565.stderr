@@ -1,4 +1,4 @@
-error[E0565]: unsupported literal
+error[E0565]: meta item in `repr` must be an identifier
   --> $DIR/E0565.rs:12:8
    |
 LL | #[repr("C")] //~ ERROR E0565
