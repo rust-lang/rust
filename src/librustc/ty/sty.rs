@@ -1165,7 +1165,7 @@ pub enum RegionKind {
     ReClosureBound(RegionVid),
 
     /// Canonicalized region, used only when preparing a trait query.
-    ReCanonical(CanonicalVar),
+    ReCanonical(BoundTyIndex),
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
@@ -1218,11 +1218,11 @@ pub enum InferTy {
     FreshFloatTy(u32),
 
     /// Canonicalized type variable, used only when preparing a trait query.
-    CanonicalTy(CanonicalVar),
+    CanonicalTy(BoundTyIndex),
 }
 
 newtype_index! {
-    pub struct CanonicalVar { .. }
+    pub struct BoundTyIndex { .. }
 }
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
