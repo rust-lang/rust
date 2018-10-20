@@ -140,3 +140,24 @@ impl MutPointerReturnerBad {
     // should trigger lint
     pub fn new() -> *mut V { unimplemented!(); }
 }
+
+struct GenericReturnerOk;
+
+impl GenericReturnerOk {
+    // should not trigger lint
+    pub fn new() -> Option<Self> { unimplemented!(); }
+}
+
+struct GenericReturnerBad;
+
+impl GenericReturnerBad {
+    // should trigger lint
+    pub fn new() -> Option<u32> { unimplemented!(); }
+}
+
+struct NestedReturnerOk;
+
+impl NestedReturnerOk {
+    // should trigger lint
+    pub fn new() -> (Option<Self>, u32) { unimplemented!(); }
+}

@@ -1920,7 +1920,6 @@ enum ImplicitHasherType<'tcx> {
 
 impl<'tcx> ImplicitHasherType<'tcx> {
     /// Checks that `ty` is a target type without a BuildHasher.
-    #[allow(clippy::new_ret_no_self)]
     fn new<'a>(cx: &LateContext<'a, 'tcx>, hir_ty: &hir::Ty) -> Option<Self> {
         if let TyKind::Path(QPath::Resolved(None, ref path)) = hir_ty.node {
             let params: Vec<_> = path.segments.last().as_ref()?.args.as_ref()?
