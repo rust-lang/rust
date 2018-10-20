@@ -313,7 +313,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         },
         FutureIncompatibleInfo {
             id: LintId::of(ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE),
-            reference: "issue TBD",
+            reference: "issue #53130 <https://github.com/rust-lang/rust/issues/53130>",
             edition: Some(Edition::Edition2018),
         },
         FutureIncompatibleInfo {
