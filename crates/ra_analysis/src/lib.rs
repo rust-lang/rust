@@ -7,7 +7,6 @@ extern crate ra_editor;
 extern crate ra_syntax;
 extern crate rayon;
 extern crate relative_path;
-extern crate im;
 extern crate rustc_hash;
 extern crate salsa;
 

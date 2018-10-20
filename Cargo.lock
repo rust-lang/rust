@@ -610,7 +610,6 @@ name = "ra_analysis"
 version = "0.1.0"
 dependencies = [
  "fst 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "im 12.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "once_cell 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
