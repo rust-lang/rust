@@ -219,19 +219,23 @@ impl Analysis {
         let file = self.imp.file_syntax(file_id);
         ra_editor::file_structure(&file)
     }
-    pub fn symbol_search(&self, query: Query) -> Vec<(FileId, FileSymbol)> {
-        self.imp.world_symbols(query)
+    pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
+        let file = self.imp.file_syntax(file_id);
+        ra_editor::folding_ranges(&file)
+    }
+    pub fn symbol_search(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+        Ok(self.imp.world_symbols(query))
     }
     pub fn approximately_resolve_symbol(
         &self,
         file_id: FileId,
         offset: TextUnit
-    ) -> Vec<(FileId, FileSymbol)> {
-        self.imp
-            .approximately_resolve_symbol(file_id, offset)
+    ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+        Ok(self.imp
+            .approximately_resolve_symbol(file_id, offset))
     }
-    pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit, ) -> Vec<(FileId, TextRange)> {
-        self.imp.find_all_refs(file_id, offset)
+    pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit, ) -> Cancelable<Vec<(FileId, TextRange)>> {
+        Ok(self.imp.find_all_refs(file_id, offset))
     }
     pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         self.imp.parent_module(file_id)
@@ -260,17 +264,12 @@ impl Analysis {
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
         Ok(self.imp.diagnostics(file_id))
     }
-    pub fn folding_ranges(&self, file_id: FileId) -> Vec<Fold> {
-        let file = self.imp.file_syntax(file_id);
-        ra_editor::folding_ranges(&file)
-    }
-
     pub fn resolve_callable(
         &self,
         file_id: FileId,
         offset: TextUnit,
-    ) -> Option<(FnDescriptor, Option<usize>)> {
-        self.imp.resolve_callable(file_id, offset)
+    ) -> Cancelable<Option<(FnDescriptor, Option<usize>)>> {
+        Ok(self.imp.resolve_callable(file_id, offset))
     }
 }
 

@@ -195,7 +195,7 @@ pub fn handle_workspace_symbol(
         query: Query,
     ) -> Result<Vec<SymbolInformation>> {
         let mut res = Vec::new();
-        for (file_id, symbol) in world.analysis().symbol_search(query) {
+        for (file_id, symbol) in world.analysis().symbol_search(query)? {
             let line_index = world.analysis().file_line_index(file_id);
             let info = SymbolInformation {
                 name: symbol.name.to_string(),
@@ -221,7 +221,7 @@ pub fn handle_goto_definition(
     let mut res = Vec::new();
     for (file_id, symbol) in world
         .analysis()
-        .approximately_resolve_symbol(file_id, offset)
+        .approximately_resolve_symbol(file_id, offset)?
     {
         let line_index = world.analysis().file_line_index(file_id);
         let location = to_location(file_id, symbol.node_range, &world, &line_index)?;
@@ -435,7 +435,7 @@ pub fn handle_signature_help(
     let offset = params.position.conv_with(&line_index);
 
     if let Some((descriptor, active_param)) =
-        world.analysis().resolve_callable(file_id, offset)
+        world.analysis().resolve_callable(file_id, offset)?
     {
         let parameters: Vec<ParameterInformation> = descriptor
             .params
@@ -473,7 +473,7 @@ pub fn handle_prepare_rename(
 
     // We support renaming references like handle_rename does.
     // In the future we may want to reject the renaming of things like keywords here too.
-    let refs = world.analysis().find_all_refs(file_id, offset);
+    let refs = world.analysis().find_all_refs(file_id, offset)?;
     if refs.is_empty() {
         return Ok(None);
     }
@@ -497,7 +497,7 @@ pub fn handle_rename(
         return Ok(None);
     }
 
-    let refs = world.analysis().find_all_refs(file_id, offset);
+    let refs = world.analysis().find_all_refs(file_id, offset)?;
     if refs.is_empty() {
         return Ok(None);
     }
@@ -530,7 +530,7 @@ pub fn handle_references(
     let line_index = world.analysis().file_line_index(file_id);
     let offset = params.position.conv_with(&line_index);
 
-    let refs = world.analysis().find_all_refs(file_id, offset);
+    let refs = world.analysis().find_all_refs(file_id, offset)?;
 
     Ok(Some(refs.into_iter()
         .filter_map(|r| to_location(r.0, r.1, &world, &line_index).ok())

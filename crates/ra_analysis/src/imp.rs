@@ -19,7 +19,7 @@ use rustc_hash::FxHashSet;
 use crate::{
     descriptors::{FnDescriptor, ModuleTreeDescriptor, Problem},
     roots::{ReadonlySourceRoot, SourceRoot, WritableSourceRoot},
-    CrateGraph, CrateId, Diagnostic, FileId, FileResolver, FileSystemEdit, JobToken, Position,
+    CrateGraph, CrateId, Diagnostic, FileId, FileResolver, FileSystemEdit, Position,
     Query, SourceChange, SourceFileEdit, Cancelable,
 };
 
