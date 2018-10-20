@@ -36,7 +36,6 @@ ENV SCRIPT python2.7 /checkout/x.py test --target $TARGETS \
   src/test/ui \
   src/test/run-pass \
   src/test/compile-fail \
-  src/test/parse-fail \
   src/test/mir-opt \
   src/test/codegen-units \
   src/libcore \

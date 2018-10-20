@@ -19,7 +19,6 @@ use util::PathBufExt;
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
     CompileFail,
-    ParseFail,
     RunFail,
     /// This now behaves like a `ui` test that has an implict `// run-pass`.
     RunPass,
@@ -56,7 +55,6 @@ impl FromStr for Mode {
     fn from_str(s: &str) -> Result<Mode, ()> {
         match s {
             "compile-fail" => Ok(CompileFail),
-            "parse-fail" => Ok(ParseFail),
             "run-fail" => Ok(RunFail),
             "run-pass" => Ok(RunPass),
             "run-pass-valgrind" => Ok(RunPassValgrind),
@@ -80,7 +78,6 @@ impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let s = match *self {
             CompileFail => "compile-fail",
-            ParseFail => "parse-fail",
             RunFail => "run-fail",
             RunPass => "run-pass",
             RunPassValgrind => "run-pass-valgrind",

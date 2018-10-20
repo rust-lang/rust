@@ -12,7 +12,7 @@ use common::CompareMode;
 use common::{expected_output_path, UI_EXTENSIONS, UI_FIXED, UI_STDERR, UI_STDOUT};
 use common::{output_base_dir, output_base_name, output_testname_unique};
 use common::{Codegen, CodegenUnits, DebugInfoBoth, DebugInfoGdb, DebugInfoLldb, Rustdoc};
-use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
+use common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Config, TestPaths};
 use common::{Incremental, MirOpt, RunMake, Ui};
 use diff;
@@ -265,7 +265,7 @@ impl<'test> TestCx<'test> {
     /// revisions, exactly once, with revision == None).
     fn run_revision(&self) {
         match self.config.mode {
-            CompileFail | ParseFail => self.run_cfail_test(),
+            CompileFail => self.run_cfail_test(),
             RunFail => self.run_rfail_test(),
             RunPassValgrind => self.run_valgrind_test(),
             Pretty => self.run_pretty_test(),
@@ -296,7 +296,7 @@ impl<'test> TestCx<'test> {
 
     fn should_compile_successfully(&self) -> bool {
         match self.config.mode {
-            ParseFail | CompileFail => self.props.compile_pass,
+            CompileFail => self.props.compile_pass,
             RunPass => true,
             Ui => self.props.compile_pass,
             Incremental => {
@@ -1741,7 +1741,7 @@ impl<'test> TestCx<'test> {
         }
 
         match self.config.mode {
-            CompileFail | ParseFail | Incremental => {
+            CompileFail | Incremental => {
                 // If we are extracting and matching errors in the new
                 // fashion, then you want JSON mode. Old-skool error
                 // patterns still match the raw compiler output.
