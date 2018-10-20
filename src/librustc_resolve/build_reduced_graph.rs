@@ -449,7 +449,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     id: item.id,
                     parent,
                     imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
-                    subclass: ImportDirectiveSubclass::ExternCrate(orig_name),
+                    subclass: ImportDirectiveSubclass::ExternCrate {
+                        source: orig_name,
+                        target: ident,
+                    },
                     root_span: item.span,
                     span: item.span,
                     module_path: Vec::new(),

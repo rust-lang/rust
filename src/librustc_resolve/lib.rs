@@ -1234,7 +1234,7 @@ impl<'a> NameBinding<'a> {
         match self.kind {
             NameBindingKind::Import {
                 directive: &ImportDirective {
-                    subclass: ImportDirectiveSubclass::ExternCrate(_), ..
+                    subclass: ImportDirectiveSubclass::ExternCrate { .. }, ..
                 }, ..
             } => true,
             _ => false,
@@ -3794,7 +3794,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             if let NameBindingKind::Import { directive: d, .. } = binding.kind {
                 // Careful: we still want to rewrite paths from
                 // renamed extern crates.
-                if let ImportDirectiveSubclass::ExternCrate(None) = d.subclass {
+                if let ImportDirectiveSubclass::ExternCrate { source: None, .. } = d.subclass {
                     return
                 }
             }
@@ -4776,7 +4776,15 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             let cm = self.session.source_map();
             let rename_msg = "you can use `as` to change the binding name of the import";
 
-            if let Ok(snippet) = cm.span_to_snippet(binding.span) {
+            if let (
+                Ok(snippet),
+                NameBindingKind::Import { directive, ..},
+                _x @ 1 ... std::u32::MAX,
+            ) = (
+                cm.span_to_snippet(binding.span),
+                binding.kind.clone(),
+                binding.span.hi().0,
+            ) {
                 let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
                     format!("Other{}", name)
                 } else {
@@ -4785,24 +4793,29 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
                 err.span_suggestion_with_applicability(
                     binding.span,
-                    rename_msg,
-                    match (
-                        snippet.split_whitespace().find(|w| *w == "as"),
-                        snippet.ends_with(";")
-                    ) {
-                        (Some(_), false) => format!("{} as {}",
-                            &snippet[..snippet.find(" as ").unwrap()],
-                            suggested_name,
-                        ),
-                        (Some(_), true) => format!("{} as {};",
-                            &snippet[..snippet.find(" as ").unwrap()],
-                            suggested_name,
-                        ),
-                        (None, false) => format!("{} as {}", snippet, suggested_name),
-                        (None, true) => format!("{} as {};",
-                            &snippet[..snippet.len() - 1],
-                            suggested_name
-                        ),
+                    &rename_msg,
+                    match (&directive.subclass, snippet.ends_with(";"), snippet.as_ref()) {
+                        (ImportDirectiveSubclass::SingleImport { .. }, false, "self") =>
+                            format!("self as {}", suggested_name),
+                        (ImportDirectiveSubclass::SingleImport { source, .. }, false, _) =>
+                            format!(
+                                "{} as {}",
+                                &snippet[..((source.span.hi().0 - binding.span.lo().0) as usize)],
+                                suggested_name,
+                            ),
+                        (ImportDirectiveSubclass::SingleImport { source, .. }, true, _) =>
+                            format!(
+                                "{} as {};",
+                                &snippet[..((source.span.hi().0 - binding.span.lo().0) as usize)],
+                                suggested_name,
+                            ),
+                        (ImportDirectiveSubclass::ExternCrate { source, target, .. }, _, _) =>
+                            format!(
+                                "extern crate {} as {};",
+                                source.unwrap_or(target.name),
+                                suggested_name,
+                            ),
+                        (_, _, _) => unreachable!(),
                     },
                     Applicability::MaybeIncorrect,
                 );

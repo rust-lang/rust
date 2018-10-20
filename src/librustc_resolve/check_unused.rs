@@ -144,7 +144,7 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
                     }
                 }
             }
-            ImportDirectiveSubclass::ExternCrate(_) => {
+            ImportDirectiveSubclass::ExternCrate { .. } => {
                 resolver.maybe_unused_extern_crates.push((directive.id, directive.span));
             }
             ImportDirectiveSubclass::MacroUse => {
