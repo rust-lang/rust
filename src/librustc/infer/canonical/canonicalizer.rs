@@ -23,7 +23,7 @@ use infer::InferCtxt;
 use std::sync::atomic::Ordering;
 use ty::fold::{TypeFoldable, TypeFolder};
 use ty::subst::Kind;
-use ty::{self, BoundTyIndex, Lift, List, Ty, TyCtxt, TypeFlags};
+use ty::{self, BoundTy, BoundTyIndex, Lift, List, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -283,7 +283,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                 bug!("encountered a fresh type during canonicalization")
             }
 
-            ty::Infer(ty::CanonicalTy(_)) => {
+            ty::Infer(ty::BoundTy(_)) => {
                 bug!("encountered a canonical type during canonicalization")
             }
 
@@ -393,7 +393,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     /// or returns an existing variable if `kind` has already been
     /// seen. `kind` is expected to be an unbound variable (or
     /// potentially a free region).
-    fn canonical_var(&mut self, info: CanonicalVarInfo, kind: Kind<'tcx>) -> BoundTyIndex {
+    fn canonical_var(&mut self, info: CanonicalVarInfo, kind: Kind<'tcx>) -> BoundTy {
         let Canonicalizer {
             variables,
             query_state,
@@ -408,7 +408,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         // avoid allocations in those cases. We also don't use `indices` to
         // determine if a kind has been seen before until the limit of 8 has
         // been exceeded, to also avoid allocations for `indices`.
-        if !var_values.spilled() {
+        let var = if !var_values.spilled() {
             // `var_values` is stack-allocated. `indices` isn't used yet. Do a
             // direct linear search of `var_values`.
             if let Some(idx) = var_values.iter().position(|&k| k == kind) {
@@ -442,6 +442,11 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
                 assert_eq!(variables.len(), var_values.len());
                 BoundTyIndex::new(variables.len() - 1)
             })
+        };
+
+        BoundTy {
+            level: ty::INNERMOST,
+            var,
         }
     }
 
@@ -449,8 +454,9 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         let info = CanonicalVarInfo {
             kind: CanonicalVarKind::Region,
         };
-        let cvar = self.canonical_var(info, r.into());
-        self.tcx().mk_region(ty::ReCanonical(cvar))
+        let b = self.canonical_var(info, r.into());
+        debug_assert_eq!(ty::INNERMOST, b.level);
+        self.tcx().mk_region(ty::ReCanonical(b.var))
     }
 
     /// Given a type variable `ty_var` of the given kind, first check
@@ -466,8 +472,9 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             let info = CanonicalVarInfo {
                 kind: CanonicalVarKind::Ty(ty_kind),
             };
-            let cvar = self.canonical_var(info, ty_var.into());
-            self.tcx().mk_infer(ty::InferTy::CanonicalTy(cvar))
+            let b = self.canonical_var(info, ty_var.into());
+            debug_assert_eq!(ty::INNERMOST, b.level);
+            self.tcx().mk_infer(ty::InferTy::BoundTy(b))
         }
     }
 }

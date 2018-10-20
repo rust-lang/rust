@@ -984,7 +984,7 @@ define_print! {
                     ty::TyVar(_) => write!(f, "_"),
                     ty::IntVar(_) => write!(f, "{}", "{integer}"),
                     ty::FloatVar(_) => write!(f, "{}", "{float}"),
-                    ty::CanonicalTy(_) => write!(f, "_"),
+                    ty::BoundTy(_) => write!(f, "_"),
                     ty::FreshTy(v) => write!(f, "FreshTy({})", v),
                     ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
                     ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
@@ -996,7 +996,7 @@ define_print! {
                 ty::TyVar(ref v) => write!(f, "{:?}", v),
                 ty::IntVar(ref v) => write!(f, "{:?}", v),
                 ty::FloatVar(ref v) => write!(f, "{:?}", v),
-                ty::CanonicalTy(v) => write!(f, "?{:?}", v.index()),
+                ty::BoundTy(v) => write!(f, "?{:?}", v.var.index()),
                 ty::FreshTy(v) => write!(f, "FreshTy({:?})", v),
                 ty::FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
                 ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({:?})", v)

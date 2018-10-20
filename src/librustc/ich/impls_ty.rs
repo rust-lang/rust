@@ -915,7 +915,7 @@ impl_stable_hash_for!(enum ty::InferTy {
     FreshTy(a),
     FreshIntTy(a),
     FreshFloatTy(a),
-    CanonicalTy(a),
+    BoundTy(a),
 });
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>>

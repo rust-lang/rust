@@ -556,7 +556,7 @@ impl CanonicalUserSubsts<'tcx> {
         self.value.substs.iter().zip(BoundTyIndex::new(0)..).all(|(kind, cvar)| {
             match kind.unpack() {
                 UnpackedKind::Type(ty) => match ty.sty {
-                    ty::Infer(ty::CanonicalTy(cvar1)) => cvar == cvar1,
+                    ty::Infer(ty::BoundTy(ref b)) => cvar == b.var,
                     _ => false,
                 },
 
