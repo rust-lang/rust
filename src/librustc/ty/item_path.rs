@@ -10,7 +10,7 @@
 
 use hir::map::DefPathData;
 use hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use ty::{self, Ty, TyCtxt};
+use ty::{self, DefIdTree, Ty, TyCtxt};
 use middle::cstore::{ExternCrate, ExternCrateSource};
 use syntax::ast;
 use syntax::symbol::{keywords, LocalInternedString, Symbol};
@@ -219,19 +219,73 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 cur_def_key = self.def_key(parent);
             }
 
+            let visible_parent = visible_parent_map.get(&cur_def).cloned();
+            let actual_parent = self.parent(cur_def);
+            debug!(
+                "try_push_visible_item_path: visible_parent={:?} actual_parent={:?}",
+                visible_parent, actual_parent,
+            );
+
             let data = cur_def_key.disambiguated_data.data;
-            let symbol = data.get_opt_name().map(|n| n.as_str()).unwrap_or_else(|| {
-                if let DefPathData::CrateRoot = data { // reexported `extern crate` (#43189)
-                    self.original_crate_name(cur_def.krate).as_str()
-                } else {
-                    Symbol::intern("<unnamed>").as_str()
-                }
-            });
+            let symbol = match data {
+                // In order to output a path that could actually be imported (valid and visible),
+                // we need to handle re-exports correctly.
+                //
+                // For example, take `std::os::unix::process::CommandExt`, this trait is actually
+                // defined at `std::sys::unix::ext::process::CommandExt` (at time of writing).
+                //
+                // `std::os::unix` rexports the contents of `std::sys::unix::ext`. `std::sys` is
+                // private so the "true" path to `CommandExt` isn't accessible.
+                //
+                // In this case, the `visible_parent_map` will look something like this:
+                //
+                // (child) -> (parent)
+                // `std::sys::unix::ext::process::CommandExt` -> `std::sys::unix::ext::process`
+                // `std::sys::unix::ext::process` -> `std::sys::unix::ext`
+                // `std::sys::unix::ext` -> `std::os`
+                //
+                // This is correct, as the visible parent of `std::sys::unix::ext` is in fact
+                // `std::os`.
+                //
+                // When printing the path to `CommandExt` and looking at the `cur_def_key` that
+                // corresponds to `std::sys::unix::ext`, we would normally print `ext` and then go
+                // to the parent - resulting in a mangled path like
+                // `std::os::ext::process::CommandExt`.
+                //
+                // Instead, we must detect that there was a re-export and instead print `unix`
+                // (which is the name `std::sys::unix::ext` was re-exported as in `std::os`). To
+                // do this, we compare the parent of `std::sys::unix::ext` (`std::sys::unix`) with
+                // the visible parent (`std::os`). If these do not match, then we iterate over
+                // the children of the visible parent (as was done when computing
+                // `visible_parent_map`), looking for the specific child we currently have and then
+                // have access to the re-exported name.
+                DefPathData::Module(module_name) if visible_parent != actual_parent => {
+                    let mut name: Option<ast::Ident> = None;
+                    if let Some(visible_parent) = visible_parent {
+                        for child in self.item_children(visible_parent).iter() {
+                            if child.def.def_id() == cur_def {
+                                name = Some(child.ident);
+                            }
+                        }
+                    }
+                    name.map(|n| n.as_str()).unwrap_or(module_name.as_str())
+                },
+                _ => {
+                    data.get_opt_name().map(|n| n.as_str()).unwrap_or_else(|| {
+                        // Re-exported `extern crate` (#43189).
+                        if let DefPathData::CrateRoot = data {
+                            self.original_crate_name(cur_def.krate).as_str()
+                        } else {
+                            Symbol::intern("<unnamed>").as_str()
+                        }
+                    })
+                },
+            };
             debug!("try_push_visible_item_path: symbol={:?}", symbol);
             cur_path.push(symbol);
 
-            match visible_parent_map.get(&cur_def) {
-                Some(&def) => cur_def = def,
+            match visible_parent {
+                Some(def) => cur_def = def,
                 None => return false,
             };
         }
