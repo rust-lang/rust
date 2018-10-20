@@ -572,7 +572,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     }
 
     /// This is used by [priroda](https://github.com/oli-obk/priroda) to get an OpTy from a local
-    pub fn read_local_of_frame(
+    pub fn access_local(
         &self,
         frame: &super::Frame<'mir, 'tcx, M::PointerTag>,
         local: mir::Local,
@@ -595,7 +595,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         use rustc::mir::Place::*;
         let op = match *mir_place {
             Local(mir::RETURN_PLACE) => return err!(ReadFromReturnPointer),
-            Local(local) => self.read_local_of_frame(self.frame(), local, layout)?,
+            Local(local) => self.access_local(self.frame(), local, layout)?,
 
             Projection(ref proj) => {
                 let op = self.eval_place_to_op(&proj.base, None)?;
