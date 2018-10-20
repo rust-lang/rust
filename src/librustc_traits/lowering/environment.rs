@@ -86,13 +86,16 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
             ty::Slice(..) |
             ty::RawPtr(..) |
             ty::FnPtr(..) |
-            ty::Never |
             ty::Tuple(..) |
+            ty::Never |
+            ty::Param(..) => (),
+
             ty::GeneratorWitness(..) |
             ty::UnnormalizedProjection(..) |
-            ty::Param(..) |
             ty::Infer(..) |
-            ty::Error => (),
+            ty::Error => {
+                bug!("unexpected type {:?}", ty);
+            }
         }
     }
 
