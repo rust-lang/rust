@@ -11,6 +11,7 @@
 use crate::rustc::hir::{Expr, ExprKind};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::utils::{match_def_path, opt_def_id, paths, snippet, span_lint_and_then, walk_ptrs_ty_depth};
 use if_chain::if_chain;
 
@@ -79,10 +80,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemDiscriminant {
                             }
 
                             let derefs: String = iter::repeat('*').take(derefs_needed).collect();
-                            db.span_suggestion(
+                            db.span_suggestion_with_applicability(
                                 param.span,
                                 "try dereferencing",
                                 format!("{}{}", derefs, snippet(cx, cur_expr.span, "<param>")),
+                                Applicability::MachineApplicable,
                             );
                         }
                     },
