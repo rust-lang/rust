@@ -45,7 +45,7 @@ fn main() {
 }
 ```
 
-hence we don't want to repeat where clauses for input types because that would
+Hence, we don't want to repeat where clauses for input types because that would
 sort of duplicate the work of the programmer, having to verify that their types
 are well-formed both when calling the function and when using them in the
 arguments of their function. The same reasoning applies when using an `impl`.
@@ -75,15 +75,15 @@ fn fun_with_copy<T: Copy>(x: T) {
 }
 ```
 
-The rationale for implied bounds for traits is that if a type implement `Copy`,
-that is if there exists an `impl Copy` for that type, there *ought* to exist
+The rationale for implied bounds for traits is that if a type implements `Copy`,
+that is, if there exists an `impl Copy` for that type, there *ought* to exist
 an `impl Clone` for that type, otherwise the compiler would have reported an
 error in the first place. So again, if we were forced to repeat the additionnal
 `where SomeType: Clone` everywhere whereas we already know that
 `SomeType: Copy` hold, we would kind of duplicate the verification work.
 
 Implied bounds are not yet completely enforced in rustc, at the moment it only
-works for outlive requirements, super trait bounds and bounds on associated
+works for outlive requirements, super trait bounds, and bounds on associated
 types. The full RFC can be found [here][RFC]. We'll give here a brief view
 of how implied bounds work and why we chose to implement it that way. The
 complete set of lowering rules can be found in the corresponding
@@ -155,7 +155,7 @@ implied bounds from impls. Suppose we know that a type `SomeType<...>`
 implements `Bar` and we want to deduce that `SomeType<...>` must also implement
 `Foo`.
 
-There are two possibilities: first one, we have enough information about
+There are two possibilities: first, we have enough information about
 `SomeType<...>` to see that there exists a `Bar` impl in the program which
 covers `SomeType<...>`, for example a plain `impl<...> Bar for SomeType<...>`.
 Then if the compiler has done its job correctly, there *must* exist a `Foo`
@@ -172,7 +172,7 @@ fn foo<T: Bar>() {
 }
 ```
 
-that is, the information that `T` implements `Bar` here comes from the
+That is, the information that `T` implements `Bar` here comes from the
 *environment*. The environment is the set of things that we assume to be true
 when we type check some Rust declaration. In that case, what we assume is that
 `T: Bar`. Then at that point, we might authorize ourselves to have some kind
@@ -182,8 +182,8 @@ only be done within our `foo` function in order to avoid the earlier
 problem where we had a global clause.
 
 We can apply these local reasonings everywhere we can have an environment
--- i.e. when we can write where clauses -- that is inside impls,
-trait declarations and type declarations.
+-- i.e. when we can write where clauses -- that is, inside impls,
+trait declarations, and type declarations.
 
 ## Computing implied bounds with `FromEnv`
 
@@ -224,7 +224,7 @@ forall<T> { FromEnv(T: A) :- FromEnv(T: B). }
 forall<T> { Implemented(T: C) :- FromEnv(T: C). }
 forall<T> { FromEnv(T: C) :- FromEnv(T: C). }
 ```
-So these clauses are defined globally (that is they are available from
+So these clauses are defined globally (that is, they are available from
 everywhere in the program) but they cannot be used because the hypothesis
 is always of the form `FromEnv(...)` which is a bit special. Indeed, as
 indicated by the name, `FromEnv(...)` facts can **only** come from the
@@ -266,7 +266,7 @@ impl Bar for Y {
 ```
 We must define what "legal" and "illegal" mean. For this, we introduce another
 predicate: `WellFormed(Type: Trait)`. We say that the trait reference
-`Type: Trait` is well-formed is `Type` meets the bounds written on the
+`Type: Trait` is well-formed if `Type` meets the bounds written on the
 `Trait` declaration. For each impl we write, assuming that the where clauses
 declared on the impl hold, the compiler tries to prove that the corresponding
 trait reference is well-formed. The impl is legal if the compiler manages to do
@@ -433,7 +433,7 @@ impl Foo for i32 {
 The `Foo` trait definition and the `impl Foo for i32` are perfectly valid
 Rust: we're kind of recursively using our `Foo` impl in order to show that
 the associated value indeed implements `Foo`, but that's ok. But if we
-translates this to our well-formedness setting, the compiler proof process
+translate this to our well-formedness setting, the compiler proof process
 inside the `Foo` impl is the following: it starts with proving that the
 well-formedness goal `WellFormed(i32: Foo)` is true. In order to do that,
 it must prove the following goals: `Implemented(i32: Foo)` and
