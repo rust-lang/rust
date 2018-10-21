@@ -2069,16 +2069,20 @@
                 if (hasClass(this, "collapsed")) {
                     removeClass(this, "collapsed");
                     onEach(this.parentNode.getElementsByClassName("hidden"), function(x) {
-                        removeClass(x, "hidden");
-                        addClass(x, "x");
+                        if (hasClass(x, "content") === false) {
+                            removeClass(x, "hidden");
+                            addClass(x, "x");
+                        }
                     }, true);
                     this.innerHTML = "[<span class='inner'>" + labelForToggleButton(false) +
                                      "</span>] Hide default items"
                 } else {
                     addClass(this, "collapsed");
                     onEach(this.parentNode.getElementsByClassName("x"), function(x) {
-                        addClass(x, "hidden");
-                        removeClass(x, "x");
+                        if (hasClass(x, "content") === false) {
+                            addClass(x, "hidden");
+                            removeClass(x, "x");
+                        }
                     }, true);
                     this.innerHTML = "[<span class='inner'>" + labelForToggleButton(true) +
                                      "</span>] Show hidden default items";
