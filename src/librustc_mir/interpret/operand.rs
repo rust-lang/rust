@@ -572,12 +572,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     }
 
     /// This is used by [priroda](https://github.com/oli-obk/priroda) to get an OpTy from a local
+    ///
+    /// When you know the layout of the local in advance, you can pass it as last argument
     pub fn access_local(
         &self,
         frame: &super::Frame<'mir, 'tcx, M::PointerTag>,
         local: mir::Local,
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        assert_ne!(local, mir::RETURN_PLACE);
         let op = *frame.locals[local].access()?;
         let layout = from_known_layout(layout,
                     || self.layout_of_local(frame, local))?;
