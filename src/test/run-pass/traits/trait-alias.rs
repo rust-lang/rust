@@ -10,7 +10,8 @@
 
 #![feature(trait_alias)]
 
-trait Foo = std::fmt::Debug;
+type Foo = std::fmt::Debug;
+type Bar = Foo;
 
 fn foo<T: Foo>(v: &T) {
     println!("{:?}", v);
@@ -18,5 +19,10 @@ fn foo<T: Foo>(v: &T) {
 
 pub fn main() {
     foo(&12345);
-    let foo: &Foo = &0i32;
+
+    let bar1: &Bar = &54321;
+    println!("{:?}", bar1);
+
+    let bar2 = Box::new(42) as Box<dyn Foo>;
+    println!("{:?}", bar2);
 }

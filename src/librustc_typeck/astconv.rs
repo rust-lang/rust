@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Conversion from AST representation of types to the ty.rs
+//! Conversion from AST representation of types to the `ty.rs`
 //! representation.  The main routine here is `ast_ty_to_ty()`: each use
 //! is parameterized by an instance of `AstConv`.
 
@@ -181,7 +181,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         item_segment: &hir::PathSegment)
         -> &'tcx Substs<'tcx>
     {
-
         let (substs, assoc_bindings) = item_segment.with_generic_args(|generic_args| {
             self.create_substs_for_ast_path(
                 span,
@@ -948,8 +947,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         )
     }
 
-    /// Transform a PolyTraitRef into a PolyExistentialTraitRef by
-    /// removing the dummy Self type (TRAIT_OBJECT_DUMMY_SELF).
+    /// Transform a `PolyTraitRef` into a `PolyExistentialTraitRef` by
+    /// removing the dummy `Self` type (`TRAIT_OBJECT_DUMMY_SELF`).
     fn trait_ref_to_existential(&self, trait_ref: ty::TraitRef<'tcx>)
                                 -> ty::ExistentialTraitRef<'tcx> {
         assert_eq!(trait_ref.self_ty().sty, TRAIT_OBJECT_DUMMY_SELF);
@@ -1347,7 +1346,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         err.span_label(span, "associated type not allowed here").emit();
     }
 
-    // Check a type Path and convert it to a Ty.
+    // Check a type `Path` and convert it to a `Ty`.
     pub fn def_to_ty(&self,
                      opt_self_ty: Option<Ty<'tcx>>,
                      path: &hir::Path,
@@ -1442,8 +1441,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     /// Parses the programmer's textual representation of a type into our
     /// internal notion of a type.
     pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
-        debug!("ast_ty_to_ty(id={:?}, ast_ty={:?})",
-               ast_ty.id, ast_ty);
+        debug!("ast_ty_to_ty(id={:?}, ast_ty={:?} ty_ty={:?})",
+               ast_ty.id, ast_ty, ast_ty.node);
 
         let tcx = self.tcx();
 

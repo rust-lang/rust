@@ -4875,23 +4875,24 @@ impl<'a> LoweringContext<'a> {
         let node = match qpath {
             hir::QPath::Resolved(None, path) => {
                 // Turn trait object paths into `TyKind::TraitObject` instead.
-                if let Def::Trait(_) = path.def {
-                    let principal = hir::PolyTraitRef {
-                        bound_generic_params: hir::HirVec::new(),
-                        trait_ref: hir::TraitRef {
-                            path: path.and_then(|path| path),
-                            ref_id: id.node_id,
-                            hir_ref_id: id.hir_id,
-                        },
-                        span,
-                    };
+                match path.def {
+                    Def::Trait(_) | Def::TraitAlias(_) => {
+                        let principal = hir::PolyTraitRef {
+                            bound_generic_params: hir::HirVec::new(),
+                            trait_ref: hir::TraitRef {
+                                path: path.and_then(|path| path),
+                                ref_id: id.node_id,
+                                hir_ref_id: id.hir_id,
+                            },
+                            span,
+                        };
 
-                    // The original ID is taken by the `PolyTraitRef`,
-                    // so the `Ty` itself needs a different one.
-                    id = self.next_id();
-                    hir::TyKind::TraitObject(hir_vec![principal], self.elided_dyn_bound(span))
-                } else {
-                    hir::TyKind::Path(hir::QPath::Resolved(None, path))
+                        // The original ID is taken by the `PolyTraitRef`,
+                        // so the `Ty` itself needs a different one.
+                        id = self.next_id();
+                        hir::TyKind::TraitObject(hir_vec![principal], self.elided_dyn_bound(span))
+                    }
+                    _ => hir::TyKind::Path(hir::QPath::Resolved(None, path)),
                 }
             }
             _ => hir::TyKind::Path(qpath),
