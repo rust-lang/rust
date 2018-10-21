@@ -1270,14 +1270,6 @@ impl ToJson for Target {
     }
 }
 
-fn maybe_jemalloc() -> Option<String> {
-    if cfg!(feature = "jemalloc") {
-        Some("alloc_jemalloc".to_string())
-    } else {
-        None
-    }
-}
-
 /// Either a target triple string or a path to a JSON file.
 #[derive(PartialEq, Clone, Debug, Hash, RustcEncodable, RustcDecodable)]
 pub enum TargetTriple {

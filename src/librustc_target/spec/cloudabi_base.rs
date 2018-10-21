@@ -38,7 +38,6 @@ pub fn opts() -> TargetOptions {
         // dynamic linking.
         tls_model: "local-exec".to_string(),
         relro_level: RelroLevel::Full,
-        exe_allocation_crate: super::maybe_jemalloc(),
         .. Default::default()
     }
 }

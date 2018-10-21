@@ -152,12 +152,6 @@ pub fn check(build: &mut Build) {
         if !build.config.dry_run {
             cmd_finder.must_have(build.cxx(*host).unwrap());
         }
-
-        // The msvc hosts don't use jemalloc, turn it off globally to
-        // avoid packaging the dummy liballoc_jemalloc on that platform.
-        if host.contains("msvc") {
-            build.config.use_jemalloc = false;
-        }
     }
 
     // Externally configured LLVM requires FileCheck to exist

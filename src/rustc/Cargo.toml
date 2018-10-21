@@ -10,6 +10,3 @@ path = "rustc.rs"
 [dependencies]
 rustc_target = { path = "../librustc_target" }
 rustc_driver = { path = "../librustc_driver" }
-
-[features]
-jemalloc = ["rustc_target/jemalloc"]

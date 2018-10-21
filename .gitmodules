@@ -2,9 +2,6 @@
 	path = src/llvm
 	url = https://github.com/rust-lang/llvm.git
 	branch = master
-[submodule "src/jemalloc"]
-	path = src/jemalloc
-	url = https://github.com/rust-lang/jemalloc.git
 [submodule "src/rust-installer"]
 	path = src/tools/rust-installer
 	url = https://github.com/rust-lang/rust-installer.git
@@ -64,4 +61,4 @@
 	path = src/tools/clang
 	url = https://github.com/rust-lang-nursery/clang.git
 	branch = rust-release-80-v1
-  
+
