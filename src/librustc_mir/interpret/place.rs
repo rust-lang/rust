@@ -527,26 +527,33 @@ where
     }
 
     // Also used e.g. when miri runs into a constant.
-    pub fn const_to_mplace(
+    pub fn const_value_to_mplace(
         &self,
-        val: &ty::Const<'tcx>,
-    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        val: ConstValue<'tcx>,
+    ) -> EvalResult<'tcx, MemPlace<M::PointerTag>> {
         trace!("const_value_to_mplace: {:?}", val);
-        let mplace = match val.val {
+        match val {
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
                 self.global_to_mplace(GlobalId {
                     instance,
                     promoted: None,
-                })?
+                })
             }
             ConstValue::ByRef(id, alloc, offset) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen -- and for `static mut`, we copy on demand anyway.
-                MemPlace::from_ptr(Pointer::new(id, offset), alloc.align).with_default_tag()
+                Ok(MemPlace::from_ptr(Pointer::new(id, offset), alloc.align).with_default_tag())
             }
-        };
-        Ok(MPlaceTy { mplace, layout: self.layout_of(val.ty)? })
+        }
+    }
+
+    pub fn const_to_mplace(
+        &self,
+        cnst: &ty::Const<'tcx>,
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        let mplace = self.const_value_to_mplace(cnst.val)?;
+        Ok(MPlaceTy { mplace, layout: self.layout_of(cnst.ty)? })
     }
 
     fn global_to_mplace(
@@ -554,7 +561,7 @@ where
         gid: GlobalId<'tcx>
     ) -> EvalResult<'tcx, MemPlace<M::PointerTag>> {
         let cv = self.const_eval(gid)?;
-        Ok(*self.const_to_mplace(cv)?)
+        self.const_value_to_mplace(cv.val)
     }
 
     /// Evaluate statics and promoteds to an `MPlace`.  Used to share some code between

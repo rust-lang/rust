@@ -14,7 +14,7 @@
 use std::convert::TryInto;
 
 use rustc::mir;
-use rustc::ty::layout::{self, Size, TyLayout, HasDataLayout, IntegerExt};
+use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt};
 
 use rustc::mir::interpret::{
     AllocId,
@@ -338,7 +338,7 @@ impl<'tcx, Tag> OpTy<'tcx, Tag>
 // Use the existing layout if given (but sanity check in debug mode),
 // or compute the layout.
 #[inline(always)]
-fn from_known_layout<'tcx>(
+pub(super) fn from_known_layout<'tcx>(
     layout: Option<TyLayout<'tcx>>,
     compute: impl FnOnce() -> EvalResult<'tcx, TyLayout<'tcx>>
 ) -> EvalResult<'tcx, TyLayout<'tcx>> {
@@ -628,7 +628,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.eval_place_to_op(place, layout)?,
 
             Constant(ref constant) => {
-                self.const_to_mplace(constant.literal)?.into()
+                let layout = super::operand::from_known_layout(layout, || {
+                    let ty = self.monomorphize(mir_op.ty(self.mir(), *self.tcx), self.substs());
+                    self.layout_of(ty)
+                })?;
+                let op = Operand::Indirect(self.const_value_to_mplace(constant.literal.val)?);
+                OpTy { op, layout }
             }
         };
         trace!("{:?}: {:?}", mir_op, *op);
