@@ -24,7 +24,7 @@ build_example_bin() {
     $RUSTC $2 --crate-name $1 --crate-type bin
 
     pushd target/out
-    gcc libmini_core.rlib $1 -o $1_bin
+    gcc $1 libmini_core.rlib -o $1_bin
     sh -c ./$1_bin || true
     popd
 }
