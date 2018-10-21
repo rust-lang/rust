@@ -2487,7 +2487,9 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const<'_>) -> fmt::Resu
             },
             // print string literals
             Ref(_, &ty::TyS { sty: Str, .. }, _) => {
-                let ptr = ty::tls::with(|tcx| alloc.read_scalar(tcx, offset));
+                let ptr = ty::tls::with(|tcx| alloc.read_scalar(
+                    tcx, offset, tcx.data_layout.pointer_size, tcx.data_layout.pointer_align,
+                ));
                 let ptr = ptr.and_then(Scalar::to_ptr);
                 if let Ok(ptr) = ptr {
                     let len = ty::tls::with(|tcx| alloc.read_bits(

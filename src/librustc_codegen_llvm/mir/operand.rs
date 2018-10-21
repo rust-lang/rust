@@ -13,6 +13,7 @@ use rustc::mir;
 use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
 use rustc_data_structures::sync::Lrc;
+use syntax_pos::Span;
 
 use base;
 use common::{CodegenCx, C_undef, C_usize};
@@ -25,6 +26,7 @@ use glue;
 use std::fmt;
 
 use super::{FunctionCx, LocalRef};
+use super::constant::scalar_to_llvm;
 use super::place::PlaceRef;
 
 /// The representation of a Rust value. The enum variant is in fact
@@ -77,6 +79,7 @@ impl OperandRef<'ll, 'tcx> {
     }
 
     pub fn from_const(bx: &Builder<'a, 'll, 'tcx>,
+                      span: Span,
                       val: &'tcx ty::Const<'tcx>)
                       -> Result<OperandRef<'ll, 'tcx>, Lrc<ConstEvalErr<'tcx>>> {
         let layout = bx.cx.layout_of(val.ty);
@@ -85,12 +88,65 @@ impl OperandRef<'ll, 'tcx> {
             return Ok(OperandRef::new_zst(bx.cx, layout));
         }
 
-        match val.val {
+        let econv = |err| ConstEvalErr {
+            error: err,
+            stacktrace: Vec::new(),
+            span,
+        };
+
+        let val = match val.val {
             ConstValue::Unevaluated(..) => bug!(),
             ConstValue::ByRef(_, alloc, offset) => {
-                Ok(PlaceRef::from_const_alloc(bx, layout, alloc, offset).load(bx))
+                // FIXME: the first two arms are needed for simd_simple_float_intrinsic which reads
+                // the constants back from llvm values. We can probably do better.
+                match layout.abi {
+                    layout::Abi::Scalar(ref scalar) => {
+                        let x = alloc.read_scalar(
+                            bx.tcx(), offset, layout.size, layout.align,
+                        ).map_err(econv)?;
+                        let llval = scalar_to_llvm(
+                            bx.cx,
+                            x,
+                            scalar,
+                            layout.immediate_llvm_type(bx.cx),
+                        );
+                        OperandValue::Immediate(llval)
+                    },
+                    layout::Abi::ScalarPair(ref a_scalar, ref b_scalar) => {
+                        let a_size = a_scalar.value.size(bx.tcx());
+                        let a = alloc.read_scalar(
+                            bx.tcx(), offset, a_size, a_scalar.value.align(bx.tcx()),
+                        ).map_err(econv)?;
+                        let b_align = b_scalar.value.align(bx.tcx());
+                        let b_offset = offset + a_size.abi_align(b_align);
+                        let b_size = b_scalar.value.size(bx.tcx());
+                        let b = alloc.read_scalar(
+                            bx.tcx(), b_offset, b_size, b_align,
+                        ).map_err(econv)?;
+                        let a_llval = scalar_to_llvm(
+                            bx.cx,
+                            a,
+                            a_scalar,
+                            layout.scalar_pair_element_llvm_type(bx.cx, 0, true),
+                        );
+                        let b_layout = layout.scalar_pair_element_llvm_type(bx.cx, 1, true);
+                        let b_llval = scalar_to_llvm(
+                            bx.cx,
+                            b,
+                            b_scalar,
+                            b_layout,
+                        );
+                        OperandValue::Pair(a_llval, b_llval)
+                    },
+                    _ => return Ok(PlaceRef::from_const_alloc(bx, layout, alloc, offset).load(bx)),
+                }
             },
-        }
+        };
+
+        Ok(OperandRef {
+            val,
+            layout
+        })
     }
 
     /// Asserts that this operand refers to a scalar and returns
@@ -383,7 +439,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
             mir::Operand::Constant(ref constant) => {
                 let ty = self.monomorphize(&constant.ty);
                 self.eval_mir_constant(bx, constant)
-                    .and_then(|c| OperandRef::from_const(bx, c))
+                    .and_then(|c| OperandRef::from_const(bx, constant.span, c))
                     .unwrap_or_else(|err| {
                         err.report_as_error(
                             bx.tcx().at(constant.span),

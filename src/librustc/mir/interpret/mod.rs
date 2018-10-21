@@ -684,24 +684,24 @@ impl<Tag: Copy, Extra: Default> Allocation<Tag, Extra> {
         offset: Size,
         size: Size,
     ) -> EvalResult<'tcx> {
-        if self.relocations(hdl, offset, size)?.len() != 0 {
+        if self.relocations(hdl, offset, size).len() != 0 {
             err!(ReadPointerAsBytes)
         } else {
             Ok(())
         }
     }
 
-    pub fn relocations(
+    fn relocations(
         &self,
         hdl: impl HasDataLayout,
         offset: Size,
         size: Size,
-    ) -> EvalResult<'tcx, &[(Size, (Tag, AllocId))]> {
+    ) -> &[(Size, (Tag, AllocId))] {
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
         // the beginning of this range.
-        let start = offset.bytes().saturating_sub(hdl.pointer_size().bytes() - 1);
+        let start = offset.bytes().saturating_sub(hdl.data_layout().pointer_size.bytes() - 1);
         let end = offset + size; // this does overflow checking
-        Ok(self.relocations.range(Size::from_bytes(start)..end))
+        self.relocations.range(Size::from_bytes(start)..end)
     }
 
     pub fn get_bytes(
@@ -736,22 +736,23 @@ impl<Tag: Copy, Extra: Default> Allocation<Tag, Extra> {
         &self,
         hdl: impl HasDataLayout,
         offset: Size,
+        size: Size,
+        align: Align,
     ) -> EvalResult<'tcx, Scalar<Tag>> {
-        let size = hdl.data_layout().pointer_size;
-        let required_align = hdl.data_layout().pointer_align;
-        self.check_align(offset, required_align)?;
+        self.check_align(offset, align)?;
         self.check_bounds(offset, size, true)?;
         self.check_defined(offset, size)?;
         let bytes = self.bytes_ignoring_relocations_and_undef(offset, size);
-        let offset = read_target_uint(hdl.data_layout().endian, &bytes).unwrap();
-        let offset = Size::from_bytes(offset as u64);
-        if let Some(&(tag, alloc_id)) = self.relocations.get(&offset) {
-            Ok(Pointer::new_with_tag(alloc_id, offset, tag).into())
-        } else {
-            Ok(Scalar::Bits {
-                bits: offset.bytes() as u128,
+        let int = read_target_uint(hdl.data_layout().endian, &bytes).unwrap();
+        match self.relocations(hdl, offset, size) {
+            &[(_, (tag, alloc_id))] if size == hdl.data_layout().pointer_size => {
+                Ok(Pointer::new_with_tag(alloc_id, Size::from_bytes(int as u64), tag).into())
+            },
+            &[] => Ok(Scalar::Bits {
+                bits: int,
                 size: size.bytes() as u8,
-            })
+            }),
+            _ => err!(ReadPointerAsBytes),
         }
     }
 

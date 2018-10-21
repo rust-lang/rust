@@ -75,7 +75,9 @@ impl<'tcx> ConstValue<'tcx> {
         hdl: impl HasDataLayout,
     ) -> Option<Pointer> {
         let (_, alloc, offset) = self.try_as_by_ref()?;
-        alloc.read_scalar(hdl, offset).ok()?.to_ptr().ok()
+        let size = hdl.data_layout().pointer_size;
+        let required_align = hdl.data_layout().pointer_align;
+        alloc.read_scalar(hdl, offset, size, required_align).ok()?.to_ptr().ok()
     }
 
     /// e.g. for vtables, fat pointers or single pointers
