@@ -603,6 +603,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.dump_allocs(leaks);
         n
     }
+
+    /// This is used by [priroda](https://github.com/oli-obk/priroda)
+    pub fn alloc_map(&self) -> &M::MemoryMap {
+        &self.alloc_map
+    }
 }
 
 /// Byte accessors

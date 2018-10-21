@@ -571,6 +571,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         })
     }
 
+    /// This is used by [priroda](https://github.com/oli-obk/priroda) to get an OpTy from a local
+    ///
+    /// When you know the layout of the local in advance, you can pass it as last argument
+    pub fn access_local(
+        &self,
+        frame: &super::Frame<'mir, 'tcx, M::PointerTag>,
+        local: mir::Local,
+        layout: Option<TyLayout<'tcx>>,
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        assert_ne!(local, mir::RETURN_PLACE);
+        let op = *frame.locals[local].access()?;
+        let layout = from_known_layout(layout,
+                    || self.layout_of_local(frame, local))?;
+        Ok(OpTy { op, layout })
+    }
+
     // Evaluate a place with the goal of reading from it.  This lets us sometimes
     // avoid allocations.  If you already know the layout, you can pass it in
     // to avoid looking it up again.
@@ -582,12 +598,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         use rustc::mir::Place::*;
         let op = match *mir_place {
             Local(mir::RETURN_PLACE) => return err!(ReadFromReturnPointer),
-            Local(local) => {
-                let op = *self.frame().locals[local].access()?;
-                let layout = from_known_layout(layout,
-                    || self.layout_of_local(self.cur_frame(), local))?;
-                OpTy { op, layout }
-            },
+            Local(local) => self.access_local(self.frame(), local, layout)?,
 
             Projection(ref proj) => {
                 let op = self.eval_place_to_op(&proj.base, None)?;
