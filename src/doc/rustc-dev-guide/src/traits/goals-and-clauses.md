@@ -58,7 +58,7 @@ see that clauses are always of the form:
 ```text
 forall<K1, ..., Kn> { DomainGoal :- Goal }
 ```
-hence domain goals are in fact clauses LHS. That is, at the most granular level,
+hence domain goals are in fact clauses' LHS. That is, at the most granular level,
 domain goals are what the trait solver will end up trying to prove.
 
 <a name="trait-ref"></a>
