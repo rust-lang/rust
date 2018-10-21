@@ -112,32 +112,6 @@ impl OperandRef<'ll, 'tcx> {
                         );
                         OperandValue::Immediate(llval)
                     },
-                    layout::Abi::ScalarPair(ref a_scalar, ref b_scalar) => {
-                        let a_size = a_scalar.value.size(bx.tcx());
-                        let a = alloc.read_scalar(
-                            bx.tcx(), offset, a_size, a_scalar.value.align(bx.tcx()),
-                        ).map_err(econv)?;
-                        let b_align = b_scalar.value.align(bx.tcx());
-                        let b_offset = offset + a_size.abi_align(b_align);
-                        let b_size = b_scalar.value.size(bx.tcx());
-                        let b = alloc.read_scalar(
-                            bx.tcx(), b_offset, b_size, b_align,
-                        ).map_err(econv)?;
-                        let a_llval = scalar_to_llvm(
-                            bx.cx,
-                            a,
-                            a_scalar,
-                            layout.scalar_pair_element_llvm_type(bx.cx, 0, true),
-                        );
-                        let b_layout = layout.scalar_pair_element_llvm_type(bx.cx, 1, true);
-                        let b_llval = scalar_to_llvm(
-                            bx.cx,
-                            b,
-                            b_scalar,
-                            b_layout,
-                        );
-                        OperandValue::Pair(a_llval, b_llval)
-                    },
                     _ => return Ok(PlaceRef::from_const_alloc(bx, layout, alloc, offset).load(bx)),
                 }
             },
