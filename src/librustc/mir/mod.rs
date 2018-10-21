@@ -80,6 +80,18 @@ pub enum MirPhase {
     Optimized,
 }
 
+impl MirPhase {
+    /// Gets the index of the current MirPhase within the set of all MirPhases.
+    pub fn phase_index(&self) -> usize {
+        match self {
+            MirPhase::Build => 0,
+            MirPhase::Const => 1,
+            MirPhase::Validated => 2,
+            MirPhase::Optimized => 3,
+        }
+    }
+}
+
 /// Lowered representation of a single function.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Mir<'tcx> {

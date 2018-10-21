@@ -159,11 +159,11 @@ pub macro run_passes(
     $tcx:ident,
     $mir:ident,
     $def_id:ident,
-    $suite_index:expr,
     $mir_phase:expr;
     $($pass:expr,)*
 ) {{
-    let suite_index: usize = $suite_index;
+    let phase_index = $mir_phase.phase_index();
+
     let run_passes = |mir: &mut _, promoted| {
         let mir: &mut Mir<'_> = mir;
 
@@ -178,7 +178,7 @@ pub macro run_passes(
         let mut index = 0;
         let mut run_pass = |pass: &dyn MirPass| {
             let run_hooks = |mir: &_, index, is_after| {
-                dump_mir::on_mir_pass($tcx, &format_args!("{:03}-{:03}", suite_index, index),
+                dump_mir::on_mir_pass($tcx, &format_args!("{:03}-{:03}", phase_index, index),
                                       &pass.name(), source, mir, is_after);
             };
             run_hooks(mir, index, false);
@@ -207,7 +207,7 @@ fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
     let _ = tcx.unsafety_check_result(def_id);
 
     let mut mir = tcx.mir_built(def_id).steal();
-    run_passes![tcx, mir, def_id, 0, MirPhase::Const;
+    run_passes![tcx, mir, def_id, MirPhase::Const;
         // Remove all `EndRegion` statements that are not involved in borrows.
         cleanup_post_borrowck::CleanEndRegions,
 
@@ -229,7 +229,7 @@ fn mir_validated<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     }
 
     let mut mir = tcx.mir_const(def_id).steal();
-    run_passes![tcx, mir, def_id, 1, MirPhase::Validated;
+    run_passes![tcx, mir, def_id, MirPhase::Validated;
         // What we need to run borrowck etc.
         qualify_consts::QualifyAndPromoteConstants,
         simplify::SimplifyCfg::new("qualify-consts"),
@@ -247,7 +247,7 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
     }
 
     let mut mir = tcx.mir_validated(def_id).steal();
-    run_passes![tcx, mir, def_id, 2, MirPhase::Optimized;
+    run_passes![tcx, mir, def_id, MirPhase::Optimized;
         // Remove all things not needed by analysis
         no_landing_pads::NoLandingPads,
         simplify_branches::SimplifyBranches::new("initial"),
