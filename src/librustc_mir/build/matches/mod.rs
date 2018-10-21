@@ -291,7 +291,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     },
                     ..
                 },
-                user_ty: ascription_user_ty,
+                user_ty: pat_ascription_ty,
                 user_ty_span,
             } => {
                 let place =
@@ -316,7 +316,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         kind: StatementKind::AscribeUserType(
                             place,
                             ty::Variance::Invariant,
-                            box ascription_user_ty,
+                            box pat_ascription_ty.user_ty(),
                         ),
                     },
                 );
@@ -491,7 +491,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub(super) fn visit_bindings(
         &mut self,
         pattern: &Pattern<'tcx>,
-        mut pattern_user_ty: Option<(UserTypeAnnotation<'tcx>, Span)>,
+        mut pattern_user_ty: Option<(PatternTypeAnnotation<'tcx>, Span)>,
         f: &mut impl FnMut(
             &mut Self,
             Mutability,
@@ -500,7 +500,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             NodeId,
             Span,
             Ty<'tcx>,
-            Option<(UserTypeAnnotation<'tcx>, Span)>,
+            Option<(PatternTypeAnnotation<'tcx>, Span)>,
         ),
     ) {
         match *pattern.kind {
@@ -626,7 +626,7 @@ struct Binding<'tcx> {
 struct Ascription<'tcx> {
     span: Span,
     source: Place<'tcx>,
-    user_ty: UserTypeAnnotation<'tcx>,
+    user_ty: PatternTypeAnnotation<'tcx>,
 }
 
 #[derive(Clone, Debug)]
@@ -1323,7 +1323,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     kind: StatementKind::AscribeUserType(
                         ascription.source.clone(),
                         ty::Variance::Covariant,
-                        box ascription.user_ty,
+                        box ascription.user_ty.user_ty(),
                     ),
                 },
             );
@@ -1470,7 +1470,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         num_patterns: usize,
         var_id: NodeId,
         var_ty: Ty<'tcx>,
-        user_var_ty: Option<(UserTypeAnnotation<'tcx>, Span)>,
+        user_var_ty: Option<(PatternTypeAnnotation<'tcx>, Span)>,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
         pat_span: Span,
@@ -1489,7 +1489,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let local = LocalDecl::<'tcx> {
             mutability,
             ty: var_ty,
-            user_ty: user_var_ty,
+            user_ty: user_var_ty.map(|(pat_ty, span)|(pat_ty.user_ty(), span)),
             name: Some(name),
             source_info,
             visibility_scope,

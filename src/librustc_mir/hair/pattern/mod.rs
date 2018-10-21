@@ -64,12 +64,26 @@ pub struct Pattern<'tcx> {
     pub kind: Box<PatternKind<'tcx>>,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct PatternTypeAnnotation<'tcx>(UserTypeAnnotation<'tcx>);
+
+impl<'tcx> PatternTypeAnnotation<'tcx> {
+    pub(crate) fn from_c_ty(c_ty: ty::CanonicalTy<'tcx>) -> Self {
+        Self::from_u_ty(UserTypeAnnotation::Ty(c_ty))
+    }
+    pub(crate) fn from_u_ty(u_ty: UserTypeAnnotation<'tcx>) -> Self {
+        PatternTypeAnnotation(u_ty)
+    }
+
+    pub(crate) fn user_ty(self) -> UserTypeAnnotation<'tcx> { self.0 }
+}
+
 #[derive(Clone, Debug)]
 pub enum PatternKind<'tcx> {
     Wild,
 
     AscribeUserType {
-        user_ty: UserTypeAnnotation<'tcx>,
+        user_ty: PatternTypeAnnotation<'tcx>,
         subpattern: Pattern<'tcx>,
         user_ty_span: Span,
     },
@@ -690,9 +704,10 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             debug!("pattern user_ty = {:?} for pattern at {:?}", user_ty, span);
 
+            let pat_ty = PatternTypeAnnotation::from_u_ty(user_ty);
             kind = PatternKind::AscribeUserType {
                 subpattern,
-                user_ty,
+                user_ty: pat_ty,
                 user_ty_span: span,
             };
         }
@@ -980,7 +995,7 @@ macro_rules! CloneImpls {
 CloneImpls!{ <'tcx>
     Span, Field, Mutability, ast::Name, ast::NodeId, usize, &'tcx ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
-    &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, UserTypeAnnotation<'tcx>
+    &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, UserTypeAnnotation<'tcx>, PatternTypeAnnotation<'tcx>
 }
 
 impl<'tcx> PatternFoldable<'tcx> for FieldPattern<'tcx> {
