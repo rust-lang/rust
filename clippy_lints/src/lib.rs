@@ -144,6 +144,7 @@ pub mod loops;
 pub mod map_clone;
 pub mod map_unit_fn;
 pub mod matches;
+pub mod mem_discriminant;
 pub mod mem_forget;
 pub mod mem_replace;
 pub mod methods;
@@ -398,6 +399,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_early_lint_pass(box doc::Doc::new(conf.doc_valid_idents.clone()));
     reg.register_late_lint_pass(box neg_multiply::NegMultiply);
     reg.register_early_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
+    reg.register_late_lint_pass(box mem_discriminant::MemDiscriminant);
     reg.register_late_lint_pass(box mem_forget::MemForget);
     reg.register_late_lint_pass(box mem_replace::MemReplace);
     reg.register_late_lint_pass(box arithmetic::Arithmetic::default());
@@ -612,6 +614,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         matches::MATCH_REF_PATS,
         matches::MATCH_WILD_ERR_ARM,
         matches::SINGLE_MATCH,
+        mem_discriminant::MEM_DISCRIMINANT_NON_ENUM,
         mem_replace::MEM_REPLACE_OPTION_WITH_NONE,
         methods::CHARS_LAST_CMP,
         methods::CHARS_NEXT_CMP,
@@ -924,6 +927,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         loops::NEVER_LOOP,
         loops::REVERSE_RANGE_LOOP,
         loops::WHILE_IMMUTABLE_CONDITION,
+        mem_discriminant::MEM_DISCRIMINANT_NON_ENUM,
         methods::CLONE_DOUBLE_REF,
         methods::TEMPORARY_CSTRING_AS_PTR,
         minmax::MIN_MAX,

@@ -744,6 +744,7 @@ All notable changes to this project will be documented in this file.
 [`match_same_arms`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#match_same_arms
 [`match_wild_err_arm`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#match_wild_err_arm
 [`maybe_infinite_iter`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#maybe_infinite_iter
+[`mem_discriminant_non_enum`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mem_discriminant_non_enum
 [`mem_forget`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mem_forget
 [`mem_replace_option_with_none`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mem_replace_option_with_none
 [`min_max`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#min_max
