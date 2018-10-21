@@ -634,7 +634,7 @@ impl<Tag: Copy, Extra: Default> Allocation<Tag, Extra> {
         offset: Size,
         required_align: Align,
     ) -> EvalResult<'tcx> {
-        if self.align.abi() > required_align.abi() {
+        if self.align.abi() < required_align.abi() {
             return err!(AlignmentCheckFailed {
                 has: self.align,
                 required: required_align,
