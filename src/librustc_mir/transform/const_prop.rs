@@ -259,9 +259,9 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = source_info.span;
-        match self.ecx.const_to_op(c.literal) {
-            Ok(op) => {
-                Some((op, c.span))
+        match self.ecx.const_to_mplace(c.literal) {
+            Ok(mplace) => {
+                Some((mplace.into(), c.span))
             },
             Err(error) => {
                 let (stacktrace, span) = self.ecx.generate_stacktrace(None);
@@ -314,7 +314,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     eval_promoted(this.tcx, cid, this.mir, this.param_env)
                 })?;
                 trace!("evaluated promoted {:?} to {:?}", promoted, res);
-                Some((res, source_info.span))
+                Some((res.into(), source_info.span))
             },
             _ => None,
         }

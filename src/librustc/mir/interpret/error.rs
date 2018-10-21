@@ -197,7 +197,7 @@ pub enum EvalErrorKind<'tcx, O> {
     InvalidBool,
     InvalidDiscriminant(u128),
     PointerOutOfBounds {
-        ptr: Pointer,
+        offset: Size,
         access: bool,
         allocation_size: Size,
     },
@@ -440,10 +440,10 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::EvalErrorKind::*;
         match *self {
-            PointerOutOfBounds { ptr, access, allocation_size } => {
-                write!(f, "{} at offset {}, outside bounds of allocation {} which has size {}",
+            PointerOutOfBounds { offset, access, allocation_size } => {
+                write!(f, "{} at offset {}, outside bounds of allocation with size {}",
                        if access { "memory access" } else { "pointer computed" },
-                       ptr.offset.bytes(), ptr.alloc_id, allocation_size.bytes())
+                       offset.bytes(), allocation_size.bytes())
             },
             MemoryLockViolation { ptr, len, frame, access, ref lock } => {
                 write!(f, "{:?} access by frame {} at {:?}, size {}, is in conflict with lock {:?}",

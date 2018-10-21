@@ -29,7 +29,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use interpret::{self,
-    PlaceTy, MemPlace, OpTy, Operand, Value, Pointer, Scalar, ConstValue,
+    PlaceTy, MemPlace, MPlaceTy, OpTy, Operand, Value, Pointer, Scalar, ConstValue,
     EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot,
@@ -91,55 +91,29 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: &'mir mir::Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, OpTy<'tcx>> {
+) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
     let mut ecx = mk_borrowck_eval_cx(tcx, cid.instance, mir, DUMMY_SP).unwrap();
     eval_body_using_ecx(&mut ecx, cid, Some(mir), param_env)
 }
 
-pub fn op_to_const<'tcx>(
+pub fn mplace_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
-    op: OpTy<'tcx>,
-    may_normalize: bool,
+    mplace: MPlaceTy<'tcx>,
 ) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
-    // We do not normalize just any data.  Only scalar layout and fat pointers.
-    let normalize = may_normalize
-        && match op.layout.abi {
-            layout::Abi::Scalar(..) => true,
-            layout::Abi::ScalarPair(..) => {
-                // Must be a fat pointer
-                op.layout.ty.builtin_deref(true).is_some()
-            },
-            _ => false,
-        };
-    let normalized_op = if normalize {
-        ecx.try_read_value(op)?
-    } else {
-        match op.op {
-            Operand::Indirect(mplace) => Err(mplace),
-            Operand::Immediate(val) => Ok(val)
-        }
-    };
-    let val = match normalized_op {
-        Err(MemPlace { ptr, align, meta }) => {
-            // extract alloc-offset pair
-            assert!(meta.is_none());
-            let ptr = ptr.to_ptr()?;
-            let alloc = ecx.memory.get(ptr.alloc_id)?;
-            assert!(alloc.align.abi() >= align.abi());
-            assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= op.layout.size.bytes());
-            let mut alloc = alloc.clone();
-            alloc.align = align;
-            // FIXME shouldnt it be the case that `intern_static` has already
-            // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
-            let alloc = ecx.tcx.intern_const_alloc(alloc);
-            ConstValue::ByRef(ptr.alloc_id, alloc, ptr.offset)
-        },
-        Ok(Value::Scalar(x)) =>
-            ConstValue::Scalar(x.not_undef()?),
-        Ok(Value::ScalarPair(a, b)) =>
-            ConstValue::ScalarPair(a.not_undef()?, b.not_undef()?),
-    };
-    Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, op.layout.ty))
+    let MemPlace { ptr, align, meta } = *mplace;
+    // extract alloc-offset pair
+    assert!(meta.is_none());
+    let ptr = ptr.to_ptr()?;
+    let alloc = ecx.memory.get(ptr.alloc_id)?;
+    assert!(alloc.align.abi() >= align.abi());
+    assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= mplace.layout.size.bytes());
+    let mut alloc = alloc.clone();
+    alloc.align = align;
+    // FIXME shouldnt it be the case that `intern_static` has already
+    // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
+    let alloc = ecx.tcx.intern_const_alloc(alloc);
+    let val = ConstValue::ByRef(ptr.alloc_id, alloc, ptr.offset);
+    Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, mplace.layout.ty))
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
@@ -147,7 +121,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> (EvalResult<'tcx, OpTy<'tcx>>, CompileTimeEvalContext<'a, 'mir, 'tcx>) {
+) -> (EvalResult<'tcx, MPlaceTy<'tcx>>, CompileTimeEvalContext<'a, 'mir, 'tcx>) {
     // we start out with the best span we have
     // and try improving it down the road when more information is available
     let span = tcx.def_span(cid.instance.def_id());
@@ -163,7 +137,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, OpTy<'tcx>> {
+) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, param_env);
     let tcx = ecx.tcx.tcx;
     let mut mir = match mir {
@@ -203,7 +177,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx.memory.intern_static(ret.ptr.to_ptr()?.alloc_id, mutability)?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
-    Ok(ret.into())
+    Ok(ret)
 }
 
 impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
@@ -497,17 +471,17 @@ pub fn const_field<'a, 'tcx>(
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let result = (|| {
         // get the operand again
-        let op = ecx.const_to_op(value)?;
+        let mplace = ecx.const_to_mplace(value)?;
         // downcast
         let down = match variant {
-            None => op,
-            Some(variant) => ecx.operand_downcast(op, variant)?
+            None => mplace,
+            Some(variant) => ecx.mplace_downcast(mplace, variant)?
         };
         // then project
-        let field = ecx.operand_field(down, field.index() as u64)?;
+        let field = ecx.mplace_field(down, field.index() as u64)?;
         // and finally move back to the const world, always normalizing because
         // this is not called for statics.
-        op_to_const(&ecx, field, true)
+        mplace_to_const(&ecx, field)
     })();
     result.map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
@@ -527,8 +501,8 @@ pub fn const_variant_index<'a, 'tcx>(
 ) -> EvalResult<'tcx, usize> {
     trace!("const_variant_index: {:?}, {:?}", instance, val);
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
-    let op = ecx.const_to_op(val)?;
-    Ok(ecx.read_discriminant(op)?.1)
+    let mplace = ecx.const_to_mplace(val)?;
+    Ok(ecx.read_discriminant(mplace.into())?.1)
 }
 
 pub fn const_to_allocation_provider<'a, 'tcx>(
@@ -583,16 +557,8 @@ pub fn const_eval_provider<'a, 'tcx>(
     };
 
     let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
-    res.and_then(|op| {
-        let normalize = tcx.is_static(def_id).is_none() && cid.promoted.is_none();
-        if !normalize {
-            // Sanity check: These must always be a MemPlace
-            match op.op {
-                Operand::Indirect(_) => { /* all is good */ },
-                Operand::Immediate(_) => bug!("const eval gave us an Immediate"),
-            }
-        }
-        op_to_const(&ecx, op, normalize)
+    res.and_then(|mplace| {
+        mplace_to_const(&ecx, mplace)
     }).map_err(|err| {
         let (trace, span) = ecx.generate_stacktrace(None);
         let err = ConstEvalErr {

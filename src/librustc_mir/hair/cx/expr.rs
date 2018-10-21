@@ -851,7 +851,7 @@ fn method_callee<'a, 'gcx, 'tcx>(
         ty,
         span,
         kind: ExprKind::Literal {
-            literal: ty::Const::zero_sized(cx.tcx(), ty),
+            literal: ty::Const::zero_sized(cx.tcx(), cx.param_env.and(ty)),
             user_ty,
         },
     }
@@ -912,7 +912,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             ExprKind::Literal {
                 literal: ty::Const::zero_sized(
                     cx.tcx,
-                    cx.tables().node_id_to_type(expr.hir_id),
+                    cx.param_env.and(cx.tables().node_id_to_type(expr.hir_id)),
                 ),
                 user_ty,
             }

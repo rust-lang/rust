@@ -261,7 +261,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 // of some (potentially dead) allocation.
                 if ptr.offset > size {
                     return err!(PointerOutOfBounds {
-                        ptr: ptr.erase_tag(),
+                        offset: ptr.offset,
                         access: true,
                         allocation_size: size,
                     });
@@ -310,7 +310,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         let allocation_size = alloc.bytes.len() as u64;
         if ptr.offset.bytes() > allocation_size {
             return err!(PointerOutOfBounds {
-                ptr: ptr.erase_tag(),
+                offset: ptr.offset,
                 access,
                 allocation_size: Size::from_bytes(allocation_size),
             });

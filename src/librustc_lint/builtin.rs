@@ -1557,8 +1557,8 @@ fn validate_const<'a, 'tcx>(
 ) {
     let ecx = ::rustc_mir::const_eval::mk_eval_cx(tcx, gid.instance, param_env).unwrap();
     let result = (|| {
-        let op = ecx.const_to_op(constant)?;
-        let mut ref_tracking = ::rustc_mir::interpret::RefTracking::new(op);
+        let mplace = ecx.const_to_mplace(constant)?;
+        let mut ref_tracking = ::rustc_mir::interpret::RefTracking::new(mplace.into());
         while let Some((op, mut path)) = ref_tracking.todo.pop() {
             ecx.validate_operand(
                 op,

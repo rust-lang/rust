@@ -28,7 +28,7 @@ pub use self::value::{Scalar, ConstValue};
 use std::fmt;
 use mir;
 use hir::def_id::DefId;
-use ty::{self, TyCtxt, Instance};
+use ty::{self, TyCtxt, Instance, Ty, ParamEnvAnd};
 use ty::layout::{self, Align, HasDataLayout, Size};
 use middle::region;
 use std::iter;
@@ -545,7 +545,7 @@ pub struct Allocation<Tag=(),Extra=()> {
     pub extra: Extra,
 }
 
-impl<Tag, Extra: Default> Allocation<Tag, Extra> {
+impl<Tag: Copy, Extra: Default> Allocation<Tag, Extra> {
     /// Creates a read-only allocation initialized by the given bytes
     pub fn from_bytes(slice: &[u8], align: Align) -> Self {
         let mut undef_mask = UndefMask::new(Size::ZERO);
@@ -574,6 +574,144 @@ impl<Tag, Extra: Default> Allocation<Tag, Extra> {
             mutability: Mutability::Mutable,
             extra: Extra::default(),
         }
+    }
+
+    #[inline]
+    pub fn size(&self) -> Size {
+        Size::from_bytes(self.bytes.len() as u64)
+    }
+
+    pub fn check_align(
+        &self,
+        offset: Size,
+        required_align: Align,
+    ) -> EvalResult<'tcx> {
+        if self.align.abi() > required_align.abi() {
+            return err!(AlignmentCheckFailed {
+                has: self.align,
+                required: required_align,
+            });
+        }
+        let offset = offset.bytes();
+        if offset % required_align.abi() == 0 {
+            Ok(())
+        } else {
+            let has = offset % required_align.abi();
+            err!(AlignmentCheckFailed {
+                has: Align::from_bytes(has, has).unwrap(),
+                required: required_align,
+            })
+        }
+    }
+
+    pub fn check_bounds(
+        &self,
+        offset: Size,
+        size: Size,
+        access: bool,
+    ) -> EvalResult<'tcx> {
+        let end = offset + size;
+        let allocation_size = self.size();
+        if end > allocation_size {
+            err!(PointerOutOfBounds { offset, access, allocation_size })
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn check_defined(
+        &self,
+        offset: Size,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        self.undef_mask.is_range_defined(
+            offset,
+            offset + size,
+        ).or_else(|idx| err!(ReadUndefBytes(idx)))
+    }
+
+    pub fn check_relocations(
+        &self,
+        hdl: impl HasDataLayout,
+        offset: Size,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        if self.relocations(hdl, offset, size)?.len() != 0 {
+            err!(ReadPointerAsBytes)
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn relocations(
+        &self,
+        hdl: impl HasDataLayout,
+        offset: Size,
+        size: Size,
+    ) -> EvalResult<'tcx, &[(Size, (Tag, AllocId))]> {
+        // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
+        // the beginning of this range.
+        let start = offset.bytes().saturating_sub(hdl.pointer_size().bytes() - 1);
+        let end = offset + size; // this does overflow checking
+        Ok(self.relocations.range(Size::from_bytes(start)..end))
+    }
+
+    pub fn get_bytes(
+        &self,
+        hdl: impl HasDataLayout,
+        offset: Size,
+        size: Size,
+        required_align: Align,
+    ) -> EvalResult<'tcx, &[u8]> {
+        self.check_align(offset, required_align)?;
+        self.check_bounds(offset, size, true)?;
+        self.check_defined(offset, size)?;
+        self.check_relocations(hdl, offset, size)?;
+        Ok(self.bytes_ignoring_relocations_and_undef(offset, size))
+    }
+
+    pub fn read_bits(
+        &self,
+        tcx: TyCtxt<'_, '_, 'tcx>,
+        offset: Size,
+        ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
+    ) -> EvalResult<'tcx, u128> {
+        let ty = tcx.lift_to_global(&ty).unwrap();
+        let layout = tcx.layout_of(ty).unwrap_or_else(|e| {
+            panic!("could not compute layout for {:?}: {:?}", ty, e)
+        });
+        let bytes = self.get_bytes(tcx, offset, layout.size, layout.align)?;
+        Ok(read_target_uint(tcx.data_layout.endian, bytes).unwrap())
+    }
+
+    pub fn read_scalar(
+        &self,
+        hdl: impl HasDataLayout,
+        offset: Size,
+    ) -> EvalResult<'tcx, Scalar<Tag>> {
+        let size = hdl.data_layout().pointer_size;
+        let required_align = hdl.data_layout().pointer_align;
+        self.check_align(offset, required_align)?;
+        self.check_bounds(offset, size, true)?;
+        self.check_defined(offset, size)?;
+        let bytes = self.bytes_ignoring_relocations_and_undef(offset, size);
+        let offset = read_target_uint(hdl.data_layout().endian, &bytes).unwrap();
+        let offset = Size::from_bytes(offset as u64);
+        if let Some(&(tag, alloc_id)) = self.relocations.get(&offset) {
+            Ok(Pointer::new_with_tag(alloc_id, offset, tag).into())
+        } else {
+            Ok(Scalar::Bits {
+                bits: offset.bytes() as u128,
+                size: size.bytes() as u8,
+            })
+        }
+    }
+
+    fn bytes_ignoring_relocations_and_undef(&self, offset: Size, size: Size) -> &[u8] {
+        let end = offset + size;
+        let offset = offset.bytes() as usize;
+        let end = end.bytes() as usize;
+        &self.bytes[offset..end]
     }
 }
 

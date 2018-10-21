@@ -13,12 +13,12 @@
 
 use std::convert::TryInto;
 
-use rustc::{mir, ty};
-use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt};
+use rustc::mir;
+use rustc::ty::layout::{self, Size, TyLayout, HasDataLayout, IntegerExt};
 
 use rustc::mir::interpret::{
-    GlobalId, AllocId,
-    ConstValue, Pointer, Scalar,
+    AllocId,
+    Pointer, Scalar,
     EvalResult, EvalErrorKind
 };
 use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
@@ -628,12 +628,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.eval_place_to_op(place, layout)?,
 
             Constant(ref constant) => {
-                let layout = from_known_layout(layout, || {
-                    let ty = self.monomorphize(mir_op.ty(self.mir(), *self.tcx), self.substs());
-                    self.layout_of(ty)
-                })?;
-                let op = self.const_value_to_op(constant.literal.val)?;
-                OpTy { op, layout }
+                self.const_to_mplace(constant.literal)?.into()
             }
         };
         trace!("{:?}: {:?}", mir_op, *op);
@@ -648,49 +643,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         ops.into_iter()
             .map(|op| self.eval_operand(op, None))
             .collect()
-    }
-
-    // Also used e.g. when miri runs into a constant.
-    pub(super) fn const_value_to_op(
-        &self,
-        val: ConstValue<'tcx>,
-    ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
-        trace!("const_value_to_op: {:?}", val);
-        match val {
-            ConstValue::Unevaluated(def_id, substs) => {
-                let instance = self.resolve(def_id, substs)?;
-                self.global_to_op(GlobalId {
-                    instance,
-                    promoted: None,
-                })
-            }
-            ConstValue::ByRef(id, alloc, offset) => {
-                // We rely on mutability being set correctly in that allocation to prevent writes
-                // where none should happen -- and for `static mut`, we copy on demand anyway.
-                Ok(Operand::Indirect(
-                    MemPlace::from_ptr(Pointer::new(id, offset), alloc.align)
-                ).with_default_tag())
-            },
-            ConstValue::ScalarPair(a, b) =>
-                Ok(Operand::Immediate(Value::ScalarPair(a.into(), b.into())).with_default_tag()),
-            ConstValue::Scalar(x) =>
-                Ok(Operand::Immediate(Value::Scalar(x.into())).with_default_tag()),
-        }
-    }
-    pub fn const_to_op(
-        &self,
-        cnst: &ty::Const<'tcx>,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let op = self.const_value_to_op(cnst.val)?;
-        Ok(OpTy { op, layout: self.layout_of(cnst.ty)? })
-    }
-
-    pub(super) fn global_to_op(
-        &self,
-        gid: GlobalId<'tcx>
-    ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
-        let cv = self.const_eval(gid)?;
-        self.const_value_to_op(cv.val)
     }
 
     /// Read discriminant, return the runtime value as well as the variant index.

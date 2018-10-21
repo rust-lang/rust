@@ -10,8 +10,9 @@
 
 #![allow(unknown_lints)]
 
-use ty::layout::{HasDataLayout, Size};
+use ty::layout::{HasDataLayout, Align, Size, TyLayout};
 use ty::subst::Substs;
+use ty;
 use hir::def_id::DefId;
 
 use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
@@ -25,16 +26,6 @@ pub enum ConstValue<'tcx> {
     /// evaluation
     Unevaluated(DefId, &'tcx Substs<'tcx>),
 
-    /// Used only for types with layout::abi::Scalar ABI and ZSTs
-    ///
-    /// Not using the enum `Value` to encode that this must not be `Undef`
-    Scalar(Scalar),
-
-    /// Used only for *fat pointers* with layout::abi::ScalarPair
-    ///
-    /// Needed for pattern matching code related to slices and strings.
-    ScalarPair(Scalar, Scalar),
-
     /// An allocation + offset into the allocation.
     /// Invariant: The AllocId matches the allocation.
     ByRef(AllocId, &'tcx Allocation, Size),
@@ -42,40 +33,123 @@ pub enum ConstValue<'tcx> {
 
 impl<'tcx> ConstValue<'tcx> {
     #[inline]
-    pub fn try_to_scalar(&self) -> Option<Scalar> {
-        match *self {
-            ConstValue::Unevaluated(..) |
-            ConstValue::ByRef(..) |
-            ConstValue::ScalarPair(..) => None,
-            ConstValue::Scalar(val) => Some(val),
+    pub fn try_as_by_ref(&self) -> Option<(AllocId, &'tcx Allocation, Size)> {
+        match self {
+            ConstValue::Unevaluated(..) => None,
+            ConstValue::ByRef(a, b, c) => Some((*a, *b, *c)),
         }
     }
 
     #[inline]
-    pub fn try_to_bits(&self, size: Size) -> Option<u128> {
-        self.try_to_scalar()?.to_bits(size).ok()
+    /// if this is ByRef, return the same thing but with the offset increased by `n`
+    pub fn try_offset(&self, n: Size) -> Option<Self> {
+        let (id, alloc, offset) = self.try_as_by_ref()?;
+        Some(ConstValue::ByRef(id, alloc, offset + n))
     }
 
     #[inline]
-    pub fn try_to_ptr(&self) -> Option<Pointer> {
-        self.try_to_scalar()?.to_ptr().ok()
+    pub fn try_get_bytes(&self, hdl: impl HasDataLayout, n: Size, align: Align) -> Option<&[u8]> {
+        let (_, alloc, offset) = self.try_as_by_ref()?;
+        alloc.get_bytes(hdl, offset, n, align).ok()
+    }
+
+    #[inline]
+    pub fn try_to_bits(&self, hdl: impl HasDataLayout, layout: TyLayout<'tcx>) -> Option<u128> {
+        let bytes = self.try_get_bytes(hdl, layout.size, layout.align)?;
+        let endian = hdl.data_layout().endian;
+        super::read_target_uint(endian, &bytes).ok()
+    }
+
+    #[inline]
+    pub fn try_to_usize(&self, hdl: impl HasDataLayout) -> Option<u128> {
+        let size = hdl.data_layout().pointer_size;
+        let align = hdl.data_layout().pointer_align;
+        let bytes = self.try_get_bytes(hdl, size, align)?;
+        let endian = hdl.data_layout().endian;
+        super::read_target_uint(endian, &bytes).ok()
+    }
+
+    #[inline]
+    pub fn try_to_ptr(
+        &self,
+        hdl: impl HasDataLayout,
+    ) -> Option<Pointer> {
+        let (_, alloc, offset) = self.try_as_by_ref()?;
+        alloc.read_scalar(hdl, offset).ok()?.to_ptr().ok()
+    }
+
+    /// e.g. for vtables, fat pointers or single pointers
+    #[inline]
+    pub fn new_pointer_list(
+        list: &[Scalar],
+        tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    ) -> Self {
+        let ps = tcx.data_layout().pointer_size;
+        let mut alloc = Allocation::undef(
+            ps * list.len() as u64,
+            tcx.data_layout().pointer_align,
+        );
+        alloc.undef_mask.set_range_inbounds(Size::ZERO, ps * list.len() as u64, true);
+        for (i, s) in list.iter().enumerate() {
+            let (int, ptr) = match s {
+                Scalar::Bits { bits, size } => {
+                    assert!(*size as u64 == ps.bytes());
+                    (*bits as u64, None)
+                }
+                Scalar::Ptr(ptr) => (ptr.offset.bytes(), Some(ptr)),
+            };
+            let i = i * ps.bytes() as usize;
+            let j = i + ps.bytes() as usize;
+            super::write_target_uint(
+                tcx.data_layout().endian,
+                &mut alloc.bytes[i..j],
+                int.into(),
+            ).unwrap();
+            if let Some(ptr) = ptr {
+                alloc.relocations.insert(
+                    ps * i as u64,
+                    (ptr.tag, ptr.alloc_id),
+                );
+            }
+        }
+        Self::from_allocation(tcx, alloc)
+    }
+
+    #[inline]
+    pub fn from_allocation(
+        tcx: ty::TyCtxt<'_, '_, 'tcx>,
+        alloc: Allocation,
+    ) -> Self {
+        let alloc = tcx.intern_const_alloc(alloc);
+        let alloc_id = tcx.alloc_map.lock().allocate(alloc);
+        ConstValue::ByRef(alloc_id, alloc, Size::ZERO)
     }
 
     #[inline]
     pub fn new_slice(
         val: Scalar,
         len: u64,
-        cx: impl HasDataLayout
+        tcx: ty::TyCtxt<'_, '_, 'tcx>,
     ) -> Self {
-        ConstValue::ScalarPair(val, Scalar::Bits {
-            bits: len as u128,
-            size: cx.data_layout().pointer_size.bytes() as u8,
-        })
+        Self::new_pointer_list(
+            &[
+                val,
+                Scalar::Bits {
+                    bits: len as u128,
+                    size: tcx.data_layout.pointer_size.bytes() as u8,
+                },
+            ],
+            tcx,
+        )
     }
 
     #[inline]
-    pub fn new_dyn_trait(val: Scalar, vtable: Pointer) -> Self {
-        ConstValue::ScalarPair(val, Scalar::Ptr(vtable))
+    pub fn new_dyn_trait(
+        val: Scalar,
+        vtable: Pointer,
+        tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    ) -> Self {
+        Self::new_pointer_list(&[val, vtable.into()], tcx)
     }
 }
 

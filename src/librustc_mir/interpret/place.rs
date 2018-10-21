@@ -20,7 +20,8 @@ use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout};
 
 use rustc::mir::interpret::{
-    GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic
+    GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic,
+    ConstValue,
 };
 use super::{
     EvalContext, Machine, AllocMap,
@@ -525,6 +526,37 @@ where
         })
     }
 
+    // Also used e.g. when miri runs into a constant.
+    pub fn const_to_mplace(
+        &self,
+        val: &ty::Const<'tcx>,
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        trace!("const_value_to_mplace: {:?}", val);
+        let mplace = match val.val {
+            ConstValue::Unevaluated(def_id, substs) => {
+                let instance = self.resolve(def_id, substs)?;
+                self.global_to_mplace(GlobalId {
+                    instance,
+                    promoted: None,
+                })?
+            }
+            ConstValue::ByRef(id, alloc, offset) => {
+                // We rely on mutability being set correctly in that allocation to prevent writes
+                // where none should happen -- and for `static mut`, we copy on demand anyway.
+                MemPlace::from_ptr(Pointer::new(id, offset), alloc.align).with_default_tag()
+            }
+        };
+        Ok(MPlaceTy { mplace, layout: self.layout_of(val.ty)? })
+    }
+
+    fn global_to_mplace(
+        &self,
+        gid: GlobalId<'tcx>
+    ) -> EvalResult<'tcx, MemPlace<M::PointerTag>> {
+        let cv = self.const_eval(gid)?;
+        Ok(*self.const_to_mplace(cv)?)
+    }
+
     /// Evaluate statics and promoteds to an `MPlace`.  Used to share some code between
     /// `eval_place` and `eval_place_to_op`.
     pub(super) fn eval_place_to_mplace(
@@ -535,11 +567,10 @@ where
         Ok(match *mir_place {
             Promoted(ref promoted) => {
                 let instance = self.frame().instance;
-                let op = self.global_to_op(GlobalId {
+                let mplace = self.global_to_mplace(GlobalId {
                     instance,
                     promoted: Some(promoted.0),
                 })?;
-                let mplace = op.to_mem_place(); // these are always in memory
                 let ty = self.monomorphize(promoted.1, self.substs());
                 MPlaceTy {
                     mplace,

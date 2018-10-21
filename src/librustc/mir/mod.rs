@@ -38,7 +38,8 @@ use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::subst::{CanonicalUserSubsts, Subst, Substs};
-use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt};
+use ty::layout::{Size, Align};
+use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt, ParamEnv};
 use util::ppaux;
 
 pub use mir::interpret::AssertMessage;
@@ -1589,25 +1590,16 @@ impl<'tcx> TerminatorKind<'tcx> {
                 switch_ty,
                 ..
             } => {
-                let size = ty::tls::with(|tcx| {
-                    let param_env = ty::ParamEnv::empty();
-                    let switch_ty = tcx.lift_to_global(&switch_ty).unwrap();
-                    tcx.layout_of(param_env.and(switch_ty)).unwrap().size
-                });
                 values
                     .iter()
                     .map(|&u| {
                         let mut s = String::new();
-                        let c = ty::Const {
-                            val: ConstValue::Scalar(
-                                Scalar::Bits {
-                                    bits: u,
-                                    size: size.bytes() as u8,
-                                }.into(),
-                            ),
-                            ty: switch_ty,
-                        };
-                        fmt_const_val(&mut s, &c).unwrap();
+                        ty::tls::with(|tcx| {
+                            let param_env = ty::ParamEnv::empty();
+                            let switch_ty = tcx.lift_to_global(&switch_ty).unwrap();
+                            let c = ty::Const::from_bits(tcx, u, param_env.and(switch_ty));
+                            fmt_const_val(&mut s, c).unwrap();
+                        });
                         s.into()
                     }).chain(iter::once("otherwise".into()))
                     .collect()
@@ -2113,7 +2105,7 @@ impl<'tcx> Operand<'tcx> {
             span,
             ty,
             user_ty: None,
-            literal: ty::Const::zero_sized(tcx, ty),
+            literal: ty::Const::zero_sized(tcx, ParamEnv::empty().and(ty)),
         })
     }
 
@@ -2456,15 +2448,30 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const<'_>) -> fmt::Resu
     use ty::TyKind::*;
     let value = const_val.val;
     let ty = const_val.ty;
-    // print some primitives
-    if let ConstValue::Scalar(Scalar::Bits { bits, .. }) = value {
+    // print function definitons
+    if let FnDef(did, _) = ty.sty {
+        return write!(f, "{}", item_path_str(did));
+    }
+    if let ConstValue::ByRef(_, alloc, offset) = value {
+        let bits = || ty::tls::with(|tcx| alloc.read_bits(
+            tcx,
+            offset,
+            ParamEnv::reveal_all().and(tcx.lift_to_global(&ty).unwrap()),
+        ).ok());
         match ty.sty {
-            Bool if bits == 0 => return write!(f, "false"),
-            Bool if bits == 1 => return write!(f, "true"),
-            Float(ast::FloatTy::F32) => return write!(f, "{}f32", Single::from_bits(bits)),
-            Float(ast::FloatTy::F64) => return write!(f, "{}f64", Double::from_bits(bits)),
-            Uint(ui) => return write!(f, "{:?}{}", bits, ui),
-            Int(i) => {
+            // print some primitives
+            Bool if bits() == Some(0) => return write!(f, "false"),
+            Bool if bits() == Some(1) => return write!(f, "true"),
+            Float(ast::FloatTy::F32) => if let Some(bits) = bits() {
+                return write!(f, "{}f32", Single::from_bits(bits))
+            },
+            Float(ast::FloatTy::F64) => if let Some(bits) = bits() {
+                return write!(f, "{}f64", Double::from_bits(bits))
+            },
+            Uint(ui) => if let Some(bits) = bits() {
+                return write!(f, "{:?}{}", bits, ui)
+            },
+            Int(i) => if let Some(bits) = bits() {
                 let bit_width = ty::tls::with(|tcx| {
                     let ty = tcx.lift_to_global(&ty).unwrap();
                     tcx.layout_of(ty::ParamEnv::empty().and(ty))
@@ -2474,34 +2481,45 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const<'_>) -> fmt::Resu
                 });
                 let shift = 128 - bit_width;
                 return write!(f, "{:?}{}", ((bits as i128) << shift) >> shift, i);
-            }
-            Char => return write!(f, "{:?}", ::std::char::from_u32(bits as u32).unwrap()),
-            _ => {}
-        }
-    }
-    // print function definitons
-    if let FnDef(did, _) = ty.sty {
-        return write!(f, "{}", item_path_str(did));
-    }
-    // print string literals
-    if let ConstValue::ScalarPair(ptr, len) = value {
-        if let Scalar::Ptr(ptr) = ptr {
-            if let Scalar::Bits { bits: len, .. } = len {
-                if let Ref(_, &ty::TyS { sty: Str, .. }, _) = ty.sty {
-                    return ty::tls::with(|tcx| {
-                        let alloc = tcx.alloc_map.lock().get(ptr.alloc_id);
-                        if let Some(interpret::AllocType::Memory(alloc)) = alloc {
-                            assert_eq!(len as usize as u128, len);
-                            let slice =
-                                &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
-                            let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
-                            write!(f, "{:?}", s)
-                        } else {
-                            write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len)
-                        }
-                    });
+            },
+            Char => if let Some(bits) = bits() {
+                return write!(f, "{:?}", ::std::char::from_u32(bits as u32).unwrap())
+            },
+            // print string literals
+            Ref(_, &ty::TyS { sty: Str, .. }, _) => {
+                let ptr = ty::tls::with(|tcx| alloc.read_scalar(tcx, offset));
+                let ptr = ptr.and_then(Scalar::to_ptr);
+                if let Ok(ptr) = ptr {
+                    let len = ty::tls::with(|tcx| alloc.read_bits(
+                        tcx,
+                        offset,
+                        ParamEnv::reveal_all().and(tcx.types.usize),
+                    ).ok());
+                    if let Some(len) = len {
+                        return ty::tls::with(|tcx| {
+                            let alloc = tcx.alloc_map.lock().get(ptr.alloc_id);
+                            if let Some(interpret::AllocType::Memory(alloc)) = alloc {
+                                assert_eq!(len as u64 as u128, len);
+                                if let Ok(slice) = alloc.get_bytes(
+                                    tcx,
+                                    ptr.offset,
+                                    Size::from_bytes(len as u64),
+                                    Align::from_bytes(1, 1).unwrap(),
+                                ) {
+                                    let s = ::std::str::from_utf8(slice)
+                                        .expect("non utf8 str from miri");
+                                    write!(f, "{:?}", s)
+                                } else {
+                                    write!(f, "string containing undef or ptrs")
+                                }
+                            } else {
+                                write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len)
+                            }
+                        });
+                    }
                 }
             }
+            _ => {}
         }
     }
     // just raw dump everything else

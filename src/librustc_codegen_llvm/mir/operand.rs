@@ -25,7 +25,6 @@ use glue;
 use std::fmt;
 
 use super::{FunctionCx, LocalRef};
-use super::constant::scalar_to_llvm;
 use super::place::PlaceRef;
 
 /// The representation of a Rust value. The enum variant is in fact
@@ -86,50 +85,12 @@ impl OperandRef<'ll, 'tcx> {
             return Ok(OperandRef::new_zst(bx.cx, layout));
         }
 
-        let val = match val.val {
+        match val.val {
             ConstValue::Unevaluated(..) => bug!(),
-            ConstValue::Scalar(x) => {
-                let scalar = match layout.abi {
-                    layout::Abi::Scalar(ref x) => x,
-                    _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
-                };
-                let llval = scalar_to_llvm(
-                    bx.cx,
-                    x,
-                    scalar,
-                    layout.immediate_llvm_type(bx.cx),
-                );
-                OperandValue::Immediate(llval)
-            },
-            ConstValue::ScalarPair(a, b) => {
-                let (a_scalar, b_scalar) = match layout.abi {
-                    layout::Abi::ScalarPair(ref a, ref b) => (a, b),
-                    _ => bug!("from_const: invalid ScalarPair layout: {:#?}", layout)
-                };
-                let a_llval = scalar_to_llvm(
-                    bx.cx,
-                    a,
-                    a_scalar,
-                    layout.scalar_pair_element_llvm_type(bx.cx, 0, true),
-                );
-                let b_layout = layout.scalar_pair_element_llvm_type(bx.cx, 1, true);
-                let b_llval = scalar_to_llvm(
-                    bx.cx,
-                    b,
-                    b_scalar,
-                    b_layout,
-                );
-                OperandValue::Pair(a_llval, b_llval)
-            },
             ConstValue::ByRef(_, alloc, offset) => {
-                return Ok(PlaceRef::from_const_alloc(bx, layout, alloc, offset).load(bx));
+                Ok(PlaceRef::from_const_alloc(bx, layout, alloc, offset).load(bx))
             },
-        };
-
-        Ok(OperandRef {
-            val,
-            layout
-        })
+        }
     }
 
     /// Asserts that this operand refers to a scalar and returns

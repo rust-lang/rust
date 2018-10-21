@@ -140,8 +140,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
     ) -> &'tcx ty::Const<'tcx> {
         trace!("const_eval_literal: {:#?}, {:?}, {:?}, {:?}", lit, ty, sp, neg);
 
-        let parse_float = |num, fty| -> ConstValue<'tcx> {
-            parse_float(num, fty, neg).unwrap_or_else(|_| {
+        let parse_float = |num, fty| -> &ty::Const<'tcx> {
+            parse_float(self.tcx, num, fty, neg).unwrap_or_else(|_| {
                 // FIXME(#31407) this is only necessary because float parsing is buggy
                 self.tcx.sess.span_fatal(sp, "could not evaluate float literal (see issue #31407)");
             })
@@ -154,27 +154,27 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             let shift = 128 - width.bits();
             let result = (n << shift) >> shift;
             trace!("trunc result: {}", result);
-            ConstValue::Scalar(Scalar::Bits {
-                bits: result,
-                size: width.bytes() as u8,
-            })
+            result
         };
 
         use rustc::mir::interpret::*;
-        let lit = match *lit {
+        let bits = match *lit {
             LitKind::Str(ref s, _) => {
                 let s = s.as_str();
                 let id = self.tcx.allocate_bytes(s.as_bytes());
-                ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64, self.tcx)
+                let const_value = ConstValue::new_slice(
+                    Scalar::Ptr(id.into()),
+                    s.len() as u64,
+                    self.tcx,
+                );
+                return ty::Const::from_const_value(self.tcx, const_value, ty);
             },
             LitKind::ByteStr(ref data) => {
                 let id = self.tcx.allocate_bytes(data);
-                ConstValue::Scalar(Scalar::Ptr(id.into()))
+                let const_value = ConstValue::new_pointer_list(&[Scalar::Ptr(id.into())], self.tcx);
+                return ty::Const::from_const_value(self.tcx, const_value, ty);
             },
-            LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bits {
-                bits: n as u128,
-                size: 1,
-            }),
+            LitKind::Byte(n) => n as u128,
             LitKind::Int(n, _) if neg => {
                 let n = n as i128;
                 let n = n.overflowing_neg().0;
@@ -182,19 +182,19 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             },
             LitKind::Int(n, _) => trunc(n),
             LitKind::Float(n, fty) => {
-                parse_float(n, fty)
+                return parse_float(n, fty);
             }
             LitKind::FloatUnsuffixed(n) => {
                 let fty = match ty.sty {
                     ty::Float(fty) => fty,
                     _ => bug!()
                 };
-                parse_float(n, fty)
+                return parse_float(n, fty);
             }
-            LitKind::Bool(b) => ConstValue::Scalar(Scalar::from_bool(b)),
-            LitKind::Char(c) => ConstValue::Scalar(Scalar::from_char(c)),
+            LitKind::Bool(b) => b as u128,
+            LitKind::Char(c) => c as u128,
         };
-        ty::Const::from_const_value(self.tcx, lit, ty)
+        ty::Const::from_bits(self.tcx, bits, ty::ParamEnv::reveal_all().and(ty))
     }
 
     pub fn pattern_from_hir(&mut self, p: &hir::Pat) -> Pattern<'tcx> {
@@ -221,7 +221,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             if item.kind == ty::AssociatedKind::Method && item.ident.name == method_name {
                 let method_ty = self.tcx.type_of(item.def_id);
                 let method_ty = method_ty.subst(self.tcx, substs);
-                return (method_ty, ty::Const::zero_sized(self.tcx, method_ty));
+                return (method_ty, ty::Const::zero_sized(self.tcx, self.param_env.and(method_ty)));
             }
         }
 

@@ -182,7 +182,6 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::layout::{Integer, IntegerExt};
 
 use rustc::mir::Field;
-use rustc::mir::interpret::ConstValue;
 use rustc::util::common::ErrorReported;
 
 use syntax::attr::{SignedInt, UnsignedInt};
@@ -341,7 +340,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
                 box PatternKind::Constant {
                     value: const_val
                 } => {
-                    if let Some(ptr) = const_val.to_ptr() {
+                    if let Some(ptr) = const_val.val.try_to_ptr(tcx) {
                         let is_array_ptr = const_val.ty
                             .builtin_deref(true)
                             .and_then(|t| t.ty.builtin_index())
@@ -767,7 +766,7 @@ fn max_slice_length<'p, 'a: 'p, 'tcx: 'a, I>(
     for row in patterns {
         match *row.kind {
             PatternKind::Constant { value } => {
-                if let Some(ptr) = value.to_ptr() {
+                if let Some(ptr) = value.val.try_to_ptr(cx.tcx) {
                     let is_array_ptr = value.ty
                         .builtin_deref(true)
                         .and_then(|t| t.ty.builtin_index())
@@ -1332,7 +1331,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
 
 fn slice_pat_covered_by_constructor<'tcx>(
     tcx: TyCtxt<'_, 'tcx, '_>,
-    _span: Span,
+    span: Span,
     ctor: &Constructor,
     prefix: &[Pattern<'tcx>],
     slice: &Option<Pattern<'tcx>>,
@@ -1340,12 +1339,7 @@ fn slice_pat_covered_by_constructor<'tcx>(
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match *ctor {
         ConstantValue(const_val) => {
-            let val = match const_val.val {
-                ConstValue::Unevaluated(..) |
-                ConstValue::ByRef(..) => bug!("unexpected ConstValue: {:?}", const_val),
-                ConstValue::Scalar(val) | ConstValue::ScalarPair(val, _) => val,
-            };
-            if let Ok(ptr) = val.to_ptr() {
+            if let Some(ptr) = const_val.val.try_to_ptr(tcx) {
                 let is_array_ptr = const_val.ty
                     .builtin_deref(true)
                     .and_then(|t| t.ty.builtin_index())
@@ -1353,10 +1347,10 @@ fn slice_pat_covered_by_constructor<'tcx>(
                 assert!(is_array_ptr);
                 tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id).bytes.as_ref()
             } else {
-                bug!("unexpected non-ptr ConstantValue")
+                span_bug!(span, "unexpected non-ptr ConstantValue")
             }
         }
-        _ => bug!()
+        _ => span_bug!(span, "bad slice ctor: {:#?}", ctor),
     };
 
     let pat_len = prefix.len() + suffix.len();
@@ -1658,7 +1652,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
         PatternKind::Constant { value } => {
             match *constructor {
                 Slice(..) => {
-                    if let Some(ptr) = value.to_ptr() {
+                    if let Some(ptr) = value.val.try_to_ptr(cx.tcx) {
                         let is_array_ptr = value.ty
                             .builtin_deref(true)
                             .and_then(|t| t.ty.builtin_index())
