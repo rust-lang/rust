@@ -981,7 +981,7 @@ pub mod tests {
     fn build_change<'a>(s1: Span, output: bool, changes: Vec<(ChangeType_, Option<Span_>)>)
         -> Change<'a>
     {
-        let mut interner = Interner::new();
+        let mut interner = Interner::default();
         let mut change = Change::new(Name::Symbol(interner.intern("test")), s1, output);
 
         for (type_, span) in changes {
@@ -996,7 +996,7 @@ pub mod tests {
 
     /// Construct `PathChange`s from things that can be generated.
     fn build_path_change(s1: Span, spans: Vec<(bool, Span)>) -> PathChange {
-        let mut interner = Interner::new();
+        let mut interner = Interner::default();
         let mut change = PathChange::new(interner.intern("test"), s1);
 
         for (add, span) in spans {
@@ -1062,7 +1062,7 @@ pub mod tests {
         fn max_pchange(changes: Vec<PathChange_>) -> bool {
             let mut set = ChangeSet::default();
 
-            let mut interner = Interner::new();
+            let mut interner = Interner::default();
             let name = interner.intern("test");
 
             let max = changes
@@ -1093,7 +1093,7 @@ pub mod tests {
         fn max_change(changes: Vec<Change_>) -> bool {
             let mut set = ChangeSet::default();
 
-            let mut interner = Interner::new();
+            let mut interner = Interner::default();
             let name = interner.intern("test");
 
             let max = changes
@@ -1126,7 +1126,7 @@ pub mod tests {
         fn max_pchange_or_change(pchanges: Vec<PathChange_>, changes: Vec<Change_>) -> bool {
             let mut set = ChangeSet::default();
 
-            let mut interner = Interner::new();
+            let mut interner = Interner::default();
             let name = interner.intern("test");
 
             let max = pchanges
