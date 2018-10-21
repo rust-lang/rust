@@ -13,13 +13,10 @@
 //! In a given program, the standard library has one “global” memory allocator
 //! that is used for example by `Box<T>` and `Vec<T>`.
 //!
-//! Currently the default global allocator is unspecified.
-//! The compiler may link to a version of [jemalloc] on some platforms,
-//! but this is not guaranteed.
-//! Libraries, however, like `cdylib`s and `staticlib`s are guaranteed
-//! to use the [`System`] by default.
+//! Currently the default global allocator is unspecified. Libraries, however,
+//! like `cdylib`s and `staticlib`s are guaranteed to use the [`System`] by
+//! default.
 //!
-//! [jemalloc]: https://github.com/jemalloc/jemalloc
 //! [`System`]: struct.System.html
 //!
 //! # The `#[global_allocator]` attribute
