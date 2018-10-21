@@ -80,8 +80,8 @@ impl Step for ToolBuild {
             "build",
             path,
             self.source_type,
+            &self.extra_features,
         );
-        cargo.arg("--features").arg(self.extra_features.join(" "));
 
         let _folder = builder.fold_output(|| format!("stage{}-{}", compiler.stage, tool));
         builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
@@ -208,6 +208,7 @@ pub fn prepare_tool_cargo(
     command: &'static str,
     path: &'static str,
     source_type: SourceType,
+    extra_features: &[String],
 ) -> Command {
     let mut cargo = builder.cargo(compiler, mode, target, command);
     let dir = builder.src.join(path);
@@ -221,10 +222,16 @@ pub fn prepare_tool_cargo(
         cargo.env("RUSTC_EXTERNAL_TOOL", "1");
     }
 
-    if let Some(dir) = builder.openssl_install_dir(target) {
-        cargo.env("OPENSSL_STATIC", "1");
-        cargo.env("OPENSSL_DIR", dir);
-        cargo.env("LIBZ_SYS_STATIC", "1");
+    let mut features = extra_features.iter().cloned().collect::<Vec<_>>();
+    if builder.build.config.cargo_native_static {
+        if path.ends_with("cargo") ||
+            path.ends_with("rls") ||
+            path.ends_with("clippy") ||
+            path.ends_with("rustfmt")
+        {
+            cargo.env("LIBZ_SYS_STATIC", "1");
+            features.push("rustc-workspace-hack/all-static".to_string());
+        }
     }
 
     // if tools are using lzma we want to force the build script to build its
@@ -243,6 +250,9 @@ pub fn prepare_tool_cargo(
     }
     if let Some(date) = info.commit_date() {
         cargo.env("CFG_COMMIT_DATE", date);
+    }
+    if features.len() > 0 {
+        cargo.arg("--features").arg(&features.join(", "));
     }
     cargo
 }
@@ -439,6 +449,7 @@ impl Step for Rustdoc {
             "build",
             "src/tools/rustdoc",
             SourceType::InTree,
+            &[],
         );
 
         // Most tools don't get debuginfo, but rustdoc should.
@@ -495,9 +506,6 @@ impl Step for Cargo {
     }
 
     fn run(self, builder: &Builder) -> PathBuf {
-        builder.ensure(native::Openssl {
-            target: self.target,
-        });
         // Cargo depends on procedural macros, which requires a full host
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {
@@ -597,9 +605,6 @@ tool_extended!((self, builder),
         if clippy.is_some() {
             self.extra_features.push("clippy".to_owned());
         }
-        builder.ensure(native::Openssl {
-            target: self.target,
-        });
         // RLS depends on procedural macros, which requires a full host
         // compiler to be available, so we need to depend on that.
         builder.ensure(compile::Rustc {

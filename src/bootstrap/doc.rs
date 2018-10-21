@@ -805,6 +805,7 @@ impl Step for Rustdoc {
             "doc",
             "src/tools/rustdoc",
             SourceType::InTree,
+            &[]
         );
 
         cargo.env("RUSTDOCFLAGS", "--document-private-items");

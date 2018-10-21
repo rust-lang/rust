@@ -224,7 +224,8 @@ impl Step for Rustdoc {
                                            target,
                                            "check",
                                            "src/tools/rustdoc",
-                                           SourceType::InTree);
+                                           SourceType::InTree,
+                                           &[]);
 
         let _folder = builder.fold_output(|| format!("stage{}-rustdoc", compiler.stage));
         println!("Checking rustdoc artifacts ({} -> {})", &compiler.host, target);

@@ -149,7 +149,7 @@ pub struct Config {
     pub nodejs: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
     pub python: Option<PathBuf>,
-    pub openssl_static: bool,
+    pub cargo_native_static: bool,
     pub configure_args: Vec<String>,
 
     // These are either the stage0 downloaded binaries or the locally installed ones.
@@ -221,7 +221,7 @@ struct Build {
     verbose: Option<usize>,
     sanitizers: Option<bool>,
     profiler: Option<bool>,
-    openssl_static: Option<bool>,
+    cargo_native_static: Option<bool>,
     configure_args: Option<Vec<String>>,
     local_rebuild: Option<bool>,
     print_step_timings: Option<bool>,
@@ -474,7 +474,7 @@ impl Config {
         set(&mut config.verbose, build.verbose);
         set(&mut config.sanitizers, build.sanitizers);
         set(&mut config.profiler, build.profiler);
-        set(&mut config.openssl_static, build.openssl_static);
+        set(&mut config.cargo_native_static, build.cargo_native_static);
         set(&mut config.configure_args, build.configure_args);
         set(&mut config.local_rebuild, build.local_rebuild);
         set(&mut config.print_step_timings, build.print_step_timings);

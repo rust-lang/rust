@@ -39,6 +39,7 @@ features = [
   "schannel",
   "securitybaseapi",
   "shellapi",
+  "sspi",
   "synchapi",
   "sysinfoapi",
   "timezoneapi",
@@ -48,10 +49,14 @@ features = [
   "wincrypt",
 ]
 
-[dependencies.serde_json]
-version = "1.0.31"
-features = ["raw_value"]
+[dependencies]
+serde_json = { version = "1.0.31", features = ["raw_value"] }
+rand = { version = "0.5.5", features = ["i128_support"] }
+curl-sys = { version = "0.4.13", optional = true }
 
-[dependencies.rand]
-version = "0.5.5"
-features = ["i128_support"]
+[target.'cfg(not(windows))'.dependencies]
+openssl = { version = "0.10.12", optional = true }
+
+
+[features]
+all-static = ['openssl/vendored', 'curl-sys/static-curl']

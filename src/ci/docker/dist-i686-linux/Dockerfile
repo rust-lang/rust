@@ -83,6 +83,11 @@ RUN ./build-git.sh
 COPY dist-x86_64-linux/build-headers.sh /tmp/
 RUN ./build-headers.sh
 
+# OpenSSL requires a more recent version of perl
+# with so we install newer ones here
+COPY dist-x86_64-linux/build-perl.sh /tmp/
+RUN ./build-perl.sh
+
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
