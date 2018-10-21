@@ -126,7 +126,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         mut uniform_paths_canary_emitted: bool,
         nested: bool,
         item: &Item,
-        expansion: Mark,
+        parent_scope: ParentScope<'a>,
     ) {
         debug!("build_reduced_graph_for_use_tree(parent_prefix={:?}, \
                 uniform_paths_canary_emitted={}, \
@@ -224,7 +224,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     root_use_tree.span,
                     root_id,
                     ty::Visibility::Invisible,
-                    expansion,
+                    parent_scope.clone(),
                     true, // is_uniform_paths_canary
                 );
             };
@@ -354,7 +354,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     root_use_tree.span,
                     root_id,
                     vis,
-                    expansion,
+                    parent_scope,
                     false, // is_uniform_paths_canary
                 );
             }
@@ -371,7 +371,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     root_use_tree.span,
                     root_id,
                     vis,
-                    expansion,
+                    parent_scope,
                     false, // is_uniform_paths_canary
                 );
             }
@@ -409,7 +409,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         uniform_paths_canary_emitted,
                         true,
                         item,
-                        expansion,
+                        parent_scope.clone(),
                     );
                 }
             }
@@ -417,8 +417,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     }
 
     /// Constructs the reduced graph for one item.
-    fn build_reduced_graph_for_item(&mut self, item: &Item, expansion: Mark) {
-        let parent = self.current_module;
+    fn build_reduced_graph_for_item(&mut self, item: &Item, parent_scope: ParentScope<'a>) {
+        let parent = parent_scope.module;
+        let expansion = parent_scope.expansion;
         let ident = item.ident;
         let sp = item.span;
         let vis = self.resolve_visibility(&item.vis);
@@ -435,7 +436,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     false, // uniform_paths_canary_emitted
                     false,
                     item,
-                    expansion,
+                    parent_scope,
                 );
             }
 
@@ -448,7 +449,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     self.injected_crate = Some(module);
                 }
 
-                let used = self.process_legacy_macro_imports(item, module, expansion);
+                let used = self.process_legacy_macro_imports(item, module, &parent_scope);
                 let binding =
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.arenas);
                 if ptr::eq(self.current_module, self.graph_root) {
@@ -473,7 +474,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 let directive = self.arenas.alloc_import_directive(ImportDirective {
                     root_id: item.id,
                     id: item.id,
-                    parent,
+                    parent_scope,
                     imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
                     subclass: ImportDirectiveSubclass::ExternCrate {
                         source: orig_name,
@@ -483,7 +484,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     span: item.span,
                     module_path: Vec::new(),
                     vis: Cell::new(vis),
-                    expansion,
                     used: Cell::new(used),
                     is_uniform_paths_canary: false,
                 });
@@ -856,9 +856,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     }
 
     // This returns true if we should consider the underlying `extern crate` to be used.
-    fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>, expansion: Mark)
-                                    -> bool {
-        let allow_shadowing = expansion == Mark::root();
+    fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>,
+                                    parent_scope: &ParentScope<'a>) -> bool {
+        let allow_shadowing = parent_scope.expansion == Mark::root();
         let legacy_imports = self.legacy_macro_imports(&item.attrs);
         let used = legacy_imports != LegacyMacroImports::default();
 
@@ -868,18 +868,17 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                       "an `extern crate` loading macros must be at the crate root");
         }
 
-        let (graph_root, arenas) = (self.graph_root, self.arenas);
+        let arenas = self.arenas;
         let macro_use_directive = |span| arenas.alloc_import_directive(ImportDirective {
             root_id: item.id,
             id: item.id,
-            parent: graph_root,
+            parent_scope: parent_scope.clone(),
             imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
             subclass: ImportDirectiveSubclass::MacroUse,
             root_span: span,
             span,
             module_path: Vec::new(),
             vis: Cell::new(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))),
-            expansion,
             used: Cell::new(false),
             is_uniform_paths_canary: false,
         });
@@ -1010,7 +1009,13 @@ impl<'a, 'b, 'cl> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b, 'cl> {
 
         let orig_current_module = self.resolver.current_module;
         let orig_current_legacy_scope = self.current_legacy_scope;
-        self.resolver.build_reduced_graph_for_item(item, self.expansion);
+        let parent_scope = ParentScope {
+            module: self.resolver.current_module,
+            expansion: self.expansion,
+            legacy: self.current_legacy_scope,
+            derives: Vec::new(),
+        };
+        self.resolver.build_reduced_graph_for_item(item, parent_scope);
         visit::walk_item(self, item);
         self.resolver.current_module = orig_current_module;
         if !macro_use {

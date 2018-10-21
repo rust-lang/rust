@@ -43,7 +43,7 @@ use std::cell::Cell;
 use std::mem;
 use rustc_data_structures::sync::Lrc;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct InvocationData<'a> {
     def_index: DefIndex,
     /// Module in which the macro was invoked.
@@ -70,6 +70,7 @@ impl<'a> InvocationData<'a> {
 
 /// Binding produced by a `macro_rules` item.
 /// Not modularized, can shadow previous legacy bindings, etc.
+#[derive(Debug)]
 pub struct LegacyBinding<'a> {
     binding: &'a NameBinding<'a>,
     /// Legacy scope into which the `macro_rules` item was planted.
@@ -82,7 +83,7 @@ pub struct LegacyBinding<'a> {
 /// (named or unnamed), or even further if it escapes with `#[macro_use]`.
 /// Some macro invocations need to introduce legacy scopes too because they
 /// potentially can expand into macro definitions.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum LegacyScope<'a> {
     /// Created when invocation data is allocated in the arena,
     /// must be replaced with a proper scope later.
@@ -96,8 +97,8 @@ pub enum LegacyScope<'a> {
     Invocation(&'a InvocationData<'a>),
 }
 
-/// Everything you need to resolve a macro path.
-#[derive(Clone)]
+/// Everything you need to resolve a macro or import path.
+#[derive(Clone, Debug)]
 pub struct ParentScope<'a> {
     crate module: Module<'a>,
     crate expansion: Mark,
