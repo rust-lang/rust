@@ -24,7 +24,7 @@ impl<'a> Bar for Foo<'a> {
     type Assoc = &'a u32;
     fn get(self) -> Self::Assoc {
         let local = 42;
-        &local //~ ERROR `local` does not live long enough
+        &local //~ ERROR cannot return reference to local variable `local`
     }
 }
 

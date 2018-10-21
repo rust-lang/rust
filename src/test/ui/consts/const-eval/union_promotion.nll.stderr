@@ -2,14 +2,14 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/union_promotion.rs:19:29
    |
 LL |       let x: &'static bool = &unsafe { //~ borrowed value does not live long enough
-   |  _____________________________^
+   |  ____________-------------____^
+   | |            |
+   | |            type annotation requires that borrow lasts for `'static`
 LL | |         Foo { a: &1 }.b == Foo { a: &2 }.b
 LL | |     };
    | |_____^ creates a temporary which is freed while still in use
 LL |   }
    |   - temporary value is freed at the end of this statement
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error: aborting due to previous error
 

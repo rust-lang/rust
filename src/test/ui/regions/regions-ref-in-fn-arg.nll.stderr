@@ -1,22 +1,19 @@
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/regions-ref-in-fn-arg.rs:14:13
+error[E0515]: cannot return value referencing function parameter
+  --> $DIR/regions-ref-in-fn-arg.rs:15:5
    |
 LL | fn arg_item(box ref x: Box<isize>) -> &'static isize {
-   |             ^^^^^^^^^ creates a temporary which is freed while still in use
+   |             --------- function parameter borrowed here
 LL |     x //~^ ERROR borrowed value does not live long enough
-LL | }
-   | - temporary value is freed at the end of this statement
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |     ^ returns a value referencing data owned by the current function
 
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/regions-ref-in-fn-arg.rs:21:11
+error[E0515]: cannot return value referencing function parameter
+  --> $DIR/regions-ref-in-fn-arg.rs:21:22
    |
 LL |     with(|box ref x| x) //~ ERROR borrowed value does not live long enough
-   |           ^^^^^^^^^  - temporary value is freed at the end of this statement
+   |           ---------  ^ returns a value referencing data owned by the current function
    |           |
-   |           creates a temporary which is freed while still in use
+   |           function parameter borrowed here
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0716`.
+For more information about this error, try `rustc --explain E0515`.

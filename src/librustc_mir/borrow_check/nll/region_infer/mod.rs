@@ -35,6 +35,7 @@ use std::rc::Rc;
 
 mod dump_mir;
 mod error_reporting;
+crate use self::error_reporting::{RegionName, RegionNameSource};
 mod graphviz;
 pub mod values;
 use self::values::{LivenessValues, RegionValueElements, RegionValues};
@@ -669,13 +670,19 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// to find a good name from that. Returns `None` if we can't find
     /// one (e.g., this is just some random part of the CFG).
     pub fn to_error_region(&self, r: RegionVid) -> Option<ty::Region<'tcx>> {
+        self.to_error_region_vid(r).and_then(|r| self.definitions[r].external_name)
+    }
+
+    /// Returns the [RegionVid] corresponding to the region returned by
+    /// `to_error_region`.
+    pub fn to_error_region_vid(&self, r: RegionVid) -> Option<RegionVid> {
         if self.universal_regions.is_universal_region(r) {
-            return self.definitions[r].external_name;
+            Some(r)
         } else {
             let r_scc = self.constraint_sccs.scc(r);
             let upper_bound = self.universal_upper_bound(r);
             if self.scc_values.contains(r_scc, upper_bound) {
-                self.to_error_region(upper_bound)
+                self.to_error_region_vid(upper_bound)
             } else {
                 None
             }

@@ -10,33 +10,33 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:28:28
    |
 LL |     let _: &'static u32 = &foo(); //~ ERROR does not live long enough
-   |                            ^^^^^ creates a temporary which is freed while still in use
+   |            ------------    ^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
 LL | }
    | - temporary value is freed at the end of this statement
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:32:28
    |
 LL |     let _: &'static u32 = &meh(); //~ ERROR does not live long enough
-   |                            ^^^^^ creates a temporary which is freed while still in use
+   |            ------------    ^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
 ...
 LL | }
    | - temporary value is freed at the end of this statement
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:33:26
    |
 LL |     let x: &'static _ = &std::time::Duration::from_millis(42).subsec_millis();
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            ----------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
 LL |     //~^ ERROR does not live long enough
 LL | }
    | - temporary value is freed at the end of this statement
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error: aborting due to 4 previous errors
 

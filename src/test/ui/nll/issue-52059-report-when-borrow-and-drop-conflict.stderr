@@ -1,50 +1,32 @@
 error[E0713]: borrow may still be in use when destructor runs
   --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:14:5
    |
+LL | fn finish_1(s: S) -> &mut String {
+   |             - has type `S<'1>`
 LL |     s.url
-   |     ^^^^^
+   |     ^^^^^ returning this value requires that `*s.url` is borrowed for `'1`
 LL | }
    | - here, drop of `s` needs exclusive access to `*s.url`, because the type `S<'_>` implements the `Drop` trait
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 13:1...
-  --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:13:1
-   |
-LL | / fn finish_1(s: S) -> &mut String {
-LL | |     s.url
-LL | | }
-   | |_^
 
 error[E0713]: borrow may still be in use when destructor runs
   --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:19:13
    |
+LL | fn finish_2(s: S) -> &mut String {
+   |             - has type `S<'1>`
 LL |     let p = &mut *s.url; p
-   |             ^^^^^^^^^^^
+   |             ^^^^^^^^^^^  - returning this value requires that `*s.url` is borrowed for `'1`
 LL | }
    | - here, drop of `s` needs exclusive access to `*s.url`, because the type `S<'_>` implements the `Drop` trait
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 18:1...
-  --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:18:1
-   |
-LL | / fn finish_2(s: S) -> &mut String {
-LL | |     let p = &mut *s.url; p
-LL | | }
-   | |_^
 
 error[E0713]: borrow may still be in use when destructor runs
   --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:24:21
    |
+LL | fn finish_3(s: S) -> &mut String {
+   |             - has type `S<'1>`
 LL |     let p: &mut _ = s.url; p
-   |                     ^^^^^
+   |                     ^^^^^  - returning this value requires that `*s.url` is borrowed for `'1`
 LL | }
    | - here, drop of `s` needs exclusive access to `*s.url`, because the type `S<'_>` implements the `Drop` trait
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 23:1...
-  --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:23:1
-   |
-LL | / fn finish_3(s: S) -> &mut String {
-LL | |     let p: &mut _ = s.url; p
-LL | | }
-   | |_^
 
 error[E0509]: cannot move out of type `S<'_>`, which implements the `Drop` trait
   --> $DIR/issue-52059-report-when-borrow-and-drop-conflict.rs:29:13

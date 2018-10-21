@@ -1,141 +1,57 @@
-error[E0597]: `x` does not live long enough
+error[E0515]: cannot return reference to local variable `x`
   --> $DIR/issue-52534-1.rs:19:9
    |
-LL |     fn bar(&self, x: &u32) -> &u32 {
-   |            -----              ---- has type `&'0 u32`
-   |            |
-   |            has type `&'0 Test`
-LL |         let x = 22;
 LL |         &x
-   |         ^^ `x` would have to be valid for `'0`...
-LL |     }
-   |     - ...but `x` will be dropped here, when the function `bar` returns
-   |
-   = note: argument and return type have the same lifetime due to lifetime elision rules
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch10-03-lifetime-syntax.html#lifetime-elision>
-   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
+   |         ^^ returns a reference to data owned by the current function
 
-error[E0597]: `x` does not live long enough
+error[E0515]: cannot return reference to local variable `x`
   --> $DIR/issue-52534-1.rs:25:5
    |
-LL | fn foo(x: &u32) -> &u32 {
-   |           ----     ---- also has type `&'0 u32`
-   |           |
-   |           has type `&'0 u32`
-LL |     let x = 22;
 LL |     &x
-   |     ^^ `x` would have to be valid for `'0`...
-LL | }
-   | - ...but `x` will be dropped here, when the function `foo` returns
-   |
-   = note: argument and return type have the same lifetime due to lifetime elision rules
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch10-03-lifetime-syntax.html#lifetime-elision>
-   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
+   |     ^^ returns a reference to data owned by the current function
 
-error[E0597]: `x` does not live long enough
-  --> $DIR/issue-52534-1.rs:30:6
-   |
-LL | fn baz(x: &u32) -> &&u32 {
-   |           ----     ----- has type `&'0 &'0 u32`
-   |           |
-   |           has type `&'0 u32`
-LL |     let x = 22;
-LL |     &&x
-   |      ^^ `x` would have to be valid for `'0`...
-LL | }
-   | - ...but `x` will be dropped here, when the function `baz` returns
-   |
-   = note: argument and return type have the same lifetime due to lifetime elision rules
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch10-03-lifetime-syntax.html#lifetime-elision>
-   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
-
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/issue-52534-1.rs:30:6
+error[E0515]: cannot return value referencing local variable `x`
+  --> $DIR/issue-52534-1.rs:30:5
    |
 LL |     &&x
-   |      ^^ creates a temporary which is freed while still in use
-LL | }
-   | - temporary value is freed at the end of this statement
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the function body at 28:1...
-  --> $DIR/issue-52534-1.rs:28:1
-   |
-LL | / fn baz(x: &u32) -> &&u32 {
-LL | |     let x = 22;
-LL | |     &&x
-LL | | }
-   | |_^
+   |     ^--
+   |     ||
+   |     |`x` is borrowed here
+   |     returns a value referencing data owned by the current function
 
-error[E0597]: `x` does not live long enough
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/issue-52534-1.rs:30:5
+   |
+LL |     &&x
+   |     ^--
+   |     ||
+   |     |temporary value created here
+   |     returns a reference to data owned by the current function
+
+error[E0515]: cannot return reference to local variable `x`
   --> $DIR/issue-52534-1.rs:35:5
    |
-LL | fn foobazbar<'a>(x: u32, y: &'a u32) -> &'a u32 {
-   |                              --          -- also has lifetime `'a`
-   |                              |
-   |                              has lifetime `'a`
-LL |     let x = 22;
 LL |     &x
-   |     ^^ `x` would have to be valid for `'a`...
-LL | }
-   | - ...but `x` will be dropped here, when the function `foobazbar` returns
-   |
-   = help: use data from the highlighted arguments which match the `'a` lifetime of the return type
-   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
+   |     ^^ returns a reference to data owned by the current function
 
-error[E0597]: `x` does not live long enough
+error[E0515]: cannot return reference to local variable `x`
   --> $DIR/issue-52534-1.rs:40:5
    |
-LL | fn foobar<'a>(x: &'a u32) -> &'a u32 {
-   |                   --          -- also has lifetime `'a`
-   |                   |
-   |                   has lifetime `'a`
-LL |     let x = 22;
 LL |     &x
-   |     ^^ `x` would have to be valid for `'a`...
-LL | }
-   | - ...but `x` will be dropped here, when the function `foobar` returns
-   |
-   = help: use data from the highlighted arguments which match the `'a` lifetime of the return type
-   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
+   |     ^^ returns a reference to data owned by the current function
 
-error[E0597]: `x` does not live long enough
+error[E0515]: cannot return reference to local variable `x`
   --> $DIR/issue-52534-1.rs:45:5
    |
-LL | fn foobaz<'a, 'b>(x: &'a u32, y: &'b u32) -> &'a u32 {
-   |                       -- has lifetime `'a`    -- also has lifetime `'a`
-LL |     let x = 22;
 LL |     &x
-   |     ^^ `x` would have to be valid for `'a`...
-LL | }
-   | - ...but `x` will be dropped here, when the function `foobaz` returns
-   |
-   = help: use data from the highlighted arguments which match the `'a` lifetime of the return type
-   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
+   |     ^^ returns a reference to data owned by the current function
 
-error[E0597]: `x` does not live long enough
+error[E0515]: cannot return reference to local variable `x`
   --> $DIR/issue-52534-1.rs:50:5
    |
-LL | fn foobarbaz<'a, 'b>(x: &'a u32, y: &'b u32, z: &'a u32) -> &'a u32 {
-   |                          --                      --          -- also has lifetime `'a`
-   |                          |                       |
-   |                          has lifetime `'a`       has lifetime `'a`
-LL |     let x = 22;
 LL |     &x
-   |     ^^ `x` would have to be valid for `'a`...
-LL | }
-   | - ...but `x` will be dropped here, when the function `foobarbaz` returns
-   |
-   = help: use data from the highlighted arguments which match the `'a` lifetime of the return type
-   = note: functions cannot return a borrow to data owned within the function's scope, functions can only return borrows to data passed as arguments
-   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch04-02-references-and-borrowing.html#dangling-references>
+   |     ^^ returns a reference to data owned by the current function
 
 error: aborting due to 8 previous errors
 
-Some errors occurred: E0597, E0716.
-For more information about an error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

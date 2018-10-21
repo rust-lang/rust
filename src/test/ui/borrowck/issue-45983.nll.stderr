@@ -1,4 +1,4 @@
-error: borrowed data escapes outside of closure
+error[E0521]: borrowed data escapes outside of closure
   --> $DIR/issue-45983.rs:36:18
    |
 LL |     let x = None;
@@ -18,4 +18,5 @@ LL |     give_any(|y| x = Some(y));
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0594`.
+Some errors occurred: E0521, E0594.
+For more information about an error, try `rustc --explain E0521`.

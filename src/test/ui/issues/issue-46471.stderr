@@ -9,17 +9,13 @@ LL | }
    |
    = note: borrowed value must be valid for the static lifetime...
 
-error[E0597]: `x` does not live long enough (Mir)
+error[E0515]: cannot return reference to local variable `x` (Mir)
   --> $DIR/issue-46471.rs:15:5
    |
 LL |     &x
-   |     ^^ borrowed value does not live long enough
-...
-LL | }
-   | - `x` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |     ^^ returns a reference to data owned by the current function
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+Some errors occurred: E0515, E0597.
+For more information about an error, try `rustc --explain E0515`.

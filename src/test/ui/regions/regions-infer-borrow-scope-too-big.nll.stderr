@@ -1,18 +1,12 @@
-error[E0597]: `*p` does not live long enough
-  --> $DIR/regions-infer-borrow-scope-too-big.rs:22:22
+error[E0515]: cannot return value referencing local data `*p`
+  --> $DIR/regions-infer-borrow-scope-too-big.rs:24:12
    |
 LL |     let xc = x_coord(&*p); //~ ERROR `*p` does not live long enough
-   |                      ^^^ borrowed value does not live long enough
-...
-LL | }
-   | - `*p` dropped here while still borrowed
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 21:8...
-  --> $DIR/regions-infer-borrow-scope-too-big.rs:21:8
-   |
-LL | fn foo<'a>(p: Box<point>) -> &'a isize {
-   |        ^^
+   |                      --- `*p` is borrowed here
+LL |     assert_eq!(*xc, 3);
+LL |     return xc;
+   |            ^^ returns a value referencing data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

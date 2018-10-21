@@ -371,3 +371,7 @@ impl ToRegionVid for RegionVid {
         self
     }
 }
+
+crate trait ConstraintDescription {
+    fn description(&self) -> &'static str;
+}

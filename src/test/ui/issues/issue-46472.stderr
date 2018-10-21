@@ -13,22 +13,16 @@ note: borrowed value must be valid for the lifetime 'a as defined on the functio
 LL | fn bar<'a>() -> &'a mut u32 {
    |        ^^
 
-error[E0716]: temporary value dropped while borrowed (Mir)
-  --> $DIR/issue-46472.rs:14:10
+error[E0515]: cannot return reference to temporary value (Mir)
+  --> $DIR/issue-46472.rs:14:5
    |
 LL |     &mut 4
-   |          ^ creates a temporary which is freed while still in use
-...
-LL | }
-   | - temporary value is freed at the end of this statement
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 13:8...
-  --> $DIR/issue-46472.rs:13:8
-   |
-LL | fn bar<'a>() -> &'a mut u32 {
-   |        ^^
+   |     ^^^^^-
+   |     |    |
+   |     |    temporary value created here
+   |     returns a reference to data owned by the current function
 
 error: aborting due to 2 previous errors
 
-Some errors occurred: E0597, E0716.
-For more information about an error, try `rustc --explain E0597`.
+Some errors occurred: E0515, E0597.
+For more information about an error, try `rustc --explain E0515`.

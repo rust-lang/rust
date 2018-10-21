@@ -8,11 +8,11 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-drop-scope.rs:19:60
    |
 LL | static PROMOTION_FAIL_S: Option<&'static WithDtor> = Some(&WithDtor);
-   |                                                            ^^^^^^^^- temporary value is freed at the end of this statement
-   |                                                            |
-   |                                                            creates a temporary which is freed while still in use
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |                                                      ------^^^^^^^^-
+   |                                                      |     |       |
+   |                                                      |     |       temporary value is freed at the end of this statement
+   |                                                      |     creates a temporary which is freed while still in use
+   |                                                      using this value as a static requires that borrow lasts for `'static`
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:23:59
@@ -24,11 +24,11 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/static-drop-scope.rs:23:59
    |
 LL | const PROMOTION_FAIL_C: Option<&'static WithDtor> = Some(&WithDtor);
-   |                                                           ^^^^^^^^- temporary value is freed at the end of this statement
-   |                                                           |
-   |                                                           creates a temporary which is freed while still in use
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |                                                     ------^^^^^^^^-
+   |                                                     |     |       |
+   |                                                     |     |       temporary value is freed at the end of this statement
+   |                                                     |     creates a temporary which is freed while still in use
+   |                                                     using this value as a constant requires that borrow lasts for `'static`
 
 error[E0493]: destructors cannot be evaluated at compile-time
   --> $DIR/static-drop-scope.rs:27:28

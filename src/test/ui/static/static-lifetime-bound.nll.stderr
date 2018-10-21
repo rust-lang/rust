@@ -10,11 +10,12 @@ error[E0597]: `x` does not live long enough
   --> $DIR/static-lifetime-bound.rs:15:7
    |
 LL |     f(&x); //~ERROR does not live long enough
-   |       ^^ borrowed value does not live long enough
+   |     --^^-
+   |     | |
+   |     | borrowed value does not live long enough
+   |     argument requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error: aborting due to previous error
 

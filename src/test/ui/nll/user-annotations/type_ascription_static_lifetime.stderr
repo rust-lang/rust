@@ -2,11 +2,12 @@ error[E0597]: `x` does not live long enough
   --> $DIR/type_ascription_static_lifetime.rs:18:19
    |
 LL |     let y: &u32 = &x: &'static u32; //~ ERROR E0597
-   |                   ^^ borrowed value does not live long enough
+   |                   ^^--------------
+   |                   |
+   |                   borrowed value does not live long enough
+   |                   type annotation requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error: aborting due to previous error
 

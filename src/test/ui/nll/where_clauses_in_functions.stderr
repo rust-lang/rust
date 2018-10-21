@@ -6,7 +6,7 @@ LL | fn bar<'a, 'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
    |        |
    |        lifetime `'a` defined here
 LL |     foo(x, y)
-   |     ^^^^^^^^^ argument requires that `'a` must outlive `'b`
+   |     ^^^^^^^^^ function was supposed to return data with lifetime `'b` but it is returning data with lifetime `'a`
 
 error: aborting due to previous error
 

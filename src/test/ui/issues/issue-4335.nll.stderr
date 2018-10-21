@@ -15,24 +15,25 @@ LL |     id(Box::new(|| *v))
    |                    cannot move out of `*v` which is behind a `&` reference
    |                    cannot move
 
-error[E0597]: `v` does not live long enough
-  --> $DIR/issue-4335.rs:16:21
+error[E0373]: closure may outlive the current function, but it borrows `v`, which is owned by the current function
+  --> $DIR/issue-4335.rs:16:17
    |
 LL |     id(Box::new(|| *v))
-   |                 --  ^ borrowed value does not live long enough
+   |                 ^^  - `v` is borrowed here
    |                 |
-   |                 value captured here
-...
-LL | }
-   | - `v` dropped here while still borrowed
+   |                 may outlive borrowed value `v`
    |
-note: borrowed value must be valid for the lifetime 'r as defined on the function body at 15:6...
-  --> $DIR/issue-4335.rs:15:6
+note: closure is returned here
+  --> $DIR/issue-4335.rs:16:5
    |
-LL | fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
-   |      ^^
+LL |     id(Box::new(|| *v))
+   |     ^^^^^^^^^^^^^^^^^^^
+help: to force the closure to take ownership of `v` (and any other referenced variables), use the `move` keyword
+   |
+LL |     id(Box::new(move || *v))
+   |                 ^^^^^^^
 
 error: aborting due to 3 previous errors
 
-Some errors occurred: E0507, E0597.
-For more information about an error, try `rustc --explain E0507`.
+Some errors occurred: E0373, E0507.
+For more information about an error, try `rustc --explain E0373`.

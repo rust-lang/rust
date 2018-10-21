@@ -1,16 +1,15 @@
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-17545.rs:17:10
    |
-LL |         &id(()), //~ ERROR borrowed value does not live long enough
-   |          ^^^^^^ creates a temporary which is freed while still in use
-LL |     ));
-   |       - temporary value is freed at the end of this statement
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 15:12...
-  --> $DIR/issue-17545.rs:15:12
-   |
-LL | pub fn foo<'a, F: Fn(&'a ())>(bar: F) {
-   |            ^^
+LL |   pub fn foo<'a, F: Fn(&'a ())>(bar: F) {
+   |              -- lifetime `'a` defined here
+LL | /     bar.call((
+LL | |         &id(()), //~ ERROR borrowed value does not live long enough
+   | |          ^^^^^^ creates a temporary which is freed while still in use
+LL | |     ));
+   | |      -- temporary value is freed at the end of this statement
+   | |______|
+   |        argument requires that borrow lasts for `'a`
 
 error: aborting due to previous error
 

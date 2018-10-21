@@ -1,125 +1,122 @@
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:8:9
    |
+LL |     let y: &'static u32;
+   |            ------------ type annotation requires that `x` is borrowed for `'static`
 LL |     y = &x; //~ ERROR
    |         ^^ borrowed value does not live long enough
 LL | }
    | - `x` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:22:13
    |
 LL |     let y = &x; //~ ERROR
    |             ^^ borrowed value does not live long enough
-...
+LL |     let ref z: &'static u32 = y;
+   |                ------------ type annotation requires that `x` is borrowed for `'static`
+LL |     **z
 LL | }
    | - `x` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:46:27
    |
 LL |     let y: &'static u32 = &x; //~ ERROR
-   |                           ^^ borrowed value does not live long enough
+   |            ------------   ^^ borrowed value does not live long enough
+   |            |
+   |            type annotation requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:51:27
    |
 LL |     let _: &'static u32 = &x; //~ ERROR
-   |                           ^^ borrowed value does not live long enough
+   |            ------------   ^^ borrowed value does not live long enough
+   |            |
+   |            type annotation requires that `x` is borrowed for `'static`
 ...
 LL | }
    | - `x` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/patterns.rs:53:41
    |
 LL |     let _: Vec<&'static String> = vec![&String::new()];
-   |                                         ^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
-   |                                         |
-   |                                         creates a temporary which is freed while still in use
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |            --------------------         ^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |            |                            |
+   |            |                            creates a temporary which is freed while still in use
+   |            type annotation requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/patterns.rs:56:52
    |
 LL |     let (_, a): (Vec<&'static String>, _) = (vec![&String::new()], 44);
-   |                                                    ^^^^^^^^^^^^^      - temporary value is freed at the end of this statement
-   |                                                    |
-   |                                                    creates a temporary which is freed while still in use
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |                 -------------------------          ^^^^^^^^^^^^^      - temporary value is freed at the end of this statement
+   |                 |                                  |
+   |                 |                                  creates a temporary which is freed while still in use
+   |                 type annotation requires that borrow lasts for `'static`
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/patterns.rs:59:53
    |
 LL |     let (_a, b): (Vec<&'static String>, _) = (vec![&String::new()], 44);
-   |                                                     ^^^^^^^^^^^^^      - temporary value is freed at the end of this statement
-   |                                                     |
-   |                                                     creates a temporary which is freed while still in use
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   |                  -------------------------          ^^^^^^^^^^^^^      - temporary value is freed at the end of this statement
+   |                  |                                  |
+   |                  |                                  creates a temporary which is freed while still in use
+   |                  type annotation requires that borrow lasts for `'static`
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:65:40
    |
 LL |     let (_, _): (&'static u32, u32) = (&x, 44); //~ ERROR
-   |                                        ^^ borrowed value does not live long enough
+   |                 -------------------    ^^ borrowed value does not live long enough
+   |                 |
+   |                 type annotation requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:70:40
    |
 LL |     let (y, _): (&'static u32, u32) = (&x, 44); //~ ERROR
-   |                                        ^^ borrowed value does not live long enough
+   |                 -------------------    ^^ borrowed value does not live long enough
+   |                 |
+   |                 type annotation requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:75:69
    |
 LL |     let Single { value: y }: Single<&'static u32> = Single { value: &x }; //~ ERROR
-   |                                                                     ^^ borrowed value does not live long enough
+   |                              --------------------                   ^^ borrowed value does not live long enough
+   |                              |
+   |                              type annotation requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:80:69
    |
 LL |     let Single { value: _ }: Single<&'static u32> = Single { value: &x }; //~ ERROR
-   |                                                                     ^^ borrowed value does not live long enough
+   |                              --------------------                   ^^ borrowed value does not live long enough
+   |                              |
+   |                              type annotation requires that `x` is borrowed for `'static`
 LL | }
    | - `x` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error[E0597]: `x` does not live long enough
   --> $DIR/patterns.rs:88:17
    |
+LL |     let Double { value1: _, value2: _ }: Double<&'static u32> = Double {
+   |                                          -------------------- type annotation requires that `x` is borrowed for `'static`
 LL |         value1: &x, //~ ERROR
    |                 ^^ borrowed value does not live long enough
 ...
 LL | }
    | - `x` dropped here while still borrowed
-   |
-   = note: borrowed value must be valid for the static lifetime...
 
 error: unsatisfied lifetime constraints
   --> $DIR/patterns.rs:101:5

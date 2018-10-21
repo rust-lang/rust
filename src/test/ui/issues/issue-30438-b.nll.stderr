@@ -1,21 +1,12 @@
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/issue-30438-b.rs:23:10
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/issue-30438-b.rs:23:9
    |
 LL |         &Test { s: &self.s}
-   |          ^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
-LL |         //~^ ERROR: borrowed value does not live long enough
-LL |     }
-   |     - temporary value is freed at the end of this statement
-   |
-note: borrowed value must be valid for the anonymous lifetime #1 defined on the method body at 22:5...
-  --> $DIR/issue-30438-b.rs:22:5
-   |
-LL | /     fn index(&self, _: usize) -> &Self::Output {
-LL | |         &Test { s: &self.s}
-LL | |         //~^ ERROR: borrowed value does not live long enough
-LL | |     }
-   | |_____^
+   |         ^------------------
+   |         ||
+   |         |temporary value created here
+   |         returns a reference to data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0716`.
+For more information about this error, try `rustc --explain E0515`.

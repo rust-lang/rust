@@ -1,18 +1,12 @@
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/borrowed-universal-error.rs:20:12
+error[E0515]: cannot return value referencing temporary value
+  --> $DIR/borrowed-universal-error.rs:20:5
    |
 LL |     gimme(&(v,))
-   |            ^^^^ creates a temporary which is freed while still in use
-LL |     //~^ ERROR temporary value dropped while borrowed [E0716]
-LL | }
-   | - temporary value is freed at the end of this statement
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 18:8...
-  --> $DIR/borrowed-universal-error.rs:18:8
-   |
-LL | fn foo<'a>(x: &'a (u32,)) -> &'a u32 {
-   |        ^^
+   |     ^^^^^^^----^
+   |     |      |
+   |     |      temporary value created here
+   |     returns a value referencing data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0716`.
+For more information about this error, try `rustc --explain E0515`.

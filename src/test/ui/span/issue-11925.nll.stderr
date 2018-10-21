@@ -1,12 +1,9 @@
-error[E0597]: `x` does not live long enough
+error[E0515]: cannot return reference to local data `x`
   --> $DIR/issue-11925.rs:18:35
    |
 LL |         let f = to_fn_once(move|| &x); //~ ERROR does not live long enough
-   |                                   ^-
-   |                                   ||
-   |                                   |`x` dropped here while still borrowed
-   |                                   borrowed value does not live long enough
+   |                                   ^^ returns a reference to data owned by the current function
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0515`.

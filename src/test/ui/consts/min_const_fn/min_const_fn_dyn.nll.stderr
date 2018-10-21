@@ -14,11 +14,11 @@ warning[E0716]: temporary value dropped while borrowed
   --> $DIR/min_const_fn_dyn.rs:22:67
    |
 LL | const fn no_inner_dyn_trait_ret() -> Hide { Hide(HasDyn { field: &0 }) }
-   |                                                                   ^    - temporary value is freed at the end of this statement
-   |                                                                   |
-   |                                                                   creates a temporary which is freed while still in use
+   |                                                                  -^    - temporary value is freed at the end of this statement
+   |                                                                  ||
+   |                                                                  |creates a temporary which is freed while still in use
+   |                                                                  cast requires that borrow lasts for `'static`
    |
-   = note: borrowed value must be valid for the static lifetime...
    = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
            It represents potential unsoundness in your code.
            This warning will become a hard error in the future.

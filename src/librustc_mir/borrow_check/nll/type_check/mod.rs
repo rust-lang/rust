@@ -23,7 +23,7 @@ use borrow_check::nll::renumber;
 use borrow_check::nll::type_check::free_region_relations::{
     CreateResult, UniversalRegionRelations,
 };
-use borrow_check::nll::universal_regions::UniversalRegions;
+use borrow_check::nll::universal_regions::{DefiningTy, UniversalRegions};
 use borrow_check::nll::ToRegionVid;
 use dataflow::move_paths::MoveData;
 use dataflow::FlowAtLocation;
@@ -1209,7 +1209,21 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // of lowering. Assignments to other sorts of places *are* interesting
                 // though.
                 let category = match *place {
-                    Place::Local(RETURN_PLACE) => ConstraintCategory::Return,
+                    Place::Local(RETURN_PLACE) => if let Some(BorrowCheckContext {
+                        universal_regions: UniversalRegions {
+                            defining_ty: DefiningTy::Const(def_id, _),
+                            ..
+                        },
+                        ..
+                    }) = self.borrowck_context {
+                        if tcx.is_static(*def_id).is_some() {
+                            ConstraintCategory::UseAsStatic
+                        } else {
+                            ConstraintCategory::UseAsConst
+                        }
+                    } else {
+                        ConstraintCategory::Return
+                    }
                     Place::Local(l) if !mir.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
@@ -1391,6 +1405,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 ref func,
                 ref args,
                 ref destination,
+                from_hir_call,
                 ..
             } => {
                 let func_ty = func.ty(mir, tcx);
@@ -1435,7 +1450,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                self.check_call_inputs(mir, term, &sig, args, term_location);
+                self.check_call_inputs(mir, term, &sig, args, term_location, from_hir_call);
             }
             TerminatorKind::Assert {
                 ref cond, ref msg, ..
@@ -1493,7 +1508,23 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             Some((ref dest, _target_block)) => {
                 let dest_ty = dest.ty(mir, tcx).to_ty(tcx);
                 let category = match *dest {
-                    Place::Local(RETURN_PLACE) => ConstraintCategory::Return,
+                    Place::Local(RETURN_PLACE) => {
+                        if let Some(BorrowCheckContext {
+                            universal_regions: UniversalRegions {
+                                defining_ty: DefiningTy::Const(def_id, _),
+                                ..
+                            },
+                            ..
+                        }) = self.borrowck_context {
+                            if tcx.is_static(*def_id).is_some() {
+                                ConstraintCategory::UseAsStatic
+                            } else {
+                                ConstraintCategory::UseAsConst
+                            }
+                        } else {
+                            ConstraintCategory::Return
+                        }
+                    },
                     Place::Local(l) if !mir.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
@@ -1538,6 +1569,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         sig: &ty::FnSig<'tcx>,
         args: &[Operand<'tcx>],
         term_location: Location,
+        from_hir_call: bool,
     ) {
         debug!("check_call_inputs({:?}, {:?})", sig, args);
         if args.len() < sig.inputs().len() || (args.len() > sig.inputs().len() && !sig.variadic) {
@@ -1545,11 +1577,16 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
         for (n, (fn_arg, op_arg)) in sig.inputs().iter().zip(args).enumerate() {
             let op_arg_ty = op_arg.ty(mir, self.tcx());
+            let category = if from_hir_call {
+                ConstraintCategory::CallArgument
+            } else {
+                ConstraintCategory::Boring
+            };
             if let Err(terr) = self.sub_types(
                 op_arg_ty,
                 fn_arg,
                 term_location.to_locations(),
-                ConstraintCategory::CallArgument,
+                category,
             ) {
                 span_mirbug!(
                     self,

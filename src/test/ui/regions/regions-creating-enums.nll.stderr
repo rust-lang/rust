@@ -1,31 +1,21 @@
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/regions-creating-enums.rs:33:17
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/regions-creating-enums.rs:33:16
    |
 LL |         return &ast::num((*f)(x)); //~ ERROR borrowed value does not live long enough
-   |                 ^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
-   |                 |
-   |                 creates a temporary which is freed while still in use
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 30:13...
-  --> $DIR/regions-creating-enums.rs:30:13
-   |
-LL | fn map_nums<'a,'b, F>(x: &ast, f: &mut F) -> &'a ast<'b> where F: FnMut(usize) -> usize {
-   |             ^^
+   |                ^-----------------
+   |                ||
+   |                |temporary value created here
+   |                returns a reference to data owned by the current function
 
-error[E0716]: temporary value dropped while borrowed
-  --> $DIR/regions-creating-enums.rs:38:17
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/regions-creating-enums.rs:38:16
    |
 LL |         return &ast::add(m_x, m_y);  //~ ERROR borrowed value does not live long enough
-   |                 ^^^^^^^^^^^^^^^^^^- temporary value is freed at the end of this statement
-   |                 |
-   |                 creates a temporary which is freed while still in use
-   |
-note: borrowed value must be valid for the lifetime 'a as defined on the function body at 30:13...
-  --> $DIR/regions-creating-enums.rs:30:13
-   |
-LL | fn map_nums<'a,'b, F>(x: &ast, f: &mut F) -> &'a ast<'b> where F: FnMut(usize) -> usize {
-   |             ^^
+   |                ^------------------
+   |                ||
+   |                |temporary value created here
+   |                returns a reference to data owned by the current function
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0716`.
+For more information about this error, try `rustc --explain E0515`.
