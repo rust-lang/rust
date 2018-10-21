@@ -26,9 +26,11 @@ fn loud_insert<K>(set: &mut HashSet<K>, item: K) {
 }
 ```
 
-Note that in the `loud_insert` example, `HashSet<K>` is not the type of an
-argument of the `loud_insert` function, it only *appears* in the argument type
-`&mut HashSet<K>`.
+Note that in the `loud_insert` example, `HashSet<K>` is not the type
+of the `set` argument of `loud_insert`, it only *appears* in the
+argument type `&mut HashSet<K>`: we care about every type appearing
+in the function's header (the header is the signature without the return type),
+not only types of the function's arguments.
 
 The rationale for applying implied bounds to input types is that, for example,
 in order to call the `loud_insert` function above, the programmer must have
@@ -52,7 +54,7 @@ arguments of their function. The same reasoning applies when using an `impl`.
 
 Similarly, given the following trait declaration:
 ```rust,ignore
-trait Copy where Self: Clone {
+trait Copy where Self: Clone { // desugared version of `Copy: Clone`
     ...
 }
 ```
@@ -75,11 +77,11 @@ fn fun_with_copy<T: Copy>(x: T) {
 }
 ```
 
-The rationale for implied bounds for traits is that if a type implements `Copy`,
-that is, if there exists an `impl Copy` for that type, there *ought* to exist
-an `impl Clone` for that type, otherwise the compiler would have reported an
-error in the first place. So again, if we were forced to repeat the additionnal
-`where SomeType: Clone` everywhere whereas we already know that
+The rationale for implied bounds for traits is that if a type implements
+`Copy`, that is, if there exists an `impl Copy` for that type, there *ought*
+to exist an `impl Clone` for that type, otherwise the compiler would have
+reported an error in the first place. So again, if we were forced to repeat the
+additionnal `where SomeType: Clone` everywhere whereas we already know that
 `SomeType: Copy` hold, we would kind of duplicate the verification work.
 
 Implied bounds are not yet completely enforced in rustc, at the moment it only
