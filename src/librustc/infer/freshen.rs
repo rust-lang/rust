@@ -171,7 +171,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for TypeFreshener<'a, 'gcx, 'tcx> {
                 t
             }
 
-            ty::Infer(ty::CanonicalTy(..)) =>
+            ty::Infer(ty::BoundTy(..)) =>
                 bug!("encountered canonical ty during freshening"),
 
             ty::Generator(..) |

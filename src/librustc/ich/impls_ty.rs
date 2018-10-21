@@ -147,7 +147,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionVid {
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::CanonicalVar {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::BoundTyIndex {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
@@ -915,7 +915,7 @@ impl_stable_hash_for!(enum ty::InferTy {
     FreshTy(a),
     FreshIntTy(a),
     FreshFloatTy(a),
-    CanonicalTy(a),
+    BoundTy(a),
 });
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>>

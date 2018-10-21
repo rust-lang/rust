@@ -1165,7 +1165,7 @@ pub enum RegionKind {
     ReClosureBound(RegionVid),
 
     /// Canonicalized region, used only when preparing a trait query.
-    ReCanonical(CanonicalVar),
+    ReCanonical(BoundTyIndex),
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
@@ -1217,13 +1217,21 @@ pub enum InferTy {
     FreshIntTy(u32),
     FreshFloatTy(u32),
 
-    /// Canonicalized type variable, used only when preparing a trait query.
-    CanonicalTy(CanonicalVar),
+    /// Bound type variable, used only when preparing a trait query.
+    BoundTy(BoundTy),
 }
 
 newtype_index! {
-    pub struct CanonicalVar { .. }
+    pub struct BoundTyIndex { .. }
 }
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub struct BoundTy {
+    pub level: DebruijnIndex,
+    pub var: BoundTyIndex,
+}
+
+impl_stable_hash_for!(struct BoundTy { level, var });
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -1919,7 +1927,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
             ty::Infer(ty::TyVar(_)) => false,
 
-            ty::Infer(ty::CanonicalTy(_)) |
+            ty::Infer(ty::BoundTy(_)) |
             ty::Infer(ty::FreshTy(_)) |
             ty::Infer(ty::FreshIntTy(_)) |
             ty::Infer(ty::FreshFloatTy(_)) =>

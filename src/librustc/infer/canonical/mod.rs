@@ -40,7 +40,7 @@ use std::ops::Index;
 use syntax::source_map::Span;
 use ty::fold::TypeFoldable;
 use ty::subst::Kind;
-use ty::{self, CanonicalVar, Lift, Region, List, TyCtxt};
+use ty::{self, BoundTyIndex, Lift, Region, List, TyCtxt};
 
 mod canonicalizer;
 
@@ -72,7 +72,7 @@ impl<'gcx> UseSpecializedDecodable for CanonicalVarInfos<'gcx> {}
 /// canonicalized query response.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub struct CanonicalVarValues<'tcx> {
-    pub var_values: IndexVec<CanonicalVar, Kind<'tcx>>,
+    pub var_values: IndexVec<BoundTyIndex, Kind<'tcx>>,
 }
 
 /// When we canonicalize a value to form a query, we wind up replacing
@@ -264,7 +264,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         span: Span,
         variables: &List<CanonicalVarInfo>,
     ) -> CanonicalVarValues<'tcx> {
-        let var_values: IndexVec<CanonicalVar, Kind<'tcx>> = variables
+        let var_values: IndexVec<BoundTyIndex, Kind<'tcx>> = variables
             .iter()
             .map(|info| self.fresh_inference_var_for_canonical_var(span, *info))
             .collect();
@@ -367,10 +367,10 @@ BraceStructLiftImpl! {
     } where R: Lift<'tcx>
 }
 
-impl<'tcx> Index<CanonicalVar> for CanonicalVarValues<'tcx> {
+impl<'tcx> Index<BoundTyIndex> for CanonicalVarValues<'tcx> {
     type Output = Kind<'tcx>;
 
-    fn index(&self, value: CanonicalVar) -> &Kind<'tcx> {
+    fn index(&self, value: BoundTyIndex) -> &Kind<'tcx> {
         &self.var_values[value]
     }
 }

@@ -85,10 +85,11 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for CanonicalVarValuesSubst<'cx, 'g
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.sty {
-            ty::Infer(ty::InferTy::CanonicalTy(c)) => {
-                match self.var_values.var_values[c].unpack() {
+            ty::Infer(ty::InferTy::BoundTy(b)) => {
+                debug_assert_eq!(ty::INNERMOST, b.level);
+                match self.var_values.var_values[b.var].unpack() {
                     UnpackedKind::Type(ty) => ty,
-                    r => bug!("{:?} is a type but value is {:?}", c, r),
+                    r => bug!("{:?} is a type but value is {:?}", b, r),
                 }
             }
             _ => {

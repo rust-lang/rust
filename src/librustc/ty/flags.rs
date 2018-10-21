@@ -122,7 +122,7 @@ impl FlagComputation {
                     ty::FreshTy(_) |
                     ty::FreshIntTy(_) |
                     ty::FreshFloatTy(_) |
-                    ty::CanonicalTy(_) => {
+                    ty::BoundTy(_) => {
                         self.add_flags(TypeFlags::HAS_CANONICAL_VARS);
                     }
 
