@@ -34,7 +34,8 @@ use middle::region;
 use std::iter;
 use std::io;
 use std::ops::{Deref, DerefMut};
-use std::hash::Hash;
+use std::cmp;
+use std::hash::{Hash, Hasher};
 use syntax::ast::Mutability;
 use rustc_serialize::{Encoder, Decodable, Encodable};
 use rustc_data_structures::sorted_map::SortedMap;
@@ -217,8 +218,55 @@ impl<'tcx, Tag> Pointer<Tag> {
 }
 
 
-#[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct AllocId(pub u64);
+
+impl Eq for AllocId {}
+
+impl Hash for AllocId {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        ty::tls::with(|tcx| {
+            let alloc_type = tcx.alloc_map.lock().get(*self);
+            match alloc_type {
+                Some(alloc_type) => alloc_type.hash(state),
+                None => self.0.hash(state),
+            }
+        })
+    }
+}
+
+impl PartialEq for AllocId {
+    fn eq(&self, other: &Self) -> bool {
+        ty::tls::with(|tcx| {
+            let (s, o) = {
+                let map = tcx.alloc_map.lock();
+                (map.get(*self), map.get(*other))
+            };
+            s == o
+        })
+    }
+}
+
+impl Ord for AllocId {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        match self.partial_cmp(other) {
+            Some(ord) => ord,
+            None => self.0.cmp(&other.0)
+        }
+    }
+}
+
+impl PartialOrd for AllocId {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        ty::tls::with(|tcx| {
+            let (s, o) = {
+                let map = tcx.alloc_map.lock();
+                (map.get(*self)?, map.get(*other)?)
+            };
+            s.partial_cmp(&o)
+        })
+    }
+}
 
 impl ::rustc_serialize::UseSpecializedEncodable for AllocId {}
 impl ::rustc_serialize::UseSpecializedDecodable for AllocId {}
@@ -427,7 +475,7 @@ impl fmt::Display for AllocId {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
 pub enum AllocType<'tcx, M> {
     /// The alloc id is used as a function pointer
     Function(Instance<'tcx>),
@@ -440,7 +488,7 @@ pub enum AllocType<'tcx, M> {
 
 pub struct AllocMap<'tcx, M> {
     /// Lets you know what an AllocId refers to
-    id_to_type: FxHashMap<AllocId, AllocType<'tcx, M>>,
+    id_to_type: FxHashMap<u64, AllocType<'tcx, M>>,
 
     /// Used to ensure that functions and statics only get one associated AllocId
     type_interner: FxHashMap<AllocType<'tcx, M>, AllocId>,
@@ -479,7 +527,7 @@ impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
         }
         let id = self.reserve();
         debug!("creating alloc_type {:?} with id {}", alloc_type, id);
-        self.id_to_type.insert(id, alloc_type.clone());
+        self.id_to_type.insert(id.0, alloc_type.clone());
         self.type_interner.insert(alloc_type, id);
         id
     }
@@ -492,7 +540,7 @@ impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
     }
 
     pub fn get(&self, id: AllocId) -> Option<AllocType<'tcx, M>> {
-        self.id_to_type.get(&id).cloned()
+        self.id_to_type.get(&id.0).cloned()
     }
 
     pub fn unwrap_memory(&self, id: AllocId) -> M {
@@ -513,13 +561,13 @@ impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
     }
 
     pub fn set_id_memory(&mut self, id: AllocId, mem: M) {
-        if let Some(old) = self.id_to_type.insert(id, AllocType::Memory(mem)) {
+        if let Some(old) = self.id_to_type.insert(id.0, AllocType::Memory(mem)) {
             bug!("tried to set allocation id {}, but it was already existing as {:#?}", id, old);
         }
     }
 
     pub fn set_id_same_memory(&mut self, id: AllocId, mem: M) {
-       self.id_to_type.insert_same(id, AllocType::Memory(mem));
+       self.id_to_type.insert_same(id.0, AllocType::Memory(mem));
     }
 }
 
