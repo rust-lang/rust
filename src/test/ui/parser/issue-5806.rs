@@ -8,15 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-windows
-// ignore-freebsd
-// ignore-openbsd
-// ignore-netbsd
-// ignore-bitrig
-
 // compile-flags: -Z parse-only
+// normalize-stderr-test: "parser:.*\(" -> "parser: $$ACCESS_DENIED_MSG ("
+// normalize-stderr-test: "os error \d+" -> "os error $$ACCESS_DENIED_CODE"
 
-#[path = "../compile-fail"]
-mod foo; //~ ERROR: a directory
+#[path = "../parser"]
+mod foo; //~ ERROR couldn't read
 
 fn main() {}

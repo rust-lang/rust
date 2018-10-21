@@ -1,5 +1,5 @@
-error: couldn't read "C:/msys64/home/we/rust/src/test/ui/parser/not_a_real_file.rs": The system cannot find the file specified. (os error 2)
-  --> $DIR/mod_file_with_path_attr.rs:14:5
+error: couldn't read $DIR/not_a_real_file.rs: $FILE_NOT_FOUND_MSG (os error 2)
+  --> $DIR/mod_file_with_path_attr.rs:15:5
    |
 LL | mod m; //~ ERROR not_a_real_file.rs
    |     ^

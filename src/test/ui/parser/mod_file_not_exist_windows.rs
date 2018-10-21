@@ -8,21 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-android
-// ignore-bitrig
-// ignore-cloudabi
-// ignore-dragonfly
-// ignore-emscripten
-// ignore-freebsd
-// ignore-gnu
-// ignore-haiku
-// ignore-ios
-// ignore-linux
-// ignore-macos
-// ignore-netbsd
-// ignore-openbsd
-// ignore-solaris
-
+// only-windows
 // compile-flags: -Z parse-only
 
 mod not_a_real_file; //~ ERROR file not found for module `not_a_real_file`
