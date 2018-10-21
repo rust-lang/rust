@@ -174,7 +174,7 @@ fn loud_insert<K>(set: &mut HashSet<K>, item: K) {
 ```
 
 `HashSet<K>` is an input type of the `loud_insert` function. Hence, we assume it
-to be well-formed, so we would have `FromEnv(HashSet<K>)` inside the body or our
+to be well-formed, so we would have `FromEnv(HashSet<K>)` inside the body of our
 function. As we'll see in the section on lowering, `FromEnv(HashSet<K>)` implies
 `Implemented(K: Hash)` because the
 `HashSet` declaration was written with a `K: Hash` where clause. Hence, we don't
