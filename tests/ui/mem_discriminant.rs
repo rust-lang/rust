@@ -34,6 +34,11 @@ fn main() {
     mem::discriminant(rro);
     mem::discriminant(&rro);
 
+    macro_rules! mem_discriminant_but_in_a_macro {
+        ($param:expr) => (mem::discriminant($param))
+    }
+
+    mem_discriminant_but_in_a_macro!(&rro);
 
     // ok
     mem::discriminant(&Some(2));

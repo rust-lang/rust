@@ -72,5 +72,17 @@ error: calling `mem::discriminant` on non-enum type `&&std::option::Option<i32>`
    |                       |
    |                       help: try dereferencing: `*rro`
 
-error: aborting due to 9 previous errors
+error: calling `mem::discriminant` on non-enum type `&&std::option::Option<i32>`
+  --> $DIR/mem_discriminant.rs:38:27
+   |
+38 |         ($param:expr) => (mem::discriminant($param))
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+41 |     mem_discriminant_but_in_a_macro!(&rro);
+   |     ---------------------------------------
+   |     |                                |
+   |     |                                help: try dereferencing: `*rro`
+   |     in this macro invocation
+
+error: aborting due to 10 previous errors
 
