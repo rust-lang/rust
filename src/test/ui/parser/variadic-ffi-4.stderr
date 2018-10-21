@@ -1,0 +1,8 @@
+error: only foreign functions are allowed to be variadic
+  --> $DIR/variadic-ffi-4.rs:13:29
+   |
+LL | extern "C" fn foo(x: isize, ...) {
+   |                             ^^^
+
+error: aborting due to previous error
+

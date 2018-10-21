@@ -1,0 +1,8 @@
+error: expected type, found keyword `mut`
+  --> $DIR/removed-syntax-mut-vec-ty.rs:13:11
+   |
+LL | type v = [mut isize]; //~ ERROR expected type, found keyword `mut`
+   |           ^^^
+
+error: aborting due to previous error
+

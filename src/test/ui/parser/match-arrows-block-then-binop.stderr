@@ -1,0 +1,8 @@
+error: expected pattern, found `+`
+  --> $DIR/match-arrows-block-then-binop.rs:17:9
+   |
+LL |       } + 5 //~ ERROR expected pattern, found `+`
+   |         ^ expected pattern
+
+error: aborting due to previous error
+

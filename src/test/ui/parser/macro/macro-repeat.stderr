@@ -1,0 +1,8 @@
+error: variable 'v' is still repeating at this depth
+  --> $DIR/macro-repeat.rs:13:9
+   |
+LL |         $v  //~ ERROR still repeating at this depth
+   |         ^^
+
+error: aborting due to previous error
+

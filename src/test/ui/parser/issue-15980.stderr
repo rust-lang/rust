@@ -1,0 +1,20 @@
+error: expected identifier, found keyword `return`
+  --> $DIR/issue-15980.rs:20:13
+   |
+LL |         Err(ref e) if e.kind == io::EndOfFile {
+   |                                 ------------- while parsing this struct
+LL |             //~^ NOTE while parsing this struct
+LL |             return
+   |             ^^^^^^ expected identifier, found keyword
+
+error: expected one of `.`, `=>`, `?`, or an operator, found `_`
+  --> $DIR/issue-15980.rs:25:9
+   |
+LL |         }
+   |          - expected one of `.`, `=>`, `?`, or an operator here
+LL |         //~^ NOTE expected one of `.`, `=>`, `?`, or an operator here
+LL |         _ => {}
+   |         ^ unexpected token
+
+error: aborting due to 2 previous errors
+

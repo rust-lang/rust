@@ -1,0 +1,11 @@
+error: expected identifier, found `String`
+  --> $DIR/issue-37113.rs:14:16
+   |
+LL |             $( $t, )* //~ ERROR expected identifier, found `String`
+   |                ^^ expected identifier
+...
+LL |     test_macro!(String,);
+   |     --------------------- in this macro invocation
+
+error: aborting due to previous error
+

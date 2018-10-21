@@ -1,0 +1,8 @@
+error: expected `[`, found `<eof>`
+  --> $DIR/column-offset-1-based.rs:13:1
+   |
+LL | # //~ ERROR 13:1: 13:2: expected `[`, found `<eof>`
+   | ^ expected `[`
+
+error: aborting due to previous error
+

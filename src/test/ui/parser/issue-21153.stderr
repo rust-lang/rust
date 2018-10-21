@@ -1,0 +1,10 @@
+error: missing `fn`, `type`, or `const` for trait-item declaration
+  --> $DIR/issue-21153.rs:13:29
+   |
+LL |   trait MyTrait<T>: Iterator { //~ ERROR missing `fn`, `type`, or `const`
+   |  _____________________________^
+LL | |     Item = T;
+   | |____^ missing `fn`, `type`, or `const`
+
+error: aborting due to previous error
+

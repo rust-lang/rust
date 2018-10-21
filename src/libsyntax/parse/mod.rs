@@ -230,7 +230,7 @@ fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     match sess.source_map().load_file(path) {
         Ok(source_file) => source_file,
         Err(e) => {
-            let msg = format!("couldn't read {:?}: {}", path.display(), e);
+            let msg = format!("couldn't read {}: {}", path.display(), e);
             match spanopt {
                 Some(sp) => sess.span_diagnostic.span_fatal(sp, &msg).raise(),
                 None => sess.span_diagnostic.fatal(&msg).raise()

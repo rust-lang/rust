@@ -1,0 +1,10 @@
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `assert_eq`
+  --> $DIR/macros-no-semicolon.rs:15:5
+   |
+LL |     assert_eq!(1, 2)
+   |                     - expected one of `.`, `;`, `?`, `}`, or an operator here
+LL |     assert_eq!(3, 4) //~ ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `assert_eq`
+   |     ^^^^^^^^^ unexpected token
+
+error: aborting due to previous error
+

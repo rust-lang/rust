@@ -1,0 +1,8 @@
+error: expected identifier, found `(`
+  --> $DIR/issue-15914.rs:15:9
+   |
+LL |         (); //~ ERROR expected identifier, found `(`
+   |         ^ expected identifier
+
+error: aborting due to previous error
+

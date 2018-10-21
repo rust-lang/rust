@@ -1,0 +1,8 @@
+error: expected one of `)`, `,`, or `@`, found `[`
+  --> $DIR/pat-lt-bracket-7.rs:14:16
+   |
+LL |     for thing(x[]) in foo {} //~ ERROR: expected one of `)`, `,`, or `@`, found `[`
+   |                ^ expected one of `)`, `,`, or `@` here
+
+error: aborting due to previous error
+

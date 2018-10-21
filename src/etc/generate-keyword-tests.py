@@ -44,7 +44,7 @@ fn main() {
 """
 
 test_dir = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../test/parse-fail')
+    os.path.join(os.path.dirname(__file__), '../test/ui/parser')
 )
 
 for kw in sys.argv[1:]:

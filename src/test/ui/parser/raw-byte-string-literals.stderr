@@ -1,0 +1,14 @@
+error: raw byte string must be ASCII: /u{e9}
+  --> $DIR/raw-byte-string-literals.rs:15:8
+   |
+LL |     br"é";  //~ ERROR raw byte string must be ASCII
+   |        ^
+
+error: found invalid character; only `#` is allowed in raw string delimitation: ~
+  --> $DIR/raw-byte-string-literals.rs:16:6
+   |
+LL |     br##~"a"~##;  //~ ERROR only `#` is allowed in raw string delimitation
+   |      ^^^
+
+error: aborting due to 2 previous errors
+

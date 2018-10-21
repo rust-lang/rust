@@ -1,0 +1,8 @@
+error: expected one of `;` or `as`, found `{`
+  --> $DIR/extern-foreign-crate.rs:16:18
+   |
+LL | extern crate foo {} //~ERROR expected one of `;` or `as`, found `{`
+   |                  ^ expected one of `;` or `as` here
+
+error: aborting due to previous error
+

@@ -1,0 +1,8 @@
+error: expected pattern, found keyword `let`
+  --> $DIR/keyword-let-as-identifier.rs:16:9
+   |
+LL |     let let = "foo"; //~ error: expected pattern, found keyword `let`
+   |         ^^^ expected pattern
+
+error: aborting due to previous error
+

@@ -1,0 +1,23 @@
+error: chained comparison operators require parentheses
+  --> $DIR/require-parens-for-chained-comparison.rs:16:11
+   |
+LL |     false == false == false;
+   |           ^^^^^^^^^^^^^^^^^
+
+error: chained comparison operators require parentheses
+  --> $DIR/require-parens-for-chained-comparison.rs:19:11
+   |
+LL |     false == 0 < 2;
+   |           ^^^^^^^^
+
+error: chained comparison operators require parentheses
+  --> $DIR/require-parens-for-chained-comparison.rs:22:6
+   |
+LL |     f<X>();
+   |      ^^^^
+   |
+   = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
+   = help: or use `(...)` if you meant to specify fn arguments
+
+error: aborting due to 3 previous errors
+

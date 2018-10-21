@@ -1,0 +1,8 @@
+error: expected identifier, found keyword `false`
+  --> $DIR/bad-value-ident-false.rs:13:4
+   |
+LL | fn false() { } //~ ERROR expected identifier, found keyword `false`
+   |    ^^^^^ expected identifier, found keyword
+
+error: aborting due to previous error
+

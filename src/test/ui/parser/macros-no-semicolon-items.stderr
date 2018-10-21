@@ -1,0 +1,8 @@
+error: macros that expand to items must either be surrounded with braces or followed by a semicolon
+  --> $DIR/macros-no-semicolon-items.rs:13:17
+   |
+LL | macro_rules! foo()  //~ ERROR semicolon
+   |                 ^^
+
+error: aborting due to previous error
+

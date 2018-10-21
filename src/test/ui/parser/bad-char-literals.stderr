@@ -1,0 +1,28 @@
+error: character constant must be escaped: '
+  --> $DIR/bad-char-literals.rs:17:6
+   |
+LL |     ''';
+   |      ^
+
+error: character constant must be escaped: /n
+  --> $DIR/bad-char-literals.rs:21:6
+   |
+LL |       '
+   |  ______^
+LL | | ';
+   | |_
+
+error: character constant must be escaped: /r
+  --> $DIR/bad-char-literals.rs:26:6
+   |
+LL |     ''; //~ ERROR: character constant must be escaped: /r
+   |      ^
+
+error: character constant must be escaped: /t
+  --> $DIR/bad-char-literals.rs:29:6
+   |
+LL |     '    ';
+   |      ^^^^
+
+error: aborting due to 4 previous errors
+

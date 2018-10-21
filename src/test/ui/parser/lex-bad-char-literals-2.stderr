@@ -1,0 +1,8 @@
+error: character literal may only contain one codepoint: 'nope'
+  --> $DIR/lex-bad-char-literals-2.rs:15:5
+   |
+LL |     'nope' //~ ERROR: character literal may only contain one codepoint: 'nope'
+   |     ^^^^^^
+
+error: aborting due to previous error
+

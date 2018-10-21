@@ -773,12 +773,6 @@ default_test!(CompileFail {
     suite: "compile-fail"
 });
 
-default_test!(ParseFail {
-    path: "src/test/parse-fail",
-    mode: "parse-fail",
-    suite: "parse-fail"
-});
-
 default_test!(RunFail {
     path: "src/test/run-fail",
     mode: "run-fail",

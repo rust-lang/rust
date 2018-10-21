@@ -139,7 +139,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
             "",
             "mode",
             "which sort of compile tests to run",
-            "(compile-fail|parse-fail|run-fail|run-pass|\
+            "(compile-fail|run-fail|run-pass|\
              run-pass-valgrind|pretty|debug-info|incremental|mir-opt)",
         )
         .optflag("", "ignored", "run tests marked as ignored")

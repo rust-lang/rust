@@ -1,0 +1,8 @@
+error: no rules expected the token `[`
+  --> $DIR/macro-doc-comments-2.rs:16:5
+   |
+LL |     /// Outer
+   |     ^
+
+error: aborting due to previous error
+

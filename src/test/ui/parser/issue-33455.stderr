@@ -1,0 +1,8 @@
+error: expected one of `::`, `;`, or `as`, found `.`
+  --> $DIR/issue-33455.rs:13:8
+   |
+LL | use foo.bar; //~ ERROR expected one of `::`, `;`, or `as`, found `.`
+   |        ^ expected one of `::`, `;`, or `as` here
+
+error: aborting due to previous error
+

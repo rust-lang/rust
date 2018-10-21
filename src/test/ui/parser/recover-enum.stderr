@@ -1,0 +1,10 @@
+error: expected one of `(`, `,`, `=`, `{`, or `}`, found `Bad`
+  --> $DIR/recover-enum.rs:16:9
+   |
+LL |         Very
+   |             - expected one of `(`, `,`, `=`, `{`, or `}` here
+LL |         Bad //~ ERROR found `Bad`
+   |         ^^^ unexpected token
+
+error: aborting due to previous error
+

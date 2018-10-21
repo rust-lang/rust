@@ -1,0 +1,8 @@
+error: expected one of `!`, `(`, `::`, `;`, or `<`, found `/`
+  --> $DIR/removed-syntax-ptr-lifetime.rs:13:22
+   |
+LL | type bptr = &lifetime/isize; //~ ERROR expected one of `!`, `(`, `::`, `;`, or `<`, found `/`
+   |                      ^ expected one of `!`, `(`, `::`, `;`, or `<` here
+
+error: aborting due to previous error
+

@@ -1,0 +1,8 @@
+error: expected type, found `'static`
+  --> $DIR/trait-object-macro-matcher.rs:19:8
+   |
+LL |     m!('static); //~ ERROR expected type, found `'static`
+   |        ^^^^^^^
+
+error: aborting due to previous error
+

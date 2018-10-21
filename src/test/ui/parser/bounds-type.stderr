@@ -1,0 +1,8 @@
+error: `?` may only modify trait bounds, not lifetime bounds
+  --> $DIR/bounds-type.rs:20:8
+   |
+LL |     T: ?'a, //~ ERROR `?` may only modify trait bounds, not lifetime bounds
+   |        ^
+
+error: aborting due to previous error
+

@@ -1,0 +1,8 @@
+error: expected pattern, found keyword `continue`
+  --> $DIR/keyword-continue-as-identifier.rs:16:9
+   |
+LL |     let continue = "foo"; //~ error: expected pattern, found keyword `continue`
+   |         ^^^^^^^^ expected pattern
+
+error: aborting due to previous error
+
