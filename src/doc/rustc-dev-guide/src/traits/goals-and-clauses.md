@@ -103,7 +103,7 @@ WhereClause = Implemented(TraitRef)
 
 `WhereClause` refers to a `where` clause that a Rust user would actually be able
 to write in a Rust program. This abstraction exists only as a convenience as we
-sometimes want to only coope with domain goals that are effectively writable in
+sometimes want to only deal with domain goals that are effectively writable in
 Rust.
 
 Let's break down each one of these, one-by-one.
@@ -117,8 +117,8 @@ True if the given trait is implemented for the given input types and lifetimes.
 e.g. `ProjectionEq<T as Iterator>::Item = u8`
 
 The given associated type `Projection` is equal to `Type`; this can be proved
-with either normalization or using skolemized types. See [the section
-on associated types](./associated-types.html).
+with either normalization or using placeholder associated types. See
+[the section on associated types](./associated-types.html).
 
 #### Normalize(Projection -> Type)
 e.g. `ProjectionEq<T as Iterator>::Item -> u8`
