@@ -116,6 +116,7 @@ pub struct Config {
     pub hosts: Vec<Interned<String>>,
     pub targets: Vec<Interned<String>>,
     pub local_rebuild: bool,
+    pub jemalloc: bool,
 
     // dist misc
     pub dist_sign_folder: Option<PathBuf>,
@@ -260,7 +261,7 @@ struct Llvm {
     link_jobs: Option<u32>,
     link_shared: Option<bool>,
     version_suffix: Option<String>,
-    clang_cl: Option<String>
+    clang_cl: Option<String>,
 }
 
 #[derive(Deserialize, Default, Clone)]
@@ -324,6 +325,7 @@ struct Rust {
     backtrace_on_ice: Option<bool>,
     verify_llvm_ir: Option<bool>,
     remap_debuginfo: Option<bool>,
+    jemalloc: Option<bool>,
 }
 
 /// TOML representation of how each build target is configured.
@@ -537,6 +539,7 @@ impl Config {
             set(&mut config.rust_debuginfo_tests, rust.debuginfo_tests);
             set(&mut config.codegen_tests, rust.codegen_tests);
             set(&mut config.rust_rpath, rust.rpath);
+            set(&mut config.jemalloc, rust.jemalloc);
             set(&mut config.backtrace, rust.backtrace);
             set(&mut config.channel, rust.channel.clone());
             set(&mut config.rust_dist_src, rust.dist_src);

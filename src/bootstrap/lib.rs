@@ -530,7 +530,11 @@ impl Build {
 
     /// Get the space-separated set of activated features for the compiler.
     fn rustc_features(&self) -> String {
-        String::new()
+        let mut features = String::new();
+        if self.config.jemalloc {
+            features.push_str("jemalloc");
+        }
+        features
     }
 
     /// Component directory that Cargo will produce output into (e.g.

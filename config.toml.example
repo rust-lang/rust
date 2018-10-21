@@ -396,6 +396,10 @@
 # generally only set for releases
 #remap-debuginfo = false
 
+# Link the compiler against `jemalloc`, where on Linux and OSX it should
+# override the default allocator for rustc and LLVM.
+#jemalloc = false
+
 # =============================================================================
 # Options for specific targets
 #
