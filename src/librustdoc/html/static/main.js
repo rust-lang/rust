@@ -2059,12 +2059,22 @@
     onEach(document.getElementsByClassName('impl'), func);
     onEach(document.getElementsByClassName('impl-items'), function(e) {
         onEach(e.getElementsByClassName('associatedconstant'), func);
-        if (e.getElementsByClassName('hidden').length > 0) {
+        var hiddenElems = e.getElementsByClassName('hidden');
+        var needToggle = false;
+
+        for (var i = 0; i < hiddenElems.length; ++i) {
+            if (hasClass(hiddenElems[i], "content") === false &&
+                hasClass(hiddenElems[i], "docblock") === false) {
+                needToggle = true;
+                break;
+            }
+        }
+        if (needToggle === true) {
             var newToggle = document.createElement('a');
             newToggle.href = 'javascript:void(0)';
             newToggle.className = 'collapse-toggle hidden-default collapsed';
             newToggle.innerHTML = "[<span class='inner'>" + labelForToggleButton(true) + "</span>" +
-                                  "] Show hidden default items";
+                                  "] Show hidden undocumented items";
             newToggle.onclick = function() {
                 if (hasClass(this, "collapsed")) {
                     removeClass(this, "collapsed");
@@ -2075,7 +2085,7 @@
                         }
                     }, true);
                     this.innerHTML = "[<span class='inner'>" + labelForToggleButton(false) +
-                                     "</span>] Hide default items"
+                                     "</span>] Hide undocumented items"
                 } else {
                     addClass(this, "collapsed");
                     onEach(this.parentNode.getElementsByClassName("x"), function(x) {
@@ -2085,7 +2095,7 @@
                         }
                     }, true);
                     this.innerHTML = "[<span class='inner'>" + labelForToggleButton(true) +
-                                     "</span>] Show hidden default items";
+                                     "</span>] Show hidden undocumented items";
                 }
             };
             e.insertBefore(newToggle, e.firstChild);

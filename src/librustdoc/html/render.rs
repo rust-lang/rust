@@ -3881,19 +3881,21 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             RenderMode::ForDeref { mut_: deref_mut_ } => should_render_item(&item, deref_mut_),
         };
 
-        let (mut is_hidden, extra_class) = if item.doc_value().is_some() {
+        let (is_hidden, extra_class) = if trait_.is_none() ||
+                                          item.doc_value().is_some() ||
+                                          item.inner.is_associated() {
             (false, "")
         } else {
             (true, " hidden")
         };
         match item.inner {
             clean::MethodItem(clean::Method { ref decl, .. }) |
-            clean::TyMethodItem(clean::TyMethod{ ref decl, .. }) => {
+            clean::TyMethodItem(clean::TyMethod { ref decl, .. }) => {
                 // Only render when the method is not static or we allow static methods
                 if render_method_item {
                     let id = cx.derive_id(format!("{}.{}", item_type, name));
                     let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
-                    write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
+                    write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
                     write!(w, "{}", spotlight_decl(decl)?)?;
                     write!(w, "<span id='{}' class='invisible'>", ns_id)?;
                     write!(w, "<table class='table-display'><tbody><tr><td><code>")?;
@@ -3910,7 +3912,6 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         render_stability_since_raw(w, item.stable_since(), outer_version)?;
                     }
                     write!(w, "</td></tr></tbody></table></span></h4>")?;
-                    is_hidden = false;
                 }
             }
             clean::TypedefItem(ref tydef, _) => {
