@@ -163,6 +163,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     scalar_format(value), path, "a valid unicode codepoint");
             },
             ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
+                // NOTE: Keep this in sync with the array optimization for int/float
+                // types below!
                 let size = value.layout.size;
                 let value = value.to_scalar_or_undef();
                 if const_mode {
@@ -511,6 +513,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         // This is the size in bytes of the whole array.
                         let size = Size::from_bytes(ty_size * len);
 
+                        // NOTE: Keep this in sync with the handling of integer and float
+                        // types above, in `validate_primitive_type`.
                         // In run-time mode, we accept pointers in here.  This is actually more
                         // permissive than a per-element check would be, e.g. we accept
                         // an &[u8] that contains a pointer even though bytewise checking would

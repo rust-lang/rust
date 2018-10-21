@@ -22,17 +22,16 @@ use std::borrow::Cow;
 
 use rustc::ty::{self, Instance, ParamEnv, query::TyCtxtAt};
 use rustc::ty::layout::{self, Align, TargetDataLayout, Size, HasDataLayout};
-use rustc::mir::interpret::{
-    Pointer, AllocId, Allocation, ConstValue, GlobalId,
-    EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
-    truncate
-};
-pub use rustc::mir::interpret::{write_target_uint, read_target_uint};
+pub use rustc::mir::interpret::{truncate, write_target_uint, read_target_uint};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
 use syntax::ast::Mutability;
 
-use super::{Machine, AllocMap, ScalarMaybeUndef};
+use super::{
+    Pointer, AllocId, Allocation, ConstValue, GlobalId,
+    EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
+    Machine, MemoryAccess, AllocMap, MayLeak, ScalarMaybeUndef,
+};
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
 pub enum MemoryKind<T> {
@@ -44,12 +43,20 @@ pub enum MemoryKind<T> {
     Machine(T),
 }
 
+impl<T: MayLeak> MayLeak for MemoryKind<T> {
+    #[inline]
+    fn may_leak(self) -> bool {
+        match self {
+            MemoryKind::Stack => false,
+            MemoryKind::Vtable => true,
+            MemoryKind::Machine(k) => k.may_leak()
+        }
+    }
+}
+
 // `Memory` has to depend on the `Machine` because some of its operations
 // (e.g. `get`) call a `Machine` hook.
 pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
-    /// Additional data required by the Machine
-    pub data: M::MemoryData,
-
     /// Allocations local to this instance of the miri engine.  The kind
     /// helps ensure that the same mechanism is used for allocation and
     /// deallocation.  When an allocation is not found here, it is a
@@ -91,11 +98,9 @@ impl<'a, 'b, 'c, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
 // carefully copy only the reachable parts.
 impl<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>>
     Clone for Memory<'a, 'mir, 'tcx, M>
-    where M::MemoryData: Clone
 {
     fn clone(&self) -> Self {
         Memory {
-            data: self.data.clone(),
             alloc_map: self.alloc_map.clone(),
             dead_alloc_map: self.dead_alloc_map.clone(),
             tcx: self.tcx,
@@ -104,9 +109,8 @@ impl<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>>
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
-    pub fn new(tcx: TyCtxtAt<'a, 'tcx, 'tcx>, data: M::MemoryData) -> Self {
+    pub fn new(tcx: TyCtxtAt<'a, 'tcx, 'tcx>) -> Self {
         Memory {
-            data,
             alloc_map: Default::default(),
             dead_alloc_map: FxHashMap::default(),
             tcx,
@@ -123,7 +127,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn allocate_with(
         &mut self,
-        alloc: Allocation<M::PointerTag>,
+        alloc: Allocation<M::PointerTag, M::AllocExtra>,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx, AllocId> {
         let id = self.tcx.alloc_map.lock().reserve();
@@ -186,13 +190,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size_and_align: Option<(Size, Align)>,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx> {
-        debug!("deallocating: {}", ptr.alloc_id);
+        trace!("deallocating: {}", ptr.alloc_id);
 
         if ptr.offset.bytes() != 0 {
             return err!(DeallocateNonBasePtr);
         }
 
-        let (alloc_kind, alloc) = match self.alloc_map.remove(&ptr.alloc_id) {
+        let (alloc_kind, mut alloc) = match self.alloc_map.remove(&ptr.alloc_id) {
             Some(alloc) => alloc,
             None => {
                 // Deallocating static memory -- always an error
@@ -226,6 +230,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                                                            alloc.align));
             }
         }
+
+        // Let the machine take some extra action
+        M::memory_deallocated(&mut alloc, ptr)?;
 
         // Don't forget to remember size and align of this now-dead allocation
         let old = self.dead_alloc_map.insert(
@@ -334,7 +341,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     fn get_static_alloc(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         id: AllocId,
-    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<M::PointerTag>>> {
+    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
         let alloc = tcx.alloc_map.lock().get(id);
         let def_id = match alloc {
             Some(AllocType::Memory(mem)) => {
@@ -376,7 +383,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         })
     }
 
-    pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<M::PointerTag>> {
+    pub fn get(&self, id: AllocId) -> EvalResult<'tcx, &Allocation<M::PointerTag, M::AllocExtra>> {
         // The error type of the inner closure here is somewhat funny.  We have two
         // ways of "erroring": An actual error, or because we got a reference from
         // `get_static_alloc` that we can actually use directly without inserting anything anywhere.
@@ -409,7 +416,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn get_mut(
         &mut self,
         id: AllocId,
-    ) -> EvalResult<'tcx, &mut Allocation<M::PointerTag>> {
+    ) -> EvalResult<'tcx, &mut Allocation<M::PointerTag, M::AllocExtra>> {
         let tcx = self.tcx;
         let a = self.alloc_map.get_mut_or(id, || {
             // Need to make a copy, even if `get_static_alloc` is able
@@ -482,12 +489,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.dump_allocs(vec![id]);
     }
 
-    fn dump_alloc_helper<Tag>(
+    fn dump_alloc_helper<Tag, Extra>(
         &self,
         allocs_seen: &mut FxHashSet<AllocId>,
         allocs_to_print: &mut VecDeque<AllocId>,
         mut msg: String,
-        alloc: &Allocation<Tag>,
+        alloc: &Allocation<Tag, Extra>,
         extra: String,
     ) {
         use std::fmt::Write;
@@ -590,13 +597,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn leak_report(&self) -> usize {
         trace!("### LEAK REPORT ###");
         let leaks: Vec<_> = self.alloc_map.filter_map_collect(|&id, &(kind, _)| {
-            // exclude statics and vtables
-            let exclude = match kind {
-                MemoryKind::Stack => false,
-                MemoryKind::Vtable => true,
-                MemoryKind::Machine(k) => Some(k) == M::STATIC_KIND,
-            };
-            if exclude { None } else { Some(id) }
+            if kind.may_leak() { None } else { Some(id) }
         });
         let n = leaks.len();
         self.dump_allocs(leaks);
@@ -633,6 +634,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
 
         let alloc = self.get(ptr.alloc_id)?;
+        M::memory_accessed(alloc, ptr, size, MemoryAccess::Read)?;
+
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
         let offset = ptr.offset.bytes() as usize;
@@ -677,6 +680,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.clear_relocations(ptr, size)?;
 
         let alloc = self.get_mut(ptr.alloc_id)?;
+        M::memory_accessed(alloc, ptr, size, MemoryAccess::Write)?;
+
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
         let offset = ptr.offset.bytes() as usize;
@@ -687,8 +692,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 /// Interning (for CTFE)
 impl<'a, 'mir, 'tcx, M> Memory<'a, 'mir, 'tcx, M>
 where
-    M: Machine<'a, 'mir, 'tcx, PointerTag=()>,
-    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<()>)>,
+    M: Machine<'a, 'mir, 'tcx, PointerTag=(), AllocExtra=()>,
+    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 {
     /// mark an allocation as static and initialized, either mutable or not
     pub fn intern_static(

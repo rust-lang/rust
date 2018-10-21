@@ -248,9 +248,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 )?;
             }
 
-            Ref(_, _, ref place) => {
+            Ref(_, borrow_kind, ref place) => {
                 let src = self.eval_place(place)?;
-                let val = self.force_allocation(src)?.to_ref();
+                let val = self.force_allocation(src)?;
+                let val = self.create_ref(val, Some(borrow_kind))?;
                 self.write_value(val, dest)?;
             }
 

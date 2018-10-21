@@ -19,8 +19,8 @@ use std::collections::hash_map::Entry;
 use rustc::hir::{self, def_id::DefId};
 use rustc::mir::interpret::ConstEvalErr;
 use rustc::mir;
-use rustc::ty::{self, TyCtxt, Instance, query::TyCtxtAt};
-use rustc::ty::layout::{self, LayoutOf, TyLayout};
+use rustc::ty::{self, Ty, TyCtxt, Instance, query::TyCtxtAt};
+use rustc::ty::layout::{self, Size, LayoutOf, TyLayout};
 use rustc::ty::subst::Subst;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
@@ -28,13 +28,10 @@ use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
-use rustc::mir::interpret::{
-    EvalResult, EvalError, EvalErrorKind, GlobalId,
-    Scalar, Allocation, AllocId, ConstValue,
-};
 use interpret::{self,
-    PlaceTy, MemPlace, OpTy, Operand, Value,
-    EvalContext, StackPopCleanup, MemoryKind,
+    PlaceTy, MemPlace, OpTy, Operand, Value, Pointer, Scalar, ConstValue,
+    EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
+    Allocation, AllocId, MemoryKind,
     snapshot,
 };
 
@@ -53,7 +50,7 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
 ) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'mir, 'tcx>> {
     debug!("mk_borrowck_eval_cx: {:?}", instance);
     let param_env = tcx.param_env(instance.def_id());
-    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new(), ());
+    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
     // insert a stack frame so any queries have the correct substs
     // cannot use `push_stack_frame`; if we do `const_prop` explodes
     ecx.stack.push(interpret::Frame {
@@ -76,7 +73,7 @@ pub fn mk_eval_cx<'a, 'tcx>(
 ) -> EvalResult<'tcx, CompileTimeEvalContext<'a, 'tcx, 'tcx>> {
     debug!("mk_eval_cx: {:?}, {:?}", instance, param_env);
     let span = tcx.def_span(instance.def_id());
-    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new(), ());
+    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
     let mir = ecx.load_mir(instance.def)?;
     // insert a stack frame so any queries have the correct substs
     ecx.push_stack_frame(
@@ -155,7 +152,7 @@ fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     // and try improving it down the road when more information is available
     let span = tcx.def_span(cid.instance.def_id());
     let span = mir.map(|mir| mir.span).unwrap_or(span);
-    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new(), ());
+    let mut ecx = EvalContext::new(tcx.at(span), param_env, CompileTimeInterpreter::new());
     let r = eval_body_using_ecx(&mut ecx, cid, mir, param_env);
     (r, ecx)
 }
@@ -333,16 +330,25 @@ impl<K: Hash + Eq, V> interpret::AllocMap<K, V> for FxHashMap<K, V> {
 type CompileTimeEvalContext<'a, 'mir, 'tcx> =
     EvalContext<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>;
 
+impl interpret::MayLeak for ! {
+    #[inline(always)]
+    fn may_leak(self) -> bool {
+        // `self` is uninhabited
+        self
+    }
+}
+
 impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     for CompileTimeInterpreter<'a, 'mir, 'tcx>
 {
-    type MemoryData = ();
     type MemoryKinds = !;
+    type AllocExtra = ();
     type PointerTag = ();
 
-    type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation<()>)>;
+    type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
 
     const STATIC_KIND: Option<!> = None; // no copying of statics allowed
+    const ENABLE_PTR_TRACKING_HOOKS: bool = false; // we don't have no provenance
 
     #[inline(always)]
     fn enforce_validity(_ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool {
@@ -455,6 +461,26 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
             &ecx.memory,
             &ecx.stack[..],
         )
+    }
+
+    #[inline(always)]
+    fn tag_reference(
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _ptr: Pointer<Self::PointerTag>,
+        _pointee_ty: Ty<'tcx>,
+        _pointee_size: Size,
+        _borrow_kind: Option<mir::BorrowKind>,
+    ) -> EvalResult<'tcx, Self::PointerTag> {
+        Ok(())
+    }
+
+    #[inline(always)]
+    fn tag_dereference(
+        _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
+        _ptr: Pointer<Self::PointerTag>,
+        _ptr_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, Self::PointerTag> {
+        Ok(())
     }
 }
 

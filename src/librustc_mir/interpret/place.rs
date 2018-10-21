@@ -144,17 +144,6 @@ impl<Tag> MemPlace<Tag> {
         // it now must be aligned.
         self.to_scalar_ptr_align().0.to_ptr()
     }
-
-    /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
-    /// This is the inverse of `ref_to_mplace`.
-    pub fn to_ref(self) -> Value<Tag> {
-        // We ignore the alignment of the place here -- special handling for packed structs ends
-        // at the `&` operator.
-        match self.meta {
-            None => Value::Scalar(self.ptr.into()),
-            Some(meta) => Value::ScalarPair(self.ptr.into(), meta.into()),
-        }
-    }
 }
 
 impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
@@ -267,23 +256,57 @@ impl<'a, 'mir, 'tcx, Tag, M> EvalContext<'a, 'mir, 'tcx, M>
 where
     Tag: ::std::fmt::Debug+Default+Copy+Eq+Hash+'static,
     M: Machine<'a, 'mir, 'tcx, PointerTag=Tag>,
-    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag>)>,
+    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
-    /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref`.
+    /// Alignment is just based on the type.  This is the inverse of `create_ref`.
     pub fn ref_to_mplace(
-        &self, val: ValTy<'tcx, M::PointerTag>
+        &self,
+        val: ValTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        let ptr = match val.to_scalar_ptr()? {
+            Scalar::Ptr(ptr) if M::ENABLE_PTR_TRACKING_HOOKS => {
+                // Machine might want to track the `*` operator
+                let tag = M::tag_dereference(self, ptr, val.layout.ty)?;
+                Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
+            }
+            other => other,
+        };
+
         let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
         let layout = self.layout_of(pointee_type)?;
         let align = layout.align;
+
         let mplace = match *val {
-            Value::Scalar(ptr) =>
-                MemPlace { ptr: ptr.not_undef()?, align, meta: None },
-            Value::ScalarPair(ptr, meta) =>
-                MemPlace { ptr: ptr.not_undef()?, align, meta: Some(meta.not_undef()?) },
+            Value::Scalar(_) =>
+                MemPlace { ptr, align, meta: None },
+            Value::ScalarPair(_, meta) =>
+                MemPlace { ptr, align, meta: Some(meta.not_undef()?) },
         };
         Ok(MPlaceTy { mplace, layout })
+    }
+
+    /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
+    /// This is the inverse of `ref_to_mplace`.
+    pub fn create_ref(
+        &mut self,
+        place: MPlaceTy<'tcx, M::PointerTag>,
+        borrow_kind: Option<mir::BorrowKind>,
+    ) -> EvalResult<'tcx, Value<M::PointerTag>> {
+        let ptr = match place.ptr {
+            Scalar::Ptr(ptr) if M::ENABLE_PTR_TRACKING_HOOKS => {
+                // Machine might want to track the `&` operator
+                let (size, _) = self.size_and_align_of_mplace(place)?
+                    .expect("create_ref cannot determine size");
+                let tag = M::tag_reference(self, ptr, place.layout.ty, size, borrow_kind)?;
+                Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
+            },
+            other => other,
+        };
+        Ok(match place.meta {
+            None => Value::Scalar(ptr.into()),
+            Some(meta) => Value::ScalarPair(ptr.into(), meta.into()),
+        })
     }
 
     /// Offset a pointer to project to a field. Unlike place_field, this is always

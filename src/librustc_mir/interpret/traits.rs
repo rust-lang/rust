@@ -26,7 +26,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         ty: Ty<'tcx>,
         poly_trait_ref: ty::PolyExistentialTraitRef<'tcx>,
     ) -> EvalResult<'tcx, Pointer<M::PointerTag>> {
-        debug!("get_vtable(trait_ref={:?})", poly_trait_ref);
+        trace!("get_vtable(trait_ref={:?})", poly_trait_ref);
 
         let (ty, poly_trait_ref) = self.tcx.erase_regions(&(ty, poly_trait_ref));
 

@@ -24,6 +24,8 @@ mod traits;
 mod validity;
 mod intrinsics;
 
+pub use rustc::mir::interpret::*; // have all the `interpret` symbols in one place: here
+
 pub use self::eval_context::{
     EvalContext, Frame, StackPopCleanup, LocalValue,
 };
@@ -32,7 +34,7 @@ pub use self::place::{Place, PlaceTy, MemPlace, MPlaceTy};
 
 pub use self::memory::{Memory, MemoryKind};
 
-pub use self::machine::{Machine, AllocMap};
+pub use self::machine::{Machine, AllocMap, MemoryAccess, MayLeak};
 
 pub use self::operand::{ScalarMaybeUndef, Value, ValTy, Operand, OpTy};
 

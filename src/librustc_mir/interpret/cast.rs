@@ -37,8 +37,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         kind: CastKind,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
-        let src_layout = src.layout;
-        let dst_layout = dest.layout;
         use rustc::mir::CastKind::*;
         match kind {
             Unsize => {
@@ -46,15 +44,28 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
 
             Misc => {
+                let src_layout = src.layout;
                 let src = self.read_value(src)?;
+
+                let src = if M::ENABLE_PTR_TRACKING_HOOKS && src_layout.ty.is_region_ptr() {
+                    // The only `Misc` casts on references are those creating raw pointers.
+                    assert!(dest.layout.ty.is_unsafe_ptr());
+                    // For the purpose of the "ptr tag hooks", treat this as creating
+                    // a new, raw reference.
+                    let place = self.ref_to_mplace(src)?;
+                    self.create_ref(place, None)?
+                } else {
+                    *src
+                };
+
                 if self.type_is_fat_ptr(src_layout.ty) {
-                    match (*src, self.type_is_fat_ptr(dest.layout.ty)) {
+                    match (src, self.type_is_fat_ptr(dest.layout.ty)) {
                         // pointers to extern types
                         (Value::Scalar(_),_) |
                         // slices and trait objects to other slices/trait objects
                         (Value::ScalarPair(..), true) => {
                             // No change to value
-                            self.write_value(*src, dest)?;
+                            self.write_value(src, dest)?;
                         }
                         // slices and trait objects to thin pointers (dropping the metadata)
                         (Value::ScalarPair(data, _), false) => {
@@ -65,11 +76,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     match src_layout.variants {
                         layout::Variants::Single { index } => {
                             if let Some(def) = src_layout.ty.ty_adt_def() {
+                                // Cast from a univariant enum
+                                assert!(src_layout.is_zst());
                                 let discr_val = def
                                     .discriminant_for_variant(*self.tcx, index)
                                     .val;
                                 return self.write_scalar(
-                                    Scalar::from_uint(discr_val, dst_layout.size),
+                                    Scalar::from_uint(discr_val, dest.layout.size),
                                     dest);
                             }
                         }
@@ -85,7 +98,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
             ReifyFnPointer => {
                 // The src operand does not matter, just its type
-                match src_layout.ty.sty {
+                match src.layout.ty.sty {
                     ty::FnDef(def_id, substs) => {
                         if self.tcx.has_attr(def_id, "rustc_args_required_const") {
                             bug!("reifying a fn ptr that requires \
@@ -117,7 +130,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
             ClosureFnPointer => {
                 // The src operand does not matter, just its type
-                match src_layout.ty.sty {
+                match src.layout.ty.sty {
                     ty::Closure(def_id, substs) => {
                         let substs = self.tcx.subst_and_normalize_erasing_regions(
                             self.substs(),
