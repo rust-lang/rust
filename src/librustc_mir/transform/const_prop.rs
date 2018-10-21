@@ -259,24 +259,28 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         source_info: SourceInfo,
     ) -> Option<Const<'tcx>> {
         self.ecx.tcx.span = source_info.span;
-        match self.ecx.const_to_mplace(c.literal) {
-            Ok(mplace) => {
-                Some((mplace.into(), c.span))
+        let error = match self.ecx.const_to_mplace(c.literal) {
+            Ok(mplacety) => match self.ecx.try_read_value_from_mplace(mplacety) {
+                Err(error) => error,
+                Ok(Some(val)) => return Some((OpTy {
+                    op: interpret::Operand::Immediate(val),
+                    layout: mplacety.layout,
+                }, c.span)),
+                Ok(None) => return Some((mplacety.into(), c.span)),
             },
-            Err(error) => {
-                let (stacktrace, span) = self.ecx.generate_stacktrace(None);
-                let err = ConstEvalErr {
-                    span,
-                    error,
-                    stacktrace,
-                };
-                err.report_as_error(
-                    self.tcx.at(source_info.span),
-                    "could not evaluate constant",
-                );
-                None
-            },
-        }
+            Err(error) => error,
+        };
+        let (stacktrace, span) = self.ecx.generate_stacktrace(None);
+        let err = ConstEvalErr {
+            span,
+            error,
+            stacktrace,
+        };
+        err.report_as_error(
+            self.tcx.at(source_info.span),
+            "could not evaluate constant",
+        );
+        None
     }
 
     fn eval_place(&mut self, place: &Place<'tcx>, source_info: SourceInfo) -> Option<Const<'tcx>> {

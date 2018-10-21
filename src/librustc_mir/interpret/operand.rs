@@ -359,7 +359,7 @@ pub(super) fn from_known_layout<'tcx>(
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Try reading a value in memory; this is interesting particularily for ScalarPair.
     /// Return None if the layout does not permit loading this as a value.
-    pub(super) fn try_read_value_from_mplace(
+    pub(crate) fn try_read_value_from_mplace(
         &self,
         mplace: MPlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, Option<Value<M::PointerTag>>> {
@@ -403,7 +403,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// Note that for a given layout, this operation will either always fail or always
     /// succeed!  Whether it succeeds depends on whether the layout can be represented
     /// in a `Value`, not on which data is stored there currently.
-    pub(crate) fn try_read_value(
+    pub(super)fn try_read_value(
         &self,
         src: OpTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, Result<Value<M::PointerTag>, MemPlace<M::PointerTag>>> {
