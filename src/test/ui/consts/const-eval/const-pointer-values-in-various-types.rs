@@ -37,7 +37,7 @@ fn main() {
     //~^ ERROR this constant likely exhibits undefined behavior
 
     const I32_REF_U128_UNION: u128 = unsafe { Nonsense { int_32_ref: &3 }.uint_128 };
-    //~^ ERROR this constant cannot be used
+    //~^ ERROR this constant likely exhibits undefined behavior
 
     const I32_REF_I8_UNION: i8 = unsafe { Nonsense { int_32_ref: &3 }.int_8 };
     //~^ ERROR this constant cannot be used
@@ -52,7 +52,7 @@ fn main() {
     //~^ ERROR this constant likely exhibits undefined behavior
 
     const I32_REF_I128_UNION: i128 = unsafe { Nonsense { int_32_ref: &3 }.int_128 };
-    //~^ ERROR this constant cannot be used
+    //~^ ERROR this constant likely exhibits undefined behavior
 
     const I32_REF_F32_UNION: f32 = unsafe { Nonsense { int_32_ref: &3 }.float_32 };
     //~^ ERROR this constant cannot be used
