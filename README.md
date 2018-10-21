@@ -84,7 +84,9 @@ with Miri.
 
 ## Using Rustup To Specify a Specific Nightly
 
-To target a specific nightly, modify the above instructions as follows.
+To target a specific nightly, modify the above instructions as follows. It is recommended
+to use the nightly specified in the `rust-version` file in this repo, since that is the
+most recent nightly supported by Miri.
 
 1. Install Miri using `cargo +nightly-2018-10-15 install --all-features --path .`,
 with the date replaced as appropriate.

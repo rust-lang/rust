@@ -16,7 +16,7 @@ branches:
 install:
     # install Rust
     - set PATH=C:\Program Files\Git\mingw64\bin;C:\msys64\mingw%MSYS2_BITS%\bin;%PATH%
-    - set /p RUST_TOOLCHAIN=<rust-toolchain
+    - set /p RUST_TOOLCHAIN=<rust-version
     - curl -sSf -o rustup-init.exe https://win.rustup.rs/
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain %RUST_TOOLCHAIN%
     - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
