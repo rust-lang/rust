@@ -158,7 +158,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
 
         // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
-        // FIXME: Do something more efficient.
+        // This happens so rarely, the perf advantage is outweighed by the maintenance cost.
         let new_ptr = self.allocate(new_size, new_align, kind)?;
         self.copy(
             ptr.into(),
