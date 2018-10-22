@@ -284,7 +284,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             if let Err(terr) = self.cx.relate_type_and_user_type(
                 constant.ty,
                 ty::Variance::Invariant,
-                UserTypeProjection { base: user_ty },
+                &UserTypeProjection { base: user_ty },
                 location.to_locations(),
                 ConstraintCategory::Boring,
             ) {
@@ -310,12 +310,12 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         self.super_local_decl(local, local_decl);
         self.sanitize_type(local_decl, local_decl.ty);
 
-        if let Some((user_ty, span)) = local_decl.user_ty {
+        for (user_ty, span) in local_decl.user_ty.projections_and_spans() {
             if let Err(terr) = self.cx.relate_type_and_user_type(
                 local_decl.ty,
                 ty::Variance::Invariant,
                 user_ty,
-                Locations::All(span),
+                Locations::All(*span),
                 ConstraintCategory::TypeAnnotation,
             ) {
                 span_mirbug!(
@@ -971,7 +971,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         &mut self,
         a: Ty<'tcx>,
         v: ty::Variance,
-        user_ty: UserTypeProjection<'tcx>,
+        user_ty: &UserTypeProjection<'tcx>,
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
@@ -1173,7 +1173,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     if let Err(terr) = self.relate_type_and_user_type(
                         rv_ty,
                         ty::Variance::Invariant,
-                        UserTypeProjection { base: user_ty },
+                        &UserTypeProjection { base: user_ty },
                         location.to_locations(),
                         ConstraintCategory::Boring,
                     ) {
@@ -1226,7 +1226,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                 };
             }
-            StatementKind::AscribeUserType(ref place, variance, box c_ty) => {
+            StatementKind::AscribeUserType(ref place, variance, box ref c_ty) => {
                 let place_ty = place.ty(mir, tcx).to_ty(tcx);
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,

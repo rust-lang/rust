@@ -710,7 +710,7 @@ pub struct LocalDecl<'tcx> {
     /// e.g. via `let x: T`, then we carry that type here. The MIR
     /// borrow checker needs this information since it can affect
     /// region inference.
-    pub user_ty: Option<(UserTypeProjection<'tcx>, Span)>,
+    pub user_ty: UserTypeProjections<'tcx>,
 
     /// Name of the local, used in debuginfo and pretty-printing.
     ///
@@ -882,7 +882,7 @@ impl<'tcx> LocalDecl<'tcx> {
         LocalDecl {
             mutability,
             ty,
-            user_ty: None,
+            user_ty: UserTypeProjections::none(),
             name: None,
             source_info: SourceInfo {
                 span,
@@ -903,7 +903,7 @@ impl<'tcx> LocalDecl<'tcx> {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: return_ty,
-            user_ty: None,
+            user_ty: UserTypeProjections::none(),
             source_info: SourceInfo {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE,
@@ -2446,6 +2446,42 @@ EnumLiftImpl! {
         type Lifted = UserTypeAnnotation<'tcx>;
         (UserTypeAnnotation::Ty)(ty),
         (UserTypeAnnotation::TypeOf)(def, substs),
+    }
+}
+
+/// A collection of projections into user types.
+///
+/// They are projections because a binding can occur a part of a
+/// parent pattern that has been ascribed a type.
+///
+/// Its a collection because there can be multiple type ascriptions on
+/// the path from the root of the pattern down to the binding itself.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct UserTypeProjections<'tcx> {
+    pub(crate) contents: Vec<(UserTypeProjection<'tcx>, Span)>,
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for UserTypeProjections<'tcx> {
+        contents
+    }
+}
+
+impl<'tcx> UserTypeProjections<'tcx> {
+    pub fn none() -> Self {
+        UserTypeProjections { contents: vec![] }
+    }
+
+    pub fn from_projections(projs: impl Iterator<Item=(UserTypeProjection<'tcx>, Span)>) -> Self {
+        UserTypeProjections { contents: projs.collect() }
+    }
+
+    pub fn projections_and_spans(&self) -> impl Iterator<Item=&(UserTypeProjection<'tcx>, Span)> {
+        self.contents.iter()
+    }
+
+    pub fn projections(&self) -> impl Iterator<Item=&UserTypeProjection<'tcx>> {
+        self.contents.iter().map(|&(ref user_type, _span)| user_type)
     }
 }
 

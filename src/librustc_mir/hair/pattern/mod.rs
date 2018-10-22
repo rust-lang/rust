@@ -21,7 +21,7 @@ use const_eval::{const_field, const_variant_index};
 use hair::util::UserAnnotatedTyHelpers;
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
-use rustc::mir::{UserTypeAnnotation, UserTypeProjection};
+use rustc::mir::{UserTypeAnnotation, UserTypeProjection, UserTypeProjections};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty};
 use rustc::ty::subst::{Substs, Kind};
@@ -63,6 +63,54 @@ pub struct Pattern<'tcx> {
     pub ty: Ty<'tcx>,
     pub span: Span,
     pub kind: Box<PatternKind<'tcx>>,
+}
+
+
+#[derive(Clone, Debug)]
+pub(crate) struct PatternTypeProjections<'tcx> {
+    contents: Vec<(PatternTypeProjection<'tcx>, Span)>,
+}
+
+impl<'tcx> PatternTypeProjections<'tcx> {
+    pub(crate) fn user_ty(self) -> UserTypeProjections<'tcx> {
+        UserTypeProjections::from_projections(
+            self.contents.into_iter().map(|(pat_ty_proj, span)| (pat_ty_proj.user_ty(), span)))
+    }
+
+    pub(crate) fn none() -> Self {
+        PatternTypeProjections { contents: vec![] }
+    }
+
+    pub(crate) fn ref_binding(&self) -> Self {
+        // FIXME(#47184): ignore for now
+        PatternTypeProjections { contents: vec![] }
+    }
+
+    pub(crate) fn index(&self) -> Self {
+        unimplemented!()
+    }
+
+    pub(crate) fn subslice(&self) -> Self {
+        unimplemented!()
+    }
+
+    pub(crate) fn deref(&self) -> Self {
+        unimplemented!()
+    }
+
+    pub(crate) fn add_user_type(&self, user_ty: PatternTypeProjection<'tcx>, sp: Span) -> Self {
+        let mut new = self.clone();
+        new.contents.push((user_ty, sp));
+        new
+    }
+
+    pub(crate) fn leaf(&self, _index: usize) -> Self {
+        unimplemented!()
+    }
+
+    pub(crate) fn variant(&self, _index: usize) -> Self {
+        unimplemented!()
+    }
 }
 
 #[derive(Copy, Clone, Debug)]

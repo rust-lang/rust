@@ -27,7 +27,8 @@ use self::cx::Cx;
 pub mod cx;
 
 pub mod pattern;
-pub use self::pattern::{BindingMode, Pattern, PatternKind, PatternTypeProjection, FieldPattern};
+pub use self::pattern::{BindingMode, Pattern, PatternKind, FieldPattern};
+pub(crate) use self::pattern::{PatternTypeProjection, PatternTypeProjections};
 
 mod util;
 
