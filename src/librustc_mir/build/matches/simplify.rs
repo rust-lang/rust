@@ -63,10 +63,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                  candidate: &mut Candidate<'pat, 'tcx>)
                                  -> Result<(), MatchPair<'pat, 'tcx>> {
         match *match_pair.pattern.kind {
-            PatternKind::AscribeUserType { ref subpattern, user_ty, user_ty_span } => {
+            PatternKind::AscribeUserType { ref subpattern, ref user_ty, user_ty_span } => {
                 candidate.ascriptions.push(Ascription {
                     span: user_ty_span,
-                    user_ty,
+                    user_ty: user_ty.clone(),
                     source: match_pair.place.clone(),
                 });
 

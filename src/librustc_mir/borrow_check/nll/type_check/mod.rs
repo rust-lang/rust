@@ -284,7 +284,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             if let Err(terr) = self.cx.relate_type_and_user_type(
                 constant.ty,
                 ty::Variance::Invariant,
-                &UserTypeProjection { base: user_ty },
+                &UserTypeProjection { base: user_ty, projs: vec![], },
                 location.to_locations(),
                 ConstraintCategory::Boring,
             ) {
@@ -980,7 +980,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             a, v, user_ty, locations,
         );
 
-        // FIXME
         match user_ty.base {
             UserTypeAnnotation::Ty(canonical_ty) => {
                 let (ty, _) = self.infcx
@@ -991,6 +990,20 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // ambient variance to get the right relationship.
                 let v1 = ty::Contravariant.xform(v);
 
+                let tcx = self.infcx.tcx;
+                let mut projected_ty = PlaceTy::from_ty(ty);
+                for proj in &user_ty.projs {
+                    projected_ty = projected_ty.projection_ty_core(
+                        tcx, proj, |this, field, &()| {
+                            let ty = this.field_ty(tcx, field);
+                            self.normalize(ty, locations)
+                        });
+                }
+                debug!("user_ty base: {:?} freshened: {:?} projs: {:?} yields: {:?}",
+                       user_ty.base, ty, user_ty.projs, projected_ty);
+
+                let ty = projected_ty.to_ty(tcx);
+
                 self.relate_types(ty, v1, a, locations, category)?;
             }
             UserTypeAnnotation::TypeOf(def_id, canonical_substs) => {
@@ -1000,6 +1013,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 ) = self.infcx
                     .instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
 
+                // FIXME: add user_ty.projs support to `AscribeUserType`.
                 self.fully_perform_op(
                     locations,
                     category,
@@ -1173,7 +1187,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     if let Err(terr) = self.relate_type_and_user_type(
                         rv_ty,
                         ty::Variance::Invariant,
-                        &UserTypeProjection { base: user_ty },
+                        &UserTypeProjection { base: user_ty, projs: vec![], },
                         location.to_locations(),
                         ConstraintCategory::Boring,
                     ) {

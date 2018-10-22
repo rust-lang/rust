@@ -797,8 +797,9 @@ macro_rules! make_mir_visitor {
             ) {
                 let UserTypeProjection {
                     ref $($mutability)* base,
+                    projs: _, // Note: Does not visit projection elems!
                 } = *ty;
-                self.visit_user_type_annotation(base)
+                self.visit_user_type_annotation(base);
             }
 
             fn super_user_type_annotation(
