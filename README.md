@@ -14,6 +14,11 @@ chunks of overall architecture (indexing, on-demand & lazy
 computation, snapshotable world view) in place. Some basic IDE
 functionality is provided via a language server.
 
+Work on the Rust Analyzer is sponsored by
+
+[![Ferrous Systems](https://ferrous-systems.com/images/ferrous-logo-text.svg)](https://ferrous-systems.com/)
+
+
 ## Quick Start
 
 Rust analyzer builds on Rust >= 1.30.0 (currently in beta) and uses
