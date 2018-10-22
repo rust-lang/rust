@@ -126,7 +126,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 } else {
                     let align = self.tcx.data_layout.pointer_align;
                     let ptr = self.memory_mut().allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into())?;
-                    self.write_scalar(Scalar::Ptr(ptr), dest)?;
+                    self.write_scalar(Scalar::Ptr(ptr.with_default_tag()), dest)?;
                 }
             }
 
@@ -153,7 +153,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 let ptr = self.memory_mut().allocate(Size::from_bytes(size),
                                                Align::from_bytes(align, align).unwrap(),
                                                MiriMemoryKind::Rust.into())?;
-                self.write_scalar(Scalar::Ptr(ptr), dest)?;
+                self.write_scalar(Scalar::Ptr(ptr.with_default_tag()), dest)?;
             }
             "__rust_alloc_zeroed" => {
                 let size = self.read_scalar(args[0])?.to_usize(&self)?;
@@ -164,9 +164,11 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory_mut().allocate(Size::from_bytes(size),
-                                               Align::from_bytes(align, align).unwrap(),
-                                               MiriMemoryKind::Rust.into())?;
+                let ptr = self.memory_mut().allocate(
+                        Size::from_bytes(size),
+                        Align::from_bytes(align, align).unwrap(),
+                        MiriMemoryKind::Rust.into()
+                    )?.with_default_tag();
                 self.memory_mut().write_repeat(ptr.into(), 0, Size::from_bytes(size))?;
                 self.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
@@ -205,7 +207,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                     Align::from_bytes(align, align).unwrap(),
                     MiriMemoryKind::Rust.into(),
                 )?;
-                self.write_scalar(Scalar::Ptr(new_ptr), dest)?;
+                self.write_scalar(Scalar::Ptr(new_ptr.with_default_tag()), dest)?;
             }
 
             "syscall" => {
@@ -390,7 +392,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                         Size::from_bytes((value.len() + 1) as u64),
                         Align::from_bytes(1, 1).unwrap(),
                         MiriMemoryKind::Env.into(),
-                    )?;
+                    )?.with_default_tag();
                     self.memory_mut().write_bytes(value_copy.into(), &value)?;
                     let trailing_zero_ptr = value_copy.offset(Size::from_bytes(value.len() as u64), &self)?.into();
                     self.memory_mut().write_bytes(trailing_zero_ptr, &[0])?;

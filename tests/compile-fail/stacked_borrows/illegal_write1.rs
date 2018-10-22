@@ -1,11 +1,12 @@
 fn evil(x: &u32) {
-    let x : &mut u32 = unsafe { &mut *(x as *const _ as *mut _) };
-    *x = 42; // mutating shared ref without `UnsafeCell`
+    // mutating shared ref without `UnsafeCell`
+    let x : *mut u32 = x as *const _ as *mut _;
+    unsafe { *x = 42; }
 }
 
 fn main() {
-    let target = 42;
-    let ref_ = &target;
-    evil(ref_); // invalidates shared ref
+    let target = Box::new(42); // has an implicit raw
+    let ref_ = &*target;
+    evil(ref_); // invalidates shared ref, activates raw
     let _x = *ref_; //~ ERROR Shr reference with non-reactivatable tag Frz
 }

@@ -10,6 +10,10 @@
 
 #![feature(core_intrinsics)]
 
+// FIXME: Validation disabled because it doesn't let us escape an entire slice
+// to the raw universe.
+// compile-flags: -Zmiri-disable-validation
+
 //error-pattern: copy_nonoverlapping called on overlapping ranges
 
 fn main() {

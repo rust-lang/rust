@@ -4,7 +4,7 @@ use rustc::ty::{Ty, layout::Size};
 use rustc::hir;
 
 use super::{
-    MemoryAccess, RangeMap, EvalResult,
+    MemoryAccess, MemoryKind, MiriMemoryKind, RangeMap, EvalResult, AllocId,
     Pointer,
 };
 
@@ -104,7 +104,7 @@ struct Stack {
 impl Default for Stack {
     fn default() -> Self {
         Stack {
-            borrows: Vec::new(),
+            borrows: vec![BorStackItem::Mut(Mut::Raw)],
             frozen_since: None,
         }
     }
@@ -157,8 +157,8 @@ impl<'tcx> Stack {
                 }
             }
         }
-        // Simulate a "virtual raw" element at the bottom of the stack.
-        acc_m.is_raw()
+        // Nothing to be found.
+        false
     }
 
     /// Reactive `bor` for this stack.  If `force_mut` is set, we want to aggressively
@@ -204,12 +204,8 @@ impl<'tcx> Stack {
                 }
             }
         }
-        // Nothing to be found.  Simulate a "virtual raw" element at the bottom of the stack.
-        if acc_m.is_raw() {
-            Ok(())
-        } else {
-            err!(MachineError(format!("Borrow-to-reactivate does not exist on the stack")))
-        }
+        // Nothing to be found.
+        err!(MachineError(format!("Borrow-to-reactivate does not exist on the stack")))
     }
 
     /// Initiate `bor`; mostly this means freezing or pushing.
@@ -301,13 +297,34 @@ impl<'tcx> Stacks {
             } else {
                 // If we are creating a uniq ref, we certainly want to unfreeze.
                 // Even if we are doing so from a raw.
-                // FIXME: The blog post says we should `reset` if this is a local.
+                // Notice that if this is a local, whenever we access it directly the
+                // tag here will be the bottommost `Uniq` for that local.  That `Uniq`
+                // never is accessible by the program, so it will not be used by any
+                // other access.  IOW, whenever we directly use a local this will pop
+                // everything else off the stack, invalidating all previous pointers
+                // and, in particular, *all* raw pointers.  This subsumes the explicit
+                // `reset` which the blog post [1] says to perform when accessing a local.
+                //
+                // [1] https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html
                 stack.reactivate(ptr.tag, /*force_mut*/new_bor.is_uniq())?;
                 stack.initiate(new_bor)?;
             }
         }
 
         Ok(())
+    }
+
+    /// Pushes the first borrow to the stacks, must be a mutable one.
+    pub fn first_borrow(
+        &mut self,
+        r#mut: Mut,
+        size: Size
+    ) {
+        for stack in self.stacks.get_mut().iter_mut(Size::ZERO, size) {
+            assert!(stack.borrows.len() == 1 && stack.frozen_since.is_none());
+            assert_eq!(stack.borrows.pop().unwrap(), BorStackItem::Mut(Mut::Raw));
+            stack.borrows.push(BorStackItem::Mut(r#mut));
+        }
     }
 }
 
@@ -334,6 +351,12 @@ pub trait EvalContextExt<'tcx> {
         size: Size,
         ref_kind: RefKind,
     ) -> EvalResult<'tcx, Borrow>;
+
+    fn tag_new_allocation(
+        &mut self,
+        id: AllocId,
+        kind: MemoryKind<MiriMemoryKind>,
+    ) -> Borrow;
 }
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
@@ -400,7 +423,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         // Notably, the compiler can introduce such transmutes by optimizing away `&[mut]*`.
         // That can transmute a raw ptr to a (shared/mut) ref, and a mut ref to a shared one.
         match (ref_kind, ptr.tag) {
-            (RefKind::Raw, Borrow::Mut(Mut::Raw)) |
+            (RefKind::Raw, _) => {
+                // Don't use the tag, this is a raw access!  Even if there is a tag,
+                // that means transmute happened and we ignore the tag.
+                // Also don't do any further validation, this is raw after all.
+                return Ok(Borrow::Mut(Mut::Raw));
+            }
             (RefKind::Mut, Borrow::Mut(Mut::Uniq(_))) |
             (RefKind::Shr, Borrow::Frz(_)) |
             (RefKind::Shr, Borrow::Mut(Mut::Raw)) => {
@@ -408,14 +436,11 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 // FIXME: We probably shouldn't accept this if we got a raw shr without
                 // interior mutability.
             }
-            (_, Borrow::Mut(Mut::Raw)) => {
-                // Raw transmuted to (shr/mut) ref.  Keep this as raw access.
+            (RefKind::Mut, Borrow::Mut(Mut::Raw)) => {
+                // Raw transmuted to mut ref.  Keep this as raw access.
                 // We cannot reborrow here; there might be a raw in `&(*var).1` where
                 // `var` is an `&mut`.  The other field of the struct might be already frozen,
                 // also using `var`, and that would be okay.
-            }
-            (RefKind::Raw, _) => {
-                // Someone transmuted a ref to a raw.  Treat this like a ref, their fault.
             }
             (RefKind::Shr, Borrow::Mut(Mut::Uniq(_))) => {
                 // A mut got transmuted to shr.  High time we freeze this location!
@@ -450,5 +475,28 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         }
         // All is good.
         Ok(ptr.tag)
+    }
+
+    fn tag_new_allocation(
+        &mut self,
+        id: AllocId,
+        kind: MemoryKind<MiriMemoryKind>,
+    ) -> Borrow {
+        let r#mut = match kind {
+            MemoryKind::Stack => {
+                // New unique borrow
+                let time = self.machine.stacked_borrows.increment_clock();
+                Mut::Uniq(time)
+            }
+            _ => {
+                // Raw for everything else
+                Mut::Raw
+            }
+        };
+        // Make this the active borrow for this allocation
+        let alloc = self.memory_mut().get_mut(id).expect("This is a new allocation, it must still exist");
+        let size = Size::from_bytes(alloc.bytes.len() as u64);
+        alloc.extra.first_borrow(r#mut, size);
+        Borrow::Mut(r#mut)
     }
 }

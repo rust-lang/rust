@@ -108,7 +108,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         let mut args = ecx.frame().mir.args_iter();
 
         // First argument: pointer to main()
-        let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance);
+        let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance).with_default_tag();
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
 
@@ -119,7 +119,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         // FIXME: extract main source file path
         // Third argument (argv): &[b"foo"]
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        let foo = ecx.memory_mut().allocate_static_bytes(b"foo\0");
+        let foo = ecx.memory_mut().allocate_static_bytes(b"foo\0").with_default_tag();
         let foo_ty = ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8);
         let foo_layout = ecx.layout_of(foo_ty)?;
         let foo_place = ecx.allocate(foo_layout, MiriMemoryKind::Env.into())?;
@@ -404,7 +404,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         Ok(())
     }
 
-    fn static_with_default_tag(
+    fn adjust_static_allocation(
         alloc: &'_ Allocation
     ) -> Cow<'_, Allocation<Borrow, Self::AllocExtra>> {
         let alloc: Allocation<Borrow, Self::AllocExtra> = Allocation {
@@ -475,6 +475,21 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             let tag = ecx.tag_dereference(ptr, ty, size, mutability.into())?;
             let ptr = Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag));
             Ok(MemPlace { ptr, ..place })
+        }
+    }
+
+    #[inline(always)]
+    fn tag_new_allocation(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ptr: Pointer,
+        kind: MemoryKind<Self::MemoryKinds>,
+    ) -> EvalResult<'tcx, Pointer<Borrow>> {
+        if !ecx.machine.validate {
+            // No tracking
+            Ok(ptr.with_default_tag())
+        } else {
+            let tag = ecx.tag_new_allocation(ptr.alloc_id, kind);
+            Ok(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
         }
     }
 }

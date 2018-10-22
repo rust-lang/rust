@@ -26,6 +26,6 @@ fn main() {
     let _val = *r#ref; // Make sure it is still frozen.
 
     // We only actually unfreeze once we muteate through the bad pointer.
-    unsafe { *bad_ptr = 42 };
-    let _val = *r#ref; //~ ERROR Shr reference with non-reactivatable tag Frz
+    unsafe { *bad_ptr = 42 }; //~ ERROR does not exist on the stack
+    let _val = *r#ref;
 }
