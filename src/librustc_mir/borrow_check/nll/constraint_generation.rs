@@ -18,7 +18,7 @@ use rustc::mir::visit::TyContext;
 use rustc::mir::visit::Visitor;
 use rustc::mir::{BasicBlock, BasicBlockData, Location, Mir, Place, Rvalue};
 use rustc::mir::{Statement, Terminator};
-use rustc::mir::UserTypeAnnotation;
+use rustc::mir::UserTypeProjection;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, ClosureSubsts, GeneratorSubsts, RegionVid};
@@ -183,7 +183,7 @@ impl<'cg, 'cx, 'gcx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'gcx
         &mut self,
         _place: &Place<'tcx>,
         _variance: &ty::Variance,
-        _user_ty: &UserTypeAnnotation<'tcx>,
+        _user_ty: &UserTypeProjection<'tcx>,
         _location: Location,
     ) {
     }

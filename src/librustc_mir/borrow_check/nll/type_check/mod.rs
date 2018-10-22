@@ -284,7 +284,7 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             if let Err(terr) = self.cx.relate_type_and_user_type(
                 constant.ty,
                 ty::Variance::Invariant,
-                user_ty,
+                UserTypeProjection { base: user_ty },
                 location.to_locations(),
                 ConstraintCategory::Boring,
             ) {
@@ -971,7 +971,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         &mut self,
         a: Ty<'tcx>,
         v: ty::Variance,
-        user_ty: UserTypeAnnotation<'tcx>,
+        user_ty: UserTypeProjection<'tcx>,
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
@@ -980,7 +980,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             a, v, user_ty, locations,
         );
 
-        match user_ty {
+        // FIXME
+        match user_ty.base {
             UserTypeAnnotation::Ty(canonical_ty) => {
                 let (ty, _) = self.infcx
                     .instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_ty);
@@ -1172,7 +1173,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     if let Err(terr) = self.relate_type_and_user_type(
                         rv_ty,
                         ty::Variance::Invariant,
-                        user_ty,
+                        UserTypeProjection { base: user_ty },
                         location.to_locations(),
                         ConstraintCategory::Boring,
                     ) {

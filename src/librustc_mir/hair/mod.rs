@@ -27,7 +27,7 @@ use self::cx::Cx;
 pub mod cx;
 
 pub mod pattern;
-pub use self::pattern::{BindingMode, Pattern, PatternKind, PatternTypeAnnotation, FieldPattern};
+pub use self::pattern::{BindingMode, Pattern, PatternKind, PatternTypeProjection, FieldPattern};
 
 mod util;
 
