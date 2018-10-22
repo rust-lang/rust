@@ -2456,6 +2456,31 @@ EnumLiftImpl! {
 ///
 /// Its a collection because there can be multiple type ascriptions on
 /// the path from the root of the pattern down to the binding itself.
+///
+/// An example:
+///
+/// ```rust
+/// struct S<'a>((i32, &'a str), String);
+/// let S((_, w): (i32, &'static str), _): S = ...;
+/// //    ------  ^^^^^^^^^^^^^^^^^^^ (1)
+/// //  ---------------------------------  ^ (2)
+/// ```
+///
+/// The highlights labelled `(1)` show the subpattern `(_, w)` being
+/// ascribed the type `(i32, &'static str)`.
+///
+/// The highlights labelled `(2)` show the whole pattern being
+/// ascribed the type `S`.
+///
+/// In this example, when we descend to `w`, we will have built up the
+/// following two projected types:
+///
+///   * base: `S`,                   projection: `(base.0).1`
+///   * base: `(i32, &'static str)`, projection: `base.1`
+///
+/// The first will lead to the constraint `w: &'1 str` (for some
+/// inferred region `'1`). The second will lead to the constraint `w:
+/// &'static str`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UserTypeProjections<'tcx> {
     pub(crate) contents: Vec<(UserTypeProjection<'tcx>, Span)>,
@@ -2485,14 +2510,49 @@ impl<'tcx> UserTypeProjections<'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+/// Encodes the effect of a user-supplied type annotation on the
+/// subcomponents of a pattern. The effect is determined by applying the
+/// given list of proejctions to some underlying base type. Often,
+/// the projection element list `projs` is empty, in which case this
+/// directly encodes a type in `base`. But in the case of complex patterns with
+/// subpatterns and bindings, we want to apply only a *part* of the type to a variable,
+/// in which case the `projs` vector is used.
+///
+/// Examples:
+///
+/// * `let x: T = ...` -- here, the `projs` vector is empty.
+///
+/// * `let (x, _): T = ...` -- here, the `projs` vector would contain
+///   `field[0]` (aka `.0`), indicating that the type of `s` is
+///   determined by finding the type of the `.0` field from `T`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UserTypeProjection<'tcx> {
     pub base: UserTypeAnnotation<'tcx>,
+    pub projs: Vec<ProjectionElem<'tcx, (), ()>>,
 }
 
-BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection<'tcx> {
-        base
+impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use mir::ProjectionElem::*;
+
+        let base = self.base.fold_with(folder);
+        let projs: Vec<_> = self.projs
+            .iter()
+            .map(|elem| {
+                match elem {
+                    Deref => Deref,
+                    Field(f, ()) => Field(f.clone(), ()),
+                    Index(()) => Index(()),
+                    elem => elem.clone(),
+                }})
+            .collect();
+
+        UserTypeProjection { base, projs }
+    }
+
+    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
+        self.base.visit_with(visitor)
+        // Note: there's nothing in `self.proj` to visit.
     }
 }
 

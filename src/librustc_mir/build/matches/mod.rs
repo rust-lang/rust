@@ -32,6 +32,8 @@ mod simplify;
 mod test;
 mod util;
 
+use std::convert::TryFrom;
+
 /// ArmHasGuard is isomorphic to a boolean flag. It indicates whether
 /// a match arm has a guard expression attached to it.
 #[derive(Copy, Clone, Debug)]
@@ -541,11 +543,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ref slice,
                 ref suffix,
             } => {
+                let from = u32::try_from(prefix.len()).unwrap();
+                let to = u32::try_from(suffix.len()).unwrap();
                 for subpattern in prefix {
                     self.visit_bindings(subpattern, &pattern_user_ty.index(), f);
                 }
                 for subpattern in slice {
-                    self.visit_bindings(subpattern, &pattern_user_ty.subslice(), f);
+                    self.visit_bindings(subpattern, &pattern_user_ty.subslice(from, to), f);
                 }
                 for subpattern in suffix {
                     self.visit_bindings(subpattern, &pattern_user_ty.index(), f);
@@ -555,25 +559,28 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             PatternKind::Deref { ref subpattern } => {
                 self.visit_bindings(subpattern, &pattern_user_ty.deref(), f);
             }
-            PatternKind::AscribeUserType { ref subpattern, user_ty, user_ty_span } => {
+            PatternKind::AscribeUserType { ref subpattern, ref user_ty, user_ty_span } => {
                 // This corresponds to something like
                 //
                 // ```
                 // let A::<'a>(_): A<'static> = ...;
                 // ```
-                let pattern_user_ty = pattern_user_ty.add_user_type(user_ty, user_ty_span);
-                self.visit_bindings(subpattern, &pattern_user_ty, f)
+                let subpattern_user_ty = pattern_user_ty.add_user_type(user_ty, user_ty_span);
+                self.visit_bindings(subpattern, &subpattern_user_ty, f)
             }
 
             PatternKind::Leaf { ref subpatterns } => {
-                for (j, subpattern) in subpatterns.iter().enumerate() {
-                    self.visit_bindings(&subpattern.pattern, &pattern_user_ty.leaf(j), f);
+                for subpattern in subpatterns {
+                    let subpattern_user_ty = pattern_user_ty.leaf(subpattern.field);
+                    self.visit_bindings(&subpattern.pattern, &subpattern_user_ty, f);
                 }
             }
 
-            PatternKind::Variant { ref subpatterns, .. } => {
-                for (j, subpattern) in subpatterns.iter().enumerate() {
-                    self.visit_bindings(&subpattern.pattern, &pattern_user_ty.variant(j), f);
+            PatternKind::Variant { adt_def, substs: _, variant_index, ref subpatterns } => {
+                for subpattern in subpatterns {
+                    let subpattern_user_ty = pattern_user_ty.variant(
+                        adt_def, variant_index, subpattern.field);
+                    self.visit_bindings(&subpattern.pattern, &subpattern_user_ty, f);
                 }
             }
         }
@@ -1329,7 +1336,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     kind: StatementKind::AscribeUserType(
                         ascription.source.clone(),
                         ty::Variance::Covariant,
-                        box ascription.user_ty.user_ty(),
+                        box ascription.user_ty.clone().user_ty(),
                     ),
                 },
             );
