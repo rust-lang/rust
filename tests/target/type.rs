@@ -90,3 +90,25 @@ macro_rules! foo {
 }
 
 type Target = (FooAPI) + 'static;
+
+// #3117
+fn issue3117() {
+    {
+        {
+            {
+                {
+                    {
+                        {
+                            {
+                                {
+                                    let opt: &mut Option<MyLongTypeHere> =
+                                        unsafe { &mut *self.future.get() };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
