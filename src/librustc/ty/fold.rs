@@ -67,18 +67,18 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     /// bound by `binder` or bound by some binder outside of `binder`.
     /// If `binder` is `ty::INNERMOST`, this indicates whether
     /// there are any late-bound regions that appear free.
-    fn has_regions_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
-        self.visit_with(&mut HasEscapingRegionsVisitor { outer_index: binder })
+    fn has_vars_bound_at_or_above(&self, binder: ty::DebruijnIndex) -> bool {
+        self.visit_with(&mut HasEscapingVarsVisitor { outer_index: binder })
     }
 
     /// True if this `self` has any regions that escape `binder` (and
     /// hence are not bound by it).
-    fn has_regions_bound_above(&self, binder: ty::DebruijnIndex) -> bool {
-        self.has_regions_bound_at_or_above(binder.shifted_in(1))
+    fn has_vars_bound_above(&self, binder: ty::DebruijnIndex) -> bool {
+        self.has_vars_bound_at_or_above(binder.shifted_in(1))
     }
 
-    fn has_escaping_regions(&self) -> bool {
-        self.has_regions_bound_at_or_above(ty::INNERMOST)
+    fn has_escaping_bound_vars(&self) -> bool {
+        self.has_vars_bound_at_or_above(ty::INNERMOST)
     }
 
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
@@ -574,7 +574,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.has_regions_bound_at_or_above(self.current_index) {
+        if !t.has_vars_bound_at_or_above(self.current_index) {
             return t;
         }
 
@@ -603,13 +603,74 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Region shifter
+// Shifter
 //
-// Shifts the De Bruijn indices on all escaping bound regions by a
+// Shifts the De Bruijn indices on all escaping bound vars by a
 // fixed amount. Useful in substitution or when otherwise introducing
 // a binding level that is not intended to capture the existing bound
-// regions. See comment on `shift_regions_through_binders` method in
+// vars. See comment on `shift_vars_through_binders` method in
 // `subst.rs` for more details.
+
+struct Shifter<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+
+    current_index: ty::DebruijnIndex,
+    amount: u32,
+}
+
+impl Shifter<'a, 'gcx, 'tcx> {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, amount: u32) -> Self {
+        Shifter {
+            tcx,
+            current_index: ty::INNERMOST,
+            amount,
+        }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
+
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
+        self.current_index.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.current_index.shift_out(1);
+        t
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        match *r {
+            ty::ReLateBound(debruijn, br) => {
+                if self.amount == 0 || debruijn < self.current_index {
+                    r
+                } else {
+                    let shifted = ty::ReLateBound(debruijn.shifted_in(self.amount), br);
+                    self.tcx.mk_region(shifted)
+                }
+            }
+            _ => r
+        }
+    }
+
+    fn fold_ty(&mut self, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
+        match ty.sty {
+            ty::Bound(bound_ty) => {
+                if self.amount == 0 || bound_ty.level < self.current_index {
+                    ty
+                } else {
+                    let shifted = ty::BoundTy {
+                        level: bound_ty.level.shifted_in(self.amount),
+                        var: bound_ty.var,
+                        kind: bound_ty.kind,
+                    };
+                    self.tcx.mk_ty(ty::Bound(shifted))
+                }
+            }
+
+            _ => ty.super_fold_with(self),
+        }
+    }
+}
 
 pub fn shift_region(region: ty::RegionKind, amount: u32) -> ty::RegionKind {
     match region {
@@ -622,36 +683,19 @@ pub fn shift_region(region: ty::RegionKind, amount: u32) -> ty::RegionKind {
     }
 }
 
-pub fn shift_region_ref<'a, 'gcx, 'tcx>(
+pub fn shift_vars<'a, 'gcx, 'tcx, T>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    region: ty::Region<'tcx>,
-    amount: u32)
-    -> ty::Region<'tcx>
-{
-    match region {
-        &ty::ReLateBound(debruijn, br) if amount > 0 => {
-            tcx.mk_region(ty::ReLateBound(debruijn.shifted_in(amount), br))
-        }
-        _ => {
-            region
-        }
-    }
-}
-
-pub fn shift_regions<'a, 'gcx, 'tcx, T>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                        amount: u32,
-                                        value: &T) -> T
-    where T: TypeFoldable<'tcx>
-{
-    debug!("shift_regions(value={:?}, amount={})",
+    amount: u32,
+    value: &T
+) -> T where T: TypeFoldable<'tcx> {
+    debug!("shift_vars(value={:?}, amount={})",
            value, amount);
 
-    value.fold_with(&mut RegionFolder::new(tcx, &mut false, &mut |region, _current_depth| {
-        shift_region_ref(tcx, region, amount)
-    }))
+    value.fold_with(&mut Shifter::new(tcx, amount))
 }
 
-/// An "escaping region" is a bound region whose binder is not part of `t`.
+/// An "escaping var" is a bound var whose binder is not part of `t`. A bound var can be a
+/// bound region or a bound type.
 ///
 /// So, for example, consider a type like the following, which has two binders:
 ///
@@ -663,24 +707,24 @@ pub fn shift_regions<'a, 'gcx, 'tcx, T>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 /// binders of both `'a` and `'b` are part of the type itself. However, if we consider the *inner
 /// fn type*, that type has an escaping region: `'a`.
 ///
-/// Note that what I'm calling an "escaping region" is often just called a "free region". However,
-/// we already use the term "free region". It refers to the regions that we use to represent bound
-/// regions on a fn definition while we are typechecking its body.
+/// Note that what I'm calling an "escaping var" is often just called a "free var". However,
+/// we already use the term "free var". It refers to the regions or types that we use to represent
+/// bound regions or type params on a fn definition while we are typechecking its body.
 ///
 /// To clarify, conceptually there is no particular difference between
-/// an "escaping" region and a "free" region. However, there is a big
+/// an "escaping" var and a "free" var. However, there is a big
 /// difference in practice. Basically, when "entering" a binding
 /// level, one is generally required to do some sort of processing to
-/// a bound region, such as replacing it with a fresh/placeholder
-/// region, or making an entry in the environment to represent the
-/// scope to which it is attached, etc. An escaping region represents
-/// a bound region for which this processing has not yet been done.
-struct HasEscapingRegionsVisitor {
+/// a bound var, such as replacing it with a fresh/placeholder
+/// var, or making an entry in the environment to represent the
+/// scope to which it is attached, etc. An escaping var represents
+/// a bound var for which this processing has not yet been done.
+struct HasEscapingVarsVisitor {
     /// Anything bound by `outer_index` or "above" is escaping
     outer_index: ty::DebruijnIndex,
 }
 
-impl<'tcx> TypeVisitor<'tcx> for HasEscapingRegionsVisitor {
+impl<'tcx> TypeVisitor<'tcx> for HasEscapingVarsVisitor {
     fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &Binder<T>) -> bool {
         self.outer_index.shift_in(1);
         let result = t.super_visit_with(self);
@@ -693,7 +737,7 @@ impl<'tcx> TypeVisitor<'tcx> for HasEscapingRegionsVisitor {
         // `outer_index`, that means that `t` contains some content
         // bound at `outer_index` or above (because
         // `outer_exclusive_binder` is always 1 higher than the
-        // content in `t`). Therefore, `t` has some escaping regions.
+        // content in `t`). Therefore, `t` has some escaping vars.
         t.outer_exclusive_binder > self.outer_index
     }
 

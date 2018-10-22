@@ -730,8 +730,8 @@ impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
     /// or some placeholder type.
     pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, self_ty: Ty<'tcx>)
         -> ty::TraitRef<'tcx>  {
-        // otherwise the escaping regions would be captured by the binder
-        // debug_assert!(!self_ty.has_escaping_regions());
+        // otherwise the escaping vars would be captured by the binder
+        // debug_assert!(!self_ty.has_escaping_bound_vars());
 
         ty::TraitRef {
             def_id: self.def_id,
@@ -776,7 +776,7 @@ impl<T> Binder<T> {
     pub fn dummy<'tcx>(value: T) -> Binder<T>
         where T: TypeFoldable<'tcx>
     {
-        debug_assert!(!value.has_escaping_regions());
+        debug_assert!(!value.has_escaping_bound_vars());
         Binder(value)
     }
 
@@ -835,7 +835,7 @@ impl<T> Binder<T> {
     pub fn no_late_bound_regions<'tcx>(self) -> Option<T>
         where T : TypeFoldable<'tcx>
     {
-        if self.skip_binder().has_escaping_regions() {
+        if self.skip_binder().has_escaping_bound_vars() {
             None
         } else {
             Some(self.skip_binder().clone())
@@ -1246,7 +1246,6 @@ impl_stable_hash_for!(enum self::BoundTyKind { Anon, Param(a) });
 
 impl BoundTy {
     pub fn new(level: DebruijnIndex, var: BoundTyIndex) -> Self {
-        debug_assert_eq!(ty::INNERMOST, level);
         BoundTy {
             level,
             var,
@@ -1283,7 +1282,7 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
                         -> ty::ProjectionPredicate<'tcx>
     {
         // otherwise the escaping regions would be captured by the binders
-        debug_assert!(!self_ty.has_escaping_regions());
+        debug_assert!(!self_ty.has_escaping_bound_vars());
 
         ty::ProjectionPredicate {
             projection_ty: ty::ProjectionTy {

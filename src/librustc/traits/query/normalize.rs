@@ -100,7 +100,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let ty = ty.super_fold_with(self);
         match ty.sty {
-            ty::Opaque(def_id, substs) if !substs.has_escaping_regions() => {
+            ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
                 // (*)
                 // Only normalize `impl Trait` after type-checking, usually in codegen.
                 match self.param_env.reveal {
@@ -138,7 +138,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for QueryNormalizer<'cx, 'gcx, 'tcx
                 }
             }
 
-            ty::Projection(ref data) if !data.has_escaping_regions() => {
+            ty::Projection(ref data) if !data.has_escaping_bound_vars() => {
                 // (*)
                 // (*) This is kind of hacky -- we need to be able to
                 // handle normalization within binders because

@@ -905,12 +905,12 @@ fn create_mono_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                   trait_ty: Ty<'tcx>,
                                                   impl_ty: Ty<'tcx>,
                                                   output: &mut Vec<MonoItem<'tcx>>) {
-    assert!(!trait_ty.needs_subst() && !trait_ty.has_escaping_regions() &&
-            !impl_ty.needs_subst() && !impl_ty.has_escaping_regions());
+    assert!(!trait_ty.needs_subst() && !trait_ty.has_escaping_bound_vars() &&
+            !impl_ty.needs_subst() && !impl_ty.has_escaping_bound_vars());
 
     if let ty::Dynamic(ref trait_ty, ..) = trait_ty.sty {
         let poly_trait_ref = trait_ty.principal().with_self_ty(tcx, impl_ty);
-        assert!(!poly_trait_ref.has_escaping_regions());
+        assert!(!poly_trait_ref.has_escaping_bound_vars());
 
         // Walk all methods of the trait, including those of its supertraits
         let methods = tcx.vtable_methods(poly_trait_ref);

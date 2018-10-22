@@ -143,7 +143,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         debug!("normalize_projection_type(projection_ty={:?})",
                projection_ty);
 
-        debug_assert!(!projection_ty.has_escaping_regions());
+        debug_assert!(!projection_ty.has_escaping_bound_vars());
 
         // FIXME(#20304) -- cache
 

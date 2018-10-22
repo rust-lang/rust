@@ -587,7 +587,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         debug!("select({:?})", obligation);
-        debug_assert!(!obligation.predicate.has_escaping_regions());
+        debug_assert!(!obligation.predicate.has_escaping_bound_vars());
 
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
 
@@ -690,7 +690,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         match obligation.predicate {
             ty::Predicate::Trait(ref t) => {
-                debug_assert!(!t.has_escaping_regions());
+                debug_assert!(!t.has_escaping_bound_vars());
                 let obligation = obligation.with(t.clone());
                 self.evaluate_trait_predicate_recursively(previous_stack, obligation)
             }
@@ -722,9 +722,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             },
 
             ty::Predicate::TypeOutlives(ref binder) => {
-                assert!(!binder.has_escaping_regions());
-                // Check if the type has higher-ranked regions.
-                if binder.skip_binder().0.has_escaping_regions() {
+                assert!(!binder.has_escaping_bound_vars());
+                // Check if the type has higher-ranked vars.
+                if binder.skip_binder().0.has_escaping_bound_vars() {
                     // If so, this obligation is an error (for now). Eventually we should be
                     // able to support additional cases here, like `for<'a> &'a str: 'a`.
 
@@ -740,7 +740,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         Ok(EvaluatedToErr)
                     }
                 } else {
-                    // If the type has no late bound regions, then if we assign all
+                    // If the type has no late bound vars, then if we assign all
                     // the inference variables in it to be 'static, then the type
                     // will be 'static itself.
                     //
@@ -1199,7 +1199,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             "candidate_from_obligation(cache_fresh_trait_pred={:?}, obligation={:?})",
             cache_fresh_trait_pred, stack
         );
-        debug_assert!(!stack.obligation.predicate.has_escaping_regions());
+        debug_assert!(!stack.obligation.predicate.has_escaping_bound_vars());
 
         if let Some(c) =
             self.check_candidate_cache(stack.obligation.param_env, &cache_fresh_trait_pred)
@@ -1801,7 +1801,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         placeholder_map: &infer::PlaceholderMap<'tcx>,
         snapshot: &infer::CombinedSnapshot<'cx, 'tcx>,
     ) -> bool {
-        debug_assert!(!skol_trait_ref.has_escaping_regions());
+        debug_assert!(!skol_trait_ref.has_escaping_bound_vars());
         if self.infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(ty::Binder::dummy(skol_trait_ref), trait_bound)

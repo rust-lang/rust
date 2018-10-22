@@ -115,7 +115,10 @@ impl FlagComputation {
                 self.add_substs(&substs.substs);
             }
 
-            &ty::Bound(_) => self.add_flags(TypeFlags::HAS_CANONICAL_VARS),
+            &ty::Bound(bound_ty) => {
+                self.add_flags(TypeFlags::HAS_CANONICAL_VARS);
+                self.add_binder(bound_ty.level);
+            }
 
             &ty::Infer(infer) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES); // it might, right?
@@ -142,7 +145,7 @@ impl FlagComputation {
             &ty::Projection(ref data) => {
                 // currently we can't normalize projections that
                 // include bound regions, so track those separately.
-                if !data.has_escaping_regions() {
+                if !data.has_escaping_bound_vars() {
                     self.add_flags(TypeFlags::HAS_NORMALIZABLE_PROJECTION);
                 }
                 self.add_flags(TypeFlags::HAS_PROJECTION);

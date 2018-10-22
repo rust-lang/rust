@@ -653,8 +653,8 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
 
     fn register_predicate(&self, obligation: traits::PredicateObligation<'tcx>) {
         debug!("register_predicate({:?})", obligation);
-        if obligation.has_escaping_regions() {
-            span_bug!(obligation.cause.span, "escaping regions in predicate {:?}",
+        if obligation.has_escaping_bound_vars() {
+            span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}",
                       obligation);
         }
         self.fulfillment_cx
@@ -1928,7 +1928,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn normalize_ty(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if ty.has_escaping_regions() {
+        if ty.has_escaping_bound_vars() {
             ty // FIXME: normalization and escaping regions
         } else {
             self.normalize_associated_types_in(span, &ty)
@@ -2431,7 +2431,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                           cause: traits::ObligationCause<'tcx>,
                                           predicates: &ty::InstantiatedPredicates<'tcx>)
     {
-        assert!(!predicates.has_escaping_regions());
+        assert!(!predicates.has_escaping_bound_vars());
 
         debug!("add_obligations_for_parameters(predicates={:?})",
                predicates);
@@ -5188,8 +5188,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             },
         );
-        assert!(!substs.has_escaping_regions());
-        assert!(!ty.has_escaping_regions());
+        assert!(!substs.has_escaping_bound_vars());
+        assert!(!ty.has_escaping_bound_vars());
 
         // Write the "user substs" down first thing for later.
         let hir_id = self.tcx.hir.node_to_hir_id(node_id);
