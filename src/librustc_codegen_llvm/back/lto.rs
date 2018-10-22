@@ -709,25 +709,25 @@ pub unsafe fn optimize_thin_module(
             let msg = "failed to prepare thin LTO module".to_string();
             return Err(write::llvm_err(&diag_handler, msg))
         }
-        save_temp_bitcode(&cgcx, &module, "thin-lto-after-rename");
+        save_temp_bitcode(cgcx, &module, "thin-lto-after-rename");
         timeline.record("rename");
         if !llvm::LLVMRustPrepareThinLTOResolveWeak(thin_module.shared.data.0, llmod) {
             let msg = "failed to prepare thin LTO module".to_string();
             return Err(write::llvm_err(&diag_handler, msg))
         }
-        save_temp_bitcode(&cgcx, &module, "thin-lto-after-resolve");
+        save_temp_bitcode(cgcx, &module, "thin-lto-after-resolve");
         timeline.record("resolve");
         if !llvm::LLVMRustPrepareThinLTOInternalize(thin_module.shared.data.0, llmod) {
             let msg = "failed to prepare thin LTO module".to_string();
             return Err(write::llvm_err(&diag_handler, msg))
         }
-        save_temp_bitcode(&cgcx, &module, "thin-lto-after-internalize");
+        save_temp_bitcode(cgcx, &module, "thin-lto-after-internalize");
         timeline.record("internalize");
         if !llvm::LLVMRustPrepareThinLTOImport(thin_module.shared.data.0, llmod) {
             let msg = "failed to prepare thin LTO module".to_string();
             return Err(write::llvm_err(&diag_handler, msg))
         }
-        save_temp_bitcode(&cgcx, &module, "thin-lto-after-import");
+        save_temp_bitcode(cgcx, &module, "thin-lto-after-import");
         timeline.record("import");
 
         // Ok now this is a bit unfortunate. This is also something you won't
@@ -760,7 +760,7 @@ pub unsafe fn optimize_thin_module(
         // so it appears). Hopefully we can remove this once upstream bugs are
         // fixed in LLVM.
         llvm::LLVMRustThinLTOPatchDICompileUnit(llmod, cu1);
-        save_temp_bitcode(&cgcx, &module, "thin-lto-after-patch");
+        save_temp_bitcode(cgcx, &module, "thin-lto-after-patch");
         timeline.record("patch");
 
         // Alright now that we've done everything related to the ThinLTO
@@ -771,7 +771,7 @@ pub unsafe fn optimize_thin_module(
         info!("running thin lto passes over {}", module.name);
         let config = cgcx.config(module.kind);
         run_pass_manager(cgcx, &module, config, true);
-        save_temp_bitcode(&cgcx, &module, "thin-lto-after-pm");
+        save_temp_bitcode(cgcx, &module, "thin-lto-after-pm");
         timeline.record("thin-done");
     }
     Ok(module)
