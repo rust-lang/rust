@@ -147,7 +147,7 @@ macro_rules! make_mir_visitor {
             fn visit_ascribe_user_ty(&mut self,
                                      place: & $($mutability)* Place<'tcx>,
                                      variance: & $($mutability)* ty::Variance,
-                                     user_ty: & $($mutability)* UserTypeAnnotation<'tcx>,
+                                     user_ty: & $($mutability)* UserTypeProjection<'tcx>,
                                      location: Location) {
                 self.super_ascribe_user_ty(place, variance, user_ty, location);
             }
@@ -211,6 +211,13 @@ macro_rules! make_mir_visitor {
                         ty: & $($mutability)* Ty<'tcx>,
                         _: TyContext) {
                 self.super_ty(ty);
+            }
+
+            fn visit_user_type_projection(
+                &mut self,
+                ty: & $($mutability)* UserTypeProjection<'tcx>,
+            ) {
+                self.super_user_type_projection(ty);
             }
 
             fn visit_user_type_annotation(
@@ -639,10 +646,10 @@ macro_rules! make_mir_visitor {
             fn super_ascribe_user_ty(&mut self,
                                      place: & $($mutability)* Place<'tcx>,
                                      _variance: & $($mutability)* ty::Variance,
-                                     user_ty: & $($mutability)* UserTypeAnnotation<'tcx>,
+                                     user_ty: & $($mutability)* UserTypeProjection<'tcx>,
                                      location: Location) {
                 self.visit_place(place, PlaceContext::Validate, location);
-                self.visit_user_type_annotation(user_ty);
+                self.visit_user_type_projection(user_ty);
             }
 
             fn super_place(&mut self,
@@ -737,7 +744,7 @@ macro_rules! make_mir_visitor {
                     source_info: *source_info,
                 });
                 if let Some((user_ty, _)) = user_ty {
-                    self.visit_user_type_annotation(user_ty);
+                    self.visit_user_type_projection(user_ty);
                 }
                 self.visit_source_info(source_info);
                 self.visit_source_scope(visibility_scope);
@@ -782,6 +789,16 @@ macro_rules! make_mir_visitor {
 
                 self.visit_span(span);
                 self.visit_source_scope(scope);
+            }
+
+            fn super_user_type_projection(
+                &mut self,
+                ty: & $($mutability)* UserTypeProjection<'tcx>,
+            ) {
+                let UserTypeProjection {
+                    ref $($mutability)* base,
+                } = *ty;
+                self.visit_user_type_annotation(base)
             }
 
             fn super_user_type_annotation(

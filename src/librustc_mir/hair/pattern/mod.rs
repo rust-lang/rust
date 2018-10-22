@@ -20,7 +20,8 @@ use const_eval::{const_field, const_variant_index};
 
 use hair::util::UserAnnotatedTyHelpers;
 
-use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability, UserTypeAnnotation};
+use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
+use rustc::mir::{UserTypeAnnotation, UserTypeProjection};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty};
 use rustc::ty::subst::{Substs, Kind};
@@ -65,17 +66,22 @@ pub struct Pattern<'tcx> {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct PatternTypeAnnotation<'tcx>(UserTypeAnnotation<'tcx>);
+pub struct PatternTypeProjection<'tcx>(UserTypeProjection<'tcx>);
 
-impl<'tcx> PatternTypeAnnotation<'tcx> {
-    pub(crate) fn from_c_ty(c_ty: ty::CanonicalTy<'tcx>) -> Self {
-        Self::from_u_ty(UserTypeAnnotation::Ty(c_ty))
-    }
-    pub(crate) fn from_u_ty(u_ty: UserTypeAnnotation<'tcx>) -> Self {
-        PatternTypeAnnotation(u_ty)
+impl<'tcx> PatternTypeProjection<'tcx> {
+    pub(crate) fn from_canonical_ty(c_ty: ty::CanonicalTy<'tcx>) -> Self {
+        Self::from_user_type(UserTypeAnnotation::Ty(c_ty))
     }
 
-    pub(crate) fn user_ty(self) -> UserTypeAnnotation<'tcx> { self.0 }
+    pub(crate) fn from_user_type(u_ty: UserTypeAnnotation<'tcx>) -> Self {
+        Self::from_user_type_proj(UserTypeProjection { base: u_ty })
+    }
+
+    pub(crate) fn from_user_type_proj(u_ty: UserTypeProjection<'tcx>) -> Self {
+        PatternTypeProjection(u_ty)
+    }
+
+    pub(crate) fn user_ty(self) -> UserTypeProjection<'tcx> { self.0 }
 }
 
 #[derive(Clone, Debug)]
@@ -83,7 +89,7 @@ pub enum PatternKind<'tcx> {
     Wild,
 
     AscribeUserType {
-        user_ty: PatternTypeAnnotation<'tcx>,
+        user_ty: PatternTypeProjection<'tcx>,
         subpattern: Pattern<'tcx>,
         user_ty_span: Span,
     },
@@ -704,7 +710,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
 
             debug!("pattern user_ty = {:?} for pattern at {:?}", user_ty, span);
 
-            let pat_ty = PatternTypeAnnotation::from_u_ty(user_ty);
+            let pat_ty = PatternTypeProjection::from_user_type(user_ty);
             kind = PatternKind::AscribeUserType {
                 subpattern,
                 user_ty: pat_ty,
@@ -995,7 +1001,8 @@ macro_rules! CloneImpls {
 CloneImpls!{ <'tcx>
     Span, Field, Mutability, ast::Name, ast::NodeId, usize, &'tcx ty::Const<'tcx>,
     Region<'tcx>, Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
-    &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, UserTypeAnnotation<'tcx>, PatternTypeAnnotation<'tcx>
+    &'tcx Substs<'tcx>, &'tcx Kind<'tcx>, UserTypeAnnotation<'tcx>,
+    UserTypeProjection<'tcx>, PatternTypeProjection<'tcx>
 }
 
 impl<'tcx> PatternFoldable<'tcx> for FieldPattern<'tcx> {

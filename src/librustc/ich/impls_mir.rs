@@ -606,3 +606,5 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::UserTypeAnnotation<
         }
     }
 }
+
+impl_stable_hash_for!(struct mir::UserTypeProjection<'tcx> { base });

@@ -710,7 +710,7 @@ pub struct LocalDecl<'tcx> {
     /// e.g. via `let x: T`, then we carry that type here. The MIR
     /// borrow checker needs this information since it can affect
     /// region inference.
-    pub user_ty: Option<(UserTypeAnnotation<'tcx>, Span)>,
+    pub user_ty: Option<(UserTypeProjection<'tcx>, Span)>,
 
     /// Name of the local, used in debuginfo and pretty-printing.
     ///
@@ -1741,7 +1741,7 @@ pub enum StatementKind<'tcx> {
     /// - `Contravariant` -- requires that `T_y :> T`
     /// - `Invariant` -- requires that `T_y == T`
     /// - `Bivariant` -- no effect
-    AscribeUserType(Place<'tcx>, ty::Variance, Box<UserTypeAnnotation<'tcx>>),
+    AscribeUserType(Place<'tcx>, ty::Variance, Box<UserTypeProjection<'tcx>>),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
@@ -2446,6 +2446,17 @@ EnumLiftImpl! {
         type Lifted = UserTypeAnnotation<'tcx>;
         (UserTypeAnnotation::Ty)(ty),
         (UserTypeAnnotation::TypeOf)(def, substs),
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct UserTypeProjection<'tcx> {
+    pub base: UserTypeAnnotation<'tcx>,
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection<'tcx> {
+        base
     }
 }
 
