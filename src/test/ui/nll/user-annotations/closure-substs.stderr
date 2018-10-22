@@ -1,14 +1,54 @@
 error: unsatisfied lifetime constraints
-  --> $DIR/closure-substs.rs:17:16
+  --> $DIR/closure-substs.rs:18:16
    |
 LL | fn foo<'a>() {
    |        -- lifetime `'a` defined here
-LL |     |x: &'a i32| -> &'static i32 {
-LL |         return x; //~ ERROR
+...
+LL |         return x; //~ ERROR unsatisfied lifetime constraints
    |                ^ returning this value requires that `'a` must outlive `'static`
 
+error: unsatisfied lifetime constraints
+  --> $DIR/closure-substs.rs:25:16
+   |
+LL |     |x: &i32| -> &'static i32 {
+   |         - let's call the lifetime of this reference `'1`
+LL |         return x; //~ ERROR unsatisfied lifetime constraints
+   |                ^ returning this value requires that `'1` must outlive `'static`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/closure-substs.rs:25:16
+   |
+LL |     |x: &i32| -> &'static i32 {
+   |         -                   - return type of closure is &'2 i32
+   |         |
+   |         let's call the lifetime of this reference `'1`
+LL |         return x; //~ ERROR unsatisfied lifetime constraints
+   |                ^ returning this value requires that `'1` must outlive `'2`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/closure-substs.rs:25:16
+   |
+LL |     |x: &i32| -> &'static i32 {
+   |     -------------------------
+   |     |   |
+   |     |   let's call the lifetime of this reference `'1`
+   |     lifetime `'2` represents this closure's body
+LL |         return x; //~ ERROR unsatisfied lifetime constraints
+   |                ^ closure was supposed to return data with lifetime `'2` but it is returning data with lifetime `'1`
+   |
+   = note: closure implements `Fn`, so references to captured variables can't escape the closure
+
+error: unsatisfied lifetime constraints
+  --> $DIR/closure-substs.rs:34:9
+   |
+LL | fn bar<'a>() {
+   |        -- lifetime `'a` defined here
+...
+LL |         b(x); //~ ERROR unsatisfied lifetime constraints
+   |         ^^^^ argument requires that `'a` must outlive `'static`
+
 error: borrowed data escapes outside of closure
-  --> $DIR/closure-substs.rs:23:9
+  --> $DIR/closure-substs.rs:41:9
    |
 LL |     |x: &i32, b: fn(&'static i32)| {
    |      - `x` is a reference that is only valid in the closure body
@@ -16,7 +56,7 @@ LL |         b(x); //~ ERROR
    |         ^^^^ `x` escapes the closure body here
 
 error: borrowed data escapes outside of closure
-  --> $DIR/closure-substs.rs:23:9
+  --> $DIR/closure-substs.rs:41:9
    |
 LL |     |x: &i32, b: fn(&'static i32)| {
    |      -        - `b` is declared here, outside of the closure body
@@ -26,7 +66,7 @@ LL |         b(x); //~ ERROR
    |         ^^^^ `x` escapes the closure body here
 
 error: unsatisfied lifetime constraints
-  --> $DIR/closure-substs.rs:23:9
+  --> $DIR/closure-substs.rs:41:9
    |
 LL |     |x: &i32, b: fn(&'static i32)| {
    |     ------------------------------
@@ -38,5 +78,5 @@ LL |         b(x); //~ ERROR
    |
    = note: closure implements `Fn`, so references to captured variables can't escape the closure
 
-error: aborting due to 4 previous errors
+error: aborting due to 8 previous errors
 
