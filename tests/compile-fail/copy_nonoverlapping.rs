@@ -10,17 +10,13 @@
 
 #![feature(core_intrinsics)]
 
-// FIXME: Validation disabled because it doesn't let us escape an entire slice
-// to the raw universe.
-// compile-flags: -Zmiri-disable-validation
-
 //error-pattern: copy_nonoverlapping called on overlapping ranges
 
 fn main() {
     let mut data = [0u8; 16];
     unsafe {
-        let a = &data[0] as *const _;
-        let b = &mut data[1] as *mut _;
+        let a = data.as_mut_ptr();
+        let b = a.wrapping_offset(1) as *mut _;
         std::ptr::copy_nonoverlapping(a, b, 2);
     }
 }
