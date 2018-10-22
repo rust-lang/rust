@@ -8,7 +8,9 @@ error[E0404]: expected trait, found type alias `Typedef`
   --> $DIR/unboxed-closure-sugar-nonexistent-trait.rs:16:8
    |
 LL | fn g<F:Typedef(isize) -> isize>(x: F) {}
-   |        ^^^^^^^^^^^^^^^^^^^^^^^ type aliases cannot be used for traits
+   |        ^^^^^^^^^^^^^^^^^^^^^^^ type aliases cannot be used as traits
+   |
+   = note: did you mean to use a trait alias?
 
 error: aborting due to 2 previous errors
 

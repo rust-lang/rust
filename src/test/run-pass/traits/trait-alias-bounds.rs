@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017-2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,21 +10,23 @@
 
 #![feature(trait_alias)]
 
-trait SimpleAlias = Default; //~ERROR E0645
-trait GenericAlias<T> = Iterator<Item=T>; //~ERROR E0645
-trait Partial<T> = IntoIterator<Item=T>; //~ERROR E0645
+trait SimpleAlias = Default;
+trait GenericAlias<T> = Iterator<Item=T>;
+trait Partial<T> = IntoIterator<Item=T>;
 
 trait Things<T> {}
 trait Romeo {}
+#[allow(dead_code)]
 struct The<T>(T);
+#[allow(dead_code)]
 struct Fore<T>(T);
 impl<T, U> Things<T> for The<U> {}
 impl<T> Romeo for Fore<T> {}
 
-trait WithWhere<Art, Thou> = Romeo + Romeo where Fore<(Art, Thou)>: Romeo; //~ERROR E0645
-trait BareWhere<Wild, Are> = where The<Wild>: Things<Are>; //~ERROR E0645
+trait WithWhere<Art, Thou> = Romeo + Romeo where Fore<(Art, Thou)>: Romeo;
+trait BareWhere<Wild, Are> = where The<Wild>: Things<Are>;
 
-trait CD = Clone + Default; //~ERROR E0645
+trait CD = Clone + Default;
 
 fn foo<T: CD>() -> (T, T) {
     let one = T::default();
@@ -33,11 +35,10 @@ fn foo<T: CD>() -> (T, T) {
 }
 
 fn main() {
-    let both = foo();
+    let both = foo::<i32>();
     assert_eq!(both.0, 0);
     assert_eq!(both.1, 0);
     let both: (i32, i32) = foo();
     assert_eq!(both.0, 0);
     assert_eq!(both.1, 0);
 }
-

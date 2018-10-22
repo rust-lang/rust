@@ -2,7 +2,9 @@ error[E0404]: expected trait, found type alias `Foo`
   --> $DIR/issue-3907.rs:20:6
    |
 LL | impl Foo for S { //~ ERROR expected trait, found type alias `Foo`
-   |      ^^^ type aliases cannot be used for traits
+   |      ^^^ type aliases cannot be used as traits
+   |
+   = note: did you mean to use a trait alias?
 help: possible better candidate is found in another module, you can import it into scope
    |
 LL | use issue_3907::Foo;

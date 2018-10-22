@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017-2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,21 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(trait_alias)]
+// gate-test-trait_alias
 
-type Foo = std::fmt::Debug;
-type Bar = Foo;
+trait Alias1<T> = Default where T: Clone;
+trait Alias2<T: Clone = ()> = Default;
 
-fn foo<T: Foo>(v: &T) {
-    println!("{:?}", v);
-}
+impl Alias1 {}
 
-pub fn main() {
-    foo(&12345);
+impl Alias1 for () {}
 
-    let bar1: &Bar = &54321;
-    println!("{:?}", bar1);
-
-    let bar2 = Box::new(42) as Box<dyn Foo>;
-    println!("{:?}", bar2);
-}
+fn main() {}
