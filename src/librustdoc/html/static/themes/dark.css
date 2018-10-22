@@ -300,16 +300,13 @@ pre.ignore:hover, .information:hover + pre.ignore {
 	border-color: black;
 }
 
-#titles > div {
-	border-bottom-color:  #ccc;
+#titles > div:not(.selected) {
+	background-color: #252525;
+	border-top-color: #252525;
 }
 
-#titles > div.selected {
-	border-bottom-color: #0078ee;
-}
-
-#titles > div:hover {
-	border-bottom-color: #0089ff;
+#titles > div:hover, #titles > div.selected {
+	border-top-color: #0089ff;
 }
 
 #titles > div > div.count {
