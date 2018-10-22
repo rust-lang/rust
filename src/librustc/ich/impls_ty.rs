@@ -457,7 +457,10 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::Allocation {
         hasher: &mut StableHasher<W>,
     ) {
         trace!("hashing allocation {:?}", self);
-        let mir::interpret::Allocation { bytes, relocations, undef_mask, align, mutability } = self;
+        let mir::interpret::Allocation {
+            bytes, relocations, undef_mask, align, mutability,
+            extra: (),
+        } = self;
         bytes.hash_stable(hcx, hasher);
         for reloc in relocations.iter() {
             reloc.hash_stable(hcx, hasher);
