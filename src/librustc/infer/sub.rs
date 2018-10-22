@@ -84,8 +84,8 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                 // Shouldn't have any LBR here, so we can safely put
                 // this under a binder below without fear of accidental
                 // capture.
-                assert!(!a.has_escaping_regions());
-                assert!(!b.has_escaping_regions());
+                assert!(!a.has_escaping_bound_vars());
+                assert!(!b.has_escaping_bound_vars());
 
                 // can't make progress on `A <: B` if both A and B are
                 // type variables, so record an obligation. We also

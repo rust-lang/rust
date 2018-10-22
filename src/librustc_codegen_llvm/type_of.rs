@@ -285,7 +285,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
 
         debug!("llvm_type({:#?})", self);
 
-        assert!(!self.ty.has_escaping_regions(), "{:?} has escaping regions", self.ty);
+        assert!(!self.ty.has_escaping_bound_vars(), "{:?} has escaping bound vars", self.ty);
 
         // Make sure lifetimes are erased, to avoid generating distinct LLVM
         // types for Rust types that only differ in the choice of lifetimes.

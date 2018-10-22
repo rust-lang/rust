@@ -305,7 +305,7 @@ where
             ty, region, origin
         );
 
-        assert!(!ty.has_escaping_regions());
+        assert!(!ty.has_escaping_bound_vars());
 
         let components = self.tcx.outlives_components(ty);
         self.components_must_outlive(origin, components, region);

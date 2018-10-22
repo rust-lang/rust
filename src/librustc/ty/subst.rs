@@ -355,7 +355,7 @@ impl<'tcx, T:TypeFoldable<'tcx>> Subst<'tcx> for T {
                                        span,
                                        root_ty: None,
                                        ty_stack_depth: 0,
-                                       region_binders_passed: 0 };
+                                       binders_passed: 0 };
         (*self).fold_with(&mut folder)
     }
 }
@@ -377,16 +377,16 @@ struct SubstFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ty_stack_depth: usize,
 
     // Number of region binders we have passed through while doing the substitution
-    region_binders_passed: u32,
+    binders_passed: u32,
 }
 
 impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for SubstFolder<'a, 'gcx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
     fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
-        self.region_binders_passed += 1;
+        self.binders_passed += 1;
         let t = t.super_fold_with(self);
-        self.region_binders_passed -= 1;
+        self.binders_passed -= 1;
         t
     }
 
@@ -471,7 +471,7 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
             }
         };
 
-        self.shift_regions_through_binders(ty)
+        self.shift_vars_through_binders(ty)
     }
 
     /// It is sometimes necessary to adjust the debruijn indices during substitution. This occurs
@@ -516,25 +516,25 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
     /// As indicated in the diagram, here the same type `&'a int` is substituted once, but in the
     /// first case we do not increase the Debruijn index and in the second case we do. The reason
     /// is that only in the second case have we passed through a fn binder.
-    fn shift_regions_through_binders(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        debug!("shift_regions(ty={:?}, region_binders_passed={:?}, has_escaping_regions={:?})",
-               ty, self.region_binders_passed, ty.has_escaping_regions());
+    fn shift_vars_through_binders(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        debug!("shift_vars(ty={:?}, binders_passed={:?}, has_escaping_bound_vars={:?})",
+               ty, self.binders_passed, ty.has_escaping_bound_vars());
 
-        if self.region_binders_passed == 0 || !ty.has_escaping_regions() {
+        if self.binders_passed == 0 || !ty.has_escaping_bound_vars() {
             return ty;
         }
 
-        let result = ty::fold::shift_regions(self.tcx(), self.region_binders_passed, &ty);
-        debug!("shift_regions: shifted result = {:?}", result);
+        let result = ty::fold::shift_vars(self.tcx(), self.binders_passed, &ty);
+        debug!("shift_vars: shifted result = {:?}", result);
 
         result
     }
 
     fn shift_region_through_binders(&self, region: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        if self.region_binders_passed == 0 || !region.has_escaping_regions() {
+        if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
             return region;
         }
-        self.tcx().mk_region(ty::fold::shift_region(*region, self.region_binders_passed))
+        self.tcx().mk_region(ty::fold::shift_region(*region, self.binders_passed))
     }
 }
 

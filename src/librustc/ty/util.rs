@@ -363,7 +363,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                erased_self_ty,
                predicates);
 
-        assert!(!erased_self_ty.has_escaping_regions());
+        assert!(!erased_self_ty.has_escaping_bound_vars());
 
         traits::elaborate_predicates(self, predicates)
             .filter_map(|predicate| {
@@ -389,7 +389,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         // construct such an object, but this seems
                         // correct even if that code changes).
                         let ty::OutlivesPredicate(ref t, ref r) = predicate.skip_binder();
-                        if t == &erased_self_ty && !r.has_escaping_regions() {
+                        if t == &erased_self_ty && !r.has_escaping_bound_vars() {
                             Some(*r)
                         } else {
                             None
