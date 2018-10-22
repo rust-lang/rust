@@ -667,6 +667,7 @@ extern "C" {
 
     // Operations on instructions
     pub fn LLVMGetFirstBasicBlock(Fn: &Value) -> &BasicBlock;
+    pub fn LLVMGetFirstInstruction(BB: &BasicBlock) -> Option<&Value>;
 
     // Operations on call sites
     pub fn LLVMSetInstructionCallConv(Instr: &Value, CC: c_uint);
@@ -688,6 +689,7 @@ extern "C" {
 
     // Instruction builders
     pub fn LLVMCreateBuilderInContext(C: &'a Context) -> &'a mut Builder<'a>;
+    pub fn LLVMPositionBuilderBefore(Builder: &Builder, Instr: &Value);
     pub fn LLVMPositionBuilderAtEnd(Builder: &Builder<'a>, Block: &'a BasicBlock);
     pub fn LLVMGetInsertBlock(Builder: &Builder<'a>) -> &'a BasicBlock;
     pub fn LLVMDisposeBuilder(Builder: &'a mut Builder<'a>);
@@ -1432,6 +1434,13 @@ extern "C" {
                                                 -> &'a Value;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> i64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> i64;
+
+    pub fn LLVMRustAddYkBlockLabel(Builder: &Builder, DIBuilder: &DIBuilder,
+                                   SP: &DISubprogram, InsertBefore: &Value,
+                                   Name: *const c_char);
+    pub fn LLVMRustAddYkBlockLabelAtEnd(Builder: &Builder, DIBuilder: &DIBuilder,
+                                        SP: &DISubprogram, InsertAfter: &BasicBlock,
+                                        Name: *const c_char);
 }
 
 #[allow(improper_ctypes)] // FIXME(#52456) needed for RustString.

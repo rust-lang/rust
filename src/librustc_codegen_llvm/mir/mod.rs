@@ -11,7 +11,7 @@
 use common::{C_i32, C_null};
 use libc::c_uint;
 use llvm::{self, BasicBlock};
-use llvm::debuginfo::DIScope;
+use llvm::debuginfo::{DIScope, DISubprogram};
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
 use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc::mir::{self, Mir};
@@ -115,6 +115,10 @@ impl FunctionCx<'a, 'll, 'tcx> {
             ty::ParamEnv::reveal_all(),
             value,
         )
+    }
+
+    pub fn fn_metadata(&self, span: Span) -> &DISubprogram {
+        self.debug_context.get_ref(span).fn_metadata
     }
 
     pub fn set_debug_loc(&mut self, bx: &Builder<'_, 'll, '_>, source_info: mir::SourceInfo) {

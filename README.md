@@ -1,9 +1,8 @@
 # The Rust Programming Language
 
-This is the main source code repository for [Rust]. It contains the compiler,
-standard library, and documentation.
+This is a modified version of the Rust compiler for the Yorick meta-tracer.
 
-[Rust]: https://www.rust-lang.org
+For Yorick-specific notes, see `README_YORICK.md`.
 
 ## Quick Start
 [quick-start]: #quick-start

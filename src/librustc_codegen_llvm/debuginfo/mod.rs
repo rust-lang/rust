@@ -14,7 +14,8 @@ mod doc;
 use self::VariableAccess::*;
 use self::VariableKind::*;
 
-use self::utils::{DIB, span_start, create_DIArray, is_node_local_to_unit};
+use self::utils::{create_DIArray, is_node_local_to_unit};
+pub (crate) use self::utils::{DIB, span_start};
 use self::namespace::mangled_name_of_instance;
 use self::type_names::compute_debuginfo_type_name;
 use self::metadata::{type_metadata, file_metadata, TypeMap};
@@ -139,7 +140,7 @@ impl FunctionDebugContext<'ll> {
 }
 
 pub struct FunctionDebugContextData<'ll> {
-    fn_metadata: &'ll DISubprogram,
+    pub (crate) fn_metadata: &'ll DISubprogram,
     source_locations_enabled: Cell<bool>,
     pub defining_crate: CrateNum,
 }

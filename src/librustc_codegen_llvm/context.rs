@@ -314,6 +314,10 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
             local_gen_sym_counter: Cell::new(0),
         }
     }
+
+    pub fn has_debug(&self) -> bool {
+        self.dbg_cx.is_some()
+    }
 }
 
 impl<'b, 'tcx> CodegenCx<'b, 'tcx> {

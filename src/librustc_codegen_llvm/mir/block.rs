@@ -8,11 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{self, BasicBlock};
+use llvm::{self, BasicBlock, LLVMGetFirstInstruction,
+           LLVMPositionBuilderBefore, LLVMPositionBuilderAtEnd,
+           LLVMRustAddYkBlockLabel, LLVMRustAddYkBlockLabelAtEnd};
+use std::ffi::CString;
+
+use debuginfo::DIB;
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf};
-use rustc::mir;
+use rustc::mir::{self, Location};
 use rustc::mir::interpret::EvalErrorKind;
 use abi::{Abi, ArgType, ArgTypeExt, FnType, FnTypeExt, LlvmType, PassMode};
 use base;
@@ -43,6 +48,46 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
         for statement in &data.statements {
             bx = self.codegen_statement(bx, statement);
+        }
+
+        // Insert a DWARF label at the start of each non-empty block.
+        // Yorick uses this at runtime to map virtual addresses to MIR blocks.
+        if self.cx.has_debug()  {
+            let di_bldr = DIB(self.cx);
+
+            // Make an appropriate name for the label.
+            // The label identifies the crate by its hash. It might be tempting to use the crate
+            // number, but this wouldn't serve as a unique ID, as crate numbers are only unique to
+            // any given compilation session.
+            let did = self.instance.def.def_id();
+            let k_hash = bx.tcx().crate_hash(did.krate).as_u64();
+            let lbl_name = CString::new(
+                format!("__YK_LOC_{}_{}_{}", k_hash, did.index.as_raw_u32(), bb.index())).unwrap();
+
+            // Get the sub_program.
+            let loc = Location{block: bb, statement_index: 0};
+            let source_info = self.mir.source_info(loc);
+            let (_, span) = self.debug_loc(*source_info);
+            let di_sp = self.fn_metadata(span);
+
+            match unsafe { LLVMGetFirstInstruction(bx.llbb()) } {
+                Some(instr) => {
+                    // The block is non-empty, so put a label on the first instruction.
+                    unsafe {
+                        LLVMPositionBuilderBefore(bx.llbuilder, instr);
+                        LLVMRustAddYkBlockLabel(bx.llbuilder, di_bldr, di_sp, instr,
+                                                lbl_name.as_ptr());
+                        LLVMPositionBuilderAtEnd(bx.llbuilder, bx.llbb());
+                    }
+                },
+                None => {
+                    // The block is empty. Append a label to the block.
+                    unsafe {
+                        LLVMRustAddYkBlockLabelAtEnd(bx.llbuilder, di_bldr, di_sp, bx.llbb(),
+                                                     lbl_name.as_ptr());
+                    }
+                }
+            }
         }
 
         self.codegen_terminator(bx, bb, data.terminator());
