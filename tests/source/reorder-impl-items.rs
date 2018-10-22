@@ -1,6 +1,6 @@
 // rustfmt-reorder_impl_items: true
 
-// The ordering of the folllowing impl items should be idempotent.
+// The ordering of the following impl items should be idempotent.
 impl<'a> Command<'a> {
     pub fn send_to(&self, w: &mut io::Write) -> io::Result<()> {
         match self {

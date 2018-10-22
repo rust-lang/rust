@@ -29,7 +29,7 @@ use spanned::Spanned;
 use types::{rewrite_path, PathContext};
 use utils::{format_mutability, mk_sp, rewrite_ident};
 
-/// Returns true if the given pattern is short. A short pattern is defined by the following grammer:
+/// Returns true if the given pattern is short. A short pattern is defined by the following grammar:
 ///
 /// [small, ntp]:
 ///     - single token

@@ -20,7 +20,7 @@ use utils::{count_newlines, last_line_width, mk_sp};
 use visitor::FmtVisitor;
 
 struct SnippetStatus {
-    /// An offset to the current line from the beginnig of the original snippet.
+    /// An offset to the current line from the beginning of the original snippet.
     line_start: usize,
     /// A length of trailing whitespaces on the current line.
     last_wspace: Option<usize>,

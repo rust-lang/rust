@@ -424,7 +424,7 @@ macro_rules! create_config {
                 self.ignore.2.add_prefix(dir);
             }
 
-            /// Returns true if the config key was explicitely set and is the default value.
+            /// Returns true if the config key was explicitly set and is the default value.
             pub fn is_default(&self, key: &str) -> bool {
                 $(
                     if let stringify!($i) = key {

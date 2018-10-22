@@ -7,6 +7,6 @@ fn main() {
         Tup(_) => "nah",
         Quad(_, _, x, _) => " also no rewrite",
         Quad(x, ..) => "condense me pls",
-        Weird(x, _, _, /* dont condense before */ ..) => "pls work",
+        Weird(x, _, _, /* don't condense before */ ..) => "pls work",
     }
 }

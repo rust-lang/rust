@@ -150,7 +150,7 @@ fn issue339() {
         {
 
         }
-        p => { // Dont collapse me
+        p => { // Don't collapse me
         } q => { } r =>
         {
 

@@ -62,7 +62,7 @@ impl<'a> StringFormat<'a> {
         )
     }
 
-    /// Like max_chars_with_indent but the indentation is not substracted.
+    /// Like max_chars_with_indent but the indentation is not subtracted.
     /// This allows to fit more graphemes from the string on a line when
     /// SnippetState::EndWithLineFeed.
     fn max_chars_without_indent(&self) -> Option<usize> {
@@ -236,7 +236,7 @@ fn break_string(max_chars: usize, trim_end: bool, line_end: &str, input: &[&str]
             .iter()
             .rposition(|grapheme| not_whitespace_except_line_feed(grapheme))
             .unwrap_or(index);
-        // Take into account newlines occuring in input[0..=index], i.e., the possible next new
+        // Take into account newlines occurring in input[0..=index], i.e., the possible next new
         // line. If there is one, then text after it could be rewritten in a way that the available
         // space is fully used.
         for (i, grapheme) in input[0..=index].iter().enumerate() {

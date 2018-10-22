@@ -20,7 +20,7 @@ fn bar() {
     let x = 1;
     // comment after statement
 
-    // comment before statment
+    // comment before statement
     let y = 2;
     let z = 3;
 

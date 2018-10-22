@@ -149,7 +149,7 @@ fn issue339() {
         n => {}
         o => {}
         p => {
-            // Dont collapse me
+            // Don't collapse me
         }
         q => {}
         r => {}

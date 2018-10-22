@@ -1592,7 +1592,7 @@ pub fn rewrite_struct_field(
     for _ in 0..lhs_offset {
         spacing.push(' ');
     }
-    // In this extreme case we will be missing a space betweeen an attribute and a field.
+    // In this extreme case we will be missing a space between an attribute and a field.
     if prefix.is_empty() && !attrs_str.is_empty() && attrs_extendable && spacing.is_empty() {
         spacing.push(' ');
     }

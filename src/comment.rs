@@ -832,7 +832,7 @@ fn trim_custom_comment_prefix(s: &str) -> String {
             let left_trimmed = line.trim_left();
             if left_trimmed.starts_with(RUSTFMT_CUSTOM_COMMENT_PREFIX) {
                 let orig = left_trimmed.trim_left_matches(RUSTFMT_CUSTOM_COMMENT_PREFIX);
-                // due to comment wrapping, a line that was originaly behind `#` is split over
+                // due to comment wrapping, a line that was originally behind `#` is split over
                 // multiple lines, which needs then to be prefixed with a `#`
                 if !orig.trim_left().starts_with("# ") {
                     Cow::from(format!("# {}", orig))
