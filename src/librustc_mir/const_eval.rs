@@ -17,10 +17,10 @@ use std::hash::Hash;
 use std::collections::hash_map::Entry;
 
 use rustc::hir::{self, def_id::DefId};
-use rustc::mir::interpret::ConstEvalErr;
+use rustc::mir::interpret::{Relocations, UndefMask, ConstEvalErr};
 use rustc::mir;
 use rustc::ty::{self, Ty, TyCtxt, Instance, query::TyCtxtAt};
-use rustc::ty::layout::{self, Size, LayoutOf, TyLayout};
+use rustc::ty::layout::{Size, LayoutOf, TyLayout};
 use rustc::ty::subst::Subst;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashMap;
@@ -106,17 +106,43 @@ pub fn mplace_to_const<'tcx>(
     let alloc = ecx.memory.get(ptr.alloc_id)?;
     assert!(alloc.align.abi() >= mplace.align.abi());
     assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= mplace.layout.size.bytes());
-    // FIXME: only clone the parts that interest us (starting at offset, going to offset + size)
-    let mut alloc = alloc.clone();
-    // we take `mplace.layout.align` instead of `mplace.align`
-    // as this function is essentially copying the value
-    // out of the larger allocation, so we lose all information about
-    // potential surrounding types with different alignment.
-    alloc.align = mplace.layout.align;
+    // FIXME: stop cloning and refer to parts of allocations by giving `ConstValue::ByRef` fields
+    // for alignment overrides and size of the referred to part
+    let mut new_alloc = Allocation {
+        bytes: alloc
+            .bytes[ptr.offset.bytes() as usize..][..mplace.layout.size.bytes() as usize]
+            .to_owned(),
+        mutability: Mutability::Immutable,
+        relocations: Relocations::from_presorted(alloc
+            .relocations
+            .iter()
+            .filter_map(|&(offset, (tag, id))| if offset < ptr.offset {
+                None
+            } else {
+                Some((
+                    offset - ptr.offset,
+                    (tag, id)
+                ))
+            })
+            .collect()),
+        undef_mask: UndefMask::new(mplace.layout.size),
+        // we take `mplace.layout.align` instead of `mplace.align`
+        // as this function is essentially copying the value
+        // out of the larger allocation, so we lose all information about
+        // potential surrounding types with different alignment.
+        align: mplace.layout.align,
+    };
+    for i in 0..mplace.layout.size.bytes() {
+        let i = Size::from_bytes(i);
+        let j = i + ptr.offset;
+        new_alloc.undef_mask.set(i, alloc.undef_mask.get(j));
+    }
+
     // FIXME shouldnt it be the case that `intern_static` has already
     // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
-    let alloc = ecx.tcx.intern_const_alloc(alloc);
-    let val = ConstValue::ByRef(ptr.alloc_id, alloc, ptr.offset);
+    let new_alloc = ecx.tcx.intern_const_alloc(new_alloc);
+    let alloc_id = ecx.tcx.alloc_map.lock().allocate(new_alloc);
+    let val = ConstValue::ByRef(alloc_id, new_alloc, Size::ZERO);
     Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, mplace.layout.ty))
 }
 
