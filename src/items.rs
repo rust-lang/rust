@@ -94,10 +94,16 @@ impl Rewrite for ast::Local {
 
             if let Some(ref ty) = self.ty {
                 let separator = type_annotation_separator(context.config);
-                let indent = shape.indent + last_line_width(&result) + separator.len();
-                // 1 = ;
-                let budget = shape.width.checked_sub(indent.width() + 1)?;
-                let rewrite = ty.rewrite(context, Shape::legacy(budget, indent))?;
+                let ty_shape = if pat_str.contains('\n') {
+                    shape.with_max_width(context.config)
+                } else {
+                    shape
+                }
+                .offset_left(last_line_width(&result) + separator.len())?
+                // 2 = ` =`
+                .sub_width(2)?;
+
+                let rewrite = ty.rewrite(context, ty_shape)?;
 
                 infix.push_str(separator);
                 infix.push_str(&rewrite);
