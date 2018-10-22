@@ -1,4 +1,4 @@
-#![feature(rustc_private, macro_at_most_once_rep)]
+#![feature(rustc_private, macro_at_most_once_rep, never_type)]
 #![allow(intra_doc_link_resolution_failure)]
 
 extern crate byteorder;

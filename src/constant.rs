@@ -4,7 +4,7 @@ use crate::rustc::mir::interpret::{
     read_target_uint, AllocId, AllocType, Allocation, ConstValue, EvalResult, GlobalId, Scalar,
 };
 use crate::rustc::ty::Const;
-use crate::rustc_mir::interpret::{EvalContext, Machine, Memory, MemoryKind, OpTy, PlaceTy};
+use crate::rustc_mir::interpret::{EvalContext, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer};
 use std::borrow::Cow;
 
 #[derive(Default)]
@@ -127,7 +127,6 @@ fn trans_const_place<'a, 'tcx: 'a>(
             fx.tcx.at(DUMMY_SP),
             ty::ParamEnv::reveal_all(),
             TransPlaceInterpreter,
-            (),
         );
         let op = ecx.const_to_op(const_)?;
         let ptr = ecx.allocate(op.layout, MemoryKind::Stack)?;
@@ -188,7 +187,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
     module: &mut Module<B>,
     cx: &mut ConstantCx,
 ) {
-    let memory = Memory::<TransPlaceInterpreter>::new(tcx.at(DUMMY_SP), ());
+    let memory = Memory::<TransPlaceInterpreter>::new(tcx.at(DUMMY_SP));
 
     while let Some(todo_item) = pop_set(&mut cx.todo) {
         let (data_id, alloc) = match todo_item {
@@ -278,11 +277,12 @@ fn pop_set<T: Copy + Eq + ::std::hash::Hash>(set: &mut HashSet<T>) -> Option<T> 
 struct TransPlaceInterpreter;
 
 impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
-    type MemoryData = ();
-    type MemoryKinds = ();
-    type MemoryMap = FxHashMap<AllocId, (MemoryKind<()>, Allocation<()>)>;
+    type MemoryKinds = !;
     type PointerTag = ();
-    const STATIC_KIND: Option<()> = None;
+    type AllocExtra = ();
+    type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation<()>)>;
+    const STATIC_KIND: Option<!> = None;
+    const ENABLE_PTR_TRACKING_HOOKS: bool = false;
 
     fn enforce_validity(_: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool {
         false
@@ -334,6 +334,14 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     }
 
     fn box_alloc(_: &mut EvalContext<'a, 'mir, 'tcx, Self>, _: PlaceTy<'tcx>) -> EvalResult<'tcx> {
+        panic!();
+    }
+
+    fn tag_reference(_: &mut EvalContext<'a, 'mir, 'tcx, Self>, _: Pointer<()>, _: Ty<'tcx>, _: Size, _: Option<BorrowKind>) -> EvalResult<'tcx> {
+        panic!();
+    }
+
+    fn tag_dereference(_: &EvalContext<'a, 'mir, 'tcx, Self>, _: Pointer<()>, _: Ty<'tcx>) -> EvalResult<'tcx> {
         panic!();
     }
 }
