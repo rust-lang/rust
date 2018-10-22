@@ -7,6 +7,7 @@ use languageserver_types::{
     InsertTextFormat, Location, Position, SymbolInformation, TextDocumentIdentifier, TextEdit,
     RenameParams, WorkspaceEdit, PrepareRenameResponse
 };
+use gen_lsp_server::ErrorCode;
 use ra_analysis::{FileId, FoldKind, Query, RunnableKind};
 use ra_syntax::text_utils::contains_offset_nonstrict;
 use serde_json::to_value;
@@ -16,7 +17,7 @@ use crate::{
     project_model::TargetKind,
     req::{self, Decoration},
     server_world::ServerWorld,
-    Result,
+    Result, LspError
 };
 
 pub fn handle_syntax_tree(
@@ -476,7 +477,7 @@ pub fn handle_rename(
     let offset = params.position.conv_with(&line_index);
 
     if params.new_name.is_empty() {
-        return Ok(None);
+        return Err(LspError::new(ErrorCode::InvalidParams as i32, "New Name cannot be empty".into()).into());
     }
 
     let refs = world.analysis().find_all_refs(file_id, offset)?;
