@@ -2494,7 +2494,7 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const<'_>) -> fmt::Resu
                 if let Ok(ptr) = ptr {
                     let len = ty::tls::with(|tcx| alloc.read_bits(
                         tcx,
-                        offset,
+                        offset + tcx.data_layout.pointer_size,
                         ParamEnv::reveal_all().and(tcx.types.usize),
                     ).ok());
                     if let Some(len) = len {
