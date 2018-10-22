@@ -25,7 +25,7 @@ export class Server {
 
         Server.client = new lc.LanguageClient(
             'ra-lsp',
-            'rust-analyzer languge server',
+            'rust-analyzer language server',
             serverOptions,
             clientOptions
         );
