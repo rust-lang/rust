@@ -4779,11 +4779,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             if let (
                 Ok(snippet),
                 NameBindingKind::Import { directive, ..},
-                _x @ 1 ... std::u32::MAX,
+                _dummy @ false,
             ) = (
                 cm.span_to_snippet(binding.span),
                 binding.kind.clone(),
-                binding.span.hi().0,
+                binding.span.is_dummy(),
             ) {
                 let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
                     format!("Other{}", name)
@@ -4794,28 +4794,27 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 err.span_suggestion_with_applicability(
                     binding.span,
                     &rename_msg,
-                    match (&directive.subclass, snippet.ends_with(";"), snippet.as_ref()) {
-                        (ImportDirectiveSubclass::SingleImport { .. }, false, "self") =>
+                    match (&directive.subclass, snippet.as_ref()) {
+                        (ImportDirectiveSubclass::SingleImport { .. }, "self") =>
                             format!("self as {}", suggested_name),
-                        (ImportDirectiveSubclass::SingleImport { source, .. }, false, _) =>
+                        (ImportDirectiveSubclass::SingleImport { source, .. }, _) =>
                             format!(
-                                "{} as {}",
+                                "{} as {}{}",
                                 &snippet[..((source.span.hi().0 - binding.span.lo().0) as usize)],
                                 suggested_name,
+                                if snippet.ends_with(";") {
+                                    ";"
+                                } else {
+                                    ""
+                                }
                             ),
-                        (ImportDirectiveSubclass::SingleImport { source, .. }, true, _) =>
-                            format!(
-                                "{} as {};",
-                                &snippet[..((source.span.hi().0 - binding.span.lo().0) as usize)],
-                                suggested_name,
-                            ),
-                        (ImportDirectiveSubclass::ExternCrate { source, target, .. }, _, _) =>
+                        (ImportDirectiveSubclass::ExternCrate { source, target, .. }, _) =>
                             format!(
                                 "extern crate {} as {};",
                                 source.unwrap_or(target.name),
                                 suggested_name,
                             ),
-                        (_, _, _) => unreachable!(),
+                        (_, _) => unreachable!(),
                     },
                     Applicability::MaybeIncorrect,
                 );
