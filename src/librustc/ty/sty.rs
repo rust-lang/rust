@@ -2060,10 +2060,9 @@ impl<'tcx> Const<'tcx> {
     pub fn unwrap_bits(
         &self,
         tcx: TyCtxt<'_, '_, '_>,
-        ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
     ) -> u128 {
-        self.assert_bits(tcx, ty).unwrap_or_else(||
-            bug!("expected bits of {}, got {:#?}", ty.value, self))
+        self.assert_bits(tcx, ParamEnv::empty().and(self.ty)).unwrap_or_else(||
+            bug!("expected bits of {}, got {:#?}", self.ty, self))
     }
 
     #[inline]

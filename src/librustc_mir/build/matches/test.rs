@@ -112,7 +112,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn add_cases_to_switch<'pat>(&mut self,
                                      test_place: &Place<'tcx>,
                                      candidate: &Candidate<'pat, 'tcx>,
-                                     switch_ty: Ty<'tcx>,
                                      options: &mut Vec<u128>,
                                      indices: &mut FxHashMap<&'tcx ty::Const<'tcx>, usize>)
                                      -> bool
@@ -124,10 +123,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         match *match_pair.pattern.kind {
             PatternKind::Constant { value } => {
-                let switch_ty = ty::ParamEnv::empty().and(switch_ty);
                 indices.entry(value)
                        .or_insert_with(|| {
-                           options.push(value.unwrap_bits(self.hir.tcx(), switch_ty));
+                           options.push(value.unwrap_bits(self.hir.tcx()));
                            options.len() - 1
                        });
                 true

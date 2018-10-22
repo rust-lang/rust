@@ -978,15 +978,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // available
         match test.kind {
             TestKind::SwitchInt {
-                switch_ty,
                 ref mut options,
                 ref mut indices,
+                ..
             } => {
                 for candidate in candidates.iter() {
                     if !self.add_cases_to_switch(
                         &match_pair.place,
                         candidate,
-                        switch_ty,
                         options,
                         indices,
                     ) {
