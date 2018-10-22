@@ -384,3 +384,7 @@ create a minimal working example with Godbolt. Go to
 
 
 [env-logger]: https://docs.rs/env_logger/0.4.3/env_logger/
+
+## Narrowing (Bisecting) Regressions
+
+The [cargo-bisect-rustc](https://github.com/rust-lang-nursery/cargo-bisect-rustc) tool can be used as a quick and easy way to find exactly which PR caused a change in `rustc` behavior. It automatically downloads `rustc` PR artifacts and tests them against a project you provide until it finds the regression. You can then look at the PR to get more context on *why* it was changed.  See [this tutorial](https://github.com/rust-lang-nursery/cargo-bisect-rustc/blob/master/TUTORIAL.md) on how to use it.
