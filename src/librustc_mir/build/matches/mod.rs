@@ -18,6 +18,7 @@ use build::ForGuard::{self, OutsideGuard, RefWithinGuard, ValWithinGuard};
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::{GuardFrame, GuardFrameLocal, LocalsForNode};
 use hair::*;
+use hair::pattern::PatternTypeProjections;
 use rustc::hir;
 use rustc::mir::*;
 use rustc::ty::{self, Ty};
@@ -415,7 +416,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let num_patterns = patterns.len();
         self.visit_bindings(
             &patterns[0],
-            None,
+            &PatternTypeProjections::none(),
             &mut |this, mutability, name, mode, var, span, ty, user_ty| {
                 if visibility_scope.is_none() {
                     visibility_scope =
@@ -491,7 +492,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub(super) fn visit_bindings(
         &mut self,
         pattern: &Pattern<'tcx>,
-        mut pattern_user_ty: Option<(PatternTypeProjection<'tcx>, Span)>,
+        pattern_user_ty: &PatternTypeProjections<'tcx>,
         f: &mut impl FnMut(
             &mut Self,
             Mutability,
@@ -500,7 +501,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             NodeId,
             Span,
             Ty<'tcx>,
-            Option<(PatternTypeProjection<'tcx>, Span)>,
+            &PatternTypeProjections<'tcx>,
         ),
     ) {
         match *pattern.kind {
@@ -513,20 +514,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ref subpattern,
                 ..
             } => {
-                match mode {
-                    BindingMode::ByValue => { }
+                let pattern_ref_binding; // sidestep temp lifetime limitations.
+                let binding_user_ty = match mode {
+                    BindingMode::ByValue => { pattern_user_ty }
                     BindingMode::ByRef(..) => {
                         // If this is a `ref` binding (e.g., `let ref
                         // x: T = ..`), then the type of `x` is not
-                        // `T` but rather `&T`, so ignore
-                        // `pattern_user_ty` for now.
-                        //
-                        // FIXME(#47184): extract or handle `pattern_user_ty` somehow
-                        pattern_user_ty = None;
+                        // `T` but rather `&T`.
+                        pattern_ref_binding = pattern_user_ty.ref_binding();
+                        &pattern_ref_binding
                     }
-                }
+                };
 
-                f(self, mutability, name, mode, var, pattern.span, ty, pattern_user_ty);
+                f(self, mutability, name, mode, var, pattern.span, ty, binding_user_ty);
                 if let Some(subpattern) = subpattern.as_ref() {
                     self.visit_bindings(subpattern, pattern_user_ty, f);
                 }
@@ -541,15 +541,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ref slice,
                 ref suffix,
             } => {
-                // FIXME(#47184): extract or handle `pattern_user_ty` somehow
-                for subpattern in prefix.iter().chain(slice).chain(suffix) {
-                    self.visit_bindings(subpattern, None, f);
+                for subpattern in prefix {
+                    self.visit_bindings(subpattern, &pattern_user_ty.index(), f);
+                }
+                for subpattern in slice {
+                    self.visit_bindings(subpattern, &pattern_user_ty.subslice(), f);
+                }
+                for subpattern in suffix {
+                    self.visit_bindings(subpattern, &pattern_user_ty.index(), f);
                 }
             }
             PatternKind::Constant { .. } | PatternKind::Range { .. } | PatternKind::Wild => {}
             PatternKind::Deref { ref subpattern } => {
-                // FIXME(#47184): extract or handle `pattern_user_ty` somehow
-                self.visit_bindings(subpattern, None, f);
+                self.visit_bindings(subpattern, &pattern_user_ty.deref(), f);
             }
             PatternKind::AscribeUserType { ref subpattern, user_ty, user_ty_span } => {
                 // This corresponds to something like
@@ -557,17 +561,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // ```
                 // let A::<'a>(_): A<'static> = ...;
                 // ```
-                //
-                // FIXME(#47184): handle `pattern_user_ty` somehow
-                self.visit_bindings(subpattern, Some((user_ty, user_ty_span)), f)
+                let pattern_user_ty = pattern_user_ty.add_user_type(user_ty, user_ty_span);
+                self.visit_bindings(subpattern, &pattern_user_ty, f)
             }
-            PatternKind::Leaf { ref subpatterns }
-            | PatternKind::Variant {
-                ref subpatterns, ..
-            } => {
-                // FIXME(#47184): extract or handle `pattern_user_ty` somehow
-                for subpattern in subpatterns {
-                    self.visit_bindings(&subpattern.pattern, None, f);
+
+            PatternKind::Leaf { ref subpatterns } => {
+                for (j, subpattern) in subpatterns.iter().enumerate() {
+                    self.visit_bindings(&subpattern.pattern, &pattern_user_ty.leaf(j), f);
+                }
+            }
+
+            PatternKind::Variant { ref subpatterns, .. } => {
+                for (j, subpattern) in subpatterns.iter().enumerate() {
+                    self.visit_bindings(&subpattern.pattern, &pattern_user_ty.variant(j), f);
                 }
             }
         }
@@ -1470,7 +1476,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         num_patterns: usize,
         var_id: NodeId,
         var_ty: Ty<'tcx>,
-        user_var_ty: Option<(PatternTypeProjection<'tcx>, Span)>,
+        user_var_ty: &PatternTypeProjections<'tcx>,
         has_guard: ArmHasGuard,
         opt_match_place: Option<(Option<Place<'tcx>>, Span)>,
         pat_span: Span,
@@ -1489,7 +1495,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let local = LocalDecl::<'tcx> {
             mutability,
             ty: var_ty,
-            user_ty: user_var_ty.map(|(ut, sp)| (ut.user_ty(), sp)),
+            user_ty: user_var_ty.clone().user_ty(),
             name: Some(name),
             source_info,
             visibility_scope,
@@ -1522,7 +1528,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // See previous comment.
                 mutability: Mutability::Not,
                 ty: tcx.mk_imm_ref(tcx.types.re_empty, var_ty),
-                user_ty: None,
+                user_ty: UserTypeProjections::none(),
                 name: Some(name),
                 source_info,
                 visibility_scope,
