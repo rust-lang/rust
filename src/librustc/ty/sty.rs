@@ -1986,7 +1986,7 @@ impl<'tcx> Const<'tcx> {
         let mut bytes = [0_u8; 16];
         let endian = tcx.data_layout.endian;
         write_target_uint(endian, &mut bytes, bits).unwrap();
-        Self::from_bytes(tcx, &bytes, layout)
+        Self::from_bytes(tcx, &bytes[0..(layout.size.bytes() as usize)], layout)
     }
 
     #[inline]
