@@ -11,6 +11,7 @@
 use crate::rustc::hir::def_id::DefId;
 use crate::rustc::hir;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use crate::rustc::util::nodemap::NodeSet;
 use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use crate::rustc::ty::{self, Ty};
@@ -91,8 +92,10 @@ declare_clippy_lint! {
     "`fn new() -> Self` without `#[derive]`able `Default` implementation"
 }
 
-#[derive(Copy, Clone)]
-pub struct NewWithoutDefault;
+#[derive(Clone, Default)]
+pub struct NewWithoutDefault {
+    impling_types: Option<NodeSet>,
+}
 
 impl LintPass for NewWithoutDefault {
     fn get_lints(&self) -> LintArray {
@@ -130,13 +133,39 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                             return;
                         }
                         if sig.decl.inputs.is_empty() && name == "new" && cx.access_levels.is_reachable(id) {
+                            let self_did = cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id));
                             let self_ty = cx.tcx
-                                .type_of(cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id)));
+                                .type_of(self_did);
                             if_chain! {
                                 if same_tys(cx, self_ty, return_ty(cx, id));
                                 if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
-                                if !implements_trait(cx, self_ty, default_trait_id, &[]);
                                 then {
+                                    if self.impling_types.is_none() {
+                                        let mut impls = NodeSet();
+                                        cx.tcx.for_each_impl(default_trait_id, |d| {
+                                            if let Some(ty_def) = cx.tcx.type_of(d).ty_adt_def() {
+                                                if let Some(node_id) = cx.tcx.hir.as_local_node_id(ty_def.did) {
+                                                    impls.insert(node_id);
+                                                }
+                                            }
+                                        });
+                                        self.impling_types = Some(impls);
+                                    }
+
+                                    // Check if a Default implementation exists for the Self type, regardless of
+                                    // generics
+                                    if_chain! {
+                                        if let Some(ref impling_types) = self.impling_types;
+                                        if let Some(self_def) = cx.tcx.type_of(self_did).ty_adt_def();
+                                        if self_def.did.is_local();
+                                        then {
+                                            let self_id = cx.tcx.hir.local_def_id_to_node_id(self_def.did.to_local());
+                                            if impling_types.contains(&self_id) {
+                                                return;
+                                            }
+                                        }
+                                    }
+
                                     if let Some(sp) = can_derive_default(self_ty, cx, default_trait_id) {
                                         span_lint_and_then(
                                             cx,
