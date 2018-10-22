@@ -23,8 +23,6 @@ fn foo1() {
     // Here `x` is bound in the closure sig:
     |x: &i32| -> &'static i32 {
         return x; //~ ERROR unsatisfied lifetime constraints
-        //~^ ERROR unsatisfied lifetime constraints
-        //~| ERROR unsatisfied lifetime constraints
     };
 }
 
@@ -38,9 +36,7 @@ fn bar<'a>() {
 fn bar1() {
     // Here `x` is bound in the closure sig:
     |x: &i32, b: fn(&'static i32)| {
-        b(x); //~ ERROR
-        //~^ ERROR borrowed data escapes outside of closure
-        //~| ERROR unsatisfied lifetime constraints
+        b(x); //~ ERROR borrowed data escapes outside of closure
     };
 }
 
