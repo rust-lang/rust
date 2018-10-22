@@ -2008,12 +2008,12 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn from_bool(tcx: TyCtxt<'_, '_, 'tcx>, v: bool) -> &'tcx Self {
-        Self::from_bits(tcx, v as u128, ParamEnv::empty().and(tcx.types.bool))
+        Self::from_bits(tcx, v as u128, ParamEnv::reveal_all().and(tcx.types.bool))
     }
 
     #[inline]
     pub fn from_usize(tcx: TyCtxt<'_, '_, 'tcx>, n: u64) -> &'tcx Self {
-        Self::from_bits(tcx, n as u128, ParamEnv::empty().and(tcx.types.usize))
+        Self::from_bits(tcx, n as u128, ParamEnv::reveal_all().and(tcx.types.usize))
     }
 
     #[inline]
@@ -2044,7 +2044,7 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn assert_bool(&self, tcx: TyCtxt<'_, '_, '_>) -> Option<bool> {
-        self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.bool)).and_then(|v| match v {
+        self.assert_bits(tcx, ParamEnv::reveal_all().and(tcx.types.bool)).and_then(|v| match v {
             0 => Some(false),
             1 => Some(true),
             _ => None,
@@ -2053,7 +2053,7 @@ impl<'tcx> Const<'tcx> {
 
     #[inline]
     pub fn assert_usize(&self, tcx: TyCtxt<'_, '_, '_>) -> Option<u64> {
-        self.assert_bits(tcx, ParamEnv::empty().and(tcx.types.usize)).map(|v| v as u64)
+        self.assert_bits(tcx, ParamEnv::reveal_all().and(tcx.types.usize)).map(|v| v as u64)
     }
 
     #[inline]
