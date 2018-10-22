@@ -340,33 +340,31 @@ fn check_item_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
     })
 }
 
-fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             item_id: ast::NodeId,
-                             ty_span: Span,
-                             allow_foreign_ty: bool) {
+fn check_item_type<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    item_id: ast::NodeId,
+    ty_span: Span,
+    allow_foreign_ty: bool,
+) {
     debug!("check_item_type: {:?}", item_id);
 
     for_id(tcx, item_id, ty_span).with_fcx(|fcx, _this| {
         let ty = fcx.tcx.type_of(fcx.tcx.hir.local_def_id(item_id));
         let item_ty = fcx.normalize_associated_types_in(ty_span, &ty);
 
-        let mut allow_unsized = false;
+        let mut forbid_unsized = true;
         if allow_foreign_ty {
             if let TyKind::Foreign(_) = tcx.struct_tail(item_ty).sty {
-                allow_unsized = true;
+                forbid_unsized = false;
             }
         }
 
-        if !allow_unsized {
-            fcx.register_wf_obligation(item_ty, ty_span, ObligationCauseCode::MiscObligation);
+        fcx.register_wf_obligation(item_ty, ty_span, ObligationCauseCode::MiscObligation);
+        if forbid_unsized {
             fcx.register_bound(
                 item_ty,
                 fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
-                traits::ObligationCause::new(
-                    ty_span,
-                    fcx.body_id,
-                    traits::MiscObligation,
-                ),
+                traits::ObligationCause::new(ty_span, fcx.body_id, traits::MiscObligation),
             );
         }
 
