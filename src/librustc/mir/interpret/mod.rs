@@ -632,7 +632,7 @@ pub fn read_target_uint(endianness: layout::Endian, mut source: &[u8]) -> Result
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Methods to faciliate working with signed integers stored in a u128
+// Methods to facilitate working with signed integers stored in a u128
 ////////////////////////////////////////////////////////////////////////////////
 
 pub fn sign_extend(value: u128, size: Size) -> u128 {

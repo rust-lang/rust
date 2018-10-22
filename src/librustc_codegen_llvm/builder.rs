@@ -761,7 +761,7 @@ impl Builder<'a, 'll, 'tcx> {
                     fty, asm, cons, volatile, alignstack, dia);
                 Some(self.call(v, inputs, None))
             } else {
-                // LLVM has detected an issue with our constaints, bail out
+                // LLVM has detected an issue with our constraints, bail out
                 None
             }
         }

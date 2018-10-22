@@ -1025,7 +1025,7 @@ extern "rust-intrinsic" {
     ///         // to avoid problems in case something further down panics.
     ///         src.set_len(0);
     ///
-    ///         // The two regions cannot overlap becuase mutable references do
+    ///         // The two regions cannot overlap because mutable references do
     ///         // not alias, and two different vectors cannot own the same
     ///         // memory.
     ///         ptr::copy_nonoverlapping(src_ptr, dst_ptr, src_len);
