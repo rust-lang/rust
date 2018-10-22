@@ -575,7 +575,7 @@ declare_clippy_lint! {
 /// temporary placeholder for dealing with the `Option` type, then this does
 /// not mitigate the need for error handling. If there is a chance that `.get()`
 /// will be `None` in your program, then it is advisable that the `None` case
-/// is handled in a future refactor instead of using `.unwrap()` or the Index 
+/// is handled in a future refactor instead of using `.unwrap()` or the Index
 /// trait.
 ///
 /// **Example:**
@@ -2135,22 +2135,6 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr, call_name: &str, as_re
 }
 
 fn ty_has_iter_method(cx: &LateContext<'_, '_>, self_ref_ty: ty::Ty<'_>) -> Option<(&'static Lint, &'static str, &'static str)> {
-    let (self_ty, mutbl) = match self_ref_ty.sty {
-        ty::TyKind::Ref(_, self_ty, mutbl) => (self_ty, mutbl),
-        _ => unreachable!(),
-    };
-    let method_name = match mutbl {
-        hir::MutImmutable => "iter",
-        hir::MutMutable => "iter_mut",
-    };
-
-    let def_id = match self_ty.sty {
-        ty::TyKind::Array(..) => return Some((INTO_ITER_ON_ARRAY, "array", method_name)),
-        ty::TyKind::Slice(..) => return Some((INTO_ITER_ON_REF, "slice", method_name)),
-        ty::Adt(adt, _) => adt.did,
-        _ => return None,
-    };
-
     // FIXME: instead of this hard-coded list, we should check if `<adt>::iter`
     // exists and has the desired signature. Unfortunately FnCtxt is not exported
     // so we can't use its `lookup_method` method.
@@ -2169,6 +2153,22 @@ fn ty_has_iter_method(cx: &LateContext<'_, '_>, self_ref_ty: ty::Ty<'_>) -> Opti
         (INTO_ITER_ON_REF, &["std", "path", "Path"]),
         (INTO_ITER_ON_REF, &["std", "sync", "mpsc", "Receiver"]),
     ];
+
+    let (self_ty, mutbl) = match self_ref_ty.sty {
+        ty::TyKind::Ref(_, self_ty, mutbl) => (self_ty, mutbl),
+        _ => unreachable!(),
+    };
+    let method_name = match mutbl {
+        hir::MutImmutable => "iter",
+        hir::MutMutable => "iter_mut",
+    };
+
+    let def_id = match self_ty.sty {
+        ty::TyKind::Array(..) => return Some((INTO_ITER_ON_ARRAY, "array", method_name)),
+        ty::TyKind::Slice(..) => return Some((INTO_ITER_ON_REF, "slice", method_name)),
+        ty::Adt(adt, _) => adt.did,
+        _ => return None,
+    };
 
     for (lint, path) in &INTO_ITER_COLLECTIONS {
         if match_def_path(cx.tcx, def_id, path) {
