@@ -63,7 +63,7 @@ use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
 
 use hir;
 
-pub use self::sty::{Binder, BoundTy, BoundTyIndex, DebruijnIndex, INNERMOST};
+pub use self::sty::{Binder, BoundTy, BoundTyKind, BoundTyIndex, DebruijnIndex, INNERMOST};
 pub use self::sty::{FnSig, GenSig, CanonicalPolyFnSig, PolyFnSig, PolyGenSig};
 pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, GeneratorSubsts, UpvarSubsts, TypeAndMut};
@@ -2367,6 +2367,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 }
             }
 
+            Bound(..) |
             Infer(..) => {
                 bug!("unexpected type `{:?}` in sized_constraint_for_ty",
                      ty)

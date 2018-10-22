@@ -115,14 +115,15 @@ impl FlagComputation {
                 self.add_substs(&substs.substs);
             }
 
+            &ty::Bound(_) => self.add_flags(TypeFlags::HAS_CANONICAL_VARS),
+
             &ty::Infer(infer) => {
                 self.add_flags(TypeFlags::HAS_FREE_LOCAL_NAMES); // it might, right?
                 self.add_flags(TypeFlags::HAS_TY_INFER);
                 match infer {
                     ty::FreshTy(_) |
                     ty::FreshIntTy(_) |
-                    ty::FreshFloatTy(_) |
-                    ty::BoundTy(_) => {
+                    ty::FreshFloatTy(_) => {
                         self.add_flags(TypeFlags::HAS_CANONICAL_VARS);
                     }
 

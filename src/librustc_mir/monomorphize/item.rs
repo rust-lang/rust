@@ -382,6 +382,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 self.push_type_params(substs, iter::empty(), output);
             }
             ty::Error |
+            ty::Bound(..) |
             ty::Infer(_) |
             ty::UnnormalizedProjection(..) |
             ty::Projection(..) |
