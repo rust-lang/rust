@@ -29,7 +29,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use interpret::{self,
-    PlaceTy, MemPlace, MPlaceTy, OpTy, Operand, Value, Pointer, Scalar, ConstValue,
+    PlaceTy, MPlaceTy, OpTy, Pointer, Scalar, ConstValue,
     EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot,
@@ -131,6 +131,7 @@ pub fn mplace_to_const<'tcx>(
         // out of the larger allocation, so we lose all information about
         // potential surrounding types with different alignment.
         align: mplace.layout.align,
+        extra: (),
     };
     for i in 0..mplace.layout.size.bytes() {
         let i = Size::from_bytes(i);
