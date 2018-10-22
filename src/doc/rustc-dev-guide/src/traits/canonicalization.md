@@ -42,7 +42,11 @@ This query contains two unbound variables, but it also contains the
 lifetime `'static`. The trait system generally ignores all lifetimes
 and treats them equally, so when canonicalizing, we will *also*
 replace any [free lifetime](../appendix/background.html#free-vs-bound) with a
-canonical variable. Therefore, we get the following result:
+canonical variable (Note that `'static` is actually a _free_ lifetime 
+variable here. We are not considering it in the typing context of the whole 
+program but only in the context of this trait reference. Mathematically, we
+are not quantifying over the whole program, but only this obligation).
+Therefore, we get the following result:
 
 ```text
 ?0: Foo<'?1, ?2>
