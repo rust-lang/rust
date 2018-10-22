@@ -54,10 +54,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             ptr_size * (3 + methods.len() as u64),
             ptr_align,
             MemoryKind::Vtable,
-        )?;
+        )?.with_default_tag();
 
         let drop = ::monomorphize::resolve_drop_in_place(*self.tcx, ty);
-        let drop = self.memory.create_fn_alloc(drop);
+        let drop = self.memory.create_fn_alloc(drop).with_default_tag();
         self.memory.write_ptr_sized(vtable, ptr_align, Scalar::Ptr(drop).into())?;
 
         let size_ptr = vtable.offset(ptr_size, &self)?;
@@ -69,7 +69,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         for (i, method) in methods.iter().enumerate() {
             if let Some((def_id, substs)) = *method {
                 let instance = self.resolve(def_id, substs)?;
-                let fn_ptr = self.memory.create_fn_alloc(instance);
+                let fn_ptr = self.memory.create_fn_alloc(instance).with_default_tag();
                 let method_ptr = vtable.offset(ptr_size * (3 + i as u64), &self)?;
                 self.memory.write_ptr_sized(method_ptr, ptr_align, Scalar::Ptr(fn_ptr).into())?;
             }

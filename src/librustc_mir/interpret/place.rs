@@ -856,6 +856,8 @@ where
     }
 
     /// Make sure that a place is in memory, and return where it is.
+    /// If the place currently refers to a local that doesn't yet have a matching allocation,
+    /// create such an allocation.
     /// This is essentially `force_to_memplace`.
     pub fn force_allocation(
         &mut self,
@@ -899,10 +901,11 @@ where
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         if layout.is_unsized() {
             assert!(self.tcx.features().unsized_locals, "cannot alloc memory for unsized type");
-            // FIXME: What should we do here?
+            // FIXME: What should we do here? We should definitely also tag!
             Ok(MPlaceTy::dangling(layout, &self))
         } else {
             let ptr = self.memory.allocate(layout.size, layout.align, kind)?;
+            let ptr = M::tag_new_allocation(self, ptr, kind)?;
             Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
         }
     }

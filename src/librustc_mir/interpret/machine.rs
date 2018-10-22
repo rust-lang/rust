@@ -81,6 +81,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
 
     /// Tag tracked alongside every pointer.  This is used to implement "Stacked Borrows"
     /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
+    /// The `default()` is used for pointers to consts, statics, vtables and functions.
     type PointerTag: ::std::fmt::Debug + Default + Copy + Eq + Hash + 'static;
 
     /// Extra data stored in every allocation.
@@ -151,13 +152,13 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag, Self::AllocExtra>>>;
 
     /// Called to turn an allocation obtained from the `tcx` into one that has
-    /// the appropriate tags on each pointer.
+    /// the right type for this machine.
     ///
     /// This should avoid copying if no work has to be done! If this returns an owned
-    /// allocation (because a copy had to be done to add the tags), machine memory will
+    /// allocation (because a copy had to be done to add tags or metadata), machine memory will
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
-    fn static_with_default_tag(
+    fn adjust_static_allocation(
         alloc: &'_ Allocation
     ) -> Cow<'_, Allocation<Self::PointerTag, Self::AllocExtra>>;
 
@@ -203,6 +204,13 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     ) -> EvalResult<'tcx> {
         Ok(())
     }
+
+    /// Add the tag for a newly allocated pointer.
+    fn tag_new_allocation(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ptr: Pointer,
+        kind: MemoryKind<Self::MemoryKinds>,
+    ) -> EvalResult<'tcx, Pointer<Self::PointerTag>>;
 
     /// Executed when evaluating the `&` operator: Creating a new reference.
     /// This has the chance to adjust the tag.  It should not change anything else!

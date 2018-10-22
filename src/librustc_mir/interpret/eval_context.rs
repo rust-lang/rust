@@ -334,7 +334,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     }
 
     pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value<M::PointerTag>> {
-        let ptr = self.memory.allocate_static_bytes(s.as_bytes());
+        let ptr = self.memory.allocate_static_bytes(s.as_bytes()).with_default_tag();
         Ok(Value::new_slice(Scalar::Ptr(ptr), s.len() as u64, self.tcx.tcx))
     }
 

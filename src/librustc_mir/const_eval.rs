@@ -32,7 +32,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use interpret::{self,
-    PlaceTy, MemPlace, OpTy, Operand, Value, Scalar, ConstValue,
+    PlaceTy, MemPlace, OpTy, Operand, Value, Scalar, ConstValue, Pointer,
     EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot, RefTracking,
@@ -426,7 +426,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 
     #[inline(always)]
-    fn static_with_default_tag(
+    fn adjust_static_allocation(
         alloc: &'_ Allocation
     ) -> Cow<'_, Allocation<Self::PointerTag>> {
         // We do not use a tag so we can just cheaply forward the reference
@@ -464,6 +464,15 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
             &ecx.memory,
             &ecx.stack[..],
         )
+    }
+
+    #[inline(always)]
+    fn tag_new_allocation(
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ptr: Pointer,
+        _kind: MemoryKind<Self::MemoryKinds>,
+    ) -> EvalResult<'tcx, Pointer> {
+        Ok(ptr)
     }
 }
 
