@@ -2105,7 +2105,7 @@ impl<'tcx> Operand<'tcx> {
             span,
             ty,
             user_ty: None,
-            literal: ty::Const::zero_sized(tcx, ParamEnv::empty().and(ty)),
+            literal: ty::Const::zero_sized(tcx, tcx.param_env(def_id).and(ty)),
         })
     }
 
