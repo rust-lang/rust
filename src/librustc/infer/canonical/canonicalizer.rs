@@ -337,8 +337,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                 bug!("encountered a fresh type during canonicalization")
             }
 
-            ty::Infer(ty::BoundTy(_)) => {
-                bug!("encountered a canonical type during canonicalization")
+            ty::Bound(_) => {
+                bug!("encountered a bound type during canonicalization")
             }
 
             ty::Closure(..)
@@ -455,7 +455,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     /// or returns an existing variable if `kind` has already been
     /// seen. `kind` is expected to be an unbound variable (or
     /// potentially a free region).
-    fn canonical_var(&mut self, info: CanonicalVarInfo, kind: Kind<'tcx>) -> BoundTy {
+    fn canonical_var(&mut self, info: CanonicalVarInfo, kind: Kind<'tcx>) -> BoundTyIndex {
         let Canonicalizer {
             variables,
             query_state,
@@ -506,10 +506,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             })
         };
 
-        BoundTy {
-            level: ty::INNERMOST,
-            var,
-        }
+        var
     }
 
     /// Shorthand helper that creates a canonical region variable for
@@ -552,9 +549,8 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         info: CanonicalVarInfo,
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
-        let b = self.canonical_var(info, r.into());
-        debug_assert_eq!(ty::INNERMOST, b.level);
-        self.tcx().mk_region(ty::ReCanonical(b.var))
+        let var = self.canonical_var(info, r.into());
+        self.tcx().mk_region(ty::ReCanonical(var))
     }
 
     /// Given a type variable `ty_var` of the given kind, first check
@@ -570,9 +566,8 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             let info = CanonicalVarInfo {
                 kind: CanonicalVarKind::Ty(ty_kind),
             };
-            let b = self.canonical_var(info, ty_var.into());
-            debug_assert_eq!(ty::INNERMOST, b.level);
-            self.tcx().mk_infer(ty::InferTy::BoundTy(b))
+            let var = self.canonical_var(info, ty_var.into());
+            self.tcx().mk_ty(ty::Bound(BoundTy::new(ty::INNERMOST, var)))
         }
     }
 }

@@ -852,6 +852,9 @@ for ty::TyKind<'gcx>
             Param(param_ty) => {
                 param_ty.hash_stable(hcx, hasher);
             }
+            Bound(bound_ty) => {
+                bound_ty.hash_stable(hcx, hasher);
+            }
             Foreign(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }
@@ -869,7 +872,6 @@ impl_stable_hash_for!(enum ty::InferTy {
     FreshTy(a),
     FreshIntTy(a),
     FreshFloatTy(a),
-    BoundTy(a),
 });
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>>

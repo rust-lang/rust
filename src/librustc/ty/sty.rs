@@ -188,6 +188,9 @@ pub enum TyKind<'tcx> {
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
     Param(ParamTy),
 
+    /// Bound type variable, used only when preparing a trait query.
+    Bound(BoundTy),
+
     /// A type variable used during type checking.
     Infer(InferTy),
 
@@ -1219,9 +1222,6 @@ pub enum InferTy {
     FreshTy(u32),
     FreshIntTy(u32),
     FreshFloatTy(u32),
-
-    /// Bound type variable, used only when preparing a trait query.
-    BoundTy(BoundTy),
 }
 
 newtype_index! {
@@ -1232,9 +1232,28 @@ newtype_index! {
 pub struct BoundTy {
     pub level: DebruijnIndex,
     pub var: BoundTyIndex,
+    pub kind: BoundTyKind,
 }
 
-impl_stable_hash_for!(struct BoundTy { level, var });
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub enum BoundTyKind {
+    Anon,
+    Param(InternedString),
+}
+
+impl_stable_hash_for!(struct BoundTy { level, var, kind });
+impl_stable_hash_for!(enum self::BoundTyKind { Anon, Param(a) });
+
+impl BoundTy {
+    pub fn new(level: DebruijnIndex, var: BoundTyIndex) -> Self {
+        debug_assert_eq!(ty::INNERMOST, level);
+        BoundTy {
+            level,
+            var,
+            kind: BoundTyKind::Anon,
+        }
+    }
+}
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -1865,6 +1884,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             Tuple(..) |
             Foreign(..) |
             Param(_) |
+            Bound(..) |
             Infer(_) |
             Error => {
                 vec![]
@@ -1930,7 +1950,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
             ty::Infer(ty::TyVar(_)) => false,
 
-            ty::Infer(ty::BoundTy(_)) |
+            ty::Bound(_) |
             ty::Infer(ty::FreshTy(_)) |
             ty::Infer(ty::FreshIntTy(_)) |
             ty::Infer(ty::FreshFloatTy(_)) =>

@@ -432,7 +432,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             match result_value.unpack() {
                 UnpackedKind::Type(result_value) => {
                     // e.g., here `result_value` might be `?0` in the example above...
-                    if let ty::Infer(ty::InferTy::BoundTy(b)) = result_value.sty {
+                    if let ty::Bound(b) = result_value.sty {
                         // in which case we would set `canonical_vars[0]` to `Some(?U)`.
                         opt_values[b.var] = Some(*original_value);
                     }

@@ -2243,7 +2243,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
         sty_debug_print!(
             self,
             Adt, Array, Slice, RawPtr, Ref, FnDef, FnPtr,
-            Generator, GeneratorWitness, Dynamic, Closure, Tuple,
+            Generator, GeneratorWitness, Dynamic, Closure, Tuple, Bound,
             Param, Infer, UnnormalizedProjection, Projection, Opaque, Foreign);
 
         println!("Substs interner: #{}", self.interners.substs.borrow().len());

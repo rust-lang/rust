@@ -173,6 +173,7 @@ pub fn push_debuginfo_type_name<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
         ty::Infer(_) |
         ty::UnnormalizedProjection(..) |
         ty::Projection(..) |
+        ty::Bound(..) |
         ty::Opaque(..) |
         ty::GeneratorWitness(..) |
         ty::Param(_) => {
