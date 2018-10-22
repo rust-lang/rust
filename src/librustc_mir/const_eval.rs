@@ -100,15 +100,19 @@ pub fn mplace_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     mplace: MPlaceTy<'tcx>,
 ) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
-    let MemPlace { ptr, align, meta } = *mplace;
     // extract alloc-offset pair
-    assert!(meta.is_none());
-    let ptr = ptr.to_ptr()?;
+    assert!(mplace.meta.is_none());
+    let ptr = mplace.ptr.to_ptr()?;
     let alloc = ecx.memory.get(ptr.alloc_id)?;
-    assert!(alloc.align.abi() >= align.abi());
+    assert!(alloc.align.abi() >= mplace.align.abi());
     assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= mplace.layout.size.bytes());
+    // FIXME: only clone the parts that interest us (starting at offset, going to offset + size)
     let mut alloc = alloc.clone();
-    alloc.align = align;
+    // we take `mplace.layout.align` instead of `mplace.align`
+    // as this function is essentially copying the value
+    // out of the larger allocation, so we lose all information about
+    // potential surrounding types with different alignment.
+    alloc.align = mplace.layout.align;
     // FIXME shouldnt it be the case that `intern_static` has already
     // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
     let alloc = ecx.tcx.intern_const_alloc(alloc);
