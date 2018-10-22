@@ -32,7 +32,7 @@ enum Task {
 pub fn main_loop(
     internal_mode: bool,
     root: PathBuf,
-    msg_receriver: &Receiver<RawMessage>,
+    msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
     let pool = rayon::ThreadPoolBuilder::new()
@@ -54,7 +54,7 @@ pub fn main_loop(
         root,
         &pool,
         msg_sender,
-        msg_receriver,
+        msg_receiver,
         task_sender,
         task_receiver.clone(),
         fs_worker,
