@@ -16,16 +16,14 @@ extern crate syntax;
 use std::collections::HashMap;
 use std::borrow::Cow;
 
-use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
+use rustc::ty::{self, Ty, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{TyLayout, LayoutOf, Size};
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 
-use syntax::ast::Mutability;
 use syntax::attr;
 
 
-pub use rustc::mir::interpret::*;
 pub use rustc_mir::interpret::*;
 pub use rustc_mir::interpret::{self, AllocMap}; // resolve ambiguity
 
@@ -34,9 +32,9 @@ mod operator;
 mod intrinsic;
 mod helpers;
 mod tls;
-mod locks;
 mod range_map;
 mod mono_hash_map;
+mod stacked_borrows;
 
 use fn_call::EvalContextExt as MissingFnsEvalContextExt;
 use operator::EvalContextExt as OperatorEvalContextExt;
@@ -46,6 +44,7 @@ use range_map::RangeMap;
 #[allow(unused_imports)] // FIXME rustc bug https://github.com/rust-lang/rust/issues/53682
 use helpers::{ScalarExt, EvalContextExt as HelpersEvalContextExt};
 use mono_hash_map::MonoHashMap;
+use stacked_borrows::{EvalContextExt as StackedBorEvalContextExt, Borrow};
 
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -56,7 +55,6 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         tcx.at(syntax::source_map::DUMMY_SP),
         ty::ParamEnv::reveal_all(),
         Evaluator::new(validate),
-        Default::default(),
     );
 
     let main_instance = ty::Instance::mono(ecx.tcx.tcx, main_id);
@@ -124,9 +122,9 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         let foo = ecx.memory.allocate_static_bytes(b"foo\0");
         let foo_ty = ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8);
         let foo_layout = ecx.layout_of(foo_ty)?;
-        let foo_place = ecx.allocate(foo_layout, MemoryKind::Stack)?; // will be interned in just a second
+        let foo_place = ecx.allocate(foo_layout, MiriMemoryKind::Env.into())?;
         ecx.write_scalar(Scalar::Ptr(foo), foo_place.into())?;
-        ecx.memory.intern_static(foo_place.to_ptr()?.alloc_id, Mutability::Immutable)?;
+        ecx.memory.mark_immutable(foo_place.to_ptr()?.alloc_id)?;
         ecx.write_scalar(foo_place.ptr, dest)?;
 
         assert!(args.next().is_none(), "start lang item has more arguments than expected");
@@ -222,23 +220,36 @@ pub enum MiriMemoryKind {
 }
 
 impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
+    #[inline(always)]
     fn into(self) -> MemoryKind<MiriMemoryKind> {
         MemoryKind::Machine(self)
     }
 }
 
+impl MayLeak for MiriMemoryKind {
+    #[inline(always)]
+    fn may_leak(self) -> bool {
+        use MiriMemoryKind::*;
+        match self {
+            Rust | C => false,
+            Env | MutStatic => true,
+        }
+    }
+}
 
-#[derive(Clone, PartialEq, Eq)]
 pub struct Evaluator<'tcx> {
     /// Environment variables set by `setenv`
     /// Miri does not expose env vars from the host to the emulated program
-    pub(crate) env_vars: HashMap<Vec<u8>, Pointer>,
+    pub(crate) env_vars: HashMap<Vec<u8>, Pointer<Borrow>>,
 
     /// TLS state
     pub(crate) tls: TlsData<'tcx>,
 
     /// Whether to enforce the validity invariant
     pub(crate) validate: bool,
+
+    /// Stacked Borrows state
+    pub(crate) stacked_borrows: stacked_borrows::State,
 }
 
 impl<'tcx> Evaluator<'tcx> {
@@ -247,16 +258,23 @@ impl<'tcx> Evaluator<'tcx> {
             env_vars: HashMap::default(),
             tls: TlsData::default(),
             validate,
+            stacked_borrows: stacked_borrows::State::new(),
         }
     }
 }
 
-impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
-    type MemoryData = ();
-    type MemoryKinds = MiriMemoryKind;
-    type PointerTag = (); // still WIP
+#[allow(dead_code)] // FIXME https://github.com/rust-lang/rust/issues/47131
+type MiriEvalContext<'a, 'mir, 'tcx> = EvalContext<'a, 'mir, 'tcx, Evaluator<'tcx>>;
 
-    type MemoryMap = MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<()>)>;
+
+impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
+    type MemoryKinds = MiriMemoryKind;
+
+    type AllocExtra = stacked_borrows::Stacks;
+    type PointerTag = Borrow;
+    const ENABLE_PTR_TRACKING_HOOKS: bool = true;
+
+    type MemoryMap = MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<Borrow, Self::AllocExtra>)>;
 
     const STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::MutStatic);
 
@@ -284,39 +302,42 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     /// Returns Ok() when the function was handled, fail otherwise
+    #[inline(always)]
     fn find_fn(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx>],
-        dest: Option<PlaceTy<'tcx>>,
+        args: &[OpTy<'tcx, Borrow>],
+        dest: Option<PlaceTy<'tcx, Borrow>>,
         ret: Option<mir::BasicBlock>,
     ) -> EvalResult<'tcx, Option<&'mir mir::Mir<'tcx>>> {
         ecx.find_fn(instance, args, dest, ret)
     }
 
+    #[inline(always)]
     fn call_intrinsic(
         ecx: &mut rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx>],
-        dest: PlaceTy<'tcx>,
+        args: &[OpTy<'tcx, Borrow>],
+        dest: PlaceTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx> {
         ecx.call_intrinsic(instance, args, dest)
     }
 
+    #[inline(always)]
     fn ptr_op(
         ecx: &rustc_mir::interpret::EvalContext<'a, 'mir, 'tcx, Self>,
         bin_op: mir::BinOp,
-        left: Scalar,
+        left: Scalar<Borrow>,
         left_layout: TyLayout<'tcx>,
-        right: Scalar,
+        right: Scalar<Borrow>,
         right_layout: TyLayout<'tcx>,
-    ) -> EvalResult<'tcx, (Scalar, bool)> {
+    ) -> EvalResult<'tcx, (Scalar<Borrow>, bool)> {
         ecx.ptr_op(bin_op, left, left_layout, right, right_layout)
     }
 
     fn box_alloc(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        dest: PlaceTy<'tcx>,
+        dest: PlaceTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx> {
         trace!("box_alloc for {:?}", dest.layout.ty);
         // Call the `exchange_malloc` lang item
@@ -356,7 +377,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     fn find_foreign_static(
         tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         def_id: DefId,
-    ) -> EvalResult<'tcx, Cow<'tcx, Allocation>> {
+    ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Borrow, Self::AllocExtra>>> {
         let attrs = tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
             Some(name) => name.as_str(),
@@ -376,16 +397,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         Ok(Cow::Owned(alloc))
     }
 
-    fn validation_op(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _op: ::rustc::mir::ValidationOp,
-        _operand: &::rustc::mir::ValidationOperand<'tcx, ::rustc::mir::Place<'tcx>>,
-    ) -> EvalResult<'tcx> {
-        // FIXME: prevent this from ICEing
-        //ecx.validation_op(op, operand)
-        Ok(())
-    }
-
+    #[inline(always)]
     fn before_terminator(_ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>
     {
         // We are not interested in detecting loops
@@ -394,8 +406,67 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     fn static_with_default_tag(
         alloc: &'_ Allocation
-    ) -> Cow<'_, Allocation<Self::PointerTag>> {
-        let alloc = alloc.clone();
+    ) -> Cow<'_, Allocation<Borrow, Self::AllocExtra>> {
+        let alloc: Allocation<Borrow, Self::AllocExtra> = Allocation {
+            bytes: alloc.bytes.clone(),
+            relocations: Relocations::from_presorted(
+                alloc.relocations.iter()
+                    .map(|&(offset, ((), alloc))| (offset, (Borrow::default(), alloc)))
+                    .collect()
+            ),
+            undef_mask: alloc.undef_mask.clone(),
+            align: alloc.align,
+            mutability: alloc.mutability,
+            extra: Self::AllocExtra::default(),
+        };
         Cow::Owned(alloc)
+    }
+
+    #[inline(always)]
+    fn memory_accessed(
+        alloc: &Allocation<Borrow, Self::AllocExtra>,
+        ptr: Pointer<Borrow>,
+        size: Size,
+        access: MemoryAccess,
+    ) -> EvalResult<'tcx> {
+        alloc.extra.memory_accessed(ptr, size, access)
+    }
+
+    #[inline(always)]
+    fn memory_deallocated(
+        alloc: &mut Allocation<Self::PointerTag, Self::AllocExtra>,
+        ptr: Pointer<Borrow>,
+    ) -> EvalResult<'tcx> {
+        alloc.extra.memory_deallocated(ptr)
+    }
+
+    #[inline(always)]
+    fn tag_reference(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ptr: Pointer<Borrow>,
+        pointee_ty: Ty<'tcx>,
+        pointee_size: Size,
+        borrow_kind: Option<mir::BorrowKind>,
+    ) -> EvalResult<'tcx, Borrow> {
+        if !ecx.machine.validate {
+            // No tracking
+            Ok(Borrow::default())
+        } else {
+            ecx.tag_reference(ptr, pointee_ty, pointee_size, borrow_kind)
+        }
+    }
+
+    #[inline(always)]
+    fn tag_dereference(
+        ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
+        ptr: Pointer<Borrow>,
+        ptr_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, Borrow> {
+        if !ecx.machine.validate {
+            // No tracking
+            Ok(Borrow::default())
+        } else {
+            ecx.tag_dereference(ptr, ptr_ty)
+        }
     }
 }

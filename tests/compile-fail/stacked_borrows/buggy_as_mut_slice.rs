@@ -1,9 +1,4 @@
-// ignore-test validation_op is disabled
-
 #![allow(unused_variables)]
-
-// For some reason, the error location is different when using fullmir
-// error-pattern: in conflict with lock WriteLock
 
 mod safe {
     use std::slice::from_raw_parts_mut;
@@ -17,6 +12,8 @@ mod safe {
 
 fn main() {
     let v = vec![0,1,2];
-    let v1_ = safe::as_mut_slice(&v);
-    let v2_ = safe::as_mut_slice(&v);
+    let v1 = safe::as_mut_slice(&v);
+    let v2 = safe::as_mut_slice(&v);
+    v1[1] = 5; //~ ERROR does not exist on the stack
+    v1[1] = 6;
 }

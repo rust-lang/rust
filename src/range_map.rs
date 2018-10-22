@@ -9,9 +9,18 @@
 use std::collections::BTreeMap;
 use std::ops;
 
+use rustc::ty::layout::Size;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct RangeMap<T> {
     map: BTreeMap<Range, T>,
+}
+
+impl<T> Default for RangeMap<T> {
+    #[inline(always)]
+    fn default() -> Self {
+        RangeMap::new()
+    }
 }
 
 // The derived `Ord` impl sorts first by the first field, then, if the fields are the same,
@@ -21,14 +30,19 @@ pub struct RangeMap<T> {
 // At the same time the `end` is irrelevant for the sorting and range searching, but used for the check.
 // This kind of search breaks, if `end < start`, so don't do that!
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Debug)]
-pub struct Range {
+struct Range {
     start: u64,
     end: u64, // Invariant: end > start
 }
 
 impl Range {
+    /// Compute a range of ranges that contains all ranges overlaping with [offset, offset+len)
     fn range(offset: u64, len: u64) -> ops::Range<Range> {
-        assert!(len > 0);
+        if len == 0 {
+            // We can produce an empty range, nothing overlaps with this.
+            let r = Range { start: 0, end: 1 };
+            return r..r;
+        }
         // We select all elements that are within
         // the range given by the offset into the allocation and the length.
         // This is sound if all ranges that intersect with the argument range, are in the
@@ -46,14 +60,20 @@ impl Range {
         left..right
     }
 
-    /// Tests if all of [offset, offset+len) are contained in this range.
+    /// Tests if any element of [offset, offset+len) is contained in this range.
+    #[inline(always)]
     fn overlaps(&self, offset: u64, len: u64) -> bool {
-        assert!(len > 0);
-        offset < self.end && offset + len >= self.start
+        if len == 0 {
+            // `offset` totally does not matter, we cannot overlap with an empty interval
+            false
+        } else {
+            offset < self.end && offset.checked_add(len).unwrap() >= self.start
+        }
     }
 }
 
 impl<T> RangeMap<T> {
+    #[inline(always)]
     pub fn new() -> RangeMap<T> {
         RangeMap { map: BTreeMap::new() }
     }
@@ -63,10 +83,9 @@ impl<T> RangeMap<T> {
         offset: u64,
         len: u64,
     ) -> impl Iterator<Item = (&'a Range, &'a T)> + 'a {
-        assert!(len > 0);
         self.map.range(Range::range(offset, len)).filter_map(
-            move |(range,
-                   data)| {
+            move |(range, data)| {
+                debug_assert!(len > 0);
                 if range.overlaps(offset, len) {
                     Some((range, data))
                 } else {
@@ -76,8 +95,12 @@ impl<T> RangeMap<T> {
         )
     }
 
-    pub fn iter<'a>(&'a self, offset: u64, len: u64) -> impl Iterator<Item = &'a T> + 'a {
-        self.iter_with_range(offset, len).map(|(_, data)| data)
+    pub fn iter<'a>(&'a self, offset: Size, len: Size) -> impl Iterator<Item = &'a T> + 'a {
+        self.iter_with_range(offset.bytes(), len.bytes()).map(|(_, data)| data)
+    }
+
+    pub fn iter_mut_all<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T> + 'a {
+        self.map.values_mut()
     }
 
     fn split_entry_at(&mut self, offset: u64)
@@ -114,28 +137,30 @@ impl<T> RangeMap<T> {
         }
     }
 
-    pub fn iter_mut_all<'a>(&'a mut self) -> impl Iterator<Item = &'a mut T> + 'a {
-        self.map.values_mut()
-    }
-
     /// Provide mutable iteration over everything in the given range.  As a side-effect,
     /// this will split entries in the map that are only partially hit by the given range,
     /// to make sure that when they are mutated, the effect is constrained to the given range.
+    /// If there are gaps, leave them be.
     pub fn iter_mut_with_gaps<'a>(
         &'a mut self,
-        offset: u64,
-        len: u64,
+        offset: Size,
+        len: Size,
     ) -> impl Iterator<Item = &'a mut T> + 'a
     where
         T: Clone,
     {
-        assert!(len > 0);
-        // Preparation: Split first and last entry as needed.
-        self.split_entry_at(offset);
-        self.split_entry_at(offset + len);
+        let offset = offset.bytes();
+        let len = len.bytes();
+
+        if len > 0 {
+            // Preparation: Split first and last entry as needed.
+            self.split_entry_at(offset);
+            self.split_entry_at(offset + len);
+        }
         // Now we can provide a mutable iterator
         self.map.range_mut(Range::range(offset, len)).filter_map(
             move |(&range, data)| {
+                debug_assert!(len > 0);
                 if range.overlaps(offset, len) {
                     assert!(
                         offset <= range.start && offset + len >= range.end,
@@ -151,35 +176,41 @@ impl<T> RangeMap<T> {
     }
 
     /// Provide a mutable iterator over everything in the given range, with the same side-effects as
-    /// iter_mut_with_gaps.  Furthermore, if there are gaps between ranges, fill them with the given default.
+    /// iter_mut_with_gaps.  Furthermore, if there are gaps between ranges, fill them with the given default
+    /// before yielding them in the iterator.
     /// This is also how you insert.
-    pub fn iter_mut<'a>(&'a mut self, offset: u64, len: u64) -> impl Iterator<Item = &'a mut T> + 'a
+    pub fn iter_mut<'a>(&'a mut self, offset: Size, len: Size) -> impl Iterator<Item = &'a mut T> + 'a
     where
         T: Clone + Default,
     {
-        // Do a first iteration to collect the gaps
-        let mut gaps = Vec::new();
-        let mut last_end = offset;
-        for (range, _) in self.iter_with_range(offset, len) {
-            if last_end < range.start {
+        if len.bytes() > 0 {
+            let offset = offset.bytes();
+            let len = len.bytes();
+
+            // Do a first iteration to collect the gaps
+            let mut gaps = Vec::new();
+            let mut last_end = offset;
+            for (range, _) in self.iter_with_range(offset, len) {
+                if last_end < range.start {
+                    gaps.push(Range {
+                        start: last_end,
+                        end: range.start,
+                    });
+                }
+                last_end = range.end;
+            }
+            if last_end < offset + len {
                 gaps.push(Range {
                     start: last_end,
-                    end: range.start,
+                    end: offset + len,
                 });
             }
-            last_end = range.end;
-        }
-        if last_end < offset + len {
-            gaps.push(Range {
-                start: last_end,
-                end: offset + len,
-            });
-        }
 
-        // Add default for all gaps
-        for gap in gaps {
-            let old = self.map.insert(gap, Default::default());
-            assert!(old.is_none());
+            // Add default for all gaps
+            for gap in gaps {
+                let old = self.map.insert(gap, Default::default());
+                assert!(old.is_none());
+            }
         }
 
         // Now provide mutable iteration
@@ -208,10 +239,16 @@ mod tests {
     use super::*;
 
     /// Query the map at every offset in the range and collect the results.
-    fn to_vec<T: Copy>(map: &RangeMap<T>, offset: u64, len: u64) -> Vec<T> {
+    fn to_vec<T: Copy>(map: &RangeMap<T>, offset: u64, len: u64, default: Option<T>) -> Vec<T> {
         (offset..offset + len)
             .into_iter()
-            .map(|i| *map.iter(i, 1).next().unwrap())
+            .map(|i| map
+                .iter(Size::from_bytes(i), Size::from_bytes(1))
+                .next()
+                .map(|&t| t)
+                .or(default)
+                .unwrap()
+            )
             .collect()
     }
 
@@ -219,34 +256,47 @@ mod tests {
     fn basic_insert() {
         let mut map = RangeMap::<i32>::new();
         // Insert
-        for x in map.iter_mut(10, 1) {
+        for x in map.iter_mut(Size::from_bytes(10), Size::from_bytes(1)) {
             *x = 42;
         }
         // Check
-        assert_eq!(to_vec(&map, 10, 1), vec![42]);
+        assert_eq!(to_vec(&map, 10, 1, None), vec![42]);
+
+        // Insert with size 0
+        for x in map.iter_mut(Size::from_bytes(10), Size::from_bytes(0)) {
+            *x = 19;
+        }
+        for x in map.iter_mut(Size::from_bytes(11), Size::from_bytes(0)) {
+            *x = 19;
+        }
+        assert_eq!(to_vec(&map, 10, 2, Some(-1)), vec![42, -1]);
     }
 
     #[test]
     fn gaps() {
         let mut map = RangeMap::<i32>::new();
-        for x in map.iter_mut(11, 1) {
+        for x in map.iter_mut(Size::from_bytes(11), Size::from_bytes(1)) {
             *x = 42;
         }
-        for x in map.iter_mut(15, 1) {
-            *x = 42;
+        for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(1)) {
+            *x = 43;
         }
+        assert_eq!(
+            to_vec(&map, 10, 10, Some(-1)),
+            vec![-1, 42, -1, -1, -1, 43, -1, -1, -1, -1]
+        );
 
         // Now request a range that needs three gaps filled
-        for x in map.iter_mut(10, 10) {
-            if *x != 42 {
+        for x in map.iter_mut(Size::from_bytes(10), Size::from_bytes(10)) {
+            if *x < 42 {
                 *x = 23;
             }
         }
 
         assert_eq!(
-            to_vec(&map, 10, 10),
-            vec![23, 42, 23, 23, 23, 42, 23, 23, 23, 23]
+            to_vec(&map, 10, 10, None),
+            vec![23, 42, 23, 23, 23, 43, 23, 23, 23, 23]
         );
-        assert_eq!(to_vec(&map, 13, 5), vec![23, 23, 42, 23, 23]);
+        assert_eq!(to_vec(&map, 13, 5, None), vec![23, 23, 43, 23, 23]);
     }
 }

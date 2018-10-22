@@ -3,10 +3,9 @@ use rustc::ty::layout::{self, LayoutOf, Size};
 use rustc::ty;
 
 use rustc::mir::interpret::{EvalResult, PointerArithmetic};
-use rustc_mir::interpret::{EvalContext, PlaceTy, OpTy};
 
 use super::{
-    Value, Scalar, ScalarMaybeUndef,
+    PlaceTy, OpTy, Value, Scalar, ScalarMaybeUndef, Borrow,
     ScalarExt, OperatorEvalContextExt
 };
 
@@ -14,23 +13,27 @@ pub trait EvalContextExt<'tcx> {
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx>],
-        dest: PlaceTy<'tcx>,
+        args: &[OpTy<'tcx, Borrow>],
+        dest: PlaceTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx>;
 }
 
-impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super::Evaluator<'tcx>> {
+impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
     fn call_intrinsic(
         &mut self,
         instance: ty::Instance<'tcx>,
-        args: &[OpTy<'tcx>],
-        dest: PlaceTy<'tcx>,
+        args: &[OpTy<'tcx, Borrow>],
+        dest: PlaceTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx> {
         if self.emulate_intrinsic(instance, args, dest)? {
             return Ok(());
         }
 
         let substs = instance.substs;
+
+        // All these intrinsics take raw pointers, so if we access memory directly
+        // (as opposed to through a place), we have to remember to erase any tag
+        // that might still hang around!
 
         let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
@@ -147,12 +150,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let elem_size = elem_layout.size.bytes();
                 let count = self.read_scalar(args[2])?.to_usize(&self)?;
                 let elem_align = elem_layout.align;
-                let src = self.read_scalar(args[0])?.not_undef()?;
-                let dest = self.read_scalar(args[1])?.not_undef()?;
+                // erase tags: this is a raw ptr operation
+                let src = self.read_scalar(args[0])?.not_undef()?.erase_tag();
+                let dest = self.read_scalar(args[1])?.not_undef()?.erase_tag();
                 self.memory.copy(
-                    src,
+                    src.with_default_tag(),
                     elem_align,
-                    dest,
+                    dest.with_default_tag(),
                     elem_align,
                     Size::from_bytes(count * elem_size),
                     intrinsic_name.ends_with("_nonoverlapping"),
@@ -429,7 +433,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 let ty = substs.type_at(0);
                 let ty_layout = self.layout_of(ty)?;
                 let val_byte = self.read_scalar(args[1])?.to_u8()?;
-                let ptr = self.read_scalar(args[0])?.not_undef()?;
+                let ptr = self.read_scalar(args[0])?.not_undef()?.erase_tag().with_default_tag();
                 let count = self.read_scalar(args[2])?.to_usize(&self)?;
                 self.memory.check_align(ptr, ty_layout.align)?;
                 self.memory.write_repeat(ptr, val_byte, ty_layout.size * count)?;
