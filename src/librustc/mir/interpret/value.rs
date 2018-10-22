@@ -50,6 +50,7 @@ impl<'tcx> ConstValue<'tcx> {
     #[inline]
     pub fn try_get_bytes(&self, hdl: impl HasDataLayout, n: Size, align: Align) -> Option<&[u8]> {
         let (_, alloc, offset) = self.try_as_by_ref()?;
+        trace!("{:?}", alloc.get_bytes(hdl, offset, n, align));
         alloc.get_bytes(hdl, offset, n, align).ok()
     }
 
