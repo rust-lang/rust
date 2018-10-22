@@ -1522,6 +1522,33 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             .map(|v| v.get(tcx))
     }
 
+    /// Determines whether can we safely cache the result
+    /// of selecting an obligation. This is almost always 'true',
+    /// except when dealing with certain ParamCandidates.
+    ///
+    /// Ordinarily, a ParamCandidate will contain no inference variables,
+    /// since it was usually produced directly from a DefId. However,
+    /// certain cases (currently only librustdoc's blanket impl finder),
+    /// a ParamEnv may be explicitly constructed with inference types.
+    /// When this is the case, we do *not* want to cache the resulting selection
+    /// candidate. This is due to the fact that it might not always be possible
+    /// to equate the obligation's trait ref and the candidate's trait ref,
+    /// if more constraints end up getting added to an inference variable.
+    ///
+    /// Because of this, we always want to re-run the full selection
+    /// process for our obligation the next time we see it, since
+    /// we might end up picking a different SelectionCandidate (or none at all)
+    fn can_cache_candidate(&self,
+        result: &SelectionResult<'tcx, SelectionCandidate<'tcx>>
+     ) -> bool {
+        match result {
+            Ok(Some(SelectionCandidate::ParamCandidate(trait_ref))) => {
+                !trait_ref.skip_binder().input_types().any(|t| t.walk().any(|t_| t_.is_ty_infer()))
+            },
+            _ => true
+        }
+    }
+
     fn insert_candidate_cache(
         &mut self,
         param_env: ty::ParamEnv<'tcx>,
@@ -1531,6 +1558,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     ) {
         let tcx = self.tcx();
         let trait_ref = cache_fresh_trait_pred.skip_binder().trait_ref;
+
+        if !self.can_cache_candidate(&candidate) {
+            debug!("insert_candidate_cache(trait_ref={:?}, candidate={:?} -\
+                    candidate is not cacheable", trait_ref, candidate);
+            return;
+
+        }
+
         if self.can_use_global_caches(param_env) {
             if let Err(Overflow) = candidate {
                 // Don't cache overflow globally; we only produce this
