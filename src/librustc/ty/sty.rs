@@ -1989,7 +1989,7 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn from_bytes(
+    fn from_bytes(
         tcx: TyCtxt<'_, '_, 'tcx>,
         bytes: &[u8],
         layout: ty::layout::TyLayout<'tcx>,
