@@ -264,11 +264,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         borrow_kind: Option<mir::BorrowKind>,
     ) -> EvalResult<'tcx, Borrow> {
         let time = self.machine.stacked_borrows.increment_clock();
-        // FIXME This does not do enough checking when only part of the data has
-        // interior mutability.
         let new_bor = match borrow_kind {
             Some(mir::BorrowKind::Mut { .. }) => Borrow::Mut(Mut::Uniq(time)),
             Some(_) =>
+                // FIXME This does not do enough checking when only part of the data has
+                // interior mutability. When the type is `(i32, Cell<i32>)`, we want the
+                // first field to be frozen but not the second.
                 if self.type_is_freeze(pointee_ty) {
                     Borrow::Frz(time)
                 } else {
