@@ -101,9 +101,6 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
     let mut flags = Vec::new();
     flags.push(format!("--sysroot {}", sysroot.display()));
     flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
-    if have_fullmir() {
-        flags.push("-Zmiri-start-fn".to_owned());
-    }
     if opt {
         // FIXME: Using level 1 (instead of 3) for now, as the optimizer is pretty broken
         // and crashes...

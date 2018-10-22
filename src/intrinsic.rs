@@ -6,7 +6,7 @@ use rustc::mir::interpret::{EvalResult, PointerArithmetic};
 
 use super::{
     PlaceTy, OpTy, Value, Scalar, ScalarMaybeUndef, Borrow,
-    FalibleScalarExt, OperatorEvalContextExt
+    ScalarExt, OperatorEvalContextExt
 };
 
 pub trait EvalContextExt<'tcx> {

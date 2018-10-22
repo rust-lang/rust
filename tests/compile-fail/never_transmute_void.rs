@@ -8,8 +8,7 @@
 enum Void {}
 
 fn f(v: Void) -> ! {
-    match v {} //~ ERROR constant evaluation error
-    //~^ NOTE entered unreachable code
+    match v {} //~ ERROR  entered unreachable code
 }
 
 fn main() {

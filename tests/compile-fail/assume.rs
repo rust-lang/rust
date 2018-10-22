@@ -5,7 +5,6 @@ fn main() {
     unsafe {
         std::intrinsics::assume(x < 10);
         std::intrinsics::assume(x > 1);
-        std::intrinsics::assume(x > 42); //~ ERROR constant evaluation error
-    //~^ NOTE `assume` argument was false
+        std::intrinsics::assume(x > 42); //~ `assume` argument was false
     }
 }
