@@ -221,7 +221,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             if item.kind == ty::AssociatedKind::Method && item.ident.name == method_name {
                 let method_ty = self.tcx.type_of(item.def_id);
                 let method_ty = method_ty.subst(self.tcx, substs);
-                return (method_ty, ty::Const::zero_sized(self.tcx, self.param_env.and(method_ty)));
+                return (method_ty, ty::Const::fn_def(self.tcx, method_ty));
             }
         }
 

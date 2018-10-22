@@ -2000,12 +2000,10 @@ impl<'tcx> Const<'tcx> {
     }
 
     #[inline]
-    pub fn zero_sized(tcx: TyCtxt<'_, '_, 'tcx>, ty: ParamEnvAnd<'tcx, Ty<'tcx>>,) -> &'tcx Self {
-        let ty = tcx.lift_to_global(&ty).unwrap();
-        let layout = tcx.layout_of(ty).unwrap_or_else(|e| {
-            panic!("could not compute layout for {:?}: {:?}", ty, e)
-        });
-        Self::from_bytes(tcx, &[], layout)
+    pub fn fn_def(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) -> &'tcx Self {
+        let alloc = Allocation::from_bytes(&[], ty::layout::Align::from_bytes(1, 1).unwrap());
+        let const_val = ConstValue::from_allocation(tcx, alloc);
+        Self::from_const_value(tcx, const_val, ty)
     }
 
     #[inline]
