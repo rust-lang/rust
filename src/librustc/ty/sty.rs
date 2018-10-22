@@ -1975,9 +1975,10 @@ impl<'tcx> Const<'tcx> {
         ty: ParamEnvAnd<'tcx, Ty<'tcx>>,
     ) -> &'tcx Self {
         let ty = tcx.lift_to_global(&ty).unwrap();
-        let layout = tcx.layout_of(ty).unwrap_or_else(|_| {
+        let layout = tcx.layout_of(ty).unwrap_or_else(|e| {
             // FIXME: add delay_span_bug call, we can only get here if there are errors
             // we produce a weird dummy layout with somewhat sane values
+            error!("failed to compute layout of {:?}: {:?}", ty, e);
             let mut layout = tcx.layout_of(ParamEnv::reveal_all().and(tcx.types.u128)).unwrap();
             layout.ty = ty.value;
             layout
