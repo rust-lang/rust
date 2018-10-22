@@ -18,7 +18,7 @@ fn main() -> Result<()> {
         .directory("log")
         .start()?;
     info!("lifecycle: server started");
-    match ::std::panic::catch_unwind(|| main_inner()) {
+    match ::std::panic::catch_unwind(main_inner) {
         Ok(res) => {
             info!("lifecycle: terminating process with {:?}", res);
             res

@@ -30,7 +30,8 @@ pub fn find_leaf_at_offset(node: SyntaxNodeRef, offset: TextUnit) -> LeafAtOffse
     let left = children.next().unwrap();
     let right = children.next();
     assert!(children.next().is_none());
-    return if let Some(right) = right {
+
+    if let Some(right) = right {
         match (
             find_leaf_at_offset(left, offset),
             find_leaf_at_offset(right, offset),
@@ -42,10 +43,10 @@ pub fn find_leaf_at_offset(node: SyntaxNodeRef, offset: TextUnit) -> LeafAtOffse
         }
     } else {
         find_leaf_at_offset(left, offset)
-    };
+    }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum LeafAtOffset<'a> {
     None,
     Single(SyntaxNodeRef<'a>),

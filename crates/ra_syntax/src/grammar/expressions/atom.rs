@@ -62,9 +62,8 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet = token_set_union![
 const EXPR_RECOVERY_SET: TokenSet = token_set![LET_KW];
 
 pub(super) fn atom_expr(p: &mut Parser, r: Restrictions) -> Option<CompletedMarker> {
-    match literal(p) {
-        Some(m) => return Some(m),
-        None => (),
+    if let Some(m) = literal(p) {
+        return Some(m);
     }
     if paths::is_path_start(p) || p.at(L_ANGLE) {
         return Some(path_expr(p, r));

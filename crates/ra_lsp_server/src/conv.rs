@@ -65,7 +65,7 @@ impl ConvWith for TextUnit {
     fn conv_with(self, line_index: &LineIndex) -> Position {
         let line_col = line_index.line_col(self);
         // TODO: UTF-16
-        Position::new(line_col.line as u64, u32::from(line_col.col) as u64)
+        Position::new(u64::from(line_col.line), u64::from(u32::from(line_col.col)))
     }
 }
 
@@ -192,7 +192,7 @@ impl TryConvWith for SourceChange {
                     .map(|it| it.edits.as_slice())
                     .unwrap_or(&[]);
                 let line_col = translate_offset_with_edit(&*line_index, pos.offset, edits);
-                let position = Position::new(line_col.line as u64, u32::from(line_col.col) as u64);
+                let position = Position::new(u64::from(line_col.line), u64::from(u32::from(line_col.col)));
                 Some(TextDocumentPositionParams {
                     text_document: TextDocumentIdentifier::new(pos.file_id.try_conv_with(world)?),
                     position,

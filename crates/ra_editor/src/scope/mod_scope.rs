@@ -22,14 +22,14 @@ impl ModuleScope {
         let mut entries = Vec::new();
         for item in items {
             let entry = match item {
-                ast::ModuleItem::StructDef(item) => Entry::new(item),
-                ast::ModuleItem::EnumDef(item) => Entry::new(item),
-                ast::ModuleItem::FnDef(item) => Entry::new(item),
-                ast::ModuleItem::ConstDef(item) => Entry::new(item),
-                ast::ModuleItem::StaticDef(item) => Entry::new(item),
-                ast::ModuleItem::TraitDef(item) => Entry::new(item),
-                ast::ModuleItem::TypeDef(item) => Entry::new(item),
-                ast::ModuleItem::Module(item) => Entry::new(item),
+                ast::ModuleItem::StructDef(item) => Entry::new_item(item),
+                ast::ModuleItem::EnumDef(item) => Entry::new_item(item),
+                ast::ModuleItem::FnDef(item) => Entry::new_item(item),
+                ast::ModuleItem::ConstDef(item) => Entry::new_item(item),
+                ast::ModuleItem::StaticDef(item) => Entry::new_item(item),
+                ast::ModuleItem::TraitDef(item) => Entry::new_item(item),
+                ast::ModuleItem::TypeDef(item) => Entry::new_item(item),
+                ast::ModuleItem::Module(item) => Entry::new_item(item),
                 ast::ModuleItem::UseItem(item) => {
                     if let Some(tree) = item.use_tree() {
                         collect_imports(tree, &mut entries);
@@ -50,7 +50,7 @@ impl ModuleScope {
 }
 
 impl Entry {
-    fn new<'a>(item: impl ast::NameOwner<'a>) -> Option<Entry> {
+    fn new_item<'a>(item: impl ast::NameOwner<'a>) -> Option<Entry> {
         let name = item.name()?;
         Some(Entry {
             node: name.syntax().owned(),

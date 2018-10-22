@@ -98,17 +98,18 @@ fn is_contextual_kw(text: &str) -> bool {
     }
 }
 
-fn find_reparsable_node<'node>(
-    node: SyntaxNodeRef<'node>,
+type ParseFn = fn(&mut Parser);
+fn find_reparsable_node(
+    node: SyntaxNodeRef<'_>,
     range: TextRange,
-) -> Option<(SyntaxNodeRef<'node>, fn(&mut Parser))> {
+) -> Option<(SyntaxNodeRef<'_>, ParseFn)> {
     let node = algo::find_covering_node(node, range);
     return node
         .ancestors()
         .filter_map(|node| reparser(node).map(|r| (node, r)))
         .next();
 
-    fn reparser(node: SyntaxNodeRef) -> Option<fn(&mut Parser)> {
+    fn reparser(node: SyntaxNodeRef) -> Option<ParseFn> {
         let res = match node.kind() {
             BLOCK => grammar::block,
             NAMED_FIELD_DEF_LIST => grammar::named_field_def_list,
@@ -134,7 +135,7 @@ fn find_reparsable_node<'node>(
 }
 
 fn is_balanced(tokens: &[Token]) -> bool {
-    if tokens.len() == 0
+    if tokens.is_empty()
         || tokens.first().unwrap().kind != L_CURLY
         || tokens.last().unwrap().kind != R_CURLY
     {

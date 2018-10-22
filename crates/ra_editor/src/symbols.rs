@@ -54,15 +54,15 @@ pub fn file_structure(file: &File) -> Vec<StructureNode> {
     let mut res = Vec::new();
     let mut stack = Vec::new();
 
+
     for event in file.syntax().preorder() {
         match event {
-            WalkEvent::Enter(node) => match structure_node(node) {
-                Some(mut symbol) => {
+            WalkEvent::Enter(node) => {
+                if let Some(mut symbol) = structure_node(node) {
                     symbol.parent = stack.last().map(|&n| n);
                     stack.push(res.len());
                     res.push(symbol);
                 }
-                None => (),
             },
             WalkEvent::Leave(node) => {
                 if structure_node(node).is_some() {

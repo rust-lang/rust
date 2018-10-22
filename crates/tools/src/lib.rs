@@ -50,7 +50,7 @@ pub fn collect_tests(s: &str) -> Vec<(usize, Test)> {
             block.map(|(_, line)| line).chain(::std::iter::once("")),
             "\n",
         );
-        assert!(!text.trim().is_empty() && text.ends_with("\n"));
+        assert!(!text.trim().is_empty() && text.ends_with('\n'));
         res.push((start_line, Test { name, text }))
     }
     res

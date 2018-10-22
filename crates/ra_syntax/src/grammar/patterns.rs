@@ -49,9 +49,8 @@ fn atom_pat(p: &mut Parser, recovery_set: TokenSet) -> Option<CompletedMarker> {
     //         "hello" => (),
     //     }
     // }
-    match expressions::literal(p) {
-        Some(m) => return Some(m),
-        None => (),
+    if let Some(m) = expressions::literal(p) {
+        return Some(m);
     }
 
     let m = match la0 {

@@ -63,7 +63,7 @@ fn extend_ws(root: SyntaxNodeRef, ws: SyntaxNodeRef, offset: TextUnit) -> TextRa
     let prefix = TextRange::from_to(ws.range().start(), offset) - ws.range().start();
     let ws_suffix = &ws_text.as_str()[suffix];
     let ws_prefix = &ws_text.as_str()[prefix];
-    if ws_text.contains("\n") && !ws_suffix.contains("\n") {
+    if ws_text.contains('\n') && !ws_suffix.contains('\n') {
         if let Some(node) = ws.next_sibling() {
             let start = match ws_prefix.rfind('\n') {
                 Some(idx) => ws.range().start() + TextUnit::from((idx + 1) as u32),

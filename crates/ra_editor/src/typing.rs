@@ -58,7 +58,7 @@ pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
 pub fn on_enter(file: &File, offset: TextUnit) -> Option<LocalEdit> {
     let comment = find_leaf_at_offset(file.syntax(), offset)
         .left_biased()
-        .and_then(|it| ast::Comment::cast(it))?;
+        .and_then(ast::Comment::cast)?;
 
     if let ast::CommentFlavor::Multiline = comment.flavor() {
         return None;
