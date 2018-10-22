@@ -141,7 +141,9 @@ pub struct Resolutions {
     pub maybe_unused_trait_imports: NodeSet,
     pub maybe_unused_extern_crates: Vec<(NodeId, Span)>,
     pub export_map: ExportMap,
-    pub extern_prelude: FxHashMap<Name, bool /* introduced by item */>,
+    /// Extern prelude entries. The value is `true` if the entry was introduced
+    /// via `extern crate` item and not `--extern` option or compiler built-in.
+    pub extern_prelude: FxHashMap<Name, bool>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
