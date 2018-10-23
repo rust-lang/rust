@@ -1171,7 +1171,7 @@ pub enum RegionKind {
     ReClosureBound(RegionVid),
 
     /// Canonicalized region, used only when preparing a trait query.
-    ReCanonical(BoundTyIndex),
+    ReCanonical(BoundVar),
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
@@ -1225,13 +1225,13 @@ pub enum InferTy {
 }
 
 newtype_index! {
-    pub struct BoundTyIndex { .. }
+    pub struct BoundVar { .. }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct BoundTy {
     pub level: DebruijnIndex,
-    pub var: BoundTyIndex,
+    pub var: BoundVar,
     pub kind: BoundTyKind,
 }
 
@@ -1245,7 +1245,7 @@ impl_stable_hash_for!(struct BoundTy { level, var, kind });
 impl_stable_hash_for!(enum self::BoundTyKind { Anon, Param(a) });
 
 impl BoundTy {
-    pub fn new(level: DebruijnIndex, var: BoundTyIndex) -> Self {
+    pub fn new(level: DebruijnIndex, var: BoundVar) -> Self {
         BoundTy {
             level,
             var,

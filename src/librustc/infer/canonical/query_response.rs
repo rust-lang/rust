@@ -35,7 +35,7 @@ use traits::{FulfillmentContext, TraitEngine};
 use traits::{Obligation, ObligationCause, PredicateObligation};
 use ty::fold::TypeFoldable;
 use ty::subst::{Kind, UnpackedKind};
-use ty::{self, BoundTyIndex, Lift, Ty, TyCtxt};
+use ty::{self, BoundVar, Lift, Ty, TyCtxt};
 
 impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     /// The "main method" for a canonicalized trait query. Given the
@@ -273,7 +273,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         for (index, original_value) in original_values.var_values.iter().enumerate() {
             // ...with the value `v_r` of that variable from the query.
             let result_value = query_response.substitute_projected(self.tcx, &result_subst, |v| {
-                &v.var_values[BoundTyIndex::new(index)]
+                &v.var_values[BoundVar::new(index)]
             });
             match (original_value.unpack(), result_value.unpack()) {
                 (UnpackedKind::Lifetime(ty::ReErased), UnpackedKind::Lifetime(ty::ReErased)) => {
@@ -423,7 +423,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // is directly equal to one of the canonical variables in the
         // result, then we can type the corresponding value from the
         // input. See the example above.
-        let mut opt_values: IndexVec<BoundTyIndex, Option<Kind<'tcx>>> =
+        let mut opt_values: IndexVec<BoundVar, Option<Kind<'tcx>>> =
             IndexVec::from_elem_n(None, query_response.variables.len());
 
         // In terms of our example above, we are iterating over pairs like:
@@ -457,7 +457,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 .enumerate()
                 .map(|(index, info)| {
                     if info.is_existential() {
-                        match opt_values[BoundTyIndex::new(index)] {
+                        match opt_values[BoundVar::new(index)] {
                             Some(k) => k,
                             None => self.instantiate_canonical_var(cause.span, *info, |u| {
                                 universe_map[u.as_usize()]
@@ -496,7 +496,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // canonical variable; this is taken from
         // `query_response.var_values` after applying the substitution
         // `result_subst`.
-        let substituted_query_response = |index: BoundTyIndex| -> Kind<'tcx> {
+        let substituted_query_response = |index: BoundVar| -> Kind<'tcx> {
             query_response.substitute_projected(self.tcx, &result_subst, |v| &v.var_values[index])
         };
 
@@ -552,12 +552,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         cause: &ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         variables1: &OriginalQueryValues<'tcx>,
-        variables2: impl Fn(BoundTyIndex) -> Kind<'tcx>,
+        variables2: impl Fn(BoundVar) -> Kind<'tcx>,
     ) -> InferResult<'tcx, ()> {
         self.commit_if_ok(|_| {
             let mut obligations = vec![];
             for (index, value1) in variables1.var_values.iter().enumerate() {
-                let value2 = variables2(BoundTyIndex::new(index));
+                let value2 = variables2(BoundVar::new(index));
 
                 match (value1.unpack(), value2.unpack()) {
                     (UnpackedKind::Type(v1), UnpackedKind::Type(v2)) => {

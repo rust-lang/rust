@@ -23,7 +23,7 @@ use infer::InferCtxt;
 use std::sync::atomic::Ordering;
 use ty::fold::{TypeFoldable, TypeFolder};
 use ty::subst::Kind;
-use ty::{self, BoundTy, BoundTyIndex, Lift, List, Ty, TyCtxt, TypeFlags};
+use ty::{self, BoundTy, BoundVar, Lift, List, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -277,7 +277,7 @@ struct Canonicalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     query_state: &'cx mut OriginalQueryValues<'tcx>,
     // Note that indices is only used once `var_values` is big enough to be
     // heap-allocated.
-    indices: FxHashMap<Kind<'tcx>, BoundTyIndex>,
+    indices: FxHashMap<Kind<'tcx>, BoundVar>,
     canonicalize_region_mode: &'cx dyn CanonicalizeRegionMode,
     needs_canonical_flags: TypeFlags,
 }
@@ -455,7 +455,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     /// or returns an existing variable if `kind` has already been
     /// seen. `kind` is expected to be an unbound variable (or
     /// potentially a free region).
-    fn canonical_var(&mut self, info: CanonicalVarInfo, kind: Kind<'tcx>) -> BoundTyIndex {
+    fn canonical_var(&mut self, info: CanonicalVarInfo, kind: Kind<'tcx>) -> BoundVar {
         let Canonicalizer {
             variables,
             query_state,
@@ -475,7 +475,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             // direct linear search of `var_values`.
             if let Some(idx) = var_values.iter().position(|&k| k == kind) {
                 // `kind` is already present in `var_values`.
-                BoundTyIndex::new(idx)
+                BoundVar::new(idx)
             } else {
                 // `kind` isn't present in `var_values`. Append it. Likewise
                 // for `info` and `variables`.
@@ -490,11 +490,11 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
                     *indices = var_values
                         .iter()
                         .enumerate()
-                        .map(|(i, &kind)| (kind, BoundTyIndex::new(i)))
+                        .map(|(i, &kind)| (kind, BoundVar::new(i)))
                         .collect();
                 }
                 // The cv is the index of the appended element.
-                BoundTyIndex::new(var_values.len() - 1)
+                BoundVar::new(var_values.len() - 1)
             }
         } else {
             // `var_values` is large. Do a hashmap search via `indices`.
@@ -502,7 +502,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
                 variables.push(info);
                 var_values.push(kind);
                 assert_eq!(variables.len(), var_values.len());
-                BoundTyIndex::new(variables.len() - 1)
+                BoundVar::new(variables.len() - 1)
             })
         };
 
