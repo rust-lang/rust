@@ -251,6 +251,11 @@ fn complete_mod_item_snippets(acc: &mut Vec<CompletionItem>) {
         lookup: None,
         snippet: Some("#[test]\nfn $1() {\n    $0\n}".to_string()),
     });
+    acc.push(CompletionItem {
+        label: "pub(crate)".to_string(),
+        lookup: None,
+        snippet: Some("pub(crate) $0".to_string()),
+    })
 }
 
 fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<CompletionItem>) {
@@ -573,7 +578,7 @@ mod tests {
     }
 
     #[test]
-    fn test_tfn_snippet() {
+    fn test_item_snippets() {
         // check_snippet_completion(r"
         //     <|>
         //     ",
@@ -585,7 +590,8 @@ mod tests {
                 <|>
             }
             ",
-            r##"[CompletionItem { label: "tfn", lookup: None, snippet: Some("#[test]\nfn $1() {\n    $0\n}") }]"##,
+            r##"[CompletionItem { label: "tfn", lookup: None, snippet: Some("#[test]\nfn $1() {\n    $0\n}") },
+                 CompletionItem { label: "pub(crate)", lookup: None, snippet: Some("pub(crate) $0") }]"##,
         );
     }
 }
