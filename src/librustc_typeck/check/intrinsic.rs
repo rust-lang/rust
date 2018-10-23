@@ -14,6 +14,7 @@
 use intrinsics;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::{self, TyCtxt, Ty};
+use rustc::ty::subst::Subst;
 use rustc::util::nodemap::FxHashMap;
 use require_same_types;
 
@@ -81,6 +82,16 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       it: &hir::ForeignItem) {
     let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)).as_interned_str());
     let name = it.name.as_str();
+
+    let mk_va_list_ty = || {
+        tcx.lang_items().va_list().map(|did| {
+            let region = tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(0)));
+            let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+            let va_list_ty = tcx.type_of(did).subst(tcx, &[region.into()]);
+            tcx.mk_mut_ref(tcx.mk_region(env_region), va_list_ty)
+        })
+    };
+
     let (n_tps, inputs, output, unsafety) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
         assert!(split.len() >= 2, "Atomic intrinsic in an incorrect format");
@@ -321,6 +332,47 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     Abi::Rust,
                 ));
                 (0, vec![tcx.mk_fn_ptr(fn_ty), mut_u8, mut_u8], tcx.types.i32)
+            }
+
+            "va_start" | "va_end" => {
+                match mk_va_list_ty() {
+                    Some(va_list_ty) => (0, vec![va_list_ty], tcx.mk_unit()),
+                    None => bug!("va_list lang_item must be defined to use va_list intrinsics")
+                }
+            }
+
+            "va_copy" => {
+                match tcx.lang_items().va_list() {
+                    Some(did) => {
+                        let region = tcx.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(0)));
+                        let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+                        let va_list_ty = tcx.type_of(did).subst(tcx, &[region.into()]);
+                        let ret_ty = match va_list_ty.sty {
+                            ty::Adt(def, _) if def.is_struct() => {
+                                let fields = &def.non_enum_variant().fields;
+                                match tcx.type_of(fields[0].did).subst(tcx, &[region.into()]).sty {
+                                    ty::Ref(_, element_ty, _) => match element_ty.sty {
+                                        ty::Adt(..) => element_ty,
+                                        _ => va_list_ty
+                                    }
+                                    _ => bug!("va_list structure is invalid")
+                                }
+                            }
+                            _ => {
+                                bug!("va_list structure is invalid")
+                            }
+                        };
+                        (0, vec![tcx.mk_imm_ref(tcx.mk_region(env_region), va_list_ty)], ret_ty)
+                    }
+                    None => bug!("va_list lang_item must be defined to use va_list intrinsics")
+                }
+            }
+
+            "va_arg" => {
+                match mk_va_list_ty() {
+                    Some(va_list_ty) => (1, vec![va_list_ty], param(0)),
+                    None => bug!("va_list lang_item must be defined to use va_list intrinsics")
+                }
             }
 
             "nontemporal_store" => {

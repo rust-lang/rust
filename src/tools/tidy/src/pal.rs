@@ -74,6 +74,13 @@ const EXCEPTION_PATHS: &[&str] = &[
     "src/libcore/tests",
     "src/liballoc/tests/lib.rs",
 
+    // The `VaList` implementation must have platform specific code.
+    // The Windows implementation of a `va_list` is always a character
+    // pointer regardless of the target architecture. As a result,
+    // we must use `#[cfg(windows)]` to conditionally compile the
+    // correct `VaList` structure for windows.
+    "src/libcore/ffi.rs",
+
     // non-std crates
     "src/test",
     "src/tools",

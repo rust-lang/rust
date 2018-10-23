@@ -24,13 +24,14 @@ use context::CodegenCx;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{LayoutOf, HasTyCtxt};
+use rustc::ty::layout::{self, LayoutOf, HasTyCtxt, Primitive};
 use rustc_codegen_ssa::common::TypeKind;
 use rustc::hir;
-use syntax::ast;
+use syntax::ast::{self, FloatTy};
 use syntax::symbol::Symbol;
 use builder::Builder;
 use value::Value;
+use va_arg::emit_va_arg;
 
 use rustc_codegen_ssa::traits::*;
 
@@ -145,6 +146,59 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             "size_of" => {
                 let tp_ty = substs.type_at(0);
                 self.cx().const_usize(self.cx().size_of(tp_ty).bytes())
+            }
+            func @ "va_start" | func @ "va_end" => {
+                let va_list = match (tcx.lang_items().va_list(), &result.layout.ty.sty) {
+                    (Some(did), ty::Adt(def, _)) if def.did == did => args[0].immediate(),
+                    (Some(_), _) => self.load(args[0].immediate(),
+                                              tcx.data_layout.pointer_align.abi),
+                    (None, _) => bug!("va_list language item must be defined")
+                };
+                let intrinsic = self.cx().get_intrinsic(&format!("llvm.{}", func));
+                self.call(intrinsic, &[va_list], None)
+            }
+            "va_copy" => {
+                let va_list = match (tcx.lang_items().va_list(), &result.layout.ty.sty) {
+                    (Some(did), ty::Adt(def, _)) if def.did == did => args[0].immediate(),
+                    (Some(_), _)  => self.load(args[0].immediate(),
+                                               tcx.data_layout.pointer_align.abi),
+                    (None, _) => bug!("va_list language item must be defined")
+                };
+                let intrinsic = self.cx().get_intrinsic(&("llvm.va_copy"));
+                self.call(intrinsic, &[llresult, va_list], None);
+                return;
+            }
+            "va_arg" => {
+                match fn_ty.ret.layout.abi {
+                    layout::Abi::Scalar(ref scalar) => {
+                        match scalar.value {
+                            Primitive::Int(..) => {
+                                if self.cx().size_of(ret_ty).bytes() < 4 {
+                                    // va_arg should not be called on a integer type
+                                    // less than 4 bytes in length. If it is, promote
+                                    // the integer to a `i32` and truncate the result
+                                    // back to the smaller type.
+                                    let promoted_result = emit_va_arg(self, args[0],
+                                                                      tcx.types.i32);
+                                    self.trunc(promoted_result, llret_ty)
+                                } else {
+                                    emit_va_arg(self, args[0], ret_ty)
+                                }
+                            }
+                            Primitive::Float(FloatTy::F64) |
+                            Primitive::Pointer => {
+                                emit_va_arg(self, args[0], ret_ty)
+                            }
+                            // `va_arg` should never be used with the return type f32.
+                            Primitive::Float(FloatTy::F32) => {
+                                bug!("the va_arg intrinsic does not work with `f32`")
+                            }
+                        }
+                    }
+                    _ => {
+                        bug!("the va_arg intrinsic does not work with non-scalar types")
+                    }
+                }
             }
             "size_of_val" => {
                 let tp_ty = substs.type_at(0);
