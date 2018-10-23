@@ -33,8 +33,11 @@ case ${TARGET} in
     # instruction assertion checks to pass below the 20 instruction limit. If
     # this is the default, dynamic, then too many instructions are generated
     # when we assert the instruction for a function and it causes tests to fail.
+    #
+    # It's not clear why `-Z plt=yes` is required here. Probably a bug in LLVM.
+    # If you can remove it and CI passes, please feel free to do so!
     i686-* | i586-*)
-        export RUSTFLAGS="${RUSTFLAGS} -C relocation-model=static"
+        export RUSTFLAGS="${RUSTFLAGS} -C relocation-model=static -Z plt=yes"
         ;;
     *android*)
         export STDSIMD_DISABLE_ASSERT_INSTR=1

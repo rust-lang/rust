@@ -26,6 +26,7 @@ use std::{collections::HashMap, env, str};
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
         extern crate wasm_bindgen;
+        extern crate console_error_panic_hook;
         pub mod wasm;
         use wasm::disassemble_myself;
     } else {

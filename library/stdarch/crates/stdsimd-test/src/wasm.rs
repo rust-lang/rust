@@ -33,6 +33,7 @@ macro_rules! println {
 
 pub(crate) fn disassemble_myself() -> HashMap<String, Vec<Function>> {
     use std::path::Path;
+    ::console_error_panic_hook::set_once();
     // Our wasm module in the wasm-bindgen test harness is called
     // "wasm-bindgen-test_bg". When running in node this is actually a shim JS
     // file. Ask node where that JS file is, and then we use that with a wasm
@@ -51,7 +52,7 @@ pub(crate) fn disassemble_myself() -> HashMap<String, Vec<Function>> {
         // If we found the table of function pointers, fill in the known
         // address for all our `Function` instances
         if line.starts_with("(elem") {
-            for (i, name) in line.split_whitespace().skip(3).enumerate() {
+            for (i, name) in line.split_whitespace().skip(4).enumerate() {
                 let name = name.trim_right_matches(")");
                 for f in ret.get_mut(name).expect("ret.get_mut(name) failed") {
                     f.addr = Some(i + 1);
