@@ -1,4 +1,4 @@
-// https://github.com/rust-lang/rust/issues/55223
+// FIXME(#55223) this is just a reproduction test showing the wrong behavior
 
 struct Slice(&'static [&'static [u8]]);
 
