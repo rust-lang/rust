@@ -3632,7 +3632,7 @@ fn name_from_pat(p: &hir::Pat) -> String {
                 fields.iter().map(|&Spanned { node: ref fp, .. }|
                                   format!("{}: {}", fp.ident, name_from_pat(&*fp.pat)))
                              .collect::<Vec<String>>().join(", "),
-                if etc { ", ..." } else { "" }
+                if etc { ", .." } else { "" }
             )
         }
         PatKind::Tuple(ref elts, _) => format!("({})", elts.iter().map(|p| name_from_pat(&**p))
