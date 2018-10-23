@@ -556,7 +556,10 @@ impl CanonicalUserSubsts<'tcx> {
         self.value.substs.iter().zip(BoundVar::new(0)..).all(|(kind, cvar)| {
             match kind.unpack() {
                 UnpackedKind::Type(ty) => match ty.sty {
-                    ty::Bound(ref b) => cvar == b.var,
+                    ty::Bound(ref b) => {
+                        assert_eq!(b.index, ty::INNERMOST);
+                        cvar == b.var
+                    }
                     _ => false,
                 },
 
