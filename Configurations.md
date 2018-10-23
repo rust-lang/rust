@@ -271,7 +271,7 @@ fn lorem<Ipsum, Dolor, Sit, Amet>() -> T
 }
 ```
 
-## `use_small_heuristics`
+## `width_heuristics`
 
 Whether to use different formatting for items and expressions if they satisfy a heuristic notion of 'small'.
 
