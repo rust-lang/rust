@@ -1,3 +1,6 @@
+// The reborow gets optimized away, so we can only detect this issue without optimizations
+// compile-flags: -Zmir-opt-level=0
+
 #![allow(unused_variables)]
 
 fn main() {

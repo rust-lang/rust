@@ -446,6 +446,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 // A mut got transmuted to shr.  High time we freeze this location!
                 // Make this a delayed reborrow.  Redundant reborows to shr are okay,
                 // so we do not have to be worried about doing too much.
+                // FIXME: Reconsider if we really want to mutate things while doing just a deref,
+                // which, in particular, validation does.
                 trace!("tag_dereference: Lazy freezing of {:?}", ptr);
                 return self.tag_reference(ptr, pointee_ty, size, ref_kind);
             }

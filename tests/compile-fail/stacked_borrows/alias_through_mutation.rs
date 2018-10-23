@@ -1,3 +1,6 @@
+// With optimizations, we just store a raw in `x`, and there is no problem.
+// compile-flags: -Zmir-opt-level=0
+
 #![allow(unused_variables)]
 
 // This makes a ref that was passed to us via &mut alias with things it should not alias with
