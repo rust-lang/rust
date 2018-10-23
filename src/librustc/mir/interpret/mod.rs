@@ -701,3 +701,131 @@ fn bit_index(bits: Size) -> (usize, usize) {
     assert_eq!(b as usize as u64, b);
     (a as usize, b as usize)
 }
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
+pub enum ScalarMaybeUndef<Tag=(), Id=AllocId> {
+    Scalar(Scalar<Tag, Id>),
+    Undef,
+}
+
+impl<Tag> From<Scalar<Tag>> for ScalarMaybeUndef<Tag> {
+    #[inline(always)]
+    fn from(s: Scalar<Tag>) -> Self {
+        ScalarMaybeUndef::Scalar(s)
+    }
+}
+
+impl<Tag> fmt::Display for ScalarMaybeUndef<Tag> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ScalarMaybeUndef::Undef => write!(f, "uninitialized bytes"),
+            ScalarMaybeUndef::Scalar(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl<'tcx> ScalarMaybeUndef<()> {
+    #[inline]
+    pub fn with_default_tag<Tag>(self) -> ScalarMaybeUndef<Tag>
+        where Tag: Default
+    {
+        match self {
+            ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.with_default_tag()),
+            ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef,
+        }
+    }
+}
+
+impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
+    #[inline]
+    pub fn erase_tag(self) -> ScalarMaybeUndef
+    {
+        match self {
+            ScalarMaybeUndef::Scalar(s) => ScalarMaybeUndef::Scalar(s.erase_tag()),
+            ScalarMaybeUndef::Undef => ScalarMaybeUndef::Undef,
+        }
+    }
+
+    #[inline]
+    pub fn not_undef(self) -> EvalResult<'static, Scalar<Tag>> {
+        match self {
+            ScalarMaybeUndef::Scalar(scalar) => Ok(scalar),
+            ScalarMaybeUndef::Undef => err!(ReadUndefBytes(Size::from_bytes(0))),
+        }
+    }
+
+    #[inline(always)]
+    pub fn to_ptr(self) -> EvalResult<'tcx, Pointer<Tag>> {
+        self.not_undef()?.to_ptr()
+    }
+
+    #[inline(always)]
+    pub fn to_bits(self, target_size: Size) -> EvalResult<'tcx, u128> {
+        self.not_undef()?.to_bits(target_size)
+    }
+
+    #[inline(always)]
+    pub fn to_bool(self) -> EvalResult<'tcx, bool> {
+        self.not_undef()?.to_bool()
+    }
+
+    #[inline(always)]
+    pub fn to_char(self) -> EvalResult<'tcx, char> {
+        self.not_undef()?.to_char()
+    }
+
+    #[inline(always)]
+    pub fn to_f32(self) -> EvalResult<'tcx, f32> {
+        self.not_undef()?.to_f32()
+    }
+
+    #[inline(always)]
+    pub fn to_f64(self) -> EvalResult<'tcx, f64> {
+        self.not_undef()?.to_f64()
+    }
+
+    #[inline(always)]
+    pub fn to_u8(self) -> EvalResult<'tcx, u8> {
+        self.not_undef()?.to_u8()
+    }
+
+    #[inline(always)]
+    pub fn to_u32(self) -> EvalResult<'tcx, u32> {
+        self.not_undef()?.to_u32()
+    }
+
+    #[inline(always)]
+    pub fn to_u64(self) -> EvalResult<'tcx, u64> {
+        self.not_undef()?.to_u64()
+    }
+
+    #[inline(always)]
+    pub fn to_usize(self, cx: &impl HasDataLayout) -> EvalResult<'tcx, u64> {
+        self.not_undef()?.to_usize(cx)
+    }
+
+    #[inline(always)]
+    pub fn to_i8(self) -> EvalResult<'tcx, i8> {
+        self.not_undef()?.to_i8()
+    }
+
+    #[inline(always)]
+    pub fn to_i32(self) -> EvalResult<'tcx, i32> {
+        self.not_undef()?.to_i32()
+    }
+
+    #[inline(always)]
+    pub fn to_i64(self) -> EvalResult<'tcx, i64> {
+        self.not_undef()?.to_i64()
+    }
+
+    #[inline(always)]
+    pub fn to_isize(self, cx: &impl HasDataLayout) -> EvalResult<'tcx, i64> {
+        self.not_undef()?.to_isize(cx)
+    }
+}
+
+impl_stable_hash_for!(enum ::mir::interpret::ScalarMaybeUndef {
+    Scalar(v),
+    Undef
+});
