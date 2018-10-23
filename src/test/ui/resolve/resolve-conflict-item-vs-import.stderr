@@ -8,7 +8,7 @@ LL | fn transmute() {}
    | ^^^^^^^^^^^^^^ `transmute` redefined here
    |
    = note: `transmute` must be defined only once in the value namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use std::mem::transmute as other_transmute;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

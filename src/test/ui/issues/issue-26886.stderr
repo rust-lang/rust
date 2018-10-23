@@ -7,7 +7,7 @@ LL | use std::sync::Arc; //~ ERROR the name `Arc` is defined multiple times
    |     ^^^^^^^^^^^^^^ `Arc` reimported here
    |
    = note: `Arc` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use std::sync::Arc as OtherArc; //~ ERROR the name `Arc` is defined multiple times
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -22,7 +22,7 @@ LL | use std::sync; //~ ERROR the name `sync` is defined multiple times
    |     ^^^^^^^^^ `sync` reimported here
    |
    = note: `sync` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | use std::sync as other_sync; //~ ERROR the name `sync` is defined multiple times
    |     ^^^^^^^^^^^^^^^^^^^^^^^

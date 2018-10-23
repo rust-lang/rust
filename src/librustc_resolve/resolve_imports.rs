@@ -52,7 +52,10 @@ pub enum ImportDirectiveSubclass<'a> {
         max_vis: Cell<ty::Visibility>, // The visibility of the greatest re-export.
         // n.b. `max_vis` is only used in `finalize_import` to check for re-export errors.
     },
-    ExternCrate(Option<Name>),
+    ExternCrate {
+        source: Option<Name>,
+        target: Ident,
+    },
     MacroUse,
 }
 
@@ -1336,7 +1339,7 @@ fn import_directive_subclass_to_string(subclass: &ImportDirectiveSubclass) -> St
     match *subclass {
         SingleImport { source, .. } => source.to_string(),
         GlobImport { .. } => "*".to_string(),
-        ExternCrate(_) => "<extern crate>".to_string(),
+        ExternCrate { .. } => "<extern crate>".to_string(),
         MacroUse => "#[macro_use]".to_string(),
     }
 }

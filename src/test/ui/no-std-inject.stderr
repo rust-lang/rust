@@ -5,7 +5,7 @@ LL | extern crate core; //~ ERROR: the name `core` is defined multiple times
    | ^^^^^^^^^^^^^^^^^^ `core` reimported here
    |
    = note: `core` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | extern crate core as other_core; //~ ERROR: the name `core` is defined multiple times
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

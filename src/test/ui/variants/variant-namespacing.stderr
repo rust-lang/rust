@@ -8,7 +8,7 @@ LL | pub use variant_namespacing::XE::{XStruct, XTuple, XUnit};
    |                                   ^^^^^^^ `XStruct` reimported here
    |
    = note: `XStruct` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | pub use variant_namespacing::XE::{XStruct as OtherXStruct, XTuple, XUnit};
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | pub use variant_namespacing::XE::{XStruct, XTuple, XUnit};
    |                                            ^^^^^^ `XTuple` reimported here
    |
    = note: `XTuple` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | pub use variant_namespacing::XE::{XStruct, XTuple as OtherXTuple, XUnit};
    |                                            ^^^^^^^^^^^^^^^^^^^^^
@@ -38,7 +38,7 @@ LL | pub use variant_namespacing::XE::{XStruct, XTuple, XUnit};
    |                                                    ^^^^^ `XUnit` reimported here
    |
    = note: `XUnit` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | pub use variant_namespacing::XE::{XStruct, XTuple, XUnit as OtherXUnit};
    |                                                    ^^^^^^^^^^^^^^^^^^^
@@ -53,7 +53,7 @@ LL | pub use E::{Struct, Tuple, Unit};
    |             ^^^^^^ `Struct` reimported here
    |
    = note: `Struct` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | pub use E::{Struct as OtherStruct, Tuple, Unit};
    |             ^^^^^^^^^^^^^^^^^^^^^
@@ -68,7 +68,7 @@ LL | pub use E::{Struct, Tuple, Unit};
    |                     ^^^^^ `Tuple` reimported here
    |
    = note: `Tuple` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | pub use E::{Struct, Tuple as OtherTuple, Unit};
    |                     ^^^^^^^^^^^^^^^^^^^
@@ -83,7 +83,7 @@ LL | pub use E::{Struct, Tuple, Unit};
    |                            ^^^^ `Unit` reimported here
    |
    = note: `Unit` must be defined only once in the type namespace of this module
-help: You can use `as` to change the binding name of the import
+help: you can use `as` to change the binding name of the import
    |
 LL | pub use E::{Struct, Tuple, Unit as OtherUnit};
    |                            ^^^^^^^^^^^^^^^^^

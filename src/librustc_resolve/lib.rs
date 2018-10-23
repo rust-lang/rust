@@ -1234,7 +1234,7 @@ impl<'a> NameBinding<'a> {
         match self.kind {
             NameBindingKind::Import {
                 directive: &ImportDirective {
-                    subclass: ImportDirectiveSubclass::ExternCrate(_), ..
+                    subclass: ImportDirectiveSubclass::ExternCrate { .. }, ..
                 }, ..
             } => true,
             _ => false,
@@ -1246,15 +1246,6 @@ impl<'a> NameBinding<'a> {
             NameBindingKind::Import { .. } => true,
             _ => false,
         }
-    }
-
-    fn is_renamed_extern_crate(&self) -> bool {
-        if let NameBindingKind::Import { directive, ..} = self.kind {
-            if let ImportDirectiveSubclass::ExternCrate(Some(_)) = directive.subclass {
-                return true;
-            }
-        }
-        false
     }
 
     fn is_glob_import(&self) -> bool {
@@ -3812,7 +3803,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             if let NameBindingKind::Import { directive: d, .. } = binding.kind {
                 // Careful: we still want to rewrite paths from
                 // renamed extern crates.
-                if let ImportDirectiveSubclass::ExternCrate(None) = d.subclass {
+                if let ImportDirectiveSubclass::ExternCrate { source: None, .. } = d.subclass {
                     return
                 }
             }
@@ -4782,10 +4773,17 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             };
 
             let cm = self.session.source_map();
-            let rename_msg = "You can use `as` to change the binding name of the import";
+            let rename_msg = "you can use `as` to change the binding name of the import";
 
-            if let (Ok(snippet), false) = (cm.span_to_snippet(binding.span),
-                                           binding.is_renamed_extern_crate()) {
+            if let (
+                Ok(snippet),
+                NameBindingKind::Import { directive, ..},
+                _dummy @ false,
+            ) = (
+                cm.span_to_snippet(binding.span),
+                binding.kind.clone(),
+                binding.span.is_dummy(),
+            ) {
                 let suggested_name = if name.as_str().chars().next().unwrap().is_uppercase() {
                     format!("Other{}", name)
                 } else {
@@ -4794,13 +4792,30 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
                 err.span_suggestion_with_applicability(
                     binding.span,
-                    rename_msg,
-                    if snippet.ends_with(';') {
-                        format!("{} as {};", &snippet[..snippet.len() - 1], suggested_name)
-                    } else {
-                        format!("{} as {}", snippet, suggested_name)
+                    &rename_msg,
+                    match (&directive.subclass, snippet.as_ref()) {
+                        (ImportDirectiveSubclass::SingleImport { .. }, "self") =>
+                            format!("self as {}", suggested_name),
+                        (ImportDirectiveSubclass::SingleImport { source, .. }, _) =>
+                            format!(
+                                "{} as {}{}",
+                                &snippet[..((source.span.hi().0 - binding.span.lo().0) as usize)],
+                                suggested_name,
+                                if snippet.ends_with(";") {
+                                    ";"
+                                } else {
+                                    ""
+                                }
+                            ),
+                        (ImportDirectiveSubclass::ExternCrate { source, target, .. }, _) =>
+                            format!(
+                                "extern crate {} as {};",
+                                source.unwrap_or(target.name),
+                                suggested_name,
+                            ),
+                        (_, _) => unreachable!(),
                     },
-                    Applicability::MachineApplicable,
+                    Applicability::MaybeIncorrect,
                 );
             } else {
                 err.span_label(binding.span, rename_msg);
