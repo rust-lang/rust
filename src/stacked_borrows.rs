@@ -137,75 +137,64 @@ impl<'tcx> Stack {
     }
 
     /// Check if `bor` could be activated by unfreezing and popping.
-    /// This should be in sync with `reactivate`!
-    fn reactivatable(&self, bor: Borrow) -> bool {
-        if self.check(bor) {
-            return true;
-        }
-
-        let acc_m = match bor {
-            Borrow::Frz(_) => return false,
-            Borrow::Mut(acc_m) => acc_m
-        };
-        // This is where we would unfreeze.
-        for &itm in self.borrows.iter().rev() {
-            match itm {
-                BorStackItem::FnBarrier(_) => return false,
-                BorStackItem::Mut(loc_m) => {
-                    if loc_m == acc_m { return true; }
-                    // Go on looking.
-                }
-            }
-        }
-        // Nothing to be found.
-        false
-    }
-
-    /// Reactive `bor` for this stack.  If `force_mut` is set, we want to aggressively
-    /// unfreeze this location (because we are about to mutate, so a frozen `Raw` is not okay).
-    fn reactivate(&mut self, bor: Borrow, force_mut: bool) -> EvalResult<'tcx> {
+    /// `force_mut` indicates whether being frozen is potentially acceptable.
+    /// Returns `Err` if the answer is "no"; otherwise the data says
+    /// what needs to happen to activate this: `None` = nothing,
+    /// `Some(n)` = unfreeze and make item `n` the top item of the stack.
+    fn reactivatable(&self, bor: Borrow, force_mut: bool) -> Result<Option<usize>, String> {
         // Unless mutation is bound to happen, do NOT change anything if `bor` is already active.
         // In particular, if it is a `Mut(Raw)` and we are frozen, this should be a NOP.
         if !force_mut && self.check(bor) {
-            return Ok(());
+            return Ok(None);
         }
 
         let acc_m = match bor {
             Borrow::Frz(since) =>
-                if force_mut {
-                    return err!(MachineError(format!("Using a shared borrow for mutation")))
+                return Err(if force_mut {
+                    format!("Using a shared borrow for mutation")
                 } else {
-                    return err!(MachineError(format!(
+                    format!(
                         "Location should be frozen since {} but {}",
                         since,
                         match self.frozen_since {
                             None => format!("it is not frozen at all"),
                             Some(since) => format!("it is only frozen since {}", since),
                         }
-                    )))
-                }
-            Borrow::Mut(acc_m) => acc_m,
+                    )
+                }),
+            Borrow::Mut(acc_m) => acc_m
         };
-        // We definitely have to unfreeze this, even if we use the topmost item.
-        if self.frozen_since.is_some() {
-            trace!("reactivate: Unfreezing");
-        }
-        self.frozen_since = None;
-        // Pop until we see the one we are looking for.
-        while let Some(&itm) = self.borrows.last() {
+        // This is where we would unfreeze.
+        for (idx, &itm) in self.borrows.iter().enumerate().rev() {
             match itm {
-                BorStackItem::FnBarrier(_) => {
-                    return err!(MachineError(format!("Trying to reactivate a borrow that lives behind a barrier")));
-                }
+                BorStackItem::FnBarrier(_) =>
+                    return Err(format!("Trying to reactivate a mutable borrow ({:?}) that lives behind a barrier", acc_m)),
                 BorStackItem::Mut(loc_m) => {
-                    if loc_m == acc_m { return Ok(()); }
-                    trace!("reactivate: Popping {:?}", itm);
-                    self.borrows.pop();
+                    if loc_m == acc_m { return Ok(Some(idx)); }
                 }
             }
         }
         // Nothing to be found.
-        err!(MachineError(format!("Borrow-to-reactivate does not exist on the stack")))
+        Err(format!("Mutable borrow-to-reactivate ({:?}) does not exist on the stack", acc_m))
+    }
+
+    /// Reactive `bor` for this stack.  If `force_mut` is set, we want to aggressively
+    /// unfreeze this location (because we are about to mutate, so a frozen `Raw` is not okay).
+    fn reactivate(&mut self, bor: Borrow, force_mut: bool) -> EvalResult<'tcx> {
+        let action = match self.reactivatable(bor, force_mut) {
+            Ok(action) => action,
+            Err(err) => return err!(MachineError(err)),
+        };
+
+        match action {
+            None => {}, // nothing to do
+            Some(top) => {
+                self.frozen_since = None;
+                self.borrows.truncate(top+1);
+            }
+        }
+
+        Ok(())
     }
 
     /// Initiate `bor`; mostly this means freezing or pushing.
@@ -471,8 +460,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             // be shared reborrows that we are about to invalidate with this access.
             // We cannot invalidate them aggressively here because the deref might also be
             // to just create more shared refs.
-            if !stack.reactivatable(ptr.tag) {
-                return err!(MachineError(format!("Encountered {:?} reference with non-reactivatable tag {:?}", ref_kind, ptr.tag)))
+            if let Err(err) = stack.reactivatable(ptr.tag, /*force_mut*/false) {
+                return err!(MachineError(format!("Encountered {:?} reference with non-reactivatable tag: {}", ref_kind, err)))
             }
         }
         // All is good.

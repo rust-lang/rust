@@ -5,5 +5,5 @@ fn main() {
     let xref = unsafe { &mut *xraw };
     let xref_in_mem = Box::new(xref);
     let _val = *x; // invalidate xraw
-    let _val = *xref_in_mem; //~ ERROR Mut reference with non-reactivatable tag Mut(Uniq
+    let _val = *xref_in_mem; //~ ERROR Mut reference with non-reactivatable tag
 }

@@ -14,5 +14,5 @@ fn main() {
     retarget(&mut target_alias, target);
     // now `target_alias` points to the same thing as `target`
     *target = 13;
-    let _val = *target_alias; //~ ERROR Shr reference with non-reactivatable tag Frz
+    let _val = *target_alias; //~ ERROR Shr reference with non-reactivatable tag
 }
