@@ -13,7 +13,7 @@ else
 fi
 
 build_lib() {
-    SHOULD_CODEGEN=1 $RUSTC $2 --crate-name $1 --crate-type lib
+    $RUSTC $2 --crate-name $1 --crate-type lib
 }
 
 run_bin() {
@@ -60,7 +60,7 @@ time $RUSTC target/libcore/src/libcore/lib.rs --crate-type lib --crate-name core
 pushd xargo
 rm -r ~/.xargo/HOST || true
 export XARGO_RUST_SRC=$(pwd)'/../target/libcore/src'
-time SHOULD_CODEGEN=1 xargo build --color always
+time xargo build --color always
 popd
 
 cat target/out/log.txt | sort | uniq -c

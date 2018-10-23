@@ -95,9 +95,9 @@ mod prelude {
     pub use crate::Caches;
 
     pub fn should_codegen(sess: &Session) -> bool {
-        //return true;
-        ::std::env::var("SHOULD_CODEGEN").is_ok()
-            || sess.crate_types.get().contains(&CrateType::Executable)
+        true
+        //::std::env::var("SHOULD_CODEGEN").is_ok()
+        //    || sess.crate_types.get().contains(&CrateType::Executable)
     }
 }
 
