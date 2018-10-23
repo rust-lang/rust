@@ -49,7 +49,7 @@ LL | #[cfg(a = 10)] //~ ERROR literal in `cfg` predicate value must be a string
 error[E0565]: literal in `cfg` predicate value must be a string
   --> $DIR/cfg-attr-syntax-validation.rs:25:11
    |
-LL | #[cfg(a = b"hi")]
+LL | #[cfg(a = b"hi")]  //~ ERROR literal in `cfg` predicate value must be a string
    |           ^^^^^ help: consider removing the prefix: `"hi"`
 
 error: `cfg` is not a well-formed meta-item
