@@ -36,6 +36,7 @@ mod intrinsic;
 mod debuginfo;
 mod abi;
 mod asm;
+mod write;
 
 use rustc::ty::Ty;
 use rustc::ty::layout::{LayoutOf, HasTyCtxt, TyLayout};
@@ -52,6 +53,7 @@ pub use self::intrinsic::{IntrinsicCallMethods, IntrinsicDeclarationMethods};
 pub use self::debuginfo::{DebugInfoMethods, DebugInfoBuilderMethods};
 pub use self::abi::{AbiMethods, AbiBuilderMethods};
 pub use self::asm::{AsmMethods, AsmBuilderMethods};
+pub use self::write::{WriteBackendMethods, ThinBufferMethods, ModuleBufferMethods};
 
 
 pub trait CodegenObject : Copy + PartialEq + fmt::Debug {}

@@ -317,9 +317,9 @@ impl<'ll, 'tcx, Value : Eq+Hash> CodegenCx<'ll, 'tcx, Value> {
 }
 
 impl MiscMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll Value> {
-    fn vtables(&self) -> &RefCell<FxHashMap<(Ty<'tcx>,
-                                Option<ty::PolyExistentialTraitRef<'tcx>>), &'ll Value>>
-    {
+    fn vtables(&self) -> &RefCell<
+        FxHashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), &'ll Value>
+    > {
         &self.vtables
     }
 
@@ -478,7 +478,7 @@ impl IntrinsicDeclarationMethods<'b> for CodegenCx<'b, 'tcx, &'b Value> {
             return v;
         }
 
-        declare_intrinsic(self, key).unwrap_or_else(|| bug!("unknown intrinsic '{}'", key))
+        self.declare_intrinsic(key).unwrap_or_else(|| bug!("unknown intrinsic '{}'", key))
     }
 
     fn declare_intrinsic(

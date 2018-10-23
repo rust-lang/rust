@@ -19,8 +19,9 @@ use std::sync::Arc;
 use rustc_mir::monomorphize::partitioning::CodegenUnit;
 
 pub trait MiscMethods<'ll, 'tcx: 'll> : Backend<'ll> {
-    fn vtables(&self) -> &RefCell<FxHashMap<(Ty<'tcx>,
-                                Option<ty::PolyExistentialTraitRef<'tcx>>), Self::Value>>;
+    fn vtables(&self) -> &RefCell<
+        FxHashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), Self::Value>
+    >;
     fn check_overflow(&self) -> bool;
     fn instances(&self) -> &RefCell<FxHashMap<Instance<'tcx>, Self::Value>>;
     fn get_fn(&self, instance: Instance<'tcx>) -> Self::Value;

@@ -405,7 +405,7 @@ impl<'ll, 'tcx: 'll> DebugInfoMethods<'ll, 'tcx> for CodegenCx<'ll, 'tcx, &'ll V
                 }
             }
 
-            create_DIArray(DIB(cx), &signature[..]);
+            create_DIArray(DIB(cx), &signature[..])
         }
 
         fn get_template_parameters<'ll, 'tcx>(

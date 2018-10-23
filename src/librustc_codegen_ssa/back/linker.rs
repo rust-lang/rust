@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,38 +8,41 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_data_structures::fx::FxHashMap;
-use std::ffi::{OsStr, OsString};
-use std::fs::{self, File};
-use std::io::prelude::*;
-use std::io::{self, BufWriter};
-use std::path::{Path, PathBuf};
-
-use back::archive;
-use back::command::Command;
-use back::symbol_export;
-use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
-use rustc::middle::dependency_format::Linkage;
-use rustc::session::Session;
-use rustc::session::config::{self, CrateType, OptLevel, DebugInfo,
-                             CrossLangLto};
-use rustc::ty::TyCtxt;
-use rustc_target::spec::{LinkerFlavor, LldFlavor};
-use serialize::{json, Encoder};
-use llvm_util;
-
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
-pub struct LinkerInfo {
+
+use super::symbol_export;
+use super::command::Command;
+use super::archive;
+use interfaces::*;
+
+use rustc_target::spec::{LinkerFlavor, LldFlavor};
+use rustc_data_structures::fx::FxHashMap;
+use rustc::session::config::{self, CrateType, OptLevel, DebugInfo, CrossLangLto};
+use rustc::session::Session;
+use rustc::ty::TyCtxt;
+use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
+use rustc::middle::dependency_format::Linkage;
+
+use std::fs::{self, File};
+use std::ffi::{OsString, OsStr};
+use std::path::{Path, PathBuf};
+use std::io::prelude::*;
+use std::io::{self, BufWriter};
+use serialize::{json, Encoder};
+
+pub struct LinkerInfo<B : ExtraBackendMethods> {
     exports: FxHashMap<CrateType, Vec<String>>,
+    backend: B
 }
 
-impl LinkerInfo {
-    pub fn new(tcx: TyCtxt) -> LinkerInfo {
+impl<B : ExtraBackendMethods> LinkerInfo<B> {
+    pub fn new(tcx: TyCtxt, backend: B) -> LinkerInfo<B> {
         LinkerInfo {
             exports: tcx.sess.crate_types.borrow().iter().map(|&c| {
                 (c, exported_symbols(tcx, c))
             }).collect(),
+            backend
         }
     }
 
@@ -96,6 +99,7 @@ impl LinkerInfo {
     }
 }
 
+
 /// Linker abstraction used by back::link to build up the command to invoke a
 /// linker.
 ///
@@ -137,16 +141,249 @@ pub trait Linker {
     fn finalize(&mut self) -> Command;
 }
 
-pub struct GccLinker<'a> {
+
+impl<'a, B : ExtraBackendMethods> Linker for MsvcLinker<'a, B> {
+    fn link_rlib(&mut self, lib: &Path) { self.cmd.arg(lib); }
+    fn add_object(&mut self, path: &Path) { self.cmd.arg(path); }
+    fn args(&mut self, args: &[String]) { self.cmd.args(args); }
+
+    fn build_dylib(&mut self, out_filename: &Path) {
+        self.cmd.arg("/DLL");
+        let mut arg: OsString = "/IMPLIB:".into();
+        arg.push(out_filename.with_extension("dll.lib"));
+        self.cmd.arg(arg);
+    }
+
+    fn build_static_executable(&mut self) {
+        // noop
+    }
+
+    fn gc_sections(&mut self, _keep_metadata: bool) {
+        // MSVC's ICF (Identical COMDAT Folding) link optimization is
+        // slow for Rust and thus we disable it by default when not in
+        // optimization build.
+        if self.sess.opts.optimize != config::OptLevel::No {
+            self.cmd.arg("/OPT:REF,ICF");
+        } else {
+            // It is necessary to specify NOICF here, because /OPT:REF
+            // implies ICF by default.
+            self.cmd.arg("/OPT:REF,NOICF");
+        }
+    }
+
+    fn link_dylib(&mut self, lib: &str) {
+        self.cmd.arg(&format!("{}.lib", lib));
+    }
+
+    fn link_rust_dylib(&mut self, lib: &str, path: &Path) {
+        // When producing a dll, the MSVC linker may not actually emit a
+        // `foo.lib` file if the dll doesn't actually export any symbols, so we
+        // check to see if the file is there and just omit linking to it if it's
+        // not present.
+        let name = format!("{}.dll.lib", lib);
+        if fs::metadata(&path.join(&name)).is_ok() {
+            self.cmd.arg(name);
+        }
+    }
+
+    fn link_staticlib(&mut self, lib: &str) {
+        self.cmd.arg(&format!("{}.lib", lib));
+    }
+
+    fn position_independent_executable(&mut self) {
+        // noop
+    }
+
+    fn no_position_independent_executable(&mut self) {
+        // noop
+    }
+
+    fn full_relro(&mut self) {
+        // noop
+    }
+
+    fn partial_relro(&mut self) {
+        // noop
+    }
+
+    fn no_relro(&mut self) {
+        // noop
+    }
+
+    fn no_default_libraries(&mut self) {
+        // Currently we don't pass the /NODEFAULTLIB flag to the linker on MSVC
+        // as there's been trouble in the past of linking the C++ standard
+        // library required by LLVM. This likely needs to happen one day, but
+        // in general Windows is also a more controlled environment than
+        // Unix, so it's not necessarily as critical that this be implemented.
+        //
+        // Note that there are also some licensing worries about statically
+        // linking some libraries which require a specific agreement, so it may
+        // not ever be possible for us to pass this flag.
+    }
+
+    fn include_path(&mut self, path: &Path) {
+        let mut arg = OsString::from("/LIBPATH:");
+        arg.push(path);
+        self.cmd.arg(&arg);
+    }
+
+    fn output_filename(&mut self, path: &Path) {
+        let mut arg = OsString::from("/OUT:");
+        arg.push(path);
+        self.cmd.arg(&arg);
+    }
+
+    fn framework_path(&mut self, _path: &Path) {
+        bug!("frameworks are not supported on windows")
+    }
+    fn link_framework(&mut self, _framework: &str) {
+        bug!("frameworks are not supported on windows")
+    }
+
+    fn link_whole_staticlib(&mut self, lib: &str, _search_path: &[PathBuf]) {
+        // not supported?
+        self.link_staticlib(lib);
+    }
+    fn link_whole_rlib(&mut self, path: &Path) {
+        // not supported?
+        self.link_rlib(path);
+    }
+    fn optimize(&mut self) {
+        // Needs more investigation of `/OPT` arguments
+    }
+
+    fn pgo_gen(&mut self) {
+        // Nothing needed here.
+    }
+
+    fn debuginfo(&mut self) {
+        // This will cause the Microsoft linker to generate a PDB file
+        // from the CodeView line tables in the object files.
+        self.cmd.arg("/DEBUG");
+
+        // This will cause the Microsoft linker to embed .natvis info into the the PDB file
+        let sysroot = self.sess.sysroot();
+        let natvis_dir_path = sysroot.join("lib\\rustlib\\etc");
+        if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
+            // LLVM 5.0.0's lld-link frontend doesn't yet recognize, and chokes
+            // on, the /NATVIS:... flags.  LLVM 6 (or earlier) should at worst ignore
+            // them, eventually mooting this workaround, per this landed patch:
+            // https://github.com/llvm-mirror/lld/commit/27b9c4285364d8d76bb43839daa100
+            if let Some(ref linker_path) = self.sess.opts.cg.linker {
+                if let Some(linker_name) = Path::new(&linker_path).file_stem() {
+                    if linker_name.to_str().unwrap().to_lowercase() == "lld-link" {
+                        self.sess.warn("not embedding natvis: lld-link may not support the flag");
+                        return;
+                    }
+                }
+            }
+            for entry in natvis_dir {
+                match entry {
+                    Ok(entry) => {
+                        let path = entry.path();
+                        if path.extension() == Some("natvis".as_ref()) {
+                            let mut arg = OsString::from("/NATVIS:");
+                            arg.push(path);
+                            self.cmd.arg(arg);
+                        }
+                    },
+                    Err(err) => {
+                        self.sess.warn(&format!("error enumerating natvis directory: {}", err));
+                    },
+                }
+            }
+        }
+    }
+
+    // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
+    // export symbols from a dynamic library. When building a dynamic library,
+    // however, we're going to want some symbols exported, so this function
+    // generates a DEF file which lists all the symbols.
+    //
+    // The linker will read this `*.def` file and export all the symbols from
+    // the dynamic library. Note that this is not as simple as just exporting
+    // all the symbols in the current crate (as specified by `codegen.reachable`)
+    // but rather we also need to possibly export the symbols of upstream
+    // crates. Upstream rlibs may be linked statically to this dynamic library,
+    // in which case they may continue to transitively be used and hence need
+    // their symbols exported.
+    fn export_symbols(&mut self,
+                      tmpdir: &Path,
+                      crate_type: CrateType) {
+        let path = tmpdir.join("lib.def");
+        let res = (|| -> io::Result<()> {
+            let mut f = BufWriter::new(File::create(&path)?);
+
+            // Start off with the standard module name header and then go
+            // straight to exports.
+            writeln!(f, "LIBRARY")?;
+            writeln!(f, "EXPORTS")?;
+            for symbol in self.info.exports[&crate_type].iter() {
+                debug!("  _{}", symbol);
+                writeln!(f, "  {}", symbol)?;
+            }
+            Ok(())
+        })();
+        if let Err(e) = res {
+            self.sess.fatal(&format!("failed to write lib.def file: {}", e));
+        }
+        let mut arg = OsString::from("/DEF:");
+        arg.push(path);
+        self.cmd.arg(&arg);
+    }
+
+    fn subsystem(&mut self, subsystem: &str) {
+        // Note that previous passes of the compiler validated this subsystem,
+        // so we just blindly pass it to the linker.
+        self.cmd.arg(&format!("/SUBSYSTEM:{}", subsystem));
+
+        // Windows has two subsystems we're interested in right now, the console
+        // and windows subsystems. These both implicitly have different entry
+        // points (starting symbols). The console entry point starts with
+        // `mainCRTStartup` and the windows entry point starts with
+        // `WinMainCRTStartup`. These entry points, defined in system libraries,
+        // will then later probe for either `main` or `WinMain`, respectively to
+        // start the application.
+        //
+        // In Rust we just always generate a `main` function so we want control
+        // to always start there, so we force the entry point on the windows
+        // subsystem to be `mainCRTStartup` to get everything booted up
+        // correctly.
+        //
+        // For more information see RFC #1665
+        if subsystem == "windows" {
+            self.cmd.arg("/ENTRY:mainCRTStartup");
+        }
+    }
+
+    fn finalize(&mut self) -> Command {
+        let mut cmd = Command::new("");
+        ::std::mem::swap(&mut cmd, &mut self.cmd);
+        cmd
+    }
+
+    // MSVC doesn't need group indicators
+    fn group_start(&mut self) {}
+    fn group_end(&mut self) {}
+
+    fn cross_lang_lto(&mut self) {
+        // Do nothing
+    }
+}
+
+
+
+pub struct GccLinker<'a, B : 'a + ExtraBackendMethods> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo,
+    info: &'a LinkerInfo<B>,
     hinted_static: bool, // Keeps track of the current hinting mode.
     // Link as ld
     is_ld: bool,
 }
 
-impl<'a> GccLinker<'a> {
+impl<'a,  B : ExtraBackendMethods> GccLinker<'a, B> {
     /// Argument that must be passed *directly* to the linker
     ///
     /// These arguments need to be prepended with '-Wl,' when a gcc-style linker is used
@@ -204,7 +441,7 @@ impl<'a> GccLinker<'a> {
         };
 
         self.linker_arg(&format!("-plugin-opt={}", opt_level));
-        self.linker_arg(&format!("-plugin-opt=mcpu={}", llvm_util::target_cpu(self.sess)));
+        self.linker_arg(&format!("-plugin-opt=mcpu={}", self.info.backend.target_cpu(self.sess)));
 
         match self.sess.lto() {
             config::Lto::Thin |
@@ -219,7 +456,7 @@ impl<'a> GccLinker<'a> {
     }
 }
 
-impl<'a> Linker for GccLinker<'a> {
+impl<'a, B : ExtraBackendMethods> Linker for GccLinker<'a, B> {
     fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.cmd.arg(format!("-l{}",lib)); }
     fn link_staticlib(&mut self, lib: &str) {
         self.hint_static(); self.cmd.arg(format!("-l{}",lib));
@@ -489,249 +726,19 @@ impl<'a> Linker for GccLinker<'a> {
     }
 }
 
-pub struct MsvcLinker<'a> {
+pub struct MsvcLinker<'a, B : 'a + ExtraBackendMethods> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo
+    info: &'a LinkerInfo<B>
 }
 
-impl<'a> Linker for MsvcLinker<'a> {
-    fn link_rlib(&mut self, lib: &Path) { self.cmd.arg(lib); }
-    fn add_object(&mut self, path: &Path) { self.cmd.arg(path); }
-    fn args(&mut self, args: &[String]) { self.cmd.args(args); }
-
-    fn build_dylib(&mut self, out_filename: &Path) {
-        self.cmd.arg("/DLL");
-        let mut arg: OsString = "/IMPLIB:".into();
-        arg.push(out_filename.with_extension("dll.lib"));
-        self.cmd.arg(arg);
-    }
-
-    fn build_static_executable(&mut self) {
-        // noop
-    }
-
-    fn gc_sections(&mut self, _keep_metadata: bool) {
-        // MSVC's ICF (Identical COMDAT Folding) link optimization is
-        // slow for Rust and thus we disable it by default when not in
-        // optimization build.
-        if self.sess.opts.optimize != config::OptLevel::No {
-            self.cmd.arg("/OPT:REF,ICF");
-        } else {
-            // It is necessary to specify NOICF here, because /OPT:REF
-            // implies ICF by default.
-            self.cmd.arg("/OPT:REF,NOICF");
-        }
-    }
-
-    fn link_dylib(&mut self, lib: &str) {
-        self.cmd.arg(&format!("{}.lib", lib));
-    }
-
-    fn link_rust_dylib(&mut self, lib: &str, path: &Path) {
-        // When producing a dll, the MSVC linker may not actually emit a
-        // `foo.lib` file if the dll doesn't actually export any symbols, so we
-        // check to see if the file is there and just omit linking to it if it's
-        // not present.
-        let name = format!("{}.dll.lib", lib);
-        if fs::metadata(&path.join(&name)).is_ok() {
-            self.cmd.arg(name);
-        }
-    }
-
-    fn link_staticlib(&mut self, lib: &str) {
-        self.cmd.arg(&format!("{}.lib", lib));
-    }
-
-    fn position_independent_executable(&mut self) {
-        // noop
-    }
-
-    fn no_position_independent_executable(&mut self) {
-        // noop
-    }
-
-    fn full_relro(&mut self) {
-        // noop
-    }
-
-    fn partial_relro(&mut self) {
-        // noop
-    }
-
-    fn no_relro(&mut self) {
-        // noop
-    }
-
-    fn no_default_libraries(&mut self) {
-        // Currently we don't pass the /NODEFAULTLIB flag to the linker on MSVC
-        // as there's been trouble in the past of linking the C++ standard
-        // library required by LLVM. This likely needs to happen one day, but
-        // in general Windows is also a more controlled environment than
-        // Unix, so it's not necessarily as critical that this be implemented.
-        //
-        // Note that there are also some licensing worries about statically
-        // linking some libraries which require a specific agreement, so it may
-        // not ever be possible for us to pass this flag.
-    }
-
-    fn include_path(&mut self, path: &Path) {
-        let mut arg = OsString::from("/LIBPATH:");
-        arg.push(path);
-        self.cmd.arg(&arg);
-    }
-
-    fn output_filename(&mut self, path: &Path) {
-        let mut arg = OsString::from("/OUT:");
-        arg.push(path);
-        self.cmd.arg(&arg);
-    }
-
-    fn framework_path(&mut self, _path: &Path) {
-        bug!("frameworks are not supported on windows")
-    }
-    fn link_framework(&mut self, _framework: &str) {
-        bug!("frameworks are not supported on windows")
-    }
-
-    fn link_whole_staticlib(&mut self, lib: &str, _search_path: &[PathBuf]) {
-        // not supported?
-        self.link_staticlib(lib);
-    }
-    fn link_whole_rlib(&mut self, path: &Path) {
-        // not supported?
-        self.link_rlib(path);
-    }
-    fn optimize(&mut self) {
-        // Needs more investigation of `/OPT` arguments
-    }
-
-    fn pgo_gen(&mut self) {
-        // Nothing needed here.
-    }
-
-    fn debuginfo(&mut self) {
-        // This will cause the Microsoft linker to generate a PDB file
-        // from the CodeView line tables in the object files.
-        self.cmd.arg("/DEBUG");
-
-        // This will cause the Microsoft linker to embed .natvis info into the the PDB file
-        let sysroot = self.sess.sysroot();
-        let natvis_dir_path = sysroot.join("lib\\rustlib\\etc");
-        if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {
-            // LLVM 5.0.0's lld-link frontend doesn't yet recognize, and chokes
-            // on, the /NATVIS:... flags.  LLVM 6 (or earlier) should at worst ignore
-            // them, eventually mooting this workaround, per this landed patch:
-            // https://github.com/llvm-mirror/lld/commit/27b9c4285364d8d76bb43839daa100
-            if let Some(ref linker_path) = self.sess.opts.cg.linker {
-                if let Some(linker_name) = Path::new(&linker_path).file_stem() {
-                    if linker_name.to_str().unwrap().to_lowercase() == "lld-link" {
-                        self.sess.warn("not embedding natvis: lld-link may not support the flag");
-                        return;
-                    }
-                }
-            }
-            for entry in natvis_dir {
-                match entry {
-                    Ok(entry) => {
-                        let path = entry.path();
-                        if path.extension() == Some("natvis".as_ref()) {
-                            let mut arg = OsString::from("/NATVIS:");
-                            arg.push(path);
-                            self.cmd.arg(arg);
-                        }
-                    },
-                    Err(err) => {
-                        self.sess.warn(&format!("error enumerating natvis directory: {}", err));
-                    },
-                }
-            }
-        }
-    }
-
-    // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
-    // export symbols from a dynamic library. When building a dynamic library,
-    // however, we're going to want some symbols exported, so this function
-    // generates a DEF file which lists all the symbols.
-    //
-    // The linker will read this `*.def` file and export all the symbols from
-    // the dynamic library. Note that this is not as simple as just exporting
-    // all the symbols in the current crate (as specified by `codegen.reachable`)
-    // but rather we also need to possibly export the symbols of upstream
-    // crates. Upstream rlibs may be linked statically to this dynamic library,
-    // in which case they may continue to transitively be used and hence need
-    // their symbols exported.
-    fn export_symbols(&mut self,
-                      tmpdir: &Path,
-                      crate_type: CrateType) {
-        let path = tmpdir.join("lib.def");
-        let res = (|| -> io::Result<()> {
-            let mut f = BufWriter::new(File::create(&path)?);
-
-            // Start off with the standard module name header and then go
-            // straight to exports.
-            writeln!(f, "LIBRARY")?;
-            writeln!(f, "EXPORTS")?;
-            for symbol in self.info.exports[&crate_type].iter() {
-                debug!("  _{}", symbol);
-                writeln!(f, "  {}", symbol)?;
-            }
-            Ok(())
-        })();
-        if let Err(e) = res {
-            self.sess.fatal(&format!("failed to write lib.def file: {}", e));
-        }
-        let mut arg = OsString::from("/DEF:");
-        arg.push(path);
-        self.cmd.arg(&arg);
-    }
-
-    fn subsystem(&mut self, subsystem: &str) {
-        // Note that previous passes of the compiler validated this subsystem,
-        // so we just blindly pass it to the linker.
-        self.cmd.arg(&format!("/SUBSYSTEM:{}", subsystem));
-
-        // Windows has two subsystems we're interested in right now, the console
-        // and windows subsystems. These both implicitly have different entry
-        // points (starting symbols). The console entry point starts with
-        // `mainCRTStartup` and the windows entry point starts with
-        // `WinMainCRTStartup`. These entry points, defined in system libraries,
-        // will then later probe for either `main` or `WinMain`, respectively to
-        // start the application.
-        //
-        // In Rust we just always generate a `main` function so we want control
-        // to always start there, so we force the entry point on the windows
-        // subsystem to be `mainCRTStartup` to get everything booted up
-        // correctly.
-        //
-        // For more information see RFC #1665
-        if subsystem == "windows" {
-            self.cmd.arg("/ENTRY:mainCRTStartup");
-        }
-    }
-
-    fn finalize(&mut self) -> Command {
-        let mut cmd = Command::new("");
-        ::std::mem::swap(&mut cmd, &mut self.cmd);
-        cmd
-    }
-
-    // MSVC doesn't need group indicators
-    fn group_start(&mut self) {}
-    fn group_end(&mut self) {}
-
-    fn cross_lang_lto(&mut self) {
-        // Do nothing
-    }
-}
-
-pub struct EmLinker<'a> {
+pub struct EmLinker<'a, B : 'a + ExtraBackendMethods> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo
+    info: &'a LinkerInfo<B>
 }
 
-impl<'a> Linker for EmLinker<'a> {
+impl<'a, B : ExtraBackendMethods> Linker for EmLinker<'a, B> {
     fn include_path(&mut self, path: &Path) {
         self.cmd.arg("-L").arg(path);
     }
@@ -895,42 +902,13 @@ impl<'a> Linker for EmLinker<'a> {
     }
 }
 
-fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
-    let mut symbols = Vec::new();
-
-    let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
-    for &(symbol, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {
-        if level.is_below_threshold(export_threshold) {
-            symbols.push(symbol.symbol_name(tcx).to_string());
-        }
-    }
-
-    let formats = tcx.sess.dependency_formats.borrow();
-    let deps = formats[&crate_type].iter();
-
-    for (index, dep_format) in deps.enumerate() {
-        let cnum = CrateNum::new(index + 1);
-        // For each dependency that we are linking to statically ...
-        if *dep_format == Linkage::Static {
-            // ... we add its symbol list to our export list.
-            for &(symbol, level) in tcx.exported_symbols(cnum).iter() {
-                if level.is_below_threshold(export_threshold) {
-                    symbols.push(symbol.symbol_name(tcx).to_string());
-                }
-            }
-        }
-    }
-
-    symbols
-}
-
-pub struct WasmLd<'a> {
+pub struct WasmLd<'a, B : 'a + ExtraBackendMethods> {
     cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo,
+    info: &'a LinkerInfo<B>,
 }
 
-impl<'a> Linker for WasmLd<'a> {
+impl<'a, B : ExtraBackendMethods> Linker for WasmLd<'a, B> {
     fn link_dylib(&mut self, lib: &str) {
         self.cmd.arg("-l").arg(lib);
     }
@@ -1092,4 +1070,34 @@ impl<'a> Linker for WasmLd<'a> {
     fn cross_lang_lto(&mut self) {
         // Do nothing for now
     }
+}
+
+
+fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
+    let mut symbols = Vec::new();
+
+    let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
+    for &(symbol, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {
+        if level.is_below_threshold(export_threshold) {
+            symbols.push(symbol.symbol_name(tcx).to_string());
+        }
+    }
+
+    let formats = tcx.sess.dependency_formats.borrow();
+    let deps = formats[&crate_type].iter();
+
+    for (index, dep_format) in deps.enumerate() {
+        let cnum = CrateNum::new(index + 1);
+        // For each dependency that we are linking to statically ...
+        if *dep_format == Linkage::Static {
+            // ... we add its symbol list to our export list.
+            for &(symbol, level) in tcx.exported_symbols(cnum).iter() {
+                if level.is_below_threshold(export_threshold) {
+                    symbols.push(symbol.symbol_name(tcx).to_string());
+                }
+            }
+        }
+    }
+
+    symbols
 }

@@ -16,7 +16,6 @@ use super::OperandValue;
 use rustc::ty::Ty;
 use rustc::ty::layout::{TyLayout, HasTyCtxt, LayoutOf};
 use interfaces::*;
-use value::Value;
 
 impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>
     FunctionCx<'a, 'f, 'll, 'tcx, Cx> where
@@ -90,7 +89,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>
 
                 let input_vals = inputs.iter()
                     .try_fold(Vec::with_capacity(inputs.len()), |mut acc, input| {
-                        let op = self.codegen_operand(&mutbx, input);
+                        let op = self.codegen_operand(&mut bx, input);
                         if let OperandValue::Immediate(_) = op.val {
                             acc.push(op.immediate());
                             Ok(acc)
@@ -104,7 +103,7 @@ impl<'a, 'f, 'll: 'a + 'f, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>>
                              "invalid value for constraint in inline assembly");
                 } else {
                     let input_vals = input_vals.unwrap();
-                    let res = xb.codegen_inline_asm(asm, outputs, input_vals);
+                    let res = bx.codegen_inline_asm(asm, outputs, input_vals);
                     if !res {
                         span_err!(bx.cx().sess(), statement.source_info.span, E0668,
                                   "malformed inline assembly");

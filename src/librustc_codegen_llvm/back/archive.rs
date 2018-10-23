@@ -18,6 +18,7 @@ use std::ptr;
 use std::str;
 
 use back::bytecode::RLIB_BYTECODE_EXTENSION;
+use rustc_codegen_ssa::back::archive::find_library;
 use libc;
 use llvm::archive_ro::{ArchiveRO, Child};
 use llvm::{self, ArchiveKind};
@@ -50,29 +51,6 @@ enum Addition {
         archive: ArchiveRO,
         skip: Box<dyn FnMut(&str) -> bool>,
     },
-}
-
-pub fn find_library(name: &str, search_paths: &[PathBuf], sess: &Session)
-                    -> PathBuf {
-    // On Windows, static libraries sometimes show up as libfoo.a and other
-    // times show up as foo.lib
-    let oslibname = format!("{}{}{}",
-                            sess.target.target.options.staticlib_prefix,
-                            name,
-                            sess.target.target.options.staticlib_suffix);
-    let unixlibname = format!("lib{}.a", name);
-
-    for path in search_paths {
-        debug!("looking for {} inside {:?}", name, path);
-        let test = path.join(&oslibname);
-        if test.exists() { return test }
-        if oslibname != unixlibname {
-            let test = path.join(&unixlibname);
-            if test.exists() { return test }
-        }
-    }
-    sess.fatal(&format!("could not find native static library `{}`, \
-                         perhaps an -L flag is missing?", name));
 }
 
 fn is_relevant_child(c: &Child) -> bool {

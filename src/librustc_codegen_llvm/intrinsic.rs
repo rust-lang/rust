@@ -98,6 +98,11 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
         let cx = self.cx();
         let tcx = cx.tcx;
 
+        let (def_id, substs) = match callee_ty.sty {
+            ty::FnDef(def_id, substs) => (def_id, substs),
+            _ => bug!("expected fn item type, found {}", callee_ty)
+        };
+
         let sig = callee_ty.fn_sig(tcx);
         let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         let arg_tys = sig.inputs();
@@ -110,20 +115,20 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
         let simple = get_simple_intrinsic(cx, name);
         let llval = match name {
             _ if simple.is_some() => {
-                bx.call(simple.unwrap(),
-                        &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                        None)
+                self.call(simple.unwrap(),
+                          &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+                          None)
             }
             "unreachable" => {
                 return;
             },
             "likely" => {
                 let expect = cx.get_intrinsic(&("llvm.expect.i1"));
-                bx.call(expect, &[args[0].immediate(), bx.cx().const_bool(true)], None)
+                self.call(expect, &[args[0].immediate(), cx.const_bool(true)], None)
             }
             "unlikely" => {
                 let expect = cx.get_intrinsic(&("llvm.expect.i1"));
-                bx.call(expect, &[args[0].immediate(), bx.cx().const_bool(false)], None)
+                self.call(expect, &[args[0].immediate(), cx.const_bool(false)], None)
             }
             "try" => {
                 try_intrinsic(self, cx,
@@ -135,7 +140,7 @@ impl IntrinsicCallMethods<'a, 'll, 'tcx> for Builder<'a, 'll, 'tcx, &'ll Value> 
             }
             "breakpoint" => {
                 let llfn = cx.get_intrinsic(&("llvm.debugtrap"));
-                bx.call(llfn, &[], None)
+                self.call(llfn, &[], None)
             }
             "size_of" => {
                 let tp_ty = substs.type_at(0);

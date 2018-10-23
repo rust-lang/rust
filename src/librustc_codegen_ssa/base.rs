@@ -39,6 +39,8 @@ use rustc::util::profiling::ProfileCategory;
 use rustc::session::config::{self, EntryFnType, Lto};
 use rustc::session::Session;
 use mir::place::PlaceRef;
+use back::write::{OngoingCodegen, start_async_codegen, submit_pre_lto_module_to_llvm,
+    submit_post_lto_module_to_llvm};
 use {MemFlags, CrateInfo};
 use callee;
 use rustc_mir::monomorphize::collector::{self, MonoItemCollectionMode};
@@ -51,7 +53,7 @@ use rustc_mir::monomorphize::Instance;
 use rustc_mir::monomorphize::partitioning::{self, PartitioningStrategy,
     CodegenUnit, CodegenUnitExt};
 use mono_item::{MonoItem, BaseMonoItemExt};
-use rustc::util::nodemap::{FxHashMap, FxHashSet, DefIdSet};
+use rustc::util::nodemap::{FxHashMap, DefIdSet};
 use rustc_data_structures::sync::Lrc;
 use rustc_codegen_utils::{symbol_names_test, check_for_rustc_errors_attr};
 use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
@@ -593,7 +595,7 @@ pub fn codegen_crate<B : ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'ll, 'tcx, 'tcx>,
     rx: mpsc::Receiver<Box<dyn Any + Send>>
-) -> B::OngoingCodegen {
+) -> OngoingCodegen<B> {
 
     check_for_rustc_errors_attr(tcx);
 
@@ -640,19 +642,20 @@ pub fn codegen_crate<B : ExtraBackendMethods>(
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.debugging_opts.no_codegen ||
        !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = backend.start_async_codegen(
+        let ongoing_codegen = start_async_codegen(
+            backend,
             tcx,
             time_graph.clone(),
             metadata,
             rx,
             1);
 
-        backend.submit_pre_codegened_module_to_llvm(&ongoing_codegen, tcx, metadata_module);
-        backend.codegen_finished(&ongoing_codegen, tcx);
+        ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
+        ongoing_codegen.codegen_finished(tcx);
 
         assert_and_save_dep_graph(tcx);
 
-        backend.check_for_errors(&ongoing_codegen, tcx.sess);
+        ongoing_codegen.check_for_errors(tcx.sess);
 
         return ongoing_codegen;
     }
@@ -674,7 +677,8 @@ pub fn codegen_crate<B : ExtraBackendMethods>(
         }
     }
 
-    let ongoing_codegen = backend.start_async_codegen(
+    let ongoing_codegen = start_async_codegen(
+        backend.clone(),
         tcx,
         time_graph.clone(),
         metadata,
@@ -722,10 +726,10 @@ pub fn codegen_crate<B : ExtraBackendMethods>(
     };
 
     if let Some(allocator_module) = allocator_module {
-        backend.submit_pre_codegened_module_to_llvm(&ongoing_codegen, tcx, allocator_module);
+        ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, allocator_module);
     }
 
-    backend.submit_pre_codegened_module_to_llvm(&ongoing_codegen, tcx, metadata_module);
+    ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
 
     // We sort the codegen units by size. This way we can schedule work for LLVM
     // a bit more efficiently.
@@ -739,8 +743,8 @@ pub fn codegen_crate<B : ExtraBackendMethods>(
     let mut all_stats = Stats::default();
 
     for cgu in codegen_units.into_iter() {
-        backend.wait_for_signal_to_codegen_item(&ongoing_codegen);
-        backend.check_for_errors(&ongoing_codegen, tcx.sess);
+        ongoing_codegen.wait_for_signal_to_codegen_item();
+        ongoing_codegen.check_for_errors(tcx.sess);
 
         let cgu_reuse = determine_cgu_reuse(tcx, &cgu);
         tcx.sess.cgu_reuse_tracker.set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
@@ -759,14 +763,14 @@ pub fn codegen_crate<B : ExtraBackendMethods>(
                 false
             }
             CguReuse::PreLto => {
-                backend.submit_pre_lto_module_to_llvm(tcx, CachedModuleCodegen {
+                submit_pre_lto_module_to_llvm(&backend, tcx, CachedModuleCodegen {
                     name: cgu.name().to_string(),
                     source: cgu.work_product(tcx),
                 });
                 true
             }
             CguReuse::PostLto => {
-                backend.submit_post_lto_module_to_llvm(tcx, CachedModuleCodegen {
+                submit_post_lto_module_to_llvm(&backend, tcx, CachedModuleCodegen {
                     name: cgu.name().to_string(),
                     source: cgu.work_product(tcx),
                 });
@@ -775,7 +779,7 @@ pub fn codegen_crate<B : ExtraBackendMethods>(
         };
     }
 
-    backend.codegen_finished(&ongoing_codegen, tcx);
+    ongoing_codegen.codegen_finished(tcx);
 
     // Since the main thread is sometimes blocked during codegen, we keep track
     // -Ztime-passes output manually.
@@ -809,7 +813,7 @@ pub fn codegen_crate<B : ExtraBackendMethods>(
         }
     }
 
-    backend.check_for_errors(&ongoing_codegen, tcx.sess);
+    ongoing_codegen.check_for_errors(tcx.sess);
 
     assert_and_save_dep_graph(tcx);
     ongoing_codegen
@@ -892,7 +896,7 @@ fn collect_and_partition_mono_items<'ll, 'tcx>(
     }).collect();
 
     if tcx.sess.opts.debugging_opts.print_mono_items.is_some() {
-        let mut item_to_cgus: FxHashMap<_, Vec<_>> = FxHashMap();
+        let mut item_to_cgus: FxHashMap<_, Vec<_>> = Default::default();
 
         for cgu in &codegen_units {
             for (&mono_item, &linkage) in cgu.items() {
@@ -955,17 +959,17 @@ impl CrateInfo {
             compiler_builtins: None,
             profiler_runtime: None,
             sanitizer_runtime: None,
-            is_no_builtins: FxHashSet(),
-            native_libraries: FxHashMap(),
+            is_no_builtins: Default::default(),
+            native_libraries: Default::default(),
             used_libraries: tcx.native_libraries(LOCAL_CRATE),
             link_args: tcx.link_args(LOCAL_CRATE),
-            crate_name: FxHashMap(),
+            crate_name: Default::default(),
             used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
             used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
-            used_crate_source: FxHashMap(),
-            wasm_imports: FxHashMap(),
-            lang_item_to_crate: FxHashMap(),
-            missing_lang_items: FxHashMap(),
+            used_crate_source: Default::default(),
+            wasm_imports: Default::default(),
+            lang_item_to_crate: Default::default(),
+            missing_lang_items: Default::default(),
         };
         let lang_items = tcx.lang_items();
 

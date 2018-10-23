@@ -100,20 +100,20 @@ pub fn get_vtable<'a, 'll: 'a, 'tcx: 'll, Cx: 'a + CodegenMethods<'a, 'll, 'tcx>
     // Not in the cache. Build it.
     let nullptr = cx.const_null(cx.type_i8p());
 
-    let methods = tcx.vtable_methods(trait_ref.with_self_ty(tcx, ty));
+    let methods = tcx.vtable_methods(trait_ref.with_self_ty(*tcx, ty));
     let methods = methods.iter().cloned().map(|opt_mth| {
         opt_mth.map_or(nullptr, |(def_id, substs)| {
             callee::resolve_and_get_fn(cx, def_id, substs)
         })
     });
 
-    let (size, align) = cx.size_and_align_of(ty);
+    let (size, align) = cx.layout_of(ty).size_and_align();
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // If you touch this code, be sure to also make the corresponding changes to
     // `get_vtable` in rust_mir/interpret/traits.rs
     // /////////////////////////////////////////////////////////////////////////////////////////////
     let components: Vec<_> = [
-        callee::get_fn(cx, monomorphize::resolve_drop_in_place(cx.tcx, ty)),
+        cx.get_fn(monomorphize::resolve_drop_in_place(*cx.tcx(), ty)),
         cx.const_usize(size.bytes()),
         cx.const_usize(align.abi())
     ].iter().cloned().chain(methods).collect();

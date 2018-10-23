@@ -11,7 +11,7 @@
 use rustc_data_structures::sync::Lrc;
 use std::sync::Arc;
 
-use monomorphize::Instance;
+use rustc_mir::monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::hir::CodegenFnAttrFlags;
