@@ -1243,6 +1243,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 | Categorization::StaticItem
                 | Categorization::Upvar(..)
                 | Categorization::Local(..)
+                | Categorization::ThreadLocal(..)
                 | Categorization::Rvalue(..) => {
                     // These are all "base cases" with independent lifetimes
                     // that are not subject to inference

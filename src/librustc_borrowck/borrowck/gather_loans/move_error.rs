@@ -145,6 +145,8 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
     match move_from.cat {
         Categorization::Deref(_, mc::BorrowedPtr(..)) |
         Categorization::Deref(_, mc::UnsafePtr(..)) |
+        Categorization::Deref(_, mc::Unique) |
+        Categorization::ThreadLocal(..) |
         Categorization::StaticItem => {
             bccx.cannot_move_out_of(
                 move_from.span, &move_from.descriptive_string(bccx.tcx), Origin::Ast)
@@ -166,7 +168,10 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &'a BorrowckCtxt<'a, 'tcx>,
                 }
             }
         }
-        _ => {
+
+        Categorization::Rvalue(..) |
+        Categorization::Local(..) |
+        Categorization::Upvar(..) => {
             span_bug!(move_from.span, "this path should not cause illegal move");
         }
     }
