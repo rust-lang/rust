@@ -1120,10 +1120,10 @@ define_print! {
                 Bound(bound_ty) => {
                     match bound_ty.kind {
                         ty::BoundTyKind::Anon => {
-                            if bound_ty.level == ty::INNERMOST {
+                            if bound_ty.index == ty::INNERMOST {
                                 write!(f, "?{}", bound_ty.var.index())
                             } else {
-                                write!(f, "?{}_{}", bound_ty.level.index(), bound_ty.var.index())
+                                write!(f, "?{}_{}", bound_ty.index.index(), bound_ty.var.index())
                             }
                         }
 

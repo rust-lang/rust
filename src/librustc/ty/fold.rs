@@ -655,11 +655,11 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
     fn fold_ty(&mut self, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
         match ty.sty {
             ty::Bound(bound_ty) => {
-                if self.amount == 0 || bound_ty.level < self.current_index {
+                if self.amount == 0 || bound_ty.index < self.current_index {
                     ty
                 } else {
                     let shifted = ty::BoundTy {
-                        level: bound_ty.level.shifted_in(self.amount),
+                        index: bound_ty.index.shifted_in(self.amount),
                         var: bound_ty.var,
                         kind: bound_ty.kind,
                     };

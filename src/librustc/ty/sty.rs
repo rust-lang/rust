@@ -1230,7 +1230,7 @@ newtype_index! {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct BoundTy {
-    pub level: DebruijnIndex,
+    pub index: DebruijnIndex,
     pub var: BoundVar,
     pub kind: BoundTyKind,
 }
@@ -1241,13 +1241,13 @@ pub enum BoundTyKind {
     Param(InternedString),
 }
 
-impl_stable_hash_for!(struct BoundTy { level, var, kind });
+impl_stable_hash_for!(struct BoundTy { index, var, kind });
 impl_stable_hash_for!(enum self::BoundTyKind { Anon, Param(a) });
 
 impl BoundTy {
-    pub fn new(level: DebruijnIndex, var: BoundVar) -> Self {
+    pub fn new(index: DebruijnIndex, var: BoundVar) -> Self {
         BoundTy {
-            level,
+            index,
             var,
             kind: BoundTyKind::Anon,
         }
