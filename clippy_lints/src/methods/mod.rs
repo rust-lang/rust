@@ -749,11 +749,11 @@ declare_clippy_lint! {
 /// `iter_mut`.
 ///
 /// **Why is this bad?** Arrays and `PathBuf` do not yet have an `into_iter` method which move out
-/// their content into an iterator. Calling `into_iter` instead just forwards to `iter` or
-/// `iter_mut` due to auto-referencing, of which only yield references. Furthermore, when the
-/// standard library actually [implements the `into_iter` method][25725] which moves the content out
-/// of the array, the original use of `into_iter` got inferred with the wrong type and the code will
-/// be broken.
+/// their content into an iterator. Auto-referencing resolves the `into_iter` call to its reference
+/// instead, like `<&[T; N] as IntoIterator>::into_iter`, which just iterates over item references
+/// like calling `iter` would. Furthermore, when the standard library actually
+/// [implements the `into_iter` method][25725] which moves the content out of the array, the
+/// original use of `into_iter` got inferred with the wrong type and the code will be broken.
 ///
 /// **Known problems:** None
 ///
