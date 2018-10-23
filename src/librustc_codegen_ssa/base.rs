@@ -39,6 +39,8 @@ use rustc::util::profiling::ProfileCategory;
 use rustc::session::config::{self, EntryFnType, Lto};
 use rustc::session::Session;
 use mir::place::PlaceRef;
+use back::write::{OngoingCodegen, start_async_codegen, submit_pre_lto_module_to_llvm,
+    submit_post_lto_module_to_llvm};
 use {MemFlags, CrateInfo};
 use callee;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
@@ -556,7 +558,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     rx: mpsc::Receiver<Box<dyn Any + Send>>
-) -> B::OngoingCodegen {
+) -> OngoingCodegen<B> {
 
     check_for_rustc_errors_attr(tcx);
 
@@ -590,19 +592,20 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // Skip crate items and just output metadata in -Z no-codegen mode.
     if tcx.sess.opts.debugging_opts.no_codegen ||
        !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = backend.start_async_codegen(
+        let ongoing_codegen = start_async_codegen(
+            backend,
             tcx,
             time_graph,
             metadata,
             rx,
             1);
 
-        backend.submit_pre_codegened_module_to_backend(&ongoing_codegen, tcx, metadata_module);
-        backend.codegen_finished(&ongoing_codegen, tcx);
+        ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
+        ongoing_codegen.codegen_finished(tcx);
 
         assert_and_save_dep_graph(tcx);
 
-        backend.check_for_errors(&ongoing_codegen, tcx.sess);
+        ongoing_codegen.check_for_errors(tcx.sess);
 
         return ongoing_codegen;
     }
@@ -623,7 +626,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let ongoing_codegen = backend.start_async_codegen(
+    let ongoing_codegen = start_async_codegen(
+        backend.clone(),
         tcx,
         time_graph.clone(),
         metadata,
@@ -667,10 +671,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     };
 
     if let Some(allocator_module) = allocator_module {
-        backend.submit_pre_codegened_module_to_backend(&ongoing_codegen, tcx, allocator_module);
+        ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, allocator_module);
     }
 
-    backend.submit_pre_codegened_module_to_backend(&ongoing_codegen, tcx, metadata_module);
+    ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
 
     // We sort the codegen units by size. This way we can schedule work for LLVM
     // a bit more efficiently.
@@ -684,8 +688,8 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     let mut all_stats = Stats::default();
 
     for cgu in codegen_units.into_iter() {
-        backend.wait_for_signal_to_codegen_item(&ongoing_codegen);
-        backend.check_for_errors(&ongoing_codegen, tcx.sess);
+        ongoing_codegen.wait_for_signal_to_codegen_item();
+        ongoing_codegen.check_for_errors(tcx.sess);
 
         let cgu_reuse = determine_cgu_reuse(tcx, &cgu);
         tcx.sess.cgu_reuse_tracker.set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
@@ -704,14 +708,14 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 false
             }
             CguReuse::PreLto => {
-                backend.submit_pre_lto_module_to_backend(tcx, CachedModuleCodegen {
+                submit_pre_lto_module_to_llvm(&backend, tcx, CachedModuleCodegen {
                     name: cgu.name().to_string(),
                     source: cgu.work_product(tcx),
                 });
                 true
             }
             CguReuse::PostLto => {
-                backend.submit_post_lto_module_to_backend(tcx, CachedModuleCodegen {
+                submit_post_lto_module_to_llvm(&backend, tcx, CachedModuleCodegen {
                     name: cgu.name().to_string(),
                     source: cgu.work_product(tcx),
                 });
@@ -720,7 +724,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         };
     }
 
-    backend.codegen_finished(&ongoing_codegen, tcx);
+    ongoing_codegen.codegen_finished(tcx);
 
     // Since the main thread is sometimes blocked during codegen, we keep track
     // -Ztime-passes output manually.
@@ -754,7 +758,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    backend.check_for_errors(&ongoing_codegen, tcx.sess);
+    ongoing_codegen.check_for_errors(tcx.sess);
 
     assert_and_save_dep_graph(tcx);
     ongoing_codegen.into_inner()
@@ -777,24 +781,24 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 /// If you see this comment in the code, then it means that this workaround
 /// worked! We may yet one day track down the mysterious cause of that
 /// segfault...
-struct AbortCodegenOnDrop<B: ExtraBackendMethods>(Option<B::OngoingCodegen>);
+struct AbortCodegenOnDrop<B: ExtraBackendMethods>(Option<OngoingCodegen<B>>);
 
 impl<B: ExtraBackendMethods> AbortCodegenOnDrop<B> {
-    fn into_inner(mut self) -> B::OngoingCodegen {
+    fn into_inner(mut self) -> OngoingCodegen<B> {
         self.0.take().unwrap()
     }
 }
 
 impl<B: ExtraBackendMethods> Deref for AbortCodegenOnDrop<B> {
-    type Target = B::OngoingCodegen;
+    type Target = OngoingCodegen<B>;
 
-    fn deref(&self) -> &B::OngoingCodegen {
+    fn deref(&self) -> &OngoingCodegen<B> {
         self.0.as_ref().unwrap()
     }
 }
 
 impl<B: ExtraBackendMethods> DerefMut for AbortCodegenOnDrop<B> {
-    fn deref_mut(&mut self) -> &mut B::OngoingCodegen {
+    fn deref_mut(&mut self) -> &mut OngoingCodegen<B> {
         self.0.as_mut().unwrap()
     }
 }
@@ -802,7 +806,7 @@ impl<B: ExtraBackendMethods> DerefMut for AbortCodegenOnDrop<B> {
 impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
     fn drop(&mut self) {
         if let Some(codegen) = self.0.take() {
-            B::codegen_aborted(codegen);
+            codegen.codegen_aborted();
         }
     }
 }

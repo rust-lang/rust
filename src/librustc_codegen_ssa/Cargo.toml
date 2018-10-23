@@ -9,3 +9,7 @@ path = "lib.rs"
 test = false
 
 [dependencies]
+cc = "1.0.1"
+num_cpus = "1.0"
+rustc-demangle = "0.1.4"
+memmap = "0.6"

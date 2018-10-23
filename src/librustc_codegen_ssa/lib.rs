@@ -39,7 +39,16 @@ extern crate syntax_pos;
 extern crate rustc_incremental;
 extern crate rustc_codegen_utils;
 extern crate rustc_data_structures;
+extern crate rustc_allocator;
+extern crate rustc_fs_util;
+extern crate serialize;
+extern crate rustc_errors;
+extern crate rustc_demangle;
+extern crate cc;
 extern crate libc;
+extern crate jobserver;
+extern crate memmap;
+extern crate num_cpus;
 
 use std::path::PathBuf;
 use rustc::dep_graph::WorkProduct;
@@ -48,7 +57,9 @@ use rustc::middle::lang_items::LangItem;
 use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::svh::Svh;
 use rustc::middle::cstore::{LibSource, CrateSource, NativeLibrary};
+use syntax_pos::symbol::Symbol;
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -63,6 +74,7 @@ pub mod callee;
 pub mod glue;
 pub mod meth;
 pub mod mono_item;
+pub mod back;
 
 pub struct ModuleCodegen<M> {
     /// The name of the module. When the crate may be saved between
@@ -157,6 +169,19 @@ pub struct CrateInfo {
     pub wasm_imports: FxHashMap<String, String>,
     pub lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
     pub missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
+}
+
+
+pub struct CodegenResults {
+    pub crate_name: Symbol,
+    pub modules: Vec<CompiledModule>,
+    pub allocator_module: Option<CompiledModule>,
+    pub metadata_module: CompiledModule,
+    pub crate_hash: Svh,
+    pub metadata: rustc::middle::cstore::EncodedMetadata,
+    pub windows_subsystem: Option<String>,
+    pub linker_info: back::linker::LinkerInfo,
+    pub crate_info: CrateInfo,
 }
 
 __build_diagnostic_array! { librustc_codegen_ssa, DIAGNOSTICS }

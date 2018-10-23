@@ -8,6 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use super::symbol_export;
+use super::command::Command;
+use super::archive;
+
 use rustc_data_structures::fx::FxHashMap;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
@@ -15,7 +19,6 @@ use std::io::prelude::*;
 use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
 
-use command::Command;
 use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
@@ -256,7 +259,7 @@ impl<'a> Linker for GccLinker<'a> {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.linker_arg("-force_load");
-            let lib = ::find_library(lib, search_path, &self.sess);
+            let lib = archive::find_library(lib, search_path, &self.sess);
             self.linker_arg(&lib);
         }
     }
@@ -878,36 +881,6 @@ impl<'a> Linker for EmLinker<'a> {
     }
 }
 
-fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
-    let mut symbols = Vec::new();
-
-    let export_threshold =
-        ::symbol_export::crates_export_threshold(&[crate_type]);
-    for &(symbol, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {
-        if level.is_below_threshold(export_threshold) {
-            symbols.push(symbol.symbol_name(tcx).to_string());
-        }
-    }
-
-    let formats = tcx.sess.dependency_formats.borrow();
-    let deps = formats[&crate_type].iter();
-
-    for (index, dep_format) in deps.enumerate() {
-        let cnum = CrateNum::new(index + 1);
-        // For each dependency that we are linking to statically ...
-        if *dep_format == Linkage::Static {
-            // ... we add its symbol list to our export list.
-            for &(symbol, level) in tcx.exported_symbols(cnum).iter() {
-                if level.is_below_threshold(export_threshold) {
-                    symbols.push(symbol.symbol_name(tcx).to_string());
-                }
-            }
-        }
-    }
-
-    symbols
-}
-
 pub struct WasmLd<'a> {
     cmd: Command,
     sess: &'a Session,
@@ -1074,4 +1047,33 @@ impl<'a> Linker for WasmLd<'a> {
     fn cross_lang_lto(&mut self) {
         // Do nothing for now
     }
+}
+
+fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
+    let mut symbols = Vec::new();
+
+    let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
+    for &(symbol, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {
+        if level.is_below_threshold(export_threshold) {
+            symbols.push(symbol.symbol_name(tcx).to_string());
+        }
+    }
+
+    let formats = tcx.sess.dependency_formats.borrow();
+    let deps = formats[&crate_type].iter();
+
+    for (index, dep_format) in deps.enumerate() {
+        let cnum = CrateNum::new(index + 1);
+        // For each dependency that we are linking to statically ...
+        if *dep_format == Linkage::Static {
+            // ... we add its symbol list to our export list.
+            for &(symbol, level) in tcx.exported_symbols(cnum).iter() {
+                if level.is_below_threshold(export_threshold) {
+                    symbols.push(symbol.symbol_name(tcx).to_string());
+                }
+            }
+        }
+    }
+
+    symbols
 }

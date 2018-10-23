@@ -35,6 +35,7 @@ mod intrinsic;
 mod misc;
 mod statics;
 mod type_;
+mod write;
 
 pub use self::abi::{AbiBuilderMethods, AbiMethods};
 pub use self::asm::{AsmBuilderMethods, AsmMethods};
@@ -49,6 +50,7 @@ pub use self::statics::StaticMethods;
 pub use self::type_::{
     ArgTypeMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, TypeMethods,
 };
+pub use self::write::{ModuleBufferMethods, ThinBufferMethods, WriteBackendMethods};
 
 use std::fmt;
 

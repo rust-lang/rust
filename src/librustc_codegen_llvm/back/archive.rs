@@ -18,6 +18,7 @@ use std::ptr;
 use std::str;
 
 use back::bytecode::RLIB_BYTECODE_EXTENSION;
+use rustc_codegen_ssa::back::archive::find_library;
 use libc;
 use llvm::archive_ro::{ArchiveRO, Child};
 use llvm::{self, ArchiveKind};
@@ -51,7 +52,6 @@ enum Addition {
         skip: Box<dyn FnMut(&str) -> bool>,
     },
 }
-
 
 fn is_relevant_child(c: &Child) -> bool {
     match c.name() {
@@ -107,7 +107,7 @@ impl<'a> ArchiveBuilder<'a> {
     /// Adds all of the contents of a native library to this archive. This will
     /// search in the relevant locations for a library named `name`.
     pub fn add_native_library(&mut self, name: &str) {
-        let location = ::rustc_codegen_utils::find_library(name, &self.config.lib_search_paths,
+        let location = find_library(name, &self.config.lib_search_paths,
                                     self.config.sess);
         self.add_archive(&location, |_| false).unwrap_or_else(|e| {
             self.config.sess.fatal(&format!("failed to add native library {}: {}",

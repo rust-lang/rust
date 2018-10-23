@@ -2129,6 +2129,12 @@ dependencies = [
 [[package]]
 name = "rustc_codegen_ssa"
 version = "0.0.0"
+dependencies = [
+ "cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "memmap 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-demangle 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "rustc_codegen_utils"
@@ -2137,13 +2143,11 @@ dependencies = [
  "flate2 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
- "rustc_allocator 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_incremental 0.0.0",
  "rustc_metadata 0.0.0",
  "rustc_mir 0.0.0",
  "rustc_target 0.0.0",
- "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
