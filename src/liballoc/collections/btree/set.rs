@@ -730,7 +730,7 @@ impl<T> BTreeSet<T> {
     /// assert_eq!(v.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.map.len()
     }
 
@@ -747,7 +747,7 @@ impl<T> BTreeSet<T> {
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
 }

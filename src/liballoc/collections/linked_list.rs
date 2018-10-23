@@ -135,7 +135,7 @@ impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
 }
 
 impl<T> Node<T> {
-    fn new(element: T) -> Self {
+    const fn new(element: T) -> Self {
         Node {
             next: None,
             prev: None,
@@ -264,7 +264,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         LinkedList {
             head: None,
             tail: None,
@@ -341,7 +341,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<T> {
+    pub const fn iter(&self) -> Iter<T> {
         Iter {
             head: self.head,
             tail: self.tail,
@@ -401,8 +401,8 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
-        self.head.is_none()
+    pub const fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 
     /// Returns the length of the `LinkedList`.
@@ -427,7 +427,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.len
     }
 

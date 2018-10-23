@@ -933,7 +933,7 @@ impl<T> VecDeque<T> {
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.tail == self.head
     }
 
@@ -1275,7 +1275,7 @@ impl<T> VecDeque<T> {
     }
 
     #[inline]
-    fn is_contiguous(&self) -> bool {
+    const fn is_contiguous(&self) -> bool {
         self.tail <= self.head
     }
 

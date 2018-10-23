@@ -357,7 +357,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
 
     /// Returns the height of this node in the whole tree. Zero height denotes the
     /// leaf level.
-    pub fn height(&self) -> usize {
+    pub const fn height(&self) -> usize {
         self.height
     }
 
