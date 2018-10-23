@@ -8,17 +8,19 @@ undergraduate research course at the [University of Saskatchewan][usask].
 ## Building Miri
 
 I recommend that you install [rustup][rustup] to obtain Rust.  Miri comes with a
-`rust-toolchain` file so rustup will automatically pick a suitable nightly
-version.  Then all you have to do is:
+`rust-version` file describing the latest supported nightly version of the Rust
+compiler toolchain. Then all you have to do is:
 
 ```sh
-cargo build
+cargo +nightly build
 ```
+
+with `+nightly` replaced with the appropriate nightly version of Rust.
 
 ## Running Miri
 
 ```sh
-cargo run tests/run-pass/vecs.rs # Or whatever test you like.
+cargo +nightly run tests/run-pass/vecs.rs # Or whatever test you like.
 ```
 
 ## Running Miri with full libstd
@@ -28,15 +30,15 @@ Miri hits a call to such a function, execution terminates. To fix this, it is
 possible to compile libstd with full MIR:
 
 ```sh
-rustup component add rust-src
-cargo install xargo
-xargo/build.sh
+rustup component add --toolchain nightly rust-src
+cargo +nightly install xargo
+rustup run nightly xargo/build.sh
 ```
 
 Now you can run Miri against the libstd compiled by xargo:
 
 ```sh
-MIRI_SYSROOT=~/.xargo/HOST cargo run tests/run-pass-fullmir/hashmap.rs
+MIRI_SYSROOT=~/.xargo/HOST cargo +nightly run tests/run-pass-fullmir/hashmap.rs
 ```
 
 Notice that you will have to re-run the last step of the preparations above when
@@ -47,7 +49,7 @@ You can also set `-Zmiri-start-fn` to make Miri start evaluation with the
 
 ## Running Miri on your own project('s test suite)
 
-Install Miri as a cargo subcommand with `cargo install --all-features --path .`.
+Install Miri as a cargo subcommand with `cargo install +nightly --all-features --path .`.
 
 Compile your project and its dependencies against a MIR-enabled libstd as described
 above:
@@ -61,12 +63,12 @@ the non-MIR `libstd`.
 
 ### Common Problems
 
-When modifying the above instructions, you may encounter a number of confusing compiler
+When using the above instructions, you may encounter a number of confusing compiler
 errors.
 
 #### "constant evaluation error: no mir for `<function>`"
 
-You may have forgotten to set `MIRI_SYSROOT` when calling `cargo miri test`, and
+You may have forgotten to set `MIRI_SYSROOT` when calling `cargo miri`, and
 your program called into `std` or `core`. Be sure to set `MIRI_SYSROOT=~/.xargo/HOST`.
 
 #### "found possibly newer version of crate `std` which `<dependency>` depends on"
@@ -77,21 +79,9 @@ builds and vice-versa.
 
 #### "found crate `std` compiled by an incompatible version of rustc"
 
-You may be running `cargo miri test` with a different compiler version than the one
+You may be running `cargo miri` with a different compiler version than the one
 used to build the MIR-enabled `std`. Be sure to consistently use the same toolchain,
-perhaps by following the below instructions to specify a specific nightly for use
-with Miri.
-
-## Using Rustup To Specify a Specific Nightly
-
-To target a specific nightly, modify the above instructions as follows. It is recommended
-to use the nightly specified in the `rust-version` file in this repo, since that is the
-most recent nightly supported by Miri.
-
-1. Install Miri using `cargo +nightly-2018-10-15 install --all-features --path .`,
-with the date replaced as appropriate.
-2. Run `xargo/build.sh` as `rustup run nightly-2018-10-15 xargo/build.sh`.
-3. When running tests, use `MIRI_SYSROOT=~/.xargo/HOST cargo +nightly-2018-10-15 miri test`.
+which should be the toolchain specified in the `rust-version` file.
 
 ## Miri `-Z` flags
 
