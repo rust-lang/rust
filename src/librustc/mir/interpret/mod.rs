@@ -26,7 +26,7 @@ pub use self::error::{
 
 pub use self::value::{Scalar, ConstValue};
 
-pub use self::allocation::Allocation;
+pub use self::allocation::{Allocation, MemoryAccess};
 
 use std::fmt;
 use mir;

@@ -27,6 +27,13 @@ use std::ptr;
 use ty::layout::{self, Size, Align};
 use syntax::ast::Mutability;
 
+/// Classifying memory accesses
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum MemoryAccess {
+    Read,
+    Write,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Allocation<Tag=(),Extra=()> {
     /// The actual bytes of the allocation.
@@ -47,6 +54,22 @@ pub struct Allocation<Tag=(),Extra=()> {
     pub mutability: Mutability,
     /// Extra state for the machine.
     pub extra: Extra,
+}
+
+trait AllocationExtra<Tag> {
+    /// Hook for performing extra checks on a memory access.
+    ///
+    /// Takes read-only access to the allocation so we can keep all the memory read
+    /// operations take `&self`.  Use a `RefCell` in `AllocExtra` if you
+    /// need to mutate.
+    fn memory_accessed(
+        &self,
+        ptr: Pointer<Tag>,
+        size: Size,
+        access: MemoryAccess,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
 }
 
 impl<Tag, Extra: Default> Allocation<Tag, Extra> {
@@ -84,7 +107,7 @@ impl<Tag, Extra: Default> Allocation<Tag, Extra> {
 impl<'tcx> ::serialize::UseSpecializedDecodable for &'tcx Allocation {}
 
 /// Byte accessors
-impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
+impl<'tcx, Tag, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// The last argument controls whether we error out when there are undefined
     /// or pointer bytes.  You should never call this, call `get_bytes` or
     /// `get_bytes_with_undef_and_ptr` instead,
@@ -112,7 +135,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         }
 
         let alloc = self.get(ptr.alloc_id)?;
-        M::memory_accessed(alloc, ptr, size, MemoryAccess::Read)?;
+        Extra::memory_accessed(&self.extra, ptr, size, MemoryAccess::Read)?;
 
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
@@ -158,7 +181,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         self.clear_relocations(ptr, size)?;
 
         let alloc = self.get_mut(ptr.alloc_id)?;
-        M::memory_accessed(alloc, ptr, size, MemoryAccess::Write)?;
+        Extra::memory_accessed(alloc, ptr, size, MemoryAccess::Write)?;
 
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
