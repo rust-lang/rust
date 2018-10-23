@@ -1048,7 +1048,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     if let Some(constructors) = pat_constructors(cx, v[0], pcx) {
         debug!("is_useful - expanding constructors: {:#?}", constructors);
         split_grouped_constructors(cx.tcx, constructors, matrix, pcx.ty).into_iter().map(|c|
-            is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
+            is_useful_specialized(cx, matrix, v, c, pcx.ty, witness)
         ).find(|result| result.is_useful()).unwrap_or(NotUseful)
     } else {
         debug!("is_useful - expanding wildcard");
@@ -1096,7 +1096,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
         if missing_ctors.is_empty() && !is_non_exhaustive {
             split_grouped_constructors(cx.tcx, all_ctors, matrix, pcx.ty).into_iter().map(|c| {
-                is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
+                is_useful_specialized(cx, matrix, v, c, pcx.ty, witness)
             }).find(|result| result.is_useful()).unwrap_or(NotUseful)
         } else {
             let matrix = rows.iter().filter_map(|r| {
