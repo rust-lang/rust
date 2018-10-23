@@ -496,11 +496,8 @@ impl GetOptsOptions {
             if options.check {
                 return Err(format_err!("Invalid to use `--emit` and `--check`"));
             }
-            if let Ok(emit_mode) = emit_mode_from_emit_str(emit_str) {
-                options.emit_mode = emit_mode;
-            } else {
-                return Err(format_err!("Invalid value for `--emit`"));
-            }
+
+            options.emit_mode = emit_mode_from_emit_str(emit_str)?;
         }
 
         if matches.opt_present("backup") {
