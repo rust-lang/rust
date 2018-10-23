@@ -22,7 +22,7 @@ struct S7;
 #[cfg(a = 10)] //~ ERROR literal in `cfg` predicate value must be a string
 struct S8;
 
-#[cfg(a = b"hi")]
+#[cfg(a = b"hi")]  //~ ERROR literal in `cfg` predicate value must be a string
 struct S9;
 
 macro_rules! generate_s10 {
