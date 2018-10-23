@@ -20,7 +20,7 @@ LL |     static_id(&u); //[ll]~ ERROR explicit lifetime required in the type of 
    |     ^^^^^^^^^ lifetime `'static` required
 
 error[E0621]: explicit lifetime required in the type of `v`
-  --> $DIR/regions-static-bound.rs:27:5
+  --> $DIR/regions-static-bound.rs:26:5
    |
 LL | fn error(u: &(), v: &()) {
    |                     --- help: add explicit lifetime `'static` to the type of `v`: `&'static ()`

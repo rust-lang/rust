@@ -1,0 +1,37 @@
+error: unsatisfied lifetime constraints
+  --> $DIR/closure-substs.rs:18:16
+   |
+LL | fn foo<'a>() {
+   |        -- lifetime `'a` defined here
+...
+LL |         return x; //~ ERROR unsatisfied lifetime constraints
+   |                ^ returning this value requires that `'a` must outlive `'static`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/closure-substs.rs:25:16
+   |
+LL |     |x: &i32| -> &'static i32 {
+   |         - let's call the lifetime of this reference `'1`
+LL |         return x; //~ ERROR unsatisfied lifetime constraints
+   |                ^ returning this value requires that `'1` must outlive `'static`
+
+error: unsatisfied lifetime constraints
+  --> $DIR/closure-substs.rs:32:9
+   |
+LL | fn bar<'a>() {
+   |        -- lifetime `'a` defined here
+...
+LL |         b(x); //~ ERROR unsatisfied lifetime constraints
+   |         ^^^^ argument requires that `'a` must outlive `'static`
+
+error[E0521]: borrowed data escapes outside of closure
+  --> $DIR/closure-substs.rs:39:9
+   |
+LL |     |x: &i32, b: fn(&'static i32)| {
+   |      - `x` is a reference that is only valid in the closure body
+LL |         b(x); //~ ERROR borrowed data escapes outside of closure
+   |         ^^^^ `x` escapes the closure body here
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0521`.

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(nll)]
+
 struct Foo<'a, 'b: 'a>(&'a &'b ());
 
 impl<'a, 'b> Foo<'a, 'b> {
@@ -17,7 +19,7 @@ impl<'a, 'b> Foo<'a, 'b> {
 }
 
 pub fn foo<'a, 'b>(u: &'b ()) -> &'a () {
-    Foo::<'a, 'b>::xmute(u) //~ ERROR lifetime bound not satisfied
+    Foo::xmute(u) //~ ERROR unsatisfied lifetime constraints
 }
 
 fn main() {}

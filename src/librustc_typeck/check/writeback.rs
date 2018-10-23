@@ -52,6 +52,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_cast_types();
         wbcx.visit_free_region_map();
         wbcx.visit_user_provided_tys();
+        wbcx.visit_user_provided_sigs();
 
         let used_trait_imports = mem::replace(
             &mut self.tables.borrow_mut().used_trait_imports,
@@ -385,6 +386,27 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             self.tables
                 .user_provided_tys_mut()
                 .insert(hir_id, c_ty.clone());
+        }
+    }
+
+    fn visit_user_provided_sigs(&mut self) {
+        let fcx_tables = self.fcx.tables.borrow();
+        debug_assert_eq!(fcx_tables.local_id_root, self.tables.local_id_root);
+
+        for (&def_id, c_sig) in fcx_tables.user_provided_sigs.iter() {
+            let c_sig = if let Some(c_sig) = self.tcx().lift_to_global(c_sig) {
+                c_sig
+            } else {
+                span_bug!(
+                    self.fcx.tcx.hir.span_if_local(def_id).unwrap(),
+                    "writeback: `{:?}` missing from the global type context",
+                    c_sig
+                );
+            };
+
+            self.tables
+                .user_provided_sigs
+                .insert(def_id, c_sig.clone());
         }
     }
 

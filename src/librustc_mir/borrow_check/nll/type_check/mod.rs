@@ -1033,6 +1033,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     assert!(!impl_self_ty.has_infer_types());
 
                     self.eq_types(self_ty, impl_self_ty, locations, category)?;
+
+                    self.prove_predicate(
+                        ty::Predicate::WellFormed(impl_self_ty),
+                        locations,
+                        category,
+                    );
                 }
 
                 // Prove the predicates coming along with `def_id`.
@@ -1070,11 +1076,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     /// particularly necessary -- we'll do it lazilly as we process
     /// the value anyway -- but in some specific cases it is useful to
     /// normalize so we can suppress duplicate error messages.
-    fn fold_to_region_vid<T>(
-        &self,
-        value: T
-    ) -> T
-    where T: TypeFoldable<'tcx>
+    fn fold_to_region_vid<T>(&self, value: T) -> T
+    where
+        T: TypeFoldable<'tcx>,
     {
         if let Some(borrowck_context) = &self.borrowck_context {
             self.tcx().fold_regions(&value, &mut false, |r, _debruijn| {
@@ -1210,12 +1214,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 // though.
                 let category = match *place {
                     Place::Local(RETURN_PLACE) => if let Some(BorrowCheckContext {
-                        universal_regions: UniversalRegions {
-                            defining_ty: DefiningTy::Const(def_id, _),
-                            ..
-                        },
+                        universal_regions:
+                            UniversalRegions {
+                                defining_ty: DefiningTy::Const(def_id, _),
+                                ..
+                            },
                         ..
-                    }) = self.borrowck_context {
+                    }) = self.borrowck_context
+                    {
                         if tcx.is_static(*def_id).is_some() {
                             ConstraintCategory::UseAsStatic
                         } else {
@@ -1223,7 +1229,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         }
                     } else {
                         ConstraintCategory::Return
-                    }
+                    },
                     Place::Local(l) if !mir.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
@@ -1510,12 +1516,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let category = match *dest {
                     Place::Local(RETURN_PLACE) => {
                         if let Some(BorrowCheckContext {
-                            universal_regions: UniversalRegions {
-                                defining_ty: DefiningTy::Const(def_id, _),
-                                ..
-                            },
+                            universal_regions:
+                                UniversalRegions {
+                                    defining_ty: DefiningTy::Const(def_id, _),
+                                    ..
+                                },
                             ..
-                        }) = self.borrowck_context {
+                        }) = self.borrowck_context
+                        {
                             if tcx.is_static(*def_id).is_some() {
                                 ConstraintCategory::UseAsStatic
                             } else {
@@ -1524,7 +1532,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         } else {
                             ConstraintCategory::Return
                         }
-                    },
+                    }
                     Place::Local(l) if !mir.local_decls[l].is_user_variable.is_some() => {
                         ConstraintCategory::Boring
                     }
@@ -1582,12 +1590,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             } else {
                 ConstraintCategory::Boring
             };
-            if let Err(terr) = self.sub_types(
-                op_arg_ty,
-                fn_arg,
-                term_location.to_locations(),
-                category,
-            ) {
+            if let Err(terr) =
+                self.sub_types(op_arg_ty, fn_arg, term_location.to_locations(), category)
+            {
                 span_mirbug!(
                     self,
                     term,

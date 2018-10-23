@@ -11,7 +11,7 @@
 //! This module contains TyKind and its major components
 
 use hir::def_id::DefId;
-
+use infer::canonical::Canonical;
 use mir::interpret::ConstValue;
 use middle::region;
 use polonius_engine::Atom;
@@ -979,6 +979,9 @@ impl<'tcx> PolyFnSig<'tcx> {
         self.skip_binder().abi
     }
 }
+
+pub type CanonicalPolyFnSig<'tcx> = Canonical<'tcx, Binder<FnSig<'tcx>>>;
+
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct ParamTy {

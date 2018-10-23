@@ -95,7 +95,7 @@ pub fn add_type_ascription_to_parameter() {
 }
 
 #[cfg(not(cfail1))]
-#[rustc_clean(cfg="cfail2", except="HirBody")]
+#[rustc_clean(cfg="cfail2", except="HirBody, TypeckTables")]
 #[rustc_clean(cfg="cfail3")]
 pub fn add_type_ascription_to_parameter() {
     let closure = |x: u32| x + 1u32;

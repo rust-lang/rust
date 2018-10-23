@@ -15,7 +15,7 @@ LL |     static_id(&u); //[ll]~ ERROR explicit lifetime required in the type of 
    |     ^^^^^^^^^^^^^ lifetime `'static` required
 
 error[E0621]: explicit lifetime required in the type of `v`
-  --> $DIR/regions-static-bound.rs:27:5
+  --> $DIR/regions-static-bound.rs:26:5
    |
 LL | fn error(u: &(), v: &()) {
    |                     --- help: add explicit lifetime `'static` to the type of `v`: `&'static ()`
@@ -23,27 +23,6 @@ LL | fn error(u: &(), v: &()) {
 LL |     static_id_indirect(&v); //[ll]~ ERROR explicit lifetime required in the type of `v` [E0621]
    |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime `'static` required
 
-error: unsatisfied lifetime constraints
-  --> $DIR/regions-static-bound.rs:24:5
-   |
-LL | fn error(u: &(), v: &()) {
-   |             -       - let's call the lifetime of this reference `'2`
-   |             |
-   |             let's call the lifetime of this reference `'1`
-LL |     static_id(&u); //[ll]~ ERROR explicit lifetime required in the type of `u` [E0621]
-   |     ^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
-
-error: unsatisfied lifetime constraints
-  --> $DIR/regions-static-bound.rs:27:5
-   |
-LL | fn error(u: &(), v: &()) {
-   |             -       - let's call the lifetime of this reference `'1`
-   |             |
-   |             let's call the lifetime of this reference `'2`
-...
-LL |     static_id_indirect(&v); //[ll]~ ERROR explicit lifetime required in the type of `v` [E0621]
-   |     ^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
-
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0621`.
