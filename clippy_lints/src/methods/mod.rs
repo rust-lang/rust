@@ -452,7 +452,8 @@ declare_clippy_lint! {
 /// **Why is this bad?** As a convention, `new` methods are used to make a new
 /// instance of a type.
 ///
-/// **Known problems:** None.
+/// **Known problems:** The lint fires when the return type is wrapping `Self`.
+/// Example: `fn new() -> Result<Self, E> {}`
 ///
 /// **Example:**
 /// ```rust
