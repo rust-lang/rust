@@ -174,26 +174,6 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx>;
 
-    /// Hook for performing extra checks on a memory read access.
-    #[inline]
-    fn memory_read(
-        _alloc: &Allocation<Self::PointerTag, Self::AllocExtra>,
-        _ptr: Pointer<Self::PointerTag>,
-        _size: Size,
-    ) -> EvalResult<'tcx> {
-        Ok(())
-    }
-
-    /// Hook for performing extra checks on a memory write access.
-    #[inline]
-    fn memory_written(
-        _alloc: &mut Allocation<Self::PointerTag, Self::AllocExtra>,
-        _ptr: Pointer<Self::PointerTag>,
-        _size: Size,
-    ) -> EvalResult<'tcx> {
-        Ok(())
-    }
-
     /// Hook for performing extra checks when memory gets deallocated.
     #[inline]
     fn memory_deallocated(

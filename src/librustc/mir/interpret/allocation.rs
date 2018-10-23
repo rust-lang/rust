@@ -40,6 +40,36 @@ pub struct Allocation<Tag=(),Extra=()> {
     pub extra: Extra,
 }
 
+trait AllocationExtra<Tag> {
+    /// Hook for performing extra checks on a memory read access.
+    ///
+    /// Takes read-only access to the allocation so we can keep all the memory read
+    /// operations take `&self`.  Use a `RefCell` in `AllocExtra` if you
+    /// need to mutate.
+    #[inline]
+    fn memory_read(
+        &self,
+        _ptr: Pointer<Self::PointerTag>,
+        _size: Size,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
+
+    /// Hook for performing extra checks on a memory write access.
+    ///
+    /// Takes read-only access to the allocation so we can keep all the memory read
+    /// operations take `&self`.  Use a `RefCell` in `AllocExtra` if you
+    /// need to mutate.
+    #[inline]
+    fn memory_written(
+        &mut self,
+        _ptr: Pointer<Self::PointerTag>,
+        _size: Size,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
+}
+
 impl<Tag, Extra: Default> Allocation<Tag, Extra> {
     /// Creates a read-only allocation initialized by the given bytes
     pub fn from_bytes(slice: &[u8], align: Align) -> Self {
