@@ -658,4 +658,3 @@ pub fn to_exact_fixed_str<'a, T, F>(mut format_exact: F, v: T,
         }
     }
 }
-

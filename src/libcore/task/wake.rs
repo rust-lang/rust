@@ -141,7 +141,7 @@ impl LocalWaker {
     /// `Waker` is nearly identical to `LocalWaker`, but is threadsafe
     /// (implements `Send` and `Sync`).
     #[inline]
-    pub fn as_waker(&self) -> &Waker {
+    pub const fn as_waker(&self) -> &Waker {
         &self.0
     }
 

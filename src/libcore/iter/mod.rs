@@ -2658,7 +2658,7 @@ impl<I, U> FusedIterator for Flatten<I>
           I::Item: IntoIterator<IntoIter = U, Item = U::Item> {}
 
 /// Adapts an iterator by flattening it, for use in `flatten()` and `flat_map()`.
-fn flatten_compat<I, U>(iter: I) -> FlattenCompat<I, U> {
+const fn flatten_compat<I, U>(iter: I) -> FlattenCompat<I, U> {
     FlattenCompat { iter, frontiter: None, backiter: None }
 }
 

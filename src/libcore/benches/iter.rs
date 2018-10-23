@@ -39,7 +39,7 @@ fn bench_multiple_take(b: &mut Bencher) {
     });
 }
 
-fn scatter(x: i32) -> i32 { (x * 31) % 127 }
+const fn scatter(x: i32) -> i32 { (x * 31) % 127 }
 
 #[bench]
 fn bench_max_by_key(b: &mut Bencher) {

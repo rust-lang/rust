@@ -231,7 +231,7 @@ impl Utf8Error {
     /// assert_eq!(1, error.valid_up_to());
     /// ```
     #[stable(feature = "utf8_error", since = "1.5.0")]
-    pub fn valid_up_to(&self) -> usize { self.valid_up_to }
+    pub const fn valid_up_to(&self) -> usize { self.valid_up_to }
 
     /// Provide more information about the failure:
     ///
@@ -476,16 +476,16 @@ pub struct Chars<'a> {
 /// The first byte is special, only want bottom 5 bits for width 2, 4 bits
 /// for width 3, and 3 bits for width 4.
 #[inline]
-fn utf8_first_byte(byte: u8, width: u32) -> u32 { (byte & (0x7F >> width)) as u32 }
+const fn utf8_first_byte(byte: u8, width: u32) -> u32 { (byte & (0x7F >> width)) as u32 }
 
 /// Returns the value of `ch` updated with continuation byte `byte`.
 #[inline]
-fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 { (ch << 6) | (byte & CONT_MASK) as u32 }
+const fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 { (ch << 6) | (byte & CONT_MASK) as u32 }
 
 /// Checks whether the byte is a UTF-8 continuation byte (i.e. starts with the
 /// bits `10`).
 #[inline]
-fn utf8_is_cont_byte(byte: u8) -> bool { (byte & !CONT_MASK) == TAG_CONT_U8 }
+const fn utf8_is_cont_byte(byte: u8) -> bool { (byte & !CONT_MASK) == TAG_CONT_U8 }
 
 #[inline]
 fn unwrap_or_0(opt: Option<&u8>) -> u8 {
@@ -1420,7 +1420,7 @@ const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
 
 /// Returns `true` if any byte in the word `x` is nonascii (>= 128).
 #[inline]
-fn contains_nonascii(x: usize) -> bool {
+const fn contains_nonascii(x: usize) -> bool {
     (x & NONASCII_MASK) != 0
 }
 
@@ -2277,7 +2277,6 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_str_as_ptr")]
     pub const fn as_ptr(&self) -> *const u8 {
         self as *const str as *const u8
     }

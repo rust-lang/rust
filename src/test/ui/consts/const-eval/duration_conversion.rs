@@ -10,8 +10,6 @@
 
 // compile-pass
 
-#![feature(duration_getters)]
-
 use std::time::Duration;
 
 fn main() {

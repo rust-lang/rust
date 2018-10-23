@@ -82,7 +82,6 @@
 #![feature(const_fn)]
 #![feature(const_int_ops)]
 #![feature(const_fn_union)]
-#![feature(const_manually_drop_new)]
 #![feature(custom_attribute)]
 #![feature(doc_cfg)]
 #![feature(doc_spotlight)]

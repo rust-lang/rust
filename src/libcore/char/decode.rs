@@ -130,7 +130,7 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
 impl DecodeUtf16Error {
     /// Returns the unpaired surrogate which caused this error.
     #[stable(feature = "decode_utf16", since = "1.9.0")]
-    pub fn unpaired_surrogate(&self) -> u16 {
+    pub const fn unpaired_surrogate(&self) -> u16 {
         self.code
     }
 }

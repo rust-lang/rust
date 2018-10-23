@@ -71,6 +71,6 @@ impl SmallBoolTrie {
     }
 }
 
-fn trie_range_leaf(c: u32, bitmap_chunk: u64) -> bool {
+const fn trie_range_leaf(c: u32, bitmap_chunk: u64) -> bool {
     ((bitmap_chunk >> (c & 63)) & 1) != 0
 }

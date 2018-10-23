@@ -385,7 +385,6 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_slice_as_ptr")]
     pub const fn as_ptr(&self) -> *const T {
         self as *const [T] as *const T
     }
@@ -2738,7 +2737,7 @@ impl<'a, T> IntoIterator for &'a mut [T] {
 
 // Macro helper functions
 #[inline(always)]
-fn size_from_ptr<T>(_: *const T) -> usize {
+const fn size_from_ptr<T>(_: *const T) -> usize {
     mem::size_of::<T>()
 }
 
@@ -4022,7 +4021,7 @@ impl<'a, T> ChunksExact<'a, T> {
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
     #[stable(feature = "chunks_exact", since = "1.31.0")]
-    pub fn remainder(&self) -> &'a [T] {
+    pub const fn remainder(&self) -> &'a [T] {
         self.rem
     }
 }
@@ -4518,7 +4517,7 @@ impl<'a, T> RChunksExact<'a, T> {
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
     #[stable(feature = "rchunks", since = "1.31.0")]
-    pub fn remainder(&self) -> &'a [T] {
+    pub const fn remainder(&self) -> &'a [T] {
         self.rem
     }
 }

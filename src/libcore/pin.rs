@@ -207,7 +207,7 @@ impl<'a, T: ?Sized> Pin<&'a T> {
     /// with the same lifetime as the original `Pin`.
     #[unstable(feature = "pin", issue = "49150")]
     #[inline(always)]
-    pub fn get_ref(this: Pin<&'a T>) -> &'a T {
+    pub const fn get_ref(this: Pin<&'a T>) -> &'a T {
         this.pointer
     }
 }
@@ -216,7 +216,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     /// Convert this `Pin<&mut T>` into a `Pin<&T>` with the same lifetime.
     #[unstable(feature = "pin", issue = "49150")]
     #[inline(always)]
-    pub fn into_ref(this: Pin<&'a mut T>) -> Pin<&'a T> {
+    pub const fn into_ref(this: Pin<&'a mut T>) -> Pin<&'a T> {
         Pin { pointer: this.pointer }
     }
 

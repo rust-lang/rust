@@ -55,7 +55,7 @@ impl<'a> PanicInfo<'a> {
                 issue = "0")]
     #[doc(hidden)]
     #[inline]
-    pub fn internal_constructor(message: Option<&'a fmt::Arguments<'a>>,
+    pub const fn internal_constructor(message: Option<&'a fmt::Arguments<'a>>,
                                 location: Location<'a>)
                                 -> Self {
         struct NoPayload;
@@ -96,7 +96,7 @@ impl<'a> PanicInfo<'a> {
     ///
     /// [`fmt::write`]: ../fmt/fn.write.html
     #[unstable(feature = "panic_info_message", issue = "44489")]
-    pub fn message(&self) -> Option<&fmt::Arguments> {
+    pub const fn message(&self) -> Option<&fmt::Arguments> {
         self.message
     }
 
@@ -125,7 +125,7 @@ impl<'a> PanicInfo<'a> {
     /// panic!("Normal panic");
     /// ```
     #[stable(feature = "panic_hooks", since = "1.10.0")]
-    pub fn location(&self) -> Option<&Location> {
+    pub const fn location(&self) -> Option<&Location> {
         // NOTE: If this is changed to sometimes return None,
         // deal with that case in std::panicking::default_hook and std::panicking::begin_panic_fmt.
         Some(&self.location)
@@ -186,7 +186,7 @@ impl<'a> Location<'a> {
                           and related macros",
                 issue = "0")]
     #[doc(hidden)]
-    pub fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
+    pub const fn internal_constructor(file: &'a str, line: u32, col: u32) -> Self {
         Location { file, line, col }
     }
 
@@ -208,7 +208,7 @@ impl<'a> Location<'a> {
     /// panic!("Normal panic");
     /// ```
     #[stable(feature = "panic_hooks", since = "1.10.0")]
-    pub fn file(&self) -> &str {
+    pub const fn file(&self) -> &str {
         self.file
     }
 
@@ -230,7 +230,7 @@ impl<'a> Location<'a> {
     /// panic!("Normal panic");
     /// ```
     #[stable(feature = "panic_hooks", since = "1.10.0")]
-    pub fn line(&self) -> u32 {
+    pub const fn line(&self) -> u32 {
         self.line
     }
 
@@ -252,7 +252,7 @@ impl<'a> Location<'a> {
     /// panic!("Normal panic");
     /// ```
     #[stable(feature = "panic_col", since = "1.25.0")]
-    pub fn column(&self) -> u32 {
+    pub const fn column(&self) -> u32 {
         self.col
     }
 }

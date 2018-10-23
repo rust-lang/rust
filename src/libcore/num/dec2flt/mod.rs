@@ -187,11 +187,11 @@ impl fmt::Display for ParseFloatError {
     }
 }
 
-fn pfe_empty() -> ParseFloatError {
+const fn pfe_empty() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Empty }
 }
 
-fn pfe_invalid() -> ParseFloatError {
+const fn pfe_invalid() -> ParseFloatError {
     ParseFloatError { kind: FloatErrorKind::Invalid }
 }
 

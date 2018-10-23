@@ -139,7 +139,7 @@ pub use intrinsics::transmute;
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn forget<T>(t: T) {
+pub const fn forget<T>(t: T) {
     ManuallyDrop::new(t);
 }
 
@@ -942,7 +942,6 @@ impl<T> ManuallyDrop<T> {
     /// ManuallyDrop::new(Box::new(()));
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
-    #[rustc_const_unstable(feature = "const_manually_drop_new")]
     #[inline]
     pub const fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value }
@@ -961,7 +960,7 @@ impl<T> ManuallyDrop<T> {
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[inline]
-    pub fn into_inner(slot: ManuallyDrop<T>) -> T {
+    pub const fn into_inner(slot: ManuallyDrop<T>) -> T {
         slot.value
     }
 

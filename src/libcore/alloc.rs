@@ -25,7 +25,7 @@ use num::NonZeroUsize;
 #[derive(Debug)]
 pub struct Excess(pub NonNull<u8>, pub usize);
 
-fn size_align<T>() -> (usize, usize) {
+const fn size_align<T>() -> (usize, usize) {
     (mem::size_of::<T>(), mem::align_of::<T>())
 }
 
@@ -116,7 +116,7 @@ impl Layout {
     /// The minimum size in bytes for a memory block of this layout.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
-    pub fn size(&self) -> usize { self.size_ }
+    pub const fn size(&self) -> usize { self.size_ }
 
     /// The minimum byte alignment for a memory block of this layout.
     #[stable(feature = "alloc_layout", since = "1.28.0")]

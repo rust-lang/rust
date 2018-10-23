@@ -283,7 +283,7 @@ impl<T> Default for Empty<T> {
 /// assert_eq!(None, nope.next());
 /// ```
 #[stable(feature = "iter_empty", since = "1.2.0")]
-pub fn empty<T>() -> Empty<T> {
+pub const fn empty<T>() -> Empty<T> {
     Empty(marker::PhantomData)
 }
 
