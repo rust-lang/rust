@@ -7,7 +7,7 @@ Language
   more powerful code generation, there is a [new chapter available][proc-macros]
   in Rust Programming Language book that goes further in depth.
 - [You can now use keywords as identifiers using the raw identifiers
-  syntax (`r#`).][53236] e.g. `let r#bool = true;`
+  syntax (`r#`).][53236] e.g. `let r#for = true;`
 - [Using anonymous parameters in traits is now deprecated with a warning and
   will be a hard error in the 2018 edition.][53272]
 - [You can now use `crate` in paths.][54404] This allows you to refer to the

@@ -10,7 +10,7 @@ note: lint level defined here
 LL | #![deny(absolute_paths_not_starting_with_crate)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in the 2018 edition!
-   = note: for more information, see issue TBD
+   = note: for more information, see issue #53130 <https://github.com/rust-lang/rust/issues/53130>
 
 error: aborting due to previous error
 
