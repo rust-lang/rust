@@ -23,6 +23,19 @@ use crate::{
     Result,
 };
 
+#[derive(Debug, Fail)]
+#[fail(display = "Language Server request failed with {}. ({})", code, message)]
+pub struct LspError {
+    pub code: i32,
+    pub message: String,
+}
+
+impl LspError {
+    pub fn new(code: i32, message: String) -> LspError {
+        LspError {code, message}
+    }
+}
+
 #[derive(Debug)]
 enum Task {
     Respond(RawResponse),
@@ -361,7 +374,10 @@ impl<'a> PoolDispatcher<'a> {
                     let resp = match f(world, params) {
                         Ok(resp) => RawResponse::ok::<R>(id, &resp),
                         Err(e) => {
-                            RawResponse::err(id, ErrorCode::InternalError as i32, e.to_string())
+                            match e.downcast::<LspError>() {
+                                Ok(lsp_error) => RawResponse::err(id, lsp_error.code, lsp_error.message),
+                                Err(e) => RawResponse::err(id, ErrorCode::InternalError as i32, e.to_string())
+                            }
                         }
                     };
                     let task = Task::Respond(resp);
