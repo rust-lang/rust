@@ -13,7 +13,6 @@ extern crate salsa;
 mod db;
 mod descriptors;
 mod imp;
-mod module_map;
 mod roots;
 mod symbol_index;
 
