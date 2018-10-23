@@ -3,12 +3,11 @@ error: macro expansion ignores token `;` and any following
    |
 LL |     () => ( String ; );     //~ ERROR macro expansion ignores token `;`
    |                    ^
-   |
-note: caused by the macro expansion here; the usage of `t!` is likely invalid in type context
-  --> $DIR/issue-30007.rs:16:16
-   |
+...
 LL |     let i: Vec<t!()>;
-   |                ^^^^
+   |                ---- caused by the macro expansion here
+   |
+   = note: the usage of `t!` is likely invalid in type context
 
 error: aborting due to previous error
 

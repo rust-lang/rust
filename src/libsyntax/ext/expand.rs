@@ -1036,10 +1036,26 @@ impl<'a> Parser<'a> {
             // Avoid emitting backtrace info twice.
             let def_site_span = self.span.with_ctxt(SyntaxContext::empty());
             let mut err = self.diagnostic().struct_span_err(def_site_span, &msg);
-            let msg = format!("caused by the macro expansion here; the usage \
-                               of `{}!` is likely invalid in {} context",
-                               macro_path, kind_name);
-            err.span_note(span, &msg).emit();
+            err.span_label(span, "caused by the macro expansion here");
+            let msg = format!(
+                "the usage of `{}!` is likely invalid in {} context",
+                macro_path,
+                kind_name,
+            );
+            err.note(&msg);
+            let semi_span = self.sess.source_map().next_point(span);
+            match self.sess.source_map().span_to_snippet(semi_span) {
+                Ok(ref snippet) if &snippet[..] != ";" && kind_name == "expression" => {
+                    err.span_suggestion_with_applicability(
+                        semi_span,
+                        "you might be missing a semicolon here",
+                        ";".to_owned(),
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                _ => {}
+            }
+            err.emit();
         }
     }
 }
