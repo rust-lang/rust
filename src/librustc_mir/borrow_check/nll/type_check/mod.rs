@@ -1033,6 +1033,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     assert!(!impl_self_ty.has_infer_types());
 
                     self.eq_types(self_ty, impl_self_ty, locations, category)?;
+
+                    self.prove_predicate(ty::Predicate::WellFormed(impl_self_ty), locations, category);
                 }
 
                 // Prove the predicates coming along with `def_id`.
