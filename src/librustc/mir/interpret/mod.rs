@@ -26,7 +26,7 @@ pub use self::error::{
 
 pub use self::value::{Scalar, ConstValue};
 
-pub use self::allocation::{Allocation, MemoryAccess};
+pub use self::allocation::{Allocation, MemoryAccess, AllocationExtra};
 
 use std::fmt;
 use mir;
@@ -810,3 +810,8 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
         self.not_undef()?.to_isize(cx)
     }
 }
+
+impl_stable_hash_for!(enum ::mir::interpret::ScalarMaybeUndef {
+    Scalar(v),
+    Undef
+});

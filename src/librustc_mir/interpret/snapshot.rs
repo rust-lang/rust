@@ -195,11 +195,6 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Scalar
     }
 }
 
-impl_stable_hash_for!(enum ::interpret::ScalarMaybeUndef {
-    Scalar(v),
-    Undef
-});
-
 impl_snapshot_for!(enum ScalarMaybeUndef {
     Scalar(s),
     Undef,

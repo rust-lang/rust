@@ -24,7 +24,7 @@ use rustc::mir::interpret::{
     GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic
 };
 use super::{
-    EvalContext, Machine, AllocMap,
+    EvalContext, Machine, AllocMap, AllocationExtra,
     Value, ValTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind
 };
 
@@ -263,6 +263,7 @@ impl<'a, 'mir, 'tcx, Tag, M> EvalContext<'a, 'mir, 'tcx, M>
 where
     Tag: ::std::fmt::Debug+Default+Copy+Eq+Hash+'static,
     M: Machine<'a, 'mir, 'tcx, PointerTag=Tag>,
+    M::AllocExtra: AllocationExtra<Tag>,
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.

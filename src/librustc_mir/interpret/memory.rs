@@ -21,7 +21,7 @@ use std::ptr;
 use std::borrow::Cow;
 
 use rustc::ty::{self, Instance, ParamEnv, query::TyCtxtAt};
-use rustc::ty::layout::{self, Align, TargetDataLayout, Size, HasDataLayout};
+use rustc::ty::layout::{Align, TargetDataLayout, Size, HasDataLayout};
 pub use rustc::mir::interpret::{truncate, write_target_uint, read_target_uint};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
@@ -30,7 +30,7 @@ use syntax::ast::Mutability;
 use super::{
     Pointer, AllocId, Allocation, ConstValue, GlobalId,
     EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
-    Machine, MemoryAccess, AllocMap, MayLeak, ScalarMaybeUndef, ErrorHandled,
+    Machine, MemoryAccess, AllocMap, MayLeak, ScalarMaybeUndef, AllocationExtra, ErrorHandled,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -296,6 +296,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 required: required_align,
             })
         }
+    }
+
+    /// Convenience forwarding method for `Allocation::check_bounds`.
+    #[inline(always)]
+    pub fn check_bounds(
+        &self,
+        ptr: Pointer<M::PointerTag>,
+        size: Size,
+        access: bool
+    ) -> EvalResult<'tcx> {
+        self.get(ptr.alloc_id)?.check_bounds(self, ptr, size, access)
     }
 }
 
@@ -587,6 +598,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 impl<'a, 'mir, 'tcx, M> Memory<'a, 'mir, 'tcx, M>
 where
     M: Machine<'a, 'mir, 'tcx, PointerTag=(), AllocExtra=()>,
+    M::AllocExtra: AllocationExtra<()>,
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 {
     /// mark an allocation as static and initialized, either mutable or not
@@ -623,6 +635,257 @@ where
                 self.intern_static(alloc, mutability)?;
             }
         }
+        Ok(())
+    }
+}
+
+/// Reading and writing
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+    pub fn copy(
+        &mut self,
+        src: Scalar<M::PointerTag>,
+        src_align: Align,
+        dest: Scalar<M::PointerTag>,
+        dest_align: Align,
+        size: Size,
+        nonoverlapping: bool,
+    ) -> EvalResult<'tcx> {
+        self.copy_repeatedly(src, src_align, dest, dest_align, size, 1, nonoverlapping)
+    }
+
+    pub fn copy_repeatedly(
+        &mut self,
+        src: Scalar<M::PointerTag>,
+        src_align: Align,
+        dest: Scalar<M::PointerTag>,
+        dest_align: Align,
+        size: Size,
+        length: u64,
+        nonoverlapping: bool,
+    ) -> EvalResult<'tcx> {
+        if size.bytes() == 0 {
+            // Nothing to do for ZST, other than checking alignment and non-NULLness.
+            self.check_align(src, src_align)?;
+            self.check_align(dest, dest_align)?;
+            return Ok(());
+        }
+        let src = src.to_ptr()?;
+        let dest = dest.to_ptr()?;
+
+        // first copy the relocations to a temporary buffer, because
+        // `get_bytes_mut` will clear the relocations, which is correct,
+        // since we don't want to keep any relocations at the target.
+        // (`get_bytes_with_undef_and_ptr` below checks that there are no
+        // relocations overlapping the edges; those would not be handled correctly).
+        let relocations = {
+            let relocations = self.relocations(src, size)?;
+            let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
+            for i in 0..length {
+                new_relocations.extend(
+                    relocations
+                    .iter()
+                    .map(|&(offset, reloc)| {
+                    (offset + dest.offset - src.offset + (i * size * relocations.len() as u64),
+                     reloc)
+                    })
+                );
+            }
+
+            new_relocations
+        };
+
+        let tcx = self.tcx.tcx;
+
+        // This also checks alignment, and relocation edges on the src.
+        let src_bytes = self
+            .get(src.alloc_id)?
+            .get_bytes_with_undef_and_ptr(tcx, src, size, src_align)?
+            .as_ptr();
+        let dest_bytes = self
+            .get_mut(dest.alloc_id)?
+            .get_bytes_mut(tcx, dest, size * length, dest_align)?
+            .as_mut_ptr();
+
+        // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
+        // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and
+        // `dest` could possibly overlap.
+        // The pointers above remain valid even if the `HashMap` table is moved around because they
+        // point into the `Vec` storing the bytes.
+        unsafe {
+            assert_eq!(size.bytes() as usize as u64, size.bytes());
+            if src.alloc_id == dest.alloc_id {
+                if nonoverlapping {
+                    if (src.offset <= dest.offset && src.offset + size > dest.offset) ||
+                        (dest.offset <= src.offset && dest.offset + size > src.offset)
+                    {
+                        return err!(Intrinsic(
+                            "copy_nonoverlapping called on overlapping ranges".to_string(),
+                        ));
+                    }
+                }
+
+                for i in 0..length {
+                    ptr::copy(src_bytes,
+                              dest_bytes.offset((size.bytes() * i) as isize),
+                              size.bytes() as usize);
+                }
+            } else {
+                for i in 0..length {
+                    ptr::copy_nonoverlapping(src_bytes,
+                                             dest_bytes.offset((size.bytes() * i) as isize),
+                                             size.bytes() as usize);
+                }
+            }
+        }
+
+        // copy definedness to the destination
+        self.copy_undef_mask(src, dest, size, length)?;
+        // copy the relocations to the destination
+        self.get_mut(dest.alloc_id)?.relocations.insert_presorted(relocations);
+
+        Ok(())
+    }
+
+    pub fn read_c_str(&self, ptr: Pointer<M::PointerTag>) -> EvalResult<'tcx, &[u8]> {
+        self.get(ptr.alloc_id)?.read_c_str(self, ptr)
+    }
+
+    pub fn check_bytes(
+        &self,
+        ptr: Scalar<M::PointerTag>,
+        size: Size,
+        allow_ptr_and_undef: bool,
+    ) -> EvalResult<'tcx> {
+        // Empty accesses don't need to be valid pointers, but they should still be non-NULL
+        let align = Align::from_bytes(1, 1).unwrap();
+        if size.bytes() == 0 {
+            self.check_align(ptr, align)?;
+            return Ok(());
+        }
+        let ptr = ptr.to_ptr()?;
+        self.get(ptr.alloc_id)?.check_bytes(self, ptr, size, allow_ptr_and_undef)
+    }
+
+    pub fn read_bytes(&self, ptr: Scalar<M::PointerTag>, size: Size) -> EvalResult<'tcx, &[u8]> {
+        // Empty accesses don't need to be valid pointers, but they should still be non-NULL
+        let align = Align::from_bytes(1, 1).unwrap();
+        if size.bytes() == 0 {
+            self.check_align(ptr, align)?;
+            return Ok(&[]);
+        }
+        let ptr = ptr.to_ptr()?;
+        self.get(ptr.alloc_id)?.get_bytes(self, ptr, size, align)
+    }
+
+    pub fn write_bytes(&mut self, ptr: Scalar<M::PointerTag>, src: &[u8]) -> EvalResult<'tcx> {
+        // Empty accesses don't need to be valid pointers, but they should still be non-NULL
+        let align = Align::from_bytes(1, 1).unwrap();
+        if src.is_empty() {
+            self.check_align(ptr, align)?;
+            return Ok(());
+        }
+        let ptr = ptr.to_ptr()?;
+        let tcx = self.tcx.tcx;
+        self.get_mut(ptr.alloc_id)?.write_bytes(tcx, ptr, src)
+    }
+
+    pub fn write_repeat(
+        &mut self,
+        ptr: Scalar<M::PointerTag>,
+        val: u8,
+        count: Size
+    ) -> EvalResult<'tcx> {
+        // Empty accesses don't need to be valid pointers, but they should still be non-NULL
+        let align = Align::from_bytes(1, 1).unwrap();
+        if count.bytes() == 0 {
+            self.check_align(ptr, align)?;
+            return Ok(());
+        }
+        let ptr = ptr.to_ptr()?;
+        let tcx = self.tcx.tcx;
+        self.get_mut(ptr.alloc_id)?.write_repeat(tcx, ptr, val, count)
+    }
+
+    /// Read a *non-ZST* scalar
+    pub fn read_scalar(
+        &self,
+        ptr: Pointer<M::PointerTag>,
+        ptr_align: Align,
+        size: Size
+    ) -> EvalResult<'tcx, ScalarMaybeUndef<M::PointerTag>> {
+        self.get(ptr.alloc_id)?.read_scalar(self, ptr, ptr_align, size)
+    }
+
+    pub fn read_ptr_sized(
+        &self,
+        ptr: Pointer<M::PointerTag>,
+        ptr_align: Align
+    ) -> EvalResult<'tcx, ScalarMaybeUndef<M::PointerTag>> {
+        self.read_scalar(ptr, ptr_align, self.pointer_size())
+    }
+
+    /// Write a *non-ZST* scalar
+    pub fn write_scalar(
+        &mut self,
+        ptr: Pointer<M::PointerTag>,
+        ptr_align: Align,
+        val: ScalarMaybeUndef<M::PointerTag>,
+        type_size: Size,
+    ) -> EvalResult<'tcx> {
+        let tcx = self.tcx.tcx;
+        self.get_mut(ptr.alloc_id)?.write_scalar(tcx, ptr, ptr_align, val, type_size)
+    }
+
+    pub fn write_ptr_sized(
+        &mut self,
+        ptr: Pointer<M::PointerTag>,
+        ptr_align: Align,
+        val: ScalarMaybeUndef<M::PointerTag>
+    ) -> EvalResult<'tcx> {
+        let ptr_size = self.pointer_size();
+        self.write_scalar(ptr, ptr_align, val, ptr_size)
+    }
+}
+
+/// Relocations
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+    /// Return all relocations overlapping with the given ptr-offset pair.
+    fn relocations(
+        &self,
+        ptr: Pointer<M::PointerTag>,
+        size: Size,
+    ) -> EvalResult<'tcx, &[(Size, (M::PointerTag, AllocId))]> {
+        self.get(ptr.alloc_id)?.relocations(self, ptr, size)
+    }
+}
+
+/// Undefined bytes
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+    // FIXME: Add a fast version for the common, nonoverlapping case
+    fn copy_undef_mask(
+        &mut self,
+        src: Pointer<M::PointerTag>,
+        dest: Pointer<M::PointerTag>,
+        size: Size,
+        repeat: u64,
+    ) -> EvalResult<'tcx> {
+        // The bits have to be saved locally before writing to dest in case src and dest overlap.
+        assert_eq!(size.bytes() as usize as u64, size.bytes());
+
+        let undef_mask = self.get(src.alloc_id)?.undef_mask.clone();
+        let dest_allocation = self.get_mut(dest.alloc_id)?;
+
+        for i in 0..size.bytes() {
+            let defined = undef_mask.get(src.offset + Size::from_bytes(i));
+
+            for j in 0..repeat {
+                dest_allocation.undef_mask.set(
+                    dest.offset + Size::from_bytes(i + (size.bytes() * j)),
+                    defined
+                );
+            }
+        }
+
         Ok(())
     }
 }

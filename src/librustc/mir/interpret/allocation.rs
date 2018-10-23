@@ -56,7 +56,7 @@ pub struct Allocation<Tag=(),Extra=()> {
     pub extra: Extra,
 }
 
-pub trait AllocationExtra<Tag> {
+pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Default + Clone {
     /// Hook for performing extra checks on a memory access.
     ///
     /// Takes read-only access to the allocation so we can keep all the memory read
@@ -71,6 +71,9 @@ pub trait AllocationExtra<Tag> {
         Ok(())
     }
 }
+
+/// For the const evaluator
+impl AllocationExtra<()> for () {}
 
 impl<Tag, Extra: Default> Allocation<Tag, Extra> {
     /// Creates a read-only allocation initialized by the given bytes
@@ -144,7 +147,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     }
 
     #[inline]
-    fn get_bytes(
+    pub fn get_bytes(
         &self,
         cx: impl HasDataLayout,
         ptr: Pointer<Tag>,
@@ -157,7 +160,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// It is the caller's responsibility to handle undefined and pointer bytes.
     /// However, this still checks that there are no relocations on the *edges*.
     #[inline]
-    fn get_bytes_with_undef_and_ptr(
+    pub fn get_bytes_with_undef_and_ptr(
         &self,
         cx: impl HasDataLayout,
         ptr: Pointer<Tag>,
@@ -169,7 +172,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
     /// Just calling this already marks everything as defined and removes relocations,
     /// so be sure to actually put data there!
-    fn get_bytes_mut(
+    pub fn get_bytes_mut(
         &mut self,
         cx: impl HasDataLayout,
         ptr: Pointer<Tag>,
@@ -408,7 +411,7 @@ fn int_align(cx: impl HasDataLayout, size: Size) -> Align {
 /// Relocations
 impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// Return all relocations overlapping with the given ptr-offset pair.
-    fn relocations(
+    pub fn relocations(
         &self,
         cx: impl HasDataLayout,
         ptr: Pointer<Tag>,

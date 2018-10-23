@@ -21,7 +21,7 @@ use rustc::ty::{self, Ty, layout::{Size, TyLayout}, query::TyCtxtAt};
 
 use super::{
     Allocation, AllocId, EvalResult, Scalar,
-    EvalContext, PlaceTy, OpTy, Pointer, MemPlace, MemoryKind,
+    EvalContext, PlaceTy, OpTy, Pointer, MemPlace, MemoryKind, AllocationExtra,
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -78,7 +78,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     type PointerTag: ::std::fmt::Debug + Default + Copy + Eq + Hash + 'static;
 
     /// Extra data stored in every allocation.
-    type AllocExtra: ::std::fmt::Debug + Default + Clone;
+    type AllocExtra: AllocationExtra<Self::PointerTag>;
 
     /// Memory's allocation map
     type MemoryMap:
