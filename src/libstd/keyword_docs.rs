@@ -209,7 +209,6 @@ mod enum_keyword { }
 /// The mirror use case of FFI is also done via the `extern` keyword:
 ///
 /// ```rust
-/// # #![allow(private_no_mangle_fns)]
 /// #[no_mangle]
 /// pub extern fn callable_from_c(x: i32) -> bool {
 ///     x % 3 == 0
