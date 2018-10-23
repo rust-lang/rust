@@ -48,8 +48,8 @@ use issues::Issue;
 use shape::Indent;
 
 pub use config::{
-    load_config, CliOptions, Color, Config, EmitMode, FileLines, FileName, NewlineStyle, Range,
-    Verbosity,
+    load_config, CliOptions, Color, Config, Edition, EmitMode, FileLines, FileName, NewlineStyle,
+    Range, Verbosity,
 };
 
 #[macro_use]
