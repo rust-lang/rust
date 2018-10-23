@@ -115,6 +115,7 @@ completed without error (whether or not changes were made).
 * [Sublime Text 3](https://packagecontrol.io/packages/RustFmt)
 * [Atom](atom.md)
 * Visual Studio Code using [vscode-rust](https://github.com/editor-rs/vscode-rust), [vsc-rustfmt](https://github.com/Connorcpu/vsc-rustfmt) or [rls_vscode](https://github.com/jonathandturner/rls_vscode) through RLS.
+* [IntelliJ or CLion](intellij.md)
 
 
 ## Checking style on a CI server
