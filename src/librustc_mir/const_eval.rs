@@ -129,7 +129,7 @@ pub fn op_to_const<'tcx>(
             assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= op.layout.size.bytes());
             let mut alloc = alloc.clone();
             alloc.align = align;
-            // FIXME shouldnt it be the case that `mark_static_initialized` has already
+            // FIXME shouldn't it be the case that `mark_static_initialized` has already
             // interned this?  I thought that is the entire point of that `FinishStatic` stuff?
             let alloc = ecx.tcx.intern_const_alloc(alloc);
             ConstValue::ByRef(ptr.alloc_id, alloc, ptr.offset)

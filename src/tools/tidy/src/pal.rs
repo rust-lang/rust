@@ -163,7 +163,7 @@ fn check_cfgs(contents: &mut String, file: &Path,
 
 fn find_test_mod(contents: &str) -> usize {
     if let Some(mod_tests_idx) = contents.find("mod tests") {
-        // Also capture a previos line indicating "mod tests" in cfg-ed out
+        // Also capture a previous line indicating "mod tests" in cfg-ed out
         let prev_newline_idx = contents[..mod_tests_idx].rfind('\n').unwrap_or(mod_tests_idx);
         let prev_newline_idx = contents[..prev_newline_idx].rfind('\n');
         if let Some(nl) = prev_newline_idx {

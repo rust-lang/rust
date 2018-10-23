@@ -66,7 +66,7 @@ impl<F> R<F> { fn new(f: F) -> Self { R { w: 0, f } } }
 // It got pretty monotonous writing the same code over and over, and I
 // feared I would forget details. So I abstracted some desiderata into
 // macros. But I left the initialization code inline, because that's
-// where the errors for #54986 will be emited.
+// where the errors for #54986 will be emitted.
 
 macro_rules! use_fully {
     (struct $s:expr) => { {

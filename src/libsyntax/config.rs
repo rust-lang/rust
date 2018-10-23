@@ -96,7 +96,7 @@ impl<'a> StripUnconfigured<'a> {
     /// when the configuration predicate is true, or otherwise expand into an
     /// empty list of attributes.
     ///
-    /// Gives a compiler warning when the `cfg_attr` contains no attribtes and
+    /// Gives a compiler warning when the `cfg_attr` contains no attributes and
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect
     fn process_cfg_attr(&mut self, attr: ast::Attribute) -> Vec<ast::Attribute> {
@@ -138,7 +138,7 @@ impl<'a> StripUnconfigured<'a> {
         };
 
         // Check feature gate and lint on zero attributes in source. Even if the feature is gated,
-        // we still compute as if it wasn't, since the emitted error will stop compilation futher
+        // we still compute as if it wasn't, since the emitted error will stop compilation further
         // along the compilation.
         match (expanded_attrs.len(), gate_cfg_attr_multi) {
             (0, false) => {

@@ -102,7 +102,7 @@ pub use marker::Unpin;
 /// value in place, preventing the value referenced by that pointer from being moved
 /// unless it implements [`Unpin`].
 ///
-/// See the [`pin` module] documentation for furthur explanation on pinning.
+/// See the [`pin` module] documentation for further explanation on pinning.
 ///
 /// [`Unpin`]: ../../std/marker/trait.Unpin.html
 /// [`pin` module]: ../../std/pin/index.html
