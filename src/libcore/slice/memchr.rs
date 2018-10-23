@@ -29,19 +29,19 @@ const HI_USIZE: usize = HI_U64 as usize;
 /// bytes where the borrow propagated all the way to the most significant
 /// bit."
 #[inline]
-const fn contains_zero_byte(x: usize) -> bool {
+fn contains_zero_byte(x: usize) -> bool {
     x.wrapping_sub(LO_USIZE) & !x & HI_USIZE != 0
 }
 
 #[cfg(target_pointer_width = "16")]
 #[inline]
-const fn repeat_byte(b: u8) -> usize {
+fn repeat_byte(b: u8) -> usize {
     (b as usize) << 8 | b as usize
 }
 
 #[cfg(not(target_pointer_width = "16"))]
 #[inline]
-const fn repeat_byte(b: u8) -> usize {
+fn repeat_byte(b: u8) -> usize {
     (b as usize) * (::usize::MAX / 255)
 }
 

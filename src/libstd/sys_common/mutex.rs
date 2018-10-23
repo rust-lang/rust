@@ -80,7 +80,7 @@ impl Mutex {
 }
 
 // not meant to be exported to the outside world, just the containing module
-pub const fn raw(mutex: &Mutex) -> &imp::Mutex { &mutex.0 }
+pub fn raw(mutex: &Mutex) -> &imp::Mutex { &mutex.0 }
 
 #[must_use]
 /// A simple RAII utility for the above Mutex without the poisoning semantics.

@@ -25,7 +25,7 @@ use num::NonZeroUsize;
 #[derive(Debug)]
 pub struct Excess(pub NonNull<u8>, pub usize);
 
-const fn size_align<T>() -> (usize, usize) {
+fn size_align<T>() -> (usize, usize) {
     (mem::size_of::<T>(), mem::align_of::<T>())
 }
 

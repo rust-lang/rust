@@ -2759,7 +2759,7 @@ impl<T: ?Sized> Unique<T> {
     }
 
     /// Acquires the underlying `*mut` pointer.
-    pub const fn as_ptr(self) -> *mut T {
+    pub fn as_ptr(self) -> *mut T {
         self.pointer.0 as *mut T
     }
 

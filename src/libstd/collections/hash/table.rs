@@ -247,7 +247,7 @@ impl<K, V> RawBucket<K, V> {
 // Buckets hold references to the table.
 impl<K, V, M> FullBucket<K, V, M> {
     /// Borrow a reference to the table.
-    pub const fn table(&self) -> &M {
+    pub fn table(&self) -> &M {
         &self.table
     }
     /// Borrow a mutable reference to the table.
@@ -259,18 +259,18 @@ impl<K, V, M> FullBucket<K, V, M> {
         self.table
     }
     /// Get the raw index.
-    pub const fn index(&self) -> usize {
+    pub fn index(&self) -> usize {
         self.raw.idx
     }
     /// Get the raw bucket.
-    pub const fn raw(&self) -> RawBucket<K, V> {
+    pub fn raw(&self) -> RawBucket<K, V> {
         self.raw
     }
 }
 
 impl<K, V, M> EmptyBucket<K, V, M> {
     /// Borrow a reference to the table.
-    pub const fn table(&self) -> &M {
+    pub fn table(&self) -> &M {
         &self.table
     }
     /// Borrow a mutable reference to the table.
@@ -281,7 +281,7 @@ impl<K, V, M> EmptyBucket<K, V, M> {
 
 impl<K, V, M> Bucket<K, V, M> {
     /// Get the raw index.
-    pub const fn index(&self) -> usize {
+    pub fn index(&self) -> usize {
         self.raw.idx
     }
     /// get the table.
@@ -772,7 +772,7 @@ impl<K, V> RawTable<K, V> {
 
     /// The number of elements ever `put` in the hashtable, minus the number
     /// of elements ever `take`n.
-    pub const fn size(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.size
     }
 

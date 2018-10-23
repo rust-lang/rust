@@ -636,12 +636,12 @@ type BorrowFlag = isize;
 const UNUSED: BorrowFlag = 0;
 
 #[inline(always)]
-const fn is_writing(x: BorrowFlag) -> bool {
+fn is_writing(x: BorrowFlag) -> bool {
     x < UNUSED
 }
 
 #[inline(always)]
-const fn is_reading(x: BorrowFlag) -> bool {
+fn is_reading(x: BorrowFlag) -> bool {
     x > UNUSED
 }
 

@@ -1275,7 +1275,7 @@ impl<T> VecDeque<T> {
     }
 
     #[inline]
-    const fn is_contiguous(&self) -> bool {
+    fn is_contiguous(&self) -> bool {
         self.tail <= self.head
     }
 

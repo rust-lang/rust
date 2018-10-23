@@ -785,7 +785,7 @@ pub fn sync_channel<T>(bound: usize) -> (SyncSender<T>, Receiver<T>) {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl<T> Sender<T> {
-    const fn new(inner: Flavor<T>) -> Sender<T> {
+    fn new(inner: Flavor<T>) -> Sender<T> {
         Sender {
             inner: UnsafeCell::new(inner),
         }

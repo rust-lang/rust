@@ -36,7 +36,7 @@ struct DefaultResizePolicy;
 
 impl DefaultResizePolicy {
     #[inline]
-    const fn new() -> DefaultResizePolicy {
+    fn new() -> DefaultResizePolicy {
         DefaultResizePolicy
     }
 
@@ -69,7 +69,7 @@ impl DefaultResizePolicy {
 
     /// The capacity of the given raw capacity.
     #[inline]
-    const fn capacity(&self, raw_cap: usize) -> usize {
+    fn capacity(&self, raw_cap: usize) -> usize {
         // This doesn't have to be checked for overflow since allocation size
         // in bytes will overflow earlier than multiplication by 10.
         //

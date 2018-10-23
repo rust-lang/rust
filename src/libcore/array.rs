@@ -77,7 +77,7 @@ impl TryFromSliceError {
            issue = "0")]
     #[inline]
     #[doc(hidden)]
-    pub const fn __description(&self) -> &str {
+    pub fn __description(&self) -> &str {
         "could not convert slice to array"
     }
 }

@@ -135,7 +135,7 @@ impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
 }
 
 impl<T> Node<T> {
-    const fn new(element: T) -> Self {
+    fn new(element: T) -> Self {
         Node {
             next: None,
             prev: None,

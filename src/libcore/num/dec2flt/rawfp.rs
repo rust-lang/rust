@@ -44,7 +44,7 @@ pub struct Unpacked {
 }
 
 impl Unpacked {
-    pub const fn new(sig: u64, k: i16) -> Self {
+    pub fn new(sig: u64, k: i16) -> Self {
         Unpacked { sig, k }
     }
 }

@@ -265,12 +265,12 @@ enum FromBytesWithNulErrorKind {
 }
 
 impl FromBytesWithNulError {
-    const fn interior_nul(pos: usize) -> FromBytesWithNulError {
+    fn interior_nul(pos: usize) -> FromBytesWithNulError {
         FromBytesWithNulError {
             kind: FromBytesWithNulErrorKind::InteriorNul(pos),
         }
     }
-    const fn not_nul_terminated() -> FromBytesWithNulError {
+    fn not_nul_terminated() -> FromBytesWithNulError {
         FromBytesWithNulError {
             kind: FromBytesWithNulErrorKind::NotNulTerminated,
         }

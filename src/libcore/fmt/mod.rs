@@ -1703,11 +1703,11 @@ impl<'a> Formatter<'a> {
 
     // FIXME: Decide what public API we want for these two flags.
     // https://github.com/rust-lang/rust/issues/48584
-    const fn debug_lower_hex(&self) -> bool {
+    fn debug_lower_hex(&self) -> bool {
         self.flags & (1 << FlagV1::DebugLowerHex as u32) != 0
     }
 
-    const fn debug_upper_hex(&self) -> bool {
+    fn debug_upper_hex(&self) -> bool {
         self.flags & (1 << FlagV1::DebugUpperHex as u32) != 0
     }
 

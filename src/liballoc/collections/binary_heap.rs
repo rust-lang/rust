@@ -884,7 +884,7 @@ impl<'a, T> Hole<'a, T> {
     }
 
     #[inline]
-    const fn pos(&self) -> usize {
+    fn pos(&self) -> usize {
         self.pos
     }
 
