@@ -44,7 +44,7 @@ impl<'cm> CachingSourceMapView<'cm> {
 
         CachingSourceMapView {
             source_map,
-            line_cache: [entry.clone(), entry.clone(), entry.clone()],
+            line_cache: [entry.clone(), entry.clone(), entry],
             time_stamp: 0,
         }
     }

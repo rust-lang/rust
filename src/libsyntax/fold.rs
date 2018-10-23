@@ -965,7 +965,7 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             polarity,
             defaultness,
             folder.fold_generics(generics),
-            ifce.map(|trait_ref| folder.fold_trait_ref(trait_ref.clone())),
+            ifce.map(|trait_ref| folder.fold_trait_ref(trait_ref)),
             folder.fold_ty(ty),
             impl_items.move_flat_map(|item| folder.fold_impl_item(item)),
         ),
