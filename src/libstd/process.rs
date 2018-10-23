@@ -926,7 +926,7 @@ impl Stdio {
     /// assert_eq!(String::from_utf8_lossy(&output.stdout), "!dlrow ,olleH\n");
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn piped() -> Stdio { Stdio(imp::Stdio::MakePipe) }
+    pub const fn piped() -> Stdio { Stdio(imp::Stdio::MakePipe) }
 
     /// The child inherits from the corresponding parent descriptor.
     ///
@@ -961,7 +961,7 @@ impl Stdio {
     /// println!("You piped in the reverse of: {}", String::from_utf8_lossy(&output.stdout));
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn inherit() -> Stdio { Stdio(imp::Stdio::Inherit) }
+    pub const fn inherit() -> Stdio { Stdio(imp::Stdio::Inherit) }
 
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
@@ -998,7 +998,7 @@ impl Stdio {
     /// // Ignores any piped-in input
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
-    pub fn null() -> Stdio { Stdio(imp::Stdio::Null) }
+    pub const fn null() -> Stdio { Stdio(imp::Stdio::Null) }
 }
 
 impl FromInner<imp::Stdio> for Stdio {

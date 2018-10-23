@@ -85,13 +85,13 @@ impl CodePoint {
     ///
     /// Since all Unicode scalar values are code points, this always succeeds.
     #[inline]
-    pub fn from_char(value: char) -> CodePoint {
+    pub const fn from_char(value: char) -> CodePoint {
         CodePoint { value: value as u32 }
     }
 
     /// Returns the numeric value of the code point.
     #[inline]
-    pub fn to_u32(&self) -> u32 {
+    pub const fn to_u32(&self) -> u32 {
         self.value
     }
 

@@ -89,7 +89,7 @@ enum MyUpgrade<T> {
 }
 
 impl<T> Packet<T> {
-    pub fn new() -> Packet<T> {
+    pub const fn new() -> Packet<T> {
         Packet {
             data: UnsafeCell::new(None),
             upgrade: UnsafeCell::new(NothingSent),

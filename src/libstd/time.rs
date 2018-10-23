@@ -449,7 +449,7 @@ impl SystemTimeError {
     /// }
     /// ```
     #[stable(feature = "time2", since = "1.8.0")]
-    pub fn duration(&self) -> Duration {
+    pub const fn duration(&self) -> Duration {
         self.0
     }
 }

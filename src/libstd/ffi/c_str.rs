@@ -265,12 +265,12 @@ enum FromBytesWithNulErrorKind {
 }
 
 impl FromBytesWithNulError {
-    fn interior_nul(pos: usize) -> FromBytesWithNulError {
+    const fn interior_nul(pos: usize) -> FromBytesWithNulError {
         FromBytesWithNulError {
             kind: FromBytesWithNulErrorKind::InteriorNul(pos),
         }
     }
-    fn not_nul_terminated() -> FromBytesWithNulError {
+    const fn not_nul_terminated() -> FromBytesWithNulError {
         FromBytesWithNulError {
             kind: FromBytesWithNulErrorKind::NotNulTerminated,
         }
@@ -833,7 +833,7 @@ impl NulError {
     /// assert_eq!(nul_error.nul_position(), 7);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn nul_position(&self) -> usize { self.0 }
+    pub const fn nul_position(&self) -> usize { self.0 }
 
     /// Consumes this error, returning the underlying vector of bytes which
     /// generated the error in the first place.
@@ -909,7 +909,7 @@ impl IntoStringError {
 
     /// Access the underlying UTF-8 error that was the cause of this error.
     #[stable(feature = "cstring_into", since = "1.7.0")]
-    pub fn utf8_error(&self) -> Utf8Error {
+    pub const fn utf8_error(&self) -> Utf8Error {
         self.error
     }
 }
@@ -1091,7 +1091,7 @@ impl CStr {
     /// [`CString`]: struct.CString.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn as_ptr(&self) -> *const c_char {
+    pub const fn as_ptr(&self) -> *const c_char {
         self.inner.as_ptr()
     }
 

@@ -785,7 +785,7 @@ pub fn sync_channel<T>(bound: usize) -> (SyncSender<T>, Receiver<T>) {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl<T> Sender<T> {
-    fn new(inner: Flavor<T>) -> Sender<T> {
+    const fn new(inner: Flavor<T>) -> Sender<T> {
         Sender {
             inner: UnsafeCell::new(inner),
         }
@@ -1469,7 +1469,7 @@ impl<T> Receiver<T> {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter(&self) -> Iter<T> {
+    pub const fn iter(&self) -> Iter<T> {
         Iter { rx: self }
     }
 
@@ -1512,7 +1512,7 @@ impl<T> Receiver<T> {
     /// assert_eq!(iter.next(), None);
     /// ```
     #[stable(feature = "receiver_try_iter", since = "1.15.0")]
-    pub fn try_iter(&self) -> TryIter<T> {
+    pub const fn try_iter(&self) -> TryIter<T> {
         TryIter { rx: self }
     }
 

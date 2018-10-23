@@ -286,7 +286,7 @@ impl Builder {
     /// handler.join().unwrap();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> Builder {
+    pub const fn new() -> Builder {
         Builder {
             name: None,
             stack_size: None,
@@ -1391,7 +1391,7 @@ impl<T> JoinHandle<T> {
     /// println!("thread id: {:?}", thread.id());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn thread(&self) -> &Thread {
+    pub const fn thread(&self) -> &Thread {
         &self.0.thread
     }
 
