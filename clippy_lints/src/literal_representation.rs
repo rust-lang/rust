@@ -229,8 +229,8 @@ impl<'a> DigitInfo<'a> {
                 None => String::new(),
             };
             format!("{}.{}{}", int_part_hint, frac_part_hint, suffix_hint)
-        } else if self.float && (self.digits.contains("E") || self.digits.contains("E")) {
-            let which_e = if self.digits.contains("E") { "E" } else { "e" };
+        } else if self.float && (self.digits.contains('E') || self.digits.contains('e')) {
+            let which_e = if self.digits.contains('E') { 'E' } else { 'e' };
             let parts: Vec<&str> = self.digits.split(which_e).collect();
             let filtered_digits_vec_0 = parts[0].chars().filter(|&c| c != '_').rev().collect::<Vec<_>>();
             let filtered_digits_vec_1 = parts[1].chars().filter(|&c| c != '_').rev().collect::<Vec<_>>();
