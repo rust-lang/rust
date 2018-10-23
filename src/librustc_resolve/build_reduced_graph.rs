@@ -446,10 +446,23 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 let binding =
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.arenas);
                 if ptr::eq(self.current_module, self.graph_root) {
-                    self.extern_prelude.entry(ident.modern()).or_insert(ExternPreludeEntry {
+                    if let Some(entry) = self.extern_prelude.get(&ident.modern()) {
+                        if expansion != Mark::root() && orig_name.is_some() &&
+                           entry.extern_crate_item.is_none() {
+                            self.session.span_err(item.span, "macro-expanded `extern crate` items \
+                                                              cannot shadow names passed with \
+                                                              `--extern`");
+                        }
+                    }
+                    let entry = self.extern_prelude.entry(ident.modern())
+                                                   .or_insert(ExternPreludeEntry {
                         extern_crate_item: None,
                         introduced_by_item: true,
-                    }).extern_crate_item = Some(binding);
+                    });
+                    entry.extern_crate_item = Some(binding);
+                    if orig_name.is_some() {
+                        entry.introduced_by_item = true;
+                    }
                 }
                 let directive = self.arenas.alloc_import_directive(ImportDirective {
                     root_id: item.id,

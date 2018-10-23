@@ -62,6 +62,14 @@ LL |         type A = ::alloc::boxed::Box<u8>;
    |
    = help: add #![feature(extern_crate_item_prelude)] to the crate attributes to enable
 
-error: aborting due to 8 previous errors
+error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #54658)
+  --> $DIR/feature-gate-extern_crate_item_prelude.rs:42:14
+   |
+LL |     type A = core::boxed::Box<u8>;
+   |              ^^^^
+   |
+   = help: add #![feature(extern_crate_item_prelude)] to the crate attributes to enable
+
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

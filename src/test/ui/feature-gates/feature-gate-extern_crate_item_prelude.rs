@@ -36,4 +36,11 @@ mod import_absolute {
     //~^ ERROR use of extern prelude names introduced with `extern crate` items is unstable
 }
 
+extern crate alloc as core;
+
+mod unrelated_crate_renamed {
+    type A = core::boxed::Box<u8>;
+    //~^ ERROR use of extern prelude names introduced with `extern crate` items is unstable
+}
+
 fn main() {}
