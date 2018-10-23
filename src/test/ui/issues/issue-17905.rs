@@ -8,15 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-pass
+
 #[derive(Debug)]
 struct Pair<T, V> (T, V);
 
 impl Pair<
-    &str, //~ ERROR missing lifetime specifier
+    &str,
     isize
 > {
-    fn say(self: &Pair<&str, isize>) {
-        println!("{}", self);
+    fn say(&self) {
+        println!("{:?}", self);
     }
 }
 

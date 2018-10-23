@@ -8,20 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(warnings)]
+// compile-pass
 
-// Make sure this related feature didn't accidentally enable this
-#![feature(in_band_lifetimes)]
+struct Foo<'a>(&'a u8);
 
-trait MyTrait<'a> { }
-
-impl MyTrait<'a> for &u32 { }
-//~^ ERROR missing lifetime specifier
-
-struct MyStruct;
-trait MarkerTrait {}
-
-impl MarkerTrait for &'_ MyStruct { }
-//~^ ERROR missing lifetime specifier
+impl Foo<'_> {
+    fn x() {}
+}
 
 fn main() {}

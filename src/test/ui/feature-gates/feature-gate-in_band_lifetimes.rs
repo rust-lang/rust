@@ -10,9 +10,6 @@
 
 #![allow(warnings)]
 
-// Make sure this related feature didn't accidentally enable this
-#![feature(impl_header_lifetime_elision)]
-
 fn foo(x: &'x u8) -> &'x u8 { x }
 //~^ ERROR use of undeclared lifetime name
 //~^^ ERROR use of undeclared lifetime name
