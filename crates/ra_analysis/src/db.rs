@@ -12,7 +12,7 @@ use salsa;
 use crate::{
     db,
     Cancelable, Canceled,
-    module_map::{ModuleDescriptorQuery, ModuleTreeQuery, ModulesDatabase},
+    descriptors::module::{SubmodulesQuery, ModuleTreeQuery, ModulesDatabase},
     symbol_index::SymbolIndex,
     FileId, FileResolverImp,
 };
@@ -69,7 +69,7 @@ salsa::database_storage! {
         }
         impl ModulesDatabase {
             fn module_tree() for ModuleTreeQuery;
-            fn module_descriptor() for ModuleDescriptorQuery;
+            fn module_descriptor() for SubmodulesQuery;
         }
     }
 }
