@@ -1,0 +1,8 @@
+error: expected expression, found `<eof>`
+  --> $DIR/macro-in-expression-context-2.rs:5:16
+   |
+LL |         _ => { empty!() }
+   |                ^^^^^^^^
+
+error: aborting due to previous error
+
