@@ -12,6 +12,8 @@ version = "0.1.2"
 [features]
 # only used to run our test suite
 checked = []
+default = ['stable']
+stable = []
 
 [workspace]
 members = [
@@ -24,7 +26,3 @@ members = [
 
 [dev-dependencies]
 shared = { path = "shared" }
-
-[features]
-default = ['stable']
-stable = []
