@@ -633,7 +633,7 @@ impl<W> IntoInnerError<W> {
     /// };
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn error(&self) -> &Error { &self.1 }
+    pub fn error(&self) -> &Error { &self.1 }
 
     /// Returns the buffered writer instance which generated the error.
     ///

@@ -116,7 +116,7 @@ impl Layout {
     /// The minimum size in bytes for a memory block of this layout.
     #[stable(feature = "alloc_layout", since = "1.28.0")]
     #[inline]
-    pub const fn size(&self) -> usize { self.size_ }
+    pub fn size(&self) -> usize { self.size_ }
 
     /// The minimum byte alignment for a memory block of this layout.
     #[stable(feature = "alloc_layout", since = "1.28.0")]

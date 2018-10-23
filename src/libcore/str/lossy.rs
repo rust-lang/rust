@@ -29,7 +29,7 @@ impl Utf8Lossy {
         unsafe { mem::transmute(bytes) }
     }
 
-    pub const fn chunks(&self) -> Utf8LossyChunksIter {
+    pub fn chunks(&self) -> Utf8LossyChunksIter {
         Utf8LossyChunksIter { source: &self.bytes }
     }
 }

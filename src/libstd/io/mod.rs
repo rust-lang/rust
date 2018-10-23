@@ -1653,7 +1653,7 @@ impl<T, U> Chain<T, U> {
     /// }
     /// ```
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
-    pub const fn get_ref(&self) -> (&T, &U) {
+    pub fn get_ref(&self) -> (&T, &U) {
         (&self.first, &self.second)
     }
 
@@ -1780,7 +1780,7 @@ impl<T> Take<T> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn limit(&self) -> u64 { self.limit }
+    pub fn limit(&self) -> u64 { self.limit }
 
     /// Sets the number of bytes that can be read before this instance will
     /// return EOF. This is the same as constructing a new `Take` instance, so
@@ -1856,7 +1856,7 @@ impl<T> Take<T> {
     /// }
     /// ```
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
-    pub const fn get_ref(&self) -> &T {
+    pub fn get_ref(&self) -> &T {
         &self.inner
     }
 

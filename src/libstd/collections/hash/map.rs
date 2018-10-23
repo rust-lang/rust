@@ -3013,7 +3013,7 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
     /// ```
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
-    pub const fn key(&self) -> &K {
+    pub fn key(&self) -> &K {
         &self.key
     }
 

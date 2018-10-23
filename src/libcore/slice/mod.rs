@@ -4021,7 +4021,7 @@ impl<'a, T> ChunksExact<'a, T> {
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
     #[stable(feature = "chunks_exact", since = "1.31.0")]
-    pub const fn remainder(&self) -> &'a [T] {
+    pub fn remainder(&self) -> &'a [T] {
         self.rem
     }
 }
@@ -4517,7 +4517,7 @@ impl<'a, T> RChunksExact<'a, T> {
     /// returned by the iterator. The returned slice has at most `chunk_size-1`
     /// elements.
     #[stable(feature = "rchunks", since = "1.31.0")]
-    pub const fn remainder(&self) -> &'a [T] {
+    pub fn remainder(&self) -> &'a [T] {
         self.rem
     }
 }

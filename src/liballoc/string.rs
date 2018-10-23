@@ -1374,7 +1374,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.vec.len()
     }
 
@@ -1395,7 +1395,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
@@ -1662,7 +1662,7 @@ impl FromUtf8Error {
     /// assert_eq!(1, error.valid_up_to());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn utf8_error(&self) -> Utf8Error {
+    pub fn utf8_error(&self) -> Utf8Error {
         self.error
     }
 }

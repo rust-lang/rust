@@ -517,7 +517,7 @@ impl OnceState {
     ///     assert!(!state.poisoned());
     /// });
     #[unstable(feature = "once_poison", issue = "33577")]
-    pub const fn poisoned(&self) -> bool {
+    pub fn poisoned(&self) -> bool {
         self.poisoned
     }
 }

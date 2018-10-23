@@ -1391,7 +1391,7 @@ impl<T> JoinHandle<T> {
     /// println!("thread id: {:?}", thread.id());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn thread(&self) -> &Thread {
+    pub fn thread(&self) -> &Thread {
         &self.0.thread
     }
 

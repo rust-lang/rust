@@ -341,7 +341,7 @@ impl<'a> Arguments<'a> {
     #[doc(hidden)] #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
                issue = "0")]
-    pub const fn new_v1(pieces: &'a [&'a str],
+    pub fn new_v1(pieces: &'a [&'a str],
                   args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
         Arguments {
             pieces,
@@ -359,7 +359,7 @@ impl<'a> Arguments<'a> {
     #[doc(hidden)] #[inline]
     #[unstable(feature = "fmt_internals", reason = "internal to format_args!",
                issue = "0")]
-    pub const fn new_v1_formatted(pieces: &'a [&'a str],
+    pub fn new_v1_formatted(pieces: &'a [&'a str],
                             args: &'a [ArgumentV1<'a>],
                             fmt: &'a [rt::v1::Argument]) -> Arguments<'a> {
         Arguments {
@@ -1492,7 +1492,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{:t>6}", Foo), "tttttt");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub const fn fill(&self) -> char { self.fill }
+    pub fn fill(&self) -> char { self.fill }
 
     /// Flag indicating what form of alignment was requested.
     ///
@@ -1562,7 +1562,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub const fn width(&self) -> Option<usize> { self.width }
+    pub fn width(&self) -> Option<usize> { self.width }
 
     /// Optionally specified precision for numeric types.
     ///
@@ -1589,7 +1589,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{}", Foo(23.2)), "Foo(23.20)");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub const fn precision(&self) -> Option<usize> { self.precision }
+    pub fn precision(&self) -> Option<usize> { self.precision }
 
     /// Determines if the `+` flag was specified.
     ///
@@ -1617,7 +1617,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub const fn sign_plus(&self) -> bool {
+    pub fn sign_plus(&self) -> bool {
         self.flags & (1 << FlagV1::SignPlus as u32) != 0
     }
 
@@ -1645,7 +1645,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub const fn sign_minus(&self) -> bool {
+    pub fn sign_minus(&self) -> bool {
         self.flags & (1 << FlagV1::SignMinus as u32) != 0
     }
 
@@ -1672,7 +1672,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{}", Foo(23)), "23");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub const fn alternate(&self) -> bool {
+    pub fn alternate(&self) -> bool {
         self.flags & (1 << FlagV1::Alternate as u32) != 0
     }
 
@@ -1697,7 +1697,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{:04}", Foo(23)), "23");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub const fn sign_aware_zero_pad(&self) -> bool {
+    pub fn sign_aware_zero_pad(&self) -> bool {
         self.flags & (1 << FlagV1::SignAwareZeroPad as u32) != 0
     }
 

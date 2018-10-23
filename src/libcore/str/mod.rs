@@ -231,7 +231,7 @@ impl Utf8Error {
     /// assert_eq!(1, error.valid_up_to());
     /// ```
     #[stable(feature = "utf8_error", since = "1.5.0")]
-    pub const fn valid_up_to(&self) -> usize { self.valid_up_to }
+    pub fn valid_up_to(&self) -> usize { self.valid_up_to }
 
     /// Provide more information about the failure:
     ///

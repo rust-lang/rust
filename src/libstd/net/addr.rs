@@ -475,7 +475,7 @@ impl SocketAddrV6 {
     /// assert_eq!(socket.flowinfo(), 10);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn flowinfo(&self) -> u32 {
+    pub fn flowinfo(&self) -> u32 {
         self.inner.sin6_flowinfo
     }
 
@@ -515,7 +515,7 @@ impl SocketAddrV6 {
     /// assert_eq!(socket.scope_id(), 78);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn scope_id(&self) -> u32 {
+    pub fn scope_id(&self) -> u32 {
         self.inner.sin6_scope_id
     }
 
