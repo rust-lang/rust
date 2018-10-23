@@ -393,6 +393,13 @@ for target in configured_targets:
     targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", target)
 
 
+def is_number(value):
+  try:
+    float(value)
+    return True
+  except:
+    return False
+
 # Here we walk through the constructed configuration we have from the parsed
 # command line arguments. We then apply each piece of configuration by
 # basically just doing a `sed` to change the various configuration line to what
@@ -406,7 +413,11 @@ def to_toml(value):
     elif isinstance(value, list):
         return '[' + ', '.join(map(to_toml, value)) + ']'
     elif isinstance(value, str):
-        return "'" + value + "'"
+        # Don't put quotes around numeric values
+        if is_number(value):
+            return value
+        else:
+            return "'" + value + "'"
     else:
         raise RuntimeError('no toml')
 
