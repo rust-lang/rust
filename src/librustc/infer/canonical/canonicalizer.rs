@@ -280,6 +280,8 @@ struct Canonicalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     indices: FxHashMap<Kind<'tcx>, BoundVar>,
     canonicalize_region_mode: &'cx dyn CanonicalizeRegionMode,
     needs_canonical_flags: TypeFlags,
+
+    binder_index: ty::DebruijnIndex,
 }
 
 impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> {
@@ -287,11 +289,23 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
         self.tcx
     }
 
+    fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
+        where T: TypeFoldable<'tcx>
+    {
+        self.binder_index.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.binder_index.shift_out(1);
+        t
+    }
+
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReLateBound(..) => {
-                // leave bound regions alone
-                r
+            ty::ReLateBound(index, ..) => {
+                if index >= self.binder_index {
+                    bug!("escaping late bound region during canonicalization")
+                } else {
+                    r
+                }
             }
 
             ty::ReVar(vid) => {
@@ -337,8 +351,12 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                 bug!("encountered a fresh type during canonicalization")
             }
 
-            ty::Bound(_) => {
-                bug!("encountered a bound type during canonicalization")
+            ty::Bound(bound_ty) => {
+                if bound_ty.index >= self.binder_index {
+                    bug!("escaping bound type during canonicalization")
+                } else {
+                    t
+                }
             }
 
             ty::Closure(..)
@@ -422,6 +440,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             variables: SmallVec::new(),
             query_state,
             indices: FxHashMap::default(),
+            binder_index: ty::INNERMOST,
         };
         let out_value = value.fold_with(&mut canonicalizer);
 
@@ -567,7 +586,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
                 kind: CanonicalVarKind::Ty(ty_kind),
             };
             let var = self.canonical_var(info, ty_var.into());
-            self.tcx().mk_ty(ty::Bound(BoundTy::new(ty::INNERMOST, var)))
+            self.tcx().mk_ty(ty::Bound(BoundTy::new(self.binder_index, var)))
         }
     }
 }
