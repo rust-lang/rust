@@ -633,7 +633,7 @@ unsafe fn optimize(cgcx: &CodegenContext,
                  None,
                  &format!("llvm module passes [{}]", module_name.unwrap()),
                  || {
-            llvm::LLVMRunPassManager(mpm, llmod);
+            llvm::LLVMRunPassManager(mpm, llmod)
         });
 
         // Deallocate managers that we're now done with
@@ -690,38 +690,6 @@ unsafe fn codegen(cgcx: &CodegenContext,
         if cgcx.msvc_imps_needed {
             create_msvc_imps(cgcx, llcx, llmod);
         }
-
-        // Ok now this one's a super interesting invocations. SIMD in rustc is
-        // difficult where we want some parts of the program to be able to use
-        // some SIMD features while other parts of the program don't. The real
-        // tough part is that we want this to actually work correctly!
-        //
-        // We go to great lengths to make sure this works, and one crucial
-        // aspect is that vector arguments (simd types) are never passed by
-        // value in the ABI of functions. It turns out, however, that LLVM will
-        // undo our "clever work" of passing vector types by reference. Its
-        // argument promotion pass will promote these by-ref arguments to
-        // by-val. That, however, introduces codegen errors!
-        //
-        // The upstream LLVM bug [1] has unfortunatey not really seen a lot of
-        // activity. The Rust bug [2], however, has seen quite a lot of reports
-        // of this in the wild. As a result, this is worked around locally here.
-        // We have a custom transformation, `LLVMRustDemoteSimdArguments`, which
-        // does the opposite of argument promotion by demoting any by-value SIMD
-        // arguments in function signatures to pointers intead of being
-        // by-value.
-        //
-        // This operates at the LLVM IR layer because LLVM is thwarting our
-        // codegen and this is the only chance we get to make sure it's correct
-        // before we hit codegen.
-        //
-        // Hopefully one day the upstream LLVM bug will be fixed and we'll no
-        // longer need this!
-        //
-        // [1]: https://bugs.llvm.org/show_bug.cgi?id=37358
-        // [2]: https://github.com/rust-lang/rust/issues/50154
-        llvm::LLVMRustDemoteSimdArguments(llmod);
-        cgcx.save_temp_bitcode(&module, "simd-demoted");
 
         // A codegen-specific pass manager is used to generate object
         // files for an LLVM module.

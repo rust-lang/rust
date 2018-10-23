@@ -80,7 +80,9 @@ impl LtoModuleCodegen {
                 let module = module.take().unwrap();
                 {
                     let config = cgcx.config(module.kind);
-                    run_pass_manager(cgcx, &module, config, false);
+                    let llmod = module.module_llvm.llmod();
+                    let tm = &*module.module_llvm.tm;
+                    run_pass_manager(cgcx, tm, llmod, config, false);
                     timeline.record("fat-done");
                 }
                 Ok(module)
@@ -555,7 +557,8 @@ fn thin_lto(cgcx: &CodegenContext,
 }
 
 fn run_pass_manager(cgcx: &CodegenContext,
-                    module: &ModuleCodegen,
+                    tm: &llvm::TargetMachine,
+                    llmod: &llvm::Module,
                     config: &ModuleConfig,
                     thin: bool) {
     // Now we have one massive module inside of llmod. Time to run the
@@ -566,8 +569,7 @@ fn run_pass_manager(cgcx: &CodegenContext,
     debug!("running the pass manager");
     unsafe {
         let pm = llvm::LLVMCreatePassManager();
-        let llmod = module.module_llvm.llmod();
-        llvm::LLVMRustAddAnalysisPasses(module.module_llvm.tm, pm, llmod);
+        llvm::LLVMRustAddAnalysisPasses(tm, pm, llmod);
 
         if config.verify_llvm_ir {
             let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
@@ -862,7 +864,7 @@ impl ThinModule {
             // little differently.
             info!("running thin lto passes over {}", module.name);
             let config = cgcx.config(module.kind);
-            run_pass_manager(cgcx, &module, config, true);
+            run_pass_manager(cgcx, module.module_llvm.tm, llmod, config, true);
             cgcx.save_temp_bitcode(&module, "thin-lto-after-pm");
             timeline.record("thin-done");
         }
