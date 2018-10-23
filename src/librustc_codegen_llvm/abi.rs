@@ -652,7 +652,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             }
             PassMode::Cast(cast) => cast.llvm_type(cx),
             PassMode::Indirect(..) => {
-                llargument_tys.push(cx.type_ptr_to_flat(self.ret.memory_ty(cx)));
+                llargument_tys.push(cx.type_ptr_to_alloca(self.ret.memory_ty(cx)));
                 cx.type_void()
             }
         };
@@ -682,7 +682,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     continue;
                 }
                 PassMode::Cast(cast) => cast.llvm_type(cx),
-                PassMode::Indirect(_, None) => cx.type_ptr_to_flat(arg.memory_ty(cx)),
+                PassMode::Indirect(_, None) => cx.type_ptr_to_alloca(arg.memory_ty(cx)),
             };
             llargument_tys.push(llarg_ty);
         }

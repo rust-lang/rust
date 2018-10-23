@@ -18,6 +18,36 @@ use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
 
+fn codegen_binop_fixup<'a, 'tcx: 'a, Bx>(bx: &mut Bx,
+                                         lhs: Bx::Value,
+                                         rhs: Bx::Value)
+    -> (Bx::Value, Bx::Value)
+    where Bx: BuilderMethods<'a, 'tcx>,
+{
+    // In case we're in separate addr spaces.
+    // Can happen when cmp against null_mut, eg.
+    // `infer-addr-spaces` should propagate.
+    // But, empirically, `infer-addr-spaces` doesn't.
+    let fix_null_ty = |val, this_ty, other_ty| {
+        if bx.cx().const_null(this_ty) == val {
+            bx.cx().const_null(other_ty)
+        } else {
+            val
+        }
+    };
+    let lhs_ty = bx.cx().val_ty(lhs);
+    let rhs_ty = bx.cx().val_ty(rhs);
+    let lhs = fix_null_ty(lhs, lhs_ty, rhs_ty);
+    let rhs = fix_null_ty(rhs, rhs_ty, lhs_ty);
+    if bx.cx().type_addr_space(lhs_ty).is_some() {
+        assert!(bx.cx().type_addr_space(rhs_ty).is_some());
+        (bx.flat_addr_cast(lhs),
+         bx.flat_addr_cast(rhs))
+    } else {
+        (lhs, rhs)
+    }
+}
+
 impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     pub fn codegen_rvalue(
         &mut self,
@@ -63,7 +93,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // index into the struct, and this case isn't
                         // important enough for it.
                         debug!("codegen_rvalue: creating ugly alloca");
-                        let scratch = PlaceRef::alloca(&mut bx, operand.layout, "__unsize_temp");
+                        let scratch = PlaceRef::alloca_addr_space(&mut bx, operand.layout,
+                                                                  "__unsize_temp");
                         scratch.storage_live(&mut bx);
                         operand.val.store(&mut bx, scratch);
                         base::coerce_unsized_into(&mut bx, scratch, dest);
@@ -89,7 +120,6 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 let zero = bx.cx().const_usize(0);
                 let start = dest.project_index(&mut bx, zero).llval;
-                let start = bx.flat_addr_cast(start);
 
                 if let OperandValue::Immediate(v) = cg_elem.val {
                     let size = bx.cx().const_usize(dest.layout.size.bytes());
@@ -111,6 +141,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let count = bx.cx().const_usize(count);
                 let end = dest.project_index(&mut bx, count).llval;
+                let start = bx.flat_addr_cast(start);
                 let end = bx.flat_addr_cast(end);
 
                 let mut header_bx = bx.build_sibling_block("repeat_loop_header");
@@ -245,7 +276,6 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 // until LLVM removes pointee types.
                                 let lldata = bx.pointercast(lldata,
                                     bx.cx().scalar_pair_element_backend_type(cast, 0, true));
-                                let lldata = bx.flat_addr_cast(lldata);
                                 OperandValue::Pair(lldata, llextra)
                             }
                             OperandValue::Immediate(lldata) => {
@@ -618,17 +648,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     lhs, rhs
                 )
             } else {
-                // In case we're in separate addr spaces.
-                // Can happen when cmp against null_mut, eg.
-                // `infer-addr-spaces` should propagate.
-                let lhs_ty = bx.cx().val_ty(rhs);
-                let (lhs, rhs) = if bx.cx().type_addr_space(lhs_ty).is_some() {
-                    assert!(bx.cx().type_addr_space(bx.cx().val_ty(rhs)).is_some());
-                    (bx.flat_addr_cast(lhs),
-                     bx.flat_addr_cast(rhs))
-                } else {
-                    (lhs, rhs)
-                };
+                let (lhs, rhs) = codegen_binop_fixup(bx, lhs, rhs);
                 bx.icmp(
                     base::bin_op_to_icmp_predicate(op.to_hir_binop(), is_signed),
                     lhs, rhs
@@ -647,12 +667,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         rhs_extra: Bx::Value,
         _input_ty: Ty<'tcx>,
     ) -> Bx::Value {
-        // In case we're in separate addr spaces.
-        // Can happen when cmp against null_mut, eg.
-        // `infer-addr-spaces` should propagate.
-        let lhs_addr = bx.flat_addr_cast(lhs_addr);
-        let rhs_addr = bx.flat_addr_cast(rhs_addr);
-
+        let (lhs_addr, rhs_addr) = codegen_binop_fixup(bx, lhs_addr, rhs_addr);
         match op {
             mir::BinOp::Eq => {
                 let lhs = bx.icmp(IntPredicate::IntEQ, lhs_addr, rhs_addr);

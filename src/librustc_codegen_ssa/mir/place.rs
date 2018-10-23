@@ -74,7 +74,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         assert!(layout.is_unsized(), "tried to allocate indirect place for sized values");
         let ptr_ty = bx.cx().tcx().mk_mut_ptr(layout.ty);
         let ptr_layout = bx.cx().layout_of(ptr_ty);
-        Self::alloca(bx, ptr_layout, name)
+        Self::alloca_addr_space(bx, ptr_layout, name)
     }
 
     pub fn len<Cx: CodegenMethods<'tcx, Value = V>>(
