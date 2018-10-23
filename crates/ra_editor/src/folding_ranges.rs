@@ -21,6 +21,7 @@ pub struct Fold {
 pub fn folding_ranges(file: &File) -> Vec<Fold> {
     let mut res = vec![];
     let mut visited_comments = FxHashSet::default();
+    let mut visited_imports = FxHashSet::default();
 
     for node in file.syntax().descendants() {
         // Fold items that span multiple lines
@@ -33,15 +34,22 @@ pub fn folding_ranges(file: &File) -> Vec<Fold> {
             }
         }
 
-        // Also fold groups of comments
-        if visited_comments.contains(&node) {
-            continue;
-        }
-        if node.kind() == COMMENT {
+        // Fold groups of comments
+        if node.kind() == COMMENT && !visited_comments.contains(&node) {
             if let Some(range) = contiguous_range_for_comment(node, &mut visited_comments) {
                 res.push(Fold {
                     range,
                     kind: FoldKind::Comment,
+                })
+            }
+        }
+
+        // Fold groups of imports
+        if node.kind() == USE_ITEM && !visited_imports.contains(&node) {
+            if let Some(range) = contiguous_range_for_group(node, &mut visited_imports) {
+                res.push(Fold {
+                    range,
+                    kind: FoldKind::Imports,
                 })
             }
         }
@@ -72,6 +80,44 @@ fn has_newline(node: SyntaxNodeRef) -> bool {
     }
 
     false
+}
+
+fn contiguous_range_for_group<'a>(
+    first: SyntaxNodeRef<'a>,
+    visited: &mut FxHashSet<SyntaxNodeRef<'a>>,
+) -> Option<TextRange> {
+    visited.insert(first);
+
+    let mut last = first;
+    for node in first.siblings(Direction::Next) {
+        if let Some(ws) = ast::Whitespace::cast(node) {
+            // There is a blank line, which means that the group ends here
+            if ws.count_newlines_lazy().take(2).count() == 2 {
+                break;
+            }
+
+            // Ignore whitespace without blank lines
+            continue;
+        }
+
+        // Stop if we find a node that doesn't belong to the group
+        if node.kind() != first.kind() {
+            break;
+        }
+
+        visited.insert(node);
+        last = node;
+    }
+
+    if first != last {
+        Some(TextRange::from_to(
+            first.range().start(),
+            last.range().end(),
+        ))
+    } else {
+        // The group consists of only one element, therefore it cannot be folded
+        None
+    }
 }
 
 fn contiguous_range_for_comment<'a>(
@@ -128,7 +174,8 @@ mod tests {
         let file = File::parse(&text);
         let folds = folding_ranges(&file);
 
-        assert_eq!(folds.len(), ranges.len());
+        assert_eq!(folds.len(), ranges.len(), "The amount of folds is different than the expected amount");
+        assert_eq!(folds.len(), fold_kinds.len(), "The amount of fold kinds is different than the expected amount");
         for ((fold, range), fold_kind) in folds
             .into_iter()
             .zip(ranges.into_iter())
@@ -183,6 +230,50 @@ fn main() {
 }"#;
 
         let folds = &[FoldKind::Imports];
+        do_check(text, folds);
+    }
+
+    #[test]
+    fn test_fold_import_groups() {
+        let text = r#"
+<|>use std::str;
+use std::vec;
+use std::io as iop;<|>
+
+<|>use std::mem;
+use std::f64;<|>
+
+use std::collections::HashMap;
+// Some random comment
+use std::collections::VecDeque;
+
+fn main() {
+}"#;
+
+        let folds = &[FoldKind::Imports, FoldKind::Imports];
+        do_check(text, folds);
+    }
+
+    #[test]
+    fn test_fold_import_and_groups() {
+        let text = r#"
+<|>use std::str;
+use std::vec;
+use std::io as iop;<|>
+
+<|>use std::mem;
+use std::f64;<|>
+
+<|>use std::collections::{
+    HashMap,
+    VecDeque,
+};<|>
+// Some random comment
+
+fn main() {
+}"#;
+
+        let folds = &[FoldKind::Imports, FoldKind::Imports, FoldKind::Imports];
         do_check(text, folds);
     }
 
