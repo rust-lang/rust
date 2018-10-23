@@ -20,10 +20,9 @@ error[E0106]: missing lifetime specifier
   --> $DIR/underscore-lifetime-binders.rs:20:29
    |
 LL | fn meh() -> Box<for<'_> Meh<'_>> //~ ERROR cannot be used here
-   |                             ^^ expected lifetime parameter
+   |                             ^^ help: consider giving it a 'static lifetime: `'static`
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-   = help: consider giving it a 'static lifetime
 
 error[E0106]: missing lifetime specifier
   --> $DIR/underscore-lifetime-binders.rs:26:35
