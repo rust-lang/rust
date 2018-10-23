@@ -144,6 +144,34 @@ impl From<io::Error> for ErrorKind {
     }
 }
 
+/// Result of formatting a snippet of code along with ranges of lines that didn't get formatted,
+/// i.e., that got returned as they were originally.
+#[derive(Debug)]
+struct FormattedSnippet {
+    snippet: String,
+    non_formatted_ranges: Vec<(usize, usize)>,
+}
+
+impl FormattedSnippet {
+    /// In case the snippet needed to be wrapped in a function, this shifts down the ranges of
+    /// non-formatted code.
+    fn unwrap_code_block(&mut self) {
+        self.non_formatted_ranges
+            .iter_mut()
+            .for_each(|(low, high)| {
+                *low -= 1;
+                *high -= 1;
+            });
+    }
+
+    /// Returns true if the line n did not get formatted.
+    fn is_line_non_formatted(&self, n: usize) -> bool {
+        self.non_formatted_ranges
+            .iter()
+            .any(|(low, high)| *low <= n && n <= *high)
+    }
+}
+
 /// Reports on any issues that occurred during a run of Rustfmt.
 ///
 /// Can be reported to the user via its `Display` implementation of `print_fancy`.
@@ -151,13 +179,19 @@ impl From<io::Error> for ErrorKind {
 pub struct FormatReport {
     // Maps stringified file paths to their associated formatting errors.
     internal: Rc<RefCell<(FormatErrorMap, ReportedErrors)>>,
+    non_formatted_ranges: Vec<(usize, usize)>,
 }
 
 impl FormatReport {
     fn new() -> FormatReport {
         FormatReport {
             internal: Rc::new(RefCell::new((HashMap::new(), ReportedErrors::default()))),
+            non_formatted_ranges: Vec::new(),
         }
+    }
+
+    fn add_non_formatted_ranges(&mut self, mut ranges: Vec<(usize, usize)>) {
+        self.non_formatted_ranges.append(&mut ranges);
     }
 
     fn append(&self, f: FileName, mut v: Vec<FormattingError>) {
@@ -349,37 +383,44 @@ impl fmt::Display for FormatReport {
 
 /// Format the given snippet. The snippet is expected to be *complete* code.
 /// When we cannot parse the given snippet, this function returns `None`.
-fn format_snippet(snippet: &str, config: &Config) -> Option<String> {
+fn format_snippet(snippet: &str, config: &Config) -> Option<FormattedSnippet> {
     let mut config = config.clone();
-    let out = panic::catch_unwind(|| {
+    panic::catch_unwind(|| {
         let mut out: Vec<u8> = Vec::with_capacity(snippet.len() * 2);
         config.set().emit_mode(config::EmitMode::Stdout);
         config.set().verbose(Verbosity::Quiet);
         config.set().hide_parse_errors(true);
-        let formatting_error = {
+
+        let (formatting_error, result) = {
             let input = Input::Text(snippet.into());
             let mut session = Session::new(config, Some(&mut out));
             let result = session.format(input);
-            session.errors.has_macro_format_failure
-                || session.out.as_ref().unwrap().is_empty() && !snippet.is_empty()
-                || result.is_err()
+            (
+                session.errors.has_macro_format_failure
+                    || session.out.as_ref().unwrap().is_empty() && !snippet.is_empty()
+                    || result.is_err(),
+                result,
+            )
         };
         if formatting_error {
             None
         } else {
-            Some(out)
+            String::from_utf8(out).ok().map(|snippet| FormattedSnippet {
+                snippet,
+                non_formatted_ranges: result.unwrap().non_formatted_ranges,
+            })
         }
     })
-    .ok()??; // The first try operator handles the error from catch_unwind,
-             // whereas the second one handles None from the closure.
-    String::from_utf8(out).ok()
+    // Discard panics encountered while formatting the snippet
+    // The ? operator is needed to remove the extra Option
+    .ok()?
 }
 
 /// Format the given code block. Mainly targeted for code block in comment.
 /// The code block may be incomplete (i.e. parser may be unable to parse it).
 /// To avoid panic in parser, we wrap the code block with a dummy function.
 /// The returned code block does *not* end with newline.
-fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> {
+fn format_code_block(code_snippet: &str, config: &Config) -> Option<FormattedSnippet> {
     const FN_MAIN_PREFIX: &str = "fn main() {\n";
 
     fn enclose_in_main_block(s: &str, config: &Config) -> String {
@@ -412,13 +453,18 @@ fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> {
     config_with_unix_newline
         .set()
         .newline_style(NewlineStyle::Unix);
-    let formatted = format_snippet(&snippet, &config_with_unix_newline)?;
+    let mut formatted = format_snippet(&snippet, &config_with_unix_newline)?;
+    // Remove wrapping main block
+    formatted.unwrap_code_block();
 
     // Trim "fn main() {" on the first line and "}" on the last line,
     // then unindent the whole code block.
-    let block_len = formatted.rfind('}').unwrap_or(formatted.len());
+    let block_len = formatted
+        .snippet
+        .rfind('}')
+        .unwrap_or(formatted.snippet.len());
     let mut is_indented = true;
-    for (kind, ref line) in LineClasses::new(&formatted[FN_MAIN_PREFIX.len()..block_len]) {
+    for (kind, ref line) in LineClasses::new(&formatted.snippet[FN_MAIN_PREFIX.len()..block_len]) {
         if !is_first {
             result.push('\n');
         } else {
@@ -451,7 +497,10 @@ fn format_code_block(code_snippet: &str, config: &Config) -> Option<String> {
         result.push_str(trimmed_line);
         is_indented = !kind.is_string() || line.ends_with('\\');
     }
-    Some(result)
+    Some(FormattedSnippet {
+        snippet: result,
+        non_formatted_ranges: formatted.non_formatted_ranges,
+    })
 }
 
 /// A session is a run of rustfmt across a single or multiple inputs.
@@ -571,10 +620,10 @@ mod unit_tests {
 
     fn test_format_inner<F>(formatter: F, input: &str, expected: &str) -> bool
     where
-        F: Fn(&str, &Config) -> Option<String>,
+        F: Fn(&str, &Config) -> Option<FormattedSnippet>,
     {
         let output = formatter(input, &Config::default());
-        output.is_some() && output.unwrap() == expected
+        output.is_some() && output.unwrap().snippet == expected
     }
 
     #[test]

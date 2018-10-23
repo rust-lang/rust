@@ -620,7 +620,7 @@ impl<'a> CommentRewrite<'a> {
                         let mut config = self.fmt.config.clone();
                         config.set().format_doc_comments(false);
                         match ::format_code_block(&self.code_block_buffer, &config) {
-                            Some(ref s) => trim_custom_comment_prefix(s),
+                            Some(ref s) => trim_custom_comment_prefix(&s.snippet),
                             None => trim_custom_comment_prefix(&self.code_block_buffer),
                         }
                     }

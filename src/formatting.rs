@@ -173,6 +173,8 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
         if visitor.macro_rewrite_failure {
             self.report.add_macro_format_failure();
         }
+        self.report
+            .add_non_formatted_ranges(visitor.skipped_range.clone());
 
         self.handler
             .handle_formatted_file(path, visitor.buffer.to_owned(), &mut self.report)
