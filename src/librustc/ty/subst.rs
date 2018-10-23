@@ -12,7 +12,7 @@
 
 use hir::def_id::DefId;
 use infer::canonical::Canonical;
-use ty::{self, BoundTyIndex, Lift, List, Ty, TyCtxt};
+use ty::{self, BoundVar, Lift, List, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
 use serialize::{self, Encodable, Encoder, Decodable, Decoder};
@@ -553,7 +553,7 @@ impl CanonicalUserSubsts<'tcx> {
             return false;
         }
 
-        self.value.substs.iter().zip(BoundTyIndex::new(0)..).all(|(kind, cvar)| {
+        self.value.substs.iter().zip(BoundVar::new(0)..).all(|(kind, cvar)| {
             match kind.unpack() {
                 UnpackedKind::Type(ty) => match ty.sty {
                     ty::Bound(ref b) => cvar == b.var,

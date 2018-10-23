@@ -147,7 +147,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for ty::RegionVid {
     }
 }
 
-impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::BoundTyIndex {
+impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::BoundVar {
     #[inline]
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
