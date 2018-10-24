@@ -187,7 +187,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
     err.span_label(span, best_fail_msg);
     if let Some(sp) = def_span {
         if cx.source_map().span_to_filename(sp).is_real() && !sp.is_dummy() {
-            err.span_label(sp, "when calling this macro");
+            err.span_label(cx.source_map().def_span(sp), "when calling this macro");
         }
     }
 
