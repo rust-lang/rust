@@ -165,9 +165,7 @@ fn main() {
             args.push(Path::new(&std::env::var("HOME").unwrap()).join(".xargo").join("HOST").display().to_string());
         }
 
-        args.push("-Zmir-opt-level=3".to_owned());
-        // for auxilary builds in unit tests
-        args.push("-Zalways-encode-mir".to_owned());
+        miri::add_miri_default_args(&mut args);
 
         // A threadsafe buffer for writing.
         #[derive(Default, Clone)]

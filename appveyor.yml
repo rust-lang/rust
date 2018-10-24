@@ -14,19 +14,20 @@ branches:
     - master
 
 install:
-    # install Rust
+    # Install Rust.
     - set PATH=C:\Program Files\Git\mingw64\bin;C:\msys64\mingw%MSYS2_BITS%\bin;%PATH%
     - set /p RUST_TOOLCHAIN=<rust-version
     - curl -sSf -o rustup-init.exe https://win.rustup.rs/
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain %RUST_TOOLCHAIN%
     - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
     - rustc --version
-    # customize installation
+    # Customize installation.
     - rustup component add rust-src
     - cargo install xargo
-    # prepare a libstd with MIR (cannot use bash script, obviously)
+    # Prepare a libstd with MIR (cannot use bash script, obviously).
+    # The flags here should be kept in sync with `add_miri_default_args` in `src/lib.rs`.
     - cd xargo
-    - set RUSTFLAGS=-Zalways-encode-mir -Zmir-emit-validate=1
+    - set RUSTFLAGS=-Zalways-encode-mir -Zmir-emit-retag -Zmir-opt-level=0
     - xargo build
     - set RUSTFLAGS=
     - cd ..

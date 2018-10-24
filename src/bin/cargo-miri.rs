@@ -186,7 +186,7 @@ fn main() {
             Command::new("rustc")
         };
 
-        args.extend_from_slice(&["-Z".to_owned(), "always-encode-mir".to_owned()]);
+        miri::add_miri_default_args(&mut args);
         args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-miri""#.to_owned()]);
 
         match command.args(&args).status() {

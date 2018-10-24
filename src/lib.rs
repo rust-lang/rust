@@ -50,6 +50,20 @@ use stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
 // Used by priroda
 pub use stacked_borrows::{Borrow, Stacks, Mut as MutBorrow};
 
+/// Insert rustc arguments at the beginning of the argument listthat miri wants to be
+/// set per default, for maximal validation power.
+pub fn add_miri_default_args(args: &mut Vec<String>) {
+    // The flags here should be kept in sync with what bootstrap adds when `test-miri` is
+    // set, which happens in `bootstrap/bin/rustc.rs` in the rustc sources; and also
+    // kept in sync with `xargo/build.sh` in this repo and `appveyor.yml`.
+
+    // Inserting at index 1, after the binary name
+    args.splice(1..1,
+        ["-Zalways-encode-mir", "-Zmir-emit-retag", "-Zmir-opt-level=0"]
+        .iter().map(|s| s.to_string())
+    );
+}
+
 // Used by priroda
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
