@@ -152,11 +152,9 @@ pub fn find_node_at_offset<'a, N: AstNode<'a>>(
 }
 
 pub fn resolve_local_name(
-    file: &File,
-    offset: TextUnit,
     name_ref: ast::NameRef,
 ) -> Option<(SmolStr, TextRange)> {
-    let fn_def = find_node_at_offset::<ast::FnDef>(file.syntax(), offset)?;
+    let fn_def = name_ref.syntax().ancestors().find_map(ast::FnDef::cast)?;
     let scopes = scope::FnScopes::new(fn_def);
     let scope_entry = scope::resolve_local_name(name_ref, &scopes)?;
     let name = scope_entry.ast().name()?;

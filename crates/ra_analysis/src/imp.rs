@@ -207,7 +207,7 @@ impl AnalysisImpl {
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
             // First try to resolve the symbol locally
-            return if let Some((name, range)) = resolve_local_name(&file, offset, name_ref) {
+            return if let Some((name, range)) = resolve_local_name(name_ref) {
                 let mut vec = vec![];
                 vec.push((
                     file_id,
@@ -262,7 +262,7 @@ impl AnalysisImpl {
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
 
             // We are only handing local references for now
-            if let Some(resolved) = resolve_local_name(&file, offset, name_ref) {
+            if let Some(resolved) = resolve_local_name(name_ref) {
 
                 ret.push((file_id, resolved.1));
 
@@ -270,7 +270,7 @@ impl AnalysisImpl {
 
                     let refs : Vec<_> = fn_def.syntax().descendants()
                         .filter_map(ast::NameRef::cast)
-                        .filter(|n: &ast::NameRef| resolve_local_name(&file, n.syntax().range().start(), *n) == Some(resolved.clone()))
+                        .filter(|&n: &ast::NameRef| resolve_local_name(n) == Some(resolved.clone()))
                         .collect();
 
                     for r in refs {
