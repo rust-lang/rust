@@ -49,7 +49,7 @@ impl LintPass for Pass {
 }
 
 impl EarlyLintPass for Pass {
-    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &Crate) {
         let metadata = if let Ok(metadata) = cargo_metadata::metadata_deps(None, true) {
             metadata
         } else {
