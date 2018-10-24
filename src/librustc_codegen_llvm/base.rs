@@ -558,7 +558,7 @@ fn maybe_create_entry_wrapper(cx: &CodegenCx) {
         // regions must appear in the argument
         // listing.
         let main_ret_ty = cx.tcx.erase_regions(
-            &main_ret_ty.no_late_bound_regions().unwrap(),
+            &main_ret_ty.no_bound_vars().unwrap(),
         );
 
         if declare::get_defined_value(cx, "main").is_some() {

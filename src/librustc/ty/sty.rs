@@ -799,10 +799,10 @@ impl<T> Binder<T> {
     /// Skips the binder and returns the "bound" value. This is a
     /// risky thing to do because it's easy to get confused about
     /// debruijn indices and the like. It is usually better to
-    /// discharge the binder using `no_late_bound_regions` or
+    /// discharge the binder using `no_bound_vars` or
     /// `replace_late_bound_regions` or something like
     /// that. `skip_binder` is only valid when you are either
-    /// extracting data that has nothing to do with bound regions, you
+    /// extracting data that has nothing to do with bound vars, you
     /// are doing some sort of test that does not involve bound
     /// regions, or you are being very careful about your depth
     /// accounting.
@@ -811,7 +811,7 @@ impl<T> Binder<T> {
     ///
     /// - extracting the def-id from a PolyTraitRef;
     /// - comparing the self type of a PolyTraitRef to see if it is equal to
-    ///   a type parameter `X`, since the type `X`  does not reference any regions
+    ///   a type parameter `X`, since the type `X` does not reference any regions
     pub fn skip_binder(&self) -> &T {
         &self.0
     }
@@ -833,17 +833,17 @@ impl<T> Binder<T> {
     }
 
     /// Unwraps and returns the value within, but only if it contains
-    /// no bound regions at all. (In other words, if this binder --
+    /// no bound vars at all. (In other words, if this binder --
     /// and indeed any enclosing binder -- doesn't bind anything at
     /// all.) Otherwise, returns `None`.
     ///
     /// (One could imagine having a method that just unwraps a single
-    /// binder, but permits late-bound regions bound by enclosing
+    /// binder, but permits late-bound vars bound by enclosing
     /// binders, but that would require adjusting the debruijn
     /// indices, and given the shallow binding structure we often use,
     /// would not be that useful.)
-    pub fn no_late_bound_regions<'tcx>(self) -> Option<T>
-        where T : TypeFoldable<'tcx>
+    pub fn no_bound_vars<'tcx>(self) -> Option<T>
+        where T: TypeFoldable<'tcx>
     {
         if self.skip_binder().has_escaping_bound_vars() {
             None

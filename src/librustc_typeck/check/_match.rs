@@ -816,7 +816,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         }
         // Replace constructor type with constructed type for tuple struct patterns.
         let pat_ty = pat_ty.fn_sig(tcx).output();
-        let pat_ty = pat_ty.no_late_bound_regions().expect("expected fn type");
+        let pat_ty = pat_ty.no_bound_vars().expect("expected fn type");
 
         self.demand_eqtype(pat.span, expected, pat_ty);
 

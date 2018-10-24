@@ -683,8 +683,8 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
                 &ty::Predicate::TypeOutlives(ref binder) => {
                     match (
-                        binder.no_late_bound_regions(),
-                        binder.map_bound_ref(|pred| pred.0).no_late_bound_regions(),
+                        binder.no_bound_vars(),
+                        binder.map_bound_ref(|pred| pred.0).no_bound_vars(),
                     ) {
                         (None, Some(t_a)) => {
                             select.infcx().register_region_obligation_with_cause(

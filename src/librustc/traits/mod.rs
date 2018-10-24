@@ -352,7 +352,7 @@ impl<'tcx> GoalKind<'tcx> {
         domain_goal: PolyDomainGoal<'tcx>,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ) -> GoalKind<'tcx> {
-        match domain_goal.no_late_bound_regions() {
+        match domain_goal.no_bound_vars() {
             Some(p) => p.into_goal(),
             None => GoalKind::Quantified(
                 QuantifierKind::Universal,

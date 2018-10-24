@@ -143,7 +143,7 @@ fn check_lang_item_type<'a, 'tcx, D>(
 {
     let did = tcx.require_lang_item(lang_item);
     let poly_sig = tcx.fn_sig(did);
-    let sig = poly_sig.no_late_bound_regions().unwrap();
+    let sig = poly_sig.no_bound_vars().unwrap();
     let lhs_ty = lhs.ty(local_decls, tcx);
     let rhs_ty = rhs.ty(local_decls, tcx);
     let place_ty = place.ty(local_decls, tcx).to_ty(tcx);
