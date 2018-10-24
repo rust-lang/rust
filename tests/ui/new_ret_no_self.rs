@@ -158,6 +158,20 @@ impl GenericReturnerBad {
 struct NestedReturnerOk;
 
 impl NestedReturnerOk {
-    // should trigger lint
+    // should not trigger lint
     pub fn new() -> (Option<Self>, u32) { unimplemented!(); }
+}
+
+struct NestedReturnerOk2;
+
+impl NestedReturnerOk2 {
+    // should not trigger lint
+    pub fn new() -> ((Self, u32), u32) { unimplemented!(); }
+}
+
+struct NestedReturnerOk3;
+
+impl NestedReturnerOk3 {
+    // should not trigger lint
+    pub fn new() -> Option<(Self, u32)> { unimplemented!(); }
 }
