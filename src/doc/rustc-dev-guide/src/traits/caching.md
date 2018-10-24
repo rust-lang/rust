@@ -11,10 +11,10 @@ but *replay* its effects on the type variables.
 ## An example
 
 The high-level idea of how the cache works is that we first replace
-all unbound inference variables with skolemized versions. Therefore,
+all unbound inference variables with placeholder versions. Therefore,
 if we had a trait reference `usize : Foo<$t>`, where `$t` is an unbound
 inference variable, we might replace it with `usize : Foo<$0>`, where
-`$0` is a skolemized type. We would then look this up in the cache.
+`$0` is a placeholder type. We would then look this up in the cache.
 
 If we found a hit, the hit would tell us the immediate next step to
 take in the selection process (e.g. apply impl #22, or apply where
@@ -37,7 +37,7 @@ we would [confirm] `ImplCandidate(22)`, which would (as a side-effect) unify
 [confirm]: ./resolution.html#confirmation
 
 Now, at some later time, we might come along and see a `usize :
-Foo<$u>`. When skolemized, this would yield `usize : Foo<$0>`, just as
+Foo<$u>`. When placeholder, this would yield `usize : Foo<$0>`, just as
 before, and hence the cache lookup would succeed, yielding
 `ImplCandidate(22)`. We would confirm `ImplCandidate(22)` which would
 (as a side-effect) unify `$u` with `isize`.

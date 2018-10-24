@@ -154,7 +154,7 @@ The key point is that, on success, unification can also give back to
 us a set of subgoals that still remain to be proven (it can also give
 back region constraints, but those are not relevant here).
 
-Whenever unification encounters an (unskolemized!) associated type
+Whenever unification encounters an (un-placeholder!) associated type
 projection P being equated with some other type T, it always succeeds,
 but it produces a subgoal `ProjectionEq(P = T)` that is propagated
 back up. Thus it falls to the ordinary workings of the trait system
