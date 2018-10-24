@@ -12,7 +12,7 @@
 
 // Regression test for #52050: when inserting the blanket impl `I`
 // into the tree, we had to replace the child node for `Foo`, which
-// led to the struture of the tree being messed up.
+// led to the structure of the tree being messed up.
 
 use std::iter::Iterator;
 

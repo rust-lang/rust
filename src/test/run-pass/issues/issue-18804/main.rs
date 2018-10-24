@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // run-pass
-// Test for issue #18804, #[linkage] does not propagate thorugh generic
+// Test for issue #18804, #[linkage] does not propagate through generic
 // functions. Failure results in a linker error.
 
 // ignore-asmjs no weak symbol support

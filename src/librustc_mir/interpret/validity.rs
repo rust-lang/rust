@@ -230,7 +230,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                                 ),
                         }
                     }
-                    // non-ZST also have to be dereferencable
+                    // non-ZST also have to be dereferenceable
                     if size != Size::ZERO {
                         let ptr = try_validation!(place.ptr.to_ptr(),
                             "integer pointer in non-ZST reference", path);
@@ -272,7 +272,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 // FIXME: Check if the signature matches
             }
             // This should be all the primitive types
-            ty::Never => bug!("Uninhabited type should have been catched earlier"),
+            ty::Never => bug!("Uninhabited type should have been caught earlier"),
             _ => bug!("Unexpected primitive type {}", value.layout.ty)
         }
         Ok(())

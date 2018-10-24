@@ -68,7 +68,7 @@ macro_rules! provide {
 
                 let $cdata = $tcx.crate_data_as_rc_any($def_id.krate);
                 let $cdata = $cdata.downcast_ref::<cstore::CrateMetadata>()
-                    .expect("CrateStore crated ata is not a CrateMetadata");
+                    .expect("CrateStore created data is not a CrateMetadata");
                 $compute
             })*
 

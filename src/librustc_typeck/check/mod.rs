@@ -5198,7 +5198,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         } else {
                             // If no type arguments were provided, we have to infer them.
                             // This case also occurs as a result of some malformed input, e.g.
-                            // a lifetime argument being given instead of a type paramter.
+                            // a lifetime argument being given instead of a type parameter.
                             // Using inference instead of `Error` gives better error messages.
                             self.var_for_def(span, param)
                         }

@@ -166,12 +166,12 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// With eRFC 2497, we need to check whether an expression is ambigious and warn or error
+    /// With eRFC 2497, we need to check whether an expression is ambiguous and warn or error
     /// depending on the edition, this function handles that.
     fn while_if_let_ambiguity(&self, expr: &P<Expr>) {
         if let Some((span, op_kind)) = self.while_if_let_expr_ambiguity(&expr) {
             let mut err = self.err_handler().struct_span_err(
-                span, &format!("ambigious use of `{}`", op_kind.to_string())
+                span, &format!("ambiguous use of `{}`", op_kind.to_string())
             );
 
             err.note(
@@ -193,9 +193,9 @@ impl<'a> AstValidator<'a> {
     }
 
     /// With eRFC 2497 adding if-let chains, there is a requirement that the parsing of
-    /// `&&` and `||` in a if-let statement be unambigious. This function returns a span and
-    /// a `BinOpKind` (either `&&` or `||` depending on what was ambigious) if it is determined
-    /// that the current expression parsed is ambigious and will break in future.
+    /// `&&` and `||` in a if-let statement be unambiguous. This function returns a span and
+    /// a `BinOpKind` (either `&&` or `||` depending on what was ambiguous) if it is determined
+    /// that the current expression parsed is ambiguous and will break in future.
     fn while_if_let_expr_ambiguity(&self, expr: &P<Expr>) -> Option<(Span, BinOpKind)> {
         debug!("while_if_let_expr_ambiguity: expr.node: {:?}", expr.node);
         match &expr.node {
@@ -203,12 +203,12 @@ impl<'a> AstValidator<'a> {
                 Some((expr.span, op.node))
             },
             ExprKind::Range(ref lhs, ref rhs, _) => {
-                let lhs_ambigious = lhs.as_ref()
+                let lhs_ambiguous = lhs.as_ref()
                     .and_then(|lhs| self.while_if_let_expr_ambiguity(lhs));
-                let rhs_ambigious = rhs.as_ref()
+                let rhs_ambiguous = rhs.as_ref()
                     .and_then(|rhs| self.while_if_let_expr_ambiguity(rhs));
 
-                lhs_ambigious.or(rhs_ambigious)
+                lhs_ambiguous.or(rhs_ambiguous)
             }
             _ => None,
         }

@@ -40,7 +40,7 @@ impl ::std::fmt::Debug for CrateNum {
         match self {
             CrateNum::Index(id) => write!(fmt, "crate{}", id.private),
             CrateNum::Invalid => write!(fmt, "invalid crate"),
-            CrateNum::BuiltinMacros => write!(fmt, "bultin macros crate"),
+            CrateNum::BuiltinMacros => write!(fmt, "builtin macros crate"),
             CrateNum::ReservedForIncrCompCache => write!(fmt, "crate for decoding incr comp cache"),
         }
     }
@@ -101,7 +101,7 @@ impl fmt::Display for CrateNum {
         match self {
             CrateNum::Index(id) => fmt::Display::fmt(&id.private, f),
             CrateNum::Invalid => write!(f, "invalid crate"),
-            CrateNum::BuiltinMacros => write!(f, "bultin macros crate"),
+            CrateNum::BuiltinMacros => write!(f, "builtin macros crate"),
             CrateNum::ReservedForIncrCompCache => write!(f, "crate for decoding incr comp cache"),
         }
     }

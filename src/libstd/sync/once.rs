@@ -290,8 +290,8 @@ impl Once {
     }
 
     /// Returns true if some `call_once` call has completed
-    /// successfuly. Specifically, `is_completed` will return false in
-    /// the following situtations:
+    /// successfully. Specifically, `is_completed` will return false in
+    /// the following situations:
     ///   * `call_once` was not called at all,
     ///   * `call_once` was called, but has not yet completed,
     ///   * the `Once` instance is poisoned

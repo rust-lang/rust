@@ -94,7 +94,7 @@ impl<'a, 'b, 'c, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
     }
 }
 
-// FIXME: Really we shouldnt clone memory, ever. Snapshot machinery should instad
+// FIXME: Really we shouldn't clone memory, ever. Snapshot machinery should instead
 // carefully copy only the reachable parts.
 impl<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>>
     Clone for Memory<'a, 'mir, 'tcx, M>
@@ -658,7 +658,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     /// It is the caller's responsibility to handle undefined and pointer bytes.
-    /// However, this still checks that there are no relocations on the *egdes*.
+    /// However, this still checks that there are no relocations on the *edges*.
     #[inline]
     fn get_bytes_with_undef_and_ptr(
         &self,
@@ -1098,7 +1098,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         Ok(())
     }
 
-    /// Error if there are relocations overlapping with the egdes of the
+    /// Error if there are relocations overlapping with the edges of the
     /// given memory range.
     #[inline]
     fn check_relocation_edges(&self, ptr: Pointer<M::PointerTag>, size: Size) -> EvalResult<'tcx> {
