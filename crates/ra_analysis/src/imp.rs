@@ -22,7 +22,7 @@ use crate::{
     },
     input::{SourceRootId, FilesDatabase, SourceRoot, WORKSPACE},
     descriptors::{
-        DescriptorDatabase,
+        DescriptorDatabase, DeclarationDescriptor,
         module::{ModuleTree, Problem},
         function::{FnDescriptor, FnId},
     },
@@ -326,6 +326,17 @@ impl AnalysisImpl {
         let syntax = file.syntax();
 
         let mut ret = vec![];
+
+        if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, offset) {
+            let decl = DeclarationDescriptor::new(binding);
+
+            ret.push((file_id, decl.range));
+
+            ret.extend(decl.find_all_refs().into_iter()
+                .map(|ref_desc| (file_id, ref_desc.range )));
+
+            return ret;
+        }
 
         // Find the symbol we are looking for
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
