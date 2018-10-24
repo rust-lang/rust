@@ -967,7 +967,7 @@ impl<'tcx> PolyFnSig<'tcx> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs_and_output)
     }
     pub fn output(&self) -> ty::Binder<Ty<'tcx>> {
-        self.map_bound_ref(|fn_sig| fn_sig.output().clone())
+        self.map_bound_ref(|fn_sig| fn_sig.output())
     }
     pub fn variadic(&self) -> bool {
         self.skip_binder().variadic
