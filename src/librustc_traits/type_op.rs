@@ -10,6 +10,7 @@
 
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::infer::InferCtxt;
+use rustc::traits::query::type_op::ascribe_user_type::AscribeUserType;
 use rustc::traits::query::type_op::eq::Eq;
 use rustc::traits::query::type_op::normalize::Normalize;
 use rustc::traits::query::type_op::prove_predicate::ProvePredicate;
@@ -24,6 +25,7 @@ use std::fmt;
 
 crate fn provide(p: &mut Providers) {
     *p = Providers {
+        type_op_ascribe_user_type,
         type_op_eq,
         type_op_prove_predicate,
         type_op_subtype,
@@ -33,6 +35,18 @@ crate fn provide(p: &mut Providers) {
         type_op_normalize_poly_fn_sig,
         ..*p
     };
+}
+
+fn type_op_ascribe_user_type<'tcx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, AscribeUserType<'tcx>>>,
+) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, ()>>>, NoSolution> {
+    tcx.infer_ctxt()
+        .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
+            let (param_env, AscribeUserType { mir_ty, variance, user_ty }) = key.into_parts();
+            drop((infcx, fulfill_cx, param_env, mir_ty, variance, user_ty));
+            Ok(())
+        })
 }
 
 fn type_op_eq<'tcx>(

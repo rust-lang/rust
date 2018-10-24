@@ -1008,6 +1008,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
                 let ty = self.tcx().type_of(def_id);
                 let ty = ty.subst(tcx, substs);
+                debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
                 let ty = self.normalize(ty, locations);
 
                 self.relate_types(ty, v1, a, locations, category)?;
