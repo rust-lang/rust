@@ -19,7 +19,7 @@ available like the standard library. There’s two ways to go about this.
 ./x.py doc --stage 1
 ```
 
-First the compiler and rustdoc get built to make sure everything is okay 
+First the compiler and rustdoc get built to make sure everything is okay
 and then it documents the files.
 
 ## Document specific components
@@ -52,5 +52,11 @@ When you want to build the compiler docs as well run this command:
 ./x.py doc
 ```
 
-This will see that the docs and compiler-docs options are set to true 
+This will see that the docs and compiler-docs options are set to true
 and build the normally hidden compiler docs!
+
+### Compiler Documentation
+
+The documentation for the rust components are found at [rustc doc].
+
+[rustc doc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/

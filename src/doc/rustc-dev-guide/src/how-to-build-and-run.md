@@ -330,3 +330,9 @@ everything up then you only need to run one command!
    ```bash
    > ./x.py clean
    ```
+
+### Compiler Documentation
+
+The documentation for the rust components are found at [rustc doc].
+
+[rustc doc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
