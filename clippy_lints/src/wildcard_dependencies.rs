@@ -10,15 +10,15 @@
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::*;
+use crate::syntax::source_map::DUMMY_SP;
 use crate::utils::span_lint;
 
 use cargo_metadata;
-use lazy_static::lazy_static;
 use semver;
 
-/// **What it does:** Checks to see if wildcard dependencies are being used.
+/// **What it does:** Checks for wildcard dependencies in the `Cargo.toml`.
 ///
-/// **Why is this bad?** [As the edition guide sais](https://rust-lang-nursery.github.io/edition-guide/rust-2018/cargo-and-crates-io/crates-io-disallows-wildcard-dependencies.html),
+/// **Why is this bad?** [As the edition guide says](https://rust-lang-nursery.github.io/edition-guide/rust-2018/cargo-and-crates-io/crates-io-disallows-wildcard-dependencies.html),
 /// it is highly unlikely that you work with any possible version of your dependency,
 /// and wildcard dependencies would cause unnecessary breakage in the ecosystem.
 ///
@@ -53,19 +53,17 @@ impl EarlyLintPass for Pass {
             return;
         };
 
-        lazy_static! {
-            // VersionReq::any() does not work
-            static ref WILDCARD_VERSION_REQ: semver::VersionReq = semver::VersionReq::parse("*").unwrap();
-        }
-
         for dep in &metadata.packages[0].dependencies {
-            if dep.req == *WILDCARD_VERSION_REQ {
-                span_lint(
-                    cx,
-                    WILDCARD_DEPENDENCIES,
-                    krate.span,
-                    &format!("wildcard dependency for `{}`", dep.name),
-                );
+            // VersionReq::any() does not work
+            if let Ok(wildcard_ver) = semver::VersionReq::parse("*") {
+                if dep.req == wildcard_ver {
+                    span_lint(
+                        cx,
+                        WILDCARD_DEPENDENCIES,
+                        DUMMY_SP,
+                        &format!("wildcard dependency for `{}`", dep.name),
+                    );
+                }
             }
         }
     }
