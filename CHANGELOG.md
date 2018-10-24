@@ -893,6 +893,7 @@ All notable changes to this project will be documented in this file.
 [`while_immutable_condition`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#while_immutable_condition
 [`while_let_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#while_let_loop
 [`while_let_on_iterator`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#while_let_on_iterator
+[`wildcard_dependencies`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#wildcard_dependencies
 [`write_literal`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#write_literal
 [`write_with_newline`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#write_with_newline
 [`writeln_empty_string`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#writeln_empty_string
