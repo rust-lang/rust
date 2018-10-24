@@ -325,40 +325,24 @@ impl AnalysisImpl {
         let file = self.db.file_syntax(file_id);
         let syntax = file.syntax();
 
-        let mut ret = vec![];
+        // Find the binding associated with the offset
+        let maybe_binding = find_node_at_offset::<ast::BindPat>(syntax, offset)
+            .or_else(|| {
+                let name_ref = find_node_at_offset::<ast::NameRef>(syntax, offset)?;
+                let resolved = resolve_local_name(&self.db, file_id, name_ref)?;
+                find_node_at_offset::<ast::BindPat>(syntax, resolved.1.end())
+            });
 
-        if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, offset) {
-            let decl = DeclarationDescriptor::new(binding);
+        let binding = match maybe_binding {
+            None => return Vec::new(),
+            Some(it) => it,
+        };
 
-            ret.push((file_id, decl.range));
+        let decl = DeclarationDescriptor::new(binding);
 
-            ret.extend(decl.find_all_refs().into_iter()
-                .map(|ref_desc| (file_id, ref_desc.range )));
-
-            return ret;
-        }
-
-        // Find the symbol we are looking for
-        if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
-
-            // We are only handing local references for now
-            if let Some(resolved) = resolve_local_name(&self.db, file_id, name_ref) {
-
-                ret.push((file_id, resolved.1));
-
-                if let Some(fn_def) = find_node_at_offset::<ast::FnDef>(syntax, offset) {
-
-                    let refs : Vec<_> = fn_def.syntax().descendants()
-                        .filter_map(ast::NameRef::cast)
-                        .filter(|&n: &ast::NameRef| resolve_local_name(&self.db, file_id, n) == Some(resolved.clone()))
-                        .collect();
-
-                    for r in refs {
-                        ret.push((file_id, r.syntax().range()));
-                    }
-                }
-            }
-        }
+        let mut ret = vec![(file_id, decl.range)];
+        ret.extend(decl.find_all_refs().into_iter()
+            .map(|ref_desc| (file_id, ref_desc.range )));
 
         ret
     }
