@@ -7,15 +7,23 @@ undergraduate research course at the [University of Saskatchewan][usask].
 
 ## Building Miri
 
-I recommend that you install [rustup][rustup] to obtain Rust.  Miri comes with a
-`rust-version` file describing the latest supported nightly version of the Rust
-compiler toolchain. Then all you have to do is:
+I recommend that you install [rustup][rustup] to obtain Rust. Then all you have
+to do is:
 
 ```sh
 cargo +nightly build
 ```
 
-with `+nightly` replaced with the appropriate nightly version of Rust.
+This uses the very latest Rust version.  If you experience any problem, refer to
+the `rust-version` file which contains a particular Rust nightly version that
+has been tested against the version of miri you are using.  Make sure to use
+that particular `nightly-YYYY-MM-DD` whenever the instructions just say
+`nightly`.
+
+To avoid repeating the nightly version all the time, you can use
+`rustup override set nightly` (or `rustup override set nightly-YYYY-MM-DD`),
+which means `nightly` Rust will automatically be used whenever you are working
+in this directory.
 
 ## Running Miri
 
@@ -41,18 +49,23 @@ Now you can run Miri against the libstd compiled by xargo:
 MIRI_SYSROOT=~/.xargo/HOST cargo +nightly run tests/run-pass-fullmir/hashmap.rs
 ```
 
-Notice that you will have to re-run the last step of the preparations above when
-your toolchain changes (e.g., when you update the nightly).
-
-You can also set `-Zmiri-start-fn` to make Miri start evaluation with the
-`start_fn` lang item, instead of starting at the `main` function.
+Notice that you will have to re-run the last step of the preparations above
+(`xargo/build.sh`) when your toolchain changes (e.g., when you update the
+nightly).
 
 ## Running Miri on your own project('s test suite)
 
-Install Miri as a cargo subcommand with `cargo install +nightly --all-features --path .`.
+Install Miri as a cargo subcommand with `cargo install +nightly --all-features
+--path .`.  Be aware that if you used `rustup override set` to fix a particular
+Rust version for the miri directory, that will *not* apply to your own project
+directory!  You have to use a consistent Rust version for building miri and your
+project for this to work, so remember to either always specify the nightly
+version manually, overriding it in your project directory as well, or use
+`rustup default nightly` (or `rustup default nightly-YYYY-MM-DD`) to globally
+make `nightly` the default toolchain.
 
-Compile your project and its dependencies against a MIR-enabled libstd as described
-above:
+We assume that you have prepared a MIR-enabled libstd as described above.  Now
+compile your project and its dependencies against that libstd:
 
 1. Run `cargo clean` to eliminate any cached dependencies that were built against
 the non-MIR `libstd`.
@@ -85,11 +98,17 @@ which should be the toolchain specified in the `rust-version` file.
 
 ## Miri `-Z` flags
 
-Miri adds some extra `-Z` flags to control its behavior:
+Several `-Z` flags are relevant for miri:
 
-* `-Zmiri-start-fn`: This makes interpretation start with `lang_start` (defined
-  in libstd) instead of starting with `main`.  Requires full MIR!
-* `-Zmiri-disable-validation` disables enforcing the validity invariant.
+* `-Zmir-opt-level` controls how many MIR optimizations are performed.  miri
+  overrides the default to be `0`; be advised that using any higher level can
+  make miri miss bugs in your program because they got optimized away.
+* `-Zalways-encode-mir` makes rustc dump MIR even for completely monomorphic
+  functions.  This is needed so that miri can execute such functions, so miri
+  sets this flag per default.
+* `-Zmiri-disable-validation` is a custom `-Z` flag added by miri.  It disables
+  enforcing the validity invariant, which is enforced by default.  This is
+  mostly useful for debugging; it means miri will miss bugs in your program.
 
 ## Development and Debugging
 
