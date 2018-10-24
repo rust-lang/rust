@@ -286,7 +286,7 @@ fn opts() -> Vec<RustcOptGroup> {
                       \"light-suffix.css\"",
                      "PATH")
         }),
-        stable("edition", |o| {
+        unstable("edition", |o| {
             o.optopt("", "edition",
                      "edition to use when compiling rust code (default: 2015)",
                      "EDITION")
