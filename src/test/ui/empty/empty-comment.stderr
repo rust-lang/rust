@@ -1,8 +1,13 @@
 error: unexpected end of macro invocation
   --> $DIR/empty-comment.rs:20:5
    |
-LL |     one_arg_macro!(/**/); //~ ERROR unexpected end
-   |     ^^^^^^^^^^^^^^^^^^^^^
+LL | / macro_rules! one_arg_macro {
+LL | |     ($fmt:expr) => (print!(concat!($fmt, "/n")));
+LL | | }
+   | |_- when calling this macro
+...
+LL |       one_arg_macro!(/**/); //~ ERROR unexpected end
+   |       ^^^^^^^^^^^^^^^^^^^^^ unexpected end of macro invocation
 
 error: aborting due to previous error
 

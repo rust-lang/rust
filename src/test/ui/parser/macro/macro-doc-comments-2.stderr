@@ -1,8 +1,13 @@
 error: no rules expected the token `[`
   --> $DIR/macro-doc-comments-2.rs:16:5
    |
-LL |     /// Outer
-   |     ^
+LL | / macro_rules! inner {
+LL | |     (#![$inner:meta]) => ()
+LL | | }
+   | |_- when calling this macro
+...
+LL |       /// Outer
+   |       ^ no rules expected the token `[`
 
 error: aborting due to previous error
 

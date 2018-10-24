@@ -74,16 +74,19 @@ struct MacroRulesMacroExpander {
 }
 
 impl TTMacroExpander for MacroRulesMacroExpander {
-    fn expand<'cx>(&self,
-                   cx: &'cx mut ExtCtxt,
-                   sp: Span,
-                   input: TokenStream)
-                   -> Box<dyn MacResult+'cx> {
+    fn expand<'cx>(
+        &self,
+        cx: &'cx mut ExtCtxt,
+        sp: Span,
+        input: TokenStream,
+        def_span: Option<Span>,
+    ) -> Box<dyn MacResult+'cx> {
         if !self.valid {
             return DummyResult::any(sp);
         }
         generic_extension(cx,
                           sp,
+                          def_span,
                           self.name,
                           input,
                           &self.lhses,
@@ -99,6 +102,7 @@ fn trace_macros_note(cx: &mut ExtCtxt, sp: Span, message: String) {
 /// Given `lhses` and `rhses`, this is the new macro we create
 fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                           sp: Span,
+                          def_span: Option<Span>,
                           name: ast::Ident,
                           arg: TokenStream,
                           lhses: &[quoted::TokenTree],
@@ -178,7 +182,14 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
     }
 
     let best_fail_msg = parse_failure_msg(best_fail_tok.expect("ran no matchers"));
-    let mut err = cx.struct_span_err(best_fail_spot.substitute_dummy(sp), &best_fail_msg);
+    let span = best_fail_spot.substitute_dummy(sp);
+    let mut err = cx.struct_span_err(span, &best_fail_msg);
+    err.span_label(span, best_fail_msg);
+    if let Some(sp) = def_span {
+        if cx.source_map().span_to_filename(sp).is_real() && !sp.is_dummy() {
+            err.span_label(sp, "when calling this macro");
+        }
+    }
 
     // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
     if let Some((arg, comma_span)) = arg.add_comma() {
@@ -189,7 +200,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
             };
             match TokenTree::parse(cx, lhs_tt, arg.clone()) {
                 Success(_) => {
-                    if comma_span == DUMMY_SP {
+                    if comma_span.is_dummy() {
                         err.note("you might be missing a comma");
                     } else {
                         err.span_suggestion_short_with_applicability(

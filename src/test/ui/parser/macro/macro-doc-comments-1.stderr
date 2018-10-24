@@ -1,8 +1,13 @@
 error: no rules expected the token `!`
   --> $DIR/macro-doc-comments-1.rs:16:5
    |
-LL |     //! Inner
-   |     ^^^^^^^^^
+LL | / macro_rules! outer {
+LL | |     (#[$outer:meta]) => ()
+LL | | }
+   | |_- when calling this macro
+...
+LL |       //! Inner
+   |       ^^^^^^^^^ no rules expected the token `!`
 
 error: aborting due to previous error
 
