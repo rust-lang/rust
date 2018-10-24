@@ -1,8 +1,4 @@
-extern crate parking_lot;
-#[macro_use]
-extern crate log;
 extern crate fst;
-extern crate once_cell;
 extern crate ra_editor;
 extern crate ra_syntax;
 extern crate rayon;

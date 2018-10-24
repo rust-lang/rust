@@ -16,7 +16,8 @@ use relative_path::RelativePath;
 use rustc_hash::FxHashSet;
 
 use crate::{
-    descriptors::module::{ModuleTree, Problem},
+    db::SyntaxDatabase,
+    descriptors::module::{ModulesDatabase, ModuleTree, Problem},
     descriptors::{FnDescriptor},
     roots::{ReadonlySourceRoot, SourceRoot, WritableSourceRoot},
     CrateGraph, CrateId, Diagnostic, FileId, FileResolver, FileSystemEdit, Position,
@@ -143,10 +144,10 @@ impl AnalysisImpl {
             .unwrap()
     }
     pub fn file_syntax(&self, file_id: FileId) -> File {
-        self.root(file_id).syntax(file_id)
+        self.root(file_id).db().file_syntax(file_id)
     }
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.root(file_id).lines(file_id)
+        self.root(file_id).db().file_lines(file_id)
     }
     pub fn world_symbols(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let mut buf = Vec::new();
@@ -161,14 +162,14 @@ impl AnalysisImpl {
     }
     pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let root = self.root(file_id);
-        let module_tree = root.module_tree()?;
+        let module_tree = root.db().module_tree()?;
 
         let res = module_tree.modules_for_file(file_id)
             .into_iter()
             .filter_map(|module_id| {
                 let link = module_id.parent_link(&module_tree)?;
                 let file_id = link.owner(&module_tree).file_id(&module_tree);
-                let syntax = root.syntax(file_id);
+                let syntax = root.db().file_syntax(file_id);
                 let decl = link.bind_source(&module_tree, syntax.ast());
 
                 let sym = FileSymbol {
@@ -182,7 +183,7 @@ impl AnalysisImpl {
         Ok(res)
     }
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        let module_tree = self.root(file_id).module_tree()?;
+        let module_tree = self.root(file_id).db().module_tree()?;
         let crate_graph = &self.data.crate_graph;
         let res = module_tree.modules_for_file(file_id)
             .into_iter()
@@ -202,8 +203,8 @@ impl AnalysisImpl {
         offset: TextUnit,
     ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let root = self.root(file_id);
-        let module_tree = root.module_tree()?;
-        let file = root.syntax(file_id);
+        let module_tree = root.db().module_tree()?;
+        let file = root.db().file_syntax(file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
             // First try to resolve the symbol locally
@@ -253,7 +254,7 @@ impl AnalysisImpl {
 
     pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit) -> Vec<(FileId, TextRange)> {
         let root = self.root(file_id);
-        let file = root.syntax(file_id);
+        let file = root.db().file_syntax(file_id);
         let syntax = file.syntax();
 
         let mut ret = vec![];
@@ -285,8 +286,8 @@ impl AnalysisImpl {
 
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
         let root = self.root(file_id);
-        let module_tree = root.module_tree()?;
-        let syntax = root.syntax(file_id);
+        let module_tree = root.db().module_tree()?;
+        let syntax = root.db().file_syntax(file_id);
 
         let mut res = ra_editor::diagnostics(&syntax)
             .into_iter()
@@ -376,7 +377,7 @@ impl AnalysisImpl {
         offset: TextUnit,
     ) -> Cancelable<Option<(FnDescriptor, Option<usize>)>> {
         let root = self.root(file_id);
-        let file = root.syntax(file_id);
+        let file = root.db().file_syntax(file_id);
         let syntax = file.syntax();
 
         // Find the calling expression and it's NameRef

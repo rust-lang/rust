@@ -17,9 +17,7 @@ use crate::{
 
 pub(crate) trait SourceRoot {
     fn contains(&self, file_id: FileId) -> bool;
-    fn module_tree(&self) -> Cancelable<Arc<ModuleTree>>;
-    fn lines(&self, file_id: FileId) -> Arc<LineIndex>;
-    fn syntax(&self, file_id: FileId) -> File;
+    fn db(&self) -> &db::RootDatabase;
     fn symbols(&self, acc: &mut Vec<Arc<SymbolIndex>>) -> Cancelable<()>;
 }
 
@@ -63,17 +61,11 @@ impl WritableSourceRoot {
 }
 
 impl SourceRoot for WritableSourceRoot {
-    fn module_tree(&self) -> Cancelable<Arc<ModuleTree>> {
-        self.db.module_tree()
-    }
     fn contains(&self, file_id: FileId) -> bool {
         self.db.file_set().files.contains(&file_id)
     }
-    fn lines(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.db.file_lines(file_id)
-    }
-    fn syntax(&self, file_id: FileId) -> File {
-        self.db.file_syntax(file_id)
+    fn db(&self) -> &db::RootDatabase {
+        &self.db
     }
     fn symbols<'a>(&'a self, acc: &mut Vec<Arc<SymbolIndex>>) -> Cancelable<()> {
         for &file_id in self.db.file_set().files.iter() {
@@ -114,17 +106,11 @@ impl ReadonlySourceRoot {
 }
 
 impl SourceRoot for ReadonlySourceRoot {
-    fn module_tree(&self) -> Cancelable<Arc<ModuleTree>> {
-        self.db.module_tree()
-    }
     fn contains(&self, file_id: FileId) -> bool {
         self.db.file_set().files.contains(&file_id)
     }
-    fn lines(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.db.file_lines(file_id)
-    }
-    fn syntax(&self, file_id: FileId) -> File {
-        self.db.file_syntax(file_id)
+    fn db(&self) -> &db::RootDatabase {
+        &self.db
     }
     fn symbols(&self, acc: &mut Vec<Arc<SymbolIndex>>) -> Cancelable<()> {
         acc.push(Arc::clone(&self.symbol_index));
