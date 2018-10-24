@@ -232,6 +232,36 @@ impl<'a> IfExpr<'a> {
     }
 }
 
+
+#[derive(Debug, Clone, Copy)]
+pub enum PathSegmentKind<'a> {
+    Name(NameRef<'a>),
+    SelfKw,
+    SuperKw,
+    CrateKw,
+}
+
+impl<'a> PathSegment<'a> {
+    pub fn parent_path(self) -> Path<'a> {
+        self.syntax().parent().and_then(Path::cast)
+            .expect("segments are always nested in paths")
+    }
+
+    pub fn kind(self) -> Option<PathSegmentKind<'a>> {
+        let res = if let Some(name_ref) = self.name_ref() {
+            PathSegmentKind::Name(name_ref)
+        } else {
+            match self.syntax().first_child()?.kind() {
+                SELF_KW => PathSegmentKind::SelfKw,
+                SUPER_KW => PathSegmentKind::SuperKw,
+                CRATE_KW => PathSegmentKind::CrateKw,
+                _ => return None,
+            }
+        };
+        Some(res)
+    }
+}
+
 fn child_opt<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> Option<C> {
     children(parent).next()
 }

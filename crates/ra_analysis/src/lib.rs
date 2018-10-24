@@ -11,6 +11,7 @@ mod descriptors;
 mod imp;
 mod roots;
 mod symbol_index;
+mod completion;
 
 use std::{fmt::Debug, sync::Arc};
 
@@ -246,8 +247,7 @@ impl Analysis {
         Ok(ra_editor::highlight(&file))
     }
     pub fn completions(&self, file_id: FileId, offset: TextUnit) -> Cancelable<Option<Vec<CompletionItem>>> {
-        let file = self.imp.file_syntax(file_id);
-        Ok(ra_editor::scope_completion(&file, offset))
+        self.imp.completions(file_id, offset)
     }
     pub fn assists(&self, file_id: FileId, range: TextRange) -> Cancelable<Vec<SourceChange>> {
         Ok(self.imp.assists(file_id, range))

@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use ra_editor::{self, find_node_at_offset, resolve_local_name, FileSymbol, LineIndex, LocalEdit};
+use ra_editor::{self, find_node_at_offset, resolve_local_name, FileSymbol, LineIndex, LocalEdit, CompletionItem};
 use ra_syntax::{
     ast::{self, ArgListOwner, Expr, NameOwner},
     AstNode, File, SmolStr,
@@ -196,6 +196,26 @@ impl AnalysisImpl {
     }
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
         self.data.crate_graph.crate_roots[&crate_id]
+    }
+    pub fn completions(&self, file_id: FileId, offset: TextUnit) -> Cancelable<Option<Vec<CompletionItem>>> {
+        let mut res = Vec::new();
+        let mut has_completions = false;
+        let file = self.file_syntax(file_id);
+        if let Some(scope_based) = ra_editor::scope_completion(&file, offset) {
+            res.extend(scope_based);
+            has_completions = true;
+        }
+        let root = self.root(file_id);
+        if let Some(scope_based) = crate::completion::resolve_based_completion(root.db(), file_id, offset)? {
+            res.extend(scope_based);
+            has_completions = true;
+        }
+        let res = if has_completions {
+            Some(res)
+        } else {
+            None
+        };
+        Ok(res)
     }
     pub fn approximately_resolve_symbol(
         &self,

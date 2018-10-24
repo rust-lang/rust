@@ -531,7 +531,8 @@ Grammar(
         ),
         "Path": (
             options: [
-                ["segment", "PathSegment"]
+                ["segment", "PathSegment"],
+                ["qualifier", "Path"],
             ]
         ),
         "PathSegment": (
