@@ -91,3 +91,87 @@ impl V {
         unimplemented!();
     }
 }
+
+struct TupleReturnerOk;
+
+impl TupleReturnerOk {
+    // should not trigger lint
+    pub fn new() -> (Self, u32) { unimplemented!(); }
+}
+
+struct TupleReturnerOk2;
+
+impl TupleReturnerOk2 {
+    // should not trigger lint (it doesn't matter which element in the tuple is Self)
+    pub fn new() -> (u32, Self) { unimplemented!(); }
+}
+
+struct TupleReturnerOk3;
+
+impl TupleReturnerOk3 {
+    // should not trigger lint (tuple can contain multiple Self)
+    pub fn new() -> (Self, Self) { unimplemented!(); }
+}
+
+struct TupleReturnerBad;
+
+impl TupleReturnerBad {
+    // should trigger lint
+    pub fn new() -> (u32, u32) { unimplemented!(); }
+}
+
+struct MutPointerReturnerOk;
+
+impl MutPointerReturnerOk {
+    // should not trigger lint
+    pub fn new() -> *mut Self { unimplemented!(); }
+}
+
+struct MutPointerReturnerOk2;
+
+impl MutPointerReturnerOk2 {
+    // should not trigger lint
+    pub fn new() -> *const Self { unimplemented!(); }
+}
+
+struct MutPointerReturnerBad;
+
+impl MutPointerReturnerBad {
+    // should trigger lint
+    pub fn new() -> *mut V { unimplemented!(); }
+}
+
+struct GenericReturnerOk;
+
+impl GenericReturnerOk {
+    // should not trigger lint
+    pub fn new() -> Option<Self> { unimplemented!(); }
+}
+
+struct GenericReturnerBad;
+
+impl GenericReturnerBad {
+    // should trigger lint
+    pub fn new() -> Option<u32> { unimplemented!(); }
+}
+
+struct NestedReturnerOk;
+
+impl NestedReturnerOk {
+    // should not trigger lint
+    pub fn new() -> (Option<Self>, u32) { unimplemented!(); }
+}
+
+struct NestedReturnerOk2;
+
+impl NestedReturnerOk2 {
+    // should not trigger lint
+    pub fn new() -> ((Self, u32), u32) { unimplemented!(); }
+}
+
+struct NestedReturnerOk3;
+
+impl NestedReturnerOk3 {
+    // should not trigger lint
+    pub fn new() -> Option<(Self, u32)> { unimplemented!(); }
+}

@@ -936,10 +936,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         if let hir::ImplItemKind::Method(_, _) = implitem.node {
             let ret_ty = return_ty(cx, implitem.id);
 
-            // if return type is impl trait
+            // walk the return type and check for Self (this does not check associated types)
+            for inner_type in ret_ty.walk() {
+                if same_tys(cx, ty, inner_type) { return; }
+            }
+
+            // if return type is impl trait, check the associated types
             if let TyKind::Opaque(def_id, _) = ret_ty.sty {
 
-                // then one of the associated types must be Self
+                // one of the associated types must be Self
                 for predicate in cx.tcx.predicates_of(def_id).predicates.iter() {
                     match predicate {
                         (Predicate::Projection(poly_projection_predicate), _) => {
