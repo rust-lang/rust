@@ -105,7 +105,7 @@ Misc
 [cargo/5878]: https://github.com/rust-lang/cargo/pull/5878/
 [cargo/5984]: https://github.com/rust-lang/cargo/pull/5984/
 [cargo/5995]: https://github.com/rust-lang/cargo/pull/5995/
-[proc-macros]: https://doc.rust-lang.org/book/2018-edition/ch19-06-macros.html
+[proc-macros]: https://doc.rust-lang.org/stable/book/2018-edition/ch19-06-macros.html
 
 [`Ipv4Addr::BROADCAST`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#associatedconstant.BROADCAST
 [`Ipv4Addr::LOCALHOST`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#associatedconstant.LOCALHOST
