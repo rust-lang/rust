@@ -1,8 +1,8 @@
 warning: unnecessary parentheses around assigned value
-  --> $DIR/suggestions.rs:59:21
+  --> $DIR/suggestions.rs:59:31
    |
-LL |         let mut a = (1);
-   |                     ^^^ help: remove these parentheses
+LL |         let mut registry_no = (format!("NX-{}", 74205));
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove these parentheses
    |
 note: lint level defined here
   --> $DIR/suggestions.rs:13:21
@@ -21,8 +21,8 @@ LL | #[no_debug] // should suggest removal of deprecated attribute
 warning: variable does not need to be mutable
   --> $DIR/suggestions.rs:59:13
    |
-LL |         let mut a = (1);
-   |             ----^
+LL |         let mut registry_no = (format!("NX-{}", 74205));
+   |             ----^^^^^^^^^^^
    |             |
    |             help: remove this `mut`
    |
