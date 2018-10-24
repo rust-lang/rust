@@ -251,6 +251,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
                   dir: RelationDir)
                   -> RelateResult<'tcx, Generalization<'tcx>>
     {
+        debug!("generalize(ty={:?}, for_vid={:?}, dir={:?}", ty, for_vid, dir);
         // Determine the ambient variance within which `ty` appears.
         // The surrounding equation is:
         //
@@ -273,8 +274,15 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
             root_ty: ty,
         };
 
-        let ty = generalize.relate(&ty, &ty)?;
+        let ty = match generalize.relate(&ty, &ty) {
+            Ok(ty) => ty,
+            Err(e) => {
+                debug!("generalize: failure {:?}", e);
+                return Err(e);
+            }
+        };
         let needs_wf = generalize.needs_wf;
+        debug!("generalize: success {{ {:?}, {:?} }}", ty, needs_wf);
         Ok(Generalization { ty, needs_wf })
     }
 }
