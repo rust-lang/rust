@@ -1323,7 +1323,7 @@ impl MacroBranch {
         config.set().max_width(new_width);
 
         // First try to format as items, then as statements.
-        let new_body = match ::format_snippet(&body_str, &config) {
+        let new_body_snippet = match ::format_snippet(&body_str, &config) {
             Some(new_body) => new_body,
             None => {
                 let new_width = new_width + config.tab_spaces();
@@ -1334,15 +1334,23 @@ impl MacroBranch {
                 }
             }
         };
-        let new_body = wrap_str(new_body, config.max_width(), shape)?;
+        let new_body = wrap_str(
+            new_body_snippet.snippet.to_string(),
+            config.max_width(),
+            shape,
+        )?;
 
         // Indent the body since it is in a block.
         let indent_str = body_indent.to_string(&config);
         let mut new_body = LineClasses::new(new_body.trim_right())
+            .enumerate()
             .fold(
                 (String::new(), true),
-                |(mut s, need_indent), (kind, ref l)| {
-                    if !l.is_empty() && need_indent {
+                |(mut s, need_indent), (i, (kind, ref l))| {
+                    if !l.is_empty()
+                        && need_indent
+                        && !new_body_snippet.is_line_non_formatted(i + 1)
+                    {
                         s += &indent_str;
                     }
                     (s + l + "\n", !kind.is_string() || l.ends_with('\\'))
