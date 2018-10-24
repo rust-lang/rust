@@ -1068,7 +1068,7 @@ fn check_for_loop_range<'a, 'tcx>(
 
             // linting condition: we only indexed one variable, and indexed it directly
             if visitor.indexed_indirectly.is_empty() && visitor.indexed_directly.len() == 1 {
-                let (indexed, indexed_extent) = visitor
+                let (indexed, (indexed_extent, indexed_ty)) = visitor
                     .indexed_directly
                     .into_iter()
                     .next()
@@ -1119,7 +1119,7 @@ fn check_for_loop_range<'a, 'tcx>(
                         }
                     }
 
-                    if is_len_call(end, indexed) {
+                    if is_len_call(end, indexed) || is_end_eq_array_len(cx, end, limits, indexed_ty) {
                         String::new()
                     } else {
                         match limits {
@@ -1201,6 +1201,28 @@ fn is_len_call(expr: &Expr, var: Name) -> bool {
         if path.segments[0].ident.name == var;
         then {
             return true;
+        }
+    }
+
+    false
+}
+
+fn is_end_eq_array_len(
+    cx: &LateContext<'_, '_>,
+    end: &Expr,
+    limits: ast::RangeLimits,
+    indexed_ty: Ty<'_>,
+) -> bool {
+    if_chain! {
+        if let ExprKind::Lit(ref lit) = end.node;
+        if let ast::LitKind::Int(end_int, _) = lit.node;
+        if let ty::TyKind::Array(_, arr_len_const) = indexed_ty.sty;
+        if let Some(arr_len) = arr_len_const.assert_usize(cx.tcx);
+        then {
+            return match limits {
+                ast::RangeLimits::Closed => end_int + 1 >= arr_len.into(),
+                ast::RangeLimits::HalfOpen => end_int >= arr_len.into(),
+            };
         }
     }
 
@@ -1678,7 +1700,7 @@ struct VarVisitor<'a, 'tcx: 'a> {
     indexed_indirectly: FxHashMap<Name, Option<region::Scope>>,
     /// subset of `indexed` of vars that are indexed directly: `v[i]`
     /// this will not contain cases like `v[calc_index(i)]` or `v[(i + 4) % N]`
-    indexed_directly: FxHashMap<Name, Option<region::Scope>>,
+    indexed_directly: FxHashMap<Name, (Option<region::Scope>, Ty<'tcx>)>,
     /// Any names that are used outside an index operation.
     /// Used to detect things like `&mut vec` used together with `vec[i]`
     referenced: FxHashSet<Name>,
@@ -1725,7 +1747,10 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                                 self.indexed_indirectly.insert(seqvar.segments[0].ident.name, Some(extent));
                             }
                             if index_used_directly {
-                                self.indexed_directly.insert(seqvar.segments[0].ident.name, Some(extent));
+                                self.indexed_directly.insert(
+                                    seqvar.segments[0].ident.name,
+                                    (Some(extent), self.cx.tables.node_id_to_type(seqexpr.hir_id)),
+                                );
                             }
                             return false;  // no need to walk further *on the variable*
                         }
@@ -1734,7 +1759,10 @@ impl<'a, 'tcx> VarVisitor<'a, 'tcx> {
                                 self.indexed_indirectly.insert(seqvar.segments[0].ident.name, None);
                             }
                             if index_used_directly {
-                                self.indexed_directly.insert(seqvar.segments[0].ident.name, None);
+                                self.indexed_directly.insert(
+                                    seqvar.segments[0].ident.name,
+                                    (None, self.cx.tables.node_id_to_type(seqexpr.hir_id)),
+                                );
                             }
                             return false;  // no need to walk further *on the variable*
                         }
