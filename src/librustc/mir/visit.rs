@@ -152,6 +152,13 @@ macro_rules! make_mir_visitor {
                 self.super_ascribe_user_ty(place, variance, user_ty, location);
             }
 
+            fn visit_retag(&mut self,
+                           fn_entry: & $($mutability)* bool,
+                           place: & $($mutability)* Place<'tcx>,
+                           location: Location) {
+                self.super_retag(fn_entry, place, location);
+            }
+
             fn visit_place(&mut self,
                             place: & $($mutability)* Place<'tcx>,
                             context: PlaceContext<'tcx>,
@@ -371,13 +378,6 @@ macro_rules! make_mir_visitor {
                         );
                     }
                     StatementKind::EndRegion(_) => {}
-                    StatementKind::Retag { fn_entry: _, ref $($mutability)* place } => {
-                        self.visit_place(
-                            place,
-                            PlaceContext::MutatingUse(MutatingUseContext::Retag),
-                            location,
-                        );
-                    }
                     StatementKind::SetDiscriminant{ ref $($mutability)* place, .. } => {
                         self.visit_place(
                             place,
@@ -412,6 +412,9 @@ macro_rules! make_mir_visitor {
                         for input in & $($mutability)* inputs[..] {
                             self.visit_operand(input, location);
                         }
+                    }
+                    StatementKind::Retag { ref $($mutability)* fn_entry, ref $($mutability)* place } => {
+                        self.visit_retag(fn_entry, place, location);
                     }
                     StatementKind::AscribeUserType(
                         ref $($mutability)* place,
@@ -713,6 +716,17 @@ macro_rules! make_mir_visitor {
                     location
                 );
                 self.visit_user_type_projection(user_ty);
+            }
+
+            fn super_retag(&mut self,
+                           _fn_entry: & $($mutability)* bool,
+                           place: & $($mutability)* Place<'tcx>,
+                           location: Location) {
+                self.visit_place(
+                    place,
+                    PlaceContext::MutatingUse(MutatingUseContext::Retag),
+                    location,
+                );
             }
 
             fn super_place(&mut self,
