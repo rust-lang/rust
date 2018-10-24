@@ -3,4 +3,4 @@
 	url = https://github.com/rust-lang/compiler-rt
 [submodule "libm"]
 	path = libm
-	url = https://github.com/japaric/libm
+	url = https://github.com/rust-lang-nursery/libm
