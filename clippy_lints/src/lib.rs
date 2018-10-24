@@ -200,6 +200,7 @@ pub mod unused_label;
 pub mod unwrap;
 pub mod use_self;
 pub mod vec;
+pub mod wildcard_dependencies;
 pub mod write;
 pub mod zero_div_zero;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
@@ -438,6 +439,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box question_mark::Pass);
     reg.register_late_lint_pass(box suspicious_trait_impl::SuspiciousImpl);
     reg.register_early_lint_pass(box multiple_crate_versions::Pass);
+    reg.register_early_lint_pass(box wildcard_dependencies::Pass);
     reg.register_late_lint_pass(box map_unit_fn::Pass);
     reg.register_late_lint_pass(box infallible_destructuring_match::Pass);
     reg.register_late_lint_pass(box inherent_impl::Pass::default());
@@ -967,6 +969,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 
     reg.register_lint_group("clippy::cargo", Some("clippy_cargo"), vec![
         multiple_crate_versions::MULTIPLE_CRATE_VERSIONS,
+        wildcard_dependencies::WILDCARD_DEPENDENCIES,
     ]);
 
     reg.register_lint_group("clippy::nursery", Some("clippy_nursery"), vec![
