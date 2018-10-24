@@ -2009,7 +2009,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     ty::TraitContainer(_) => self.defaultness.has_value()
                 };
                 if provided {
-                    let constness = if cx.tcx.is_const_fn(self.def_id) {
+                    let constness = if cx.tcx.is_min_const_fn(self.def_id) {
                         hir::Constness::Const
                     } else {
                         hir::Constness::NotConst
