@@ -37,7 +37,7 @@ use visit::{self, FnKind, Visitor};
 use parse::ParseSess;
 use symbol::{keywords, Symbol};
 
-use std::{env};
+use std::{env, path};
 
 macro_rules! set {
     // The const_fn feature also enables the min_const_fn feature, because `min_const_fn` allows
@@ -403,6 +403,9 @@ declare_features! (
     // `extern` in paths
     (active, extern_in_paths, "1.23.0", Some(44660), None),
 
+    // `foo.rs` as an alternative to `foo/mod.rs`
+    (active, non_modrs_mods, "1.24.0", Some(44660), Some(Edition::Edition2018)),
+
     // Use `?` as the Kleene "at most one" operator
     (active, macro_at_most_once_rep, "1.25.0", Some(48075), None),
 
@@ -651,8 +654,6 @@ declare_features! (
     (accepted, repr_transparent, "1.28.0", Some(43036), None),
     // Defining procedural macros in `proc-macro` crates
     (accepted, proc_macro, "1.29.0", Some(38356), None),
-    // `foo.rs` as an alternative to `foo/mod.rs`
-    (accepted, non_modrs_mods, "1.30.0", Some(44660), None),
     // Allows use of the :vis macro fragment specifier
     (accepted, macro_vis_matcher, "1.30.0", Some(41022), None),
     // Allows importing and reexporting macros with `use`,
@@ -1500,6 +1501,31 @@ impl<'a> PostExpansionVisitor<'a> {
     }
 }
 
+impl<'a> PostExpansionVisitor<'a> {
+    fn whole_crate_feature_gates(&mut self, _krate: &ast::Crate) {
+        for &(ident, span) in &*self.context.parse_sess.non_modrs_mods.borrow() {
+            if !span.allows_unstable() {
+                let cx = &self.context;
+                let level = GateStrength::Hard;
+                let has_feature = cx.features.non_modrs_mods;
+                let name = "non_modrs_mods";
+                debug!("gate_feature(feature = {:?}, span = {:?}); has? {}",
+                        name, span, has_feature);
+
+                if !has_feature && !span.allows_unstable() {
+                    leveled_feature_err(
+                        cx.parse_sess, name, span, GateIssue::Language,
+                        "mod statements in non-mod.rs files are unstable", level
+                    )
+                    .help(&format!("on stable builds, rename this file to {}{}mod.rs",
+                                   ident, path::MAIN_SEPARATOR))
+                    .emit();
+                }
+            }
+        }
+    }
+}
+
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
         if !attr.span.allows_unstable() {
@@ -2066,6 +2092,7 @@ pub fn check_crate(krate: &ast::Crate,
     };
 
     let visitor = &mut PostExpansionVisitor { context: &ctx };
+    visitor.whole_crate_feature_gates(krate);
     visit::walk_crate(visitor, krate);
 }
 
