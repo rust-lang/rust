@@ -1,12 +1,5 @@
 environment:
-  SCCACHE_BUCKET: rust-lang-ci-sccache2
-  SCCACHE_REGION: us-west-1
-  AWS_ACCESS_KEY_ID: AKIAJAMV3QAMMA6AXHFQ
-  AWS_SECRET_ACCESS_KEY:
-    secure: 7Y+JiquYedOAgnUU26uL0DPzrxmTtR+qIwG6rNKSuWDffqU3vVZxbGXim9QpTO80
   SCCACHE_DIGEST: f808afabb4a4eb1d7112bcb3fa6be03b61e93412890c88e177c667eb37f46353d7ec294e559b16f9f4b5e894f2185fe7670a0df15fd064889ecbd80f0c34166c
-  TOOLSTATE_REPO_ACCESS_TOKEN:
-    secure: gKGlVktr7iuqCoYSxHxDE9ltLOKU0nYDEuQxvWbNxUIW7ri5ppn8L06jQzN0GGzN
 
   # By default schannel checks revocation of certificates unlike some other SSL
   # backends, but we've historically had problems on CI where a revocation
@@ -235,10 +228,8 @@ before_deploy:
 
 deploy:
   - provider: S3
-    skip_cleanup: true
-    access_key_id: AKIAJVBODR3IA4O72THQ
-    secret_access_key:
-      secure: tQWIE+DJHjXaV4np/3YeETkEmXngtIuIgAO/LYKQaUshGLgN8cBCFGG3cHx5lKLt
+    access_key_id: $(AWS_ACCESS_KEY_ID)
+    secret_access_key: $(AWS_SECRET_ACCESS_KEY)
     bucket: rust-lang-ci2
     set_public: true
     region: us-west-1
@@ -252,10 +243,8 @@ deploy:
   # This provider is the same as the one above except that it has a slightly
   # different upload directory and a slightly different trigger
   - provider: S3
-    skip_cleanup: true
-    access_key_id: AKIAJVBODR3IA4O72THQ
-    secret_access_key:
-      secure: tQWIE+DJHjXaV4np/3YeETkEmXngtIuIgAO/LYKQaUshGLgN8cBCFGG3cHx5lKLt
+    access_key_id: $(AWS_ACCESS_KEY_ID)
+    secret_access_key: $(AWS_SECRET_ACCESS_KEY)
     bucket: rust-lang-ci2
     set_public: true
     region: us-west-1
