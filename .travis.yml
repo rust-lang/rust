@@ -18,9 +18,8 @@ before_script:
   if [ "$TRAVIS_EVENT_TYPE" = cron ]; then
     RUST_TOOLCHAIN=nightly
   else
-    RUST_TOOLCHAIN=$(cat rust-toolchain)
+    RUST_TOOLCHAIN=$(cat rust-version)
   fi
-- rm rust-toolchain
 # install Rust
 - curl https://build.travis-ci.org/files/rustup-init.sh -sSf | sh -s -- -y --default-toolchain "$RUST_TOOLCHAIN"
 - export PATH=$HOME/.cargo/bin:$PATH
