@@ -729,6 +729,9 @@ impl TcpListener {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn accept(&self) -> io::Result<(TcpStream, SocketAddr)> {
+        // On WASM, `TcpStream` is uninhabited (as it's unsupported) and so
+        // the `a` variable here is technically unused.
+        #[cfg_attr(target_arch = "wasm32", allow(unused_variables))]
         self.0.accept().map(|(a, b)| (TcpStream(a), b))
     }
 
