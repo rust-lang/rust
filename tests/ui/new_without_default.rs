@@ -107,4 +107,13 @@ impl IgnoreUnsafeNew {
     pub unsafe fn new() -> Self { IgnoreUnsafeNew }
 }
 
+#[derive(Default)]
+pub struct OptionRefWrapper<'a, T: 'a>(Option<&'a T>);
+
+impl<'a, T: 'a> OptionRefWrapper<'a, T> {
+    pub fn new() -> Self {
+        OptionRefWrapper(None)
+    }
+}
+
 fn main() {}
