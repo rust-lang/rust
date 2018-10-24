@@ -3,6 +3,7 @@ use std::{sync::Arc};
 use ra_editor::LineIndex;
 use ra_syntax::File;
 use rustc_hash::FxHashSet;
+use rayon::prelude::*;
 use salsa::Database;
 
 use crate::{
@@ -105,8 +106,8 @@ impl ReadonlySourceRoot {
             .set((), Arc::new(db::FileSet { files: file_ids, resolver }));
         let file_set = db.file_set();
         let symbol_index =
-            SymbolIndex::for_files(file_set.files.iter() // TODO: par iter
-                .map(|&file_id| (file_id, db.file_syntax(file_id))));
+            SymbolIndex::for_files(file_set.files.par_iter()
+                .map_with(db.clone(), |db, &file_id| (file_id, db.file_syntax(file_id))));
 
         ReadonlySourceRoot { db, symbol_index: Arc::new(symbol_index) }
     }

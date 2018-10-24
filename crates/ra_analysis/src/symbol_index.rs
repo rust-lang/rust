@@ -34,7 +34,7 @@ impl Hash for SymbolIndex {
 }
 
 impl SymbolIndex {
-    pub(crate) fn for_files(files: impl Iterator<Item = (FileId, File)>) -> SymbolIndex {
+    pub(crate) fn for_files(files: impl ParallelIterator<Item = (FileId, File)>) -> SymbolIndex {
         let mut symbols = files
             .flat_map(|(file_id, file)| {
                 file_symbols(&file)
@@ -52,7 +52,7 @@ impl SymbolIndex {
     }
 
     pub(crate) fn for_file(file_id: FileId, file: File) -> SymbolIndex {
-        SymbolIndex::for_files(::std::iter::once((file_id, file)))
+        SymbolIndex::for_files(rayon::iter::once((file_id, file)))
     }
 }
 
