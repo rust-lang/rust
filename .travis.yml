@@ -197,23 +197,10 @@ matrix:
         . src/ci/docker/x86_64-gnu-tools/repo.sh;
         commit_toolstate_change "$MESSAGE_FILE" "$TRAVIS_BUILD_DIR/src/tools/publish_toolstate.py" "$(git rev-parse HEAD)" "$(git log --format=%s -n1 HEAD)" "$MESSAGE_FILE" "$TOOLSTATE_REPO_ACCESS_TOKEN";
 
-env:
-  global:
-    - SCCACHE_BUCKET=rust-lang-ci-sccache2
-    - SCCACHE_REGION=us-west-1
-    - AWS_ACCESS_KEY_ID=AKIAJAMV3QAMMA6AXHFQ
-    # AWS_SECRET_ACCESS_KEY=...
-    - secure: "j96XxTVOSUf4s4r4htIxn/fvIa5DWbMgLqWl7r8z2QfgUwscmkMXAwXuFNc7s7bGTpV/+CgDiMFFM6BAFLGKutytIF6oA02s9b+usQYnM0th7YQ2AIgm9GtMTJCJp4AoyfFmh8F2faUICBZlfVLUJ34udHEe35vOklix+0k4WDo="
-    # TOOLSTATE_REPO_ACCESS_TOKEN=...
-    - secure: "ESfcXqv4N2VMhqi2iIyw6da9VrsA78I4iR1asouCaq4hzTTrkB4WNRrfURy6xg72gQ4nMhtRJbB0/2jmc9Cu1+g2CzXtyiL223aJ5CKrXdcvbitopQSDfp07dMWm+UED+hNFEanpErKAeU/6FM3A+J+60PMk8MCF1h9tqNRISJw="
-
 before_install:
-  # We'll use the AWS cli to download/upload cached docker layers, so install
-  # that here.
-  - if [ "$TRAVIS_OS_NAME" = linux ]; then
-      pip install --user awscli;
-      export PATH=$PATH:$HOME/.local/bin;
-    fi
+  # We'll use the AWS cli to download/upload cached docker layers as well as
+  # push our deployments, so download that here.
+  - pip install --user awscli; export PATH=$PATH:$HOME/.local/bin
   - mkdir -p $HOME/rustsrc
   # FIXME(#46924): these two commands are required to enable IPv6,
   # they shouldn't exist, please revert once more official solutions appeared.
@@ -276,6 +263,23 @@ after_success:
       echo "#### Build successful; Disk usage after running script:";
       df -h;
       du . | sort -nr | head -n100
+  - >
+      if [ "$DEPLOY$DEPLOY_ALT" == "1" ]; then
+        mkdir -p deploy/$TRAVIS_COMMIT;
+        if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+            rm -rf build/dist/doc &&
+            cp -r build/dist/* deploy/$TRAVIS_COMMIT;
+        else
+            rm -rf obj/build/dist/doc &&
+            cp -r obj/build/dist/* deploy/$TRAVIS_COMMIT;
+        fi;
+        ls -la deploy/$TRAVIS_COMMIT;
+        deploy_dir=rustc-builds;
+        if [ "$DEPLOY_ALT" == "1" ]; then
+            deploy_dir=rustc-builds-alt;
+        fi;
+        travis_retry aws s3 cp --no-progress --recursive --acl public-read ./deploy s3://rust-lang-ci2/$deploy_dir
+      fi
 
 after_failure:
   - >
@@ -322,77 +326,3 @@ after_failure:
 
 notifications:
   email: false
-
-before_deploy:
-  - mkdir -p deploy/$TRAVIS_COMMIT
-  - >
-      if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-          rm -rf build/dist/doc &&
-          cp -r build/dist/* deploy/$TRAVIS_COMMIT;
-      else
-          rm -rf obj/build/dist/doc &&
-          cp -r obj/build/dist/* deploy/$TRAVIS_COMMIT;
-      fi
-  - ls -la deploy/$TRAVIS_COMMIT
-
-deploy:
-  - provider: s3
-    bucket: rust-lang-ci2
-    skip_cleanup: true
-    local_dir: deploy
-    upload_dir: rustc-builds
-    acl: public_read
-    region: us-west-1
-    access_key_id: AKIAJVBODR3IA4O72THQ
-    secret_access_key:
-      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
-    on:
-      branch: auto
-      condition: $DEPLOY = 1
-
-  # this is the same as the above deployment provider except that it uploads to
-  # a slightly different directory and has a different trigger
-  - provider: s3
-    bucket: rust-lang-ci2
-    skip_cleanup: true
-    local_dir: deploy
-    upload_dir: rustc-builds-alt
-    acl: public_read
-    region: us-west-1
-    access_key_id: AKIAJVBODR3IA4O72THQ
-    secret_access_key:
-      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
-    on:
-      branch: auto
-      condition: $DEPLOY_ALT = 1
-
-  # These two providers are the same as the two above, except deploy on the
-  # try branch. Travis does not appear to provide a way to use "or" in these
-  # conditions.
-  - provider: s3
-    bucket: rust-lang-ci2
-    skip_cleanup: true
-    local_dir: deploy
-    upload_dir: rustc-builds
-    acl: public_read
-    region: us-west-1
-    access_key_id: AKIAJVBODR3IA4O72THQ
-    secret_access_key:
-      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
-    on:
-      branch: try
-      condition: $DEPLOY = 1
-
-  - provider: s3
-    bucket: rust-lang-ci2
-    skip_cleanup: true
-    local_dir: deploy
-    upload_dir: rustc-builds-alt
-    acl: public_read
-    region: us-west-1
-    access_key_id: AKIAJVBODR3IA4O72THQ
-    secret_access_key:
-      secure: "kUGd3t7JcVWFESgIlzvsM8viZgCA9Encs3creW0xLJaLSeI1iVjlJK4h/2/nO6y224AFrh/GUfsNr4/4AlxPuYb8OU5oC5Lv+Ff2JiRDYtuNpyQSKAQp+bRYytWMtrmhja91h118Mbm90cUfcLPwkdiINgJNTXhPKg5Cqu3VYn0="
-    on:
-      branch: try
-      condition: $DEPLOY_ALT = 1
