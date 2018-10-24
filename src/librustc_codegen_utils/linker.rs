@@ -15,9 +15,7 @@ use std::io::prelude::*;
 use std::io::{self, BufWriter};
 use std::path::{Path, PathBuf};
 
-use back::archive;
-use back::command::Command;
-use back::symbol_export;
+use command::Command;
 use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use rustc::middle::dependency_format::Linkage;
 use rustc::session::Session;
@@ -26,7 +24,6 @@ use rustc::session::config::{self, CrateType, OptLevel, DebugInfo,
 use rustc::ty::TyCtxt;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
 use serialize::{json, Encoder};
-use llvm_util;
 
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
@@ -43,10 +40,13 @@ impl LinkerInfo {
         }
     }
 
-    pub fn to_linker<'a>(&'a self,
-                         cmd: Command,
-                         sess: &'a Session,
-                         flavor: LinkerFlavor) -> Box<dyn Linker+'a> {
+    pub fn to_linker<'a>(
+        &'a self,
+        cmd: Command,
+        sess: &'a Session,
+        flavor: LinkerFlavor,
+        target_cpu: &'a str,
+    ) -> Box<dyn Linker+'a> {
         match flavor {
             LinkerFlavor::Lld(LldFlavor::Link) |
             LinkerFlavor::Msvc => {
@@ -70,6 +70,7 @@ impl LinkerInfo {
                     info: self,
                     hinted_static: false,
                     is_ld: false,
+                    target_cpu,
                 }) as Box<dyn Linker>
             }
 
@@ -82,6 +83,7 @@ impl LinkerInfo {
                     info: self,
                     hinted_static: false,
                     is_ld: true,
+                    target_cpu,
                 }) as Box<dyn Linker>
             }
 
@@ -144,6 +146,7 @@ pub struct GccLinker<'a> {
     hinted_static: bool, // Keeps track of the current hinting mode.
     // Link as ld
     is_ld: bool,
+    target_cpu: &'a str,
 }
 
 impl<'a> GccLinker<'a> {
@@ -204,7 +207,8 @@ impl<'a> GccLinker<'a> {
         };
 
         self.linker_arg(&format!("-plugin-opt={}", opt_level));
-        self.linker_arg(&format!("-plugin-opt=mcpu={}", llvm_util::target_cpu(self.sess)));
+        let target_cpu = self.target_cpu;
+        self.linker_arg(&format!("-plugin-opt=mcpu={}", target_cpu));
 
         match self.sess.lto() {
             config::Lto::Thin |
@@ -263,7 +267,7 @@ impl<'a> Linker for GccLinker<'a> {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.linker_arg("-force_load");
-            let lib = archive::find_library(lib, search_path, &self.sess);
+            let lib = ::find_library(lib, search_path, &self.sess);
             self.linker_arg(&lib);
         }
     }
@@ -898,7 +902,8 @@ impl<'a> Linker for EmLinker<'a> {
 fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
     let mut symbols = Vec::new();
 
-    let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
+    let export_threshold =
+        ::symbol_export::crates_export_threshold(&[crate_type]);
     for &(symbol, level) in tcx.exported_symbols(LOCAL_CRATE).iter() {
         if level.is_below_threshold(export_threshold) {
             symbols.push(symbol.symbol_name(tcx).to_string());
