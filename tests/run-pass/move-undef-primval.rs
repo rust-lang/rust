@@ -1,6 +1,3 @@
-// Moving around undef is not allowed by validation
-// compile-flags: -Zmir-emit-validate=0
-
 struct Foo {
     _inner: i32,
 }

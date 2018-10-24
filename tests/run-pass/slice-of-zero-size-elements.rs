@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -C debug-assertions
-
 use std::slice;
 
 fn foo<T>(v: &[T]) -> Option<&[T]> {

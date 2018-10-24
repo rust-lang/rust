@@ -1,4 +1,3 @@
-// compile-flags: -Zmir-emit-validate=0
 #![allow(dead_code)]
 #![feature(unsize, coerce_unsized)]
 

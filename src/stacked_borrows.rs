@@ -5,7 +5,7 @@ use rustc::hir;
 
 use super::{
     MemoryAccess, MemoryKind, MiriMemoryKind, RangeMap, EvalResult, AllocId,
-    Pointer,
+    Pointer, PlaceTy,
 };
 
 pub type Timestamp = u64;
@@ -362,6 +362,12 @@ pub trait EvalContextExt<'tcx> {
         id: AllocId,
         kind: MemoryKind<MiriMemoryKind>,
     ) -> Borrow;
+
+    fn retag(
+        &mut self,
+        fn_entry: bool,
+        place: PlaceTy<'tcx, Borrow>
+    ) -> EvalResult<'tcx>;
 }
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
@@ -505,5 +511,14 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         let size = Size::from_bytes(alloc.bytes.len() as u64);
         alloc.extra.first_borrow(mut_borrow, size);
         Borrow::Mut(mut_borrow)
+    }
+
+    fn retag(
+        &mut self,
+        _fn_entry: bool,
+        _place: PlaceTy<'tcx, Borrow>
+    ) -> EvalResult<'tcx> {
+        // TODO do something
+        Ok(())
     }
 }

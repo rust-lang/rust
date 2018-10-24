@@ -26,7 +26,7 @@ use syntax::attr;
 
 
 pub use rustc_mir::interpret::*;
-pub use rustc_mir::interpret::{self, AllocMap}; // resolve ambiguity
+pub use rustc_mir::interpret::{self, AllocMap, PlaceTy}; // resolve ambiguity
 
 mod fn_call;
 mod operator;
@@ -520,5 +520,19 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             let tag = ecx.tag_new_allocation(ptr.alloc_id, kind);
             Ok(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
         }
+    }
+
+    #[inline(always)]
+    fn retag(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        fn_entry: bool,
+        place: PlaceTy<'tcx, Borrow>,
+    ) -> EvalResult<'tcx> {
+        if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag || !ecx.machine.validate {
+            // No tracking, or no retagging. This is possible because a dependency of ours might be
+            // called with different flags than we are,
+            return Ok(())
+        }
+        ecx.retag(fn_entry, place)
     }
 }
