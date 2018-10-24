@@ -413,7 +413,8 @@ macro_rules! make_mir_visitor {
                             self.visit_operand(input, location);
                         }
                     }
-                    StatementKind::Retag { ref $($mutability)* fn_entry, ref $($mutability)* place } => {
+                    StatementKind::Retag { ref $($mutability)* fn_entry,
+                                           ref $($mutability)* place } => {
                         self.visit_retag(fn_entry, place, location);
                     }
                     StatementKind::AscribeUserType(
