@@ -78,19 +78,19 @@ The kinds of region elements are as follows:
   etc) control-flow graph.
 - Similarly, there is an element denoted `end('static)` corresponding
   to the remainder of program execution after this function returns.
-- There is an element `!1` for each skolemized region `!1`. This
+- There is an element `!1` for each placeholder region `!1`. This
   corresponds (intuitively) to some unknown set of other elements –
-  for details on skolemization, see the section
-  [skolemization and universes](#skol).
+  for details on placeholder, see the section
+  [placeholder and universes](#placeholder).
 
 ## Causal tracking
 
 *to be written* – describe how we can extend the values of a variable
  with causal tracking etc
 
-<a name="skol"></a>
+<a name="placeholder"></a>
 
-## Skolemization and universes
+## Placeholders and universes
 
 (This section describes ongoing work that hasn't landed yet.)
 
@@ -117,7 +117,7 @@ for its argument, and `bar` wants to be given a function that that
 accepts **any** reference (so it can call it with something on its
 stack, for example). But *how* do we reject it and *why*?
 
-### Subtyping and skolemization
+### Subtyping and Placeholder
 
 When we type-check `main`, and in particular the call `bar(foo)`, we
 are going to wind up with a subtyping relationship like this one:
@@ -129,10 +129,10 @@ the type of `foo`   the type `bar` expects
 ```
 
 We handle this sort of subtyping by taking the variables that are
-bound in the supertype and **skolemizing** them: this means that we
+bound in the supertype and **placeholder** them: this means that we
 replace them with
 [universally quantified](../appendix/background.html#quantified)
-representatives, written like `!1`. We call these regions "skolemized
+representatives, written like `!1`. We call these regions "placeholder
 regions" – they represent, basically, "some unknown region".
 
 Once we've done that replacement, we have the following relation:
@@ -163,7 +163,7 @@ should yield up an error (eventually).
 
 ### What is a universe
 
-In the previous section, we introduced the idea of a skolemized
+In the previous section, we introduced the idea of a placeholder
 region, and we denoted it `!1`. We call this number `1` the **universe
 index**. The idea of a "universe" is that it is a set of names that
 are in scope within some type or at some point. Universes are formed
@@ -198,7 +198,7 @@ fn bar<'a, T>(t: &'a T) {
 ```
 
 Here, the name `'b` is not part of the root universe. Instead, when we
-"enter" into this `for<'b>` (e.g., by skolemizing it), we will create
+"enter" into this `for<'b>` (e.g., by placeholder it), we will create
 a child universe of the root, let's call it U1:
 
 ```text
@@ -274,25 +274,25 @@ Here, the only way for the two foralls to interact would be through X,
 but neither Y nor Z are in scope when X is declared, so its value
 cannot reference either of them.
 
-### Universes and skolemized region elements
+### Universes and placeholder region elements
 
 But where does that error come from?  The way it happens is like this.
 When we are constructing the region inference context, we can tell
-from the type inference context how many skolemized variables exist
+from the type inference context how many placeholder variables exist
 (the `InferCtxt` has an internal counter). For each of those, we
 create a corresponding universal region variable `!n` and a "region
-element" `skol(n)`. This corresponds to "some unknown set of other
-elements". The value of `!n` is `{skol(n)}`.
+element" `placeholder(n)`. This corresponds to "some unknown set of other
+elements". The value of `!n` is `{placeholder(n)}`.
 
 At the same time, we also give each existential variable a
 **universe** (also taken from the `InferCtxt`). This universe
-determines which skolemized elements may appear in its value: For
-example, a variable in universe U3 may name `skol(1)`, `skol(2)`, and
-`skol(3)`, but not `skol(4)`. Note that the universe of an inference
+determines which placeholder elements may appear in its value: For
+example, a variable in universe U3 may name `placeholder(1)`, `placeholder(2)`, and
+`placeholder(3)`, but not `placeholder(4)`. Note that the universe of an inference
 variable controls what region elements **can** appear in its value; it
 does not say region elements **will** appear.
 
-### Skolemization and outlives constraints
+### Placeholders and outlives constraints
 
 In the region inference engine, outlives constraints have the form:
 
@@ -313,23 +313,23 @@ are present in `value(V2)` and we add those nodes to `value(V1)`. If
 we reach a return point, we add in any `end(X)` elements. That part
 remains unchanged.
 
-But then *after that* we want to iterate over the skolemized `skol(x)`
+But then *after that* we want to iterate over the placeholder `placeholder(x)`
 elements in V2 (each of those must be visible to `U(V2)`, but we
 should be able to just assume that is true, we don't have to check
 it). We have to ensure that `value(V1)` outlives each of those
-skolemized elements.
+placeholder elements.
 
 Now there are two ways that could happen. First, if `U(V1)` can see
-the universe `x` (i.e., `x <= U(V1)`), then we can just add `skol(x)`
+the universe `x` (i.e., `x <= U(V1)`), then we can just add `placeholder(x)`
 to `value(V1)` and be done. But if not, then we have to approximate:
-we may not know what set of elements `skol(x)` represents, but we
+we may not know what set of elements `placeholder(x)` represents, but we
 should be able to compute some sort of **upper bound** B for it –
-some region B that outlives `skol(x)`. For now, we'll just use
+some region B that outlives `placeholder(x)`. For now, we'll just use
 `'static` for that (since it outlives everything) – in the future, we
 can sometimes be smarter here (and in fact we have code for doing this
 already in other contexts). Moreover, since `'static` is in the root
 universe U0, we know that all variables can see it – so basically if
-we find that `value(V2)` contains `skol(x)` for some universe `x`
+we find that `value(V2)` contains `placeholder(x)` for some universe `x`
 that `V1` can't see, then we force `V1` to `'static`.
 
 ### Extending the "universal regions" check
@@ -337,20 +337,20 @@ that `V1` can't see, then we force `V1` to `'static`.
 After all constraints have been propagated, the NLL region inference
 has one final check, where it goes over the values that wound up being
 computed for each universal region and checks that they did not get
-'too large'. In our case, we will go through each skolemized region
-and check that it contains *only* the `skol(u)` element it is known to
+'too large'. In our case, we will go through each placeholder region
+and check that it contains *only* the `placeholder(u)` element it is known to
 outlive. (Later, we might be able to know that there are relationships
-between two skolemized regions and take those into account, as we do
+between two placeholder regions and take those into account, as we do
 for universal regions from the fn signature.)
 
 Put another way, the "universal regions" check can be considered to be
 checking constraints like:
 
 ```text
-{skol(1)}: V1
+{placeholder(1)}: V1
 ```
 
-where `{skol(1)}` is like a constant set, and V1 is the variable we
+where `{placeholder(1)}` is like a constant set, and V1 is the variable we
 made to represent the `!1` region.
 
 ## Back to our example
@@ -365,7 +365,7 @@ fn(&'static u32) <: fn(&'!1 u32) @ P  // this point P is not imp't here
 The region inference engine will create a region element domain like this:
 
 ```text
-{ CFG; end('static); skol(1) }
+{ CFG; end('static); placeholder(1) }
     ---  ------------  ------- from the universe `!1`
     |    'static is always in scope
     all points in the CFG; not especially relevant here
@@ -377,7 +377,7 @@ will have initial values like so:
 
 ```text
 Vs = { CFG; end('static) } // it is in U0, so can't name anything else
-V1 = { skol(1) }
+V1 = { placeholder(1) }
 ```
 
 From the subtyping constraint above, we would have an outlives constraint like
@@ -390,7 +390,7 @@ To process this, we would grow the value of V1 to include all of Vs:
 
 ```text
 Vs = { CFG; end('static) }
-V1 = { CFG; end('static), skol(1) }
+V1 = { CFG; end('static), placeholder(1) }
 ```
 
 At that point, constraint propagation is complete, because all the
@@ -411,7 +411,7 @@ for<'a> fn(&'a u32, &'a u32)
 for<'b, 'c> fn(&'b u32, &'c u32)
 ```
 
-Here we would skolemize the supertype, as before, yielding:
+Here we would placeholer the supertype, as before, yielding:
 
 ```text
 for<'a> fn(&'a u32, &'a u32)
@@ -476,7 +476,7 @@ an error. That's good: the problem is that we've gone from a fn that promises
 to return one of its two arguments, to a fn that is promising to return the
 first one. That is unsound. Let's see how it plays out.
 
-First, we skolemize the supertype:
+First, we placeholder the supertype:
 
 ```text
 for<'a> fn(&'a u32, &'a u32) -> &'a u32
@@ -512,26 +512,26 @@ V3: V1
 Those variables will have these initial values:
 
 ```text
-V1 in U1 = {skol(1)}
-V2 in U2 = {skol(2)}
+V1 in U1 = {placeholder(1)}
+V2 in U2 = {placeholder(2)}
 V3 in U2 = {}
 ```
 
-Now because of the `V3: V1` constraint, we have to add `skol(1)` into `V3` (and
+Now because of the `V3: V1` constraint, we have to add `placeholder(1)` into `V3` (and
 indeed it is visible from `V3`), so we get:
 
 ```text
-V3 in U2 = {skol(1)}
+V3 in U2 = {placeholder(1)}
 ```
 
 then we have this constraint `V2: V3`, so we wind up having to enlarge
-`V2` to include `skol(1)` (which it can also see):
+`V2` to include `placeholder(1)` (which it can also see):
 
 ```text
-V2 in U2 = {skol(1), skol(2)}
+V2 in U2 = {placeholder(1), placeholder(2)}
 ```
 
 Now constraint propagation is done, but when we check the outlives
-relationships, we find that `V2` includes this new element `skol(1)`,
+relationships, we find that `V2` includes this new element `placeholder(1)`,
 so we report an error.
 
