@@ -253,6 +253,8 @@ fn main() {
 
         // When running miri tests, we need to generate MIR for all libraries
         if env::var("TEST_MIRI").ok().map_or(false, |val| val == "true") {
+            // The flags here should be kept in sync with `add_miri_default_args`
+            // in miri's `src/lib.rs`.
             cmd.arg("-Zalways-encode-mir");
             // These options are preferred by miri, to be able to perform better validation,
             // but the bootstrap compiler might not understand them.
