@@ -142,6 +142,28 @@ impl<'a, 'gcx, 'tcx> At<'a, 'gcx, 'tcx> {
         self.trace(expected, actual).eq(&expected, &actual)
     }
 
+    pub fn relate<T>(
+        self,
+        expected: T,
+        variance: ty::Variance,
+        actual: T,
+    ) -> InferResult<'tcx, ()>
+        where T: ToTrace<'tcx>
+    {
+        match variance {
+            ty::Variance::Covariant => self.sub(expected, actual),
+            ty::Variance::Invariant => self.eq(expected, actual),
+            ty::Variance::Contravariant => self.sup(expected, actual),
+
+            // We could make this make sense but it's not readily
+            // exposed and I don't feel like dealing with it. Note
+            // that bivariance in general does a bit more than just
+            // *nothing*, it checks that the types are the same
+            // "modulo variance" basically.
+            ty::Variance::Bivariant => panic!("Bivariant given to `relate()`"),
+        }
+    }
+
     /// Compute the least-upper-bound, or mutual supertype, of two
     /// values. The order of the arguments doesn't matter, but since
     /// this can result in an error (e.g., if asked to compute LUB of

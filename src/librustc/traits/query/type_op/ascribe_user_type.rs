@@ -9,24 +9,27 @@
 // except according to those terms.
 
 use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
-use mir::UserTypeAnnotation;
 use traits::query::Fallible;
+use hir::def_id::DefId;
 use ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use ty::subst::UserSubsts;
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct AscribeUserType<'tcx> {
     pub mir_ty: Ty<'tcx>,
     pub variance: ty::Variance,
-    pub user_ty: UserTypeAnnotation<'tcx>,
+    pub def_id: DefId,
+    pub user_substs: UserSubsts<'tcx>,
 }
 
 impl<'tcx> AscribeUserType<'tcx> {
     pub fn new(
         mir_ty: Ty<'tcx>,
         variance: ty::Variance,
-        user_ty: UserTypeAnnotation<'tcx>,
+        def_id: DefId,
+        user_substs: UserSubsts<'tcx>,
     ) -> Self {
-        AscribeUserType { mir_ty, variance, user_ty }
+        AscribeUserType { mir_ty, variance, def_id, user_substs }
     }
 }
 
@@ -56,19 +59,19 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for AscribeUserType<'tcx> 
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for AscribeUserType<'tcx> {
-        mir_ty, variance, user_ty
+        mir_ty, variance, def_id, user_substs
     }
 }
 
 BraceStructLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for AscribeUserType<'a> {
         type Lifted = AscribeUserType<'tcx>;
-        mir_ty, variance, user_ty
+        mir_ty, variance, def_id, user_substs
     }
 }
 
 impl_stable_hash_for! {
     struct AscribeUserType<'tcx> {
-        mir_ty, variance, user_ty
+        mir_ty, variance, def_id, user_substs
     }
 }
