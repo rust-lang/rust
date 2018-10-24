@@ -25,6 +25,7 @@ use semver;
 /// **Known problems:** None.
 ///
 /// **Example:**
+///
 /// ```toml
 /// [dependencies]
 /// regex = "*"
@@ -53,6 +54,7 @@ impl EarlyLintPass for Pass {
         };
 
         lazy_static! {
+            // VersionReq::any() does not work
             static ref WILDCARD_VERSION_REQ: semver::VersionReq = semver::VersionReq::parse("*").unwrap();
         }
 
