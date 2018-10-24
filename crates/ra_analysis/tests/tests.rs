@@ -103,12 +103,12 @@ fn test_unresolved_module_diagnostic() {
     );
 }
 
-// #[test]
-// fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
-//     let snap = analysis(&[("/lib.rs", "mod foo {}")]);
-//     let diagnostics = snap.diagnostics(FileId(1)).unwrap();
-//     assert_eq_dbg(r#"[]"#, &diagnostics);
-// }
+#[test]
+fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
+    let snap = analysis(&[("/lib.rs", "mod foo {}")]);
+    let diagnostics = snap.diagnostics(FileId(1)).unwrap();
+    assert_eq_dbg(r#"[]"#, &diagnostics);
+}
 
 #[test]
 fn test_resolve_parent_module() {
