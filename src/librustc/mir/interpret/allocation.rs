@@ -536,7 +536,6 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         // Check non-NULL/Undef, extract offset
 
         // check this is not NULL -- which we can ensure only if this is in-bounds
-        // of some (potentially dead) allocation.
         let size = Size::from_bytes(self.bytes.len() as u64);
         if ptr.offset > size {
             return err!(PointerOutOfBounds {
