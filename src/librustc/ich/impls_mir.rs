@@ -257,9 +257,9 @@ for mir::StatementKind<'gcx> {
             mir::StatementKind::EndRegion(ref region_scope) => {
                 region_scope.hash_stable(hcx, hasher);
             }
-            mir::StatementKind::Validate(ref op, ref places) => {
-                op.hash_stable(hcx, hasher);
-                places.hash_stable(hcx, hasher);
+            mir::StatementKind::Retag { fn_entry, ref place } => {
+                fn_entry.hash_stable(hcx, hasher);
+                place.hash_stable(hcx, hasher);
             }
             mir::StatementKind::AscribeUserType(ref place, ref variance, ref c_ty) => {
                 place.hash_stable(hcx, hasher);
@@ -277,23 +277,6 @@ for mir::StatementKind<'gcx> {
 }
 
 impl_stable_hash_for!(enum mir::FakeReadCause { ForMatchGuard, ForMatchedPlace, ForLet });
-
-impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>>
-    for mir::ValidationOperand<'gcx, T>
-    where T: HashStable<StableHashingContext<'a>>
-{
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>)
-    {
-        self.place.hash_stable(hcx, hasher);
-        self.ty.hash_stable(hcx, hasher);
-        self.re.hash_stable(hcx, hasher);
-        self.mutbl.hash_stable(hcx, hasher);
-    }
-}
-
-impl_stable_hash_for!(enum mir::ValidationOp { Acquire, Release, Suspend(region_scope) });
 
 impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::Place<'gcx> {
     fn hash_stable<W: StableHasherResult>(&self,

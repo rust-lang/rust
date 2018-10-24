@@ -68,7 +68,7 @@ impl RemoveNoopLandingPads {
                 StatementKind::Assign(_, _) |
                 StatementKind::SetDiscriminant { .. } |
                 StatementKind::InlineAsm { .. } |
-                StatementKind::Validate { .. } => {
+                StatementKind::Retag { .. } => {
                     return false;
                 }
             }

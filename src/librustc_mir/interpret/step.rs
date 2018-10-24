@@ -118,11 +118,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             // interpreter is solely intended for borrowck'ed code.
             FakeRead(..) => {}
 
-            // Validity checks.
-            Validate(op, ref places) => {
-                for operand in places {
-                    M::validation_op(self, op, operand)?;
-                }
+            // Retagging.
+            Retag { fn_entry, ref place } => {
+                let dest = self.eval_place(place)?;
+                M::retag(self, fn_entry, dest)?;
             }
 
             EndRegion(..) => {}

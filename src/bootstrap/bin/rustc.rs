@@ -254,7 +254,12 @@ fn main() {
         // When running miri tests, we need to generate MIR for all libraries
         if env::var("TEST_MIRI").ok().map_or(false, |val| val == "true") {
             cmd.arg("-Zalways-encode-mir");
-            cmd.arg("-Zmir-emit-validate=1");
+            // These options are preferred by miri, to be able to perform better validation,
+            // but the bootstrap compiler might not understand them.
+            if stage != "0" {
+                cmd.arg("-Zmir-emit-retag");
+                cmd.arg("-Zmir-opt-level=0");
+            }
         }
 
         // Force all crates compiled by this compiler to (a) be unstable and (b)

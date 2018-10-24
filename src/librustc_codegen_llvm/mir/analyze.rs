@@ -219,7 +219,8 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
                 self.assign(local, location);
             }
 
-            PlaceContext::NonUse(_) => {}
+            PlaceContext::NonUse(_) |
+            PlaceContext::MutatingUse(MutatingUseContext::Retag) => {}
 
             PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
             PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {

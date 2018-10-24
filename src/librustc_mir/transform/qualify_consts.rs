@@ -1167,7 +1167,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 StatementKind::StorageDead(_) |
                 StatementKind::InlineAsm {..} |
                 StatementKind::EndRegion(_) |
-                StatementKind::Validate(..) |
+                StatementKind::Retag { .. } |
                 StatementKind::AscribeUserType(..) |
                 StatementKind::Nop => {}
             }

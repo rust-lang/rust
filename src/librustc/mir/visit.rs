@@ -371,16 +371,12 @@ macro_rules! make_mir_visitor {
                         );
                     }
                     StatementKind::EndRegion(_) => {}
-                    StatementKind::Validate(_, ref $($mutability)* places) => {
-                        for operand in places {
-                            self.visit_place(
-                                & $($mutability)* operand.place,
-                                PlaceContext::NonUse(NonUseContext::Validate),
-                                location
-                            );
-                            self.visit_ty(& $($mutability)* operand.ty,
-                                          TyContext::Location(location));
-                        }
+                    StatementKind::Retag { fn_entry: _, ref $($mutability)* place } => {
+                        self.visit_place(
+                            place,
+                            PlaceContext::MutatingUse(MutatingUseContext::Retag),
+                            location,
+                        );
                     }
                     StatementKind::SetDiscriminant{ ref $($mutability)* place, .. } => {
                         self.visit_place(
@@ -1010,6 +1006,8 @@ pub enum MutatingUseContext<'tcx> {
     ///     f(&mut x.y);
     ///
     Projection,
+    /// Retagging (updating the "Stacked Borrows" tag)
+    Retag,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1020,8 +1018,6 @@ pub enum NonUseContext {
     StorageDead,
     /// User type annotation assertions for NLL.
     AscribeUserTy,
-    /// Validation command.
-    Validate,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

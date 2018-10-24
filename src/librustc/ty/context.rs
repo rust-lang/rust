@@ -1547,11 +1547,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Should we emit EndRegion MIR statements? These are consumed by
-    /// MIR borrowck, but not when NLL is used. They are also consumed
-    /// by the validation stuff.
+    /// MIR borrowck, but not when NLL is used.
     pub fn emit_end_regions(self) -> bool {
         self.sess.opts.debugging_opts.emit_end_regions ||
-            self.sess.opts.debugging_opts.mir_emit_validate > 0 ||
             self.use_mir_borrowck()
     }
 

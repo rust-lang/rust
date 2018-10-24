@@ -109,7 +109,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
             }
             mir::StatementKind::FakeRead(..) |
             mir::StatementKind::EndRegion(_) |
-            mir::StatementKind::Validate(..) |
+            mir::StatementKind::Retag { .. } |
             mir::StatementKind::AscribeUserType(..) |
             mir::StatementKind::Nop => bx,
         }

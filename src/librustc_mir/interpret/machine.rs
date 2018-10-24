@@ -242,10 +242,10 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
 
     /// Execute a validation operation
     #[inline]
-    fn validation_op(
+    fn retag(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _op: ::rustc::mir::ValidationOp,
-        _operand: &::rustc::mir::ValidationOperand<'tcx, ::rustc::mir::Place<'tcx>>,
+        _fn_entry: bool,
+        _place: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx> {
         Ok(())
     }

@@ -22,23 +22,19 @@ use transform::{MirPass, MirSource};
 
 struct EraseRegionsVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    in_validation_statement: bool,
 }
 
 impl<'a, 'tcx> EraseRegionsVisitor<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         EraseRegionsVisitor {
             tcx,
-            in_validation_statement: false,
         }
     }
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: TyContext) {
-        if !self.in_validation_statement {
-            *ty = self.tcx.erase_regions(ty);
-        }
+        *ty = self.tcx.erase_regions(ty);
         self.super_ty(ty);
     }
 
@@ -58,20 +54,11 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
                        block: BasicBlock,
                        statement: &mut Statement<'tcx>,
                        location: Location) {
-        // Do NOT delete EndRegion if validation statements are emitted.
-        // Validation needs EndRegion.
-        if self.tcx.sess.opts.debugging_opts.mir_emit_validate == 0 {
-            if let StatementKind::EndRegion(_) = statement.kind {
-                statement.kind = StatementKind::Nop;
-            }
+        if let StatementKind::EndRegion(_) = statement.kind {
+            statement.kind = StatementKind::Nop;
         }
 
-        self.in_validation_statement = match statement.kind {
-            StatementKind::Validate(..) => true,
-            _ => false,
-        };
         self.super_statement(block, statement, location);
-        self.in_validation_statement = false;
     }
 }
 
