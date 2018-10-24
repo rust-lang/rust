@@ -21,9 +21,17 @@ pub enum Mut {
 
 impl Mut {
     #[inline(always)]
-    fn is_raw(self) -> bool {
+    pub fn is_raw(self) -> bool {
         match self {
             Mut::Raw => true,
+            _ => false,
+        }
+    }
+
+    #[inline(always)]
+    pub fn is_uniq(self) -> bool {
+        match self {
+            Mut::Uniq(_) => true,
             _ => false,
         }
     }
@@ -40,9 +48,17 @@ pub enum Borrow {
 
 impl Borrow {
     #[inline(always)]
-    fn is_uniq(self) -> bool {
+    pub fn is_uniq(self) -> bool {
         match self {
-            Borrow::Mut(Mut::Uniq(_)) => true,
+            Borrow::Mut(m) => m.is_uniq(),
+            _ => false,
+        }
+    }
+
+    #[inline(always)]
+    pub fn is_frz(self) -> bool {
+        match self {
+            Borrow::Frz(_) => true,
             _ => false,
         }
     }

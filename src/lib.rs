@@ -44,8 +44,12 @@ use range_map::RangeMap;
 #[allow(unused_imports)] // FIXME rustc bug https://github.com/rust-lang/rust/issues/53682
 use helpers::{ScalarExt, EvalContextExt as HelpersEvalContextExt};
 use mono_hash_map::MonoHashMap;
-use stacked_borrows::{EvalContextExt as StackedBorEvalContextExt, Borrow};
+use stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
 
+// Used by priroda
+pub use stacked_borrows::{Borrow, Stacks, Mut as MutBorrow};
+
+// Used by priroda
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
