@@ -98,11 +98,17 @@ which should be the toolchain specified in the `rust-version` file.
 
 ## Miri `-Z` flags
 
-Miri adds some extra `-Z` flags to control its behavior:
+Several `-Z` flags are relevant for miri:
 
-* `-Zmiri-start-fn`: This makes interpretation start with `lang_start` (defined
-  in libstd) instead of starting with `main`.  Requires full MIR!
-* `-Zmiri-disable-validation` disables enforcing the validity invariant.
+* `-Zmir-opt-level` controls how many MIR optimizations are performed.  miri
+  overrides the default to be `0`; be advised that using any higher level can
+  make miri miss bugs in your program because they got optimized away.
+* `-Zalways-encode-mir` makes rustc dump MIR even for completely monomorphic
+  functions.  This is needed so that miri can execute such functions, so miri
+  sets this flag per default.
+* `-Zmiri-disable-validation` is a custom `-Z` flag added by miri.  It disables
+  enforcing the validity invariant, which is enforced by default.  This is
+  mostly useful for debugging; it means miri will miss bugs in your program.
 
 ## Development and Debugging
 
