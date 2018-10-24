@@ -17,9 +17,9 @@
 //! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
 
 use infer::canonical::{Canonical, CanonicalVarValues};
-use ty::fold::{TypeFoldable, TypeFolder};
+use ty::fold::TypeFoldable;
 use ty::subst::UnpackedKind;
-use ty::{self, Ty, TyCtxt};
+use ty::{self, TyCtxt};
 
 impl<'tcx, V> Canonical<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value
@@ -65,82 +65,21 @@ where
 {
     if var_values.var_values.is_empty() {
         value.clone()
-    } else if !value.has_escaping_bound_vars() {
-        // There are no bound vars to substitute.
-        value.clone()
     } else {
-        value.fold_with(&mut CanonicalVarValuesSubst {
-            tcx,
-            var_values,
-            binder_index: ty::INNERMOST,
-        })
-    }
-}
-
-struct CanonicalVarValuesSubst<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-    var_values: &'cx CanonicalVarValues<'tcx>,
-    binder_index: ty::DebruijnIndex,
-}
-
-impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for CanonicalVarValuesSubst<'cx, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
-        self.tcx
-    }
-
-    fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
-        where T: TypeFoldable<'tcx>
-    {
-        self.binder_index.shift_in(1);
-        let t = t.super_fold_with(self);
-        self.binder_index.shift_out(1);
-        t
-    }
-
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match t.sty {
-            ty::Bound(b) => {
-                if b.index == self.binder_index {
-                    match self.var_values.var_values[b.var].unpack() {
-                        UnpackedKind::Type(ty) => ty::fold::shift_vars(
-                            self.tcx,
-                            &ty,
-                            self.binder_index.index() as u32
-                        ),
-                        r => bug!("{:?} is a type but value is {:?}", b, r),
-                    }
-                } else {
-                    t
-                }
+        let fld_r = |br: ty::BoundRegion| {
+            match var_values.var_values[br.as_bound_var()].unpack() {
+                UnpackedKind::Lifetime(l) => l,
+                r => bug!("{:?} is a region but value is {:?}", br, r),
             }
-            _ => {
-                if !t.has_vars_bound_at_or_above(self.binder_index) {
-                    // Nothing more to substitute.
-                    t
-                } else {
-                    t.super_fold_with(self)
-                }
-            }
-        }
-    }
+        };
 
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match r {
-            ty::RegionKind::ReLateBound(index, br) => {
-                if *index == self.binder_index {
-                    match self.var_values.var_values[br.as_bound_var()].unpack() {
-                        UnpackedKind::Lifetime(l) => ty::fold::shift_region(
-                            self.tcx,
-                            l,
-                            self.binder_index.index() as u32,
-                        ),
-                        r => bug!("{:?} is a region but value is {:?}", br, r),
-                    }
-                } else {
-                    r
-                }
+        let fld_t = |bound_ty: ty::BoundTy| {
+            match var_values.var_values[bound_ty.var].unpack() {
+                UnpackedKind::Type(ty) => ty,
+                r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
             }
-            _ => r.super_fold_with(self),
-        }
+        };
+
+        tcx.replace_escaping_bound_vars(value, fld_r, fld_t)
     }
 }

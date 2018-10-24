@@ -416,11 +416,10 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFolder<'a, 'gcx, 'tcx> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Late-bound region replacer
+// Bound vars replacer
 
-// Replaces the escaping regions in a type.
-
-struct RegionReplacer<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+/// Replaces the escaping bound vars (late bound regions or bound types) in a type.
+struct BoundVarReplacer<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
     /// As with `RegionFolder`, represents the index of a binder *just outside*
@@ -428,7 +427,82 @@ struct RegionReplacer<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     current_index: ty::DebruijnIndex,
 
     fld_r: &'a mut (dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx> + 'a),
-    map: BTreeMap<ty::BoundRegion, ty::Region<'tcx>>
+    fld_t: &'a mut (dyn FnMut(ty::BoundTy) -> ty::Ty<'tcx> + 'a),
+}
+
+impl<'a, 'gcx, 'tcx> BoundVarReplacer<'a, 'gcx, 'tcx> {
+    fn new<F, G>(
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        fld_r: &'a mut F,
+        fld_t: &'a mut G
+    ) -> Self
+        where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
+              G: FnMut(ty::BoundTy) -> ty::Ty<'tcx>
+    {
+        BoundVarReplacer {
+            tcx,
+            current_index: ty::INNERMOST,
+            fld_r,
+            fld_t,
+        }
+    }
+}
+
+impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for BoundVarReplacer<'a, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
+
+    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
+        self.current_index.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.current_index.shift_out(1);
+        t
+    }
+
+    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        match t.sty {
+            ty::Bound(bound_ty) => {
+                if bound_ty.index == self.current_index {
+                    let fld_t = &mut self.fld_t;
+                    let ty = fld_t(bound_ty);
+                    ty::fold::shift_vars(
+                        self.tcx,
+                        &ty,
+                        self.current_index.as_u32()
+                    )
+                } else {
+                    t
+                }
+            }
+            _ => {
+                if !t.has_vars_bound_at_or_above(self.current_index) {
+                    // Nothing more to substitute.
+                    t
+                } else {
+                    t.super_fold_with(self)
+                }
+            }
+        }
+    }
+
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+        match *r {
+            ty::ReLateBound(debruijn, br) if debruijn == self.current_index => {
+                let fld_r = &mut self.fld_r;
+                let region = fld_r(br);
+                if let ty::ReLateBound(debruijn1, br) = *region {
+                    // If the callback returns a late-bound region,
+                    // that region should always use the INNERMOST
+                    // debruijn index. Then we adjust it to the
+                    // correct depth.
+                    assert_eq!(debruijn1, ty::INNERMOST);
+                    self.tcx.mk_region(ty::ReLateBound(debruijn, br))
+                } else {
+                    region
+                }
+            }
+            _ => r
+        }
+    }
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
@@ -440,16 +514,65 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// same `BoundRegion` will reuse the previous result.  A map is
     /// returned at the end with each bound region and the free region
     /// that replaced it.
-    pub fn replace_late_bound_regions<T,F>(self,
+    ///
+    /// This method only replaces late bound regions and the result may still
+    /// contain escaping bound types.
+    pub fn replace_late_bound_regions<T, F>(
+        self,
         value: &Binder<T>,
-        mut f: F)
-        -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
-        where F : FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
-              T : TypeFoldable<'tcx>,
+        mut fld_r: F
+    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+        where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
+              T: TypeFoldable<'tcx>
     {
-        let mut replacer = RegionReplacer::new(self, &mut f);
+        let mut map = BTreeMap::new();
+        let mut real_fldr = |br| {
+            *map.entry(br).or_insert_with(|| fld_r(br))
+        };
+
+        // identity for bound types
+        let mut fld_t = |bound_ty| self.mk_ty(ty::Bound(bound_ty));
+
+        let mut replacer = BoundVarReplacer::new(self, &mut real_fldr, &mut fld_t);
         let result = value.skip_binder().fold_with(&mut replacer);
-        (result, replacer.map)
+        (result, map)
+    }
+
+    /// Replace all escaping bound vars. The `fld_r` closure replaces escaping
+    /// bound regions while the `flr_t` closure replaces escaping bound types.
+    pub fn replace_escaping_bound_vars<T, F, G>(
+        self,
+        value: &T,
+        mut fld_r: F,
+        mut fld_t: G
+    ) -> T
+        where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
+              G: FnMut(ty::BoundTy) -> ty::Ty<'tcx>,
+              T: TypeFoldable<'tcx>
+    {
+        if !value.has_escaping_bound_vars() {
+            value.clone()
+        } else {
+            let mut replacer = BoundVarReplacer::new(self, &mut fld_r, &mut fld_t);
+            let result = value.fold_with(&mut replacer);
+            result
+        }
+    }
+
+    /// Replace all types or regions bound by the given `Binder`. The `fld_r`
+    /// closure replaces bound regions while the `flr_t` closure replaces bound
+    /// types.
+    pub fn replace_bound_vars<T, F, G>(
+        self,
+        value: &Binder<T>,
+        fld_r: F,
+        fld_t: G
+    ) -> T
+        where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
+              G: FnMut(ty::BoundTy) -> ty::Ty<'tcx>,
+              T: TypeFoldable<'tcx>
+    {
+        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t)
     }
 
     /// Replace any late-bound regions bound in `value` with
@@ -546,59 +669,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             counter += 1;
             self.mk_region(ty::ReLateBound(ty::INNERMOST, ty::BrAnon(counter)))
         }).0)
-    }
-}
-
-impl<'a, 'gcx, 'tcx> RegionReplacer<'a, 'gcx, 'tcx> {
-    fn new<F>(tcx: TyCtxt<'a, 'gcx, 'tcx>, fld_r: &'a mut F)
-              -> RegionReplacer<'a, 'gcx, 'tcx>
-        where F : FnMut(ty::BoundRegion) -> ty::Region<'tcx>
-    {
-        RegionReplacer {
-            tcx,
-            current_index: ty::INNERMOST,
-            fld_r,
-            map: BTreeMap::default()
-        }
-    }
-}
-
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionReplacer<'a, 'gcx, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
-
-    fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
-        self.current_index.shift_in(1);
-        let t = t.super_fold_with(self);
-        self.current_index.shift_out(1);
-        t
-    }
-
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if !t.has_vars_bound_at_or_above(self.current_index) {
-            return t;
-        }
-
-        t.super_fold_with(self)
-    }
-
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match *r {
-            ty::ReLateBound(debruijn, br) if debruijn == self.current_index => {
-                let fld_r = &mut self.fld_r;
-                let region = *self.map.entry(br).or_insert_with(|| fld_r(br));
-                if let ty::ReLateBound(debruijn1, br) = *region {
-                    // If the callback returns a late-bound region,
-                    // that region should always use the INNERMOST
-                    // debruijn index. Then we adjust it to the
-                    // correct depth.
-                    assert_eq!(debruijn1, ty::INNERMOST);
-                    self.tcx.mk_region(ty::ReLateBound(debruijn, br))
-                } else {
-                    region
-                }
-            }
-            _ => r
-        }
     }
 }
 
