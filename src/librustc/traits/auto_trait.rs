@@ -334,7 +334,12 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 continue;
             }
 
-            let result = select.select(&Obligation::new(dummy_cause.clone(), new_env, pred));
+            // Call infcx.resolve_type_vars_if_possible to see if we can
+            // get rid of any inference variables.
+            let obligation = infcx.resolve_type_vars_if_possible(
+                &Obligation::new(dummy_cause.clone(), new_env, pred)
+            );
+            let result = select.select(&obligation);
 
             match &result {
                 &Ok(Some(ref vtable)) => {
@@ -369,7 +374,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
                 &Ok(None) => {}
                 &Err(SelectionError::Unimplemented) => {
-                    if self.is_of_param(pred.skip_binder().trait_ref.substs) {
+                    if self.is_of_param(pred.skip_binder().self_ty()) {
                         already_visited.remove(&pred);
                         self.add_user_pred(
                             &mut user_computed_preds,
@@ -631,14 +636,10 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         finished_map
     }
 
-    pub fn is_of_param(&self, substs: &Substs<'_>) -> bool {
-        if substs.is_noop() {
-            return false;
-        }
-
-        return match substs.type_at(0).sty {
+    pub fn is_of_param(&self, ty: Ty<'_>) -> bool {
+        return match ty.sty {
             ty::Param(_) => true,
-            ty::Projection(p) => self.is_of_param(p.substs),
+            ty::Projection(p) => self.is_of_param(p.self_ty()),
             _ => false,
         };
     }
@@ -661,28 +662,61 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
     ) -> bool {
         let dummy_cause = ObligationCause::misc(DUMMY_SP, ast::DUMMY_NODE_ID);
 
-        for (obligation, predicate) in nested
-            .filter(|o| o.recursion_depth == 1)
+        for (obligation, mut predicate) in nested
             .map(|o| (o.clone(), o.predicate.clone()))
         {
             let is_new_pred =
                 fresh_preds.insert(self.clean_pred(select.infcx(), predicate.clone()));
 
+            // Resolve any inference variables that we can, to help selection succeed
+            predicate = select.infcx().resolve_type_vars_if_possible(&predicate);
+
+            // We only add a predicate as a user-displayable bound if
+            // it involves a generic parameter, and doesn't contain
+            // any inference variables.
+            //
+            // Displaying a bound involving a concrete type (instead of a generic
+            // parameter) would be pointless, since it's always true
+            // (e.g. u8: Copy)
+            // Displaying an inference variable is impossible, since they're
+            // an internal compiler detail without a defined visual representation
+            //
+            // We check this by calling is_of_param on the relevant types
+            // from the various possible predicates
             match &predicate {
                 &ty::Predicate::Trait(ref p) => {
-                    let substs = &p.skip_binder().trait_ref.substs;
+                    if self.is_of_param(p.skip_binder().self_ty())
+                        && !only_projections
+                        && is_new_pred {
 
-                    if self.is_of_param(substs) && !only_projections && is_new_pred {
                         self.add_user_pred(computed_preds, predicate);
                     }
                     predicates.push_back(p.clone());
                 }
                 &ty::Predicate::Projection(p) => {
-                    // If the projection isn't all type vars, then
-                    // we don't want to add it as a bound
-                    if self.is_of_param(p.skip_binder().projection_ty.substs) && is_new_pred {
+                    debug!("evaluate_nested_obligations: examining projection predicate {:?}",
+                           predicate);
+
+                    // As described above, we only want to display
+                    // bounds which include a generic parameter but don't include
+                    // an inference variable.
+                    // Additionally, we check if we've seen this predicate before,
+                    // to avoid rendering duplicate bounds to the user.
+                    if self.is_of_param(p.skip_binder().projection_ty.self_ty())
+                        && !p.ty().skip_binder().is_ty_infer()
+                        && is_new_pred {
+                            debug!("evaluate_nested_obligations: adding projection predicate\
+                            to computed_preds: {:?}", predicate);
+
                         self.add_user_pred(computed_preds, predicate);
-                    } else {
+                    }
+
+                    // We can only call poly_project_and_unify_type when our predicate's
+                    // Ty is an inference variable - otherwise, there won't be anything to
+                    // unify
+                    if p.ty().skip_binder().is_ty_infer() {
+                        debug!("Projecting and unifying projection predicate {:?}",
+                               predicate);
                         match poly_project_and_unify_type(select, &obligation.with(p.clone())) {
                             Err(e) => {
                                 debug!(
