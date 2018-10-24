@@ -1082,7 +1082,7 @@ impl<'b, 'a, 'v> RootCollector<'b, 'a, 'v> {
         // regions must appear in the argument
         // listing.
         let main_ret_ty = self.tcx.erase_regions(
-            &main_ret_ty.no_late_bound_regions().unwrap(),
+            &main_ret_ty.no_bound_vars().unwrap(),
         );
 
         let start_instance = Instance::resolve(

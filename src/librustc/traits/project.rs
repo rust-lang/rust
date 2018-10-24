@@ -1619,7 +1619,7 @@ impl<'cx, 'gcx, 'tcx> ProjectionCacheKey<'tcx> {
         let infcx = selcx.infcx();
         // We don't do cross-snapshot caching of obligations with escaping regions,
         // so there's no cache key to use
-        predicate.no_late_bound_regions()
+        predicate.no_bound_vars()
             .map(|predicate| ProjectionCacheKey {
                 // We don't attempt to match up with a specific type-variable state
                 // from a specific call to `opt_normalize_projection_type` - if

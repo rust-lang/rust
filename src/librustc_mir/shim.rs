@@ -844,7 +844,9 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
     let param_env = gcx.param_env(def_id);
 
     // Normalize the sig.
-    let sig = gcx.fn_sig(def_id).no_late_bound_regions().expect("LBR in ADT constructor signature");
+    let sig = gcx.fn_sig(def_id)
+        .no_bound_vars()
+        .expect("LBR in ADT constructor signature");
     let sig = gcx.normalize_erasing_regions(param_env, sig);
 
     let (adt_def, substs) = match sig.output().sty {
