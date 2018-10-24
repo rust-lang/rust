@@ -1755,12 +1755,16 @@ pub enum StatementKind<'tcx> {
     },
 
     /// Retag references in the given place, ensuring they got fresh tags.  This is
-    /// part of the Stacked Borrows model. `fn_entry` indicates whether this
-    /// is the initial retag that happens in the function prolog. These statements are
-    /// currently only interpreted by miri and only generated when "-Z mir-emit-retag" is passed.
+    /// part of the Stacked Borrows model. These statements are currently only interpreted
+    /// by miri and only generated when "-Z mir-emit-retag" is passed.
     /// See <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/>
     /// for more details.
-    Retag { fn_entry: bool, place: Place<'tcx> },
+    Retag {
+        /// `fn_entry` indicates whether this is the initial retag that happens in the
+        /// function prolog.
+        fn_entry: bool,
+        place: Place<'tcx>,
+    },
 
     /// Mark one terminating point of a region scope (i.e. static region).
     /// (The starting point(s) arise implicitly from borrows.)

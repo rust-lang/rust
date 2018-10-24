@@ -42,7 +42,12 @@ fn is_local<'tcx>(
                     // (a local storing the array index, the current value of
                     // the projection base), so we stop tracking here.
                     false,
-                _ => is_local(&proj.base),
+                ProjectionElem::Field { .. } |
+                ProjectionElem::ConstantIndex { .. } |
+                ProjectionElem::Subslice { .. } |
+                ProjectionElem::Downcast { .. } =>
+                    // These just offset by a constant, entirely independent of everything else.
+                    is_local(&proj.base),
             }
         }
     }
@@ -121,7 +126,7 @@ impl MirPass for AddRetag {
                 Some(Terminator { kind: TerminatorKind::Call { ref destination, .. },
                                   source_info }) => {
                     // Remember the return destination for later
-                    if let &Some(ref destination) = destination {
+                    if let Some(ref destination) = destination {
                         if needs_retag(&destination.0) {
                             returns.push((source_info, destination.0.clone(), destination.1));
                         }
