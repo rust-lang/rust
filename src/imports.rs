@@ -97,6 +97,7 @@ pub enum UseSegment {
     Ident(String, Option<String>),
     Slf(Option<String>),
     Super(Option<String>),
+    Crate(Option<String>),
     Glob,
     List(Vec<UseTree>),
 }
@@ -138,6 +139,7 @@ impl UseSegment {
             UseSegment::Ident(ref s, _) => UseSegment::Ident(s.clone(), None),
             UseSegment::Slf(_) => UseSegment::Slf(None),
             UseSegment::Super(_) => UseSegment::Super(None),
+            UseSegment::Crate(_) => UseSegment::Crate(None),
             _ => self.clone(),
         }
     }
@@ -154,6 +156,7 @@ impl UseSegment {
         Some(match name {
             "self" => UseSegment::Slf(None),
             "super" => UseSegment::Super(None),
+            "crate" => UseSegment::Crate(None),
             _ => {
                 let mod_sep = if modsep { "::" } else { "" };
                 UseSegment::Ident(format!("{}{}", mod_sep, name), None)
@@ -207,6 +210,7 @@ impl fmt::Display for UseSegment {
             UseSegment::Ident(ref s, _) => write!(f, "{}", s),
             UseSegment::Slf(..) => write!(f, "self"),
             UseSegment::Super(..) => write!(f, "super"),
+            UseSegment::Crate(..) => write!(f, "crate"),
             UseSegment::List(ref list) => {
                 write!(f, "{{")?;
                 for (i, item) in list.iter().enumerate() {
@@ -377,6 +381,7 @@ impl UseTree {
                 let segment = match name.as_ref() {
                     "self" => UseSegment::Slf(alias),
                     "super" => UseSegment::Super(alias),
+                    "crate" => UseSegment::Crate(alias),
                     _ => UseSegment::Ident(name, alias),
                 };
 
@@ -617,7 +622,9 @@ impl Ord for UseSegment {
         }
 
         match (self, other) {
-            (&Slf(ref a), &Slf(ref b)) | (&Super(ref a), &Super(ref b)) => a.cmp(b),
+            (&Slf(ref a), &Slf(ref b))
+            | (&Super(ref a), &Super(ref b))
+            | (&Crate(ref a), &Crate(ref b)) => a.cmp(b),
             (&Glob, &Glob) => Ordering::Equal,
             (&Ident(ref ia, ref aa), &Ident(ref ib, ref ab)) => {
                 // snake_case < CamelCase < UPPER_SNAKE_CASE
@@ -659,6 +666,8 @@ impl Ord for UseSegment {
             (_, &Slf(_)) => Ordering::Greater,
             (&Super(_), _) => Ordering::Less,
             (_, &Super(_)) => Ordering::Greater,
+            (&Crate(_), _) => Ordering::Less,
+            (_, &Crate(_)) => Ordering::Greater,
             (&Ident(..), _) => Ordering::Less,
             (_, &Ident(..)) => Ordering::Greater,
             (&Glob, _) => Ordering::Less,
@@ -768,6 +777,8 @@ impl Rewrite for UseSegment {
             UseSegment::Slf(None) => "self".to_owned(),
             UseSegment::Super(Some(ref rename)) => format!("super as {}", rename),
             UseSegment::Super(None) => "super".to_owned(),
+            UseSegment::Crate(Some(ref rename)) => format!("crate as {}", rename),
+            UseSegment::Crate(None) => "crate".to_owned(),
             UseSegment::Glob => "*".to_owned(),
             UseSegment::List(ref use_tree_list) => rewrite_nested_use_tree(
                 context,
@@ -830,18 +841,28 @@ mod test {
                 if !buf.is_empty() {
                     let mut alias = None;
                     swap(alias_buf, &mut alias);
-                    if buf == "self" {
-                        result.push(UseSegment::Slf(alias));
-                        *buf = String::new();
-                        *alias_buf = None;
-                    } else if buf == "super" {
-                        result.push(UseSegment::Super(alias));
-                        *buf = String::new();
-                        *alias_buf = None;
-                    } else {
-                        let mut name = String::new();
-                        swap(buf, &mut name);
-                        result.push(UseSegment::Ident(name, alias));
+
+                    match buf.as_ref() {
+                        "self" => {
+                            result.push(UseSegment::Slf(alias));
+                            *buf = String::new();
+                            *alias_buf = None;
+                        }
+                        "super" => {
+                            result.push(UseSegment::Super(alias));
+                            *buf = String::new();
+                            *alias_buf = None;
+                        }
+                        "crate" => {
+                            result.push(UseSegment::Crate(alias));
+                            *buf = String::new();
+                            *alias_buf = None;
+                        }
+                        _ => {
+                            let mut name = String::new();
+                            swap(buf, &mut name);
+                            result.push(UseSegment::Ident(name, alias));
+                        }
                     }
                 }
             }
