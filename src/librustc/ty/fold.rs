@@ -672,10 +672,14 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
     }
 }
 
-pub fn shift_region(region: ty::RegionKind, amount: u32) -> ty::RegionKind {
+pub fn shift_region<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    region: ty::Region<'tcx>,
+    amount: u32
+) -> ty::Region<'tcx> {
     match region {
-        ty::ReLateBound(debruijn, br) => {
-            ty::ReLateBound(debruijn.shifted_in(amount), br)
+        ty::ReLateBound(debruijn, br) if amount > 0 => {
+            tcx.mk_region(ty::ReLateBound(debruijn.shifted_in(amount), *br))
         }
         _ => {
             region
@@ -685,8 +689,8 @@ pub fn shift_region(region: ty::RegionKind, amount: u32) -> ty::RegionKind {
 
 pub fn shift_vars<'a, 'gcx, 'tcx, T>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    amount: u32,
-    value: &T
+    value: &T,
+    amount: u32
 ) -> T where T: TypeFoldable<'tcx> {
     debug!("shift_vars(value={:?}, amount={})",
            value, amount);

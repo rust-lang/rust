@@ -308,11 +308,12 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // ...also include the other query region constraints from the query.
         output_query_region_constraints.extend(
             query_response.value.region_constraints.iter().filter_map(|r_c| {
-                let &ty::OutlivesPredicate(k1, r2) = r_c.skip_binder(); // reconstructed below
-                let k1 = substitute_value(self.tcx, &result_subst, &k1);
-                let r2 = substitute_value(self.tcx, &result_subst, &r2);
-                if k1 != r2.into() {
-                    Some(ty::Binder::bind(ty::OutlivesPredicate(k1, r2)))
+                let ty::OutlivesPredicate(k1, r2) = r_c.skip_binder(); // reconstructed below
+                let k1 = substitute_value(self.tcx, &result_subst, &ty::Binder::bind(*k1));
+                let r2 = substitute_value(self.tcx, &result_subst, &ty::Binder::bind(*r2));
+                if k1 != r2.map_bound(|bound| bound.into()) {
+                    let predicate = ty::OutlivesPredicate(*k1.skip_binder(), *r2.skip_binder());
+                    Some(ty::Binder::bind(predicate))
                 } else {
                     None
                 }
@@ -433,16 +434,21 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 UnpackedKind::Type(result_value) => {
                     // e.g., here `result_value` might be `?0` in the example above...
                     if let ty::Bound(b) = result_value.sty {
+                        // ...in which case we would set `canonical_vars[0]` to `Some(?U)`.
+
+                        // We only allow a `ty::INNERMOST` index in substitutions.
                         assert_eq!(b.index, ty::INNERMOST);
-                        // in which case we would set `canonical_vars[0]` to `Some(?U)`.
                         opt_values[b.var] = Some(*original_value);
                     }
                 }
                 UnpackedKind::Lifetime(result_value) => {
                     // e.g., here `result_value` might be `'?1` in the example above...
-                    if let &ty::RegionKind::ReCanonical(index) = result_value {
-                        // in which case we would set `canonical_vars[0]` to `Some('static)`.
-                        opt_values[index] = Some(*original_value);
+                    if let &ty::RegionKind::ReLateBound(index, br) = result_value {
+                        // ... in which case we would set `canonical_vars[0]` to `Some('static)`.
+
+                        // We only allow a `ty::INNERMOST` index in substitutions.
+                        assert_eq!(index, ty::INNERMOST);
+                        opt_values[br.as_bound_var()] = Some(*original_value);
                     }
                 }
             }
@@ -525,21 +531,23 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 .iter()
                 .map(move |constraint| {
                     let ty::OutlivesPredicate(k1, r2) = constraint.skip_binder(); // restored below
-                    let k1 = substitute_value(self.tcx, result_subst, k1);
-                    let r2 = substitute_value(self.tcx, result_subst, r2);
+                    let k1 = substitute_value(self.tcx, result_subst, &ty::Binder::bind(*k1));
+                    let r2 = substitute_value(self.tcx, result_subst, &ty::Binder::bind(*r2));
 
                     Obligation::new(
                         cause.clone(),
                         param_env,
-                        match k1.unpack() {
+                        match k1.skip_binder().unpack() {
                             UnpackedKind::Lifetime(r1) => ty::Predicate::RegionOutlives(
-                                ty::Binder::dummy(
-                                    ty::OutlivesPredicate(r1, r2)
-                            )),
+                                ty::Binder::bind(
+                                    ty::OutlivesPredicate(r1, r2.skip_binder())
+                                )
+                            ),
                             UnpackedKind::Type(t1) => ty::Predicate::TypeOutlives(
-                                ty::Binder::dummy(ty::OutlivesPredicate(
-                                    t1, r2
-                            )))
+                                ty::Binder::bind(
+                                    ty::OutlivesPredicate(t1, r2.skip_binder())
+                                )
+                            ),
                         }
                     )
                 })
@@ -621,11 +629,11 @@ pub fn make_query_outlives<'tcx>(
             }
             Constraint::RegSubReg(r1, r2) => ty::OutlivesPredicate(r2.into(), r1),
         })
-        .map(ty::Binder::dummy) // no bound regions in the code above
+        .map(ty::Binder::dummy) // no bound vars in the code above
         .chain(
             outlives_obligations
                 .map(|(ty, r)| ty::OutlivesPredicate(ty.into(), r))
-                .map(ty::Binder::dummy), // no bound regions in the code above
+                .map(ty::Binder::dummy) // no bound vars in the code above
         )
         .collect();
 

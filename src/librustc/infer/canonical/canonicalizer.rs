@@ -331,8 +331,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             | ty::ReErased => self.canonicalize_region_mode
                 .canonicalize_free_region(self, r),
 
-            ty::ReClosureBound(..) | ty::ReCanonical(_) => {
-                bug!("canonical region encountered during canonicalization")
+            ty::ReClosureBound(..) => {
+                bug!("closure bound region encountered during canonicalization")
             }
         }
     }
@@ -407,12 +407,6 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
     {
-        debug_assert!(
-            !value.has_type_flags(TypeFlags::HAS_CANONICAL_VARS),
-            "canonicalizing a canonical value: {:?}",
-            value,
-        );
-
         let needs_canonical_flags = if canonicalize_region_mode.any() {
             TypeFlags::HAS_FREE_REGIONS | TypeFlags::KEEP_IN_LOCAL_TCX
         } else {
@@ -569,7 +563,11 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
-        self.tcx().mk_region(ty::ReCanonical(var))
+        let region = ty::ReLateBound(
+            self.binder_index,
+            ty::BoundRegion::BrAnon(var.index() as u32)
+        );
+        self.tcx().mk_region(region)
     }
 
     /// Given a type variable `ty_var` of the given kind, first check

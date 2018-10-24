@@ -277,8 +277,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             | ty::RePlaceholder(..)
             | ty::ReEmpty
             | ty::ReErased
-            | ty::ReClosureBound(..)
-            | ty::ReCanonical(..) => None,
+            | ty::ReClosureBound(..) => None,
         }
     }
 

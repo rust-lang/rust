@@ -427,7 +427,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // way early-bound regions do, so we skip them here.
             }
 
-            ty::ReCanonical(_) |
             ty::ReFree(..) |
             ty::ReClosureBound(..) |
             ty::ReScope(..) |

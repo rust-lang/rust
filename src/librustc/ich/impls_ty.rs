@@ -100,9 +100,6 @@ for ty::RegionKind {
             ty::ReEmpty => {
                 // No variant fields to hash for these ...
             }
-            ty::ReCanonical(c) => {
-                c.hash_stable(hcx, hasher);
-            }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
                 db.hash_stable(hcx, hasher);
                 i.hash_stable(hcx, hasher);

@@ -77,6 +77,17 @@ impl BoundRegion {
             _ => false,
         }
     }
+
+    /// When canonicalizing, we replace unbound inference variables and free
+    /// regions with anonymous late bound regions. This method asserts that
+    /// we have an anonymous late bound region, which hence may refer to
+    /// a canonical variable.
+    pub fn as_bound_var(&self) -> BoundVar {
+        match *self {
+            BoundRegion::BrAnon(var) => BoundVar::from_u32(var),
+            _ => bug!("bound region is not anonymous"),
+        }
+    }
 }
 
 /// N.B., If you change this, you'll probably want to change the corresponding
@@ -758,11 +769,11 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     }
 }
 
-/// Binder is a binder for higher-ranked lifetimes. It is part of the
+/// Binder is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
 /// (which would be represented by the type `PolyTraitRef ==
 /// Binder<TraitRef>`). Note that when we instantiate,
-/// erase, or otherwise "discharge" these bound regions, we change the
+/// erase, or otherwise "discharge" these bound vars, we change the
 /// type from `Binder<T>` to just `T` (see
 /// e.g. `liberate_late_bound_regions`).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -770,7 +781,7 @@ pub struct Binder<T>(T);
 
 impl<T> Binder<T> {
     /// Wraps `value` in a binder, asserting that `value` does not
-    /// contain any bound regions that would be bound by the
+    /// contain any bound vars that would be bound by the
     /// binder. This is commonly used to 'inject' a value T into a
     /// different binding level.
     pub fn dummy<'tcx>(value: T) -> Binder<T>
@@ -780,9 +791,8 @@ impl<T> Binder<T> {
         Binder(value)
     }
 
-    /// Wraps `value` in a binder, binding late-bound regions (if any).
-    pub fn bind<'tcx>(value: T) -> Binder<T>
-    {
+    /// Wraps `value` in a binder, binding higher-ranked vars (if any).
+    pub fn bind<'tcx>(value: T) -> Binder<T> {
         Binder(value)
     }
 
@@ -1169,9 +1179,6 @@ pub enum RegionKind {
     /// `ClosureRegionRequirements` that are produced by MIR borrowck.
     /// See `ClosureRegionRequirements` for more details.
     ReClosureBound(RegionVid),
-
-    /// Canonicalized region, used only when preparing a trait query.
-    ReCanonical(BoundVar),
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
@@ -1381,7 +1388,6 @@ impl RegionKind {
             RegionKind::ReEmpty => false,
             RegionKind::ReErased => false,
             RegionKind::ReClosureBound(..) => false,
-            RegionKind::ReCanonical(..) => false,
         }
     }
 
@@ -1467,10 +1473,6 @@ impl RegionKind {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
             ty::ReErased => {
-            }
-            ty::ReCanonical(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_CANONICAL_VARS;
             }
             ty::ReClosureBound(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;

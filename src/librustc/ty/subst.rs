@@ -475,8 +475,8 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
     }
 
     /// It is sometimes necessary to adjust the debruijn indices during substitution. This occurs
-    /// when we are substituting a type with escaping regions into a context where we have passed
-    /// through region binders. That's quite a mouthful. Let's see an example:
+    /// when we are substituting a type with escaping bound vars into a context where we have
+    /// passed through binders. That's quite a mouthful. Let's see an example:
     ///
     /// ```
     /// type Func<A> = fn(A);
@@ -524,7 +524,7 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
             return ty;
         }
 
-        let result = ty::fold::shift_vars(self.tcx(), self.binders_passed, &ty);
+        let result = ty::fold::shift_vars(self.tcx(), &ty, self.binders_passed);
         debug!("shift_vars: shifted result = {:?}", result);
 
         result
@@ -534,7 +534,7 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
         if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
             return region;
         }
-        self.tcx().mk_region(ty::fold::shift_region(*region, self.binders_passed))
+        ty::fold::shift_region(self.tcx, region, self.binders_passed)
     }
 }
 
@@ -556,7 +556,8 @@ impl CanonicalUserSubsts<'tcx> {
         self.value.substs.iter().zip(BoundVar::new(0)..).all(|(kind, cvar)| {
             match kind.unpack() {
                 UnpackedKind::Type(ty) => match ty.sty {
-                    ty::Bound(ref b) => {
+                    ty::Bound(b) => {
+                        // We only allow a `ty::INNERMOST` index in substitutions.
                         assert_eq!(b.index, ty::INNERMOST);
                         cvar == b.var
                     }
@@ -564,7 +565,11 @@ impl CanonicalUserSubsts<'tcx> {
                 },
 
                 UnpackedKind::Lifetime(r) => match r {
-                    ty::ReCanonical(cvar1) => cvar == *cvar1,
+                    ty::ReLateBound(index, br) => {
+                        // We only allow a `ty::INNERMOST` index in substitutions.
+                        assert_eq!(*index, ty::INNERMOST);
+                        cvar == br.as_bound_var()
+                    }
                     _ => false,
                 },
             }
