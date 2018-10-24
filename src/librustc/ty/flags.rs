@@ -116,7 +116,6 @@ impl FlagComputation {
             }
 
             &ty::Bound(bound_ty) => {
-                self.add_flags(TypeFlags::HAS_CANONICAL_VARS);
                 self.add_binder(bound_ty.index);
             }
 
@@ -127,7 +126,6 @@ impl FlagComputation {
                     ty::FreshTy(_) |
                     ty::FreshIntTy(_) |
                     ty::FreshFloatTy(_) => {
-                        self.add_flags(TypeFlags::HAS_CANONICAL_VARS);
                     }
 
                     ty::TyVar(_) |

@@ -19,7 +19,7 @@
 use infer::canonical::{Canonical, CanonicalVarValues};
 use ty::fold::{TypeFoldable, TypeFolder};
 use ty::subst::UnpackedKind;
-use ty::{self, Ty, TyCtxt, TypeFlags};
+use ty::{self, Ty, TyCtxt};
 
 impl<'tcx, V> Canonical<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value
@@ -64,9 +64,9 @@ where
     T: TypeFoldable<'tcx>,
 {
     if var_values.var_values.is_empty() {
-        debug_assert!(!value.has_type_flags(TypeFlags::HAS_CANONICAL_VARS));
         value.clone()
-    } else if !value.has_type_flags(TypeFlags::HAS_CANONICAL_VARS) {
+    } else if !value.has_escaping_bound_vars() {
+        // There are no bound vars to substitute.
         value.clone()
     } else {
         value.fold_with(&mut CanonicalVarValuesSubst {
@@ -104,8 +104,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for CanonicalVarValuesSubst<'cx, 'g
                     match self.var_values.var_values[b.var].unpack() {
                         UnpackedKind::Type(ty) => ty::fold::shift_vars(
                             self.tcx,
-                            self.binder_index.index() as u32,
-                            &ty
+                            &ty,
+                            self.binder_index.index() as u32
                         ),
                         r => bug!("{:?} is a type but value is {:?}", b, r),
                     }
@@ -114,7 +114,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for CanonicalVarValuesSubst<'cx, 'g
                 }
             }
             _ => {
-                if !t.has_type_flags(TypeFlags::HAS_CANONICAL_VARS) {
+                if !t.has_vars_bound_at_or_above(self.binder_index) {
+                    // Nothing more to substitute.
                     t
                 } else {
                     t.super_fold_with(self)
@@ -125,10 +126,20 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for CanonicalVarValuesSubst<'cx, 'g
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match r {
-            ty::RegionKind::ReCanonical(c) => match self.var_values.var_values[*c].unpack() {
-                UnpackedKind::Lifetime(l) => l,
-                r => bug!("{:?} is a region but value is {:?}", c, r),
-            },
+            ty::RegionKind::ReLateBound(index, br) => {
+                if *index == self.binder_index {
+                    match self.var_values.var_values[br.as_bound_var()].unpack() {
+                        UnpackedKind::Lifetime(l) => ty::fold::shift_region(
+                            self.tcx,
+                            l,
+                            self.binder_index.index() as u32,
+                        ),
+                        r => bug!("{:?} is a region but value is {:?}", br, r),
+                    }
+                } else {
+                    r
+                }
+            }
             _ => r.super_fold_with(self),
         }
     }

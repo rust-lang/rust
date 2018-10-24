@@ -20,7 +20,7 @@
 //! - a map M (of type `CanonicalVarValues`) from those canonical
 //!   variables back to the original.
 //!
-//! We can then do queries using T2. These will give back constriants
+//! We can then do queries using T2. These will give back constraints
 //! on the canonical variables which can be translated, using the map
 //! M, into constraints in our source context. This process of
 //! translating the results back is done by the

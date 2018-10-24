@@ -798,9 +798,6 @@ define_print! {
                 ty::ReEarlyBound(ref data) => {
                     write!(f, "{}", data.name)
                 }
-                ty::ReCanonical(_) => {
-                    write!(f, "'_")
-                }
                 ty::ReLateBound(_, br) |
                 ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
                 ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
@@ -866,10 +863,6 @@ define_print! {
 
                 ty::ReVar(ref vid) => {
                     write!(f, "{:?}", vid)
-                }
-
-                ty::ReCanonical(c) => {
-                    write!(f, "'?{}", c.index())
                 }
 
                 ty::RePlaceholder(placeholder) => {

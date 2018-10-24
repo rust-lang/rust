@@ -425,7 +425,6 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
             // These cannot exist in borrowck
             RegionKind::ReVar(..) |
-            RegionKind::ReCanonical(..) |
             RegionKind::RePlaceholder(..) |
             RegionKind::ReClosureBound(..) |
             RegionKind::ReErased => span_bug!(borrow_span,
