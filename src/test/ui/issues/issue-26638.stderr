@@ -10,19 +10,17 @@ error[E0106]: missing lifetime specifier
   --> $DIR/issue-26638.rs:14:40
    |
 LL | fn parse_type_2(iter: fn(&u8)->&u8) -> &str { iter() }
-   |                                        ^ expected lifetime parameter
+   |                                        ^ help: consider giving it an explicit bounded or 'static lifetime: `&'static`
    |
    = help: this function's return type contains a borrowed value with an elided lifetime, but the lifetime cannot be derived from the arguments
-   = help: consider giving it an explicit bounded or 'static lifetime
 
 error[E0106]: missing lifetime specifier
   --> $DIR/issue-26638.rs:17:22
    |
 LL | fn parse_type_3() -> &str { unimplemented!() }
-   |                      ^ expected lifetime parameter
+   |                      ^ help: consider giving it a 'static lifetime: `&'static`
    |
    = help: this function's return type contains a borrowed value, but there is no value for it to be borrowed from
-   = help: consider giving it a 'static lifetime
 
 error: aborting due to 3 previous errors
 
