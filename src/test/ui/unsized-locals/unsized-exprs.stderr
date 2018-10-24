@@ -1,5 +1,5 @@
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/unsized-exprs.rs:32:26
+  --> $DIR/unsized-exprs.rs:22:26
    |
 LL |     udrop::<(i32, [u8])>((42, *foo()));
    |                          ^^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -10,7 +10,7 @@ LL |     udrop::<(i32, [u8])>((42, *foo()));
    = note: tuples must have a statically known size to be initialized
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/unsized-exprs.rs:34:22
+  --> $DIR/unsized-exprs.rs:24:22
    |
 LL |     udrop::<A<[u8]>>(A { 0: *foo() });
    |                      ^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
