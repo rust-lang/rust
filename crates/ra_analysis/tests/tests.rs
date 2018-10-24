@@ -264,3 +264,17 @@ fn test_find_all_refs_for_param_inside() {
     let refs = get_all_refs(code);
     assert_eq!(refs.len(), 2);
 }
+
+#[test]
+fn test_complete_crate_path() {
+    let snap = analysis(&[
+        ("/lib.rs", "mod foo; struct Spam;"),
+        ("/foo.rs", "use crate::Sp"),
+    ]);
+    let completions = snap.completions(FileId(2), 13.into()).unwrap().unwrap();
+    assert_eq_dbg(
+        r#"[CompletionItem { label: "foo", lookup: None, snippet: None },
+            CompletionItem { label: "Spam", lookup: None, snippet: None }]"#,
+        &completions,
+    );
+}

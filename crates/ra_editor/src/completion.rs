@@ -2,7 +2,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use ra_syntax::{
     algo::visit::{visitor, visitor_ctx, Visitor, VisitorCtx},
-    ast::{self, LoopBodyOwner, ModuleItemOwner},
+    ast::{self, AstChildren, LoopBodyOwner, ModuleItemOwner},
     text_utils::is_subrange,
     AstNode, File,
     SyntaxKind::*,
@@ -65,6 +65,21 @@ pub fn scope_completion(file: &File, offset: TextUnit) -> Option<Vec<CompletionI
     }
 }
 
+pub fn complete_module_items(items: AstChildren<ast::ModuleItem>, this_item: Option<ast::NameRef>, acc: &mut Vec<CompletionItem>) {
+    let scope = ModuleScope::new(items);
+    acc.extend(
+        scope
+            .entries()
+            .iter()
+            .filter(|entry| Some(entry.syntax()) != this_item.map(|it| it.syntax()))
+            .map(|entry| CompletionItem {
+                label: entry.name().to_string(),
+                lookup: None,
+                snippet: None,
+            }),
+    );
+}
+
 fn complete_name_ref(file: &File, name_ref: ast::NameRef, acc: &mut Vec<CompletionItem>) {
     if !is_node::<ast::Path>(name_ref.syntax()) {
         return;
@@ -77,18 +92,7 @@ fn complete_name_ref(file: &File, name_ref: ast::NameRef, acc: &mut Vec<Completi
             .accept(node)
         {
             if let Some(items) = items {
-                let scope = ModuleScope::new(items);
-                acc.extend(
-                    scope
-                        .entries()
-                        .iter()
-                        .filter(|entry| entry.syntax() != name_ref.syntax())
-                        .map(|entry| CompletionItem {
-                            label: entry.name().to_string(),
-                            lookup: None,
-                            snippet: None,
-                        }),
-                );
+                complete_module_items(items, Some(name_ref), acc);
             }
             break;
         } else if !visited_fn {

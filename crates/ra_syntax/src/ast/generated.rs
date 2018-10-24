@@ -1371,6 +1371,10 @@ impl<'a> Path<'a> {
     pub fn segment(self) -> Option<PathSegment<'a>> {
         super::child_opt(self)
     }
+
+    pub fn qualifier(self) -> Option<Path<'a>> {
+        super::child_opt(self)
+    }
 }
 
 // PathExpr

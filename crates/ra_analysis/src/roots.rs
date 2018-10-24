@@ -1,7 +1,5 @@
 use std::{sync::Arc};
 
-use ra_editor::LineIndex;
-use ra_syntax::File;
 use rustc_hash::FxHashSet;
 use rayon::prelude::*;
 use salsa::Database;
@@ -10,7 +8,6 @@ use crate::{
     Cancelable,
     db::{self, FilesDatabase, SyntaxDatabase},
     imp::FileResolverImp,
-    descriptors::module::{ModulesDatabase, ModuleTree},
     symbol_index::SymbolIndex,
     FileId,
 };
