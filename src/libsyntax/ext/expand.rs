@@ -1044,7 +1044,9 @@ impl<'a> Parser<'a> {
             );
             err.note(&msg);
             let semi_span = self.sess.source_map().next_point(span);
-            match self.sess.source_map().span_to_snippet(semi_span) {
+
+            let semi_full_span = semi_span.to(self.sess.source_map().next_point(semi_span));
+            match self.sess.source_map().span_to_snippet(semi_full_span) {
                 Ok(ref snippet) if &snippet[..] != ";" && kind_name == "expression" => {
                     err.span_suggestion_with_applicability(
                         semi_span,

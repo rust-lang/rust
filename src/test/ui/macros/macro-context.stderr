@@ -16,9 +16,7 @@ LL |     () => ( i ; typeof );   //~ ERROR expected expression, found reserved k
    |                 ^^^^^^
 ...
 LL |     let i = m!();
-   |             ----- help: you might be missing a semicolon here: `;`
-   |             |
-   |             caused by the macro expansion here
+   |             ---- caused by the macro expansion here
    |
    = note: the usage of `m!` is likely invalid in expression context
 
