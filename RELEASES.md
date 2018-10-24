@@ -25,9 +25,6 @@ Language
   macros it is recommended to export with the
   `#[macro_export(local_inner_macros)]` attribute so that users won't have to
   import those macros.
-- [`mod.rs` files are now optional.][54146] Previously if you had a `foo` module
-  with a `bar` submodule, you would have `src/foo/mod.rs` and `src/foo/bar.rs`.
-  Now you can have `src/foo.rs` and `src/foo/bar.rs` to achieve the same effect.
 - [You can now catch visibility keywords (e.g. `pub`, `pub(crate)`) in macros
   using the `vis` specifier.][53370]
 - [Non-macro attributes now allow all forms of literals not just
