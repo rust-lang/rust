@@ -53,7 +53,7 @@ impl EarlyLintPass for Pass {
         let metadata = if let Ok(metadata) = cargo_metadata::metadata_deps(None, true) {
             metadata
         } else {
-            span_lint(cx, MULTIPLE_CRATE_VERSIONS, krate.span, "could not read cargo metadata");
+            span_lint(cx, MULTIPLE_CRATE_VERSIONS, DUMMY_SP, "could not read cargo metadata");
 
             return;
         };
