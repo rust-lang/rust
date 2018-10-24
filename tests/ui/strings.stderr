@@ -60,5 +60,3 @@ error: calling `as_bytes()` on a string literal
    |
    = note: `-D clippy::string-lit-as-bytes` implied by `-D warnings`
 
-error: aborting due to 11 previous errors
-

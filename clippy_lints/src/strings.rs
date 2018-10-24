@@ -171,7 +171,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
             if path.ident.name == "as_bytes" {
                 if let ExprKind::Lit(ref lit) = args[0].node {
                     if let LitKind::Str(ref lit_content, _) = lit.node {
-                        let callsite = snippet(cx, args[0].span.source_callsite(), "");
+                        let callsite = snippet(cx, args[0].span.source_callsite(), r#""foo""#);
                         let expanded = format!("\"{}\"", lit_content.as_str());
                         if callsite.starts_with("include_str!") {
                             span_lint_and_sugg(
