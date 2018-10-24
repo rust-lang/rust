@@ -1822,7 +1822,7 @@ impl<'tcx> Debug for Statement<'tcx> {
             // (reuse lifetime rendering policy from ppaux.)
             EndRegion(ref ce) => write!(fmt, "EndRegion({})", ty::ReScope(*ce)),
             Retag { fn_entry, ref place } =>
-                write!(fmt, "Retag({}{:?})", if fn_entry { "[fn entry]: " } else { "" }, place),
+                write!(fmt, "Retag({}{:?})", if fn_entry { "[fn entry] " } else { "" }, place),
             StorageLive(ref place) => write!(fmt, "StorageLive({:?})", place),
             StorageDead(ref place) => write!(fmt, "StorageDead({:?})", place),
             SetDiscriminant {
