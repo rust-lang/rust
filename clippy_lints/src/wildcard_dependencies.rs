@@ -9,8 +9,7 @@
 
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast::*;
-use crate::syntax::source_map::DUMMY_SP;
+use crate::syntax::{ast::*, source_map::DUMMY_SP};
 use crate::utils::span_lint;
 
 use cargo_metadata;
