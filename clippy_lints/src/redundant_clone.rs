@@ -261,10 +261,31 @@ struct LocalUseVisitor {
 }
 
 impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
-    fn visit_statement(&mut self, block: mir::BasicBlock, statement: &mir::Statement<'tcx>, location: mir::Location) {
-        // Once flagged, skip remaining statements
-        if !self.used_other_than_drop {
-            self.super_statement(block, statement, location);
+    fn visit_basic_block_data(&mut self, block: mir::BasicBlock, data: &mir::BasicBlockData<'tcx>) {
+        let mir::BasicBlockData {
+            statements,
+            terminator,
+            is_cleanup: _,
+        } = data;
+
+        for (statement_index, statement) in statements.iter().enumerate() {
+            self.visit_statement(block, statement, mir::Location { block, statement_index });
+
+            // Once flagged, skip remaining statements
+            if self.used_other_than_drop {
+                return;
+            }
+        }
+
+        if let Some(terminator) = terminator {
+            self.visit_terminator(
+                block,
+                terminator,
+                mir::Location {
+                    block,
+                    statement_index: statements.len(),
+                },
+            );
         }
     }
 
