@@ -84,8 +84,7 @@ fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
 
         // This is intentional, this dependency just makes the crate available
         // for others later on. Cover cases
-        let whitelisted = krate == "alloc_jemalloc";
-        let whitelisted = whitelisted || krate.starts_with("panic");
+        let whitelisted = krate.starts_with("panic");
         if toml.contains("name = \"std\"") && whitelisted {
             continue
         }
