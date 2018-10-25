@@ -132,7 +132,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
 
             "free" => {
                 let ptr = self.read_scalar(args[0])?.not_undef()?.erase_tag(); // raw ptr operation, no tag
-                if !ptr.is_null() {
+                if !ptr.is_null_ptr(&self) {
                     self.memory.deallocate(
                         ptr.to_ptr()?.with_default_tag(),
                         None,
@@ -353,7 +353,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 let mut success = None;
                 {
                     let name_ptr = self.read_scalar(args[0])?.not_undef()?.erase_tag(); // raw ptr operation
-                    if !name_ptr.is_null() {
+                    if !name_ptr.is_null_ptr(&self) {
                         let name = self.memory.read_c_str(name_ptr.to_ptr()?.with_default_tag())?;
                         if !name.is_empty() && !name.contains(&b'=') {
                             success = Some(self.machine.env_vars.remove(name));
@@ -376,7 +376,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                     let name_ptr = self.read_scalar(args[0])?.not_undef()?.erase_tag(); // raw ptr operation
                     let value_ptr = self.read_scalar(args[1])?.to_ptr()?.erase_tag(); // raw ptr operation
                     let value = self.memory.read_c_str(value_ptr.with_default_tag())?;
-                    if !name_ptr.is_null() {
+                    if !name_ptr.is_null_ptr(&self) {
                         let name = self.memory.read_c_str(name_ptr.to_ptr()?.with_default_tag())?;
                         if !name.is_empty() && !name.contains(&b'=') {
                             new = Some((name.to_owned(), value.to_owned()));
