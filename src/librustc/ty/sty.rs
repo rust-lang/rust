@@ -82,7 +82,7 @@ impl BoundRegion {
     /// regions with anonymous late bound regions. This method asserts that
     /// we have an anonymous late bound region, which hence may refer to
     /// a canonical variable.
-    pub fn as_bound_var(&self) -> BoundVar {
+    pub fn assert_bound_var(&self) -> BoundVar {
         match *self {
             BoundRegion::BrAnon(var) => BoundVar::from_u32(var),
             _ => bug!("bound region is not anonymous"),
