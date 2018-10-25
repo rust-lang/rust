@@ -792,15 +792,15 @@ fn check_matcher_core(sess: &ParseSess,
             if let TokenTree::MetaVarDecl(_, ref name, ref frag_spec) = *token {
                 for next_token in &suffix_first.tokens {
                     match is_in_follow(next_token, &frag_spec.as_str()) {
-                        Err((msg, help)) => {
+                        IsInFollow::Invalid(msg, help) => {
                             sess.span_diagnostic.struct_span_err(next_token.span(), &msg)
                                 .help(help).emit();
                             // don't bother reporting every source of
                             // conflict for a particular element of `last`.
                             continue 'each_last;
                         }
-                        Ok(true) => {}
-                        Ok(false) => {
+                        IsInFollow::Yes => {}
+                        IsInFollow::No(ref possible) => {
                             let may_be = if last.tokens.len() == 1 &&
                                 suffix_first.tokens.len() == 1
                             {
@@ -809,15 +809,41 @@ fn check_matcher_core(sess: &ParseSess,
                                 "may be"
                             };
 
-                            sess.span_diagnostic.span_err(
-                                next_token.span(),
+                            let sp = next_token.span();
+                            let mut err = sess.span_diagnostic.struct_span_err(
+                                sp,
                                 &format!("`${name}:{frag}` {may_be} followed by `{next}`, which \
                                           is not allowed for `{frag}` fragments",
                                          name=name,
                                          frag=frag_spec,
                                          next=quoted_tt_to_string(next_token),
-                                         may_be=may_be)
+                                         may_be=may_be),
                             );
+                            err.span_label(
+                                sp,
+                                format!("not allowed after `{}` fragments", frag_spec),
+                            );
+                            let msg = "allowed there are: ";
+                            match &possible[..] {
+                                &[] => {}
+                                &[t] => {
+                                    err.note(&format!(
+                                        "only {} is allowed after `{}` fragments",
+                                        t,
+                                        frag_spec,
+                                    ));
+                                }
+                                ts => {
+                                    err.note(&format!(
+                                        "{}{} or {}",
+                                        msg,
+                                        ts[..ts.len() - 1].iter().map(|s| *s)
+                                            .collect::<Vec<_>>().join(", "),
+                                        ts[ts.len() - 1],
+                                    ));
+                                }
+                            }
+                            err.emit();
                         }
                     }
                 }
@@ -860,6 +886,12 @@ fn frag_can_be_followed_by_any(frag: &str) -> bool {
     }
 }
 
+enum IsInFollow {
+    Yes,
+    No(Vec<&'static str>),
+    Invalid(String, &'static str),
+}
+
 /// True if `frag` can legally be followed by the token `tok`. For
 /// fragments that can consume an unbounded number of tokens, `tok`
 /// must be within a well-defined follow set. This is intended to
@@ -868,81 +900,99 @@ fn frag_can_be_followed_by_any(frag: &str) -> bool {
 /// break macros that were relying on that binary operator as a
 /// separator.
 // when changing this do not forget to update doc/book/macros.md!
-fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'static str)> {
+fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> IsInFollow {
     use self::quoted::TokenTree;
 
     if let TokenTree::Token(_, token::CloseDelim(_)) = *tok {
         // closing a token tree can never be matched by any fragment;
         // iow, we always require that `(` and `)` match, etc.
-        Ok(true)
+        IsInFollow::Yes
     } else {
         match frag {
             "item" => {
                 // since items *must* be followed by either a `;` or a `}`, we can
                 // accept anything after them
-                Ok(true)
+                IsInFollow::Yes
             },
             "block" => {
                 // anything can follow block, the braces provide an easy boundary to
                 // maintain
-                Ok(true)
+                IsInFollow::Yes
             },
-            "stmt" | "expr"  => match *tok {
-                TokenTree::Token(_, ref tok) => match *tok {
-                    FatArrow | Comma | Semi => Ok(true),
-                    _ => Ok(false)
-                },
-                _ => Ok(false),
+            "stmt" | "expr"  => {
+                let tokens = vec!["`=>`", "`,`", "`;`"];
+                match *tok {
+                    TokenTree::Token(_, ref tok) => match *tok {
+                        FatArrow | Comma | Semi => IsInFollow::Yes,
+                        _ => IsInFollow::No(tokens),
+                    },
+                    _ => IsInFollow::No(tokens),
+                }
             },
-            "pat" => match *tok {
-                TokenTree::Token(_, ref tok) => match *tok {
-                    FatArrow | Comma | Eq | BinOp(token::Or) => Ok(true),
-                    Ident(i, false) if i.name == "if" || i.name == "in" => Ok(true),
-                    _ => Ok(false)
-                },
-                _ => Ok(false),
+            "pat" => {
+                let tokens = vec!["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
+                match *tok {
+                    TokenTree::Token(_, ref tok) => match *tok {
+                        FatArrow | Comma | Eq | BinOp(token::Or) => IsInFollow::Yes,
+                        Ident(i, false) if i.name == "if" || i.name == "in" => IsInFollow::Yes,
+                        _ => IsInFollow::No(tokens),
+                    },
+                    _ => IsInFollow::No(tokens),
+                }
             },
-            "path" | "ty" => match *tok {
-                TokenTree::Token(_, ref tok) => match *tok {
-                    OpenDelim(token::DelimToken::Brace) | OpenDelim(token::DelimToken::Bracket) |
-                    Comma | FatArrow | Colon | Eq | Gt | BinOp(token::Shr) | Semi |
-                    BinOp(token::Or) => Ok(true),
-                    Ident(i, false) if i.name == "as" || i.name == "where" => Ok(true),
-                    _ => Ok(false)
-                },
-                TokenTree::MetaVarDecl(_, _, frag) if frag.name == "block" => Ok(true),
-                _ => Ok(false),
+            "path" | "ty" => {
+                let tokens = vec![
+                    "`{`", "`[`", "`=>`", "`,`", "`>`","`=`", "`:`", "`;`", "`|`", "`as`",
+                    "`where`",
+                ];
+                match *tok {
+                    TokenTree::Token(_, ref tok) => match *tok {
+                        OpenDelim(token::DelimToken::Brace) |
+                        OpenDelim(token::DelimToken::Bracket) |
+                        Comma | FatArrow | Colon | Eq | Gt | BinOp(token::Shr) | Semi |
+                        BinOp(token::Or) => IsInFollow::Yes,
+                        Ident(i, false) if i.name == "as" || i.name == "where" => IsInFollow::Yes,
+                        _ => IsInFollow::No(tokens),
+                    },
+                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == "block" => IsInFollow::Yes,
+                    _ => IsInFollow::No(tokens),
+                }
             },
             "ident" | "lifetime" => {
                 // being a single token, idents and lifetimes are harmless
-                Ok(true)
+                IsInFollow::Yes
             },
             "literal" => {
                 // literals may be of a single token, or two tokens (negative numbers)
-                Ok(true)
+                IsInFollow::Yes
             },
             "meta" | "tt" => {
                 // being either a single token or a delimited sequence, tt is
                 // harmless
-                Ok(true)
+                IsInFollow::Yes
             },
             "vis" => {
                 // Explicitly disallow `priv`, on the off chance it comes back.
+                let tokens = vec!["`,`", "an ident", "a type"];
                 match *tok {
                     TokenTree::Token(_, ref tok) => match *tok {
-                        Comma => Ok(true),
-                        Ident(i, is_raw) if is_raw || i.name != "priv" => Ok(true),
-                        ref tok => Ok(tok.can_begin_type())
+                        Comma => IsInFollow::Yes,
+                        Ident(i, is_raw) if is_raw || i.name != "priv" => IsInFollow::Yes,
+                        ref tok => if tok.can_begin_type() {
+                            IsInFollow::Yes
+                        } else {
+                            IsInFollow::No(tokens)
+                        }
                     },
                     TokenTree::MetaVarDecl(_, _, frag) if frag.name == "ident"
                                                        || frag.name == "ty"
-                                                       || frag.name == "path" => Ok(true),
-                    _ => Ok(false)
+                                                       || frag.name == "path" => IsInFollow::Yes,
+                    _ => IsInFollow::No(tokens),
                 }
             },
-            "" => Ok(true), // keywords::Invalid
-            _ => Err((format!("invalid fragment specifier `{}`", frag),
-                     VALID_FRAGMENT_NAMES_MSG))
+            "" => IsInFollow::Yes, // keywords::Invalid
+            _ => IsInFollow::Invalid(format!("invalid fragment specifier `{}`", frag),
+                                     VALID_FRAGMENT_NAMES_MSG),
         }
     }
 }
