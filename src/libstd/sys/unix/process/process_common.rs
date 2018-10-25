@@ -141,6 +141,10 @@ impl Command {
     pub fn get_argv(&self) -> &Vec<*const c_char> {
         &self.argv.0
     }
+    #[cfg(not(target_os = "fuchsia"))]
+    pub fn get_program(&self) -> &CString {
+        return &self.program;
+    }
 
     #[allow(dead_code)]
     pub fn get_cwd(&self) -> &Option<CString> {
@@ -243,6 +247,10 @@ impl CStringArray {
     }
     pub fn as_ptr(&self) -> *const *const c_char {
         self.ptrs.as_ptr()
+    }
+    #[cfg(not(target_os = "fuchsia"))]
+    pub fn get_items(&self) -> &[CString] {
+        return &self.items;
     }
 }
 
