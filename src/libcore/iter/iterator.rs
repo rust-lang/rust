@@ -1904,7 +1904,7 @@ pub trait Iterator {
     /// let three: [u8; 3] = [42, 24, 0];
     ///
     /// assert_eq!(zero.iter().single(), None);
-    /// assert_eq!(one.iter().single(), Some(42));
+    /// assert_eq!(one.iter().single(), Some(&42));
     /// assert_eq!(two.iter().single(), None);
     /// assert_eq!(three.iter().single(), None);
     /// ```
