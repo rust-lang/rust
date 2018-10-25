@@ -41,6 +41,25 @@ fn foo() {
               "end": { "character": 1, "line": 2 },
               "start": { "character": 0, "line": 0 }
             }
+          },
+          {
+            "args": [
+              "check",
+              "--all"
+            ],
+            "bin": "cargo",
+            "env": {},
+            "label": "cargo check --all",
+            "range": {
+              "end": {
+                "character": 0,
+                "line": 0
+              },
+              "start": {
+                "character": 0,
+                "line": 0
+              }
+            }
           }
         ]"#,
     );
@@ -79,24 +98,29 @@ fn test_eggs() {}
               "end": { "character": 17, "line": 1 },
               "start": { "character": 0, "line": 0 }
             }
+          },
+          {
+            "args": [
+              "check",
+              "--package",
+              "foo",
+              "--test",
+              "spam"
+            ],
+            "bin": "cargo",
+            "env": {},
+            "label": "cargo check -p foo",
+            "range": {
+              "end": {
+                "character": 0,
+                "line": 0
+              },
+              "start": {
+                "character": 0,
+                "line": 0
+              }
+            }
           }
         ]"#
     );
 }
-
-// #[test]
-// fn test_deps() {
-//     let server = project(r#"
-// //- Cargo.toml
-// [package]
-// name = "foo"
-// version = "0.0.0"
-// [dependencies]
-// regex = "=1.0.4"
-
-// //- src/lib.rs
-// extern crate regex;
-// "#);
-//     server.wait_for_feedback("workspace loaded");
-//     server.wait_for_feedback_n("library loaded", 9);
-// }
