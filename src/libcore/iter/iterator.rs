@@ -1875,6 +1875,50 @@ pub trait Iterator {
         }).break_value()
     }
 
+    /// Extracts the single remaining element out of the iterator.
+    ///
+    /// [`next()`]: #method.next
+    /// [`by_ref()`]: #method.by_ref
+    /// [`Some(x)`]: ../../std/option/enum.Option.html#variant.Some
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    ///
+    /// If [`next()`] will return [`Some(x)`] the first time, and then return
+    /// [`None`] the next time around, then `single()` will return `Some(x)`.
+    /// If there are no elements to extract or if there more than one,
+    /// then the iterator will will return `None`.
+    ///
+    /// This method takes ownership of the iterator it is called on.
+    /// If you want to retain ownership, call [`by_ref()`] on the iterator
+    /// first before calling `single()`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```rust
+    /// #![feature(iterator_single)]
+    ///
+    /// assert_eq!(&[].iter().single(), None);
+    /// assert_eq!(&[42].iter().single(), Some(42));
+    /// assert_eq!(&[42, 24].iter().single(), None);
+    /// assert_eq!(&[42, 24, 0].iter().single(), None);
+    /// ```
+    ///
+    /// # Invariants
+    ///
+    /// If `count()` does not panic and returns `1`, then `single()` will
+    /// return `Some(element)`. Otherwise, `single()` will return `None`.
+    #[inline]
+    #[unstable(feature = "iterator_single", issue = "55354")]
+    fn single(mut self) -> Option<Self::Item> where Self: Sized {
+        if let x@Some(_) = self.next() {
+            if let None = self.next() {
+                return x
+            }
+        }
+        None
+    }
+
     /// Searches for an element in an iterator, returning its index.
     ///
     /// `position()` takes a closure that returns `true` or `false`. It applies
