@@ -188,6 +188,11 @@ impl LocalWaker {
 }
 
 impl From<LocalWaker> for Waker {
+    /// Converts a `LocalWaker` into a `Waker`.
+    ///
+    /// This conversion turns a `!Sync` `LocalWaker` into a `Sync` `Waker`, allowing a wakeup
+    /// object to be sent to another thread, but giving up its ability to do specialized
+    /// thread-local wakeup behavior.
     #[inline]
     fn from(local_waker: LocalWaker) -> Self {
         local_waker.0
