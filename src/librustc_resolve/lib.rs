@@ -1574,10 +1574,9 @@ impl<'a, 'cl> hir::lowering::Resolver for Resolver<'a, 'cl> {
     fn resolve_hir_path(
         &mut self,
         path: &ast::Path,
-        args: Option<P<hir::GenericArgs>>,
         is_value: bool,
     ) -> hir::Path {
-        self.resolve_hir_path_cb(path, args, is_value,
+        self.resolve_hir_path_cb(path, is_value,
                                  |resolver, span, error| resolve_error(resolver, span, error))
     }
 
@@ -1586,7 +1585,6 @@ impl<'a, 'cl> hir::lowering::Resolver for Resolver<'a, 'cl> {
         span: Span,
         crate_root: Option<&str>,
         components: &[&str],
-        args: Option<P<hir::GenericArgs>>,
         is_value: bool
     ) -> hir::Path {
         let segments = iter::once(keywords::CrateRoot.ident())
@@ -1602,7 +1600,7 @@ impl<'a, 'cl> hir::lowering::Resolver for Resolver<'a, 'cl> {
             segments,
         };
 
-        self.resolve_hir_path(&path, args, is_value)
+        self.resolve_hir_path(&path, is_value)
     }
 
     fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution> {
@@ -1648,7 +1646,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     .collect(),
             }
         };
-        let path = self.resolve_hir_path_cb(&path, None, is_value, |_, _, _| errored = true);
+        let path = self.resolve_hir_path_cb(&path, is_value, |_, _, _| errored = true);
         if errored || path.def == Def::Err {
             Err(())
         } else {
@@ -1660,7 +1658,6 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
     fn resolve_hir_path_cb<F>(
         &mut self,
         path: &ast::Path,
-        args: Option<P<hir::GenericArgs>>,
         is_value: bool,
         error_callback: F,
     ) -> hir::Path
@@ -1697,12 +1694,11 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             }
         };
 
-        let mut segments: Vec<_> = segments.iter().map(|seg| {
+        let segments: Vec<_> = segments.iter().map(|seg| {
             let mut hir_seg = hir::PathSegment::from_ident(seg.ident);
             hir_seg.def = Some(self.def_map.get(&seg.id).map_or(Def::Err, |p| p.base_def()));
             hir_seg
         }).collect();
-        segments.last_mut().unwrap().args = args;
         hir::Path {
             span,
             def,

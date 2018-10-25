@@ -147,7 +147,6 @@ pub trait Resolver {
     fn resolve_hir_path(
         &mut self,
         path: &ast::Path,
-        args: Option<P<hir::GenericArgs>>,
         is_value: bool,
     ) -> hir::Path;
 
@@ -168,7 +167,6 @@ pub trait Resolver {
         span: Span,
         crate_root: Option<&str>,
         components: &[&str],
-        args: Option<P<hir::GenericArgs>>,
         is_value: bool,
     ) -> hir::Path;
 }
@@ -4856,7 +4854,9 @@ impl<'a> LoweringContext<'a> {
         is_value: bool
     ) -> hir::Path {
         let mut path = self.resolver
-            .resolve_str_path(span, self.crate_root, components, params, is_value);
+            .resolve_str_path(span, self.crate_root, components, is_value);
+        path.segments.last_mut().unwrap().args = params;
+
 
         for seg in path.segments.iter_mut() {
             if let Some(id) = seg.id {
