@@ -59,25 +59,3 @@ impl Hash for SourceRoot {
 }
 
 pub(crate) const WORKSPACE: SourceRootId = SourceRootId(0);
-
-
-#[derive(Default, Debug, Eq)]
-pub(crate) struct FileSet {
-    pub(crate) files: FxHashSet<FileId>,
-    pub(crate) resolver: FileResolverImp,
-}
-
-impl PartialEq for FileSet {
-    fn eq(&self, other: &FileSet) -> bool {
-        self.files == other.files && self.resolver == other.resolver
-    }
-}
-
-impl Hash for FileSet {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        let mut files = self.files.iter().cloned().collect::<Vec<_>>();
-        files.sort();
-        files.hash(hasher);
-    }
-}
-
