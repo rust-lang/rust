@@ -97,7 +97,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         let mir = cx.tcx.optimized_mir(def_id);
 
         for (bb, bbdata) in mir.basic_blocks().iter_enumerated() {
-            let terminator = unwrap_or_continue!(&bbdata.terminator);
+            let terminator = bbdata.terminator();
 
             // Give up on loops
             if terminator.successors().any(|s| *s == bb) {
@@ -130,7 +130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 if ps.len() != 1 {
                     continue;
                 }
-                let pred_terminator = unwrap_or_continue!(&mir[ps[0]].terminator);
+                let pred_terminator = mir[ps[0]].terminator();
 
                 let pred_arg = if_chain! {
                     if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, Some(res))) =
@@ -152,11 +152,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
             };
 
             let used_later = traversal::ReversePostorder::new(&mir, bb).skip(1).any(|(tbb, tdata)| {
-                if let Some(term) = &tdata.terminator {
-                    // Give up on loops
-                    if term.successors().any(|s| *s == bb) {
-                        return true;
-                    }
+                // Give up on loops
+                if tdata.terminator().successors().any(|s| *s == bb) {
+                    return true;
                 }
 
                 let mut vis = LocalUseVisitor {
@@ -256,12 +254,7 @@ struct LocalUseVisitor {
 
 impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
     fn visit_basic_block_data(&mut self, block: mir::BasicBlock, data: &mir::BasicBlockData<'tcx>) {
-        let mir::BasicBlockData {
-            statements,
-            terminator,
-            is_cleanup: _,
-        } = data;
-
+        let statements = &data.statements;
         for (statement_index, statement) in statements.iter().enumerate() {
             self.visit_statement(block, statement, mir::Location { block, statement_index });
 
@@ -271,16 +264,14 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
             }
         }
 
-        if let Some(terminator) = terminator {
-            self.visit_terminator(
+        self.visit_terminator(
+            block,
+            data.terminator(),
+            mir::Location {
                 block,
-                terminator,
-                mir::Location {
-                    block,
-                    statement_index: statements.len(),
-                },
-            );
-        }
+                statement_index: statements.len(),
+            },
+        );
     }
 
     fn visit_local(&mut self, local: &mir::Local, ctx: PlaceContext<'tcx>, _: mir::Location) {
