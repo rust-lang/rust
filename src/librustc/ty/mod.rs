@@ -330,7 +330,7 @@ impl Visibility {
     }
 }
 
-#[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Copy)]
+#[derive(Copy, Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Hash)]
 pub enum Variance {
     Covariant,      // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,      // T<A> <: T<B> iff B == A -- e.g., type of mutable cell

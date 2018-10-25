@@ -2438,6 +2438,14 @@ EnumTypeFoldableImpl! {
     }
 }
 
+EnumLiftImpl! {
+    impl<'a, 'tcx> Lift<'tcx> for UserTypeAnnotation<'a> {
+        type Lifted = UserTypeAnnotation<'tcx>;
+        (UserTypeAnnotation::Ty)(ty),
+        (UserTypeAnnotation::TypeOf)(def, substs),
+    }
+}
+
 newtype_index! {
     pub struct Promoted {
         DEBUG_FORMAT = "promoted[{}]"

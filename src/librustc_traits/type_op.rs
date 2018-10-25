@@ -8,22 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::infer::at::ToTrace;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::infer::InferCtxt;
+use rustc::hir::def_id::DefId;
+use rustc::traits::query::type_op::ascribe_user_type::AscribeUserType;
 use rustc::traits::query::type_op::eq::Eq;
 use rustc::traits::query::type_op::normalize::Normalize;
 use rustc::traits::query::type_op::prove_predicate::ProvePredicate;
 use rustc::traits::query::type_op::subtype::Subtype;
 use rustc::traits::query::{Fallible, NoSolution};
-use rustc::traits::{FulfillmentContext, Normalized, Obligation, ObligationCause, TraitEngine,
-                    TraitEngineExt};
+use rustc::traits::{
+    FulfillmentContext, Normalized, Obligation, ObligationCause, TraitEngine, TraitEngineExt,
+};
 use rustc::ty::query::Providers;
-use rustc::ty::{FnSig, Lift, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::subst::{Kind, Subst, UserSelfTy, UserSubsts};
+use rustc::ty::{
+    FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable, Variance,
+};
 use rustc_data_structures::sync::Lrc;
 use std::fmt;
+use syntax::ast;
+use syntax_pos::DUMMY_SP;
 
 crate fn provide(p: &mut Providers) {
     *p = Providers {
+        type_op_ascribe_user_type,
         type_op_eq,
         type_op_prove_predicate,
         type_op_subtype,
@@ -33,6 +43,152 @@ crate fn provide(p: &mut Providers) {
         type_op_normalize_poly_fn_sig,
         ..*p
     };
+}
+
+fn type_op_ascribe_user_type<'tcx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, AscribeUserType<'tcx>>>,
+) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, ()>>>, NoSolution> {
+    tcx.infer_ctxt()
+        .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
+            let (
+                param_env,
+                AscribeUserType {
+                    mir_ty,
+                    variance,
+                    def_id,
+                    user_substs,
+                },
+            ) = key.into_parts();
+
+            debug!(
+                "type_op_ascribe_user_type(\
+                 mir_ty={:?}, variance={:?}, def_id={:?}, user_substs={:?}\
+                 )",
+                mir_ty, variance, def_id, user_substs,
+            );
+
+            let mut cx = AscribeUserTypeCx {
+                infcx,
+                param_env,
+                fulfill_cx,
+            };
+            cx.relate_mir_and_user_ty(mir_ty, variance, def_id, user_substs)?;
+
+            Ok(())
+        })
+}
+
+struct AscribeUserTypeCx<'me, 'gcx: 'tcx, 'tcx: 'me> {
+    infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
+    param_env: ParamEnv<'tcx>,
+    fulfill_cx: &'me mut FulfillmentContext<'tcx>,
+}
+
+impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
+    fn normalize<T>(&mut self, value: T) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        self.infcx
+            .partially_normalize_associated_types_in(
+                DUMMY_SP,
+                ast::CRATE_NODE_ID,
+                self.param_env,
+                &value,
+            )
+            .into_value_registering_obligations(self.infcx, self.fulfill_cx)
+    }
+
+    fn relate<T>(&mut self, a: T, variance: Variance, b: T) -> Result<(), NoSolution>
+    where
+        T: ToTrace<'tcx>,
+    {
+        Ok(self.infcx
+            .at(&ObligationCause::dummy(), self.param_env)
+           .relate(a, variance, b)?
+           .into_value_registering_obligations(self.infcx, self.fulfill_cx))
+    }
+
+    fn prove_predicate(&mut self, predicate: Predicate<'tcx>) {
+        self.fulfill_cx.register_predicate_obligation(
+            self.infcx,
+            Obligation::new(ObligationCause::dummy(), self.param_env, predicate),
+        );
+    }
+
+    fn tcx(&self) -> TyCtxt<'me, 'gcx, 'tcx> {
+        self.infcx.tcx
+    }
+
+    fn subst<T>(&self, value: T, substs: &[Kind<'tcx>]) -> T
+    where
+        T: TypeFoldable<'tcx>,
+    {
+        value.subst(self.tcx(), substs)
+    }
+
+    fn relate_mir_and_user_ty(
+        &mut self,
+        mir_ty: Ty<'tcx>,
+        variance: Variance,
+        def_id: DefId,
+        user_substs: UserSubsts<'tcx>,
+    ) -> Result<(), NoSolution> {
+        let UserSubsts {
+            substs,
+            user_self_ty,
+        } = user_substs;
+
+        let ty = self.tcx().type_of(def_id);
+        let ty = self.subst(ty, substs);
+        debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
+        let ty = self.normalize(ty);
+
+        self.relate(mir_ty, variance, ty)?;
+
+        if let Some(UserSelfTy {
+            impl_def_id,
+            self_ty,
+        }) = user_self_ty
+        {
+            let impl_self_ty = self.tcx().type_of(impl_def_id);
+            let impl_self_ty = self.subst(impl_self_ty, &substs);
+            let impl_self_ty = self.normalize(impl_self_ty);
+
+            self.relate(self_ty, Variance::Invariant, impl_self_ty)?;
+
+            self.prove_predicate(Predicate::WellFormed(impl_self_ty));
+        }
+
+        // Prove the predicates coming along with `def_id`.
+        //
+        // Also, normalize the `instantiated_predicates`
+        // because otherwise we wind up with duplicate "type
+        // outlives" error messages.
+        let instantiated_predicates = self.tcx()
+            .predicates_of(def_id)
+            .instantiate(self.tcx(), substs);
+        for instantiated_predicate in instantiated_predicates.predicates {
+            let instantiated_predicate = self.normalize(instantiated_predicate);
+            self.prove_predicate(instantiated_predicate);
+        }
+
+        // In addition to proving the predicates, we have to
+        // prove that `ty` is well-formed -- this is because
+        // the WF of `ty` is predicated on the substs being
+        // well-formed, and we haven't proven *that*. We don't
+        // want to prove the WF of types from  `substs` directly because they
+        // haven't been normalized.
+        //
+        // FIXME(nmatsakis): Well, perhaps we should normalize
+        // them?  This would only be relevant if some input
+        // type were ill-formed but did not appear in `ty`,
+        // which...could happen with normalization...
+        self.prove_predicate(Predicate::WellFormed(ty));
+
+        Ok(())
+    }
 }
 
 fn type_op_eq<'tcx>(

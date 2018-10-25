@@ -20,6 +20,7 @@ use traits::ObligationCause;
 use ty::fold::TypeFoldable;
 use ty::{Lift, ParamEnvAnd, TyCtxt};
 
+pub mod ascribe_user_type;
 pub mod custom;
 pub mod eq;
 pub mod implied_outlives_bounds;
