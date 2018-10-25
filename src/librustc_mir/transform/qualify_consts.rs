@@ -982,7 +982,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     // Since the argument is required to be constant,
                     // we care about constness, not promotability.
                     // If we checked for promotability, we'd miss out on
-                    // the results of function calls (which are never promoted)
+                    // the results of function calls (which are never promoted
+                    // in runtime code)
                     // This is not a problem, because the argument explicitly
                     // requests constness, in contrast to regular promotion
                     // which happens even without the user requesting it.
