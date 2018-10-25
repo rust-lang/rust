@@ -3,6 +3,8 @@ use crate::rustc_data_structures::owning_ref::{self, OwningRef};
 use std::fs::File;
 use std::path::Path;
 
+pub const METADATA_FILE: &'static [u8] = b"rust.metadata.bin" as &[u8];
+
 pub struct CraneliftMetadataLoader;
 
 impl MetadataLoader for CraneliftMetadataLoader {
@@ -17,8 +19,7 @@ impl MetadataLoader for CraneliftMetadataLoader {
             let mut entry = entry_result.map_err(|e| format!("{:?}", e))?;
             if entry
                 .header()
-                .identifier()
-                .starts_with(b".rustc.clif_metadata")
+                .identifier() == METADATA_FILE
             {
                 let mut buf = Vec::new();
                 ::std::io::copy(&mut entry, &mut buf).map_err(|e| format!("{:?}", e))?;

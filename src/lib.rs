@@ -33,7 +33,6 @@ use crate::rustc::session::{config::OutputFilenames, CompileIncomplete};
 use crate::rustc::ty::query::Providers;
 use crate::rustc_codegen_utils::codegen_backend::CodegenBackend;
 use crate::rustc_codegen_utils::link::out_filename;
-use crate::rustc_data_structures::svh::Svh;
 use crate::syntax::symbol::Symbol;
 
 use cranelift::codegen::settings;
@@ -94,7 +93,7 @@ mod prelude {
     pub use crate::common::*;
     pub use crate::Caches;
 
-    pub fn should_codegen(sess: &Session) -> bool {
+    pub fn should_codegen(_sess: &Session) -> bool {
         true
         //::std::env::var("SHOULD_CODEGEN").is_ok()
         //    || sess.crate_types.get().contains(&CrateType::Executable)
@@ -124,7 +123,6 @@ struct OngoingCodegen {
     product: cranelift_faerie::FaerieProduct,
     metadata: Vec<u8>,
     crate_name: Symbol,
-    crate_hash: Svh,
 }
 
 impl CodegenBackend for CraneliftCodegenBackend {
@@ -255,7 +253,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 product: faerie_module.finish(),
                 metadata: metadata.raw_data,
                 crate_name: tcx.crate_name(LOCAL_CRATE),
-                crate_hash: tcx.crate_hash(LOCAL_CRATE),
             });
         }
     }
@@ -274,8 +271,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let artifact = ongoing_codegen.product.artifact;
         let metadata = ongoing_codegen.metadata;
 
-        let metadata_name =
-            ".rustc.clif_metadata".to_string() + &ongoing_codegen.crate_hash.to_string();
         /*
         artifact
             .declare_with(
@@ -320,7 +315,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
                         builder
                             .append(
                                 &ar::Header::new(
-                                    metadata_name.as_bytes().to_vec(),
+                                    metadata::METADATA_FILE.to_vec(),
                                     metadata.len() as u64,
                                 ),
                                 ::std::io::Cursor::new(metadata.clone()),
