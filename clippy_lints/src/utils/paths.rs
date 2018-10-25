@@ -55,6 +55,7 @@ pub const LATE_CONTEXT: [&str; 4] = ["rustc", "lint", "context", "LateContext"];
 pub const LINKED_LIST: [&str; 4] = ["alloc", "collections", "linked_list", "LinkedList"];
 pub const LINT: [&str; 3] = ["rustc", "lint", "Lint"];
 pub const LINT_ARRAY: [&str; 3] = ["rustc", "lint", "LintArray"];
+pub const MEM_DISCRIMINANT: [&str; 3] = ["core", "mem", "discriminant"];
 pub const MEM_FORGET: [&str; 3] = ["core", "mem", "forget"];
 pub const MEM_REPLACE: [&str; 3] = ["core", "mem", "replace"];
 pub const MEM_UNINIT: [&str; 3] = ["core", "mem", "uninitialized"];
