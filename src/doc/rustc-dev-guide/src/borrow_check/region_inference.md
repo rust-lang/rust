@@ -197,7 +197,7 @@ fn bar<'a, T>(t: &'a T) {
 ```
 
 Here, the name `'b` is not part of the root universe. Instead, when we
-"enter" into this `for<'b>` (e.g., by replace it with a placeholder), we will create
+"enter" into this `for<'b>` (e.g., by replacing it with a placeholder), we will create
 a child universe of the root, let's call it U1:
 
 ```text
