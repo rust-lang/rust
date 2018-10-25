@@ -340,7 +340,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let source_map = self.tcx.sess.source_map();
         let all_source_files = source_map.files();
 
-        let (working_dir, working_dir_was_remapped) = self.tcx.sess.working_dir.clone();
+        let (working_dir, _cwd_remapped) = self.tcx.sess.working_dir.clone();
 
         let adapted = all_source_files.iter()
             .filter(|source_file| {
@@ -349,32 +349,26 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 !source_file.is_imported()
             })
             .map(|source_file| {
-                // When exporting SourceFiles, we expand all paths to absolute
-                // paths because any relative paths are potentially relative to
-                // a wrong directory.
-                // However, if a path has been modified via
-                // `--remap-path-prefix` we assume the user has already set
-                // things up the way they want and don't touch the path values
-                // anymore.
                 match source_file.name {
+                    // This path of this SourceFile has been modified by
+                    // path-remapping, so we use it verbatim (and avoid
+                    // cloning the whole map in the process).
+                    _  if source_file.name_was_remapped => source_file.clone(),
+
+                    // Otherwise expand all paths to absolute paths because
+                    // any relative paths are potentially relative to a
+                    // wrong directory.
                     FileName::Real(ref name) => {
-                        if source_file.name_was_remapped ||
-                        (name.is_relative() && working_dir_was_remapped) {
-                            // This path of this SourceFile has been modified by
-                            // path-remapping, so we use it verbatim (and avoid cloning
-                            // the whole map in the process).
-                            source_file.clone()
-                        } else {
-                            let mut adapted = (**source_file).clone();
-                            adapted.name = Path::new(&working_dir).join(name).into();
-                            adapted.name_hash = {
-                                let mut hasher: StableHasher<u128> = StableHasher::new();
-                                adapted.name.hash(&mut hasher);
-                                hasher.finish()
-                            };
-                            Lrc::new(adapted)
-                        }
+                        let mut adapted = (**source_file).clone();
+                        adapted.name = Path::new(&working_dir).join(name).into();
+                        adapted.name_hash = {
+                            let mut hasher: StableHasher<u128> = StableHasher::new();
+                            adapted.name.hash(&mut hasher);
+                            hasher.finish()
+                        };
+                        Lrc::new(adapted)
                     },
+
                     // expanded code, not from a file
                     _ => source_file.clone(),
                 }
