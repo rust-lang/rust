@@ -6,16 +6,14 @@ environment:
         #- TARGET: i686-pc-windows-msvc
         #- TARGET: x86_64-pc-windows-gnu
         - TARGET: x86_64-pc-windows-msvc
-        
+
 branches:
-    only:
-        # This is where pull requests from "bors r+" are built.
-        - staging
-        # This is where pull requests from "bors try" are built.
-        - trying
-        # Also build pull requests.
-        - master
-        
+    # Don't build these branches
+    except:
+        # Used by bors
+        - trying.tmp
+        - staging.tmp
+
 install:
     - curl -sSf -o rustup-init.exe https://win.rustup.rs/
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain nightly
