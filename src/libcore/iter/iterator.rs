@@ -1898,10 +1898,15 @@ pub trait Iterator {
     /// ```rust
     /// #![feature(iterator_single)]
     ///
-    /// assert_eq!(&[].iter().single(), None);
-    /// assert_eq!(&[42].iter().single(), Some(42));
-    /// assert_eq!(&[42, 24].iter().single(), None);
-    /// assert_eq!(&[42, 24, 0].iter().single(), None);
+    /// let zero: [u8; 0] = [];
+    /// let one: [u8; 1] = [42];
+    /// let two: [u8; 2] = [42, 24];
+    /// let three: [u8; 3] = [42, 24, 0];
+    ///
+    /// assert_eq!(zero.iter().single(), None);
+    /// assert_eq!(one.iter().single(), Some(42));
+    /// assert_eq!(two.iter().single(), None);
+    /// assert_eq!(three.iter().single(), None);
     /// ```
     ///
     /// # Invariants
