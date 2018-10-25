@@ -1,6 +1,5 @@
 use std::{
     sync::Arc,
-    hash::{Hasher, Hash},
 };
 
 use salsa;
@@ -40,22 +39,10 @@ salsa::query_group! {
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) struct SourceRootId(pub(crate) u32);
 
-#[derive(Clone, Default, Debug, Eq)]
+#[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub(crate) struct SourceRoot {
     pub(crate) file_resolver: FileResolverImp,
     pub(crate) files: FxHashSet<FileId>,
-}
-
-impl PartialEq for SourceRoot {
-    fn eq(&self, other: &SourceRoot) -> bool {
-        self.file_resolver == other.file_resolver
-    }
-}
-
-impl Hash for SourceRoot {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        self.file_resolver.hash(hasher);
-    }
 }
 
 pub(crate) const WORKSPACE: SourceRootId = SourceRootId(0);
