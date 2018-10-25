@@ -14,11 +14,11 @@ which we will introduce one by one:
 When a trait defines an associated type (e.g.,
 [the `Item` type in the `IntoIterator` trait][intoiter-item]), that
 type can be referenced by the user using an **associated type
-projection** like `<Option<u32> as IntoIterator>::Item`. (Often,
-though, people will use the shorthand syntax `T::Item` – presently,
-that syntax is expanded during
-["type collection"](../type-checking.html) into the explicit form,
-though that is something we may want to change in the future.)
+projection** like `<Option<u32> as IntoIterator>::Item`.
+
+> Often, people will use the shorthand syntax `T::Item`. Presently, that
+> syntax is expanded during ["type collection"](../type-checking.html) into the
+> explicit form, though that is something we may want to change in the future.
 
 [intoiter-item]: https://doc.rust-lang.org/nightly/core/iter/trait.IntoIterator.html#associatedtype.Item
 
@@ -41,10 +41,11 @@ IntoIterator>::Item` to just `u32`.
 
 In this case, the projection was a "monomorphic" one – that is, it
 did not have any type parameters.  Monomorphic projections are special
-because they can **always** be fully normalized – but often we can
-normalize other associated type projections as well. For example,
-`<Option<?T> as IntoIterator>::Item` (where `?T` is an inference
-variable) can be normalized to just `?T`.
+because they can **always** be fully normalized.
+
+Often, we can normalize other associated type projections as well. For
+example, `<Option<?T> as IntoIterator>::Item`, where `?T` is an inference
+variable, can be normalized to just `?T`.
 
 In our logic, normalization is defined by a predicate
 `Normalize`. The `Normalize` clauses arise only from
@@ -60,9 +61,8 @@ forall<T> {
 
 where in this case, the one `Implemented` condition is always true.
 
-(An aside: since we do not permit quantification over traits, this is
-really more like a family of program clauses, one for each associated
-type.)
+> Since we do not permit quantification over traits, this is really more like
+> a family of program clauses, one for each associated type.
 
 We could apply that rule to normalize either of the examples that
 we've seen so far.
@@ -76,17 +76,18 @@ normalized. For example, consider this function:
 fn foo<T: IntoIterator>(...) { ... }
 ```
 
-In this context, how would we normalize the type `T::Item`? Without
-knowing what `T` is, we can't really do so. To represent this case, we
-introduce a type called a **placeholder associated type
-projection**. This is written like so `(IntoIterator::Item)<T>`. You
-may note that it looks a lot like a regular type (e.g., `Option<T>`),
-except that the "name" of the type is `(IntoIterator::Item)`. This is
-not an accident: placeholder associated type projections work just like
-ordinary types like `Vec<T>` when it comes to unification. That is,
-they are only considered equal if (a) they are both references to the
-same associated type, like `IntoIterator::Item` and (b) their type
-arguments are equal.
+In this context, how would we normalize the type `T::Item`?
+
+Without knowing what `T` is, we can't really do so. To represent this case,
+we introduce a type called a **placeholder associated type projection**. This
+is written like so: `(IntoIterator::Item)<T>`.
+
+You may note that it looks a lot like a regular type (e.g., `Option<T>`),
+except that the "name" of the type is `(IntoIterator::Item)`. This is not an
+accident: placeholder associated type projections work just like ordinary
+types like `Vec<T>` when it comes to unification. That is, they are only
+considered equal if (a) they are both references to the same associated type,
+like `IntoIterator::Item` and (b) their type arguments are equal.
 
 Placeholder associated types are never written directly by the user.
 They are used internally by the trait system only, as we will see
@@ -152,16 +153,16 @@ might just fail, in which case we get back `Err(NoSolution)`. This
 would happen, for example, if we tried to unify `u32` and `i32`.
 
 The key point is that, on success, unification can also give back to
-us a set of subgoals that still remain to be proven (it can also give
+us a set of subgoals that still remain to be proven. (It can also give
 back region constraints, but those are not relevant here).
 
-Whenever unification encounters an (un-placeholder!) associated type
+Whenever unification encounters a non-placeholder associated type
 projection P being equated with some other type T, it always succeeds,
 but it produces a subgoal `ProjectionEq(P = T)` that is propagated
 back up. Thus it falls to the ordinary workings of the trait system
 to process that constraint.
 
-(If we unify two projections P1 and P2, then unification produces a
-variable X and asks us to prove that `ProjectionEq(P1 = X)` and
-`ProjectionEq(P2 = X)`. That used to be needed in an older system to
-prevent cycles; I rather doubt it still is. -nmatsakis)
+> If we unify two projections P1 and P2, then unification produces a
+> variable X and asks us to prove that `ProjectionEq(P1 = X)` and
+> `ProjectionEq(P2 = X)`. (That used to be needed in an older system to
+> prevent cycles; I rather doubt it still is. -nmatsakis)
