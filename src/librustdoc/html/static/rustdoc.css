@@ -282,6 +282,24 @@ nav.sub {
 	padding-left: 0;
 }
 
+.example-wrap {
+	display: inline-flex;
+	width: 100%;
+}
+
+.example-wrap > pre.line-number {
+	overflow: initial;
+	border: 1px solid;
+	border-top-left-radius: 5px;
+	border-bottom-left-radius: 5px;
+	padding: 13px 8px;
+	text-align: right;
+}
+
+.example-wrap > pre.rust {
+	width: 100%;
+}
+
 #search {
 	margin-left: 230px;
 	position: relative;
