@@ -28,12 +28,12 @@ pub mod hidden {
 
 // @has foo/struct.Foo.html
 // @!has - 'Methods'
-// @!has - 'impl Foo'
+// @!has - '//code' 'impl Foo'
 // @!has - 'this_should_be_hidden'
 pub use hidden::Foo;
 
 // @has foo/struct.Bar.html
 // @!has - 'Methods'
-// @!has - 'impl Bar'
+// @!has - '//code' 'impl Bar'
 // @!has - 'this_should_be_hidden'
 pub use hidden::Bar;
