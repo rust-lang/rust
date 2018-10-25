@@ -268,6 +268,14 @@ pub fn handle_runnables(
         };
         res.push(r);
     }
+    // Always add `cargo check`.
+    res.push(req::Runnable {
+        range: Default::default(),
+        label: "cargo check".to_string(),
+        bin: "cargo".to_string(),
+        args: vec!["check".to_string(), "--all".to_string()],
+        env: FxHashMap::default(),
+    });
     return Ok(res);
 
     fn runnable_args(world: &ServerWorld, file_id: FileId, kind: &RunnableKind) -> Result<Vec<String>> {
