@@ -269,14 +269,21 @@ pub fn handle_runnables(
         res.push(r);
     }
     let mut check_args = vec!["check".to_string()];
+    let label;
     match CargoTargetSpec::for_file(&world, file_id)? {
-        Some(spec) => spec.push_to(&mut check_args),
-        None => check_args.push("--all".to_string()),
+        Some(spec) => {
+            label = format!("cargo check -p {}", spec.package);
+            spec.push_to(&mut check_args);
+        }
+        None => {
+            label = "cargo check --all".to_string();
+            check_args.push("--all".to_string())
+        }
     }
     // Always add `cargo check`.
     res.push(req::Runnable {
         range: Default::default(),
-        label: "cargo check".to_string(),
+        label,
         bin: "cargo".to_string(),
         args: check_args,
         env: FxHashMap::default(),
