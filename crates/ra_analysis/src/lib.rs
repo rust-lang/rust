@@ -13,7 +13,7 @@ mod symbol_index;
 mod completion;
 
 use std::{
-    fmt::Debug,
+    fmt,
     sync::Arc,
     collections::BTreeMap,
 };
@@ -60,12 +60,12 @@ pub struct CrateGraph {
     pub crate_roots: BTreeMap<CrateId, FileId>,
 }
 
-pub trait FileResolver: Debug + Send + Sync + 'static {
+pub trait FileResolver: fmt::Debug + Send + Sync + 'static {
     fn file_stem(&self, file_id: FileId) -> String;
     fn resolve(&self, file_id: FileId, path: &RelativePath) -> Option<FileId>;
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct AnalysisChange {
     files_added: Vec<(FileId, String)>,
     files_changed: Vec<(FileId, String)>,
@@ -73,6 +73,19 @@ pub struct AnalysisChange {
     libraries_added: Vec<LibraryData>,
     crate_graph: Option<CrateGraph>,
     file_resolver: Option<FileResolverImp>,
+}
+
+impl fmt::Debug for AnalysisChange {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("AnalysisChange")
+            .field("files_added", &self.files_added.len())
+            .field("files_changed", &self.files_changed.len())
+            .field("files_removed", &self.files_removed.len())
+            .field("libraries_added", &self.libraries_added.len())
+            .field("crate_graph", &self.crate_graph)
+            .field("file_resolver", &self.file_resolver)
+            .finish()
+    }
 }
 
 

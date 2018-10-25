@@ -5,6 +5,7 @@ version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
+log = "0.4.5"
 relative-path = "0.4.0"
 rayon = "1.0.2"
 fst = "0.3.1"

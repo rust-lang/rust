@@ -1,7 +1,6 @@
 pub(crate) mod input;
 
 use std::{
-    fmt,
     sync::Arc,
 };
 
@@ -17,15 +16,9 @@ use crate::{
     FileId,
 };
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub(crate) struct RootDatabase {
     runtime: salsa::Runtime<RootDatabase>,
-}
-
-impl fmt::Debug for RootDatabase {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str("RootDatabase { ... }")
-    }
 }
 
 impl salsa::Database for RootDatabase {

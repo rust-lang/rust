@@ -98,6 +98,8 @@ impl AnalysisHostImpl {
         }
     }
     pub fn apply_change(&mut self, change: AnalysisChange) {
+        log::info!("apply_change {:?}", change);
+
         for (file_id, text) in change.files_changed {
             self.db
                 .query(db::input::FileTextQuery)
