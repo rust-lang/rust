@@ -198,7 +198,6 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         align: Align,
         check_defined_and_ptr: bool,
     ) -> EvalResult<'tcx, &[u8]> {
-        assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_align(ptr.into(), align)?;
         self.check_bounds(cx, ptr, size, true)?;
 
@@ -251,7 +250,6 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         size: Size,
         align: Align,
     ) -> EvalResult<'tcx, &mut [u8]> {
-        assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_align(ptr.into(), align)?;
         self.check_bounds(cx, ptr, size, true)?;
 
@@ -294,13 +292,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         size: Size,
         allow_ptr_and_undef: bool,
     ) -> EvalResult<'tcx> {
-        // Empty accesses don't need to be valid pointers, but they should still be non-NULL
+        // Check bounds and relocations on the edges
         let align = Align::from_bytes(1, 1).unwrap();
-        if size.bytes() == 0 {
-            self.check_align(ptr, align)?;
-            return Ok(());
-        }
-        // Check bounds, align and relocations on the edges
         self.get_bytes_with_undef_and_ptr(cx, ptr, size, align)?;
         // Check undef and ptr
         if !allow_ptr_and_undef {
@@ -316,12 +309,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx, &[u8]> {
-        // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1, 1).unwrap();
-        if size.bytes() == 0 {
-            self.check_align(ptr, align)?;
-            return Ok(&[]);
-        }
         self.get_bytes(cx, ptr, size, align)
     }
 
@@ -331,12 +319,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         src: &[u8],
     ) -> EvalResult<'tcx> {
-        // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1, 1).unwrap();
-        if src.is_empty() {
-            self.check_align(ptr, align)?;
-            return Ok(());
-        }
         let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(src.len() as u64), align)?;
         bytes.clone_from_slice(src);
         Ok(())
@@ -349,12 +332,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         val: u8,
         count: Size
     ) -> EvalResult<'tcx> {
-        // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1, 1).unwrap();
-        if count.bytes() == 0 {
-            self.check_align(ptr, align)?;
-            return Ok(());
-        }
         let bytes = self.get_bytes_mut(cx, ptr, count, align)?;
         for b in bytes {
             *b = val;
@@ -589,9 +567,6 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         size: Size,
         new_state: bool,
     ) -> EvalResult<'tcx> {
-        if size.bytes() == 0 {
-            return Ok(());
-        }
         self.undef_mask.set_range(
             ptr.offset,
             ptr.offset + size,
