@@ -452,6 +452,12 @@ configuration_option_enum!{ Edition:
     Edition2018: 2018,
 }
 
+impl Default for Edition {
+    fn default() -> Edition {
+        Edition::Edition2015
+    }
+}
+
 impl Edition {
     pub(crate) fn to_libsyntax_pos_edition(self) -> syntax_pos::edition::Edition {
         match self {

@@ -25,8 +25,8 @@ use failure::err_msg;
 use getopts::{Matches, Options};
 
 use rustfmt::{
-    load_config, CliOptions, Color, Config, EmitMode, ErrorKind, FileLines, FileName, Input,
-    Session, Verbosity,
+    load_config, CliOptions, Color, Config, Edition, EmitMode, ErrorKind, FileLines, FileName,
+    Input, Session, Verbosity,
 };
 
 fn main() {
@@ -102,6 +102,7 @@ fn make_opts() -> Options {
          found reverts to the input file path",
         "[Path for the configuration file]",
     );
+    opts.optopt("", "edition", "Rust edition to use", "[2015|2018]");
     opts.optopt(
         "",
         "color",
@@ -437,6 +438,7 @@ struct GetOptsOptions {
     emit_mode: EmitMode,
     backup: bool,
     check: bool,
+    edition: Edition,
     color: Option<Color>,
     file_lines: FileLines, // Default is all lines in all files.
     unstable_features: bool,
@@ -496,11 +498,12 @@ impl GetOptsOptions {
             if options.check {
                 return Err(format_err!("Invalid to use `--emit` and `--check`"));
             }
-            if let Ok(emit_mode) = emit_mode_from_emit_str(emit_str) {
-                options.emit_mode = emit_mode;
-            } else {
-                return Err(format_err!("Invalid value for `--emit`"));
-            }
+
+            options.emit_mode = emit_mode_from_emit_str(emit_str)?;
+        }
+
+        if let Some(ref edition_str) = matches.opt_str("edition") {
+            options.edition = edition_from_edition_str(edition_str)?;
         }
 
         if matches.opt_present("backup") {
@@ -556,6 +559,7 @@ impl CliOptions for GetOptsOptions {
         if let Some(error_on_unformatted) = self.error_on_unformatted {
             config.set().error_on_unformatted(error_on_unformatted);
         }
+        config.set().edition(self.edition);
         if self.check {
             config.set().emit_mode(EmitMode::Diff);
         } else {
@@ -571,6 +575,14 @@ impl CliOptions for GetOptsOptions {
 
     fn config_path(&self) -> Option<&Path> {
         self.config_path.as_ref().map(|p| &**p)
+    }
+}
+
+fn edition_from_edition_str(edition_str: &str) -> Result<Edition, failure::Error> {
+    match edition_str {
+        "2015" => Ok(Edition::Edition2015),
+        "2018" => Ok(Edition::Edition2018),
+        _ => Err(format_err!("Invalid value for `--edition`")),
     }
 }
 

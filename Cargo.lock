@@ -78,7 +78,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "cargo_metadata"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "error-chain 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -607,7 +607,7 @@ dependencies = [
  "assert_cli 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "atty 0.2.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "bytecount 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "cargo_metadata 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cargo_metadata 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "derive-new 0.5.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "diff 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.5.13 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -864,7 +864,7 @@ dependencies = [
 "checksum bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "228047a76f468627ca71776ecdebd732a3423081fcf5125585bcd7c49886ce12"
 "checksum bytecount 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)" = "f861d9ce359f56dbcb6e0c2a1cb84e52ad732cadb57b806adeb3c7668caccbd8"
 "checksum byteorder 1.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "90492c5858dd7d2e78691cfb89f90d273a2800fc11d98f60786e5d87e2f83781"
-"checksum cargo_metadata 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2d6809b327f87369e6f3651efd2c5a96c49847a3ed2559477ecba79014751ee1"
+"checksum cargo_metadata 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)" = "1aaa1a9856ae2d188340526d0986feb6899c9ad11c5dfd73453c784fed6e373d"
 "checksum cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)" = "f159dfd43363c4d08055a07703eb7a3406b0dac4d0584d96965a3262db3c9d16"
 "checksum cfg-if 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "0c4e7bb64a8ebb0d856483e1e682ea3422f883c5f5615a90d51a2c82fe87fdd3"
 "checksum cloudabi 0.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"

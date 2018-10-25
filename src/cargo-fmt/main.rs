@@ -17,14 +17,14 @@ extern crate cargo_metadata;
 extern crate getopts;
 extern crate serde_json as json;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
 use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus};
+use std::process::Command;
 use std::str;
 
 use getopts::{Matches, Options};
@@ -122,30 +122,21 @@ pub enum Verbosity {
     Quiet,
 }
 
-fn handle_command_status(status: Result<ExitStatus, io::Error>, opts: &getopts::Options) -> i32 {
+fn handle_command_status(status: Result<i32, io::Error>, opts: &getopts::Options) -> i32 {
     match status {
         Err(e) => {
             print_usage_to_stderr(opts, &e.to_string());
             FAILURE
         }
-        Ok(status) => {
-            if status.success() {
-                SUCCESS
-            } else {
-                status.code().unwrap_or(FAILURE)
-            }
-        }
+        Ok(status) => status,
     }
 }
 
-fn get_version(verbosity: Verbosity) -> Result<ExitStatus, io::Error> {
-    run_rustfmt(&[], &[String::from("--version")], verbosity)
+fn get_version(verbosity: Verbosity) -> Result<i32, io::Error> {
+    run_rustfmt(&HashSet::new(), &[String::from("--version")], verbosity)
 }
 
-fn format_crate(
-    verbosity: Verbosity,
-    strategy: &CargoFmtStrategy,
-) -> Result<ExitStatus, io::Error> {
+fn format_crate(verbosity: Verbosity, strategy: &CargoFmtStrategy) -> Result<i32, io::Error> {
     let rustfmt_args = get_fmt_args();
     let targets = if rustfmt_args
         .iter()
@@ -157,17 +148,7 @@ fn format_crate(
     };
 
     // Currently only bin and lib files get formatted
-    let files: Vec<_> = targets
-        .into_iter()
-        .inspect(|t| {
-            if verbosity == Verbosity::Verbose {
-                println!("[{}] {:?}", t.kind, t.path)
-            }
-        })
-        .map(|t| t.path)
-        .collect();
-
-    run_rustfmt(&files, &rustfmt_args, verbosity)
+    run_rustfmt(&targets, &rustfmt_args, verbosity)
 }
 
 fn get_fmt_args() -> Vec<String> {
@@ -182,6 +163,8 @@ pub struct Target {
     path: PathBuf,
     /// A kind of target (e.g. lib, bin, example, ...).
     kind: String,
+    /// Rust edition for this target.
+    edition: String,
 }
 
 impl Target {
@@ -192,6 +175,7 @@ impl Target {
         Target {
             path: canonicalized,
             kind: target.kind[0].clone(),
+            edition: target.edition.clone(),
         }
     }
 }
@@ -334,41 +318,55 @@ fn add_targets(target_paths: &[cargo_metadata::Target], targets: &mut HashSet<Ta
 }
 
 fn run_rustfmt(
-    files: &[PathBuf],
+    targets: &HashSet<Target>,
     fmt_args: &[String],
     verbosity: Verbosity,
-) -> Result<ExitStatus, io::Error> {
-    let stdout = if verbosity == Verbosity::Quiet {
-        std::process::Stdio::null()
-    } else {
-        std::process::Stdio::inherit()
-    };
+) -> Result<i32, io::Error> {
+    let by_edition: HashMap<_, _> = targets
+        .iter()
+        .inspect(|t| {
+            if verbosity == Verbosity::Verbose {
+                println!("[{} ({})] {:?}", t.kind, t.edition, t.path)
+            }
+        })
+        .map(|t| (&t.edition, vec![&t.path]))
+        .collect();
 
-    if verbosity == Verbosity::Verbose {
-        print!("rustfmt");
-        for a in fmt_args {
-            print!(" {}", a);
+    for (edition, files) in by_edition {
+        let stdout = if verbosity == Verbosity::Quiet {
+            std::process::Stdio::null()
+        } else {
+            std::process::Stdio::inherit()
+        };
+
+        if verbosity == Verbosity::Verbose {
+            print!("rustfmt");
+            fmt_args.iter().for_each(|f| print!(" {}", f));
+            files.iter().for_each(|f| print!(" {}", f.display()));
+            println!();
         }
-        for f in files {
-            print!(" {}", f.display());
+
+        let mut command = Command::new("rustfmt")
+            .stdout(stdout)
+            .args(files)
+            .args(&["--edition", edition])
+            .args(fmt_args)
+            .spawn()
+            .map_err(|e| match e.kind() {
+                io::ErrorKind::NotFound => io::Error::new(
+                    io::ErrorKind::Other,
+                    "Could not run rustfmt, please make sure it is in your PATH.",
+                ),
+                _ => e,
+            })?;
+
+        let status = command.wait()?;
+        if !status.success() {
+            return Ok(status.code().unwrap_or(FAILURE));
         }
-        println!();
     }
 
-    let mut command = Command::new("rustfmt")
-        .stdout(stdout)
-        .args(files)
-        .args(fmt_args)
-        .spawn()
-        .map_err(|e| match e.kind() {
-            io::ErrorKind::NotFound => io::Error::new(
-                io::ErrorKind::Other,
-                "Could not run rustfmt, please make sure it is in your PATH.",
-            ),
-            _ => e,
-        })?;
-
-    command.wait()
+    Ok(SUCCESS)
 }
 
 fn get_cargo_metadata(manifest_path: Option<&Path>) -> Result<cargo_metadata::Metadata, io::Error> {
