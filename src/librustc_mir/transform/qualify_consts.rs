@@ -979,8 +979,15 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     if !constant_arguments.contains(&i) {
                         return
                     }
-                    // if the argument requires a constant, we care about constness, not
-                    // promotability
+                    // Since the argument is required to be constant,
+                    // we care about constness, not promotability.
+                    // If we checked for promotability, we'd miss out on
+                    // the results of function calls (which are never promoted)
+                    // This is not a problem, because the argument explicitly
+                    // requests constness, in contrast to regular promotion
+                    // which happens even without the user requesting it.
+                    // We can error out with a hard error if the argument is not
+                    // constant here.
                     if (this.qualif - Qualif::NOT_PROMOTABLE).is_empty() {
                         this.promotion_candidates.push(candidate);
                     } else {
