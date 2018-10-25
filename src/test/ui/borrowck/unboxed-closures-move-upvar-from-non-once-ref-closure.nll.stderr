@@ -7,25 +7,6 @@ LL |     call(|| {
 LL |         y.into_iter();
    |         ^ cannot move out of captured variable in an `Fn` closure
 
-error[E0507]: cannot move out of `y`, as it is a captured variable in a `Fn` closure
-  --> $DIR/unboxed-closures-move-upvar-from-non-once-ref-closure.rs:21:9
-   |
-LL |         y.into_iter();
-   |         ^
-   |         |
-   |         cannot move out of `y`, as it is a captured variable in a `Fn` closure
-   |         cannot move
-   |
-help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/unboxed-closures-move-upvar-from-non-once-ref-closure.rs:20:10
-   |
-LL |       call(|| {
-   |  __________^
-LL | |         y.into_iter();
-LL | |         //~^ ERROR cannot move out of captured outer variable in an `Fn` closure
-LL | |     });
-   | |_____^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0507`.

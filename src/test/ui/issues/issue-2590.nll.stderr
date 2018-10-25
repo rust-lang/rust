@@ -4,17 +4,6 @@ error[E0507]: cannot move out of borrowed content
 LL |         self.tokens //~ ERROR cannot move out of borrowed content
    |         ^^^^^^^^^^^ cannot move out of borrowed content
 
-error[E0507]: cannot move out of `self.tokens` which is behind a `&` reference
-  --> $DIR/issue-2590.rs:22:9
-   |
-LL |     fn parse(&self) -> Vec<isize> {
-   |              ----- help: consider changing this to be a mutable reference: `&mut self`
-LL |         self.tokens //~ ERROR cannot move out of borrowed content
-   |         ^^^^^^^^^^^
-   |         |
-   |         cannot move out of `self.tokens` which is behind a `&` reference
-   |         `self` is a `&` reference, so the data it refers to cannot be moved
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0507`.

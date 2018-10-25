@@ -16,15 +16,6 @@ LL |     let b = unsafe { *imm_ref() };
    |                      cannot move out of borrowed content
    |                      help: consider removing the `*`: `imm_ref()`
 
-error[E0507]: cannot move out of data in a `&` reference
-  --> $DIR/issue-20801.rs:39:22
-   |
-LL |     let b = unsafe { *imm_ref() };
-   |                      ^^^^^^^^^^
-   |                      |
-   |                      cannot move out of data in a `&` reference
-   |                      cannot move
-
 error[E0507]: cannot move out of dereference of raw pointer
   --> $DIR/issue-20801.rs:42:22
    |
@@ -43,15 +34,6 @@ LL |     let d = unsafe { *const_ptr() };
    |                      cannot move out of dereference of raw pointer
    |                      help: consider removing the `*`: `const_ptr()`
 
-error[E0507]: cannot move out of data in a `*const` pointer
-  --> $DIR/issue-20801.rs:45:22
-   |
-LL |     let d = unsafe { *const_ptr() };
-   |                      ^^^^^^^^^^^^
-   |                      |
-   |                      cannot move out of data in a `*const` pointer
-   |                      cannot move
-
-error: aborting due to 6 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0507`.
