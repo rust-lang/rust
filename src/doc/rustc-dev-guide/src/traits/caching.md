@@ -37,7 +37,7 @@ we would [confirm] `ImplCandidate(22)`, which would (as a side-effect) unify
 [confirm]: ./resolution.html#confirmation
 
 Now, at some later time, we might come along and see a `usize :
-Foo<$u>`. When placeholder, this would yield `usize : Foo<$0>`, just as
+Foo<$u>`. When replaced with a placeholder, this would yield `usize : Foo<$0>`, just as
 before, and hence the cache lookup would succeed, yielding
 `ImplCandidate(22)`. We would confirm `ImplCandidate(22)` which would
 (as a side-effect) unify `$u` with `isize`.
