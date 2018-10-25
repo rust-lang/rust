@@ -340,7 +340,7 @@ impl<'a, 'b, 'gcx, 'tcx> AssociatedTypeNormalizer<'a, 'b, 'gcx, 'tcx> {
         let value = self.selcx.infcx().resolve_type_vars_if_possible(value);
 
         if !value.has_projections() {
-            value.clone()
+            value
         } else {
             value.fold_with(self)
         }
