@@ -6,6 +6,7 @@ extern crate relative_path;
 extern crate rustc_hash;
 extern crate salsa;
 
+mod input;
 mod db;
 mod descriptors;
 mod imp;
@@ -17,9 +18,8 @@ use std::{
     sync::Arc,
 };
 
-use rustc_hash::FxHashMap;
 use ra_syntax::{AtomEdit, File, TextRange, TextUnit};
-use relative_path::{RelativePath, RelativePathBuf};
+use relative_path::RelativePathBuf;
 use rayon::prelude::*;
 
 use crate::{
@@ -29,6 +29,7 @@ use crate::{
 
 pub use crate::{
     descriptors::FnDescriptor,
+    input::{FileId, FileResolver, CrateGraph, CrateId}
 };
 pub use ra_editor::{
     CompletionItem, FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable,
@@ -47,34 +48,6 @@ impl std::fmt::Display for Canceled {
 }
 
 impl std::error::Error for Canceled {
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct FileId(pub u32);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CrateId(pub u32);
-
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct CrateGraph {
-    crate_roots: FxHashMap<CrateId, FileId>,
-}
-
-impl CrateGraph {
-    pub fn new() -> CrateGraph {
-        CrateGraph::default()
-    }
-    pub fn add_crate_root(&mut self, file_id: FileId) -> CrateId{
-        let crate_id = CrateId(self.crate_roots.len() as u32);
-        let prev = self.crate_roots.insert(crate_id, file_id);
-        assert!(prev.is_none());
-        crate_id
-    }
-}
-
-pub trait FileResolver: fmt::Debug + Send + Sync + 'static {
-    fn file_stem(&self, file_id: FileId) -> String;
-    fn resolve(&self, file_id: FileId, path: &RelativePath) -> Option<FileId>;
 }
 
 #[derive(Default)]

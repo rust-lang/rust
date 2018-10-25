@@ -18,8 +18,9 @@ use crate::{
     AnalysisChange,
     db::{
         self, SyntaxDatabase,
-        input::{SourceRootId, FilesDatabase, SourceRoot, WORKSPACE}
+
     },
+    input::{SourceRootId, FilesDatabase, SourceRoot, WORKSPACE},
     descriptors::module::{ModulesDatabase, ModuleTree, Problem},
     descriptors::{FnDescriptor},
     CrateGraph, CrateId, Diagnostic, FileId, FileResolver, FileSystemEdit, Position,
@@ -102,7 +103,7 @@ impl AnalysisHostImpl {
 
         for (file_id, text) in change.files_changed {
             self.db
-                .query(db::input::FileTextQuery)
+                .query(crate::input::FileTextQuery)
                 .set(file_id, Arc::new(text))
         }
         if !(change.files_added.is_empty() && change.files_removed.is_empty()) {
@@ -111,22 +112,22 @@ impl AnalysisHostImpl {
             let mut source_root = SourceRoot::clone(&self.db.source_root(WORKSPACE));
             for (file_id, text) in change.files_added {
                 self.db
-                    .query(db::input::FileTextQuery)
+                    .query(crate::input::FileTextQuery)
                     .set(file_id, Arc::new(text));
                 self.db
-                    .query(db::input::FileSourceRootQuery)
-                    .set(file_id, db::input::WORKSPACE);
+                    .query(crate::input::FileSourceRootQuery)
+                    .set(file_id, crate::input::WORKSPACE);
                 source_root.files.insert(file_id);
             }
             for file_id in change.files_removed {
                 self.db
-                    .query(db::input::FileTextQuery)
+                    .query(crate::input::FileTextQuery)
                     .set(file_id, Arc::new(String::new()));
                 source_root.files.remove(&file_id);
             }
             source_root.file_resolver = file_resolver;
             self.db
-                .query(db::input::SourceRootQuery)
+                .query(crate::input::SourceRootQuery)
                 .set(WORKSPACE, Arc::new(source_root))
         }
         if !change.libraries_added.is_empty() {
@@ -138,10 +139,10 @@ impl AnalysisHostImpl {
                 for (file_id, text) in library.files {
                     files.insert(file_id);
                     self.db
-                        .query(db::input::FileSourceRootQuery)
+                        .query(crate::input::FileSourceRootQuery)
                         .set_constant(file_id, source_root_id);
                     self.db
-                        .query(db::input::FileTextQuery)
+                        .query(crate::input::FileTextQuery)
                         .set_constant(file_id, Arc::new(text));
                 }
                 let source_root = SourceRoot {
@@ -149,18 +150,18 @@ impl AnalysisHostImpl {
                     file_resolver: library.file_resolver,
                 };
                 self.db
-                    .query(db::input::SourceRootQuery)
+                    .query(crate::input::SourceRootQuery)
                     .set(source_root_id, Arc::new(source_root));
                 self.db
-                    .query(db::input::LibrarySymbolsQuery)
+                    .query(crate::input::LibrarySymbolsQuery)
                     .set(source_root_id, Arc::new(library.symbol_index));
             }
             self.db
-                .query(db::input::LibrarieseQuery)
+                .query(crate::input::LibrarieseQuery)
                 .set((), Arc::new(libraries));
         }
         if let Some(crate_graph) = change.crate_graph {
-            self.db.query(db::input::CrateGraphQuery)
+            self.db.query(crate::input::CrateGraphQuery)
                 .set((), Arc::new(crate_graph))
         }
     }

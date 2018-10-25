@@ -8,8 +8,8 @@ use ra_syntax::{
 };
 
 use crate::{
-    FileId, Cancelable, FileResolverImp,
-    db::{self, input::{SourceRoot, SourceRootId}},
+    FileId, Cancelable, FileResolverImp, db,
+    input::{SourceRoot, SourceRootId},
 };
 
 use super::{

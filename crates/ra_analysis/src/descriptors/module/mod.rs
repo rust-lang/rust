@@ -7,7 +7,8 @@ use ra_syntax::{ast::{self, NameOwner, AstNode}, SmolStr, SyntaxNode};
 
 use crate::{
     FileId, Cancelable,
-    db::{SyntaxDatabase, input::SourceRootId},
+    db::SyntaxDatabase,
+    input::SourceRootId,
 };
 
 salsa::query_group! {

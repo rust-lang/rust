@@ -6,7 +6,8 @@ use ra_syntax::{
 
 use crate::{
     FileId, Cancelable,
-    db::{self, SyntaxDatabase, input::FilesDatabase},
+    input::FilesDatabase,
+    db::{self, SyntaxDatabase},
     descriptors::module::{ModulesDatabase, ModuleTree, ModuleId},
 };
 

@@ -1,5 +1,3 @@
-pub(crate) mod input;
-
 use std::{
     sync::Arc,
 };
@@ -51,13 +49,13 @@ impl Clone for RootDatabase {
 
 salsa::database_storage! {
     pub(crate) struct RootDatabaseStorage for RootDatabase {
-        impl input::FilesDatabase {
-            fn file_text() for input::FileTextQuery;
-            fn file_source_root() for input::FileSourceRootQuery;
-            fn source_root() for input::SourceRootQuery;
-            fn libraries() for input::LibrarieseQuery;
-            fn library_symbols() for input::LibrarySymbolsQuery;
-            fn crate_graph() for input::CrateGraphQuery;
+        impl crate::input::FilesDatabase {
+            fn file_text() for crate::input::FileTextQuery;
+            fn file_source_root() for crate::input::FileSourceRootQuery;
+            fn source_root() for crate::input::SourceRootQuery;
+            fn libraries() for crate::input::LibrarieseQuery;
+            fn library_symbols() for crate::input::LibrarySymbolsQuery;
+            fn crate_graph() for crate::input::CrateGraphQuery;
         }
         impl SyntaxDatabase {
             fn file_syntax() for FileSyntaxQuery;
@@ -72,7 +70,7 @@ salsa::database_storage! {
 }
 
 salsa::query_group! {
-    pub(crate) trait SyntaxDatabase: input::FilesDatabase {
+    pub(crate) trait SyntaxDatabase: crate::input::FilesDatabase {
         fn file_syntax(file_id: FileId) -> File {
             type FileSyntaxQuery;
         }
