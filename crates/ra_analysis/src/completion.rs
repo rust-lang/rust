@@ -6,13 +6,14 @@ use ra_syntax::{
 
 use crate::{
     FileId, Cancelable,
-    db::{self, SyntaxDatabase},
+    db::{self, SyntaxDatabase, input::FilesDatabase},
     descriptors::module::{ModulesDatabase, ModuleTree, ModuleId},
 };
 
 pub(crate) fn resolve_based_completion(db: &db::RootDatabase, file_id: FileId, offset: TextUnit) -> Cancelable<Option<Vec<CompletionItem>>> {
+    let source_root_id = db.file_source_root(file_id);
     let file = db.file_syntax(file_id);
-    let module_tree = db.module_tree()?;
+    let module_tree = db.module_tree(source_root_id)?;
     let file = {
         let edit = AtomEdit::insert(offset, "intellijRulezz".to_string());
         file.reparse(&edit)

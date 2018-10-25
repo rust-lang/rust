@@ -1,12 +1,12 @@
+pub(crate) mod input;
+
 use std::{
     fmt,
-    hash::{Hash, Hasher},
     sync::Arc,
 };
 
 use ra_editor::LineIndex;
 use ra_syntax::File;
-use rustc_hash::FxHashSet;
 use salsa;
 
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
     Cancelable, Canceled,
     descriptors::module::{SubmodulesQuery, ModuleTreeQuery, ModulesDatabase},
     symbol_index::SymbolIndex,
-    FileId, FileResolverImp,
+    FileId,
 };
 
 #[derive(Default)]
@@ -58,9 +58,13 @@ impl Clone for RootDatabase {
 
 salsa::database_storage! {
     pub(crate) struct RootDatabaseStorage for RootDatabase {
-        impl FilesDatabase {
-            fn file_text() for FileTextQuery;
-            fn file_set() for FileSetQuery;
+        impl input::FilesDatabase {
+            fn file_text() for input::FileTextQuery;
+            fn file_source_root() for input::FileSourceRootQuery;
+            fn source_root() for input::SourceRootQuery;
+            fn libraries() for input::LibrarieseQuery;
+            fn library_symbols() for input::LibrarySymbolsQuery;
+            fn crate_graph() for input::CrateGraphQuery;
         }
         impl SyntaxDatabase {
             fn file_syntax() for FileSyntaxQuery;
@@ -75,40 +79,7 @@ salsa::database_storage! {
 }
 
 salsa::query_group! {
-    pub(crate) trait FilesDatabase: salsa::Database {
-        fn file_text(file_id: FileId) -> Arc<String> {
-            type FileTextQuery;
-            storage input;
-        }
-        fn file_set() -> Arc<FileSet> {
-            type FileSetQuery;
-            storage input;
-        }
-    }
-}
-
-#[derive(Default, Debug, Eq)]
-pub(crate) struct FileSet {
-    pub(crate) files: FxHashSet<FileId>,
-    pub(crate) resolver: FileResolverImp,
-}
-
-impl PartialEq for FileSet {
-    fn eq(&self, other: &FileSet) -> bool {
-        self.files == other.files && self.resolver == other.resolver
-    }
-}
-
-impl Hash for FileSet {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        let mut files = self.files.iter().cloned().collect::<Vec<_>>();
-        files.sort();
-        files.hash(hasher);
-    }
-}
-
-salsa::query_group! {
-    pub(crate) trait SyntaxDatabase: FilesDatabase {
+    pub(crate) trait SyntaxDatabase: input::FilesDatabase {
         fn file_syntax(file_id: FileId) -> File {
             type FileSyntaxQuery;
         }

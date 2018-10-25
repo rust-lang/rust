@@ -22,15 +22,18 @@ impl PathMap {
     pub fn new() -> PathMap {
         Default::default()
     }
-    pub fn get_or_insert(&mut self, path: PathBuf, root: Root) -> FileId {
-        self.path2id
+    pub fn get_or_insert(&mut self, path: PathBuf, root: Root) -> (bool, FileId) {
+        let mut inserted = false;
+        let file_id = self.path2id
             .get(path.as_path())
             .map(|&id| id)
             .unwrap_or_else(|| {
+                inserted = true;
                 let id = self.new_file_id();
                 self.insert(path, id, root);
                 id
-            })
+            });
+        (inserted, file_id)
     }
     pub fn get_id(&self, path: &Path) -> Option<FileId> {
         self.path2id.get(path).map(|&id| id)
@@ -105,8 +108,8 @@ mod test {
     #[test]
     fn test_resolve() {
         let mut m = PathMap::new();
-        let id1 = m.get_or_insert(PathBuf::from("/foo"), Root::Workspace);
-        let id2 = m.get_or_insert(PathBuf::from("/foo/bar.rs"), Root::Workspace);
+        let (_, id1) = m.get_or_insert(PathBuf::from("/foo"), Root::Workspace);
+        let (_, id2) = m.get_or_insert(PathBuf::from("/foo/bar.rs"), Root::Workspace);
         assert_eq!(m.resolve(id1, &RelativePath::new("bar.rs")), Some(id2),)
     }
 }

@@ -1,7 +1,5 @@
 use std::{
-    fmt,
     hash::{Hash, Hasher},
-    iter,
     sync::Arc,
 };
 
@@ -14,12 +12,16 @@ use ra_syntax::{
 };
 use relative_path::RelativePath;
 use rustc_hash::FxHashSet;
+use salsa::{ParallelDatabase, Database};
 
 use crate::{
-    db::SyntaxDatabase,
+    AnalysisChange,
+    db::{
+        self, SyntaxDatabase,
+        input::{SourceRootId, FilesDatabase, SourceRoot, WORKSPACE}
+    },
     descriptors::module::{ModulesDatabase, ModuleTree, Problem},
     descriptors::{FnDescriptor},
-    roots::{ReadonlySourceRoot, SourceRoot, WritableSourceRoot},
     CrateGraph, CrateId, Diagnostic, FileId, FileResolver, FileSystemEdit, Position,
     Query, SourceChange, SourceFileEdit, Cancelable,
 };
@@ -80,96 +82,123 @@ impl Default for FileResolverImp {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct AnalysisHostImpl {
-    data: WorldData,
+    db: db::RootDatabase,
 }
+
 
 impl AnalysisHostImpl {
     pub fn new() -> AnalysisHostImpl {
-        AnalysisHostImpl {
-            data: WorldData::default(),
-        }
+        AnalysisHostImpl::default()
     }
     pub fn analysis(&self) -> AnalysisImpl {
         AnalysisImpl {
-            data: self.data.clone(),
+            db: self.db.fork() // freeze revision here
         }
     }
-    pub fn change_files(&mut self, changes: &mut dyn Iterator<Item = (FileId, Option<String>)>) {
-        self.data_mut().root.apply_changes(changes, None);
-    }
-    pub fn set_file_resolver(&mut self, resolver: FileResolverImp) {
-        self.data_mut()
-            .root
-            .apply_changes(&mut iter::empty(), Some(resolver));
-    }
-    pub fn set_crate_graph(&mut self, graph: CrateGraph) {
-        let mut visited = FxHashSet::default();
-        for &file_id in graph.crate_roots.values() {
-            if !visited.insert(file_id) {
-                panic!("duplicate crate root: {:?}", file_id);
+    pub fn apply_change(&mut self, change: AnalysisChange) {
+        for (file_id, text) in change.files_changed {
+            self.db
+                .query(db::input::FileTextQuery)
+                .set(file_id, Arc::new(text))
+        }
+        if !(change.files_added.is_empty() && change.files_removed.is_empty()) {
+            let file_resolver = change.file_resolver
+                .expect("change resolver when changing set of files");
+            let mut source_root = SourceRoot::clone(&self.db.source_root(WORKSPACE));
+            for (file_id, text) in change.files_added {
+                self.db
+                    .query(db::input::FileTextQuery)
+                    .set(file_id, Arc::new(text));
+                self.db
+                    .query(db::input::FileSourceRootQuery)
+                    .set(file_id, db::input::WORKSPACE);
+                source_root.files.insert(file_id);
             }
+            for file_id in change.files_removed {
+                self.db
+                    .query(db::input::FileTextQuery)
+                    .set(file_id, Arc::new(String::new()));
+                source_root.files.remove(&file_id);
+            }
+            source_root.file_resolver = file_resolver;
+            self.db
+                .query(db::input::SourceRootQuery)
+                .set(WORKSPACE, Arc::new(source_root))
         }
-        self.data_mut().crate_graph = graph;
-    }
-    pub fn add_library(&mut self, root: ReadonlySourceRoot) {
-        self.data_mut().libs.push(root);
-    }
-    fn data_mut(&mut self) -> &mut WorldData {
-        &mut self.data
+        if !change.libraries_added.is_empty() {
+            let mut libraries = Vec::clone(&self.db.libraries());
+            for library in change.libraries_added {
+                let source_root_id = SourceRootId(1 + libraries.len() as u32);
+                libraries.push(source_root_id);
+                let mut files = FxHashSet::default();
+                for (file_id, text) in library.files {
+                    files.insert(file_id);
+                    self.db
+                        .query(db::input::FileSourceRootQuery)
+                        .set_constant(file_id, source_root_id);
+                    self.db
+                        .query(db::input::FileTextQuery)
+                        .set_constant(file_id, Arc::new(text));
+                }
+                let source_root = SourceRoot {
+                    files,
+                    file_resolver: library.file_resolver,
+                };
+                self.db
+                    .query(db::input::SourceRootQuery)
+                    .set(source_root_id, Arc::new(source_root));
+                self.db
+                    .query(db::input::LibrarySymbolsQuery)
+                    .set(source_root_id, Arc::new(library.symbol_index));
+            }
+            self.db
+                .query(db::input::LibrarieseQuery)
+                .set((), Arc::new(libraries));
+        }
+        if let Some(crate_graph) = change.crate_graph {
+            self.db.query(db::input::CrateGraphQuery)
+                .set((), Arc::new(crate_graph))
+        }
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct AnalysisImpl {
-    data: WorldData,
-}
-
-impl fmt::Debug for AnalysisImpl {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.data.fmt(f)
-    }
+    db: db::RootDatabase,
 }
 
 impl AnalysisImpl {
-    fn root(&self, file_id: FileId) -> &SourceRoot {
-        if self.data.root.contains(file_id) {
-            return &self.data.root;
-        }
-        self
-            .data
-            .libs
-            .iter()
-            .find(|it| it.contains(file_id))
-            .unwrap()
-    }
     pub fn file_syntax(&self, file_id: FileId) -> File {
-        self.root(file_id).db().file_syntax(file_id)
+        self.db.file_syntax(file_id)
     }
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
-        self.root(file_id).db().file_lines(file_id)
+        self.db.file_lines(file_id)
     }
     pub fn world_symbols(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let mut buf = Vec::new();
-        if query.libs {
-            for lib in self.data.libs.iter() {
-                lib.symbols(&mut buf)?;
-            }
-        } else {
-            self.data.root.symbols(&mut buf)?;
+        for &lib_id in self.db.libraries().iter() {
+            buf.push(self.db.library_symbols(lib_id));
+        }
+        for &file_id in self.db.source_root(WORKSPACE).files.iter() {
+            buf.push(self.db.file_symbols(file_id)?);
         }
         Ok(query.search(&buf))
     }
+    fn module_tree(&self, file_id: FileId) -> Cancelable<Arc<ModuleTree>> {
+        let source_root = self.db.file_source_root(file_id);
+        self.db.module_tree(source_root)
+    }
     pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        let root = self.root(file_id);
-        let module_tree = root.db().module_tree()?;
+        let module_tree = self.module_tree(file_id)?;
 
         let res = module_tree.modules_for_file(file_id)
             .into_iter()
             .filter_map(|module_id| {
                 let link = module_id.parent_link(&module_tree)?;
                 let file_id = link.owner(&module_tree).file_id(&module_tree);
-                let syntax = root.db().file_syntax(file_id);
+                let syntax = self.db.file_syntax(file_id);
                 let decl = link.bind_source(&module_tree, syntax.ast());
 
                 let sym = FileSymbol {
@@ -183,8 +212,8 @@ impl AnalysisImpl {
         Ok(res)
     }
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        let module_tree = self.root(file_id).db().module_tree()?;
-        let crate_graph = &self.data.crate_graph;
+        let module_tree = self.module_tree(file_id)?;
+        let crate_graph = self.db.crate_graph();
         let res = module_tree.modules_for_file(file_id)
             .into_iter()
             .map(|it| it.root(&module_tree))
@@ -195,7 +224,7 @@ impl AnalysisImpl {
         Ok(res)
     }
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
-        self.data.crate_graph.crate_roots[&crate_id]
+        self.db.crate_graph().crate_roots[&crate_id]
     }
     pub fn completions(&self, file_id: FileId, offset: TextUnit) -> Cancelable<Option<Vec<CompletionItem>>> {
         let mut res = Vec::new();
@@ -205,8 +234,7 @@ impl AnalysisImpl {
             res.extend(scope_based);
             has_completions = true;
         }
-        let root = self.root(file_id);
-        if let Some(scope_based) = crate::completion::resolve_based_completion(root.db(), file_id, offset)? {
+        if let Some(scope_based) = crate::completion::resolve_based_completion(&self.db, file_id, offset)? {
             res.extend(scope_based);
             has_completions = true;
         }
@@ -222,9 +250,8 @@ impl AnalysisImpl {
         file_id: FileId,
         offset: TextUnit,
     ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        let root = self.root(file_id);
-        let module_tree = root.db().module_tree()?;
-        let file = root.db().file_syntax(file_id);
+        let module_tree = self.module_tree(file_id)?;
+        let file = self.db.file_syntax(file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
             // First try to resolve the symbol locally
@@ -273,8 +300,7 @@ impl AnalysisImpl {
     }
 
     pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit) -> Vec<(FileId, TextRange)> {
-        let root = self.root(file_id);
-        let file = root.db().file_syntax(file_id);
+        let file = self.db.file_syntax(file_id);
         let syntax = file.syntax();
 
         let mut ret = vec![];
@@ -305,9 +331,8 @@ impl AnalysisImpl {
     }
 
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        let root = self.root(file_id);
-        let module_tree = root.db().module_tree()?;
-        let syntax = root.db().file_syntax(file_id);
+        let module_tree = self.module_tree(file_id)?;
+        let syntax = self.db.file_syntax(file_id);
 
         let mut res = ra_editor::diagnostics(&syntax)
             .into_iter()
@@ -396,8 +421,7 @@ impl AnalysisImpl {
         file_id: FileId,
         offset: TextUnit,
     ) -> Cancelable<Option<(FnDescriptor, Option<usize>)>> {
-        let root = self.root(file_id);
-        let file = root.db().file_syntax(file_id);
+        let file = self.db.file_syntax(file_id);
         let syntax = file.syntax();
 
         // Find the calling expression and it's NameRef
@@ -489,13 +513,6 @@ impl AnalysisImpl {
             .into_iter()
             .collect()
     }
-}
-
-#[derive(Default, Clone, Debug)]
-struct WorldData {
-    crate_graph: CrateGraph,
-    root: WritableSourceRoot,
-    libs: Vec<ReadonlySourceRoot>,
 }
 
 impl SourceChange {
