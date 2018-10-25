@@ -31,6 +31,9 @@ fn main() {
     let _ = OsString::new().to_owned();
 
     let _ = OsString::new().to_os_string();
+
+    // Check that lint level works
+    #[allow(clippy::redundant_clone)] let _ = String::new().to_string();
 }
 
 #[derive(Clone)]

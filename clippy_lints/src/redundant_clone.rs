@@ -23,7 +23,7 @@ use crate::syntax::{
     source_map::{BytePos, Span},
 };
 use crate::utils::{
-    in_macro, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint, span_lint_and_then,
+    in_macro, is_copy, match_def_path, match_type, paths, snippet_opt, span_lint_node, span_lint_node_and_then,
     walk_ptrs_ty_depth,
 };
 use if_chain::if_chain;
@@ -87,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         let def_id = cx.tcx.hir.body_owner_def_id(body.id());
         let mir = cx.tcx.optimized_mir(def_id);
 
-        // Looks for `call(&T)` where `T: !Copy`
+        // Looks for `call(x: &T)` where `T: !Copy`
         let call = |kind: &mir::TerminatorKind<'tcx>| -> Option<(def_id::DefId, mir::Local, ty::Ty<'tcx>)> {
             if_chain! {
                 if let TerminatorKind::Call { func, args, .. } = kind;
@@ -225,6 +225,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
 
             if !used_later {
                 let span = terminator.source_info.span;
+                let node = if let mir::ClearCrossCrate::Set(scope_local_data) = &mir.source_scope_local_data {
+                    scope_local_data[terminator.source_info.scope].lint_root
+                } else {
+                    unreachable!()
+                };
+
                 if_chain! {
                     if !in_macro(span);
                     if let Some(snip) = snippet_opt(cx, span);
@@ -234,7 +240,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                             span.lo() + BytePos(u32::try_from(dot).unwrap())
                         );
 
-                        span_lint_and_then(cx, REDUNDANT_CLONE, sugg_span, "redundant clone", |db| {
+                        span_lint_node_and_then(cx, REDUNDANT_CLONE, node, sugg_span, "redundant clone", |db| {
                             db.span_suggestion_with_applicability(
                                 sugg_span,
                                 "remove this",
@@ -247,7 +253,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                             );
                         });
                     } else {
-                        span_lint(cx, REDUNDANT_CLONE, span, "redundant clone");
+                        span_lint_node(cx, REDUNDANT_CLONE, node, span, "redundant clone");
                     }
                 }
             }
