@@ -1709,6 +1709,7 @@ impl<'a> Settings<'a> {
                 ("method-docs", "Auto-hide item methods' documentation", false),
                 ("go-to-only-result", "Directly go to item in search if there is only one result",
                  false),
+                ("line-numbers", "Show line numbers on code examples", false),
             ],
             root_path,
             suffix,
