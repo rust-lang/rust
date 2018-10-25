@@ -43,12 +43,12 @@ use time::Duration;
 /// use std::io::prelude::*;
 /// use std::net::TcpStream;
 ///
-/// {
-///     let mut stream = TcpStream::connect("127.0.0.1:34254").unwrap();
+/// fn main() -> std::io::Result<()> {
+///     let mut stream = TcpStream::connect("127.0.0.1:34254")?;
 ///
-///     // ignore the Result
-///     let _ = stream.write(&[1]);
-///     let _ = stream.read(&mut [0; 128]); // ignore here too
+///     stream.write(&[1])?;
+///     stream.read(&mut [0; 128])?;
+///     Ok(())
 /// } // the stream is closed here
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
