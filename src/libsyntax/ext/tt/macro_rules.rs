@@ -53,6 +53,15 @@ impl<'a> ParserAnyMacro<'a> {
         let fragment = panictry!(parser.parse_ast_fragment(kind, true).map_err(|mut e| {
             if e.span.is_dummy() {  // Get around lack of span in error (#30128)
                 e.set_span(site_span);
+            } else if parser.token == token::Eof {  // (#52866)
+                e.set_span(parser.sess.source_map().next_point(parser.span));
+            }
+            if parser.token == token::Eof {
+                let msg = &e.message[0];
+                e.message[0] = (
+                    msg.0.replace(", found `<eof>`", ", found the end of the macro arm"),
+                    msg.1,
+                );
             }
             e
         }));

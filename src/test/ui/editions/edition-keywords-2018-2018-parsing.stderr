@@ -22,11 +22,11 @@ error: no rules expected the token `async`
 LL |     r#async = consumes_async_raw!(async); //~ ERROR no rules expected the token `async`
    |                                   ^^^^^ no rules expected the token `async`
 
-error: expected one of `move`, `|`, or `||`, found `<eof>`
-  --> <::edition_kw_macro_2018::passes_ident macros>:1:22
+error: expected one of `move`, `|`, or `||`, found the end of the macro arm
+  --> <::edition_kw_macro_2018::passes_ident macros>:1:25
    |
 LL | ( $ i : ident ) => ( $ i )
-   |                      ^^^ expected one of `move`, `|`, or `||` here
+   |                         ^
 
 error: aborting due to 5 previous errors
 

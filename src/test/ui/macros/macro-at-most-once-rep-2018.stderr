@@ -41,13 +41,13 @@ LL |     barplus!(); //~ERROR unexpected end of macro invocation
    |     ^^^^^^^^^^^ unexpected end of macro invocation
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-at-most-once-rep-2018.rs:41:14
+  --> $DIR/macro-at-most-once-rep-2018.rs:41:15
    |
 LL | macro_rules! barplus {
    | -------------------- when calling this macro
 ...
 LL |     barplus!(a); //~ERROR unexpected end of macro invocation
-   |              ^ unexpected end of macro invocation
+   |               ^ unexpected end of macro invocation
 
 error: no rules expected the token `?`
   --> $DIR/macro-at-most-once-rep-2018.rs:42:15
@@ -77,13 +77,13 @@ LL |     barstar!(); //~ERROR unexpected end of macro invocation
    |     ^^^^^^^^^^^ unexpected end of macro invocation
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-at-most-once-rep-2018.rs:48:14
+  --> $DIR/macro-at-most-once-rep-2018.rs:48:15
    |
 LL | macro_rules! barstar {
    | -------------------- when calling this macro
 ...
 LL |     barstar!(a); //~ERROR unexpected end of macro invocation
-   |              ^ unexpected end of macro invocation
+   |               ^ unexpected end of macro invocation
 
 error: no rules expected the token `?`
   --> $DIR/macro-at-most-once-rep-2018.rs:49:15

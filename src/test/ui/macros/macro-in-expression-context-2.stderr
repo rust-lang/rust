@@ -1,4 +1,4 @@
-error: expected expression, found `<eof>`
+error: expected expression, found the end of the macro arm
   --> $DIR/macro-in-expression-context-2.rs:5:16
    |
 LL |         _ => { empty!() }

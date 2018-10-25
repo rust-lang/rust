@@ -724,7 +724,14 @@ pub fn parse(
                     "ambiguity: multiple successful parses".to_string(),
                 );
             } else {
-                return Failure(parser.span, token::Eof);
+                return Failure(
+                    if parser.span.is_dummy() {
+                        parser.span
+                    } else {
+                        sess.source_map().next_point(parser.span)
+                    },
+                    token::Eof,
+                );
             }
         }
         // Performance hack: eof_items may share matchers via Rc with other things that we want
@@ -757,7 +764,7 @@ pub fn parse(
             );
         }
         // If there are no possible next positions AND we aren't waiting for the black-box parser,
-        // then their is a syntax error.
+        // then there is a syntax error.
         else if bb_items.is_empty() && next_items.is_empty() {
             return Failure(parser.span, parser.token);
         }
