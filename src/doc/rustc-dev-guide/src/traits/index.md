@@ -8,7 +8,7 @@
 >
 > By the way, if you would like to help in hacking on the new solver, you will
 > find instructions for getting involved in the
-> [Traits Working Group tracking issue][wg].
+> [Traits Working Group tracking issue][wg]!
 
 [wg]: https://github.com/rust-lang/rust/issues/48416
 
