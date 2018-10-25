@@ -64,9 +64,6 @@ Cargo
 - [`cargo run` doesn't require specifying a package in workspaces.][cargo/5877]
 - [`cargo doc` now supports `--message-format=json`.][cargo/5878] This is
   equivalent to calling `rustdoc --error-format=json`.
-- [You can specify which edition to create a project in cargo
-  with `cargo new --edition`.][cargo/5984] Currently only `2015` is a
-  valid option.
 - [Cargo will now provide a progress bar for builds.][cargo/5995]
 
 Misc
@@ -100,7 +97,6 @@ Misc
 [54404]: https://github.com/rust-lang/rust/pull/54404/
 [cargo/5877]: https://github.com/rust-lang/cargo/pull/5877/
 [cargo/5878]: https://github.com/rust-lang/cargo/pull/5878/
-[cargo/5984]: https://github.com/rust-lang/cargo/pull/5984/
 [cargo/5995]: https://github.com/rust-lang/cargo/pull/5995/
 [proc-macros]: https://doc.rust-lang.org/book/2018-edition/ch19-06-macros.html
 
