@@ -1132,7 +1132,7 @@ impl ToJson for Target {
         macro_rules! target_val {
             ($attr:ident) => ( {
                 let name = (stringify!($attr)).replace("_", "-");
-                d.insert(name.to_string(), self.$attr.to_json());
+                d.insert(name, self.$attr.to_json());
             } );
             ($attr:ident, $key_name:expr) => ( {
                 let name = $key_name;
@@ -1144,7 +1144,7 @@ impl ToJson for Target {
             ($attr:ident) => ( {
                 let name = (stringify!($attr)).replace("_", "-");
                 if default.$attr != self.options.$attr {
-                    d.insert(name.to_string(), self.options.$attr.to_json());
+                    d.insert(name, self.options.$attr.to_json());
                 }
             } );
             ($attr:ident, $key_name:expr) => ( {
@@ -1160,7 +1160,7 @@ impl ToJson for Target {
                         .iter()
                         .map(|(k, v)| (k.desc().to_owned(), v.clone()))
                         .collect::<BTreeMap<_, _>>();
-                    d.insert(name.to_string(), obj.to_json());
+                    d.insert(name, obj.to_json());
                 }
             } );
             (env - $attr:ident) => ( {
@@ -1170,7 +1170,7 @@ impl ToJson for Target {
                         .iter()
                         .map(|&(ref k, ref v)| k.clone() + "=" + &v)
                         .collect::<Vec<_>>();
-                    d.insert(name.to_string(), obj.to_json());
+                    d.insert(name, obj.to_json());
                 }
             } );
 

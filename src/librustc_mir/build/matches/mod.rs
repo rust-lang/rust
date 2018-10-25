@@ -265,7 +265,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     block,
                     Statement {
                         source_info,
-                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, place.clone()),
+                        kind: StatementKind::FakeRead(FakeReadCause::ForLet, place),
                     },
                 );
 
@@ -314,7 +314,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     Statement {
                         source_info: ty_source_info,
                         kind: StatementKind::AscribeUserType(
-                            place.clone(),
+                            place,
                             ty::Variance::Invariant,
                             ascription_user_ty,
                         ),
