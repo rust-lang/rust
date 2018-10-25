@@ -8,7 +8,7 @@ use gen_lsp_server::{
     handle_shutdown, ErrorCode, RawMessage, RawNotification, RawRequest, RawResponse,
 };
 use languageserver_types::NumberOrString;
-use ra_analysis::{FileId, LibraryData};
+use ra_analysis::{Canceled, FileId, LibraryData};
 use rayon::{self, ThreadPool};
 use rustc_hash::FxHashSet;
 use serde::{de::DeserializeOwned, Serialize};
@@ -376,7 +376,7 @@ impl<'a> PoolDispatcher<'a> {
                         Err(e) => {
                             match e.downcast::<LspError>() {
                                 Ok(lsp_error) => RawResponse::err(id, lsp_error.code, lsp_error.message),
-                                Err(e) => RawResponse::err(id, ErrorCode::InternalError as i32, e.to_string())
+                                Err(e) => RawResponse::err(id, ErrorCode::InternalError as i32, format!("{}\n{}", e, e.backtrace()))
                             }
                         }
                     };
@@ -408,14 +408,22 @@ fn update_file_notifications_on_threadpool(
     pool.spawn(move || {
         for file_id in subscriptions {
             match handlers::publish_diagnostics(&world, file_id) {
-                Err(e) => error!("failed to compute diagnostics: {:?}", e),
+                Err(e) => {
+                    if !is_canceled(&e) {
+                        error!("failed to compute diagnostics: {:?}", e);
+                    }
+                },
                 Ok(params) => {
                     let not = RawNotification::new::<req::PublishDiagnostics>(&params);
                     sender.send(Task::Notify(not));
                 }
             }
             match handlers::publish_decorations(&world, file_id) {
-                Err(e) => error!("failed to compute decorations: {:?}", e),
+                Err(e) => {
+                    if !is_canceled(&e) {
+                        error!("failed to compute decorations: {:?}", e);
+                    }
+                },
                 Ok(params) => {
                     let not = RawNotification::new::<req::PublishDecorations>(&params);
                     sender.send(Task::Notify(not))
@@ -431,4 +439,8 @@ fn feedback(intrnal_mode: bool, msg: &str, sender: &Sender<RawMessage>) {
     }
     let not = RawNotification::new::<req::InternalFeedback>(&msg.to_string());
     sender.send(RawMessage::Notification(not));
+}
+
+fn is_canceled(e: &failure::Error) -> bool {
+    e.downcast_ref::<Canceled>().is_some()
 }

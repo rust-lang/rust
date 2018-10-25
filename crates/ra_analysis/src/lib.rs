@@ -6,23 +6,30 @@ extern crate relative_path;
 extern crate rustc_hash;
 extern crate salsa;
 
+mod input;
 mod db;
 mod descriptors;
 mod imp;
-mod roots;
 mod symbol_index;
 mod completion;
 
-use std::{fmt::Debug, sync::Arc};
+use std::{
+    fmt,
+    sync::Arc,
+};
 
 use ra_syntax::{AtomEdit, File, TextRange, TextUnit};
-use relative_path::{RelativePath, RelativePathBuf};
-use rustc_hash::FxHashMap;
+use relative_path::RelativePathBuf;
+use rayon::prelude::*;
 
-use crate::imp::{AnalysisHostImpl, AnalysisImpl, FileResolverImp};
+use crate::{
+    imp::{AnalysisHostImpl, AnalysisImpl, FileResolverImp},
+    symbol_index::SymbolIndex,
+};
 
 pub use crate::{
     descriptors::FnDescriptor,
+    input::{FileId, FileResolver, CrateGraph, CrateId}
 };
 pub use ra_editor::{
     CompletionItem, FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable,
@@ -43,20 +50,52 @@ impl std::fmt::Display for Canceled {
 impl std::error::Error for Canceled {
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct FileId(pub u32);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CrateId(pub u32);
-
-#[derive(Debug, Clone, Default)]
-pub struct CrateGraph {
-    pub crate_roots: FxHashMap<CrateId, FileId>,
+#[derive(Default)]
+pub struct AnalysisChange {
+    files_added: Vec<(FileId, String)>,
+    files_changed: Vec<(FileId, String)>,
+    files_removed: Vec<(FileId)>,
+    libraries_added: Vec<LibraryData>,
+    crate_graph: Option<CrateGraph>,
+    file_resolver: Option<FileResolverImp>,
 }
 
-pub trait FileResolver: Debug + Send + Sync + 'static {
-    fn file_stem(&self, file_id: FileId) -> String;
-    fn resolve(&self, file_id: FileId, path: &RelativePath) -> Option<FileId>;
+impl fmt::Debug for AnalysisChange {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.debug_struct("AnalysisChange")
+            .field("files_added", &self.files_added.len())
+            .field("files_changed", &self.files_changed.len())
+            .field("files_removed", &self.files_removed.len())
+            .field("libraries_added", &self.libraries_added.len())
+            .field("crate_graph", &self.crate_graph)
+            .field("file_resolver", &self.file_resolver)
+            .finish()
+    }
+}
+
+
+impl AnalysisChange {
+    pub fn new() -> AnalysisChange {
+        AnalysisChange::default()
+    }
+    pub fn add_file(&mut self, file_id: FileId, text: String) {
+        self.files_added.push((file_id, text))
+    }
+    pub fn change_file(&mut self, file_id: FileId, new_text: String) {
+        self.files_changed.push((file_id, new_text))
+    }
+    pub fn remove_file(&mut self, file_id: FileId) {
+        self.files_removed.push(file_id)
+    }
+    pub fn add_library(&mut self, data: LibraryData) {
+        self.libraries_added.push(data)
+    }
+    pub fn set_crate_graph(&mut self, graph: CrateGraph) {
+        self.crate_graph = Some(graph);
+    }
+    pub fn set_file_resolver(&mut self, file_resolver: Arc<FileResolver>) {
+        self.file_resolver = Some(FileResolverImp::new(file_resolver));
+    }
 }
 
 #[derive(Debug)]
@@ -75,20 +114,8 @@ impl AnalysisHost {
             imp: self.imp.analysis(),
         }
     }
-    pub fn change_file(&mut self, file_id: FileId, text: Option<String>) {
-        self.change_files(::std::iter::once((file_id, text)));
-    }
-    pub fn change_files(&mut self, mut changes: impl Iterator<Item = (FileId, Option<String>)>) {
-        self.imp.change_files(&mut changes)
-    }
-    pub fn set_file_resolver(&mut self, resolver: Arc<FileResolver>) {
-        self.imp.set_file_resolver(FileResolverImp::new(resolver));
-    }
-    pub fn set_crate_graph(&mut self, graph: CrateGraph) {
-        self.imp.set_crate_graph(graph)
-    }
-    pub fn add_library(&mut self, data: LibraryData) {
-        self.imp.add_library(data.root)
+    pub fn apply_change(&mut self, change: AnalysisChange) {
+        self.imp.apply_change(change)
     }
 }
 
@@ -266,14 +293,18 @@ impl Analysis {
 
 #[derive(Debug)]
 pub struct LibraryData {
-    root: roots::ReadonlySourceRoot,
+    files: Vec<(FileId, String)>,
+    file_resolver: FileResolverImp,
+    symbol_index: SymbolIndex,
 }
 
 impl LibraryData {
     pub fn prepare(files: Vec<(FileId, String)>, file_resolver: Arc<FileResolver>) -> LibraryData {
-        let file_resolver = FileResolverImp::new(file_resolver);
-        let root = roots::ReadonlySourceRoot::new(files, file_resolver);
-        LibraryData { root }
+        let symbol_index = SymbolIndex::for_files(files.par_iter().map(|(file_id, text)| {
+            let file = File::parse(text);
+            (*file_id, file)
+        }));
+        LibraryData { files, file_resolver: FileResolverImp::new(file_resolver), symbol_index }
     }
 }
 

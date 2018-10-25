@@ -8,8 +8,8 @@ use ra_syntax::{
 };
 
 use crate::{
-    FileId, Cancelable, FileResolverImp,
-    db,
+    FileId, Cancelable, FileResolverImp, db,
+    input::{SourceRoot, SourceRootId},
 };
 
 use super::{
@@ -35,9 +35,12 @@ pub(super) fn modules(root: ast::Root<'_>) -> impl Iterator<Item = (SmolStr, ast
     })
 }
 
-pub(super) fn module_tree(db: &impl ModulesDatabase) -> Cancelable<Arc<ModuleTree>> {
+pub(super) fn module_tree(
+    db: &impl ModulesDatabase,
+    source_root: SourceRootId,
+) -> Cancelable<Arc<ModuleTree>> {
     db::check_canceled(db)?;
-    let res = create_module_tree(db)?;
+    let res = create_module_tree(db, source_root)?;
     Ok(Arc::new(res))
 }
 
@@ -50,6 +53,7 @@ pub struct Submodule {
 
 fn create_module_tree<'a>(
     db: &impl ModulesDatabase,
+    source_root: SourceRootId,
 ) -> Cancelable<ModuleTree> {
     let mut tree = ModuleTree {
         mods: Vec::new(),
@@ -59,12 +63,13 @@ fn create_module_tree<'a>(
     let mut roots = FxHashMap::default();
     let mut visited = FxHashSet::default();
 
-    for &file_id in db.file_set().files.iter() {
+    let source_root = db.source_root(source_root);
+    for &file_id in source_root.files.iter() {
         if visited.contains(&file_id) {
             continue; // TODO: use explicit crate_roots here
         }
         assert!(!roots.contains_key(&file_id));
-        let module_id = build_subtree(db, &mut tree, &mut visited, &mut roots, None, file_id)?;
+        let module_id = build_subtree(db, &source_root, &mut tree, &mut visited, &mut roots, None, file_id)?;
         roots.insert(file_id, module_id);
     }
     Ok(tree)
@@ -72,6 +77,7 @@ fn create_module_tree<'a>(
 
 fn build_subtree(
     db: &impl ModulesDatabase,
+    source_root: &SourceRoot,
     tree: &mut ModuleTree,
     visited: &mut FxHashSet<FileId>,
     roots: &mut FxHashMap<FileId, ModuleId>,
@@ -84,10 +90,8 @@ fn build_subtree(
         parent,
         children: Vec::new(),
     });
-    let file_set = db.file_set();
-    let file_resolver = &file_set.resolver;
     for name in db.submodules(file_id)?.iter() {
-        let (points_to, problem) = resolve_submodule(file_id, name, file_resolver);
+        let (points_to, problem) = resolve_submodule(file_id, name, &source_root.file_resolver);
         let link = tree.push_link(LinkData {
             name: name.clone(),
             owner: id,
@@ -102,7 +106,7 @@ fn build_subtree(
                     tree.module_mut(module_id).parent = Some(link);
                     Ok(module_id)
                 }
-                None => build_subtree(db, tree, visited, roots, Some(link), file_id),
+                None => build_subtree(db, source_root, tree, visited, roots, Some(link), file_id),
             })
             .collect::<Cancelable<Vec<_>>>()?;
         tree.link_mut(link).points_to = points_to;

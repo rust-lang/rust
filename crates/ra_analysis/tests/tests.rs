@@ -5,15 +5,16 @@ extern crate relative_path;
 extern crate rustc_hash;
 extern crate test_utils;
 
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+};
 
 use ra_syntax::TextRange;
 use relative_path::{RelativePath, RelativePathBuf};
-use rustc_hash::FxHashMap;
 use test_utils::{assert_eq_dbg, extract_offset};
 
 use ra_analysis::{
-    Analysis, AnalysisHost, CrateGraph, CrateId, FileId, FileResolver, FnDescriptor,
+    AnalysisChange, Analysis, AnalysisHost, CrateGraph, CrateId, FileId, FileResolver, FnDescriptor,
 };
 
 #[derive(Debug)]
@@ -45,14 +46,16 @@ impl FileResolver for FileMap {
 fn analysis_host(files: &[(&str, &str)]) -> AnalysisHost {
     let mut host = AnalysisHost::new();
     let mut file_map = Vec::new();
+    let mut change = AnalysisChange::new();
     for (id, &(path, contents)) in files.iter().enumerate() {
         let file_id = FileId((id + 1) as u32);
         assert!(path.starts_with('/'));
         let path = RelativePathBuf::from_path(&path[1..]).unwrap();
-        host.change_file(file_id, Some(contents.to_string()));
+        change.add_file(file_id, contents.to_string());
         file_map.push((file_id, path));
     }
-    host.set_file_resolver(Arc::new(FileMap(file_map)));
+    change.set_file_resolver(Arc::new(FileMap(file_map)));
+    host.apply_change(change);
     host
 }
 
@@ -126,17 +129,17 @@ fn test_resolve_crate_root() {
     let snap = host.analysis();
     assert!(snap.crate_for(FileId(2)).unwrap().is_empty());
 
-    let crate_graph = CrateGraph {
-        crate_roots: {
-            let mut m = FxHashMap::default();
-            m.insert(CrateId(1), FileId(1));
-            m
-        },
+    let crate_graph = {
+        let mut g = CrateGraph::new();
+        g.add_crate_root(FileId(1));
+        g
     };
-    host.set_crate_graph(crate_graph);
+    let mut change = AnalysisChange::new();
+    change.set_crate_graph(crate_graph);
+    host.apply_change(change);
     let snap = host.analysis();
 
-    assert_eq!(snap.crate_for(FileId(2)).unwrap(), vec![CrateId(1)],);
+    assert_eq!(snap.crate_for(FileId(2)).unwrap(), vec![CrateId(0)],);
 }
 
 #[test]

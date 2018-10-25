@@ -8,11 +8,12 @@ use ra_syntax::{ast::{self, NameOwner, AstNode}, SmolStr, SyntaxNode};
 use crate::{
     FileId, Cancelable,
     db::SyntaxDatabase,
+    input::SourceRootId,
 };
 
 salsa::query_group! {
     pub(crate) trait ModulesDatabase: SyntaxDatabase {
-        fn module_tree() -> Cancelable<Arc<ModuleTree>> {
+        fn module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
             type ModuleTreeQuery;
             use fn imp::module_tree;
         }
@@ -110,14 +111,8 @@ impl ModuleId {
 }
 
 impl LinkId {
-    pub(crate) fn name(self, tree: &ModuleTree) -> SmolStr {
-        tree.link(self).name.clone()
-    }
     pub(crate) fn owner(self, tree: &ModuleTree) -> ModuleId {
         tree.link(self).owner
-    }
-    fn points_to(self, tree: &ModuleTree) -> &[ModuleId] {
-        &tree.link(self).points_to
     }
     pub(crate) fn bind_source<'a>(
         self,

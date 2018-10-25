@@ -13,7 +13,7 @@ use rayon::prelude::*;
 
 use crate::{FileId, Query};
 
-#[derive(Debug)]
+#[derive(Default, Debug)]
 pub(crate) struct SymbolIndex {
     symbols: Vec<(FileId, FileSymbol)>,
     map: fst::Map,

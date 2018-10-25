@@ -5,7 +5,7 @@ use std::{
 };
 
 use languageserver_types::Url;
-use ra_analysis::{Analysis, AnalysisHost, CrateGraph, CrateId, FileId, FileResolver, LibraryData};
+use ra_analysis::{Analysis, AnalysisHost, AnalysisChange, CrateGraph, FileId, FileResolver, LibraryData};
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -39,30 +39,40 @@ impl ServerWorldState {
         }
     }
     pub fn apply_fs_changes(&mut self, events: Vec<FileEvent>) {
+        let mut change = AnalysisChange::new();
+        let mut inserted = false;
         {
             let pm = &mut self.path_map;
             let mm = &mut self.mem_map;
-            let changes = events
+            events
                 .into_iter()
                 .map(|event| {
                     let text = match event.kind {
-                        FileEventKind::Add(text) => Some(text),
+                        FileEventKind::Add(text) => text,
                     };
                     (event.path, text)
                 })
-                .map(|(path, text)| (pm.get_or_insert(path, Root::Workspace), text))
-                .filter_map(|(id, text)| {
-                    if mm.contains_key(&id) {
-                        mm.insert(id, text);
+                .map(|(path, text)| {
+                    let (ins, file_id) = pm.get_or_insert(path, Root::Workspace);
+                    inserted |= ins;
+                    (file_id, text)
+                })
+                .filter_map(|(file_id, text)| {
+                    if mm.contains_key(&file_id) {
+                        mm.insert(file_id, Some(text));
                         None
                     } else {
-                        Some((id, text))
+                        Some((file_id, text))
                     }
+                })
+                .for_each(|(file_id, text)| {
+                    change.add_file(file_id, text)
                 });
-            self.analysis_host.change_files(changes);
         }
-        self.analysis_host
-            .set_file_resolver(Arc::new(self.path_map.clone()));
+        if inserted {
+            change.set_file_resolver(Arc::new(self.path_map.clone()))
+        }
+        self.analysis_host.apply_change(change);
     }
     pub fn events_to_files(
         &mut self,
@@ -76,24 +86,31 @@ impl ServerWorldState {
                     let FileEventKind::Add(text) = event.kind;
                     (event.path, text)
                 })
-                .map(|(path, text)| (pm.get_or_insert(path, Root::Lib), text))
+                .map(|(path, text)| (pm.get_or_insert(path, Root::Lib).1, text))
                 .collect()
         };
         let resolver = Arc::new(self.path_map.clone());
         (files, resolver)
     }
     pub fn add_lib(&mut self, data: LibraryData) {
-        self.analysis_host.add_library(data);
+        let mut change = AnalysisChange::new();
+        change.add_library(data);
+        self.analysis_host.apply_change(change);
     }
 
     pub fn add_mem_file(&mut self, path: PathBuf, text: String) -> FileId {
-        let file_id = self.path_map.get_or_insert(path, Root::Workspace);
-        self.analysis_host
-            .set_file_resolver(Arc::new(self.path_map.clone()));
-        self.mem_map.insert(file_id, None);
+        let (inserted, file_id) = self.path_map.get_or_insert(path, Root::Workspace);
         if self.path_map.get_root(file_id) != Root::Lib {
-            self.analysis_host.change_file(file_id, Some(text));
+            let mut change = AnalysisChange::new();
+            if inserted {
+                change.add_file(file_id, text);
+                change.set_file_resolver(Arc::new(self.path_map.clone()));
+            } else {
+                change.change_file(file_id, text);
+            }
+            self.analysis_host.apply_change(change);
         }
+        self.mem_map.insert(file_id, None);
         file_id
     }
 
@@ -103,7 +120,9 @@ impl ServerWorldState {
             .get_id(path)
             .ok_or_else(|| format_err!("change to unknown file: {}", path.display()))?;
         if self.path_map.get_root(file_id) != Root::Lib {
-            self.analysis_host.change_file(file_id, Some(text));
+            let mut change = AnalysisChange::new();
+            change.change_file(file_id, text);
+            self.analysis_host.apply_change(change);
         }
         Ok(())
     }
@@ -120,12 +139,16 @@ impl ServerWorldState {
         // Do this via file watcher ideally.
         let text = fs::read_to_string(path).ok();
         if self.path_map.get_root(file_id) != Root::Lib {
-            self.analysis_host.change_file(file_id, text);
+            let mut change = AnalysisChange::new();
+            if let Some(text) = text {
+                change.change_file(file_id, text);
+            }
+            self.analysis_host.apply_change(change);
         }
         Ok(file_id)
     }
     pub fn set_workspaces(&mut self, ws: Vec<CargoWorkspace>) {
-        let mut crate_roots = FxHashMap::default();
+        let mut crate_graph = CrateGraph::new();
         ws.iter()
             .flat_map(|ws| {
                 ws.packages()
@@ -134,13 +157,13 @@ impl ServerWorldState {
             })
             .for_each(|root| {
                 if let Some(file_id) = self.path_map.get_id(root) {
-                    let crate_id = CrateId(crate_roots.len() as u32);
-                    crate_roots.insert(crate_id, file_id);
+                    crate_graph.add_crate_root(file_id);
                 }
             });
-        let crate_graph = CrateGraph { crate_roots };
         self.workspaces = Arc::new(ws);
-        self.analysis_host.set_crate_graph(crate_graph);
+        let mut change = AnalysisChange::new();
+        change.set_crate_graph(crate_graph);
+        self.analysis_host.apply_change(change);
     }
     pub fn snapshot(&self) -> ServerWorld {
         ServerWorld {
