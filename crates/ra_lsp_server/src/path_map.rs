@@ -1,4 +1,7 @@
-use std::path::{Component, Path, PathBuf};
+use std::{
+    fmt,
+    path::{Component, Path, PathBuf},
+};
 
 use im;
 use ra_analysis::{FileId, FileResolver};
@@ -10,12 +13,18 @@ pub enum Root {
     Lib,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Default, Clone)]
 pub struct PathMap {
     next_id: u32,
     path2id: im::HashMap<PathBuf, FileId>,
     id2path: im::HashMap<FileId, PathBuf>,
     id2root: im::HashMap<FileId, Root>,
+}
+
+impl fmt::Debug for PathMap {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str("PathMap { ... }")
+    }
 }
 
 impl PathMap {

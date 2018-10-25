@@ -438,9 +438,10 @@ impl AnalysisImpl {
 
         // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
         let file_symbols = self.index_resolve(name_ref)?;
-        for (_, fs) in file_symbols {
+        for (fn_fiel_id, fs) in file_symbols {
             if fs.kind == FN_DEF {
-                if let Some(fn_def) = find_node_at_offset(syntax, fs.node_range.start()) {
+                let fn_file = self.db.file_syntax(fn_fiel_id);
+                if let Some(fn_def) = find_node_at_offset(fn_file.syntax(), fs.node_range.start()) {
                     if let Some(descriptor) = FnDescriptor::new(fn_def) {
                         // If we have a calling expression let's find which argument we are on
                         let mut current_parameter = None;
