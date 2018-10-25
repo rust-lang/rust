@@ -8,20 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(trait_alias)]
+// gate-test-trait_alias
 
-trait Foo = PartialEq<i32> + Send;
-trait Bar = Foo + Sync;
+trait EqAlias = Eq;
+trait IteratorAlias = Iterator;
 
-trait I32Iterator = Iterator<Item = i32>;
-
-pub fn main() {
-    let a: &dyn Bar = &123;
-    assert!(*a == 123);
-    let b = Box::new(456) as Box<dyn Foo>;
-    assert!(*b == 456);
-
-    // FIXME(alexreg): associated type should be gotten from trait alias definition
-    // let c: &dyn I32Iterator = &vec![123].into_iter();
-    // assert_eq!(c.next(), Some(123));
+fn main() {
+    let _: &dyn EqAlias = &123;
+    let _: &dyn IteratorAlias = &vec![123].into_iter();
 }

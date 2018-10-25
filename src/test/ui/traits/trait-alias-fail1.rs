@@ -10,11 +10,12 @@
 
 // gate-test-trait_alias
 
-trait Alias1<T> = Default where T: Clone;
-trait Alias2<T: Clone = ()> = Default;
+trait CloneDefault<T> = Default where T: Clone;
+trait BoundedAlias<T: Clone = ()> = Default;
 
-impl Alias1 {}
+trait A<T: Send> {}
+trait B<T> = A<T>; // FIXME: parameter T should need a bound here, or semantics should be changed
 
-impl Alias1 for () {}
+impl CloneDefault for () {}
 
 fn main() {}

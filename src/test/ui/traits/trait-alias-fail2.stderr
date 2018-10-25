@@ -1,0 +1,19 @@
+error[E0658]: trait aliases are experimental (see issue #41517)
+  --> $DIR/trait-alias-fail2.rs:13:1
+   |
+LL | trait EqAlias = Eq;
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(trait_alias)] to the crate attributes to enable
+
+error[E0658]: trait aliases are experimental (see issue #41517)
+  --> $DIR/trait-alias-fail2.rs:14:1
+   |
+LL | trait IteratorAlias = Iterator;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(trait_alias)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
