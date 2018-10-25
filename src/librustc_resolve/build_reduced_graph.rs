@@ -35,7 +35,7 @@ use syntax::ast::{Name, Ident};
 use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
-use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind, Variant};
+use syntax::ast::{MetaItemKind, Mutability, StmtKind, TraitItem, TraitItemKind, Variant};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
@@ -81,12 +81,6 @@ impl<'a> ToNameBinding<'a> for (Def, ty::Visibility, Span, Mark, IsMacroExport) 
             expansion: self.3,
         })
     }
-}
-
-#[derive(Default, PartialEq, Eq)]
-struct LegacyMacroImports {
-    import_all: Option<Span>,
-    imports: Vec<(Name, Span)>,
 }
 
 impl<'a, 'cl> Resolver<'a, 'cl> {
@@ -858,14 +852,32 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     // This returns true if we should consider the underlying `extern crate` to be used.
     fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>,
                                     parent_scope: &ParentScope<'a>) -> bool {
-        let allow_shadowing = parent_scope.expansion == Mark::root();
-        let legacy_imports = self.legacy_macro_imports(&item.attrs);
-        let used = legacy_imports != LegacyMacroImports::default();
-
-        // `#[macro_use]` is only allowed at the crate root.
-        if self.current_module.parent.is_some() && used {
-            span_err!(self.session, item.span, E0468,
-                      "an `extern crate` loading macros must be at the crate root");
+        let mut import_all = None;
+        let mut single_imports = Vec::new();
+        for attr in &item.attrs {
+            if attr.check_name("macro_use") {
+                if self.current_module.parent.is_some() {
+                    span_err!(self.session, item.span, E0468,
+                        "an `extern crate` loading macros must be at the crate root");
+                }
+                let ill_formed = |span| span_err!(self.session, span, E0466, "bad macro import");
+                match attr.meta() {
+                    Some(meta) => match meta.node {
+                        MetaItemKind::Word => {
+                            import_all = Some(meta.span);
+                            break;
+                        }
+                        MetaItemKind::List(nested_metas) => for nested_meta in nested_metas {
+                            match nested_meta.word() {
+                                Some(word) => single_imports.push((word.name(), word.span)),
+                                None => ill_formed(nested_meta.span),
+                            }
+                        }
+                        MetaItemKind::NameValue(..) => ill_formed(meta.span),
+                    }
+                    None => ill_formed(attr.span()),
+                }
+            }
         }
 
         let arenas = self.arenas;
@@ -883,7 +895,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             is_uniform_paths_canary: false,
         });
 
-        if let Some(span) = legacy_imports.import_all {
+        let allow_shadowing = parent_scope.expansion == Mark::root();
+        if let Some(span) = import_all {
             let directive = macro_use_directive(span);
             self.potentially_unused_imports.push(directive);
             module.for_each_child(|ident, ns, binding| if ns == MacroNS {
@@ -891,7 +904,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 self.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
             });
         } else {
-            for (name, span) in legacy_imports.imports {
+            for (name, span) in single_imports.iter().cloned() {
                 let ident = Ident::with_empty_ctxt(name);
                 let result = self.resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),
@@ -910,7 +923,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
             }
         }
-        used
+        import_all.is_some() || !single_imports.is_empty()
     }
 
     // does this attribute list contain "macro_use"?
@@ -935,25 +948,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         false
-    }
-
-    fn legacy_macro_imports(&mut self, attrs: &[ast::Attribute]) -> LegacyMacroImports {
-        let mut imports = LegacyMacroImports::default();
-        for attr in attrs {
-            if attr.check_name("macro_use") {
-                match attr.meta_item_list() {
-                    Some(names) => for attr in names {
-                        if let Some(word) = attr.word() {
-                            imports.imports.push((word.name(), attr.span()));
-                        } else {
-                            span_err!(self.session, attr.span(), E0466, "bad macro import");
-                        }
-                    },
-                    None => imports.import_all = Some(attr.span),
-                }
-            }
-        }
-        imports
     }
 }
 
