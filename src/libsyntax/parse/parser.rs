@@ -6783,7 +6783,11 @@ impl<'a> Parser<'a> {
         let error_msg = "crate name using dashes are not valid in `extern crate` statements";
         let suggestion_msg = "if the original crate name uses dashes you need to use underscores \
                               in the code";
-        let mut ident = self.parse_ident()?;
+        let mut ident = if self.token.is_keyword(keywords::SelfValue) {
+            self.parse_path_segment_ident()
+        } else {
+            self.parse_ident()
+        }?;
         let mut idents = vec![];
         let mut replacement = vec![];
         let mut fixed_crate_name = false;

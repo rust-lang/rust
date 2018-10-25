@@ -492,6 +492,9 @@ declare_features! (
 
     // `reason = ` in lint attributes and `expect` lint attribute
     (active, lint_reasons, "1.31.0", Some(54503), None),
+
+    // `extern crate self as foo;` puts local crate root into extern prelude under name `foo`.
+    (active, extern_crate_self, "1.31.0", Some(54658), None),
 );
 
 declare_features! (
