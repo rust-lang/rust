@@ -268,41 +268,29 @@ pub fn handle_runnables(
         };
         res.push(r);
     }
+    let mut check_args = vec!["check".to_string()];
+    match CargoTargetSpec::for_file(&world, file_id)? {
+        Some(spec) => spec.push_to(&mut check_args),
+        None => check_args.push("--all".to_string()),
+    }
     // Always add `cargo check`.
     res.push(req::Runnable {
         range: Default::default(),
         label: "cargo check".to_string(),
         bin: "cargo".to_string(),
-        args: vec!["check".to_string(), "--all".to_string()],
+        args: check_args,
         env: FxHashMap::default(),
     });
     return Ok(res);
 
     fn runnable_args(world: &ServerWorld, file_id: FileId, kind: &RunnableKind) -> Result<Vec<String>> {
-        let spec = if let Some(&crate_id) = world.analysis().crate_for(file_id)?.first() {
-            let file_id = world.analysis().crate_root(crate_id)?;
-            let path = world.path_map.get_path(file_id);
-            world
-                .workspaces
-                .iter()
-                .filter_map(|ws| {
-                    let tgt = ws.target_by_root(path)?;
-                    Some((
-                        tgt.package(ws).name(ws),
-                        tgt.name(ws),
-                        tgt.kind(ws),
-                    ))
-                })
-                .next()
-        } else {
-            None
-        };
+        let spec = CargoTargetSpec::for_file(world, file_id)?;
         let mut res = Vec::new();
         match kind {
             RunnableKind::Test { name } => {
                 res.push("test".to_string());
-                if let Some((pkg_name, tgt_name, tgt_kind)) = spec {
-                    spec_args(pkg_name, tgt_name, tgt_kind, &mut res);
+                if let Some(spec) = spec {
+                    spec.push_to(&mut res);
                 }
                 res.push("--".to_string());
                 res.push(name.to_string());
@@ -310,38 +298,69 @@ pub fn handle_runnables(
             }
             RunnableKind::Bin => {
                 res.push("run".to_string());
-                if let Some((pkg_name, tgt_name, tgt_kind)) = spec {
-                    spec_args(pkg_name, tgt_name, tgt_kind, &mut res);
+                if let Some(spec) = spec {
+                    spec.push_to(&mut res);
                 }
             }
         }
         Ok(res)
     }
 
-    fn spec_args(pkg_name: &str, tgt_name: &str, tgt_kind: TargetKind, buf: &mut Vec<String>) {
-        buf.push("--package".to_string());
-        buf.push(pkg_name.to_string());
-        match tgt_kind {
-            TargetKind::Bin => {
-                buf.push("--bin".to_string());
-                buf.push(tgt_name.to_string());
+    struct CargoTargetSpec {
+        package: String,
+        target: String,
+        target_kind: TargetKind,
+    }
+
+    impl CargoTargetSpec {
+        fn for_file(world: &ServerWorld, file_id: FileId) -> Result<Option<CargoTargetSpec>> {
+            let &crate_id = match world.analysis().crate_for(file_id)?.first() {
+                Some(crate_id) => crate_id,
+                None => return Ok(None),
+            };
+            let file_id = world.analysis().crate_root(crate_id)?;
+            let path = world.path_map.get_path(file_id);
+            let res = world
+                .workspaces
+                .iter()
+                .find_map(|ws| {
+                    let tgt = ws.target_by_root(path)?;
+                    let res = CargoTargetSpec {
+                        package: tgt.package(ws).name(ws).to_string(),
+                        target: tgt.name(ws).to_string(),
+                        target_kind: tgt.kind(ws),
+                    };
+                    Some(res)
+                });
+            Ok(res)
+        }
+
+        fn push_to(self, buf: &mut Vec<String>) {
+            buf.push("--package".to_string());
+            buf.push(self.package);
+            match self.target_kind {
+                TargetKind::Bin => {
+                    buf.push("--bin".to_string());
+                    buf.push(self.target);
+                }
+                TargetKind::Test => {
+                    buf.push("--test".to_string());
+                    buf.push(self.target);
+                }
+                TargetKind::Bench => {
+                    buf.push("--bench".to_string());
+                    buf.push(self.target);
+                }
+                TargetKind::Example => {
+                    buf.push("--example".to_string());
+                    buf.push(self.target);
+                }
+                TargetKind::Lib => {
+                    buf.push("--lib".to_string());
+                }
+                TargetKind::Other => (),
             }
-            TargetKind::Test => {
-                buf.push("--test".to_string());
-                buf.push(tgt_name.to_string());
-            }
-            TargetKind::Bench => {
-                buf.push("--bench".to_string());
-                buf.push(tgt_name.to_string());
-            }
-            TargetKind::Example => {
-                buf.push("--example".to_string());
-                buf.push(tgt_name.to_string());
-            }
-            TargetKind::Lib => {
-                buf.push("--lib".to_string());
-            }
-            TargetKind::Other => (),
+
         }
     }
 }
