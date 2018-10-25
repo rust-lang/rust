@@ -36,7 +36,7 @@ to the subtyping for higher-ranked types (which is described [here][hrsubtype]
 and also in a [paper by SPJ]. If you wish to understand higher-ranked
 subtyping, we recommend you read the paper). There are a few parts:
 
-1. replace bound regions in the obligation with placeholders.
+1. Replace bound regions in the obligation with placeholders.
 2. Match the impl against the [placeholder] obligation.
 3. Check for _placeholder leaks_.
 
