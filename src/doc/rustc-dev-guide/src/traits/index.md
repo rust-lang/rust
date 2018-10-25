@@ -19,18 +19,18 @@ Trait solving is based around a few key ideas:
     describes the precise form of rules we use, and
     [lowering rules](./lowering-rules.html) gives the complete set of
     lowering rules in a more reference-like form.
+  - [Lazy normalization](./associated-types.html), which is the
+    technique we use to accommodate associated types when figuring out
+    whether types are equal.
+  - [Region constraints](./regions.html), which are accumulated
+    during trait solving but mostly ignored. This means that trait
+    solving effectively ignores the precise regions involved, always –
+    but we still remember the constraints on them so that those
+    constraints can be checked by the type checker.
 - [Canonical queries](./canonical-queries.html), which allow us
   to solve trait problems (like "is `Foo` implemented for the type
   `Bar`?") once, and then apply that same result independently in many
   different inference contexts.
-- [Lazy normalization](./associated-types.html), which is the
-  technique we use to accommodate associated types when figuring out
-  whether types are equal.
-- [Region constraints](./regions.html), which are accumulated
-  during trait solving but mostly ignored. This means that trait
-  solving effectively ignores the precise regions involved, always –
-  but we still remember the constraints on them so that those
-  constraints can be checked by thet type checker.
   
 Note: this is not a complete list of topics. See the sidebar for more.
 
