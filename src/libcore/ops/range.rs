@@ -304,7 +304,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
     }
 }
 
-/// An range bounded inclusively below and above (`start..=end`).
+/// A range bounded inclusively below and above (`start..=end`).
 ///
 /// The `RangeInclusive` `start..=end` contains all values with `x >= start`
 /// and `x <= end`.  It is empty unless `start <= end`.
