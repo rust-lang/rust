@@ -24,7 +24,7 @@ use std::fmt::{Debug, Display};
 // • one generic parameter (T) bound inline
 // • one parameter (T) with a where clause
 // • two parameters (T and U), both bound inline
-// • two paramters (T and U), one bound inline, one with a where clause
+// • two parameters (T and U), one bound inline, one with a where clause
 // • two parameters (T and U), both with where clauses
 //
 // —and for every permutation of 0, 1, or 2 lifetimes to outlive and 0 or 1

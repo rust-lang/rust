@@ -1,5 +1,5 @@
 // Test that cfg_attr doesn't emit any attributes when the
-// configuation variable is false. This mirrors `cfg-attr-multi-true.rs`
+// configuration variable is false. This mirrors `cfg-attr-multi-true.rs`
 
 // compile-pass
 

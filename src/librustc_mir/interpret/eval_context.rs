@@ -556,7 +556,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 )?;
             }
         } else {
-            // Uh, that shouln't happen... the function did not intend to return
+            // Uh, that shouldn't happen... the function did not intend to return
             return err!(Unreachable);
         }
 

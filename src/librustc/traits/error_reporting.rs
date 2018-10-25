@@ -412,7 +412,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             flags.push(("crate_local".to_owned(), None));
         }
 
-        // Allow targetting all integers using `{integral}`, even if the exact type was resolved
+        // Allow targeting all integers using `{integral}`, even if the exact type was resolved
         if self_ty.is_integral() {
             flags.push(("_Self".to_owned(), Some("{integral}".to_owned())));
         }

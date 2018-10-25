@@ -38,7 +38,7 @@
 //!   underlying object is live and no reference (just raw pointers) is used to
 //!   access the same memory.
 //!
-//! These axioms, along with careful use of [`offset`] for pointer arithmentic,
+//! These axioms, along with careful use of [`offset`] for pointer arithmetic,
 //! are enough to correctly implement many useful things in unsafe code. Stronger guarantees
 //! will be provided eventually, as the [aliasing] rules are being determined. For more
 //! information, see the [book] as well as the section in the reference devoted
