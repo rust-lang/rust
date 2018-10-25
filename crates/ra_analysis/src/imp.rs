@@ -181,11 +181,14 @@ impl AnalysisImpl {
     }
     pub fn world_symbols(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let mut buf = Vec::new();
-        for &lib_id in self.db.libraries().iter() {
-            buf.push(self.db.library_symbols(lib_id));
-        }
-        for &file_id in self.db.source_root(WORKSPACE).files.iter() {
-            buf.push(self.db.file_symbols(file_id)?);
+        if query.libs {
+            for &lib_id in self.db.libraries().iter() {
+                buf.push(self.db.library_symbols(lib_id));
+            }
+        } else {
+            for &file_id in self.db.source_root(WORKSPACE).files.iter() {
+                buf.push(self.db.file_symbols(file_id)?);
+            }
         }
         Ok(query.search(&buf))
     }
