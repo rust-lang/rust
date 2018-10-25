@@ -342,7 +342,9 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     // we immediately bail out, since it's impossible for us to continue'
                     match vtable {
                         Vtable::VtableImpl(VtableImplData { impl_def_id, .. }) => {
-                            if infcx.tcx.impl_polarity(*impl_def_id) == hir::ImplPolarity::Negative {
+                            // Blame tidy for the weird bracket placement
+                            if infcx.tcx.impl_polarity(*impl_def_id) == hir::ImplPolarity::Negative
+                            {
                                 debug!("evaluate_nested_obligations: Found explicit negative impl\
                                         {:?}, bailing out", impl_def_id);
                                 return None;
