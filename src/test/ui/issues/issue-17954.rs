@@ -23,4 +23,4 @@ fn main() {
         println!("{}", a);
     });
 }
-//~^ NOTE temporary value only lives until here
+//~^ NOTE borrowed value only lives until here

@@ -177,6 +177,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     match cmt.cat {
         Categorization::Deref(_, mc::BorrowedPtr(..)) |
         Categorization::Deref(_, mc::UnsafePtr(..)) |
+        Categorization::ThreadLocal(..) |
         Categorization::StaticItem => {
             Some(cmt.clone())
         }

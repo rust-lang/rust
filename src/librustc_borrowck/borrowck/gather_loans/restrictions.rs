@@ -70,6 +70,12 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 RestrictionResult::Safe
             }
 
+            Categorization::ThreadLocal(..) => {
+                // Thread-locals are statics that have a scope, with
+                // no underlying structure to provide restrictions.
+                RestrictionResult::Safe
+            }
+
             Categorization::Local(local_id) => {
                 // R-Variable, locally declared
                 let lp = new_lp(LpVar(local_id));
