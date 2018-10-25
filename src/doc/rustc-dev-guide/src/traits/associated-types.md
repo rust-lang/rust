@@ -5,7 +5,7 @@ associated types. The full system consists of several moving parts,
 which we will introduce one by one:
 
 - Projection and the `Normalize` predicate
-- Skolemization
+- Placeholder associated type projections
 - The `ProjectionEq` predicate
 - Integration with unification
 
@@ -106,9 +106,10 @@ placeholder associated types (see the `TypeName` enum declared in
 So far we have seen two ways to answer the question of "When can we
 consider an associated type projection equal to another type?":
 
-- the `Normalize` predicate could be used to transform associated type
-  projections when we knew which impl was applicable;
-- **placeholder** associated types can be used when we don't.
+- the `Normalize` predicate could be used to transform projections when we
+  knew which impl applied;
+- **placeholder** associated types can be used when we don't. This is also
+  known as **lazy normalization**.
 
 We now introduce the `ProjectionEq` predicate to bring those two cases
 together. The `ProjectionEq` predicate looks like so:
