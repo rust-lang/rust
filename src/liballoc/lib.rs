@@ -119,6 +119,7 @@
 #![feature(const_vec_new)]
 #![feature(slice_partition_dedup)]
 #![feature(maybe_uninit)]
+#![feature(alloc_layout_extra)]
 
 // Allow testing this library
 

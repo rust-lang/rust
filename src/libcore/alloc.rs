@@ -167,7 +167,7 @@ impl Layout {
     /// Returns an error if the combination of `self.size()` and the given
     /// `align` violates the conditions listed in
     /// [`Layout::from_size_align`](#method.from_size_align).
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn align_to(&self, align: usize) -> Result<Self, LayoutErr> {
         Layout::from_size_align(self.size(), cmp::max(self.align(), align))
@@ -189,7 +189,7 @@ impl Layout {
     /// to be less than or equal to the alignment of the starting
     /// address for the whole allocated block of memory. One way to
     /// satisfy this constraint is to ensure `align <= self.align()`.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn padding_needed_for(&self, align: usize) -> usize {
         let len = self.size();
@@ -226,7 +226,7 @@ impl Layout {
     /// of each element in the array.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn repeat(&self, n: usize) -> Result<(Self, usize), LayoutErr> {
         let padded_size = self.size().checked_add(self.padding_needed_for(self.align()))
@@ -255,7 +255,7 @@ impl Layout {
     /// (assuming that the record itself starts at offset 0).
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn extend(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
         let new_align = cmp::max(self.align(), next.align());
@@ -282,7 +282,7 @@ impl Layout {
     /// aligned.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn repeat_packed(&self, n: usize) -> Result<Self, LayoutErr> {
         let size = self.size().checked_mul(n).ok_or(LayoutErr { private: () })?;
@@ -295,7 +295,7 @@ impl Layout {
     /// and is not incorporated *at all* into the resulting layout.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn extend_packed(&self, next: Self) -> Result<Self, LayoutErr> {
         let new_size = self.size().checked_add(next.size())
@@ -307,7 +307,7 @@ impl Layout {
     /// Creates a layout describing the record for a `[T; n]`.
     ///
     /// On arithmetic overflow, returns `LayoutErr`.
-    #[unstable(feature = "allocator_api", issue = "32838")]
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
     #[inline]
     pub fn array<T>(n: usize) -> Result<Self, LayoutErr> {
         Layout::new::<T>()
