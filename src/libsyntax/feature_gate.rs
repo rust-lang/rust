@@ -501,6 +501,9 @@ declare_features! (
 
     // Allows `const _: TYPE = VALUE`
     (active, underscore_const_names, "1.31.0", Some(54912), None),
+
+    // `extern crate foo as bar;` puts `bar` into extern prelude.
+    (active, extern_crate_item_prelude, "1.31.0", Some(54658), None),
 );
 
 declare_features! (

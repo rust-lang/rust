@@ -691,19 +691,14 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                 }
                 WhereToResolve::ExternPrelude => {
-                    if use_prelude && self.extern_prelude.contains(&ident.name) {
-                        let crate_id =
-                            self.crate_loader.process_path_extern(ident.name, ident.span);
-                        let crate_root =
-                            self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
-                        self.populate_module_if_necessary(crate_root);
-
-                        let binding = (crate_root, ty::Visibility::Public,
-                                       ident.span, Mark::root()).to_name_binding(self.arenas);
-                        Ok((binding, Flags::PRELUDE, Flags::empty()))
-                    } else {
-                        Err(Determinacy::Determined)
+                    let mut result = Err(Determinacy::Determined);
+                    if use_prelude {
+                        if let Some(binding) = self.extern_prelude_get(ident, !record_used,
+                                                                       innermost_result.is_some()) {
+                            result = Ok((binding, Flags::PRELUDE, Flags::empty()));
+                        }
                     }
+                    result
                 }
                 WhereToResolve::ToolPrelude => {
                     if use_prelude && is_known_tool(ident.name) {

@@ -21,7 +21,7 @@ use rustc_data_structures::ptr_key::PtrKey;
 use rustc::ty;
 use rustc::lint::builtin::BuiltinLintDiagnostics;
 use rustc::lint::builtin::{DUPLICATE_MACRO_EXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE};
-use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::DefId;
 use rustc::hir::def::*;
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::FxHashSet;
@@ -202,7 +202,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     if !(
                         ns == TypeNS &&
                         !ident.is_path_segment_keyword() &&
-                        self.extern_prelude.contains(&ident.name)
+                        self.extern_prelude.contains_key(&ident.modern())
                     ) {
                         // ... unless the crate name is not in the `extern_prelude`.
                         return binding;
@@ -220,12 +220,15 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     self.resolve_crate_root(ident)
                 } else if
                     ns == TypeNS &&
-                    !ident.is_path_segment_keyword() &&
-                    self.extern_prelude.contains(&ident.name)
+                    !ident.is_path_segment_keyword()
                 {
-                    let crate_id =
-                        self.crate_loader.process_path_extern(ident.name, ident.span);
-                    self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
+                    if let Some(binding) = self.extern_prelude_get(ident, !record_used, false) {
+                        let module = self.get_module(binding.def().def_id());
+                        self.populate_module_if_necessary(module);
+                        return Ok(binding);
+                    } else {
+                        return Err(Determined);
+                    }
                 } else {
                     return Err(Determined);
                 };
@@ -738,10 +741,9 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         let uniform_paths_feature = self.session.features_untracked().uniform_paths;
         for ((span, _, ns), results) in uniform_paths_canaries {
             let name = results.name;
-            let external_crate = if ns == TypeNS && self.extern_prelude.contains(&name) {
-                let crate_id =
-                    self.crate_loader.process_path_extern(name, span);
-                Some(Def::Mod(DefId { krate: crate_id, index: CRATE_DEF_INDEX }))
+            let external_crate = if ns == TypeNS {
+                self.extern_prelude_get(Ident::with_empty_ctxt(name), true, false)
+                    .map(|binding| binding.def())
             } else {
                 None
             };
@@ -1019,6 +1021,13 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                     if let ModuleOrUniformRoot::Module(module) = module {
                         this.resolution(module, ident, ns).borrow_mut().binding =
                             Some(this.dummy_binding);
+                    }
+                }
+                if record_used && ns == TypeNS {
+                    if let ModuleOrUniformRoot::UniformRoot(..) = module {
+                        // Make sure single-segment import is resolved non-speculatively
+                        // at least once to report the feature error.
+                        this.extern_prelude_get(ident, false, false);
                     }
                 }
             }

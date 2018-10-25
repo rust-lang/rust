@@ -137,7 +137,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         // into a `BTreeMap` so we can get consistent ordering (and therefore the same diagnostic)
         // each time.
         let external_crate_names: BTreeSet<Symbol> = self.resolver.extern_prelude
-            .clone().drain().collect();
+            .iter().map(|(ident, _)| ident.name).collect();
 
         // Insert a new path segment that we can replace.
         let new_path_segment = path[0].clone();
@@ -146,19 +146,14 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         // Iterate in reverse so that we start with crates at the end of the alphabet. This means
         // that we'll always get `std` before `core`.
         for name in external_crate_names.iter().rev() {
-            let ident = Ident::with_empty_ctxt(*name);
-            // Calling `maybe_process_path_extern` ensures that we're only running `resolve_path`
-            // on a crate name that won't ICE.
-            if let Some(_) = self.crate_loader.maybe_process_path_extern(*name, ident.span) {
-                // Replace the first after root (a placeholder we inserted) with a crate name
-                // and check if that is valid.
-                path[1].name = *name;
-                let result = self.resolve_path(None, &path, None, false, span, CrateLint::No);
-                debug!("make_external_crate_suggestion: name={:?} path={:?} result={:?}",
-                       name, path, result);
-                if let PathResult::Module(..) = result {
-                    return Some(path)
-                }
+            // Replace the first after root (a placeholder we inserted) with a crate name
+            // and check if that is valid.
+            path[1].name = *name;
+            let result = self.resolve_path(None, &path, None, false, span, CrateLint::No);
+            debug!("make_external_crate_suggestion: name={:?} path={:?} result={:?}",
+                    name, path, result);
+            if let PathResult::Module(..) = result {
+                return Some(path)
             }
         }
 

@@ -931,7 +931,9 @@ pub struct GlobalCtxt<'tcx> {
 
     maybe_unused_trait_imports: FxHashSet<DefId>,
     maybe_unused_extern_crates: Vec<(DefId, Span)>,
-    pub extern_prelude: FxHashSet<ast::Name>,
+    /// Extern prelude entries. The value is `true` if the entry was introduced
+    /// via `extern crate` item and not `--extern` option or compiler built-in.
+    pub extern_prelude: FxHashMap<ast::Name, bool>,
 
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: Lock<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,

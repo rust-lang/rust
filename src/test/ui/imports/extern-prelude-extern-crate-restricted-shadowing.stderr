@@ -1,0 +1,20 @@
+error[E0659]: `Vec` is ambiguous
+  --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:15:9
+   |
+LL |         Vec::panic!(); //~ ERROR `Vec` is ambiguous
+   |         ^^^ ambiguous name
+   |
+note: `Vec` could refer to the name defined here
+  --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:7:9
+   |
+LL |         extern crate std as Vec;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL | define_vec!();
+   | -------------- in this macro invocation
+note: `Vec` could also refer to the name defined here
+   = note: macro-expanded items do not shadow when used in a macro invocation path
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.
