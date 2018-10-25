@@ -27,14 +27,12 @@ impl salsa::Database for RootDatabase {
     }
 }
 
-pub(crate) fn check_canceled(_db: &impl salsa::Database) -> Cancelable<()> {
-    // Disabled due to https://github.com/salsa-rs/salsa/issues/66
-    Ok(())
-    // if db.salsa_runtime().is_current_revision_canceled() {
-    //     Err(Canceled)
-    // } else {
-    //     Ok(())
-    // }
+pub(crate) fn check_canceled(db: &impl salsa::Database) -> Cancelable<()> {
+    if db.salsa_runtime().is_current_revision_canceled() {
+        Err(Canceled)
+    } else {
+        Ok(())
+    }
 }
 
 impl salsa::ParallelDatabase for RootDatabase {
