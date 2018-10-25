@@ -29,6 +29,15 @@ use crate::utils::{
 use if_chain::if_chain;
 use std::convert::TryFrom;
 
+macro_rules! unwrap_or_continue {
+    ($x:expr) => {
+        match $x {
+            Some(x) => x,
+            None => continue,
+        }
+    };
+}
+
 /// **What it does:** Checks for a redudant `clone()` (and its relatives) which clones an owned
 /// value that is going to be dropped without further use.
 ///
@@ -87,40 +96,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         let def_id = cx.tcx.hir.body_owner_def_id(body.id());
         let mir = cx.tcx.optimized_mir(def_id);
 
-        // Looks for `call(x: &T)` where `T: !Copy`
-        let call = |kind: &mir::TerminatorKind<'tcx>| -> Option<(def_id::DefId, mir::Local, ty::Ty<'tcx>)> {
-            if_chain! {
-                if let TerminatorKind::Call { func, args, .. } = kind;
-                if args.len() == 1;
-                if let mir::Operand::Move(mir::Place::Local(local)) = &args[0];
-                if let ty::FnDef(def_id, _) = func.ty(&*mir, cx.tcx).sty;
-                if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(&*mir, cx.tcx));
-                if !is_copy(cx, inner_ty);
-                then {
-                    Some((def_id, *local, inner_ty))
-                } else {
-                    None
-                }
-            }
-        };
-
         for (bb, bbdata) in mir.basic_blocks().iter_enumerated() {
-            let terminator = if let Some(terminator) = &bbdata.terminator {
-                terminator
-            } else {
-                continue;
-            };
+            let terminator = unwrap_or_continue!(&bbdata.terminator);
 
             // Give up on loops
             if terminator.successors().any(|s| *s == bb) {
                 continue;
             }
 
-            let (fn_def_id, arg, arg_ty) = if let Some(t) = call(&terminator.kind) {
-                t
-            } else {
-                continue;
-            };
+            let (fn_def_id, arg, arg_ty, _) = unwrap_or_continue!(is_call_with_ref_arg(cx, mir, &terminator.kind));
 
             let from_borrow = match_def_path(cx.tcx, fn_def_id, &paths::CLONE_TRAIT_METHOD)
                 || match_def_path(cx.tcx, fn_def_id, &paths::TO_OWNED_METHOD)
@@ -135,43 +119,23 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 continue;
             }
 
-            // _1 in MIR `{ _2 = &_1; clone(move _2); }` or `{ _2 = _1; to_path_buf(_2); }
-            let cloned = if let Some(referent) = bbdata
-                .statements
-                .iter()
-                .rev()
-                .filter_map(|stmt| {
-                    if let mir::StatementKind::Assign(mir::Place::Local(local), v) = &stmt.kind {
-                        if *local == arg {
-                            if from_deref {
-                                // `r` is already a reference.
-                                if let mir::Rvalue::Use(mir::Operand::Copy(mir::Place::Local(r))) = **v {
-                                    return Some(r);
-                                }
-                            } else if let mir::Rvalue::Ref(_, _, mir::Place::Local(r)) = **v {
-                                return Some(r);
-                            }
-                        }
-                    }
-
-                    None
-                })
-                .next()
-            {
-                referent
-            } else {
-                continue;
-            };
+            // _1 in MIR `{ _2 = &_1; clone(move _2); }` or `{ _2 = _1; to_path_buf(_2); } (from_deref)
+            // In case of `from_deref`, `arg` is already a reference since it is `deref`ed in the previous
+            // block.
+            let cloned = unwrap_or_continue!(find_stmt_assigns_to(arg, from_borrow, bbdata.statements.iter().rev()));
 
             // _1 in MIR `{ _2 = &_1; _3 = deref(move _2); } -> { _4 = _3; to_path_buf(move _4); }`
             let referent = if from_deref {
                 let ps = mir.predecessors_for(bb);
+                if ps.len() != 1 {
+                    continue;
+                }
+                let pred_terminator = unwrap_or_continue!(&mir[ps[0]].terminator);
+
                 let pred_arg = if_chain! {
-                    if ps.len() == 1;
-                    if let Some(pred_terminator) = &mir[ps[0]].terminator;
-                    if let mir::TerminatorKind::Call { destination: Some((res, _)), .. } = &pred_terminator.kind;
+                    if let Some((pred_fn_def_id, pred_arg, pred_arg_ty, Some(res))) =
+                        is_call_with_ref_arg(cx, mir, &pred_terminator.kind);
                     if *res == mir::Place::Local(cloned);
-                    if let Some((pred_fn_def_id, pred_arg, pred_arg_ty)) = call(&pred_terminator.kind);
                     if match_def_path(cx.tcx, pred_fn_def_id, &paths::DEREF_TRAIT_METHOD);
                     if match_type(cx, pred_arg_ty, &paths::PATH_BUF)
                         || match_type(cx, pred_arg_ty, &paths::OS_STRING);
@@ -182,27 +146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                     }
                 };
 
-                if let Some(referent) = mir[ps[0]]
-                    .statements
-                    .iter()
-                    .rev()
-                    .filter_map(|stmt| {
-                        if let mir::StatementKind::Assign(mir::Place::Local(l), v) = &stmt.kind {
-                            if *l == pred_arg {
-                                if let mir::Rvalue::Ref(_, _, mir::Place::Local(referent)) = **v {
-                                    return Some(referent);
-                                }
-                            }
-                        }
-
-                        None
-                    })
-                    .next()
-                {
-                    referent
-                } else {
-                    continue;
-                }
+                unwrap_or_continue!(find_stmt_assigns_to(pred_arg, true, mir[ps[0]].statements.iter().rev()))
             } else {
                 cloned
             };
@@ -259,6 +203,50 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
             }
         }
     }
+}
+
+/// If `kind` is `y = func(x: &T)` where `T: !Copy`, returns `(DefId of func, x, T, y)`.
+fn is_call_with_ref_arg<'tcx>(
+    cx: &LateContext<'_, 'tcx>,
+    mir: &'tcx mir::Mir<'tcx>,
+    kind: &'tcx mir::TerminatorKind<'tcx>,
+) -> Option<(def_id::DefId, mir::Local, ty::Ty<'tcx>, Option<&'tcx mir::Place<'tcx>>)> {
+    if_chain! {
+        if let TerminatorKind::Call { func, args, destination, .. } = kind;
+        if args.len() == 1;
+        if let mir::Operand::Move(mir::Place::Local(local)) = &args[0];
+        if let ty::FnDef(def_id, _) = func.ty(&*mir, cx.tcx).sty;
+        if let (inner_ty, 1) = walk_ptrs_ty_depth(args[0].ty(&*mir, cx.tcx));
+        if !is_copy(cx, inner_ty);
+        then {
+            Some((def_id, *local, inner_ty, destination.as_ref().map(|(dest, _)| dest)))
+        } else {
+            None
+        }
+    }
+}
+
+/// Finds the first `to = (&)from`, and returns `Some(from)`.
+fn find_stmt_assigns_to<'a, 'tcx: 'a>(
+    to: mir::Local,
+    by_ref: bool,
+    mut stmts: impl Iterator<Item = &'a mir::Statement<'tcx>>,
+) -> Option<mir::Local> {
+    stmts.find_map(|stmt| {
+        if let mir::StatementKind::Assign(mir::Place::Local(local), v) = &stmt.kind {
+            if *local == to {
+                if by_ref {
+                    if let mir::Rvalue::Ref(_, _, mir::Place::Local(r)) = **v {
+                        return Some(r);
+                    }
+                } else if let mir::Rvalue::Use(mir::Operand::Copy(mir::Place::Local(r))) = **v {
+                    return Some(r);
+                }
+            }
+        }
+
+        None
+    })
 }
 
 struct LocalUseVisitor {
