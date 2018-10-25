@@ -79,6 +79,7 @@ mod borrow_check;
 mod build;
 mod dataflow;
 mod hair;
+mod lints;
 mod shim;
 pub mod transform;
 pub mod util;

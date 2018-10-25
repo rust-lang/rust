@@ -35,6 +35,8 @@ use syntax_pos::Span;
 use transform::MirSource;
 use util as mir_util;
 
+use super::lints;
+
 /// Construct the MIR for a given def-id.
 pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'tcx> {
     let id = tcx.hir.as_local_node_id(def_id).unwrap();
@@ -175,6 +177,8 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
 
         mir_util::dump_mir(tcx, None, "mir_map", &0,
                            MirSource::item(def_id), &mir, |_, _| Ok(()) );
+
+        lints::check(tcx, &mir, def_id);
 
         mir
     })
