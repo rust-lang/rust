@@ -308,12 +308,14 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         // ...also include the other query region constraints from the query.
         output_query_region_constraints.extend(
             query_response.value.region_constraints.iter().filter_map(|r_c| {
-                let ty::OutlivesPredicate(k1, r2) = r_c.skip_binder(); // reconstructed below
-                let k1 = substitute_value(self.tcx, &result_subst, &ty::Binder::bind(*k1));
-                let r2 = substitute_value(self.tcx, &result_subst, &ty::Binder::bind(*r2));
-                if k1 != r2.map_bound(|bound| bound.into()) {
-                    let predicate = ty::OutlivesPredicate(*k1.skip_binder(), *r2.skip_binder());
-                    Some(ty::Binder::bind(predicate))
+                let r_c = substitute_value(self.tcx, &result_subst, r_c);
+
+                // Screen out `'a: 'a` cases -- we skip the binder here but
+                // only care the inner values to one another, so they are still at
+                // consistent binding levels.
+                let &ty::OutlivesPredicate(k1, r2) = r_c.skip_binder();
+                if k1 != r2.into() {
+                    Some(r_c)
                 } else {
                     None
                 }
@@ -530,22 +532,21 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             unsubstituted_region_constraints
                 .iter()
                 .map(move |constraint| {
-                    let ty::OutlivesPredicate(k1, r2) = constraint.skip_binder(); // restored below
-                    let k1 = substitute_value(self.tcx, result_subst, &ty::Binder::bind(*k1));
-                    let r2 = substitute_value(self.tcx, result_subst, &ty::Binder::bind(*r2));
+                    let constraint = substitute_value(self.tcx, result_subst, constraint);
+                    let &ty::OutlivesPredicate(k1, r2) = constraint.skip_binder(); // restored below
 
                     Obligation::new(
                         cause.clone(),
                         param_env,
-                        match k1.skip_binder().unpack() {
+                        match k1.unpack() {
                             UnpackedKind::Lifetime(r1) => ty::Predicate::RegionOutlives(
                                 ty::Binder::bind(
-                                    ty::OutlivesPredicate(r1, r2.skip_binder())
+                                    ty::OutlivesPredicate(r1, r2)
                                 )
                             ),
                             UnpackedKind::Type(t1) => ty::Predicate::TypeOutlives(
                                 ty::Binder::bind(
-                                    ty::OutlivesPredicate(t1, r2.skip_binder())
+                                    ty::OutlivesPredicate(t1, r2)
                                 )
                             ),
                         }
