@@ -264,7 +264,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         LinkedList {
             head: None,
             tail: None,
@@ -341,7 +341,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn iter(&self) -> Iter<T> {
+    pub fn iter(&self) -> Iter<T> {
         Iter {
             head: self.head,
             tail: self.tail,
@@ -401,7 +401,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.len() == 0
     }
 
@@ -427,7 +427,7 @@ impl<T> LinkedList<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.len
     }
 

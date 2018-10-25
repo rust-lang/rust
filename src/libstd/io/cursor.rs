@@ -104,7 +104,7 @@ impl<T> Cursor<T> {
     /// # force_inference(&buff);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn new(inner: T) -> Cursor<T> {
+    pub fn new(inner: T) -> Cursor<T> {
         Cursor { pos: 0, inner: inner }
     }
 
@@ -138,7 +138,7 @@ impl<T> Cursor<T> {
     /// let reference = buff.get_ref();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn get_ref(&self) -> &T { &self.inner }
+    pub fn get_ref(&self) -> &T { &self.inner }
 
     /// Gets a mutable reference to the underlying value in this cursor.
     ///
@@ -179,7 +179,7 @@ impl<T> Cursor<T> {
     /// assert_eq!(buff.position(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn position(&self) -> u64 { self.pos }
+    pub fn position(&self) -> u64 { self.pos }
 
     /// Sets the position of this cursor.
     ///

@@ -885,7 +885,7 @@ impl Initializer {
     /// Returns a new `Initializer` which will zero out buffers.
     #[unstable(feature = "read_initializer", issue = "42788")]
     #[inline]
-    pub const fn zeroing() -> Initializer {
+    pub fn zeroing() -> Initializer {
         Initializer(true)
     }
 
@@ -906,7 +906,7 @@ impl Initializer {
     /// Indicates if a buffer should be initialized.
     #[unstable(feature = "read_initializer", issue = "42788")]
     #[inline]
-    pub const fn should_initialize(&self) -> bool {
+    pub fn should_initialize(&self) -> bool {
         self.0
     }
 

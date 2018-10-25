@@ -286,7 +286,7 @@ impl Builder {
     /// handler.join().unwrap();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub const fn new() -> Builder {
+    pub fn new() -> Builder {
         Builder {
             name: None,
             stack_size: None,

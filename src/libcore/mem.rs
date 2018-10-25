@@ -139,7 +139,7 @@ pub use intrinsics::transmute;
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub const fn forget<T>(t: T) {
+pub fn forget<T>(t: T) {
     ManuallyDrop::new(t);
 }
 
