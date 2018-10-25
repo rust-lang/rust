@@ -231,7 +231,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 let a = self.read_value(args[0])?;
                 let b = self.read_value(args[1])?;
                 // check x % y != 0
-                if !self.binary_op_val(mir::BinOp::Rem, a, b)?.0.is_null() {
+                if self.binary_op_val(mir::BinOp::Rem, a, b)?.0.to_bytes()? != 0 {
                     return err!(ValidationFailure(format!("exact_div: {:?} cannot be divided by {:?}", a, b)));
                 }
                 self.binop_ignore_overflow(mir::BinOp::Div, a, b, dest)?;
