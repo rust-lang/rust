@@ -13,7 +13,6 @@ use rustc::session::Session;
 use std::path::{Path, PathBuf};
 use syntax::{ast, attr};
 use syntax_pos::Span;
-use rustc_metadata_utils::validate_crate_name;
 
 pub fn out_filename(sess: &Session,
                 crate_type: config::CrateType,
@@ -52,7 +51,7 @@ pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],
                        input: &Input) -> String {
     let validate = |s: String, span: Option<Span>| {
-        validate_crate_name(sess, &s, span);
+        ::rustc_metadata::validate_crate_name(sess, &s, span);
         s
     };
 
