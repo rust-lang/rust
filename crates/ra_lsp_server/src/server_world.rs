@@ -2,11 +2,10 @@ use std::{
     fs,
     path::{Path, PathBuf},
     sync::Arc,
-    collections::BTreeMap,
 };
 
 use languageserver_types::Url;
-use ra_analysis::{Analysis, AnalysisHost, AnalysisChange, CrateGraph, CrateId, FileId, FileResolver, LibraryData};
+use ra_analysis::{Analysis, AnalysisHost, AnalysisChange, CrateGraph, FileId, FileResolver, LibraryData};
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -149,7 +148,7 @@ impl ServerWorldState {
         Ok(file_id)
     }
     pub fn set_workspaces(&mut self, ws: Vec<CargoWorkspace>) {
-        let mut crate_roots = BTreeMap::default();
+        let mut crate_graph = CrateGraph::new();
         ws.iter()
             .flat_map(|ws| {
                 ws.packages()
@@ -158,11 +157,9 @@ impl ServerWorldState {
             })
             .for_each(|root| {
                 if let Some(file_id) = self.path_map.get_id(root) {
-                    let crate_id = CrateId(crate_roots.len() as u32);
-                    crate_roots.insert(crate_id, file_id);
+                    crate_graph.add_crate_root(file_id);
                 }
             });
-        let crate_graph = CrateGraph { crate_roots };
         self.workspaces = Arc::new(ws);
         let mut change = AnalysisChange::new();
         change.set_crate_graph(crate_graph);

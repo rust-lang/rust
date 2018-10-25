@@ -15,9 +15,9 @@ mod completion;
 use std::{
     fmt,
     sync::Arc,
-    collections::BTreeMap,
 };
 
+use rustc_hash::FxHashMap;
 use ra_syntax::{AtomEdit, File, TextRange, TextUnit};
 use relative_path::{RelativePath, RelativePathBuf};
 use rayon::prelude::*;
@@ -55,9 +55,21 @@ pub struct FileId(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CrateId(pub u32);
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct CrateGraph {
-    pub crate_roots: BTreeMap<CrateId, FileId>,
+    crate_roots: FxHashMap<CrateId, FileId>,
+}
+
+impl CrateGraph {
+    pub fn new() -> CrateGraph {
+        CrateGraph::default()
+    }
+    pub fn add_crate_root(&mut self, file_id: FileId) -> CrateId{
+        let crate_id = CrateId(self.crate_roots.len() as u32);
+        let prev = self.crate_roots.insert(crate_id, file_id);
+        assert!(prev.is_none());
+        crate_id
+    }
 }
 
 pub trait FileResolver: fmt::Debug + Send + Sync + 'static {

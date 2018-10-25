@@ -7,7 +7,6 @@ extern crate test_utils;
 
 use std::{
     sync::Arc,
-    collections::BTreeMap,
 };
 
 use ra_syntax::TextRange;
@@ -130,19 +129,17 @@ fn test_resolve_crate_root() {
     let snap = host.analysis();
     assert!(snap.crate_for(FileId(2)).unwrap().is_empty());
 
-    let crate_graph = CrateGraph {
-        crate_roots: {
-            let mut m = BTreeMap::default();
-            m.insert(CrateId(1), FileId(1));
-            m
-        },
+    let crate_graph = {
+        let mut g = CrateGraph::new();
+        g.add_crate_root(FileId(1));
+        g
     };
     let mut change = AnalysisChange::new();
     change.set_crate_graph(crate_graph);
     host.apply_change(change);
     let snap = host.analysis();
 
-    assert_eq!(snap.crate_for(FileId(2)).unwrap(), vec![CrateId(1)],);
+    assert_eq!(snap.crate_for(FileId(2)).unwrap(), vec![CrateId(0)],);
 }
 
 #[test]
