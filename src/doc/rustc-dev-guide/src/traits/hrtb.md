@@ -36,20 +36,20 @@ to the subtyping for higher-ranked types (which is described [here][hrsubtype]
 and also in a [paper by SPJ]. If you wish to understand higher-ranked
 subtyping, we recommend you read the paper). There are a few parts:
 
-**TODO**: We should define _placeholder_.
-
-1. _Skolemize_ the obligation.
-2. Match the impl against the placeholder obligation.
+1. replace bound regions in the obligation with placeholders.
+2. Match the impl against the [placeholder] obligation.
 3. Check for _placeholder leaks_.
 
+[placeholder]: ../appendix/glossary.html#appendix-c-glossary
 [hrsubtype]: https://github.com/rust-lang/rust/tree/master/src/librustc/infer/higher_ranked/README.md
 [paper by SPJ]: http://research.microsoft.com/en-us/um/people/simonpj/papers/higher-rank/
 
 So let's work through our example.
 
 1. The first thing we would do is to
-placeholder the obligation, yielding `AnyInt : Foo<&'0 isize>` (here `'0`
-represents placeholder region #0). Note that we now have no quantifiers;
+replace the bound region in the obligation with a placeholder, yielding 
+`AnyInt : Foo<&'0 isize>` (here `'0` represents placeholder region #0). 
+Note that we now have no quantifiers;
 in terms of the compiler type, this changes from a `ty::PolyTraitRef`
 to a `TraitRef`. We would then create the `TraitRef` from the impl,
 using fresh variables for it's bound regions (and thus getting
@@ -78,7 +78,7 @@ impl Foo<&'static isize> for StaticInt;
 
 We want the obligation `StaticInt : for<'a> Foo<&'a isize>` to be
 considered unsatisfied. The check begins just as before. `'a` is
-placeholder to `'0` and the impl trait reference is instantiated to
+replaced with a placeholder `'0` and the impl trait reference is instantiated to
 `Foo<&'static isize>`. When we relate those two, we get a constraint
 like `'static == '0`. This means that the taint set for `'0` is `{'0,
 'static}`, which fails the leak check.

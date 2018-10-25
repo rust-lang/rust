@@ -80,8 +80,8 @@ The kinds of region elements are as follows:
   to the remainder of program execution after this function returns.
 - There is an element `!1` for each placeholder region `!1`. This
   corresponds (intuitively) to some unknown set of other elements –
-  for details on placeholder, see the section
-  [placeholder and universes](#placeholder).
+  for details on placeholders, see the section
+  [placeholders and universes](#placeholder).
 
 ## Causal tracking
 
@@ -117,7 +117,7 @@ for its argument, and `bar` wants to be given a function that that
 accepts **any** reference (so it can call it with something on its
 stack, for example). But *how* do we reject it and *why*?
 
-### Subtyping and Placeholder
+### Subtyping and Placeholders
 
 When we type-check `main`, and in particular the call `bar(foo)`, we
 are going to wind up with a subtyping relationship like this one:
@@ -129,8 +129,7 @@ the type of `foo`   the type `bar` expects
 ```
 
 We handle this sort of subtyping by taking the variables that are
-bound in the supertype and **placeholder** them: this means that we
-replace them with
+bound in the supertype and replace them with
 [universally quantified](../appendix/background.html#quantified)
 representatives, written like `!1`. We call these regions "placeholder
 regions" – they represent, basically, "some unknown region".
@@ -198,7 +197,7 @@ fn bar<'a, T>(t: &'a T) {
 ```
 
 Here, the name `'b` is not part of the root universe. Instead, when we
-"enter" into this `for<'b>` (e.g., by placeholder it), we will create
+"enter" into this `for<'b>` (e.g., by replace it with a placeholder), we will create
 a child universe of the root, let's call it U1:
 
 ```text
@@ -411,7 +410,7 @@ for<'a> fn(&'a u32, &'a u32)
 for<'b, 'c> fn(&'b u32, &'c u32)
 ```
 
-Here we would placeholer the supertype, as before, yielding:
+Here we would replace the bound region in the supertype with a placeholder, as before, yielding:
 
 ```text
 for<'a> fn(&'a u32, &'a u32)
@@ -476,7 +475,7 @@ an error. That's good: the problem is that we've gone from a fn that promises
 to return one of its two arguments, to a fn that is promising to return the
 first one. That is unsound. Let's see how it plays out.
 
-First, we placeholder the supertype:
+First, we replace the bound region in the supertype with a placeholder:
 
 ```text
 for<'a> fn(&'a u32, &'a u32) -> &'a u32
