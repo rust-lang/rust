@@ -160,7 +160,8 @@ pub fn run_passes(
     mir: &mut Mir<'tcx>,
     def_id: DefId,
     mir_phase: MirPhase,
-    passes: &[&dyn MirPass]) {
+    passes: &[&dyn MirPass],
+) {
     let phase_index = mir_phase.phase_index();
 
     let run_passes = |mir: &mut Mir<'tcx>, promoted| {

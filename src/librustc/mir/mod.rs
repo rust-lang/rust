@@ -74,21 +74,16 @@ impl<'tcx> HasLocalDecls<'tcx> for Mir<'tcx> {
 /// Warning: ordering of variants is significant
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum MirPhase {
-    Build,
-    Const,
-    Validated,
-    Optimized,
+    Build = 0,
+    Const = 1,
+    Validated = 2,
+    Optimized = 3,
 }
 
 impl MirPhase {
     /// Gets the index of the current MirPhase within the set of all MirPhases.
     pub fn phase_index(&self) -> usize {
-        match self {
-            MirPhase::Build => 0,
-            MirPhase::Const => 1,
-            MirPhase::Validated => 2,
-            MirPhase::Optimized => 3,
-        }
+        *self as usize
     }
 }
 
