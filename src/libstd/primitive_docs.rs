@@ -323,8 +323,8 @@ mod prim_never { }
 /// let s = String::from("love: ❤️");
 /// let v: Vec<char> = s.chars().collect();
 ///
-/// assert_eq!(12, s.len() * std::mem::size_of::<u8>());
-/// assert_eq!(32, v.len() * std::mem::size_of::<char>());
+/// assert_eq!(12, std::mem::size_of_val(&s[..]));
+/// assert_eq!(32, std::mem::size_of_val(&v[..]));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_char { }

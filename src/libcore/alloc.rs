@@ -518,7 +518,7 @@ pub unsafe trait GlobalAlloc {
     /// The block is described by the given `ptr` pointer and `layout`.
     ///
     /// If this returns a non-null pointer, then ownership of the memory block
-    /// referenced by `ptr` has been transferred to this alloctor.
+    /// referenced by `ptr` has been transferred to this allocator.
     /// The memory may or may not have been deallocated,
     /// and should be considered unusable (unless of course it was
     /// transferred back to the caller again via the return value of

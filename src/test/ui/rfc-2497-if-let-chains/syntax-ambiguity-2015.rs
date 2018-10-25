@@ -19,22 +19,22 @@ fn main() {
     use std::ops::Range;
 
     if let Range { start: _, end: _ } = true..true && false { }
-    //~^ ERROR ambigious use of `&&`
+    //~^ ERROR ambiguous use of `&&`
 
     if let Range { start: _, end: _ } = true..true || false { }
-    //~^ ERROR ambigious use of `||`
+    //~^ ERROR ambiguous use of `||`
 
     while let Range { start: _, end: _ } = true..true && false { }
-    //~^ ERROR ambigious use of `&&`
+    //~^ ERROR ambiguous use of `&&`
 
     while let Range { start: _, end: _ } = true..true || false { }
-    //~^ ERROR ambigious use of `||`
+    //~^ ERROR ambiguous use of `||`
 
     if let true = false && false { }
-    //~^ ERROR ambigious use of `&&`
+    //~^ ERROR ambiguous use of `&&`
 
     while let true = (1 == 2) && false { }
-    //~^ ERROR ambigious use of `&&`
+    //~^ ERROR ambiguous use of `&&`
 
     // The following cases are not an error as parenthesis are used to
     // clarify intent:

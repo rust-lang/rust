@@ -2279,7 +2279,7 @@ fn demo<'a>(s: &'a mut S<'a>) -> &'a mut String { let p = &mut *(*s).data; p }
 
 Note that this approach needs a reference to S with lifetime `'a`.
 Nothing shorter than `'a` will suffice: a shorter lifetime would imply
-that after `demo` finishes excuting, something else (such as the
+that after `demo` finishes executing, something else (such as the
 destructor!) could access `s.data` after the end of that shorter
 lifetime, which would again violate the `&mut`-borrow's exclusive
 access.

@@ -269,7 +269,7 @@ pub fn coerce_unsized_info<'a, 'gcx>(gcx: TyCtxt<'a, 'gcx, 'gcx>,
                 // exactly one (non-phantom) field has changed its
                 // type, which we will expect to be the pointer that
                 // is becoming fat (we could probably generalize this
-                // to mutiple thin pointers of the same type becoming
+                // to multiple thin pointers of the same type becoming
                 // fat, but we don't). In this case:
                 //
                 // - `extra` has type `T` before and type `T` after

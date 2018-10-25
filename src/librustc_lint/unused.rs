@@ -284,8 +284,13 @@ impl UnusedParens {
                 parser::contains_exterior_struct_lit(&inner)
             };
             if !necessary {
-                let pattern = pprust::expr_to_string(value);
-                Self::remove_outer_parens(cx, value.span, &pattern, msg);
+                let expr_text = if let Ok(snippet) = cx.sess().source_map()
+                    .span_to_snippet(value.span) {
+                        snippet
+                    } else {
+                        pprust::expr_to_string(value)
+                    };
+                Self::remove_outer_parens(cx, value.span, &expr_text, msg);
             }
         }
     }
@@ -295,8 +300,13 @@ impl UnusedParens {
                                 value: &ast::Pat,
                                 msg: &str) {
         if let ast::PatKind::Paren(_) = value.node {
-            let pattern = pprust::pat_to_string(value);
-            Self::remove_outer_parens(cx, value.span, &pattern, msg);
+            let pattern_text = if let Ok(snippet) = cx.sess().source_map()
+                .span_to_snippet(value.span) {
+                    snippet
+                } else {
+                    pprust::pat_to_string(value)
+                };
+            Self::remove_outer_parens(cx, value.span, &pattern_text, msg);
         }
     }
 

@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we do some basic error correction in the tokeniser.
+// run-rustfix
 
-fn main() {
-    foo(bar(;
-    //~^ ERROR: expected expression, found `;`
+extern "C" {
+    pub fn g(_: &u8) -> &u8; // OK
+    pub fn f() -> &'static u8; //~ ERROR missing lifetime specifier
 }
-//~^ ERROR: incorrect close delimiter: `}`
+
+fn main() {}

@@ -674,7 +674,7 @@ fn check_existential_types<'a, 'fcx, 'gcx, 'tcx>(
                     } // if may_define_existential_type
 
                     // now register the bounds on the parameters of the existential type
-                    // so the parameters given by the function need to fulfil them
+                    // so the parameters given by the function need to fulfill them
                     // ```rust
                     // existential type Foo<T: Bar>: 'static;
                     // fn foo<U>() -> Foo<U> { .. *}

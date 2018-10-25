@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// run-rustfix
+
 extern "C" {
-    fn g(_: &u8) -> &u8; // OK
-    fn f() -> &u8; //~ ERROR missing lifetime specifier
+    pub fn g(_: &u8) -> &u8; // OK
+    pub fn f() -> &u8; //~ ERROR missing lifetime specifier
 }
 
 fn main() {}

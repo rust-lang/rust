@@ -594,7 +594,7 @@ class RustBuild(object):
         return ''
 
     def bootstrap_binary(self):
-        """Return the path of the boostrap binary
+        """Return the path of the bootstrap binary
 
         >>> rb = RustBuild()
         >>> rb.build_dir = "build"

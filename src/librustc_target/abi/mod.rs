@@ -430,7 +430,7 @@ impl Align {
     }
 
     /// Lower the alignment, if necessary, such that the given offset
-    /// is aligned to it (the offset is a multiple of the aligment).
+    /// is aligned to it (the offset is a multiple of the alignment).
     pub fn restrict_for_offset(self, offset: Size) -> Align {
         self.min(Align::max_for_offset(offset))
     }

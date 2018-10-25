@@ -77,7 +77,7 @@ use self::Entry::*;
 /// movie_reviews.insert("Office Space",       "Deals with real issues in the workplace.");
 /// movie_reviews.insert("Pulp Fiction",       "Masterpiece.");
 /// movie_reviews.insert("The Godfather",      "Very enjoyable.");
-/// movie_reviews.insert("The Blues Brothers", "Eye lyked it alot.");
+/// movie_reviews.insert("The Blues Brothers", "Eye lyked it a lot.");
 ///
 /// // check for a specific one.
 /// if !movie_reviews.contains_key("Les Misérables") {

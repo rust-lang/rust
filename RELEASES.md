@@ -4,34 +4,31 @@ Version 1.30.0 (2018-10-25)
 Language
 --------
 - [Procedural macros are now available.][52081] These kinds of macros allow for
-  more powerful code generation, there is a [new chapter available][proc-macros]
-  in Rust Programming Language book that goes further in depth.
+  more powerful code generation. There is a [new chapter available][proc-macros]
+  in the Rust Programming Language book that goes further in depth.
 - [You can now use keywords as identifiers using the raw identifiers
-  syntax (`r#`).][53236] e.g. `let r#for = true;`
+  syntax (`r#`),][53236] e.g. `let r#for = true;`
 - [Using anonymous parameters in traits is now deprecated with a warning and
   will be a hard error in the 2018 edition.][53272]
 - [You can now use `crate` in paths.][54404] This allows you to refer to the
-  crate root in the path. e.g. `use crate::foo;` refers to `foo` in `src/lib.rs`.
-- [Using a external crate now no longer requires being prefixed with `::`.][54404]
-  e.g. previously using a external crate in a module without a use statement
-  required `let json = ::serde_json::from_str(foo);` can now be written
+  crate root in the path, e.g. `use crate::foo;` refers to `foo` in `src/lib.rs`.
+- [Using a external crate no longer requires being prefixed with `::`.][54404]
+  Previously, using a external crate in a module without a use statement
+  required `let json = ::serde_json::from_str(foo);` but can now be written
   as `let json = serde_json::from_str(foo);`.
 - [You can now apply the `#[used]` attribute to static items to prevent the
-  compiler from optimising them away even if they appear to be unused.][51363]
+  compiler from optimising them away, even if they appear to be unused,][51363]
   e.g. `#[used] static FOO: u32 = 1;`
 - [You can now import and reexport macros from other crates with the `use`
   syntax.][50911] Macros exported with `#[macro_export]` are now placed into
   the root module of the crate. If your macro relies on calling other local
-  macros it is recommended to export with the
-  `#[macro_export(local_inner_macros)]` attribute so that users won't have to
-  import those macros.
-- [`mod.rs` files are now optional.][54146] Previously if you had a `foo` module
-  with a `bar` submodule, you would have `src/foo/mod.rs` and `src/foo/bar.rs`.
-  Now you can have `src/foo.rs` and `src/foo/bar.rs` to achieve the same effect.
+  macros, it is recommended to export with the
+  `#[macro_export(local_inner_macros)]` attribute so users won't have to import
+  those macros.
 - [You can now catch visibility keywords (e.g. `pub`, `pub(crate)`) in macros
   using the `vis` specifier.][53370]
-- [Non-macro attributes now allow all forms of literals not just
-  strings.][53044] e.g. Previously you would write `#[attr("true")]` you can now
+- [Non-macro attributes now allow all forms of literals, not just
+  strings.][53044] Previously, you would write `#[attr("true")]`, and you can now
   write `#[attr(true)]`.
 - [You can now specify a function to handle a panic in the Rust runtime with the
   `#[panic_handler]` attribute.][51366]
@@ -54,9 +51,9 @@ Stabilized APIs
 - [`Ipv6Addr::UNSPECIFIED`]
 - [`Iterator::find_map`]
 
-  The following methods are a replacement methods for `trim_left`, `trim_right`,
-  `trim_left_matches`, and `trim_right_matches`. Which will be deprecated
-  in 1.33.0.
+  The following methods are replacement methods for `trim_left`, `trim_right`,
+  `trim_left_matches`, and `trim_right_matches`, which will be deprecated
+  in 1.33.0:
 - [`str::trim_end_matches`]
 - [`str::trim_end`]
 - [`str::trim_start_matches`]
@@ -76,12 +73,12 @@ Misc
 ----
 - [`rustdoc` allows you to specify what edition to treat your code as with the
   `--edition` option.][54057]
-- [`rustdoc` now has the `--color` (Specify whether to output color) and
-  `--error-format` (Specify error format e.g. `json`) options.][53003]
+- [`rustdoc` now has the `--color` (specify whether to output color) and
+  `--error-format` (specify error format, e.g. `json`) options.][53003]
 - [We now distribute a `rust-gdbgui` script that invokes `gdbgui` with Rust
   debug symbols.][53774]
 - [Attributes from Rust tools such as `rustfmt` or `clippy` are now
-  available.][53459] e.g. `#[rustfmt::skip]` will skip formatting the next item.
+  available,][53459] e.g. `#[rustfmt::skip]` will skip formatting the next item.
 
 [50911]: https://github.com/rust-lang/rust/pull/50911/
 [51363]: https://github.com/rust-lang/rust/pull/51363/
@@ -153,7 +150,7 @@ Compiler
 
 Libraries
 ---------
-- [`Once::call_once` now no longer requires `Once` to be `'static`.][52239]
+- [`Once::call_once` no longer requires `Once` to be `'static`.][52239]
 - [`BuildHasherDefault` now implements `PartialEq` and `Eq`.][52402]
 - [`Box<CStr>`, `Box<OsStr>`, and `Box<Path>` now implement `Clone`.][51912]
 - [Implemented `PartialEq<&str>` for `OsString` and `PartialEq<OsString>`
@@ -169,10 +166,10 @@ Stabilized APIs
 
 Cargo
 -----
-- [Cargo can silently fix some bad lockfiles ][cargo/5831] You can use
-  `--locked` to disable this behaviour.
+- [Cargo can silently fix some bad lockfiles.][cargo/5831] You can use
+  `--locked` to disable this behavior.
 - [`cargo-install` will now allow you to cross compile an install
-  using `--target`][cargo/5614]
+  using `--target`.][cargo/5614]
 - [Added the `cargo-fix` subcommand to automatically move project code from
   2015 edition to 2018.][cargo/5723]
 - [`cargo doc` can now optionally document private types using the
@@ -184,15 +181,15 @@ Misc
   the specified level to that level.][52354] For example `--cap-lints warn`
   will demote `deny` and `forbid` lints to `warn`.
 - [`rustc` and `rustdoc` will now have the exit code of `1` if compilation
-  fails, and `101` if there is a panic.][52197]
+  fails and `101` if there is a panic.][52197]
 - [A preview of clippy has been made available through rustup.][51122]
-  You can install the preview with `rustup component add clippy-preview`
+  You can install the preview with `rustup component add clippy-preview`.
 
 Compatibility Notes
 -------------------
 - [`str::{slice_unchecked, slice_unchecked_mut}` are now deprecated.][51807]
   Use `str::get_unchecked(begin..end)` instead.
-- [`std::env::home_dir` is now deprecated for its unintuitive behaviour.][51656]
+- [`std::env::home_dir` is now deprecated for its unintuitive behavior.][51656]
   Consider using the `home_dir` function from
   https://crates.io/crates/dirs instead.
 - [`rustc` will no longer silently ignore invalid data in target spec.][52330]
@@ -432,7 +429,7 @@ Language
   be used as an identifier.
 - [The dyn syntax is now available.][49968] This syntax is equivalent to the
   bare `Trait` syntax, and should make it clearer when being used in tandem with
-  `impl Trait`. Since it is equivalent to the following syntax:
+  `impl Trait` because it is equivalent to the following syntax:
   `&Trait == &dyn Trait`, `&mut Trait == &mut dyn Trait`, and
   `Box<Trait> == Box<dyn Trait>`.
 - [Attributes on generic parameters such as types and lifetimes are
@@ -495,10 +492,10 @@ Cargo
   a different directory than `target` for placing compilation artifacts.
 - [Cargo will be adding automatic target inference for binaries, benchmarks,
   examples, and tests in the Rust 2018 edition.][cargo/5335] If your project specifies
-  specific targets e.g. using `[[bin]]` and have other binaries in locations
+  specific targets, e.g. using `[[bin]]`, and have other binaries in locations
   where cargo would infer a binary, Cargo will produce a warning. You can
-  disable this feature ahead of time by setting any of the following `autobins`,
-  `autobenches`, `autoexamples`, `autotests` to false.
+  disable this feature ahead of time by setting any of the following to false:
+  `autobins`, `autobenches`, `autoexamples`, `autotests`.
 - [Cargo will now cache compiler information.][cargo/5359] This can be disabled by
   setting `CARGO_CACHE_RUSTC_INFO=0` in your environment.
 
@@ -514,8 +511,8 @@ Compatibility Notes
   work.][49896] e.g. `::core::prelude::v1::StrExt::is_empty("")` will not
   compile, `"".is_empty()` will still compile.
 - [`Debug` output on `atomic::{AtomicBool, AtomicIsize, AtomicPtr, AtomicUsize}`
-  will only print the inner type.][48553] e.g.
-  `print!("{:?}", AtomicBool::new(true))` will print `true`
+  will only print the inner type.][48553] E.g.
+  `print!("{:?}", AtomicBool::new(true))` will print `true`,
   not `AtomicBool(true)`.
 - [The maximum number for `repr(align(N))` is now 2²⁹.][50378] Previously you
   could enter higher numbers but they were not supported by LLVM. Up to 512MB
@@ -578,7 +575,7 @@ Version 1.26.2 (2018-06-05)
 Compatibility Notes
 -------------------
 
-- [The borrow checker was fixed to avoid unsoundness when using match ergonomics][51117]
+- [The borrow checker was fixed to avoid unsoundness when using match ergonomics.][51117]
 
 [51117]: https://github.com/rust-lang/rust/issues/51117
 
@@ -589,18 +586,18 @@ Version 1.26.1 (2018-05-29)
 Tools
 -----
 
-- [RLS now works on Windows][50646]
-- [Rustfmt stopped badly formatting text in some cases][rustfmt/2695]
+- [RLS now works on Windows.][50646]
+- [Rustfmt stopped badly formatting text in some cases.][rustfmt/2695]
 
 
 Compatibility Notes
 --------
 
 - [`fn main() -> impl Trait` no longer works for non-Termination
-  trait][50656]
+  trait.][50656]
   This reverts an accidental stabilization.
-- [`NaN > NaN` no longer returns true in const-fn contexts][50812]
-- [Prohibit using turbofish for `impl Trait` in method arguments][50950]
+- [`NaN > NaN` no longer returns true in const-fn contexts.][50812]
+- [Prohibit using turbofish for `impl Trait` in method arguments.][50950]
 
 [50646]: https://github.com/rust-lang/rust/issues/50646
 [50656]: https://github.com/rust-lang/rust/pull/50656
@@ -616,18 +613,18 @@ Language
 - [Closures now implement `Copy` and/or `Clone` if all captured variables
   implement either or both traits.][49299]
 - [The inclusive range syntax e.g. `for x in 0..=10` is now stable.][47813]
-- [The `'_` lifetime is now stable. The underscore lifetime can be used anywhere where a
+- [The `'_` lifetime is now stable. The underscore lifetime can be used anywhere a
   lifetime can be elided.][49458]
 - [`impl Trait` is now stable allowing you to have abstract types in returns
-   or in function parameters.][49255] e.g. `fn foo() -> impl Iterator<Item=u8>` or
+   or in function parameters.][49255] E.g. `fn foo() -> impl Iterator<Item=u8>` or
   `fn open(path: impl AsRef<Path>)`.
 - [Pattern matching will now automatically apply dereferences.][49394]
 - [128-bit integers in the form of `u128` and `i128` are now stable.][49101]
 - [`main` can now return `Result<(), E: Debug>`][49162] in addition to `()`.
 - [A lot of operations are now available in a const context.][46882] E.g. You
   can now index into constant arrays, reference and dereference into constants,
-  and use Tuple struct constructors.
-- [Fixed entry slice patterns are now stable.][48516] e.g.
+  and use tuple struct constructors.
+- [Fixed entry slice patterns are now stable.][48516] E.g.
   ```rust
   let points = [1, 2, 3, 4];
   match points {
@@ -1052,7 +1049,7 @@ Language
 Compiler
 --------
 - [Enabled `TrapUnreachable` in LLVM which should mitigate the impact of
-  undefined behaviour.][45920]
+  undefined behavior.][45920]
 - [rustc now suggests renaming import if names clash.][45660]
 - [Display errors/warnings correctly when there are zero-width or
   wide characters.][45711]
