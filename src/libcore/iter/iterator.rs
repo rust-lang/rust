@@ -571,6 +571,58 @@ pub trait Iterator {
         Map { iter: self, f }
     }
 
+    /// Checks whether there is only one item in the iterator, or not.
+    /// If there is one unique item in the iterator, `single()` returns
+    /// [`Some(T)`] of this item, otherwise it returns [`None`], meaning
+    /// that there is no item, or that there are more than one item.
+    /// 
+    /// [`Some(T)`]: ../../std/option/enum.Option.html#variant.Some
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// 
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iterator_single)]
+    ///
+    /// let unique = [1];
+    /// let single = unique.iter().single();
+    /// 
+    /// assert_eq!(single, Some(&1));
+    /// ```
+    /// 
+    /// If there is no or multiple items, `single()` returns `None`:
+    /// 
+    /// ```
+    /// #![feature(iterator_single)]
+    ///
+    /// let empty: [i32; 0] = [];
+    /// let single = empty.iter().single();
+    /// 
+    /// assert_eq!(single, None);
+    /// ```
+    /// 
+    /// ```
+    /// #![feature(iterator_single)]
+    ///
+    /// let multiple = [1, 2];
+    /// let single = multiple.iter().single();
+    /// 
+    /// assert_eq!(single, None);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_single", issue = "12345")] // Not sure of what I should put there
+    fn single(mut self) -> Option<Self::Item> where
+        Self: Sized
+    {
+        let next = self.next();
+        match self.next().is_some() {
+            true => None,
+            false => next,
+        }
+    }
+
     /// Calls a closure on each element of an iterator.
     ///
     /// This is equivalent to using a [`for`] loop on the iterator, although

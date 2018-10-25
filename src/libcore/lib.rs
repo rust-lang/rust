@@ -89,6 +89,7 @@
 #![feature(fundamental)]
 #![cfg_attr(stage0, feature(impl_header_lifetime_elision))]
 #![feature(intrinsics)]
+#![feature(iterator_single)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
 #![feature(never_type)]
