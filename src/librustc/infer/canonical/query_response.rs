@@ -448,7 +448,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
 
                         // We only allow a `ty::INNERMOST` index in substitutions.
                         assert_eq!(index, ty::INNERMOST);
-                        opt_values[br.as_bound_var()] = Some(*original_value);
+                        opt_values[br.assert_bound_var()] = Some(*original_value);
                     }
                 }
             }

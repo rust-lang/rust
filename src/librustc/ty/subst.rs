@@ -568,7 +568,7 @@ impl CanonicalUserSubsts<'tcx> {
                     ty::ReLateBound(index, br) => {
                         // We only allow a `ty::INNERMOST` index in substitutions.
                         assert_eq!(*index, ty::INNERMOST);
-                        cvar == br.as_bound_var()
+                        cvar == br.assert_bound_var()
                     }
                     _ => false,
                 },

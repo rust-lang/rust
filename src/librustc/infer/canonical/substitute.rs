@@ -67,7 +67,7 @@ where
         value.clone()
     } else {
         let fld_r = |br: ty::BoundRegion| {
-            match var_values.var_values[br.as_bound_var()].unpack() {
+            match var_values.var_values[br.assert_bound_var()].unpack() {
                 UnpackedKind::Lifetime(l) => l,
                 r => bug!("{:?} is a region but value is {:?}", br, r),
             }
