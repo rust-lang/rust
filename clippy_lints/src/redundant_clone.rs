@@ -99,6 +99,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
         for (bb, bbdata) in mir.basic_blocks().iter_enumerated() {
             let terminator = bbdata.terminator();
 
+            if in_macro(terminator.source_info.span) {
+                continue;
+            }
+
             // Give up on loops
             if terminator.successors().any(|s| *s == bb) {
                 continue;
@@ -174,7 +178,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for RedundantClone {
                 };
 
                 if_chain! {
-                    if !in_macro(span);
                     if let Some(snip) = snippet_opt(cx, span);
                     if let Some(dot) = snip.rfind('.');
                     then {
