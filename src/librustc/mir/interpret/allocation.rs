@@ -111,6 +111,78 @@ impl<Tag, Extra: Default> Allocation<Tag, Extra> {
 
 impl<'tcx> ::serialize::UseSpecializedDecodable for &'tcx Allocation {}
 
+/// Various correctness checks for `Pointer`s
+impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
+    /// Check that the pointer is aligned AND non-NULL. This supports ZSTs in two ways:
+    /// You can pass a scalar, and a `Pointer` does not have to actually still be allocated.
+    pub fn check_align(
+        &self,
+        ptr: Pointer<Tag>,
+        required_align: Align
+    ) -> EvalResult<'tcx> {
+        // Check non-NULL/Undef, extract offset
+
+        // check this is not NULL -- which we can ensure only if this is in-bounds
+        let size = Size::from_bytes(self.bytes.len() as u64);
+        if ptr.offset > size {
+            return err!(PointerOutOfBounds {
+                ptr: ptr.erase_tag(),
+                access: true,
+                allocation_size: size,
+            });
+        };
+        // Check alignment
+        if self.align.abi() < required_align.abi() {
+            return err!(AlignmentCheckFailed {
+                has: self.align,
+                required: required_align,
+            });
+        }
+        let offset = ptr.offset.bytes();
+        if offset % required_align.abi() == 0 {
+            Ok(())
+        } else {
+            let has = offset % required_align.abi();
+            err!(AlignmentCheckFailed {
+                has: Align::from_bytes(has, has).unwrap(),
+                required: required_align,
+            })
+        }
+    }
+
+    /// Check if the pointer is "in-bounds". Notice that a pointer pointing at the end
+    /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
+    /// in-bounds!  This follows C's/LLVM's rules.  The `access` boolean is just used
+    /// for the error message.
+    /// If you want to check bounds before doing a memory access, be sure to
+    /// check the pointer one past the end of your access, then everything will
+    /// work out exactly.
+    pub fn check_bounds_ptr(&self, ptr: Pointer<Tag>, access: bool) -> EvalResult<'tcx> {
+        let allocation_size = self.bytes.len() as u64;
+        if ptr.offset.bytes() > allocation_size {
+            return err!(PointerOutOfBounds {
+                ptr: ptr.erase_tag(),
+                access,
+                allocation_size: Size::from_bytes(allocation_size),
+            });
+        }
+        Ok(())
+    }
+
+    /// Check if the memory range beginning at `ptr` and of size `Size` is "in-bounds".
+    #[inline(always)]
+    pub fn check_bounds(
+        &self,
+        cx: impl HasDataLayout,
+        ptr: Pointer<Tag>,
+        size: Size,
+        access: bool
+    ) -> EvalResult<'tcx> {
+        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
+        self.check_bounds_ptr(ptr.offset(size, cx)?, access)
+    }
+}
+
 /// Byte accessors
 impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// The last argument controls whether we error out when there are undefined
@@ -526,78 +598,6 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         Ok(())
     }
 }
-
-impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
-    /// Check that the pointer is aligned AND non-NULL. This supports ZSTs in two ways:
-    /// You can pass a scalar, and a `Pointer` does not have to actually still be allocated.
-    pub fn check_align(
-        &self,
-        ptr: Pointer<Tag>,
-        required_align: Align
-    ) -> EvalResult<'tcx> {
-        // Check non-NULL/Undef, extract offset
-
-        // check this is not NULL -- which we can ensure only if this is in-bounds
-        let size = Size::from_bytes(self.bytes.len() as u64);
-        if ptr.offset > size {
-            return err!(PointerOutOfBounds {
-                ptr: ptr.erase_tag(),
-                access: true,
-                allocation_size: size,
-            });
-        };
-        // Check alignment
-        if self.align.abi() < required_align.abi() {
-            return err!(AlignmentCheckFailed {
-                has: self.align,
-                required: required_align,
-            });
-        }
-        let offset = ptr.offset.bytes();
-        if offset % required_align.abi() == 0 {
-            Ok(())
-        } else {
-            let has = offset % required_align.abi();
-            err!(AlignmentCheckFailed {
-                has: Align::from_bytes(has, has).unwrap(),
-                required: required_align,
-            })
-        }
-    }
-
-    /// Check if the pointer is "in-bounds". Notice that a pointer pointing at the end
-    /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
-    /// in-bounds!  This follows C's/LLVM's rules.  The `access` boolean is just used
-    /// for the error message.
-    /// If you want to check bounds before doing a memory access, be sure to
-    /// check the pointer one past the end of your access, then everything will
-    /// work out exactly.
-    pub fn check_bounds_ptr(&self, ptr: Pointer<Tag>, access: bool) -> EvalResult<'tcx> {
-        let allocation_size = self.bytes.len() as u64;
-        if ptr.offset.bytes() > allocation_size {
-            return err!(PointerOutOfBounds {
-                ptr: ptr.erase_tag(),
-                access,
-                allocation_size: Size::from_bytes(allocation_size),
-            });
-        }
-        Ok(())
-    }
-
-    /// Check if the memory range beginning at `ptr` and of size `Size` is "in-bounds".
-    #[inline(always)]
-    pub fn check_bounds(
-        &self,
-        cx: impl HasDataLayout,
-        ptr: Pointer<Tag>,
-        size: Size,
-        access: bool
-    ) -> EvalResult<'tcx> {
-        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
-        self.check_bounds_ptr(ptr.offset(size, cx)?, access)
-    }
-}
-
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Relocations<Tag=(), Id=AllocId>(SortedMap<Size, (Tag, Id)>);
