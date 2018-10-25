@@ -4,8 +4,7 @@ Version 1.30.0 (2018-10-25)
 Language
 --------
 - [Procedural macros are now available.][52081] These kinds of macros allow for
-  more powerful code generation, there is a [new chapter available][proc-macros]
-  in Rust Programming Language book that goes further in depth.
+  more powerful code generation.
 - [You can now use keywords as identifiers using the raw identifiers
   syntax (`r#`).][53236] e.g. `let r#for = true;`
 - [Using anonymous parameters in traits is now deprecated with a warning and
