@@ -565,7 +565,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         let var = self.canonical_var(info, r.into());
         let region = ty::ReLateBound(
             self.binder_index,
-            ty::BoundRegion::BrAnon(var.index() as u32)
+            ty::BoundRegion::BrAnon(var.as_u32())
         );
         self.tcx().mk_region(region)
     }

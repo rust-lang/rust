@@ -539,7 +539,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Replace all escaping bound vars. The `fld_r` closure replaces escaping
-    /// bound regions while the `flr_t` closure replaces escaping bound types.
+    /// bound regions while the `fld_t` closure replaces escaping bound types.
     pub fn replace_escaping_bound_vars<T, F, G>(
         self,
         value: &T,
@@ -560,7 +560,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Replace all types or regions bound by the given `Binder`. The `fld_r`
-    /// closure replaces bound regions while the `flr_t` closure replaces bound
+    /// closure replaces bound regions while the `fld_t` closure replaces bound
     /// types.
     pub fn replace_bound_vars<T, F, G>(
         self,
