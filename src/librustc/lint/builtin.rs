@@ -234,6 +234,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub UNCONDITIONAL_RECURSION,
+    Warn,
+    "functions that cannot return without calling themselves"
+}
+
+declare_lint! {
     pub SINGLE_USE_LIFETIMES,
     Allow,
     "detects lifetime parameters that are only used once"
@@ -402,6 +408,7 @@ impl LintPass for HardwiredLints {
             DEPRECATED,
             UNUSED_UNSAFE,
             UNUSED_MUT,
+            UNCONDITIONAL_RECURSION,
             SINGLE_USE_LIFETIMES,
             UNUSED_LIFETIMES,
             UNUSED_LABELS,
