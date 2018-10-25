@@ -184,7 +184,6 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     }
 
     crate fn borrows(&self) -> &IndexVec<BorrowIndex, BorrowData<'tcx>> { &self.borrow_set.borrows }
-    pub fn scope_tree(&self) -> &Lrc<region::ScopeTree> { &self.scope_tree }
 
     pub fn location(&self, idx: BorrowIndex) -> &Location {
         &self.borrow_set.borrows[idx].reserve_location
