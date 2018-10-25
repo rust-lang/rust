@@ -176,12 +176,12 @@ impl f64 {
         }
     }
 
-    /// Returns a number composed of the magnitude of one number and the sign of
-    /// another.
+    /// Returns a number composed of the magnitude of `self` and the sign of
+    /// `y`.
     ///
     /// Equal to `self` if the sign of `self` and `y` are the same, otherwise
-    /// equal to `-y`. If `self` is a `NAN`, then a `NAN` with the sign of `y`
-    /// is returned.
+    /// equal to `-self`. If `self` is a `NAN`, then a `NAN` with the sign of
+    /// `y` is returned.
     ///
     /// # Examples
     ///
