@@ -419,20 +419,22 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                 let data = from.load_value(fx);
                 fx.bcx.def_var(mir_var(var), data)
             }
-            CPlace::Addr(addr, None, layout) => {
-                let size = layout.size.bytes() as i32;
-
+            CPlace::Addr(addr, None, dst_layout) => {
                 match from {
-                    CValue::ByVal(val, _layout) => {
+                    CValue::ByVal(val, _src_layout) => {
                         fx.bcx.ins().store(MemFlags::new(), val, addr, 0);
                     }
-                    CValue::ByValPair(val1, val2, _layout) => {
-                        let val1_offset = layout.fields.offset(0).bytes() as i32;
-                        let val2_offset = layout.fields.offset(1).bytes() as i32;
+                    CValue::ByValPair(val1, val2, _src_layout) => {
+                        let val1_offset = dst_layout.fields.offset(0).bytes() as i32;
+                        let val2_offset = dst_layout.fields.offset(1).bytes() as i32;
                         fx.bcx.ins().store(MemFlags::new(), val1, addr, val1_offset);
                         fx.bcx.ins().store(MemFlags::new(), val2, addr, val2_offset);
                     }
-                    CValue::ByRef(from, _layout) => {
+                    CValue::ByRef(from, _src_layout) => {
+                        let size = dst_layout.size.bytes() as i32;
+                        // FIXME emit_small_memcpy has a bug as of commit CraneStation/cranelift@b2281ed
+                        // fx.bcx.emit_small_memcpy(fx.isa, addr, from, size, layout.align.abi() as u8, src_layout.align.abi() as u8);
+
                         let mut offset = 0;
                         while size - offset >= 8 {
                             let byte = fx.bcx.ins().load(
