@@ -105,7 +105,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             tcx: save_ctxt.tcx,
             save_ctxt,
             dumper,
-            span: span_utils.clone(),
+            span: span_utils,
             cur_scope: CRATE_NODE_ID,
             // mac_defs: FxHashSet::default(),
             macro_calls: FxHashSet::default(),

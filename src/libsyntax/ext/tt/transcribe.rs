@@ -219,9 +219,9 @@ impl Add for LockstepIterSize {
             LockstepIterSize::Unconstrained => other,
             LockstepIterSize::Contradiction(_) => self,
             LockstepIterSize::Constraint(l_len, ref l_id) => match other {
-                LockstepIterSize::Unconstrained => self.clone(),
+                LockstepIterSize::Unconstrained => self,
                 LockstepIterSize::Contradiction(_) => other,
-                LockstepIterSize::Constraint(r_len, _) if l_len == r_len => self.clone(),
+                LockstepIterSize::Constraint(r_len, _) if l_len == r_len => self,
                 LockstepIterSize::Constraint(r_len, r_id) => {
                     let msg = format!("inconsistent lockstep iteration: \
                                        '{}' has {} items, but '{}' has {}",

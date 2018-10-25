@@ -458,7 +458,7 @@ where
             );
             debug!("projection_must_outlive: unique declared bound appears in trait ref");
             self.delegate
-                .push_sub_region_constraint(origin.clone(), region, unique_bound);
+                .push_sub_region_constraint(origin, region, unique_bound);
             return;
         }
 

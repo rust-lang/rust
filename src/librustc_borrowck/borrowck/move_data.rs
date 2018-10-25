@@ -347,7 +347,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
             lp = base_lp.clone();
         }
 
-        self.add_move_helper(tcx, orig_lp.clone(), id, kind);
+        self.add_move_helper(tcx, orig_lp, id, kind);
     }
 
     fn add_move_helper(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -359,7 +359,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
                id,
                kind);
 
-        let path_index = self.move_path(tcx, lp.clone());
+        let path_index = self.move_path(tcx, lp);
         let move_index = MoveIndex(self.moves.borrow().len());
 
         let next_move = self.path_first_move(path_index);
@@ -402,7 +402,7 @@ impl<'a, 'tcx> MoveData<'tcx> {
             }
         }
 
-        self.add_assignment_helper(tcx, lp.clone(), assign_id, span);
+        self.add_assignment_helper(tcx, lp, assign_id, span);
     }
 
     fn add_assignment_helper(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,

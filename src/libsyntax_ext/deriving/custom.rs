@@ -75,7 +75,7 @@ impl MultiItemModifier for ProcMacroDerive {
         // Mark attributes as known, and used.
         MarkAttrs(&self.attrs).visit_item(&item);
 
-        let input = __internal::new_token_stream(ecx.resolver.eliminate_crate_var(item.clone()));
+        let input = __internal::new_token_stream(ecx.resolver.eliminate_crate_var(item));
         let res = __internal::set_sess(ecx, || {
             let inner = self.inner;
             panic::catch_unwind(panic::AssertUnwindSafe(|| inner(input)))
