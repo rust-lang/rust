@@ -285,6 +285,10 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         }
     }
 
+    /// Checks whether the target range does not have relocations on the edge of the range
+    ///
+    /// if `allow_ptr_and_undef` is `false`, also check whether the entire range contains
+    /// neither undefined bytes nor any relocations
     pub fn check_bytes(
         &self,
         cx: impl HasDataLayout,
