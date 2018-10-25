@@ -110,7 +110,7 @@ create_config! {
         "Maximum number of blank lines which can be put between items";
     blank_lines_lower_bound: usize, 0, false,
         "Minimum number of blank lines which must be put between items";
-    edition: Edition, Edition::Edition2015, false, "The edition of the parser (RFC 2052)";
+    edition: Edition, Edition::Edition2015, true, "The edition of the parser (RFC 2052)";
 
     // Options that can change the source code beyond whitespace/blocks (somewhat linty things)
     merge_derives: bool, true, true, "Merge multiple `#[derive(...)]` into a single one";

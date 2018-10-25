@@ -2275,7 +2275,7 @@ Specifies which edition is used by the parser.
 
 - **Default value**: `2015`
 - **Possible values**: `2015`, `2018`
-- **Stable**: No
+- **Stable**: Yes
 
 ### Example
 
