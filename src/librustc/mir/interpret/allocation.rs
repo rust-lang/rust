@@ -10,13 +10,13 @@
 
 //! The virtual memory representation of the MIR interpreter
 
-use super::{
-    UndefMask,
-    Relocations,
-};
-
 use ty::layout::{Size, Align};
 use syntax::ast::Mutability;
+use rustc_target::abi::HasDataLayout;
+use std::iter;
+use mir;
+use std::ops::{Deref, DerefMut};
+use rustc_data_structures::sorted_map::SortedMap;
 
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Allocation<Tag=(),Extra=()> {
@@ -103,3 +103,132 @@ impl<Tag, Extra: Default> Allocation<Tag, Extra> {
 }
 
 impl<'tcx> ::serialize::UseSpecializedDecodable for &'tcx Allocation {}
+
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub struct Relocations<Tag=(), Id=AllocId>(SortedMap<Size, (Tag, Id)>);
+
+impl<Tag, Id> Relocations<Tag, Id> {
+    pub fn new() -> Self {
+        Relocations(SortedMap::new())
+    }
+
+    // The caller must guarantee that the given relocations are already sorted
+    // by address and contain no duplicates.
+    pub fn from_presorted(r: Vec<(Size, (Tag, Id))>) -> Self {
+        Relocations(SortedMap::from_presorted_elements(r))
+    }
+}
+
+impl<Tag> Deref for Relocations<Tag> {
+    type Target = SortedMap<Size, (Tag, AllocId)>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<Tag> DerefMut for Relocations<Tag> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Undefined byte tracking
+////////////////////////////////////////////////////////////////////////////////
+
+type Block = u64;
+const BLOCK_SIZE: u64 = 64;
+
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
+pub struct UndefMask {
+    blocks: Vec<Block>,
+    len: Size,
+}
+
+impl_stable_hash_for!(struct mir::interpret::UndefMask{blocks, len});
+
+impl UndefMask {
+    pub fn new(size: Size) -> Self {
+        let mut m = UndefMask {
+            blocks: vec![],
+            len: Size::ZERO,
+        };
+        m.grow(size, false);
+        m
+    }
+
+    /// Check whether the range `start..end` (end-exclusive) is entirely defined.
+    ///
+    /// Returns `Ok(())` if it's defined. Otherwise returns the index of the byte
+    /// at which the first undefined access begins.
+    #[inline]
+    pub fn is_range_defined(&self, start: Size, end: Size) -> Result<(), Size> {
+        if end > self.len {
+            return Err(self.len);
+        }
+
+        let idx = (start.bytes()..end.bytes())
+            .map(|i| Size::from_bytes(i))
+            .find(|&i| !self.get(i));
+
+        match idx {
+            Some(idx) => Err(idx),
+            None => Ok(())
+        }
+    }
+
+    pub fn set_range(&mut self, start: Size, end: Size, new_state: bool) {
+        let len = self.len;
+        if end > len {
+            self.grow(end - len, new_state);
+        }
+        self.set_range_inbounds(start, end, new_state);
+    }
+
+    pub fn set_range_inbounds(&mut self, start: Size, end: Size, new_state: bool) {
+        for i in start.bytes()..end.bytes() {
+            self.set(Size::from_bytes(i), new_state);
+        }
+    }
+
+    #[inline]
+    pub fn get(&self, i: Size) -> bool {
+        let (block, bit) = bit_index(i);
+        (self.blocks[block] & 1 << bit) != 0
+    }
+
+    #[inline]
+    pub fn set(&mut self, i: Size, new_state: bool) {
+        let (block, bit) = bit_index(i);
+        if new_state {
+            self.blocks[block] |= 1 << bit;
+        } else {
+            self.blocks[block] &= !(1 << bit);
+        }
+    }
+
+    pub fn grow(&mut self, amount: Size, new_state: bool) {
+        let unused_trailing_bits = self.blocks.len() as u64 * BLOCK_SIZE - self.len.bytes();
+        if amount.bytes() > unused_trailing_bits {
+            let additional_blocks = amount.bytes() / BLOCK_SIZE + 1;
+            assert_eq!(additional_blocks as usize as u64, additional_blocks);
+            self.blocks.extend(
+                iter::repeat(0).take(additional_blocks as usize),
+            );
+        }
+        let start = self.len;
+        self.len += amount;
+        self.set_range_inbounds(start, start + amount, new_state);
+    }
+}
+
+#[inline]
+fn bit_index(bits: Size) -> (usize, usize) {
+    let bits = bits.bytes();
+    let a = bits / BLOCK_SIZE;
+    let b = bits % BLOCK_SIZE;
+    assert_eq!(a as usize as u64, a);
+    assert_eq!(b as usize as u64, b);
+    (a as usize, b as usize)
+}
