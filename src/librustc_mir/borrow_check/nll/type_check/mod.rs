@@ -1225,7 +1225,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                 };
             }
-            StatementKind::AscribeUserType(ref place, variance, c_ty) => {
+            StatementKind::AscribeUserType(ref place, variance, box c_ty) => {
                 let place_ty = place.ty(mir, tcx).to_ty(tcx);
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,
