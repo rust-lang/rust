@@ -56,7 +56,7 @@ fn main() {
     while true {
     //~^ WARN denote infinite loops
     //~| HELP use `loop`
-        let mut a = (1);
+        let mut registry_no = (format!("NX-{}", 74205));
         //~^ WARN does not need to be mutable
         //~| HELP remove this `mut`
         //~| WARN unnecessary parentheses
@@ -72,6 +72,6 @@ fn main() {
             //~^ WARN this pattern is redundant
             //~| HELP remove this
         }
-        println!("{} {}", a, b);
+        println!("{} {}", registry_no, b);
     }
 }
