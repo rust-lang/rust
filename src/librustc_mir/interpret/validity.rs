@@ -463,7 +463,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         // Validate all fields of compound data structures
         let path_len = path.len(); // Remember the length, in case we need to truncate
         match dest.layout.fields {
-            layout::FieldPlacement::Union(..) => {
+            layout::FieldPlacement::Union(fields) => {
+                // Empty unions are not accepted by rustc. That's great, it means we can
+                // use that as an unambiguous signal for detecting primitives.  Make sure
+                // we did not miss any primitive.
+                debug_assert!(fields > 0);
                 // We can't check unions, their bits are allowed to be anything.
                 // The fields don't need to correspond to any bit pattern of the union's fields.
                 // See https://github.com/rust-lang/rust/issues/32836#issuecomment-406875389
