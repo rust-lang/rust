@@ -61,7 +61,7 @@
 //! we may want to adjust precisely when coercions occur.
 
 use check::{FnCtxt, Needs};
-
+use errors::DiagnosticBuilder;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{Coercion, InferResult, InferOk};
@@ -72,13 +72,11 @@ use rustc::ty::{self, TypeAndMut, Ty, ClosureSubsts};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
-use errors::DiagnosticBuilder;
+use smallvec::{smallvec, SmallVec};
+use std::ops::Deref;
 use syntax::feature_gate;
 use syntax::ptr::P;
 use syntax_pos;
-
-use std::collections::VecDeque;
-use std::ops::Deref;
 
 struct Coerce<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
@@ -536,18 +534,23 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         let mut selcx = traits::SelectionContext::new(self);
 
-        // Use a FIFO queue for this custom fulfillment procedure. (The maximum
-        // length is almost always 1.)
-        let mut queue = VecDeque::with_capacity(1);
-
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = ObligationCause::misc(self.cause.span, self.body_id);
-        queue.push_back(self.tcx.predicate_for_trait_def(self.fcx.param_env,
-                                                         cause,
-                                                         coerce_unsized_did,
-                                                         0,
-                                                         coerce_source,
-                                                         &[coerce_target.into()]));
+
+        // Use a FIFO queue for this custom fulfillment procedure.
+        //
+        // A Vec (or SmallVec) is not a natural choice for a queue. However,
+        // this code path is hot, and this queue usually has a max length of 1
+        // and almost never more than 3. By using a SmallVec we avoid an
+        // allocation, at the (very small) cost of (occasionally) having to
+        // shift subsequent elements down when removing the front element.
+        let mut queue: SmallVec<[_; 4]> =
+            smallvec![self.tcx.predicate_for_trait_def(self.fcx.param_env,
+                                                       cause,
+                                                       coerce_unsized_did,
+                                                       0,
+                                                       coerce_source,
+                                                       &[coerce_target.into()])];
 
         let mut has_unsized_tuple_coercion = false;
 
@@ -555,7 +558,8 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
         // inference might unify those two inner type variables later.
         let traits = [coerce_unsized_did, unsize_did];
-        while let Some(obligation) = queue.pop_front() {
+        while !queue.is_empty() {
+            let obligation = queue.remove(0);
             debug!("coerce_unsized resolve step: {:?}", obligation);
             let trait_ref = match obligation.predicate {
                 ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => {
