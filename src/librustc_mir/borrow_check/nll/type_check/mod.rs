@@ -1013,12 +1013,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 ) = self.infcx
                     .instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
 
-                // FIXME: add user_ty.projs support to `AscribeUserType`.
+                let projs = self.infcx.tcx.intern_projs(&user_ty.projs);
                 self.fully_perform_op(
                     locations,
                     category,
                     self.param_env.and(type_op::ascribe_user_type::AscribeUserType::new(
-                        a, v, def_id, user_substs,
+                        a, v, def_id, user_substs, projs,
                     )),
                 )?;
             }
