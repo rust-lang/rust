@@ -2,7 +2,7 @@ error: no rules expected the token `,`
   --> $DIR/vec-macro-with-comma-only.rs:12:10
    |
 LL |     vec![,]; //~ ERROR no rules expected the token `,`
-   |          ^
+   |          ^ no rules expected the token `,`
 
 error: aborting due to previous error
 
