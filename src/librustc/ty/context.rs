@@ -1888,6 +1888,24 @@ impl<'a, 'tcx> Lift<'tcx> for &'a List<CanonicalVarInfo> {
     }
 }
 
+impl<'a, 'tcx> Lift<'tcx> for &'a List<ProjectionKind<'a>> {
+    type Lifted = &'tcx List<ProjectionKind<'tcx>>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        if self.len() == 0 {
+            return Some(List::empty());
+        }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
+        }
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
+    }
+}
+
 pub mod tls {
     use super::{GlobalCtxt, TyCtxt};
 
