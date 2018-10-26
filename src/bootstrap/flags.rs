@@ -93,8 +93,7 @@ impl Default for Subcommand {
 impl Flags {
     pub fn parse(args: &[String]) -> Flags {
         let mut extra_help = String::new();
-        let mut subcommand_help = format!(
-            "\
+        let mut subcommand_help = String::from("\
 Usage: x.py <subcommand> [options] [<paths>...]
 
 Subcommands:
@@ -365,8 +364,8 @@ Arguments:
         }
 
         let cmd = match subcommand.as_str() {
-            "build" => Subcommand::Build { paths: paths },
-            "check" => Subcommand::Check { paths: paths },
+            "build" => Subcommand::Build { paths },
+            "check" => Subcommand::Check { paths },
             "test" => Subcommand::Test {
                 paths,
                 bless: matches.opt_present("bless"),
@@ -386,9 +385,9 @@ Arguments:
                 paths,
                 test_args: matches.opt_strs("test-args"),
             },
-            "doc" => Subcommand::Doc { paths: paths },
+            "doc" => Subcommand::Doc { paths },
             "clean" => {
-                if paths.len() > 0 {
+                if !paths.is_empty() {
                     println!("\nclean does not take a path argument\n");
                     usage(1, &opts, &subcommand_help, &extra_help);
                 }
@@ -413,11 +412,11 @@ Arguments:
             keep_stage: matches.opt_strs("keep-stage")
                 .into_iter().map(|j| j.parse().unwrap())
                 .collect(),
-            host: split(matches.opt_strs("host"))
+            host: split(&matches.opt_strs("host"))
                 .into_iter()
                 .map(|x| INTERNER.intern_string(x))
                 .collect::<Vec<_>>(),
-            target: split(matches.opt_strs("target"))
+            target: split(&matches.opt_strs("target"))
                 .into_iter()
                 .map(|x| INTERNER.intern_string(x))
                 .collect::<Vec<_>>(),
@@ -425,7 +424,7 @@ Arguments:
             jobs: matches.opt_str("jobs").map(|j| j.parse().unwrap()),
             cmd,
             incremental: matches.opt_present("incremental"),
-            exclude: split(matches.opt_strs("exclude"))
+            exclude: split(&matches.opt_strs("exclude"))
                 .into_iter()
                 .map(|p| p.into())
                 .collect::<Vec<_>>(),
@@ -488,7 +487,7 @@ impl Subcommand {
     }
 }
 
-fn split(s: Vec<String>) -> Vec<String> {
+fn split(s: &[String]) -> Vec<String> {
     s.iter()
         .flat_map(|s| s.split(','))
         .map(|s| s.to_string())
