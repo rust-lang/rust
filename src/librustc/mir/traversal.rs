@@ -34,6 +34,7 @@ pub struct Preorder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     visited: BitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
+    root_is_start_block: bool,
 }
 
 impl<'a, 'tcx> Preorder<'a, 'tcx> {
@@ -44,6 +45,7 @@ impl<'a, 'tcx> Preorder<'a, 'tcx> {
             mir,
             visited: BitSet::new_empty(mir.basic_blocks().len()),
             worklist,
+            root_is_start_block: root == START_BLOCK,
         }
     }
 }
@@ -75,14 +77,18 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         // All the blocks, minus the number of blocks we've visited.
-        let remaining = self.mir.basic_blocks().len() - self.visited.count();
+        let upper = self.mir.basic_blocks().len() - self.visited.count();
 
-        // We will visit all remaining blocks exactly once.
-        (remaining, Some(remaining))
+        let lower = if self.root_is_start_block {
+            // We will visit all remaining blocks exactly once.
+            upper
+        } else {
+            self.worklist.len()
+        };
+
+        (lower, Some(upper))
     }
 }
-
-impl<'a, 'tcx> ExactSizeIterator for Preorder<'a, 'tcx> {}
 
 /// Postorder traversal of a graph.
 ///
@@ -105,7 +111,8 @@ impl<'a, 'tcx> ExactSizeIterator for Preorder<'a, 'tcx> {}
 pub struct Postorder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     visited: BitSet<BasicBlock>,
-    visit_stack: Vec<(BasicBlock, Successors<'a>)>
+    visit_stack: Vec<(BasicBlock, Successors<'a>)>,
+    root_is_start_block: bool,
 }
 
 impl<'a, 'tcx> Postorder<'a, 'tcx> {
@@ -113,7 +120,8 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         let mut po = Postorder {
             mir,
             visited: BitSet::new_empty(mir.basic_blocks().len()),
-            visit_stack: Vec::new()
+            visit_stack: Vec::new(),
+            root_is_start_block: root == START_BLOCK,
         };
 
 
@@ -214,14 +222,18 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 
     fn size_hint(&self) -> (usize, Option<usize>) {
         // All the blocks, minus the number of blocks we've visited.
-        let remaining = self.mir.basic_blocks().len() - self.visited.count();
+        let upper = self.mir.basic_blocks().len() - self.visited.count();
 
-        // We will visit all remaining blocks exactly once.
-        (remaining, Some(remaining))
+        let lower = if self.root_is_start_block {
+            // We will visit all remaining blocks exactly once.
+            upper
+        } else {
+            self.visit_stack.len()
+        };
+
+        (lower, Some(upper))
     }
 }
-
-impl<'a, 'tcx> ExactSizeIterator for Postorder<'a, 'tcx> {}
 
 /// Reverse postorder traversal of a graph
 ///

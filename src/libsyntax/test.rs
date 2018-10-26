@@ -346,7 +346,7 @@ fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
 
     test_runner.span = sp;
 
-    let test_main_path_expr = ecx.expr_path(test_runner.clone());
+    let test_main_path_expr = ecx.expr_path(test_runner);
     let call_test_main = ecx.expr_call(sp, test_main_path_expr,
                                        vec![mk_tests_slice(cx)]);
     let call_test_main = ecx.stmt_expr(call_test_main);

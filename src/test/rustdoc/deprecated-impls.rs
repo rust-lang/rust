@@ -109,7 +109,7 @@ impl Bar for Foo2 {
 
     // @has - '//*[@class="stab deprecated"]' 'Deprecated since 1.0.5: fn_def_with_doc'
     // @has - 'fn_def_with_doc short'
-    // @!has - 'fn_def_with full'
+    // @!has - 'fn_def_with_doc full'
     fn fn_def_with_doc() {}
 
     // @has - '//*[@class="stab deprecated"]' 'Deprecated since 1.0.6: fn_def_without_doc'

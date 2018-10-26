@@ -765,10 +765,10 @@ impl Build {
 
         let path = match which {
             GitRepo::Rustc => {
-                let sha = self.rust_info.sha().expect("failed to find sha");
+                let sha = self.rust_sha().unwrap_or(channel::CFG_RELEASE_NUM);
                 format!("/rustc/{}", sha)
             }
-            GitRepo::Llvm => format!("/rustc/llvm"),
+            GitRepo::Llvm => String::from("/rustc/llvm"),
         };
         Some(format!("{}={}", self.src.display(), path))
     }
@@ -783,7 +783,7 @@ impl Build {
     fn cflags(&self, target: Interned<String>, which: GitRepo) -> Vec<String> {
         // Filter out -O and /O (the optimization flags) that we picked up from
         // cc-rs because the build scripts will determine that for themselves.
-        let mut base = self.cc[&target].args().iter()
+        let mut base: Vec<String> = self.cc[&target].args().iter()
                            .map(|s| s.to_string_lossy().into_owned())
                            .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
                            .collect::<Vec<_>>();
@@ -806,10 +806,10 @@ impl Build {
         if let Some(map) = self.debuginfo_map(which) {
         let cc = self.cc(target);
             if cc.ends_with("clang") || cc.ends_with("gcc") {
-                base.push(format!("-fdebug-prefix-map={}", map).into());
+                base.push(format!("-fdebug-prefix-map={}", map));
             } else if cc.ends_with("clang-cl.exe") {
                 base.push("-Xclang".into());
-                base.push(format!("-fdebug-prefix-map={}", map).into());
+                base.push(format!("-fdebug-prefix-map={}", map));
             }
         }
         base

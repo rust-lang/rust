@@ -50,6 +50,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> BlanketImplFinder <'a, 'tcx, 'rcx, 'cstore> {
         name: Option<String>,
     ) -> Vec<Item>
     where F: Fn(DefId) -> Def {
+        debug!("get_blanket_impls(def_id={:?}, ...)", def_id);
         let mut impls = Vec::new();
         if self.cx
             .tcx
@@ -66,7 +67,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> BlanketImplFinder <'a, 'tcx, 'rcx, 'cstore> {
         }
         let ty = self.cx.tcx.type_of(def_id);
         let generics = self.cx.tcx.generics_of(def_id);
-        let real_name = name.clone().map(|name| Ident::from_str(&name));
+        let real_name = name.map(|name| Ident::from_str(&name));
         let param_env = self.cx.tcx.param_env(def_id);
         for &trait_def_id in self.cx.all_traits.iter() {
             if !self.cx.renderinfo.borrow().access_levels.is_doc_reachable(trait_def_id) ||
@@ -78,6 +79,8 @@ impl<'a, 'tcx, 'rcx, 'cstore> BlanketImplFinder <'a, 'tcx, 'rcx, 'cstore> {
             }
             self.cx.tcx.for_each_relevant_impl(trait_def_id, ty, |impl_def_id| {
                 self.cx.tcx.infer_ctxt().enter(|infcx| {
+                    debug!("get_blanet_impls: Considering impl for trait '{:?}' {:?}",
+                           trait_def_id, impl_def_id);
                     let t_generics = infcx.tcx.generics_of(impl_def_id);
                     let trait_ref = infcx.tcx.impl_trait_ref(impl_def_id)
                                              .expect("Cannot get impl trait");
@@ -104,12 +107,12 @@ impl<'a, 'tcx, 'rcx, 'cstore> BlanketImplFinder <'a, 'tcx, 'rcx, 'cstore> {
                         drop(obligations);
 
                         debug!(
-                            "invoking predicate_may_hold: {:?}",
-                            trait_ref,
+                            "invoking predicate_may_hold: param_env={:?}, trait_ref={:?}, ty={:?}",
+                             param_env, trait_ref, ty
                         );
                         let may_apply = match infcx.evaluate_obligation(
                             &traits::Obligation::new(
-                                cause.clone(),
+                                cause,
                                 param_env,
                                 trait_ref.to_predicate(),
                             ),
@@ -117,6 +120,10 @@ impl<'a, 'tcx, 'rcx, 'cstore> BlanketImplFinder <'a, 'tcx, 'rcx, 'cstore> {
                             Ok(eval_result) => eval_result.may_apply(),
                             Err(traits::OverflowError) => true, // overflow doesn't mean yes *or* no
                         };
+                        debug!("get_blanket_impls: found applicable impl: {}\
+                               for trait_ref={:?}, ty={:?}",
+                               may_apply, trait_ref, ty);
+
                         if !may_apply {
                             return
                         }

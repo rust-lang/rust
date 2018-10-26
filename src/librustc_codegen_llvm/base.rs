@@ -784,7 +784,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
        !tcx.sess.opts.output_types.should_codegen() {
         let ongoing_codegen = write::start_async_codegen(
             tcx,
-            time_graph.clone(),
+            time_graph,
             metadata,
             rx,
             1);

@@ -749,7 +749,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
                 a // LUB(a,a) = a
             }
 
-            _ => self.combine_vars(tcx, Lub, a, b, origin.clone()),
+            _ => self.combine_vars(tcx, Lub, a, b, origin),
         }
     }
 
@@ -771,7 +771,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
                 a // GLB(a,a) = a
             }
 
-            _ => self.combine_vars(tcx, Glb, a, b, origin.clone()),
+            _ => self.combine_vars(tcx, Glb, a, b, origin),
         }
     }
 

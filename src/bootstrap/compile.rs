@@ -69,7 +69,7 @@ impl Step for Std {
         if builder.config.keep_stage.contains(&compiler.stage) {
             builder.info("Warning: Using a potentially old libstd. This may not behave well.");
             builder.ensure(StdLink {
-                compiler: compiler,
+                compiler,
                 target_compiler: compiler,
                 target,
             });
@@ -358,7 +358,7 @@ impl Step for Test {
         if builder.config.keep_stage.contains(&compiler.stage) {
             builder.info("Warning: Using a potentially old libtest. This may not behave well.");
             builder.ensure(TestLink {
-                compiler: compiler,
+                compiler,
                 target_compiler: compiler,
                 target,
             });
@@ -480,7 +480,7 @@ impl Step for Rustc {
         if builder.config.keep_stage.contains(&compiler.stage) {
             builder.info("Warning: Using a potentially old librustc. This may not behave well.");
             builder.ensure(RustcLink {
-                compiler: compiler,
+                compiler,
                 target_compiler: compiler,
                 target,
             });
@@ -816,8 +816,8 @@ fn copy_codegen_backends_to_sysroot(builder: &Builder,
         let filename = file.file_name().unwrap().to_str().unwrap();
         // change `librustc_codegen_llvm-xxxxxx.so` to `librustc_codegen_llvm-llvm.so`
         let target_filename = {
-            let dash = filename.find("-").unwrap();
-            let dot = filename.find(".").unwrap();
+            let dash = filename.find('-').unwrap();
+            let dot = filename.find('.').unwrap();
             format!("{}-{}{}",
                     &filename[..dash],
                     backend,

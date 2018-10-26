@@ -4745,25 +4745,17 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else if !self.check_for_cast(err, expr, found, expected) {
             let methods = self.get_conversion_methods(expr.span, expected, found);
             if let Ok(expr_text) = self.sess().source_map().span_to_snippet(expr.span) {
-                let suggestions = iter::repeat(expr_text).zip(methods.iter())
+                let suggestions = iter::repeat(&expr_text).zip(methods.iter())
                     .filter_map(|(receiver, method)| {
                         let method_call = format!(".{}()", method.ident);
                         if receiver.ends_with(&method_call) {
                             None  // do not suggest code that is already there (#53348)
                         } else {
-                            /*
-                            methods defined in `method_call_list` will overwrite
-                            `.clone()` in copy of `receiver`
-                            */
                             let method_call_list = [".to_vec()", ".to_string()"];
                             if receiver.ends_with(".clone()")
-                                    && method_call_list.contains(&method_call.as_str()){
-                                // created copy of `receiver` because we don't want other
-                                // suggestion to get affected
-                                let mut new_receiver = receiver.clone();
-                                let max_len = new_receiver.rfind(".").unwrap();
-                                new_receiver.truncate(max_len);
-                                Some(format!("{}{}", new_receiver, method_call))
+                                    && method_call_list.contains(&method_call.as_str()) {
+                                let max_len = receiver.rfind(".").unwrap();
+                                Some(format!("{}{}", &receiver[..max_len], method_call))
                             }
                             else {
                                 Some(format!("{}{}", receiver, method_call))

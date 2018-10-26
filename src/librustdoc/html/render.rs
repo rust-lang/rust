@@ -521,7 +521,7 @@ pub fn run(mut krate: clean::Crate,
             external_html: external_html.clone(),
             krate: krate.name.clone(),
         },
-        css_file_extension: css_file_extension.clone(),
+        css_file_extension,
         created_dirs: Default::default(),
         sort_modules_alphabetically,
         themes,
@@ -1343,7 +1343,7 @@ impl DocFolder for Cache {
                         self.search_index.push(IndexItem {
                             ty: item.type_(),
                             name: s.to_string(),
-                            path: path.join("::").to_string(),
+                            path: path.join("::"),
                             desc: plain_summary_line(item.doc_value()),
                             parent,
                             parent_idx: None,
@@ -1709,6 +1709,7 @@ impl<'a> Settings<'a> {
                 ("method-docs", "Auto-hide item methods' documentation", false),
                 ("go-to-only-result", "Directly go to item in search if there is only one result",
                  false),
+                ("line-numbers", "Show line numbers on code examples", false),
             ],
             root_path,
             suffix,
@@ -2283,7 +2284,7 @@ fn document_short(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item, link
             format!("{} [Read more]({})",
                     &plain_summary_line(Some(s)), naive_assoc_href(item, link))
         } else {
-            plain_summary_line(Some(s)).to_string()
+            plain_summary_line(Some(s))
         };
         render_markdown(w, cx, &markdown, item.links(), prefix)?;
     } else if !prefix.is_empty() {
@@ -2435,7 +2436,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     // (which is the position in the vector).
     indices.dedup_by_key(|i| (items[*i].def_id,
                               if items[*i].name.as_ref().is_some() {
-                                  Some(full_path(cx, &items[*i]).clone())
+                                  Some(full_path(cx, &items[*i]))
                               } else {
                                   None
                               },

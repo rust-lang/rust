@@ -83,7 +83,14 @@ macro_rules! __impl_stable_hash_field {
 macro_rules! impl_stable_hash_for {
     // FIXME(mark-i-m): Some of these should be `?` rather than `*`. See the git blame and change
     // them back when `?` is supported again.
-    (enum $enum_name:path { $( $variant:ident $( ( $($field:ident $(-> $delegate:tt)*),* ) )* ),* $(,)* }) => {
+    (enum $enum_name:path {
+        $( $variant:ident
+           // this incorrectly allows specifying both tuple-like and struct-like fields, as in `Variant(a,b){c,d}`,
+           // when it should be only one or the other
+           $( ( $($field:ident $(-> $delegate:tt)*),* ) )*
+           $( { $($named_field:ident $(-> $named_delegate:tt)*),* } )*
+        ),* $(,)*
+    }) => {
         impl<'a, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $enum_name {
             #[inline]
             fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
@@ -94,8 +101,9 @@ macro_rules! impl_stable_hash_for {
 
                 match *self {
                     $(
-                        $variant $( ( $(ref $field),* ) )* => {
+                        $variant $( ( $(ref $field),* ) )* $( { $(ref $named_field),* } )* => {
                             $($( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*)*
+                            $($( __impl_stable_hash_field!($named_field, __ctx, __hasher $(, $named_delegate)*) );*)*
                         }
                     )*
                 }
@@ -133,10 +141,11 @@ macro_rules! impl_stable_hash_for {
         }
     };
 
-    (impl<$tcx:lifetime $(, $T:ident)*> for struct $struct_name:path {
-        $($field:ident),* $(,)*
+    (impl<$tcx:lifetime $(, $lt:lifetime $(: $lt_bound:lifetime)*)* $(, $T:ident)*> for struct $struct_name:path {
+        $($field:ident $(-> $delegate:tt)*),* $(,)*
     }) => {
-        impl<'a, $tcx, $($T,)*> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $struct_name
+        impl<'a, $tcx, $($lt $(: $lt_bound)*,)* $($T,)*>
+            ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $struct_name
             where $($T: ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>>),*
         {
             #[inline]
@@ -147,7 +156,7 @@ macro_rules! impl_stable_hash_for {
                     $(ref $field),*
                 } = *self;
 
-                $( $field.hash_stable(__ctx, __hasher));*
+                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*
             }
         }
     };

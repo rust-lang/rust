@@ -218,7 +218,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 };
                 this.add_import_directive(
                     base.into_iter().collect(),
-                    subclass.clone(),
+                    subclass,
                     source.ident.span,
                     id,
                     root_use_tree.span,

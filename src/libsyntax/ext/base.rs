@@ -247,8 +247,13 @@ impl<F> AttrProcMacro for F
 
 /// Represents a thing that maps token trees to Macro Results
 pub trait TTMacroExpander {
-    fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt, span: Span, input: TokenStream)
-                   -> Box<dyn MacResult+'cx>;
+    fn expand<'cx>(
+        &self,
+        ecx: &'cx mut ExtCtxt,
+        span: Span,
+        input: TokenStream,
+        def_span: Option<Span>,
+    ) -> Box<dyn MacResult+'cx>;
 }
 
 pub type MacroExpanderFn =
@@ -259,8 +264,13 @@ impl<F> TTMacroExpander for F
     where F: for<'cx> Fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree])
     -> Box<dyn MacResult+'cx>
 {
-    fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt, span: Span, input: TokenStream)
-                   -> Box<dyn MacResult+'cx> {
+    fn expand<'cx>(
+        &self,
+        ecx: &'cx mut ExtCtxt,
+        span: Span,
+        input: TokenStream,
+        _def_span: Option<Span>,
+    ) -> Box<dyn MacResult+'cx> {
         struct AvoidInterpolatedIdents;
 
         impl Folder for AvoidInterpolatedIdents {

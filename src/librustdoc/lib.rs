@@ -460,7 +460,7 @@ fn main_args(args: &[String]) -> isize {
     let externs = match parse_externs(&matches) {
         Ok(ex) => ex,
         Err(err) => {
-            diag.struct_err(&err.to_string()).emit();
+            diag.struct_err(&err).emit();
             return 1;
         }
     };

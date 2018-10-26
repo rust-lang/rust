@@ -521,7 +521,7 @@ impl Step for RustdocTheme {
     fn make_run(run: RunConfig) {
         let compiler = run.builder.compiler(run.builder.top_stage, run.host);
 
-        run.builder.ensure(RustdocTheme { compiler: compiler });
+        run.builder.ensure(RustdocTheme { compiler });
     }
 
     fn run(self, builder: &Builder) {
@@ -584,9 +584,9 @@ impl Step for RustdocJS {
             });
             builder.run(&mut command);
         } else {
-            builder.info(&format!(
+            builder.info(
                 "No nodejs found, skipping \"src/test/rustdoc-js\" tests"
-            ));
+            );
         }
     }
 }
@@ -653,7 +653,7 @@ impl Step for Tidy {
         }
 
         let _folder = builder.fold_output(|| "tidy");
-        builder.info(&format!("tidy check"));
+        builder.info("tidy check");
         try_run(builder, &mut cmd);
     }
 
@@ -1052,7 +1052,7 @@ impl Step for Compiletest {
         let hostflags = flags.clone();
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
-        let mut targetflags = flags.clone();
+        let mut targetflags = flags;
         targetflags.push(format!(
             "-Lnative={}",
             builder.test_helpers_out(target).display()
@@ -1168,9 +1168,9 @@ impl Step for Compiletest {
             }
         }
         if suite == "run-make-fulldeps" && !builder.config.llvm_enabled {
-            builder.info(&format!(
+            builder.info(
                 "Ignoring run-make test suite as they generally don't work without LLVM"
-            ));
+            );
             return;
         }
 
@@ -1692,10 +1692,10 @@ impl Step for Crate {
             // The javascript shim implements the syscall interface so that test
             // output can be correctly reported.
             if !builder.config.wasm_syscall {
-                builder.info(&format!(
+                builder.info(
                     "Libstd was built without `wasm_syscall` feature enabled: \
                      test output may not be visible."
-                ));
+                );
             }
 
             // On the wasm32-unknown-unknown target we're using LTO which is
@@ -1891,7 +1891,7 @@ impl Step for Distcheck {
 
     /// Run "distcheck", a 'make check' from a tarball
     fn run(self, builder: &Builder) {
-        builder.info(&format!("Distcheck"));
+        builder.info("Distcheck");
         let dir = builder.out.join("tmp").join("distcheck");
         let _ = fs::remove_dir_all(&dir);
         t!(fs::create_dir_all(&dir));
@@ -1919,7 +1919,7 @@ impl Step for Distcheck {
         );
 
         // Now make sure that rust-src has all of libstd's dependencies
-        builder.info(&format!("Distcheck rust-src"));
+        builder.info("Distcheck rust-src");
         let dir = builder.out.join("tmp").join("distcheck-src");
         let _ = fs::remove_dir_all(&dir);
         t!(fs::create_dir_all(&dir));

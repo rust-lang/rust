@@ -931,12 +931,37 @@ impl<'tcx> IntRange<'tcx> {
     }
 }
 
-// Return a set of constructors equivalent to `all_ctors \ used_ctors`.
+// A request for missing constructor data in terms of either:
+// - whether or not there any missing constructors; or
+// - the actual set of missing constructors.
+#[derive(PartialEq)]
+enum MissingCtorsInfo {
+    Emptiness,
+    Ctors,
+}
+
+// Used by `compute_missing_ctors`.
+#[derive(Debug, PartialEq)]
+enum MissingCtors<'tcx> {
+    Empty,
+    NonEmpty,
+
+    // Note that the Vec can be empty.
+    Ctors(Vec<Constructor<'tcx>>),
+}
+
+// When `info` is `MissingCtorsInfo::Ctors`, compute a set of constructors
+// equivalent to `all_ctors \ used_ctors`. When `info` is
+// `MissingCtorsInfo::Emptiness`, just determines if that set is empty or not.
+// (The split logic gives a performance win, because we always need to know if
+// the set is empty, but we rarely need the full set, and it can be expensive
+// to compute the full set.)
 fn compute_missing_ctors<'a, 'tcx: 'a>(
+    info: MissingCtorsInfo,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     all_ctors: &Vec<Constructor<'tcx>>,
     used_ctors: &Vec<Constructor<'tcx>>,
-) -> Vec<Constructor<'tcx>> {
+) -> MissingCtors<'tcx> {
     let mut missing_ctors = vec![];
 
     for req_ctor in all_ctors {
@@ -965,10 +990,22 @@ fn compute_missing_ctors<'a, 'tcx: 'a>(
         // We add `refined_ctors` instead of `req_ctor`, because then we can
         // provide more detailed error information about precisely which
         // ranges have been omitted.
-        missing_ctors.extend(refined_ctors);
+        if info == MissingCtorsInfo::Emptiness {
+            if !refined_ctors.is_empty() {
+                // The set is non-empty; return early.
+                return MissingCtors::NonEmpty;
+            }
+        } else {
+            missing_ctors.extend(refined_ctors);
+        }
     }
 
-    missing_ctors
+    if info == MissingCtorsInfo::Emptiness {
+        // If we reached here, the set is empty.
+        MissingCtors::Empty
+    } else {
+        MissingCtors::Ctors(missing_ctors)
+    }
 }
 
 /// Algorithm from http://moscova.inria.fr/~maranget/papers/warn/index.html
@@ -1081,20 +1118,23 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         // feature flag is not present, so this is only
         // needed for that case.
 
-        // Find those constructors that are not matched by any non-wildcard patterns in the
-        // current column.
-        let missing_ctors = compute_missing_ctors(cx.tcx, &all_ctors, &used_ctors);
+        // Missing constructors are those that are not matched by any
+        // non-wildcard patterns in the current column. We always determine if
+        // the set is empty, but we only fully construct them on-demand,
+        // because they're rarely used and can be big.
+        let cheap_missing_ctors =
+            compute_missing_ctors(MissingCtorsInfo::Emptiness, cx.tcx, &all_ctors, &used_ctors);
 
         let is_privately_empty = all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
         let is_declared_nonexhaustive = cx.is_non_exhaustive_enum(pcx.ty) && !cx.is_local(pcx.ty);
-        debug!("missing_ctors={:#?} is_privately_empty={:#?} is_declared_nonexhaustive={:#?}",
-               missing_ctors, is_privately_empty, is_declared_nonexhaustive);
+        debug!("cheap_missing_ctors={:#?} is_privately_empty={:#?} is_declared_nonexhaustive={:#?}",
+               cheap_missing_ctors, is_privately_empty, is_declared_nonexhaustive);
 
         // For privately empty and non-exhaustive enums, we work as if there were an "extra"
         // `_` constructor for the type, so we can never match over all constructors.
         let is_non_exhaustive = is_privately_empty || is_declared_nonexhaustive;
 
-        if missing_ctors.is_empty() && !is_non_exhaustive {
+        if cheap_missing_ctors == MissingCtors::Empty && !is_non_exhaustive {
             split_grouped_constructors(cx.tcx, all_ctors, matrix, pcx.ty).into_iter().map(|c| {
                 is_useful_specialized(cx, matrix, v, c, pcx.ty, witness)
             }).find(|result| result.is_useful()).unwrap_or(NotUseful)
@@ -1165,15 +1205,22 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             witness
                         }).collect()
                     } else {
-                        pats.into_iter().flat_map(|witness| {
-                            missing_ctors.iter().map(move |ctor| {
-                                // Extends the witness with a "wild" version of this
-                                // constructor, that matches everything that can be built with
-                                // it. For example, if `ctor` is a `Constructor::Variant` for
-                                // `Option::Some`, this pushes the witness for `Some(_)`.
-                                witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
-                            })
-                        }).collect()
+                        let expensive_missing_ctors =
+                            compute_missing_ctors(MissingCtorsInfo::Ctors, cx.tcx, &all_ctors,
+                                                  &used_ctors);
+                        if let MissingCtors::Ctors(missing_ctors) = expensive_missing_ctors {
+                            pats.into_iter().flat_map(|witness| {
+                                missing_ctors.iter().map(move |ctor| {
+                                    // Extends the witness with a "wild" version of this
+                                    // constructor, that matches everything that can be built with
+                                    // it. For example, if `ctor` is a `Constructor::Variant` for
+                                    // `Option::Some`, this pushes the witness for `Some(_)`.
+                                    witness.clone().push_wild_constructor(cx, ctor, pcx.ty)
+                                })
+                            }).collect()
+                        } else {
+                            bug!("cheap missing ctors")
+                        }
                     };
                     UsefulWithWitness(new_witnesses)
                 }

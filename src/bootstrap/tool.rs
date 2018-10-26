@@ -148,7 +148,7 @@ impl Step for ToolBuild {
             }
         });
 
-        if is_expected && duplicates.len() != 0 {
+        if is_expected && !duplicates.is_empty() {
             println!("duplicate artfacts found when compiling a tool, this \
                       typically means that something was recompiled because \
                       a transitive dependency has different features activated \
@@ -170,7 +170,7 @@ impl Step for ToolBuild {
                 println!("    `{}` additionally enabled features {:?} at {:?}",
                          prev.0, &prev_features - &cur_features, prev.1);
             }
-            println!("");
+            println!();
             println!("to fix this you will probably want to edit the local \
                       src/tools/rustc-workspace-hack/Cargo.toml crate, as \
                       that will update the dependency graph to ensure that \
@@ -188,7 +188,7 @@ impl Step for ToolBuild {
             if !is_optional_tool {
                 exit(1);
             } else {
-                return None;
+                None
             }
         } else {
             let cargo_out = builder.cargo_out(compiler, self.mode, target)
@@ -251,7 +251,7 @@ pub fn prepare_tool_cargo(
     if let Some(date) = info.commit_date() {
         cargo.env("CFG_COMMIT_DATE", date);
     }
-    if features.len() > 0 {
+    if !features.is_empty() {
         cargo.arg("--features").arg(&features.join(", "));
     }
     cargo

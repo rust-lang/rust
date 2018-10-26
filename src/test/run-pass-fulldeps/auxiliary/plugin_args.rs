@@ -38,7 +38,8 @@ impl TTMacroExpander for Expander {
     fn expand<'cx>(&self,
                    ecx: &'cx mut ExtCtxt,
                    sp: Span,
-                   _: TokenStream) -> Box<MacResult+'cx> {
+                   _: TokenStream,
+                   _: Option<Span>) -> Box<MacResult+'cx> {
         let args = self.args.iter().map(|i| pprust::meta_list_item_to_string(i))
             .collect::<Vec<_>>().join(", ");
         MacEager::expr(ecx.expr_str(sp, Symbol::intern(&args)))

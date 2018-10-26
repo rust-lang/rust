@@ -1,8 +1,11 @@
 error: unexpected end of macro invocation
   --> $DIR/empty-comment.rs:20:5
    |
+LL | macro_rules! one_arg_macro {
+   | -------------------------- when calling this macro
+...
 LL |     one_arg_macro!(/**/); //~ ERROR unexpected end
-   |     ^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^ unexpected end of macro invocation
 
 error: aborting due to previous error
 
