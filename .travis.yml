@@ -65,7 +65,8 @@ matrix:
     - env: INTEGRATION=chronotope/chrono
     - env: INTEGRATION=serde-rs/serde
     - env: INTEGRATION=Geal/nom
-    - env: INTEGRATION=hyperium/hyper
+# uncomment once https://github.com/rust-lang/rust/issues/55376 is fixed
+#    - env: INTEGRATION=hyperium/hyper
   allow_failures:
   - os: windows
     env: BASE_TEST=true
