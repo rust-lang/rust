@@ -32,7 +32,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use interpret::{self,
-    PlaceTy, MemPlace, OpTy, Operand, Value, Scalar, ConstValue, Pointer,
+    PlaceTy, MemPlace, OpTy, Operand, Immediate, Scalar, ConstValue, Pointer,
     EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot, RefTracking,
@@ -115,7 +115,7 @@ pub fn op_to_const<'tcx>(
             _ => false,
         };
     let normalized_op = if normalize {
-        ecx.try_read_value(op)?
+        ecx.try_read_immediate(op)?
     } else {
         match op.op {
             Operand::Indirect(mplace) => Err(mplace),
@@ -137,9 +137,9 @@ pub fn op_to_const<'tcx>(
             let alloc = ecx.tcx.intern_const_alloc(alloc);
             ConstValue::ByRef(ptr.alloc_id, alloc, ptr.offset)
         },
-        Ok(Value::Scalar(x)) =>
+        Ok(Immediate::Scalar(x)) =>
             ConstValue::Scalar(x.not_undef()?),
-        Ok(Value::ScalarPair(a, b)) =>
+        Ok(Immediate::ScalarPair(a, b)) =>
             ConstValue::ScalarPair(a.not_undef()?, b.not_undef()?),
     };
     Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, op.layout.ty))

@@ -25,7 +25,7 @@ use rustc::mir::interpret::{
 };
 use super::{
     EvalContext, Machine, AllocMap,
-    Value, ValTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind
+    Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -201,10 +201,10 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
 
 impl<'tcx, Tag: ::std::fmt::Debug> OpTy<'tcx, Tag> {
     #[inline(always)]
-    pub fn try_as_mplace(self) -> Result<MPlaceTy<'tcx, Tag>, Value<Tag>> {
+    pub fn try_as_mplace(self) -> Result<MPlaceTy<'tcx, Tag>, Immediate<Tag>> {
         match self.op {
             Operand::Indirect(mplace) => Ok(MPlaceTy { mplace, layout: self.layout }),
-            Operand::Immediate(value) => Err(value),
+            Operand::Immediate(imm) => Err(imm),
         }
     }
 
@@ -269,7 +269,7 @@ where
     /// Alignment is just based on the type.  This is the inverse of `create_ref`.
     pub fn ref_to_mplace(
         &self,
-        val: ValTy<'tcx, M::PointerTag>,
+        val: ImmTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
         let layout = self.layout_of(pointee_type)?;
@@ -304,7 +304,7 @@ where
         &mut self,
         place: MPlaceTy<'tcx, M::PointerTag>,
         mutbl: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, Value<M::PointerTag>> {
+    ) -> EvalResult<'tcx, Immediate<M::PointerTag>> {
         // Pointer tag tracking might want to adjust the tag
         let place = if M::ENABLE_PTR_TRACKING_HOOKS {
             let (size, _) = self.size_and_align_of_mplace(place)?
@@ -315,8 +315,8 @@ where
             *place
         };
         Ok(match place.meta {
-            None => Value::Scalar(place.ptr.into()),
-            Some(meta) => Value::ScalarPair(place.ptr.into(), meta.into()),
+            None => Immediate::Scalar(place.ptr.into()),
+            Some(meta) => Immediate::ScalarPair(place.ptr.into(), meta.into()),
         })
     }
 
@@ -629,17 +629,17 @@ where
         val: impl Into<ScalarMaybeUndef<M::PointerTag>>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
-        self.write_value(Value::Scalar(val.into()), dest)
+        self.write_immediate(Immediate::Scalar(val.into()), dest)
     }
 
-    /// Write a value to a place
+    /// Write an immediate to a place
     #[inline(always)]
-    pub fn write_value(
+    pub fn write_immediate(
         &mut self,
-        src_val: Value<M::PointerTag>,
+        src: Immediate<M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
-        self.write_value_no_validate(src_val, dest)?;
+        self.write_immediate_no_validate(src, dest)?;
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
@@ -649,40 +649,40 @@ where
         Ok(())
     }
 
-    /// Write a value to a place.
+    /// Write an immediate to a place.
     /// If you use this you are responsible for validating that things got copied at the
     /// right type.
-    fn write_value_no_validate(
+    fn write_immediate_no_validate(
         &mut self,
-        src_val: Value<M::PointerTag>,
+        src: Immediate<M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
         if cfg!(debug_assertions) {
             // This is a very common path, avoid some checks in release mode
             assert!(!dest.layout.is_unsized(), "Cannot write unsized data");
-            match src_val {
-                Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Ptr(_))) =>
+            match src {
+                Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Ptr(_))) =>
                     assert_eq!(self.pointer_size(), dest.layout.size,
                         "Size mismatch when writing pointer"),
-                Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { size, .. })) =>
+                Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits { size, .. })) =>
                     assert_eq!(Size::from_bytes(size.into()), dest.layout.size,
                         "Size mismatch when writing bits"),
-                Value::Scalar(ScalarMaybeUndef::Undef) => {}, // undef can have any size
-                Value::ScalarPair(_, _) => {
+                Immediate::Scalar(ScalarMaybeUndef::Undef) => {}, // undef can have any size
+                Immediate::ScalarPair(_, _) => {
                     // FIXME: Can we check anything here?
                 }
             }
         }
-        trace!("write_value: {:?} <- {:?}: {}", *dest, src_val, dest.layout.ty);
+        trace!("write_immediate: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
 
-        // See if we can avoid an allocation. This is the counterpart to `try_read_value`,
+        // See if we can avoid an allocation. This is the counterpart to `try_read_immediate`,
         // but not factored as a separate function.
         let mplace = match dest.place {
             Place::Local { frame, local } => {
                 match *self.stack[frame].locals[local].access_mut()? {
                     Operand::Immediate(ref mut dest_val) => {
                         // Yay, we can just change the local directly.
-                        *dest_val = src_val;
+                        *dest_val = src;
                         return Ok(());
                     },
                     Operand::Indirect(mplace) => mplace, // already in memory
@@ -693,15 +693,15 @@ where
         let dest = MPlaceTy { mplace, layout: dest.layout };
 
         // This is already in memory, write there.
-        self.write_value_to_mplace_no_validate(src_val, dest)
+        self.write_immediate_to_mplace_no_validate(src, dest)
     }
 
-    /// Write a value to memory.
+    /// Write an immediate to memory.
     /// If you use this you are responsible for validating that things git copied at the
     /// right type.
-    fn write_value_to_mplace_no_validate(
+    fn write_immediate_to_mplace_no_validate(
         &mut self,
-        value: Value<M::PointerTag>,
+        value: Immediate<M::PointerTag>,
         dest: MPlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
         let (ptr, ptr_align) = dest.to_scalar_ptr_align();
@@ -721,10 +721,10 @@ where
         // memory.  The code below is not sufficient, with enough padding it might not
         // cover all the bytes!
         match value {
-            Value::Scalar(scalar) => {
+            Immediate::Scalar(scalar) => {
                 match dest.layout.abi {
                     layout::Abi::Scalar(_) => {}, // fine
-                    _ => bug!("write_value_to_mplace: invalid Scalar layout: {:#?}",
+                    _ => bug!("write_immediate_to_mplace: invalid Scalar layout: {:#?}",
                             dest.layout)
                 }
 
@@ -732,10 +732,10 @@ where
                     ptr, ptr_align.min(dest.layout.align), scalar, dest.layout.size
                 )
             }
-            Value::ScalarPair(a_val, b_val) => {
+            Immediate::ScalarPair(a_val, b_val) => {
                 let (a, b) = match dest.layout.abi {
                     layout::Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
-                    _ => bug!("write_value_to_mplace: invalid ScalarPair layout: {:#?}",
+                    _ => bug!("write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
                               dest.layout)
                 };
                 let (a_size, b_size) = (a.size(&self), b.size(&self));
@@ -788,10 +788,10 @@ where
             "Layout mismatch when copying!\nsrc: {:#?}\ndest: {:#?}", src, dest);
 
         // Let us see if the layout is simple so we take a shortcut, avoid force_allocation.
-        let src = match self.try_read_value(src)? {
+        let src = match self.try_read_immediate(src)? {
             Ok(src_val) => {
                 // Yay, we got a value that we can write directly.
-                return self.write_value_no_validate(src_val, dest);
+                return self.write_immediate_no_validate(src_val, dest);
             }
             Err(mplace) => mplace,
         };
@@ -873,7 +873,7 @@ where
                         let ptr = self.allocate(local_layout, MemoryKind::Stack)?;
                         // We don't have to validate as we can assume the local
                         // was already valid for its type.
-                        self.write_value_to_mplace_no_validate(value, ptr)?;
+                        self.write_immediate_to_mplace_no_validate(value, ptr)?;
                         let mplace = ptr.mplace;
                         // Update the local
                         *self.stack[frame].locals[local].access_mut()? =

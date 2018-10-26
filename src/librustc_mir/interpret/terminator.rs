@@ -17,7 +17,7 @@ use rustc_target::spec::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, PointerArithmetic, EvalErrorKind, Scalar};
 use super::{
-    EvalContext, Machine, Value, OpTy, PlaceTy, MPlaceTy, Operand, StackPopCleanup
+    EvalContext, Machine, Immediate, OpTy, PlaceTy, MPlaceTy, Operand, StackPopCleanup
 };
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -51,7 +51,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 ref targets,
                 ..
             } => {
-                let discr = self.read_value(self.eval_operand(discr, None)?)?;
+                let discr = self.read_immediate(self.eval_operand(discr, None)?)?;
                 trace!("SwitchInt({:?})", *discr);
 
                 // Branch to the `otherwise` case by default, if no match is found.
@@ -138,7 +138,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 target,
                 ..
             } => {
-                let cond_val = self.read_value(self.eval_operand(cond, None)?)?
+                let cond_val = self.read_immediate(self.eval_operand(cond, None)?)?
                     .to_scalar()?.to_bool()?;
                 if expected == cond_val {
                     self.goto_block(Some(target))?;
@@ -147,10 +147,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     use rustc::mir::interpret::EvalErrorKind::*;
                     return match *msg {
                         BoundsCheck { ref len, ref index } => {
-                            let len = self.read_value(self.eval_operand(len, None)?)
+                            let len = self.read_immediate(self.eval_operand(len, None)?)
                                 .expect("can't eval len").to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
-                            let index = self.read_value(self.eval_operand(index, None)?)
+                            let index = self.read_immediate(self.eval_operand(index, None)?)
                                 .expect("can't eval index").to_scalar()?
                                 .to_bits(self.memory().pointer_size())? as u64;
                             err!(BoundsCheck { len, index })
@@ -402,7 +402,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.pointer_size();
                 let ptr_align = self.tcx.data_layout.pointer_align;
-                let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
+                let ptr = self.ref_to_mplace(self.read_immediate(args[0])?)?;
                 let vtable = ptr.vtable()?;
                 let fn_ptr = self.memory.read_ptr_sized(
                     vtable.offset(ptr_size * (idx as u64 + 3), &self)?,
@@ -417,7 +417,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let pointee = args[0].layout.ty.builtin_deref(true).unwrap().ty;
                 let fake_fat_ptr_ty = self.tcx.mk_mut_ptr(pointee);
                 args[0].layout = self.layout_of(fake_fat_ptr_ty)?.field(&self, 0)?;
-                args[0].op = Operand::Immediate(Value::Scalar(ptr.ptr.into())); // strip vtable
+                args[0].op = Operand::Immediate(Immediate::Scalar(ptr.ptr.into())); // strip vtable
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
                 self.eval_fn_call(instance, span, caller_abi, &args, dest, ret)

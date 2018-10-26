@@ -20,7 +20,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    ValTy, OpTy, MPlaceTy, Machine, EvalContext, ScalarMaybeUndef
+    ImmTy, OpTy, MPlaceTy, Machine, EvalContext, ScalarMaybeUndef
 };
 
 macro_rules! validation_failure {
@@ -144,7 +144,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// Make sure that `value` is valid for `ty`, *assuming* `ty` is a primitive type.
     fn validate_primitive_type(
         &self,
-        value: ValTy<'tcx, M::PointerTag>,
+        value: ImmTy<'tcx, M::PointerTag>,
         path: &Vec<PathElem>,
         ref_tracking: Option<&mut RefTracking<'tcx, M::PointerTag>>,
         const_mode: bool,
@@ -465,7 +465,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             _ => dest.layout.ty.builtin_deref(true).is_some(),
         };
         if primitive {
-            let value = try_validation!(self.read_value(dest),
+            let value = try_validation!(self.read_immediate(dest),
                 "uninitialized or unrepresentable data", path);
             return self.validate_primitive_type(
                 value,
