@@ -227,6 +227,10 @@ pre.rust .question-mark {
 	color: #ff9011;
 }
 
+.example-wrap > pre.line-number {
+	border-color: #c7c7c7;
+}
+
 a.test-arrow {
 	background-color: rgba(78, 139, 202, 0.2);
 }
