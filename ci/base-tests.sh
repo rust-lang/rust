@@ -29,12 +29,11 @@ CLIPPY="`pwd`/target/debug/cargo-clippy clippy"
 # run clippy on its own codebase...
 ${CLIPPY} --all-targets --all-features -- -D clippy::all -D clippy::internal
 # ... and some test directories
-CWD_OLD=`pwd`
 for dir in clippy_workspace_tests clippy_workspace_tests/src clippy_workspace_tests/subcrate clippy_workspace_tests/subcrate/src clippy_dev rustc_tools_util
 do
     cd ${dir}
     ${CLIPPY} -- -D clippy::all
-    cd ${CWD_OLD}
+    cd -
 done
 
 

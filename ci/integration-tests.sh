@@ -28,9 +28,6 @@ function check() {
 }
 
 case ${INTEGRATION} in
-  rust-lang/cargo)
-    check
-    ;;
   *)
     check
     ;;
