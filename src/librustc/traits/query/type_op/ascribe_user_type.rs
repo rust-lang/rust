@@ -11,6 +11,7 @@
 use infer::canonical::{Canonical, Canonicalized, CanonicalizedQueryResponse, QueryResponse};
 use traits::query::Fallible;
 use hir::def_id::DefId;
+use mir::ProjectionKind;
 use ty::{self, ParamEnvAnd, Ty, TyCtxt};
 use ty::subst::UserSubsts;
 
@@ -20,6 +21,7 @@ pub struct AscribeUserType<'tcx> {
     pub variance: ty::Variance,
     pub def_id: DefId,
     pub user_substs: UserSubsts<'tcx>,
+    pub projs: &'tcx ty::List<ProjectionKind<'tcx>>,
 }
 
 impl<'tcx> AscribeUserType<'tcx> {
@@ -28,8 +30,9 @@ impl<'tcx> AscribeUserType<'tcx> {
         variance: ty::Variance,
         def_id: DefId,
         user_substs: UserSubsts<'tcx>,
+        projs: &'tcx ty::List<ProjectionKind<'tcx>>,
     ) -> Self {
-        AscribeUserType { mir_ty, variance, def_id, user_substs }
+        AscribeUserType { mir_ty, variance, def_id, user_substs, projs }
     }
 }
 
@@ -59,19 +62,19 @@ impl<'gcx: 'tcx, 'tcx> super::QueryTypeOp<'gcx, 'tcx> for AscribeUserType<'tcx> 
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for AscribeUserType<'tcx> {
-        mir_ty, variance, def_id, user_substs
+        mir_ty, variance, def_id, user_substs, projs
     }
 }
 
 BraceStructLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for AscribeUserType<'a> {
         type Lifted = AscribeUserType<'tcx>;
-        mir_ty, variance, def_id, user_substs
+        mir_ty, variance, def_id, user_substs, projs
     }
 }
 
 impl_stable_hash_for! {
     struct AscribeUserType<'tcx> {
-        mir_ty, variance, def_id, user_substs
+        mir_ty, variance, def_id, user_substs, projs
     }
 }
