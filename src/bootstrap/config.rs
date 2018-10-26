@@ -95,6 +95,7 @@ pub struct Config {
     // rust codegen options
     pub rust_optimize: bool,
     pub rust_codegen_units: Option<u32>,
+    pub rust_codegen_units_std: Option<u32>,
     pub rust_debug_assertions: bool,
     pub rust_debuginfo: bool,
     pub rust_debuginfo_lines: bool,
@@ -294,6 +295,7 @@ impl Default for StringOrBool {
 struct Rust {
     optimize: Option<bool>,
     codegen_units: Option<u32>,
+    codegen_units_std: Option<u32>,
     debug_assertions: Option<bool>,
     debuginfo: Option<bool>,
     debuginfo_lines: Option<bool>,
@@ -580,6 +582,8 @@ impl Config {
                 Some(n) => config.rust_codegen_units = Some(n),
                 None => {}
             }
+
+            config.rust_codegen_units_std = rust.codegen_units_std;
         }
 
         if let Some(ref t) = toml.target {

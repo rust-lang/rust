@@ -1119,10 +1119,15 @@ impl<'a> Builder<'a> {
             cargo.arg("-v");
         }
 
-        // This must be kept before the thinlto check, as we set codegen units
-        // to 1 forcibly there.
-        if let Some(n) = self.config.rust_codegen_units {
-            cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
+        match (mode, self.config.rust_codegen_units_std, self.config.rust_codegen_units) {
+            (Mode::Std, Some(n), _) |
+            (Mode::Test, Some(n), _) |
+            (_, _, Some(n)) => {
+                cargo.env("RUSTC_CODEGEN_UNITS", n.to_string());
+            }
+            _ => {
+                // Don't set anything
+            }
         }
 
         if self.config.rust_optimize {
