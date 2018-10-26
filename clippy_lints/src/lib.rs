@@ -179,6 +179,7 @@ pub mod ptr;
 pub mod ptr_offset_with_cast;
 pub mod question_mark;
 pub mod ranges;
+pub mod redundant_clone;
 pub mod redundant_field_names;
 pub mod redundant_pattern_matching;
 pub mod reference;
@@ -452,6 +453,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box indexing_slicing::IndexingSlicing);
     reg.register_late_lint_pass(box non_copy_const::NonCopyConst);
     reg.register_late_lint_pass(box ptr_offset_with_cast::Pass);
+    reg.register_late_lint_pass(box redundant_clone::RedundantClone);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -981,6 +983,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         fallible_impl_from::FALLIBLE_IMPL_FROM,
         mutex_atomic::MUTEX_INTEGER,
         needless_borrow::NEEDLESS_BORROW,
+        redundant_clone::REDUNDANT_CLONE,
         unwrap::PANICKING_UNWRAP,
         unwrap::UNNECESSARY_UNWRAP,
     ]);

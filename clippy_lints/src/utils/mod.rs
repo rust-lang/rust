@@ -562,6 +562,23 @@ pub fn span_lint_and_then<'a, 'tcx: 'a, T: LintContext<'tcx>, F>(
     db.docs_link(lint);
 }
 
+pub fn span_lint_node(cx: &LateContext<'_, '_>, lint: &'static Lint, node: NodeId, sp: Span, msg: &str) {
+    DiagnosticWrapper(cx.tcx.struct_span_lint_node(lint, node, sp, msg)).docs_link(lint);
+}
+
+pub fn span_lint_node_and_then(
+    cx: &LateContext<'_, '_>,
+    lint: &'static Lint,
+    node: NodeId,
+    sp: Span,
+    msg: &str,
+    f: impl FnOnce(&mut DiagnosticBuilder<'_>),
+) {
+    let mut db = DiagnosticWrapper(cx.tcx.struct_span_lint_node(lint, node, sp, msg));
+    f(&mut db.0);
+    db.docs_link(lint);
+}
+
 /// Add a span lint with a suggestion on how to fix it.
 ///
 /// These suggestions can be parsed by rustfix to allow it to automatically fix your code.

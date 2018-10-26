@@ -813,6 +813,7 @@ All notable changes to this project will be documented in this file.
 [`range_plus_one`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#range_plus_one
 [`range_step_by_zero`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#range_step_by_zero
 [`range_zip_with_len`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#range_zip_with_len
+[`redundant_clone`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_clone
 [`redundant_closure`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_closure
 [`redundant_closure_call`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_closure_call
 [`redundant_field_names`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_field_names
