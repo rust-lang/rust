@@ -28,9 +28,12 @@ use syntax::parse;
 use syntax_pos::{Span, FileName};
 
 /// Highlights `src`, returning the HTML output.
-pub fn render_with_highlighting(src: &str, class: Option<&str>,
-                                extension: Option<&str>,
-                                tooltip: Option<(&str, &str)>) -> String {
+pub fn render_with_highlighting(
+    src: &str,
+    class: Option<&str>,
+    extension: Option<&str>,
+    tooltip: Option<(&str, &str)>,
+) -> String {
     debug!("highlighting: ================\n{}\n==============", src);
     let sess = parse::ParseSess::new(FilePathMapping::empty());
     let fm = sess.source_map().new_source_file(FileName::Custom("stdin".to_string()),
@@ -384,9 +387,9 @@ impl Class {
 }
 
 fn write_header(class: Option<&str>, out: &mut dyn Write) -> io::Result<()> {
-    write!(out, "<pre class=\"rust {}\">\n", class.unwrap_or(""))
+    write!(out, "<div class=\"example-wrap\"><pre class=\"rust {}\">\n", class.unwrap_or(""))
 }
 
 fn write_footer(out: &mut dyn Write) -> io::Result<()> {
-    write!(out, "</pre>\n")
+    write!(out, "</pre></div>\n")
 }
