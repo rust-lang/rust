@@ -10,7 +10,7 @@
 
 use std::fmt;
 
-use crate::ty::{Ty, subst::Substs, layout::{HasDataLayout, Size}};
+use crate::ty::{Ty, subst::Substs, layout::{HasDataLayout, Size}, TyCtxt};
 use crate::hir::def_id::DefId;
 
 use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
@@ -39,11 +39,6 @@ pub enum ConstValue<'tcx> {
     /// Not using the enum `Value` to encode that this must not be `Undef`
     Scalar(Scalar),
 
-    /// Used only for *fat pointers* with layout::abi::ScalarPair
-    ///
-    /// Needed for pattern matching code related to slices and strings.
-    ScalarPair(Scalar, Scalar),
-
     /// An allocation + offset into the allocation.
     /// Invariant: The AllocId matches the allocation.
     ByRef(AllocId, &'tcx Allocation, Size),
@@ -54,8 +49,7 @@ impl<'tcx> ConstValue<'tcx> {
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
             ConstValue::Unevaluated(..) |
-            ConstValue::ByRef(..) |
-            ConstValue::ScalarPair(..) => None,
+            ConstValue::ByRef(..) => None,
             ConstValue::Scalar(val) => Some(val),
         }
     }
@@ -71,20 +65,46 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     #[inline]
-    pub fn new_slice(
-        val: Scalar,
-        len: u64,
-        cx: &impl HasDataLayout
-    ) -> Self {
-        ConstValue::ScalarPair(val, Scalar::Bits {
-            bits: len as u128,
-            size: cx.data_layout().pointer_size.bytes() as u8,
-        })
+    pub fn new_slice(val: Scalar, len: u64, tcx: TyCtxt<'_, '_, 'tcx>) -> Self {
+        Self::new_ptr_sized_seq(
+            &[
+                val,
+                Scalar::Bits {
+                    bits: len as u128,
+                    size: tcx.data_layout.pointer_size.bytes() as u8,
+                }
+            ],
+            tcx,
+        )
     }
 
     #[inline]
-    pub fn new_dyn_trait(val: Scalar, vtable: Pointer) -> Self {
-        ConstValue::ScalarPair(val, Scalar::Ptr(vtable))
+    /// Used for fat pointers and vtables
+    fn new_ptr_sized_seq(scalars: &[Scalar], tcx: TyCtxt<'_, '_, 'tcx>) -> Self {
+        let mut allocation = Allocation::undef(
+            tcx.data_layout.pointer_size * scalars.len() as u64,
+            tcx.data_layout.pointer_align.abi,
+            Default::default(),
+        );
+        let alloc_id = tcx.alloc_map.lock().reserve();
+        let mut ptr = Pointer::from(alloc_id);
+        for &scalar in scalars {
+            allocation.write_scalar(
+                &tcx,
+                ptr,
+                scalar.into(),
+                tcx.data_layout.pointer_size,
+            ).unwrap();
+            ptr = ptr.offset(tcx.data_layout.pointer_size, &tcx).unwrap();
+        }
+        let allocation = tcx.intern_const_alloc(allocation);
+        tcx.alloc_map.lock().set_id_memory(alloc_id, allocation);
+        ConstValue::ByRef(alloc_id, allocation, Size::ZERO)
+    }
+
+    #[inline]
+    pub fn new_dyn_trait(val: Scalar, vtable: Pointer, tcx: TyCtxt<'_, '_, 'tcx>) -> Self {
+        Self::new_ptr_sized_seq(&[val, Scalar::Ptr(vtable)], tcx)
     }
 }
 

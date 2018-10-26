@@ -568,11 +568,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     MemPlace::from_ptr(Pointer::new(id, offset), alloc.align)
                 ).with_default_tag())
             },
-            ConstValue::ScalarPair(a, b) =>
-                Ok(Operand::Immediate(Immediate::ScalarPair(
-                    a.into(),
-                    b.into(),
-                )).with_default_tag()),
             ConstValue::Scalar(x) =>
                 Ok(Operand::Immediate(Immediate::Scalar(x.into())).with_default_tag()),
         }

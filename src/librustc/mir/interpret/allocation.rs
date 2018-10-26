@@ -15,7 +15,7 @@ use super::{
     truncate,
 };
 
-use ty::layout::{Size, Align};
+use ty::layout::{Size, Align, self};
 use syntax::ast::Mutability;
 use std::iter;
 use mir;
@@ -325,6 +325,33 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         Ok(())
     }
 
+    pub fn write_scalar_pair<MemoryExtra>(
+        &mut self,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
+        a_val: ScalarMaybeUndef<Tag>,
+        b_val: ScalarMaybeUndef<Tag>,
+        layout: layout::TyLayout<'tcx>,
+    ) -> EvalResult<'tcx>
+        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        where Extra: AllocationExtra<Tag, MemoryExtra>
+    {
+        let (a, b) = match layout.abi {
+            layout::Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
+            _ => bug!("write_scalar_pair: invalid ScalarPair layout: {:#?}", layout),
+        };
+        let (a_size, b_size) = (a.size(cx), b.size(cx));
+        let b_offset = a_size.align_to(b.align(cx).abi);
+        let b_ptr = ptr.offset(b_offset, cx)?;
+
+        // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
+        // but that does not work: We could be a newtype around a pair, then the
+        // fields do not match the `ScalarPair` components.
+
+        self.write_scalar(cx, ptr, a_val, a_size)?;
+        self.write_scalar(cx, b_ptr, b_val, b_size)
+    }
+
     /// Sets `count` bytes starting at `ptr.offset` with `val`. Basically `memset`.
     pub fn write_repeat<MemoryExtra>(
         &mut self,
@@ -398,6 +425,28 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         where Extra: AllocationExtra<Tag, MemoryExtra>
     {
         self.read_scalar(cx, ptr, cx.data_layout().pointer_size)
+    }
+
+    pub fn read_usize<MemoryExtra>(
+        &self,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
+    ) -> EvalResult<'tcx, u64>
+        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        where Extra: AllocationExtra<Tag, MemoryExtra>
+    {
+        self.read_ptr_sized(cx, ptr)?.not_undef()?.to_usize(cx)
+    }
+
+    pub fn read_ptr<MemoryExtra>(
+        &self,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
+    ) -> EvalResult<'tcx, Pointer<Tag>>
+        // FIXME: Working around https://github.com/rust-lang/rust/issues/56209
+        where Extra: AllocationExtra<Tag, MemoryExtra>
+    {
+        self.read_ptr_sized(cx, ptr)?.not_undef()?.to_ptr()
     }
 
     /// Write a *non-ZST* scalar

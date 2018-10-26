@@ -21,7 +21,7 @@ use rustc::hir::def::Def;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, Instance, query::TyCtxtAt};
-use rustc::ty::layout::{self, LayoutOf, TyLayout, VariantIdx};
+use rustc::ty::layout::{self, LayoutOf, TyLayout, VariantIdx, Size};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -141,8 +141,18 @@ pub fn op_to_const<'tcx>(
         },
         Ok(Immediate::Scalar(x)) =>
             ConstValue::Scalar(x.not_undef()?),
-        Ok(Immediate::ScalarPair(a, b)) =>
-            ConstValue::ScalarPair(a.not_undef()?, b.not_undef()?),
+        Ok(Immediate::ScalarPair(a, b)) => {
+            // create an allocation just for the fat pointer
+            let mut allocation = Allocation::undef(op.layout.size, op.layout.align.abi, Default::default());
+            let alloc_id = ecx.tcx.alloc_map.lock().reserve();
+            let ptr = Pointer::from(alloc_id);
+            // write the fat pointer into the allocation
+            allocation.write_scalar_pair(&ecx.tcx.tcx, ptr, a, b, op.layout)?;
+            // intern everything
+            let allocation = ecx.tcx.intern_const_alloc(allocation);
+            ecx.tcx.alloc_map.lock().set_id_memory(alloc_id, allocation);
+            ConstValue::ByRef(alloc_id, allocation, Size::ZERO)
+        },
     };
     Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, op.layout.ty))
 }

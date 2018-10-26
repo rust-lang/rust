@@ -22,8 +22,9 @@ use hair::util::UserAnnotatedTyHelpers;
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::{ProjectionElem, UserTypeAnnotation, UserTypeProjection, UserTypeProjections};
-use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
+use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend, EvalResult, Pointer};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty};
+use rustc::ty::layout::Size;
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -1263,31 +1264,33 @@ pub fn compare_const_vals<'a, 'tcx>(
 
     if let ty::Ref(_, rty, _) = ty.value.sty {
         if let ty::Str = rty.sty {
-            match (a.val, b.val) {
+            return match (a.val, b.val) {
                 (
-                    ConstValue::ScalarPair(
-                        Scalar::Ptr(ptr_a),
-                        len_a,
-                    ),
-                    ConstValue::ScalarPair(
-                        Scalar::Ptr(ptr_b),
-                        len_b,
-                    ),
-                ) if ptr_a.offset.bytes() == 0 && ptr_b.offset.bytes() == 0 => {
-                    if let Ok(len_a) = len_a.to_bits(tcx.data_layout.pointer_size) {
-                        if let Ok(len_b) = len_b.to_bits(tcx.data_layout.pointer_size) {
-                            if len_a == len_b {
-                                let map = tcx.alloc_map.lock();
-                                let alloc_a = map.unwrap_memory(ptr_a.alloc_id);
-                                let alloc_b = map.unwrap_memory(ptr_b.alloc_id);
-                                if alloc_a.bytes.len() as u128 == len_a {
-                                    return from_bool(alloc_a == alloc_b);
-                                }
-                            }
+                    ConstValue::ByRef(ptr_a, alloc_a, offset_a),
+                    ConstValue::ByRef(ptr_b, alloc_b, offset_b),
+                ) => {
+                    let ptr_a = Pointer::new(ptr_a, offset_a);
+                    let ptr_b = Pointer::new(ptr_b, offset_b);
+                    let dummy = || -> EvalResult<'_, _> {
+                        let len_ptr_a = ptr_a.offset(tcx.data_layout.pointer_size, &tcx)?;
+                        let len_ptr_b = ptr_b.offset(tcx.data_layout.pointer_size, &tcx)?;
+                        let len_a = alloc_a.read_usize(&tcx, len_ptr_a)?;
+                        let len_b = alloc_b.read_usize(&tcx, len_ptr_b)?;
+                        if len_a != len_b {
+                            return Ok(from_bool(false));
                         }
-                    }
+                        let slice_a = alloc_a.read_ptr(&tcx, ptr_a)?;
+                        let slice_b = alloc_b.read_ptr(&tcx, ptr_b)?;
+                        let map = tcx.alloc_map.lock();
+                        let alloc_a = map.unwrap_memory(slice_a.alloc_id);
+                        let alloc_b = map.unwrap_memory(slice_b.alloc_id);
+                        let str_a = alloc_a.get_bytes(&tcx, slice_a, Size::from_bytes(len_a))?;
+                        let str_b = alloc_b.get_bytes(&tcx, slice_b, Size::from_bytes(len_b))?;
+                        Ok(from_bool(str_a == str_b))
+                    };
+                    dummy().unwrap_or_else(|_| from_bool(false))
                 }
-                _ => (),
+                _ => from_bool(false)
             }
         }
     }
@@ -1314,7 +1317,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
         LitKind::Str(ref s, _) => {
             let s = s.as_str();
             let id = tcx.allocate_bytes(s.as_bytes());
-            ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64, &tcx)
+            ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64, tcx)
         },
         LitKind::ByteStr(ref data) => {
             let id = tcx.allocate_bytes(data);

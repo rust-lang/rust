@@ -179,10 +179,10 @@ use super::{PatternFoldable, PatternFolder, compare_const_vals};
 use rustc::hir::def_id::DefId;
 use rustc::hir::RangeEnd;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::layout::{Integer, IntegerExt, VariantIdx};
+use rustc::ty::layout::{Integer, IntegerExt, VariantIdx, Size};
 
 use rustc::mir::Field;
-use rustc::mir::interpret::ConstValue;
+use rustc::mir::interpret::{ConstValue, Scalar, Pointer};
 use rustc::util::common::ErrorReported;
 
 use syntax::attr::{SignedInt, UnsignedInt};
@@ -1387,21 +1387,27 @@ fn slice_pat_covered_by_constructor<'tcx>(
 ) -> Result<bool, ErrorReported> {
     let data: &[u8] = match *ctor {
         ConstantValue(const_val) => {
-            let val = match const_val.val {
-                ConstValue::Unevaluated(..) |
-                ConstValue::ByRef(..) => bug!("unexpected ConstValue: {:?}", const_val),
-                ConstValue::Scalar(val) | ConstValue::ScalarPair(val, _) => val,
+            let (ptr, len) = match const_val.val {
+                ConstValue::ByRef(alloc_id, alloc, offset) => {
+                    let ptr = Pointer::new(alloc_id, offset);
+                    let slice_ptr = alloc.read_ptr(&tcx, ptr).unwrap();
+                    let len_ptr = ptr.offset(tcx.data_layout.pointer_size, &tcx).unwrap();
+                    let len = alloc.read_usize(&tcx, len_ptr).unwrap();
+                    (slice_ptr, len)
+                }
+                ConstValue::Scalar(Scalar::Ptr(ptr)) => {
+                    match const_val.ty.builtin_deref(true).unwrap().ty.sty {
+                        ty::TyKind::Array(e, n) => {
+                            assert!(e == tcx.types.u8);
+                            (ptr, n.unwrap_usize(tcx))
+                        },
+                        _ => bug!("bad ConstValue type: {:#?}", const_val),
+                    }
+                },
+                _ => bug!("unexpected ConstValue: {:#?}", const_val),
             };
-            if let Ok(ptr) = val.to_ptr() {
-                let is_array_ptr = const_val.ty
-                    .builtin_deref(true)
-                    .and_then(|t| t.ty.builtin_index())
-                    .map_or(false, |t| t == tcx.types.u8);
-                assert!(is_array_ptr);
-                tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id).bytes.as_ref()
-            } else {
-                bug!("unexpected non-ptr ConstantValue")
-            }
+            let len = Size::from_bytes(len);
+            tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id).get_bytes(&tcx, ptr, len).unwrap()
         }
         _ => bug!()
     };

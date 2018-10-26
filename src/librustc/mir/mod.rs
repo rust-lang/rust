@@ -15,7 +15,7 @@
 use hir::def::CtorKind;
 use hir::def_id::DefId;
 use hir::{self, HirId, InlineAsm};
-use mir::interpret::{ConstValue, EvalErrorKind, Scalar};
+use mir::interpret::{ConstValue, EvalErrorKind, Scalar, Pointer, EvalResult};
 use mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
@@ -39,7 +39,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::subst::{CanonicalUserSubsts, Subst, Substs};
 use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt};
-use ty::layout::VariantIdx;
+use ty::layout::{VariantIdx, Size};
 use util::ppaux;
 
 pub use mir::interpret::AssertMessage;
@@ -2623,24 +2623,29 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const<'_>) -> fmt::Resu
         return write!(f, "{}", item_path_str(did));
     }
     // print string literals
-    if let ConstValue::ScalarPair(ptr, len) = value {
-        if let Scalar::Ptr(ptr) = ptr {
-            if let Scalar::Bits { bits: len, .. } = len {
-                if let Ref(_, &ty::TyS { sty: Str, .. }, _) = ty.sty {
-                    return ty::tls::with(|tcx| {
-                        let alloc = tcx.alloc_map.lock().get(ptr.alloc_id);
-                        if let Some(interpret::AllocType::Memory(alloc)) = alloc {
-                            assert_eq!(len as usize as u128, len);
-                            let slice =
-                                &alloc.bytes[(ptr.offset.bytes() as usize)..][..(len as usize)];
-                            let s = ::std::str::from_utf8(slice).expect("non utf8 str from miri");
-                            write!(f, "{:?}", s)
-                        } else {
-                            write!(f, "pointer to erroneous constant {:?}, {:?}", ptr, len)
-                        }
-                    });
+    if let ConstValue::ByRef(alloc_id, alloc, offset) = value {
+        if let Ref(_, &ty::TyS { sty: Str, .. }, _) = ty.sty {
+            return ty::tls::with(|tcx| {
+                let mut dummy = || -> EvalResult<'_, _> {
+                    let ptr = Pointer::new(alloc_id, offset);
+                    let slice_ptr = alloc.read_ptr(&tcx, ptr)?;
+                    let ptr = ptr.offset(tcx.data_layout.pointer_size, &tcx)?;
+                    let len = alloc.read_usize(&tcx, ptr)?;
+                    let alloc = tcx.alloc_map.lock().get(slice_ptr.alloc_id);
+                    if let Some(interpret::AllocType::Memory(alloc)) = alloc {
+                        let slice = alloc.get_bytes(&tcx, slice_ptr, Size::from_bytes(len))?;
+                        let s = ::std::str::from_utf8(slice)
+                            .map_err(|err| EvalErrorKind::ValidationFailure(err.to_string()))?;
+                        Ok(write!(f, "{:?}", s))
+                    } else {
+                        Ok(write!(f, "broken str slice: {:?}", alloc))
+                    }
+                };
+                match dummy() {
+                    Ok(res) => res,
+                    Err(err) => write!(f, "broken str constant: {:?}", err),
                 }
-            }
+            });
         }
     }
     // just raw dump everything else

@@ -748,28 +748,10 @@ where
                 )
             }
             Immediate::ScalarPair(a_val, b_val) => {
-                let (a, b) = match dest.layout.abi {
-                    layout::Abi::ScalarPair(ref a, ref b) => (&a.value, &b.value),
-                    _ => bug!("write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
-                              dest.layout)
-                };
-                let (a_size, b_size) = (a.size(self), b.size(self));
-                let b_offset = a_size.align_to(b.align(self).abi);
-                let b_align = ptr_align.restrict_for_offset(b_offset);
-                let b_ptr = ptr.offset(b_offset, self)?;
-
-                self.memory.check_align(b_ptr.into(), b_align)?;
-
-                // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
-                // but that does not work: We could be a newtype around a pair, then the
-                // fields do not match the `ScalarPair` components.
-
+                let tcx = self.tcx;
                 self.memory
                     .get_mut(ptr.alloc_id)?
-                    .write_scalar(tcx, ptr, a_val, a_size)?;
-                self.memory
-                    .get_mut(b_ptr.alloc_id)?
-                    .write_scalar(tcx, b_ptr, b_val, b_size)
+                    .write_scalar_pair(&tcx.tcx, ptr, a_val, b_val, dest.layout)
             }
         }
     }

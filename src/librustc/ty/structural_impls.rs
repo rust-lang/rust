@@ -1032,7 +1032,6 @@ impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         match *self {
             ConstValue::Scalar(v) => ConstValue::Scalar(v),
-            ConstValue::ScalarPair(a, b) => ConstValue::ScalarPair(a, b),
             ConstValue::ByRef(id, alloc, offset) => ConstValue::ByRef(id, alloc, offset),
             ConstValue::Unevaluated(def_id, substs) => {
                 ConstValue::Unevaluated(def_id, substs.fold_with(folder))
@@ -1043,7 +1042,6 @@ impl<'tcx> TypeFoldable<'tcx> for ConstValue<'tcx> {
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         match *self {
             ConstValue::Scalar(_) |
-            ConstValue::ScalarPair(_, _) |
             ConstValue::ByRef(_, _, _) => false,
             ConstValue::Unevaluated(_, substs) => substs.visit_with(visitor),
         }
