@@ -35,7 +35,6 @@ pub trait T {
 // @has  - '//*[@class="docblock"]' 'Docs associated with the S1 trait a_method implementation.'
 // @!has - '//*[@class="docblock"]' 'Docs associated with the trait a_method definition.'
 // @has - '//*[@class="docblock"]' 'Docs associated with the trait b_method definition.'
-// @has - '//*[@class="docblock"]' 'Docs associated with the trait b_method definition.'
 // @has - '//*[@class="docblock"]' 'Docs associated with the trait c_method definition.'
 // @!has - '//*[@class="docblock"]' 'There is another line'
 // @has - '//*[@class="docblock"]' 'Read more'

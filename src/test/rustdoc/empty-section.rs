@@ -15,6 +15,6 @@
 pub struct Foo;
 
 // @has foo/struct.Foo.html
-// @!has - '//*[@class="synthetic-implementations"]' 'Auto Trait Implementations'
+// @!has - 'Auto Trait Implementations'
 impl !Send for Foo {}
 impl !Sync for Foo {}
