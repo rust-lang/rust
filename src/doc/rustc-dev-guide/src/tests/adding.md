@@ -158,6 +158,8 @@ source.
   this test; see also `ignore-gdb-version`
 * `min-lldb-version` specifies the minimum lldb version required for
   this test
+* `rust-lldb` causes the lldb part of the test to only be run if the
+  lldb in use contains the Rust plugin
 * `no-system-llvm` causes the test to be ignored if the system llvm is used
 * `min-llvm-version` specifies the minimum llvm version required for
   this test
