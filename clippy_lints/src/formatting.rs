@@ -156,6 +156,11 @@ fn check_else(cx: &EarlyContext<'_>, expr: &ast::Expr) {
             && !differing_macro_contexts(then.span, else_.span)
             && !in_macro(then.span)
         {
+            // workaround for rust-lang/rust#43081
+            if expr.span.lo().0 == 0 && expr.span.hi().0 == 0 {
+                return;
+            }
+
             // this will be a span from the closing ‘}’ of the “then” block (excluding) to
             // the
             // “if” of the “else if” block (excluding)
