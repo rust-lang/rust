@@ -27,6 +27,15 @@ error[E0378]: the trait `DispatchFromDyn` may only be implemented for a coercion
 LL | impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NothingToCoerce<T>> for NothingToCoerce<U> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error[E0378]: structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
+  --> $DIR/invalid_dispatch_from_dyn_impls.rs:47:1
+   |
+LL | / impl<T: ?Sized, U: ?Sized> DispatchFromDyn<HasReprC<U>> for HasReprC<T>
+LL | | where
+LL | |     T: Unsize<U>,
+LL | | {} //~^^^ ERROR [E0378]
+   | |__^
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0378`.

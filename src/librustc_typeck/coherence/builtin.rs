@@ -223,6 +223,13 @@ fn visit_implementation_of_dispatch_from_dyn<'a, 'tcx>(
                         return
                     }
 
+                    if def_a.repr.c() || def_a.repr.packed() {
+                        create_err(
+                            "structs implementing `DispatchFromDyn` may not have \
+                             `#[repr(packed)]` or `#[repr(C)]`"
+                        ).emit();
+                    }
+
                     let fields = &def_a.non_enum_variant().fields;
 
                     let coerced_fields = fields.iter().filter_map(|field| {

@@ -41,4 +41,12 @@ struct NothingToCoerce<T: ?Sized> {
 impl<T: ?Sized, U: ?Sized> DispatchFromDyn<NothingToCoerce<T>> for NothingToCoerce<U> {}
 //~^ ERROR [E0378]
 
+#[repr(C)]
+struct HasReprC<T: ?Sized>(Box<T>);
+
+impl<T: ?Sized, U: ?Sized> DispatchFromDyn<HasReprC<U>> for HasReprC<T>
+where
+    T: Unsize<U>,
+{} //~^^^ ERROR [E0378]
+
 fn main() {}
