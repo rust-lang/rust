@@ -226,6 +226,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
     }
 
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.cx.tcx.hir)
+        NestedVisitorMap::All(&self.cx.tcx.hir)
     }
 }

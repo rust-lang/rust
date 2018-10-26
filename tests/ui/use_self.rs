@@ -205,3 +205,17 @@ mod issue2894 {
         }
     }
 }
+
+mod existential {
+    struct Foo;
+
+    impl Foo {
+        fn bad(foos: &[Self]) -> impl Iterator<Item=&Foo> {
+            foos.iter()
+        }
+
+        fn good(foos: &[Self]) -> impl Iterator<Item=&Self> {
+            foos.iter()
+        }
+    }
+}
