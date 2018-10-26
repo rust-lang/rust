@@ -24,21 +24,21 @@ cd clippy_lints && cargo test && cd ..
 cd rustc_tools_util && cargo test && cd ..
 # check that the lint lists are up-to-date
 ./util/update_lints.py -c
-mkdir -p ~/rust/cargo/bin
-cp target/debug/cargo-clippy ~/rust/cargo/bin/cargo-clippy
-cp target/debug/clippy-driver ~/rust/cargo/bin/clippy-driver
-rm ~/.cargo/bin/cargo-clippy
+
+CLIPPY="`pwd`/target/debug/cargo-clippy clippy"
 # run clippy on its own codebase...
-PATH=$PATH:~/rust/cargo/bin cargo clippy --all-targets --all-features -- -D clippy::all -D clippy::internal
+${CLIPPY} --all-targets --all-features -- -D clippy::all -D clippy::internal
 # ... and some test directories
-cd clippy_workspace_tests && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy::all && cd ..
-cd clippy_workspace_tests/src && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy::all && cd ../..
-cd clippy_workspace_tests/subcrate && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy::all && cd ../..
-cd clippy_workspace_tests/subcrate/src && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy::all && cd ../../..
-cd clippy_dev && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy::all && cd ..
-cd rustc_tools_util/ && PATH=$PATH:~/rust/cargo/bin cargo clippy -- -D clippy::all && cd ..
+CWD_OLD=`pwd`
+for dir in clippy_workspace_tests clippy_workspace_tests/src clippy_workspace_tests/subcrate clippy_workspace_tests/subcrate/src clippy_dev rustc_tools_util
+do
+    cd ${dir}
+    ${CLIPPY} -- -D clippy::all
+    cd ${CWD_OLD}
+done
+
 
 # test --manifest-path
-PATH=$PATH:~/rust/cargo/bin cargo clippy --manifest-path=clippy_workspace_tests/Cargo.toml -- -D clippy::all
-cd clippy_workspace_tests/subcrate && PATH=$PATH:~/rust/cargo/bin cargo clippy --manifest-path=../Cargo.toml -- -D clippy::all && cd ../..
+${CLIPPY} --manifest-path=clippy_workspace_tests/Cargo.toml -- -D clippy::all
+cd clippy_workspace_tests/subcrate && ${CLIPPY} --manifest-path=../Cargo.toml -- -D clippy::all && cd ../..
 set +x
