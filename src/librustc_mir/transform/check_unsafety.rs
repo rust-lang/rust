@@ -19,7 +19,7 @@ use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
 use rustc::lint::builtin::{SAFE_EXTERN_STATICS, SAFE_PACKED_BORROWS, UNUSED_UNSAFE};
 use rustc::mir::*;
-use rustc::mir::visit::{PlaceContext, Visitor};
+use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext};
 
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -152,7 +152,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     place: &Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
-        if let PlaceContext::Borrow { .. } = context {
+        if context.is_borrow() {
             if util::is_disaligned(self.tcx, self.mir, self.param_env, place) {
                 let source_info = self.source_info;
                 let lint_root =
@@ -193,9 +193,11 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     }
                     ty::Adt(adt, _) => {
                         if adt.is_union() {
-                            if context == PlaceContext::Store ||
-                                context == PlaceContext::AsmOutput ||
-                                context == PlaceContext::Drop
+                            if context == PlaceContext::MutatingUse(MutatingUseContext::Store) ||
+                                context == PlaceContext::MutatingUse(MutatingUseContext::Drop) ||
+                                context == PlaceContext::MutatingUse(
+                                    MutatingUseContext::AsmOutput
+                                )
                             {
                                 let elem_ty = match elem {
                                     &ProjectionElem::Field(_, ty) => ty,

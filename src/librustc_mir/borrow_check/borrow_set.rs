@@ -12,7 +12,9 @@ use borrow_check::place_ext::PlaceExt;
 use dataflow::indexes::BorrowIndex;
 use dataflow::move_paths::MoveData;
 use rustc::mir::traversal;
-use rustc::mir::visit::{PlaceContext, Visitor};
+use rustc::mir::visit::{
+    PlaceContext, Visitor, NonUseContext, MutatingUseContext, NonMutatingUseContext
+};
 use rustc::mir::{self, Location, Mir, Place, Local};
 use rustc::ty::{Region, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
@@ -116,7 +118,7 @@ impl LocalsStateAtExit {
 
         impl<'tcx> Visitor<'tcx> for HasStorageDead {
             fn visit_local(&mut self, local: &Local, ctx: PlaceContext<'tcx>, _: Location) {
-                if ctx == PlaceContext::StorageDead {
+                if ctx == PlaceContext::NonUse(NonUseContext::StorageDead) {
                     self.0.insert(*local);
                 }
             }
@@ -266,7 +268,9 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
 
                 // Watch out: the use of TMP in the borrow itself
                 // doesn't count as an activation. =)
-                if borrow_data.reserve_location == location && context == PlaceContext::Store {
+                if borrow_data.reserve_location == location &&
+                    context == PlaceContext::MutatingUse(MutatingUseContext::Store)
+                {
                     return;
                 }
 
@@ -287,10 +291,9 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
                 borrow_data.activation_location = match context {
                     // The use of TMP in a shared borrow does not
                     // count as an actual activation.
-                    PlaceContext::Borrow { kind: mir::BorrowKind::Shared, .. }
-                    | PlaceContext::Borrow { kind: mir::BorrowKind::Shallow, .. } => {
-                        TwoPhaseActivation::NotActivated
-                    }
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(..)) |
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(..)) =>
+                        TwoPhaseActivation::NotActivated,
                     _ => {
                         // Double check: This borrow is indeed a two-phase borrow (that is,
                         // we are 'transitioning' from `NotActivated` to `ActivatedAt`) and

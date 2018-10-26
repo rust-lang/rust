@@ -39,7 +39,7 @@
 use rustc::ty;
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
-use rustc::mir::visit::{Visitor, PlaceContext};
+use rustc::mir::visit::{Visitor, PlaceContext, NonUseContext};
 use transform::{MirPass, MirSource};
 use util::patch::MirPatch;
 use rustc_data_structures::indexed_vec::{IndexVec};
@@ -316,8 +316,8 @@ impl<'tcx> Visitor<'tcx> for RestoreDataCollector {
                    location: Location) {
         let local_use = &mut self.locals_use[*local];
         match context {
-            PlaceContext::StorageLive => local_use.alive = Some(location),
-            PlaceContext::StorageDead => local_use.dead = Some(location),
+            PlaceContext::NonUse(NonUseContext::StorageLive) => local_use.alive = Some(location),
+            PlaceContext::NonUse(NonUseContext::StorageDead) => local_use.dead = Some(location),
             _ => {
                 local_use.use_count += 1;
                 if local_use.first_use.is_none() {

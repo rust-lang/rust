@@ -26,7 +26,7 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::query::Providers;
 use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
-use rustc::mir::visit::{PlaceContext, Visitor};
+use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::middle::lang_items;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::LitKind;
@@ -271,7 +271,11 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             // This must be an explicit assignment.
             _ => {
                 // Catch more errors in the destination.
-                self.visit_place(dest, PlaceContext::Store, location);
+                self.visit_place(
+                    dest,
+                    PlaceContext::MutatingUse(MutatingUseContext::Store),
+                    location
+                );
                 self.statement_like();
             }
         }
@@ -610,10 +614,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             if is_reborrow {
-                self.super_place(place, PlaceContext::Borrow {
-                    region,
-                    kind
-                }, location);
+                let ctx = match kind {
+                    BorrowKind::Shared =>
+                        PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(region)),
+                    BorrowKind::Shallow =>
+                        PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(region)),
+                    BorrowKind::Unique =>
+                        PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow(region)),
+                    BorrowKind::Mut { .. } =>
+                        PlaceContext::MutatingUse(MutatingUseContext::Borrow(region)),
+                };
+                self.super_place(place, ctx, location);
             } else {
                 self.super_rvalue(rvalue, location);
             }
