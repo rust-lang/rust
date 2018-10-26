@@ -4,7 +4,7 @@ error: `$a:expr` is followed by `$b:tt`, which is not allowed for `expr` fragmen
 LL |   ( $a:expr $($b:tt)* ) => { }; //~ ERROR not allowed for `expr` fragments
    |               ^^^^^ not allowed after `expr` fragments
    |
-   = note: allowed there are: `=>`, `,` or `;`
+   = note: allowed there are: `;`, `=>` or `,`
 
 error: `$a:ty` is followed by `$b:tt`, which is not allowed for `ty` fragments
   --> $DIR/macro-followed-by-seq-bad.rs:18:13
@@ -12,7 +12,7 @@ error: `$a:ty` is followed by `$b:tt`, which is not allowed for `ty` fragments
 LL |   ( $a:ty $($b:tt)* ) => { };   //~ ERROR not allowed for `ty` fragments
    |             ^^^^^ not allowed after `ty` fragments
    |
-   = note: allowed there are: `{`, `[`, `=>`, `,`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
+   = note: allowed there are: `,`, `{`, `[`, `=>`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
 error: aborting due to 2 previous errors
 

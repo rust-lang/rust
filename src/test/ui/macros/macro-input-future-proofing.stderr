@@ -4,7 +4,7 @@ error: `$ty:ty` is followed by `<`, which is not allowed for `ty` fragments
 LL |     ($ty:ty <) => (); //~ ERROR `$ty:ty` is followed by `<`, which is not allowed for `ty`
    |             ^ not allowed after `ty` fragments
    |
-   = note: allowed there are: `{`, `[`, `=>`, `,`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
+   = note: allowed there are: `,`, `{`, `[`, `=>`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
 error: `$ty:ty` is followed by `<`, which is not allowed for `ty` fragments
   --> $DIR/macro-input-future-proofing.rs:15:13
@@ -12,7 +12,7 @@ error: `$ty:ty` is followed by `<`, which is not allowed for `ty` fragments
 LL |     ($ty:ty < foo ,) => (); //~ ERROR `$ty:ty` is followed by `<`, which is not allowed for `ty`
    |             ^ not allowed after `ty` fragments
    |
-   = note: allowed there are: `{`, `[`, `=>`, `,`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
+   = note: allowed there are: `,`, `{`, `[`, `=>`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
 error: `$pa:pat` is followed by `>`, which is not allowed for `pat` fragments
   --> $DIR/macro-input-future-proofing.rs:21:14
@@ -44,7 +44,7 @@ error: `$ty:ty` is followed by `-`, which is not allowed for `ty` fragments
 LL |     ($ty:ty -) => (); //~ ERROR `$ty:ty` is followed by `-`
    |             ^ not allowed after `ty` fragments
    |
-   = note: allowed there are: `{`, `[`, `=>`, `,`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
+   = note: allowed there are: `,`, `{`, `[`, `=>`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
 error: `$b:ty` is followed by `-`, which is not allowed for `ty` fragments
   --> $DIR/macro-input-future-proofing.rs:27:19
@@ -52,7 +52,7 @@ error: `$b:ty` is followed by `-`, which is not allowed for `ty` fragments
 LL |     ($a:ty, $b:ty -) => (); //~ ERROR `$b:ty` is followed by `-`
    |                   ^ not allowed after `ty` fragments
    |
-   = note: allowed there are: `{`, `[`, `=>`, `,`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
+   = note: allowed there are: `,`, `{`, `[`, `=>`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
 error: `$ty:ty` is followed by `-`, which is not allowed for `ty` fragments
   --> $DIR/macro-input-future-proofing.rs:28:7
@@ -60,19 +60,27 @@ error: `$ty:ty` is followed by `-`, which is not allowed for `ty` fragments
 LL |     ($($ty:ty)-+) => (); //~ ERROR `$ty:ty` is followed by `-`, which is not allowed for `ty`
    |       ^^^^^^^^ not allowed after `ty` fragments
    |
-   = note: allowed there are: `{`, `[`, `=>`, `,`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
+   = note: allowed there are: `,`, `{`, `[`, `=>`, `>`, `=`, `:`, `;`, `|`, `as` or `where`
 
 error: `$a:expr` is followed by `$b:tt`, which is not allowed for `expr` fragments
   --> $DIR/macro-input-future-proofing.rs:29:17
    |
 LL |     ( $a:expr $($b:tt)* ) => { };
-   |                 ^^^^^
+   |                 ^^^^^ not allowed after `expr` fragments
+   |
+   = note: allowed there are: `;`, `=>` or `,`
 
 error: `$a:expr` is followed (through repetition) by itself, which is not allowed for `expr` fragments
   --> $DIR/macro-input-future-proofing.rs:31:9
    |
 LL |     ( $($a:expr)* $($b:tt)* ) => { };
    |         ^^^^^^^ this fragment is followed by itself without a valid separator
+   |
+   = note: allowed there are: `;`, `=>` or `,`
+help: add a valid separator for the repetition to be unambiguous, for example
+   |
+LL |     ( $($a:expr);* $($b:tt)* ) => { };
+   |                 ^
 
 error: `$a:expr` is followed by `$b:tt`, which is not allowed for `expr` fragments
   --> $DIR/macro-input-future-proofing.rs:31:21
@@ -80,13 +88,15 @@ error: `$a:expr` is followed by `$b:tt`, which is not allowed for `expr` fragmen
 LL |     ( $($a:expr)* $($b:tt)* ) => { };
    |                     ^^^^^ not allowed after `expr` fragments
    |
-   = note: allowed there are: `=>`, `,` or `;`
+   = note: allowed there are: `;`, `=>` or `,`
 
 error: `$a:expr` may be followed by `$b:tt`, which is not allowed for `expr` fragments
   --> $DIR/macro-input-future-proofing.rs:34:22
    |
 LL |     ( $($a:expr),* $($b:tt)* ) => { };
-   |                      ^^^^^
+   |                      ^^^^^ not allowed after `expr` fragments
+   |
+   = note: allowed there are: `;`, `=>` or `,`
 
 error: aborting due to 12 previous errors
 

@@ -3,6 +3,12 @@ error: `$a:expr` is followed (through repetition) by itself, which is not allowe
    |
 LL |     ($($a:expr)*) => {};
    |        ^^^^^^^ this fragment is followed by itself without a valid separator
+   |
+   = note: allowed there are: `;`, `=>` or `,`
+help: add a valid separator for the repetition to be unambiguous, for example
+   |
+LL |     ($($a:expr);*) => {};
+   |                ^
 
 error[E0601]: `main` function not found in crate `incorrrect_repetition_2`
    |

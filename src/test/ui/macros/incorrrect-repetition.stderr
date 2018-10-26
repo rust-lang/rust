@@ -5,6 +5,12 @@ LL |     ($($i:ident $e:expr)*) => {}
    |        -------- ^^^^^^^ this fragment is followed by the first fragment in this repetition without a valid separator
    |        |
    |        this is the first fragment in the evaluated repetition
+   |
+   = note: allowed there are: `;`, `=>` or `,`
+help: add a valid separator for the repetition to be unambiguous, for example
+   |
+LL |     ($($i:ident $e:expr);*) => {}
+   |                         ^
 
 error: aborting due to previous error
 
