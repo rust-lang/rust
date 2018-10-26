@@ -612,6 +612,17 @@ impl MultiSpan {
         &self.primary_spans
     }
 
+    /// Returns `true` if this contains only a dummy primary span with any hygienic context.
+    pub fn is_dummy(&self) -> bool {
+        let mut is_dummy = true;
+        for span in &self.primary_spans {
+            if !span.is_dummy() {
+                is_dummy = false;
+            }
+        }
+        is_dummy
+    }
+
     /// Replaces all occurrences of one Span with another. Used to move Spans in areas that don't
     /// display well (like std macros). Returns true if replacements occurred.
     pub fn replace(&mut self, before: Span, after: Span) -> bool {

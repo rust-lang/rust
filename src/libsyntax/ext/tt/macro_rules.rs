@@ -50,7 +50,12 @@ pub struct ParserAnyMacro<'a> {
 impl<'a> ParserAnyMacro<'a> {
     pub fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser } = *self;
-        let fragment = panictry!(parser.parse_ast_fragment(kind, true));
+        let fragment = panictry!(parser.parse_ast_fragment(kind, true).map_err(|mut e| {
+            if e.span.is_dummy() {  // Get around lack of span in error (#30128)
+                e.set_span(site_span);
+            }
+            e
+        }));
 
         // We allow semicolons at the end of expressions -- e.g. the semicolon in
         // `macro_rules! m { () => { panic!(); } }` isn't parsed by `.parse_expr()`,
