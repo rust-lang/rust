@@ -1,8 +1,8 @@
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/issue-52475.rs:19:9
+  --> $DIR/issue-52475.rs:18:9
    |
 LL | /         while n < 5 { //~ ERROR constant contains unimplemented expression type
-LL | |             n = (n + 1) % 5;
+LL | |             n = (n + 1) % 5; //~ ERROR evaluation of constant value failed
 LL | |             x = &0; // Materialize a new AllocId
 LL | |         }
    | |_________^
@@ -13,28 +13,18 @@ warning: Constant evaluating a complex constant, this might take some time
 LL |       let _ = [(); {
    |  __________________^
 LL | |         //~^ WARNING Constant evaluating a complex constant, this might take some time
-LL | |         //~| ERROR could not evaluate repeat length
 LL | |         let mut x = &0;
+LL | |         let mut n = 0;
 ...  |
 LL | |         0
 LL | |     }];
    | |_____^
 
-error[E0080]: could not evaluate repeat length
-  --> $DIR/issue-52475.rs:14:18
+error[E0080]: evaluation of constant value failed
+  --> $DIR/issue-52475.rs:19:17
    |
-LL |       let _ = [(); {
-   |  __________________^
-LL | |         //~^ WARNING Constant evaluating a complex constant, this might take some time
-LL | |         //~| ERROR could not evaluate repeat length
-LL | |         let mut x = &0;
-...  |
-LL | |             n = (n + 1) % 5;
-   | |                 ----------- duplicate interpreter state observed here, const evaluation will never terminate
-...  |
-LL | |         0
-LL | |     }];
-   | |_____^
+LL |             n = (n + 1) % 5; //~ ERROR evaluation of constant value failed
+   |                 ^^^^^^^^^^^ duplicate interpreter state observed here, const evaluation will never terminate
 
 error: aborting due to 2 previous errors
 

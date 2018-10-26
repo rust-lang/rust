@@ -34,7 +34,7 @@ const fn read_field2() -> Field2 {
 }
 
 const fn read_field3() -> Field3 {
-    const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR cannot be used
+    const FIELD3: Field3 = unsafe { UNION.field3 }; //~ ERROR any use of this value
     FIELD3
 }
 

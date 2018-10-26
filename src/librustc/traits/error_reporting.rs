@@ -880,18 +880,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 self.tcx.report_object_safety_error(span, did, violations)
             }
 
-            ConstEvalFailure(ref err) => {
-                match err.struct_error(
-                    self.tcx.at(span),
-                    "could not evaluate constant expression",
-                ) {
-                    Some(err) => err,
-                    None => {
-                        self.tcx.sess.delay_span_bug(span,
-                            &format!("constant in type had an ignored error: {:?}", err));
-                        return;
-                    }
-                }
+            // already reported in the query
+            ConstEvalFailure(_) => {
+                self.tcx.sess.delay_span_bug(span, "constant in type had an ignored error");
+                return;
             }
 
             Overflow => {

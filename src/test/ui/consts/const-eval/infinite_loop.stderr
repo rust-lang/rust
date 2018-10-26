@@ -1,8 +1,9 @@
 error[E0019]: constant contains unimplemented expression type
-  --> $DIR/infinite_loop.rs:20:9
+  --> $DIR/infinite_loop.rs:19:9
    |
 LL | /         while n != 0 { //~ ERROR constant contains unimplemented expression type
 LL | |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
+LL | |             //~^ ERROR evaluation of constant value failed
 LL | |         }
    | |_________^
 
@@ -12,28 +13,18 @@ warning: Constant evaluating a complex constant, this might take some time
 LL |       let _ = [(); {
    |  __________________^
 LL | |         //~^ WARNING Constant evaluating a complex constant, this might take some time
-LL | |         //~| ERROR could not evaluate repeat length
 LL | |         let mut n = 113383; // #20 in https://oeis.org/A006884
+LL | |         while n != 0 { //~ ERROR constant contains unimplemented expression type
 ...  |
 LL | |         n
 LL | |     }];
    | |_____^
 
-error[E0080]: could not evaluate repeat length
-  --> $DIR/infinite_loop.rs:16:18
+error[E0080]: evaluation of constant value failed
+  --> $DIR/infinite_loop.rs:20:20
    |
-LL |       let _ = [(); {
-   |  __________________^
-LL | |         //~^ WARNING Constant evaluating a complex constant, this might take some time
-LL | |         //~| ERROR could not evaluate repeat length
-LL | |         let mut n = 113383; // #20 in https://oeis.org/A006884
-LL | |         while n != 0 { //~ ERROR constant contains unimplemented expression type
-LL | |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
-   | |                    ---------- duplicate interpreter state observed here, const evaluation will never terminate
-LL | |         }
-LL | |         n
-LL | |     }];
-   | |_____^
+LL |             n = if n % 2 == 0 { n/2 } else { 3*n + 1 };
+   |                    ^^^^^^^^^^ duplicate interpreter state observed here, const evaluation will never terminate
 
 error: aborting due to 2 previous errors
 

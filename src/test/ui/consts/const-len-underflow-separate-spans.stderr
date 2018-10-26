@@ -1,35 +1,19 @@
-error[E0080]: referenced constant has errors
-  --> $DIR/const-len-underflow-separate-spans.rs:20:17
+error: any use of this value will cause an error
+  --> $DIR/const-len-underflow-separate-spans.rs:17:1
    |
 LL | const LEN: usize = ONE - TWO;
-   |                    --------- attempt to subtract with overflow
-...
-LL |     let a: [i8; LEN] = unimplemented!();
-   |                 ^^^
+   | ^^^^^^^^^^^^^^^^^^^---------^
+   |                    |
+   |                    attempt to subtract with overflow
+   |
+   = note: #[deny(const_err)] on by default
 
-error[E0080]: could not evaluate constant
-  --> $DIR/const-len-underflow-separate-spans.rs:20:17
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-len-underflow-separate-spans.rs:21:17
    |
 LL |     let a: [i8; LEN] = unimplemented!();
    |                 ^^^ referenced constant has errors
 
-error[E0080]: referenced constant has errors
-  --> $DIR/const-len-underflow-separate-spans.rs:20:12
-   |
-LL | const LEN: usize = ONE - TWO;
-   |                    --------- attempt to subtract with overflow
-...
-LL |     let a: [i8; LEN] = unimplemented!();
-   |            ^^^^^^^^^
-
-error[E0080]: could not evaluate constant expression
-  --> $DIR/const-len-underflow-separate-spans.rs:20:12
-   |
-LL |     let a: [i8; LEN] = unimplemented!();
-   |            ^^^^^---^
-   |                 |
-   |                 referenced constant has errors
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

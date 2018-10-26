@@ -21,48 +21,40 @@ use std::fmt;
 use std::{i8, i16, i32, i64, isize};
 use std::{u8, u16, u32, u64, usize};
 
-const VALS_I8: (i8,) =
-     //~^ ERROR this constant cannot be used
+const VALS_I8: (i8,) = //~ ERROR any use of this value will cause an error
     (
      i8::MIN - 1,
      );
 
-const VALS_I16: (i16,) =
-     //~^ ERROR this constant cannot be used
+const VALS_I16: (i16,) = //~ ERROR any use of this value will cause an error
     (
      i16::MIN - 1,
      );
 
-const VALS_I32: (i32,) =
-     //~^ ERROR this constant cannot be used
+const VALS_I32: (i32,) = //~ ERROR any use of this value will cause an error
     (
      i32::MIN - 1,
      );
 
-const VALS_I64: (i64,) =
-     //~^ ERROR this constant cannot be used
+const VALS_I64: (i64,) = //~ ERROR any use of this value will cause an error
     (
      i64::MIN - 1,
      );
 
-const VALS_U8: (u8,) =
-     //~^ ERROR this constant cannot be used
+const VALS_U8: (u8,) = //~ ERROR any use of this value will cause an error
     (
      u8::MIN - 1,
      );
 
-const VALS_U16: (u16,) = (
-     //~^ ERROR this constant cannot be used
+const VALS_U16: (u16,) = ( //~ ERROR any use of this value will cause an error
      u16::MIN - 1,
      );
 
-const VALS_U32: (u32,) = (
-     //~^ ERROR this constant cannot be used
+const VALS_U32: (u32,) = ( //~ ERROR any use of this value will cause an error
      u32::MIN - 1,
      );
 
-const VALS_U64: (u64,) =
-     //~^ ERROR this constant cannot be used
+const VALS_U64: (u64,) = //~ ERROR any use of this value will cause an error
     (
      u64::MIN - 1,
      );

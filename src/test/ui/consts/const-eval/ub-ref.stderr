@@ -1,4 +1,4 @@
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-ref.rs:15:1
    |
 LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
@@ -6,7 +6,7 @@ LL | const UNALIGNED: &u16 = unsafe { mem::transmute(&[0u8; 4]) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-ref.rs:18:1
    |
 LL | const NULL: &u16 = unsafe { mem::transmute(0usize) };
@@ -14,7 +14,7 @@ LL | const NULL: &u16 = unsafe { mem::transmute(0usize) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-ref.rs:21:1
    |
 LL | const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
@@ -22,7 +22,7 @@ LL | const REF_AS_USIZE: usize = unsafe { mem::transmute(&0) };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-ref.rs:24:1
    |
 LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
@@ -30,7 +30,7 @@ LL | const REF_AS_USIZE_SLICE: &[usize] = &[unsafe { mem::transmute(&0) }];
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-ref.rs:27:1
    |
 LL | const USIZE_AS_REF: &'static u8 = unsafe { mem::transmute(1337usize) };

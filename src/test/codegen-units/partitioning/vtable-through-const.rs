@@ -38,6 +38,7 @@ mod mod1 {
         fn do_something_else(&self, x: T) -> T { x }
     }
 
+    //~ MONO_ITEM fn vtable_through_const::mod1[0]::id[0]<i64> @@ vtable_through_const-mod1.volatile[Internal]
     fn id<T>(x: T) -> T { x }
 
     // These are referenced, so they produce mono-items (see start())
@@ -52,6 +53,8 @@ mod mod1 {
         fn do_something_else(&self) {}
     }
 
+    //~ MONO_ITEM fn vtable_through_const::mod1[0]::Trait2[0]::do_something[0]<u32> @@ vtable_through_const-mod1.volatile[Internal]
+    //~ MONO_ITEM fn vtable_through_const::mod1[0]::Trait2[0]::do_something_else[0]<u32> @@ vtable_through_const-mod1.volatile[Internal]
     impl Trait2 for u32 {}
 
     pub trait Trait2Gen<T> {
@@ -89,6 +92,8 @@ fn start(_: isize, _: *const *const u8) -> isize {
     // Same as above
     //~ MONO_ITEM fn vtable_through_const::mod1[0]::{{impl}}[1]::do_something[0]<u8> @@ vtable_through_const-mod1.volatile[External]
     //~ MONO_ITEM fn vtable_through_const::mod1[0]::{{impl}}[1]::do_something_else[0]<u8> @@ vtable_through_const-mod1.volatile[External]
+    //~ MONO_ITEM fn vtable_through_const::mod1[0]::{{impl}}[3]::do_something[0]<u8> @@ vtable_through_const-mod1.volatile[Internal]
+    //~ MONO_ITEM fn vtable_through_const::mod1[0]::{{impl}}[3]::do_something_else[0]<u8> @@ vtable_through_const-mod1.volatile[Internal]
     mod1::TRAIT1_GEN_REF.do_something(0u8);
 
     //~ MONO_ITEM fn vtable_through_const::mod1[0]::id[0]<char> @@ vtable_through_const-mod1.volatile[External]

@@ -1,4 +1,4 @@
-error[E0080]: could not evaluate enum discriminant
+error[E0080]: evaluation of constant value failed
   --> $DIR/const-err4.rs:18:11
    |
 LL |     Boo = [unsafe { Foo { b: () }.a }; 4][3],

@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::mir::interpret::{ConstValue, ConstEvalErr};
+use rustc::mir::interpret::{ConstValue, ErrorHandled};
 use rustc::mir;
 use rustc::ty;
 use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
-use rustc_data_structures::sync::Lrc;
 
 use base;
 use common::{CodegenCx, C_undef, C_usize};
@@ -79,7 +78,7 @@ impl OperandRef<'ll, 'tcx> {
 
     pub fn from_const(bx: &Builder<'a, 'll, 'tcx>,
                       val: &'tcx ty::Const<'tcx>)
-                      -> Result<OperandRef<'ll, 'tcx>, Lrc<ConstEvalErr<'tcx>>> {
+                      -> Result<OperandRef<'ll, 'tcx>, ErrorHandled> {
         let layout = bx.cx.layout_of(val.ty);
 
         if layout.is_zst() {
@@ -424,10 +423,13 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 self.eval_mir_constant(bx, constant)
                     .and_then(|c| OperandRef::from_const(bx, c))
                     .unwrap_or_else(|err| {
-                        err.report_as_error(
-                            bx.tcx().at(constant.span),
-                            "could not evaluate constant operand",
-                        );
+                        match err {
+                            // errored or at least linted
+                            ErrorHandled::Reported => {},
+                            ErrorHandled::TooGeneric => {
+                                bug!("codgen encountered polymorphic constant")
+                            },
+                        }
                         // Allow RalfJ to sleep soundly knowing that even refactorings that remove
                         // the above error (or silence it under some conditions) will not cause UB
                         let fnname = bx.cx.get_intrinsic(&("llvm.trap"));

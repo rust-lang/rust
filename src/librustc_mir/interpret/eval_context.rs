@@ -24,6 +24,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::query::TyCtxtAt;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc::mir::interpret::{
+    ErrorHandled,
     GlobalId, Scalar, FrameInfo, AllocId,
     EvalResult, EvalErrorKind,
     truncate, sign_extend,
@@ -611,8 +612,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         } else {
             self.param_env
         };
-        self.tcx.const_eval(param_env.and(gid))
-            .map_err(|err| EvalErrorKind::ReferencedConstant(err).into())
+        self.tcx.const_eval(param_env.and(gid)).map_err(|err| {
+            match err {
+                ErrorHandled::Reported => EvalErrorKind::ReferencedConstant.into(),
+                ErrorHandled::TooGeneric => EvalErrorKind::TooGeneric.into(),
+            }
+        })
     }
 
     pub fn dump_place(&self, place: Place<M::PointerTag>) {
@@ -679,7 +684,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
     }
 
-    pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> (Vec<FrameInfo>, Span) {
+    pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> Vec<FrameInfo> {
         let mut last_span = None;
         let mut frames = Vec::new();
         // skip 1 because the last frame is just the environment of the constant
@@ -716,7 +721,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             frames.push(FrameInfo { span, location, lint_root });
         }
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
-        (frames, self.tcx.span)
+        frames
     }
 
     #[inline(always)]

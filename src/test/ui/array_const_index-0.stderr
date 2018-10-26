@@ -1,4 +1,4 @@
-error: this constant cannot be used
+error: any use of this value will cause an error
   --> $DIR/array_const_index-0.rs:12:1
    |
 LL | const B: i32 = (&A)[1];

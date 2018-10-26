@@ -9,15 +9,13 @@
 // except according to those terms.
 
 use infer::InferCtxt;
-use mir::interpret::GlobalId;
+use mir::interpret::{GlobalId, ErrorHandled};
 use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, ToPredicate};
 use ty::error::ExpectedFound;
 use rustc_data_structures::obligation_forest::{Error, ForestObligation, ObligationForest};
 use rustc_data_structures::obligation_forest::{ObligationProcessor, ProcessResult};
 use std::marker::PhantomData;
 use hir::def_id::DefId;
-use mir::interpret::ConstEvalErr;
-use mir::interpret::EvalErrorKind;
 
 use super::CodeAmbiguity;
 use super::CodeProjectionError;
@@ -495,13 +493,9 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
                                             CodeSelectionError(ConstEvalFailure(err)))
                                     }
                                 } else {
-                                    ProcessResult::Error(
-                                        CodeSelectionError(ConstEvalFailure(ConstEvalErr {
-                                            span: obligation.cause.span,
-                                            error: EvalErrorKind::TooGeneric.into(),
-                                            stacktrace: vec![],
-                                        }.into()))
-                                    )
+                                    ProcessResult::Error(CodeSelectionError(
+                                        ConstEvalFailure(ErrorHandled::TooGeneric)
+                                    ))
                                 }
                             },
                             None => {

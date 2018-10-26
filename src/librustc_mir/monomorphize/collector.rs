@@ -202,7 +202,7 @@ use rustc::session::config;
 use rustc::mir::{self, Location, Promoted};
 use rustc::mir::visit::Visitor as MirVisitor;
 use rustc::mir::mono::MonoItem;
-use rustc::mir::interpret::{Scalar, GlobalId, AllocType};
+use rustc::mir::interpret::{Scalar, GlobalId, AllocType, ErrorHandled};
 
 use monomorphize::{self, Instance};
 use rustc::util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
@@ -988,6 +988,20 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemKind::Const(..) => {
                 // const items only generate mono items if they are
                 // actually used somewhere. Just declaring them is insufficient.
+
+                // but even just declaring them must collect the items they refer to
+                let def_id = self.tcx.hir.local_def_id(item.id);
+
+                let instance = Instance::mono(self.tcx, def_id);
+                let cid = GlobalId {
+                    instance,
+                    promoted: None,
+                };
+                let param_env = ty::ParamEnv::reveal_all();
+
+                if let Ok(val) = self.tcx.const_eval(param_env.and(cid)) {
+                    collect_const(self.tcx, val, instance.substs, &mut self.output);
+                }
             }
             hir::ItemKind::Fn(..) => {
                 let def_id = self.tcx.hir.local_def_id(item.id);
@@ -1198,15 +1212,10 @@ fn collect_neighbours<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
         match tcx.const_eval(param_env.and(cid)) {
             Ok(val) => collect_const(tcx, val, instance.substs, output),
-            Err(err) => {
-                use rustc::mir::interpret::EvalErrorKind;
-                if let EvalErrorKind::ReferencedConstant(_) = err.error.kind {
-                    err.report_as_error(
-                        tcx.at(mir.promoted[i].span),
-                        "erroneous constant used",
-                    );
-                }
-            },
+            Err(ErrorHandled::Reported) => {},
+            Err(ErrorHandled::TooGeneric) => span_bug!(
+                mir.promoted[i].span, "collection encountered polymorphic constant",
+            ),
         }
     }
 }
@@ -1247,14 +1256,10 @@ fn collect_const<'a, 'tcx>(
             };
             match tcx.const_eval(param_env.and(cid)) {
                 Ok(val) => val.val,
-                Err(err) => {
-                    let span = tcx.def_span(def_id);
-                    err.report_as_error(
-                        tcx.at(span),
-                        "constant evaluation error",
-                    );
-                    return;
-                }
+                Err(ErrorHandled::Reported) => return,
+                Err(ErrorHandled::TooGeneric) => span_bug!(
+                    tcx.def_span(def_id), "collection encountered polymorphic constant",
+                ),
             }
         },
         _ => constant.val,

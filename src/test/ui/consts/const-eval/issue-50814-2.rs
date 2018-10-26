@@ -19,12 +19,11 @@ trait Foo<T> {
 struct A<T>(T);
 
 impl<T: C> Foo<T> for A<T> {
-    const BAR: usize = [5, 6, 7][T::BOO];
+    const BAR: usize = [5, 6, 7][T::BOO]; //~ ERROR any use of this value will cause an error
 }
 
 fn foo<T: C>() -> &'static usize {
-    &<A<T> as Foo<T>>::BAR //~ ERROR erroneous constant used
-//~| ERROR E0080
+    &<A<T> as Foo<T>>::BAR //~ ERROR E0080
 }
 
 impl C for () {

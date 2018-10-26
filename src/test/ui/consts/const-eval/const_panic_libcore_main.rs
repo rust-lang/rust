@@ -17,13 +17,13 @@
 use core::panic::PanicInfo;
 
 const Z: () = panic!("cheese");
-//~^ ERROR this constant cannot be used
+//~^ ERROR any use of this value will cause an error
 
 const Y: () = unreachable!();
-//~^ ERROR this constant cannot be used
+//~^ ERROR any use of this value will cause an error
 
 const X: () = unimplemented!();
-//~^ ERROR this constant cannot be used
+//~^ ERROR any use of this value will cause an error
 
 #[lang = "eh_personality"]
 fn eh() {}

@@ -1,4 +1,4 @@
-warning: this constant cannot be used
+warning: any use of this value will cause an error
   --> $DIR/issue-43197.rs:18:5
    |
 LL |     const X: u32 = 0-1;
@@ -12,7 +12,7 @@ note: lint level defined here
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
-warning: this constant cannot be used
+warning: any use of this value will cause an error
   --> $DIR/issue-43197.rs:20:5
    |
 LL |     const Y: u32 = foo(0-1);
@@ -20,36 +20,18 @@ LL |     const Y: u32 = foo(0-1);
    |                        |
    |                        attempt to subtract with overflow
 
-error[E0080]: referenced constant has errors
-  --> $DIR/issue-43197.rs:22:26
-   |
-LL |     const Y: u32 = foo(0-1);
-   |                        --- attempt to subtract with overflow
-LL |     //~^ WARN this constant cannot be used
-LL |     println!("{} {}", X, Y);
-   |                          ^
-
-error[E0080]: erroneous constant used
+error[E0080]: evaluation of constant expression failed
   --> $DIR/issue-43197.rs:22:26
    |
 LL |     println!("{} {}", X, Y);
    |                          ^ referenced constant has errors
 
-error[E0080]: referenced constant has errors
-  --> $DIR/issue-43197.rs:22:23
-   |
-LL |     const X: u32 = 0-1;
-   |                    --- attempt to subtract with overflow
-...
-LL |     println!("{} {}", X, Y);
-   |                       ^
-
-error[E0080]: erroneous constant used
+error[E0080]: evaluation of constant expression failed
   --> $DIR/issue-43197.rs:22:23
    |
 LL |     println!("{} {}", X, Y);
    |                       ^ referenced constant has errors
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

@@ -483,10 +483,9 @@ impl_stable_hash_for!(struct ty::Const<'tcx> {
     val
 });
 
-impl_stable_hash_for!(struct ::mir::interpret::ConstEvalErr<'tcx> {
-    span,
-    stacktrace,
-    error
+impl_stable_hash_for!(enum mir::interpret::ErrorHandled {
+    Reported,
+    TooGeneric
 });
 
 impl_stable_hash_for!(struct ::mir::interpret::FrameInfo {
@@ -502,8 +501,6 @@ impl_stable_hash_for!(struct ty::GenericPredicates<'tcx> {
     parent,
     predicates
 });
-
-impl_stable_hash_for!(struct ::mir::interpret::EvalError<'tcx> { kind });
 
 impl<'a, 'gcx, O: HashStable<StableHashingContext<'a>>> HashStable<StableHashingContext<'a>>
 for ::mir::interpret::EvalErrorKind<'gcx, O> {
@@ -543,7 +540,6 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             UnimplementedTraitSelection |
             TypeckError |
             TooGeneric |
-            CheckMatchError |
             DerefFunctionPointer |
             ExecuteMemory |
             OverflowNeg |
@@ -551,6 +547,7 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
             DivisionByZero |
             GeneratorResumedAfterReturn |
             GeneratorResumedAfterPanic |
+            ReferencedConstant |
             InfiniteLoop => {}
             ReadUndefBytes(offset) => offset.hash_stable(hcx, hasher),
             InvalidDiscriminant(val) => val.hash_stable(hcx, hasher),
@@ -560,7 +557,6 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
                 line.hash_stable(hcx, hasher);
                 col.hash_stable(hcx, hasher);
             },
-            ReferencedConstant(ref err) => err.hash_stable(hcx, hasher),
             MachineError(ref err) => err.hash_stable(hcx, hasher),
             FunctionAbiMismatch(a, b) => {
                 a.hash_stable(hcx, hasher);

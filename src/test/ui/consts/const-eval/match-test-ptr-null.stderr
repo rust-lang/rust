@@ -12,19 +12,11 @@ error[E0019]: constant contains unimplemented expression type
 LL |             0 => 42, //~ ERROR constant contains unimplemented expression type
    |             ^
 
-error[E0080]: could not evaluate repeat length
-  --> $DIR/match-test-ptr-null.rs:15:26
+error[E0080]: evaluation of constant value failed
+  --> $DIR/match-test-ptr-null.rs:17:13
    |
-LL |       let _: [u8; 0] = [4; { //~ ERROR could not evaluate repeat length
-   |  __________________________^
-LL | |         match &1 as *const i32 as usize { //~ ERROR casting pointers to integers in constants
-LL | |             0 => 42, //~ ERROR constant contains unimplemented expression type
-   | |             - "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
-LL | |             //~^ NOTE "pointer arithmetic or comparison" needs an rfc before being allowed
-LL | |             n => n,
-LL | |         }
-LL | |     }];
-   | |_____^
+LL |             0 => 42, //~ ERROR constant contains unimplemented expression type
+   |             ^ "pointer arithmetic or comparison" needs an rfc before being allowed inside constants
 
 error: aborting due to 3 previous errors
 

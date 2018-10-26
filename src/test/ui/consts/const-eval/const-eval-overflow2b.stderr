@@ -1,8 +1,7 @@
-error: this constant cannot be used
+error: any use of this value will cause an error
   --> $DIR/const-eval-overflow2b.rs:24:1
    |
-LL | / const VALS_I8: (i8,) =
-LL | |      //~^ ERROR this constant cannot be used
+LL | / const VALS_I8: (i8,) = //~ ERROR any use of this value will cause an error
 LL | |     (
 LL | |      i8::MAX + 1,
    | |      ----------- attempt to add with overflow
@@ -15,75 +14,68 @@ note: lint level defined here
 LL | #![deny(const_err)]
    |         ^^^^^^^^^
 
-error: this constant cannot be used
-  --> $DIR/const-eval-overflow2b.rs:30:1
+error: any use of this value will cause an error
+  --> $DIR/const-eval-overflow2b.rs:29:1
    |
-LL | / const VALS_I16: (i16,) =
-LL | |      //~^ ERROR this constant cannot be used
+LL | / const VALS_I16: (i16,) = //~ ERROR any use of this value will cause an error
 LL | |     (
 LL | |      i16::MAX + 1,
    | |      ------------ attempt to add with overflow
 LL | |      );
    | |_______^
 
-error: this constant cannot be used
-  --> $DIR/const-eval-overflow2b.rs:36:1
+error: any use of this value will cause an error
+  --> $DIR/const-eval-overflow2b.rs:34:1
    |
-LL | / const VALS_I32: (i32,) =
-LL | |      //~^ ERROR this constant cannot be used
+LL | / const VALS_I32: (i32,) = //~ ERROR any use of this value will cause an error
 LL | |     (
 LL | |      i32::MAX + 1,
    | |      ------------ attempt to add with overflow
 LL | |      );
    | |_______^
 
-error: this constant cannot be used
-  --> $DIR/const-eval-overflow2b.rs:42:1
+error: any use of this value will cause an error
+  --> $DIR/const-eval-overflow2b.rs:39:1
    |
-LL | / const VALS_I64: (i64,) =
-LL | |      //~^ ERROR this constant cannot be used
+LL | / const VALS_I64: (i64,) = //~ ERROR any use of this value will cause an error
 LL | |     (
 LL | |      i64::MAX + 1,
    | |      ------------ attempt to add with overflow
 LL | |      );
    | |_______^
 
-error: this constant cannot be used
-  --> $DIR/const-eval-overflow2b.rs:48:1
+error: any use of this value will cause an error
+  --> $DIR/const-eval-overflow2b.rs:44:1
    |
-LL | / const VALS_U8: (u8,) =
-LL | |      //~^ ERROR this constant cannot be used
+LL | / const VALS_U8: (u8,) = //~ ERROR any use of this value will cause an error
 LL | |     (
 LL | |      u8::MAX + 1,
    | |      ----------- attempt to add with overflow
 LL | |      );
    | |_______^
 
-error: this constant cannot be used
-  --> $DIR/const-eval-overflow2b.rs:54:1
+error: any use of this value will cause an error
+  --> $DIR/const-eval-overflow2b.rs:49:1
    |
-LL | / const VALS_U16: (u16,) = (
-LL | |      //~^ ERROR this constant cannot be used
+LL | / const VALS_U16: (u16,) = ( //~ ERROR any use of this value will cause an error
 LL | |      u16::MAX + 1,
    | |      ------------ attempt to add with overflow
 LL | |      );
    | |_______^
 
-error: this constant cannot be used
-  --> $DIR/const-eval-overflow2b.rs:59:1
+error: any use of this value will cause an error
+  --> $DIR/const-eval-overflow2b.rs:53:1
    |
-LL | / const VALS_U32: (u32,) = (
-LL | |      //~^ ERROR this constant cannot be used
+LL | / const VALS_U32: (u32,) = ( //~ ERROR any use of this value will cause an error
 LL | |      u32::MAX + 1,
    | |      ------------ attempt to add with overflow
 LL | |      );
    | |_______^
 
-error: this constant cannot be used
-  --> $DIR/const-eval-overflow2b.rs:64:1
+error: any use of this value will cause an error
+  --> $DIR/const-eval-overflow2b.rs:57:1
    |
-LL | / const VALS_U64: (u64,) =
-LL | |      //~^ ERROR this constant cannot be used
+LL | / const VALS_U64: (u64,) = //~ ERROR any use of this value will cause an error
 LL | |     (
 LL | |      u64::MAX + 1,
    | |      ------------ attempt to add with overflow

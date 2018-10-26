@@ -18,7 +18,7 @@ use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext};
 use rustc::mir::interpret::{
-    ConstEvalErr, EvalErrorKind, Scalar, GlobalId, EvalResult
+    ConstEvalErr, EvalErrorKind, Scalar, GlobalId, EvalResult,
 };
 use rustc::ty::{TyCtxt, self, Instance};
 use interpret::{self, EvalContext, Value, OpTy, MemoryKind, ScalarMaybeUndef};
@@ -44,14 +44,24 @@ impl MirPass for ConstProp {
         if source.promoted.is_some() {
             return;
         }
-        match tcx.describe_def(source.def_id) {
-            // skip statics/consts because they'll be evaluated by miri anyway
-            Some(Def::Const(..)) |
-            Some(Def::Static(..)) => return,
-            // we still run on associated constants, because they might not get evaluated
-            // within the current crate
-            _ => {},
+
+        use rustc::hir::map::blocks::FnLikeNode;
+        let node_id = tcx.hir.as_local_node_id(source.def_id)
+                             .expect("Non-local call to local provider is_const_fn");
+
+        let is_fn_like = FnLikeNode::from_node(tcx.hir.get(node_id)).is_some();
+        let is_assoc_const = match tcx.describe_def(source.def_id) {
+            Some(Def::AssociatedConst(_)) => true,
+            _ => false,
+        };
+
+        // Only run const prop on functions, methods, closures and associated constants
+        if !is_fn_like && !is_assoc_const  {
+            // skip anon_const/statics/consts because they'll be evaluated by miri anyway
+            trace!("ConstProp skipped for {:?}", source.def_id);
+            return
         }
+
         trace!("ConstProp starting for {:?}", source.def_id);
 
         // FIXME(oli-obk, eddyb) Optimize locals (or even local paths) to hold
@@ -144,8 +154,8 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         let r = match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
-                let (stacktrace, span) = self.ecx.generate_stacktrace(None);
-                let diagnostic = ConstEvalErr { span, error, stacktrace };
+                let stacktrace = self.ecx.generate_stacktrace(None);
+                let diagnostic = ConstEvalErr { span: source_info.span, error, stacktrace };
                 use rustc::mir::interpret::EvalErrorKind::*;
                 match diagnostic.error.kind {
                     // don't report these, they make no sense in a const prop context
@@ -208,7 +218,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     | ReadFromReturnPointer
                     | GeneratorResumedAfterReturn
                     | GeneratorResumedAfterPanic
-                    | ReferencedConstant(_)
+                    | ReferencedConstant
                     | InfiniteLoop
                     => {
                         // FIXME: report UB here
@@ -223,7 +233,6 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     | UnimplementedTraitSelection
                     | TypeckError
                     | TooGeneric
-                    | CheckMatchError
                     // these are just noise
                     => {},
 
@@ -264,16 +273,11 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 Some((op, c.span))
             },
             Err(error) => {
-                let (stacktrace, span) = self.ecx.generate_stacktrace(None);
-                let err = ConstEvalErr {
-                    span,
-                    error,
-                    stacktrace,
+                let stacktrace = self.ecx.generate_stacktrace(None);
+                let err = ::rustc::mir::interpret::ConstEvalErr {
+                    error, stacktrace, span: source_info.span,
                 };
-                err.report_as_error(
-                    self.tcx.at(source_info.span),
-                    "could not evaluate constant",
-                );
+                err.report_as_error(self.ecx.tcx, "erroneous constant used");
                 None
             },
         }

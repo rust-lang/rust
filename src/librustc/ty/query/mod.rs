@@ -301,6 +301,14 @@ define_queries! { <'tcx>
     },
 
     Other {
+        /// Evaluate a constant without running sanity checks
+        ///
+        /// DO NOT USE THIS outside const eval. Const eval uses this to break query cycles during
+        /// validation. Please add a comment to every use site explaining why using `const_eval`
+        /// isn't sufficient
+        [] fn const_eval_raw: const_eval_raw_dep_node(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+            -> ConstEvalResult<'tcx>,
+
         /// Results of evaluating const items or constants embedded in
         /// other items (such as enum variant explicit discriminants).
         [] fn const_eval: const_eval_dep_node(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
@@ -775,6 +783,10 @@ fn typeck_item_bodies_dep_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
 fn const_eval_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
                              -> DepConstructor<'tcx> {
     DepConstructor::ConstEval { param_env }
+}
+fn const_eval_raw_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
+                             -> DepConstructor<'tcx> {
+    DepConstructor::ConstEvalRaw { param_env }
 }
 
 fn mir_keys<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {

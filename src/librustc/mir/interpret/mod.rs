@@ -20,7 +20,7 @@ mod value;
 
 pub use self::error::{
     EvalError, EvalResult, EvalErrorKind, AssertMessage, ConstEvalErr, struct_error,
-    FrameInfo, ConstEvalResult,
+    FrameInfo, ConstEvalResult, ErrorHandled,
 };
 
 pub use self::value::{Scalar, ConstValue};
@@ -176,7 +176,7 @@ impl<'tcx, Tag> Pointer<Tag> {
         Pointer { alloc_id, offset, tag }
     }
 
-    pub fn wrapping_signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> Self {
+    pub fn wrapping_signed_offset(self, i: i64, cx: impl HasDataLayout) -> Self {
         Pointer::new_with_tag(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().wrapping_signed_offset(self.offset.bytes(), i)),
@@ -184,12 +184,12 @@ impl<'tcx, Tag> Pointer<Tag> {
         )
     }
 
-    pub fn overflowing_signed_offset<C: HasDataLayout>(self, i: i128, cx: C) -> (Self, bool) {
+    pub fn overflowing_signed_offset(self, i: i128, cx: impl HasDataLayout) -> (Self, bool) {
         let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset.bytes(), i);
         (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
     }
 
-    pub fn signed_offset<C: HasDataLayout>(self, i: i64, cx: C) -> EvalResult<'tcx, Self> {
+    pub fn signed_offset(self, i: i64, cx: impl HasDataLayout) -> EvalResult<'tcx, Self> {
         Ok(Pointer::new_with_tag(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().signed_offset(self.offset.bytes(), i)?),
@@ -197,12 +197,12 @@ impl<'tcx, Tag> Pointer<Tag> {
         ))
     }
 
-    pub fn overflowing_offset<C: HasDataLayout>(self, i: Size, cx: C) -> (Self, bool) {
+    pub fn overflowing_offset(self, i: Size, cx: impl HasDataLayout) -> (Self, bool) {
         let (res, over) = cx.data_layout().overflowing_offset(self.offset.bytes(), i.bytes());
         (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
     }
 
-    pub fn offset<C: HasDataLayout>(self, i: Size, cx: C) -> EvalResult<'tcx, Self> {
+    pub fn offset(self, i: Size, cx: impl HasDataLayout) -> EvalResult<'tcx, Self> {
         Ok(Pointer::new_with_tag(
             self.alloc_id,
             Size::from_bytes(cx.data_layout().offset(self.offset.bytes(), i.bytes())?),

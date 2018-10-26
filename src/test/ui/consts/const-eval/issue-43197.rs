@@ -16,12 +16,10 @@ const fn foo(x: u32) -> u32 {
 
 fn main() {
     const X: u32 = 0-1;
-    //~^ WARN this constant cannot be used
+    //~^ WARN any use of this value will cause
     const Y: u32 = foo(0-1);
-    //~^ WARN this constant cannot be used
+    //~^ WARN any use of this value will cause
     println!("{} {}", X, Y);
-    //~^ ERROR erroneous constant used
-    //~| ERROR erroneous constant used
-    //~| ERROR E0080
-    //~| ERROR E0080
+    //~^ ERROR evaluation of constant expression failed
+    //~| ERROR evaluation of constant expression failed
 }

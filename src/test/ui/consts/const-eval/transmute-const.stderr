@@ -1,4 +1,4 @@
-error[E0080]: this static likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/transmute-const.rs:15:1
    |
 LL | static FOO: bool = unsafe { mem::transmute(3u8) };

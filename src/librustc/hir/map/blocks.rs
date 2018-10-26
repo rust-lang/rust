@@ -43,7 +43,7 @@ pub struct FnLikeNode<'a> { node: Node<'a> }
 
 /// MaybeFnLike wraps a method that indicates if an object
 /// corresponds to some FnLikeNode.
-pub trait MaybeFnLike { fn is_fn_like(&self) -> bool; }
+trait MaybeFnLike { fn is_fn_like(&self) -> bool; }
 
 impl MaybeFnLike for ast::Item {
     fn is_fn_like(&self) -> bool {

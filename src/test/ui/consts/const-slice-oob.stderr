@@ -1,4 +1,4 @@
-error: this constant cannot be used
+error: any use of this value will cause an error
   --> $DIR/const-slice-oob.rs:14:1
    |
 LL | const BAR: u32 = FOO[5];

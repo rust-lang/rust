@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Just check if we don't get an ICE for the _S type.
+// Just check we don't get an ICE for `N`.
 
 use std::cell::Cell;
 use std::mem;
@@ -17,4 +17,4 @@ pub struct S {
     s: Cell<usize>
 }
 
-pub type _S = [usize; 0 - (mem::size_of::<S>() != 4) as usize];
+pub const N: usize = 0 - (mem::size_of::<S>() != 4) as usize;

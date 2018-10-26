@@ -33,6 +33,5 @@ impl Foo for u16 {
 
 fn main() {
     println!("{}", <Bar<u16, u8> as Foo>::AMT);
-    //~^ ERROR erroneous constant used
-    //~| ERROR E0080
+    //~^ ERROR E0080
 }

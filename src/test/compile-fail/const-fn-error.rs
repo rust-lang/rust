@@ -26,5 +26,5 @@ const fn f(x: usize) -> usize {
 
 #[allow(unused_variables)]
 fn main() {
-    let a : [i32; f(X)]; //~ ERROR E0080
+    let a : [i32; f(X)];
 }

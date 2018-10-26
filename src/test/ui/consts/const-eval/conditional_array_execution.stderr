@@ -1,4 +1,4 @@
-warning: this constant cannot be used
+warning: any use of this value will cause an error
   --> $DIR/conditional_array_execution.rs:15:1
    |
 LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
@@ -12,21 +12,12 @@ note: lint level defined here
 LL | #![warn(const_err)]
    |         ^^^^^^^^^
 
-error[E0080]: referenced constant has errors
-  --> $DIR/conditional_array_execution.rs:19:20
-   |
-LL | const FOO: u32 = [X - Y, Y - X][(X < Y) as usize];
-   |                   ----- attempt to subtract with overflow
-...
-LL |     println!("{}", FOO);
-   |                    ^^^
-
-error[E0080]: erroneous constant used
+error[E0080]: evaluation of constant expression failed
   --> $DIR/conditional_array_execution.rs:19:20
    |
 LL |     println!("{}", FOO);
    |                    ^^^ referenced constant has errors
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

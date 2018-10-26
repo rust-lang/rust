@@ -12,8 +12,7 @@ use std::{fmt, env};
 
 use mir;
 use ty::{Ty, layout};
-use ty::layout::{Size, Align};
-use rustc_data_structures::sync::Lrc;
+use ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
 
 use super::{
@@ -30,7 +29,26 @@ use syntax_pos::Span;
 use syntax::ast;
 use syntax::symbol::Symbol;
 
-pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, Lrc<ConstEvalErr<'tcx>>>;
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ErrorHandled {
+    /// Already reported a lint or an error for this evaluation
+    Reported,
+    /// Don't emit an error, the evaluation failed because the MIR was generic
+    /// and the substs didn't fully monomorphize it.
+    TooGeneric,
+}
+
+impl ErrorHandled {
+    pub fn assert_reported(self) {
+        match self {
+            ErrorHandled::Reported => {},
+            ErrorHandled::TooGeneric => bug!("MIR interpretation failed without reporting an error \
+                                              even though it was fully monomorphized"),
+        }
+    }
+}
+
+pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ConstEvalErr<'tcx> {
@@ -50,7 +68,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
     pub fn struct_error(&self,
         tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
         message: &str)
-        -> Option<DiagnosticBuilder<'tcx>>
+        -> Result<DiagnosticBuilder<'tcx>, ErrorHandled>
     {
         self.struct_generic(tcx, message, None)
     }
@@ -58,10 +76,14 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
     pub fn report_as_error(&self,
         tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
         message: &str
-    ) {
+    ) -> ErrorHandled {
         let err = self.struct_error(tcx, message);
-        if let Some(mut err) = err {
-            err.emit();
+        match err {
+            Ok(mut err) => {
+                err.emit();
+                ErrorHandled::Reported
+            },
+            Err(err) => err,
         }
     }
 
@@ -69,14 +91,18 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
         message: &str,
         lint_root: ast::NodeId,
-    ) {
+    ) -> ErrorHandled {
         let lint = self.struct_generic(
             tcx,
             message,
             Some(lint_root),
         );
-        if let Some(mut lint) = lint {
-            lint.emit();
+        match lint {
+            Ok(mut lint) => {
+                lint.emit();
+                ErrorHandled::Reported
+            },
+            Err(err) => err,
         }
     }
 
@@ -85,15 +111,12 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         tcx: TyCtxtAt<'a, 'gcx, 'tcx>,
         message: &str,
         lint_root: Option<ast::NodeId>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
         match self.error.kind {
-            ::mir::interpret::EvalErrorKind::TypeckError |
-            ::mir::interpret::EvalErrorKind::TooGeneric |
-            ::mir::interpret::EvalErrorKind::CheckMatchError |
-            ::mir::interpret::EvalErrorKind::Layout(_) => return None,
-            ::mir::interpret::EvalErrorKind::ReferencedConstant(ref inner) => {
-                inner.struct_generic(tcx, "referenced constant has errors", lint_root)?.emit();
-            },
+            EvalErrorKind::Layout(LayoutError::Unknown(_)) |
+            EvalErrorKind::TooGeneric => return Err(ErrorHandled::TooGeneric),
+            EvalErrorKind::Layout(LayoutError::SizeOverflow(_)) |
+            EvalErrorKind::TypeckError => return Err(ErrorHandled::Reported),
             _ => {},
         }
         trace!("reporting const eval failure at {:?}", self.span);
@@ -117,7 +140,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         for FrameInfo { span, location, .. } in &self.stacktrace {
             err.span_label(*span, format!("inside call to `{}`", location));
         }
-        Some(err)
+        Ok(err)
     }
 }
 
@@ -279,10 +302,9 @@ pub enum EvalErrorKind<'tcx, O> {
     TypeckError,
     /// Resolution can fail if we are in a too generic context
     TooGeneric,
-    CheckMatchError,
     /// Cannot compute this constant because it depends on another one
     /// which already produced an error
-    ReferencedConstant(Lrc<ConstEvalErr<'tcx>>),
+    ReferencedConstant,
     GeneratorResumedAfterReturn,
     GeneratorResumedAfterPanic,
     InfiniteLoop,
@@ -407,9 +429,7 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
                 "encountered constants with type errors, stopping evaluation",
             TooGeneric =>
                 "encountered overly generic constant",
-            CheckMatchError =>
-                "match checking failed",
-            ReferencedConstant(_) =>
+            ReferencedConstant =>
                 "referenced constant has errors",
             Overflow(mir::BinOp::Add) => "attempt to add with overflow",
             Overflow(mir::BinOp::Sub) => "attempt to subtract with overflow",

@@ -172,9 +172,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::SelectionError<'a> {
                 )
             }
             super::TraitNotObjectSafe(def_id) => Some(super::TraitNotObjectSafe(def_id)),
-            super::ConstEvalFailure(ref err) => tcx.lift(&**err).map(|err| super::ConstEvalFailure(
-                err.into(),
-            )),
+            super::ConstEvalFailure(err) => Some(super::ConstEvalFailure(err)),
             super::Overflow => Some(super::Overflow),
         }
     }

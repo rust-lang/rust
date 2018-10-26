@@ -6,6 +6,15 @@ LL |     let _ = [0; (&0 as *const i32) as usize]; //~ ERROR casting pointers to
    |
    = help: add #![feature(const_raw_ptr_to_usize_cast)] to the crate attributes to enable
 
-error: aborting due to previous error
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/issue-52023-array-size-pointer-cast.rs:12:17
+   |
+LL |     let _ = [0; (&0 as *const i32) as usize]; //~ ERROR casting pointers to integers in constants
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected initialized plain bits
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-For more information about this error, try `rustc --explain E0658`.
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0080, E0658.
+For more information about an error, try `rustc --explain E0080`.

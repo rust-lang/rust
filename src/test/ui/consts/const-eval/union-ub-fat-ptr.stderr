@@ -1,4 +1,4 @@
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub-fat-ptr.rs:87:1
    |
 LL | const B: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.str};
@@ -6,7 +6,7 @@ LL | const B: &str = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub-fat-ptr.rs:90:1
    |
 LL | const C: &str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.str};
@@ -14,7 +14,7 @@ LL | const C: &str = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub-fat-ptr.rs:93:1
    |
 LL | const C2: &MyStr = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.my_str};
@@ -22,7 +22,7 @@ LL | const C2: &MyStr = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, 
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub-fat-ptr.rs:99:1
    |
 LL | const B2: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len: 999 } }.slice};
@@ -30,7 +30,7 @@ LL | const B2: &[u8] = unsafe { SliceTransmute { repr: SliceRepr { ptr: &42, len
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub-fat-ptr.rs:102:1
    |
 LL | const C3: &[u8] = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, len: &3 } }.slice};
@@ -38,7 +38,7 @@ LL | const C3: &[u8] = unsafe { SliceTransmute { bad: BadSliceRepr { ptr: &42, l
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub-fat-ptr.rs:106:1
    |
 LL | const D: &Trait = unsafe { DynTransmute { repr: DynRepr { ptr: &92, vtable: &3 } }.rust};
@@ -46,7 +46,7 @@ LL | const D: &Trait = unsafe { DynTransmute { repr: DynRepr { ptr: &92, vtable:
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub-fat-ptr.rs:109:1
    |
 LL | const E: &Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtable: &3 } }.rust};
@@ -54,7 +54,7 @@ LL | const E: &Trait = unsafe { DynTransmute { repr2: DynRepr2 { ptr: &92, vtabl
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub-fat-ptr.rs:112:1
    |
 LL | const F: &Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtable: 3 } }.rust};
@@ -62,7 +62,7 @@ LL | const F: &Trait = unsafe { DynTransmute { bad: BadDynRepr { ptr: &92, vtabl
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
+error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub-fat-ptr.rs:116:1
    |
 LL | const G: &Trait = &unsafe { BoolTransmute { val: 3 }.bl };
@@ -70,40 +70,40 @@ LL | const G: &Trait = &unsafe { BoolTransmute { val: 3 }.bl };
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:119:1
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/union-ub-fat-ptr.rs:120:1
    |
 LL | const H: &[bool] = &[unsafe { BoolTransmute { val: 3 }.bl }];
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>[0], but expected something in the range 0..=1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:125:1
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/union-ub-fat-ptr.rs:126:1
    |
 LL | const I2: &MySliceBool = &MySlice(unsafe { BoolTransmute { val: 3 }.bl }, [false]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.0, but expected something in the range 0..=1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:128:1
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/union-ub-fat-ptr.rs:129:1
    |
 LL | const I3: &MySliceBool = &MySlice(true, [unsafe { BoolTransmute { val: 3 }.bl }]);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.1[0], but expected something in the range 0..=1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:132:1
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/union-ub-fat-ptr.rs:133:1
    |
 LL | const J1: &str = unsafe { SliceTransmute { slice: &[0xFF] }.str };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized or non-UTF-8 data in str at .<deref>
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error[E0080]: this constant likely exhibits undefined behavior
-  --> $DIR/union-ub-fat-ptr.rs:135:1
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/union-ub-fat-ptr.rs:136:1
    |
 LL | const J2: &MyStr = unsafe { SliceTransmute { slice: &[0xFF] }.my_str };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized or non-UTF-8 data in str at .<deref>.0

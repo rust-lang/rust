@@ -1,18 +1,9 @@
-error[E0080]: referenced constant has errors
-  --> $DIR/issue-44578.rs:35:20
-   |
-LL |     const AMT: usize = [A::AMT][(A::AMT > B::AMT) as usize];
-   |                        ------------------------------------ index out of bounds: the len is 1 but the index is 1
-...
-LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0080]: erroneous constant used
+error[E0080]: evaluation of constant expression failed
   --> $DIR/issue-44578.rs:35:20
    |
 LL |     println!("{}", <Bar<u16, u8> as Foo>::AMT);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ referenced constant has errors
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.
