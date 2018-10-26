@@ -549,9 +549,9 @@ fn nop_block_collapse(block_str: Option<String>, budget: usize) -> Option<String
             && budget >= 2
             && (block_str[1..].find(|c: char| !c.is_whitespace()).unwrap() == block_str.len() - 2)
         {
-            "{}".to_owned()
+            String::from("{}")
         } else {
-            block_str.to_owned()
+            block_str
         }
     })
 }
