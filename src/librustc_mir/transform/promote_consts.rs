@@ -333,6 +333,14 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                             let operand = Operand::Copy(promoted_place(ty, span));
                             mem::replace(&mut args[index], operand)
                         }
+                        // We expected a `TerminatorKind::Call` for which we'd like to promote an
+                        // argument. `qualify_consts` saw a `TerminatorKind::Call` here, but
+                        // we are seeing a `Goto`. That means that the `promote_temps` method
+                        // already promoted this call away entirely. This case occurs when calling
+                        // a function requiring a constant argument and as that constant value
+                        // providing a value whose computation contains another call to a function
+                        // requiring a constant argument.
+                        TerminatorKind::Goto { .. } => return,
                         _ => bug!()
                     }
                 }
