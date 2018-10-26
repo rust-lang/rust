@@ -71,6 +71,9 @@ enum InitializationType<'tcx> {
 
     /// Resize is a slow initialization with the form `vec.resize(.., 0)`
     Resize(&'tcx Expr),
+
+    /// UnsafeSetLen is a slow initialization with the form `vec.set_len(..)`
+    UnsafeSetLen(&'tcx Expr),
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
@@ -93,7 +96,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     len_expr: len_arg,
                 };
 
-                Pass::search_slow_zero_filling(cx, vi, expr.id, expr.span);
+                Pass::search_slow_initialization(cx, vi, expr.id, expr.span);
             }
         }
     }
@@ -114,7 +117,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     len_expr: len_arg,
                 };
 
-                Pass::search_slow_zero_filling(cx, vi, stmt.node.id(), stmt.span);
+                Pass::search_slow_initialization(cx, vi, stmt.node.id(), stmt.span);
             }
         }
     }
@@ -138,8 +141,8 @@ impl Pass {
         None
     }
 
-    /// Search for slow zero filling vector initialization for the given vector
-    fn search_slow_zero_filling<'tcx>(
+    /// Search a slow initialization for the given vector
+    fn search_slow_initialization<'tcx>(
         cx: &LateContext<'_, 'tcx>,
         vec_initialization: VecInitialization<'tcx>,
         parent_node: NodeId,
@@ -171,11 +174,14 @@ impl Pass {
 
                     match repeat_expr {
                         InitializationType::Extend(e) => {
-                            db.span_note(e.span, "extended here with .. 0");
+                            db.span_note(e.span, "extended at");
                         },
                         InitializationType::Resize(e) => {
-                            db.span_note(e.span, "resize here with .. 0");
-                        }
+                            db.span_note(e.span, "resized at");
+                        },
+                        InitializationType::UnsafeSetLen(e) => {
+                            db.span_note(e.span, "changed len at");
+                        },
                     }
                 }
             );
@@ -239,6 +245,25 @@ impl<'a, 'tcx> SlowInitializationVisitor<'a, 'tcx> {
         }
     }
 
+    /// Checks if the given expression is using `set_len` to initialize the vector
+    fn search_unsafe_set_len(&mut self, expr: &'tcx Expr) {
+        if_chain! {
+            if self.initialization_found;
+            if let ExprKind::MethodCall(ref path, _, ref args) = expr.node;
+            if let ExprKind::Path(ref qpath_subj) = args[0].node;
+            if match_qpath(&qpath_subj, &[&self.vec_ini.variable_name.to_string()]);
+            if path.ident.name == "set_len";
+            if let Some(ref len_arg) = args.get(1);
+
+            // Check that len expression is equals to `with_capacity` expression
+            if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_ini.len_expr);
+
+            then {
+                self.slow_expression = Some(InitializationType::UnsafeSetLen(expr));
+            }
+        }
+    }
+
     /// Returns `true` if give expression is `repeat(0).take(...)`
     fn is_repeat_take(&self, expr: &Expr) -> bool {
         if_chain! {
@@ -294,6 +319,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SlowInitializationVisitor<'a, 'tcx> {
         
         self.search_slow_extend_filling(expr);
         self.search_slow_resize_filling(expr);
+        self.search_unsafe_set_len(expr);
 
         walk_expr(self, expr);
     }
