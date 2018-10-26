@@ -353,7 +353,7 @@ fn configure_cmake(builder: &Builder,
        // definitely causes problems since all the env vars are pointing to
        // 32-bit libraries.
        //
-       // To hack aroudn this... again... we pass an argument that's
+       // To hack around this... again... we pass an argument that's
        // unconditionally passed in the sccache shim. This'll get CMake to
        // correctly diagnose it's doing a 32-bit compilation and LLVM will
        // internally configure itself appropriately.
@@ -361,7 +361,7 @@ fn configure_cmake(builder: &Builder,
            cfg.env("SCCACHE_EXTRA_ARGS", "-m32");
        }
 
-    // If ccache is configured we inform the build a little differently hwo
+    // If ccache is configured we inform the build a little differently how
     // to invoke ccache while also invoking our compilers.
     } else if let Some(ref ccache) = builder.config.ccache {
        cfg.define("CMAKE_C_COMPILER", ccache)
