@@ -88,7 +88,7 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
         walk(self);
 
         if owner_def_index == CRATE_DEF_INDEX {
-            return
+            return;
         }
 
         // There's always at least one entry for the owning item itself
@@ -129,13 +129,16 @@ impl<'a, 'hir: 'a> HirIdValidator<'a, 'hir> {
                                            local_id,
                                            self.hir_map.node_to_string(node_id)));
             }
-
             self.errors.push(format!(
                 "ItemLocalIds not assigned densely in {}. \
-                Max ItemLocalId = {}, missing IDs = {:?}",
+                Max ItemLocalId = {}, missing IDs = {:?}; seens IDs = {:?}",
                 self.hir_map.def_path(DefId::local(owner_def_index)).to_string_no_crate(),
                 max,
-                missing_items));
+                missing_items,
+                self.hir_ids_seen
+                    .values()
+                    .map(|n| format!("({:?} {})", n, self.hir_map.node_to_string(*n)))
+                    .collect::<Vec<_>>()));
         }
     }
 }
@@ -155,6 +158,7 @@ impl<'a, 'hir: 'a> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
             self.errors.push(format!("HirIdValidator: No HirId assigned for NodeId {}: {:?}",
                                      node_id,
                                      self.hir_map.node_to_string(node_id)));
+            return;
         }
 
         if owner != stable_id.owner {

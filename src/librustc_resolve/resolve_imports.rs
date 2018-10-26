@@ -13,7 +13,7 @@ use self::ImportDirectiveSubclass::*;
 use {AmbiguityError, CrateLint, Module, ModuleOrUniformRoot, PerNS};
 use Namespace::{self, TypeNS, MacroNS};
 use {NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
-use Resolver;
+use {Resolver, Segment};
 use {names_to_string, module_to_string};
 use {resolve_error, ResolutionError};
 
@@ -89,7 +89,7 @@ pub struct ImportDirective<'a> {
     pub root_span: Span,
 
     pub parent: Module<'a>,
-    pub module_path: Vec<Ident>,
+    pub module_path: Vec<Segment>,
     /// The resolution of `module_path`.
     pub imported_module: Cell<Option<ModuleOrUniformRoot<'a>>>,
     pub subclass: ImportDirectiveSubclass<'a>,
@@ -393,7 +393,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
 
     // Add an import directive to the current module.
     pub fn add_import_directive(&mut self,
-                                module_path: Vec<Ident>,
+                                module_path: Vec<Segment>,
                                 subclass: ImportDirectiveSubclass<'a>,
                                 span: Span,
                                 id: NodeId,
@@ -679,7 +679,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
 
                 let has_explicit_self =
                     !import.module_path.is_empty() &&
-                    import.module_path[0].name == keywords::SelfValue.name();
+                    import.module_path[0].ident.name == keywords::SelfValue.name();
 
                 self.per_ns(|_, ns| {
                     if let Some(result) = result[ns].get().ok() {
@@ -728,9 +728,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                     self.throw_unresolved_import_error(empty_vec, None);
                 }
                 if !seen_spans.contains(&span) {
-                    let path = import_path_to_string(&import.module_path[..],
-                                                     &import.subclass,
-                                                     span);
+                    let path = import_path_to_string(
+                        &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
+                        &import.subclass,
+                        span,
+                    );
                     error_vec.push((span, path, err));
                     seen_spans.insert(span);
                     prev_root_id = import.root_id;
@@ -851,8 +853,9 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     /// If successful, the resolved bindings are written into the module.
     fn resolve_import(&mut self, directive: &'b ImportDirective<'b>) -> bool {
         debug!("(resolving import for module) resolving import `{}::...` in `{}`",
-               names_to_string(&directive.module_path[..]),
+               Segment::names_to_string(&directive.module_path[..]),
                module_to_string(self.current_module).unwrap_or_else(|| "???".to_string()));
+
 
         self.current_module = directive.parent;
 
@@ -966,7 +969,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 ) {
                     Some((
                         span,
-                        format!("Did you mean `{}`?", names_to_string(&suggested_path[..]))
+                        format!("Did you mean `{}`?", Segment::names_to_string(&suggested_path))
                     ))
                 } else {
                     Some((span, msg))
@@ -982,7 +985,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                     // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
                     // 2 segments, so the `resolve_path` above won't trigger it.
                     let mut full_path = module_path.clone();
-                    full_path.push(keywords::Invalid.ident());
+                    full_path.push(Segment::from_ident(keywords::Invalid.ident()));
                     self.lint_if_path_starts_with_module(
                         directive.crate_lint(),
                         &full_path,
@@ -1146,7 +1149,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
             // 2 segments, so the `resolve_path` above won't trigger it.
             let mut full_path = module_path.clone();
-            full_path.push(ident);
+            full_path.push(Segment::from_ident(ident));
             self.per_ns(|this, ns| {
                 if let Ok(binding) = result[ns].get() {
                     this.lint_if_path_starts_with_module(
@@ -1288,7 +1291,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                         let resolutions = imported_module.parent.expect("parent should exist")
                             .resolutions.borrow();
                         let enum_path_segment_index = directive.module_path.len() - 1;
-                        let enum_ident = directive.module_path[enum_path_segment_index];
+                        let enum_ident = directive.module_path[enum_path_segment_index].ident;
 
                         let enum_resolution = resolutions.get(&(enum_ident, TypeNS))
                             .expect("resolution should exist");

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use {AmbiguityError, CrateLint, Resolver, ResolutionError, is_known_tool, resolve_error};
-use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, ToNameBinding};
+use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
 use ModuleOrUniformRoot;
 use Namespace::{self, *};
 use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
@@ -461,14 +461,15 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         parent_scope: &ParentScope<'a>,
         force: bool,
     ) -> Result<Def, Determinacy> {
-        let ast::Path { ref segments, span } = *path;
-        let mut path: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
+        let span = path.span;
+        let mut path = Segment::from_path(path);
 
         // Possibly apply the macro helper hack
         if kind == MacroKind::Bang && path.len() == 1 &&
-           path[0].span.ctxt().outer().expn_info().map_or(false, |info| info.local_inner_macros) {
-            let root = Ident::new(keywords::DollarCrate.name(), path[0].span);
-            path.insert(0, root);
+           path[0].ident.span.ctxt().outer().expn_info()
+               .map_or(false, |info| info.local_inner_macros) {
+            let root = Ident::new(keywords::DollarCrate.name(), path[0].ident.span);
+            path.insert(0, Segment::from_ident(root));
         }
 
         if path.len() > 1 {
@@ -496,12 +497,16 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             };
 
             parent_scope.module.macro_resolutions.borrow_mut()
-                .push((path.into_boxed_slice(), span));
+                .push((path
+                    .iter()
+                    .map(|seg| seg.ident)
+                    .collect::<Vec<Ident>>()
+                    .into_boxed_slice(), span));
 
             def
         } else {
             let binding = self.early_resolve_ident_in_lexical_scope(
-                path[0], MacroNS, Some(kind), parent_scope, false, force, span
+                path[0].ident, MacroNS, Some(kind), parent_scope, false, force, span
             );
             match binding {
                 Ok(..) => {}
@@ -510,7 +515,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             }
 
             parent_scope.module.legacy_macro_resolutions.borrow_mut()
-                .push((path[0], kind, parent_scope.clone(), binding.ok()));
+                .push((path[0].ident, kind, parent_scope.clone(), binding.ok()));
 
             binding.map(|binding| binding.def_ignoring_ambiguity())
         }
@@ -846,6 +851,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
         for &(ref path, span) in module.macro_resolutions.borrow().iter() {
+            let path: Vec<_> = path.iter().map(|&ident| Segment::from_ident(ident)).collect();
             match self.resolve_path(None, &path, Some(MacroNS), true, span, CrateLint::No) {
                 PathResult::NonModule(_) => {},
                 PathResult::Failed(span, msg, _) => {
@@ -938,7 +944,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
             };
             let ident = Ident::new(Symbol::intern(name), span);
-            self.lookup_typo_candidate(&[ident], MacroNS, is_macro, span)
+            self.lookup_typo_candidate(&[Segment::from_ident(ident)], MacroNS, is_macro, span)
         });
 
         if let Some(suggestion) = suggestion {

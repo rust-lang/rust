@@ -16,7 +16,7 @@
 use macros::{InvocationData, ParentScope, LegacyScope};
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
-use {Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, ToNameBinding};
+use {Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
 use {ModuleOrUniformRoot, PerNS, Resolver, ResolverArenas, ExternPreludeEntry};
 use Namespace::{self, TypeNS, ValueNS, MacroNS};
 use {resolve_error, resolve_struct_error, ResolutionError};
@@ -122,7 +122,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         use_tree: &ast::UseTree,
         id: NodeId,
         vis: ty::Visibility,
-        parent_prefix: &[Ident],
+        parent_prefix: &[Segment],
         mut uniform_paths_canary_emitted: bool,
         nested: bool,
         item: &Item,
@@ -139,10 +139,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             self.session.features_untracked().uniform_paths;
 
         let prefix_iter = || parent_prefix.iter().cloned()
-            .chain(use_tree.prefix.segments.iter().map(|seg| seg.ident));
+            .chain(use_tree.prefix.segments.iter().map(|seg| seg.into()));
         let prefix_start = prefix_iter().next();
-        let starts_with_non_keyword = prefix_start.map_or(false, |ident| {
-            !ident.is_path_segment_keyword()
+        let starts_with_non_keyword = prefix_start.map_or(false, |seg| {
+            !seg.ident.is_path_segment_keyword()
         });
 
         // Imports are resolved as global by default, prepend `CrateRoot`,
@@ -156,7 +156,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             };
         let root = if inject_crate_root {
             let span = use_tree.prefix.span.shrink_to_lo();
-            Some(Ident::new(keywords::CrateRoot.name(), span))
+            Some(Segment::from_ident(Ident::new(keywords::CrateRoot.name(), span)))
         } else {
             None
         };
@@ -202,13 +202,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             let source = prefix_start.unwrap();
 
             // Helper closure to emit a canary with the given base path.
-            let emit = |this: &mut Self, base: Option<Ident>| {
+            let emit = |this: &mut Self, base: Option<Segment>| {
                 let subclass = SingleImport {
                     target: Ident {
                         name: keywords::Underscore.name().gensymed(),
-                        span: source.span,
+                        span: source.ident.span,
                     },
-                    source,
+                    source: source.ident,
                     result: PerNS {
                         type_ns: Cell::new(Err(Undetermined)),
                         value_ns: Cell::new(Err(Undetermined)),
@@ -219,7 +219,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 this.add_import_directive(
                     base.into_iter().collect(),
                     subclass.clone(),
-                    source.span,
+                    source.ident.span,
                     id,
                     root_use_tree.span,
                     root_id,
@@ -230,15 +230,18 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             };
 
             // A single simple `self::x` canary.
-            emit(self, Some(Ident {
-                name: keywords::SelfValue.name(),
-                span: source.span,
+            emit(self, Some(Segment {
+                ident: Ident {
+                    name: keywords::SelfValue.name(),
+                    span: source.ident.span,
+                },
+                id: source.id
             }));
 
             // One special unprefixed canary per block scope around
             // the import, to detect items unreachable by `self::x`.
             let orig_current_module = self.current_module;
-            let mut span = source.span.modern();
+            let mut span = source.ident.span.modern();
             loop {
                 match self.current_module.kind {
                     ModuleKind::Block(..) => emit(self, None),
@@ -265,11 +268,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                 if nested {
                     // Correctly handle `self`
-                    if source.name == keywords::SelfValue.name() {
+                    if source.ident.name == keywords::SelfValue.name() {
                         type_ns_only = true;
 
-                        let empty_prefix = module_path.last().map_or(true, |ident| {
-                            ident.name == keywords::CrateRoot.name()
+                        let empty_prefix = module_path.last().map_or(true, |seg| {
+                            seg.ident.name == keywords::CrateRoot.name()
                         });
                         if empty_prefix {
                             resolve_error(
@@ -284,20 +287,20 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         // Replace `use foo::self;` with `use foo;`
                         source = module_path.pop().unwrap();
                         if rename.is_none() {
-                            ident = source;
+                            ident = source.ident;
                         }
                     }
                 } else {
                     // Disallow `self`
-                    if source.name == keywords::SelfValue.name() {
+                    if source.ident.name == keywords::SelfValue.name() {
                         resolve_error(self,
                                       use_tree.span,
                                       ResolutionError::SelfImportsOnlyAllowedWithin);
                     }
 
                     // Disallow `use $crate;`
-                    if source.name == keywords::DollarCrate.name() && module_path.is_empty() {
-                        let crate_root = self.resolve_crate_root(source);
+                    if source.ident.name == keywords::DollarCrate.name() && module_path.is_empty() {
+                        let crate_root = self.resolve_crate_root(source.ident);
                         let crate_name = match crate_root.kind {
                             ModuleKind::Def(_, name) => name,
                             ModuleKind::Block(..) => unreachable!(),
@@ -307,11 +310,14 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         // while the current crate doesn't have a valid `crate_name`.
                         if crate_name != keywords::Invalid.name() {
                             // `crate_name` should not be interpreted as relative.
-                            module_path.push(Ident {
-                                name: keywords::CrateRoot.name(),
-                                span: source.span,
+                            module_path.push(Segment {
+                                ident: Ident {
+                                    name: keywords::CrateRoot.name(),
+                                    span: source.ident.span,
+                                },
+                                id: Some(self.session.next_node_id()),
                             });
-                            source.name = crate_name;
+                            source.ident.name = crate_name;
                         }
                         if rename.is_none() {
                             ident.name = crate_name;
@@ -332,7 +338,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                 let subclass = SingleImport {
                     target: ident,
-                    source,
+                    source: source.ident,
                     result: PerNS {
                         type_ns: Cell::new(Err(Undetermined)),
                         value_ns: Cell::new(Err(Undetermined)),
