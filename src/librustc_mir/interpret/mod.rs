@@ -30,7 +30,7 @@ pub use self::eval_context::{
     EvalContext, Frame, StackPopCleanup, LocalValue,
 };
 
-pub use self::place::{Place, PlaceTy, MemPlace, MPlaceTy};
+pub use self::place::{Place, PlaceTy};
 
 pub use self::memory::{Memory, MemoryKind};
 

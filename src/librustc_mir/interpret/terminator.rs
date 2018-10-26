@@ -17,7 +17,7 @@ use rustc_target::spec::abi::Abi;
 
 use rustc::mir::interpret::{EvalResult, PointerArithmetic, EvalErrorKind, Scalar};
 use super::{
-    EvalContext, Machine, Value, OpTy, PlaceTy, MPlaceTy, Operand, StackPopCleanup
+    EvalContext, Machine, Value, OpTy, PlaceTy, Operand, StackPopCleanup
 };
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -401,7 +401,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.pointer_size();
                 let ptr_align = self.tcx.data_layout.pointer_align;
-                let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
+                let ptr = self.ref_to_place(self.read_value(args[0])?)?;
                 let vtable = ptr.vtable()?;
                 let fn_ptr = self.memory.read_ptr_sized(
                     vtable.offset(ptr_size * (idx as u64 + 3), &self)?,
@@ -435,7 +435,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         // We take the address of the object.  This may well be unaligned, which is fine
         // for us here.  However, unaligned accesses will probably make the actual drop
         // implementation fail -- a problem shared by rustc.
-        let place = self.force_allocation(place)?;
 
         let (instance, place) = match place.layout.ty.sty {
             ty::Dynamic(..) => {
@@ -454,7 +453,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         };
 
         let ty = self.tcx.mk_unit(); // return type is ()
-        let dest = MPlaceTy::dangling(self.layout_of(ty)?, &self);
+        let dest = PlaceTy::dangling(self.layout_of(ty)?, &self);
 
         self.eval_fn_call(
             instance,

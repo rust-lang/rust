@@ -52,7 +52,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     assert!(dest.layout.ty.is_unsafe_ptr());
                     // For the purpose of the "ptr tag hooks", treat this as creating
                     // a new, raw reference.
-                    let place = self.ref_to_mplace(src)?;
+                    let place = self.ref_to_place(src)?;
                     self.create_ref(place, None)?
                 } else {
                     *src
@@ -384,9 +384,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     if dst_field.layout.is_zst() {
                         continue;
                     }
-                    let src_field = match src.try_as_mplace() {
-                        Ok(mplace) => {
-                            let src_field = self.mplace_field(mplace, i as u64)?;
+                    let src_field = match src.try_as_place() {
+                        Ok(place) => {
+                            let src_field = self.place_field(place, i as u64)?;
                             src_field.into()
                         }
                         Err(..) => {

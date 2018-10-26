@@ -32,7 +32,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use interpret::{self,
-    PlaceTy, MemPlace, OpTy, Operand, Value, Pointer, Scalar, ConstValue,
+    PlaceTy, Place, OpTy, Operand, Value, Pointer, Scalar, ConstValue,
     EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot, RefTracking,
@@ -118,12 +118,12 @@ pub fn op_to_const<'tcx>(
         ecx.try_read_value(op)?
     } else {
         match op.op {
-            Operand::Indirect(mplace) => Err(mplace),
+            Operand::Indirect(place) => Err(place),
             Operand::Immediate(val) => Ok(val)
         }
     };
     let val = match normalized_op {
-        Err(MemPlace { ptr, align, meta }) => {
+        Err(Place { ptr, align, meta }) => {
             // extract alloc-offset pair
             assert!(meta.is_none());
             let ptr = ptr.to_ptr()?;
@@ -639,7 +639,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
     res.and_then(|op| {
         let normalize = tcx.is_static(def_id).is_none() && cid.promoted.is_none();
         if !normalize {
-            // Sanity check: These must always be a MemPlace
+            // Sanity check: These must always be a Place
             match op.op {
                 Operand::Indirect(_) => { /* all is good */ },
                 Operand::Immediate(_) => bug!("const eval gave us an Immediate"),

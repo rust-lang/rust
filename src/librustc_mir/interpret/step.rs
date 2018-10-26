@@ -217,12 +217,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
             Repeat(ref operand, _) => {
                 let op = self.eval_operand(operand, None)?;
-                let dest = self.force_allocation(dest)?;
                 let length = dest.len(&self)?;
 
                 if length > 0 {
                     // write the first
-                    let first = self.mplace_field(dest, 0)?;
+                    let first = self.place_field(dest, 0)?;
                     self.copy_op(op, first.into())?;
 
                     if length > 1 {
@@ -238,9 +237,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
             Len(ref place) => {
                 // FIXME(CTFE): don't allow computing the length of arrays in const eval
-                let src = self.eval_place(place)?;
-                let mplace = self.force_allocation(src)?;
-                let len = mplace.len(&self)?;
+                let place = self.eval_place(place)?;
+                let len = place.len(&self)?;
                 let size = self.pointer_size();
                 self.write_scalar(
                     Scalar::from_uint(len, size),
@@ -250,8 +248,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
             Ref(_, borrow_kind, ref place) => {
                 let src = self.eval_place(place)?;
-                let val = self.force_allocation(src)?;
-                let val = self.create_ref(val, Some(borrow_kind))?;
+                let val = self.create_ref(src, Some(borrow_kind))?;
                 self.write_value(val, dest)?;
             }
 
@@ -279,7 +276,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
             Discriminant(ref place) => {
                 let place = self.eval_place(place)?;
-                let discr_val = self.read_discriminant(self.place_to_op(place)?)?.0;
+                let discr_val = self.read_discriminant(place.into())?.0;
                 let size = dest.layout.size;
                 self.write_scalar(Scalar::from_uint(discr_val, size), dest)?;
             }

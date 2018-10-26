@@ -24,7 +24,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::Span;
 
 use super::eval_context::{LocalValue, StackPopCleanup};
-use super::{Frame, Memory, Operand, MemPlace, Place, Value, ScalarMaybeUndef};
+use super::{Frame, Memory, Operand, Place, Value, ScalarMaybeUndef};
 use const_eval::CompileTimeInterpreter;
 
 #[derive(Default)]
@@ -205,37 +205,16 @@ impl_snapshot_for!(enum ScalarMaybeUndef {
     Undef,
 });
 
-impl_stable_hash_for!(struct ::interpret::MemPlace {
+impl_stable_hash_for!(struct ::interpret::Place {
     ptr,
     align,
     meta,
 });
-impl_snapshot_for!(struct MemPlace {
+impl_snapshot_for!(struct Place {
     ptr,
     meta,
     align -> *align, // just copy alignment verbatim
 });
-
-impl_stable_hash_for!(enum ::interpret::Place {
-    Ptr(mem_place),
-    Local { frame, local },
-});
-impl<'a, Ctx> Snapshot<'a, Ctx> for Place
-    where Ctx: SnapshotContext<'a>,
-{
-    type Item = Place<(), AllocIdSnapshot<'a>>;
-
-    fn snapshot(&self, ctx: &'a Ctx) -> Self::Item {
-        match self {
-            Place::Ptr(p) => Place::Ptr(p.snapshot(ctx)),
-
-            Place::Local{ frame, local } => Place::Local{
-                frame: *frame,
-                local: *local,
-            },
-        }
-    }
-}
 
 impl_stable_hash_for!(enum ::interpret::Value {
     Scalar(x),

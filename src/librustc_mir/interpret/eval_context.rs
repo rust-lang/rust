@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt::Write;
 use std::mem;
 
 use syntax::source_map::{self, Span, DUMMY_SP};
@@ -32,8 +31,8 @@ use rustc::mir::interpret::{
 use rustc_data_structures::fx::FxHashMap;
 
 use super::{
-    Value, Operand, MemPlace, MPlaceTy, Place, PlaceTy, ScalarMaybeUndef,
-    Memory, Machine
+    Value, Place, PlaceTy,
+    Memory, Machine, MemoryKind,
 };
 
 pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
@@ -116,22 +115,18 @@ pub enum StackPopCleanup {
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum LocalValue<Tag=(), Id=AllocId> {
     Dead,
-    // Mostly for convenience, we re-use the `Operand` type here.
-    // This is an optimization over just always having a pointer here;
-    // we can thus avoid doing an allocation when the local just stores
-    // immediate values *and* never has its address taken.
-    Live(Operand<Tag, Id>),
+    Live(Place<Tag, Id>),
 }
 
 impl<'tcx, Tag> LocalValue<Tag> {
-    pub fn access(&self) -> EvalResult<'tcx, &Operand<Tag>> {
+    pub fn access(&self) -> EvalResult<'tcx, &Place<Tag>> {
         match self {
             LocalValue::Dead => err!(DeadLocal),
             LocalValue::Live(ref val) => Ok(val),
         }
     }
 
-    pub fn access_mut(&mut self) -> EvalResult<'tcx, &mut Operand<Tag>> {
+    pub fn access_mut(&mut self) -> EvalResult<'tcx, &mut Place<Tag>> {
         match self {
             LocalValue::Dead => err!(DeadLocal),
             LocalValue::Live(ref mut val) => Ok(val),
@@ -421,11 +416,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
     }
     #[inline]
-    pub fn size_and_align_of_mplace(
+    pub fn size_and_align_of_place(
         &self,
-        mplace: MPlaceTy<'tcx, M::PointerTag>
+        place: PlaceTy<'tcx, M::PointerTag>
     ) -> EvalResult<'tcx, Option<(Size, Align)>> {
-        self.size_and_align_of(mplace.meta, mplace.layout)
+        self.size_and_align_of(place.meta, place.layout)
     }
 
     pub fn push_stack_frame(
@@ -460,8 +455,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             // We put some marker value into the locals that we later want to initialize.
             // This can be anything except for LocalValue::Dead -- because *that* is the
             // value we use for things that we know are initially dead.
-            let dummy =
-                LocalValue::Live(Operand::Immediate(Value::Scalar(ScalarMaybeUndef::Undef)));
+            let dummy = LocalValue::Live(Place::null(&*self));
             let mut locals = IndexVec::from_elem(dummy, &mir.local_decls);
             // Return place is handled specially by the `eval_place` functions, and the
             // entry in `locals` should never be used. Make it dead, to be sure.
@@ -490,9 +484,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             for (local, decl) in locals.iter_mut().zip(mir.local_decls.iter()) {
                 match *local {
                     LocalValue::Live(_) => {
-                        // This needs to be peoperly initialized.
+                        // This needs to be properly initialized.
                         let layout = self.layout_of(self.monomorphize(decl.ty, instance.substs))?;
-                        *local = LocalValue::Live(self.uninit_operand(layout)?);
+                        *local = LocalValue::Live(*self.allocate(layout, MemoryKind::Stack)?);
                     }
                     LocalValue::Dead => {
                         // Nothing to do
@@ -550,7 +544,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 // its return place... but the way MIR is currently generated, the
                 // return place is always a local and then this cannot happen.
                 self.validate_operand(
-                    self.place_to_op(return_place)?,
+                    return_place.into(),
                     &mut vec![],
                     None,
                     /*const_mode*/false,
@@ -578,7 +572,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         trace!("{:?} is now live", local);
 
         let layout = self.layout_of_local(self.frame(), local)?;
-        let init = LocalValue::Live(self.uninit_operand(layout)?);
+        let init = LocalValue::Live(*self.allocate(layout, MemoryKind::Stack)?);
         // StorageLive *always* kills the value that's currently stored
         Ok(mem::replace(&mut self.frame_mut().locals[local], init))
     }
@@ -597,7 +591,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         local: LocalValue<M::PointerTag>,
     ) -> EvalResult<'tcx> {
         // FIXME: should we tell the user that there was a local which was never written to?
-        if let LocalValue::Live(Operand::Indirect(MemPlace { ptr, .. })) = local {
+        if let LocalValue::Live(ptr) = local {
             trace!("deallocating local");
             let ptr = ptr.to_ptr()?;
             self.memory.dump_alloc(ptr.alloc_id);
@@ -625,62 +619,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         if !log_enabled!(::log::Level::Trace) {
             return;
         }
-        match place {
-            Place::Local { frame, local } => {
-                let mut allocs = Vec::new();
-                let mut msg = format!("{:?}", local);
-                if frame != self.cur_frame() {
-                    write!(msg, " ({} frames up)", self.cur_frame() - frame).unwrap();
-                }
-                write!(msg, ":").unwrap();
-
-                match self.stack[frame].locals[local].access() {
-                    Err(err) => {
-                        if let EvalErrorKind::DeadLocal = err.kind {
-                            write!(msg, " is dead").unwrap();
-                        } else {
-                            panic!("Failed to access local: {:?}", err);
-                        }
-                    }
-                    Ok(Operand::Indirect(mplace)) => {
-                        let (ptr, align) = mplace.to_scalar_ptr_align();
-                        match ptr {
-                            Scalar::Ptr(ptr) => {
-                                write!(msg, " by align({}) ref:", align.abi()).unwrap();
-                                allocs.push(ptr.alloc_id);
-                            }
-                            ptr => write!(msg, " by integral ref: {:?}", ptr).unwrap(),
-                        }
-                    }
-                    Ok(Operand::Immediate(Value::Scalar(val))) => {
-                        write!(msg, " {:?}", val).unwrap();
-                        if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val {
-                            allocs.push(ptr.alloc_id);
-                        }
-                    }
-                    Ok(Operand::Immediate(Value::ScalarPair(val1, val2))) => {
-                        write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
-                        if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val1 {
-                            allocs.push(ptr.alloc_id);
-                        }
-                        if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val2 {
-                            allocs.push(ptr.alloc_id);
-                        }
-                    }
-                }
-
-                trace!("{}", msg);
-                self.memory.dump_allocs(allocs);
+        match place.ptr {
+            Scalar::Ptr(ptr) => {
+                trace!("by align({}) ref:", place.align.abi());
+                self.memory.dump_alloc(ptr.alloc_id);
             }
-            Place::Ptr(mplace) => {
-                match mplace.ptr {
-                    Scalar::Ptr(ptr) => {
-                        trace!("by align({}) ref:", mplace.align.abi());
-                        self.memory.dump_alloc(ptr.alloc_id);
-                    }
-                    ptr => trace!(" integral by ref: {:?}", ptr),
-                }
-            }
+            ptr => trace!(" integral by ref: {:?}", ptr),
         }
     }
 

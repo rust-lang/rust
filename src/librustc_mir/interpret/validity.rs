@@ -20,7 +20,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    ValTy, OpTy, MPlaceTy, Machine, EvalContext, ScalarMaybeUndef
+    ValTy, OpTy, PlaceTy, Machine, EvalContext, ScalarMaybeUndef
 };
 
 macro_rules! validation_failure {
@@ -181,7 +181,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 // their metadata must be valid!
                 // This also checks that the ptr itself is initialized, which
                 // seems reasonable even for raw pointers.
-                let place = try_validation!(self.ref_to_mplace(value),
+                let place = try_validation!(self.ref_to_place(value),
                     "undefined data in pointer", path);
                 // Check metadata early, for better diagnostics
                 if place.layout.is_unsized() {
@@ -414,7 +414,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         // If it is a trait object, switch to the actual type that was used to create it.
         let dest = match dest.layout.ty.sty {
             ty::Dynamic(..) => {
-                let dest = dest.to_mem_place(); // immediate trait objects are not a thing
+                let dest = dest.to_place(); // immediate trait objects are not a thing
                 self.unpack_dyn_trait(dest)?.1.into()
             },
             _ => dest
@@ -489,10 +489,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             layout::FieldPlacement::Array { stride, .. } => {
                 let dest = if dest.layout.is_zst() {
                     // it's a ZST, the memory content cannot matter
-                    MPlaceTy::dangling(dest.layout, self)
+                    PlaceTy::dangling(dest.layout, self)
                 } else {
                     // non-ZST array/slice/str cannot be immediate
-                    dest.to_mem_place()
+                    dest.to_place()
                 };
                 match dest.layout.ty.sty {
                     // Special handling for strings to verify UTF-8
@@ -557,7 +557,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     _ => {
                         // This handles the unsized case correctly as well, as well as
                         // SIMD an all sorts of other array-like types.
-                        for (i, field) in self.mplace_array_fields(dest)?.enumerate() {
+                        for (i, field) in self.place_array_fields(dest)?.enumerate() {
                             let field = field?;
                             path.push(PathElem::ArrayElem(i));
                             self.validate_operand(

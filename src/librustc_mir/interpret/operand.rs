@@ -21,7 +21,7 @@ use rustc::mir::interpret::{
     ConstValue, Pointer, Scalar,
     EvalResult, EvalErrorKind
 };
-use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
+use super::{EvalContext, Machine, Place, PlaceTy};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
 pub enum ScalarMaybeUndef<Tag=(), Id=AllocId> {
@@ -241,7 +241,7 @@ impl<'tcx, Tag> ::std::ops::Deref for ValTy<'tcx, Tag> {
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Operand<Tag=(), Id=AllocId> {
     Immediate(Value<Tag, Id>),
-    Indirect(MemPlace<Tag, Id>),
+    Indirect(Place<Tag, Id>),
 }
 
 impl Operand {
@@ -267,12 +267,12 @@ impl<Tag> Operand<Tag> {
     }
 
     #[inline]
-    pub fn to_mem_place(self) -> MemPlace<Tag>
+    pub fn to_place(self) -> Place<Tag>
         where Tag: ::std::fmt::Debug
     {
         match self {
-            Operand::Indirect(mplace) => mplace,
-            _ => bug!("to_mem_place: expected Operand::Indirect, got {:?}", self),
+            Operand::Indirect(place) => place,
+            _ => bug!("to_place: expected Operand::Indirect, got {:?}", self),
 
         }
     }
@@ -303,12 +303,12 @@ impl<'tcx, Tag> ::std::ops::Deref for OpTy<'tcx, Tag> {
     }
 }
 
-impl<'tcx, Tag: Copy> From<MPlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
+impl<'tcx, Tag: Copy> From<PlaceTy<'tcx, Tag>> for OpTy<'tcx, Tag> {
     #[inline(always)]
-    fn from(mplace: MPlaceTy<'tcx, Tag>) -> Self {
+    fn from(place: PlaceTy<'tcx, Tag>) -> Self {
         OpTy {
-            op: Operand::Indirect(*mplace),
-            layout: mplace.layout
+            op: Operand::Indirect(*place),
+            layout: place.layout
         }
     }
 }
@@ -359,17 +359,17 @@ fn from_known_layout<'tcx>(
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
     /// Try reading a value in memory; this is interesting particularly for ScalarPair.
     /// Return None if the layout does not permit loading this as a value.
-    pub(super) fn try_read_value_from_mplace(
+    pub(super) fn try_read_value_from_place(
         &self,
-        mplace: MPlaceTy<'tcx, M::PointerTag>,
+        place: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, Option<Value<M::PointerTag>>> {
-        if mplace.layout.is_unsized() {
+        if place.layout.is_unsized() {
             // Don't touch unsized
             return Ok(None);
         }
-        let (ptr, ptr_align) = mplace.to_scalar_ptr_align();
+        let (ptr, ptr_align) = place.to_scalar_ptr_align();
 
-        if mplace.layout.is_zst() {
+        if place.layout.is_zst() {
             // Not all ZSTs have a layout we would handle below, so just short-circuit them
             // all here.
             self.memory.check_align(ptr, ptr_align)?;
@@ -377,9 +377,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         }
 
         let ptr = ptr.to_ptr()?;
-        match mplace.layout.abi {
+        match place.layout.abi {
             layout::Abi::Scalar(..) => {
-                let scalar = self.memory.read_scalar(ptr, ptr_align, mplace.layout.size)?;
+                let scalar = self.memory.read_scalar(ptr, ptr_align, place.layout.size)?;
                 Ok(Some(Value::Scalar(scalar)))
             }
             layout::Abi::ScalarPair(ref a, ref b) => {
@@ -406,13 +406,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub(crate) fn try_read_value(
         &self,
         src: OpTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx, Result<Value<M::PointerTag>, MemPlace<M::PointerTag>>> {
-        Ok(match src.try_as_mplace() {
-            Ok(mplace) => {
-                if let Some(val) = self.try_read_value_from_mplace(mplace)? {
+    ) -> EvalResult<'tcx, Result<Value<M::PointerTag>, Place<M::PointerTag>>> {
+        Ok(match src.try_as_place() {
+            Ok(place) => {
+                if let Some(val) = self.try_read_value_from_place(place)? {
                     Ok(val)
                 } else {
-                    Err(*mplace)
+                    Err(*place)
                 }
             },
             Err(val) => Ok(val),
@@ -446,40 +446,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     // Turn the MPlace into a string (must already be dereferenced!)
     pub fn read_str(
         &self,
-        mplace: MPlaceTy<'tcx, M::PointerTag>,
+        place: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, &str> {
-        let len = mplace.len(self)?;
-        let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len as u64))?;
+        let len = place.len(self)?;
+        let bytes = self.memory.read_bytes(place.ptr, Size::from_bytes(len as u64))?;
         let str = ::std::str::from_utf8(bytes)
             .map_err(|err| EvalErrorKind::ValidationFailure(err.to_string()))?;
         Ok(str)
-    }
-
-    pub fn uninit_operand(
-        &mut self,
-        layout: TyLayout<'tcx>
-    ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
-        // This decides which types we will use the Immediate optimization for, and hence should
-        // match what `try_read_value` and `eval_place_to_op` support.
-        if layout.is_zst() {
-            return Ok(Operand::Immediate(Value::Scalar(Scalar::zst().into())));
-        }
-
-        Ok(match layout.abi {
-            layout::Abi::Scalar(..) =>
-                Operand::Immediate(Value::Scalar(ScalarMaybeUndef::Undef)),
-            layout::Abi::ScalarPair(..) =>
-                Operand::Immediate(Value::ScalarPair(
-                    ScalarMaybeUndef::Undef,
-                    ScalarMaybeUndef::Undef,
-                )),
-            _ => {
-                trace!("Forcing allocation for local of type {:?}", layout.ty);
-                Operand::Indirect(
-                    *self.allocate(layout, MemoryKind::Stack)?
-                )
-            }
-        })
     }
 
     /// Projection functions
@@ -488,10 +461,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         op: OpTy<'tcx, M::PointerTag>,
         field: u64,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let base = match op.try_as_mplace() {
-            Ok(mplace) => {
+        let base = match op.try_as_place() {
+            Ok(place) => {
                 // The easy case
-                let field = self.mplace_field(mplace, field)?;
+                let field = self.place_field(place, field)?;
                 return Ok(field.into());
             },
             Err(value) => value
@@ -524,9 +497,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         variant: usize,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // Downcasts only change the layout
-        Ok(match op.try_as_mplace() {
-            Ok(mplace) => {
-                self.mplace_downcast(mplace, variant)?.into()
+        Ok(match op.try_as_place() {
+            Ok(place) => {
+                self.place_downcast(place, variant)?.into()
             },
             Err(..) => {
                 let layout = op.layout.for_variant(self, variant);
@@ -536,14 +509,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     }
 
     // Take an operand, representing a pointer, and dereference it to a place -- that
-    // will always be a MemPlace.
+    // will always be a Place.
     pub(super) fn deref_operand(
         &self,
         src: OpTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+    ) -> EvalResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
         let val = self.read_value(src)?;
         trace!("deref to {} on {:?}", val.layout.ty, *val);
-        Ok(self.ref_to_mplace(val)?)
+        Ok(self.ref_to_place(val)?)
     }
 
     pub fn operand_projection(
@@ -563,10 +536,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     layout: base.layout.field(self, 0)?,
                 }
             } else {
-                // The rest should only occur as mplace, we do not use Immediates for types
+                // The rest should only occur as place, we do not use Immediates for types
                 // allowing such operations.  This matches place_projection forcing an allocation.
-                let mplace = base.to_mem_place();
-                self.mplace_projection(mplace, proj_elem)?.into()
+                let place = base.to_place();
+                self.place_projection(place, proj_elem)?.into()
             }
         })
     }
@@ -584,7 +557,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         let op = *frame.locals[local].access()?;
         let layout = from_known_layout(layout,
                     || self.layout_of_local(frame, local))?;
-        Ok(OpTy { op, layout })
+        Ok(OpTy { op: Operand::Indirect(op), layout })
     }
 
     // Evaluate a place with the goal of reading from it.  This lets us sometimes
@@ -605,7 +578,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.operand_projection(op, &proj.elem)?
             }
 
-            _ => self.eval_place_to_mplace(mir_place)?.into(),
+            _ => self.eval_place(mir_place)?.into(),
         };
 
         trace!("eval_place_to_op: got {:?}", *op);
@@ -668,7 +641,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 // We rely on mutability being set correctly in that allocation to prevent writes
                 // where none should happen -- and for `static mut`, we copy on demand anyway.
                 Ok(Operand::Indirect(
-                    MemPlace::from_ptr(Pointer::new(id, offset), alloc.align)
+                    Place::from_ptr(Pointer::new(id, offset), alloc.align)
                 ).with_default_tag())
             },
             ConstValue::ScalarPair(a, b) =>
