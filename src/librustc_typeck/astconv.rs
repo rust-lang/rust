@@ -544,7 +544,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     }
 
     /// Given the type/region arguments provided to some path (along with
-    /// an implicit Self, if this is a trait reference) returns the complete
+    /// an implicit `Self`, if this is a trait reference) returns the complete
     /// set of substitutions. This may involve applying defaulted type parameters.
     ///
     /// Note that the type listing given here is *exactly* what the user provided.
@@ -721,7 +721,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     {
         let trait_def_id = self.trait_def_id(trait_ref);
 
-        debug!("ast_path_to_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
+        debug!("instantiate_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
 
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
@@ -738,11 +738,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             let predicate: Result<_, ErrorReported> =
                 self.ast_type_binding_to_poly_projection_predicate(
                     trait_ref.ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
-            // ok to ignore Err() because ErrorReported (see above)
+            // ok to ignore Err because ErrorReported (see above)
             Some((predicate.ok()?, binding.span))
         }));
 
-        debug!("ast_path_to_poly_trait_ref({:?}, projections={:?}) -> {:?}",
+        debug!("instantiate_poly_trait_ref({:?}, projections={:?}) -> {:?}",
                trait_ref, poly_projections, poly_trait_ref);
         poly_trait_ref
     }
@@ -1020,7 +1020,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             return tcx.types.err;
         }
 
-        // use a btreeset to keep output in a more consistent order
+        // use a BTreeSet to keep output in a more consistent order
         let mut associated_types = BTreeSet::default();
 
         for tr in traits::supertraits(tcx, principal) {

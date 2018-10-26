@@ -35,7 +35,7 @@ LL | trait BoundedAlias<T: Clone = ()> = Default;
 error[E0658]: trait aliases are experimental (see issue #41517)
   --> $DIR/trait-alias-fail1.rs:17:1
    |
-LL | trait B<T> = A<T>; // FIXME: this should not work... or should it?
+LL | trait B<T> = A<T>; // FIXME: parameter T should need a bound here, or semantics should be changed
    | ^^^^^^^^^^^^^^^^^^
    |
    = help: add #![feature(trait_alias)] to the crate attributes to enable

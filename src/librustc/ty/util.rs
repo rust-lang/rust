@@ -527,7 +527,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
     }
 
-    /// True if `def_id` refers to a trait (e.g., `trait Foo { ... }`).
+    /// True if `def_id` refers to a trait (i.e., `trait Foo { ... }`).
     pub fn is_trait(self, def_id: DefId) -> bool {
         if let DefPathData::Trait(_) = self.def_key(def_id).disambiguated_data.data {
             true

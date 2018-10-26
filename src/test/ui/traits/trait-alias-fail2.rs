@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-trait_alias
+#![feature(trait_alias)]
 
 trait EqAlias = Eq;
 trait IteratorAlias = Iterator;

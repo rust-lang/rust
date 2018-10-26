@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-trait_alias
+#![feature(trait_alias)]
 
 trait CloneDefault<T> = Default where T: Clone;
 trait BoundedAlias<T: Clone = ()> = Default;
 
-trait A<T: Send> {}
-trait B<T> = A<T>; // FIXME: parameter T should need a bound here, or semantics should be changed
+trait Foo {}
+trait A<T: Foo> {}
+trait B<T> = A<T>; // T cannot be unbounded
 
 impl CloneDefault for () {}
 

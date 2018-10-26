@@ -245,8 +245,8 @@ fn type_param_predicates<'a, 'tcx>(
     use rustc::hir::*;
 
     // In the AST, bounds can derive from two places. Either
-    // written inline like `<T:Foo>` or in a where clause like
-    // `where T:Foo`.
+    // written inline like `<T : Foo>` or in a where clause like
+    // `where T : Foo`.
 
     let param_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let param_owner = tcx.hir.ty_param_owner(param_id);
@@ -317,12 +317,12 @@ fn type_param_predicates<'a, 'tcx>(
     let icx = ItemCtxt::new(tcx, item_def_id);
     result
         .predicates
-        .extend(icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty));
+        .extend(icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty, true));
     result
 }
 
 impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
-    /// Find bounds from hir::Generics. This requires scanning through the
+    /// Find bounds from `hir::Generics`. This requires scanning through the
     /// AST. We do this to avoid having to convert *all* the bounds, which
     /// would create artificial cycles. Instead we can only convert the
     /// bounds for a type parameter `X` if `X::Foo` is used.
@@ -331,6 +331,7 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
         ast_generics: &hir::Generics,
         param_id: ast::NodeId,
         ty: Ty<'tcx>,
+        only_self_bounds: bool,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
         let from_ty_params = ast_generics
             .params
@@ -350,9 +351,21 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
                 hir::WherePredicate::BoundPredicate(ref bp) => Some(bp),
                 _ => None,
             })
-            .filter(|bp| is_param(self.tcx, &bp.bounded_ty, param_id))
-            .flat_map(|bp| bp.bounds.iter())
-            .flat_map(|b| predicates_from_bound(self, ty, b));
+            .flat_map(|bp| {
+                let bt = if is_param(self.tcx, &bp.bounded_ty, param_id) {
+                    Some(ty)
+                } else {
+                    if only_self_bounds {
+                        None
+                    } else {
+                        Some(self.to_ty(&bp.bounded_ty))
+                    }
+                };
+                bp.bounds.iter().filter_map(move |b| {
+                    if let Some(bt) = bt { Some((bt, b)) } else { None }
+                })
+            })
+            .flat_map(|(bt, b)| predicates_from_bound(self, bt, b));
 
         from_ty_params.chain(from_where_clauses).collect()
     }
@@ -690,7 +703,7 @@ fn super_predicates_of<'a, 'tcx>(
 
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
-    // Convert the bounds that follow the colon, e.g. `Bar+Zed` in `trait Foo : Bar+Zed`.
+    // Convert the bounds that follow the colon, e.g. `Bar + Zed` in `trait Foo : Bar + Zed`.
     let self_param_ty = tcx.mk_self_type();
     let superbounds1 = compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No, item.span);
 
@@ -698,7 +711,9 @@ fn super_predicates_of<'a, 'tcx>(
 
     // Convert any explicit superbounds in the where clause,
     // e.g. `trait Foo where Self : Bar`:
-    let superbounds2 = icx.type_parameter_bounds_in_generics(generics, item.id, self_param_ty);
+    let is_trait_alias = ty::is_trait_alias(tcx, trait_def_id);
+    let superbounds2 = icx.type_parameter_bounds_in_generics(
+        generics, item.id, self_param_ty, !is_trait_alias);
 
     // Combine the two lists to form the complete set of superbounds:
     let superbounds: Vec<_> = superbounds1.into_iter().chain(superbounds2).collect();
@@ -706,6 +721,7 @@ fn super_predicates_of<'a, 'tcx>(
     // Now require that immediate supertraits are converted,
     // which will, in turn, reach indirect supertraits.
     for &(pred, span) in &superbounds {
+        debug!("superbound: {:?}", pred);
         if let ty::Predicate::Trait(bound) = pred {
             tcx.at(span).super_predicates_of(bound.def_id());
         }
@@ -2007,10 +2023,10 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(
     }
 }
 
-/// Converts a specific GenericBound from the AST into a set of
+/// Converts a specific `GenericBound` from the AST into a set of
 /// predicates that apply to the self-type. A vector is returned
-/// because this can be anywhere from 0 predicates (`T:?Sized` adds no
-/// predicates) to 1 (`T:Foo`) to many (`T:Bar<X=i32>` adds `T:Bar`
+/// because this can be anywhere from zero predicates (`T : ?Sized` adds no
+/// predicates) to one (`T : Foo`) to many (`T : Bar<X=i32>` adds `T : Bar`
 /// and `<T as Bar>::X == i32`).
 fn predicates_from_bound<'tcx>(
     astconv: &dyn AstConv<'tcx, 'tcx>,

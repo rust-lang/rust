@@ -1635,7 +1635,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ambiguous: false,
         };
 
-        self.assemble_candidates_for_alias(obligation, &mut candidates)?;
+        self.assemble_candidates_for_trait_alias(obligation, &mut candidates)?;
 
         // Other bounds. Consider both in-scope bounds from fn decl
         // and applicable impls. There is a certain set of precedence rules here.
@@ -2255,14 +2255,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn assemble_candidates_for_alias(
+    fn assemble_candidates_for_trait_alias(
         &mut self,
         obligation: &TraitObligation<'tcx>,
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
         // OK to skip binder here because the tests we do below do not involve bound regions
         let self_ty = *obligation.self_ty().skip_binder();
-        debug!("assemble_candidates_for_alias(self_ty={:?})", self_ty);
+        debug!("assemble_candidates_for_trait_alias(self_ty={:?})", self_ty);
 
         let def_id = obligation.predicate.def_id();
 
@@ -2907,7 +2907,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.vtable_auto_impl(obligation, trait_def_id, types)
     }
 
-    /// See `confirm_auto_impl_candidate`
+    /// See `confirm_auto_impl_candidate`.
     fn vtable_auto_impl(
         &mut self,
         obligation: &TraitObligation<'tcx>,
@@ -2964,7 +2964,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // this time not in a probe.
         self.in_snapshot(|this, snapshot| {
             let (substs, placeholder_map) = this.rematch_impl(impl_def_id, obligation, snapshot);
-            debug!("confirm_impl_candidate substs={:?}", substs);
+            debug!("confirm_impl_candidate: substs={:?}", substs);
             let cause = obligation.derived_cause(ImplDerivedObligation);
             this.vtable_impl(
                 impl_def_id,

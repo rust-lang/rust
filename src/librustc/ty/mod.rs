@@ -1051,24 +1051,24 @@ pub enum Predicate<'tcx> {
     /// would be the type parameters.
     Trait(PolyTraitPredicate<'tcx>),
 
-    /// where 'a : 'b
+    /// where `'a : 'b`
     RegionOutlives(PolyRegionOutlivesPredicate<'tcx>),
 
-    /// where T : 'a
+    /// where `T : 'a`
     TypeOutlives(PolyTypeOutlivesPredicate<'tcx>),
 
-    /// where <T as TraitRef>::Name == X, approximately.
-    /// See `ProjectionPredicate` struct for details.
+    /// where `<T as TraitRef>::Name == X`, approximately.
+    /// See the `ProjectionPredicate` struct for details.
     Projection(PolyProjectionPredicate<'tcx>),
 
-    /// no syntax: T WF
+    /// no syntax: `T` well-formed
     WellFormed(Ty<'tcx>),
 
     /// trait must be object-safe
     ObjectSafe(DefId),
 
     /// No direct syntax. May be thought of as `where T : FnFoo<...>`
-    /// for some substitutions `...` and T being a closure type.
+    /// for some substitutions `...` and `T` being a closure type.
     /// Satisfied (or refuted) once we know the closure's kind.
     ClosureKind(DefId, ClosureSubsts<'tcx>, ClosureKind),
 
