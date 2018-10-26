@@ -3611,7 +3611,7 @@ impl ToSource for syntax_pos::Span {
     fn to_src(&self, cx: &DocContext) -> String {
         debug!("converting span {:?} to snippet", self.clean(cx));
         let sn = match cx.sess().source_map().span_to_snippet(*self) {
-            Ok(x) => x.to_string(),
+            Ok(x) => x,
             Err(_) => String::new()
         };
         debug!("got snippet {}", sn);
@@ -4012,6 +4012,8 @@ where F: Fn(DefId) -> Def {
         def: def_ctor(def_id),
         segments: hir::HirVec::from_vec(apb.names.iter().map(|s| hir::PathSegment {
             ident: ast::Ident::from_str(&s),
+            id: None,
+            def: None,
             args: None,
             infer_types: false,
         }).collect())

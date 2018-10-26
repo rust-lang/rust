@@ -632,6 +632,43 @@ impl<'a> PathSource<'a> {
     }
 }
 
+// A minimal representation of a path segment. We use this in resolve because
+// we synthesize 'path segments' which don't have the rest of an AST or HIR
+// PathSegment.
+#[derive(Clone, Copy, Debug)]
+pub struct Segment {
+    ident: Ident,
+    id: Option<NodeId>,
+}
+
+impl Segment {
+    fn from_path(path: &Path) -> Vec<Segment> {
+        path.segments.iter().map(|s| s.into()).collect()
+    }
+
+    fn from_ident(ident: Ident) -> Segment {
+        Segment {
+            ident,
+            id: None,
+        }
+    }
+
+    fn names_to_string(segments: &[Segment]) -> String {
+        names_to_string(&segments.iter()
+                            .map(|seg| seg.ident)
+                            .collect::<Vec<_>>())
+    }
+}
+
+impl<'a> From<&'a ast::PathSegment> for Segment {
+    fn from(seg: &'a ast::PathSegment) -> Segment {
+        Segment {
+            ident: seg.ident,
+            id: Some(seg.id),
+        }
+    }
+}
+
 struct UsePlacementFinder {
     target_module: NodeId,
     span: Option<Span>,
@@ -1534,7 +1571,11 @@ impl<'a, 'b: 'a, 'cl: 'b> ty::DefIdTree for &'a Resolver<'b, 'cl> {
 /// This interface is used through the AST→HIR step, to embed full paths into the HIR. After that
 /// the resolver is no longer needed as all the relevant information is inline.
 impl<'a, 'cl> hir::lowering::Resolver for Resolver<'a, 'cl> {
-    fn resolve_hir_path(&mut self, path: &mut hir::Path, is_value: bool) {
+    fn resolve_hir_path(
+        &mut self,
+        path: &ast::Path,
+        is_value: bool,
+    ) -> hir::Path {
         self.resolve_hir_path_cb(path, is_value,
                                  |resolver, span, error| resolve_error(resolver, span, error))
     }
@@ -1544,33 +1585,22 @@ impl<'a, 'cl> hir::lowering::Resolver for Resolver<'a, 'cl> {
         span: Span,
         crate_root: Option<&str>,
         components: &[&str],
-        args: Option<P<hir::GenericArgs>>,
         is_value: bool
     ) -> hir::Path {
-        let mut segments = iter::once(keywords::CrateRoot.ident())
+        let segments = iter::once(keywords::CrateRoot.ident())
             .chain(
                 crate_root.into_iter()
                     .chain(components.iter().cloned())
                     .map(Ident::from_str)
-            ).map(hir::PathSegment::from_ident).collect::<Vec<_>>();
+            ).map(|i| self.new_ast_path_segment(i)).collect::<Vec<_>>();
 
-        if let Some(args) = args {
-            let ident = segments.last().unwrap().ident;
-            *segments.last_mut().unwrap() = hir::PathSegment {
-                ident,
-                args: Some(args),
-                infer_types: true,
-            };
-        }
 
-        let mut path = hir::Path {
+        let path = ast::Path {
             span,
-            def: Def::Err,
-            segments: segments.into(),
+            segments,
         };
 
-        self.resolve_hir_path(&mut path, is_value);
-        path
+        self.resolve_hir_path(&path, is_value)
     }
 
     fn get_resolution(&mut self, id: NodeId) -> Option<PathResolution> {
@@ -1596,23 +1626,27 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         use std::iter;
         let mut errored = false;
 
-        let mut path = if path_str.starts_with("::") {
-            hir::Path {
+        let path = if path_str.starts_with("::") {
+            ast::Path {
                 span,
-                def: Def::Err,
-                segments: iter::once(keywords::CrateRoot.ident()).chain({
-                    path_str.split("::").skip(1).map(Ident::from_str)
-                }).map(hir::PathSegment::from_ident).collect(),
+                segments: iter::once(keywords::CrateRoot.ident())
+                    .chain({
+                        path_str.split("::").skip(1).map(Ident::from_str)
+                    })
+                    .map(|i| self.new_ast_path_segment(i))
+                    .collect(),
             }
         } else {
-            hir::Path {
+            ast::Path {
                 span,
-                def: Def::Err,
-                segments: path_str.split("::").map(Ident::from_str)
-                                  .map(hir::PathSegment::from_ident).collect(),
+                segments: path_str
+                    .split("::")
+                    .map(Ident::from_str)
+                    .map(|i| self.new_ast_path_segment(i))
+                    .collect(),
             }
         };
-        self.resolve_hir_path_cb(&mut path, is_value, |_, _, _| errored = true);
+        let path = self.resolve_hir_path_cb(&path, is_value, |_, _, _| errored = true);
         if errored || path.def == Def::Err {
             Err(())
         } else {
@@ -1621,19 +1655,25 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
     }
 
     /// resolve_hir_path, but takes a callback in case there was an error
-    fn resolve_hir_path_cb<F>(&mut self, path: &mut hir::Path, is_value: bool, error_callback: F)
+    fn resolve_hir_path_cb<F>(
+        &mut self,
+        path: &ast::Path,
+        is_value: bool,
+        error_callback: F,
+    ) -> hir::Path
         where F: for<'c, 'b> FnOnce(&'c mut Resolver, Span, ResolutionError<'b>)
     {
         let namespace = if is_value { ValueNS } else { TypeNS };
-        let hir::Path { ref segments, span, ref mut def } = *path;
-        let path: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
+        let span = path.span;
+        let segments = &path.segments;
+        let path = Segment::from_path(&path);
         // FIXME (Manishearth): Intra doc links won't get warned of epoch changes
-        match self.resolve_path(None, &path, Some(namespace), true, span, CrateLint::No) {
+        let def = match self.resolve_path(None, &path, Some(namespace), true, span, CrateLint::No) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
-                *def = module.def().unwrap(),
+                module.def().unwrap(),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
-                *def = path_res.base_def(),
-            PathResult::NonModule(..) =>
+                path_res.base_def(),
+            PathResult::NonModule(..) => {
                 if let PathResult::Failed(span, msg, _) = self.resolve_path(
                     None,
                     &path,
@@ -1643,13 +1683,33 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     CrateLint::No,
                 ) {
                     error_callback(self, span, ResolutionError::FailedToResolve(&msg));
-                },
+                }
+                Def::Err
+            }
             PathResult::Module(ModuleOrUniformRoot::UniformRoot(_)) |
             PathResult::Indeterminate => unreachable!(),
             PathResult::Failed(span, msg, _) => {
                 error_callback(self, span, ResolutionError::FailedToResolve(&msg));
+                Def::Err
             }
+        };
+
+        let segments: Vec<_> = segments.iter().map(|seg| {
+            let mut hir_seg = hir::PathSegment::from_ident(seg.ident);
+            hir_seg.def = Some(self.def_map.get(&seg.id).map_or(Def::Err, |p| p.base_def()));
+            hir_seg
+        }).collect();
+        hir::Path {
+            span,
+            def,
+            segments: segments.into(),
         }
+    }
+
+    fn new_ast_path_segment(&self, ident: Ident) -> ast::PathSegment {
+        let mut seg = ast::PathSegment::from_ident(ident);
+        seg.id = self.session.next_node_id();
+        seg
     }
 }
 
@@ -2457,9 +2517,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         let mut new_val = None;
         let mut new_id = None;
         if let Some(trait_ref) = opt_trait_ref {
-            let path: Vec<_> = trait_ref.path.segments.iter()
-                .map(|seg| seg.ident)
-                .collect();
+            let path: Vec<_> = Segment::from_path(&trait_ref.path);
             let def = self.smart_resolve_path_fragment(
                 trait_ref.ref_id,
                 None,
@@ -2955,21 +3013,25 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         source: PathSource,
         crate_lint: CrateLint
     ) -> PathResolution {
-        let segments = &path.segments.iter()
-            .map(|seg| seg.ident)
-            .collect::<Vec<_>>();
-        self.smart_resolve_path_fragment(id, qself, segments, path.span, source, crate_lint)
+        self.smart_resolve_path_fragment(
+            id,
+            qself,
+            &Segment::from_path(path),
+            path.span,
+            source,
+            crate_lint,
+        )
     }
 
     fn smart_resolve_path_fragment(&mut self,
                                    id: NodeId,
                                    qself: Option<&QSelf>,
-                                   path: &[Ident],
+                                   path: &[Segment],
                                    span: Span,
                                    source: PathSource,
                                    crate_lint: CrateLint)
                                    -> PathResolution {
-        let ident_span = path.last().map_or(span, |ident| ident.span);
+        let ident_span = path.last().map_or(span, |ident| ident.ident.span);
         let ns = source.namespace();
         let is_expected = &|def| source.is_expected(def);
         let is_enum_variant = &|def| if let Def::Variant(..) = def { true } else { false };
@@ -2978,18 +3040,18 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         let report_errors = |this: &mut Self, def: Option<Def>| {
             // Make the base error.
             let expected = source.descr_expected();
-            let path_str = names_to_string(path);
-            let item_str = path.last().unwrap();
+            let path_str = Segment::names_to_string(path);
+            let item_str = path.last().unwrap().ident;
             let code = source.error_code(def.is_some());
             let (base_msg, fallback_label, base_span) = if let Some(def) = def {
                 (format!("expected {}, found {} `{}`", expected, def.kind_name(), path_str),
                  format!("not a {}", expected),
                  span)
             } else {
-                let item_span = path.last().unwrap().span;
+                let item_span = path.last().unwrap().ident.span;
                 let (mod_prefix, mod_str) = if path.len() == 1 {
                     (String::new(), "this scope".to_string())
-                } else if path.len() == 2 && path[0].name == keywords::CrateRoot.name() {
+                } else if path.len() == 2 && path[0].ident.name == keywords::CrateRoot.name() {
                     (String::new(), "the crate root".to_string())
                 } else {
                     let mod_path = &path[..path.len() - 1];
@@ -2999,7 +3061,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             module.def(),
                         _ => None,
                     }.map_or(String::new(), |def| format!("{} ", def.kind_name()));
-                    (mod_prefix, format!("`{}`", names_to_string(mod_path)))
+                    (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)))
                 };
                 (format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
                  format!("not found in {}", mod_str),
@@ -3010,7 +3072,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
             // Emit help message for fake-self from other languages like `this`(javascript)
             if ["this", "my"].contains(&&*item_str.as_str())
-                && this.self_value_is_available(path[0].span, span) {
+                && this.self_value_is_available(path[0].ident.span, span) {
                 err.span_suggestion_with_applicability(
                     span,
                     "did you mean",
@@ -3045,7 +3107,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             }
 
             // Try to lookup the name in more relaxed fashion for better error reporting.
-            let ident = *path.last().unwrap();
+            let ident = path.last().unwrap().ident;
             let candidates = this.lookup_import_candidates(ident.name, ns, is_expected);
             if candidates.is_empty() && is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
                 let enum_candidates =
@@ -3072,7 +3134,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             }
             if path.len() == 1 && this.self_type_is_available(span) {
                 if let Some(candidate) = this.lookup_assoc_candidate(ident, ns, is_expected) {
-                    let self_is_available = this.self_value_is_available(path[0].span, span);
+                    let self_is_available = this.self_value_is_available(path[0].ident.span, span);
                     match candidate {
                         AssocSuggestion::Field => {
                             err.span_suggestion_with_applicability(
@@ -3307,7 +3369,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 // or `<T>::A::B`. If `B` should be resolved in value namespace then
                 // it needs to be added to the trait map.
                 if ns == ValueNS {
-                    let item_name = *path.last().unwrap();
+                    let item_name = path.last().unwrap().ident;
                     let traits = self.get_traits_containing_item(item_name, ns);
                     self.trait_map.insert(id, traits);
                 }
@@ -3377,7 +3439,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     fn resolve_qpath_anywhere(&mut self,
                               id: NodeId,
                               qself: Option<&QSelf>,
-                              path: &[Ident],
+                              path: &[Segment],
                               primary_ns: Namespace,
                               span: Span,
                               defer_to_typeck: bool,
@@ -3399,10 +3461,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             }
         }
         if primary_ns != MacroNS &&
-           (self.macro_names.contains(&path[0].modern()) ||
-            self.builtin_macros.get(&path[0].name).cloned()
+           (self.macro_names.contains(&path[0].ident.modern()) ||
+            self.builtin_macros.get(&path[0].ident.name).cloned()
                                .and_then(NameBinding::macro_kind) == Some(MacroKind::Bang) ||
-            self.macro_use_prelude.get(&path[0].name).cloned()
+            self.macro_use_prelude.get(&path[0].ident.name).cloned()
                                   .and_then(NameBinding::macro_kind) == Some(MacroKind::Bang)) {
             // Return some dummy definition, it's enough for error reporting.
             return Some(
@@ -3416,7 +3478,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     fn resolve_qpath(&mut self,
                      id: NodeId,
                      qself: Option<&QSelf>,
-                     path: &[Ident],
+                     path: &[Segment],
                      ns: Namespace,
                      span: Span,
                      global_by_default: bool,
@@ -3506,8 +3568,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             PathResult::Failed(..)
                     if (ns == TypeNS || path.len() > 1) &&
                        self.primitive_type_table.primitive_types
-                           .contains_key(&path[0].name) => {
-                let prim = self.primitive_type_table.primitive_types[&path[0].name];
+                           .contains_key(&path[0].ident.name) => {
+                let prim = self.primitive_type_table.primitive_types[&path[0].ident.name];
                 PathResolution::with_unresolved_segments(Def::PrimTy(prim), path.len() - 1)
             }
             PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
@@ -3522,8 +3584,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         };
 
         if path.len() > 1 && !global_by_default && result.base_def() != Def::Err &&
-           path[0].name != keywords::CrateRoot.name() &&
-           path[0].name != keywords::DollarCrate.name() {
+           path[0].ident.name != keywords::CrateRoot.name() &&
+           path[0].ident.name != keywords::DollarCrate.name() {
             let unqualified_result = {
                 match self.resolve_path(
                     None,
@@ -3551,7 +3613,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     fn resolve_path(
         &mut self,
         base_module: Option<ModuleOrUniformRoot<'a>>,
-        path: &[Ident],
+        path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path
         record_used: bool,
         path_span: Span,
@@ -3565,7 +3627,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     fn resolve_path_with_parent_scope(
         &mut self,
         base_module: Option<ModuleOrUniformRoot<'a>>,
-        path: &[Ident],
+        path: &[Segment],
         opt_ns: Option<Namespace>, // `None` indicates a module path
         parent_scope: &ParentScope<'a>,
         record_used: bool,
@@ -3587,8 +3649,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             crate_lint,
         );
 
-        for (i, &ident) in path.iter().enumerate() {
+        for (i, &Segment { ident, id }) in path.iter().enumerate() {
             debug!("resolve_path ident {} {:?}", i, ident);
+
             let is_last = i == path.len() - 1;
             let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
             let name = ident.name;
@@ -3648,7 +3711,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 } else {
                     format!("`{}`", name)
                 };
-                let msg = if i == 1 && path[0].name == keywords::CrateRoot.name() {
+                let msg = if i == 1 && path[0].ident.name == keywords::CrateRoot.name() {
                     format!("global paths cannot start with {}", name_str)
                 } else {
                     format!("{} in paths can only be used in start position", name_str)
@@ -3688,6 +3751,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(def);
                     if let Some(next_module) = binding.module() {
                         module = Some(ModuleOrUniformRoot::Module(next_module));
+                        if record_used {
+                            if let Some(id) = id {
+                                if !self.def_map.contains_key(&id) {
+                                    assert!(id != ast::DUMMY_NODE_ID, "Trying to resolve dummy id");
+                                    self.record_def(id, PathResolution::new(def));
+                                }
+                            }
+                        }
                     } else if def == Def::ToolMod && i + 1 != path.len() {
                         let def = Def::NonMacroAttr(NonMacroAttrKind::Tool);
                         return PathResult::NonModule(PathResolution::new(def));
@@ -3737,7 +3808,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     } else if i == 0 {
                         format!("Use of undeclared type or module `{}`", ident)
                     } else {
-                        format!("Could not find `{}` in `{}`", ident, path[i - 1])
+                        format!("Could not find `{}` in `{}`", ident, path[i - 1].ident)
                     };
                     return PathResult::Failed(ident.span, msg, is_last);
                 }
@@ -3755,7 +3826,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     fn lint_if_path_starts_with_module(
         &self,
         crate_lint: CrateLint,
-        path: &[Ident],
+        path: &[Segment],
         path_span: Span,
         second_binding: Option<&NameBinding>,
     ) {
@@ -3772,7 +3843,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         };
 
         let first_name = match path.get(0) {
-            Some(ident) => ident.name,
+            Some(ident) => ident.ident.name,
             None => return,
         };
 
@@ -3784,7 +3855,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         match path.get(1) {
             // If this import looks like `crate::...` it's already good
-            Some(ident) if ident.name == keywords::Crate.name() => return,
+            Some(Segment { ident, .. }) if ident.name == keywords::Crate.name() => return,
             // Otherwise go below to see if it's an extern crate
             Some(_) => {}
             // If the path has length one (and it's `CrateRoot` most likely)
@@ -3977,7 +4048,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     }
 
     fn lookup_typo_candidate<FilterFn>(&mut self,
-                                       path: &[Ident],
+                                       path: &[Segment],
                                        ns: Namespace,
                                        filter_fn: FilterFn,
                                        span: Span)
@@ -4041,7 +4112,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             }
         }
 
-        let name = path[path.len() - 1].name;
+        let name = path[path.len() - 1].ident.name;
         // Make sure error reporting is deterministic.
         names.sort_by_cached_key(|name| name.as_str());
         match find_best_match_for_name(names.iter(), &name.as_str(), None) {
@@ -4558,7 +4629,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
                 // Visibilities are resolved as global by default, add starting root segment.
                 let segments = path.make_root().iter().chain(path.segments.iter())
-                    .map(|seg| seg.ident)
+                    .map(|seg| Segment { ident: seg.ident, id: Some(seg.id) })
                     .collect::<Vec<_>>();
                 let def = self.smart_resolve_path_fragment(
                     id,
@@ -4851,12 +4922,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     }
 }
 
-fn is_self_type(path: &[Ident], namespace: Namespace) -> bool {
-    namespace == TypeNS && path.len() == 1 && path[0].name == keywords::SelfType.name()
+fn is_self_type(path: &[Segment], namespace: Namespace) -> bool {
+    namespace == TypeNS && path.len() == 1 && path[0].ident.name == keywords::SelfType.name()
 }
 
-fn is_self_value(path: &[Ident], namespace: Namespace) -> bool {
-    namespace == ValueNS && path.len() == 1 && path[0].name == keywords::SelfValue.name()
+fn is_self_value(path: &[Segment], namespace: Namespace) -> bool {
+    namespace == ValueNS && path.len() == 1 && path[0].ident.name == keywords::SelfValue.name()
 }
 
 fn names_to_string(idents: &[Ident]) -> String {

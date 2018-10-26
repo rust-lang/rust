@@ -138,7 +138,7 @@ pub fn filename_for_input(sess: &Session,
             let suffix = &sess.target.target.options.exe_suffix;
             let out_filename = outputs.path(OutputType::Exe);
             if suffix.is_empty() {
-                out_filename.to_path_buf()
+                out_filename
             } else {
                 out_filename.with_extension(&suffix[1..])
             }

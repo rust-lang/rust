@@ -33,13 +33,13 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //     let _1: D;
 //     ...
 //     let mut _2: ();
-//     let mut _3: [closure@NodeId(22) d:D];
+//     let mut _3: [closure@NodeId(33) d:D];
 //     bb0: {
 //         StorageLive(_1);
 //         _1 = D::{{constructor}}(const 0i32,);
 //         FakeRead(ForLet, _1);
 //         StorageLive(_3);
-//         _3 = [closure@NodeId(22)] { d: move _1 };
+//         _3 = [closure@NodeId(33)] { d: move _1 };
 //         _2 = const foo(move _3) -> [return: bb2, unwind: bb4];
 //     }
 //     bb1: {
@@ -67,17 +67,17 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 // END rustc.main.SimplifyCfg-qualify-consts.after.mir
 
 // START rustc.main-{{closure}}.SimplifyCfg-qualify-consts.after.mir
-// fn main::{{closure}}(_1: [closure@NodeId(22) d:D]) -> i32 {
+// fn main::{{closure}}(_1: [closure@NodeId(33) d:D]) -> i32 {
 //     let mut _0: i32;
 //     ...
-//     let _2: &'16_0rs D;
+//     let _2: &'21_0rs D;
 //     ...
 //     bb0: {
 //         StorageLive(_2);
-//         _2 = &'16_0rs (_1.0: D);
+//         _2 = &'21_0rs (_1.0: D);
 //         FakeRead(ForLet, _2);
 //         _0 = ((*_2).0: i32);
-//         EndRegion('16_0rs);
+//         EndRegion('21_0rs);
 //         StorageDead(_2);
 //         drop(_1) -> [return: bb2, unwind: bb1];
 //     }

@@ -1200,7 +1200,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             cstore,
             global_arenas: &arenas.global,
             global_interners: interners,
-            dep_graph: dep_graph.clone(),
+            dep_graph,
             types: common_types,
             trait_map,
             export_map: resolutions.export_map.into_iter().map(|(k, v)| {
