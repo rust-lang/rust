@@ -1615,7 +1615,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 ProjectionElem::Index(..)
                 | ProjectionElem::ConstantIndex { .. }
                 | ProjectionElem::Subslice { .. } => {
-                    self.describe_field(&proj.base, field).to_string()
+                    self.describe_field(&proj.base, field)
                 }
             },
         }

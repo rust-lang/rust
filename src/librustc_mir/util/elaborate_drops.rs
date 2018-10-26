@@ -753,11 +753,11 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 self.place.clone()
             )));
             drop_block_stmts.push(self.assign(&cur, Rvalue::Cast(
-                CastKind::Misc, Operand::Move(tmp.clone()), iter_ty
+                CastKind::Misc, Operand::Move(tmp), iter_ty
             )));
             drop_block_stmts.push(self.assign(&length_or_end,
                 Rvalue::BinaryOp(BinOp::Offset,
-                     Operand::Copy(cur.clone()), Operand::Move(length.clone())
+                     Operand::Copy(cur), Operand::Move(length)
             )));
         } else {
             // index = 0 (length already pushed)

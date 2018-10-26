@@ -325,7 +325,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         diag.span_suggestion_with_applicability(
                             impl_err_span,
                             "consider change the type to match the mutability in trait",
-                            trait_err_str.to_string(),
+                            trait_err_str,
                             Applicability::MachineApplicable,
                         );
                     }

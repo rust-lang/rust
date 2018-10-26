@@ -84,7 +84,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
             .into_iter()
             .chain(self.get_auto_trait_impl_for(
                 def_id,
-                name.clone(),
+                name,
                 generics.clone(),
                 def_ctor,
                 tcx.require_lang_item(lang_items::SyncTraitLangItem),

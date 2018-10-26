@@ -1157,7 +1157,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
                     // Convert the bounds into obligations.
                     let impl_obligations = traits::predicates_for_generics(
-                        cause.clone(), self.param_env, &impl_bounds);
+                        cause, self.param_env, &impl_bounds);
 
                     debug!("impl_obligations={:?}", impl_obligations);
                     impl_obligations.into_iter()
@@ -1175,7 +1175,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 TraitCandidate(trait_ref) => {
                     let predicate = trait_ref.to_predicate();
                     let obligation =
-                        traits::Obligation::new(cause.clone(), self.param_env, predicate);
+                        traits::Obligation::new(cause, self.param_env, predicate);
                     if !self.predicate_may_hold(&obligation) {
                         if self.probe(|_| self.select_trait_candidate(trait_ref).is_err()) {
                             // This candidate's primary obligation doesn't even

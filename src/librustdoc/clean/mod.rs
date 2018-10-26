@@ -3611,7 +3611,7 @@ impl ToSource for syntax_pos::Span {
     fn to_src(&self, cx: &DocContext) -> String {
         debug!("converting span {:?} to snippet", self.clean(cx));
         let sn = match cx.sess().source_map().span_to_snippet(*self) {
-            Ok(x) => x.to_string(),
+            Ok(x) => x,
             Err(_) => String::new()
         };
         debug!("got snippet {}", sn);
