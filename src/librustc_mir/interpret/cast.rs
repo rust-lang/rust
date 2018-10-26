@@ -328,7 +328,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             (&ty::Array(_, length), &ty::Slice(_)) => {
                 let ptr = self.read_immediate(src)?.to_scalar_ptr()?;
                 // u64 cast is from usize to u64, which is always good
-                let val = Immediate::new_slice(ptr, length.unwrap_usize(self.tcx.tcx), self.tcx.tcx);
+                let val = Immediate::new_slice(
+                    ptr,
+                    length.unwrap_usize(self.tcx.tcx),
+                    self.tcx.tcx,
+                );
                 self.write_immediate(val, dest)
             }
             (&ty::Dynamic(..), &ty::Dynamic(..)) => {
