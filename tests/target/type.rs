@@ -91,6 +91,14 @@ macro_rules! foo {
 
 type Target = (FooAPI) + 'static;
 
+// #3137
+fn foo<T>(t: T)
+where
+    T: (FnOnce() -> ()) + Clone,
+    U: (FnOnce() -> ()) + 'static,
+{
+}
+
 // #3117
 fn issue3117() {
     {
