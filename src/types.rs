@@ -473,7 +473,7 @@ fn rewrite_bounded_lifetime(
             "{}{}{}",
             result,
             colon,
-            join_bounds(context, shape.sub_width(overhead)?, bounds, true, false)?
+            join_bounds(context, shape.sub_width(overhead)?, bounds, true)?
         );
         Some(result)
     }
@@ -489,13 +489,15 @@ impl Rewrite for ast::GenericBound {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match *self {
             ast::GenericBound::Trait(ref poly_trait_ref, trait_bound_modifier) => {
-                match trait_bound_modifier {
+                let snippet = context.snippet(self.span());
+                let has_paren = snippet.starts_with("(") && snippet.ends_with(")");
+                let rewrite = match trait_bound_modifier {
                     ast::TraitBoundModifier::None => poly_trait_ref.rewrite(context, shape),
-                    ast::TraitBoundModifier::Maybe => {
-                        let rw = poly_trait_ref.rewrite(context, shape.offset_left(1)?)?;
-                        Some(format!("?{}", rw))
-                    }
-                }
+                    ast::TraitBoundModifier::Maybe => poly_trait_ref
+                        .rewrite(context, shape.offset_left(1)?)
+                        .map(|s| format!("?{}", s)),
+                };
+                rewrite.map(|s| if has_paren { format!("({})", s) } else { s })
             }
             ast::GenericBound::Outlives(ref lifetime) => lifetime.rewrite(context, shape),
         }
@@ -508,14 +510,7 @@ impl Rewrite for ast::GenericBounds {
             return Some(String::new());
         }
 
-        let span = mk_sp(self.get(0)?.span().lo(), self.last()?.span().hi());
-        let has_paren = context.snippet(span).starts_with('(');
-        let bounds_shape = if has_paren {
-            shape.offset_left(1)?.sub_width(1)?
-        } else {
-            shape
-        };
-        join_bounds(context, bounds_shape, self, true, has_paren)
+        join_bounds(context, shape, self, true)
     }
 }
 
@@ -751,7 +746,6 @@ fn join_bounds(
     shape: Shape,
     items: &[ast::GenericBound],
     need_indent: bool,
-    has_paren: bool,
 ) -> Option<String> {
     debug_assert!(!items.is_empty());
 
@@ -762,36 +756,9 @@ fn join_bounds(
     };
     let type_strs = items
         .iter()
-        .map(|item| {
-            item.rewrite(
-                context,
-                if has_paren {
-                    shape.sub_width(1)?.offset_left(1)?
-                } else {
-                    shape
-                },
-            )
-        })
+        .map(|item| item.rewrite(context, shape))
         .collect::<Option<Vec<_>>>()?;
-    let mut result = String::with_capacity(128);
-    let mut closing_paren = has_paren;
-    if has_paren {
-        result.push('(');
-    }
-    result.push_str(&type_strs[0]);
-    if has_paren && type_strs.len() == 1 {
-        result.push(')');
-    }
-    for (i, type_str) in type_strs[1..].iter().enumerate() {
-        if closing_paren {
-            if let ast::GenericBound::Outlives(..) = items[i + 1] {
-                result.push(')');
-                closing_paren = false;
-            }
-        }
-        result.push_str(joiner);
-        result.push_str(type_str);
-    }
+    let result = type_strs.join(joiner);
     if items.len() <= 1 || (!result.contains('\n') && result.len() <= shape.width) {
         return Some(result);
     }
@@ -814,20 +781,10 @@ fn join_bounds(
         ast::GenericBound::Trait(..) => last_line_extendable(s),
     };
     let mut result = String::with_capacity(128);
-    let mut closing_paren = has_paren;
-    if has_paren {
-        result.push('(');
-    }
     result.push_str(&type_strs[0]);
     let mut can_be_put_on_the_same_line = is_bound_extendable(&result, &items[0]);
     let generic_bounds_in_order = is_generic_bounds_in_order(items);
     for (bound, bound_str) in items[1..].iter().zip(type_strs[1..].iter()) {
-        if closing_paren {
-            if let ast::GenericBound::Outlives(..) = bound {
-                closing_paren = false;
-                result.push(')');
-            }
-        }
         if generic_bounds_in_order && can_be_put_on_the_same_line {
             result.push_str(joiner);
         } else {
