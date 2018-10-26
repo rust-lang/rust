@@ -248,7 +248,7 @@ impl UseTree {
             .rewrite(context, shape.offset_left(vis.len())?)
             .map(|s| {
                 if s.is_empty() {
-                    s.to_owned()
+                    s
                 } else {
                     format!("{}use {};", vis, s)
                 }
@@ -592,7 +592,7 @@ fn merge_rest(a: &[UseSegment], b: &[UseSegment], len: usize) -> Option<UseSegme
     if let UseSegment::List(mut list) = a_rest[0].clone() {
         merge_use_trees_inner(&mut list, UseTree::from_path(b_rest.to_vec(), DUMMY_SP));
         list.sort();
-        return Some(UseSegment::List(list.clone()));
+        return Some(UseSegment::List(list));
     }
     let mut list = vec![
         UseTree::from_path(a_rest.to_vec(), DUMMY_SP),
