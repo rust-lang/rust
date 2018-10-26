@@ -316,7 +316,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         kind: StatementKind::AscribeUserType(
                             place.clone(),
                             ty::Variance::Invariant,
-                            ascription_user_ty,
+                            box ascription_user_ty,
                         ),
                     },
                 );
@@ -1323,7 +1323,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     kind: StatementKind::AscribeUserType(
                         ascription.source.clone(),
                         ty::Variance::Covariant,
-                        ascription.user_ty,
+                        box ascription.user_ty,
                     ),
                 },
             );
