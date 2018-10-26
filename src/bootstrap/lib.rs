@@ -765,7 +765,7 @@ impl Build {
 
         let path = match which {
             GitRepo::Rustc => {
-                let sha = self.rust_info.sha().expect("failed to find sha");
+                let sha = self.rust_sha().unwrap_or(channel::CFG_RELEASE_NUM);
                 format!("/rustc/{}", sha)
             }
             GitRepo::Llvm => format!("/rustc/llvm"),
