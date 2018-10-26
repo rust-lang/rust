@@ -1,9 +1,9 @@
 error: any use of this value will cause an error
-  --> $DIR/dangling-alloc-id-ice.rs:10:1
+  --> $DIR/dangling_raw_ptr.rs:3:1
    |
-LL | / const FOO: &() = { //~ ERROR any use of this value will cause an error
-LL | |     let y = ();
-LL | |     unsafe { Foo { y: &y }.long_live_the_unit }
+LL | / const FOO: *const u32 = { //~ ERROR any use of this value will cause an error
+LL | |     let x = 42;
+LL | |     &x
 LL | | };
    | |__^ type validation failed: encountered dangling pointer in final constant
    |

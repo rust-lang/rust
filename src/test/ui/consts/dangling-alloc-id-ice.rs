@@ -7,7 +7,7 @@ union Foo<'a> {
     long_live_the_unit: &'static (),
 }
 
-const FOO: &() = { //~ ERROR this constant cannot be used
+const FOO: &() = { //~ ERROR any use of this value will cause an error
     let y = ();
     unsafe { Foo { y: &y }.long_live_the_unit }
 };
