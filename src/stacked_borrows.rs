@@ -1,6 +1,6 @@
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 
-use rustc::ty::{Ty, layout::Size};
+use rustc::ty::{self, Ty, layout::Size};
 use rustc::hir;
 
 use super::{
@@ -101,12 +101,12 @@ impl From<Option<hir::Mutability>> for RefKind {
 /// Extra global machine state
 #[derive(Clone, Debug)]
 pub struct State {
-    clock: Cell<Timestamp>
+    clock: Timestamp
 }
 
 impl State {
     pub fn new() -> State {
-        State { clock: Cell::new(0) }
+        State { clock: 0 }
     }
 }
 
@@ -129,6 +129,7 @@ impl Default for Stack {
 /// Extra per-allocation state
 #[derive(Clone, Debug, Default)]
 pub struct Stacks {
+    // Even reading memory can have effects on the stack, so we need a `RefCell` here.
     stacks: RefCell<RangeMap<Stack>>,
 }
 
@@ -249,9 +250,9 @@ impl<'tcx> Stack {
 }
 
 impl State {
-    fn increment_clock(&self) -> Timestamp {
-        let val = self.clock.get();
-        self.clock.set(val + 1);
+    fn increment_clock(&mut self) -> Timestamp {
+        let val = self.clock;
+        self.clock = val + 1;
         val
     }
 }
@@ -334,14 +335,8 @@ impl<'tcx> Stacks {
 }
 
 pub trait EvalContextExt<'tcx> {
-    fn tag_for_pointee(
-        &self,
-        pointee_ty: Ty<'tcx>,
-        ref_kind: RefKind,
-    ) -> Borrow;
-
     fn tag_reference(
-        &self,
+        &mut self,
         ptr: Pointer<Borrow>,
         pointee_ty: Ty<'tcx>,
         size: Size,
@@ -371,13 +366,16 @@ pub trait EvalContextExt<'tcx> {
 }
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
-    fn tag_for_pointee(
-        &self,
+    /// Called for place-to-value conversion.
+    fn tag_reference(
+        &mut self,
+        ptr: Pointer<Borrow>,
         pointee_ty: Ty<'tcx>,
+        size: Size,
         ref_kind: RefKind,
-    ) -> Borrow {
+    ) -> EvalResult<'tcx, Borrow> {
         let time = self.machine.stacked_borrows.increment_clock();
-        match ref_kind {
+        let new_bor = match ref_kind {
             RefKind::Mut => Borrow::Mut(Mut::Uniq(time)),
             RefKind::Shr =>
                 // FIXME This does not do enough checking when only part of the data has
@@ -390,18 +388,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                     Borrow::Mut(Mut::Raw)
                 },
             RefKind::Raw => Borrow::Mut(Mut::Raw),
-        }
-    }
-
-    /// Called for place-to-value conversion.
-    fn tag_reference(
-        &self,
-        ptr: Pointer<Borrow>,
-        pointee_ty: Ty<'tcx>,
-        size: Size,
-        ref_kind: RefKind,
-    ) -> EvalResult<'tcx, Borrow> {
-        let new_bor = self.tag_for_pointee(pointee_ty, ref_kind);
+        };
         trace!("tag_reference: Creating new reference ({:?}) for {:?} (pointee {}, size {}): {:?}",
             ref_kind, ptr, pointee_ty, size.bytes(), new_bor);
 
@@ -424,7 +411,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
     fn tag_dereference(
         &self,
         ptr: Pointer<Borrow>,
-        pointee_ty: Ty<'tcx>,
+        _pointee_ty: Ty<'tcx>,
         size: Size,
         ref_kind: RefKind,
     ) -> EvalResult<'tcx, Borrow> {
@@ -454,13 +441,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 // also using `var`, and that would be okay.
             }
             (RefKind::Shr, Borrow::Mut(Mut::Uniq(_))) => {
-                // A mut got transmuted to shr.  High time we freeze this location!
-                // Make this a delayed reborrow.  Redundant reborows to shr are okay,
-                // so we do not have to be worried about doing too much.
-                // FIXME: Reconsider if we really want to mutate things while doing just a deref,
-                // which, in particular, validation does.
-                trace!("tag_dereference: Lazy freezing of {:?}", ptr);
-                return self.tag_reference(ptr, pointee_ty, size, ref_kind);
+                // A mut got transmuted to shr.  The mut borrow must be reactivatable.
             }
             (RefKind::Mut, Borrow::Frz(_)) => {
                 // This is just invalid.
@@ -516,9 +497,24 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
     fn retag(
         &mut self,
         _fn_entry: bool,
-        _place: PlaceTy<'tcx, Borrow>
+        place: PlaceTy<'tcx, Borrow>
     ) -> EvalResult<'tcx> {
-        // TODO do something
+        // For now, we only retag if the toplevel type is a reference.
+        // TODO: Recurse into structs and enums, sharing code with validation.
+        let mutbl = match place.layout.ty.sty {
+            ty::Ref(_, _, mutbl) => mutbl, // go ahead
+            _ => return Ok(()), // don't do a thing
+        };
+        // We want to reborrow the reference stored there. This will call the hooks
+        // above.  First deref.
+        // (This is somewhat redundant because validation already did the same thing,
+        // but what can you do.)
+        let val = self.read_value(self.place_to_op(place)?)?;
+        let dest = self.ref_to_mplace(val)?;
+        // Now put a new ref into the old place.
+        // FIXME: Honor `fn_entry`!
+        let val = self.create_ref(dest, Some(mutbl))?;
+        self.write_value(val, place)?;
         Ok(())
     }
 }

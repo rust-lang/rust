@@ -1,6 +1,3 @@
-// FIXME: Without retagging, optimization kills finding this problem
-// compile-flags: -Zmir-opt-level=0
-
 #![allow(unused_variables)]
 
 mod safe {

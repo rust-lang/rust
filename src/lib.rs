@@ -528,9 +528,11 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         fn_entry: bool,
         place: PlaceTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx> {
-        if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag || !ecx.machine.validate {
+        if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag || !Self::enforce_validity(ecx) {
             // No tracking, or no retagging. This is possible because a dependency of ours might be
             // called with different flags than we are,
+            // Also, honor the whitelist in `enforce_validity` because otherwise we might retag
+            // uninitialized data.
             return Ok(())
         }
         ecx.retag(fn_entry, place)
