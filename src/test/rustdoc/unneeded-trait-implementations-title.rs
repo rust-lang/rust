@@ -12,4 +12,4 @@
 
 pub struct Bar;
 
-// @!has foo/struct.Bar.html '//*[@id="implementations"]'
+// @count foo/struct.Bar.html '//*[@id="implementations"]' 0
