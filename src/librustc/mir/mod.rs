@@ -1944,6 +1944,10 @@ pub type PlaceProjection<'tcx> = Projection<'tcx, Place<'tcx>, Local, Ty<'tcx>>;
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
 
+/// Alias for projections as they appear in `UserTypeProjection`, where we
+/// need neither the `V` parameter for `Index` nor the `T` for `Field`.
+pub type ProjectionKind<'tcx> = ProjectionElem<'tcx, (), ()>;
+
 newtype_index! {
     pub struct Field {
         DEBUG_FORMAT = "field[{}]"
@@ -2530,6 +2534,10 @@ pub struct UserTypeProjection<'tcx> {
     pub base: UserTypeAnnotation<'tcx>,
     pub projs: Vec<ProjectionElem<'tcx, (), ()>>,
 }
+
+impl<'tcx> Copy for ProjectionKind<'tcx> { }
+
+CloneTypeFoldableAndLiftImpls! { ProjectionKind<'tcx>, }
 
 impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
