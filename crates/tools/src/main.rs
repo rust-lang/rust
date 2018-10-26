@@ -13,7 +13,7 @@ use std::{
     process::Command,
 };
 use tools::{
-    collect_tests, Result, Test, generate, Mode, Overwrite, Verify,
+    collect_tests, Result, Test, generate, Mode, Overwrite, Verify, project_root,
 };
 
 const GRAMMAR_DIR: &str = "./crates/ra_syntax/src/grammar";
@@ -31,6 +31,7 @@ fn main() -> Result<()> {
         .subcommand(SubCommand::with_name("gen-syntax"))
         .subcommand(SubCommand::with_name("gen-tests"))
         .subcommand(SubCommand::with_name("install-code"))
+        .subcommand(SubCommand::with_name("format"))
         .get_matches();
     let mode = if matches.is_present("verify") {
         Verify
@@ -41,6 +42,7 @@ fn main() -> Result<()> {
         ("install-code", _) => install_code_extension()?,
         ("gen-tests", _) => gen_tests(mode)?,
         ("gen-syntax", _) => generate(Overwrite)?,
+        ("format", _) => run_rustfmt()?,
         _ => unreachable!(),
     }
     Ok(())
@@ -146,12 +148,7 @@ fn install_code_extension() -> Result<()> {
 
 fn run(cmdline: &'static str, dir: &str) -> Result<()> {
     eprintln!("\nwill run: {}", cmdline);
-    let manifest_dir = env!("CARGO_MANIFEST_DIR");
-    let project_dir = Path::new(manifest_dir)
-        .ancestors()
-        .nth(2)
-        .unwrap()
-        .join(dir);
+    let project_dir = project_root().join(dir);
     let mut args = cmdline.split_whitespace();
     let exec = args.next().unwrap();
     let status = Command::new(exec)
@@ -161,5 +158,13 @@ fn run(cmdline: &'static str, dir: &str) -> Result<()> {
     if !status.success() {
         bail!("`{}` exited with {}", cmdline, status);
     }
+    Ok(())
+}
+
+fn run_rustfmt() -> Result<()> {
+    // Use beta toolchain for 2018 edition.
+    run("rustup install beta", ".")?;
+    run("rustup component add rustfmt-preview --toolchain beta", ".")?;
+    run("rustup run beta -- cargo fmt", ".")?;
     Ok(())
 }
