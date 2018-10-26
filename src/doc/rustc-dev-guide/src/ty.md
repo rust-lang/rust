@@ -99,7 +99,7 @@ fn test_type<'tcx>(ty: Ty<'tcx>) {
 ```
 
 The `sty` field (the origin of this name is unclear to me; perhaps
-structural type?) is of type `TypeVariants<'tcx>`, which is an enum
+structural type?) is of type `TyKind<'tcx>`, which is an enum
 defining all of the different kinds of types in the compiler.
 
 > N.B. inspecting the `sty` field on types during type inference can be
