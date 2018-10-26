@@ -121,7 +121,7 @@ impl<'tcx> TlsData<'tcx> {
         for (&key, &mut TlsEntry { ref mut data, dtor }) in
             thread_local.range_mut((start, Unbounded))
         {
-            if !data.is_null() {
+            if !data.is_null_ptr(cx) {
                 if let Some(dtor) = dtor {
                     let ret = Some((dtor, *data, key));
                     *data = Scalar::ptr_null(cx);
