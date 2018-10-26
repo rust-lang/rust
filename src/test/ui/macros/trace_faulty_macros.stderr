@@ -1,8 +1,11 @@
 error: no rules expected the token `bcd`
   --> $DIR/trace_faulty_macros.rs:17:26
    |
+LL | macro_rules! my_faulty_macro {
+   | ---------------------------- when calling this macro
+LL |     () => {
 LL |         my_faulty_macro!(bcd); //~ ERROR no rules
-   |                          ^^^
+   |                          ^^^ no rules expected the token `bcd`
 ...
 LL |     my_faulty_macro!();
    |     ------------------- in this macro invocation

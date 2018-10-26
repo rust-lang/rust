@@ -764,7 +764,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                                                     edition) {
                     dummy_span
                 } else {
-                    kind.make_from(expander.expand(self.cx, span, mac.node.stream()))
+                    kind.make_from(expander.expand(self.cx, span, mac.node.stream(), None))
                 }
             }
 
@@ -785,7 +785,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                                                     edition) {
                     dummy_span
                 } else {
-                    kind.make_from(expander.expand(self.cx, span, mac.node.stream()))
+                    kind.make_from(expander.expand(
+                        self.cx,
+                        span,
+                        mac.node.stream(),
+                        def_info.map(|(_, s)| s),
+                    ))
                 }
             }
 

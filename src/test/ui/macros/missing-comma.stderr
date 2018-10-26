@@ -7,32 +7,44 @@ LL |     println!("{}" a);
 error: no rules expected the token `b`
   --> $DIR/missing-comma.rs:22:12
    |
+LL | macro_rules! foo {
+   | ---------------- when calling this macro
+...
 LL |     foo!(a b);
-   |           -^
+   |           -^ no rules expected the token `b`
    |           |
    |           help: missing comma here
 
 error: no rules expected the token `e`
   --> $DIR/missing-comma.rs:24:21
    |
+LL | macro_rules! foo {
+   | ---------------- when calling this macro
+...
 LL |     foo!(a, b, c, d e);
-   |                    -^
+   |                    -^ no rules expected the token `e`
    |                    |
    |                    help: missing comma here
 
 error: no rules expected the token `d`
   --> $DIR/missing-comma.rs:26:18
    |
+LL | macro_rules! foo {
+   | ---------------- when calling this macro
+...
 LL |     foo!(a, b, c d, e);
-   |                 -^
+   |                 -^ no rules expected the token `d`
    |                 |
    |                 help: missing comma here
 
 error: no rules expected the token `d`
   --> $DIR/missing-comma.rs:28:18
    |
+LL | macro_rules! foo {
+   | ---------------- when calling this macro
+...
 LL |     foo!(a, b, c d e);
-   |                  ^
+   |                  ^ no rules expected the token `d`
 
 error: aborting due to 5 previous errors
 
