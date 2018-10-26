@@ -121,7 +121,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
         let has_repr_c = it.attrs
             .iter()
             .any(|attr| {
-                attr::find_repr_attrs(cx.tcx.sess.diagnostic(), attr)
+                attr::find_repr_attrs(&cx.tcx.sess.parse_sess, attr)
                     .iter()
                     .any(|r| r == &attr::ReprC)
             });

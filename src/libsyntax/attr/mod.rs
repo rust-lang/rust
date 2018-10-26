@@ -219,6 +219,15 @@ impl MetaItem {
         name_from_path(&self.ident)
     }
 
+    // #[attribute(name = "value")]
+    //             ^^^^^^^^^^^^^^
+    pub fn name_value_literal(&self) -> Option<&Lit> {
+        match &self.node {
+            MetaItemKind::NameValue(v) => Some(v),
+            _ => None,
+        }
+    }
+
     pub fn value_str(&self) -> Option<Symbol> {
         match self.node {
             MetaItemKind::NameValue(ref v) => {

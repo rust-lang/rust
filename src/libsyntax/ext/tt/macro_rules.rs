@@ -355,7 +355,7 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
             }
         }
 
-        let unstable_feature = attr::find_stability(&sess.span_diagnostic,
+        let unstable_feature = attr::find_stability(&sess,
                                                     &def.attrs, def.span).and_then(|stability| {
             if let attr::StabilityLevel::Unstable { issue, .. } = stability.level {
                 Some((stability.feature, issue))

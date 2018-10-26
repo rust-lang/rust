@@ -40,21 +40,28 @@ error[E0537]: invalid predicate `a`
 LL | #[cfg(a())] //~ ERROR invalid predicate `a`
    |       ^^^
 
-error: literal in `cfg` predicate value must be a string
+error[E0565]: literal in `cfg` predicate value must be a string
   --> $DIR/cfg-attr-syntax-validation.rs:22:11
    |
 LL | #[cfg(a = 10)] //~ ERROR literal in `cfg` predicate value must be a string
    |           ^^
 
+error[E0565]: literal in `cfg` predicate value must be a string
+  --> $DIR/cfg-attr-syntax-validation.rs:25:11
+   |
+LL | #[cfg(a = b"hi")]  //~ ERROR literal in `cfg` predicate value must be a string
+   |           ^^^^^ help: consider removing the prefix: `"hi"`
+
 error: `cfg` is not a well-formed meta-item
-  --> $DIR/cfg-attr-syntax-validation.rs:27:9
+  --> $DIR/cfg-attr-syntax-validation.rs:30:9
    |
 LL |         #[cfg(feature = $expr)] //~ ERROR `cfg` is not a well-formed meta-item
    |         ^^^^^^^^^^^^^^^^^^^^^^^ help: expected syntax is: `#[cfg(/* predicate */)]`
 ...
-LL | generate_s9!(concat!("nonexistent"));
-   | ------------------------------------- in this macro invocation
+LL | generate_s10!(concat!("nonexistent"));
+   | -------------------------------------- in this macro invocation
 
-error: aborting due to 9 previous errors
+error: aborting due to 10 previous errors
 
-For more information about this error, try `rustc --explain E0537`.
+Some errors occurred: E0537, E0565.
+For more information about an error, try `rustc --explain E0537`.

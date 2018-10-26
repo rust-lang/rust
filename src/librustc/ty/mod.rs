@@ -1928,7 +1928,7 @@ impl ReprOptions {
         let mut max_align = 0;
         let mut min_pack = 0;
         for attr in tcx.get_attrs(did).iter() {
-            for r in attr::find_repr_attrs(tcx.sess.diagnostic(), attr) {
+            for r in attr::find_repr_attrs(&tcx.sess.parse_sess, attr) {
                 flags.insert(match r {
                     attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked(pack) => {

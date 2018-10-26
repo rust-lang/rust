@@ -134,11 +134,11 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
         if self.tcx.features().staged_api {
             // This crate explicitly wants staged API.
             debug!("annotate(id = {:?}, attrs = {:?})", id, attrs);
-            if let Some(..) = attr::find_deprecation(self.tcx.sess.diagnostic(), attrs, item_sp) {
+            if let Some(..) = attr::find_deprecation(&self.tcx.sess.parse_sess, attrs, item_sp) {
                 self.tcx.sess.span_err(item_sp, "`#[deprecated]` cannot be used in staged api, \
                                                  use `#[rustc_deprecated]` instead");
             }
-            if let Some(mut stab) = attr::find_stability(self.tcx.sess.diagnostic(),
+            if let Some(mut stab) = attr::find_stability(&self.tcx.sess.parse_sess,
                                                          attrs, item_sp) {
                 // Error if prohibited, or can't inherit anything from a container
                 if kind == AnnotationKind::Prohibited ||
@@ -224,7 +224,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
                 }
             }
 
-            if let Some(depr) = attr::find_deprecation(self.tcx.sess.diagnostic(), attrs, item_sp) {
+            if let Some(depr) = attr::find_deprecation(&self.tcx.sess.parse_sess, attrs, item_sp) {
                 if kind == AnnotationKind::Prohibited {
                     self.tcx.sess.span_err(item_sp, "This deprecation annotation is useless");
                 }

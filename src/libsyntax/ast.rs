@@ -1328,6 +1328,14 @@ impl LitKind {
         }
     }
 
+    /// Returns true if this literal is byte literal string false otherwise.
+    pub fn is_bytestr(&self) -> bool {
+        match self {
+            LitKind::ByteStr(_) => true,
+            _ => false,
+        }
+    }
+
     /// Returns true if this is a numeric literal.
     pub fn is_numeric(&self) -> bool {
         match *self {
