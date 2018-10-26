@@ -128,7 +128,7 @@ sh_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 
 // FIXME(30524): impl Op<T> for Wrapping<T>, impl OpAssign<T> for Wrapping<T>
 macro_rules! wrapping_impl {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Add for Wrapping<$t> {
             type Output = Wrapping<$t>;
@@ -323,10 +323,10 @@ macro_rules! wrapping_impl {
     )*)
 }
 
-wrapping_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+wrapping_impl! { usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128 }
 
 macro_rules! wrapping_int_impl {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         impl Wrapping<$t> {
             doc_comment! {
                 concat!("Returns the smallest value that can be represented by this integer type.
@@ -685,10 +685,10 @@ assert_eq!(Wrapping(3i8).pow(6), Wrapping(-39));
     )*)
 }
 
-wrapping_int_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+wrapping_int_impl! { usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128 }
 
 macro_rules! wrapping_int_impl_signed {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         impl Wrapping<$t> {
             doc_comment! {
                 concat!("Returns the number of leading zeros in the binary representation of `self`.
@@ -814,10 +814,10 @@ assert!(!Wrapping(10", stringify!($t), ").is_negative());
     )*)
 }
 
-wrapping_int_impl_signed! { isize i8 i16 i32 i64 i128 }
+wrapping_int_impl_signed! { isize, i8, i16, i32, i64, i128 }
 
 macro_rules! wrapping_int_impl_unsigned {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         impl Wrapping<$t> {
             doc_comment! {
                 concat!("Returns the number of leading zeros in the binary representation of `self`.
@@ -891,7 +891,7 @@ assert_eq!(Wrapping(200_u8).next_power_of_two(), Wrapping(0));
     )*)
 }
 
-wrapping_int_impl_unsigned! { usize u8 u16 u32 u64 u128 }
+wrapping_int_impl_unsigned! { usize, u8, u16, u32, u64, u128 }
 
 mod shift_max {
     #![allow(non_upper_case_globals)]

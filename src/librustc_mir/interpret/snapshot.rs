@@ -103,7 +103,7 @@ macro_rules! __impl_snapshot_field {
 macro_rules! impl_snapshot_for {
     // FIXME(mark-i-m): Some of these should be `?` rather than `*`.
     (enum $enum_name:ident {
-        $( $variant:ident $( ( $($field:ident $(-> $delegate:expr)*),* ) )* ),* $(,)*
+        $( $variant:ident $( ( $($field:ident $(-> $delegate:expr);*),* ) )* ),* $(,)*
     }) => {
 
         impl<'a, Ctx> self::Snapshot<'a, Ctx> for $enum_name
@@ -126,7 +126,7 @@ macro_rules! impl_snapshot_for {
     };
 
     // FIXME(mark-i-m): same here.
-    (struct $struct_name:ident { $($field:ident $(-> $delegate:expr)*),*  $(,)* }) => {
+    (struct $struct_name:ident { $($field:ident $(-> $delegate:expr);*),*  $(,)* }) => {
         impl<'a, Ctx> self::Snapshot<'a, Ctx> for $struct_name
             where Ctx: self::SnapshotContext<'a>,
         {

@@ -1,0 +1,10 @@
+error: `$e:expr` is followed (through repetition) by `$i:ident`, which is not allowed for `expr` fragments
+  --> $DIR/incorrrect-repetition.rs:2:17
+   |
+LL |     ($($i:ident $e:expr)*) => {}
+   |        -------- ^^^^^^^ this fragment is followed by the first fragment in this repetition without a valid separator
+   |        |
+   |        this is the first fragment in the evaluated repetition
+
+error: aborting due to previous error
+

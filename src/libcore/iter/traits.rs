@@ -772,7 +772,7 @@ pub trait Product<A = Self>: Sized {
 
 // NB: explicitly use Add and Mul here to inherit overflow checks
 macro_rules! integer_sum_product {
-    (@impls $zero:expr, $one:expr, #[$attr:meta], $($a:ty)*) => ($(
+    (@impls $zero:expr, $one:expr, #[$attr:meta], $($a:ty),*) => ($(
         #[$attr]
         impl Sum for $a {
             fn sum<I: Iterator<Item=$a>>(iter: I) -> $a {
@@ -801,13 +801,13 @@ macro_rules! integer_sum_product {
             }
         }
     )*);
-    ($($a:ty)*) => (
+    ($($a:ty),*) => (
         integer_sum_product!(@impls 0, 1,
                 #[stable(feature = "iter_arith_traits", since = "1.12.0")],
-                $($a)+);
+                $($a),+);
         integer_sum_product!(@impls Wrapping(0), Wrapping(1),
                 #[stable(feature = "wrapping_iter_arith", since = "1.14.0")],
-                $(Wrapping<$a>)+);
+                $(Wrapping<$a>),+);
     );
 }
 
@@ -843,7 +843,7 @@ macro_rules! float_sum_product {
     )*)
 }
 
-integer_sum_product! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
+integer_sum_product! { i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize }
 float_sum_product! { f32 f64 }
 
 /// An iterator adapter that produces output as long as the underlying

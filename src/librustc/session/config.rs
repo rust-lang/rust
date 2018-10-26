@@ -311,7 +311,7 @@ macro_rules! hash_option {
 
 macro_rules! top_level_options {
     (pub struct Options { $(
-        $opt:ident : $t:ty [$dep_tracking_marker:ident $($warn_val:expr, $warn_text:expr)*],
+        $opt:ident : $t:ty [$dep_tracking_marker:ident $($warn_val:expr, $warn_text:expr),*],
     )* } ) => (
         #[derive(Clone)]
         pub struct Options {

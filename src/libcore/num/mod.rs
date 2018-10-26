@@ -4488,7 +4488,7 @@ pub enum FpCategory {
 }
 
 macro_rules! from_str_radix_int_impl {
-    ($($t:ty)*) => {$(
+    ($($t:ty),*) => {$(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStr for $t {
             type Err = ParseIntError;
@@ -4498,7 +4498,7 @@ macro_rules! from_str_radix_int_impl {
         }
     )*}
 }
-from_str_radix_int_impl! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 }
+from_str_radix_int_impl! { isize, i8, i16, i32, i64, i128, usize, u8, u16, u32, u64, u128 }
 
 /// The error type returned when a checked integral type conversion fails.
 #[unstable(feature = "try_from", issue = "33417")]
@@ -4729,7 +4729,7 @@ trait FromStrRadixHelper: PartialOrd + Copy {
 }
 
 macro_rules! doit {
-    ($($t:ty)*) => ($(impl FromStrRadixHelper for $t {
+    ($($t:ty),*) => ($(impl FromStrRadixHelper for $t {
         #[inline]
         fn min_value() -> Self { Self::min_value() }
         #[inline]
@@ -4750,7 +4750,7 @@ macro_rules! doit {
         }
     })*)
 }
-doit! { i8 i16 i32 i64 i128 isize u8 u16 u32 u64 u128 usize }
+doit! { i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize }
 
 fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
     use self::IntErrorKind::*;

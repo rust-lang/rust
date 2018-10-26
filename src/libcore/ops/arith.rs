@@ -100,7 +100,7 @@ pub trait Add<RHS=Self> {
 }
 
 macro_rules! add_impl {
-    ($($t:ty)*) => ($(
+    ($($t:ty), *) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Add for $t {
             type Output = $t;
@@ -114,7 +114,7 @@ macro_rules! add_impl {
     )*)
 }
 
-add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+add_impl! { usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128, f32, f64 }
 
 /// The subtraction operator `-`.
 ///
@@ -198,7 +198,7 @@ pub trait Sub<RHS=Self> {
 }
 
 macro_rules! sub_impl {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Sub for $t {
             type Output = $t;
@@ -212,7 +212,7 @@ macro_rules! sub_impl {
     )*)
 }
 
-sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+sub_impl! { usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128, f32, f64 }
 
 /// The multiplication operator `*`.
 ///
@@ -318,7 +318,7 @@ pub trait Mul<RHS=Self> {
 }
 
 macro_rules! mul_impl {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Mul for $t {
             type Output = $t;
@@ -332,7 +332,7 @@ macro_rules! mul_impl {
     )*)
 }
 
-mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+mul_impl! { usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128, f32, f64 }
 
 /// The division operator `/`.
 ///
@@ -442,7 +442,7 @@ pub trait Div<RHS=Self> {
 }
 
 macro_rules! div_impl_integer {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         /// This operation rounds towards zero, truncating any
         /// fractional part of the exact result.
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -457,10 +457,10 @@ macro_rules! div_impl_integer {
     )*)
 }
 
-div_impl_integer! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+div_impl_integer! { usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128 }
 
 macro_rules! div_impl_float {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Div for $t {
             type Output = $t;
@@ -473,7 +473,7 @@ macro_rules! div_impl_float {
     )*)
 }
 
-div_impl_float! { f32 f64 }
+div_impl_float! { f32, f64 }
 
 /// The remainder operator `%`.
 ///
@@ -527,7 +527,7 @@ pub trait Rem<RHS=Self> {
 }
 
 macro_rules! rem_impl_integer {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         /// This operation satisfies `n % d == n - (n / d) * d`.  The
         /// result has the same sign as the left operand.
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -542,11 +542,10 @@ macro_rules! rem_impl_integer {
     )*)
 }
 
-rem_impl_integer! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
-
+rem_impl_integer! { usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128 }
 
 macro_rules! rem_impl_float {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Rem for $t {
             type Output = $t;
@@ -559,7 +558,7 @@ macro_rules! rem_impl_float {
     )*)
 }
 
-rem_impl_float! { f32 f64 }
+rem_impl_float! { f32, f64 }
 
 /// The unary negation operator `-`.
 ///
@@ -614,7 +613,7 @@ pub trait Neg {
 
 
 macro_rules! neg_impl_core {
-    ($id:ident => $body:expr, $($t:ty)*) => ($(
+    ($id:ident => $body:expr, $($t:ty),*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Neg for $t {
             type Output = $t;
@@ -629,19 +628,19 @@ macro_rules! neg_impl_core {
 }
 
 macro_rules! neg_impl_numeric {
-    ($($t:ty)*) => { neg_impl_core!{ x => -x, $($t)*} }
+    ($($t:ty),*) => { neg_impl_core!{ x => -x, $($t),*} }
 }
 
 #[allow(unused_macros)]
 macro_rules! neg_impl_unsigned {
-    ($($t:ty)*) => {
+    ($($t:ty),*) => {
         neg_impl_core!{ x => {
             !x.wrapping_add(1)
-        }, $($t)*} }
+        }, $($t),*} }
 }
 
 // neg_impl_unsigned! { usize u8 u16 u32 u64 }
-neg_impl_numeric! { isize i8 i16 i32 i64 i128 f32 f64 }
+neg_impl_numeric! { isize, i8, i16, i32, i64, i128, f32, f64 }
 
 /// The addition assignment operator `+=`.
 ///
@@ -685,7 +684,7 @@ pub trait AddAssign<Rhs=Self> {
 }
 
 macro_rules! add_assign_impl {
-    ($($t:ty)+) => ($(
+    ($($t:ty),+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl AddAssign for $t {
             #[inline]
@@ -697,7 +696,7 @@ macro_rules! add_assign_impl {
     )+)
 }
 
-add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+add_assign_impl! { usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128, f32, f64 }
 
 /// The subtraction assignment operator `-=`.
 ///
@@ -741,7 +740,7 @@ pub trait SubAssign<Rhs=Self> {
 }
 
 macro_rules! sub_assign_impl {
-    ($($t:ty)+) => ($(
+    ($($t:ty),+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl SubAssign for $t {
             #[inline]
@@ -753,7 +752,7 @@ macro_rules! sub_assign_impl {
     )+)
 }
 
-sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+sub_assign_impl! { usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128, f32, f64 }
 
 /// The multiplication assignment operator `*=`.
 ///
@@ -788,7 +787,7 @@ pub trait MulAssign<Rhs=Self> {
 }
 
 macro_rules! mul_assign_impl {
-    ($($t:ty)+) => ($(
+    ($($t:ty),+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl MulAssign for $t {
             #[inline]
@@ -800,7 +799,7 @@ macro_rules! mul_assign_impl {
     )+)
 }
 
-mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+mul_assign_impl! { usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128, f32, f64 }
 
 /// The division assignment operator `/=`.
 ///
@@ -835,7 +834,7 @@ pub trait DivAssign<Rhs=Self> {
 }
 
 macro_rules! div_assign_impl {
-    ($($t:ty)+) => ($(
+    ($($t:ty),+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl DivAssign for $t {
             #[inline]
@@ -846,7 +845,7 @@ macro_rules! div_assign_impl {
     )+)
 }
 
-div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+div_assign_impl! { usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128, f32, f64 }
 
 /// The remainder assignment operator `%=`.
 ///
@@ -885,7 +884,7 @@ pub trait RemAssign<Rhs=Self> {
 }
 
 macro_rules! rem_assign_impl {
-    ($($t:ty)+) => ($(
+    ($($t:ty),+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl RemAssign for $t {
             #[inline]
@@ -896,4 +895,4 @@ macro_rules! rem_assign_impl {
     )+)
 }
 
-rem_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
+rem_assign_impl! { usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128, f32, f64 }

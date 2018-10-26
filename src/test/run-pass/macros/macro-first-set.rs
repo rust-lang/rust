@@ -40,11 +40,11 @@ fn test_26444() {
 }
 
 macro_rules! pat_26444 {
-    ($fname:ident $($arg:pat)* =) => {}
+    ($fname:ident $($arg:pat),* =) => {}
 }
 
-pat_26444!(foo 1 2 5...7 =);
-pat_26444!(bar Some(ref x) Ok(ref mut y) &(w, z) =);
+pat_26444!(foo 1, 2, 5...7 =);
+pat_26444!(bar Some(ref x), Ok(ref mut y), &(w, z) =);
 
 //}}}
 

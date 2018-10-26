@@ -803,6 +803,50 @@ fn check_matcher_core(sess: &ParseSess,
                     new.add_one_maybe(TokenTree::Token(sp.entire(), u.clone()));
                     &new
                 } else {
+                    if let (
+                        Some(tok),
+                        Some(TokenTree::MetaVarDecl(sp, name, frag_spec)),
+                     ) = (seq_rep.tts.first(), seq_rep.tts.last()) {
+                        match is_in_follow(tok, &frag_spec.as_str()) {
+                            Err(_) | Ok(true) => {}  // handled elsewhere
+                            Ok(false) => {
+                                let tok_sp = tok.span();
+                                let next = if *sp == tok_sp {
+                                    "itself".to_owned()
+                                } else {
+                                    format!("`{}`", quoted_tt_to_string(tok))
+                                };
+                                let mut err = sess.span_diagnostic.struct_span_err(
+                                    *sp,
+                                    &format!(
+                                        "`${name}:{frag}` is followed (through repetition) by \
+                                         {next}, which is not allowed for `{frag}` fragments",
+                                        name=name,
+                                        frag=frag_spec,
+                                        next=next,
+                                    ),
+                                );
+                                if *sp == tok_sp {
+                                    err.span_label(
+                                        *sp,
+                                        "this fragment is followed by itself without a valid \
+                                         separator",
+                                    );
+                                } else {
+                                    err.span_label(
+                                        *sp,
+                                        "this fragment is followed by the first fragment in this \
+                                         repetition without a valid separator",
+                                    );
+                                    err.span_label(
+                                        tok_sp,
+                                        "this is the first fragment in the evaluated repetition",
+                                    );
+                                }
+                                err.emit();
+                            }
+                        }
+                    }
                     &suffix_first
                 };
 

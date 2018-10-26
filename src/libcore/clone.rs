@@ -158,7 +158,7 @@ mod impls {
     use super::Clone;
 
     macro_rules! impl_clone {
-        ($($t:ty)*) => {
+        ($($t:ty),*) => {
             $(
                 #[stable(feature = "rust1", since = "1.0.0")]
                 impl Clone for $t {
@@ -172,10 +172,10 @@ mod impls {
     }
 
     impl_clone! {
-        usize u8 u16 u32 u64 u128
-        isize i8 i16 i32 i64 i128
-        f32 f64
-        bool char
+        usize, u8, u16, u32, u64, u128,
+        isize, i8, i16, i32, i64, i128,
+        f32, f64,
+        bool, char
     }
 
     #[unstable(feature = "never_type", issue = "35121")]

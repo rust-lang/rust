@@ -116,7 +116,7 @@ macro_rules! __impl_slice_eq2 {
 
 // macro for implementing n-element array functions and operations
 macro_rules! array_impls {
-    ($($N:expr)+) => {
+    ($($N:expr),+) => {
         $(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<T> AsRef<[T]> for [T; $N] {
@@ -266,10 +266,10 @@ macro_rules! array_impls {
 }
 
 array_impls! {
-     0  1  2  3  4  5  6  7  8  9
-    10 11 12 13 14 15 16 17 18 19
-    20 21 22 23 24 25 26 27 28 29
-    30 31 32
+     0,  1,  2,  3,  4,  5,  6,  7,  8,  9,
+    10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
+    20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+    30, 31, 32
 }
 
 // The Default impls cannot be generated using the array_impls! macro because

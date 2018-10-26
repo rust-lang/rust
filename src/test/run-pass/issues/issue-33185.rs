@@ -13,7 +13,7 @@
 
 #[macro_export]
 macro_rules! state {
-    ( $( $name:ident : $field:ty )* ) => (
+    ( $( $name:ident : $field:ty ),* ) => (
         #[derive(Default)]
         struct State {
             $($name : $field),*

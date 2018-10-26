@@ -863,7 +863,7 @@ mod impls {
     use cmp::Ordering::{self, Less, Greater, Equal};
 
     macro_rules! partial_eq_impl {
-        ($($t:ty)*) => ($(
+        ($($t:ty),*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl PartialEq for $t {
                 #[inline]
@@ -883,20 +883,20 @@ mod impls {
     }
 
     partial_eq_impl! {
-        bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64
+        bool, char, usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128, f32, f64
     }
 
     macro_rules! eq_impl {
-        ($($t:ty)*) => ($(
+        ($($t:ty),*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl Eq for $t {}
         )*)
     }
 
-    eq_impl! { () bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+    eq_impl! { (), bool, char, usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128 }
 
     macro_rules! partial_ord_impl {
-        ($($t:ty)*) => ($(
+        ($($t:ty),*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl PartialOrd for $t {
                 #[inline]
@@ -936,10 +936,10 @@ mod impls {
         }
     }
 
-    partial_ord_impl! { f32 f64 }
+    partial_ord_impl! { f32, f64 }
 
     macro_rules! ord_impl {
-        ($($t:ty)*) => ($(
+        ($($t:ty),*) => ($(
             #[stable(feature = "rust1", since = "1.0.0")]
             impl PartialOrd for $t {
                 #[inline]
@@ -982,7 +982,7 @@ mod impls {
         }
     }
 
-    ord_impl! { char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+    ord_impl! { char, usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128 }
 
     #[unstable(feature = "never_type", issue = "35121")]
     impl PartialEq for ! {

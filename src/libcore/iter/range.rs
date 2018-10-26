@@ -72,7 +72,7 @@ macro_rules! step_identical_methods {
 }
 
 macro_rules! step_impl_unsigned {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[unstable(feature = "step_trait",
                    reason = "likely to be replaced by finer-grained traits",
                    issue = "42168")]
@@ -145,7 +145,7 @@ macro_rules! step_impl_signed {
 }
 
 macro_rules! step_impl_no_between {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[unstable(feature = "step_trait",
                    reason = "likely to be replaced by finer-grained traits",
                    issue = "42168")]
@@ -165,7 +165,7 @@ macro_rules! step_impl_no_between {
     )*)
 }
 
-step_impl_unsigned!(usize u8 u16);
+step_impl_unsigned!(usize, u8, u16);
 #[cfg(not(target_pointer_width = "16"))]
 step_impl_unsigned!(u32);
 #[cfg(target_pointer_width = "16")]
@@ -182,32 +182,32 @@ step_impl_signed!([i64: u64]);
 // If the target pointer width is not 64-bits, we
 // assume here that it is less than 64-bits.
 #[cfg(not(target_pointer_width = "64"))]
-step_impl_no_between!(u64 i64);
-step_impl_no_between!(u128 i128);
+step_impl_no_between!(u64, i64);
+step_impl_no_between!(u128, i128);
 
 macro_rules! range_exact_iter_impl {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl ExactSizeIterator for ops::Range<$t> { }
     )*)
 }
 
 macro_rules! range_incl_exact_iter_impl {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[stable(feature = "inclusive_range", since = "1.26.0")]
         impl ExactSizeIterator for ops::RangeInclusive<$t> { }
     )*)
 }
 
 macro_rules! range_trusted_len_impl {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[unstable(feature = "trusted_len", issue = "37572")]
         unsafe impl TrustedLen for ops::Range<$t> { }
     )*)
 }
 
 macro_rules! range_incl_trusted_len_impl {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[unstable(feature = "trusted_len", issue = "37572")]
         unsafe impl TrustedLen for ops::RangeInclusive<$t> { }
     )*)
@@ -276,15 +276,15 @@ impl<A: Step> Iterator for ops::Range<A> {
 // Range<{u,i}64> and RangeInclusive<{u,i}{32,64,size}> are excluded
 // because they cannot guarantee having a length <= usize::MAX, which is
 // required by ExactSizeIterator.
-range_exact_iter_impl!(usize u8 u16 u32 isize i8 i16 i32);
-range_incl_exact_iter_impl!(u8 u16 i8 i16);
+range_exact_iter_impl!(usize, u8, u16, u32, isize, i8, i16, i32);
+range_incl_exact_iter_impl!(u8, u16, i8, i16);
 
 // These macros generate `TrustedLen` impls.
 //
 // They need to guarantee that .size_hint() is either exact, or that
 // the upper bound is None when it does not fit the type limits.
-range_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
-range_incl_trusted_len_impl!(usize isize u8 i8 u16 i16 u32 i32 i64 u64);
+range_trusted_len_impl!(usize, isize, u8, i8, u16, i16, u32, i32, i64, u64);
+range_incl_trusted_len_impl!(usize, isize, u8, i8, u16, i16, u32, i32, i64, u64);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Step> DoubleEndedIterator for ops::Range<A> {

@@ -52,7 +52,7 @@ pub trait Not {
 }
 
 macro_rules! not_impl {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl Not for $t {
             type Output = $t;
@@ -65,7 +65,7 @@ macro_rules! not_impl {
     )*)
 }
 
-not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+not_impl! { bool, usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128 }
 
 /// The bitwise AND operator `&`.
 ///
@@ -136,7 +136,7 @@ pub trait BitAnd<RHS=Self> {
 }
 
 macro_rules! bitand_impl {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl BitAnd for $t {
             type Output = $t;
@@ -149,7 +149,7 @@ macro_rules! bitand_impl {
     )*)
 }
 
-bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+bitand_impl! { bool, usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128 }
 
 /// The bitwise OR operator `|`.
 ///
@@ -220,7 +220,7 @@ pub trait BitOr<RHS=Self> {
 }
 
 macro_rules! bitor_impl {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl BitOr for $t {
             type Output = $t;
@@ -233,7 +233,7 @@ macro_rules! bitor_impl {
     )*)
 }
 
-bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+bitor_impl! { bool, usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128 }
 
 /// The bitwise XOR operator `^`.
 ///
@@ -307,7 +307,7 @@ pub trait BitXor<RHS=Self> {
 }
 
 macro_rules! bitxor_impl {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
         impl BitXor for $t {
             type Output = $t;
@@ -320,7 +320,7 @@ macro_rules! bitxor_impl {
     )*)
 }
 
-bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+bitxor_impl! { bool, usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128 }
 
 /// The left shift operator `<<`. Note that because this trait is implemented
 /// for all integer types with multiple right-hand-side types, Rust's type
@@ -412,7 +412,7 @@ macro_rules! shl_impl {
 }
 
 macro_rules! shl_impl_all {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         shl_impl! { $t, u8 }
         shl_impl! { $t, u16 }
         shl_impl! { $t, u32 }
@@ -429,7 +429,7 @@ macro_rules! shl_impl_all {
     )*)
 }
 
-shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
+shl_impl_all! { u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, isize, i128 }
 
 /// The right shift operator `>>`. Note that because this trait is implemented
 /// for all integer types with multiple right-hand-side types, Rust's type
@@ -521,7 +521,7 @@ macro_rules! shr_impl {
 }
 
 macro_rules! shr_impl_all {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         shr_impl! { $t, u8 }
         shr_impl! { $t, u16 }
         shr_impl! { $t, u32 }
@@ -538,7 +538,7 @@ macro_rules! shr_impl_all {
     )*)
 }
 
-shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
+shr_impl_all! { u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize }
 
 /// The bitwise AND assignment operator `&=`.
 ///
@@ -615,7 +615,7 @@ pub trait BitAndAssign<Rhs=Self> {
 }
 
 macro_rules! bitand_assign_impl {
-    ($($t:ty)+) => ($(
+    ($($t:ty),+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitAndAssign for $t {
             #[inline]
@@ -626,7 +626,7 @@ macro_rules! bitand_assign_impl {
     )+)
 }
 
-bitand_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+bitand_assign_impl! { bool, usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128 }
 
 /// The bitwise OR assignment operator `|=`.
 ///
@@ -664,7 +664,7 @@ pub trait BitOrAssign<Rhs=Self> {
 }
 
 macro_rules! bitor_assign_impl {
-    ($($t:ty)+) => ($(
+    ($($t:ty),+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitOrAssign for $t {
             #[inline]
@@ -675,7 +675,7 @@ macro_rules! bitor_assign_impl {
     )+)
 }
 
-bitor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+bitor_assign_impl! { bool, usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128 }
 
 /// The bitwise XOR assignment operator `^=`.
 ///
@@ -713,7 +713,7 @@ pub trait BitXorAssign<Rhs=Self> {
 }
 
 macro_rules! bitxor_assign_impl {
-    ($($t:ty)+) => ($(
+    ($($t:ty),+) => ($(
         #[stable(feature = "op_assign_traits", since = "1.8.0")]
         impl BitXorAssign for $t {
             #[inline]
@@ -724,7 +724,7 @@ macro_rules! bitxor_assign_impl {
     )+)
 }
 
-bitxor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
+bitxor_assign_impl! { bool, usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128 }
 
 /// The left shift assignment operator `<<=`.
 ///
@@ -775,7 +775,7 @@ macro_rules! shl_assign_impl {
 }
 
 macro_rules! shl_assign_impl_all {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         shl_assign_impl! { $t, u8 }
         shl_assign_impl! { $t, u16 }
         shl_assign_impl! { $t, u32 }
@@ -792,7 +792,7 @@ macro_rules! shl_assign_impl_all {
     )*)
 }
 
-shl_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
+shl_assign_impl_all! { u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize }
 
 /// The right shift assignment operator `>>=`.
 ///
@@ -843,7 +843,7 @@ macro_rules! shr_assign_impl {
 }
 
 macro_rules! shr_assign_impl_all {
-    ($($t:ty)*) => ($(
+    ($($t:ty),*) => ($(
         shr_assign_impl! { $t, u8 }
         shr_assign_impl! { $t, u16 }
         shr_assign_impl! { $t, u32 }
@@ -860,4 +860,4 @@ macro_rules! shr_assign_impl_all {
     )*)
 }
 
-shr_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
+shr_assign_impl_all! { u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize }
