@@ -147,7 +147,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             kind: StatementKind::AscribeUserType(
                                 place.clone(),
                                 Variance::Invariant,
-                                user_ty,
+                                box user_ty,
                             ),
                         },
                     );
@@ -167,7 +167,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             kind: StatementKind::AscribeUserType(
                                 Place::Local(temp.clone()),
                                 Variance::Invariant,
-                                user_ty,
+                                box user_ty,
                             ),
                         },
                     );
