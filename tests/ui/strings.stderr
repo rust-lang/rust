@@ -60,3 +60,17 @@ error: calling `as_bytes()` on a string literal
    |
    = note: `-D clippy::string-lit-as-bytes` implied by `-D warnings`
 
+error: calling `as_bytes()` on a string literal
+  --> $DIR/strings.rs:62:14
+   |
+62 |     let bs = r###"raw string with three ### in it and some " ""###.as_bytes();
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using a byte string literal instead: `br###"raw string with three ### in it and some " ""###`
+
+error: calling `as_bytes()` on `include_str!(..)`
+  --> $DIR/strings.rs:69:22
+   |
+69 |     let includestr = include_str!("entry.rs").as_bytes();
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `include_bytes!(..)` instead: `include_bytes!("entry.rs")`
+
+error: aborting due to 11 previous errors
+
