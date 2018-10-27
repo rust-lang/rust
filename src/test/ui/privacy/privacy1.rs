@@ -127,7 +127,6 @@ mod foo {
     fn test2() {
         use bar::baz::{foo, bar};
         //~^ ERROR: module `baz` is private
-        //~| ERROR: module `baz` is private
 
         foo();
         bar();

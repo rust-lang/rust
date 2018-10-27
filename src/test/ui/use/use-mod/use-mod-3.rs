@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use foo::bar::{
-    self //~ ERROR module `bar` is private
+use foo::bar::{ //~ ERROR module `bar` is private
+    self
 };
-use foo::bar::{
-    Bar //~ ERROR module `bar` is private
+use foo::bar::{ //~ ERROR module `bar` is private
+    Bar
 };
 
 mod foo {

@@ -1,8 +1,8 @@
 error[E0603]: constant `B` is private
-  --> $DIR/issue-17718-const-privacy.rs:15:5
+  --> $DIR/issue-17718-const-privacy.rs:15:8
    |
 LL | use a::B; //~ ERROR: constant `B` is private
-   |     ^^^^
+   |        ^
 
 error[E0603]: constant `BAR` is private
   --> $DIR/issue-17718-const-privacy.rs:18:5

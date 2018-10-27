@@ -41,16 +41,16 @@ LL | use use_from_trait_xc::Baz::new as baznew;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no `new` in `Baz`
 
 error[E0603]: struct `Foo` is private
-  --> $DIR/use-from-trait-xc.rs:24:5
+  --> $DIR/use-from-trait-xc.rs:24:24
    |
 LL | use use_from_trait_xc::Foo::new; //~ ERROR struct `Foo` is private
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        ^^^
 
 error[E0603]: struct `Foo` is private
-  --> $DIR/use-from-trait-xc.rs:27:5
+  --> $DIR/use-from-trait-xc.rs:27:24
    |
 LL | use use_from_trait_xc::Foo::C; //~ ERROR struct `Foo` is private
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        ^^^
 
 error: aborting due to 9 previous errors
 

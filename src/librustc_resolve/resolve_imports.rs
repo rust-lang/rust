@@ -275,7 +275,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     return Ok(self.dummy_binding);
                 }
                 if !self.is_accessible(binding.vis) {
-                    self.privacy_errors.push(PrivacyError(path_span, ident.name, binding));
+                    self.privacy_errors.push(PrivacyError(path_span, ident, binding));
                 }
             }
 

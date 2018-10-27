@@ -11,16 +11,16 @@ LL |     let us = UnitStruct;
    |              ^^^^^^^^^^ constructor is not visible here due to private fields
 
 error[E0603]: tuple struct `TupleStruct` is private
-  --> $DIR/structs.rs:33:23
+  --> $DIR/structs.rs:33:32
    |
 LL |     let ts_explicit = structs::TupleStruct(640, 480);
-   |                       ^^^^^^^^^^^^^^^^^^^^
+   |                                ^^^^^^^^^^^
 
 error[E0603]: unit struct `UnitStruct` is private
-  --> $DIR/structs.rs:42:23
+  --> $DIR/structs.rs:42:32
    |
 LL |     let us_explicit = structs::UnitStruct;
-   |                       ^^^^^^^^^^^^^^^^^^^
+   |                                ^^^^^^^^^^
 
 error[E0639]: cannot create non-exhaustive struct using struct expression
   --> $DIR/structs.rs:17:14
