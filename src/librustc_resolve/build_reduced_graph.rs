@@ -253,6 +253,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             uniform_paths_canary_emitted = true;
         }
 
+        let empty_for_self = |prefix: &[Segment]| {
+            prefix.is_empty() ||
+            prefix.len() == 1 && prefix[0].ident.name == keywords::CrateRoot.name()
+        };
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename, ..) => {
                 let mut ident = use_tree.ident();
@@ -265,10 +269,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     if source.ident.name == keywords::SelfValue.name() {
                         type_ns_only = true;
 
-                        let empty_prefix = module_path.last().map_or(true, |seg| {
-                            seg.ident.name == keywords::CrateRoot.name()
-                        });
-                        if empty_prefix {
+                        if empty_for_self(&module_path) {
                             resolve_error(
                                 self,
                                 use_tree.span,
@@ -398,6 +399,30 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         tree, id, &prefix, true, uniform_paths_canary_emitted,
                         // The whole `use` item
                         parent_scope.clone(), item, vis, root_span,
+                    );
+                }
+
+                // Empty groups `a::b::{}` are turned into synthetic `self` imports
+                // `a::b::c::{self as _}`, so that their prefixes are correctly
+                // resolved and checked for privacy/stability/etc.
+                if items.is_empty() && !empty_for_self(&prefix) {
+                    let new_span = prefix[prefix.len() - 1].ident.span;
+                    let tree = ast::UseTree {
+                        prefix: ast::Path::from_ident(
+                            Ident::new(keywords::SelfValue.name(), new_span)
+                        ),
+                        kind: ast::UseTreeKind::Simple(
+                            Some(Ident::new(keywords::Underscore.name().gensymed(), new_span)),
+                            ast::DUMMY_NODE_ID,
+                            ast::DUMMY_NODE_ID,
+                        ),
+                        span: use_tree.span,
+                    };
+                    self.build_reduced_graph_for_use_tree(
+                        // This particular use tree
+                        &tree, id, &prefix, true, uniform_paths_canary_emitted,
+                        // The whole `use` item
+                        parent_scope.clone(), item, ty::Visibility::Invisible, root_span,
                     );
                 }
             }

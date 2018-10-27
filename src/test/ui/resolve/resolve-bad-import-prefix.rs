@@ -17,8 +17,8 @@ use {}; // OK
 use ::{}; // OK
 use m::{}; // OK
 use E::{}; // OK
-use S::{}; //~ ERROR expected module or enum, found struct `S`
-use Tr::{}; //~ ERROR expected module or enum, found trait `Tr`
-use Nonexistent::{}; //~ ERROR cannot find module or enum `Nonexistent` in the crate root
+use S::{}; // FIXME, this and `use S::{self};` should be an error
+use Tr::{}; // FIXME, this and `use Tr::{self};` should be an error
+use Nonexistent::{}; //~ ERROR unresolved import `Nonexistent`
 
 fn main () {}

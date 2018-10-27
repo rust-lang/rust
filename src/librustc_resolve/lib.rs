@@ -482,15 +482,13 @@ enum PathSource<'a> {
     TraitItem(Namespace),
     // Path in `pub(path)`
     Visibility,
-    // Path in `use a::b::{...};`
-    ImportPrefix,
 }
 
 impl<'a> PathSource<'a> {
     fn namespace(self) -> Namespace {
         match self {
             PathSource::Type | PathSource::Trait(_) | PathSource::Struct |
-            PathSource::Visibility | PathSource::ImportPrefix => TypeNS,
+            PathSource::Visibility => TypeNS,
             PathSource::Expr(..) | PathSource::Pat | PathSource::TupleStruct => ValueNS,
             PathSource::TraitItem(ns) => ns,
         }
@@ -498,7 +496,7 @@ impl<'a> PathSource<'a> {
 
     fn global_by_default(self) -> bool {
         match self {
-            PathSource::Visibility | PathSource::ImportPrefix => true,
+            PathSource::Visibility => true,
             PathSource::Type | PathSource::Expr(..) | PathSource::Pat |
             PathSource::Struct | PathSource::TupleStruct |
             PathSource::Trait(_) | PathSource::TraitItem(..) => false,
@@ -510,7 +508,7 @@ impl<'a> PathSource<'a> {
             PathSource::Type | PathSource::Expr(..) | PathSource::Pat |
             PathSource::Struct | PathSource::TupleStruct => true,
             PathSource::Trait(_) | PathSource::TraitItem(..) |
-            PathSource::Visibility | PathSource::ImportPrefix => false,
+            PathSource::Visibility => false,
         }
     }
 
@@ -522,7 +520,6 @@ impl<'a> PathSource<'a> {
             PathSource::Struct => "struct, variant or union type",
             PathSource::TupleStruct => "tuple struct/variant",
             PathSource::Visibility => "module",
-            PathSource::ImportPrefix => "module or enum",
             PathSource::TraitItem(ns) => match ns {
                 TypeNS => "associated type",
                 ValueNS => "method or associated constant",
@@ -587,10 +584,6 @@ impl<'a> PathSource<'a> {
                 Def::AssociatedTy(..) if ns == TypeNS => true,
                 _ => false,
             },
-            PathSource::ImportPrefix => match def {
-                Def::Mod(..) | Def::Enum(..) => true,
-                _ => false,
-            },
             PathSource::Visibility => match def {
                 Def::Mod(..) => true,
                 _ => false,
@@ -626,8 +619,8 @@ impl<'a> PathSource<'a> {
             (PathSource::Pat, false) | (PathSource::TupleStruct, false) => "E0531",
             (PathSource::TraitItem(..), true) => "E0575",
             (PathSource::TraitItem(..), false) => "E0576",
-            (PathSource::Visibility, true) | (PathSource::ImportPrefix, true) => "E0577",
-            (PathSource::Visibility, false) | (PathSource::ImportPrefix, false) => "E0578",
+            (PathSource::Visibility, true) => "E0577",
+            (PathSource::Visibility, false) => "E0578",
         }
     }
 }
@@ -2350,63 +2343,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 });
             }
 
-            ItemKind::Use(ref use_tree) => {
-                // Imports are resolved as global by default, add starting root segment.
-                let path = Path {
-                    segments: use_tree.prefix.make_root().into_iter().collect(),
-                    span: use_tree.span,
-                };
-                self.resolve_use_tree(item.id, use_tree.span, item.id, use_tree, &path);
-            }
-
-            ItemKind::ExternCrate(_) | ItemKind::MacroDef(..) | ItemKind::GlobalAsm(_) => {
+            ItemKind::Use(..) | ItemKind::ExternCrate(..) |
+            ItemKind::MacroDef(..) | ItemKind::GlobalAsm(..) => {
                 // do nothing, these are just around to be encoded
             }
 
             ItemKind::Mac(_) => panic!("unexpanded macro in resolve!"),
-        }
-    }
-
-    /// For the most part, use trees are desugared into `ImportDirective` instances
-    /// when building the reduced graph (see `build_reduced_graph_for_use_tree`). But
-    /// there is one special case we handle here: an empty nested import like
-    /// `a::{b::{}}`, which desugares into...no import directives.
-    fn resolve_use_tree(
-        &mut self,
-        root_id: NodeId,
-        root_span: Span,
-        id: NodeId,
-        use_tree: &ast::UseTree,
-        prefix: &Path,
-    ) {
-        match use_tree.kind {
-            ast::UseTreeKind::Nested(ref items) => {
-                let path = Path {
-                    segments: prefix.segments
-                        .iter()
-                        .chain(use_tree.prefix.segments.iter())
-                        .cloned()
-                        .collect(),
-                    span: prefix.span.to(use_tree.prefix.span),
-                };
-
-                if items.is_empty() {
-                    // Resolve prefix of an import with empty braces (issue #28388).
-                    self.smart_resolve_path_with_crate_lint(
-                        id,
-                        None,
-                        &path,
-                        PathSource::ImportPrefix,
-                        CrateLint::UsePath { root_id, root_span },
-                    );
-                } else {
-                    for &(ref tree, nested_id) in items {
-                        self.resolve_use_tree(root_id, root_span, nested_id, tree, &path);
-                    }
-                }
-            }
-            ast::UseTreeKind::Simple(..) => {},
-            ast::UseTreeKind::Glob => {},
         }
     }
 
