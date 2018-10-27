@@ -124,7 +124,7 @@ pub fn spin_loop_hint() {
 /// [`bool`]: ../../../std/primitive.bool.html
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[repr(align(1))]
+#[repr(C, align(1))]
 pub struct AtomicBool {
     v: UnsafeCell<u8>,
 }
@@ -148,9 +148,9 @@ unsafe impl Sync for AtomicBool {}
 /// This type has the same in-memory representation as a `*mut T`.
 #[cfg(target_has_atomic = "ptr")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(target_pointer_width = "16", repr(align(2)))]
-#[cfg_attr(target_pointer_width = "32", repr(align(4)))]
-#[cfg_attr(target_pointer_width = "64", repr(align(8)))]
+#[cfg_attr(target_pointer_width = "16", repr(C, align(2)))]
+#[cfg_attr(target_pointer_width = "32", repr(C, align(4)))]
+#[cfg_attr(target_pointer_width = "64", repr(C, align(8)))]
 pub struct AtomicPtr<T> {
     p: UnsafeCell<*mut T>,
 }
@@ -1106,7 +1106,7 @@ macro_rules! atomic_int {
         ///
         /// [module-level documentation]: index.html
         #[$stable]
-        #[repr(align($align))]
+        #[repr(C, align($align))]
         pub struct $atomic_type {
             v: UnsafeCell<$int_type>,
         }
