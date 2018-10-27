@@ -23,16 +23,16 @@ LL |         pub(super) use foo::bar::f as g; //~ ERROR cannot be re-exported
    |                        ^^^^^^^^^^^^^^^^
 
 error[E0603]: struct `Crate` is private
-  --> $DIR/test.rs:48:9
+  --> $DIR/test.rs:48:25
    |
 LL |     use pub_restricted::Crate; //~ ERROR private
-   |         ^^^^^^^^^^^^^^^^^^^^^
+   |                         ^^^^^
 
 error[E0603]: function `f` is private
-  --> $DIR/test.rs:40:9
+  --> $DIR/test.rs:40:19
    |
 LL |     use foo::bar::f; //~ ERROR private
-   |         ^^^^^^^^^^^
+   |                   ^
 
 error[E0616]: field `x` of struct `foo::bar::S` is private
   --> $DIR/test.rs:41:5

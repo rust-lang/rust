@@ -23,10 +23,10 @@ LL |     fn z(y: isize) { log(debug, y); }
    |                          ^^^^^ not found in this scope
 
 error[E0603]: function `z` is private
-  --> $DIR/export.rs:20:13
+  --> $DIR/export.rs:20:18
    |
 LL | fn main() { foo::z(10); } //~ ERROR function `z` is private
-   |             ^^^^^^
+   |                  ^
 
 error: aborting due to 5 previous errors
 

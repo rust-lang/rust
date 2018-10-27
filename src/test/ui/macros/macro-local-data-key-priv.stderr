@@ -1,8 +1,8 @@
 error[E0603]: constant `baz` is private
-  --> $DIR/macro-local-data-key-priv.rs:18:5
+  --> $DIR/macro-local-data-key-priv.rs:18:10
    |
 LL |     bar::baz.with(|_| ());
-   |     ^^^^^^^^
+   |          ^^^
 
 error: aborting due to previous error
 

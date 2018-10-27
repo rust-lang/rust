@@ -5,10 +5,10 @@ LL |     let a = std::sys::imp::process::process_common::StdioPipes { ..panic!()
    |                       ^^^ Could not find `imp` in `sys`
 
 error[E0603]: module `sys` is private
-  --> $DIR/issue-38857.rs:12:13
+  --> $DIR/issue-38857.rs:12:18
    |
 LL |     let a = std::sys::imp::process::process_common::StdioPipes { ..panic!() };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                  ^^^
 
 error: aborting due to 2 previous errors
 

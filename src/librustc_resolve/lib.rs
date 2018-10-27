@@ -1207,7 +1207,7 @@ enum NameBindingKind<'a> {
     }
 }
 
-struct PrivacyError<'a>(Span, Name, &'a NameBinding<'a>);
+struct PrivacyError<'a>(Span, Ident, &'a NameBinding<'a>);
 
 struct UseError<'a> {
     err: DiagnosticBuilder<'a>,
@@ -4743,9 +4743,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             }
         }
 
-        for &PrivacyError(span, name, binding) in &self.privacy_errors {
-            if !reported_spans.insert(span) { continue }
-            span_err!(self.session, span, E0603, "{} `{}` is private", binding.descr(), name);
+        for &PrivacyError(dedup_span, ident, binding) in &self.privacy_errors {
+            if reported_spans.insert(dedup_span) {
+                span_err!(self.session, ident.span, E0603, "{} `{}` is private",
+                          binding.descr(), ident.name);
+            }
         }
     }
 
