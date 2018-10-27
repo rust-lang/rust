@@ -317,7 +317,8 @@ fn check_terminator(
             check_place(tcx, mir, location, span, PlaceMode::Read)?;
             check_operand(tcx, mir, value, span)
         },
-        TerminatorKind::SwitchInt { .. } => Err((
+
+        TerminatorKind::FalseEdges { .. } | TerminatorKind::SwitchInt { .. } => Err((
             span,
             "`if`, `match`, `&&` and `||` are not stable in const fn".into(),
         )),
@@ -363,7 +364,7 @@ fn check_terminator(
             cleanup: _,
         } => check_operand(tcx, mir, cond, span),
 
-        | TerminatorKind::FalseEdges { .. } | TerminatorKind::FalseUnwind { .. } => span_bug!(
+        | TerminatorKind::FalseUnwind { .. } => span_bug!(
             terminator.source_info.span,
             "min_const_fn encountered `{:#?}`",
             terminator
