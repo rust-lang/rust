@@ -362,6 +362,12 @@ pub fn snippet<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str)
     snippet_opt(cx, span).map_or_else(|| Cow::Borrowed(default), From::from)
 }
 
+/// Same as `snippet`, but should only be used when it's clear that the input span is
+/// not a macro argument.
+pub fn snippet_with_macro_callsite<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
+    snippet(cx, span.source_callsite(), default)
+}
+
 /// Convert a span to a code snippet. Returns `None` if not available.
 pub fn snippet_opt<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String> {
     cx.sess().source_map().span_to_snippet(span).ok()

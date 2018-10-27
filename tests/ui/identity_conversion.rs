@@ -53,4 +53,5 @@ fn main() {
     let _ = String::from(format!("A: {:04}", 123));
     let _ = "".lines().into_iter();
     let _ = vec![1, 2, 3].into_iter().into_iter();
+    let _: String = format!("Hello {}", "world").into();
 }
