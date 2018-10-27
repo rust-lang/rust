@@ -1,0 +1,19 @@
+error[E0508]: cannot move out of type `[u8]`, a non-copy slice
+  --> $DIR/unsized-exprs2.rs:22:19
+   |
+LL |     udrop::<[u8]>(foo()[..]);
+   |                   ^^^^^^^^^ cannot move out of here
+
+error[E0507]: cannot move out of data in a `&` reference
+  --> $DIR/unsized-exprs2.rs:22:19
+   |
+LL |     udrop::<[u8]>(foo()[..]);
+   |                   ^^^^^^^^^
+   |                   |
+   |                   cannot move out of data in a `&` reference
+   |                   cannot move
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0507, E0508.
+For more information about an error, try `rustc --explain E0507`.

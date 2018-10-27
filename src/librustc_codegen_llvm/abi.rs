@@ -11,7 +11,7 @@
 use llvm::{self, AttributePlace};
 use base;
 use builder::{Builder, MemFlags};
-use common::{ty_fn_sig, C_usize};
+use common::C_usize;
 use context::CodegenCx;
 use mir::place::PlaceRef;
 use mir::operand::OperandValue;
@@ -283,8 +283,7 @@ pub trait FnTypeExt<'tcx> {
 
 impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
     fn of_instance(cx: &CodegenCx<'ll, 'tcx>, instance: &ty::Instance<'tcx>) -> Self {
-        let fn_ty = instance.ty(cx.tcx);
-        let sig = ty_fn_sig(cx, fn_ty);
+        let sig = instance.fn_sig(cx.tcx);
         let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
         FnType::new(cx, sig, &[])
     }
@@ -305,17 +304,17 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             // Don't pass the vtable, it's not an argument of the virtual fn.
             // Instead, pass just the (thin pointer) first field of `*dyn Trait`.
             if arg_idx == Some(0) {
-                if layout.is_unsized() {
-                    unimplemented!("by-value trait object is not \
-                                    yet implemented in #![feature(unsized_locals)]");
-                }
                 // FIXME(eddyb) `layout.field(cx, 0)` is not enough because e.g.
                 // `Box<dyn Trait>` has a few newtype wrappers around the raw
                 // pointer, so we'd have to "dig down" to find `*dyn Trait`.
-                let pointee = layout.ty.builtin_deref(true)
-                    .unwrap_or_else(|| {
-                        bug!("FnType::new_vtable: non-pointer self {:?}", layout)
-                    }).ty;
+                let pointee = if layout.is_unsized() {
+                    layout.ty
+                } else {
+                    layout.ty.builtin_deref(true)
+                        .unwrap_or_else(|| {
+                            bug!("FnType::new_vtable: non-pointer self {:?}", layout)
+                        }).ty
+                };
                 let fat_ptr_ty = cx.tcx.mk_mut_ptr(pointee);
                 layout = cx.layout_of(fat_ptr_ty).field(cx, 0);
             }

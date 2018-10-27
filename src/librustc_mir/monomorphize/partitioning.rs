@@ -180,6 +180,7 @@ pub trait CodegenUnitExt<'tcx> {
                         InstanceDef::Item(def_id) => {
                             tcx.hir.as_local_node_id(def_id)
                         }
+                        InstanceDef::VtableShim(..) |
                         InstanceDef::Intrinsic(..) |
                         InstanceDef::FnPtrShim(..) |
                         InstanceDef::Virtual(..) |
@@ -422,6 +423,7 @@ fn mono_item_visibility(
         InstanceDef::Item(def_id) => def_id,
 
         // These are all compiler glue and such, never exported, always hidden.
+        InstanceDef::VtableShim(..) |
         InstanceDef::FnPtrShim(..) |
         InstanceDef::Virtual(..) |
         InstanceDef::Intrinsic(..) |
@@ -756,6 +758,7 @@ fn characteristic_def_id_of_mono_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         MonoItem::Fn(instance) => {
             let def_id = match instance.def {
                 ty::InstanceDef::Item(def_id) => def_id,
+                ty::InstanceDef::VtableShim(..) |
                 ty::InstanceDef::FnPtrShim(..) |
                 ty::InstanceDef::ClosureOnceShim { .. } |
                 ty::InstanceDef::Intrinsic(..) |

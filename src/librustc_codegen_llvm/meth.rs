@@ -89,7 +89,7 @@ pub fn get_vtable(
     let methods = tcx.vtable_methods(trait_ref.with_self_ty(tcx, ty));
     let methods = methods.iter().cloned().map(|opt_mth| {
         opt_mth.map_or(nullptr, |(def_id, substs)| {
-            callee::resolve_and_get_fn(cx, def_id, substs)
+            callee::resolve_and_get_fn_for_vtable(cx, def_id, substs)
         })
     });
 

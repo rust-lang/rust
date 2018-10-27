@@ -1,4 +1,4 @@
-error: symbol-name(_ZN5impl13foo3Foo3bar17h8da62e6147ff602fE)
+error: symbol-name(_ZN5impl13foo3Foo3bar17hc487d6ec13fe9124E)
   --> $DIR/impl1.rs:18:9
    |
 LL |         #[rustc_symbol_name] //~ ERROR _ZN5impl13foo3Foo3bar
@@ -10,7 +10,7 @@ error: item-path(foo::Foo::bar)
 LL |         #[rustc_item_path] //~ ERROR item-path(foo::Foo::bar)
    |         ^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_ZN5impl13bar33_$LT$impl$u20$impl1..foo..Foo$GT$3baz17h374cb8f6185db9b4E)
+error: symbol-name(_ZN5impl13bar33_$LT$impl$u20$impl1..foo..Foo$GT$3baz17h38577281258e1527E)
   --> $DIR/impl1.rs:28:9
    |
 LL |         #[rustc_symbol_name] //~ ERROR _ZN5impl13bar33_$LT$impl$u20$impl1..foo..Foo$GT$3baz

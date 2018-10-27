@@ -30,9 +30,7 @@ use rustc::ty::layout::{HasDataLayout, LayoutOf};
 use rustc::hir;
 
 use libc::{c_uint, c_char};
-use std::iter;
 
-use rustc_target::spec::abi::Abi;
 use syntax::symbol::LocalInternedString;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -402,54 +400,5 @@ pub fn shift_mask_val(
             bx.vector_splat(mask_llty.vector_length(), mask)
         },
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
-    }
-}
-
-pub fn ty_fn_sig<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
-                           ty: Ty<'tcx>)
-                           -> ty::PolyFnSig<'tcx>
-{
-    match ty.sty {
-        ty::FnDef(..) |
-        // Shims currently have type FnPtr. Not sure this should remain.
-        ty::FnPtr(_) => ty.fn_sig(cx.tcx),
-        ty::Closure(def_id, substs) => {
-            let tcx = cx.tcx;
-            let sig = substs.closure_sig(def_id, tcx);
-
-            let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
-            sig.map_bound(|sig| tcx.mk_fn_sig(
-                iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
-                sig.output(),
-                sig.variadic,
-                sig.unsafety,
-                sig.abi
-            ))
-        }
-        ty::Generator(def_id, substs, _) => {
-            let tcx = cx.tcx;
-            let sig = substs.poly_sig(def_id, cx.tcx);
-
-            let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
-            let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
-
-            sig.map_bound(|sig| {
-                let state_did = tcx.lang_items().gen_state().unwrap();
-                let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs = tcx.intern_substs(&[
-                    sig.yield_ty.into(),
-                    sig.return_ty.into(),
-                ]);
-                let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
-
-                tcx.mk_fn_sig(iter::once(env_ty),
-                    ret_ty,
-                    false,
-                    hir::Unsafety::Normal,
-                    Abi::Rust
-                )
-            })
-        }
-        _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
     }
 }

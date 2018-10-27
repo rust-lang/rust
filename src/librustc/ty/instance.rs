@@ -8,13 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir::Unsafety;
 use hir::def_id::DefId;
-use ty::{self, Ty, TypeFoldable, Substs, TyCtxt};
+use ty::{self, Ty, PolyFnSig, TypeFoldable, Substs, TyCtxt};
 use traits;
 use rustc_target::spec::abi::Abi;
 use util::ppaux;
 
 use std::fmt;
+use std::iter;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct Instance<'tcx> {
@@ -26,6 +28,9 @@ pub struct Instance<'tcx> {
 pub enum InstanceDef<'tcx> {
     Item(DefId),
     Intrinsic(DefId),
+
+    /// `<T as Trait>::method` where `method` receives unsizeable `self: Self`.
+    VtableShim(DefId),
 
     /// \<fn() as FnTrait>::call_*
     /// def-id is FnTrait::call_*
@@ -56,6 +61,65 @@ impl<'a, 'tcx> Instance<'tcx> {
             &ty,
         )
     }
+
+    fn fn_sig_noadjust(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> PolyFnSig<'tcx> {
+        let ty = self.ty(tcx);
+        match ty.sty {
+            ty::FnDef(..) |
+            // Shims currently have type FnPtr. Not sure this should remain.
+            ty::FnPtr(_) => ty.fn_sig(tcx),
+            ty::Closure(def_id, substs) => {
+                let sig = substs.closure_sig(def_id, tcx);
+
+                let env_ty = tcx.closure_env_ty(def_id, substs).unwrap();
+                sig.map_bound(|sig| tcx.mk_fn_sig(
+                    iter::once(*env_ty.skip_binder()).chain(sig.inputs().iter().cloned()),
+                    sig.output(),
+                    sig.variadic,
+                    sig.unsafety,
+                    sig.abi
+                ))
+            }
+            ty::Generator(def_id, substs, _) => {
+                let sig = substs.poly_sig(def_id, tcx);
+
+                let env_region = ty::ReLateBound(ty::INNERMOST, ty::BrEnv);
+                let env_ty = tcx.mk_mut_ref(tcx.mk_region(env_region), ty);
+
+                sig.map_bound(|sig| {
+                    let state_did = tcx.lang_items().gen_state().unwrap();
+                    let state_adt_ref = tcx.adt_def(state_did);
+                    let state_substs = tcx.intern_substs(&[
+                        sig.yield_ty.into(),
+                        sig.return_ty.into(),
+                    ]);
+                    let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+
+                    tcx.mk_fn_sig(iter::once(env_ty),
+                        ret_ty,
+                        false,
+                        Unsafety::Normal,
+                        Abi::Rust
+                    )
+                })
+            }
+            _ => bug!("unexpected type {:?} in Instance::fn_sig_noadjust", ty)
+        }
+    }
+
+    pub fn fn_sig(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> ty::PolyFnSig<'tcx> {
+        let mut fn_sig = self.fn_sig_noadjust(tcx);
+        if let InstanceDef::VtableShim(..) = self.def {
+            // Modify fn(self, ...) to fn(self: *mut Self, ...)
+            fn_sig = fn_sig.map_bound(|mut fn_sig| {
+                let mut inputs_and_output = fn_sig.inputs_and_output.to_vec();
+                inputs_and_output[0] = tcx.mk_mut_ptr(inputs_and_output[0]);
+                fn_sig.inputs_and_output = tcx.intern_type_list(&inputs_and_output);
+                fn_sig
+            });
+        }
+        fn_sig
+    }
 }
 
 impl<'tcx> InstanceDef<'tcx> {
@@ -63,6 +127,7 @@ impl<'tcx> InstanceDef<'tcx> {
     pub fn def_id(&self) -> DefId {
         match *self {
             InstanceDef::Item(def_id) |
+            InstanceDef::VtableShim(def_id) |
             InstanceDef::FnPtrShim(def_id, _) |
             InstanceDef::Virtual(def_id, _) |
             InstanceDef::Intrinsic(def_id, ) |
@@ -120,6 +185,9 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
         ppaux::parameterized(f, self.substs, self.def_id(), &[])?;
         match self.def {
             InstanceDef::Item(_) => Ok(()),
+            InstanceDef::VtableShim(_) => {
+                write!(f, " - shim(vtable)")
+            }
             InstanceDef::Intrinsic(_) => {
                 write!(f, " - intrinsic")
             }
@@ -230,6 +298,25 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         result
     }
 
+    pub fn resolve_for_vtable(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              param_env: ty::ParamEnv<'tcx>,
+                              def_id: DefId,
+                              substs: &'tcx Substs<'tcx>) -> Option<Instance<'tcx>> {
+        debug!("resolve(def_id={:?}, substs={:?})", def_id, substs);
+        let fn_sig = tcx.fn_sig(def_id);
+        let is_vtable_shim =
+            fn_sig.inputs().skip_binder().len() > 0 && fn_sig.input(0).skip_binder().is_self();
+        if is_vtable_shim {
+            debug!(" => associated item with unsizeable self: Self");
+            Some(Instance {
+                def: InstanceDef::VtableShim(def_id),
+                substs,
+            })
+        } else {
+            Instance::resolve(tcx, param_env, def_id, substs)
+        }
+    }
+
     pub fn resolve_closure(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         def_id: DefId,
@@ -242,6 +329,14 @@ impl<'a, 'b, 'tcx> Instance<'tcx> {
         match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
             Ok(true) => fn_once_adapter_instance(tcx, def_id, substs),
             _ => Instance::new(def_id, substs.substs)
+        }
+    }
+
+    pub fn is_vtable_shim(&self) -> bool {
+        if let InstanceDef::VtableShim(..) = self.def {
+            true
+        } else {
+            false
         }
     }
 }

@@ -404,15 +404,15 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
             return llfn;
         }
 
-        let ty = tcx.mk_fn_ptr(ty::Binder::bind(tcx.mk_fn_sig(
+        let sig = ty::Binder::bind(tcx.mk_fn_sig(
             iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
             tcx.types.never,
             false,
             hir::Unsafety::Unsafe,
             Abi::C
-        )));
+        ));
 
-        let llfn = declare::declare_fn(self, "rust_eh_unwind_resume", ty);
+        let llfn = declare::declare_fn(self, "rust_eh_unwind_resume", sig);
         attributes::unwind(llfn, true);
         attributes::apply_target_cpu_attr(self, llfn);
         unwresume.set(Some(llfn));

@@ -298,8 +298,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 };
                 let (drop_fn, fn_ty) = match ty.sty {
                     ty::Dynamic(..) => {
-                        let fn_ty = drop_fn.ty(bx.cx.tcx);
-                        let sig = common::ty_fn_sig(bx.cx, fn_ty);
+                        let sig = drop_fn.fn_sig(bx.cx.tcx);
                         let sig = bx.tcx().normalize_erasing_late_bound_regions(
                             ty::ParamEnv::reveal_all(),
                             &sig,
@@ -651,6 +650,14 @@ impl FunctionCx<'a, 'll, 'tcx> {
                                 .get_fn(&bx, meta, &fn_ty));
                             llargs.push(data_ptr);
                             continue;
+                        } else if let Ref(data_ptr, Some(meta), _) = op.val {
+                            // by-value dynamic dispatch
+                            llfn = Some(meth::VirtualIndex::from_index(idx)
+                                .get_fn(&bx, meta, &fn_ty));
+                            llargs.push(data_ptr);
+                            continue;
+                        } else {
+                            span_bug!(span, "can't codegen a virtual call on {:?}", op);
                         }
                     }
 

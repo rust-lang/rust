@@ -705,6 +705,7 @@ fn visit_instance_use<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 bug!("intrinsic {:?} being reified", def_id);
             }
         }
+        ty::InstanceDef::VtableShim(..) |
         ty::InstanceDef::Virtual(..) |
         ty::InstanceDef::DropGlue(_, None) => {
             // don't need to emit shim if we are calling directly.
@@ -731,6 +732,7 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
                                          -> bool {
     let def_id = match instance.def {
         ty::InstanceDef::Item(def_id) => def_id,
+        ty::InstanceDef::VtableShim(..) |
         ty::InstanceDef::ClosureOnceShim { .. } |
         ty::InstanceDef::Virtual(..) |
         ty::InstanceDef::FnPtrShim(..) |
@@ -913,7 +915,7 @@ fn create_mono_items_for_vtable_methods<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Walk all methods of the trait, including those of its supertraits
         let methods = tcx.vtable_methods(poly_trait_ref);
         let methods = methods.iter().cloned().filter_map(|method| method)
-            .map(|(def_id, substs)| ty::Instance::resolve(
+            .map(|(def_id, substs)| ty::Instance::resolve_for_vtable(
                     tcx,
                     ty::ParamEnv::reveal_all(),
                     def_id,

@@ -1007,6 +1007,9 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::InstanceDef<'gcx> {
             ty::InstanceDef::Item(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }
+            ty::InstanceDef::VtableShim(def_id) => {
+                def_id.hash_stable(hcx, hasher);
+            }
             ty::InstanceDef::Intrinsic(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }

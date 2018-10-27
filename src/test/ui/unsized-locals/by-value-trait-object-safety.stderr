@@ -1,0 +1,8 @@
+error: the `foo` method cannot be invoked on a trait object
+  --> $DIR/by-value-trait-object-safety.rs:18:7
+   |
+LL |     x.foo();
+   |       ^^^
+
+error: aborting due to previous error
+

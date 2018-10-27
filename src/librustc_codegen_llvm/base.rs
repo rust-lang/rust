@@ -56,7 +56,7 @@ use callee;
 use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
 use rustc_mir::monomorphize::collector::{self, MonoItemCollectionMode};
 use rustc_mir::monomorphize::item::DefPathBasedNames;
-use common::{self, C_struct_in_context, C_array, val_ty};
+use common::{C_struct_in_context, C_array, val_ty};
 use consts;
 use context::CodegenCx;
 use debuginfo;
@@ -491,8 +491,7 @@ pub fn codegen_instance<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>, instance: Instance<'
     // release builds.
     info!("codegen_instance({})", instance);
 
-    let fn_ty = instance.ty(cx.tcx);
-    let sig = common::ty_fn_sig(cx, fn_ty);
+    let sig = instance.fn_sig(cx.tcx);
     let sig = cx.tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), &sig);
 
     let lldecl = cx.instances.borrow().get(&instance).cloned().unwrap_or_else(||
