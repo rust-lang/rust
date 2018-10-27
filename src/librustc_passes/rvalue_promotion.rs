@@ -663,6 +663,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for CheckCrateVisitor<'a, 'gcx> {
         let mut cur = cmt;
         loop {
             match cur.cat {
+                Categorization::ThreadLocal(..) |
                 Categorization::Rvalue(..) => {
                     if loan_cause == euv::MatchDiscriminant {
                         // Ignore the dummy immutable borrow created by EUV.

@@ -520,6 +520,7 @@ pub fn opt_loan_path_is_field<'tcx>(cmt: &mc::cmt_<'tcx>) -> (Option<Rc<LoanPath
 
     match cmt.cat {
         Categorization::Rvalue(..) |
+        Categorization::ThreadLocal(..) |
         Categorization::StaticItem => {
             (None, false)
         }

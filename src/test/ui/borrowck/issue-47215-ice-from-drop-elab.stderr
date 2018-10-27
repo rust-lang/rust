@@ -1,0 +1,12 @@
+error[E0507]: cannot move out of thread-local static item
+  --> $DIR/issue-47215-ice-from-drop-elab.rs:17:21
+   |
+LL |         let mut x = X; //~ ERROR cannot move out of thread-local static item [E0507]
+   |                     ^
+   |                     |
+   |                     cannot move out of thread-local static item
+   |                     help: consider using a reference instead: `&X`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

@@ -93,6 +93,7 @@ use util::nodemap::ItemLocalSet;
 #[derive(Clone, Debug, PartialEq)]
 pub enum Categorization<'tcx> {
     Rvalue(ty::Region<'tcx>),            // temporary val, argument is its scope
+    ThreadLocal(ty::Region<'tcx>),       // value that cannot move, but still restricted in scope
     StaticItem,
     Upvar(Upvar),                        // upvar referenced by closure env
     Local(ast::NodeId),                  // local variable
@@ -268,6 +269,7 @@ impl<'tcx> cmt_<'tcx> {
             Categorization::Deref(ref base_cmt, _) => {
                 base_cmt.immutability_blame()
             }
+            Categorization::ThreadLocal(..) |
             Categorization::StaticItem => {
                 // Do we want to do something here?
                 None
@@ -715,17 +717,23 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             }
 
             Def::Static(def_id, mutbl) => {
-                // `#[thread_local]` statics may not outlive the current function.
-                for attr in &self.tcx.get_attrs(def_id)[..] {
-                    if attr.check_name("thread_local") {
-                        return Ok(self.cat_rvalue_node(hir_id, span, expr_ty));
-                    }
-                }
+                // `#[thread_local]` statics may not outlive the current function, but
+                // they also cannot be moved out of.
+                let is_thread_local = self.tcx.get_attrs(def_id)[..]
+                    .iter()
+                    .any(|attr| attr.check_name("thread_local"));
+
+                let cat = if is_thread_local {
+                    let re = self.temporary_scope(hir_id.local_id);
+                    Categorization::ThreadLocal(re)
+                } else {
+                    Categorization::StaticItem
+                };
 
                 Ok(cmt_ {
                     hir_id,
-                    span:span,
-                    cat:Categorization::StaticItem,
+                    span,
+                    cat,
                     mutbl: if mutbl { McDeclared } else { McImmutable},
                     ty:expr_ty,
                     note: NoteNone
@@ -1408,6 +1416,7 @@ impl<'tcx> cmt_<'tcx> {
         match self.cat {
             Categorization::Rvalue(..) |
             Categorization::StaticItem |
+            Categorization::ThreadLocal(..) |
             Categorization::Local(..) |
             Categorization::Deref(_, UnsafePtr(..)) |
             Categorization::Deref(_, BorrowedPtr(..)) |
@@ -1439,6 +1448,7 @@ impl<'tcx> cmt_<'tcx> {
             }
 
             Categorization::Rvalue(..) |
+            Categorization::ThreadLocal(..) |
             Categorization::Local(..) |
             Categorization::Upvar(..) |
             Categorization::Deref(_, UnsafePtr(..)) => { // yes, it's aliasable, but...
@@ -1484,6 +1494,9 @@ impl<'tcx> cmt_<'tcx> {
         match self.cat {
             Categorization::StaticItem => {
                 "static item".into()
+            }
+            Categorization::ThreadLocal(..) => {
+                "thread-local static item".into()
             }
             Categorization::Rvalue(..) => {
                 "non-place".into()
