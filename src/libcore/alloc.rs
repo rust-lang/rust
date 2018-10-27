@@ -248,6 +248,9 @@ impl Layout {
     /// will be properly aligned. Note that the result layout will
     /// satisfy the alignment properties of both `self` and `next`.
     ///
+    /// The resulting layout will be the same as that of a C struct containing
+    /// two fields with the layouts of `self` and `next`, in that order.
+    ///
     /// Returns `Some((k, offset))`, where `k` is layout of the concatenated
     /// record and `offset` is the relative location, in bytes, of the
     /// start of the `next` embedded within the concatenated record
