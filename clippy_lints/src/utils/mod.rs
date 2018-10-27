@@ -406,7 +406,10 @@ pub fn expr_block<'a, 'b, T: LintContext<'b>>(
 ) -> Cow<'a, str> {
     let code = snippet_block(cx, expr.span, default);
     let string = option.unwrap_or_default();
-    if let ExprKind::Block(_, _) = expr.node {
+    if in_macro(expr.span) {
+        Cow::Owned(format!("{{ {} }}", snippet_with_macro_callsite(cx, expr.span, default)))
+    }
+    else if let ExprKind::Block(_, _) = expr.node {
         Cow::Owned(format!("{}{}", code, string))
     } else if string.is_empty() {
         Cow::Owned(format!("{{ {} }}", code))
