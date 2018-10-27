@@ -51,7 +51,9 @@ declare_clippy_lint! {
 
 #[derive(Copy, Clone, Default)]
 pub struct Arithmetic {
-    span: Option<Span>,
+    expr_span: Option<Span>,
+    /// This field is used to check whether expressions are constants, such as in enum discriminants and consts
+    const_span: Option<Span>,
 }
 
 impl LintPass for Arithmetic {
@@ -62,8 +64,14 @@ impl LintPass for Arithmetic {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        if self.span.is_some() {
+        if self.expr_span.is_some() {
             return;
+        }
+
+        if let Some(span) = self.const_span {
+            if span.contains(expr.span) {
+                return;
+            }
         }
         match expr.node {
             hir::ExprKind::Binary(ref op, ref l, ref r) => {
@@ -86,20 +94,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
                 let (l_ty, r_ty) = (cx.tables.expr_ty(l), cx.tables.expr_ty(r));
                 if l_ty.is_integral() && r_ty.is_integral() {
                     span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
-                    self.span = Some(expr.span);
+                    self.expr_span = Some(expr.span);
                 } else if l_ty.is_floating_point() && r_ty.is_floating_point() {
                     span_lint(cx, FLOAT_ARITHMETIC, expr.span, "floating-point arithmetic detected");
-                    self.span = Some(expr.span);
+                    self.expr_span = Some(expr.span);
                 }
             },
             hir::ExprKind::Unary(hir::UnOp::UnNeg, ref arg) => {
                 let ty = cx.tables.expr_ty(arg);
                 if ty.is_integral() {
                     span_lint(cx, INTEGER_ARITHMETIC, expr.span, "integer arithmetic detected");
-                    self.span = Some(expr.span);
+                    self.expr_span = Some(expr.span);
                 } else if ty.is_floating_point() {
                     span_lint(cx, FLOAT_ARITHMETIC, expr.span, "floating-point arithmetic detected");
-                    self.span = Some(expr.span);
+                    self.expr_span = Some(expr.span);
                 }
             },
             _ => (),
@@ -107,8 +115,39 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
     }
 
     fn check_expr_post(&mut self, _: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        if Some(expr.span) == self.span {
-            self.span = None;
+        if Some(expr.span) == self.expr_span {
+            self.expr_span = None;
         }
+    }
+
+    fn check_body(&mut self, cx: &LateContext<'_, '_>, body: &hir::Body) {
+        let body_owner = cx.tcx.hir.body_owner(body.id());
+
+        match cx.tcx.hir.body_owner_kind(body_owner) {
+            hir::BodyOwnerKind::Static(_)
+            | hir::BodyOwnerKind::Const => {
+                let body_span = cx.tcx.hir.span(body_owner);
+
+                if let Some(span) = self.const_span {
+                    if span.contains(body_span) {
+                        return;
+                    }
+                }
+                self.const_span = Some(body_span);
+            }
+            hir::BodyOwnerKind::Fn => (),
+        }
+    }
+
+    fn check_body_post(&mut self, cx: &LateContext<'_, '_>, body: &hir::Body) {
+        let body_owner = cx.tcx.hir.body_owner(body.id());
+        let body_span = cx.tcx.hir.span(body_owner);
+
+        if let Some(span) = self.const_span {
+            if span.contains(body_span) {
+                return;
+            }
+        }
+        self.const_span = None;
     }
 }

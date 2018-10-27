@@ -19,12 +19,12 @@ use crate::rustc::hir::print;
 use crate::syntax::ast::Attribute;
 use crate::utils::get_attr;
 
-/// **What it does:** Dumps every ast/hir node which has the `#[clippy_dump]`
+/// **What it does:** Dumps every ast/hir node which has the `#[clippy::dump]`
 /// attribute
 ///
 /// **Example:**
 /// ```rust
-/// #[clippy_dump]
+/// #[clippy::dump]
 /// extern crate foo;
 /// ```
 ///

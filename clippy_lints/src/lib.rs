@@ -144,6 +144,7 @@ pub mod loops;
 pub mod map_clone;
 pub mod map_unit_fn;
 pub mod matches;
+pub mod mem_discriminant;
 pub mod mem_forget;
 pub mod mem_replace;
 pub mod methods;
@@ -178,6 +179,7 @@ pub mod ptr;
 pub mod ptr_offset_with_cast;
 pub mod question_mark;
 pub mod ranges;
+pub mod redundant_clone;
 pub mod redundant_field_names;
 pub mod redundant_pattern_matching;
 pub mod reference;
@@ -200,6 +202,7 @@ pub mod unused_label;
 pub mod unwrap;
 pub mod use_self;
 pub mod vec;
+pub mod wildcard_dependencies;
 pub mod write;
 pub mod zero_div_zero;
 // end lints modules, do not remove this comment, it’s used in `update_lints`
@@ -391,12 +394,13 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_early_lint_pass(box int_plus_one::IntPlusOne);
     reg.register_late_lint_pass(box overflow_check_conditional::OverflowCheckConditional);
     reg.register_late_lint_pass(box unused_label::UnusedLabel);
-    reg.register_late_lint_pass(box new_without_default::NewWithoutDefault);
+    reg.register_late_lint_pass(box new_without_default::NewWithoutDefault::default());
     reg.register_late_lint_pass(box blacklisted_name::BlackListedName::new(conf.blacklisted_names.clone()));
     reg.register_late_lint_pass(box functions::Functions::new(conf.too_many_arguments_threshold));
     reg.register_early_lint_pass(box doc::Doc::new(conf.doc_valid_idents.clone()));
     reg.register_late_lint_pass(box neg_multiply::NegMultiply);
     reg.register_early_lint_pass(box unsafe_removed_from_name::UnsafeNameRemoval);
+    reg.register_late_lint_pass(box mem_discriminant::MemDiscriminant);
     reg.register_late_lint_pass(box mem_forget::MemForget);
     reg.register_late_lint_pass(box mem_replace::MemReplace);
     reg.register_late_lint_pass(box arithmetic::Arithmetic::default());
@@ -438,6 +442,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box question_mark::Pass);
     reg.register_late_lint_pass(box suspicious_trait_impl::SuspiciousImpl);
     reg.register_early_lint_pass(box multiple_crate_versions::Pass);
+    reg.register_early_lint_pass(box wildcard_dependencies::Pass);
     reg.register_late_lint_pass(box map_unit_fn::Pass);
     reg.register_late_lint_pass(box infallible_destructuring_match::Pass);
     reg.register_late_lint_pass(box inherent_impl::Pass::default());
@@ -448,6 +453,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box indexing_slicing::IndexingSlicing);
     reg.register_late_lint_pass(box non_copy_const::NonCopyConst);
     reg.register_late_lint_pass(box ptr_offset_with_cast::Pass);
+    reg.register_late_lint_pass(box redundant_clone::RedundantClone);
 
     reg.register_lint_group("clippy::restriction", Some("clippy_restriction"), vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -610,6 +616,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         matches::MATCH_REF_PATS,
         matches::MATCH_WILD_ERR_ARM,
         matches::SINGLE_MATCH,
+        mem_discriminant::MEM_DISCRIMINANT_NON_ENUM,
         mem_replace::MEM_REPLACE_OPTION_WITH_NONE,
         methods::CHARS_LAST_CMP,
         methods::CHARS_NEXT_CMP,
@@ -922,6 +929,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         loops::NEVER_LOOP,
         loops::REVERSE_RANGE_LOOP,
         loops::WHILE_IMMUTABLE_CONDITION,
+        mem_discriminant::MEM_DISCRIMINANT_NON_ENUM,
         methods::CLONE_DOUBLE_REF,
         methods::TEMPORARY_CSTRING_AS_PTR,
         minmax::MIN_MAX,
@@ -967,6 +975,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 
     reg.register_lint_group("clippy::cargo", Some("clippy_cargo"), vec![
         multiple_crate_versions::MULTIPLE_CRATE_VERSIONS,
+        wildcard_dependencies::WILDCARD_DEPENDENCIES,
     ]);
 
     reg.register_lint_group("clippy::nursery", Some("clippy_nursery"), vec![
@@ -974,6 +983,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         fallible_impl_from::FALLIBLE_IMPL_FROM,
         mutex_atomic::MUTEX_INTEGER,
         needless_borrow::NEEDLESS_BORROW,
+        redundant_clone::REDUNDANT_CLONE,
         unwrap::PANICKING_UNWRAP,
         unwrap::UNNECESSARY_UNWRAP,
     ]);

@@ -7,12 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! lint on multiple versions of a crate being used
 
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax::ast::*;
+use crate::syntax::{ast::*, source_map::DUMMY_SP};
 use crate::utils::span_lint;
 
 use cargo_metadata;
@@ -50,16 +49,11 @@ impl LintPass for Pass {
 }
 
 impl EarlyLintPass for Pass {
-    fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
+    fn check_crate(&mut self, cx: &EarlyContext<'_>, _: &Crate) {
         let metadata = if let Ok(metadata) = cargo_metadata::metadata_deps(None, true) {
             metadata
         } else {
-            span_lint(
-                cx,
-                MULTIPLE_CRATE_VERSIONS,
-                krate.span,
-                "could not read cargo metadata"
-            );
+            span_lint(cx, MULTIPLE_CRATE_VERSIONS, DUMMY_SP, "could not read cargo metadata");
 
             return;
         };
@@ -76,7 +70,7 @@ impl EarlyLintPass for Pass {
                 span_lint(
                     cx,
                     MULTIPLE_CRATE_VERSIONS,
-                    krate.span,
+                    DUMMY_SP,
                     &format!("multiple versions for dependency `{}`: {}", name, versions),
                 );
             }

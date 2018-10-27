@@ -13,7 +13,7 @@ fn calc_idx(i: usize) -> usize {
 }
 
 fn main() {
-    let ns = [2, 3, 5, 7];
+    let ns = vec![2, 3, 5, 7];
 
     for i in 3..10 {
         println!("{}", ns[i]);
@@ -75,5 +75,19 @@ fn main() {
 
     for i in x..=x + 4 {
         vec[i] += 1;
+    }
+
+    let arr = [1,2,3];
+
+    for i in 0..3 {
+        println!("{}", arr[i]);
+    }
+
+    for i in 0..2 {
+        println!("{}", arr[i]);
+    }
+
+    for i in 1..3 {
+        println!("{}", arr[i]);
     }
 }

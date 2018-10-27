@@ -744,6 +744,7 @@ All notable changes to this project will be documented in this file.
 [`match_same_arms`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#match_same_arms
 [`match_wild_err_arm`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#match_wild_err_arm
 [`maybe_infinite_iter`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#maybe_infinite_iter
+[`mem_discriminant_non_enum`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mem_discriminant_non_enum
 [`mem_forget`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mem_forget
 [`mem_replace_option_with_none`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#mem_replace_option_with_none
 [`min_max`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#min_max
@@ -812,6 +813,7 @@ All notable changes to this project will be documented in this file.
 [`range_plus_one`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#range_plus_one
 [`range_step_by_zero`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#range_step_by_zero
 [`range_zip_with_len`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#range_zip_with_len
+[`redundant_clone`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_clone
 [`redundant_closure`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_closure
 [`redundant_closure_call`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_closure_call
 [`redundant_field_names`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#redundant_field_names
@@ -893,6 +895,7 @@ All notable changes to this project will be documented in this file.
 [`while_immutable_condition`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#while_immutable_condition
 [`while_let_loop`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#while_let_loop
 [`while_let_on_iterator`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#while_let_on_iterator
+[`wildcard_dependencies`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#wildcard_dependencies
 [`write_literal`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#write_literal
 [`write_with_newline`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#write_with_newline
 [`writeln_empty_string`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#writeln_empty_string

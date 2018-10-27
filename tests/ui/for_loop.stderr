@@ -97,8 +97,8 @@ error: the loop variable `j` is only used to index `STATIC`.
     |              ^^^^
 help: consider using an iterator
     |
-110 |     for <item> in STATIC.iter().take(4) {
-    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^^
+110 |     for <item> in &STATIC {
+    |         ^^^^^^    ^^^^^^^
 
 error: the loop variable `j` is only used to index `CONST`.
    --> $DIR/for_loop.rs:114:14
@@ -107,8 +107,8 @@ error: the loop variable `j` is only used to index `CONST`.
     |              ^^^^
 help: consider using an iterator
     |
-114 |     for <item> in CONST.iter().take(4) {
-    |         ^^^^^^    ^^^^^^^^^^^^^^^^^^^^
+114 |     for <item> in &CONST {
+    |         ^^^^^^    ^^^^^^
 
 error: the loop variable `i` is used to index `vec`
    --> $DIR/for_loop.rs:118:14
