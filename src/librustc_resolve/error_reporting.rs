@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use {CrateLint, PathResult};
+use macros::ParentScope;
 
 use std::collections::BTreeSet;
 
@@ -24,6 +25,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         &mut self,
         span: Span,
         path: Vec<Ident>
+        parent_scope: &ParentScope<'b>,
     ) -> Option<Vec<Ident>> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
         // If we don't have a path to suggest changes to, then return.
@@ -40,10 +42,12 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             (Some(fst), Some(snd)) if !is_special(*fst) && !is_special(*snd) => {
                 debug!("make_path_suggestion: fst={:?} snd={:?}", fst, snd);
 
-                self.make_missing_self_suggestion(span, path.clone())
-                    .or_else(|| self.make_missing_crate_suggestion(span, path.clone()))
-                    .or_else(|| self.make_missing_super_suggestion(span, path.clone()))
-                    .or_else(|| self.make_external_crate_suggestion(span, path.clone()))
+                self.make_missing_self_suggestion(span, path.clone(), parent_scope)
+                    .or_else(|| self.make_missing_crate_suggestion(span, path.clone(),
+                                                                   parent_scope))
+                    .or_else(|| self.make_missing_super_suggestion(span, path.clone(),
+                                                                   parent_scope))
+                    .or_else(|| self.make_external_crate_suggestion(span, path, parent_scope))
             },
             _ => None,
         }
@@ -60,10 +64,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         &mut self,
         span: Span,
         mut path: Vec<Ident>
+        parent_scope: &ParentScope<'b>,
     ) -> Option<Vec<Ident>> {
         // Replace first ident with `self` and check if that is valid.
         path[0].name = keywords::SelfValue.name();
-        let result = self.resolve_path(None, &path, None, false, span, CrateLint::No);
+        let result = self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some(path)
@@ -83,10 +88,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         &mut self,
         span: Span,
         mut path: Vec<Ident>
+        parent_scope: &ParentScope<'b>,
     ) -> Option<Vec<Ident>> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].name = keywords::Crate.name();
-        let result = self.resolve_path(None, &path, None, false, span, CrateLint::No);
+        let result = self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some(path)
@@ -106,10 +112,12 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         &mut self,
         span: Span,
         mut path: Vec<Ident>
+        parent_scope: &ParentScope<'b>,
     ) -> Option<Vec<Ident>> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].name = keywords::Super.name();
         let result = self.resolve_path(None, &path, None, false, span, CrateLint::No);
+        let result = self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some(path)
@@ -132,6 +140,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         &mut self,
         span: Span,
         mut path: Vec<Ident>
+        parent_scope: &ParentScope<'b>,
     ) -> Option<Vec<Ident>> {
         // Need to clone else we can't call `resolve_path` without a borrow error. We also store
         // into a `BTreeMap` so we can get consistent ordering (and therefore the same diagnostic)
@@ -149,7 +158,8 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             // Replace the first after root (a placeholder we inserted) with a crate name
             // and check if that is valid.
             path[1].name = *name;
-            let result = self.resolve_path(None, &path, None, false, span, CrateLint::No);
+            let result =
+                self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
             debug!("make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                     name, path, result);
             if let PathResult::Module(..) = result {

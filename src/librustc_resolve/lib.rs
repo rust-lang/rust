@@ -1017,7 +1017,7 @@ pub struct ModuleData<'a> {
     resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
     legacy_macro_resolutions: RefCell<Vec<(Ident, MacroKind, ParentScope<'a>,
                                            Option<&'a NameBinding<'a>>)>>,
-    macro_resolutions: RefCell<Vec<(Box<[Ident]>, Span)>>,
+    macro_resolutions: RefCell<Vec<(Vec<Segment>, ParentScope<'a>, Span)>>,
     builtin_attrs: RefCell<Vec<(Ident, ParentScope<'a>)>>,
 
     // Macro invocations that can expand into items in this module.
@@ -1628,7 +1628,8 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         let hir::Path { ref segments, span, ref mut def } = *path;
         let path: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
         // FIXME (Manishearth): Intra doc links won't get warned of epoch changes
-        match self.resolve_path(None, &path, Some(namespace), true, span, CrateLint::No) {
+        match self.resolve_path_without_parent_scope(None, &path, Some(namespace), true, span,
+                                                     CrateLint::No) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
                 *def = module.def().unwrap(),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
@@ -2472,10 +2473,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 new_id = Some(def.def_id());
                 let span = trait_ref.path.span;
                 if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
-                    self.resolve_path(
+                    self.resolve_path_without_parent_scope(
                         None,
                         &path,
-                        None,
+                        Some(TypeNS),
                         false,
                         span,
                         CrateLint::SimplePath(trait_ref.ref_id),
@@ -2993,8 +2994,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     (String::new(), "the crate root".to_string())
                 } else {
                     let mod_path = &path[..path.len() - 1];
-                    let mod_prefix = match this.resolve_path(None, mod_path, Some(TypeNS),
-                                                             false, span, CrateLint::No) {
+                    let mod_prefix = match this.resolve_path_without_parent_scope(
+                        None, mod_path, Some(TypeNS), false, span, CrateLint::No
+                    ) {
                         PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
                             module.def(),
                         _ => None,
@@ -3478,7 +3480,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             ));
         }
 
-        let result = match self.resolve_path(
+        let result = match self.resolve_path_without_parent_scope(
             None,
             &path,
             Some(ns),
@@ -3525,7 +3527,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
            path[0].name != keywords::CrateRoot.name() &&
            path[0].name != keywords::DollarCrate.name() {
             let unqualified_result = {
-                match self.resolve_path(
+                match self.resolve_path_without_parent_scope(
                     None,
                     &[*path.last().unwrap()],
                     Some(ns),
@@ -3548,7 +3550,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         Some(result)
     }
 
-    fn resolve_path(
+    fn resolve_path_without_parent_scope(
         &mut self,
         base_module: Option<ModuleOrUniformRoot<'a>>,
         path: &[Ident],
@@ -3557,12 +3559,15 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         path_span: Span,
         crate_lint: CrateLint,
     ) -> PathResult<'a> {
+        // Macro and import paths must have full parent scope available during resolution,
+        // other paths will do okay with parent module alone.
+        assert!(opt_ns != None && opt_ns != Some(MacroNS));
         let parent_scope = ParentScope { module: self.current_module, ..self.dummy_parent_scope() };
-        self.resolve_path_with_parent_scope(base_module, path, opt_ns, &parent_scope,
-                                            record_used, path_span, crate_lint)
+        self.resolve_path(base_module, path, opt_ns, &parent_scope,
+                          record_used, path_span, crate_lint)
     }
 
-    fn resolve_path_with_parent_scope(
+    fn resolve_path(
         &mut self,
         base_module: Option<ModuleOrUniformRoot<'a>>,
         path: &[Ident],
@@ -3749,7 +3754,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         PathResult::Module(module.unwrap_or_else(|| {
             span_bug!(path_span, "resolve_path: empty(?) path {:?} has no module", path);
         }))
-
     }
 
     fn lint_if_path_starts_with_module(
@@ -4033,8 +4037,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         } else {
             // Search in module.
             let mod_path = &path[..path.len() - 1];
-            if let PathResult::Module(module) = self.resolve_path(None, mod_path, Some(TypeNS),
-                                                                  false, span, CrateLint::No) {
+            if let PathResult::Module(module) = self.resolve_path_without_parent_scope(
+                None, mod_path, Some(TypeNS), false, span, CrateLint::No
+            ) {
                 if let ModuleOrUniformRoot::Module(module) = module {
                     add_module_candidates(module, &mut names);
                 }
