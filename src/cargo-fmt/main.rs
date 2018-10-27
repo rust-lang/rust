@@ -322,15 +322,18 @@ fn run_rustfmt(
     fmt_args: &[String],
     verbosity: Verbosity,
 ) -> Result<i32, io::Error> {
-    let by_edition: HashMap<_, _> = targets
+    let by_edition = targets
         .iter()
         .inspect(|t| {
             if verbosity == Verbosity::Verbose {
                 println!("[{} ({})] {:?}", t.kind, t.edition, t.path)
             }
         })
-        .map(|t| (&t.edition, vec![&t.path]))
-        .collect();
+        .map(|t| (&t.edition, &t.path))
+        .fold(HashMap::new(), |mut h, t| {
+            h.entry(t.0).or_insert_with(Vec::new).push(t.1);
+            h
+        });
 
     for (edition, files) in by_edition {
         let stdout = if verbosity == Verbosity::Quiet {
