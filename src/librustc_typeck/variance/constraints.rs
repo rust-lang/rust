@@ -338,6 +338,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::UnnormalizedProjection(..) |
             ty::GeneratorWitness(..) |
+            ty::Bound(..) |
             ty::Infer(..) => {
                 bug!("unexpected type encountered in \
                       variance inference: {}",
@@ -426,7 +427,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // way early-bound regions do, so we skip them here.
             }
 
-            ty::ReCanonical(_) |
             ty::ReFree(..) |
             ty::ReClosureBound(..) |
             ty::ReScope(..) |

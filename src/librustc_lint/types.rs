@@ -718,6 +718,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::Param(..) |
             ty::Infer(..) |
+            ty::Bound(..) |
             ty::Error |
             ty::Closure(..) |
             ty::Generator(..) |

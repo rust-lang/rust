@@ -616,22 +616,22 @@ fn escaping() {
         // Theta = [A -> &'a foo]
         env.create_simple_region_hierarchy();
 
-        assert!(!env.t_nil().has_escaping_regions());
+        assert!(!env.t_nil().has_escaping_bound_vars());
 
         let t_rptr_free1 = env.t_rptr_free(1);
-        assert!(!t_rptr_free1.has_escaping_regions());
+        assert!(!t_rptr_free1.has_escaping_bound_vars());
 
         let t_rptr_bound1 = env.t_rptr_late_bound_with_debruijn(1, d1());
-        assert!(t_rptr_bound1.has_escaping_regions());
+        assert!(t_rptr_bound1.has_escaping_bound_vars());
 
         let t_rptr_bound2 = env.t_rptr_late_bound_with_debruijn(1, d2());
-        assert!(t_rptr_bound2.has_escaping_regions());
+        assert!(t_rptr_bound2.has_escaping_bound_vars());
 
         // t_fn = fn(A)
         let t_param = env.t_param(0);
-        assert!(!t_param.has_escaping_regions());
+        assert!(!t_param.has_escaping_bound_vars());
         let t_fn = env.t_fn(&[t_param], env.t_nil());
-        assert!(!t_fn.has_escaping_regions());
+        assert!(!t_fn.has_escaping_bound_vars());
     })
 }
 

@@ -323,7 +323,7 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
         predicates
             .into_iter()
             .filter_map(|p| p.as_ref().to_opt_type_outlives())
-            .filter_map(|p| p.no_late_bound_regions())
+            .filter_map(|p| p.no_bound_vars())
             .filter(move |p| compare_ty(p.0))
     }
 }

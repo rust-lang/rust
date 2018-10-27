@@ -23,7 +23,7 @@ use infer::InferCtxt;
 use std::sync::atomic::Ordering;
 use ty::fold::{TypeFoldable, TypeFolder};
 use ty::subst::Kind;
-use ty::{self, BoundTy, BoundTyIndex, Lift, List, Ty, TyCtxt, TypeFlags};
+use ty::{self, BoundTy, BoundVar, Lift, List, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -225,9 +225,11 @@ struct Canonicalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     query_state: &'cx mut OriginalQueryValues<'tcx>,
     // Note that indices is only used once `var_values` is big enough to be
     // heap-allocated.
-    indices: FxHashMap<Kind<'tcx>, BoundTyIndex>,
+    indices: FxHashMap<Kind<'tcx>, BoundVar>,
     canonicalize_region_mode: &'cx dyn CanonicalizeRegionMode,
     needs_canonical_flags: TypeFlags,
+
+    binder_index: ty::DebruijnIndex,
 }
 
 impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> {
@@ -235,11 +237,23 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
         self.tcx
     }
 
+    fn fold_binder<T>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T>
+        where T: TypeFoldable<'tcx>
+    {
+        self.binder_index.shift_in(1);
+        let t = t.super_fold_with(self);
+        self.binder_index.shift_out(1);
+        t
+    }
+
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
-            ty::ReLateBound(..) => {
-                // leave bound regions alone
-                r
+            ty::ReLateBound(index, ..) => {
+                if index >= self.binder_index {
+                    bug!("escaping late bound region during canonicalization")
+                } else {
+                    r
+                }
             }
 
             ty::ReVar(vid) => {
@@ -263,8 +277,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             | ty::ReEmpty
             | ty::ReErased => self.canonicalize_region_mode.canonicalize_free_region(self, r),
 
-            ty::ReClosureBound(..) | ty::ReCanonical(_) => {
-                bug!("canonical region encountered during canonicalization")
+            ty::ReClosureBound(..) => {
+                bug!("closure bound region encountered during canonicalization")
             }
         }
     }
@@ -283,8 +297,12 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                 bug!("encountered a fresh type during canonicalization")
             }
 
-            ty::Infer(ty::BoundTy(_)) => {
-                bug!("encountered a canonical type during canonicalization")
+            ty::Bound(bound_ty) => {
+                if bound_ty.index >= self.binder_index {
+                    bug!("escaping bound type during canonicalization")
+                } else {
+                    t
+                }
             }
 
             ty::Closure(..)
@@ -335,12 +353,6 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     where
         V: TypeFoldable<'tcx> + Lift<'gcx>,
     {
-        debug_assert!(
-            !value.has_type_flags(TypeFlags::HAS_CANONICAL_VARS),
-            "canonicalizing a canonical value: {:?}",
-            value,
-        );
-
         let needs_canonical_flags = if canonicalize_region_mode.any() {
             TypeFlags::HAS_FREE_REGIONS | TypeFlags::KEEP_IN_LOCAL_TCX
         } else {
@@ -367,6 +379,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             variables: SmallVec::new(),
             query_state,
             indices: FxHashMap::default(),
+            binder_index: ty::INNERMOST,
         };
         let out_value = value.fold_with(&mut canonicalizer);
 
@@ -393,7 +406,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     /// or returns an existing variable if `kind` has already been
     /// seen. `kind` is expected to be an unbound variable (or
     /// potentially a free region).
-    fn canonical_var(&mut self, info: CanonicalVarInfo, kind: Kind<'tcx>) -> BoundTy {
+    fn canonical_var(&mut self, info: CanonicalVarInfo, kind: Kind<'tcx>) -> BoundVar {
         let Canonicalizer {
             variables,
             query_state,
@@ -413,7 +426,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             // direct linear search of `var_values`.
             if let Some(idx) = var_values.iter().position(|&k| k == kind) {
                 // `kind` is already present in `var_values`.
-                BoundTyIndex::new(idx)
+                BoundVar::new(idx)
             } else {
                 // `kind` isn't present in `var_values`. Append it. Likewise
                 // for `info` and `variables`.
@@ -428,11 +441,11 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
                     *indices = var_values
                         .iter()
                         .enumerate()
-                        .map(|(i, &kind)| (kind, BoundTyIndex::new(i)))
+                        .map(|(i, &kind)| (kind, BoundVar::new(i)))
                         .collect();
                 }
                 // The cv is the index of the appended element.
-                BoundTyIndex::new(var_values.len() - 1)
+                BoundVar::new(var_values.len() - 1)
             }
         } else {
             // `var_values` is large. Do a hashmap search via `indices`.
@@ -440,23 +453,23 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
                 variables.push(info);
                 var_values.push(kind);
                 assert_eq!(variables.len(), var_values.len());
-                BoundTyIndex::new(variables.len() - 1)
+                BoundVar::new(variables.len() - 1)
             })
         };
 
-        BoundTy {
-            level: ty::INNERMOST,
-            var,
-        }
+        var
     }
 
     fn canonical_var_for_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         let info = CanonicalVarInfo {
             kind: CanonicalVarKind::Region,
         };
-        let b = self.canonical_var(info, r.into());
-        debug_assert_eq!(ty::INNERMOST, b.level);
-        self.tcx().mk_region(ty::ReCanonical(b.var))
+        let var = self.canonical_var(info, r.into());
+        let region = ty::ReLateBound(
+            self.binder_index,
+            ty::BoundRegion::BrAnon(var.as_u32())
+        );
+        self.tcx().mk_region(region)
     }
 
     /// Given a type variable `ty_var` of the given kind, first check
@@ -472,9 +485,8 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             let info = CanonicalVarInfo {
                 kind: CanonicalVarKind::Ty(ty_kind),
             };
-            let b = self.canonical_var(info, ty_var.into());
-            debug_assert_eq!(ty::INNERMOST, b.level);
-            self.tcx().mk_infer(ty::InferTy::BoundTy(b))
+            let var = self.canonical_var(info, ty_var.into());
+            self.tcx().mk_ty(ty::Bound(BoundTy::new(self.binder_index, var)))
         }
     }
 }

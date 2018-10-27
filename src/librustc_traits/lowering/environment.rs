@@ -93,6 +93,7 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
             ty::GeneratorWitness(..) |
             ty::UnnormalizedProjection(..) |
             ty::Infer(..) |
+            ty::Bound(..) |
             ty::Error => {
                 bug!("unexpected type {:?}", ty);
             }

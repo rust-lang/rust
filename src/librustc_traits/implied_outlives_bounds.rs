@@ -108,7 +108,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         // From the full set of obligations, just filter down to the
         // region relationships.
         implied_bounds.extend(obligations.into_iter().flat_map(|obligation| {
-            assert!(!obligation.has_escaping_regions());
+            assert!(!obligation.has_escaping_bound_vars());
             match obligation.predicate {
                 ty::Predicate::Trait(..) |
                 ty::Predicate::Subtype(..) |
@@ -122,14 +122,14 @@ fn compute_implied_outlives_bounds<'tcx>(
                     vec![]
                 }
 
-                ty::Predicate::RegionOutlives(ref data) => match data.no_late_bound_regions() {
+                ty::Predicate::RegionOutlives(ref data) => match data.no_bound_vars() {
                     None => vec![],
                     Some(ty::OutlivesPredicate(r_a, r_b)) => {
                         vec![OutlivesBound::RegionSubRegion(r_b, r_a)]
                     }
                 },
 
-                ty::Predicate::TypeOutlives(ref data) => match data.no_late_bound_regions() {
+                ty::Predicate::TypeOutlives(ref data) => match data.no_bound_vars() {
                     None => vec![],
                     Some(ty::OutlivesPredicate(ty_a, r_b)) => {
                         let ty_a = infcx.resolve_type_vars_if_possible(&ty_a);

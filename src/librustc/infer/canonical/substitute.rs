@@ -17,9 +17,9 @@
 //! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
 
 use infer::canonical::{Canonical, CanonicalVarValues};
-use ty::fold::{TypeFoldable, TypeFolder};
+use ty::fold::TypeFoldable;
 use ty::subst::UnpackedKind;
-use ty::{self, Ty, TyCtxt, TypeFlags};
+use ty::{self, TyCtxt};
 
 impl<'tcx, V> Canonical<'tcx, V> {
     /// Instantiate the wrapped value, replacing each canonical value
@@ -64,51 +64,22 @@ where
     T: TypeFoldable<'tcx>,
 {
     if var_values.var_values.is_empty() {
-        debug_assert!(!value.has_type_flags(TypeFlags::HAS_CANONICAL_VARS));
-        value.clone()
-    } else if !value.has_type_flags(TypeFlags::HAS_CANONICAL_VARS) {
         value.clone()
     } else {
-        value.fold_with(&mut CanonicalVarValuesSubst { tcx, var_values })
-    }
-}
-
-struct CanonicalVarValuesSubst<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
-    tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-    var_values: &'cx CanonicalVarValues<'tcx>,
-}
-
-impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for CanonicalVarValuesSubst<'cx, 'gcx, 'tcx> {
-    fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
-        self.tcx
-    }
-
-    fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        match t.sty {
-            ty::Infer(ty::InferTy::BoundTy(b)) => {
-                debug_assert_eq!(ty::INNERMOST, b.level);
-                match self.var_values.var_values[b.var].unpack() {
-                    UnpackedKind::Type(ty) => ty,
-                    r => bug!("{:?} is a type but value is {:?}", b, r),
-                }
-            }
-            _ => {
-                if !t.has_type_flags(TypeFlags::HAS_CANONICAL_VARS) {
-                    t
-                } else {
-                    t.super_fold_with(self)
-                }
-            }
-        }
-    }
-
-    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        match r {
-            ty::RegionKind::ReCanonical(c) => match self.var_values.var_values[*c].unpack() {
+        let fld_r = |br: ty::BoundRegion| {
+            match var_values.var_values[br.assert_bound_var()].unpack() {
                 UnpackedKind::Lifetime(l) => l,
-                r => bug!("{:?} is a region but value is {:?}", c, r),
-            },
-            _ => r.super_fold_with(self),
-        }
+                r => bug!("{:?} is a region but value is {:?}", br, r),
+            }
+        };
+
+        let fld_t = |bound_ty: ty::BoundTy| {
+            match var_values.var_values[bound_ty.var].unpack() {
+                UnpackedKind::Type(ty) => ty,
+                r => bug!("{:?} is a type but value is {:?}", bound_ty, r),
+            }
+        };
+
+        tcx.replace_escaping_bound_vars(value, fld_r, fld_t)
     }
 }

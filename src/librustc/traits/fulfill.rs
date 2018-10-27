@@ -143,7 +143,7 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         debug!("normalize_projection_type(projection_ty={:?})",
                projection_ty);
 
-        debug_assert!(!projection_ty.has_escaping_regions());
+        debug_assert!(!projection_ty.has_escaping_bound_vars());
 
         // FIXME(#20304) -- cache
 
@@ -349,15 +349,15 @@ impl<'a, 'b, 'gcx, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'b, 'gcx, 
             }
 
             ty::Predicate::TypeOutlives(ref binder) => {
-                // Check if there are higher-ranked regions.
-                match binder.no_late_bound_regions() {
+                // Check if there are higher-ranked vars.
+                match binder.no_bound_vars() {
                     // If there are, inspect the underlying type further.
                     None => {
                         // Convert from `Binder<OutlivesPredicate<Ty, Region>>` to `Binder<Ty>`.
                         let binder = binder.map_bound_ref(|pred| pred.0);
 
-                        // Check if the type has any bound regions.
-                        match binder.no_late_bound_regions() {
+                        // Check if the type has any bound vars.
+                        match binder.no_bound_vars() {
                             // If so, this obligation is an error (for now). Eventually we should be
                             // able to support additional cases here, like `for<'a> &'a str: 'a`.
                             // NOTE: this is duplicate-implemented between here and fulfillment.

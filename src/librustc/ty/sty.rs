@@ -77,6 +77,17 @@ impl BoundRegion {
             _ => false,
         }
     }
+
+    /// When canonicalizing, we replace unbound inference variables and free
+    /// regions with anonymous late bound regions. This method asserts that
+    /// we have an anonymous late bound region, which hence may refer to
+    /// a canonical variable.
+    pub fn assert_bound_var(&self) -> BoundVar {
+        match *self {
+            BoundRegion::BrAnon(var) => BoundVar::from_u32(var),
+            _ => bug!("bound region is not anonymous"),
+        }
+    }
 }
 
 /// N.B., If you change this, you'll probably want to change the corresponding
@@ -187,6 +198,9 @@ pub enum TyKind<'tcx> {
 
     /// A type parameter; for example, `T` in `fn f<T>(x: T) {}
     Param(ParamTy),
+
+    /// Bound type variable, used only when preparing a trait query.
+    Bound(BoundTy),
 
     /// A type variable used during type checking.
     Infer(InferTy),
@@ -727,8 +741,8 @@ impl<'a, 'gcx, 'tcx> ExistentialTraitRef<'tcx> {
     /// or some placeholder type.
     pub fn with_self_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, self_ty: Ty<'tcx>)
         -> ty::TraitRef<'tcx>  {
-        // otherwise the escaping regions would be captured by the binder
-        // debug_assert!(!self_ty.has_escaping_regions());
+        // otherwise the escaping vars would be captured by the binder
+        // debug_assert!(!self_ty.has_escaping_bound_vars());
 
         ty::TraitRef {
             def_id: self.def_id,
@@ -755,11 +769,11 @@ impl<'tcx> PolyExistentialTraitRef<'tcx> {
     }
 }
 
-/// Binder is a binder for higher-ranked lifetimes. It is part of the
+/// Binder is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
 /// (which would be represented by the type `PolyTraitRef ==
 /// Binder<TraitRef>`). Note that when we instantiate,
-/// erase, or otherwise "discharge" these bound regions, we change the
+/// erase, or otherwise "discharge" these bound vars, we change the
 /// type from `Binder<T>` to just `T` (see
 /// e.g. `liberate_late_bound_regions`).
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -767,29 +781,28 @@ pub struct Binder<T>(T);
 
 impl<T> Binder<T> {
     /// Wraps `value` in a binder, asserting that `value` does not
-    /// contain any bound regions that would be bound by the
+    /// contain any bound vars that would be bound by the
     /// binder. This is commonly used to 'inject' a value T into a
     /// different binding level.
     pub fn dummy<'tcx>(value: T) -> Binder<T>
         where T: TypeFoldable<'tcx>
     {
-        debug_assert!(!value.has_escaping_regions());
+        debug_assert!(!value.has_escaping_bound_vars());
         Binder(value)
     }
 
-    /// Wraps `value` in a binder, binding late-bound regions (if any).
-    pub fn bind<'tcx>(value: T) -> Binder<T>
-    {
+    /// Wraps `value` in a binder, binding higher-ranked vars (if any).
+    pub fn bind<'tcx>(value: T) -> Binder<T> {
         Binder(value)
     }
 
     /// Skips the binder and returns the "bound" value. This is a
     /// risky thing to do because it's easy to get confused about
     /// debruijn indices and the like. It is usually better to
-    /// discharge the binder using `no_late_bound_regions` or
+    /// discharge the binder using `no_bound_vars` or
     /// `replace_late_bound_regions` or something like
     /// that. `skip_binder` is only valid when you are either
-    /// extracting data that has nothing to do with bound regions, you
+    /// extracting data that has nothing to do with bound vars, you
     /// are doing some sort of test that does not involve bound
     /// regions, or you are being very careful about your depth
     /// accounting.
@@ -798,7 +811,7 @@ impl<T> Binder<T> {
     ///
     /// - extracting the def-id from a PolyTraitRef;
     /// - comparing the self type of a PolyTraitRef to see if it is equal to
-    ///   a type parameter `X`, since the type `X`  does not reference any regions
+    ///   a type parameter `X`, since the type `X` does not reference any regions
     pub fn skip_binder(&self) -> &T {
         &self.0
     }
@@ -820,19 +833,19 @@ impl<T> Binder<T> {
     }
 
     /// Unwraps and returns the value within, but only if it contains
-    /// no bound regions at all. (In other words, if this binder --
+    /// no bound vars at all. (In other words, if this binder --
     /// and indeed any enclosing binder -- doesn't bind anything at
     /// all.) Otherwise, returns `None`.
     ///
     /// (One could imagine having a method that just unwraps a single
-    /// binder, but permits late-bound regions bound by enclosing
+    /// binder, but permits late-bound vars bound by enclosing
     /// binders, but that would require adjusting the debruijn
     /// indices, and given the shallow binding structure we often use,
     /// would not be that useful.)
-    pub fn no_late_bound_regions<'tcx>(self) -> Option<T>
-        where T : TypeFoldable<'tcx>
+    pub fn no_bound_vars<'tcx>(self) -> Option<T>
+        where T: TypeFoldable<'tcx>
     {
-        if self.skip_binder().has_escaping_regions() {
+        if self.skip_binder().has_escaping_bound_vars() {
             None
         } else {
             Some(self.skip_binder().clone())
@@ -1166,9 +1179,6 @@ pub enum RegionKind {
     /// `ClosureRegionRequirements` that are produced by MIR borrowck.
     /// See `ClosureRegionRequirements` for more details.
     ReClosureBound(RegionVid),
-
-    /// Canonicalized region, used only when preparing a trait query.
-    ReCanonical(BoundTyIndex),
 }
 
 impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
@@ -1219,22 +1229,37 @@ pub enum InferTy {
     FreshTy(u32),
     FreshIntTy(u32),
     FreshFloatTy(u32),
-
-    /// Bound type variable, used only when preparing a trait query.
-    BoundTy(BoundTy),
 }
 
 newtype_index! {
-    pub struct BoundTyIndex { .. }
+    pub struct BoundVar { .. }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct BoundTy {
-    pub level: DebruijnIndex,
-    pub var: BoundTyIndex,
+    pub index: DebruijnIndex,
+    pub var: BoundVar,
+    pub kind: BoundTyKind,
 }
 
-impl_stable_hash_for!(struct BoundTy { level, var });
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub enum BoundTyKind {
+    Anon,
+    Param(InternedString),
+}
+
+impl_stable_hash_for!(struct BoundTy { index, var, kind });
+impl_stable_hash_for!(enum self::BoundTyKind { Anon, Param(a) });
+
+impl BoundTy {
+    pub fn new(index: DebruijnIndex, var: BoundVar) -> Self {
+        BoundTy {
+            index,
+            var,
+            kind: BoundTyKind::Anon,
+        }
+    }
+}
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -1264,7 +1289,7 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
                         -> ty::ProjectionPredicate<'tcx>
     {
         // otherwise the escaping regions would be captured by the binders
-        debug_assert!(!self_ty.has_escaping_regions());
+        debug_assert!(!self_ty.has_escaping_bound_vars());
 
         ty::ProjectionPredicate {
             projection_ty: ty::ProjectionTy {
@@ -1363,7 +1388,6 @@ impl RegionKind {
             RegionKind::ReEmpty => false,
             RegionKind::ReErased => false,
             RegionKind::ReClosureBound(..) => false,
-            RegionKind::ReCanonical(..) => false,
         }
     }
 
@@ -1449,10 +1473,6 @@ impl RegionKind {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
             }
             ty::ReErased => {
-            }
-            ty::ReCanonical(..) => {
-                flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_CANONICAL_VARS;
             }
             ty::ReClosureBound(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
@@ -1865,6 +1885,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             Tuple(..) |
             Foreign(..) |
             Param(_) |
+            Bound(..) |
             Infer(_) |
             Error => {
                 vec![]
@@ -1930,7 +1951,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
             ty::Infer(ty::TyVar(_)) => false,
 
-            ty::Infer(ty::BoundTy(_)) |
+            ty::Bound(_) |
             ty::Infer(ty::FreshTy(_)) |
             ty::Infer(ty::FreshIntTy(_)) |
             ty::Infer(ty::FreshFloatTy(_)) =>
