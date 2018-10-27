@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// run-rustfix
-
 #![allow(dead_code)]
 
 fn missing_discourses() -> Result<isize, ()> {
@@ -19,7 +17,6 @@ fn missing_discourses() -> Result<isize, ()> {
 fn forbidden_narratives() -> Result<isize, ()> {
     missing_discourses()?
     //~^ ERROR try expression alternatives have incompatible types
-    //~| HELP try wrapping with a success variant
 }
 
 fn main() {}
