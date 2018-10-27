@@ -120,3 +120,11 @@ fn issue3117() {
         }
     }
 }
+
+// #3139
+fn issue3139() {
+    assert_eq!(
+        to_json_value(&None::<i32>).unwrap(),
+        json!({ "test": None::<i32> })
+    );
+}
