@@ -504,6 +504,9 @@ declare_features! (
 
     // `extern crate foo as bar;` puts `bar` into extern prelude.
     (active, extern_crate_item_prelude, "1.31.0", Some(54658), None),
+
+    // `reason = ` in lint attributes and `expect` lint attribute
+    (active, lint_reasons, "1.31.0", Some(54503), None),
 );
 
 declare_features! (
