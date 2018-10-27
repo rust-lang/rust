@@ -517,7 +517,8 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         let mut subslice = cg_base.project_index(bx,
                             C_usize(bx.cx, from as u64));
                         let projected_ty = PlaceTy::Ty { ty: cg_base.layout.ty }
-                            .projection_ty(tcx, &projection.elem).to_ty(bx.tcx());
+                            .projection_ty(tcx, &projection.elem)
+                            .to_ty(bx.tcx());
                         subslice.layout = bx.cx.layout_of(self.monomorphize(&projected_ty));
 
                         if subslice.layout.is_unsized() {

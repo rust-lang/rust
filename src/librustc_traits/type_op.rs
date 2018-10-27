@@ -12,6 +12,8 @@ use rustc::infer::at::ToTrace;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::infer::InferCtxt;
 use rustc::hir::def_id::DefId;
+use rustc::mir::ProjectionKind;
+use rustc::mir::tcx::PlaceTy;
 use rustc::traits::query::type_op::ascribe_user_type::AscribeUserType;
 use rustc::traits::query::type_op::eq::Eq;
 use rustc::traits::query::type_op::normalize::Normalize;
@@ -58,14 +60,15 @@ fn type_op_ascribe_user_type<'tcx>(
                     variance,
                     def_id,
                     user_substs,
+                    projs,
                 },
             ) = key.into_parts();
 
             debug!(
                 "type_op_ascribe_user_type(\
-                 mir_ty={:?}, variance={:?}, def_id={:?}, user_substs={:?}\
+                 mir_ty={:?}, variance={:?}, def_id={:?}, user_substs={:?}, projs={:?}\
                  )",
-                mir_ty, variance, def_id, user_substs,
+                mir_ty, variance, def_id, user_substs, projs,
             );
 
             let mut cx = AscribeUserTypeCx {
@@ -73,7 +76,7 @@ fn type_op_ascribe_user_type<'tcx>(
                 param_env,
                 fulfill_cx,
             };
-            cx.relate_mir_and_user_ty(mir_ty, variance, def_id, user_substs)?;
+            cx.relate_mir_and_user_ty(mir_ty, variance, def_id, user_substs, projs)?;
 
             Ok(())
         })
@@ -134,16 +137,29 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
         variance: Variance,
         def_id: DefId,
         user_substs: UserSubsts<'tcx>,
+        projs: &[ProjectionKind<'tcx>],
     ) -> Result<(), NoSolution> {
         let UserSubsts {
             substs,
             user_self_ty,
         } = user_substs;
 
-        let ty = self.tcx().type_of(def_id);
+        let tcx = self.tcx();
+
+        let ty = tcx.type_of(def_id);
         let ty = self.subst(ty, substs);
         debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
         let ty = self.normalize(ty);
+
+        let mut projected_ty = PlaceTy::from_ty(ty);
+        for proj in projs {
+            projected_ty = projected_ty.projection_ty_core(
+                tcx, proj, |this, field, &()| {
+                    let ty = this.field_ty(tcx, field);
+                    self.normalize(ty)
+                });
+        }
+        let ty = projected_ty.to_ty(tcx);
 
         self.relate(mir_ty, variance, ty)?;
 

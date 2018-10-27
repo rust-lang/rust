@@ -168,7 +168,9 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
                 let base_ty = self.fx.monomorphize(&base_ty);
 
                 // ZSTs don't require any actual memory access.
-                let elem_ty = base_ty.projection_ty(cx.tcx, &proj.elem).to_ty(cx.tcx);
+                let elem_ty = base_ty
+                    .projection_ty(cx.tcx, &proj.elem)
+                    .to_ty(cx.tcx);
                 let elem_ty = self.fx.monomorphize(&elem_ty);
                 if cx.layout_of(elem_ty).is_zst() {
                     return;

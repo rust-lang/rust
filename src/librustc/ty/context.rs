@@ -31,7 +31,7 @@ use middle::cstore::EncodedMetadata;
 use middle::lang_items;
 use middle::resolve_lifetime::{self, ObjectLifetimeDefault};
 use middle::stability;
-use mir::{self, Mir, interpret};
+use mir::{self, Mir, interpret, ProjectionKind};
 use mir::interpret::Allocation;
 use ty::subst::{CanonicalUserSubsts, Kind, Substs, Subst};
 use ty::ReprOptions;
@@ -132,6 +132,7 @@ pub struct CtxtInterners<'tcx> {
     clauses: InternedSet<'tcx, List<Clause<'tcx>>>,
     goal: InternedSet<'tcx, GoalKind<'tcx>>,
     goal_list: InternedSet<'tcx, List<Goal<'tcx>>>,
+    projs: InternedSet<'tcx, List<ProjectionKind<'tcx>>>,
 }
 
 impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
@@ -149,6 +150,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             clauses: Default::default(),
             goal: Default::default(),
             goal_list: Default::default(),
+            projs: Default::default(),
         }
     }
 
@@ -1886,6 +1888,24 @@ impl<'a, 'tcx> Lift<'tcx> for &'a List<CanonicalVarInfo> {
     }
 }
 
+impl<'a, 'tcx> Lift<'tcx> for &'a List<ProjectionKind<'a>> {
+    type Lifted = &'tcx List<ProjectionKind<'tcx>>;
+    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
+        if self.len() == 0 {
+            return Some(List::empty());
+        }
+        if tcx.interners.arena.in_arena(*self as *const _) {
+            return Some(unsafe { mem::transmute(*self) });
+        }
+        // Also try in the global tcx if we're not that.
+        if !tcx.is_global() {
+            self.lift_to_tcx(tcx.global_tcx())
+        } else {
+            None
+        }
+    }
+}
+
 pub mod tls {
     use super::{GlobalCtxt, TyCtxt};
 
@@ -2294,6 +2314,13 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[Kind<'lcx>]> for Interned<'tcx, Substs<'tcx>> {
     }
 }
 
+impl<'tcx: 'lcx, 'lcx> Borrow<[ProjectionKind<'lcx>]>
+    for Interned<'tcx, List<ProjectionKind<'tcx>>> {
+    fn borrow<'a>(&'a self) -> &'a [ProjectionKind<'lcx>] {
+        &self.0[..]
+    }
+}
+
 impl<'tcx> Borrow<RegionKind> for Interned<'tcx, RegionKind> {
     fn borrow<'a>(&'a self) -> &'a RegionKind {
         &self.0
@@ -2441,7 +2468,8 @@ slice_interners!(
     type_list: _intern_type_list(Ty),
     substs: _intern_substs(Kind),
     clauses: _intern_clauses(Clause),
-    goal_list: _intern_goals(Goal)
+    goal_list: _intern_goals(Goal),
+    projs: _intern_projs(ProjectionKind)
 );
 
 // This isn't a perfect fit: CanonicalVarInfo slices are always
@@ -2740,6 +2768,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             List::empty()
         } else {
             self._intern_substs(ts)
+        }
+    }
+
+    pub fn intern_projs(self, ps: &[ProjectionKind<'tcx>]) -> &'tcx List<ProjectionKind<'tcx>> {
+        if ps.len() == 0 {
+            List::empty()
+        } else {
+            self._intern_projs(ps)
         }
     }
 

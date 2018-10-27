@@ -142,7 +142,7 @@ fn temp_decl(mutability: Mutability, ty: Ty, span: Span) -> LocalDecl {
     LocalDecl {
         mutability,
         ty,
-        user_ty: None,
+        user_ty: UserTypeProjections::none(),
         name: None,
         source_info,
         visibility_scope: source_info.scope,

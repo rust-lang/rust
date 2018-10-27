@@ -502,7 +502,7 @@ fn write_scope_tree(
                 local,
                 var.ty
             );
-            if let Some(user_ty) = var.user_ty {
+            for user_ty in var.user_ty.projections() {
                 write!(indented_var, " as {:?}", user_ty).unwrap();
             }
             indented_var.push_str(";");

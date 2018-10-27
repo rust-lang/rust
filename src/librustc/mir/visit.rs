@@ -147,7 +147,7 @@ macro_rules! make_mir_visitor {
             fn visit_ascribe_user_ty(&mut self,
                                      place: & $($mutability)* Place<'tcx>,
                                      variance: & $($mutability)* ty::Variance,
-                                     user_ty: & $($mutability)* UserTypeAnnotation<'tcx>,
+                                     user_ty: & $($mutability)* UserTypeProjection<'tcx>,
                                      location: Location) {
                 self.super_ascribe_user_ty(place, variance, user_ty, location);
             }
@@ -175,9 +175,8 @@ macro_rules! make_mir_visitor {
 
             fn visit_projection_elem(&mut self,
                                      place: & $($mutability)* PlaceElem<'tcx>,
-                                     context: PlaceContext<'tcx>,
                                      location: Location) {
-                self.super_projection_elem(place, context, location);
+                self.super_projection_elem(place, location);
             }
 
             fn visit_branch(&mut self,
@@ -212,6 +211,13 @@ macro_rules! make_mir_visitor {
                         ty: & $($mutability)* Ty<'tcx>,
                         _: TyContext) {
                 self.super_ty(ty);
+            }
+
+            fn visit_user_type_projection(
+                &mut self,
+                ty: & $($mutability)* UserTypeProjection<'tcx>,
+            ) {
+                self.super_user_type_projection(ty);
             }
 
             fn visit_user_type_annotation(
@@ -640,10 +646,10 @@ macro_rules! make_mir_visitor {
             fn super_ascribe_user_ty(&mut self,
                                      place: & $($mutability)* Place<'tcx>,
                                      _variance: & $($mutability)* ty::Variance,
-                                     user_ty: & $($mutability)* UserTypeAnnotation<'tcx>,
+                                     user_ty: & $($mutability)* UserTypeProjection<'tcx>,
                                      location: Location) {
                 self.visit_place(place, PlaceContext::Validate, location);
-                self.visit_user_type_annotation(user_ty);
+                self.visit_user_type_projection(user_ty);
             }
 
             fn super_place(&mut self,
@@ -692,12 +698,11 @@ macro_rules! make_mir_visitor {
                     PlaceContext::Projection(Mutability::Not)
                 };
                 self.visit_place(base, context, location);
-                self.visit_projection_elem(elem, context, location);
+                self.visit_projection_elem(elem, location);
             }
 
             fn super_projection_elem(&mut self,
                                      proj: & $($mutability)* PlaceElem<'tcx>,
-                                     _context: PlaceContext<'tcx>,
                                      location: Location) {
                 match *proj {
                     ProjectionElem::Deref => {
@@ -738,8 +743,8 @@ macro_rules! make_mir_visitor {
                     local,
                     source_info: *source_info,
                 });
-                if let Some((user_ty, _)) = user_ty {
-                    self.visit_user_type_annotation(user_ty);
+                for (user_ty, _) in & $($mutability)* user_ty.contents {
+                    self.visit_user_type_projection(user_ty);
                 }
                 self.visit_source_info(source_info);
                 self.visit_source_scope(visibility_scope);
@@ -784,6 +789,17 @@ macro_rules! make_mir_visitor {
 
                 self.visit_span(span);
                 self.visit_source_scope(scope);
+            }
+
+            fn super_user_type_projection(
+                &mut self,
+                ty: & $($mutability)* UserTypeProjection<'tcx>,
+            ) {
+                let UserTypeProjection {
+                    ref $($mutability)* base,
+                    projs: _, // Note: Does not visit projection elems!
+                } = *ty;
+                self.visit_user_type_annotation(base);
             }
 
             fn super_user_type_annotation(

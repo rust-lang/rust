@@ -710,7 +710,7 @@ pub struct LocalDecl<'tcx> {
     /// e.g. via `let x: T`, then we carry that type here. The MIR
     /// borrow checker needs this information since it can affect
     /// region inference.
-    pub user_ty: Option<(UserTypeAnnotation<'tcx>, Span)>,
+    pub user_ty: UserTypeProjections<'tcx>,
 
     /// Name of the local, used in debuginfo and pretty-printing.
     ///
@@ -882,7 +882,7 @@ impl<'tcx> LocalDecl<'tcx> {
         LocalDecl {
             mutability,
             ty,
-            user_ty: None,
+            user_ty: UserTypeProjections::none(),
             name: None,
             source_info: SourceInfo {
                 span,
@@ -903,7 +903,7 @@ impl<'tcx> LocalDecl<'tcx> {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: return_ty,
-            user_ty: None,
+            user_ty: UserTypeProjections::none(),
             source_info: SourceInfo {
                 span,
                 scope: OUTERMOST_SOURCE_SCOPE,
@@ -1741,7 +1741,7 @@ pub enum StatementKind<'tcx> {
     /// - `Contravariant` -- requires that `T_y :> T`
     /// - `Invariant` -- requires that `T_y == T`
     /// - `Bivariant` -- no effect
-    AscribeUserType(Place<'tcx>, ty::Variance, Box<UserTypeAnnotation<'tcx>>),
+    AscribeUserType(Place<'tcx>, ty::Variance, Box<UserTypeProjection<'tcx>>),
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
@@ -1943,6 +1943,10 @@ pub type PlaceProjection<'tcx> = Projection<'tcx, Place<'tcx>, Local, Ty<'tcx>>;
 /// Alias for projections as they appear in places, where the base is a place
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
+
+/// Alias for projections as they appear in `UserTypeProjection`, where we
+/// need neither the `V` parameter for `Index` nor the `T` for `Field`.
+pub type ProjectionKind<'tcx> = ProjectionElem<'tcx, (), ()>;
 
 newtype_index! {
     pub struct Field {
@@ -2446,6 +2450,117 @@ EnumLiftImpl! {
         type Lifted = UserTypeAnnotation<'tcx>;
         (UserTypeAnnotation::Ty)(ty),
         (UserTypeAnnotation::TypeOf)(def, substs),
+    }
+}
+
+/// A collection of projections into user types.
+///
+/// They are projections because a binding can occur a part of a
+/// parent pattern that has been ascribed a type.
+///
+/// Its a collection because there can be multiple type ascriptions on
+/// the path from the root of the pattern down to the binding itself.
+///
+/// An example:
+///
+/// ```rust
+/// struct S<'a>((i32, &'a str), String);
+/// let S((_, w): (i32, &'static str), _): S = ...;
+/// //    ------  ^^^^^^^^^^^^^^^^^^^ (1)
+/// //  ---------------------------------  ^ (2)
+/// ```
+///
+/// The highlights labelled `(1)` show the subpattern `(_, w)` being
+/// ascribed the type `(i32, &'static str)`.
+///
+/// The highlights labelled `(2)` show the whole pattern being
+/// ascribed the type `S`.
+///
+/// In this example, when we descend to `w`, we will have built up the
+/// following two projected types:
+///
+///   * base: `S`,                   projection: `(base.0).1`
+///   * base: `(i32, &'static str)`, projection: `base.1`
+///
+/// The first will lead to the constraint `w: &'1 str` (for some
+/// inferred region `'1`). The second will lead to the constraint `w:
+/// &'static str`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct UserTypeProjections<'tcx> {
+    pub(crate) contents: Vec<(UserTypeProjection<'tcx>, Span)>,
+}
+
+BraceStructTypeFoldableImpl! {
+    impl<'tcx> TypeFoldable<'tcx> for UserTypeProjections<'tcx> {
+        contents
+    }
+}
+
+impl<'tcx> UserTypeProjections<'tcx> {
+    pub fn none() -> Self {
+        UserTypeProjections { contents: vec![] }
+    }
+
+    pub fn from_projections(projs: impl Iterator<Item=(UserTypeProjection<'tcx>, Span)>) -> Self {
+        UserTypeProjections { contents: projs.collect() }
+    }
+
+    pub fn projections_and_spans(&self) -> impl Iterator<Item=&(UserTypeProjection<'tcx>, Span)> {
+        self.contents.iter()
+    }
+
+    pub fn projections(&self) -> impl Iterator<Item=&UserTypeProjection<'tcx>> {
+        self.contents.iter().map(|&(ref user_type, _span)| user_type)
+    }
+}
+
+/// Encodes the effect of a user-supplied type annotation on the
+/// subcomponents of a pattern. The effect is determined by applying the
+/// given list of proejctions to some underlying base type. Often,
+/// the projection element list `projs` is empty, in which case this
+/// directly encodes a type in `base`. But in the case of complex patterns with
+/// subpatterns and bindings, we want to apply only a *part* of the type to a variable,
+/// in which case the `projs` vector is used.
+///
+/// Examples:
+///
+/// * `let x: T = ...` -- here, the `projs` vector is empty.
+///
+/// * `let (x, _): T = ...` -- here, the `projs` vector would contain
+///   `field[0]` (aka `.0`), indicating that the type of `s` is
+///   determined by finding the type of the `.0` field from `T`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+pub struct UserTypeProjection<'tcx> {
+    pub base: UserTypeAnnotation<'tcx>,
+    pub projs: Vec<ProjectionElem<'tcx, (), ()>>,
+}
+
+impl<'tcx> Copy for ProjectionKind<'tcx> { }
+
+CloneTypeFoldableAndLiftImpls! { ProjectionKind<'tcx>, }
+
+impl<'tcx> TypeFoldable<'tcx> for UserTypeProjection<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use mir::ProjectionElem::*;
+
+        let base = self.base.fold_with(folder);
+        let projs: Vec<_> = self.projs
+            .iter()
+            .map(|elem| {
+                match elem {
+                    Deref => Deref,
+                    Field(f, ()) => Field(f.clone(), ()),
+                    Index(()) => Index(()),
+                    elem => elem.clone(),
+                }})
+            .collect();
+
+        UserTypeProjection { base, projs }
+    }
+
+    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
+        self.base.visit_with(visitor)
+        // Note: there's nothing in `self.proj` to visit.
     }
 }
 
