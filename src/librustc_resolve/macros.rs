@@ -462,7 +462,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         parent_scope: &ParentScope<'a>,
         force: bool,
     ) -> Result<Def, Determinacy> {
-        let span = path.span;
+        let path_span = path.span;
         let mut path = Segment::from_path(path);
 
         // Possibly apply the macro helper hack
@@ -474,15 +474,15 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         if path.len() > 1 {
-            let def = match self.resolve_path_with_parent_scope(None, &path, Some(MacroNS),
-                                                                parent_scope, false, span,
-                                                                CrateLint::No) {
+            let def = match self.resolve_path(None, &path, Some(MacroNS), parent_scope,
+                                              false, path_span, CrateLint::No) {
                 PathResult::NonModule(path_res) => match path_res.base_def() {
                     Def::Err => Err(Determinacy::Determined),
                     def @ _ => {
                         if path_res.unresolved_segments() > 0 {
                             self.found_unresolved_macro = true;
-                            self.session.span_err(span, "fail to resolve non-ident macro path");
+                            self.session.span_err(path_span,
+                                                  "fail to resolve non-ident macro path");
                             Err(Determinacy::Determined)
                         } else {
                             Ok(def)
@@ -498,16 +498,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             };
 
             parent_scope.module.macro_resolutions.borrow_mut()
-                .push((path
-                    .iter()
-                    .map(|seg| seg.ident)
-                    .collect::<Vec<Ident>>()
-                    .into_boxed_slice(), span));
+                .push((path, parent_scope.clone(), path_span));
 
             def
         } else {
             let binding = self.early_resolve_ident_in_lexical_scope(
-                path[0].ident, MacroNS, Some(kind), parent_scope, false, force, span
+                path[0].ident, MacroNS, Some(kind), parent_scope, false, force, path_span
             );
             match binding {
                 Ok(..) => {}
@@ -851,9 +847,14 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
-        for &(ref path, span) in module.macro_resolutions.borrow().iter() {
-            let path: Vec<_> = path.iter().map(|&ident| Segment::from_ident(ident)).collect();
-            match self.resolve_path(None, &path, Some(MacroNS), true, span, CrateLint::No) {
+
+        let macro_resolutions =
+            mem::replace(&mut *module.macro_resolutions.borrow_mut(), Vec::new());
+        for (mut path, parent_scope, path_span) in macro_resolutions {
+            // FIXME: Path resolution will ICE if segment IDs present.
+            for seg in &mut path { seg.id = None; }
+            match self.resolve_path(None, &path, Some(MacroNS), &parent_scope,
+                                    true, path_span, CrateLint::No) {
                 PathResult::NonModule(_) => {},
                 PathResult::Failed(span, msg, _) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));

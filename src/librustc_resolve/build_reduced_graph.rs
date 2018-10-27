@@ -111,23 +111,23 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
     fn build_reduced_graph_for_use_tree(
         &mut self,
-        root_use_tree: &ast::UseTree,
-        root_id: NodeId,
+        // This particular use tree
         use_tree: &ast::UseTree,
         id: NodeId,
-        vis: ty::Visibility,
         parent_prefix: &[Segment],
-        mut uniform_paths_canary_emitted: bool,
         nested: bool,
-        item: &Item,
+        mut uniform_paths_canary_emitted: bool,
+        // The whole `use` item
         parent_scope: ParentScope<'a>,
+        item: &Item,
+        vis: ty::Visibility,
+        root_span: Span,
     ) {
         debug!("build_reduced_graph_for_use_tree(parent_prefix={:?}, \
                 uniform_paths_canary_emitted={}, \
                 use_tree={:?}, nested={})",
                parent_prefix, uniform_paths_canary_emitted, use_tree, nested);
 
-        let is_prelude = attr::contains_name(&item.attrs, "prelude_import");
         let uniform_paths =
             self.session.rust_2018() &&
             self.session.features_untracked().uniform_paths;
@@ -215,8 +215,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     subclass,
                     source.ident.span,
                     id,
-                    root_use_tree.span,
-                    root_id,
+                    root_span,
+                    item.id,
                     ty::Visibility::Invisible,
                     parent_scope.clone(),
                     true, // is_uniform_paths_canary
@@ -345,8 +345,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     subclass,
                     use_tree.span,
                     id,
-                    root_use_tree.span,
-                    root_id,
+                    root_span,
+                    item.id,
                     vis,
                     parent_scope,
                     false, // is_uniform_paths_canary
@@ -354,7 +354,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             }
             ast::UseTreeKind::Glob => {
                 let subclass = GlobImport {
-                    is_prelude,
+                    is_prelude: attr::contains_name(&item.attrs, "prelude_import"),
                     max_vis: Cell::new(ty::Visibility::Invisible),
                 };
                 self.add_import_directive(
@@ -362,8 +362,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     subclass,
                     use_tree.span,
                     id,
-                    root_use_tree.span,
-                    root_id,
+                    root_span,
+                    item.id,
                     vis,
                     parent_scope,
                     false, // is_uniform_paths_canary
@@ -394,16 +394,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                 for &(ref tree, id) in items {
                     self.build_reduced_graph_for_use_tree(
-                        root_use_tree,
-                        root_id,
-                        tree,
-                        id,
-                        vis,
-                        &prefix,
-                        uniform_paths_canary_emitted,
-                        true,
-                        item,
-                        parent_scope.clone(),
+                        // This particular use tree
+                        tree, id, &prefix, true, uniform_paths_canary_emitted,
+                        // The whole `use` item
+                        parent_scope.clone(), item, vis, root_span,
                     );
                 }
             }
@@ -421,16 +415,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         match item.node {
             ItemKind::Use(ref use_tree) => {
                 self.build_reduced_graph_for_use_tree(
-                    use_tree,
-                    item.id,
-                    use_tree,
-                    item.id,
-                    vis,
-                    &[],
-                    false, // uniform_paths_canary_emitted
-                    false,
-                    item,
-                    parent_scope,
+                    // This particular use tree
+                    use_tree, item.id, &[], false, false,
+                    // The whole `use` item
+                    parent_scope, item, vis, use_tree.span,
                 );
             }
 

@@ -877,6 +877,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 }),
                 &directive.module_path[..],
                 None,
+                &directive.parent_scope,
                 false,
                 directive.span,
                 directive.crate_lint(),
@@ -956,6 +957,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             }),
             &module_path,
             None,
+            &directive.parent_scope,
             true,
             span,
             directive.crate_lint(),
@@ -968,7 +970,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             }
             PathResult::Failed(span, msg, true) => {
                 return if let Some(suggested_path) = self.make_path_suggestion(
-                    span, module_path.clone()
+                    span, module_path.clone(), &directive.parent_scope
                 ) {
                     Some((
                         span,
