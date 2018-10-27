@@ -551,7 +551,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                                                             &["crate"],
                                                             Some("metadata")).as_str()
                                                                              .to_string();
-    let metadata_llvm_module = backend.new_metadata(tcx.sess, &metadata_cgu_name);
+    let metadata_llvm_module = backend.new_metadata(tcx, &metadata_cgu_name);
     let metadata = time(tcx.sess, "write metadata", || {
         backend.write_metadata(tcx, &metadata_llvm_module)
     });
@@ -636,7 +636,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                                                        &["crate"],
                                                        Some("allocator")).as_str()
                                                                          .to_string();
-        let modules = backend.new_metadata(tcx.sess, &llmod_id);
+        let modules = backend.new_metadata(tcx, &llmod_id);
         time(tcx.sess, "write allocator module", || {
             backend.codegen_allocator(tcx, &modules, kind)
         });
@@ -897,6 +897,39 @@ fn is_codegened_item(tcx: TyCtxt, id: DefId) -> bool {
 }
 
 pub fn provide_both(providers: &mut Providers) {
+    providers.backend_optimization_level = |tcx, cratenum| {
+        let for_speed = match tcx.sess.opts.optimize {
+            // If globally no optimisation is done, #[optimize] has no effect.
+            //
+            // This is done because if we ended up "upgrading" to `-O2` here, we’d populate the
+            // pass manager and it is likely that some module-wide passes (such as inliner or
+            // cross-function constant propagation) would ignore the `optnone` annotation we put
+            // on the functions, thus necessarily involving these functions into optimisations.
+            config::OptLevel::No => return config::OptLevel::No,
+            // If globally optimise-speed is already specified, just use that level.
+            config::OptLevel::Less => return config::OptLevel::Less,
+            config::OptLevel::Default => return config::OptLevel::Default,
+            config::OptLevel::Aggressive => return config::OptLevel::Aggressive,
+            // If globally optimize-for-size has been requested, use -O2 instead (if optimize(size)
+            // are present).
+            config::OptLevel::Size => config::OptLevel::Default,
+            config::OptLevel::SizeMin => config::OptLevel::Default,
+        };
+
+        let (defids, _) = tcx.collect_and_partition_mono_items(cratenum);
+        for id in &*defids {
+            let hir::CodegenFnAttrs { optimize, .. } = tcx.codegen_fn_attrs(*id);
+            match optimize {
+                attr::OptimizeAttr::None => continue,
+                attr::OptimizeAttr::Size => continue,
+                attr::OptimizeAttr::Speed => {
+                    return for_speed;
+                }
+            }
+        }
+        return tcx.sess.opts.optimize;
+    };
+
     providers.dllimport_foreign_items = |tcx, krate| {
         let module_map = tcx.foreign_modules(krate);
         let module_map = module_map.iter()

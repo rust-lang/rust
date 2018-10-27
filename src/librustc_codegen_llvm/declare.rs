@@ -15,7 +15,7 @@ use llvm;
 use llvm::AttributePlace::Function;
 use rustc::ty::{self, PolyFnSig};
 use rustc::ty::layout::LayoutOf;
-use rustc::session::config::Sanitizer;
+use rustc::session::config::{Sanitizer, OptLevel};
 use rustc_data_structures::small_c_str::SmallCStr;
 use abi::{FnType, FnTypeExt};
 use attributes;
@@ -65,15 +65,24 @@ fn declare_raw_fn(
         }
     }
 
-    match cx.tcx.sess.opts.cg.opt_level.as_ref().map(String::as_ref) {
-        Some("s") => {
+    // FIXME(opt): this is kinda duplicated with similar code in attributes::from_fm_attrs…
+    match cx.tcx.sess.opts.optimize {
+        OptLevel::Size => {
+            llvm::Attribute::MinSize.unapply_llfn(Function, llfn);
             llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
         },
-        Some("z") => {
+        OptLevel::SizeMin => {
             llvm::Attribute::MinSize.apply_llfn(Function, llfn);
             llvm::Attribute::OptimizeForSize.apply_llfn(Function, llfn);
-        },
-        _ => {},
+            llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
+        }
+        OptLevel::No => {
+            llvm::Attribute::MinSize.unapply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeForSize.unapply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeNone.apply_llfn(Function, llfn);
+        }
+        _ => {}
     }
 
     attributes::non_lazy_bind(cx.sess(), llfn);

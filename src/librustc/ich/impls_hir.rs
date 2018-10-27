@@ -1159,6 +1159,7 @@ impl<'a> ToStableHashKey<StableHashingContext<'a>> for hir::TraitCandidate {
 impl_stable_hash_for!(struct hir::CodegenFnAttrs {
     flags,
     inline,
+    optimize,
     export_name,
     link_name,
     target_features,
@@ -1176,6 +1177,14 @@ impl<'hir> HashStable<StableHashingContext<'hir>> for hir::CodegenFnAttrFlags
 }
 
 impl<'hir> HashStable<StableHashingContext<'hir>> for attr::InlineAttr {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'hir>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+    }
+}
+
+impl<'hir> HashStable<StableHashingContext<'hir>> for attr::OptimizeAttr {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'hir>,
                                           hasher: &mut StableHasher<W>) {

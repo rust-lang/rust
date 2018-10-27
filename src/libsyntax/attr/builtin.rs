@@ -63,6 +63,13 @@ pub enum InlineAttr {
     Never,
 }
 
+#[derive(Copy, Clone, Hash, PartialEq, RustcEncodable, RustcDecodable)]
+pub enum OptimizeAttr {
+    None,
+    Speed,
+    Size,
+}
+
 #[derive(Copy, Clone, PartialEq)]
 pub enum UnwindAttr {
     Allowed,

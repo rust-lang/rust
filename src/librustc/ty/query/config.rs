@@ -967,6 +967,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::dllimport_foreign_items<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::backend_optimization_level<'tcx> {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
+        "optimization level used by backend".into()
+    }
+}
+
 macro_rules! impl_disk_cacheable_query(
     ($query_name:ident, |$key:tt| $cond:expr) => {
         impl<'tcx> QueryDescription<'tcx> for queries::$query_name<'tcx> {

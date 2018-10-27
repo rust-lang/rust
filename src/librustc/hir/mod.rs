@@ -21,7 +21,7 @@ use syntax::source_map::Spanned;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Label, Lit, StrStyle, FloatTy, IntTy, UintTy};
-use syntax::attr::InlineAttr;
+use syntax::attr::{InlineAttr, OptimizeAttr};
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
@@ -2416,6 +2416,8 @@ pub struct CodegenFnAttrs {
     pub flags: CodegenFnAttrFlags,
     /// Parsed representation of the `#[inline]` attribute
     pub inline: InlineAttr,
+    /// Parsed representation of the `#[optimize]` attribute
+    pub optimize: OptimizeAttr,
     /// The `#[export_name = "..."]` attribute, indicating a custom symbol a
     /// function should be exported under
     pub export_name: Option<Symbol>,
@@ -2476,6 +2478,7 @@ impl CodegenFnAttrs {
         CodegenFnAttrs {
             flags: CodegenFnAttrFlags::empty(),
             inline: InlineAttr::None,
+            optimize: OptimizeAttr::None,
             export_name: None,
             link_name: None,
             target_features: vec![],

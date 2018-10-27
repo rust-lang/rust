@@ -3,7 +3,7 @@ use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{ModuleConfig, CodegenContext, pre_lto_bitcode_filename};
 use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinShared, ThinModule};
 use rustc_codegen_ssa::traits::*;
-use back::write::{self, DiagnosticHandlers, with_llvm_pmb, save_temp_bitcode, get_llvm_opt_level};
+use back::write::{self, DiagnosticHandlers, with_llvm_pmb, save_temp_bitcode, to_llvm_opt_settings};
 use errors::{FatalError, Handler};
 use llvm::archive_ro::ArchiveRO;
 use llvm::{self, True, False};
@@ -532,7 +532,7 @@ pub(crate) fn run_pass_manager(cgcx: &CodegenContext<LlvmCodegenBackend>,
         // Note that in general this shouldn't matter too much as you typically
         // only turn on ThinLTO when you're compiling with optimizations
         // otherwise.
-        let opt_level = config.opt_level.map(get_llvm_opt_level)
+        let opt_level = config.opt_level.map(|x| to_llvm_opt_settings(x).0)
             .unwrap_or(llvm::CodeGenOptLevel::None);
         let opt_level = match opt_level {
             llvm::CodeGenOptLevel::None => llvm::CodeGenOptLevel::Less,

@@ -642,6 +642,7 @@ define_dep_nodes!( <'tcx>
     [eval_always] CollectAndPartitionMonoItems,
     [] IsCodegenedItem(DefId),
     [] CodegenUnit(InternedString),
+    [] BackendOptimizationLevel(CrateNum),
     [] CompileCodegenUnit(InternedString),
     [input] OutputFilenames,
     [] NormalizeProjectionTy(CanonicalProjectionGoal<'tcx>),
