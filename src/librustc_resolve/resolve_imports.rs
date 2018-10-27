@@ -226,6 +226,9 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                         let module = self.get_module(binding.def().def_id());
                         self.populate_module_if_necessary(module);
                         return Ok(binding);
+                    } else if !self.graph_root.unresolved_invocations.borrow().is_empty() {
+                        // Macro-expanded `extern crate`items still can add names to extern prelude.
+                        return Err(Undetermined);
                     } else {
                         return Err(Determined);
                     }
