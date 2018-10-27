@@ -26,7 +26,7 @@ use rustc::ty::cast::CastTy;
 use rustc::ty::query::Providers;
 use rustc::mir::*;
 use rustc::mir::traversal::ReversePostorder;
-use rustc::mir::visit::{PlaceContext, Visitor};
+use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::middle::lang_items;
 use rustc_target::spec::abi::Abi;
 use syntax::ast::LitKind;
@@ -84,7 +84,7 @@ impl<'a, 'tcx> Qualif {
 }
 
 /// What kind of item we are in.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Mode {
     Const,
     Static,
@@ -271,7 +271,11 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             // This must be an explicit assignment.
             _ => {
                 // Catch more errors in the destination.
-                self.visit_place(dest, PlaceContext::Store, location);
+                self.visit_place(
+                    dest,
+                    PlaceContext::MutatingUse(MutatingUseContext::Store),
+                    location
+                );
                 self.statement_like();
             }
         }
@@ -383,6 +387,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         // Collect all the temps we need to promote.
         let mut promoted_temps = BitSet::new_empty(self.temp_promotion_state.len());
 
+        debug!("qualify_const: promotion_candidates={:?}", self.promotion_candidates);
         for candidate in &self.promotion_candidates {
             match *candidate {
                 Candidate::Ref(Location { block: bb, statement_index: stmt_idx }) => {
@@ -414,6 +419,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                    &local: &Local,
                    _: PlaceContext<'tcx>,
                    _: Location) {
+        debug!("visit_local: local={:?}", local);
         let kind = self.mir.local_kind(local);
         match kind {
             LocalKind::ReturnPointer => {
@@ -435,6 +441,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
 
                 if !self.temp_promotion_state[local].is_promotable() {
+                    debug!("visit_local: (not promotable) local={:?}", local);
                     self.add(Qualif::NOT_PROMOTABLE);
                 }
 
@@ -451,6 +458,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     place: &Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
+        debug!("visit_place: place={:?} context={:?} location={:?}", place, context, location);
         match *place {
             Place::Local(ref local) => self.visit_local(local, context, location),
             Place::Promoted(_) => bug!("promoting already promoted MIR"),
@@ -557,6 +565,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     }
 
     fn visit_operand(&mut self, operand: &Operand<'tcx>, location: Location) {
+        debug!("visit_operand: operand={:?} location={:?}", operand, location);
         self.super_operand(operand, location);
 
         match *operand {
@@ -591,6 +600,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     }
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        debug!("visit_rvalue: rvalue={:?} location={:?}", rvalue, location);
         // Recurse through operands and places.
         if let Rvalue::Ref(region, kind, ref place) = *rvalue {
             let mut is_reborrow = false;
@@ -604,10 +614,17 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             if is_reborrow {
-                self.super_place(place, PlaceContext::Borrow {
-                    region,
-                    kind
-                }, location);
+                let ctx = match kind {
+                    BorrowKind::Shared =>
+                        PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(region)),
+                    BorrowKind::Shallow =>
+                        PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(region)),
+                    BorrowKind::Unique =>
+                        PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow(region)),
+                    BorrowKind::Mut { .. } =>
+                        PlaceContext::MutatingUse(MutatingUseContext::Borrow(region)),
+                };
+                self.super_place(place, ctx, location);
             } else {
                 self.super_rvalue(rvalue, location);
             }
@@ -696,6 +713,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
                 }
 
+                debug!("visit_rvalue: forbidden_mut={:?}", forbidden_mut);
                 if forbidden_mut {
                     self.add(Qualif::NOT_CONST);
                 } else {
@@ -709,15 +727,19 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         }
                         place = &proj.base;
                     }
+                    debug!("visit_rvalue: place={:?}", place);
                     if let Place::Local(local) = *place {
                         if self.mir.local_kind(local) == LocalKind::Temp {
+                            debug!("visit_rvalue: local={:?}", local);
                             if let Some(qualif) = self.local_qualif[local] {
                                 // `forbidden_mut` is false, so we can safely ignore
                                 // `MUTABLE_INTERIOR` from the local's qualifications.
                                 // This allows borrowing fields which don't have
                                 // `MUTABLE_INTERIOR`, from a type that does, e.g.:
                                 // `let _: &'static _ = &(Cell::new(1), 2).1;`
+                                debug!("visit_rvalue: qualif={:?}", qualif);
                                 if (qualif - Qualif::MUTABLE_INTERIOR).is_empty() {
+                                    debug!("visit_rvalue: candidate={:?}", candidate);
                                     self.promotion_candidates.push(candidate);
                                 }
                             }
@@ -815,6 +837,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                              bb: BasicBlock,
                              kind: &TerminatorKind<'tcx>,
                              location: Location) {
+        debug!("visit_terminator_kind: bb={:?} kind={:?} location={:?}", bb, kind, location);
         if let TerminatorKind::Call { ref func, ref args, ref destination, .. } = *kind {
             self.visit_operand(func, location);
 
@@ -972,6 +995,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     let candidate = Candidate::Argument { bb, index: i };
                     if is_shuffle && i == 2 {
                         if this.qualif.is_empty() {
+                            debug!("visit_terminator_kind: candidate={:?}", candidate);
                             this.promotion_candidates.push(candidate);
                         } else {
                             span_err!(this.tcx.sess, this.span, E0526,
@@ -998,6 +1022,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     // We can error out with a hard error if the argument is not
                     // constant here.
                     if (this.qualif - Qualif::NOT_PROMOTABLE).is_empty() {
+                        debug!("visit_terminator_kind: candidate={:?}", candidate);
                         this.promotion_candidates.push(candidate);
                     } else {
                         this.tcx.sess.span_err(this.span,
@@ -1075,6 +1100,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     dest: &Place<'tcx>,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
+        debug!("visit_assign: dest={:?} rvalue={:?} location={:?}", dest, rvalue, location);
         self.visit_rvalue(rvalue, location);
 
         // Check the allowed const fn argument forms.
@@ -1123,10 +1149,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     }
 
     fn visit_source_info(&mut self, source_info: &SourceInfo) {
+        debug!("visit_source_info: source_info={:?}", source_info);
         self.span = source_info.span;
     }
 
     fn visit_statement(&mut self, bb: BasicBlock, statement: &Statement<'tcx>, location: Location) {
+        debug!("visit_statement: bb={:?} statement={:?} location={:?}", bb, statement, location);
         self.nest(|this| {
             this.visit_source_info(&statement.source_info);
             match statement.kind {
@@ -1150,6 +1178,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         bb: BasicBlock,
                         terminator: &Terminator<'tcx>,
                         location: Location) {
+        debug!("visit_terminator: bb={:?} terminator={:?} location={:?}", bb, terminator, location);
         self.nest(|this| this.super_terminator(bb, terminator, location));
     }
 }
@@ -1216,6 +1245,7 @@ impl MirPass for QualifyAndPromoteConstants {
             hir::BodyOwnerKind::Static(hir::MutMutable) => Mode::StaticMut,
         };
 
+        debug!("run_pass: mode={:?}", mode);
         if mode == Mode::Fn || mode == Mode::ConstFn {
             // This is ugly because Qualifier holds onto mir,
             // which can't be mutated until its scope ends.
@@ -1258,6 +1288,7 @@ impl MirPass for QualifyAndPromoteConstants {
             // In `const` and `static` everything without `StorageDead`
             // is `'static`, we don't have to create promoted MIR fragments,
             // just remove `Drop` and `StorageDead` on "promoted" locals.
+            debug!("run_pass: promoted_temps={:?}", promoted_temps);
             for block in mir.basic_blocks_mut() {
                 block.statements.retain(|statement| {
                     match statement.kind {

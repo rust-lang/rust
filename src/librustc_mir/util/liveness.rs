@@ -33,7 +33,9 @@
 //! generator yield points, all pre-existing references are invalidated, so this
 //! doesn't matter).
 
-use rustc::mir::visit::{PlaceContext, Visitor};
+use rustc::mir::visit::{
+    PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext, NonUseContext,
+};
 use rustc::mir::Local;
 use rustc::mir::*;
 use rustc::ty::{item_path, TyCtxt};
@@ -161,10 +163,10 @@ pub fn categorize<'tcx>(context: PlaceContext<'tcx>) -> Option<DefUse> {
         ///////////////////////////////////////////////////////////////////////////
         // DEFS
 
-        PlaceContext::Store |
+        PlaceContext::MutatingUse(MutatingUseContext::Store) |
 
         // This is potentially both a def and a use...
-        PlaceContext::AsmOutput |
+        PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) |
 
         // We let Call define the result in both the success and
         // unwind cases. This is not really correct, however it
@@ -172,12 +174,12 @@ pub fn categorize<'tcx>(context: PlaceContext<'tcx>) -> Option<DefUse> {
         // generate MIR. To do things properly, we would apply
         // the def in call only to the input from the success
         // path and not the unwind path. -nmatsakis
-        PlaceContext::Call |
+        PlaceContext::MutatingUse(MutatingUseContext::Call) |
 
         // Storage live and storage dead aren't proper defines, but we can ignore
         // values that come before them.
-        PlaceContext::StorageLive |
-        PlaceContext::StorageDead => Some(DefUse::Def),
+        PlaceContext::NonUse(NonUseContext::StorageLive) |
+        PlaceContext::NonUse(NonUseContext::StorageDead) => Some(DefUse::Def),
 
         ///////////////////////////////////////////////////////////////////////////
         // REGULAR USES
@@ -186,18 +188,23 @@ pub fn categorize<'tcx>(context: PlaceContext<'tcx>) -> Option<DefUse> {
         // purposes of NLL, these are special in that **all** the
         // lifetimes appearing in the variable must be live for each regular use.
 
-        PlaceContext::Projection(..) |
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) |
+        PlaceContext::MutatingUse(MutatingUseContext::Projection) |
 
         // Borrows only consider their local used at the point of the borrow.
         // This won't affect the results since we use this analysis for generators
         // and we only care about the result at suspension points. Borrows cannot
         // cross suspension points so this behavior is unproblematic.
-        PlaceContext::Borrow { .. } |
+        PlaceContext::MutatingUse(MutatingUseContext::Borrow(..)) |
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(..)) |
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(..)) |
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow(..)) |
 
-        PlaceContext::Inspect |
-        PlaceContext::Copy |
-        PlaceContext::Move |
-        PlaceContext::Validate =>
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect) |
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) |
+        PlaceContext::NonUse(NonUseContext::AscribeUserTy) |
+        PlaceContext::NonUse(NonUseContext::Validate) =>
             Some(DefUse::Use),
 
         ///////////////////////////////////////////////////////////////////////////
@@ -208,7 +215,7 @@ pub fn categorize<'tcx>(context: PlaceContext<'tcx>) -> Option<DefUse> {
         // uses in drop are special because `#[may_dangle]`
         // attributes can affect whether lifetimes must be live.
 
-        PlaceContext::Drop =>
+        PlaceContext::MutatingUse(MutatingUseContext::Drop) =>
             Some(DefUse::Drop),
     }
 }

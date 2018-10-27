@@ -14,7 +14,6 @@ use rustc::mir::{Local, Location, Place};
 use rustc_data_structures::fx::FxHashSet;
 
 use borrow_check::MirBorrowckCtxt;
-use util::collect_writes::is_place_assignment;
 
 impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     /// Walks the MIR looking for assignments to a set of locals, as part of the unused mutable
@@ -46,7 +45,7 @@ impl<'visit, 'cx, 'gcx, 'tcx> Visitor<'tcx> for GatherUsedMutsVisitor<'visit, 'c
             return;
         }
 
-        if is_place_assignment(&place_context) {
+        if place_context.is_place_assignment() {
             // Propagate the Local assigned at this Location as a used mutable local variable
             for moi in &self.mbcx.move_data.loc_map[location] {
                 let mpi = &self.mbcx.move_data.moves[*moi].path;

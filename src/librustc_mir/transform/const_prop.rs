@@ -16,7 +16,7 @@ use rustc::hir::def::Def;
 use rustc::mir::{Constant, Location, Place, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
-use rustc::mir::visit::{Visitor, PlaceContext};
+use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::interpret::{
     ConstEvalErr, EvalErrorKind, Scalar, GlobalId, EvalResult,
 };
@@ -533,17 +533,18 @@ impl<'tcx> Visitor<'tcx> for CanConstProp {
             // Constants must have at most one write
             // FIXME(oli-obk): we could be more powerful here, if the multiple writes
             // only occur in independent execution paths
-            Store => if self.found_assignment[local] {
+            MutatingUse(MutatingUseContext::Store) => if self.found_assignment[local] {
                 self.can_const_prop[local] = false;
             } else {
                 self.found_assignment[local] = true
             },
             // Reading constants is allowed an arbitrary number of times
-            Copy | Move |
-            StorageDead | StorageLive |
-            Validate |
-            Projection(_) |
-            Inspect => {},
+            NonMutatingUse(NonMutatingUseContext::Copy) |
+            NonMutatingUse(NonMutatingUseContext::Move) |
+            NonMutatingUse(NonMutatingUseContext::Inspect) |
+            NonMutatingUse(NonMutatingUseContext::Projection) |
+            MutatingUse(MutatingUseContext::Projection) |
+            NonUse(_) => {},
             _ => self.can_const_prop[local] = false,
         }
     }

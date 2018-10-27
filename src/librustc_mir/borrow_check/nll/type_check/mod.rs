@@ -35,7 +35,7 @@ use rustc::infer::outlives::env::RegionBoundPairs;
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc::mir::interpret::EvalErrorKind::BoundsCheck;
 use rustc::mir::tcx::PlaceTy;
-use rustc::mir::visit::{PlaceContext, Visitor};
+use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::*;
 use rustc::traits::query::type_op;
 use rustc::traits::query::type_op::custom::CustomTypeOp;
@@ -472,9 +472,9 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             }
             Place::Projection(ref proj) => {
                 let base_context = if context.is_mutating_use() {
-                    PlaceContext::Projection(Mutability::Mut)
+                    PlaceContext::MutatingUse(MutatingUseContext::Projection)
                 } else {
-                    PlaceContext::Projection(Mutability::Not)
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection)
                 };
                 let base_ty = self.sanitize_place(&proj.base, location, base_context);
                 if let PlaceTy::Ty { ty } = base_ty {
@@ -488,7 +488,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 self.sanitize_projection(base_ty, &proj.elem, place, location)
             }
         };
-        if let PlaceContext::Copy = context {
+        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
             let tcx = self.tcx();
             let trait_ref = ty::TraitRef {
                 def_id: tcx.lang_items().copy_trait().unwrap(),
