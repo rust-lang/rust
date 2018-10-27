@@ -341,6 +341,7 @@ fn run_rustfmt(
 
         if verbosity == Verbosity::Verbose {
             print!("rustfmt");
+            print!(" --edition {}", edition);
             fmt_args.iter().for_each(|f| print!(" {}", f));
             files.iter().for_each(|f| print!(" {}", f.display()));
             println!();
