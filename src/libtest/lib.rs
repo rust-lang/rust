@@ -89,7 +89,7 @@ const QUIET_MODE_MAX_COLUMN: usize = 100; // insert a '\n' after 100 tests in qu
 // to be used by rustc to compile tests in libtest
 pub mod test {
     pub use {assert_test_result, filter_tests, parse_opts, run_test, test_main, test_main_static,
-             Bencher, DynTestFn, DynTestName, Metric, MetricMap, Options, ShouldPanic,
+             Bencher, DynTestFn, DynTestName, Metric, MetricMap, Options, RunIgnored, ShouldPanic,
              StaticBenchFn, StaticTestFn, StaticTestName, TestDesc, TestDescAndFn, TestName,
              TestOpts, TestResult, TrFailed, TrFailedMsg, TrIgnored, TrOk};
 }
@@ -357,12 +357,19 @@ pub enum OutputFormat {
     Json,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum RunIgnored {
+    Yes,
+    No,
+    Only,
+}
+
 #[derive(Debug)]
 pub struct TestOpts {
     pub list: bool,
     pub filter: Option<String>,
     pub filter_exact: bool,
-    pub run_ignored: bool,
+    pub run_ignored: RunIgnored,
     pub run_tests: bool,
     pub bench_benchmarks: bool,
     pub logfile: Option<PathBuf>,
@@ -381,7 +388,7 @@ impl TestOpts {
             list: false,
             filter: None,
             filter_exact: false,
-            run_ignored: false,
+            run_ignored: RunIgnored::No,
             run_tests: false,
             bench_benchmarks: false,
             logfile: None,
@@ -400,7 +407,8 @@ pub type OptRes = Result<TestOpts, String>;
 
 fn optgroups() -> getopts::Options {
     let mut opts = getopts::Options::new();
-    opts.optflag("", "ignored", "Run ignored tests")
+    opts.optflag("", "include-ignored", "Run ignored and not ignored tests")
+        .optflag("", "ignored", "Run only ignored tests")
         .optflag("", "test", "Run tests and not benchmarks")
         .optflag("", "bench", "Run benchmarks instead of tests")
         .optflag("", "list", "List all tests and benchmarks")
@@ -499,8 +507,8 @@ Test Attributes:
                      contain: #[should_panic(expected = "foo")].
     #[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
-                     normal test runs. Running with --ignored will run these
-                     tests."#,
+                     normal test runs. Running with --ignored or --include-ignored will run
+                     these tests."#,
         usage = options.usage(&message)
     );
 }
@@ -553,7 +561,21 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         None
     };
 
-    let run_ignored = matches.opt_present("ignored");
+    let include_ignored = matches.opt_present("include-ignored");
+    if !allow_unstable && include_ignored {
+        return Some(Err(
+            "The \"include-ignored\" flag is only accepted on the nightly compiler".into()
+        ));
+    }
+
+    let run_ignored = match (include_ignored, matches.opt_present("ignored")) {
+        (true, true) => return Some(Err(
+            "the options --include-ignored and --ignored are mutually exclusive".into()
+        )),
+        (true, false) => RunIgnored::Yes,
+        (false, true) => RunIgnored::Only,
+        (false, false) => RunIgnored::No,
+    };
     let quiet = matches.opt_present("quiet");
     let exact = matches.opt_present("exact");
     let list = matches.opt_present("list");
@@ -1305,55 +1327,36 @@ fn get_concurrency() -> usize {
 
 pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescAndFn> {
     let mut filtered = tests;
-    // Remove tests that don't match the test filter
-    filtered = match opts.filter {
-        None => filtered,
-        Some(ref filter) => filtered
-            .into_iter()
-            .filter(|test| {
-                if opts.filter_exact {
-                    test.desc.name.as_slice() == &filter[..]
-                } else {
-                    test.desc.name.as_slice().contains(&filter[..])
-                }
-            })
-            .collect(),
+    let matches_filter = |test: &TestDescAndFn, filter: &str| {
+        let test_name = test.desc.name.as_slice();
+
+        match opts.filter_exact {
+            true => test_name == filter,
+            false => test_name.contains(filter),
+        }
     };
+
+    // Remove tests that don't match the test filter
+    if let Some(ref filter) = opts.filter {
+        filtered.retain(|test| matches_filter(test, filter));
+    }
 
     // Skip tests that match any of the skip filters
-    filtered = filtered
-        .into_iter()
-        .filter(|t| {
-            !opts.skip.iter().any(|sf| {
-                if opts.filter_exact {
-                    t.desc.name.as_slice() == &sf[..]
-                } else {
-                    t.desc.name.as_slice().contains(&sf[..])
-                }
-            })
-        })
-        .collect();
+    filtered.retain(|test| {
+        !opts.skip.iter().any(|sf| matches_filter(test, sf))
+    });
 
-    // Maybe pull out the ignored test and unignore them
-    filtered = if !opts.run_ignored {
-        filtered
-    } else {
-        fn filter(test: TestDescAndFn) -> Option<TestDescAndFn> {
-            if test.desc.ignore {
-                let TestDescAndFn { desc, testfn } = test;
-                Some(TestDescAndFn {
-                    desc: TestDesc {
-                        ignore: false,
-                        ..desc
-                    },
-                    testfn,
-                })
-            } else {
-                None
-            }
+    // maybe unignore tests
+    match opts.run_ignored {
+        RunIgnored::Yes => {
+            filtered.iter_mut().for_each(|test| test.desc.ignore = false);
+        },
+        RunIgnored::Only => {
+            filtered.retain(|test| test.desc.ignore);
+            filtered.iter_mut().for_each(|test| test.desc.ignore = false);
         }
-        filtered.into_iter().filter_map(filter).collect()
-    };
+        RunIgnored::No => {}
+    }
 
     // Sort the tests alphabetically
     filtered.sort_by(|t1, t2| t1.desc.name.as_slice().cmp(t2.desc.name.as_slice()));
@@ -1742,12 +1745,36 @@ pub mod bench {
 
 #[cfg(test)]
 mod tests {
-    use test::{filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, ShouldPanic,
-               StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailed, TrFailedMsg,
-               TrIgnored, TrOk};
+    use test::{filter_tests, parse_opts, run_test, DynTestFn, DynTestName, MetricMap, RunIgnored,
+               ShouldPanic, StaticTestName, TestDesc, TestDescAndFn, TestOpts, TrFailed,
+               TrFailedMsg, TrIgnored, TrOk};
     use std::sync::mpsc::channel;
     use bench;
     use Bencher;
+
+
+    fn one_ignored_one_unignored_test() -> Vec<TestDescAndFn> {
+        vec![
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName("1"),
+                    ignore: true,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                },
+                testfn: DynTestFn(Box::new(move || {})),
+            },
+            TestDescAndFn {
+                desc: TestDesc {
+                    name: StaticTestName("2"),
+                    ignore: false,
+                    should_panic: ShouldPanic::No,
+                    allow_fail: false,
+                },
+                testfn: DynTestFn(Box::new(move || {})),
+            },
+        ]
+    }
 
     #[test]
     pub fn do_not_run_ignored_tests() {
@@ -1874,11 +1901,20 @@ mod tests {
             "filter".to_string(),
             "--ignored".to_string(),
         ];
-        let opts = match parse_opts(&args) {
-            Some(Ok(o)) => o,
-            _ => panic!("Malformed arg in parse_ignored_flag"),
-        };
-        assert!((opts.run_ignored));
+        let opts = parse_opts(&args).unwrap().unwrap();
+        assert_eq!(opts.run_ignored, RunIgnored::Only);
+    }
+
+    #[test]
+    fn parse_include_ignored_flag() {
+        let args = vec![
+            "progname".to_string(),
+            "filter".to_string(),
+            "-Zunstable-options".to_string(),
+            "--include-ignored".to_string(),
+        ];
+        let opts = parse_opts(&args).unwrap().unwrap();
+        assert_eq!(opts.run_ignored, RunIgnored::Yes);
     }
 
     #[test]
@@ -1888,33 +1924,31 @@ mod tests {
 
         let mut opts = TestOpts::new();
         opts.run_tests = true;
-        opts.run_ignored = true;
+        opts.run_ignored = RunIgnored::Only;
 
-        let tests = vec![
-            TestDescAndFn {
-                desc: TestDesc {
-                    name: StaticTestName("1"),
-                    ignore: true,
-                    should_panic: ShouldPanic::No,
-                    allow_fail: false,
-                },
-                testfn: DynTestFn(Box::new(move || {})),
-            },
-            TestDescAndFn {
-                desc: TestDesc {
-                    name: StaticTestName("2"),
-                    ignore: false,
-                    should_panic: ShouldPanic::No,
-                    allow_fail: false,
-                },
-                testfn: DynTestFn(Box::new(move || {})),
-            },
-        ];
+        let tests = one_ignored_one_unignored_test();
         let filtered = filter_tests(&opts, tests);
 
         assert_eq!(filtered.len(), 1);
         assert_eq!(filtered[0].desc.name.to_string(), "1");
         assert!(!filtered[0].desc.ignore);
+    }
+
+    #[test]
+    pub fn run_include_ignored_option() {
+        // When we "--include-ignored" tests, the ignore flag should be set to false on
+        // all tests and no test filtered out
+
+        let mut opts = TestOpts::new();
+        opts.run_tests = true;
+        opts.run_ignored = RunIgnored::Yes;
+
+        let tests = one_ignored_one_unignored_test();
+        let filtered = filter_tests(&opts, tests);
+
+        assert_eq!(filtered.len(), 2);
+        assert!(!filtered[0].desc.ignore);
+        assert!(!filtered[1].desc.ignore);
     }
 
     #[test]
@@ -2024,7 +2058,9 @@ mod tests {
             "test::ignored_tests_result_in_ignored".to_string(),
             "test::first_free_arg_should_be_a_filter".to_string(),
             "test::parse_ignored_flag".to_string(),
+            "test::parse_include_ignored_flag".to_string(),
             "test::filter_for_ignored_option".to_string(),
+            "test::run_include_ignored_option".to_string(),
             "test::sort_tests".to_string(),
         ];
         let tests = {
@@ -2055,6 +2091,8 @@ mod tests {
             "test::first_free_arg_should_be_a_filter".to_string(),
             "test::ignored_tests_result_in_ignored".to_string(),
             "test::parse_ignored_flag".to_string(),
+            "test::parse_include_ignored_flag".to_string(),
+            "test::run_include_ignored_option".to_string(),
             "test::sort_tests".to_string(),
         ];
 
