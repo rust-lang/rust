@@ -1145,7 +1145,7 @@ pub unsafe fn _mm_setzero_si128() -> __m128i {
 )]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_loadl_epi64(mem_addr: *const __m128i) -> __m128i {
-    _mm_set_epi64x(0, simd_extract((*mem_addr).as_i64x2(), 0))
+    _mm_set_epi64x(0, simd_extract(ptr::read_unaligned::<__m128i >(mem_addr).as_i64x2(), 0))
 }
 
 /// Load 128-bits of integer data from memory into a new vector.
