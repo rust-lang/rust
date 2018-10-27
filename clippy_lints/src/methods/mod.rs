@@ -21,7 +21,7 @@ use crate::utils::sugg;
 use crate::utils::{
     get_arg_name, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of, is_self, is_self_ty,
     iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method, match_type,
-    match_var, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path, snippet, span_lint,
+    match_var, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path, snippet, snippet_with_macro_callsite, span_lint,
     span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
 use if_chain::if_chain;
@@ -1062,9 +1062,9 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
         }
 
         let sugg: Cow<'_, _> = match (fn_has_arguments, !or_has_args) {
-            (true, _) => format!("|_| {}", snippet(cx, arg.span, "..")).into(),
-            (false, false) => format!("|| {}", snippet(cx, arg.span, "..")).into(),
-            (false, true) => snippet(cx, fun_span, ".."),
+            (true, _) => format!("|_| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
+            (false, false) => format!("|| {}", snippet_with_macro_callsite(cx, arg.span, "..")).into(),
+            (false, true) => snippet_with_macro_callsite(cx, fun_span, ".."),
         };
         let span_replace_word = method_span.with_hi(span.hi());
         span_lint_and_sugg(
