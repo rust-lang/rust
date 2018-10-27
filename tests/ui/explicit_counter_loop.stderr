@@ -1,0 +1,28 @@
+error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
+  --> $DIR/explicit_counter_loop.rs:15:15
+   |
+15 |     for _v in &vec {
+   |               ^^^^
+   |
+   = note: `-D clippy::explicit-counter-loop` implied by `-D warnings`
+
+error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
+  --> $DIR/explicit_counter_loop.rs:21:15
+   |
+21 |     for _v in &vec {
+   |               ^^^^
+
+error: the variable `count` is used as a loop counter. Consider using `for (count, item) in text.chars().enumerate()` or similar iterators
+  --> $DIR/explicit_counter_loop.rs:58:19
+   |
+58 |         for ch in text.chars() {
+   |                   ^^^^^^^^^^^^
+
+error: the variable `count` is used as a loop counter. Consider using `for (count, item) in text.chars().enumerate()` or similar iterators
+  --> $DIR/explicit_counter_loop.rs:69:19
+   |
+69 |         for ch in text.chars() {
+   |                   ^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
