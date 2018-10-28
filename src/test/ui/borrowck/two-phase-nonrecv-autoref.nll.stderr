@@ -7,17 +7,15 @@ LL |         f(f(10));
    |         first mutable borrow occurs here
    |         first borrow later used by call
 
-error[E0382]: use of moved value: `*f`
+error[E0382]: use of moved value: `f`
   --> $DIR/two-phase-nonrecv-autoref.rs:69:11
    |
 LL |     fn twice_ten_so<F: FnOnce(i32) -> i32>(f: Box<F>) {
-   |                     - consider adding a `Copy` constraint to this type argument
+   |                                            - move occurs because `f` has type `std::boxed::Box<F>`, which does not implement the `Copy` trait
 LL |         f(f(10));
    |         - ^ value used here after move
    |         |
    |         value moved here
-   |
-   = note: move occurs because `*f` has type `F`, which does not implement the `Copy` trait
 
 error[E0499]: cannot borrow `*f` as mutable more than once at a time
   --> $DIR/two-phase-nonrecv-autoref.rs:76:11
@@ -28,30 +26,18 @@ LL |         f(f(10));
    |         first mutable borrow occurs here
    |         first borrow later used by call
 
-error[E0161]: cannot move a value of type dyn std::ops::FnOnce(i32) -> i32: the size of dyn std::ops::FnOnce(i32) -> i32 cannot be statically determined
-  --> $DIR/two-phase-nonrecv-autoref.rs:85:9
-   |
-LL |         f(f(10));
-   |         ^
-
-error[E0161]: cannot move a value of type dyn std::ops::FnOnce(i32) -> i32: the size of dyn std::ops::FnOnce(i32) -> i32 cannot be statically determined
+error[E0382]: use of moved value: `f`
   --> $DIR/two-phase-nonrecv-autoref.rs:85:11
    |
-LL |         f(f(10));
-   |           ^
-
-error[E0382]: use of moved value: `*f`
-  --> $DIR/two-phase-nonrecv-autoref.rs:85:11
-   |
+LL |     fn twice_ten_oo(f: Box<FnOnce(i32) -> i32>) {
+   |                     - move occurs because `f` has type `std::boxed::Box<dyn std::ops::FnOnce(i32) -> i32>`, which does not implement the `Copy` trait
 LL |         f(f(10));
    |         - ^ value used here after move
    |         |
    |         value moved here
-   |
-   = note: move occurs because `*f` has type `dyn std::ops::FnOnce(i32) -> i32`, which does not implement the `Copy` trait
 
 error[E0502]: cannot borrow `a` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:129:27
+  --> $DIR/two-phase-nonrecv-autoref.rs:125:27
    |
 LL |     double_access(&mut a, &a);
    |     ------------- ------  ^^ immutable borrow occurs here
@@ -60,7 +46,7 @@ LL |     double_access(&mut a, &a);
    |     mutable borrow later used by call
 
 error[E0502]: cannot borrow `i` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:157:7
+  --> $DIR/two-phase-nonrecv-autoref.rs:153:7
    |
 LL |     i[i[3]] = 4;
    |     --^----
@@ -70,7 +56,7 @@ LL |     i[i[3]] = 4;
    |     mutable borrow later used here
 
 error[E0502]: cannot borrow `i` as immutable because it is also borrowed as mutable
-  --> $DIR/two-phase-nonrecv-autoref.rs:163:7
+  --> $DIR/two-phase-nonrecv-autoref.rs:159:7
    |
 LL |     i[i[3]] = i[4];
    |     --^----
@@ -79,7 +65,7 @@ LL |     i[i[3]] = i[4];
    |     mutable borrow occurs here
    |     mutable borrow later used here
 
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 
-Some errors occurred: E0161, E0382, E0499, E0502.
-For more information about an error, try `rustc --explain E0161`.
+Some errors occurred: E0382, E0499, E0502.
+For more information about an error, try `rustc --explain E0382`.
