@@ -13,7 +13,7 @@ use constrained_type_params::{identify_constrained_type_params, Parameter};
 
 use hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
-use rustc::ty::{self, Lift, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
+use rustc::ty::{self, Lift, Ty, TyCtxt, TyKind, GenericParamDefKind, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::util::ExplicitSelf;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
@@ -119,14 +119,14 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
             check_item_fn(tcx, item);
         }
         hir::ItemKind::Static(ref ty, ..) => {
-            check_item_type(tcx, item.id, ty.span);
+            check_item_type(tcx, item.id, ty.span, false);
         }
         hir::ItemKind::Const(ref ty, ..) => {
-            check_item_type(tcx, item.id, ty.span);
+            check_item_type(tcx, item.id, ty.span, false);
         }
         hir::ItemKind::ForeignMod(ref module) => for it in module.items.iter() {
             if let hir::ForeignItemKind::Static(ref ty, ..) = it.node {
-                check_item_type(tcx, it.id, ty.span);
+                check_item_type(tcx, it.id, ty.span, true);
             }
         },
         hir::ItemKind::Struct(ref struct_def, ref ast_generics) => {
@@ -340,23 +340,33 @@ fn check_item_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
     })
 }
 
-fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId, ty_span: Span) {
+fn check_item_type<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    item_id: ast::NodeId,
+    ty_span: Span,
+    allow_foreign_ty: bool,
+) {
     debug!("check_item_type: {:?}", item_id);
 
     for_id(tcx, item_id, ty_span).with_fcx(|fcx, _this| {
         let ty = fcx.tcx.type_of(fcx.tcx.hir.local_def_id(item_id));
         let item_ty = fcx.normalize_associated_types_in(ty_span, &ty);
 
+        let mut forbid_unsized = true;
+        if allow_foreign_ty {
+            if let TyKind::Foreign(_) = tcx.struct_tail(item_ty).sty {
+                forbid_unsized = false;
+            }
+        }
+
         fcx.register_wf_obligation(item_ty, ty_span, ObligationCauseCode::MiscObligation);
-        fcx.register_bound(
-            item_ty,
-            fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
-            traits::ObligationCause::new(
-                ty_span,
-                fcx.body_id,
-                traits::MiscObligation,
-            ),
-        );
+        if forbid_unsized {
+            fcx.register_bound(
+                item_ty,
+                fcx.tcx.require_lang_item(lang_items::SizedTraitLangItem),
+                traits::ObligationCause::new(ty_span, fcx.body_id, traits::MiscObligation),
+            );
+        }
 
         vec![] // no implied bounds in a const etc
     });
