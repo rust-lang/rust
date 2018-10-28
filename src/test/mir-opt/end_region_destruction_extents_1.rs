@@ -79,16 +79,16 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //         StorageLive(_3);
 //         StorageLive(_4);
 //         StorageLive(_5);
-//         _5 = S1::{{constructor}}(const "ex1",);
+//         _5 = S1(const "ex1",);
 //         _4 = &'15ds _5;
 //         _3 = &'15ds (*_4);
 //         StorageLive(_6);
 //         StorageLive(_7);
 //         StorageLive(_8);
-//         _8 = S1::{{constructor}}(const "dang1",);
+//         _8 = S1(const "dang1",);
 //         _7 = &'13s _8;
 //         _6 = &'13s (*_7);
-//         _2 = D1<'15ds, '13s>::{{constructor}}(move _3, move _6);
+//         _2 = D1<'15ds, '13s>(move _3, move _6);
 //         EndRegion('13s);
 //         StorageDead(_6);
 //         StorageDead(_3);
@@ -132,7 +132,7 @@ unsafe impl<'a, #[may_dangle] 'b> Drop for D1<'a, 'b> {
 //         StorageLive(_7);
 //         _7 = &'13s (promoted[0]: S1);
 //         _6 = &'13s (*_7);
-//         _2 = D1<'15ds, '13s>::{{constructor}}(move _3, move _6);
+//         _2 = D1<'15ds, '13s>(move _3, move _6);
 //         EndRegion('13s);
 //         StorageDead(_6);
 //         StorageDead(_3);

@@ -69,12 +69,37 @@ impl<'tcx> HasLocalDecls<'tcx> for Mir<'tcx> {
     }
 }
 
+/// The various "big phases" that MIR goes through.
+///
+/// Warning: ordering of variants is significant
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum MirPhase {
+    Build = 0,
+    Const = 1,
+    Validated = 2,
+    Optimized = 3,
+}
+
+impl MirPhase {
+    /// Gets the index of the current MirPhase within the set of all MirPhases.
+    pub fn phase_index(&self) -> usize {
+        *self as usize
+    }
+}
+
 /// Lowered representation of a single function.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Mir<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
     basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+
+    /// Records how far through the "desugaring and optimization" process this particular
+    /// MIR has traversed. This is particularly useful when inlining, since in that context
+    /// we instantiate the promoted constants and add them to our promoted vector -- but those
+    /// promoted items have already been optimized, whereas ours have not. This field allows
+    /// us to see the difference and forego optimization on the inlined promoted items.
+    pub phase: MirPhase,
 
     /// List of source scopes; these are referenced by statements
     /// and used for debuginfo. Indexed by a `SourceScope`.
@@ -151,6 +176,7 @@ impl<'tcx> Mir<'tcx> {
         );
 
         Mir {
+            phase: MirPhase::Build,
             basic_blocks,
             source_scopes,
             source_scope_local_data,
@@ -368,6 +394,7 @@ pub enum Safety {
 }
 
 impl_stable_hash_for!(struct Mir<'tcx> {
+    phase,
     basic_blocks,
     source_scopes,
     source_scope_local_data,
@@ -614,6 +641,13 @@ impl_stable_hash_for!(enum self::ImplicitSelfKind {
     ImmRef,
     MutRef,
     None
+});
+
+impl_stable_hash_for!(enum self::MirPhase {
+    Build,
+    Const,
+    Validated,
+    Optimized,
 });
 
 mod binding_form_impl {
@@ -2905,6 +2939,7 @@ pub enum ClosureOutlivesSubject<'tcx> {
 
 CloneTypeFoldableAndLiftImpls! {
     BlockTailInfo,
+    MirPhase,
     Mutability,
     SourceInfo,
     UpvarDecl,
@@ -2917,6 +2952,7 @@ CloneTypeFoldableAndLiftImpls! {
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
+        phase,
         basic_blocks,
         source_scopes,
         source_scope_local_data,

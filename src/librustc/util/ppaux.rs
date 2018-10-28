@@ -251,25 +251,17 @@ impl PrintContext {
     fn parameterized<F: fmt::Write>(&mut self,
                                     f: &mut F,
                                     substs: &subst::Substs<'_>,
-                                    mut did: DefId,
+                                    did: DefId,
                                     projections: &[ty::ProjectionPredicate<'_>])
                                     -> fmt::Result {
         let key = ty::tls::with(|tcx| tcx.def_key(did));
-        let mut item_name = if let Some(name) = key.disambiguated_data.data.get_opt_name() {
-            Some(name)
-        } else {
-            did.index = key.parent.unwrap_or_else(
-                || bug!("finding type for {:?}, encountered def-id {:?} with no parent",
-                        did, did));
-            self.parameterized(f, substs, did, projections)?;
-            return write!(f, "::{}", key.disambiguated_data.data.as_interned_str());
-        };
 
         let verbose = self.is_verbose;
         let mut num_supplied_defaults = 0;
         let mut has_self = false;
         let mut own_counts: GenericParamCount = Default::default();
         let mut is_value_path = false;
+        let mut item_name = Some(key.disambiguated_data.data.as_interned_str());
         let fn_trait_kind = ty::tls::with(|tcx| {
             // Unfortunately, some kinds of items (e.g., closures) don't have
             // generics. So walk back up the find the closest parent that DOES
@@ -282,6 +274,7 @@ impl PrintContext {
                     DefPathData::AssocTypeInImpl(_) |
                     DefPathData::AssocExistentialInImpl(_) |
                     DefPathData::Trait(_) |
+                    DefPathData::Impl |
                     DefPathData::TypeNs(_) => {
                         break;
                     }
@@ -292,7 +285,6 @@ impl PrintContext {
                     }
                     DefPathData::CrateRoot |
                     DefPathData::Misc |
-                    DefPathData::Impl |
                     DefPathData::Module(_) |
                     DefPathData::MacroDef(_) |
                     DefPathData::ClosureExpr |

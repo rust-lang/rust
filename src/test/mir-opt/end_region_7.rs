@@ -36,7 +36,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //     let mut _3: [closure@NodeId(33) d:D];
 //     bb0: {
 //         StorageLive(_1);
-//         _1 = D::{{constructor}}(const 0i32,);
+//         _1 = D(const 0i32,);
 //         FakeRead(ForLet, _1);
 //         StorageLive(_3);
 //         _3 = [closure@NodeId(33)] { d: move _1 };

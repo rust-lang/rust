@@ -413,7 +413,7 @@ impl String {
     ///
     /// // These are all done without reallocating...
     /// let cap = s.capacity();
-    /// for i in 0..10 {
+    /// for _ in 0..10 {
     ///     s.push('a');
     /// }
     ///

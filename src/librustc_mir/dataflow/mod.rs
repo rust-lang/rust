@@ -724,20 +724,6 @@ impl<'a, 'tcx, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
             }
         }
     }
-
-    pub fn new_from_sets(mir: &'a Mir<'tcx>,
-                         dead_unwinds: &'a BitSet<mir::BasicBlock>,
-                         sets: AllSets<D::Idx>,
-                         denotation: D) -> Self {
-        DataflowAnalysis {
-            mir,
-            dead_unwinds,
-            flow_state: DataflowState {
-                sets: sets,
-                operator: denotation,
-            }
-        }
-    }
 }
 
 impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
