@@ -37,7 +37,7 @@ fn foo<F>(f: F) where F: FnOnce() -> i32 {
 //     let mut _4: &'24s D;
 //     bb0: {
 //         StorageLive(_1);
-//         _1 = D::{{constructor}}(const 0i32,);
+//         _1 = D(const 0i32,);
 //         FakeRead(ForLet, _1);
 //         StorageLive(_3);
 //         StorageLive(_4);

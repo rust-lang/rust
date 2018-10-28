@@ -42,7 +42,7 @@ impl Drop for Droppy {
 //     bb0: {
 //         StorageLive(_1);
 //         ...
-//         _1 = Packed::{{constructor}}(move _2,);
+//         _1 = Packed(move _2,);
 //         ...
 //         StorageLive(_6);
 //         _6 = move (_1.0: Aligned);

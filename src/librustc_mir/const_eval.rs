@@ -612,6 +612,13 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
             other => return other,
         }
     }
+    // the first trace is for replicating an ice
+    // There's no tracking issue, but the next two lines concatenated link to the discussion on
+    // zulip. It's not really possible to test this, because it doesn't show up in diagnostics
+    // or MIR.
+    // https://rust-lang.zulipchat.com/#narrow/stream/146212-t-compiler.2Fconst-eval/
+    // subject/anon_const_instance_printing/near/135980032
+    trace!("const eval: {}", key.value.instance);
     trace!("const eval: {:?}", key);
 
     let cid = key.value;

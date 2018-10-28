@@ -9,7 +9,7 @@ LL | fn test() -> Foo { Foo } //~ ERROR mismatched types
    |              expected `Foo` because of return type
    |
    = note: expected type `Foo`
-              found type `fn(u32) -> Foo {Foo::{{constructor}}}`
+              found type `fn(u32) -> Foo {Foo}`
 
 error: aborting due to previous error
 
