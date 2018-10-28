@@ -35,9 +35,14 @@ pub fn target() -> TargetResult {
             no_integrated_as: true,
 
             // There are no atomic CAS instructions available in the MSP430
-            // instruction set
-            max_atomic_width: Some(16),
+            // instruction set, and the LLVM backend doesn't currently support
+            // compiler fences so the Atomic* API is missing on this target.
+            // When the LLVM backend gains support for compile fences uncomment
+            // the `singlethread: true` line and set `max_atomic_width` to
+            // `Some(16)`.
+            max_atomic_width: Some(0),
             atomic_cas: false,
+            // singlethread: true,
 
             // Because these devices have very little resources having an
             // unwinder is too onerous so we default to "abort" because the
