@@ -694,6 +694,37 @@ impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {
 #[stable(feature = "fused", since = "1.26.0")]
 impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 
+#[cfg(not(stage0))]
+#[unstable(feature = "boxed_closure_impls",
+           reason = "Box<FnOnce> relies on unsized rvalues and needs to be tested more",
+           issue = "48055")]
+impl<A, F: FnOnce<A> + ?Sized> FnOnce<A> for Box<F> {
+    type Output = <F as FnOnce<A>>::Output;
+
+    default extern "rust-call" fn call_once(self, args: A) -> Self::Output {
+        <F as FnOnce<A>>::call_once(*self, args)
+    }
+}
+
+#[cfg(not(stage0))]
+#[unstable(feature = "boxed_closure_impls",
+           reason = "Box<FnOnce> relies on unsized rvalues and needs to be tested more",
+           issue = "48055")]
+impl<A, F: FnMut<A> + ?Sized> FnMut<A> for Box<F> {
+    extern "rust-call" fn call_mut(&mut self, args: A) -> Self::Output {
+        <F as FnMut<A>>::call_mut(self, args)
+    }
+}
+
+#[cfg(not(stage0))]
+#[unstable(feature = "boxed_closure_impls",
+           reason = "Box<FnOnce> relies on unsized rvalues and needs to be tested more",
+           issue = "48055")]
+impl<A, F: Fn<A> + ?Sized> Fn<A> for Box<F> {
+    extern "rust-call" fn call(&self, args: A) -> Self::Output {
+        <F as Fn<A>>::call(self, args)
+    }
+}
 
 /// `FnBox` is a version of the `FnOnce` intended for use with boxed
 /// closure objects. The idea is that where one would normally store a
@@ -752,6 +783,7 @@ impl<A, F> FnBox<A> for F
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
 impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + '_> {
+    #[cfg(stage0)]
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {
@@ -762,6 +794,7 @@ impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + '_> {
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
 impl<A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + Send + '_> {
+    #[cfg(stage0)]
     type Output = R;
 
     extern "rust-call" fn call_once(self, args: A) -> R {
