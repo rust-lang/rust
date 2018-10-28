@@ -14,6 +14,7 @@
 
 use cell::UnsafeCell;
 use fmt;
+use hint;
 use mem;
 
 /// A thread local storage key which owns its contents.
@@ -275,7 +276,15 @@ impl<T: 'static> LocalKey<T> {
         // operations a little differently and make this safe to call.
         mem::replace(&mut *ptr, Some(value));
 
-        (*ptr).as_ref().unwrap()
+        // After storing `Some` we want to get a reference to the contents of
+        // what we just stored. While we could use `unwrap` here and it should
+        // always work it empirically doesn't seem to always get optimized away,
+        // which means that using something like `try_with` can pull in
+        // panicking code and cause a large size bloat.
+        match *ptr {
+            Some(ref x) => x,
+            None => hint::unreachable_unchecked(),
+        }
     }
 
     /// Acquires a reference to the value in this TLS key.
