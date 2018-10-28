@@ -118,8 +118,8 @@ VS Code plugin
 ## Common workflows
 
 To try out VS Code extensions, run `cargo install-code`.  This installs both the
-`ra_lsp_server` binary and VS Code extension. To install only the binary, `use
-cargo install --path crates/ra_lsp_server --force`
+`ra_lsp_server` binary and VS Code extension. To install only the binary, use
+`cargo install --path crates/ra_lsp_server --force`
 
 To see logs from the language server, set `RUST_LOG=info` env variable. To see
 all communication between the server and the client, use
