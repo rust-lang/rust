@@ -25,7 +25,9 @@ error: expected one of `.`, `?`, `{`, or an operator, found `'b`
   --> $DIR/label_break_value_illegal_uses.rs:28:17
    |
 LL |     match false 'b: {} //~ ERROR expected one of `.`, `?`, `{`, or an operator
-   |                 ^^ expected one of `.`, `?`, `{`, or an operator here
+   |     -----       ^^ expected one of `.`, `?`, `{`, or an operator here
+   |     |
+   |     while parsing this match expression
 
 error: aborting due to 4 previous errors
 

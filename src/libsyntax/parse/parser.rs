@@ -2474,7 +2474,11 @@ impl<'a> Parser<'a> {
                     return Ok(self.mk_expr(lo.to(hi), ex, attrs));
                 }
                 if self.eat_keyword(keywords::Match) {
-                    return self.parse_match_expr(attrs);
+                    let match_sp = self.prev_span;
+                    return self.parse_match_expr(attrs).map_err(|mut err| {
+                        err.span_label(match_sp, "while parsing this match expression");
+                        err
+                    });
                 }
                 if self.eat_keyword(keywords::Unsafe) {
                     return self.parse_block_expr(
