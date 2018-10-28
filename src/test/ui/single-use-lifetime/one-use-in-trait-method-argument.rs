@@ -23,6 +23,7 @@ impl<'f> Iterator for Foo<'f> {
     type Item = &'f u32;
 
     fn next<'g>(&'g mut self) -> Option<Self::Item> { //~ ERROR `'g` only used once
+        //~^ HELP elide the single-use lifetime
         None
     }
 }

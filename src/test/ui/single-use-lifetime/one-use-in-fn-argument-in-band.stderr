@@ -1,26 +1,26 @@
 error: lifetime parameter `'a` only used once
-  --> $DIR/one-use-in-fn-argument-in-band.rs:19:10
+  --> $DIR/one-use-in-fn-argument-in-band.rs:21:10
    |
 LL | fn a(x: &'a u32, y: &'b u32) {
-   |          ^^
+   |          ^^-
    |          |
-   |          this lifetime...
-   |          ...is used only here
+   |          this lifetime is only used here
+   |          help: elide the single-use lifetime
    |
 note: lint level defined here
-  --> $DIR/one-use-in-fn-argument-in-band.rs:12:9
+  --> $DIR/one-use-in-fn-argument-in-band.rs:14:9
    |
 LL | #![deny(single_use_lifetimes)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: lifetime parameter `'b` only used once
-  --> $DIR/one-use-in-fn-argument-in-band.rs:19:22
+  --> $DIR/one-use-in-fn-argument-in-band.rs:21:22
    |
 LL | fn a(x: &'a u32, y: &'b u32) {
-   |                      ^^
+   |                      ^^-
    |                      |
-   |                      this lifetime...
-   |                      ...is used only here
+   |                      this lifetime is only used here
+   |                      help: elide the single-use lifetime
 
 error: aborting due to 2 previous errors
 

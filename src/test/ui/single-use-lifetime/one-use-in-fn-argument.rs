@@ -16,6 +16,7 @@
 // once in a fn argument.
 
 fn a<'a>(x: &'a u32) { //~ ERROR `'a` only used once
+    //~^ HELP elide the single-use lifetime
 }
 
 fn main() { }

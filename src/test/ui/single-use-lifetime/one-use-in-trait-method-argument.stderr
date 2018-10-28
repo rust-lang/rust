@@ -11,6 +11,10 @@ note: lint level defined here
    |
 LL | #![deny(single_use_lifetimes)]
    |         ^^^^^^^^^^^^^^^^^^^^
+help: elide the single-use lifetime
+   |
+LL |     fn next(&mut self) -> Option<Self::Item> { //~ ERROR `'g` only used once
+   |           ----
 
 error: aborting due to previous error
 
