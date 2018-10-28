@@ -1,0 +1,27 @@
+error[E0593]: closure is expected to take 1 argument, but it takes 0 arguments
+  --> $DIR/fnbox-compat.rs:11:34
+   |
+LL |     assert_eq!(&call_it(Box::new(|| s)) as &str, "hello");
+   |                                  ^^
+   |                                  |
+   |                                  expected closure that takes 1 argument
+   |                                  takes 0 arguments
+help: consider changing the closure to take and ignore the expected argument
+   |
+LL |     assert_eq!(&call_it(Box::new(|_| s)) as &str, "hello");
+   |                                  ^^^
+
+error[E0277]: the size for values of type `dyn for<'r> std::boxed::FnBox<(&'r i32,), Output=_>` cannot be known at compilation time
+  --> $DIR/fnbox-compat.rs:11:25
+   |
+LL |     assert_eq!(&call_it(Box::new(|| s)) as &str, "hello");
+   |                         ^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `std::marker::Sized` is not implemented for `dyn for<'r> std::boxed::FnBox<(&'r i32,), Output=_>`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: required by `<std::boxed::Box<T>>::new`
+
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0277, E0593.
+For more information about an error, try `rustc --explain E0277`.
