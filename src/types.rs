@@ -229,7 +229,9 @@ fn rewrite_segment(
                     .chain(data.bindings.iter().map(|x| SegmentParam::Binding(&*x)))
                     .collect::<Vec<_>>();
 
-                let separator = if path_context == PathContext::Expr {
+                let force_separator =
+                    context.inside_macro() && context.snippet(data.span).starts_with("::");
+                let separator = if path_context == PathContext::Expr || force_separator {
                     "::"
                 } else {
                     ""
