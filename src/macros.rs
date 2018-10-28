@@ -1347,7 +1347,7 @@ impl MacroBranch {
             .fold(
                 (String::new(), true),
                 |(mut s, need_indent), (i, (kind, ref l))| {
-                    if !l.is_empty()
+                    if !is_empty_line(l)
                         && need_indent
                         && !new_body_snippet.is_line_non_formatted(i + 1)
                     {
