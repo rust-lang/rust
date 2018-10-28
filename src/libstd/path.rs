@@ -87,6 +87,8 @@ use io;
 use iter::{self, FusedIterator};
 use ops::{self, Deref};
 use rc::Rc;
+use str::FromStr;
+use string::ParseError;
 use sync::Arc;
 
 use ffi::{OsStr, OsString};
@@ -1440,6 +1442,15 @@ impl From<PathBuf> for OsString {
 impl From<String> for PathBuf {
     fn from(s: String) -> PathBuf {
         PathBuf::from(OsString::from(s))
+    }
+}
+
+#[stable(feature = "path_from_str", since = "1.26.0")]
+impl FromStr for PathBuf {
+    type Err = ParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(PathBuf::from(s))
     }
 }
 
