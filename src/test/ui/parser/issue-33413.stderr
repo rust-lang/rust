@@ -2,7 +2,10 @@ error: expected pattern, found `*`
   --> $DIR/issue-33413.rs:14:10
    |
 LL |     fn f(*, a: u8) -> u8 {} //~ ERROR expected pattern, found `*`
-   |          ^ expected pattern
+   |          ^
+   |          |
+   |          expected pattern
+   |          expected argument name
 
 error: aborting due to previous error
 

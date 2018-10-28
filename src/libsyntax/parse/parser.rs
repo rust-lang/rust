@@ -1789,6 +1789,35 @@ impl<'a> Parser<'a> {
         self.look_ahead(offset + 1, |t| t == &token::Colon)
     }
 
+    /// Skip unexpected attributes and doc comments in this position and emit an appropriate error.
+    fn eat_incorrect_doc_comment(&mut self, applied_to: &str) {
+        if let token::DocComment(_) = self.token {
+            let mut err = self.diagnostic().struct_span_err(
+                self.span,
+                &format!("documentation comments cannot be applied to {}", applied_to),
+            );
+            err.span_label(self.span, "doc comments are not allowed here");
+            err.emit();
+            self.bump();
+        } else if self.token == token::Pound && self.look_ahead(1, |t| {
+            *t == token::OpenDelim(token::Bracket)
+        }) {
+            let lo = self.span;
+            // Skip every token until next possible arg.
+            while self.token != token::CloseDelim(token::Bracket) {
+                self.bump();
+            }
+            let sp = lo.to(self.span);
+            self.bump();
+            let mut err = self.diagnostic().struct_span_err(
+                sp,
+                &format!("attributes cannot be applied to {}", applied_to),
+            );
+            err.span_label(sp, "attributes are not allowed here");
+            err.emit();
+        }
+    }
+
     /// This version of parse arg doesn't necessarily require
     /// identifier names.
     fn parse_arg_general(&mut self, require_name: bool) -> PResult<'a, Arg> {
@@ -1797,7 +1826,11 @@ impl<'a> Parser<'a> {
         let (pat, ty) = if require_name || self.is_named_argument() {
             debug!("parse_arg_general parse_pat (require_name:{})",
                    require_name);
-            let pat = self.parse_pat()?;
+            self.eat_incorrect_doc_comment("method arguments");
+            let pat = self.parse_pat().map_err(|mut err| {
+                err.span_label(self.span, "expected argument name");
+                err
+            })?;
 
             if let Err(mut err) = self.expect(&token::Colon) {
                 // If we find a pattern followed by an identifier, it could be an (incorrect)
@@ -1819,10 +1852,12 @@ impl<'a> Parser<'a> {
                 return Err(err);
             }
 
+            self.eat_incorrect_doc_comment("a method argument's type");
             (pat, self.parse_ty()?)
         } else {
             debug!("parse_arg_general ident_to_pat");
             let parser_snapshot_before_ty = self.clone();
+            self.eat_incorrect_doc_comment("a method argument's type");
             let mut ty = self.parse_ty();
             if ty.is_ok() && self.token == token::Colon {
                 // This wasn't actually a type, but a pattern looking like a type,
