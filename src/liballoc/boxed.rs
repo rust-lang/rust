@@ -735,9 +735,7 @@ impl<I: FusedIterator + ?Sized> FusedIterator for Box<I> {}
 #[rustc_paren_sugar]
 #[unstable(feature = "fnbox",
            reason = "will be deprecated if and when `Box<FnOnce>` becomes usable", issue = "28796")]
-pub trait FnBox<A> {
-    type Output;
-
+pub trait FnBox<A>: FnOnce<A> {
     fn call_box(self: Box<Self>, args: A) -> Self::Output;
 }
 
@@ -746,8 +744,6 @@ pub trait FnBox<A> {
 impl<A, F> FnBox<A> for F
     where F: FnOnce<A>
 {
-    type Output = F::Output;
-
     fn call_box(self: Box<F>, args: A) -> F::Output {
         self.call_once(args)
     }
