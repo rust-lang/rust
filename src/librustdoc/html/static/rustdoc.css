@@ -517,6 +517,10 @@ h4 > code, h3 > code, .invisible > code {
 	margin-top: -13px;
 }
 
+.sub-variant > div > .stability {
+	margin-top: initial;
+}
+
 .content .stability::before {
 	content: '˪';
 	font-size: 30px;
@@ -866,7 +870,23 @@ span.since {
 }
 
 .sub-variant, .sub-variant > h3 {
-	margin-top: 0 !important;
+	margin-top: 1px !important;
+}
+
+#main > .sub-variant > h3 {
+	font-size: 15px;
+	margin-left: 25px;
+	margin-bottom: 5px;
+}
+
+.sub-variant > div {
+	margin-left: 20px;
+	margin-bottom: 10px;
+}
+
+.sub-variant > div > span {
+	display: block;
+	position: relative;
 }
 
 .toggle-label {
