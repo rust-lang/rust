@@ -1,5 +1,5 @@
 error: lifetime parameter `'f` only used once
-  --> $DIR/one-use-in-inherent-impl-header.rs:24:6
+  --> $DIR/one-use-in-inherent-impl-header.rs:22:6
    |
 LL | impl<'f> Foo<'f> { //~ ERROR `'f` only used once
    |      ^^      -- ...is used only here

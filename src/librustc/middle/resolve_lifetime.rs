@@ -1593,6 +1593,11 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                         _ => None,
                     } {
                         debug!("id = {:?} span = {:?} name = {:?}", node_id, span, name);
+
+                        if name == keywords::UnderscoreLifetime.ident() {
+                            continue;
+                        }
+
                         let mut err = self.tcx.struct_span_lint_node(
                             lint::builtin::SINGLE_USE_LIFETIMES,
                             id,
