@@ -881,7 +881,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
                 FatalError.raise();
             }
         },
-        "pat" => token::NtPat(panictry!(p.parse_pat())),
+        "pat" => token::NtPat(panictry!(p.parse_pat(None))),
         "expr" => token::NtExpr(panictry!(p.parse_expr())),
         "literal" => token::NtLiteral(panictry!(p.parse_literal_maybe_minus())),
         "ty" => token::NtTy(panictry!(p.parse_ty())),

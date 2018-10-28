@@ -1030,7 +1030,7 @@ impl<'a> Parser<'a> {
                 }
             },
             AstFragmentKind::Ty => AstFragment::Ty(self.parse_ty()?),
-            AstFragmentKind::Pat => AstFragment::Pat(self.parse_pat()?),
+            AstFragmentKind::Pat => AstFragment::Pat(self.parse_pat(None)?),
         })
     }
 

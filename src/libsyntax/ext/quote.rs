@@ -419,7 +419,7 @@ pub fn parse_item_panic(parser: &mut Parser) -> Option<P<Item>> {
 }
 
 pub fn parse_pat_panic(parser: &mut Parser) -> P<Pat> {
-    panictry!(parser.parse_pat())
+    panictry!(parser.parse_pat(None))
 }
 
 pub fn parse_arm_panic(parser: &mut Parser) -> Arm {
