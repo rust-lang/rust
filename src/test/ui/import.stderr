@@ -11,10 +11,10 @@ LL |     use foo; //~ ERROR unresolved import `foo` [E0432]
    |         ^^^ no `foo` in the root
 
 error[E0603]: unresolved item `foo` is private
-  --> $DIR/import.rs:23:5
+  --> $DIR/import.rs:23:10
    |
 LL |     zed::foo(); //~ ERROR `foo` is private
-   |     ^^^^^^^^
+   |          ^^^
 
 error: aborting due to 3 previous errors
 

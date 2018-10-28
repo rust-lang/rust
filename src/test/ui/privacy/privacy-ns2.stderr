@@ -55,16 +55,16 @@ LL | use foo3::Bar;
    |
 
 error[E0603]: trait `Bar` is private
-  --> $DIR/privacy-ns2.rs:70:9
+  --> $DIR/privacy-ns2.rs:70:15
    |
 LL |     use foo3::Bar;  //~ ERROR `Bar` is private
-   |         ^^^^^^^^^
+   |               ^^^
 
 error[E0603]: trait `Bar` is private
-  --> $DIR/privacy-ns2.rs:74:9
+  --> $DIR/privacy-ns2.rs:74:15
    |
 LL |     use foo3::Bar;  //~ ERROR `Bar` is private
-   |         ^^^^^^^^^
+   |               ^^^
 
 error[E0603]: trait `Bar` is private
   --> $DIR/privacy-ns2.rs:81:16

@@ -1,8 +1,8 @@
 error[E0603]: constant `PRIVATE` is private
-  --> $DIR/E0603.rs:16:5
+  --> $DIR/E0603.rs:16:17
    |
 LL |     SomeModule::PRIVATE; //~ ERROR E0603
-   |     ^^^^^^^^^^^^^^^^^^^
+   |                 ^^^^^^^
 
 error: aborting due to previous error
 

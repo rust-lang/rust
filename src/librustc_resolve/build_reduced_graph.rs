@@ -35,7 +35,7 @@ use syntax::ast::{Name, Ident};
 use syntax::attr;
 
 use syntax::ast::{self, Block, ForeignItem, ForeignItemKind, Item, ItemKind, NodeId};
-use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind, Variant};
+use syntax::ast::{MetaItemKind, Mutability, StmtKind, TraitItem, TraitItemKind, Variant};
 use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
@@ -83,12 +83,6 @@ impl<'a> ToNameBinding<'a> for (Def, ty::Visibility, Span, Mark, IsMacroExport) 
     }
 }
 
-#[derive(Default, PartialEq, Eq)]
-struct LegacyMacroImports {
-    import_all: Option<Span>,
-    imports: Vec<(Name, Span)>,
-}
-
 impl<'a, 'cl> Resolver<'a, 'cl> {
     /// Defines `name` in namespace `ns` of module `parent` to be `def` if it is not yet defined;
     /// otherwise, reports an error.
@@ -117,23 +111,23 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
     fn build_reduced_graph_for_use_tree(
         &mut self,
-        root_use_tree: &ast::UseTree,
-        root_id: NodeId,
+        // This particular use tree
         use_tree: &ast::UseTree,
         id: NodeId,
-        vis: ty::Visibility,
         parent_prefix: &[Segment],
-        mut uniform_paths_canary_emitted: bool,
         nested: bool,
+        mut uniform_paths_canary_emitted: bool,
+        // The whole `use` item
+        parent_scope: ParentScope<'a>,
         item: &Item,
-        expansion: Mark,
+        vis: ty::Visibility,
+        root_span: Span,
     ) {
         debug!("build_reduced_graph_for_use_tree(parent_prefix={:?}, \
                 uniform_paths_canary_emitted={}, \
                 use_tree={:?}, nested={})",
                parent_prefix, uniform_paths_canary_emitted, use_tree, nested);
 
-        let is_prelude = attr::contains_name(&item.attrs, "prelude_import");
         let uniform_paths =
             self.session.rust_2018() &&
             self.session.features_untracked().uniform_paths;
@@ -221,10 +215,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     subclass,
                     source.ident.span,
                     id,
-                    root_use_tree.span,
-                    root_id,
+                    root_span,
+                    item.id,
                     ty::Visibility::Invisible,
-                    expansion,
+                    parent_scope.clone(),
                     true, // is_uniform_paths_canary
                 );
             };
@@ -259,6 +253,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             uniform_paths_canary_emitted = true;
         }
 
+        let empty_for_self = |prefix: &[Segment]| {
+            prefix.is_empty() ||
+            prefix.len() == 1 && prefix[0].ident.name == keywords::CrateRoot.name()
+        };
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename, ..) => {
                 let mut ident = use_tree.ident();
@@ -271,10 +269,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     if source.ident.name == keywords::SelfValue.name() {
                         type_ns_only = true;
 
-                        let empty_prefix = module_path.last().map_or(true, |seg| {
-                            seg.ident.name == keywords::CrateRoot.name()
-                        });
-                        if empty_prefix {
+                        if empty_for_self(&module_path) {
                             resolve_error(
                                 self,
                                 use_tree.span,
@@ -351,16 +346,16 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     subclass,
                     use_tree.span,
                     id,
-                    root_use_tree.span,
-                    root_id,
+                    root_span,
+                    item.id,
                     vis,
-                    expansion,
+                    parent_scope,
                     false, // is_uniform_paths_canary
                 );
             }
             ast::UseTreeKind::Glob => {
                 let subclass = GlobImport {
-                    is_prelude,
+                    is_prelude: attr::contains_name(&item.attrs, "prelude_import"),
                     max_vis: Cell::new(ty::Visibility::Invisible),
                 };
                 self.add_import_directive(
@@ -368,10 +363,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     subclass,
                     use_tree.span,
                     id,
-                    root_use_tree.span,
-                    root_id,
+                    root_span,
+                    item.id,
                     vis,
-                    expansion,
+                    parent_scope,
                     false, // is_uniform_paths_canary
                 );
             }
@@ -400,16 +395,34 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                 for &(ref tree, id) in items {
                     self.build_reduced_graph_for_use_tree(
-                        root_use_tree,
-                        root_id,
-                        tree,
-                        id,
-                        vis,
-                        &prefix,
-                        uniform_paths_canary_emitted,
-                        true,
-                        item,
-                        expansion,
+                        // This particular use tree
+                        tree, id, &prefix, true, uniform_paths_canary_emitted,
+                        // The whole `use` item
+                        parent_scope.clone(), item, vis, root_span,
+                    );
+                }
+
+                // Empty groups `a::b::{}` are turned into synthetic `self` imports
+                // `a::b::c::{self as _}`, so that their prefixes are correctly
+                // resolved and checked for privacy/stability/etc.
+                if items.is_empty() && !empty_for_self(&prefix) {
+                    let new_span = prefix[prefix.len() - 1].ident.span;
+                    let tree = ast::UseTree {
+                        prefix: ast::Path::from_ident(
+                            Ident::new(keywords::SelfValue.name(), new_span)
+                        ),
+                        kind: ast::UseTreeKind::Simple(
+                            Some(Ident::new(keywords::Underscore.name().gensymed(), new_span)),
+                            ast::DUMMY_NODE_ID,
+                            ast::DUMMY_NODE_ID,
+                        ),
+                        span: use_tree.span,
+                    };
+                    self.build_reduced_graph_for_use_tree(
+                        // This particular use tree
+                        &tree, id, &prefix, true, uniform_paths_canary_emitted,
+                        // The whole `use` item
+                        parent_scope.clone(), item, ty::Visibility::Invisible, root_span,
                     );
                 }
             }
@@ -417,8 +430,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     }
 
     /// Constructs the reduced graph for one item.
-    fn build_reduced_graph_for_item(&mut self, item: &Item, expansion: Mark) {
-        let parent = self.current_module;
+    fn build_reduced_graph_for_item(&mut self, item: &Item, parent_scope: ParentScope<'a>) {
+        let parent = parent_scope.module;
+        let expansion = parent_scope.expansion;
         let ident = item.ident;
         let sp = item.span;
         let vis = self.resolve_visibility(&item.vis);
@@ -426,16 +440,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         match item.node {
             ItemKind::Use(ref use_tree) => {
                 self.build_reduced_graph_for_use_tree(
-                    use_tree,
-                    item.id,
-                    use_tree,
-                    item.id,
-                    vis,
-                    &[],
-                    false, // uniform_paths_canary_emitted
-                    false,
-                    item,
-                    expansion,
+                    // This particular use tree
+                    use_tree, item.id, &[], false, false,
+                    // The whole `use` item
+                    parent_scope, item, vis, use_tree.span,
                 );
             }
 
@@ -448,7 +456,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     self.injected_crate = Some(module);
                 }
 
-                let used = self.process_legacy_macro_imports(item, module, expansion);
+                let used = self.process_legacy_macro_imports(item, module, &parent_scope);
                 let binding =
                     (module, ty::Visibility::Public, sp, expansion).to_name_binding(self.arenas);
                 if ptr::eq(self.current_module, self.graph_root) {
@@ -473,7 +481,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 let directive = self.arenas.alloc_import_directive(ImportDirective {
                     root_id: item.id,
                     id: item.id,
-                    parent,
+                    parent_scope,
                     imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
                     subclass: ImportDirectiveSubclass::ExternCrate {
                         source: orig_name,
@@ -483,7 +491,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     span: item.span,
                     module_path: Vec::new(),
                     vis: Cell::new(vis),
-                    expansion,
                     used: Cell::new(used),
                     is_uniform_paths_canary: false,
                 });
@@ -856,35 +863,53 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     }
 
     // This returns true if we should consider the underlying `extern crate` to be used.
-    fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>, expansion: Mark)
-                                    -> bool {
-        let allow_shadowing = expansion == Mark::root();
-        let legacy_imports = self.legacy_macro_imports(&item.attrs);
-        let used = legacy_imports != LegacyMacroImports::default();
-
-        // `#[macro_use]` is only allowed at the crate root.
-        if self.current_module.parent.is_some() && used {
-            span_err!(self.session, item.span, E0468,
-                      "an `extern crate` loading macros must be at the crate root");
+    fn process_legacy_macro_imports(&mut self, item: &Item, module: Module<'a>,
+                                    parent_scope: &ParentScope<'a>) -> bool {
+        let mut import_all = None;
+        let mut single_imports = Vec::new();
+        for attr in &item.attrs {
+            if attr.check_name("macro_use") {
+                if self.current_module.parent.is_some() {
+                    span_err!(self.session, item.span, E0468,
+                        "an `extern crate` loading macros must be at the crate root");
+                }
+                let ill_formed = |span| span_err!(self.session, span, E0466, "bad macro import");
+                match attr.meta() {
+                    Some(meta) => match meta.node {
+                        MetaItemKind::Word => {
+                            import_all = Some(meta.span);
+                            break;
+                        }
+                        MetaItemKind::List(nested_metas) => for nested_meta in nested_metas {
+                            match nested_meta.word() {
+                                Some(word) => single_imports.push((word.name(), word.span)),
+                                None => ill_formed(nested_meta.span),
+                            }
+                        }
+                        MetaItemKind::NameValue(..) => ill_formed(meta.span),
+                    }
+                    None => ill_formed(attr.span()),
+                }
+            }
         }
 
-        let (graph_root, arenas) = (self.graph_root, self.arenas);
+        let arenas = self.arenas;
         let macro_use_directive = |span| arenas.alloc_import_directive(ImportDirective {
             root_id: item.id,
             id: item.id,
-            parent: graph_root,
+            parent_scope: parent_scope.clone(),
             imported_module: Cell::new(Some(ModuleOrUniformRoot::Module(module))),
             subclass: ImportDirectiveSubclass::MacroUse,
             root_span: span,
             span,
             module_path: Vec::new(),
             vis: Cell::new(ty::Visibility::Restricted(DefId::local(CRATE_DEF_INDEX))),
-            expansion,
             used: Cell::new(false),
             is_uniform_paths_canary: false,
         });
 
-        if let Some(span) = legacy_imports.import_all {
+        let allow_shadowing = parent_scope.expansion == Mark::root();
+        if let Some(span) = import_all {
             let directive = macro_use_directive(span);
             self.potentially_unused_imports.push(directive);
             module.for_each_child(|ident, ns, binding| if ns == MacroNS {
@@ -892,7 +917,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 self.legacy_import_macro(ident.name, imported_binding, span, allow_shadowing);
             });
         } else {
-            for (name, span) in legacy_imports.imports {
+            for (name, span) in single_imports.iter().cloned() {
                 let ident = Ident::with_empty_ctxt(name);
                 let result = self.resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),
@@ -911,7 +936,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
             }
         }
-        used
+        import_all.is_some() || !single_imports.is_empty()
     }
 
     // does this attribute list contain "macro_use"?
@@ -936,25 +961,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         false
-    }
-
-    fn legacy_macro_imports(&mut self, attrs: &[ast::Attribute]) -> LegacyMacroImports {
-        let mut imports = LegacyMacroImports::default();
-        for attr in attrs {
-            if attr.check_name("macro_use") {
-                match attr.meta_item_list() {
-                    Some(names) => for attr in names {
-                        if let Some(word) = attr.word() {
-                            imports.imports.push((word.name(), attr.span()));
-                        } else {
-                            span_err!(self.session, attr.span(), E0466, "bad macro import");
-                        }
-                    },
-                    None => imports.import_all = Some(attr.span),
-                }
-            }
-        }
-        imports
     }
 }
 
@@ -1010,7 +1016,13 @@ impl<'a, 'b, 'cl> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b, 'cl> {
 
         let orig_current_module = self.resolver.current_module;
         let orig_current_legacy_scope = self.current_legacy_scope;
-        self.resolver.build_reduced_graph_for_item(item, self.expansion);
+        let parent_scope = ParentScope {
+            module: self.resolver.current_module,
+            expansion: self.expansion,
+            legacy: self.current_legacy_scope,
+            derives: Vec::new(),
+        };
+        self.resolver.build_reduced_graph_for_item(item, parent_scope);
         visit::walk_item(self, item);
         self.resolver.current_module = orig_current_module;
         if !macro_use {

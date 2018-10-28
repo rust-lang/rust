@@ -5,10 +5,10 @@ LL |         pub fn default() -> A { //~ ERROR unnecessary visibility qualifier
    |         ^^^ `pub` not permitted here because it's implied
 
 error[E0603]: struct `A` is private
-  --> $DIR/issue-29161.rs:23:5
+  --> $DIR/issue-29161.rs:23:8
    |
 LL |     a::A::default();
-   |     ^^^^^^^^^^^^^
+   |        ^
 
 error: aborting due to 2 previous errors
 

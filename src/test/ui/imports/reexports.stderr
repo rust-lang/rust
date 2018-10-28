@@ -17,16 +17,16 @@ LL |         pub use super::*; //~ ERROR must import something with the glob's v
    |                 ^^^^^^^^
 
 error[E0603]: module `foo` is private
-  --> $DIR/reexports.rs:38:9
+  --> $DIR/reexports.rs:38:15
    |
 LL |     use b::a::foo::S; //~ ERROR `foo`
-   |         ^^^^^^^^^^^^
+   |               ^^^
 
 error[E0603]: module `foo` is private
-  --> $DIR/reexports.rs:39:9
+  --> $DIR/reexports.rs:39:15
    |
 LL |     use b::b::foo::S as T; //~ ERROR `foo`
-   |         ^^^^^^^^^^^^^^^^^
+   |               ^^^
 
 error: aborting due to 4 previous errors
 
