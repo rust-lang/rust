@@ -1021,6 +1021,15 @@ pub union MaybeUninit<T> {
 }
 
 impl<T> MaybeUninit<T> {
+    /// Create a new `MaybeUninit` initialized with the given value.
+    ///
+    /// Note that dropping a `MaybeUninit` will never call `T`'s drop code.
+    /// It is your responsibility to make sure `T` gets dropped if it got initialized.
+    #[unstable(feature = "maybe_uninit", issue = "53491")]
+    pub const fn new(val: T) -> MaybeUninit<T> {
+        MaybeUninit { value: ManuallyDrop::new(val) }
+    }
+
     /// Create a new `MaybeUninit` in an uninitialized state.
     ///
     /// Note that dropping a `MaybeUninit` will never call `T`'s drop code.
