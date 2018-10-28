@@ -24,9 +24,25 @@ cargo fmt -- --version
 #
 # * `cargo fmt --all` succeeds without any warnings or errors
 # * `cargo fmt --all -- --check` after formatting returns success
-# * `cargo test -all` still passes (formatting did not break the build)
-function check_fmt {
-    cargo test --all
+# * `cargo test --all` still passes (formatting did not break the build)
+function check_fmt_with_all_tests {
+    check_fmt_base "--all"
+    return $?
+}
+
+# Checks that:
+#
+# * `cargo fmt --all` succeeds without any warnings or errors
+# * `cargo fmt --all -- --check` after formatting returns success
+# * `cargo test --lib` still passes (formatting did not break the build)
+function check_fmt_with_lib_tests {
+    check_fmt_base "--lib"
+    return $?
+}
+
+function check_fmt_base {
+    local test_args="$1"
+    cargo test $test_args
     if [[ $? != 0 ]]; then
           return 0
     fi
@@ -54,7 +70,7 @@ function check_fmt {
         cat rustfmt_check_output
         return 1
     fi
-    cargo test --all
+    cargo test $test_args
     if [[ $? != 0 ]]; then
         return $?
     fi
@@ -65,13 +81,19 @@ case ${INTEGRATION} in
         git clone --depth=1 https://github.com/rust-lang/${INTEGRATION}.git
         cd ${INTEGRATION}
         export CFG_DISABLE_CROSS_TESTS=1
-        check_fmt
+        check_fmt_with_all_tests
+        cd -
+        ;;
+    crater)
+        git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
+        cd ${INTEGRATION}
+        check_fmt_with_lib_tests
         cd -
         ;;
     *)
         git clone --depth=1 https://github.com/rust-lang-nursery/${INTEGRATION}.git
         cd ${INTEGRATION}
-        check_fmt
+        check_fmt_with_all_tests
         cd -
         ;;
 esac
