@@ -36,16 +36,10 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                         .unwrap();
                         String::from_utf8(mir.into_inner()).unwrap()
                     }
-                    InstanceDef::Item(_)
-                    | InstanceDef::DropGlue(_, _)
-                    | InstanceDef::Virtual(_, _)
-                    | InstanceDef::FnPtrShim(_, _)
-                    | InstanceDef::ClosureOnceShim { .. }
-                    | InstanceDef::CloneShim(_, _) => {
+                    _ => {
                         // FIXME fix write_mir_pretty for these instances
                         format!("{:#?}", tcx.instance_mir(inst.def))
                     }
-                    InstanceDef::Intrinsic(_) => bug!("tried to codegen intrinsic"),
                 }
             });
 
