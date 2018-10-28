@@ -447,27 +447,51 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                                     ty::RegionKind::ReLateBound(_, _),
                                 ) => {}
 
-                                (ty::RegionKind::ReLateBound(_, _), _) => {
+                                (ty::RegionKind::ReLateBound(_, _), _) |
+                                (_, ty::RegionKind::ReVar(_)) => {
+                                    // One of these is true:
                                     // The new predicate has a HRTB in a spot where the old
                                     // predicate does not (if they both had a HRTB, the previous
-                                    // match arm would have executed).
+                                    // match arm would have executed). A HRBT is a 'stricter'
+                                    // bound than anything else, so we want to keep the newer
+                                    // predicate (with the HRBT) in place of the old predicate.
                                     //
-                                    // The means we want to remove the older predicate from
-                                    // user_computed_preds, since having both it and the new
+                                    // OR
+                                    //
+                                    // The old predicate has a region variable where the new
+                                    // predicate has some other kind of region. An region
+                                    // variable isn't something we can actually display to a user,
+                                    // so we choose ther new predicate (which doesn't have a region
+                                    // varaible).
+                                    //
+                                    // In both cases, we want to remove the old predicate,
+                                    // from user_computed_preds, and replace it with the new
+                                    // one. Having both the old and the new
                                     // predicate in a ParamEnv would confuse SelectionContext
+                                    //
                                     // We're currently in the predicate passed to 'retain',
                                     // so we return 'false' to remove the old predicate from
                                     // user_computed_preds
                                     return false;
                                 }
-                                (_, ty::RegionKind::ReLateBound(_, _)) => {
-                                    // This is the opposite situation as the previous arm - the
-                                    // old predicate has a HRTB lifetime in a place where the
-                                    // new predicate does not. We want to leave the old
+                                (_, ty::RegionKind::ReLateBound(_, _)) |
+                                (ty::RegionKind::ReVar(_), _) => {
+                                    // This is the opposite situation as the previous arm.
+                                    // One of these is true:
+                                    //
+                                    // The old predicate has a HRTB lifetime in a place where the
+                                    // new predicate does not.
+                                    //
+                                    // OR
+                                    //
+                                    // The new predicate has a region variable where the old
+                                    // predicate has some other type of region.
+                                    //
+                                    // We want to leave the old
                                     // predicate in user_computed_preds, and skip adding
                                     // new_pred to user_computed_params.
                                     should_add_new = false
-                                }
+                                },
                                 _ => {}
                             }
                         }
