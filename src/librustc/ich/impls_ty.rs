@@ -597,48 +597,6 @@ for ::mir::interpret::EvalErrorKind<'gcx, O> {
                 required.hash_stable(hcx, hasher);
                 has.hash_stable(hcx, hasher)
             },
-            MemoryLockViolation {
-                ptr,
-                len,
-                frame,
-                access,
-                ref lock,
-            } =>  {
-                ptr.hash_stable(hcx, hasher);
-                len.hash_stable(hcx, hasher);
-                frame.hash_stable(hcx, hasher);
-                access.hash_stable(hcx, hasher);
-                lock.hash_stable(hcx, hasher)
-            },
-            MemoryAcquireConflict {
-                ptr,
-                len,
-                kind,
-                ref lock,
-            } =>  {
-                ptr.hash_stable(hcx, hasher);
-                len.hash_stable(hcx, hasher);
-                kind.hash_stable(hcx, hasher);
-                lock.hash_stable(hcx, hasher)
-            },
-            InvalidMemoryLockRelease {
-                ptr,
-                len,
-                frame,
-                ref lock,
-            } =>  {
-                ptr.hash_stable(hcx, hasher);
-                len.hash_stable(hcx, hasher);
-                frame.hash_stable(hcx, hasher);
-                lock.hash_stable(hcx, hasher)
-            },
-            DeallocatedLockedMemory {
-                ptr,
-                ref lock,
-            } => {
-                ptr.hash_stable(hcx, hasher);
-                lock.hash_stable(hcx, hasher)
-            },
             ValidationFailure(ref s) => s.hash_stable(hcx, hasher),
             TypeNotPrimitive(ty) => ty.hash_stable(hcx, hasher),
             ReallocatedWrongMemoryKind(ref a, ref b) => {

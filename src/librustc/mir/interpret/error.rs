@@ -15,9 +15,7 @@ use ty::{Ty, layout};
 use ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
 
-use super::{
-    Pointer, Lock, AccessKind
-};
+use super::Pointer;
 
 use backtrace::Backtrace;
 
@@ -53,7 +51,7 @@ pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
-    pub error: ::mir::interpret::EvalError<'tcx>,
+    pub error: ::mir::interpret::EvalErrorKind<'tcx, u64>,
     pub stacktrace: Vec<FrameInfo>,
 }
 
@@ -112,7 +110,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         message: &str,
         lint_root: Option<ast::NodeId>,
     ) -> Result<DiagnosticBuilder<'tcx>, ErrorHandled> {
-        match self.error.kind {
+        match self.error {
             EvalErrorKind::Layout(LayoutError::Unknown(_)) |
             EvalErrorKind::TooGeneric => return Err(ErrorHandled::TooGeneric),
             EvalErrorKind::Layout(LayoutError::SizeOverflow(_)) |
@@ -151,50 +149,74 @@ pub fn struct_error<'a, 'gcx, 'tcx>(
     struct_span_err!(tcx.sess, tcx.span, E0080, "{}", msg)
 }
 
-#[derive(Debug, Clone, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Clone)]
 pub struct EvalError<'tcx> {
     pub kind: EvalErrorKind<'tcx, u64>,
+    pub backtrace: Option<Box<Backtrace>>,
+}
+
+impl<'tcx> EvalError<'tcx> {
+    pub fn print_backtrace(&mut self) {
+        if let Some(ref mut backtrace) = self.backtrace {
+            eprintln!("{}", print_backtrace(&mut *backtrace));
+        }
+    }
+}
+
+fn print_backtrace(backtrace: &mut Backtrace) -> String {
+    use std::fmt::Write;
+
+    backtrace.resolve();
+
+    let mut trace_text = "\n\nAn error occurred in miri:\n".to_string();
+    write!(trace_text, "backtrace frames: {}\n", backtrace.frames().len()).unwrap();
+    'frames: for (i, frame) in backtrace.frames().iter().enumerate() {
+        if frame.symbols().is_empty() {
+            write!(trace_text, "{}: no symbols\n", i).unwrap();
+        }
+        for symbol in frame.symbols() {
+            write!(trace_text, "{}: ", i).unwrap();
+            if let Some(name) = symbol.name() {
+                write!(trace_text, "{}\n", name).unwrap();
+            } else {
+                write!(trace_text, "<unknown>\n").unwrap();
+            }
+            write!(trace_text, "\tat ").unwrap();
+            if let Some(file_path) = symbol.filename() {
+                write!(trace_text, "{}", file_path.display()).unwrap();
+            } else {
+                write!(trace_text, "<unknown_file>").unwrap();
+            }
+            if let Some(line) = symbol.lineno() {
+                write!(trace_text, ":{}\n", line).unwrap();
+            } else {
+                write!(trace_text, "\n").unwrap();
+            }
+        }
+    }
+    trace_text
 }
 
 impl<'tcx> From<EvalErrorKind<'tcx, u64>> for EvalError<'tcx> {
     fn from(kind: EvalErrorKind<'tcx, u64>) -> Self {
-        match env::var("MIRI_BACKTRACE") {
-            Ok(ref val) if !val.is_empty() => {
-                let backtrace = Backtrace::new();
+        let backtrace = match env::var("RUST_CTFE_BACKTRACE") {
+            // matching RUST_BACKTRACE, we treat "0" the same as "not present".
+            Ok(ref val) if val != "0" => {
+                let mut backtrace = Backtrace::new_unresolved();
 
-                use std::fmt::Write;
-                let mut trace_text = "\n\nAn error occurred in miri:\n".to_string();
-                write!(trace_text, "backtrace frames: {}\n", backtrace.frames().len()).unwrap();
-                'frames: for (i, frame) in backtrace.frames().iter().enumerate() {
-                    if frame.symbols().is_empty() {
-                        write!(trace_text, "{}: no symbols\n", i).unwrap();
-                    }
-                    for symbol in frame.symbols() {
-                        write!(trace_text, "{}: ", i).unwrap();
-                        if let Some(name) = symbol.name() {
-                            write!(trace_text, "{}\n", name).unwrap();
-                        } else {
-                            write!(trace_text, "<unknown>\n").unwrap();
-                        }
-                        write!(trace_text, "\tat ").unwrap();
-                        if let Some(file_path) = symbol.filename() {
-                            write!(trace_text, "{}", file_path.display()).unwrap();
-                        } else {
-                            write!(trace_text, "<unknown_file>").unwrap();
-                        }
-                        if let Some(line) = symbol.lineno() {
-                            write!(trace_text, ":{}\n", line).unwrap();
-                        } else {
-                            write!(trace_text, "\n").unwrap();
-                        }
-                    }
+                if val == "immediate" {
+                    // Print it now
+                    eprintln!("{}", print_backtrace(&mut backtrace));
+                    None
+                } else {
+                    Some(Box::new(backtrace))
                 }
-                error!("{}", trace_text);
             },
-            _ => {},
-        }
+            _ => None,
+        };
         EvalError {
             kind,
+            backtrace,
         }
     }
 }
@@ -249,29 +271,6 @@ pub enum EvalErrorKind<'tcx, O> {
     AlignmentCheckFailed {
         required: Align,
         has: Align,
-    },
-    MemoryLockViolation {
-        ptr: Pointer,
-        len: u64,
-        frame: usize,
-        access: AccessKind,
-        lock: Lock,
-    },
-    MemoryAcquireConflict {
-        ptr: Pointer,
-        len: u64,
-        kind: AccessKind,
-        lock: Lock,
-    },
-    InvalidMemoryLockRelease {
-        ptr: Pointer,
-        len: u64,
-        frame: usize,
-        lock: Lock,
-    },
-    DeallocatedLockedMemory {
-        ptr: Pointer,
-        lock: Lock,
     },
     ValidationFailure(String),
     CalledClosureAsFunction,
@@ -336,16 +335,8 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
                 "pointer offset outside bounds of allocation",
             InvalidNullPointerUsage =>
                 "invalid use of NULL pointer",
-            MemoryLockViolation { .. } =>
-                "memory access conflicts with lock",
-            MemoryAcquireConflict { .. } =>
-                "new memory lock conflicts with existing lock",
             ValidationFailure(..) =>
                 "type validation failed",
-            InvalidMemoryLockRelease { .. } =>
-                "invalid attempt to release write lock",
-            DeallocatedLockedMemory { .. } =>
-                "tried to deallocate memory in conflict with a lock",
             ReadPointerAsBytes =>
                 "a raw memory access tried to access part of a pointer value as raw bytes",
             ReadBytesAsPointer =>
@@ -452,7 +443,13 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
 
 impl<'tcx> fmt::Display for EvalError<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.kind)
+        write!(f, "{}", self.kind)
+    }
+}
+
+impl<'tcx> fmt::Display for EvalErrorKind<'tcx, u64> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 
@@ -465,22 +462,6 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
                        if access { "memory access" } else { "pointer computed" },
                        ptr.offset.bytes(), ptr.alloc_id, allocation_size.bytes())
             },
-            MemoryLockViolation { ptr, len, frame, access, ref lock } => {
-                write!(f, "{:?} access by frame {} at {:?}, size {}, is in conflict with lock {:?}",
-                       access, frame, ptr, len, lock)
-            }
-            MemoryAcquireConflict { ptr, len, kind, ref lock } => {
-                write!(f, "new {:?} lock at {:?}, size {}, is in conflict with lock {:?}",
-                       kind, ptr, len, lock)
-            }
-            InvalidMemoryLockRelease { ptr, len, frame, ref lock } => {
-                write!(f, "frame {} tried to release memory write lock at {:?}, size {}, but \
-                       cannot release lock {:?}", frame, ptr, len, lock)
-            }
-            DeallocatedLockedMemory { ptr, ref lock } => {
-                write!(f, "tried to deallocate memory at {:?} in conflict with lock {:?}",
-                       ptr, lock)
-            }
             ValidationFailure(ref err) => {
                 write!(f, "type validation failed: {}", err)
             }

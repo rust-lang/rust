@@ -513,8 +513,7 @@ pub fn const_field<'a, 'tcx>(
         op_to_const(&ecx, field, true)
     })();
     result.map_err(|error| {
-        let stacktrace = ecx.generate_stacktrace(None);
-        let err = ::rustc::mir::interpret::ConstEvalErr { error, stacktrace, span: ecx.tcx.span };
+        let err = error_to_const_error(&ecx, error);
         err.report_as_error(ecx.tcx, "could not access field of constant");
         ErrorHandled::Reported
     })
@@ -530,6 +529,15 @@ pub fn const_variant_index<'a, 'tcx>(
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let op = ecx.const_to_op(val)?;
     Ok(ecx.read_discriminant(op)?.1)
+}
+
+pub fn error_to_const_error<'a, 'mir, 'tcx>(
+    ecx: &EvalContext<'a, 'mir, 'tcx, CompileTimeInterpreter<'a, 'mir, 'tcx>>,
+    mut error: EvalError<'tcx>
+) -> ConstEvalErr<'tcx> {
+    error.print_backtrace();
+    let stacktrace = ecx.generate_stacktrace(None);
+    ConstEvalErr { error: error.kind, stacktrace, span: ecx.tcx.span }
 }
 
 fn validate_const<'a, 'tcx>(
@@ -554,8 +562,7 @@ fn validate_const<'a, 'tcx>(
     })();
 
     val.map_err(|error| {
-        let stacktrace = ecx.generate_stacktrace(None);
-        let err = ::rustc::mir::interpret::ConstEvalErr { error, stacktrace, span: ecx.tcx.span };
+        let err = error_to_const_error(&ecx, error);
         match err.struct_error(ecx.tcx, "it is undefined behavior to use this value") {
             Ok(mut diag) => {
                 diag.note("The rules on what exactly is undefined behavior aren't clear, \
@@ -654,8 +661,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
         }
         op_to_const(&ecx, op, normalize)
     }).map_err(|error| {
-        let stacktrace = ecx.generate_stacktrace(None);
-        let err = ConstEvalErr { error, stacktrace, span: ecx.tcx.span };
+        let err = error_to_const_error(&ecx, error);
         // errors in statics are always emitted as fatal errors
         if tcx.is_static(def_id).is_some() {
             let err = err.report_as_error(ecx.tcx, "could not evaluate static initializer");
@@ -685,7 +691,7 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
                 // any other kind of error will be reported to the user as a deny-by-default lint
                 _ => if let Some(p) = cid.promoted {
                     let span = tcx.optimized_mir(def_id).promoted[p].span;
-                    if let EvalErrorKind::ReferencedConstant = err.error.kind {
+                    if let EvalErrorKind::ReferencedConstant = err.error {
                         err.report_as_error(
                             tcx.at(span),
                             "evaluation of constant expression failed",

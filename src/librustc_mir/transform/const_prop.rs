@@ -17,13 +17,8 @@ use rustc::mir::{Constant, Location, Place, Mir, Operand, Rvalue, Local};
 use rustc::mir::{NullOp, UnOp, StatementKind, Statement, BasicBlock, LocalKind};
 use rustc::mir::{TerminatorKind, ClearCrossCrate, SourceInfo, BinOp, ProjectionElem};
 use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
-use rustc::mir::interpret::{
-    ConstEvalErr, EvalErrorKind, Scalar, GlobalId, EvalResult,
-};
+use rustc::mir::interpret::{EvalErrorKind, Scalar, GlobalId, EvalResult};
 use rustc::ty::{TyCtxt, self, Instance};
-use interpret::{self, EvalContext, Value, OpTy, MemoryKind, ScalarMaybeUndef};
-use const_eval::{CompileTimeInterpreter, eval_promoted, mk_borrowck_eval_cx};
-use transform::{MirPass, MirSource};
 use syntax::source_map::{Span, DUMMY_SP};
 use rustc::ty::subst::Substs;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -32,6 +27,10 @@ use rustc::ty::layout::{
     LayoutOf, TyLayout, LayoutError,
     HasTyCtxt, TargetDataLayout, HasDataLayout,
 };
+
+use interpret::{self, EvalContext, ScalarMaybeUndef, Value, OpTy, MemoryKind};
+use const_eval::{CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_borrowck_eval_cx};
+use transform::{MirPass, MirSource};
 
 pub struct ConstProp;
 
@@ -154,10 +153,9 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
         let r = match f(self) {
             Ok(val) => Some(val),
             Err(error) => {
-                let stacktrace = self.ecx.generate_stacktrace(None);
-                let diagnostic = ConstEvalErr { span: source_info.span, error, stacktrace };
+                let diagnostic = error_to_const_error(&self.ecx, error);
                 use rustc::mir::interpret::EvalErrorKind::*;
-                match diagnostic.error.kind {
+                match diagnostic.error {
                     // don't report these, they make no sense in a const prop context
                     | MachineError(_)
                     // at runtime these transformations might make sense
@@ -185,11 +183,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     | InvalidDiscriminant(..)
                     | PointerOutOfBounds { .. }
                     | InvalidNullPointerUsage
-                    | MemoryLockViolation { .. }
-                    | MemoryAcquireConflict { .. }
                     | ValidationFailure(..)
-                    | InvalidMemoryLockRelease { .. }
-                    | DeallocatedLockedMemory { .. }
                     | InvalidPointerMath
                     | ReadUndefBytes(_)
                     | DeadLocal
@@ -273,10 +267,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 Some((op, c.span))
             },
             Err(error) => {
-                let stacktrace = self.ecx.generate_stacktrace(None);
-                let err = ::rustc::mir::interpret::ConstEvalErr {
-                    error, stacktrace, span: source_info.span,
-                };
+                let err = error_to_const_error(&self.ecx, error);
                 err.report_as_error(self.ecx.tcx, "erroneous constant used");
                 None
             },
