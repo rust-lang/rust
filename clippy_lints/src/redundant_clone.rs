@@ -12,7 +12,7 @@ use crate::rustc::hir::{def_id, Body, FnDecl};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::mir::{
     self, traversal,
-    visit::{PlaceContext, Visitor},
+    visit::{MutatingUseContext, NonUseContext, PlaceContext, Visitor},
     TerminatorKind,
 };
 use crate::rustc::ty;
@@ -279,7 +279,7 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
 
     fn visit_local(&mut self, local: &mir::Local, ctx: PlaceContext<'tcx>, _: mir::Location) {
         match ctx {
-            PlaceContext::Drop | PlaceContext::StorageDead => return,
+            PlaceContext::MutatingUse(MutatingUseContext::Drop) | PlaceContext::NonUse(NonUseContext::StorageDead) => return,
             _ => {},
         }
 
