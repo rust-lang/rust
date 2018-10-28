@@ -21,6 +21,7 @@ use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
 use session::Session;
 use syntax::ast;
 use syntax::attr;
+use syntax::feature_gate;
 use syntax::source_map::MultiSpan;
 use syntax::symbol::Symbol;
 use util::nodemap::FxHashMap;
@@ -199,8 +200,7 @@ impl<'a> LintLevelsBuilder<'a> {
         let store = self.sess.lint_store.borrow();
         let sess = self.sess;
         let bad_attr = |span| {
-            span_err!(sess, span, E0452,
-                      "malformed lint attribute");
+            struct_span_err!(sess, span, E0452, "malformed lint attribute")
         };
         for attr in attrs {
             let level = match Level::from_str(&attr.name().as_str()) {
@@ -211,19 +211,76 @@ impl<'a> LintLevelsBuilder<'a> {
             let meta = unwrap_or!(attr.meta(), continue);
             attr::mark_used(attr);
 
-            let metas = if let Some(metas) = meta.meta_item_list() {
+            let mut metas = if let Some(metas) = meta.meta_item_list() {
                 metas
             } else {
-                bad_attr(meta.span);
-                continue
+                let mut err = bad_attr(meta.span);
+                err.emit();
+                continue;
             };
+
+            if metas.is_empty() {
+                // FIXME (#55112): issue unused-attributes lint for `#[level()]`
+                continue;
+            }
+
+            // Before processing the lint names, look for a reason (RFC 2383)
+            // at the end.
+            let mut reason = None;
+            let tail_li = &metas[metas.len()-1];
+            if let Some(item) = tail_li.meta_item() {
+                match item.node {
+                    ast::MetaItemKind::Word => {}  // actual lint names handled later
+                    ast::MetaItemKind::NameValue(ref name_value) => {
+                        let gate_reasons = !self.sess.features_untracked().lint_reasons;
+                        if item.ident == "reason" {
+                            // found reason, reslice meta list to exclude it
+                            metas = &metas[0..metas.len()-1];
+                            // FIXME (#55112): issue unused-attributes lint if we thereby
+                            // don't have any lint names (`#[level(reason = "foo")]`)
+                            if let ast::LitKind::Str(rationale, _) = name_value.node {
+                                if gate_reasons {
+                                    feature_gate::emit_feature_err(
+                                        &self.sess.parse_sess,
+                                        "lint_reasons",
+                                        item.span,
+                                        feature_gate::GateIssue::Language,
+                                        "lint reasons are experimental"
+                                    );
+                                } else {
+                                    reason = Some(rationale);
+                                }
+                            } else {
+                                let mut err = bad_attr(name_value.span);
+                                err.help("reason must be a string literal");
+                                err.emit();
+                            }
+                        } else {
+                            let mut err = bad_attr(item.span);
+                            err.emit();
+                        }
+                    },
+                    ast::MetaItemKind::List(_) => {
+                        let mut err = bad_attr(item.span);
+                        err.emit();
+                    }
+                }
+            }
 
             for li in metas {
                 let word = match li.word() {
                     Some(word) => word,
                     None => {
-                        bad_attr(li.span);
-                        continue
+                        let mut err = bad_attr(li.span);
+                        if let Some(item) = li.meta_item() {
+                            if let ast::MetaItemKind::NameValue(_) = item.node {
+                                if item.ident == "reason" {
+                                    err.help("reason in lint attribute must come last");
+                                }
+                            }
+                        }
+                        err.emit();
+                        continue;
                     }
                 };
                 let tool_name = if let Some(lint_tool) = word.is_scoped() {
@@ -245,7 +302,7 @@ impl<'a> LintLevelsBuilder<'a> {
                 let name = word.name();
                 match store.check_lint_name(&name.as_str(), tool_name) {
                     CheckLintNameResult::Ok(ids) => {
-                        let src = LintSource::Node(name, li.span);
+                        let src = LintSource::Node(name, li.span, reason);
                         for id in ids {
                             specs.insert(*id, (level, src));
                         }
@@ -255,7 +312,9 @@ impl<'a> LintLevelsBuilder<'a> {
                         match result {
                             Ok(ids) => {
                                 let complete_name = &format!("{}::{}", tool_name.unwrap(), name);
-                                let src = LintSource::Node(Symbol::intern(complete_name), li.span);
+                                let src = LintSource::Node(
+                                    Symbol::intern(complete_name), li.span, reason
+                                );
                                 for id in ids {
                                     specs.insert(*id, (level, src));
                                 }
@@ -286,7 +345,9 @@ impl<'a> LintLevelsBuilder<'a> {
                                     Applicability::MachineApplicable,
                                 ).emit();
 
-                                let src = LintSource::Node(Symbol::intern(&new_lint_name), li.span);
+                                let src = LintSource::Node(
+                                    Symbol::intern(&new_lint_name), li.span, reason
+                                );
                                 for id in ids {
                                     specs.insert(*id, (level, src));
                                 }
@@ -368,11 +429,11 @@ impl<'a> LintLevelsBuilder<'a> {
             };
             let forbidden_lint_name = match forbid_src {
                 LintSource::Default => id.to_string(),
-                LintSource::Node(name, _) => name.to_string(),
+                LintSource::Node(name, _, _) => name.to_string(),
                 LintSource::CommandLine(name) => name.to_string(),
             };
             let (lint_attr_name, lint_attr_span) = match *src {
-                LintSource::Node(name, span) => (name, span),
+                LintSource::Node(name, span, _) => (name, span),
                 _ => continue,
             };
             let mut diag_builder = struct_span_err!(self.sess,
@@ -384,15 +445,19 @@ impl<'a> LintLevelsBuilder<'a> {
                                                     forbidden_lint_name);
             diag_builder.span_label(lint_attr_span, "overruled by previous forbid");
             match forbid_src {
-                LintSource::Default => &mut diag_builder,
-                LintSource::Node(_, forbid_source_span) => {
+                LintSource::Default => {},
+                LintSource::Node(_, forbid_source_span, reason) => {
                     diag_builder.span_label(forbid_source_span,
-                                            "`forbid` level set here")
+                                            "`forbid` level set here");
+                    if let Some(rationale) = reason {
+                        diag_builder.note(&rationale.as_str());
+                    }
                 },
                 LintSource::CommandLine(_) => {
-                    diag_builder.note("`forbid` lint level was set on command line")
+                    diag_builder.note("`forbid` lint level was set on command line");
                 }
-            }.emit();
+            }
+            diag_builder.emit();
             // don't set a separate error for every lint in the group
             break
         }
