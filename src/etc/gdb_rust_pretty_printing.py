@@ -9,7 +9,6 @@
 # except according to those terms.
 
 import gdb
-import re
 import sys
 import debugger_pretty_printers_common as rustpp
 
