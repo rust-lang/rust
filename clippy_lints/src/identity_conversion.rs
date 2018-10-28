@@ -12,7 +12,7 @@ use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::hir::*;
 use crate::syntax::ast::NodeId;
-use crate::utils::{in_macro, match_def_path, match_trait_method, same_tys, snippet, span_lint_and_then};
+use crate::utils::{in_macro, match_def_path, match_trait_method, same_tys, snippet, snippet_with_macro_callsite, span_lint_and_then};
 use crate::utils::{opt_def_id, paths, resolve_node};
 use crate::rustc_errors::Applicability;
 
@@ -72,7 +72,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                     let a = cx.tables.expr_ty(e);
                     let b = cx.tables.expr_ty(&args[0]);
                     if same_tys(cx, a, b) {
-                        let sugg = snippet(cx, args[0].span, "<expr>").into_owned();
+                        let sugg = snippet_with_macro_callsite(cx, args[0].span, "<expr>").to_string();
+
                         span_lint_and_then(cx, IDENTITY_CONVERSION, e.span, "identical conversion", |db| {
                             db.span_suggestion_with_applicability(
                                 e.span,

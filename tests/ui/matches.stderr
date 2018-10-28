@@ -33,7 +33,7 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 51 | |         &(v, 1) => println!("{}", v),
 52 | |         _ => println!("none"),
 53 | |     }
-   | |_____^ help: try this: `if let &(v, 1) = tup { $ crate :: io :: _print ( format_args_nl ! ( $ ( $ arg ) * ) ) ; } else { $ crate :: io :: _print ( format_args_nl ! ( $ ( $ arg ) * ) ) ; }`
+   | |_____^ help: try this: `if let &(v, 1) = tup { println!("{}", v) } else { println!("none") }`
 
 error: you don't need to add `&` to all patterns
   --> $DIR/matches.rs:50:5

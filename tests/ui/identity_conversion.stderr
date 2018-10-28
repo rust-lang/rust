@@ -58,5 +58,11 @@ error: identical conversion
 55 |     let _ = vec![1, 2, 3].into_iter().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![1, 2, 3].into_iter()`
 
-error: aborting due to 9 previous errors
+error: identical conversion
+  --> $DIR/identity_conversion.rs:56:21
+   |
+56 |     let _: String = format!("Hello {}", "world").into();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `format!("Hello {}", "world")`
+
+error: aborting due to 10 previous errors
 

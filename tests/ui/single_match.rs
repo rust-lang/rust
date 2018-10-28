@@ -23,6 +23,15 @@ fn single_match(){
         _ => ()
     };
 
+    let x = Some(1u8);
+    match x {
+        // Note the missing block braces.
+        // We suggest `if let Some(y) = x { .. }` because the macro
+        // is expanded before we can do anything.
+        Some(y) => println!("{:?}", y),
+        _ => ()
+    }
+
     let z = (1u8,1u8);
     match z {
         (2...3, 7...9) => dummy(),

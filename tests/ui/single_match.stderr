@@ -12,38 +12,50 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/single_match.rs:27:5
    |
-27 | /     match z {
-28 | |         (2...3, 7...9) => dummy(),
-29 | |         _ => {}
-30 | |     };
+27 | /     match x {
+28 | |         // Note the missing block braces.
+29 | |         // We suggest `if let Some(y) = x { .. }` because the macro
+30 | |         // is expanded before we can do anything.
+31 | |         Some(y) => println!("{:?}", y),
+32 | |         _ => ()
+33 | |     }
+   | |_____^ help: try this: `if let Some(y) = x { println!("{:?}", y) }`
+
+error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
+  --> $DIR/single_match.rs:36:5
+   |
+36 | /     match z {
+37 | |         (2...3, 7...9) => dummy(),
+38 | |         _ => {}
+39 | |     };
    | |_____^ help: try this: `if let (2...3, 7...9) = z { dummy() }`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:53:5
+  --> $DIR/single_match.rs:62:5
    |
-53 | /     match x {
-54 | |         Some(y) => dummy(),
-55 | |         None => ()
-56 | |     };
+62 | /     match x {
+63 | |         Some(y) => dummy(),
+64 | |         None => ()
+65 | |     };
    | |_____^ help: try this: `if let Some(y) = x { dummy() }`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:58:5
+  --> $DIR/single_match.rs:67:5
    |
-58 | /     match y {
-59 | |         Ok(y) => dummy(),
-60 | |         Err(..) => ()
-61 | |     };
+67 | /     match y {
+68 | |         Ok(y) => dummy(),
+69 | |         Err(..) => ()
+70 | |     };
    | |_____^ help: try this: `if let Ok(y) = y { dummy() }`
 
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match.rs:65:5
+  --> $DIR/single_match.rs:74:5
    |
-65 | /     match c {
-66 | |         Cow::Borrowed(..) => dummy(),
-67 | |         Cow::Owned(..) => (),
-68 | |     };
+74 | /     match c {
+75 | |         Cow::Borrowed(..) => dummy(),
+76 | |         Cow::Owned(..) => (),
+77 | |     };
    | |_____^ help: try this: `if let Cow::Borrowed(..) = c { dummy() }`
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
