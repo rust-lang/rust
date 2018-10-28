@@ -1,4 +1,4 @@
-error: expected `{`, found `in`
+error: expected `{`, found keyword `in`
   --> $DIR/issue-51602.rs:12:10
    |
 LL |     if i in 1..10 {

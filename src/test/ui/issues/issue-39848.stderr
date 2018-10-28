@@ -7,7 +7,7 @@ LL |         if $tgt.has_$field() {}
    |         this `if` statement has a condition, but no block
 ...
 LL |     get_opt!(bar, foo);
-   |                   ^^^
+   |                   ^^^ expected `{`
 
 error: aborting due to previous error
 
