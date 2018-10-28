@@ -1585,6 +1585,153 @@ impl<T> [T] {
         sort::quicksort(self, |a, b| f(a).lt(&f(b)));
     }
 
+    /// Reorder the slice such that the element at `index` is at its final sorted position.
+    ///
+    /// This reordering has the additional property that any value at position `i < index` will be
+    /// less than or equal to any value at a position `j > index`. Additionally, this reordering is
+    /// unstable (i.e. any number of equal elements may end up at position `index`), in-place
+    /// (i.e. does not allocate), and `O(n)` worst-case. This function is also/ known as "kth
+    /// element" in other libraries. It returns a triplet of the following values: all elements less
+    /// than the one at the given index, the value at the given index, and all elements greater than
+    /// the one at the given index.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is based on the quickselect portion of the same quicksort algorithm
+    /// used for [`sort_unstable`].
+    ///
+    /// [`sort_unstable`]: #method.sort_unstable
+    ///
+    /// # Panics
+    ///
+    /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partition_at_index)]
+    ///
+    /// let mut v = [-5i32, 4, 1, -3, 2];
+    ///
+    /// // Find the median
+    /// v.partition_at_index(2);
+    ///
+    /// // We are only guaranteed the slice will be one of the following, based on the way we sort
+    /// // about the specified index.
+    /// assert!(v == [-3, -5, 1, 2, 4] ||
+    ///         v == [-5, -3, 1, 2, 4] ||
+    ///         v == [-3, -5, 1, 4, 2] ||
+    ///         v == [-5, -3, 1, 4, 2]);
+    /// ```
+    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[inline]
+    pub fn partition_at_index(&mut self, index: usize) -> (&mut [T], &mut T, &mut [T])
+        where T: Ord
+    {
+        let mut f = |a: &T, b: &T| a.lt(b);
+        sort::partition_at_index(self, index, &mut f)
+    }
+
+    /// Reorder the slice with a comparator function such that the element at `index` is at its
+    /// final sorted position.
+    ///
+    /// This reordering has the additional property that any value at position `i < index` will be
+    /// less than or equal to any value at a position `j > index` using the comparator function.
+    /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
+    /// position `index`), in-place (i.e. does not allocate), and `O(n)` worst-case. This function
+    /// is also known as "kth element" in other libraries. It returns a triplet of the following
+    /// values: all elements less than the one at the given index, the value at the given index,
+    /// and all elements greater than the one at the given index, using the provided comparator
+    /// function.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is based on the quickselect portion of the same quicksort algorithm
+    /// used for [`sort_unstable`].
+    ///
+    /// [`sort_unstable`]: #method.sort_unstable
+    ///
+    /// # Panics
+    ///
+    /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partition_at_index)]
+    ///
+    /// let mut v = [-5i32, 4, 1, -3, 2];
+    ///
+    /// // Find the median as if the slice were sorted in descending order.
+    /// v.partition_at_index_by(2, |a, b| b.cmp(a));
+    ///
+    /// // We are only guaranteed the slice will be one of the following, based on the way we sort
+    /// // about the specified index.
+    /// assert!(v == [2, 4, 1, -5, -3] ||
+    ///         v == [2, 4, 1, -3, -5] ||
+    ///         v == [4, 2, 1, -5, -3] ||
+    ///         v == [4, 2, 1, -3, -5]);
+    /// ```
+    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[inline]
+    pub fn partition_at_index_by<F>(&mut self, index: usize, mut compare: F)
+                                    -> (&mut [T], &mut T, &mut [T])
+        where F: FnMut(&T, &T) -> Ordering
+    {
+        let mut f = |a: &T, b: &T| compare(a, b) == Less;
+        sort::partition_at_index(self, index, &mut f)
+    }
+
+    /// Reorder the slice with a key extraction function such that the element at `index` is at its
+    /// final sorted position.
+    ///
+    /// This reordering has the additional property that any value at position `i < index` will be
+    /// less than or equal to any value at a position `j > index` using the key extraction function.
+    /// Additionally, this reordering is unstable (i.e. any number of equal elements may end up at
+    /// position `index`), in-place (i.e. does not allocate), and `O(n)` worst-case. This function
+    /// is also known as "kth element" in other libraries. It returns a triplet of the following
+    /// values: all elements less than the one at the given index, the value at the given index, and
+    /// all elements greater than the one at the given index, using the provided key extraction
+    /// function.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is based on the quickselect portion of the same quicksort algorithm
+    /// used for [`sort_unstable`].
+    ///
+    /// [`sort_unstable`]: #method.sort_unstable
+    ///
+    /// # Panics
+    ///
+    /// Panics when `index >= len()`, meaning it always panics on empty slices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_partition_at_index)]
+    ///
+    /// let mut v = [-5i32, 4, 1, -3, 2];
+    ///
+    /// // Return the median as if the array were sorted according to absolute value.
+    /// v.partition_at_index_by_key(2, |a| a.abs());
+    ///
+    /// // We are only guaranteed the slice will be one of the following, based on the way we sort
+    /// // about the specified index.
+    /// assert!(v == [1, 2, -3, 4, -5] ||
+    ///         v == [1, 2, -3, -5, 4] ||
+    ///         v == [2, 1, -3, 4, -5] ||
+    ///         v == [2, 1, -3, -5, 4]);
+    /// ```
+    #[unstable(feature = "slice_partition_at_index", issue = "55300")]
+    #[inline]
+    pub fn partition_at_index_by_key<K, F>(&mut self, index: usize, mut f: F)
+                                           -> (&mut [T], &mut T, &mut [T])
+        where F: FnMut(&T) -> K, K: Ord
+    {
+        let mut g = |a: &T, b: &T| f(a).lt(&f(b));
+        sort::partition_at_index(self, index, &mut g)
+    }
+
     /// Moves all consecutive repeated elements to the end of the slice according to the
     /// [`PartialEq`] trait implementation.
     ///
