@@ -568,7 +568,14 @@ declare_clippy_lint! {
 /// **Why is this bad?** Using the Index trait (`[]`) is more clear and more
 /// concise.
 ///
-/// **Known problems:** None.
+/// **Known problems:** Not a replacement for error handling: Using either
+/// `.unwrap()` or the Index syntax (`[]`) carries the risk of causing a `panic`
+/// if the value being accessed is `None`. If the use of `.get().unwrap()` is a
+/// temporary placeholder for dealing with the `Option` type, then this does
+/// not mitigate the need for error handling. If there is a chance that `.get()`
+/// will be `None` in your program, then it is advisable that the `None` case
+/// is eventually handled in a future refactor instead of using `.unwrap()`
+/// or the Index syntax.
 ///
 /// **Example:**
 /// ```rust
