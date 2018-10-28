@@ -21,7 +21,7 @@ sample usage: src/etc/generate-deriving-span-tests.py
 import sys, os, datetime, stat, re
 
 TEST_DIR = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), '../test/compile-fail'))
+    os.path.join(os.path.dirname(__file__), '../test/ui/derives/'))
 
 YEAR = datetime.datetime.now().year
 
