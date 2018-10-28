@@ -1,0 +1,8 @@
+error: `if`, `match`, `&&` and `||` are not stable in const fn
+  --> $DIR/single_variant_match_ice.rs:10:13
+   |
+LL |             Prob => 0x1, //~ ERROR `if`, `match`, `&&` and `||` are not stable in const fn
+   |             ^^^^
+
+error: aborting due to previous error
+
