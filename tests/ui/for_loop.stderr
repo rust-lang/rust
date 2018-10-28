@@ -360,156 +360,130 @@ error: you are collect()ing an iterator and throwing away the result. Consider u
     |
     = note: `-D clippy::unused-collect` implied by `-D warnings`
 
-error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
-   --> $DIR/for_loop.rs:279:15
-    |
-279 |     for _v in &vec {
-    |               ^^^^
-    |
-    = note: `-D clippy::explicit-counter-loop` implied by `-D warnings`
-
-error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
-   --> $DIR/for_loop.rs:285:15
-    |
-285 |     for _v in &vec {
-    |               ^^^^
-
 error: you seem to want to iterate on a map's values
-   --> $DIR/for_loop.rs:395:19
+   --> $DIR/for_loop.rs:385:19
     |
-395 |     for (_, v) in &m {
+385 |     for (_, v) in &m {
     |                   ^^
     |
     = note: `-D clippy::for-kv-map` implied by `-D warnings`
 help: use the corresponding method
     |
-395 |     for v in m.values() {
+385 |     for v in m.values() {
     |         ^    ^^^^^^^^^^
 
 error: you seem to want to iterate on a map's values
-   --> $DIR/for_loop.rs:400:19
+   --> $DIR/for_loop.rs:390:19
     |
-400 |     for (_, v) in &*m {
+390 |     for (_, v) in &*m {
     |                   ^^^
 help: use the corresponding method
     |
-400 |     for v in (*m).values() {
+390 |     for v in (*m).values() {
     |         ^    ^^^^^^^^^^^^^
 
 error: you seem to want to iterate on a map's values
-   --> $DIR/for_loop.rs:408:19
+   --> $DIR/for_loop.rs:398:19
     |
-408 |     for (_, v) in &mut m {
+398 |     for (_, v) in &mut m {
     |                   ^^^^^^
 help: use the corresponding method
     |
-408 |     for v in m.values_mut() {
+398 |     for v in m.values_mut() {
     |         ^    ^^^^^^^^^^^^^^
 
 error: you seem to want to iterate on a map's values
-   --> $DIR/for_loop.rs:413:19
+   --> $DIR/for_loop.rs:403:19
     |
-413 |     for (_, v) in &mut *m {
+403 |     for (_, v) in &mut *m {
     |                   ^^^^^^^
 help: use the corresponding method
     |
-413 |     for v in (*m).values_mut() {
+403 |     for v in (*m).values_mut() {
     |         ^    ^^^^^^^^^^^^^^^^^
 
 error: you seem to want to iterate on a map's keys
-   --> $DIR/for_loop.rs:419:24
+   --> $DIR/for_loop.rs:409:24
     |
-419 |     for (k, _value) in rm {
+409 |     for (k, _value) in rm {
     |                        ^^
 help: use the corresponding method
     |
-419 |     for k in rm.keys() {
+409 |     for k in rm.keys() {
     |         ^    ^^^^^^^^^
 
 error: it looks like you're manually copying between slices
-   --> $DIR/for_loop.rs:472:14
+   --> $DIR/for_loop.rs:462:14
     |
-472 |     for i in 0..src.len() {
+462 |     for i in 0..src.len() {
     |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`
     |
     = note: `-D clippy::manual-memcpy` implied by `-D warnings`
 
 error: it looks like you're manually copying between slices
+   --> $DIR/for_loop.rs:467:14
+    |
+467 |     for i in 0..src.len() {
+    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[10..(src.len() + 10)].clone_from_slice(&src[..])`
+
+error: it looks like you're manually copying between slices
+   --> $DIR/for_loop.rs:472:14
+    |
+472 |     for i in 0..src.len() {
+    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[10..])`
+
+error: it looks like you're manually copying between slices
    --> $DIR/for_loop.rs:477:14
     |
-477 |     for i in 0..src.len() {
-    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[10..(src.len() + 10)].clone_from_slice(&src[..])`
+477 |     for i in 11..src.len() {
+    |              ^^^^^^^^^^^^^ help: try replacing the loop by: `dst[11..src.len()].clone_from_slice(&src[(11 - 10)..(src.len() - 10)])`
 
 error: it looks like you're manually copying between slices
    --> $DIR/for_loop.rs:482:14
     |
-482 |     for i in 0..src.len() {
-    |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[10..])`
-
-error: it looks like you're manually copying between slices
-   --> $DIR/for_loop.rs:487:14
-    |
-487 |     for i in 11..src.len() {
-    |              ^^^^^^^^^^^^^ help: try replacing the loop by: `dst[11..src.len()].clone_from_slice(&src[(11 - 10)..(src.len() - 10)])`
-
-error: it looks like you're manually copying between slices
-   --> $DIR/for_loop.rs:492:14
-    |
-492 |     for i in 0..dst.len() {
+482 |     for i in 0..dst.len() {
     |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst.clone_from_slice(&src[..dst.len()])`
 
 error: it looks like you're manually copying between slices
-   --> $DIR/for_loop.rs:505:14
+   --> $DIR/for_loop.rs:495:14
     |
-505 |     for i in 10..256 {
+495 |     for i in 10..256 {
     |              ^^^^^^^
 help: try replacing the loop by
     |
-505 |     for i in dst[10..256].clone_from_slice(&src[(10 - 5)..(256 - 5)])
-506 |     dst2[(10 + 500)..(256 + 500)].clone_from_slice(&src[10..256]) {
+495 |     for i in dst[10..256].clone_from_slice(&src[(10 - 5)..(256 - 5)])
+496 |     dst2[(10 + 500)..(256 + 500)].clone_from_slice(&src[10..256]) {
     |
 
 error: it looks like you're manually copying between slices
-   --> $DIR/for_loop.rs:517:14
+   --> $DIR/for_loop.rs:507:14
     |
-517 |     for i in 10..LOOP_OFFSET {
+507 |     for i in 10..LOOP_OFFSET {
     |              ^^^^^^^^^^^^^^^ help: try replacing the loop by: `dst[(10 + LOOP_OFFSET)..(LOOP_OFFSET + LOOP_OFFSET)].clone_from_slice(&src[(10 - some_var)..(LOOP_OFFSET - some_var)])`
 
 error: it looks like you're manually copying between slices
-   --> $DIR/for_loop.rs:530:14
+   --> $DIR/for_loop.rs:520:14
     |
-530 |     for i in 0..src_vec.len() {
+520 |     for i in 0..src_vec.len() {
     |              ^^^^^^^^^^^^^^^^ help: try replacing the loop by: `dst_vec[..src_vec.len()].clone_from_slice(&src_vec[..])`
 
 error: it looks like you're manually copying between slices
-   --> $DIR/for_loop.rs:559:14
+   --> $DIR/for_loop.rs:549:14
     |
-559 |     for i in from..from + src.len() {
+549 |     for i in from..from + src.len() {
     |              ^^^^^^^^^^^^^^^^^^^^^^ help: try replacing the loop by: `dst[from..from + src.len()].clone_from_slice(&src[0..(from + src.len() - from)])`
 
 error: it looks like you're manually copying between slices
-   --> $DIR/for_loop.rs:563:14
+   --> $DIR/for_loop.rs:553:14
     |
-563 |     for i in from..from + 3 {
+553 |     for i in from..from + 3 {
     |              ^^^^^^^^^^^^^^ help: try replacing the loop by: `dst[from..from + 3].clone_from_slice(&src[0..(from + 3 - from)])`
 
 error: it looks like you're manually copying between slices
-   --> $DIR/for_loop.rs:570:14
+   --> $DIR/for_loop.rs:560:14
     |
-570 |     for i in 0..src.len() {
+560 |     for i in 0..src.len() {
     |              ^^^^^^^^^^^^ help: try replacing the loop by: `dst[..src.len()].clone_from_slice(&src[..])`
 
-error: the variable `count` is used as a loop counter. Consider using `for (count, item) in text.chars().enumerate()` or similar iterators
-   --> $DIR/for_loop.rs:631:19
-    |
-631 |         for ch in text.chars() {
-    |                   ^^^^^^^^^^^^
-
-error: the variable `count` is used as a loop counter. Consider using `for (count, item) in text.chars().enumerate()` or similar iterators
-   --> $DIR/for_loop.rs:642:19
-    |
-642 |         for ch in text.chars() {
-    |                   ^^^^^^^^^^^^
-
-error: aborting due to 63 previous errors
+error: aborting due to 59 previous errors
 
