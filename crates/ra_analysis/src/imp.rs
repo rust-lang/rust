@@ -10,6 +10,7 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
+use rayon::prelude::*;
 use relative_path::RelativePath;
 use rustc_hash::FxHashSet;
 use salsa::{ParallelDatabase, Database};
@@ -23,6 +24,7 @@ use crate::{
     input::{SourceRootId, FilesDatabase, SourceRoot, WORKSPACE},
     descriptors::module::{ModulesDatabase, ModuleTree, Problem},
     descriptors::{FnDescriptor},
+    symbol_index::SymbolIndex,
     CrateGraph, CrateId, Diagnostic, FileId, FileResolver, FileSystemEdit, Position,
     Query, SourceChange, SourceFileEdit, Cancelable,
 };
@@ -180,16 +182,18 @@ impl AnalysisImpl {
         self.db.file_lines(file_id)
     }
     pub fn world_symbols(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        let mut buf = Vec::new();
-        if query.libs {
-            for &lib_id in self.db.libraries().iter() {
-                buf.push(self.db.library_symbols(lib_id));
-            }
+        let buf: Vec<Arc<SymbolIndex>> = if query.libs {
+            self.db.libraries().iter()
+                .map(|&lib_id| self.db.library_symbols(lib_id))
+                .collect()
         } else {
-            for &file_id in self.db.source_root(WORKSPACE).files.iter() {
-                buf.push(self.db.file_symbols(file_id)?);
-            }
-        }
+            let files = &self.db.source_root(WORKSPACE).files;
+            let db = self.db.clone();
+            files.par_iter()
+                .map_with(db, |db, &file_id| db.file_symbols(file_id))
+                .filter_map(|it| it.ok())
+                .collect()
+        };
         Ok(query.search(&buf))
     }
     fn module_tree(&self, file_id: FileId) -> Cancelable<Arc<ModuleTree>> {
