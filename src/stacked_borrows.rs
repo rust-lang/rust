@@ -4,7 +4,7 @@ use rustc::ty::{self, Ty, layout::Size};
 use rustc::hir;
 
 use super::{
-    MemoryAccess, MemoryKind, MiriMemoryKind, RangeMap, EvalResult, AllocId,
+    MemoryKind, MiriMemoryKind, RangeMap, EvalResult, AllocId,
     Pointer, PlaceTy,
 };
 
@@ -126,6 +126,13 @@ impl Default for Stack {
     }
 }
 
+impl Stack {
+    #[inline(always)]
+    fn is_frozen(&self) -> bool {
+        self.frozen_since.is_some()
+    }
+}
+
 /// Extra per-allocation state
 #[derive(Clone, Debug, Default)]
 pub struct Stacks {
@@ -206,8 +213,13 @@ impl<'tcx> Stack {
         match action {
             None => {}, // nothing to do
             Some(top) => {
+                if self.frozen_since.is_some() {
+                    trace!("reactivate: Unfreezing");
+                }
                 self.frozen_since = None;
-                self.borrows.truncate(top+1);
+                for itm in self.borrows.drain(top+1..).rev() {
+                    trace!("reactivate: Popping {:?}", itm);
+                }
             }
         }
 
@@ -215,7 +227,9 @@ impl<'tcx> Stack {
     }
 
     /// Initiate `bor`; mostly this means freezing or pushing.
-    fn initiate(&mut self, bor: Borrow) -> EvalResult<'tcx> {
+    /// This operation cannot fail; it is up to the caller to ensure that the precondition
+    /// is met: We cannot push onto frozen stacks.
+    fn initiate(&mut self, bor: Borrow) {
         match bor {
             Borrow::Frz(t) => {
                 match self.frozen_since {
@@ -241,11 +255,10 @@ impl<'tcx> Stack {
                         // from it is fine with this as well.
                         trace!("initiate: Initiating a raw on a frozen location, not doing a thing"),
                     Some(_) =>
-                        return err!(MachineError(format!("Trying to mutate frozen location")))
+                        bug!("Trying to mutate frozen location")
                 }
             }
         }
-        Ok(())
     }
 }
 
@@ -259,49 +272,27 @@ impl State {
 
 /// Higher-level operations
 impl<'tcx> Stacks {
-    pub fn memory_accessed(
+    /// The single most operation: Make sure that using `ptr` as `ref_kind` is okay,
+    /// and if `new_bor` is present then make that the new current borrow.
+    fn use_and_maybe_re_borrow(
         &self,
         ptr: Pointer<Borrow>,
         size: Size,
-        access: MemoryAccess,
+        ref_kind: RefKind,
+        new_bor: Option<Borrow>,
     ) -> EvalResult<'tcx> {
-        trace!("memory_accessed({:?}) with tag {:?}: {:?}, size {}", access, ptr.tag, ptr, size.bytes());
+        trace!("use_and_maybe_re_borrow of tag {:?} as {:?}, new {:?}: {:?}, size {}",
+            ptr.tag, ref_kind, new_bor, ptr, size.bytes());
         let mut stacks = self.stacks.borrow_mut();
         for stack in stacks.iter_mut(ptr.offset, size) {
-            // FIXME: Compare this with what the blog post says.
-            stack.reactivate(ptr.tag, /*force_mut*/access == MemoryAccess::Write)?;
-        }
-        Ok(())
-    }
-
-    pub fn memory_deallocated(
-        &mut self,
-        ptr: Pointer<Borrow>,
-    ) -> EvalResult<'tcx> {
-        trace!("memory_deallocated with tag {:?}: {:?}", ptr.tag, ptr);
-        let stacks = self.stacks.get_mut();
-        for stack in stacks.iter_mut_all() {
-            // This is like mutating.
-            stack.reactivate(ptr.tag, /*force_mut*/true)?;
-        }
-        Ok(())
-    }
-
-    fn reborrow(
-        &self,
-        ptr: Pointer<Borrow>,
-        size: Size,
-        new_bor: Borrow,
-        permit_redundant: bool,
-    ) -> EvalResult<'tcx> {
-        let mut stacks = self.stacks.borrow_mut();
-        for stack in stacks.iter_mut(ptr.offset, size) {
-            if permit_redundant && stack.check(new_bor) {
-                // The new borrow is already active!  This can happen when creating multiple
-                // shared references from the same mutable reference.  Do nothing.
-                trace!("reborrow: New borrow {:?} is already active, not doing a thing", new_bor);
+            if ref_kind == RefKind::Shr && stack.is_frozen() {
+                // Location already frozen.  We don't want to unfreeze, but make sure
+                // the ref makes some sense.
+                if let Err(err) = stack.reactivatable(ptr.tag, /*force_mut*/false) {
+                    return err!(MachineError(err));
+                }
             } else {
-                // If we are creating a uniq ref, we certainly want to unfreeze.
+                // If we are creating a mutable ref, we certainly want to unfreeze.
                 // Even if we are doing so from a raw.
                 // Notice that if this is a local, whenever we access it directly the
                 // tag here will be the bottommost `Uniq` for that local.  That `Uniq`
@@ -312,12 +303,45 @@ impl<'tcx> Stacks {
                 // `reset` which the blog post [1] says to perform when accessing a local.
                 //
                 // [1] https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html
-                stack.reactivate(ptr.tag, /*force_mut*/new_bor.is_uniq())?;
-                stack.initiate(new_bor)?;
+                let force_mut = ref_kind == RefKind::Mut;
+                stack.reactivate(ptr.tag, force_mut)?;
+            }
+            if let Some(new_bor) = new_bor {
+                stack.initiate(new_bor);
             }
         }
 
         Ok(())
+    }
+
+    #[inline(always)]
+    pub fn memory_read(
+        &self,
+        ptr: Pointer<Borrow>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        // Reads behave exactly like the first half of a reborrow-to-shr
+        self.use_and_maybe_re_borrow(ptr, size, RefKind::Shr, None)
+    }
+
+    #[inline(always)]
+    pub fn memory_written(
+        &mut self,
+        ptr: Pointer<Borrow>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        // Writes behave exactly like the first half of a reborrow-to-mut
+        self.use_and_maybe_re_borrow(ptr, size, RefKind::Mut, None)
+    }
+
+    pub fn memory_deallocated(
+        &mut self,
+        ptr: Pointer<Borrow>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        // This is like mutating
+        self.use_and_maybe_re_borrow(ptr, size, RefKind::Mut, None)
+        // FIXME: Error out of there are any barriers?
     }
 
     /// Pushes the first borrow to the stacks, must be a mutable one.
@@ -398,8 +422,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         // Update the stacks.  We cannot use `get_mut` becuse this might be immutable
         // memory.
         let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
-        let permit_redundant = ref_kind == RefKind::Shr; // redundant shared refs are okay
-        alloc.extra.reborrow(ptr, size, new_bor, permit_redundant)?;
+        alloc.extra.use_and_maybe_re_borrow(ptr, size, ref_kind, Some(new_bor))?;
 
         Ok(new_bor)
     }
@@ -411,10 +434,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
     fn tag_dereference(
         &self,
         ptr: Pointer<Borrow>,
-        _pointee_ty: Ty<'tcx>,
+        pointee_ty: Ty<'tcx>,
         size: Size,
         ref_kind: RefKind,
     ) -> EvalResult<'tcx, Borrow> {
+        trace!("tag_reference: Accessing reference ({:?}) for {:?} (pointee {}, size {})",
+            ref_kind, ptr, pointee_ty, size.bytes());
         // In principle we should not have to do anything here.  However, with transmutes involved,
         // it can happen that the tag of `ptr` does not actually match `ref_kind`, and we
         // should adjust for that.
@@ -506,12 +531,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             _ => return Ok(()), // don't do a thing
         };
         // We want to reborrow the reference stored there. This will call the hooks
-        // above.  First deref.
+        // above.  First deref, which will call `tag_dereference`.
         // (This is somewhat redundant because validation already did the same thing,
         // but what can you do.)
         let val = self.read_value(self.place_to_op(place)?)?;
         let dest = self.ref_to_mplace(val)?;
-        // Now put a new ref into the old place.
+        // Now put a new ref into the old place, which will call `tag_reference`.
         // FIXME: Honor `fn_entry`!
         let val = self.create_ref(dest, Some(mutbl))?;
         self.write_value(val, place)?;

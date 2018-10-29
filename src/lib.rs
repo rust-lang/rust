@@ -452,21 +452,30 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
-    fn memory_accessed(
+    fn memory_read(
         alloc: &Allocation<Borrow, Self::AllocExtra>,
         ptr: Pointer<Borrow>,
         size: Size,
-        access: MemoryAccess,
     ) -> EvalResult<'tcx> {
-        alloc.extra.memory_accessed(ptr, size, access)
+        alloc.extra.memory_read(ptr, size)
+    }
+
+    #[inline(always)]
+    fn memory_written(
+        alloc: &mut Allocation<Borrow, Self::AllocExtra>,
+        ptr: Pointer<Borrow>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        alloc.extra.memory_written(ptr, size)
     }
 
     #[inline(always)]
     fn memory_deallocated(
         alloc: &mut Allocation<Borrow, Self::AllocExtra>,
         ptr: Pointer<Borrow>,
+        size: Size,
     ) -> EvalResult<'tcx> {
-        alloc.extra.memory_deallocated(ptr)
+        alloc.extra.memory_deallocated(ptr, size)
     }
 
     #[inline(always)]
