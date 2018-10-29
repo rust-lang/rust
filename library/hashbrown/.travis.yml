@@ -1,0 +1,24 @@
+language: rust
+sudo: false
+
+matrix:
+  include:
+    - rust: 1.29.0
+    - rust: stable
+    - rust: beta
+    - rust: nightly
+    - rust: nightly
+      env:
+       - FEATURES='nightly'
+
+branches:
+  only:
+    - staging
+    - trying
+    - master
+
+script:
+  - cargo build --verbose --features "$FEATURES"
+  - cargo test --verbose --features "$FEATURES"
+  - if [ "$TRAVIS_RUST_VERSION" == "nightly" ]; then cargo bench --verbose --features "$FEATURES"; fi
+  - cargo doc --verbose --features "$FEATURES"
