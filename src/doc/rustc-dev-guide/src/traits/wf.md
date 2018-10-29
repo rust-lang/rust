@@ -52,7 +52,7 @@ struct Type<P...> where WC_type {
 ```
 
 we generate the following goal:
-```
+```text
 forall<P...> {
     if (FromEnv(WC_type)) {
         WellFormed(InputTypes(WC_type)) &&
@@ -239,7 +239,7 @@ with values provided by the impl, we may omit them if we don't need them, and
 we cannot add new where clauses.
 
 Now let's see the generated goal for this general impl:
-```
+```text
 forall<P1...> {
     if (FromEnv(WC_impl), FromEnv(InputTypes(SomeType<A2...>))) {
         WellFormed(SomeType<A2...>: Trait<A1...>) &&
