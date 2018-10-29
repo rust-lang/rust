@@ -1,0 +1,31 @@
+error[E0432]: unresolved import `NonExistent`
+  --> $DIR/issue-55457.rs:1:5
+   |
+LL | use NonExistent; //~ ERROR unresolved import `NonExistent`
+   |     ^^^^^^^^^^^ no `NonExistent` in the root. Did you mean to use `non_existent`?
+
+error[E0432]: unresolved import `non_existent`
+  --> $DIR/issue-55457.rs:2:5
+   |
+LL | use non_existent::non_existent; //~ ERROR unresolved import `non_existent`
+   |     ^^^^^^^^^^^^ Maybe a missing `extern crate non_existent;`?
+
+error: cannot determine resolution for the derive macro `NonExistent`
+  --> $DIR/issue-55457.rs:5:10
+   |
+LL | #[derive(NonExistent)] //~ ERROR cannot determine resolution for the derive macro `NonExistent`
+   |          ^^^^^^^^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: cannot determine resolution for the attribute macro `non_existent`
+  --> $DIR/issue-55457.rs:4:3
+   |
+LL | #[non_existent] //~ ERROR cannot determine resolution for the attribute macro `non_existent`
+   |   ^^^^^^^^^^^^
+   |
+   = note: import resolution is stuck, try simplifying macro imports
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0432`.
