@@ -1018,7 +1018,7 @@ impl<T: ?Sized> ManuallyDrop<T> {
 impl<T: ?Sized> Deref for ManuallyDrop<T> {
     type Target = T;
     #[inline]
-    fn deref(&self) -> &Self::Target {
+    fn deref(&self) -> &T {
         &self.value
     }
 }
@@ -1026,7 +1026,7 @@ impl<T: ?Sized> Deref for ManuallyDrop<T> {
 #[stable(feature = "manually_drop", since = "1.20.0")]
 impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
     #[inline]
-    fn deref_mut(&mut self) -> &mut Self::Target {
+    fn deref_mut(&mut self) -> &mut T {
         &mut self.value
     }
 }
