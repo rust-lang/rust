@@ -576,7 +576,11 @@ pub fn const_eval_provider<'a, 'tcx>(
         key.param_env.reveal = Reveal::UserFacing;
         match tcx.const_eval(key) {
             // try again with reveal all as requested
-            Err(ErrorHandled::TooGeneric) => {},
+            Err(ErrorHandled::TooGeneric) => {
+                // Promoteds should never be "too generic" when getting evaluated.
+                // They either don't get evaluated, or we are in a monomorphic context
+                assert!(key.value.promoted.is_none());
+            },
             // dedupliate calls
             other => return other,
         }
