@@ -164,12 +164,7 @@ See [Configurations.md](Configurations.md) for details.
 
 ## Tips
 
-* For things you do not want rustfmt to mangle, use one of
-
-    ```rust
-    #[rustfmt::skip]  // requires nightly Rust and #![feature(tool_attributes)] in crate root
-    #[cfg_attr(rustfmt, rustfmt_skip)]  // works in stable
-    ```
+* For things you do not want rustfmt to mangle, use `#[rustfmt::skip]`
 * When you run rustfmt, place a file named `rustfmt.toml` or `.rustfmt.toml` in
   target file directory or its parents to override the default settings of
   rustfmt. You can generate a file containing the default configuration with
