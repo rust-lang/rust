@@ -1,4 +1,4 @@
-warning[E0596]: cannot borrow `tick1` as mutable, as it is not declared as mutable
+error[E0596]: cannot borrow `tick1` as mutable, as it is not declared as mutable
   --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:27:9
    |
 LL |     let tick1 = || {
@@ -6,10 +6,6 @@ LL |     let tick1 = || {
 ...
 LL |         tick1();
    |         ^^^^^ cannot borrow as mutable
-   |
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
 
 error[E0596]: cannot borrow `tick2` as mutable, as it is not declared as mutable
   --> $DIR/unboxed-closures-infer-fnmut-calling-fnmut-no-mut.rs:30:5
@@ -20,6 +16,6 @@ LL |     let tick2 = || { //~ ERROR closure cannot assign to immutable local var
 LL |     tick2(); //~ ERROR cannot borrow
    |     ^^^^^ cannot borrow as mutable
 
-error: aborting due to previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0596`.
