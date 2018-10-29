@@ -18,8 +18,7 @@ use salsa::{ParallelDatabase, Database};
 use crate::{
     AnalysisChange,
     db::{
-        self, SyntaxDatabase,
-
+        self, SyntaxDatabase, FileSyntaxQuery,
     },
     input::{SourceRootId, FilesDatabase, SourceRoot, WORKSPACE},
     descriptors::module::{ModulesDatabase, ModuleTree, Problem},
@@ -194,6 +193,8 @@ impl AnalysisImpl {
                 .filter_map(|it| it.ok())
                 .collect()
         };
+        self.db.query(FileSyntaxQuery)
+            .sweep(salsa::SweepStrategy::default().discard_values());
         Ok(query.search(&buf))
     }
     fn module_tree(&self, file_id: FileId) -> Cancelable<Arc<ModuleTree>> {
