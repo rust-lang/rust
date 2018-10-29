@@ -37,7 +37,25 @@ use crate::rustc_errors::{Applicability};
 declare_clippy_lint! {
     pub SLOW_VECTOR_INITIALIZATION,
     perf,
-    "slow or unsafe vector initialization"
+    "slow vector initialization"
+}
+
+/// **What it does:** Checks unsafe vector initialization
+///
+/// **Why is this bad?** Changing the length of a vector may expose uninitialized memory, which
+/// can lead to memory safety issues
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let mut vec1 = Vec::with_capacity(len);
+/// unsafe { vec1.set_len(len); }
+/// ```
+declare_clippy_lint! {
+    pub UNSAFE_VECTOR_INITIALIZATION,
+    correctness,
+    "unsafe vector initialization"
 }
 
 #[derive(Copy, Clone, Default)]
@@ -45,7 +63,10 @@ pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(SLOW_VECTOR_INITIALIZATION)
+        lint_array!(
+            SLOW_VECTOR_INITIALIZATION,
+            UNSAFE_VECTOR_INITIALIZATION,
+        )
     }
 }
 
@@ -96,7 +117,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     len_expr: len_arg,
                 };
 
-                Pass::search_slow_initialization(cx, vi, expr.id, expr.span);
+                Pass::search_slow_initialization(cx, vi, expr.id);
             }
         }
     }
@@ -117,7 +138,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     len_expr: len_arg,
                 };
 
-                Pass::search_slow_initialization(cx, vi, stmt.node.id(), stmt.span);
+                Pass::search_slow_initialization(cx, vi, stmt.node.id());
             }
         }
     }
@@ -145,8 +166,7 @@ impl Pass {
     fn search_slow_initialization<'tcx>(
         cx: &LateContext<'_, 'tcx>,
         vec_initialization: VecInitialization<'tcx>,
-        parent_node: NodeId,
-        parent_span: Span
+        parent_node: NodeId
     ) {
         let enclosing_body = get_enclosing_block(cx, parent_node);
 
@@ -163,29 +183,53 @@ impl Pass {
 
         v.visit_block(enclosing_body.unwrap());
 
-        if let Some(ref repeat_expr) = v.slow_expression {
-            span_lint_and_then(
-                cx,
-                SLOW_VECTOR_INITIALIZATION,
-                parent_span,
-                "detected slow zero-filling initialization",
-                |db| {
-                    db.span_suggestion_with_applicability(v.vec_ini.initialization_expr.span, "consider replacing with", "vec![0; ..]".to_string(), Applicability::Unspecified);
-
-                    match repeat_expr {
-                        InitializationType::Extend(e) => {
-                            db.span_note(e.span, "extended at");
-                        },
-                        InitializationType::Resize(e) => {
-                            db.span_note(e.span, "resized at");
-                        },
-                        InitializationType::UnsafeSetLen(e) => {
-                            db.span_note(e.span, "changed len at");
-                        },
-                    }
-                }
-            );
+        if let Some(ref initialization_expr) = v.slow_expression {
+            let alloc_span = v.vec_ini.initialization_expr.span;
+            Pass::lint_initialization(cx, initialization_expr, alloc_span);
         }
+    }
+
+    fn lint_initialization<'tcx>(cx: &LateContext<'_, 'tcx>, initialization: &InitializationType<'tcx>, alloc_span: Span) {
+        match initialization {
+            InitializationType::UnsafeSetLen(e) =>
+                Pass::lint_unsafe_initialization(cx, e, alloc_span),
+
+            InitializationType::Extend(e) |
+            InitializationType::Resize(e) =>
+                Pass::lint_slow_initialization(cx, e, alloc_span),
+        };
+    }
+
+    fn lint_slow_initialization<'tcx>(
+        cx: &LateContext<'_, 'tcx>,
+        slow_fill: &Expr,
+        alloc_span: Span,
+    ) {
+        span_lint_and_then(
+            cx,
+            SLOW_VECTOR_INITIALIZATION,
+            slow_fill.span,
+            "detected slow zero-filling initialization",
+            |db| {
+                db.span_suggestion_with_applicability(alloc_span, "consider replacing with", "vec![0; ..]".to_string(), Applicability::Unspecified);
+            }
+        );
+    }
+
+    fn lint_unsafe_initialization<'tcx>(
+        cx: &LateContext<'_, 'tcx>,
+        slow_fill: &Expr,
+        alloc_span: Span,
+    ) {
+        span_lint_and_then(
+            cx,
+            UNSAFE_VECTOR_INITIALIZATION,
+            slow_fill.span,
+            "detected unsafe vector initialization",
+            |db| {
+                db.span_suggestion_with_applicability(alloc_span, "consider replacing with", "vec![0; ..]".to_string(), Applicability::Unspecified);
+            }
+        );
     }
 }
 
