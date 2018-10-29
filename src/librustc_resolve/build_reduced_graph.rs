@@ -250,9 +250,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             uniform_paths_canary_emitted = true;
         }
 
-        let empty_for_self = |prefix: &[Segment]| {
+        let empty_for_self = |prefix: &[Ident]| {
             prefix.is_empty() ||
-            prefix.len() == 1 && prefix[0].ident.name == keywords::CrateRoot.name()
+            prefix.len() == 1 && prefix[0].name == keywords::CrateRoot.name()
         };
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename, ..) => {
@@ -400,7 +400,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 // `a::b::c::{self as _}`, so that their prefixes are correctly
                 // resolved and checked for privacy/stability/etc.
                 if items.is_empty() && !empty_for_self(&prefix) {
-                    let new_span = prefix[prefix.len() - 1].ident.span;
+                    let new_span = prefix[prefix.len() - 1].span;
                     let tree = ast::UseTree {
                         prefix: ast::Path::from_ident(
                             Ident::new(keywords::SelfValue.name(), new_span)

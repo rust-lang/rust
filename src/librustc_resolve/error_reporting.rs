@@ -24,7 +24,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     pub(crate) fn make_path_suggestion(
         &mut self,
         span: Span,
-        path: Vec<Ident>
+        path: Vec<Ident>,
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Ident>, Option<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
@@ -63,11 +63,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     fn make_missing_self_suggestion(
         &mut self,
         span: Span,
-        mut path: Vec<Ident>
+        mut path: Vec<Ident>,
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Ident>, Option<String>)> {
         // Replace first ident with `self` and check if that is valid.
-        path[0] = keywords::SelfValue.name();
+        path[0].name = keywords::SelfValue.name();
         let result = self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
@@ -87,11 +87,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     fn make_missing_crate_suggestion(
         &mut self,
         span: Span,
-        mut path: Vec<Ident>
+        mut path: Vec<Ident>,
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Ident>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
-        path[0] = keywords::Crate.name();
+        path[0].name = keywords::Crate.name();
         let result = self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
@@ -118,12 +118,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     fn make_missing_super_suggestion(
         &mut self,
         span: Span,
-        mut path: Vec<Ident>
+        mut path: Vec<Ident>,
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Ident>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
-        path[0] = keywords::Super.name();
-        let result = self.resolve_path(None, &path, None, false, span, CrateLint::No);
+        path[0].name = keywords::Super.name();
         let result = self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
@@ -146,7 +145,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     fn make_external_crate_suggestion(
         &mut self,
         span: Span,
-        mut path: Vec<Ident>
+        mut path: Vec<Ident>,
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Ident>, Option<String>)> {
         // Need to clone else we can't call `resolve_path` without a borrow error. We also store

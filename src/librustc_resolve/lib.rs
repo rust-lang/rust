@@ -1010,7 +1010,7 @@ pub struct ModuleData<'a> {
     resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
     legacy_macro_resolutions: RefCell<Vec<(Ident, MacroKind, ParentScope<'a>,
                                            Option<&'a NameBinding<'a>>)>>,
-    macro_resolutions: RefCell<Vec<(Vec<Segment>, ParentScope<'a>, Span)>>,
+    macro_resolutions: RefCell<Vec<(Vec<Ident>, ParentScope<'a>, Span)>>,
     builtin_attrs: RefCell<Vec<(Ident, ParentScope<'a>)>>,
 
     // Macro invocations that can expand into items in this module.
@@ -1627,17 +1627,10 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 *def = module.def().unwrap(),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
                 *def = path_res.base_def(),
-            PathResult::NonModule(..) =>
-                if let PathResult::Failed(span, msg, _) = self.resolve_path(
-                    None,
-                    &path,
-                    None,
-                    true,
-                    span,
-                    CrateLint::No,
-                ) {
-                    error_callback(self, span, ResolutionError::FailedToResolve(&msg));
-                },
+            PathResult::NonModule(..) => {
+                let msg = "type-relative paths are not supported in this context";
+                error_callback(self, span, ResolutionError::FailedToResolve(msg));
+            }
             PathResult::Module(ModuleOrUniformRoot::UniformRoot(_)) |
             PathResult::Indeterminate => unreachable!(),
             PathResult::Failed(span, msg, _) => {

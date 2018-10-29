@@ -463,7 +463,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         force: bool,
     ) -> Result<Def, Determinacy> {
         let path_span = path.span;
-        let mut path: Vec<_> = segments.iter().map(|seg| seg.ident).collect();
+        let mut path = path.segments.iter().map(|s| s.ident).collect::<Vec<_>>();
 
         // Possibly apply the macro helper hack
         if kind == MacroKind::Bang && path.len() == 1 &&
@@ -497,7 +497,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             };
 
             parent_scope.module.macro_resolutions.borrow_mut()
-                .push((path.into_boxed_slice(), parent_scope.clone(), span));
+                .push((path, parent_scope.clone(), path_span));
 
             def
         } else {
@@ -849,7 +849,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         let macro_resolutions =
             mem::replace(&mut *module.macro_resolutions.borrow_mut(), Vec::new());
-        for (mut path, parent_scope, path_span) in macro_resolutions {
+        for (path, parent_scope, path_span) in macro_resolutions {
             match self.resolve_path(None, &path, Some(MacroNS), &parent_scope,
                                     true, path_span, CrateLint::No) {
                 PathResult::NonModule(_) => {},

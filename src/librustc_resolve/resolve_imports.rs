@@ -993,7 +993,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 ) {
                     Some((
                         span,
-                        format!("Did you mean `{}`?", names_to_string(&suggested_path[..]))
+                        format!("Did you mean `{}`?", names_to_string(&suggested_path[..])),
                         note,
                     ))
                 } else {
