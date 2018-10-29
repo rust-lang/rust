@@ -282,8 +282,11 @@ nav.sub {
 	padding-left: 0;
 }
 
-.example-wrap {
+body:not(.source) .example-wrap {
 	display: inline-flex;
+}
+
+.example-wrap {
 	width: 100%;
 }
 
@@ -296,7 +299,7 @@ nav.sub {
 	text-align: right;
 }
 
-.example-wrap > pre.rust {
+body:not(.source) .example-wrap > pre.rust {
 	width: 100%;
 }
 
