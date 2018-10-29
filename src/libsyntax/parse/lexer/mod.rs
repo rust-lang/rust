@@ -256,11 +256,11 @@ impl<'a> StringReader<'a> {
         let end = sess.source_map().lookup_byte_offset(span.hi());
 
         // Make the range zero-length if the span is invalid.
-        if span.lo() > span.hi() || begin.fm.start_pos != end.fm.start_pos {
+        if span.lo() > span.hi() || begin.sf.start_pos != end.sf.start_pos {
             span = span.shrink_to_lo();
         }
 
-        let mut sr = StringReader::new_raw_internal(sess, begin.fm, None);
+        let mut sr = StringReader::new_raw_internal(sess, begin.sf, None);
 
         // Seek the lexer to the right byte range.
         sr.next_pos = span.lo();
@@ -640,9 +640,9 @@ impl<'a> StringReader<'a> {
 
                 // I guess this is the only way to figure out if
                 // we're at the beginning of the file...
-                let cmap = SourceMap::new(FilePathMapping::empty());
-                cmap.files.borrow_mut().file_maps.push(self.source_file.clone());
-                let loc = cmap.lookup_char_pos_adj(self.pos);
+                let smap = SourceMap::new(FilePathMapping::empty());
+                smap.files.borrow_mut().source_files.push(self.source_file.clone());
+                let loc = smap.lookup_char_pos_adj(self.pos);
                 debug!("Skipping a shebang");
                 if loc.line == 1 && loc.col == CharPos(0) {
                     // FIXME: Add shebang "token", return it
@@ -1855,9 +1855,9 @@ mod tests {
     use rustc_data_structures::fx::FxHashSet;
     use rustc_data_structures::sync::Lock;
     use with_globals;
-    fn mk_sess(cm: Lrc<SourceMap>) -> ParseSess {
+    fn mk_sess(sm: Lrc<SourceMap>) -> ParseSess {
         let emitter = errors::emitter::EmitterWriter::new(Box::new(io::sink()),
-                                                          Some(cm.clone()),
+                                                          Some(sm.clone()),
                                                           false,
                                                           false);
         ParseSess {
@@ -1865,7 +1865,7 @@ mod tests {
             unstable_features: UnstableFeatures::from_environment(),
             config: CrateConfig::default(),
             included_mod_stack: Lock::new(Vec::new()),
-            code_map: cm,
+            source_map: sm,
             missing_fragment_specifiers: Lock::new(FxHashSet::default()),
             raw_identifier_spans: Lock::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
@@ -1875,20 +1875,20 @@ mod tests {
     }
 
     // open a string reader for the given string
-    fn setup<'a>(cm: &SourceMap,
+    fn setup<'a>(sm: &SourceMap,
                  sess: &'a ParseSess,
                  teststr: String)
                  -> StringReader<'a> {
-        let fm = cm.new_source_file(PathBuf::from("zebra.rs").into(), teststr);
-        StringReader::new(sess, fm, None)
+        let sf = sm.new_source_file(PathBuf::from("zebra.rs").into(), teststr);
+        StringReader::new(sess, sf, None)
     }
 
     #[test]
     fn t1() {
         with_globals(|| {
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(cm.clone());
-            let mut string_reader = setup(&cm,
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sh = mk_sess(sm.clone());
+            let mut string_reader = setup(&sm,
                                         &sh,
                                         "/* my source file */ fn main() { println!(\"zebra\"); }\n"
                                             .to_string());
@@ -1934,9 +1934,9 @@ mod tests {
     #[test]
     fn doublecolonparsing() {
         with_globals(|| {
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(cm.clone());
-            check_tokenization(setup(&cm, &sh, "a b".to_string()),
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sh = mk_sess(sm.clone());
+            check_tokenization(setup(&sm, &sh, "a b".to_string()),
                             vec![mk_ident("a"), token::Whitespace, mk_ident("b")]);
         })
     }
@@ -1944,9 +1944,9 @@ mod tests {
     #[test]
     fn dcparsing_2() {
         with_globals(|| {
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(cm.clone());
-            check_tokenization(setup(&cm, &sh, "a::b".to_string()),
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sh = mk_sess(sm.clone());
+            check_tokenization(setup(&sm, &sh, "a::b".to_string()),
                             vec![mk_ident("a"), token::ModSep, mk_ident("b")]);
         })
     }
@@ -1954,9 +1954,9 @@ mod tests {
     #[test]
     fn dcparsing_3() {
         with_globals(|| {
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(cm.clone());
-            check_tokenization(setup(&cm, &sh, "a ::b".to_string()),
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sh = mk_sess(sm.clone());
+            check_tokenization(setup(&sm, &sh, "a ::b".to_string()),
                             vec![mk_ident("a"), token::Whitespace, token::ModSep, mk_ident("b")]);
         })
     }
@@ -1964,9 +1964,9 @@ mod tests {
     #[test]
     fn dcparsing_4() {
         with_globals(|| {
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(cm.clone());
-            check_tokenization(setup(&cm, &sh, "a:: b".to_string()),
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sh = mk_sess(sm.clone());
+            check_tokenization(setup(&sm, &sh, "a:: b".to_string()),
                             vec![mk_ident("a"), token::ModSep, token::Whitespace, mk_ident("b")]);
         })
     }
@@ -1974,9 +1974,9 @@ mod tests {
     #[test]
     fn character_a() {
         with_globals(|| {
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(cm.clone());
-            assert_eq!(setup(&cm, &sh, "'a'".to_string()).next_token().tok,
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sh = mk_sess(sm.clone());
+            assert_eq!(setup(&sm, &sh, "'a'".to_string()).next_token().tok,
                     token::Literal(token::Char(Symbol::intern("a")), None));
         })
     }
@@ -1984,9 +1984,9 @@ mod tests {
     #[test]
     fn character_space() {
         with_globals(|| {
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(cm.clone());
-            assert_eq!(setup(&cm, &sh, "' '".to_string()).next_token().tok,
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sh = mk_sess(sm.clone());
+            assert_eq!(setup(&sm, &sh, "' '".to_string()).next_token().tok,
                     token::Literal(token::Char(Symbol::intern(" ")), None));
         })
     }
@@ -1994,9 +1994,9 @@ mod tests {
     #[test]
     fn character_escaped() {
         with_globals(|| {
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(cm.clone());
-            assert_eq!(setup(&cm, &sh, "'\\n'".to_string()).next_token().tok,
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sh = mk_sess(sm.clone());
+            assert_eq!(setup(&sm, &sh, "'\\n'".to_string()).next_token().tok,
                     token::Literal(token::Char(Symbol::intern("\\n")), None));
         })
     }
@@ -2004,9 +2004,9 @@ mod tests {
     #[test]
     fn lifetime_name() {
         with_globals(|| {
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(cm.clone());
-            assert_eq!(setup(&cm, &sh, "'abc".to_string()).next_token().tok,
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sh = mk_sess(sm.clone());
+            assert_eq!(setup(&sm, &sh, "'abc".to_string()).next_token().tok,
                     token::Lifetime(Ident::from_str("'abc")));
         })
     }
@@ -2014,9 +2014,9 @@ mod tests {
     #[test]
     fn raw_string() {
         with_globals(|| {
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(cm.clone());
-            assert_eq!(setup(&cm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string())
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sh = mk_sess(sm.clone());
+            assert_eq!(setup(&sm, &sh, "r###\"\"#a\\b\x00c\"\"###".to_string())
                         .next_token()
                         .tok,
                     token::Literal(token::StrRaw(Symbol::intern("\"#a\\b\x00c\""), 3), None));
@@ -2026,15 +2026,15 @@ mod tests {
     #[test]
     fn literal_suffixes() {
         with_globals(|| {
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(cm.clone());
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sh = mk_sess(sm.clone());
             macro_rules! test {
                 ($input: expr, $tok_type: ident, $tok_contents: expr) => {{
-                    assert_eq!(setup(&cm, &sh, format!("{}suffix", $input)).next_token().tok,
+                    assert_eq!(setup(&sm, &sh, format!("{}suffix", $input)).next_token().tok,
                             token::Literal(token::$tok_type(Symbol::intern($tok_contents)),
                                             Some(Symbol::intern("suffix"))));
                     // with a whitespace separator:
-                    assert_eq!(setup(&cm, &sh, format!("{} suffix", $input)).next_token().tok,
+                    assert_eq!(setup(&sm, &sh, format!("{} suffix", $input)).next_token().tok,
                             token::Literal(token::$tok_type(Symbol::intern($tok_contents)),
                                             None));
                 }}
@@ -2050,13 +2050,13 @@ mod tests {
             test!("1.0", Float, "1.0");
             test!("1.0e10", Float, "1.0e10");
 
-            assert_eq!(setup(&cm, &sh, "2us".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "2us".to_string()).next_token().tok,
                     token::Literal(token::Integer(Symbol::intern("2")),
                                     Some(Symbol::intern("us"))));
-            assert_eq!(setup(&cm, &sh, "r###\"raw\"###suffix".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "r###\"raw\"###suffix".to_string()).next_token().tok,
                     token::Literal(token::StrRaw(Symbol::intern("raw"), 3),
                                     Some(Symbol::intern("suffix"))));
-            assert_eq!(setup(&cm, &sh, "br###\"raw\"###suffix".to_string()).next_token().tok,
+            assert_eq!(setup(&sm, &sh, "br###\"raw\"###suffix".to_string()).next_token().tok,
                     token::Literal(token::ByteStrRaw(Symbol::intern("raw"), 3),
                                     Some(Symbol::intern("suffix"))));
         })
@@ -2072,9 +2072,9 @@ mod tests {
     #[test]
     fn nested_block_comments() {
         with_globals(|| {
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(cm.clone());
-            let mut lexer = setup(&cm, &sh, "/* /* */ */'a'".to_string());
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sh = mk_sess(sm.clone());
+            let mut lexer = setup(&sm, &sh, "/* /* */ */'a'".to_string());
             match lexer.next_token().tok {
                 token::Comment => {}
                 _ => panic!("expected a comment!"),
@@ -2087,9 +2087,9 @@ mod tests {
     #[test]
     fn crlf_comments() {
         with_globals(|| {
-            let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
-            let sh = mk_sess(cm.clone());
-            let mut lexer = setup(&cm, &sh, "// test\r\n/// test\r\n".to_string());
+            let sm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+            let sh = mk_sess(sm.clone());
+            let mut lexer = setup(&sm, &sh, "// test\r\n/// test\r\n".to_string());
             let comment = lexer.next_token();
             assert_eq!(comment.tok, token::Comment);
             assert_eq!((comment.sp.lo(), comment.sp.hi()), (BytePos(0), BytePos(7)));

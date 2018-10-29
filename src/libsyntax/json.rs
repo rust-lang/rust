@@ -36,19 +36,19 @@ use rustc_serialize::json::{as_json, as_pretty_json};
 pub struct JsonEmitter {
     dst: Box<dyn Write + Send>,
     registry: Option<Registry>,
-    cm: Lrc<dyn SourceMapper + sync::Send + sync::Sync>,
+    sm: Lrc<dyn SourceMapper + sync::Send + sync::Sync>,
     pretty: bool,
     ui_testing: bool,
 }
 
 impl JsonEmitter {
     pub fn stderr(registry: Option<Registry>,
-                  code_map: Lrc<SourceMap>,
+                  source_map: Lrc<SourceMap>,
                   pretty: bool) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::stderr()),
             registry,
-            cm: code_map,
+            sm: source_map,
             pretty,
             ui_testing: false,
         }
@@ -62,12 +62,12 @@ impl JsonEmitter {
 
     pub fn new(dst: Box<dyn Write + Send>,
                registry: Option<Registry>,
-               code_map: Lrc<SourceMap>,
+               source_map: Lrc<SourceMap>,
                pretty: bool) -> JsonEmitter {
         JsonEmitter {
             dst,
             registry,
-            cm: code_map,
+            sm: source_map,
             pretty,
             ui_testing: false,
         }
@@ -199,7 +199,7 @@ impl Diagnostic {
         }
         let buf = BufWriter::default();
         let output = buf.clone();
-        EmitterWriter::new(Box::new(buf), Some(je.cm.clone()), false, false)
+        EmitterWriter::new(Box::new(buf), Some(je.sm.clone()), false, false)
             .ui_testing(je.ui_testing).emit(db);
         let output = Arc::try_unwrap(output.0).unwrap().into_inner().unwrap();
         let output = String::from_utf8(output).unwrap();
@@ -269,8 +269,8 @@ impl DiagnosticSpan {
                       mut backtrace: vec::IntoIter<MacroBacktrace>,
                       je: &JsonEmitter)
                       -> DiagnosticSpan {
-        let start = je.cm.lookup_char_pos(span.lo());
-        let end = je.cm.lookup_char_pos(span.hi());
+        let start = je.sm.lookup_char_pos(span.lo());
+        let end = je.sm.lookup_char_pos(span.hi());
         let backtrace_step = backtrace.next().map(|bt| {
             let call_site =
                 Self::from_span_full(bt.call_site,
@@ -356,7 +356,7 @@ impl DiagnosticSpanLine {
     /// of `span` gets a DiagnosticSpanLine, with the highlight indicating the
     /// `span` within the line.
     fn from_span(span: Span, je: &JsonEmitter) -> Vec<DiagnosticSpanLine> {
-        je.cm.span_to_lines(span)
+        je.sm.span_to_lines(span)
              .map(|lines| {
                  let fm = &*lines.file;
                  lines.lines

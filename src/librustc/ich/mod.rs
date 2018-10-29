@@ -11,10 +11,10 @@
 //! ICH - Incremental Compilation Hash
 
 crate use rustc_data_structures::fingerprint::Fingerprint;
-pub use self::caching_codemap_view::CachingSourceMapView;
+pub use self::caching_source_map_view::CachingSourceMapView;
 pub use self::hcx::{StableHashingContextProvider, StableHashingContext, NodeIdHashingMode,
                     hash_stable_trait_impls};
-mod caching_codemap_view;
+mod caching_source_map_view;
 mod hcx;
 
 mod impls_cstore;
