@@ -1,11 +1,8 @@
 error[E0308]: try expression alternatives have incompatible types
-  --> $DIR/issue-51632-try-desugar-incompatible-types.rs:20:5
+  --> $DIR/issue-51632-try-desugar-incompatible-types.rs:18:5
    |
 LL |     missing_discourses()?
-   |     ^^^^^^^^^^^^^^^^^^^^^
-   |     |
-   |     expected enum `std::result::Result`, found isize
-   |     help: try wrapping with a success variant: `Ok(missing_discourses()?)`
+   |     ^^^^^^^^^^^^^^^^^^^^^ expected enum `std::result::Result`, found isize
    |
    = note: expected type `std::result::Result<isize, ()>`
               found type `isize`
