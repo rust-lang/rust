@@ -6307,7 +6307,7 @@ impl<'a> Parser<'a> {
         if !self.eat(term) {
             let token_str = self.this_token_descr();
             let mut err = self.fatal(&format!("expected item, found {}", token_str));
-            if token_str == ";" {
+            if self.token == token::Semi {
                 let msg = "consider removing this semicolon";
                 err.span_suggestion_short_with_applicability(
                     self.span, msg, String::new(), Applicability::MachineApplicable
