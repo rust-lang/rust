@@ -23,8 +23,8 @@ The new-style WF checking has not been implemented in rustc yet.
 We give here a complete reference of the generated goals for each Rust
 declaration.
 
-In addition with the notations introduced in the chapter about
-lowering rules, we'll introduce another notation: when WF checking a
+In addition to the notations introduced in the chapter about
+lowering rules, we'll introduce another notation: when checking WF of a
 declaration, we'll often have to prove that all types that appear are
 well-formed, except type parameters that we always assume to be WF. Hence,
 we'll use the following notation: for a type `SomeType<...>`, we denote
@@ -212,11 +212,11 @@ trait Foo<T> {
 
 struct OnlyClone<T: Clone> { ... }
 
-impl<T> Foo<Option<T>> for () {
+impl<U> Foo<Option<U>> for () {
     // We substitute type parameters from the trait by the ones provided
     // by the impl, that is instead of having a `T: Clone` where clause,
-    // we have an `Option<T>: Clone` one.
-    type Assoc = OnlyClone<Option<T>> where Option<T>: Clone;
+    // we have an `Option<U>: Clone` one.
+    type Assoc = OnlyClone<Option<U>> where Option<U>: Clone;
 }
 
 impl<T> Foo<T> for i32 {
@@ -235,7 +235,7 @@ impl<T> Foo<T> for f32 {
 
 So where clauses on associated types work *exactly* like where clauses on
 trait methods: in an impl, we must substitute the parameters from the traits
-with values provided by the impl, we may omit them if we don't need them, and
+with values provided by the impl, we may omit them if we don't need them, but
 we cannot add new where clauses.
 
 Now let's see the generated goal for this general impl:
@@ -255,7 +255,7 @@ forall<P1...> {
 }
 ```
 
-Here is the most complex goal. As always, a first thing is that assuming that
+Here is the most complex goal. As always, first, assuming that
 the various where clauses hold, we prove that every type appearing in the impl
 is well-formed, ***except*** types appearing in the receiver type
 `SomeType<A2...>`. Instead, we *assume* that those types are well-formed
@@ -269,7 +269,7 @@ input types of `SomeType<A2...>` are well-formed, we prove that
 `WellFormed(SomeType<A2...>: Trait<A1...>)` hold. That is, we want to prove
 that `SomeType<A2...>` verify all the where clauses that might transitively
 come from the `Trait` definition (see
-[this subsection](./implied-bounds#co-inductiveness-of-wellformed)).
+[this subsection](./implied-bounds.md#co-inductiveness-of-wellformed)).
 
 Lastly, assuming that the where clauses on the associated type `WC_assoc` hold,
 we prove that `WellFormed(SomeValue<A3...>: Bounds_assoc)` hold. Again, we are
@@ -284,6 +284,10 @@ precise value of `<SomeType as Trait>::Assoc` is.
 Some examples for the generated goal:
 ```rust,ignore
 trait Copy { }
+// This is a program clause that comes from the trait definition above
+// and that the trait solver can use for its reasonings. I'm just restating
+// it here (and also the few other ones coming just after) so that we have
+// them in mind.
 // `WellFormed(Self: Copy) :- Implemented(Self: Copy).`
 
 trait Partial where Self: Copy { }
@@ -392,13 +396,13 @@ trait PointerFamily {
 
 struct BoxFamily;
 
-impl PointerFamily for CowFamily {
+impl PointerFamily for BoxFamily {
     type Pointer<T> = Box<T> where T: Debug;
 }
 // The generated goal is:
 // ```
 // forall<T> {
-//     WellFormed(CowFamily: PointerFamily) &&
+//     WellFormed(BoxFamily: PointerFamily) &&
 //
 //     if (FromEnv(T: Debug)) {
 //         WellFormed(Box<T>: Debug) &&
@@ -406,8 +410,8 @@ impl PointerFamily for CowFamily {
 //     }
 // }
 // ```
-// `WellFormed(CowFamily: PointerFamily)` amounts to proving
-// `Implemented(CowFamily: PointerFamily)`, which is ok thanks to our impl.
+// `WellFormed(BoxFamily: PointerFamily)` amounts to proving
+// `Implemented(BoxFamily: PointerFamily)`, which is ok thanks to our impl.
 //
 // `WellFormed(Box<T>)` is always true (there are no where clauses on the
 // `Box` type definition).
