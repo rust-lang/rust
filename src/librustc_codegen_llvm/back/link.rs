@@ -806,7 +806,7 @@ fn link_natively(sess: &Session,
                         let mut x = "Non-UTF-8 output: ".to_string();
                         x.extend(s.iter()
                                   .flat_map(|&b| ascii::escape_default(b))
-                                  .map(|b| char::from_u32(b as u32).unwrap()));
+                                  .map(char::from));
                         x
                     })
             }
