@@ -479,17 +479,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         err.span_label(arm_span, msg);
                     }
                 }
-                hir::MatchSource::TryDesugar => {
-                    // Issue #51632
-                    if let Ok(try_snippet) = self.tcx.sess.source_map().span_to_snippet(arm_span) {
-                        err.span_suggestion_with_applicability(
-                            arm_span,
-                            "try wrapping with a success variant",
-                            format!("Ok({})", try_snippet),
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                }
+                hir::MatchSource::TryDesugar => {}
                 _ => {
                     let msg = "match arm with an incompatible type";
                     if self.tcx.sess.source_map().is_multiline(arm_span) {

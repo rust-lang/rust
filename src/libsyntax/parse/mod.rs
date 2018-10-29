@@ -494,8 +494,17 @@ fn float_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
                  -> Option<ast::LitKind> {
     debug!("float_lit: {:?}, {:?}", s, suffix);
     // FIXME #2252: bounds checking float literals is deferred until trans
-    let s = s.chars().filter(|&c| c != '_').collect::<String>();
-    filtered_float_lit(Symbol::intern(&s), suffix, diag)
+
+    // Strip underscores without allocating a new String unless necessary.
+    let s2;
+    let s = if s.chars().any(|c| c == '_') {
+        s2 = s.chars().filter(|&c| c != '_').collect::<String>();
+        &s2
+    } else {
+        s
+    };
+
+    filtered_float_lit(Symbol::intern(s), suffix, diag)
 }
 
 /// Parse a string representing a byte literal into its final form. Similar to `char_lit`
@@ -591,8 +600,14 @@ fn integer_lit(s: &str, suffix: Option<Symbol>, diag: Option<(Span, &Handler)>)
                    -> Option<ast::LitKind> {
     // s can only be ascii, byte indexing is fine
 
-    let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
-    let mut s = &s2[..];
+    // Strip underscores without allocating a new String unless necessary.
+    let s2;
+    let mut s = if s.chars().any(|c| c == '_') {
+        s2 = s.chars().filter(|&c| c != '_').collect::<String>();
+        &s2
+    } else {
+        s
+    };
 
     debug!("integer_lit: {}, {:?}", s, suffix);
 
