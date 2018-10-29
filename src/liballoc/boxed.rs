@@ -472,8 +472,8 @@ impl<T> From<Box<T>> for Pin<Box<T>> {
 impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
     /// Converts a `&[T]` into a `Box<[T]>`
     ///
-    /// This conversion does not allocate on the heap
-    /// but performs a copy of `slice`.
+    /// This conversion allocates on the heap
+    /// and performs a copy of `slice`.
     ///
     /// # Examples
     /// ```rust
@@ -494,7 +494,8 @@ impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
 impl<'a> From<&'a str> for Box<str> {
     /// Converts a `&str` into a `Box<str>`
     ///
-    /// This conversion does not allocate on the heap and happens in place.
+    /// This conversion allocates on the heap
+    /// and performs a copy of `s`.
     ///
     /// # Examples
     /// ```rust
