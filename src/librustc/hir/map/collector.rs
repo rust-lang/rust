@@ -217,7 +217,7 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
                 };
 
                 bug!("inconsistent DepNode for `{}`: \
-                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?}) {}",
+                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?}){}",
                     node_str,
                     self.definitions
                         .def_path(self.current_dep_node_owner)
