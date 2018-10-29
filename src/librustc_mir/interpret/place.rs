@@ -15,6 +15,7 @@
 use std::convert::TryFrom;
 use std::hash::Hash;
 
+use rustc::hir;
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout};
@@ -270,24 +271,28 @@ where
         &self,
         val: ValTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        let ptr = match val.to_scalar_ptr()? {
-            Scalar::Ptr(ptr) if M::ENABLE_PTR_TRACKING_HOOKS => {
-                // Machine might want to track the `*` operator
-                let tag = M::tag_dereference(self, ptr, val.layout.ty)?;
-                Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
-            }
-            other => other,
-        };
-
         let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
         let layout = self.layout_of(pointee_type)?;
-        let align = layout.align;
 
-        let mplace = match *val {
-            Value::Scalar(_) =>
-                MemPlace { ptr, align, meta: None },
-            Value::ScalarPair(_, meta) =>
-                MemPlace { ptr, align, meta: Some(meta.not_undef()?) },
+        let align = layout.align;
+        let meta = val.to_meta()?;
+        let ptr = val.to_scalar_ptr()?;
+        let mplace = MemPlace { ptr, align, meta };
+        // Pointer tag tracking might want to adjust the tag.
+        let mplace = if M::ENABLE_PTR_TRACKING_HOOKS {
+            let (size, _) = self.size_and_align_of(meta, layout)?
+                // for extern types, just cover what we can
+                .unwrap_or_else(|| layout.size_and_align());
+            let mutbl = match val.layout.ty.sty {
+                // `builtin_deref` considers boxes immutable, that's useless for our purposes
+                ty::Ref(_, _, mutbl) => Some(mutbl),
+                ty::Adt(def, _) if def.is_box() => Some(hir::MutMutable),
+                ty::RawPtr(_) => None,
+                _ => bug!("Unexpected pointer type {}", val.layout.ty.sty),
+            };
+            M::tag_dereference(self, mplace, pointee_type, size, mutbl)?
+        } else {
+            mplace
         };
         Ok(MPlaceTy { mplace, layout })
     }
@@ -299,19 +304,25 @@ where
         place: MPlaceTy<'tcx, M::PointerTag>,
         borrow_kind: Option<mir::BorrowKind>,
     ) -> EvalResult<'tcx, Value<M::PointerTag>> {
-        let ptr = match place.ptr {
-            Scalar::Ptr(ptr) if M::ENABLE_PTR_TRACKING_HOOKS => {
-                // Machine might want to track the `&` operator
-                let (size, _) = self.size_and_align_of_mplace(place)?
-                    .expect("create_ref cannot determine size");
-                let tag = M::tag_reference(self, ptr, place.layout.ty, size, borrow_kind)?;
-                Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
-            },
-            other => other,
+        // Pointer tag tracking might want to adjust the tag
+        let place = if M::ENABLE_PTR_TRACKING_HOOKS {
+            let (size, _) = self.size_and_align_of_mplace(place)?
+                // for extern types, just cover what we can
+                .unwrap_or_else(|| place.layout.size_and_align());
+            let mutbl = match borrow_kind {
+                Some(mir::BorrowKind::Mut { .. }) |
+                Some(mir::BorrowKind::Unique) =>
+                    Some(hir::MutMutable),
+                Some(_) => Some(hir::MutImmutable),
+                None => None,
+            };
+            M::tag_reference(self, *place, place.layout.ty, size, mutbl)?
+        } else {
+            *place
         };
         Ok(match place.meta {
-            None => Value::Scalar(ptr.into()),
-            Some(meta) => Value::ScalarPair(ptr.into(), meta.into()),
+            None => Value::Scalar(place.ptr.into()),
+            Some(meta) => Value::ScalarPair(place.ptr.into(), meta.into()),
         })
     }
 
@@ -845,6 +856,8 @@ where
     }
 
     /// Make sure that a place is in memory, and return where it is.
+    /// If the place currently refers to a local that doesn't yet have a matching allocation,
+    /// create such an allocation.
     /// This is essentially `force_to_memplace`.
     pub fn force_allocation(
         &mut self,
@@ -888,10 +901,11 @@ where
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         if layout.is_unsized() {
             assert!(self.tcx.features().unsized_locals, "cannot alloc memory for unsized type");
-            // FIXME: What should we do here?
+            // FIXME: What should we do here? We should definitely also tag!
             Ok(MPlaceTy::dangling(layout, &self))
         } else {
             let ptr = self.memory.allocate(layout.size, layout.align, kind)?;
+            let ptr = M::tag_new_allocation(self, ptr, kind)?;
             Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
         }
     }

@@ -117,12 +117,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
     }
 
-    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> Pointer<M::PointerTag> {
-        Pointer::from(self.tcx.alloc_map.lock().create_fn_alloc(instance)).with_default_tag()
+    pub fn create_fn_alloc(&mut self, instance: Instance<'tcx>) -> Pointer {
+        Pointer::from(self.tcx.alloc_map.lock().create_fn_alloc(instance))
     }
 
-    pub fn allocate_static_bytes(&mut self, bytes: &[u8]) -> Pointer<M::PointerTag> {
-        Pointer::from(self.tcx.allocate_bytes(bytes)).with_default_tag()
+    pub fn allocate_static_bytes(&mut self, bytes: &[u8]) -> Pointer {
+        Pointer::from(self.tcx.allocate_bytes(bytes))
     }
 
     pub fn allocate_with(
@@ -140,9 +140,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         size: Size,
         align: Align,
         kind: MemoryKind<M::MemoryKinds>,
-    ) -> EvalResult<'tcx, Pointer<M::PointerTag>> {
-        let ptr = Pointer::from(self.allocate_with(Allocation::undef(size, align), kind)?);
-        Ok(ptr.with_default_tag())
+    ) -> EvalResult<'tcx, Pointer> {
+        Ok(Pointer::from(self.allocate_with(Allocation::undef(size, align), kind)?))
     }
 
     pub fn reallocate(
@@ -153,17 +152,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         new_size: Size,
         new_align: Align,
         kind: MemoryKind<M::MemoryKinds>,
-    ) -> EvalResult<'tcx, Pointer<M::PointerTag>> {
+    ) -> EvalResult<'tcx, Pointer> {
         if ptr.offset.bytes() != 0 {
             return err!(ReallocateNonBasePtr);
         }
 
-        // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc"
+        // For simplicities' sake, we implement reallocate as "alloc, copy, dealloc".
+        // This happens so rarely, the perf advantage is outweighed by the maintenance cost.
         let new_ptr = self.allocate(new_size, new_align, kind)?;
         self.copy(
             ptr.into(),
             old_align,
-            new_ptr.into(),
+            new_ptr.with_default_tag().into(),
             new_align,
             old_size.min(new_size),
             /*nonoverlapping*/ true,
@@ -347,7 +347,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Some(AllocType::Memory(mem)) => {
                 // We got tcx memory. Let the machine figure out whether and how to
                 // turn that into memory with the right pointer tag.
-                return Ok(M::static_with_default_tag(mem))
+                return Ok(M::adjust_static_allocation(mem))
             }
             Some(AllocType::Function(..)) => {
                 return err!(DerefFunctionPointer)
@@ -381,7 +381,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             if let ConstValue::ByRef(_, allocation, _) = const_val.val {
                 // We got tcx memory. Let the machine figure out whether and how to
                 // turn that into memory with the right pointer tag.
-                M::static_with_default_tag(allocation)
+                M::adjust_static_allocation(allocation)
             } else {
                 bug!("Matching on non-ByRef static")
             }

@@ -15,13 +15,13 @@
 use std::borrow::{Borrow, Cow};
 use std::hash::Hash;
 
-use rustc::hir::def_id::DefId;
+use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
 use rustc::ty::{self, Ty, layout::{Size, TyLayout}, query::TyCtxtAt};
 
 use super::{
     Allocation, AllocId, EvalResult, Scalar,
-    EvalContext, PlaceTy, OpTy, Pointer, MemoryKind,
+    EvalContext, PlaceTy, OpTy, Pointer, MemPlace, MemoryKind,
 };
 
 /// Classifying memory accesses
@@ -81,6 +81,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
 
     /// Tag tracked alongside every pointer.  This is used to implement "Stacked Borrows"
     /// <https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html>.
+    /// The `default()` is used for pointers to consts, statics, vtables and functions.
     type PointerTag: ::std::fmt::Debug + Default + Copy + Eq + Hash + 'static;
 
     /// Extra data stored in every allocation.
@@ -151,13 +152,13 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag, Self::AllocExtra>>>;
 
     /// Called to turn an allocation obtained from the `tcx` into one that has
-    /// the appropriate tags on each pointer.
+    /// the right type for this machine.
     ///
     /// This should avoid copying if no work has to be done! If this returns an owned
-    /// allocation (because a copy had to be done to add the tags), machine memory will
+    /// allocation (because a copy had to be done to add tags or metadata), machine memory will
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
-    fn static_with_default_tag(
+    fn adjust_static_allocation(
         alloc: &'_ Allocation
     ) -> Cow<'_, Allocation<Self::PointerTag, Self::AllocExtra>>;
 
@@ -204,24 +205,40 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         Ok(())
     }
 
-    /// Executed when evaluating the `&` operator: Creating a new reference.
-    /// This has the chance to adjust the tag.
-    /// `borrow_kind` can be `None` in case a raw ptr is being created.
-    fn tag_reference(
+    /// Add the tag for a newly allocated pointer.
+    fn tag_new_allocation(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer<Self::PointerTag>,
-        pointee_ty: Ty<'tcx>,
-        pointee_size: Size,
-        borrow_kind: Option<mir::BorrowKind>,
-    ) -> EvalResult<'tcx, Self::PointerTag>;
+        ptr: Pointer,
+        kind: MemoryKind<Self::MemoryKinds>,
+    ) -> EvalResult<'tcx, Pointer<Self::PointerTag>>;
+
+    /// Executed when evaluating the `&` operator: Creating a new reference.
+    /// This has the chance to adjust the tag.  It should not change anything else!
+    /// `mutability` can be `None` in case a raw ptr is being created.
+    #[inline]
+    fn tag_reference(
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        place: MemPlace<Self::PointerTag>,
+        _ty: Ty<'tcx>,
+        _size: Size,
+        _mutability: Option<hir::Mutability>,
+    ) -> EvalResult<'tcx, MemPlace<Self::PointerTag>> {
+        Ok(place)
+    }
 
     /// Executed when evaluating the `*` operator: Following a reference.
-    /// This has the change to adjust the tag.
+    /// This has the change to adjust the tag.  It should not change anything else!
+    /// `mutability` can be `None` in case a raw ptr is being dereferenced.
+    #[inline]
     fn tag_dereference(
-        ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer<Self::PointerTag>,
-        ptr_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, Self::PointerTag>;
+        _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
+        place: MemPlace<Self::PointerTag>,
+        _ty: Ty<'tcx>,
+        _size: Size,
+        _mutability: Option<hir::Mutability>,
+    ) -> EvalResult<'tcx, MemPlace<Self::PointerTag>> {
+        Ok(place)
+    }
 
     /// Execute a validation operation
     #[inline]

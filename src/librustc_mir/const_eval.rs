@@ -20,8 +20,8 @@ use rustc::hir::{self, def_id::DefId};
 use rustc::hir::def::Def;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::mir;
-use rustc::ty::{self, Ty, TyCtxt, Instance, query::TyCtxtAt};
-use rustc::ty::layout::{self, Size, LayoutOf, TyLayout};
+use rustc::ty::{self, TyCtxt, Instance, query::TyCtxtAt};
+use rustc::ty::layout::{self, LayoutOf, TyLayout};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -32,7 +32,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
 use interpret::{self,
-    PlaceTy, MemPlace, OpTy, Operand, Value, Pointer, Scalar, ConstValue,
+    PlaceTy, MemPlace, OpTy, Operand, Value, Scalar, ConstValue, Pointer,
     EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot, RefTracking,
@@ -426,7 +426,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 
     #[inline(always)]
-    fn static_with_default_tag(
+    fn adjust_static_allocation(
         alloc: &'_ Allocation
     ) -> Cow<'_, Allocation<Self::PointerTag>> {
         // We do not use a tag so we can just cheaply forward the reference
@@ -467,23 +467,12 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 
     #[inline(always)]
-    fn tag_reference(
+    fn tag_new_allocation(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _ptr: Pointer<Self::PointerTag>,
-        _pointee_ty: Ty<'tcx>,
-        _pointee_size: Size,
-        _borrow_kind: Option<mir::BorrowKind>,
-    ) -> EvalResult<'tcx, Self::PointerTag> {
-        Ok(())
-    }
-
-    #[inline(always)]
-    fn tag_dereference(
-        _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
-        _ptr: Pointer<Self::PointerTag>,
-        _ptr_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, Self::PointerTag> {
-        Ok(())
+        ptr: Pointer,
+        _kind: MemoryKind<Self::MemoryKinds>,
+    ) -> EvalResult<'tcx, Pointer> {
+        Ok(ptr)
     }
 }
 

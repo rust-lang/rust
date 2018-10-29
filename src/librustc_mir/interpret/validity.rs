@@ -12,7 +12,7 @@ use std::fmt::Write;
 use std::hash::Hash;
 
 use syntax_pos::symbol::Symbol;
-use rustc::ty::layout::{self, Size, Align, TyLayout};
+use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
@@ -176,19 +176,27 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     // undef. We should fix that, but let's start low.
                 }
             }
-            _ if ty.is_box() || ty.is_region_ptr() || ty.is_unsafe_ptr() => {
-                // Handle fat pointers. We also check fat raw pointers,
-                // their metadata must be valid!
-                // This also checks that the ptr itself is initialized, which
-                // seems reasonable even for raw pointers.
-                let place = try_validation!(self.ref_to_mplace(value),
-                    "undefined data in pointer", path);
+            ty::RawPtr(..) => {
+                // No undef allowed here.  Eventually this should be consistent with
+                // the integer types.
+                let _ptr = try_validation!(value.to_scalar_ptr(),
+                    "undefined address in pointer", path);
+                let _meta = try_validation!(value.to_meta(),
+                    "uninitialized data in fat pointer metadata", path);
+            }
+            _ if ty.is_box() || ty.is_region_ptr() => {
+                // Handle fat pointers.
                 // Check metadata early, for better diagnostics
-                if place.layout.is_unsized() {
-                    let tail = self.tcx.struct_tail(place.layout.ty);
+                let ptr = try_validation!(value.to_scalar_ptr(),
+                    "undefined address in pointer", path);
+                let meta = try_validation!(value.to_meta(),
+                    "uninitialized data in fat pointer metadata", path);
+                let layout = self.layout_of(value.layout.ty.builtin_deref(true).unwrap().ty)?;
+                if layout.is_unsized() {
+                    let tail = self.tcx.struct_tail(layout.ty);
                     match tail.sty {
                         ty::Dynamic(..) => {
-                            let vtable = try_validation!(place.meta.unwrap().to_ptr(),
+                            let vtable = try_validation!(meta.unwrap().to_ptr(),
                                 "non-pointer vtable in fat pointer", path);
                             try_validation!(self.read_drop_type_from_vtable(vtable),
                                 "invalid drop fn in vtable", path);
@@ -197,7 +205,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             // FIXME: More checks for the vtable.
                         }
                         ty::Slice(..) | ty::Str => {
-                            try_validation!(place.meta.unwrap().to_usize(self),
+                            try_validation!(meta.unwrap().to_usize(self),
                                 "non-integer slice length in fat pointer", path);
                         }
                         ty::Foreign(..) => {
@@ -207,17 +215,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             bug!("Unexpected unsized type tail: {:?}", tail),
                     }
                 }
-                // for safe ptrs, also check the ptr values itself
-                if !ty.is_unsafe_ptr() {
-                    // Make sure this is non-NULL and aligned
-                    let (size, align) = self.size_and_align_of(place.meta, place.layout)?
-                        // for the purpose of validity, consider foreign types to have
-                        // alignment and size determined by the layout (size will be 0,
-                        // alignment should take attributes into account).
-                        .unwrap_or_else(|| place.layout.size_and_align());
-                    match self.memory.check_align(place.ptr, align) {
-                        Ok(_) => {},
-                        Err(err) => match err.kind {
+                // Make sure this is non-NULL and aligned
+                let (size, align) = self.size_and_align_of(meta, layout)?
+                    // for the purpose of validity, consider foreign types to have
+                    // alignment and size determined by the layout (size will be 0,
+                    // alignment should take attributes into account).
+                    .unwrap_or_else(|| layout.size_and_align());
+                match self.memory.check_align(ptr, align) {
+                    Ok(_) => {},
+                    Err(err) => {
+                        error!("{:?} is not aligned to {:?}", ptr, align);
+                        match err.kind {
                             EvalErrorKind::InvalidNullPointerUsage =>
                                 return validation_failure!("NULL reference", path),
                             EvalErrorKind::AlignmentCheckFailed { .. } =>
@@ -225,41 +233,47 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             _ =>
                                 return validation_failure!(
                                     "dangling (out-of-bounds) reference (might be NULL at \
-                                     run-time)",
+                                        run-time)",
                                     path
                                 ),
                         }
                     }
-                    // non-ZST also have to be dereferenceable
+                }
+                // Turn ptr into place.
+                // `ref_to_mplace` also calls the machine hook for (re)activating the tag,
+                // which in turn will (in full miri) check if the pointer is dereferencable.
+                let place = self.ref_to_mplace(value)?;
+                // Recursive checking
+                if let Some(ref_tracking) = ref_tracking {
+                    assert!(const_mode, "We should only do recursie checking in const mode");
                     if size != Size::ZERO {
+                        // Non-ZST also have to be dereferencable
                         let ptr = try_validation!(place.ptr.to_ptr(),
                             "integer pointer in non-ZST reference", path);
-                        if const_mode {
-                            // Skip validation entirely for some external statics
-                            let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
-                            if let Some(AllocType::Static(did)) = alloc_kind {
-                                // `extern static` cannot be validated as they have no body.
-                                // FIXME: Statics from other crates are also skipped.
-                                // They might be checked at a different type, but for now we
-                                // want to avoid recursing too deeply.  This is not sound!
-                                if !did.is_local() || self.tcx.is_foreign_item(did) {
-                                    return Ok(());
-                                }
+                        // Skip validation entirely for some external statics
+                        let alloc_kind = self.tcx.alloc_map.lock().get(ptr.alloc_id);
+                        if let Some(AllocType::Static(did)) = alloc_kind {
+                            // `extern static` cannot be validated as they have no body.
+                            // FIXME: Statics from other crates are also skipped.
+                            // They might be checked at a different type, but for now we
+                            // want to avoid recursing too deeply.  This is not sound!
+                            if !did.is_local() || self.tcx.is_foreign_item(did) {
+                                return Ok(());
                             }
                         }
+                        // Maintain the invariant that the place we are checking is
+                        // already verified to be in-bounds.
                         try_validation!(self.memory.check_bounds(ptr, size, false),
                             "dangling (not entirely in bounds) reference", path);
                     }
-                    if let Some(ref_tracking) = ref_tracking {
-                        // Check if we have encountered this pointer+layout combination
-                        // before.  Proceed recursively even for integer pointers, no
-                        // reason to skip them! They are (recursively) valid for some ZST,
-                        // but not for others (e.g. `!` is a ZST).
-                        let op = place.into();
-                        if ref_tracking.seen.insert(op) {
-                            trace!("Recursing below ptr {:#?}", *op);
-                            ref_tracking.todo.push((op, path_clone_and_deref(path)));
-                        }
+                    // Check if we have encountered this pointer+layout combination
+                    // before.  Proceed recursively even for integer pointers, no
+                    // reason to skip them! They are (recursively) valid for some ZST,
+                    // but not for others (e.g. `!` is a ZST).
+                    let op = place.into();
+                    if ref_tracking.seen.insert(op) {
+                        trace!("Recursing below ptr {:#?}", *op);
+                        ref_tracking.todo.push((op, path_clone_and_deref(path)));
                     }
                 }
             }

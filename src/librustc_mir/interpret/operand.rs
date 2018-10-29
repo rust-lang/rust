@@ -217,6 +217,16 @@ impl<'tcx, Tag> Value<Tag> {
             Value::ScalarPair(ptr, _) => ptr.not_undef(),
         }
     }
+
+    /// Convert the value into its metadata.
+    /// Throws away the first half of a ScalarPair!
+    #[inline]
+    pub fn to_meta(self) -> EvalResult<'tcx, Option<Scalar<Tag>>> {
+        Ok(match self {
+            Value::Scalar(_) => None,
+            Value::ScalarPair(_, meta) => Some(meta.not_undef()?),
+        })
+    }
 }
 
 // ScalarPair needs a type to interpret, so we often have a value and a type together

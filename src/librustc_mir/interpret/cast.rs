@@ -110,7 +110,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             def_id,
                             substs,
                         ).ok_or_else(|| EvalErrorKind::TooGeneric.into());
-                        let fn_ptr = self.memory.create_fn_alloc(instance?);
+                        let fn_ptr = self.memory.create_fn_alloc(instance?).with_default_tag();
                         self.write_scalar(Scalar::Ptr(fn_ptr.into()), dest)?;
                     }
                     ref other => bug!("reify fn pointer on {:?}", other),
@@ -143,7 +143,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             substs,
                             ty::ClosureKind::FnOnce,
                         );
-                        let fn_ptr = self.memory.create_fn_alloc(instance);
+                        let fn_ptr = self.memory.create_fn_alloc(instance).with_default_tag();
                         let val = Value::Scalar(Scalar::Ptr(fn_ptr.into()).into());
                         self.write_value(val, dest)?;
                     }
