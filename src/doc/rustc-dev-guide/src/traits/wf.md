@@ -73,7 +73,9 @@ struct OnlyClone<T> where T: Clone {
 }
 // The only types appearing are type parameters: we have nothing to check,
 // the type definition is well-formed.
+```
 
+```rust,ignore
 struct Foo<T> where T: Clone {
     foo: OnlyClone<T>,
 }
@@ -87,23 +89,28 @@ struct Foo<T> where T: Clone {
 // }
 // ```
 // which is provable.
+```
 
-struct Bar<T> where OnlyClone<T>: Debug {
+```rust,ignore
+struct Bar<T> where <T as Iterator>::Item: Debug {
     bar: i32,
 }
-// The only non-parameter type which appears in this definition is
-// `OnlyClone<T>`. The generated goal is the following:
+// The only non-parameter types which appear in this definition are
+// `<T as Iterator>::Item` and `i32`. The generated goal is the following:
 // ```
 // forall<T> {
-//     if (FromEnv(OnlyClone<T>: Debug)) {
-//          WellFormed(OnlyClone<T>)
+//     if (FromEnv(<T as Iterator>::Item: Debug)) {
+//          WellFormed(<T as Iterator>::Item) &&
+//               WellFormed(i32)
 //     }
 // }
 // ```
-// which is not provable since `WellFormed(OnlyClone<T>)` requires proving
-// `Implemented(T: Clone)`, and we are unable to prove that for an unknown `T`.
+// which is not provable since `WellFormed(<T as Iterator>::Item)` requires
+// proving `Implemented(T: Iterator)`, and we are unable to prove that for an
+// unknown `T`.
+//
 // Hence, this type definition is considered illegal. An additional
-// `where T: Clone` would make it legal.
+// `where T: Iterator` would make it legal.
 ```
 
 # Trait definitions
@@ -137,41 +144,47 @@ under the assumption that the different where clauses hold.
 
 Some examples:
 ```rust,ignore
-struct OnlyClone<T: Clone> { ... }
-
-trait Foo<T> where T: Clone, OnlyClone<T>: Debug {
+trait Foo<T> where T: Iterator, <T as Iterator>::Item: Debug {
     ...
 }
 // The only non-parameter type which appears in this definition is
-// `OnlyClone<T>`. The generated goal is the following:
+// `<T as Iterator>::Item`. The generated goal is the following:
 // ```
 // forall<T> {
-//     if (FromEnv(T: Clone), FromEnv(OnlyClone<T>: Debug)) {
-//         WellFormed(OnlyClone<T>)
+//     if (FromEnv(T: Iterator), FromEnv(<T as Iterator>::Item: Debug)) {
+//         WellFormed(<T as Iterator>::Item)
 //     }
 // }
 // ```
-// which is provable thanks to the `FromEnv(T: Clone)` assumption.
+// which is provable thanks to the `FromEnv(T: Iterator)` assumption.
+```
 
+```rust,ignore
 trait Bar {
-    type Assoc<T>: From<OnlyClone<T>>;
+    type Assoc<T>: From<<T as Iterator>::Item>;
 }
 // The only non-parameter type which appears in this definition is
-// `OnlyClone<T>`. The generated goal is the following:
+// `<T as Iterator>::Item`. The generated goal is the following:
+// ```
 // forall<T> {
-//     WellFormed(OnlyClone<T>)
+//     WellFormed(<T as Iterator>::Item)
 // }
+// ```
 // which is not provable, hence the trait definition is considered illegal.
+```
 
+```rust,ignore
 trait Baz {
-    type Assoc<T>: From<OnlyClone<T>> where T: Clone;
+    type Assoc<T>: From<<T as Iterator>::Item> where T: Iterator;
 }
 // The generated goal is now:
+// ```
 // forall<T> {
-//     if (FromEnv(T: Clone)) {
-//         WellFormed(OnlyClone<T>)
+//     if (FromEnv(T: Iterator)) {
+//         WellFormed(<T as Iterator>::Item)
 //     }
 // }
+// ```
 // which is now provable.
 ```
 
@@ -267,3 +280,161 @@ we allow the use of implied bounds on associated types: if we have
 chapter indicates that we are able to deduce
 `FromEnv(<SomeType as Trait>::Assoc: Bounds_assoc)` without knowing what the
 precise value of `<SomeType as Trait>::Assoc` is.
+
+Some examples for the generated goal:
+```rust,ignore
+trait Copy { }
+// `WellFormed(Self: Copy) :- Implemented(Self: Copy).`
+
+trait Partial where Self: Copy { }
+// ```
+// WellFormed(Self: Partial) :-
+//     Implemented(Self: Partial) &&
+//     WellFormed(Self: Copy).
+// ```
+
+trait Complete where Self: Partial { }
+// ```
+// WellFormed(Self: Complete) :-
+//     Implemented(Self: Complete) &&
+//     WellFormed(Self: Partial).
+// ```
+
+impl<T> Partial for T where T: Complete { }
+// The generated goal is:
+// ```
+// forall<T> {
+//     if (FromEnv(T: Complete)) {
+//         WellFormed(T: Partial)
+//     }
+// }
+// ```
+// Then proving `WellFormed(T: Partial)` amounts to proving
+// `Implemented(T: Partial)` and `Implemented(T: Copy)`.
+// Both those facts can be deduced from the `FromEnv(T: Complete)` in our
+// environment: this impl is legal.
+
+impl<T> Complete for T { }
+// The generated goal is:
+// ```
+// forall<T> {
+//     WellFormed(T: Complete)
+// }
+// ```
+// Then proving `WellFormed(T: Complete)` amounts to proving
+// `Implemented(T: Complete)`, `Implemented(T: Partial)` and
+// `Implemented(T: Copy)`.
+//
+// `Implemented(T: Complete)` can be proved thanks to the
+// `impl<T> Complete for T` blanket impl.
+//
+// `Implemented(T: Partial)` can be proved thanks to the
+// `impl<T> Partial for T where T: Complete` impl and because we know
+// `T: Complete` holds.
+
+// However, `Implemented(T: Copy)` cannot be proved: the impl is illegal.
+// An additional `where T: Copy` bound would be sufficient to make that impl
+// legal.
+```
+
+```rust,ignore
+trait Bar { }
+
+impl<T> Bar for T where <T as Iterator>::Item: Bar { }
+// We have a non-parameter type appearing in the where clauses:
+// `<T as Iterator>::Item`. The generated goal is:
+// ```
+// forall<T> {
+//     if (FromEnv(<T as Iterator>::Item: Bar)) {
+//         WellFormed(T: Bar) &&
+//             WellFormed(<T as Iterator>::Item: Bar)
+//     }
+// }
+// ```
+// And `WellFormed(<T as Iterator>::Item: Bar)` is not provable: we'd need
+// an additional `where T: Iterator` for example.
+```
+
+```rust,ignore
+trait Foo { }
+
+trait Bar {
+    type Item: Foo;
+}
+
+struct Stuff<T> { }
+
+impl<T> Bar for Stuff<T> where T: Foo {
+    type Item = T;
+}
+// The generated goal is:
+// ```
+// forall<T> {
+//     if (FromEnv(T: Foo)) {
+//         WellFormed(T: Foo).
+//     }
+// }
+// ```
+// which is provable.
+```
+
+```rust,ignore
+trait Debug { ... }
+// `WellFormed(Self: Debug) :- Implemented(Self: Debug).`
+
+struct Box<T> { ... }
+impl<T> Debug for Box<T> where T: Debug { ... }
+
+trait PointerFamily {
+    type Pointer<T>: Debug where T: Debug;
+}
+// `WellFormed(Self: PointerFamily) :- Implemented(Self: PointerFamily).`
+
+struct BoxFamily;
+
+impl PointerFamily for CowFamily {
+    type Pointer<T> = Box<T> where T: Debug;
+}
+// The generated goal is:
+// ```
+// forall<T> {
+//     WellFormed(CowFamily: PointerFamily) &&
+//
+//     if (FromEnv(T: Debug)) {
+//         WellFormed(Box<T>: Debug) &&
+//             WellFormed(Box<T>)
+//     }
+// }
+// ```
+// `WellFormed(CowFamily: PointerFamily)` amounts to proving
+// `Implemented(CowFamily: PointerFamily)`, which is ok thanks to our impl.
+//
+// `WellFormed(Box<T>)` is always true (there are no where clauses on the
+// `Box` type definition).
+//
+// Moreover, we have an `impl<T: Debug> Debug for Box<T>`, hence
+// we can prove `WellFormed(Box<T>: Debug)` and the impl is indeed legal.
+```
+
+```rust,ignore
+trait Foo {
+    type Assoc<T>;
+}
+
+struct OnlyClone<T: Clone> { ... }
+
+impl Foo for i32 {
+    type Assoc<T> = OnlyClone<T>;
+}
+// The generated goal is:
+// ```
+// forall<T> {
+//     WellFormed(i32: Foo) &&
+//        WellFormed(OnlyClone<T>)
+// }
+// ```
+// however `WellFormed(OnlyClone<T>)` is not provable because it requires
+// `Implemented(T: Clone)`. It would be tempting to just add a `where T: Clone`
+// bound inside the `impl Foo for i32` block, however we saw that it was
+// illegal to add where clauses that didn't come from the trait definition.
+```
