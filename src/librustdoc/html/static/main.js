@@ -93,11 +93,6 @@
                 var end = start + className.length;
                 return !(end < elemClass.length && elemClass[end] !== ' ');
             }
-            if (start > 0 && elemClass[start - 1] !== ' ') {
-                return false;
-            }
-            var end = start + className.length;
-            return !(end < elemClass.length && elemClass[end] !== ' ');
         }
         return false;
     }
