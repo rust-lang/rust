@@ -9,7 +9,7 @@
 
 
 use crate::utils::{
-    match_def_path, match_qpath, match_type, paths, span_help_and_lint, span_lint, span_lint_and_sugg, walk_ptrs_ty,
+    match_def_path, match_type, paths, span_help_and_lint, span_lint, span_lint_and_sugg, walk_ptrs_ty,
 };
 use if_chain::if_chain;
 use crate::rustc::hir;
@@ -161,16 +161,21 @@ impl LintPass for LintWithoutLintPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if let hir::ItemKind::Static(ref ty, MutImmutable, body_id) = item.node {
-
+        if let hir::ItemKind::Static(ref ty, MutImmutable, _) = item.node {
             if is_lint_ref_type(cx, ty) {
                 self.declared_lints.insert(item.name, item.span);
-            } else if is_lint_array_type(ty) && item.name == "ARRAY" {
-                if let VisibilityKind::Inherited = item.vis.node {
+            }
+        } else if let hir::ItemKind::Impl(.., Some(ref trait_ref), _, ref impl_item_refs) = item.node {
+            if_chain! {
+                if let hir::TraitRef{path, ..} = trait_ref;
+                if let Def::Trait(def_id) = path.def;
+                if match_def_path(cx.tcx, def_id, &paths::LINT_PASS);
+                then {
                     let mut collector = LintCollector {
                         output: &mut self.registered_lints,
                         cx,
                     };
+                    let body_id = cx.tcx.hir.body_owned_by(impl_item_refs[0].id.node_id);
                     collector.visit_expr(&cx.tcx.hir.body(body_id).value);
                 }
             }
@@ -221,14 +226,6 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty) -> bool {
     }
 
     false
-}
-
-fn is_lint_array_type(ty: &Ty) -> bool {
-    if let TyKind::Path(ref path) = ty.node {
-        match_qpath(path, &paths::LINT_ARRAY)
-    } else {
-        false
-    }
 }
 
 struct LintCollector<'a, 'tcx: 'a> {
