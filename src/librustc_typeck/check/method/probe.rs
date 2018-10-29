@@ -831,7 +831,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         }
 
         let static_candidates = mem::replace(&mut self.static_candidates, vec![]);
-        let private_candidate = mem::replace(&mut self.private_candidate, None);
+        let private_candidate = self.private_candidate.take();
         let unsatisfied_predicates = mem::replace(&mut self.unsatisfied_predicates, vec![]);
 
         // things failed, so lets look at all traits, for diagnostic purposes now:
