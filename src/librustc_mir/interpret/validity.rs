@@ -303,7 +303,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         let (lo, hi) = layout.valid_range.clone().into_inner();
         let max_hi = u128::max_value() >> (128 - size.bits()); // as big as the size fits
         assert!(hi <= max_hi);
-        if lo == 0 && hi == max_hi {
+        if (lo == 0 && hi == max_hi) || (hi + 1 == lo) {
             // Nothing to check
             return Ok(());
         }
