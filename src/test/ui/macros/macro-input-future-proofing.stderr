@@ -70,7 +70,7 @@ LL |     ( $a:expr $($b:tt)* ) => { };
    |
    = note: allowed there are: `;`, `=>` or `,`
 
-error: `$a:expr` is followed (through repetition) by itself, which is not allowed for `expr` fragments
+warning: `$a:expr` is followed (through repetition) by itself, which is not allowed for `expr` fragments
   --> $DIR/macro-input-future-proofing.rs:31:9
    |
 LL |     ( $($a:expr)* $($b:tt)* ) => { };
@@ -98,5 +98,5 @@ LL |     ( $($a:expr),* $($b:tt)* ) => { };
    |
    = note: allowed there are: `;`, `=>` or `,`
 
-error: aborting due to 12 previous errors
+error: aborting due to 11 previous errors
 

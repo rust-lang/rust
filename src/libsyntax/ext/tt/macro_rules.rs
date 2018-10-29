@@ -816,7 +816,7 @@ fn check_matcher_core(sess: &ParseSess,
                                 } else {
                                     format!("`{}`", quoted_tt_to_string(tok))
                                 };
-                                let mut err = sess.span_diagnostic.struct_span_err(
+                                let mut err = sess.span_diagnostic.struct_span_warn(
                                     *sp,
                                     &format!(
                                         "`${name}:{frag}` is followed (through repetition) by \

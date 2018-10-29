@@ -29,7 +29,7 @@ macro_rules! errors_everywhere {
     ( $a:expr $($b:tt)* ) => { };
     //~^ ERROR `$a:expr` is followed by `$b:tt`, which is not allowed for `expr` fragments
     ( $($a:expr)* $($b:tt)* ) => { };
-    //~^ ERROR `$a:expr` is followed (through repetition) by itself, which is not allowed for
+    //~^ WARN `$a:expr` is followed (through repetition) by itself, which is not allowed for
     //~| ERROR `$a:expr` is followed by `$b:tt`, which is not allowed for `expr` fragments
     ( $($a:expr),* $($b:tt)* ) => { };
     //~^ ERROR `$a:expr` may be followed by `$b:tt`, which is not allowed for `expr` fragments

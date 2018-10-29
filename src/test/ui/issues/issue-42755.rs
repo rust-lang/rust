@@ -11,7 +11,7 @@
 
 macro_rules! foo {
     ($($p:vis)*) => {}
-    //~^ ERROR `$p:vis` is followed (through repetition) by itself, which is not allowed for `vis`
+    //~^ WARN `$p:vis` is followed (through repetition) by itself, which is not allowed for `vis`
     //~| ERROR repetition matches empty token tree
 }
 

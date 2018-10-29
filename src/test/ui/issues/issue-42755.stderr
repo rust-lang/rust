@@ -1,4 +1,4 @@
-error: `$p:vis` is followed (through repetition) by itself, which is not allowed for `vis` fragments
+warning: `$p:vis` is followed (through repetition) by itself, which is not allowed for `vis` fragments
   --> $DIR/issue-42755.rs:13:8
    |
 LL |     ($($p:vis)*) => {}
@@ -16,5 +16,5 @@ error: repetition matches empty token tree
 LL |     ($($p:vis)*) => {}
    |       ^^^^^^^^
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

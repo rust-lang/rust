@@ -1,4 +1,4 @@
-error: `$a:expr` is followed (through repetition) by itself, which is not allowed for `expr` fragments
+warning: `$a:expr` is followed (through repetition) by itself, which is not allowed for `expr` fragments
   --> $DIR/incorrrect-repetition-2.rs:2:8
    |
 LL |     ($($a:expr)*) => {};
@@ -14,6 +14,6 @@ error[E0601]: `main` function not found in crate `incorrrect_repetition_2`
    |
    = note: consider adding a `main` function to `$DIR/incorrrect-repetition-2.rs`
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0601`.
