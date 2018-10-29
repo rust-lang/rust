@@ -133,56 +133,57 @@ impl LintPass for BoolComparison {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if !in_macro(e.span) {
-            use self::Expression::*;
-            if let ExprKind::Binary(Spanned { node: BinOpKind::Eq, .. }, ref left_side, ref right_side) = e.node {
-                match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
-                    (Bool(true), Other) => {
-                        let hint = snippet(cx, right_side.span, "..").into_owned();
-                        span_lint_and_sugg(
-                            cx,
-                            BOOL_COMPARISON,
-                            e.span,
-                            "equality checks against true are unnecessary",
-                            "try simplifying it as shown",
-                            hint,
-                        );
-                    },
-                    (Other, Bool(true)) => {
-                        let hint = snippet(cx, left_side.span, "..").into_owned();
-                        span_lint_and_sugg(
-                            cx,
-                            BOOL_COMPARISON,
-                            e.span,
-                            "equality checks against true are unnecessary",
-                            "try simplifying it as shown",
-                            hint,
-                        );
-                    },
-                    (Bool(false), Other) => {
-                        let hint = Sugg::hir(cx, right_side, "..");
-                        span_lint_and_sugg(
-                            cx,
-                            BOOL_COMPARISON,
-                            e.span,
-                            "equality checks against false can be replaced by a negation",
-                            "try simplifying it as shown",
-                            (!hint).to_string(),
-                        );
-                    },
-                    (Other, Bool(false)) => {
-                        let hint = Sugg::hir(cx, left_side, "..");
-                        span_lint_and_sugg(
-                            cx,
-                            BOOL_COMPARISON,
-                            e.span,
-                            "equality checks against false can be replaced by a negation",
-                            "try simplifying it as shown",
-                            (!hint).to_string(),
-                        );
-                    },
-                    _ => (),
-                }
+        if in_macro(e.span) {
+            return;
+        }
+        use self::Expression::*;
+        if let ExprKind::Binary(Spanned { node: BinOpKind::Eq, .. }, ref left_side, ref right_side) = e.node {
+            match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
+                (Bool(true), Other) => {
+                    let hint = snippet(cx, right_side.span, "..").into_owned();
+                    span_lint_and_sugg(
+                        cx,
+                        BOOL_COMPARISON,
+                        e.span,
+                        "equality checks against true are unnecessary",
+                        "try simplifying it as shown",
+                        hint,
+                    );
+                },
+                (Other, Bool(true)) => {
+                    let hint = snippet(cx, left_side.span, "..").into_owned();
+                    span_lint_and_sugg(
+                        cx,
+                        BOOL_COMPARISON,
+                        e.span,
+                        "equality checks against true are unnecessary",
+                        "try simplifying it as shown",
+                        hint,
+                    );
+                },
+                (Bool(false), Other) => {
+                    let hint = Sugg::hir(cx, right_side, "..");
+                    span_lint_and_sugg(
+                        cx,
+                        BOOL_COMPARISON,
+                        e.span,
+                        "equality checks against false can be replaced by a negation",
+                        "try simplifying it as shown",
+                        (!hint).to_string(),
+                    );
+                },
+                (Other, Bool(false)) => {
+                    let hint = Sugg::hir(cx, left_side, "..");
+                    span_lint_and_sugg(
+                        cx,
+                        BOOL_COMPARISON,
+                        e.span,
+                        "equality checks against false can be replaced by a negation",
+                        "try simplifying it as shown",
+                        (!hint).to_string(),
+                    );
+                },
+                _ => (),
             }
         }
     }
