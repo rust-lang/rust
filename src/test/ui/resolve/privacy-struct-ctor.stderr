@@ -38,40 +38,40 @@ LL | use m::S;
    |
 
 error[E0603]: tuple struct `Z` is private
-  --> $DIR/privacy-struct-ctor.rs:28:9
+  --> $DIR/privacy-struct-ctor.rs:28:12
    |
 LL |         n::Z;
-   |         ^^^^
+   |            ^
 
 error[E0603]: tuple struct `S` is private
-  --> $DIR/privacy-struct-ctor.rs:39:5
+  --> $DIR/privacy-struct-ctor.rs:39:8
    |
 LL |     m::S;
-   |     ^^^^
+   |        ^
 
 error[E0603]: tuple struct `S` is private
-  --> $DIR/privacy-struct-ctor.rs:41:16
+  --> $DIR/privacy-struct-ctor.rs:41:19
    |
 LL |     let _: S = m::S(2);
-   |                ^^^^
+   |                   ^
 
 error[E0603]: tuple struct `Z` is private
-  --> $DIR/privacy-struct-ctor.rs:45:5
+  --> $DIR/privacy-struct-ctor.rs:45:11
    |
 LL |     m::n::Z;
-   |     ^^^^^^^
+   |           ^
 
 error[E0603]: tuple struct `S` is private
-  --> $DIR/privacy-struct-ctor.rs:51:5
+  --> $DIR/privacy-struct-ctor.rs:51:16
    |
 LL |     xcrate::m::S;
-   |     ^^^^^^^^^^^^
+   |                ^
 
 error[E0603]: tuple struct `Z` is private
-  --> $DIR/privacy-struct-ctor.rs:55:5
+  --> $DIR/privacy-struct-ctor.rs:55:19
    |
 LL |     xcrate::m::n::Z;
-   |     ^^^^^^^^^^^^^^^
+   |                   ^
 
 error: aborting due to 10 previous errors
 

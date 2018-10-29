@@ -1052,7 +1052,7 @@ impl Step for Compiletest {
         let hostflags = flags.clone();
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
-        let mut targetflags = flags.clone();
+        let mut targetflags = flags;
         targetflags.push(format!(
             "-Lnative={}",
             builder.test_helpers_out(target).display()

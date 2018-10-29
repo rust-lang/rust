@@ -1447,8 +1447,8 @@ impl Step for Extended {
         tarballs.extend(rls_installer.clone());
         tarballs.extend(clippy_installer.clone());
         tarballs.extend(rustfmt_installer.clone());
-        tarballs.extend(llvm_tools_installer.clone());
-        tarballs.extend(lldb_installer.clone());
+        tarballs.extend(llvm_tools_installer);
+        tarballs.extend(lldb_installer);
         tarballs.push(analysis_installer);
         tarballs.push(std_installer);
         if builder.config.docs {

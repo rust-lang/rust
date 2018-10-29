@@ -66,7 +66,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> BlanketImplFinder <'a, 'tcx, 'rcx, 'cstore> {
         }
         let ty = self.cx.tcx.type_of(def_id);
         let generics = self.cx.tcx.generics_of(def_id);
-        let real_name = name.clone().map(|name| Ident::from_str(&name));
+        let real_name = name.map(|name| Ident::from_str(&name));
         let param_env = self.cx.tcx.param_env(def_id);
         for &trait_def_id in self.cx.all_traits.iter() {
             if !self.cx.renderinfo.borrow().access_levels.is_doc_reachable(trait_def_id) ||
@@ -109,7 +109,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> BlanketImplFinder <'a, 'tcx, 'rcx, 'cstore> {
                         );
                         let may_apply = match infcx.evaluate_obligation(
                             &traits::Obligation::new(
-                                cause.clone(),
+                                cause,
                                 param_env,
                                 trait_ref.to_predicate(),
                             ),

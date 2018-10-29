@@ -239,7 +239,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
             let msg = format!("type mismatch resolving `{}`", predicate);
             let error_id = (DiagnosticMessageId::ErrorId(271),
-                            Some(obligation.cause.span), msg.clone());
+                            Some(obligation.cause.span), msg);
             let fresh = self.tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
             if fresh {
                 let mut diag = struct_span_err!(
@@ -379,7 +379,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
         if let Some(t) = self.get_parent_trait_ref(&obligation.cause.code) {
-            flags.push(("parent_trait".to_owned(), Some(t.to_string())));
+            flags.push(("parent_trait".to_owned(), Some(t)));
         }
 
         if let Some(k) = obligation.cause.span.compiler_desugaring_kind() {

@@ -1,8 +1,8 @@
 error[E0603]: function `unexported` is private
-  --> $DIR/export-import.rs:11:5
+  --> $DIR/export-import.rs:11:8
    |
 LL | use m::unexported;
-   |     ^^^^^^^^^^^^^
+   |        ^^^^^^^^^^
 
 error: aborting due to previous error
 

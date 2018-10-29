@@ -61,7 +61,7 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
             let suggested_limit = *tcx.sess.recursion_limit.get() * 2;
             let msg = format!("reached the recursion limit while auto-dereferencing {:?}",
                               self.cur_ty);
-            let error_id = (DiagnosticMessageId::ErrorId(55), Some(self.span), msg.clone());
+            let error_id = (DiagnosticMessageId::ErrorId(55), Some(self.span), msg);
             let fresh = tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
             if fresh {
                 struct_span_err!(tcx.sess,

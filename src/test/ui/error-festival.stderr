@@ -5,10 +5,10 @@ LL |     y = 2;
    |     ^ did you mean `x`?
 
 error[E0603]: constant `FOO` is private
-  --> $DIR/error-festival.rs:32:5
+  --> $DIR/error-festival.rs:32:10
    |
 LL |     foo::FOO;
-   |     ^^^^^^^^
+   |          ^^^
 
 error[E0368]: binary assignment operation `+=` cannot be applied to type `&str`
   --> $DIR/error-festival.rs:22:5

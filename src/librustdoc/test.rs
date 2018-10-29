@@ -208,7 +208,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     // needs to be the result of SourceMap::span_to_unmapped_path
     let input = config::Input::Str {
         name: filename.to_owned(),
-        input: test.to_owned(),
+        input: test,
     };
     let outputs = OutputTypes::new(&[(OutputType::Exe, None)]);
 
@@ -350,7 +350,7 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
     let newpath = {
         let path = env::var_os(var).unwrap_or(OsString::new());
         let mut path = env::split_paths(&path).collect::<Vec<_>>();
-        path.insert(0, libdir.clone());
+        path.insert(0, libdir);
         env::join_paths(path).unwrap()
     };
     cmd.env(var, &newpath);

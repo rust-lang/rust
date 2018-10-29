@@ -594,7 +594,7 @@ fn opt_normalize_projection_type<'a, 'b, 'gcx, 'tcx>(
 
             // But for now, let's classify this as an overflow:
             let recursion_limit = *selcx.tcx().sess.recursion_limit.get();
-            let obligation = Obligation::with_depth(cause.clone(),
+            let obligation = Obligation::with_depth(cause,
                                                     recursion_limit,
                                                     param_env,
                                                     projection_ty);

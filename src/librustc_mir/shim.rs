@@ -142,7 +142,7 @@ fn temp_decl(mutability: Mutability, ty: Ty, span: Span) -> LocalDecl {
     LocalDecl {
         mutability,
         ty,
-        user_ty: None,
+        user_ty: UserTypeProjections::none(),
         name: None,
         source_info,
         visibility_scope: source_info.scope,
@@ -547,7 +547,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
         // `dest[i] = Clone::clone(src[beg])`;
         // Goto #3 if ok, #5 if unwinding happens.
         let dest_field = dest.clone().index(beg);
-        let src_field = src.clone().index(beg);
+        let src_field = src.index(beg);
         self.make_clone_call(dest_field, src_field, ty, BasicBlock::new(3),
                              BasicBlock::new(5));
 

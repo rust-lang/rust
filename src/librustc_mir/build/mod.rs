@@ -644,7 +644,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         }).collect()
     });
 
-    let mut builder = Builder::new(hir.clone(),
+    let mut builder = Builder::new(hir,
         span,
         arguments.len(),
         safety,
@@ -714,7 +714,7 @@ fn construct_const<'a, 'gcx, 'tcx>(
     let ty = hir.tables().expr_ty_adjusted(ast_expr);
     let owner_id = tcx.hir.body_owner(body_id);
     let span = tcx.hir.span(owner_id);
-    let mut builder = Builder::new(hir.clone(), span, 0, Safety::Safe, ty, ty_span,vec![]);
+    let mut builder = Builder::new(hir, span, 0, Safety::Safe, ty, ty_span,vec![]);
 
     let mut block = START_BLOCK;
     let expr = builder.hir.mirror(ast_expr);
@@ -845,7 +845,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.local_decls.push(LocalDecl {
                 mutability: Mutability::Mut,
                 ty,
-                user_ty: None,
+                user_ty: UserTypeProjections::none(),
                 source_info,
                 visibility_scope: source_info.scope,
                 name,
