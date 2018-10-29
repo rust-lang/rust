@@ -438,7 +438,7 @@ struct GetOptsOptions {
     emit_mode: EmitMode,
     backup: bool,
     check: bool,
-    edition: Edition,
+    edition: Option<Edition>,
     color: Option<Color>,
     file_lines: FileLines, // Default is all lines in all files.
     unstable_features: bool,
@@ -503,7 +503,7 @@ impl GetOptsOptions {
         }
 
         if let Some(ref edition_str) = matches.opt_str("edition") {
-            options.edition = edition_from_edition_str(edition_str)?;
+            options.edition = Some(edition_from_edition_str(edition_str)?);
         }
 
         if matches.opt_present("backup") {
@@ -559,7 +559,9 @@ impl CliOptions for GetOptsOptions {
         if let Some(error_on_unformatted) = self.error_on_unformatted {
             config.set().error_on_unformatted(error_on_unformatted);
         }
-        config.set().edition(self.edition);
+        if let Some(edition) = self.edition {
+            config.set().edition(edition);
+        }
         if self.check {
             config.set().emit_mode(EmitMode::Diff);
         } else {
