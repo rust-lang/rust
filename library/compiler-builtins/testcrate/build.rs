@@ -348,24 +348,6 @@ fn main() {
         "builtins::float::extend::__extendsfdf2vfp(a)");
     }
 
-    // float/truncate.rs
-    gen(|a: MyF64| {
-            if a.0.is_nan() {
-                return None;
-            }
-            Some(a.0 as f32)
-        },
-        "builtins::float::truncate::__truncdfsf2(a)");
-    if target_arch_arm {
-        gen(|a: LargeF64| {
-            if a.0.is_nan() {
-                return None;
-            }
-            Some(a.0 as f32)
-        },
-        "builtins::float::truncate::__truncdfsf2vfp(a)");
-    }
-
     // float/conv.rs
     gen(|a: MyF64| i64(a.0).ok(),
         "builtins::float::conv::__fixdfdi(a)");

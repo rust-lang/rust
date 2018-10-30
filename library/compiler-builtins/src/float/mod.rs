@@ -11,7 +11,6 @@ pub mod sub;
 pub mod mul;
 pub mod div;
 pub mod extend;
-pub mod truncate;
 
 /// Trait for some basic operations on floats
 pub trait Float:
