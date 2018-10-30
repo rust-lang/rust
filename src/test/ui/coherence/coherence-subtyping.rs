@@ -1,4 +1,3 @@
-// run-pass
 // Test that two distinct impls which match subtypes of one another
 // yield coherence errors (or not) depending on the variance.
 
@@ -10,6 +9,7 @@ impl Contravariant for for<'a,'b> fn(&'a u8, &'b u8) -> &'a u8 {
 }
 
 impl Contravariant for for<'a> fn(&'a u8, &'a u8) -> &'a u8 {
+    //~^ ERROR
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -22,6 +22,7 @@ impl Covariant for for<'a,'b> fn(&'a u8, &'b u8) -> &'a u8 {
 }
 
 impl Covariant for for<'a> fn(&'a u8, &'a u8) -> &'a u8 {
+    //~^ ERROR
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -34,6 +35,7 @@ impl Invariant for for<'a,'b> fn(&'a u8, &'b u8) -> &'a u8 {
 }
 
 impl Invariant for for<'a> fn(&'a u8, &'a u8) -> &'a u8 {
+    //~^ ERROR
 }
 
 fn main() { }

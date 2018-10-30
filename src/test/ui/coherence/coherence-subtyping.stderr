@@ -1,0 +1,30 @@
+error[E0119]: conflicting implementations of trait `Contravariant` for type `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8`:
+  --> $DIR/coherence-subtyping.rs:21:1
+   |
+LL | impl Contravariant for for<'a,'b> fn(&'a u8, &'b u8) -> &'a u8 {
+   | -------------------------------------------------------------- first implementation here
+...
+LL | impl Contravariant for for<'a> fn(&'a u8, &'a u8) -> &'a u8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8`
+
+error[E0119]: conflicting implementations of trait `Covariant` for type `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8`:
+  --> $DIR/coherence-subtyping.rs:34:1
+   |
+LL | impl Covariant for for<'a,'b> fn(&'a u8, &'b u8) -> &'a u8 {
+   | ---------------------------------------------------------- first implementation here
+...
+LL | impl Covariant for for<'a> fn(&'a u8, &'a u8) -> &'a u8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8`
+
+error[E0119]: conflicting implementations of trait `Invariant` for type `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8`:
+  --> $DIR/coherence-subtyping.rs:47:1
+   |
+LL | impl Invariant for for<'a,'b> fn(&'a u8, &'b u8) -> &'a u8 {
+   | ---------------------------------------------------------- first implementation here
+...
+LL | impl Invariant for for<'a> fn(&'a u8, &'a u8) -> &'a u8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0119`.
