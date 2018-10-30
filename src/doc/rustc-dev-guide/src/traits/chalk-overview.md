@@ -50,7 +50,7 @@ Ambiguous; no inference guidance
 
 You can see more examples of programs and queries in the [unit tests][chalk-tests].
 
-[chalk-tests]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test.rs#L115
+Next we'll go through each stage required to produce the output above.
 
 ### Crates
 - [**chalk_engine**][doc-chalk-engine]: Defines the core [SLG solver][slg].
@@ -80,22 +80,7 @@ You can see more examples of programs and queries in the [unit tests][chalk-test
 [doc-chalk]: https://rust-lang-nursery.github.io/chalk/doc/chalk/index.html
 [doc-chalk-rust-ir]: https://rust-lang-nursery.github.io/chalk/doc/chalk/rules/index.html
 [doc-chalki]: https://rust-lang-nursery.github.io/chalk/doc/chalki/index.html
-
-## Resources
-
-* [Chalk Source Code](https://github.com/rust-lang-nursery/chalk)
-* [Chalk Glossary](https://github.com/rust-lang-nursery/chalk/blob/master/GLOSSARY.md)
-* The traits section of the rustc guide (you are here)
-
-### Blog Posts
-
-* [Lowering Rust traits to logic](http://smallcultfollowing.com/babysteps/blog/2017/01/26/lowering-rust-traits-to-logic/)
-* [Unification in Chalk, part 1](http://smallcultfollowing.com/babysteps/blog/2017/03/25/unification-in-chalk-part-1/)
-* [Unification in Chalk, part 2](http://smallcultfollowing.com/babysteps/blog/2017/04/23/unification-in-chalk-part-2/)
-* [Negative reasoning in Chalk](http://aturon.github.io/blog/2017/04/24/negative-chalk/)
-* [Query structure in chalk](http://smallcultfollowing.com/babysteps/blog/2017/05/25/query-structure-in-chalk/)
-* [Cyclic queries in chalk](http://smallcultfollowing.com/babysteps/blog/2017/09/12/tabling-handling-cyclic-queries-in-chalk/)
-* [An on-demand SLG solver for chalk](http://smallcultfollowing.com/babysteps/blog/2018/01/31/an-on-demand-slg-solver-for-chalk/)
+[chalk-tests]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test.rs#L115
 
 ## Parsing
 
@@ -190,9 +175,20 @@ described above.
 [This](https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/solve/test.rs#L83-L110)
 is the function that is ultimately called.
 
-## Solver
+## More Resources
 
-See [The SLG Solver][slg].
+* [Chalk Source Code](https://github.com/rust-lang-nursery/chalk)
+* [Chalk Glossary](https://github.com/rust-lang-nursery/chalk/blob/master/GLOSSARY.md)
+
+### Blog Posts
+
+* [Lowering Rust traits to logic](http://smallcultfollowing.com/babysteps/blog/2017/01/26/lowering-rust-traits-to-logic/)
+* [Unification in Chalk, part 1](http://smallcultfollowing.com/babysteps/blog/2017/03/25/unification-in-chalk-part-1/)
+* [Unification in Chalk, part 2](http://smallcultfollowing.com/babysteps/blog/2017/04/23/unification-in-chalk-part-2/)
+* [Negative reasoning in Chalk](http://aturon.github.io/blog/2017/04/24/negative-chalk/)
+* [Query structure in chalk](http://smallcultfollowing.com/babysteps/blog/2017/05/25/query-structure-in-chalk/)
+* [Cyclic queries in chalk](http://smallcultfollowing.com/babysteps/blog/2017/09/12/tabling-handling-cyclic-queries-in-chalk/)
+* [An on-demand SLG solver for chalk](http://smallcultfollowing.com/babysteps/blog/2018/01/31/an-on-demand-slg-solver-for-chalk/)
 
 [rustc-issues]: https://github.com/rust-lang-nursery/rustc-guide/issues
 [chalk]: https://github.com/rust-lang-nursery/chalk
