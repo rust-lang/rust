@@ -16,16 +16,7 @@ error[E0508]: cannot move out of type `[u8]`, a non-copy slice
 LL |     &X(*Y)
    |        ^^ cannot move out of here
 
-error[E0507]: cannot move out of data in a `&` reference
-  --> $DIR/issue-30355.rs:15:8
-   |
-LL |     &X(*Y)
-   |        ^^
-   |        |
-   |        cannot move out of data in a `&` reference
-   |        cannot move
+error: aborting due to 3 previous errors
 
-error: aborting due to 4 previous errors
-
-Some errors occurred: E0161, E0507, E0508.
+Some errors occurred: E0161, E0508.
 For more information about an error, try `rustc --explain E0161`.

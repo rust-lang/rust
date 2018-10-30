@@ -6,15 +6,6 @@ LL | fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
 LL |     id(Box::new(|| *v))
    |                    ^^ cannot move out of captured variable in an `FnMut` closure
 
-error[E0507]: cannot move out of `*v` which is behind a `&` reference
-  --> $DIR/issue-4335.rs:16:20
-   |
-LL |     id(Box::new(|| *v))
-   |                    ^^
-   |                    |
-   |                    cannot move out of `*v` which is behind a `&` reference
-   |                    cannot move
-
 error[E0373]: closure may outlive the current function, but it borrows `v`, which is owned by the current function
   --> $DIR/issue-4335.rs:16:17
    |
@@ -33,7 +24,7 @@ help: to force the closure to take ownership of `v` (and any other referenced va
 LL |     id(Box::new(move || *v))
    |                 ^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors occurred: E0373, E0507.
 For more information about an error, try `rustc --explain E0373`.

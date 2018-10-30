@@ -6,21 +6,6 @@ LL |     let i = box 3;
 LL |     let _f = to_fn(|| test(i)); //~ ERROR cannot move out
    |                            ^ cannot move out of captured variable in an `Fn` closure
 
-error[E0507]: cannot move out of `i`, as it is a captured variable in a `Fn` closure
-  --> $DIR/moves-based-on-type-move-out-of-closure-env-issue-1965.rs:21:28
-   |
-LL |     let _f = to_fn(|| test(i)); //~ ERROR cannot move out
-   |                            ^
-   |                            |
-   |                            cannot move out of `i`, as it is a captured variable in a `Fn` closure
-   |                            cannot move
-   |
-help: consider changing this to accept closures that implement `FnMut`
-  --> $DIR/moves-based-on-type-move-out-of-closure-env-issue-1965.rs:21:20
-   |
-LL |     let _f = to_fn(|| test(i)); //~ ERROR cannot move out
-   |                    ^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0507`.

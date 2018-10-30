@@ -180,9 +180,9 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
             AccessKind::Move => {
                 err = self.infcx.tcx
                     .cannot_move_out_of(span, &(item_msg + &reason), Origin::Mir);
-                act = "move";
-                acted_on = "moved";
-                span
+                err.span_label(span, "cannot move");
+                err.buffer(&mut self.errors_buffer);
+                return;
             }
             AccessKind::Mutate => {
                 err = self.infcx.tcx

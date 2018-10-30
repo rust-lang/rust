@@ -14,15 +14,6 @@ note: move occurs because `_x` has type `std::string::String`, which does not im
 LL | fn arg_item(&_x: &String) {}
    |              ^^
 
-error[E0507]: cannot move out of data in a `&` reference
-  --> $DIR/borrowck-move-in-irrefut-pat.rs:16:14
-   |
-LL | fn arg_item(&_x: &String) {}
-   |              ^^
-   |              |
-   |              cannot move out of data in a `&` reference
-   |              cannot move
-
 error[E0507]: cannot move out of borrowed content
   --> $DIR/borrowck-move-in-irrefut-pat.rs:21:11
    |
@@ -39,24 +30,6 @@ note: move occurs because `_x` has type `std::string::String`, which does not im
 LL |     with(|&_x| ())
    |            ^^
 
-error[E0507]: cannot move out of data in a `&` reference
-  --> $DIR/borrowck-move-in-irrefut-pat.rs:21:12
-   |
-LL |     with(|&_x| ())
-   |            ^^
-   |            |
-   |            cannot move out of data in a `&` reference
-   |            cannot move
-
-error[E0507]: cannot move out of data in a `&` reference
-  --> $DIR/borrowck-move-in-irrefut-pat.rs:27:10
-   |
-LL |     let &_x = &"hi".to_string();
-   |          ^^
-   |          |
-   |          cannot move out of data in a `&` reference
-   |          cannot move
-
 error[E0507]: cannot move out of borrowed content
   --> $DIR/borrowck-move-in-irrefut-pat.rs:27:15
    |
@@ -72,6 +45,6 @@ note: move occurs because `_x` has type `std::string::String`, which does not im
 LL |     let &_x = &"hi".to_string();
    |          ^^
 
-error: aborting due to 6 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0507`.
