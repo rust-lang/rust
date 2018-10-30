@@ -164,15 +164,13 @@ impl Layout {
     /// alignment. In other words, if `K` has size 16, `K.align_to(32)`
     /// will *still* have size 16.
     ///
-    /// # Panics
-    ///
-    /// Panics if the combination of `self.size()` and the given `align`
-    /// violates the conditions listed in
+    /// Returns an error if the combination of `self.size()` and the given
+    /// `align` violates the conditions listed in
     /// [`Layout::from_size_align`](#method.from_size_align).
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn align_to(&self, align: usize) -> Self {
-        Layout::from_size_align(self.size(), cmp::max(self.align(), align)).unwrap()
+    pub fn align_to(&self, align: usize) -> Result<Self, LayoutErr> {
+        Layout::from_size_align(self.size(), cmp::max(self.align(), align))
     }
 
     /// Returns the amount of padding we must insert after `self`
@@ -296,23 +294,14 @@ impl Layout {
     /// padding is inserted, the alignment of `next` is irrelevant,
     /// and is not incorporated *at all* into the resulting layout.
     ///
-    /// Returns `(k, offset)`, where `k` is layout of the concatenated
-    /// record and `offset` is the relative location, in bytes, of the
-    /// start of the `next` embedded within the concatenated record
-    /// (assuming that the record itself starts at offset 0).
-    ///
-    /// (The `offset` is always the same as `self.size()`; we use this
-    ///  signature out of convenience in matching the signature of
-    ///  `extend`.)
-    ///
     /// On arithmetic overflow, returns `LayoutErr`.
     #[unstable(feature = "allocator_api", issue = "32838")]
     #[inline]
-    pub fn extend_packed(&self, next: Self) -> Result<(Self, usize), LayoutErr> {
+    pub fn extend_packed(&self, next: Self) -> Result<Self, LayoutErr> {
         let new_size = self.size().checked_add(next.size())
             .ok_or(LayoutErr { private: () })?;
         let layout = Layout::from_size_align(new_size, self.align())?;
-        Ok((layout, self.size()))
+        Ok(layout)
     }
 
     /// Creates a layout describing the record for a `[T; n]`.
