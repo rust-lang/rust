@@ -693,6 +693,9 @@ impl<T> RawTable<T> {
     }
 }
 
+unsafe impl<T> Send for RawTable<T> where T: Send {}
+unsafe impl<T> Sync for RawTable<T> where T: Sync {}
+
 impl<T: Clone> Clone for RawTable<T> {
     fn clone(&self) -> Self {
         if self.bucket_mask == 0 {
@@ -785,6 +788,9 @@ pub struct RawIter<T> {
     items: usize,
 }
 
+unsafe impl<T> Send for RawIter<T> where T: Send {}
+unsafe impl<T> Sync for RawIter<T> where T: Sync {}
+
 impl<T> Clone for RawIter<T> {
     #[inline]
     fn clone(&self) -> Self {
@@ -850,6 +856,9 @@ impl<'a, T> RawIntoIter<T> {
     }
 }
 
+unsafe impl<T> Send for RawIntoIter<T> where T: Send {}
+unsafe impl<T> Sync for RawIntoIter<T> where T: Sync {}
+
 impl<T> Drop for RawIntoIter<T> {
     #[inline]
     fn drop(&mut self) {
@@ -900,6 +909,9 @@ impl<'a, T> RawDrain<'a, T> {
         self.iter.clone()
     }
 }
+
+unsafe impl<'a, T> Send for RawDrain<'a, T> where T: Send {}
+unsafe impl<'a, T> Sync for RawDrain<'a, T> where T: Sync {}
 
 impl<'a, T> Drop for RawDrain<'a, T> {
     #[inline]

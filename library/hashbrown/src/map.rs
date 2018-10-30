@@ -1143,6 +1143,9 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a, S: 'a> {
     table: &'a mut HashMap<K, V, S>,
 }
 
+unsafe impl<'a, K, V, S> Send for OccupiedEntry<'a, K, V, S> where K: Send, V: Send, S: Send {}
+unsafe impl<'a, K, V, S> Sync for OccupiedEntry<'a, K, V, S> where K: Sync, V: Sync, S: Sync {}
+
 impl<'a, K: 'a + Debug, V: 'a + Debug, S> Debug for OccupiedEntry<'a, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
