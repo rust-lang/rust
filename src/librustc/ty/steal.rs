@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use rustc_data_structures::sync::{RwLock, ReadGuard, MappedReadGuard};
-use std::mem;
 
 /// The `Steal` struct is intended to used as the value for a query.
 /// Specifically, we sometimes have queries (*cough* MIR *cough*)
@@ -51,7 +50,7 @@ impl<T> Steal<T> {
 
     pub fn steal(&self) -> T {
         let value_ref = &mut *self.value.try_write().expect("stealing value which is locked");
-        let value = mem::replace(value_ref, None);
+        let value = value_ref.take();
         value.expect("attempt to read from stolen value")
     }
 }
