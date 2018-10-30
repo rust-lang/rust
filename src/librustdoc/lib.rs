@@ -56,16 +56,11 @@ extern crate serialize as rustc_serialize; // used by deriving
 use std::default::Default;
 use std::env;
 use std::panic;
-use std::path::PathBuf;
 use std::process;
 use std::sync::mpsc::channel;
 
-use syntax::edition::Edition;
 use rustc::session::{early_warn, early_error};
-use rustc::session::search_paths::SearchPaths;
-use rustc::session::config::{ErrorOutputType, RustcOptGroup, Externs, CodegenOptions};
-use rustc_target::spec::TargetTriple;
-use rustc::session::config::get_cmd_lint_options;
+use rustc::session::config::{ErrorOutputType, RustcOptGroup};
 
 #[macro_use]
 mod externalfiles;
@@ -387,17 +382,23 @@ fn main_args(args: &[String]) -> isize {
                              options.codegen_options)
         }
         (false, true) => return markdown::render(&options.input, options.output,
-                                                 &matches,
+                                                 &options.markdown_css,
+                                                 options.markdown_playground_url
+                                                    .or(options.playground_url),
                                                  &options.external_html,
                                                  !options.markdown_no_toc, &diag),
         (false, false) => {}
     }
 
-    let res = acquire_input(options.input.clone(), options.externs.clone(), options.edition,
-                            options.codegen_options.clone(), matches, options.error_format,
-                            move |out, matches| {
+    //TODO: split render-time options into their own struct so i don't have to clone here
+    rust_input(options.clone(), move |out| {
         let Output { krate, passes, renderinfo } = out;
         info!("going to format");
+        let diag = core::new_handler(options.error_format,
+                                     None,
+                                     options.debugging_options.treat_err_as_bug,
+                                     options.debugging_options.ui_testing);
+        let html_opts = options.clone();
         html::render::run(krate, options.extern_html_root_urls, &options.external_html, options.playground_url,
                           options.output,
                           options.resource_suffix,
@@ -408,33 +409,11 @@ fn main_args(args: &[String]) -> isize {
                           options.themes,
                           options.enable_minification, options.id_map,
                           options.enable_index_page, options.index_page,
-                          &matches,
+                          html_opts,
                           &diag)
             .expect("failed to generate documentation");
         0
-    });
-    res.unwrap_or_else(|s| {
-        diag.struct_err(&format!("input error: {}", s)).emit();
-        1
     })
-}
-
-/// Looks inside the command line arguments to extract the relevant input format
-/// and files and then generates the necessary rustdoc output for formatting.
-fn acquire_input<R, F>(input: PathBuf,
-                       externs: Externs,
-                       edition: Edition,
-                       cg: CodegenOptions,
-                       matches: getopts::Matches,
-                       error_format: ErrorOutputType,
-                       f: F)
-                       -> Result<R, String>
-where R: 'static + Send, F: 'static + Send + FnOnce(Output, &getopts::Matches) -> R {
-    match matches.opt_str("r").as_ref().map(|s| &**s) {
-        Some("rust") => Ok(rust_input(input, externs, edition, cg, matches, error_format, f)),
-        Some(s) => Err(format!("unknown input format: {}", s)),
-        None => Ok(rust_input(input, externs, edition, cg, matches, error_format, f))
-    }
 }
 
 /// Interprets the input file as a rust source file, passing it through the
@@ -442,72 +421,36 @@ where R: 'static + Send, F: 'static + Send + FnOnce(Output, &getopts::Matches) -
 /// generated from the cleaned AST of the crate.
 ///
 /// This form of input will run all of the plug/cleaning passes
-fn rust_input<R, F>(cratefile: PathBuf,
-                    externs: Externs,
-                    edition: Edition,
-                    cg: CodegenOptions,
-                    matches: getopts::Matches,
-                    error_format: ErrorOutputType,
+fn rust_input<R, F>(options: config::Options,
                     f: F) -> R
 where R: 'static + Send,
-      F: 'static + Send + FnOnce(Output, &getopts::Matches) -> R
+      F: 'static + Send + FnOnce(Output) -> R
 {
-    let default_passes = if matches.opt_present("no-defaults") {
-        passes::DefaultPassOption::None
-    } else if matches.opt_present("document-private-items") {
-        passes::DefaultPassOption::Private
-    } else {
-        passes::DefaultPassOption::Default
-    };
-
-    let manual_passes = matches.opt_strs("passes");
-    let plugins = matches.opt_strs("plugins");
-
     // First, parse the crate and extract all relevant information.
-    let mut paths = SearchPaths::new();
-    for s in &matches.opt_strs("L") {
-        paths.add_path(s, ErrorOutputType::default());
-    }
-    let mut cfgs = matches.opt_strs("cfg");
-    cfgs.push("rustdoc".to_string());
-    let triple = matches.opt_str("target").map(|target| {
-        if target.ends_with(".json") {
-            TargetTriple::TargetPath(PathBuf::from(target))
-        } else {
-            TargetTriple::TargetTriple(target)
-        }
-    });
-    let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
-    let crate_name = matches.opt_str("crate-name");
-    let crate_version = matches.opt_str("crate-version");
-    let plugin_path = matches.opt_str("plugin-path");
-
     info!("starting to run rustc");
-    let display_warnings = matches.opt_present("display-warnings");
-
-    let force_unstable_if_unmarked = matches.opt_strs("Z").iter().any(|x| {
-        *x == "force-unstable-if-unmarked"
-    });
-    let treat_err_as_bug = matches.opt_strs("Z").iter().any(|x| {
-        *x == "treat-err-as-bug"
-    });
-    let ui_testing = matches.opt_strs("Z").iter().any(|x| {
-        *x == "ui-testing"
-    });
-
-    let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(&matches, error_format);
 
     let (tx, rx) = channel();
 
     let result = rustc_driver::monitor(move || syntax::with_globals(move || {
         use rustc::session::config::Input;
 
+        let paths = options.libs;
+        let cfgs = options.cfgs;
+        let triple = options.target;
+        let maybe_sysroot = options.maybe_sysroot;
+        let crate_name = options.crate_name;
+        let crate_version = options.crate_version;
+        let force_unstable_if_unmarked = options.debugging_options.force_unstable_if_unmarked;
+        let treat_err_as_bug = options.debugging_options.treat_err_as_bug;
+        let ui_testing = options.debugging_options.ui_testing;
+
         let (mut krate, renderinfo, passes) =
-            core::run_core(paths, cfgs, externs, Input::File(cratefile), triple, maybe_sysroot,
-                           display_warnings, crate_name.clone(),
-                           force_unstable_if_unmarked, edition, cg, error_format,
-                           lint_opts, lint_cap, describe_lints, manual_passes, default_passes,
-                           treat_err_as_bug, ui_testing);
+            core::run_core(paths, cfgs, options.externs, Input::File(options.input), triple, maybe_sysroot,
+                           options.display_warnings, crate_name.clone(),
+                           force_unstable_if_unmarked, options.edition, options.codegen_options, options.error_format,
+                           options.lint_opts, options.lint_cap, options.describe_lints,
+                           options.manual_passes, options.default_passes, treat_err_as_bug,
+                           ui_testing);
 
         info!("finished with rustc");
 
@@ -516,14 +459,6 @@ where R: 'static + Send,
         }
 
         krate.version = crate_version;
-
-        if !plugins.is_empty() {
-            eprintln!("WARNING: --plugins no longer functions; see CVE-2018-1000622");
-        }
-
-        if !plugin_path.is_none() {
-            eprintln!("WARNING: --plugin-path no longer functions; see CVE-2018-1000622");
-        }
 
         info!("Executing passes");
 
@@ -547,8 +482,7 @@ where R: 'static + Send,
             krate = pass(krate);
         }
 
-        tx.send(f(Output { krate: krate, renderinfo: renderinfo, passes: passes },
-                  &matches)).unwrap();
+        tx.send(f(Output { krate: krate, renderinfo: renderinfo, passes: passes })).unwrap();
     }));
 
     match result {

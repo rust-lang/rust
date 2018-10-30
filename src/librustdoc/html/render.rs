@@ -55,7 +55,6 @@ use std::rc::Rc;
 use externalfiles::ExternalHtml;
 
 use errors;
-use getopts;
 
 use serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
@@ -70,6 +69,7 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
 
 use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability};
+use config;
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
@@ -509,7 +509,7 @@ pub fn run(mut krate: clean::Crate,
            id_map: IdMap,
            enable_index_page: bool,
            index_page: Option<PathBuf>,
-           matches: &getopts::Matches,
+           options: config::Options,
            diag: &errors::Handler,
 ) -> Result<(), Error> {
     let src_root = match krate.src {
@@ -678,7 +678,7 @@ pub fn run(mut krate: clean::Crate,
     CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
     CURRENT_LOCATION_KEY.with(|s| s.borrow_mut().clear());
 
-    write_shared(&cx, &krate, &*cache, index, enable_minification, matches, diag)?;
+    write_shared(&cx, &krate, &*cache, index, enable_minification, &options, diag)?;
 
     // And finally render the whole crate's documentation
     cx.krate(krate)
@@ -760,7 +760,7 @@ fn write_shared(
     cache: &Cache,
     search_index: String,
     enable_minification: bool,
-    matches: &getopts::Matches,
+    options: &config::Options,
     diag: &errors::Handler,
 ) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
@@ -994,9 +994,11 @@ themePicker.onblur = handleThemeButtonsBlur;
         if let Some(ref index_page) = cx.index_page {
             ::markdown::render(index_page,
                                cx.dst.clone(),
-                               &matches, &(*cx.shared).layout.external_html,
-                               !matches.opt_present("markdown-no-toc"),
-                               diag);
+                               &options.markdown_css.clone(),
+                               options.markdown_playground_url.clone()
+                                   .or_else(|| options.playground_url.clone()),
+                               &(*cx.shared).layout.external_html,
+                               !options.markdown_no_toc, diag);
         } else {
             let dst = cx.dst.join("index.html");
             let mut w = BufWriter::new(try_err!(File::create(&dst), &dst));

@@ -32,6 +32,7 @@ use opts;
 use passes::{self, DefaultPassOption};
 use theme;
 
+#[derive(Clone)]
 pub struct Options {
     // Basic options / Options passed directly to rustc
 
@@ -330,6 +331,14 @@ impl Options {
             }
         };
 
+        match matches.opt_str("r").as_ref().map(|s| &**s) {
+            Some("rust") | None => {}
+            Some(s) => {
+                diag.struct_err(&format!("unknown input format: {}", s)).emit();
+                return Err(1);
+            }
+        }
+
         match matches.opt_str("w").as_ref().map(|s| &**s) {
             Some("html") | None => {}
             Some(s) => {
@@ -446,6 +455,19 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) 
             }
 
             err.emit();
+        }
+    }
+
+    let removed_flags = [
+        "plugins",
+        "plugin-path",
+    ];
+
+    for &flag in removed_flags.iter() {
+        if matches.opt_present(flag) {
+            diag.struct_warn(&format!("the '{}' flag no longer functions", flag))
+                .warn("see CVE-2018-1000622")
+                .emit();
         }
     }
 }

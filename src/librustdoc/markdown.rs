@@ -15,7 +15,6 @@ use std::path::{PathBuf, Path};
 use std::cell::RefCell;
 
 use errors;
-use getopts;
 use testing;
 use rustc::session::search_paths::SearchPaths;
 use rustc::session::config::{Externs, CodegenOptions};
@@ -51,13 +50,14 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
 
 /// Render `input` (e.g. "foo.md") into an HTML file in `output`
 /// (e.g. output = "bar" => "bar/foo.html").
-pub fn render(input: &Path, mut output: PathBuf, matches: &getopts::Matches,
-              external_html: &ExternalHtml, include_toc: bool, diag: &errors::Handler) -> isize {
+pub fn render(input: &Path, mut output: PathBuf, markdown_css: &[String],
+              playground_url: Option<String>, external_html: &ExternalHtml, include_toc: bool,
+              diag: &errors::Handler) -> isize {
     output.push(input.file_stem().unwrap());
     output.set_extension("html");
 
     let mut css = String::new();
-    for name in &matches.opt_strs("markdown-css") {
+    for name in markdown_css {
         let s = format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n", name);
         css.push_str(&s)
     }
@@ -67,8 +67,7 @@ pub fn render(input: &Path, mut output: PathBuf, matches: &getopts::Matches,
         Err(LoadStringError::ReadFail) => return 1,
         Err(LoadStringError::BadUtf8) => return 2,
     };
-    if let Some(playground) = matches.opt_str("markdown-playground-url").or(
-                              matches.opt_str("playground-url")) {
+    if let Some(playground) = playground_url {
         markdown::PLAYGROUND.with(|s| { *s.borrow_mut() = Some((None, playground)); });
     }
 
