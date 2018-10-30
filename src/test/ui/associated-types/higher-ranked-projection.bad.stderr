@@ -1,17 +1,24 @@
-error[E0271]: type mismatch resolving `for<'a> <&'a _ as Mirror>::Image == _`
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
   --> $DIR/higher-ranked-projection.rs:25:5
    |
 LL |     foo(());
-   |     ^^^ expected bound lifetime parameter 'a, found concrete lifetime
+   |     ^^^
    |
-note: required by `foo`
-  --> $DIR/higher-ranked-projection.rs:14:1
+   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U2, name: BrNamed(crate0:DefIndex(1:12), 'a) })...
+   = note: ...so that the types are compatible:
+           expected Mirror
+              found Mirror
+note: but, the lifetime must be valid for the expression at 25:5...
+  --> $DIR/higher-ranked-projection.rs:25:5
    |
-LL | / fn foo<U, T>(_t: T)
-LL | |     where for<'a> &'a T: Mirror<Image=U>
-LL | | {}
-   | |__^
+LL |     foo(());
+   |     ^^^
+note: ...so type `fn(()) {foo::<&(), ()>}` of expression is valid during the expression
+  --> $DIR/higher-ranked-projection.rs:25:5
+   |
+LL |     foo(());
+   |     ^^^
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0495`.

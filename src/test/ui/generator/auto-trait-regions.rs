@@ -27,7 +27,9 @@ fn main() {
         yield;
         assert_foo(x);
     };
-    assert_foo(gen); //~ ERROR the trait bound `No: Foo` is not satisfied
+    assert_foo(gen);
+    //~^ ERROR mismatched types
+    //~| ERROR mismatched types
 
     // Allow impls which matches any lifetime
     let x = &OnlyFooIfRef(No);
@@ -44,5 +46,7 @@ fn main() {
         yield;
         assert_foo(a);
     };
-    assert_foo(gen); //~ ERROR the requirement `for<'r, 's> 'r : 's` is not satisfied
+    assert_foo(gen);
+    //~^ ERROR E0495
+    //~| ERROR E0495
 }

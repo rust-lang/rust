@@ -1,17 +1,15 @@
-error[E0279]: the requirement `for<'de> 'de : ` is not satisfied (`expected bound lifetime parameter 'de, found concrete lifetime`)
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'de` due to conflicting requirements
   --> $DIR/issue-54302.rs:13:5
    |
 LL |     assert_deserialize_owned::<&'static str>();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: required because of the requirements on the impl of `for<'de> Deserialize<'de>` for `&'static str`
-   = note: required because of the requirements on the impl of `DeserializeOwned` for `&'static str`
-note: required by `main::assert_deserialize_owned`
-  --> $DIR/issue-54302.rs:12:5
-   |
-LL |     fn assert_deserialize_owned<T: DeserializeOwned>() {}
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U2, name: BrNamed(crate0:DefIndex(1:12), 'de) })...
+   = note: ...but the lifetime must also be valid for the static lifetime...
+   = note: ...so that the types are compatible:
+           expected Deserialize<'de>
+              found Deserialize<'_>
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0279`.
+For more information about this error, try `rustc --explain E0495`.

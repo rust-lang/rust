@@ -1,23 +1,22 @@
-error[E0277]: the trait bound `for<'a> T: Bar<&'a isize>` is not satisfied
+error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
   --> $DIR/hrtb-perfect-forwarding.rs:46:5
    |
-LL |     foo_hrtb_bar_not(&mut t); //~ ERROR `for<'a> T: Bar<&'a isize>` is not satisfied
-   |     ^^^^^^^^^^^^^^^^ the trait `for<'a> Bar<&'a isize>` is not implemented for `T`
+LL |     foo_hrtb_bar_not(&mut t); //~ ERROR E0495
+   |     ^^^^^^^^^^^^^^^^
    |
-   = help: consider adding a `where for<'a> T: Bar<&'a isize>` bound
-   = note: required because of the requirements on the impl of `for<'a> Foo<&'a isize>` for `&mut T`
-note: required by `foo_hrtb_bar_not`
-  --> $DIR/hrtb-perfect-forwarding.rs:39:1
+   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U2, name: BrNamed(crate0:DefIndex(1:23), 'a) })...
+   = note: ...so that the types are compatible:
+           expected Foo<&'a isize>
+              found Foo<&isize>
+note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 39:21...
+  --> $DIR/hrtb-perfect-forwarding.rs:39:21
    |
-LL | / fn foo_hrtb_bar_not<'b,T>(mut t: T)
-LL | |     where T : for<'a> Foo<&'a isize> + Bar<&'b isize>
-LL | | {
-LL | |     // Not OK -- The forwarding impl for `Foo` requires that `Bar` also
-...  |
-LL | |     foo_hrtb_bar_not(&mut t); //~ ERROR `for<'a> T: Bar<&'a isize>` is not satisfied
-LL | | }
-   | |_^
+LL | fn foo_hrtb_bar_not<'b,T>(mut t: T)
+   |                     ^^
+   = note: ...so that the types are compatible:
+           expected Bar<&isize>
+              found Bar<&'b isize>
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0495`.

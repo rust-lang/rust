@@ -1,20 +1,14 @@
-error[E0277]: the trait bound `for<'a> StaticInt: Foo<&'a isize>` is not satisfied
+error[E0308]: mismatched types
   --> $DIR/hrtb-just-for-static.rs:24:5
    |
-LL |     want_hrtb::<StaticInt>() //~ ERROR `for<'a> StaticInt: Foo<&'a isize>` is not satisfied
-   |     ^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'a> Foo<&'a isize>` is not implemented for `StaticInt`
+LL |     want_hrtb::<StaticInt>() //~ ERROR
+   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = help: the following implementations were found:
-             <StaticInt as Foo<&'static isize>>
-note: required by `want_hrtb`
-  --> $DIR/hrtb-just-for-static.rs:8:1
-   |
-LL | / fn want_hrtb<T>()
-LL | |     where T : for<'a> Foo<&'a isize>
-LL | | {
-LL | | }
-   | |_^
+   = note: expected type `Foo<&'a isize>`
+              found type `Foo<&'static isize>`
+   = note: lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:11), 'a) })...
+   = note: ...does not necessarily outlive the static lifetime
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0277`.
+For more information about this error, try `rustc --explain E0308`.
