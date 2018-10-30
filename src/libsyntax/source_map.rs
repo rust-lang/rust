@@ -110,11 +110,19 @@ pub struct StableSourceFileId(u128);
 
 impl StableSourceFileId {
     pub fn new(source_file: &SourceFile) -> StableSourceFileId {
+        StableFilemapId::new_from_pieces(&source_file.name,
+                                         source_file.name_was_remapped,
+                                         source_file.unmapped_path.as_ref())
+    }
+
+    pub fn new_from_pieces(name: &FileName,
+                           name_was_remapped: bool,
+                           unmapped_path: Option<&FileName>) -> StableFilemapId {
         let mut hasher = StableHasher::new();
 
-        source_file.name.hash(&mut hasher);
-        source_file.name_was_remapped.hash(&mut hasher);
-        source_file.unmapped_path.hash(&mut hasher);
+        name.hash(&mut hasher);
+        name_was_remapped.hash(&mut hasher);
+        unmapped_path.hash(&mut hasher);
 
         StableSourceFileId(hasher.finish())
     }
@@ -208,7 +216,8 @@ impl SourceMap {
     }
 
     /// Creates a new source_file.
-    /// This does not ensure that only one SourceFile exists per file name.
+    /// If a file already exists in the source_map with the same id, that file is returned
+    /// unmodified
     pub fn new_source_file(&self, filename: FileName, src: String) -> Lrc<SourceFile> {
         let start_pos = self.next_start_pos();
 
@@ -226,21 +235,30 @@ impl SourceMap {
             },
             other => (other, false),
         };
-        let source_file = Lrc::new(SourceFile::new(
-            filename,
-            was_remapped,
-            unmapped_path,
-            src,
-            Pos::from_usize(start_pos),
-        ));
 
-        let mut files = self.files.borrow_mut();
+        let file_id = StableFilemapId::new_from_pieces(&filename,
+                                                       was_remapped,
+                                                       Some(&unmapped_path));
 
-        files.source_files.push(source_file.clone());
-        files.stable_id_to_source_file.insert(StableSourceFileId::new(&source_file),
-                                              source_file.clone());
+        return match self.source_file_by_stable_id(file_id) {
+            Some(lrc_sf) => lrc_sf,
+            None => {
+                let source_file = Lrc::new(SourceFile::new(
+                    filename,
+                    was_remapped,
+                    unmapped_path,
+                    src,
+                    Pos::from_usize(start_pos),
+                ));
 
-        source_file
+                let mut files = self.files.borrow_mut();
+
+                files.source_files.push(source_file.clone());
+                files.stable_id_to_source_file.insert(file_id, source_file.clone());
+
+                source_file
+            }
+        }
     }
 
     /// Allocates a new SourceFile representing a source file from an external
