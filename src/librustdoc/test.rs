@@ -12,7 +12,7 @@ use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
 use std::io;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::panic::{self, AssertUnwindSafe};
 use std::process::Command;
 use std::str;
@@ -42,6 +42,7 @@ use errors;
 use errors::emitter::ColorConfig;
 
 use clean::Attributes;
+use config::Options;
 use html::markdown::{self, ErrorCodes, LangString};
 
 #[derive(Clone, Default)]
@@ -55,34 +56,23 @@ pub struct TestOptions {
     pub attrs: Vec<String>,
 }
 
-pub fn run(input_path: &Path,
-           cfgs: Vec<String>,
-           libs: SearchPaths,
-           externs: Externs,
-           mut test_args: Vec<String>,
-           crate_name: Option<String>,
-           maybe_sysroot: Option<PathBuf>,
-           display_warnings: bool,
-           linker: Option<PathBuf>,
-           edition: Edition,
-           cg: CodegenOptions)
-           -> isize {
-    let input = config::Input::File(input_path.to_owned());
+pub fn run(mut options: Options) -> isize {
+    let input = config::Input::File(options.input.clone());
 
     let sessopts = config::Options {
-        maybe_sysroot: maybe_sysroot.clone().or_else(
+        maybe_sysroot: options.maybe_sysroot.clone().or_else(
             || Some(env::current_exe().unwrap().parent().unwrap().parent().unwrap().to_path_buf())),
-        search_paths: libs.clone(),
+        search_paths: options.libs.clone(),
         crate_types: vec![config::CrateType::Dylib],
-        cg: cg.clone(),
-        externs: externs.clone(),
+        cg: options.codegen_options.clone(),
+        externs: options.externs.clone(),
         unstable_features: UnstableFeatures::from_environment(),
         lint_cap: Some(::rustc::lint::Level::Allow),
         actually_rustdoc: true,
         debugging_opts: config::DebuggingOptions {
             ..config::basic_debugging_options()
         },
-        edition,
+        edition: options.edition,
         ..config::Options::default()
     };
     driver::spawn_thread_pool(sessopts, |sessopts| {
@@ -93,13 +83,14 @@ pub fn run(input_path: &Path,
                                             Some(source_map.clone()));
 
         let mut sess = session::build_session_(
-            sessopts, Some(input_path.to_owned()), handler, source_map.clone(),
+            sessopts, Some(options.input), handler, source_map.clone(),
         );
         let codegen_backend = rustc_driver::get_codegen_backend(&sess);
         let cstore = CStore::new(codegen_backend.metadata_loader());
         rustc_lint::register_builtins(&mut sess.lint_store.borrow_mut(), Some(&sess));
 
-        let mut cfg = config::build_configuration(&sess, config::parse_cfgspecs(cfgs.clone()));
+        let mut cfg = config::build_configuration(&sess,
+                                                  config::parse_cfgspecs(options.cfgs.clone()));
         target_features::add_configuration(&mut cfg, &sess, &*codegen_backend);
         sess.parse_sess.config = cfg;
 
@@ -119,24 +110,24 @@ pub fn run(input_path: &Path,
             ).expect("phase_2_configure_and_expand aborted in rustdoc!")
         };
 
-        let crate_name = crate_name.unwrap_or_else(|| {
+        let crate_name = options.crate_name.unwrap_or_else(|| {
             ::rustc_codegen_utils::link::find_crate_name(None, &hir_forest.krate().attrs, &input)
         });
         let mut opts = scrape_test_config(hir_forest.krate());
-        opts.display_warnings |= display_warnings;
+        opts.display_warnings |= options.display_warnings;
         let mut collector = Collector::new(
             crate_name,
-            cfgs,
-            libs,
-            cg,
-            externs,
+            options.cfgs,
+            options.libs,
+            options.codegen_options,
+            options.externs,
             false,
             opts,
-            maybe_sysroot,
+            options.maybe_sysroot,
             Some(source_map),
-             None,
-            linker,
-            edition
+            None,
+            options.linker,
+            options.edition
         );
 
         {
@@ -153,11 +144,11 @@ pub fn run(input_path: &Path,
             });
         }
 
-        test_args.insert(0, "rustdoctest".to_string());
+        options.test_args.insert(0, "rustdoctest".to_string());
 
-        testing::test_main(&test_args,
+        testing::test_main(&options.test_args,
                         collector.tests.into_iter().collect(),
-                        testing::Options::new().display_output(display_warnings));
+                        testing::Options::new().display_output(options.display_warnings));
         0
     })
 }

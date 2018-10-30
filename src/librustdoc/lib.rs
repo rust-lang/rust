@@ -370,24 +370,9 @@ fn main_args(args: &[String]) -> isize {
                                  options.debugging_options.ui_testing);
 
     match (options.should_test, options.markdown_input()) {
-        (true, true) => {
-            return markdown::test(&options.input, options.cfgs, options.libs, options.externs,
-                                  options.test_args, options.maybe_sysroot,
-                                  options.display_warnings, options.linker, options.edition,
-                                  options.codegen_options, &diag)
-        }
-        (true, false) => {
-            return test::run(&options.input, options.cfgs, options.libs, options.externs,
-                             options.test_args, options.crate_name, options.maybe_sysroot,
-                             options.display_warnings, options.linker, options.edition,
-                             options.codegen_options)
-        }
-        (false, true) => return markdown::render(&options.input, options.render_options.output,
-                                                 &options.render_options.markdown_css,
-                                                 options.render_options.markdown_playground_url
-                                                    .or(options.render_options.playground_url),
-                                                 &options.render_options.external_html,
-                                                 !options.render_options.markdown_no_toc, &diag),
+        (true, true) => return markdown::test(options, &diag),
+        (true, false) => return test::run(options),
+        (false, true) => return markdown::render(options.input, options.render_options, &diag),
         (false, false) => {}
     }
 
@@ -401,19 +386,7 @@ fn main_args(args: &[String]) -> isize {
         info!("going to format");
         let (error_format, treat_err_as_bug, ui_testing) = diag_opts;
         let diag = core::new_handler(error_format, None, treat_err_as_bug, ui_testing);
-        let html_opts = renderopts.clone();
-        html::render::run(krate, renderopts.extern_html_root_urls, &renderopts.external_html,
-                          renderopts.playground_url,
-                          renderopts.output,
-                          renderopts.resource_suffix,
-                          passes.into_iter().collect(),
-                          renderopts.extension_css,
-                          renderinfo,
-                          renderopts.sort_modules_alphabetically,
-                          renderopts.themes,
-                          renderopts.enable_minification, renderopts.id_map,
-                          renderopts.enable_index_page, renderopts.index_page,
-                          html_opts, &diag)
+        html::render::run(krate, renderopts, passes.into_iter().collect(), renderinfo, &diag)
             .expect("failed to generate documentation");
         0
     })
@@ -424,8 +397,7 @@ fn main_args(args: &[String]) -> isize {
 /// generated from the cleaned AST of the crate.
 ///
 /// This form of input will run all of the plug/cleaning passes
-fn rust_input<R, F>(options: config::Options,
-                    f: F) -> R
+fn rust_input<R, F>(options: config::Options, f: F) -> R
 where R: 'static + Send,
       F: 'static + Send + FnOnce(Output) -> R
 {
@@ -435,25 +407,9 @@ where R: 'static + Send,
     let (tx, rx) = channel();
 
     let result = rustc_driver::monitor(move || syntax::with_globals(move || {
-        use rustc::session::config::Input;
-
-        let paths = options.libs;
-        let cfgs = options.cfgs;
-        let triple = options.target;
-        let maybe_sysroot = options.maybe_sysroot;
-        let crate_name = options.crate_name;
-        let crate_version = options.crate_version;
-        let force_unstable_if_unmarked = options.debugging_options.force_unstable_if_unmarked;
-        let treat_err_as_bug = options.debugging_options.treat_err_as_bug;
-        let ui_testing = options.debugging_options.ui_testing;
-
-        let (mut krate, renderinfo, passes) =
-            core::run_core(paths, cfgs, options.externs, Input::File(options.input), triple, maybe_sysroot,
-                           options.display_warnings, crate_name.clone(),
-                           force_unstable_if_unmarked, options.edition, options.codegen_options, options.error_format,
-                           options.lint_opts, options.lint_cap, options.describe_lints,
-                           options.manual_passes, options.default_passes, treat_err_as_bug,
-                           ui_testing);
+        let crate_name = options.crate_name.clone();
+        let crate_version = options.crate_version.clone();
+        let (mut krate, renderinfo, renderopts, passes) = core::run_core(options);
 
         info!("finished with rustc");
 
@@ -488,7 +444,7 @@ where R: 'static + Send,
         tx.send(f(Output {
             krate: krate,
             renderinfo: renderinfo,
-            renderopts: options.render_options,
+            renderopts,
             passes: passes
         })).unwrap();
     }));
