@@ -1,37 +1,50 @@
-error[E0277]: the trait bound `No: Foo` is not satisfied in `[generator@$DIR/auto-trait-regions.rs:25:15: 29:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`
+error[E0308]: mismatched types
   --> $DIR/auto-trait-regions.rs:30:5
    |
-LL |     assert_foo(gen); //~ ERROR the trait bound `No: Foo` is not satisfied
-   |     ^^^^^^^^^^ within `[generator@$DIR/auto-trait-regions.rs:25:15: 29:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`, the trait `Foo` is not implemented for `No`
+LL |     assert_foo(gen);
+   |     ^^^^^^^^^^ lifetime mismatch
    |
-   = help: the following implementations were found:
-             <No as Foo>
-   = note: required because it appears within the type `OnlyFooIfStaticRef`
-   = note: required because it appears within the type `&OnlyFooIfStaticRef`
-   = note: required because it appears within the type `for<'r> {&'r OnlyFooIfStaticRef, ()}`
-   = note: required because it appears within the type `[generator@$DIR/auto-trait-regions.rs:25:15: 29:6 x:&&OnlyFooIfStaticRef for<'r> {&'r OnlyFooIfStaticRef, ()}]`
-note: required by `assert_foo`
-  --> $DIR/auto-trait-regions.rs:20:1
-   |
-LL | fn assert_foo<T: Foo>(f: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected type `Foo`
+              found type `Foo`
+   = note: lifetime RePlaceholder(Placeholder { universe: U31, name: BrAnon(1) })...
+   = note: ...does not necessarily outlive the static lifetime
 
-error[E0279]: the requirement `for<'r, 's> 'r : 's` is not satisfied (`expected bound lifetime parameter, found concrete lifetime`)
-  --> $DIR/auto-trait-regions.rs:47:5
+error[E0308]: mismatched types
+  --> $DIR/auto-trait-regions.rs:30:5
    |
-LL |     assert_foo(gen); //~ ERROR the requirement `for<'r, 's> 'r : 's` is not satisfied
+LL |     assert_foo(gen);
+   |     ^^^^^^^^^^ lifetime mismatch
+   |
+   = note: expected type `Foo`
+              found type `Foo`
+   = note: lifetime RePlaceholder(Placeholder { universe: U35, name: BrAnon(1) })...
+   = note: ...does not necessarily outlive the static lifetime
+
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements
+  --> $DIR/auto-trait-regions.rs:49:5
+   |
+LL |     assert_foo(gen);
    |     ^^^^^^^^^^
    |
-   = note: required because of the requirements on the impl of `for<'r, 's> Foo` for `A<'_, '_>`
-   = note: required because it appears within the type `for<'r, 's> {A<'r, 's>, ()}`
-   = note: required because it appears within the type `[generator@$DIR/auto-trait-regions.rs:42:15: 46:6 for<'r, 's> {A<'r, 's>, ()}]`
-note: required by `assert_foo`
-  --> $DIR/auto-trait-regions.rs:20:1
+   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U47, name: BrAnon(2) })...
+   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U47, name: BrAnon(1) })...
+   = note: ...so that the types are compatible:
+           expected Foo
+              found Foo
+
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements
+  --> $DIR/auto-trait-regions.rs:49:5
    |
-LL | fn assert_foo<T: Foo>(f: T) {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     assert_foo(gen);
+   |     ^^^^^^^^^^
+   |
+   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U51, name: BrAnon(2) })...
+   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U51, name: BrAnon(1) })...
+   = note: ...so that the types are compatible:
+           expected Foo
+              found Foo
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 
-Some errors occurred: E0277, E0279.
-For more information about an error, try `rustc --explain E0277`.
+Some errors occurred: E0308, E0495.
+For more information about an error, try `rustc --explain E0308`.

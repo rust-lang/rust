@@ -21,7 +21,7 @@ fn give_any() {
 struct StaticInt;
 impl Foo<&'static isize> for StaticInt { }
 fn give_static() {
-    want_hrtb::<StaticInt>() //~ ERROR `for<'a> StaticInt: Foo<&'a isize>` is not satisfied
+    want_hrtb::<StaticInt>() //~ ERROR
 }
 
 fn main() { }
