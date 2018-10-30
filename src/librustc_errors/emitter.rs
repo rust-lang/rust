@@ -120,7 +120,7 @@ impl ColorConfig {
 
 pub struct EmitterWriter {
     dst: Destination,
-    cm: Option<Lrc<SourceMapperDyn>>,
+    sm: Option<Lrc<SourceMapperDyn>>,
     short_message: bool,
     teach: bool,
     ui_testing: bool,
@@ -134,14 +134,14 @@ struct FileWithAnnotatedLines {
 
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
-                  code_map: Option<Lrc<SourceMapperDyn>>,
+                  source_map: Option<Lrc<SourceMapperDyn>>,
                   short_message: bool,
                   teach: bool)
                   -> EmitterWriter {
         let dst = Destination::from_stderr(color_config);
         EmitterWriter {
             dst,
-            cm: code_map,
+            sm: source_map,
             short_message,
             teach,
             ui_testing: false,
@@ -149,13 +149,13 @@ impl EmitterWriter {
     }
 
     pub fn new(dst: Box<dyn Write + Send>,
-               code_map: Option<Lrc<SourceMapperDyn>>,
+               source_map: Option<Lrc<SourceMapperDyn>>,
                short_message: bool,
                teach: bool)
                -> EmitterWriter {
         EmitterWriter {
             dst: Raw(dst),
-            cm: code_map,
+            sm: source_map,
             short_message,
             teach,
             ui_testing: false,
@@ -214,14 +214,14 @@ impl EmitterWriter {
         let mut output = vec![];
         let mut multiline_annotations = vec![];
 
-        if let Some(ref cm) = self.cm {
+        if let Some(ref sm) = self.sm {
             for span_label in msp.span_labels() {
                 if span_label.span.is_dummy() {
                     continue;
                 }
 
-                let lo = cm.lookup_char_pos(span_label.span.lo());
-                let mut hi = cm.lookup_char_pos(span_label.span.hi());
+                let lo = sm.lookup_char_pos(span_label.span.lo());
+                let mut hi = sm.lookup_char_pos(span_label.span.hi());
 
                 // Watch out for "empty spans". If we get a span like 6..6, we
                 // want to just display a `^` at 6, so convert that to
@@ -724,10 +724,10 @@ impl EmitterWriter {
 
     fn get_multispan_max_line_num(&mut self, msp: &MultiSpan) -> usize {
         let mut max = 0;
-        if let Some(ref cm) = self.cm {
+        if let Some(ref sm) = self.sm {
             for primary_span in msp.primary_spans() {
                 if !primary_span.is_dummy() {
-                    let hi = cm.lookup_char_pos(primary_span.hi());
+                    let hi = sm.lookup_char_pos(primary_span.hi());
                     if hi.line > max {
                         max = hi.line;
                     }
@@ -736,7 +736,7 @@ impl EmitterWriter {
             if !self.short_message {
                 for span_label in msp.span_labels() {
                     if !span_label.span.is_dummy() {
-                        let hi = cm.lookup_char_pos(span_label.span.hi());
+                        let hi = sm.lookup_char_pos(span_label.span.hi());
                         if hi.line > max {
                             max = hi.line;
                         }
@@ -768,7 +768,7 @@ impl EmitterWriter {
                                    always_backtrace: bool) -> bool {
         let mut spans_updated = false;
 
-        if let Some(ref cm) = self.cm {
+        if let Some(ref sm) = self.sm {
             let mut before_after: Vec<(Span, Span)> = vec![];
             let mut new_labels: Vec<(Span, String)> = vec![];
 
@@ -777,7 +777,7 @@ impl EmitterWriter {
                 if sp.is_dummy() {
                     continue;
                 }
-                let call_sp = cm.call_span_if_macro(*sp);
+                let call_sp = sm.call_span_if_macro(*sp);
                 if call_sp != *sp && !always_backtrace {
                     before_after.push((*sp, call_sp));
                 }
@@ -802,7 +802,7 @@ impl EmitterWriter {
                                                      })));
                         }
                         // Check to make sure we're not in any <*macros>
-                        if !cm.span_to_filename(def_site).is_macros() &&
+                        if !sm.span_to_filename(def_site).is_macros() &&
                            !trace.macro_decl_name.starts_with("desugaring of ") &&
                            !trace.macro_decl_name.starts_with("#[") ||
                            always_backtrace {
@@ -829,7 +829,7 @@ impl EmitterWriter {
                 if sp_label.span.is_dummy() {
                     continue;
                 }
-                if cm.span_to_filename(sp_label.span.clone()).is_macros() &&
+                if sm.span_to_filename(sp_label.span.clone()).is_macros() &&
                     !always_backtrace
                 {
                     let v = sp_label.span.macro_backtrace();
@@ -1000,10 +1000,10 @@ impl EmitterWriter {
         let mut annotated_files = self.preprocess_annotations(msp);
 
         // Make sure our primary file comes first
-        let (primary_lo, cm) = if let (Some(cm), Some(ref primary_span)) =
-            (self.cm.as_ref(), msp.primary_span().as_ref()) {
+        let (primary_lo, sm) = if let (Some(sm), Some(ref primary_span)) =
+            (self.sm.as_ref(), msp.primary_span().as_ref()) {
             if !primary_span.is_dummy() {
-                (cm.lookup_char_pos(primary_span.lo()), cm)
+                (sm.lookup_char_pos(primary_span.lo()), sm)
             } else {
                 emit_to_destination(&buffer.render(), level, &mut self.dst, self.short_message)?;
                 return Ok(());
@@ -1021,7 +1021,7 @@ impl EmitterWriter {
         // Print out the annotate source lines that correspond with the error
         for annotated_file in annotated_files {
             // we can't annotate anything if the source is unavailable.
-            if !cm.ensure_source_file_source_present(annotated_file.file.clone()) {
+            if !sm.ensure_source_file_source_present(annotated_file.file.clone()) {
                 continue;
             }
 
@@ -1038,7 +1038,7 @@ impl EmitterWriter {
                     buffer.append(buffer_msg_line_offset,
                                   &format!("{}:{}:{}",
                                            loc.file.name,
-                                           cm.doctest_offset_line(loc.line),
+                                           sm.doctest_offset_line(loc.line),
                                            loc.col.0 + 1),
                                   Style::LineAndColumn);
                     for _ in 0..max_line_num_len {
@@ -1048,7 +1048,7 @@ impl EmitterWriter {
                     buffer.prepend(0,
                                    &format!("{}:{}:{}: ",
                                             loc.file.name,
-                                            cm.doctest_offset_line(loc.line),
+                                            sm.doctest_offset_line(loc.line),
                                             loc.col.0 + 1),
                                    Style::LineAndColumn);
                 }
@@ -1069,7 +1069,7 @@ impl EmitterWriter {
                     };
                     format!("{}:{}{}",
                             annotated_file.file.name,
-                            cm.doctest_offset_line(first_line.line_index),
+                            sm.doctest_offset_line(first_line.line_index),
                             col)
                 } else {
                     annotated_file.file.name.to_string()
@@ -1194,7 +1194,7 @@ impl EmitterWriter {
                                level: &Level,
                                max_line_num_len: usize)
                                -> io::Result<()> {
-        if let Some(ref cm) = self.cm {
+        if let Some(ref sm) = self.sm {
             let mut buffer = StyledBuffer::new();
 
             // Render the suggestion message
@@ -1210,7 +1210,7 @@ impl EmitterWriter {
                                Some(Style::HeaderMsg));
 
             // Render the replacements for each suggestion
-            let suggestions = suggestion.splice_lines(&**cm);
+            let suggestions = suggestion.splice_lines(&**sm);
 
             let mut row_num = 2;
             for &(ref complete, ref parts) in suggestions.iter().take(MAX_SUGGESTIONS) {
@@ -1221,11 +1221,11 @@ impl EmitterWriter {
                     && parts[0].snippet.trim() == complete.trim())
                     && complete.lines().count() == 1;
 
-                let lines = cm.span_to_lines(parts[0].span).unwrap();
+                let lines = sm.span_to_lines(parts[0].span).unwrap();
 
                 assert!(!lines.lines.is_empty());
 
-                let line_start = cm.lookup_char_pos(parts[0].span.lo()).line;
+                let line_start = sm.lookup_char_pos(parts[0].span.lo()).line;
                 draw_col_separator_no_space(&mut buffer, 1, max_line_num_len + 1);
                 let mut line_pos = 0;
                 let mut lines = complete.lines();
@@ -1250,8 +1250,8 @@ impl EmitterWriter {
                 if show_underline {
                     draw_col_separator(&mut buffer, row_num, max_line_num_len + 1);
                     for part in parts {
-                        let span_start_pos = cm.lookup_char_pos(part.span.lo()).col_display;
-                        let span_end_pos = cm.lookup_char_pos(part.span.hi()).col_display;
+                        let span_start_pos = sm.lookup_char_pos(part.span.lo()).col_display;
+                        let span_end_pos = sm.lookup_char_pos(part.span.hi()).col_display;
 
                         // Do not underline the leading...
                         let start = part.snippet.len()

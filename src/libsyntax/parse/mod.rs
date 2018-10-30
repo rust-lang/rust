@@ -57,7 +57,7 @@ pub struct ParseSess {
     pub non_modrs_mods: Lock<Vec<(ast::Ident, Span)>>,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: Lock<Vec<PathBuf>>,
-    code_map: Lrc<SourceMap>,
+    source_map: Lrc<SourceMap>,
     pub buffered_lints: Lock<Vec<BufferedEarlyLint>>,
 }
 
@@ -71,7 +71,7 @@ impl ParseSess {
         ParseSess::with_span_handler(handler, cm)
     }
 
-    pub fn with_span_handler(handler: Handler, code_map: Lrc<SourceMap>) -> ParseSess {
+    pub fn with_span_handler(handler: Handler, source_map: Lrc<SourceMap>) -> ParseSess {
         ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
@@ -80,14 +80,14 @@ impl ParseSess {
             raw_identifier_spans: Lock::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
             included_mod_stack: Lock::new(vec![]),
-            code_map,
+            source_map,
             non_modrs_mods: Lock::new(vec![]),
             buffered_lints: Lock::new(vec![]),
         }
     }
 
     pub fn source_map(&self) -> &SourceMap {
-        &self.code_map
+        &self.source_map
     }
 
     pub fn buffer_lint<S: Into<MultiSpan>>(&self,

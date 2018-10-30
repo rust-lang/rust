@@ -36,9 +36,9 @@ pub fn analyze_source_file(
     // it encounters. If that point is already outside the source_file, remove
     // it again.
     if let Some(&last_line_start) = lines.last() {
-        let file_map_end = source_file_start_pos + BytePos::from_usize(src.len());
-        assert!(file_map_end >= last_line_start);
-        if last_line_start == file_map_end {
+        let source_file_end = source_file_start_pos + BytePos::from_usize(src.len());
+        assert!(source_file_end >= last_line_start);
+        if last_line_start == source_file_end {
             lines.pop();
         }
     }

@@ -25,7 +25,7 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
 use session::{CrateDisambiguator, Session};
 use std::mem;
 use syntax::ast::NodeId;
-use syntax::source_map::{SourceMap, StableFilemapId};
+use syntax::source_map::{SourceMap, StableSourceFileId};
 use syntax_pos::{BytePos, Span, DUMMY_SP, SourceFile};
 use syntax_pos::hygiene::{Mark, SyntaxContext, ExpnInfo};
 use ty;
@@ -62,7 +62,7 @@ pub struct OnDiskCache<'sess> {
     cnum_map: Once<IndexVec<CrateNum, Option<CrateNum>>>,
 
     source_map: &'sess SourceMap,
-    file_index_to_stable_id: FxHashMap<SourceFileIndex, StableFilemapId>,
+    file_index_to_stable_id: FxHashMap<SourceFileIndex, StableSourceFileId>,
 
     // These two fields caches that are populated lazily during decoding.
     file_index_to_file: Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
@@ -82,7 +82,7 @@ pub struct OnDiskCache<'sess> {
 // This type is used only for (de-)serialization.
 #[derive(RustcEncodable, RustcDecodable)]
 struct Footer {
-    file_index_to_stable_id: FxHashMap<SourceFileIndex, StableFilemapId>,
+    file_index_to_stable_id: FxHashMap<SourceFileIndex, StableSourceFileId>,
     prev_cnums: Vec<(u32, String, CrateDisambiguator)>,
     query_result_index: EncodedQueryResultIndex,
     diagnostics_index: EncodedQueryResultIndex,
@@ -181,7 +181,7 @@ impl<'sess> OnDiskCache<'sess> {
                     let index = SourceFileIndex(index as u32);
                     let file_ptr: *const SourceFile = &**file as *const _;
                     file_to_file_index.insert(file_ptr, index);
-                    file_index_to_stable_id.insert(index, StableFilemapId::new(&file));
+                    file_index_to_stable_id.insert(index, StableSourceFileId::new(&file));
                 }
 
                 (file_to_file_index, file_index_to_stable_id)
@@ -473,7 +473,7 @@ struct CacheDecoder<'a, 'tcx: 'a, 'x> {
     cnum_map: &'x IndexVec<CrateNum, Option<CrateNum>>,
     synthetic_expansion_infos: &'x Lock<FxHashMap<AbsoluteBytePos, SyntaxContext>>,
     file_index_to_file: &'x Lock<FxHashMap<SourceFileIndex, Lrc<SourceFile>>>,
-    file_index_to_stable_id: &'x FxHashMap<SourceFileIndex, StableFilemapId>,
+    file_index_to_stable_id: &'x FxHashMap<SourceFileIndex, StableSourceFileId>,
     alloc_decoding_session: AllocDecodingSession<'x>,
 }
 
