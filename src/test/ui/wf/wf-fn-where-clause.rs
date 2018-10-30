@@ -10,7 +10,7 @@
 
 // Test that we check where-clauses on fn items.
 
-#![feature(rustc_attrs)]
+
 #![allow(dead_code)]
 
 trait ExtraCopy<T:Copy> { }
@@ -23,5 +23,5 @@ fn bar() where Vec<dyn Copy>:, {}
 //~^ ERROR E0277
 //~| ERROR E0038
 
-#[rustc_error]
+
 fn main() { }

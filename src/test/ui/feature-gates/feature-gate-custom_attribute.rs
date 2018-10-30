@@ -10,7 +10,7 @@
 
 // Check that literals in attributes parse just fine.
 
-#![feature(rustc_attrs)]
+
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
@@ -29,5 +29,5 @@
 #[fake_doc(r"doc")] //~ ERROR attribute `fake_doc` is currently unknown
 struct Q {  }
 
-#[rustc_error]
+
 fn main() { }

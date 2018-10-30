@@ -11,7 +11,7 @@
 // Test that we check associated type default values for WFedness.
 
 #![feature(associated_type_defaults)]
-#![feature(rustc_attrs)]
+
 #![allow(dead_code)]
 
 struct IsCopy<T:Copy> { x: T }
@@ -22,5 +22,5 @@ trait SomeTrait {
     //~^ ERROR E0277
 }
 
-#[rustc_error]
+
 fn main() { }

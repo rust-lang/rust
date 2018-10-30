@@ -13,7 +13,7 @@
 //
 // Rule OutlivesNominalType from RFC 1214.
 
-#![feature(rustc_attrs)]
+
 #![allow(dead_code)]
 
 mod rev_variant_struct_region {
@@ -28,5 +28,5 @@ mod rev_variant_struct_region {
     }
 }
 
-#[rustc_error]
+
 fn main() { }

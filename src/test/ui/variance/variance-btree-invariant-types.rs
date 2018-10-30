@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+
 
 use std::collections::btree_map::{IterMut, OccupiedEntry, VacantEntry};
 
@@ -59,5 +59,5 @@ fn vac_contra_val<'a, 'new>(v: VacantEntry<'a, (), &'new ()>)
     v //~ ERROR mismatched types
 }
 
-#[rustc_error]
+
 fn main() { }

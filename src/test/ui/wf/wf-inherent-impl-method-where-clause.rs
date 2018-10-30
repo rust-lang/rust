@@ -11,7 +11,7 @@
 // Test that we check where-clauses on inherent impl methods.
 
 #![feature(associated_type_defaults)]
-#![feature(rustc_attrs)]
+
 #![allow(dead_code)]
 
 trait ExtraCopy<T:Copy> { }
@@ -23,5 +23,5 @@ impl<T,U> Foo<T,U> {
     {}
 }
 
-#[rustc_error]
+
 fn main() { }

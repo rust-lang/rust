@@ -10,7 +10,7 @@
 
 // Check that we test WF conditions for fn where clauses in a trait definition.
 
-#![feature(rustc_attrs)]
+
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
@@ -23,5 +23,5 @@ trait Foo {
         // Here, Eq ought to be implemented.
 }
 
-#[rustc_error]
+
 fn main() { }

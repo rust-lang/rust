@@ -15,7 +15,7 @@
 
 #![allow(dead_code)]
 #![allow(unused_variables)]
-#![feature(rustc_attrs)]
+
 
 extern crate lifetime_bound_will_change_warning_lib as lib;
 
@@ -59,6 +59,6 @@ fn test3cc<'a>(x: &'a Box<Fn()+'static>) {
     lib::ref_obj(x)
 }
 
-#[rustc_error]
+
 fn main() {
 }
