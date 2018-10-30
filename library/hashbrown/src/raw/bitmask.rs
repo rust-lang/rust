@@ -1,3 +1,7 @@
+#[cfg(not(feature = "nightly"))]
+use core::hint;
+#[cfg(feature = "nightly")]
+use core::intrinsics;
 use raw::imp::{BitMaskWord, BITMASK_MASK, BITMASK_SHIFT};
 
 /// A bit mask which contains the result of a `Match` operation on a `Group` and
@@ -36,6 +40,18 @@ impl BitMask {
         } else {
             Some(self.trailing_zeros())
         }
+    }
+
+    /// Returns the first set bit in the `BitMask`, if there is one. The
+    /// bitmask must not be empty.
+    #[inline]
+    #[cfg(feature = "nightly")]
+    pub unsafe fn lowest_set_bit_nonzero(self) -> usize {
+        intrinsics::cttz_nonzero(self.0) as usize >> BITMASK_SHIFT
+    }
+    #[cfg(not(feature = "nightly"))]
+    pub unsafe fn lowest_set_bit_nonzero(self) -> usize {
+        self.trailing_zeros()
     }
 
     /// Returns the number of trailing zeroes in the `BitMask`.
