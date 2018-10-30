@@ -11,8 +11,8 @@ os:
 - osx
 
 before_script:
-# mac os weirdness (https://github.com/travis-ci/travis-ci/issues/6307)
-- rvm get stable
+# macOS weirdness (https://github.com/travis-ci/travis-ci/issues/6307)
+- if [[ "$TRAVIS_OS_NAME" == osx ]]; then rvm get stable; fi
 # Compute the rust version we use. We do not use "language: rust" to have more control here.
 - |
   if [ "$TRAVIS_EVENT_TYPE" = cron ]; then

@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 '''
 Test whether cargo-miri works properly.
 Assumes the `MIRI_SYSROOT` env var to be set appropriately,
