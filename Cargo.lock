@@ -661,7 +661,7 @@ dependencies = [
  "serde_json 1.0.32 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempdir 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "text_unit 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "text_unit 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "url_serde 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir 2.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -675,6 +675,7 @@ dependencies = [
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "rowan 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "test_utils 0.1.0",
+ "text_unit 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "walkdir 2.2.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -798,7 +799,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "smol_str 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "text_unit 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "text_unit 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -1038,12 +1039,12 @@ version = "0.1.0"
 dependencies = [
  "difference 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "itertools 0.7.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "text_unit 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "text_unit 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "text_unit"
-version = "0.1.4"
+version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1372,7 +1373,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum tera 0.11.18 (registry+https://github.com/rust-lang/crates.io-index)" = "6c87cae42cc4fc480278c7583792cc5da2d51a25be916b7921cbb45c43063b8d"
 "checksum teraron 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "0d89ad4617d1dec55331067fadaa041e813479e1779616f3d3ce9308bf46184e"
 "checksum termion 1.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "689a3bdfaab439fd92bc87df5c4c78417d3cbe537487274e9b0b2dce76e92096"
-"checksum text_unit 0.1.4 (registry+https://github.com/rust-lang/crates.io-index)" = "93fc86da66d0b9aa8d359b0ec31b4342c6bc52637eadef05b91b098551a9f8e9"
+"checksum text_unit 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)" = "8009d7bdbd896a7e09b595f8f9325a19047fc708653e60d0895202b82135048f"
 "checksum textwrap 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)" = "307686869c93e71f94da64286f9a9524c0f308a9e1c87a583de8e9c9039ad3f6"
 "checksum thread_local 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"
 "checksum time 0.1.40 (registry+https://github.com/rust-lang/crates.io-index)" = "d825be0eb33fda1a7e68012d51e9c7f451dc1a69391e7fdc197060bb8c56667b"
