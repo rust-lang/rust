@@ -13,7 +13,7 @@ use crate::{
 };
 
 use super::{
-    ModuleData, ModuleTree, ModuleId, LinkId, LinkData, Problem, ModulesDatabase
+    ModuleData, ModuleTree, ModuleId, LinkId, LinkData, Problem, ModulesDatabase, ModuleScope
 };
 
 
@@ -33,6 +33,18 @@ pub(super) fn modules(root: ast::Root<'_>) -> impl Iterator<Item = (SmolStr, ast
         }
         Some((name, module))
     })
+}
+
+pub(super) fn module_scope(
+    db: &impl ModulesDatabase,
+    source_root_id: SourceRootId,
+    module_id: ModuleId,
+) -> Cancelable<Arc<ModuleScope>> {
+    let tree = db.module_tree(source_root_id)?;
+    let file_id = module_id.file_id(&tree);
+    let syntax = db.file_syntax(file_id);
+    let res = ModuleScope::new(&syntax);
+    Ok(Arc::new(res))
 }
 
 pub(super) fn module_tree(

@@ -1,4 +1,5 @@
 mod imp;
+pub(crate) mod scope;
 
 use std::sync::Arc;
 
@@ -11,6 +12,8 @@ use crate::{
     input::SourceRootId,
 };
 
+pub(crate) use self::scope::ModuleScope;
+
 salsa::query_group! {
     pub(crate) trait ModulesDatabase: SyntaxDatabase {
         fn module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
@@ -20,6 +23,10 @@ salsa::query_group! {
         fn submodules(file_id: FileId) -> Cancelable<Arc<Vec<SmolStr>>> {
             type SubmodulesQuery;
             use fn imp::submodules;
+        }
+        fn module_scope(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleScope>> {
+            type ModuleScopeQuery;
+            use fn imp::module_scope;
         }
     }
 }
@@ -78,6 +85,7 @@ impl ModuleId {
         while let Some(next) = curr.parent(tree) {
             curr = next;
             i += 1;
+            // simplistic cycle detection
             if i > 100 {
                 return self;
             }

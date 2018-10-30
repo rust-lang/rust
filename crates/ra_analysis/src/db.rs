@@ -9,8 +9,9 @@ use salsa;
 use crate::{
     db,
     Cancelable, Canceled,
-    descriptors::module::{SubmodulesQuery, ModuleTreeQuery, ModulesDatabase},
+    descriptors::module::{SubmodulesQuery, ModuleTreeQuery, ModulesDatabase, ModuleScopeQuery},
     symbol_index::SymbolIndex,
+    syntax_ptr::{SyntaxPtrDatabase, ResolveSyntaxPtrQuery},
     FileId,
 };
 
@@ -65,6 +66,10 @@ salsa::database_storage! {
         impl ModulesDatabase {
             fn module_tree() for ModuleTreeQuery;
             fn module_descriptor() for SubmodulesQuery;
+            fn module_scope() for ModuleScopeQuery;
+        }
+        impl SyntaxPtrDatabase {
+            fn resolve_syntax_ptr() for ResolveSyntaxPtrQuery;
         }
     }
 }

@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use ra_syntax::{
     File, TextRange, SyntaxKind, SyntaxNode, SyntaxNodeRef,
     ast::{self, AstNode},
@@ -6,10 +8,24 @@ use ra_syntax::{
 use crate::FileId;
 use crate::db::SyntaxDatabase;
 
+salsa::query_group! {
+    pub(crate) trait SyntaxPtrDatabase: SyntaxDatabase {
+        fn resolve_syntax_ptr(ptr: SyntaxPtr) -> SyntaxNode {
+            type ResolveSyntaxPtrQuery;
+            storage volatile;
+        }
+    }
+}
+
+fn resolve_syntax_ptr(db: &impl SyntaxDatabase, ptr: SyntaxPtr) -> SyntaxNode {
+    let syntax = db.file_syntax(ptr.file_id);
+    ptr.local.resolve(&syntax)
+}
+
 /// SyntaxPtr is a cheap `Copy` id which identifies a particular syntax node,
 /// without retainig syntax tree in memory. You need to explicitelly `resovle`
 /// `SyntaxPtr` to get a `SyntaxNode`
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct SyntaxPtr {
     file_id: FileId,
     local: LocalSyntaxPtr,
@@ -20,30 +36,43 @@ impl SyntaxPtr {
         let local = LocalSyntaxPtr::new(node);
         SyntaxPtr { file_id, local }
     }
+}
 
-    pub(crate) fn resolve(self, db: &impl SyntaxDatabase) -> SyntaxNode {
-        let syntax = db.file_syntax(self.file_id);
-        self.local.resolve(&syntax)
+struct OwnedAst<T> {
+    syntax: SyntaxNode,
+    phantom: PhantomData<T>,
+}
+
+trait ToAst {
+    type Ast;
+    fn to_ast(self) -> Self::Ast;
+}
+
+impl<'a> ToAst for &'a OwnedAst<ast::FnDef<'static>> {
+    type Ast = ast::FnDef<'a>;
+    fn to_ast(self) -> ast::FnDef<'a> {
+        ast::FnDef::cast(self.syntax.borrowed())
+            .unwrap()
     }
 }
 
 
 /// A pionter to a syntax node inside a file.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct LocalSyntaxPtr {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct LocalSyntaxPtr {
     range: TextRange,
     kind: SyntaxKind,
 }
 
 impl LocalSyntaxPtr {
-    fn new(node: SyntaxNodeRef) -> LocalSyntaxPtr {
+    pub(crate) fn new(node: SyntaxNodeRef) -> LocalSyntaxPtr {
         LocalSyntaxPtr {
             range: node.range(),
             kind: node.kind(),
         }
     }
 
-    fn resolve(self, file: &File) -> SyntaxNode {
+    pub(crate) fn resolve(self, file: &File) -> SyntaxNode {
         let mut curr = file.syntax();
         loop {
             if curr.range() == self.range && curr.kind() == self.kind {

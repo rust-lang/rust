@@ -1,41 +1,46 @@
-/// FIXME: this is now moved to ra_analysis::descriptors::module::scope.
-///
-/// Current copy will be deleted as soon as we move the rest of the completion
-/// to the analyezer.
+//! Backend for module-level scope resolution & completion
 
 
 use ra_syntax::{
-    ast::{self, AstChildren},
-    AstNode, SmolStr, SyntaxNode, SyntaxNodeRef,
+    ast::{self, AstChildren, ModuleItemOwner},
+    File, AstNode, SmolStr, SyntaxNode, SyntaxNodeRef,
 };
 
-pub struct ModuleScope {
+use crate::syntax_ptr::LocalSyntaxPtr;
+
+/// `ModuleScope` contains all named items declared in the scope.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct ModuleScope {
     entries: Vec<Entry>,
 }
 
-pub struct Entry {
-    node: SyntaxNode,
+/// `Entry` is a single named declaration iside a module.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct Entry {
+    ptr: LocalSyntaxPtr,
     kind: EntryKind,
+    name: SmolStr,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 enum EntryKind {
     Item,
     Import,
 }
 
 impl ModuleScope {
-    pub fn new(items: AstChildren<ast::ModuleItem>) -> ModuleScope {
+    pub fn new(file: &File) -> ModuleScope {
         let mut entries = Vec::new();
-        for item in items {
+        for item in file.ast().items() {
             let entry = match item {
-                ast::ModuleItem::StructDef(item) => Entry::new_item(item),
-                ast::ModuleItem::EnumDef(item) => Entry::new_item(item),
-                ast::ModuleItem::FnDef(item) => Entry::new_item(item),
-                ast::ModuleItem::ConstDef(item) => Entry::new_item(item),
-                ast::ModuleItem::StaticDef(item) => Entry::new_item(item),
-                ast::ModuleItem::TraitDef(item) => Entry::new_item(item),
-                ast::ModuleItem::TypeDef(item) => Entry::new_item(item),
-                ast::ModuleItem::Module(item) => Entry::new_item(item),
+                ast::ModuleItem::StructDef(item) => Entry::new(item),
+                ast::ModuleItem::EnumDef(item) => Entry::new(item),
+                ast::ModuleItem::FnDef(item) => Entry::new(item),
+                ast::ModuleItem::ConstDef(item) => Entry::new(item),
+                ast::ModuleItem::StaticDef(item) => Entry::new(item),
+                ast::ModuleItem::TraitDef(item) => Entry::new(item),
+                ast::ModuleItem::TypeDef(item) => Entry::new(item),
+                ast::ModuleItem::Module(item) => Entry::new(item),
                 ast::ModuleItem::UseItem(item) => {
                     if let Some(tree) = item.use_tree() {
                         collect_imports(tree, &mut entries);
@@ -56,28 +61,27 @@ impl ModuleScope {
 }
 
 impl Entry {
-    fn new_item<'a>(item: impl ast::NameOwner<'a>) -> Option<Entry> {
+    fn new<'a>(item: impl ast::NameOwner<'a>) -> Option<Entry> {
         let name = item.name()?;
         Some(Entry {
-            node: name.syntax().owned(),
+            name: name.text(),
+            ptr: LocalSyntaxPtr::new(name.syntax()),
             kind: EntryKind::Item,
         })
     }
     fn new_import(path: ast::Path) -> Option<Entry> {
         let name_ref = path.segment()?.name_ref()?;
         Some(Entry {
-            node: name_ref.syntax().owned(),
+            name: name_ref.text(),
+            ptr: LocalSyntaxPtr::new(name_ref.syntax()),
             kind: EntryKind::Import,
         })
     }
-    pub fn name(&self) -> SmolStr {
-        match self.kind {
-            EntryKind::Item => ast::Name::cast(self.node.borrowed()).unwrap().text(),
-            EntryKind::Import => ast::NameRef::cast(self.node.borrowed()).unwrap().text(),
-        }
+    pub fn name(&self) -> &SmolStr {
+        &self.name
     }
-    pub fn syntax(&self) -> SyntaxNodeRef {
-        self.node.borrowed()
+    pub fn ptr(&self) -> LocalSyntaxPtr {
+        self.ptr
     }
 }
 
@@ -99,7 +103,7 @@ mod tests {
 
     fn do_check(code: &str, expected: &[&str]) {
         let file = File::parse(&code);
-        let scope = ModuleScope::new(file.ast().items());
+        let scope = ModuleScope::new(&file);
         let actual = scope.entries.iter().map(|it| it.name()).collect::<Vec<_>>();
         assert_eq!(expected, actual.as_slice());
     }
