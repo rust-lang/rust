@@ -150,10 +150,14 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory_mut().allocate(Size::from_bytes(size),
-                                               Align::from_bytes(align, align).unwrap(),
-                                               MiriMemoryKind::Rust.into())?;
-                self.write_scalar(Scalar::Ptr(ptr.with_default_tag()), dest)?;
+                let ptr = self.memory_mut()
+                    .allocate(
+                        Size::from_bytes(size),
+                        Align::from_bytes(align, align).unwrap(),
+                        MiriMemoryKind::Rust.into()
+                    )?
+                    .with_default_tag();
+                self.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             "__rust_alloc_zeroed" => {
                 let size = self.read_scalar(args[0])?.to_usize(&self)?;
@@ -164,11 +168,13 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory_mut().allocate(
+                let ptr = self.memory_mut()
+                    .allocate(
                         Size::from_bytes(size),
                         Align::from_bytes(align, align).unwrap(),
                         MiriMemoryKind::Rust.into()
-                    )?.with_default_tag();
+                    )?
+                    .with_default_tag();
                 self.memory_mut().write_repeat(ptr.into(), 0, Size::from_bytes(size))?;
                 self.write_scalar(Scalar::Ptr(ptr), dest)?;
             }

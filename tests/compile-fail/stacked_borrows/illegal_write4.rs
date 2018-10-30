@@ -11,8 +11,8 @@ fn main() {
     let target = 42;
     // Make sure a cannot use a raw-tagged `&mut` pointing to a frozen location, not
     // even to create a raw.
-    let r#ref = &target; // freeze
-    let ptr = r#ref as *const _ as *mut i32; // raw ptr, with raw tag
+    let reference = &target; // freeze
+    let ptr = reference as *const _ as *mut i32; // raw ptr, with raw tag
     let mut_ref: &mut i32 = unsafe { mem::transmute(ptr) }; // &mut, with raw tag
     // Now we have an &mut to a frozen location, but that is completely normal:
     // We'd just unfreeze the location if we used it.
@@ -23,9 +23,9 @@ fn main() {
     // turns a raw into a `&mut`.  Next, we create a raw ref to a frozen location
     // from a `Raw` tag, which can happen legitimately when interior mutability
     // is involved.
-    let _val = *r#ref; // Make sure it is still frozen.
+    let _val = *reference; // Make sure it is still frozen.
 
     // We only actually unfreeze once we muteate through the bad pointer.
     unsafe { *bad_ptr = 42 }; //~ ERROR does not exist on the stack
-    let _val = *r#ref;
+    let _val = *reference;
 }

@@ -251,7 +251,7 @@ impl<'tcx> Stack {
 impl State {
     fn increment_clock(&self) -> Timestamp {
         let val = self.clock.get();
-        self.clock.set(val+1);
+        self.clock.set(val + 1);
         val
     }
 }
@@ -322,13 +322,13 @@ impl<'tcx> Stacks {
     /// Pushes the first borrow to the stacks, must be a mutable one.
     pub fn first_borrow(
         &mut self,
-        r#mut: Mut,
+        mut_borrow: Mut,
         size: Size
     ) {
         for stack in self.stacks.get_mut().iter_mut(Size::ZERO, size) {
             assert!(stack.borrows.len() == 1 && stack.frozen_since.is_none());
             assert_eq!(stack.borrows.pop().unwrap(), BorStackItem::Mut(Mut::Raw));
-            stack.borrows.push(BorStackItem::Mut(r#mut));
+            stack.borrows.push(BorStackItem::Mut(mut_borrow));
         }
     }
 }
@@ -489,7 +489,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         id: AllocId,
         kind: MemoryKind<MiriMemoryKind>,
     ) -> Borrow {
-        let r#mut = match kind {
+        let mut_borrow = match kind {
             MemoryKind::Stack => {
                 // New unique borrow
                 let time = self.machine.stacked_borrows.increment_clock();
@@ -503,7 +503,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         // Make this the active borrow for this allocation
         let alloc = self.memory_mut().get_mut(id).expect("This is a new allocation, it must still exist");
         let size = Size::from_bytes(alloc.bytes.len() as u64);
-        alloc.extra.first_borrow(r#mut, size);
-        Borrow::Mut(r#mut)
+        alloc.extra.first_borrow(mut_borrow, size);
+        Borrow::Mut(mut_borrow)
     }
 }
