@@ -1254,7 +1254,7 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
         Some(Node::MacroDef(_)) => {
             format!("macro {}{}",  path_str(), id_str)
         }
-        Some(Node::Crate) => format!("root_crate"),
+        Some(Node::Crate) => String::from("root_crate"),
         None => format!("unknown node{}", id_str),
     }
 }
