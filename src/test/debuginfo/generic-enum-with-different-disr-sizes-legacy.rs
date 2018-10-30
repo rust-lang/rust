@@ -12,9 +12,12 @@
 // ignore-lldb: FIXME(#27089)
 // min-lldb-version: 310
 
-// Require LLVM with DW_TAG_variant_part and a gdb that can read it.
-// min-system-llvm-version: 7.0
-// min-gdb-version: 8.2
+// As long as LLVM 5 and LLVM 6 are supported, we want to test the
+// enum debuginfo fallback mode.  Once those are desupported, this
+// test can be removed, as there is another (non-"legacy") test that
+// tests the new mode.
+// ignore-llvm-version: 7.0 - 9.9.9
+// ignore-gdb-version: 8.2 - 9.9
 
 // compile-flags:-g
 
@@ -22,29 +25,37 @@
 // gdb-command:run
 
 // gdb-command:print eight_bytes1
-// gdbr-check:$1 = generic_enum_with_different_disr_sizes::Enum<f64>::Variant1(100)
+// gdbg-check:$1 = {{RUST$ENUM$DISR = Variant1, __0 = 100}, {RUST$ENUM$DISR = Variant1, __0 = 100}}
+// gdbr-check:$1 = generic_enum_with_different_disr_sizes_legacy::Enum::Variant1(100)
 
 // gdb-command:print four_bytes1
-// gdbr-check:$2 = generic_enum_with_different_disr_sizes::Enum<i32>::Variant1(101)
+// gdbg-check:$2 = {{RUST$ENUM$DISR = Variant1, __0 = 101}, {RUST$ENUM$DISR = Variant1, __0 = 101}}
+// gdbr-check:$2 = generic_enum_with_different_disr_sizes_legacy::Enum::Variant1(101)
 
 // gdb-command:print two_bytes1
-// gdbr-check:$3 = generic_enum_with_different_disr_sizes::Enum<i16>::Variant1(102)
+// gdbg-check:$3 = {{RUST$ENUM$DISR = Variant1, __0 = 102}, {RUST$ENUM$DISR = Variant1, __0 = 102}}
+// gdbr-check:$3 = generic_enum_with_different_disr_sizes_legacy::Enum::Variant1(102)
 
 // gdb-command:print one_byte1
-// gdbr-check:$4 = generic_enum_with_different_disr_sizes::Enum<u8>::Variant1(65)
+// gdbg-check:$4 = {{RUST$ENUM$DISR = Variant1, __0 = 65 'A'}, {RUST$ENUM$DISR = Variant1, __0 = 65 'A'}}
+// gdbr-check:$4 = generic_enum_with_different_disr_sizes_legacy::Enum::Variant1(65)
 
 
 // gdb-command:print eight_bytes2
-// gdbr-check:$5 = generic_enum_with_different_disr_sizes::Enum<f64>::Variant2(100)
+// gdbg-check:$5 = {{RUST$ENUM$DISR = Variant2, __0 = 100}, {RUST$ENUM$DISR = Variant2, __0 = 100}}
+// gdbr-check:$5 = generic_enum_with_different_disr_sizes_legacy::Enum::Variant2(100)
 
 // gdb-command:print four_bytes2
-// gdbr-check:$6 = generic_enum_with_different_disr_sizes::Enum<i32>::Variant2(101)
+// gdbg-check:$6 = {{RUST$ENUM$DISR = Variant2, __0 = 101}, {RUST$ENUM$DISR = Variant2, __0 = 101}}
+// gdbr-check:$6 = generic_enum_with_different_disr_sizes_legacy::Enum::Variant2(101)
 
 // gdb-command:print two_bytes2
-// gdbr-check:$7 = generic_enum_with_different_disr_sizes::Enum<i16>::Variant2(102)
+// gdbg-check:$7 = {{RUST$ENUM$DISR = Variant2, __0 = 102}, {RUST$ENUM$DISR = Variant2, __0 = 102}}
+// gdbr-check:$7 = generic_enum_with_different_disr_sizes_legacy::Enum::Variant2(102)
 
 // gdb-command:print one_byte2
-// gdbr-check:$8 = generic_enum_with_different_disr_sizes::Enum<u8>::Variant2(65)
+// gdbg-check:$8 = {{RUST$ENUM$DISR = Variant2, __0 = 65 'A'}, {RUST$ENUM$DISR = Variant2, __0 = 65 'A'}}
+// gdbr-check:$8 = generic_enum_with_different_disr_sizes_legacy::Enum::Variant2(65)
 
 // gdb-command:continue
 

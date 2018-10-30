@@ -14,16 +14,21 @@
 // ignore-lldb
 
 
+// Require LLVM with DW_TAG_variant_part and a gdb that can read it.
+// gdb 8.2.0 crashes on this test case, see
+// https://sourceware.org/bugzilla/show_bug.cgi?id=23626
+// This will be fixed in the next release, which will be >= 8.2.1.
+// min-system-llvm-version: 7.0
+// min-gdb-version: 8.2.1
+
 // compile-flags:-g
 // gdb-command:run
 
 // gdb-command:print first
-// gdbg-check:$1 = {<No data fields>}
-// gdbr-check:$1 = <error reading variable>
+// gdbr-check:$1 = nil_enum::ANilEnum {<No data fields>}
 
 // gdb-command:print second
-// gdbg-check:$2 = {<No data fields>}
-// gdbr-check:$2 = <error reading variable>
+// gdbr-check:$2 = nil_enum::AnotherNilEnum {<No data fields>}
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

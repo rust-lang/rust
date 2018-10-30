@@ -1307,6 +1307,19 @@ extern "C" {
                                              Ty: &'a DIType)
                                              -> &'a DIDerivedType;
 
+    pub fn LLVMRustDIBuilderCreateVariantMemberType(Builder: &DIBuilder<'a>,
+                                                    Scope: &'a DIScope,
+                                                    Name: *const c_char,
+                                                    File: &'a DIFile,
+                                                    LineNumber: c_uint,
+                                                    SizeInBits: u64,
+                                                    AlignInBits: u32,
+                                                    OffsetInBits: u64,
+                                                    Discriminant: Option<&'a Value>,
+                                                    Flags: DIFlags,
+                                                    Ty: &'a DIType)
+                                                    -> &'a DIType;
+
     pub fn LLVMRustDIBuilderCreateLexicalBlock(Builder: &DIBuilder<'a>,
                                                Scope: &'a DIScope,
                                                File: &'a DIFile,
@@ -1384,7 +1397,8 @@ extern "C" {
                                                   SizeInBits: u64,
                                                   AlignInBits: u32,
                                                   Elements: &'a DIArray,
-                                                  ClassType: &'a DIType)
+                                                  ClassType: &'a DIType,
+                                                  IsFixed: bool)
                                                   -> &'a DIType;
 
     pub fn LLVMRustDIBuilderCreateUnionType(Builder: &DIBuilder<'a>,
@@ -1399,6 +1413,19 @@ extern "C" {
                                             RunTimeLang: c_uint,
                                             UniqueId: *const c_char)
                                             -> &'a DIType;
+
+    pub fn LLVMRustDIBuilderCreateVariantPart(Builder: &DIBuilder<'a>,
+                                              Scope: &'a DIScope,
+                                              Name: *const c_char,
+                                              File: &'a DIFile,
+                                              LineNo: c_uint,
+                                              SizeInBits: u64,
+                                              AlignInBits: u32,
+                                              Flags: DIFlags,
+                                              Discriminator: Option<&'a DIDerivedType>,
+                                              Elements: &'a DIArray,
+                                              UniqueId: *const c_char)
+                                              -> &'a DIDerivedType;
 
     pub fn LLVMSetUnnamedAddr(GlobalVar: &Value, UnnamedAddr: Bool);
 

@@ -9,12 +9,15 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
+// min-lldb-version: 310
 
-// Require LLVM with DW_TAG_variant_part and a gdb and lldb that can
-// read it.
-// min-system-llvm-version: 7.0
-// min-gdb-version: 8.2
-// rust-lldb
+// As long as LLVM 5 and LLVM 6 are supported, we want to test the
+// enum debuginfo fallback mode.  Once those are desupported, this
+// test can be removed, as there is another (non-"legacy") test that
+// tests the new mode.
+// ignore-llvm-version: 7.0 - 9.9.9
+// ignore-gdb-version: 7.11.90 - 7.12.9
+// ignore-gdb-version: 8.2 - 9.9
 
 // compile-flags:-g
 
@@ -23,13 +26,16 @@
 // gdb-command:run
 
 // gdb-command:print *the_a
-// gdbr-check:$1 = unique_enum::ABC::TheA{x: 0, y: 8970181431921507452}
+// gdbg-check:$1 = {{RUST$ENUM$DISR = TheA, x = 0, y = 8970181431921507452}, {RUST$ENUM$DISR = TheA, [...]}}
+// gdbr-check:$1 = unique_enum_legacy::ABC::TheA{x: 0, y: 8970181431921507452}
 
 // gdb-command:print *the_b
-// gdbr-check:$2 = unique_enum::ABC::TheB(0, 286331153, 286331153)
+// gdbg-check:$2 = {{RUST$ENUM$DISR = TheB, [...]}, {RUST$ENUM$DISR = TheB, __0 = 0, __1 = 286331153, __2 = 286331153}}
+// gdbr-check:$2 = unique_enum_legacy::ABC::TheB(0, 286331153, 286331153)
 
 // gdb-command:print *univariant
-// gdbr-check:$3 = unique_enum::Univariant::TheOnlyCase(123234)
+// gdbg-check:$3 = {{__0 = 123234}}
+// gdbr-check:$3 = unique_enum_legacy::Univariant::TheOnlyCase(123234)
 
 
 // === LLDB TESTS ==================================================================================
@@ -37,13 +43,16 @@
 // lldb-command:run
 
 // lldb-command:print *the_a
-// lldbr-check:(unique_enum::ABC::TheA) *the_a = TheA { TheA: 0, TheB: 8970181431921507452 }
+// lldbg-check:[...]$0 = TheA { x: 0, y: 8970181431921507452 }
+// lldbr-check:(unique_enum_legacy::ABC::TheA) *the_a = TheA { unique_enum_legacy::ABC::TheA: 0, unique_enum_legacy::ABC::TheB: 8970181431921507452 }
 
 // lldb-command:print *the_b
-// lldbr-check:(unique_enum::ABC::TheB) *the_b = { = 0 = 286331153 = 286331153 }
+// lldbg-check:[...]$1 = TheB(0, 286331153, 286331153)
+// lldbr-check:(unique_enum_legacy::ABC::TheB) *the_b = { = 0 = 286331153 = 286331153 }
 
 // lldb-command:print *univariant
-// lldbr-check:(unique_enum::Univariant) *univariant = { TheOnlyCase = { = 123234 } }
+// lldbg-check:[...]$2 = TheOnlyCase(123234)
+// lldbr-check:(unique_enum_legacy::Univariant) *univariant = { unique_enum_legacy::TheOnlyCase = { = 123234 } }
 
 #![allow(unused_variables)]
 #![feature(box_syntax)]

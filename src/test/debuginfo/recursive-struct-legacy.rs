@@ -11,9 +11,13 @@
 // ignore-tidy-linelength
 // ignore-lldb
 
-// Require LLVM with DW_TAG_variant_part and a gdb that can read it.
-// min-system-llvm-version: 7.0
-// min-gdb-version: 8.2
+// As long as LLVM 5 and LLVM 6 are supported, we want to test the
+// enum debuginfo fallback mode.  Once those are desupported, this
+// test can be removed, as there is another (non-"legacy") test that
+// tests the new mode.
+// ignore-llvm-version: 7.0 - 9.9.9
+// ignore-gdb-version: 7.11.90 - 7.12.9
+// ignore-gdb-version: 8.2 - 9.9
 
 // compile-flags:-g
 
@@ -21,52 +25,66 @@
 
 // gdb-command:print stack_unique.value
 // gdb-check:$1 = 0
+// gdbg-command:print stack_unique.next.RUST$ENCODED$ENUM$0$Empty.val->value
 // gdbr-command:print stack_unique.next.val.value
 // gdb-check:$2 = 1
 
+// gdbg-command:print unique_unique->value
 // gdbr-command:print unique_unique.value
 // gdb-check:$3 = 2
+// gdbg-command:print unique_unique->next.RUST$ENCODED$ENUM$0$Empty.val->value
 // gdbr-command:print unique_unique.next.val.value
 // gdb-check:$4 = 3
 
 // gdb-command:print vec_unique[0].value
 // gdb-check:$5 = 6.5
+// gdbg-command:print vec_unique[0].next.RUST$ENCODED$ENUM$0$Empty.val->value
 // gdbr-command:print vec_unique[0].next.val.value
 // gdb-check:$6 = 7.5
 
+// gdbg-command:print borrowed_unique->value
 // gdbr-command:print borrowed_unique.value
 // gdb-check:$7 = 8.5
+// gdbg-command:print borrowed_unique->next.RUST$ENCODED$ENUM$0$Empty.val->value
 // gdbr-command:print borrowed_unique.next.val.value
 // gdb-check:$8 = 9.5
 
 // LONG CYCLE
 // gdb-command:print long_cycle1.value
 // gdb-check:$9 = 20
+// gdbg-command:print long_cycle1.next->value
 // gdbr-command:print long_cycle1.next.value
 // gdb-check:$10 = 21
+// gdbg-command:print long_cycle1.next->next->value
 // gdbr-command:print long_cycle1.next.next.value
 // gdb-check:$11 = 22
+// gdbg-command:print long_cycle1.next->next->next->value
 // gdbr-command:print long_cycle1.next.next.next.value
 // gdb-check:$12 = 23
 
 // gdb-command:print long_cycle2.value
 // gdb-check:$13 = 24
+// gdbg-command:print long_cycle2.next->value
 // gdbr-command:print long_cycle2.next.value
 // gdb-check:$14 = 25
+// gdbg-command:print long_cycle2.next->next->value
 // gdbr-command:print long_cycle2.next.next.value
 // gdb-check:$15 = 26
 
 // gdb-command:print long_cycle3.value
 // gdb-check:$16 = 27
+// gdbg-command:print long_cycle3.next->value
 // gdbr-command:print long_cycle3.next.value
 // gdb-check:$17 = 28
 
 // gdb-command:print long_cycle4.value
 // gdb-check:$18 = 29.5
 
+// gdbg-command:print (*****long_cycle_w_anonymous_types).value
 // gdbr-command:print long_cycle_w_anonymous_types.value
 // gdb-check:$19 = 30
 
+// gdbg-command:print (*****((*****long_cycle_w_anonymous_types).next.RUST$ENCODED$ENUM$0$Empty.val)).value
 // gdbr-command:print long_cycle_w_anonymous_types.next.val.value
 // gdb-check:$20 = 31
 
