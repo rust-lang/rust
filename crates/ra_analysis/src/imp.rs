@@ -84,7 +84,7 @@ impl Default for FileResolverImp {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(crate) struct AnalysisHostImpl {
     db: db::RootDatabase,
 }
@@ -92,7 +92,12 @@ pub(crate) struct AnalysisHostImpl {
 
 impl AnalysisHostImpl {
     pub fn new() -> AnalysisHostImpl {
-        AnalysisHostImpl::default()
+        let db = db::RootDatabase::default();
+        db.query(crate::input::SourceRootQuery)
+            .set(WORKSPACE, Default::default());
+        db.query(crate::input::CrateGraphQuery)
+            .set((), Default::default());
+        AnalysisHostImpl { db }
     }
     pub fn analysis(&self) -> AnalysisImpl {
         AnalysisImpl {

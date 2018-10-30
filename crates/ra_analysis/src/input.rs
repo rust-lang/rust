@@ -67,10 +67,10 @@ salsa::query_group! {
     }
 }
 
-#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub(crate) struct SourceRootId(pub(crate) u32);
 
-#[derive(Clone, Default, Debug, PartialEq, Eq)]
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub(crate) struct SourceRoot {
     pub(crate) file_resolver: FileResolverImp,
     pub(crate) files: FxHashSet<FileId>,
