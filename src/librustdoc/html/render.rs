@@ -509,7 +509,7 @@ pub fn run(mut krate: clean::Crate,
            id_map: IdMap,
            enable_index_page: bool,
            index_page: Option<PathBuf>,
-           options: config::Options,
+           options: config::RenderOptions,
            diag: &errors::Handler,
 ) -> Result<(), Error> {
     let src_root = match krate.src {
@@ -760,7 +760,7 @@ fn write_shared(
     cache: &Cache,
     search_index: String,
     enable_minification: bool,
-    options: &config::Options,
+    options: &config::RenderOptions,
     diag: &errors::Handler,
 ) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc

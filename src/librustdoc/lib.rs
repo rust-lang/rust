@@ -90,6 +90,7 @@ mod theme;
 struct Output {
     krate: clean::Crate,
     renderinfo: html::render::RenderInfo,
+    renderopts: config::RenderOptions,
     passes: Vec<String>,
 }
 
@@ -381,36 +382,38 @@ fn main_args(args: &[String]) -> isize {
                              options.display_warnings, options.linker, options.edition,
                              options.codegen_options)
         }
-        (false, true) => return markdown::render(&options.input, options.output,
-                                                 &options.markdown_css,
-                                                 options.markdown_playground_url
-                                                    .or(options.playground_url),
-                                                 &options.external_html,
-                                                 !options.markdown_no_toc, &diag),
+        (false, true) => return markdown::render(&options.input, options.render_options.output,
+                                                 &options.render_options.markdown_css,
+                                                 options.render_options.markdown_playground_url
+                                                    .or(options.render_options.playground_url),
+                                                 &options.render_options.external_html,
+                                                 !options.render_options.markdown_no_toc, &diag),
         (false, false) => {}
     }
 
-    //TODO: split render-time options into their own struct so i don't have to clone here
-    rust_input(options.clone(), move |out| {
-        let Output { krate, passes, renderinfo } = out;
+    // need to move these items separately because we lose them by the time the closure is called,
+    // but we can't crates the Handler ahead of time because it's not Send
+    let diag_opts = (options.error_format,
+                     options.debugging_options.treat_err_as_bug,
+                     options.debugging_options.ui_testing);
+    rust_input(options, move |out| {
+        let Output { krate, passes, renderinfo, renderopts } = out;
         info!("going to format");
-        let diag = core::new_handler(options.error_format,
-                                     None,
-                                     options.debugging_options.treat_err_as_bug,
-                                     options.debugging_options.ui_testing);
-        let html_opts = options.clone();
-        html::render::run(krate, options.extern_html_root_urls, &options.external_html, options.playground_url,
-                          options.output,
-                          options.resource_suffix,
+        let (error_format, treat_err_as_bug, ui_testing) = diag_opts;
+        let diag = core::new_handler(error_format, None, treat_err_as_bug, ui_testing);
+        let html_opts = renderopts.clone();
+        html::render::run(krate, renderopts.extern_html_root_urls, &renderopts.external_html,
+                          renderopts.playground_url,
+                          renderopts.output,
+                          renderopts.resource_suffix,
                           passes.into_iter().collect(),
-                          options.extension_css,
+                          renderopts.extension_css,
                           renderinfo,
-                          options.sort_modules_alphabetically,
-                          options.themes,
-                          options.enable_minification, options.id_map,
-                          options.enable_index_page, options.index_page,
-                          html_opts,
-                          &diag)
+                          renderopts.sort_modules_alphabetically,
+                          renderopts.themes,
+                          renderopts.enable_minification, renderopts.id_map,
+                          renderopts.enable_index_page, renderopts.index_page,
+                          html_opts, &diag)
             .expect("failed to generate documentation");
         0
     })
@@ -482,7 +485,12 @@ where R: 'static + Send,
             krate = pass(krate);
         }
 
-        tx.send(f(Output { krate: krate, renderinfo: renderinfo, passes: passes })).unwrap();
+        tx.send(f(Output {
+            krate: krate,
+            renderinfo: renderinfo,
+            renderopts: options.render_options,
+            passes: passes
+        })).unwrap();
     }));
 
     match result {

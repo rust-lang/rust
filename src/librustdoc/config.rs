@@ -32,14 +32,13 @@ use opts;
 use passes::{self, DefaultPassOption};
 use theme;
 
+/// Configuration options for rustdoc.
 #[derive(Clone)]
 pub struct Options {
     // Basic options / Options passed directly to rustc
 
     /// The crate root or Markdown file to load.
     pub input: PathBuf,
-    /// Output directory to generate docs into. Defaults to `doc`.
-    pub output: PathBuf,
     /// The name of the crate being documented.
     pub crate_name: Option<String>,
     /// How to format errors and warnings.
@@ -91,20 +90,29 @@ pub struct Options {
     /// Whether to display warnings during doc generation or while gathering doctests. By default,
     /// all non-rustdoc-specific lints are allowed when generating docs.
     pub display_warnings: bool,
-    /// A pre-populated `IdMap` with the default headings and any headings added by Markdown files
-    /// processed by `external_html`.
-    pub id_map: IdMap,
 
     // Options that alter generated documentation pages
 
+    /// Crate version to note on the sidebar of generated docs.
+    pub crate_version: Option<String>,
+    /// Collected options specific to outputting final pages.
+    pub render_options: RenderOptions,
+}
+
+/// Configuration options for the HTML page-creation process.
+#[derive(Clone)]
+pub struct RenderOptions {
+    /// Output directory to generate docs into. Defaults to `doc`.
+    pub output: PathBuf,
     /// External files to insert into generated pages.
     pub external_html: ExternalHtml,
+    /// A pre-populated `IdMap` with the default headings and any headings added by Markdown files
+    /// processed by `external_html`.
+    pub id_map: IdMap,
     /// If present, playground URL to use in the "Run" button added to code samples.
     ///
     /// Be aware: This option can come both from the CLI and from crate attributes!
     pub playground_url: Option<String>,
-    /// Crate version to note on the sidebar of generated docs.
-    pub crate_version: Option<String>,
     /// Whether to sort modules alphabetically on a module page instead of using declaration order.
     /// `true` by default.
     ///
@@ -390,7 +398,6 @@ impl Options {
 
         Ok(Options {
             input,
-            output,
             crate_name,
             error_format,
             libs,
@@ -410,21 +417,24 @@ impl Options {
             default_passes,
             manual_passes,
             display_warnings,
-            id_map,
-            external_html,
-            playground_url,
             crate_version,
-            sort_modules_alphabetically,
-            themes,
-            extension_css,
-            extern_html_root_urls,
-            resource_suffix,
-            enable_minification,
-            enable_index_page,
-            index_page,
-            markdown_no_toc,
-            markdown_css,
-            markdown_playground_url,
+            render_options: RenderOptions {
+                output,
+                external_html,
+                id_map,
+                playground_url,
+                sort_modules_alphabetically,
+                themes,
+                extension_css,
+                extern_html_root_urls,
+                resource_suffix,
+                enable_minification,
+                enable_index_page,
+                index_page,
+                markdown_no_toc,
+                markdown_css,
+                markdown_playground_url,
+            }
         })
     }
 
