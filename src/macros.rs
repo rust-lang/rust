@@ -40,7 +40,10 @@ use rewrite::{Rewrite, RewriteContext};
 use shape::{Indent, Shape};
 use source_map::SpanUtils;
 use spanned::Spanned;
-use utils::{format_visibility, mk_sp, remove_trailing_white_spaces, rewrite_ident, wrap_str};
+use utils::{
+    format_visibility, is_empty_line, mk_sp, remove_trailing_white_spaces, rewrite_ident,
+    trim_left_preserve_layout, wrap_str,
+};
 use visitor::FmtVisitor;
 
 const FORCED_BRACKET_MACROS: &[&str] = &["vec!"];
@@ -373,7 +376,7 @@ pub fn rewrite_macro_inner(
         }
         DelimToken::Brace => {
             // Skip macro invocations with braces, for now.
-            indent_macro_snippet(context, context.snippet(mac.span), shape.indent)
+            trim_left_preserve_layout(context.snippet(mac.span), &shape.indent, &context.config)
         }
         _ => unreachable!(),
     }
@@ -1099,108 +1102,6 @@ fn macro_style(mac: &ast::Mac, context: &RewriteContext) -> DelimToken {
     } else {
         DelimToken::Brace
     }
-}
-
-/// Indent each line according to the specified `indent`.
-/// e.g.
-///
-/// ```rust,ignore
-/// foo!{
-/// x,
-/// y,
-/// foo(
-///     a,
-///     b,
-///     c,
-/// ),
-/// }
-/// ```
-///
-/// will become
-///
-/// ```rust,ignore
-/// foo!{
-///     x,
-///     y,
-///     foo(
-///         a,
-///         b,
-///         c,
-///     ),
-/// }
-/// ```
-fn indent_macro_snippet(
-    context: &RewriteContext,
-    macro_str: &str,
-    indent: Indent,
-) -> Option<String> {
-    let mut lines = LineClasses::new(macro_str);
-    let first_line = lines.next().map(|(_, s)| s.trim_right().to_owned())?;
-    let mut trimmed_lines = Vec::with_capacity(16);
-
-    let mut veto_trim = false;
-    let min_prefix_space_width = lines
-        .filter_map(|(kind, line)| {
-            let mut trimmed = true;
-            let prefix_space_width = if is_empty_line(&line) {
-                None
-            } else {
-                Some(get_prefix_space_width(context, &line))
-            };
-
-            let line = if veto_trim || (kind.is_string() && !line.ends_with('\\')) {
-                veto_trim = kind.is_string() && !line.ends_with('\\');
-                trimmed = false;
-                line
-            } else {
-                line.trim().to_owned()
-            };
-            trimmed_lines.push((trimmed, line, prefix_space_width));
-
-            // when computing the minimum, do not consider lines within a string
-            match kind {
-                FullCodeCharKind::InString | FullCodeCharKind::EndString => None,
-                _ => prefix_space_width,
-            }
-        })
-        .min()?;
-
-    Some(
-        first_line
-            + "\n"
-            + &trimmed_lines
-                .iter()
-                .map(
-                    |&(trimmed, ref line, prefix_space_width)| match prefix_space_width {
-                        _ if !trimmed => line.to_owned(),
-                        Some(original_indent_width) => {
-                            let new_indent_width = indent.width()
-                                + original_indent_width.saturating_sub(min_prefix_space_width);
-                            let new_indent = Indent::from_width(context.config, new_indent_width);
-                            format!("{}{}", new_indent.to_string(context.config), line)
-                        }
-                        None => String::new(),
-                    },
-                )
-                .collect::<Vec<_>>()
-                .join("\n"),
-    )
-}
-
-fn get_prefix_space_width(context: &RewriteContext, s: &str) -> usize {
-    let mut width = 0;
-    for c in s.chars() {
-        match c {
-            ' ' => width += 1,
-            '\t' => width += context.config.tab_spaces(),
-            _ => return width,
-        }
-    }
-    width
-}
-
-fn is_empty_line(s: &str) -> bool {
-    s.is_empty() || s.chars().all(char::is_whitespace)
 }
 
 // A very simple parser that just parses a macros 2.0 definition into its branches.

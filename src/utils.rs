@@ -20,7 +20,7 @@ use syntax::ast::{
 use syntax::ptr;
 use syntax::source_map::{BytePos, Span, NO_EXPANSION};
 
-use comment::{filter_normal_code, CharClasses, FullCodeCharKind};
+use comment::{filter_normal_code, CharClasses, FullCodeCharKind, LineClasses};
 use config::Config;
 use rewrite::RewriteContext;
 use shape::{Indent, Shape};
@@ -483,46 +483,123 @@ pub fn remove_trailing_white_spaces(text: &str) -> String {
     buffer
 }
 
-/// Trims a minimum of leading whitespaces so that the content layout is kept and aligns to indent.
-pub fn trim_left_preserve_layout(orig: &str, indent: &Indent, config: &Config) -> String {
-    let prefix_whitespace_min = orig
-        .lines()
-        // skip the line with the starting sigil since the leading whitespace is removed
-        // otherwise, the minimum would always be zero
-        .skip(1)
-        .filter(|line| !line.is_empty())
-        .map(|line| {
-            let mut width = 0;
-            for c in line.chars() {
-                match c {
-                    ' ' => width += 1,
-                    '\t' => width += config.tab_spaces(),
-                    _ => break,
-                }
-            }
-            width
-        })
-        .min()
-        .unwrap_or(0);
+/// Indent each line according to the specified `indent`.
+/// e.g.
+///
+/// ```rust,ignore
+/// foo!{
+/// x,
+/// y,
+/// foo(
+///     a,
+///     b,
+///     c,
+/// ),
+/// }
+/// ```
+///
+/// will become
+///
+/// ```rust,ignore
+/// foo!{
+///     x,
+///     y,
+///     foo(
+///         a,
+///         b,
+///         c,
+///     ),
+/// }
+/// ```
+pub fn trim_left_preserve_layout(orig: &str, indent: &Indent, config: &Config) -> Option<String> {
+    let mut lines = LineClasses::new(orig);
+    let first_line = lines.next().map(|(_, s)| s.trim_right().to_owned())?;
+    let mut trimmed_lines = Vec::with_capacity(16);
 
-    let indent_str = indent.to_string(config);
-    let mut lines = orig.lines();
-    let first_line = lines.next().unwrap();
-    let rest = lines
-        .map(|line| {
-            if line.is_empty() {
-                String::from("\n")
+    let mut veto_trim = false;
+    let min_prefix_space_width = lines
+        .filter_map(|(kind, line)| {
+            let mut trimmed = true;
+            let prefix_space_width = if is_empty_line(&line) {
+                None
             } else {
-                format!("\n{}{}", indent_str, &line[prefix_whitespace_min..])
+                Some(get_prefix_space_width(config, &line))
+            };
+
+            let line = if veto_trim || (kind.is_string() && !line.ends_with('\\')) {
+                veto_trim = kind.is_string() && !line.ends_with('\\');
+                trimmed = false;
+                line
+            } else {
+                line.trim().to_owned()
+            };
+            trimmed_lines.push((trimmed, line, prefix_space_width));
+
+            // When computing the minimum, do not consider lines within a string.
+            // The reason is there is a veto against trimming and indenting such lines
+            match kind {
+                FullCodeCharKind::InString | FullCodeCharKind::EndString => None,
+                _ => prefix_space_width,
             }
         })
-        .collect::<Vec<String>>()
-        .concat();
-    format!("{}{}", first_line, rest)
+        .min()?;
+
+    Some(
+        first_line
+            + "\n"
+            + &trimmed_lines
+                .iter()
+                .map(
+                    |&(trimmed, ref line, prefix_space_width)| match prefix_space_width {
+                        _ if !trimmed => line.to_owned(),
+                        Some(original_indent_width) => {
+                            let new_indent_width = indent.width()
+                                + original_indent_width.saturating_sub(min_prefix_space_width);
+                            let new_indent = Indent::from_width(config, new_indent_width);
+                            format!("{}{}", new_indent.to_string(config), line)
+                        }
+                        None => String::new(),
+                    },
+                )
+                .collect::<Vec<_>>()
+                .join("\n"),
+    )
 }
 
-#[test]
-fn test_remove_trailing_white_spaces() {
-    let s = "    r#\"\n        test\n    \"#";
-    assert_eq!(remove_trailing_white_spaces(&s), s);
+pub fn is_empty_line(s: &str) -> bool {
+    s.is_empty() || s.chars().all(char::is_whitespace)
+}
+
+fn get_prefix_space_width(config: &Config, s: &str) -> usize {
+    let mut width = 0;
+    for c in s.chars() {
+        match c {
+            ' ' => width += 1,
+            '\t' => width += config.tab_spaces(),
+            _ => return width,
+        }
+    }
+    width
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_remove_trailing_white_spaces() {
+        let s = "    r#\"\n        test\n    \"#";
+        assert_eq!(remove_trailing_white_spaces(&s), s);
+    }
+
+    #[test]
+    fn test_trim_left_preserve_layout() {
+        let s = "aaa\n\tbbb\n    ccc";
+        let config = Config::default();
+        let indent = Indent::new(4, 0);
+        assert_eq!(
+            trim_left_preserve_layout(&s, &indent, &config),
+            Some("aaa\n    bbb\n    ccc".to_string())
+        );
+    }
 }
