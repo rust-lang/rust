@@ -230,10 +230,7 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     type Node = Node;
     type Edge = Edge<'tcx>;
     fn nodes(&self) -> dot::Nodes<'_, Node> {
-        let mut set = FxHashSet::default();
-        for node in self.node_ids.keys() {
-            set.insert(*node);
-        }
+        let set = self.node_ids.keys().cloned().collect::<FxHashSet<_>>();
         debug!("constraint graph has {} nodes", set.len());
         set.into_iter().collect()
     }

@@ -346,7 +346,33 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         mbcx.errors_buffer.sort_by_key(|diag| diag.span.primary_span());
 
         if tcx.migrate_borrowck() {
-            match tcx.borrowck(def_id).signalled_any_error {
+            // When borrowck=migrate, check if AST-borrowck would
+            // error on the given code.
+
+            // rust-lang/rust#55492: loop over parents to ensure that
+            // errors that AST-borrowck only detects in some parent of
+            // a closure still allows NLL to signal an error.
+            let mut curr_def_id = def_id;
+            let signalled_any_error = loop {
+                match tcx.borrowck(curr_def_id).signalled_any_error {
+                    SignalledError::NoErrorsSeen => {
+                        // keep traversing (and borrow-checking) parents
+                    }
+                    SignalledError::SawSomeError => {
+                        // stop search here
+                        break SignalledError::SawSomeError;
+                    }
+                }
+
+                if tcx.is_closure(curr_def_id) {
+                    curr_def_id = tcx.parent_def_id(curr_def_id)
+                        .expect("a closure must have a parent_def_id");
+                } else {
+                    break SignalledError::NoErrorsSeen;
+                }
+            };
+
+            match signalled_any_error {
                 SignalledError::NoErrorsSeen => {
                     // if AST-borrowck signalled no errors, then
                     // downgrade all the buffered MIR-borrowck errors

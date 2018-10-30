@@ -23,4 +23,13 @@ fn main() {
     // We want to suggest the properly-balanced expression `1 / (2 + 3)`, not
     // the malformed `1 / (2 + 3`
     let _a = (1 / (2 + 3));
+    f();
+}
+
+fn f() -> bool {
+    loop {
+        if (break { return true }) {
+        }
+    }
+    false
 }

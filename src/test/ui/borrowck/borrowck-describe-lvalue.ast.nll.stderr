@@ -20,7 +20,7 @@ LL |                    //[mir]~^ ERROR cannot borrow `x` as mutable more than o
 LL |                    *y = 1;
    |                    ------ first borrow later used here
 
-warning: captured variable cannot escape `FnMut` closure body
+error: captured variable cannot escape `FnMut` closure body
   --> $DIR/borrowck-describe-lvalue.rs:305:16
    |
 LL |              || {
@@ -36,9 +36,6 @@ LL | |                 }
    |
    = note: `FnMut` closures only have access to their captured variables while they are executing...
    = note: ...therefore, they cannot allow references to captured variables to escape
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
 
 error[E0503]: cannot use `f.x` because it was mutably borrowed
   --> $DIR/borrowck-describe-lvalue.rs:53:9
@@ -382,7 +379,7 @@ LL |                 drop(x); //[ast]~ ERROR use of moved value: `x`
    |
    = note: move occurs because `x` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
 
-error: aborting due to 29 previous errors
+error: aborting due to 30 previous errors
 
 Some errors occurred: E0382, E0499, E0502, E0503.
 For more information about an error, try `rustc --explain E0382`.

@@ -1112,12 +1112,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     {
         let tcx = self.tcx();
 
-        let bounds: Vec<_> = self.get_type_parameter_bounds(span, ty_param_def_id)
-            .predicates.into_iter().filter_map(|(p, _)| p.to_opt_poly_trait_ref()).collect();
+        let bounds = self.get_type_parameter_bounds(span, ty_param_def_id)
+            .predicates.into_iter().filter_map(|(p, _)| p.to_opt_poly_trait_ref());
 
         // Check that there is exactly one way to find an associated type with the
         // correct name.
-        let suitable_bounds = traits::transitive_bounds(tcx, &bounds)
+        let suitable_bounds = traits::transitive_bounds(tcx, bounds)
             .filter(|b| self.trait_defines_associated_type_named(b.def_id(), assoc_name));
 
         let param_node_id = tcx.hir.as_local_node_id(ty_param_def_id).unwrap();
