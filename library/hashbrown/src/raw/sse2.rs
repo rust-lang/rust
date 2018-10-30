@@ -7,9 +7,9 @@ use core::arch::x86;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64 as x86;
 
-pub type BitMaskWord = u32;
+pub type BitMaskWord = u16;
 pub const BITMASK_SHIFT: u32 = 0;
-pub const BITMASK_MASK: u32 = 0xffff;
+pub const BITMASK_MASK: u16 = 0xffff;
 
 /// Abstraction over a group of control bytes which can be scanned in
 /// parallel.
@@ -65,7 +65,7 @@ impl Group {
     pub fn match_byte(&self, byte: u8) -> BitMask {
         unsafe {
             let cmp = x86::_mm_cmpeq_epi8(self.0, x86::_mm_set1_epi8(byte as i8));
-            BitMask(x86::_mm_movemask_epi8(cmp) as u32)
+            BitMask(x86::_mm_movemask_epi8(cmp) as u16)
         }
     }
 
@@ -80,7 +80,7 @@ impl Group {
     /// `EMPTY` pr `DELETED`.
     #[inline]
     pub fn match_empty_or_deleted(&self) -> BitMask {
-        unsafe { BitMask(x86::_mm_movemask_epi8(self.0) as u32) }
+        unsafe { BitMask(x86::_mm_movemask_epi8(self.0) as u16) }
     }
 
     /// Performs the following transformation on all bytes in the group:
