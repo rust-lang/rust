@@ -5,5 +5,5 @@ fn main() {
     let xref = unsafe { &*xraw };
     let xref_in_mem = Box::new(xref);
     *x = 42; // invalidate xraw
-    let _val = *xref_in_mem; //~ ERROR Shr reference with non-reactivatable tag: Location should be frozen
+    let _val = *xref_in_mem; //~ ERROR shared reference with non-reactivatable tag: Location should be frozen
 }

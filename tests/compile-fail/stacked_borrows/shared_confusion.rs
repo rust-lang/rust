@@ -21,7 +21,7 @@ fn test(r: &mut RefCell<i32>) {
     }
     // Our old raw should be dead by now
     unsafe { *x_evil = 0; } // this falls back to some Raw higher up the stack
-    *x_inner = 12; //~ ERROR Mut reference with non-reactivatable tag
+    *x_inner = 12; //~ ERROR reference with non-reactivatable tag
 }
 
 fn main() {
