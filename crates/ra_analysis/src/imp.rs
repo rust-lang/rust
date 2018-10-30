@@ -460,7 +460,7 @@ impl AnalysisImpl {
 
                         if num_params == 1 {
                             if !has_self {
-                                current_parameter = Some(1);
+                                current_parameter = Some(0);
                             }
                         } else if num_params > 1 {
                             // Count how many parameters into the call we are.
