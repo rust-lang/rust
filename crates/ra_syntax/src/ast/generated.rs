@@ -864,6 +864,7 @@ impl<'a> AstNode<'a> for FnDef<'a> {
 impl<'a> ast::NameOwner<'a> for FnDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for FnDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for FnDef<'a> {}
+impl<'a> ast::DocCommentsOwner<'a> for FnDef<'a> {}
 impl<'a> FnDef<'a> {
     pub fn param_list(self) -> Option<ParamList<'a>> {
         super::child_opt(self)

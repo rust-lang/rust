@@ -65,6 +65,24 @@ pub trait AttrsOwner<'a>: AstNode<'a> {
     }
 }
 
+pub trait DocCommentsOwner<'a>: AstNode<'a> {
+    fn doc_comments(self) -> AstChildren<'a, Comment<'a>> { children(self) }
+
+    /// Returns the textual content of a doc comment block as a single string.
+    /// That is, strips leading `///` and joins lines
+    fn doc_comment_text(self) -> String {
+        self.doc_comments()
+            .map(|comment| {
+                let prefix = comment.prefix();
+                let trimmed = comment.text().as_str()
+                    .trim()
+                    .trim_start_matches(prefix)
+                    .trim_start();
+                trimmed.to_owned()
+            }).join("\n")
+    }
+}
+
 impl<'a> FnDef<'a> {
     pub fn has_atom_attr(&self, atom: &str) -> bool {
         self.attrs().filter_map(|x| x.as_atom()).any(|x| x == atom)
