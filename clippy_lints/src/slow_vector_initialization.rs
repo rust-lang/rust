@@ -8,15 +8,14 @@
 // except according to those terms.
 
 use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, Lint};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::hir::*;
 use if_chain::if_chain;
 use crate::syntax_pos::symbol::Symbol;
 use crate::syntax::ast::{LitKind, NodeId};
-use crate::syntax::source_map::Span;
-use crate::utils::{match_qpath, span_lint_and_then, SpanlessEq};
-use crate::utils::get_enclosing_block;
+use crate::utils::{match_qpath, span_lint_and_then, SpanlessEq, get_enclosing_block};
+use crate::utils::sugg::Sugg;
 use crate::rustc_errors::{Applicability};
 
 /// **What it does:** Checks slow zero-filled vector initialization
@@ -70,15 +69,15 @@ impl LintPass for Pass {
     }
 }
 
-/// VecInitialization contains data regarding a vector initialized with `with_capacity` and then
+/// `VecAllocation` contains data regarding a vector allocated with `with_capacity` and then
 /// assigned to a variable. For example, `let mut vec = Vec::with_capacity(0)` or
 /// `vec = Vec::with_capacity(0)`
-struct VecInitialization<'tcx> {
+struct VecAllocation<'tcx> {
     /// Symbol of the local variable name
     variable_name: Symbol,
 
-    /// Reference to the expression which initializes the vector
-    initialization_expr: &'tcx Expr,
+    /// Reference to the expression which allocates the vector
+    allocation_expr: &'tcx Expr,
 
     /// Reference to the expression used as argument on `with_capacity` call. This is used
     /// to only match slow zero-filling idioms of the same length than vector initialization.
@@ -111,13 +110,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let Some(ref len_arg) = Pass::is_vec_with_capacity(right);
 
             then {
-                let vi = VecInitialization {
+                let vi = VecAllocation {
                     variable_name: variable_name.ident.name,
-                    initialization_expr: right,
+                    allocation_expr: right,
                     len_expr: len_arg,
                 };
 
-                Pass::search_slow_initialization(cx, vi, expr.id);
+                Pass::search_initialization(cx, vi, expr.id);
             }
         }
     }
@@ -132,13 +131,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let Some(ref len_arg) = Pass::is_vec_with_capacity(init);
 
             then {
-                let vi = VecInitialization {
+                let vi = VecAllocation {
                     variable_name: variable_name.name,
-                    initialization_expr: init,
+                    allocation_expr: init,
                     len_expr: len_arg,
                 };
 
-                Pass::search_slow_initialization(cx, vi, stmt.node.id());
+                Pass::search_initialization(cx, vi, stmt.node.id());
             }
         }
     }
@@ -162,10 +161,10 @@ impl Pass {
         None
     }
 
-    /// Search a slow initialization for the given vector
-    fn search_slow_initialization<'tcx>(
+    /// Search initialization for the given vector
+    fn search_initialization<'tcx>(
         cx: &LateContext<'_, 'tcx>,
-        vec_initialization: VecInitialization<'tcx>,
+        vec_alloc: VecAllocation<'tcx>,
         parent_node: NodeId
     ) {
         let enclosing_body = get_enclosing_block(cx, parent_node);
@@ -174,72 +173,76 @@ impl Pass {
             return;
         }
 
-        let mut v = SlowInitializationVisitor {
+        let mut v = VectorInitializationVisitor {
             cx,
-            vec_ini: vec_initialization,
+            vec_alloc,
             slow_expression: None,
             initialization_found: false,
         };
 
         v.visit_block(enclosing_body.unwrap());
 
-        if let Some(ref initialization_expr) = v.slow_expression {
-            let alloc_span = v.vec_ini.initialization_expr.span;
-            Pass::lint_initialization(cx, initialization_expr, alloc_span);
+        if let Some(ref allocation_expr) = v.slow_expression {
+            Pass::lint_initialization(cx, allocation_expr, &v.vec_alloc);
         }
     }
 
-    fn lint_initialization<'tcx>(cx: &LateContext<'_, 'tcx>, initialization: &InitializationType<'tcx>, alloc_span: Span) {
+    fn lint_initialization<'tcx>(cx: &LateContext<'_, 'tcx>, initialization: &InitializationType<'tcx>, vec_alloc: &VecAllocation<'_>) {
         match initialization {
             InitializationType::UnsafeSetLen(e) =>
-                Pass::lint_unsafe_initialization(cx, e, alloc_span),
+                Pass::emit_lint(
+                    cx,
+                    e,
+                    vec_alloc,
+                    "unsafe vector initialization",
+                    UNSAFE_VECTOR_INITIALIZATION
+                ),
 
             InitializationType::Extend(e) |
             InitializationType::Resize(e) =>
-                Pass::lint_slow_initialization(cx, e, alloc_span),
+                Pass::emit_lint(
+                    cx,
+                    e,
+                    vec_alloc,
+                    "slow zero-filling initialization",
+                    SLOW_VECTOR_INITIALIZATION
+                )
         };
     }
 
-    fn lint_slow_initialization<'tcx>(
+    fn emit_lint<'tcx>(
         cx: &LateContext<'_, 'tcx>,
         slow_fill: &Expr,
-        alloc_span: Span,
+        vec_alloc: &VecAllocation<'_>,
+        msg: &str,
+        lint: &'static Lint
     ) {
-        span_lint_and_then(
-            cx,
-            SLOW_VECTOR_INITIALIZATION,
-            slow_fill.span,
-            "detected slow zero-filling initialization",
-            |db| {
-                db.span_suggestion_with_applicability(alloc_span, "consider replacing with", "vec![0; ..]".to_string(), Applicability::Unspecified);
-            }
-        );
-    }
+        let len_expr = Sugg::hir(cx, vec_alloc.len_expr, "len");
 
-    fn lint_unsafe_initialization<'tcx>(
-        cx: &LateContext<'_, 'tcx>,
-        slow_fill: &Expr,
-        alloc_span: Span,
-    ) {
         span_lint_and_then(
             cx,
-            UNSAFE_VECTOR_INITIALIZATION,
+            lint,
             slow_fill.span,
-            "detected unsafe vector initialization",
+            msg,
             |db| {
-                db.span_suggestion_with_applicability(alloc_span, "consider replacing with", "vec![0; ..]".to_string(), Applicability::Unspecified);
+                db.span_suggestion_with_applicability(
+                    vec_alloc.allocation_expr.span,
+                    "consider replace allocation with",
+                    format!("vec![0; {}]", len_expr),
+                    Applicability::Unspecified
+                );
             }
         );
     }
 }
 
-/// SlowInitializationVisitor searches for slow zero filling vector initialization, for the given
+/// `VectorInitializationVisitor` searches for unsafe or slow vector initializations for the given
 /// vector.
-struct SlowInitializationVisitor<'a, 'tcx: 'a> {
+struct VectorInitializationVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
 
     /// Contains the information
-    vec_ini: VecInitialization<'tcx>,
+    vec_alloc: VecAllocation<'tcx>,
 
     /// Contains, if found, the slow initialization expression
     slow_expression: Option<InitializationType<'tcx>>,
@@ -248,14 +251,14 @@ struct SlowInitializationVisitor<'a, 'tcx: 'a> {
     initialization_found: bool,
 }
 
-impl<'a, 'tcx> SlowInitializationVisitor<'a, 'tcx> {
+impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
     /// Checks if the given expression is extending a vector with `repeat(0).take(..)`
     fn search_slow_extend_filling(&mut self, expr: &'tcx Expr) {
         if_chain! {
             if self.initialization_found;
             if let ExprKind::MethodCall(ref path, _, ref args) = expr.node;
             if let ExprKind::Path(ref qpath_subj) = args[0].node;
-            if match_qpath(&qpath_subj, &[&self.vec_ini.variable_name.to_string()]);
+            if match_qpath(&qpath_subj, &[&self.vec_alloc.variable_name.to_string()]);
             if path.ident.name == "extend";
             if let Some(ref extend_arg) = args.get(1);
             if self.is_repeat_take(extend_arg);
@@ -272,7 +275,7 @@ impl<'a, 'tcx> SlowInitializationVisitor<'a, 'tcx> {
             if self.initialization_found;
             if let ExprKind::MethodCall(ref path, _, ref args) = expr.node;
             if let ExprKind::Path(ref qpath_subj) = args[0].node;
-            if match_qpath(&qpath_subj, &[&self.vec_ini.variable_name.to_string()]);
+            if match_qpath(&qpath_subj, &[&self.vec_alloc.variable_name.to_string()]);
             if path.ident.name == "resize";
             if let (Some(ref len_arg), Some(fill_arg)) = (args.get(1), args.get(2));
 
@@ -281,7 +284,7 @@ impl<'a, 'tcx> SlowInitializationVisitor<'a, 'tcx> {
             if let LitKind::Int(0, _) = lit.node;
 
             // Check that len expression is equals to `with_capacity` expression
-            if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_ini.len_expr);
+            if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr);
 
             then {
                 self.slow_expression = Some(InitializationType::Resize(expr));
@@ -295,12 +298,12 @@ impl<'a, 'tcx> SlowInitializationVisitor<'a, 'tcx> {
             if self.initialization_found;
             if let ExprKind::MethodCall(ref path, _, ref args) = expr.node;
             if let ExprKind::Path(ref qpath_subj) = args[0].node;
-            if match_qpath(&qpath_subj, &[&self.vec_ini.variable_name.to_string()]);
+            if match_qpath(&qpath_subj, &[&self.vec_alloc.variable_name.to_string()]);
             if path.ident.name == "set_len";
             if let Some(ref len_arg) = args.get(1);
 
             // Check that len expression is equals to `with_capacity` expression
-            if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_ini.len_expr);
+            if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr);
 
             then {
                 self.slow_expression = Some(InitializationType::UnsafeSetLen(expr));
@@ -320,7 +323,7 @@ impl<'a, 'tcx> SlowInitializationVisitor<'a, 'tcx> {
 
             // Check that len expression is equals to `with_capacity` expression
             if let Some(ref len_arg) = take_args.get(1);
-            if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_ini.len_expr);
+            if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr);
 
             then {
                 return true;
@@ -349,7 +352,7 @@ impl<'a, 'tcx> SlowInitializationVisitor<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for SlowInitializationVisitor<'a, 'tcx> {
+impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr) {
         // Stop the search if we already found a slow zero-filling initialization
         if self.slow_expression.is_some() {
@@ -357,7 +360,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SlowInitializationVisitor<'a, 'tcx> {
         }
 
         // Skip all the expressions previous to the vector initialization
-        if self.vec_ini.initialization_expr.id == expr.id {
+        if self.vec_alloc.allocation_expr.id == expr.id {
             self.initialization_found = true;
         }
         
