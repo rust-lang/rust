@@ -1,3 +1,5 @@
+/// FIXME: move completion from ra_editor to ra_analysis
+
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use ra_syntax::{
