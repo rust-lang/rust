@@ -1,3 +1,6 @@
+// Validation changes why we fail
+// compile-flags: -Zmir-emit-validate=0 -Zmiri-disable-validation
+
 // error-pattern: tried to deallocate Stack memory but gave Machine(Rust) as the kind
 
 fn main() {

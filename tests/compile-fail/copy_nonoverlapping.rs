@@ -15,8 +15,8 @@
 fn main() {
     let mut data = [0u8; 16];
     unsafe {
-        let a = &data[0] as *const _;
-        let b = &mut data[1] as *mut _;
+        let a = data.as_mut_ptr();
+        let b = a.wrapping_offset(1) as *mut _;
         std::ptr::copy_nonoverlapping(a, b, 2);
     }
 }

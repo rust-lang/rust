@@ -1,0 +1,10 @@
+// Make sure that we cannot pass by argument a `&mut` that got already invalidated.
+fn foo(_: &mut i32) {}
+
+fn main() {
+    let x = &mut 42;
+    let xraw = x as *mut _;
+    let xref = unsafe { &mut *xraw };
+    let _val = *x; // invalidate xraw
+    foo(xref); //~ ERROR Mut reference with non-reactivatable tag
+}

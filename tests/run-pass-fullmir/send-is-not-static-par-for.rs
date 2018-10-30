@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// FIXME: Still investigating whether there is UB here
+// compile-flags: -Zmiri-disable-validation
+
 use std::sync::Mutex;
 
 fn par_for<I, F>(iter: I, f: F)

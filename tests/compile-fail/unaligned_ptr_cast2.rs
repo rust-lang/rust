@@ -1,3 +1,6 @@
+// This should fail even without validation
+// compile-flags: -Zmir-emit-validate=0 -Zmiri-disable-validation
+
 fn main() {
     let x = &2u16;
     let x = x as *const _ as *const *const u8;

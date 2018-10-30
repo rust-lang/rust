@@ -80,8 +80,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                         Ge => left.offset >= right.offset,
                         Sub => {
                             // subtract the offsets
-                            let left_offset = Scalar::from_uint(left.offset.bytes(), self.memory.pointer_size());
-                            let right_offset = Scalar::from_uint(right.offset.bytes(), self.memory.pointer_size());
+                            let left_offset = Scalar::from_uint(left.offset.bytes(), self.memory().pointer_size());
+                            let right_offset = Scalar::from_uint(right.offset.bytes(), self.memory().pointer_size());
                             let layout = self.layout_of(self.tcx.types.usize)?;
                             return self.binary_op(
                                 Sub,
@@ -103,7 +103,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 self.ptr_int_arithmetic(
                     bin_op,
                     left.to_ptr().expect("we checked is_ptr"),
-                    right.to_bits(self.memory.pointer_size()).expect("we checked is_bits"),
+                    right.to_bits(self.memory().pointer_size()).expect("we checked is_bits"),
                     right_layout.abi.is_signed(),
                 )
             }
@@ -113,7 +113,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 self.ptr_int_arithmetic(
                     bin_op,
                     right.to_ptr().expect("we checked is_ptr"),
-                    left.to_bits(self.memory.pointer_size()).expect("we checked is_bits"),
+                    left.to_bits(self.memory().pointer_size()).expect("we checked is_bits"),
                     left_layout.abi.is_signed(),
                 )
             }
@@ -142,8 +142,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                     // allocations sit right next to each other.  The C/C++ standards are
                     // somewhat fuzzy about this case, so I think for now this check is
                     // "good enough".
-                    self.memory.check_bounds_ptr(left, false)?;
-                    self.memory.check_bounds_ptr(right, false)?;
+                    self.memory().check_bounds_ptr(left, false)?;
+                    self.memory().check_bounds_ptr(right, false)?;
                     // Two live in-bounds pointers, we can compare across allocations
                     left == right
                 }
@@ -153,7 +153,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             (Scalar::Bits { bits, size }, Scalar::Ptr(ptr)) => {
                 assert_eq!(size as u64, self.pointer_size().bytes());
                 let bits = bits as u64;
-                let (alloc_size, alloc_align) = self.memory.get_size_and_align(ptr.alloc_id);
+                let (alloc_size, alloc_align) = self.memory().get_size_and_align(ptr.alloc_id);
 
                 // Case I: Comparing with NULL
                 if bits == 0 {
@@ -223,15 +223,15 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 map_to_primval(left.overflowing_offset(Size::from_bytes(right as u64), self)),
 
             BitAnd if !signed => {
-                let ptr_base_align = self.memory.get(left.alloc_id)?.align.abi();
+                let ptr_base_align = self.memory().get(left.alloc_id)?.align.abi();
                 let base_mask = {
                     // FIXME: Use interpret::truncate, once that takes a Size instead of a Layout
-                    let shift = 128 - self.memory.pointer_size().bits();
+                    let shift = 128 - self.memory().pointer_size().bits();
                     let value = !(ptr_base_align as u128 - 1);
                     // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
                     (value << shift) >> shift
                 };
-                let ptr_size = self.memory.pointer_size().bytes() as u8;
+                let ptr_size = self.memory().pointer_size().bytes() as u8;
                 trace!("Ptr BitAnd, align {}, operand {:#010x}, base_mask {:#010x}",
                     ptr_base_align, right, base_mask);
                 if right & base_mask == base_mask {
@@ -256,9 +256,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             Rem if !signed => {
                 // Doing modulo a divisor of the alignment is allowed.
                 // (Intuition: Modulo a divisor leaks less information.)
-                let ptr_base_align = self.memory.get(left.alloc_id)?.align.abi();
+                let ptr_base_align = self.memory().get(left.alloc_id)?.align.abi();
                 let right = right as u64;
-                let ptr_size = self.memory.pointer_size().bytes() as u8;
+                let ptr_size = self.memory().pointer_size().bytes() as u8;
                 if right == 1 {
                     // modulo 1 is always 0
                     (Scalar::Bits { bits: 0, size: ptr_size }, false)
@@ -295,9 +295,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         if let Scalar::Ptr(ptr) = ptr {
             // Both old and new pointer must be in-bounds.
             // (Of the same allocation, but that part is trivial with our representation.)
-            self.memory.check_bounds_ptr(ptr, false)?;
+            self.memory().check_bounds_ptr(ptr, false)?;
             let ptr = ptr.signed_offset(offset, self)?;
-            self.memory.check_bounds_ptr(ptr, false)?;
+            self.memory().check_bounds_ptr(ptr, false)?;
             Ok(Scalar::Ptr(ptr))
         } else {
             // An integer pointer. They can only be offset by 0, and we pretend there

@@ -1,3 +1,6 @@
+// FIXME: Without retagging, optimization kills finding this problem
+// compile-flags: -Zmir-opt-level=0
+
 #![allow(unused_variables)]
 
 mod safe {
@@ -11,6 +14,7 @@ mod safe {
             assert!(mid <= len);
 
             (from_raw_parts_mut(ptr, len - mid), // BUG: should be "mid" instead of "len - mid"
+            //~^ ERROR Mut reference with non-reactivatable tag
             from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
         }
     }
@@ -19,6 +23,6 @@ mod safe {
 fn main() {
     let mut array = [1,2,3,4];
     let (a, b) = safe::split_at_mut(&mut array, 0);
-    a[1] = 5; //~ ERROR does not exist on the stack
+    a[1] = 5;
     b[1] = 6;
 }

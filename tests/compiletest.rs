@@ -37,7 +37,7 @@ fn have_fullmir() -> bool {
     std::env::var("MIRI_SYSROOT").is_ok() || rustc_test_suite().is_some()
 }
 
-fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir: bool) {
+fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir: bool, opt: bool) {
     if need_fullmir && !have_fullmir() {
         eprintln!("{}", format!(
             "## Skipping compile-fail tests in {} against miri for target {} due to missing mir",
@@ -47,24 +47,34 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullm
         return;
     }
 
+    let opt_str = if opt { " with optimizations" } else { "" };
     eprintln!("{}", format!(
-        "## Running compile-fail tests in {} against miri for target {}",
+        "## Running compile-fail tests in {} against miri for target {}{}",
         path,
-        target
+        target,
+        opt_str
     ).green().bold());
+
+    let mut flags = Vec::new();
+    flags.push(format!("--sysroot {}", sysroot.display()));
+    flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
+    flags.push("-Zmir-emit-validate=1".to_owned());
+    if opt {
+        // Optimizing too aggressivley makes UB detection harder, but test at least
+        // the default value.
+        flags.push("-Zmir-opt-level=1".to_owned());
+    } else {
+        flags.push("-Zmir-opt-level=0".to_owned());
+    }
+
     let mut config = compiletest::Config::default().tempdir();
     config.mode = "compile-fail".parse().expect("Invalid mode");
     config.rustc_path = miri_path();
-    let mut flags = Vec::new();
     if rustc_test_suite().is_some() {
         config.run_lib_path = rustc_lib_path();
         config.compile_lib_path = rustc_lib_path();
     }
-    flags.push(format!("--sysroot {}", sysroot.display()));
-    flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
     config.src_base = PathBuf::from(path.to_string());
-    flags.push("-Zmir-opt-level=0".to_owned()); // optimization circumvents some stacked borrow checks
-    flags.push("-Zmir-emit-validate=1".to_owned());
     config.target_rustcflags = Some(flags.join(" "));
     config.target = target.to_owned();
     config.host = host.to_owned();
@@ -88,6 +98,17 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
         target,
         opt_str
     ).green().bold());
+
+    let mut flags = Vec::new();
+    flags.push(format!("--sysroot {}", sysroot.display()));
+    flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
+    flags.push("-Zmir-emit-validate=1".to_owned());
+    if opt {
+        flags.push("-Zmir-opt-level=3".to_owned());
+    } else {
+        flags.push("-Zmir-opt-level=0".to_owned());
+    }
+
     let mut config = compiletest::Config::default().tempdir();
     config.mode = "ui".parse().expect("Invalid mode");
     config.src_base = PathBuf::from(path);
@@ -97,16 +118,6 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
     if rustc_test_suite().is_some() {
         config.run_lib_path = rustc_lib_path();
         config.compile_lib_path = rustc_lib_path();
-    }
-    let mut flags = Vec::new();
-    flags.push(format!("--sysroot {}", sysroot.display()));
-    flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
-    if opt {
-        flags.push("-Zmir-opt-level=3".to_owned());
-    } else {
-        flags.push("-Zmir-opt-level=0".to_owned());
-        // For now, only validate without optimizations.  Inlining breaks validation.
-        flags.push("-Zmir-emit-validate=1".to_owned());
     }
     config.target_rustcflags = Some(flags.join(" "));
     compiletest::run_tests(&config);
@@ -169,13 +180,13 @@ fn run_pass_miri(opt: bool) {
     miri_pass(&sysroot, "tests/run-pass-fullmir", &host, &host, true, opt);
 }
 
-fn compile_fail_miri() {
+fn compile_fail_miri(opt: bool) {
     let sysroot = get_sysroot();
     let host = get_host();
 
     // FIXME: run tests for other targets, too
-    compile_fail(&sysroot, "tests/compile-fail", &host, &host, false);
-    compile_fail(&sysroot, "tests/compile-fail-fullmir", &host, &host, true);
+    compile_fail(&sysroot, "tests/compile-fail", &host, &host, false, opt);
+    compile_fail(&sysroot, "tests/compile-fail-fullmir", &host, &host, true, opt);
 }
 
 #[test]
@@ -187,5 +198,6 @@ fn test() {
     run_pass_miri(false);
     run_pass_miri(true);
 
-    compile_fail_miri();
+    compile_fail_miri(false);
+    compile_fail_miri(true);
 }

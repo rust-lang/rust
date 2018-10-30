@@ -18,7 +18,7 @@ use std::borrow::Cow;
 
 use rustc::ty::{self, Ty, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{TyLayout, LayoutOf, Size};
-use rustc::hir::def_id::DefId;
+use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
 
 use syntax::attr;
@@ -44,8 +44,12 @@ use range_map::RangeMap;
 #[allow(unused_imports)] // FIXME rustc bug https://github.com/rust-lang/rust/issues/53682
 use helpers::{ScalarExt, EvalContextExt as HelpersEvalContextExt};
 use mono_hash_map::MonoHashMap;
-use stacked_borrows::{EvalContextExt as StackedBorEvalContextExt, Borrow};
+use stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
 
+// Used by priroda
+pub use stacked_borrows::{Borrow, Stacks, Mut as MutBorrow};
+
+// Used by priroda
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     main_id: DefId,
@@ -108,7 +112,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         let mut args = ecx.frame().mir.args_iter();
 
         // First argument: pointer to main()
-        let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance);
+        let main_ptr = ecx.memory_mut().create_fn_alloc(main_instance).with_default_tag();
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
         ecx.write_scalar(Scalar::Ptr(main_ptr), dest)?;
 
@@ -119,12 +123,12 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         // FIXME: extract main source file path
         // Third argument (argv): &[b"foo"]
         let dest = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        let foo = ecx.memory.allocate_static_bytes(b"foo\0");
+        let foo = ecx.memory_mut().allocate_static_bytes(b"foo\0").with_default_tag();
         let foo_ty = ecx.tcx.mk_imm_ptr(ecx.tcx.types.u8);
         let foo_layout = ecx.layout_of(foo_ty)?;
         let foo_place = ecx.allocate(foo_layout, MiriMemoryKind::Env.into())?;
         ecx.write_scalar(Scalar::Ptr(foo), foo_place.into())?;
-        ecx.memory.mark_immutable(foo_place.to_ptr()?.alloc_id)?;
+        ecx.memory_mut().mark_immutable(foo_place.to_ptr()?.alloc_id)?;
         ecx.write_scalar(foo_place.ptr, dest)?;
 
         assert!(args.next().is_none(), "start lang item has more arguments than expected");
@@ -404,7 +408,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         Ok(())
     }
 
-    fn static_with_default_tag(
+    fn adjust_static_allocation(
         alloc: &'_ Allocation
     ) -> Cow<'_, Allocation<Borrow, Self::AllocExtra>> {
         let alloc: Allocation<Borrow, Self::AllocExtra> = Allocation {
@@ -434,7 +438,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     #[inline(always)]
     fn memory_deallocated(
-        alloc: &mut Allocation<Self::PointerTag, Self::AllocExtra>,
+        alloc: &mut Allocation<Borrow, Self::AllocExtra>,
         ptr: Pointer<Borrow>,
     ) -> EvalResult<'tcx> {
         alloc.extra.memory_deallocated(ptr)
@@ -443,30 +447,53 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     #[inline(always)]
     fn tag_reference(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer<Borrow>,
-        pointee_ty: Ty<'tcx>,
-        pointee_size: Size,
-        borrow_kind: Option<mir::BorrowKind>,
-    ) -> EvalResult<'tcx, Borrow> {
-        if !ecx.machine.validate {
+        place: MemPlace<Borrow>,
+        ty: Ty<'tcx>,
+        size: Size,
+        mutability: Option<hir::Mutability>,
+    ) -> EvalResult<'tcx, MemPlace<Borrow>> {
+        if !ecx.machine.validate || size == Size::ZERO {
             // No tracking
-            Ok(Borrow::default())
+            Ok(place)
         } else {
-            ecx.tag_reference(ptr, pointee_ty, pointee_size, borrow_kind)
+            let ptr = place.ptr.to_ptr()?;
+            let tag = ecx.tag_reference(ptr, ty, size, mutability.into())?;
+            let ptr = Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag));
+            Ok(MemPlace { ptr, ..place })
         }
     }
 
     #[inline(always)]
     fn tag_dereference(
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
-        ptr: Pointer<Borrow>,
-        ptr_ty: Ty<'tcx>,
-    ) -> EvalResult<'tcx, Borrow> {
+        place: MemPlace<Borrow>,
+        ty: Ty<'tcx>,
+        size: Size,
+        mutability: Option<hir::Mutability>,
+    ) -> EvalResult<'tcx, MemPlace<Borrow>> {
+        if !ecx.machine.validate || size == Size::ZERO {
+            // No tracking
+            Ok(place)
+        } else {
+            let ptr = place.ptr.to_ptr()?;
+            let tag = ecx.tag_dereference(ptr, ty, size, mutability.into())?;
+            let ptr = Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag));
+            Ok(MemPlace { ptr, ..place })
+        }
+    }
+
+    #[inline(always)]
+    fn tag_new_allocation(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ptr: Pointer,
+        kind: MemoryKind<Self::MemoryKinds>,
+    ) -> EvalResult<'tcx, Pointer<Borrow>> {
         if !ecx.machine.validate {
             // No tracking
-            Ok(Borrow::default())
+            Ok(ptr.with_default_tag())
         } else {
-            ecx.tag_dereference(ptr, ptr_ty)
+            let tag = ecx.tag_new_allocation(ptr.alloc_id, kind);
+            Ok(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
         }
     }
 }

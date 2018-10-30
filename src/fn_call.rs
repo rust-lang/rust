@@ -125,15 +125,15 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                     self.write_null(dest)?;
                 } else {
                     let align = self.tcx.data_layout.pointer_align;
-                    let ptr = self.memory.allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into())?;
-                    self.write_scalar(Scalar::Ptr(ptr), dest)?;
+                    let ptr = self.memory_mut().allocate(Size::from_bytes(size), align, MiriMemoryKind::C.into())?;
+                    self.write_scalar(Scalar::Ptr(ptr.with_default_tag()), dest)?;
                 }
             }
 
             "free" => {
                 let ptr = self.read_scalar(args[0])?.not_undef()?.erase_tag(); // raw ptr operation, no tag
                 if !ptr.is_null_ptr(&self) {
-                    self.memory.deallocate(
+                    self.memory_mut().deallocate(
                         ptr.to_ptr()?.with_default_tag(),
                         None,
                         MiriMemoryKind::C.into(),
@@ -150,9 +150,13 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(Size::from_bytes(size),
-                                               Align::from_bytes(align, align).unwrap(),
-                                               MiriMemoryKind::Rust.into())?;
+                let ptr = self.memory_mut()
+                    .allocate(
+                        Size::from_bytes(size),
+                        Align::from_bytes(align, align).unwrap(),
+                        MiriMemoryKind::Rust.into()
+                    )?
+                    .with_default_tag();
                 self.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             "__rust_alloc_zeroed" => {
@@ -164,10 +168,14 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let ptr = self.memory.allocate(Size::from_bytes(size),
-                                               Align::from_bytes(align, align).unwrap(),
-                                               MiriMemoryKind::Rust.into())?;
-                self.memory.write_repeat(ptr.into(), 0, Size::from_bytes(size))?;
+                let ptr = self.memory_mut()
+                    .allocate(
+                        Size::from_bytes(size),
+                        Align::from_bytes(align, align).unwrap(),
+                        MiriMemoryKind::Rust.into()
+                    )?
+                    .with_default_tag();
+                self.memory_mut().write_repeat(ptr.into(), 0, Size::from_bytes(size))?;
                 self.write_scalar(Scalar::Ptr(ptr), dest)?;
             }
             "__rust_dealloc" => {
@@ -180,7 +188,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                self.memory.deallocate(
+                self.memory_mut().deallocate(
                     ptr.with_default_tag(),
                     Some((Size::from_bytes(old_size), Align::from_bytes(align, align).unwrap())),
                     MiriMemoryKind::Rust.into(),
@@ -197,7 +205,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 if !align.is_power_of_two() {
                     return err!(HeapAllocNonPowerOfTwoAlignment(align));
                 }
-                let new_ptr = self.memory.reallocate(
+                let new_ptr = self.memory_mut().reallocate(
                     ptr.with_default_tag(),
                     Size::from_bytes(old_size),
                     Align::from_bytes(align, align).unwrap(),
@@ -205,7 +213,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                     Align::from_bytes(align, align).unwrap(),
                     MiriMemoryKind::Rust.into(),
                 )?;
-                self.write_scalar(Scalar::Ptr(new_ptr), dest)?;
+                self.write_scalar(Scalar::Ptr(new_ptr.with_default_tag()), dest)?;
             }
 
             "syscall" => {
@@ -231,7 +239,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
             "dlsym" => {
                 let _handle = self.read_scalar(args[0])?;
                 let symbol = self.read_scalar(args[1])?.to_ptr()?.erase_tag();
-                let symbol_name = self.memory.read_c_str(symbol.with_default_tag())?;
+                let symbol_name = self.memory().read_c_str(symbol.with_default_tag())?;
                 let err = format!("bad c unicode symbol: {:?}", symbol_name);
                 let symbol_name = ::std::str::from_utf8(symbol_name).unwrap_or(&err);
                 return err!(Unimplemented(format!(
@@ -245,7 +253,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 // We abort on panic, so not much is going on here, but we still have to call the closure
                 let f = self.read_scalar(args[0])?.to_ptr()?;
                 let data = self.read_scalar(args[1])?.not_undef()?;
-                let f_instance = self.memory.get_fn(f)?;
+                let f_instance = self.memory().get_fn(f)?;
                 self.write_null(dest)?;
                 trace!("__rust_maybe_catch_panic: {:?}", f_instance);
 
@@ -289,8 +297,8 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 let n = Size::from_bytes(self.read_scalar(args[2])?.to_usize(&self)?);
 
                 let result = {
-                    let left_bytes = self.memory.read_bytes(left.with_default_tag(), n)?;
-                    let right_bytes = self.memory.read_bytes(right.with_default_tag(), n)?;
+                    let left_bytes = self.memory().read_bytes(left.with_default_tag(), n)?;
+                    let right_bytes = self.memory().read_bytes(right.with_default_tag(), n)?;
 
                     use std::cmp::Ordering::*;
                     match left_bytes.cmp(right_bytes) {
@@ -311,7 +319,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 let ptr = ptr.with_default_tag();
                 let val = self.read_scalar(args[1])?.to_bytes()? as u8;
                 let num = self.read_scalar(args[2])?.to_usize(&self)?;
-                if let Some(idx) = self.memory.read_bytes(ptr, Size::from_bytes(num))?
+                if let Some(idx) = self.memory().read_bytes(ptr, Size::from_bytes(num))?
                     .iter().rev().position(|&c| c == val)
                 {
                     let new_ptr = ptr.ptr_offset(Size::from_bytes(num - idx as u64 - 1), &self)?;
@@ -326,7 +334,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 let ptr = ptr.with_default_tag();
                 let val = self.read_scalar(args[1])?.to_bytes()? as u8;
                 let num = self.read_scalar(args[2])?.to_usize(&self)?;
-                if let Some(idx) = self.memory.read_bytes(ptr, Size::from_bytes(num))?.iter().position(
+                if let Some(idx) = self.memory().read_bytes(ptr, Size::from_bytes(num))?.iter().position(
                     |&c| c == val,
                 )
                 {
@@ -340,7 +348,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
             "getenv" => {
                 let result = {
                     let name_ptr = self.read_scalar(args[0])?.to_ptr()?.erase_tag(); // raw ptr operation
-                    let name = self.memory.read_c_str(name_ptr.with_default_tag())?;
+                    let name = self.memory().read_c_str(name_ptr.with_default_tag())?;
                     match self.machine.env_vars.get(name) {
                         Some(&var) => Scalar::Ptr(var),
                         None => Scalar::ptr_null(*self.tcx),
@@ -354,15 +362,16 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 {
                     let name_ptr = self.read_scalar(args[0])?.not_undef()?.erase_tag(); // raw ptr operation
                     if !name_ptr.is_null_ptr(&self) {
-                        let name = self.memory.read_c_str(name_ptr.to_ptr()?.with_default_tag())?;
+                        let name = self.memory().read_c_str(name_ptr.to_ptr()?
+                            .with_default_tag())?.to_owned();
                         if !name.is_empty() && !name.contains(&b'=') {
-                            success = Some(self.machine.env_vars.remove(name));
+                            success = Some(self.machine.env_vars.remove(&name));
                         }
                     }
                 }
                 if let Some(old) = success {
                     if let Some(var) = old {
-                        self.memory.deallocate(var, None, MiriMemoryKind::Env.into())?;
+                        self.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
                     }
                     self.write_null(dest)?;
                 } else {
@@ -375,9 +384,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 {
                     let name_ptr = self.read_scalar(args[0])?.not_undef()?.erase_tag(); // raw ptr operation
                     let value_ptr = self.read_scalar(args[1])?.to_ptr()?.erase_tag(); // raw ptr operation
-                    let value = self.memory.read_c_str(value_ptr.with_default_tag())?;
+                    let value = self.memory().read_c_str(value_ptr.with_default_tag())?;
                     if !name_ptr.is_null_ptr(&self) {
-                        let name = self.memory.read_c_str(name_ptr.to_ptr()?.with_default_tag())?;
+                        let name = self.memory().read_c_str(name_ptr.to_ptr()?.with_default_tag())?;
                         if !name.is_empty() && !name.contains(&b'=') {
                             new = Some((name.to_owned(), value.to_owned()));
                         }
@@ -385,20 +394,20 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 }
                 if let Some((name, value)) = new {
                     // +1 for the null terminator
-                    let value_copy = self.memory.allocate(
+                    let value_copy = self.memory_mut().allocate(
                         Size::from_bytes((value.len() + 1) as u64),
                         Align::from_bytes(1, 1).unwrap(),
                         MiriMemoryKind::Env.into(),
-                    )?;
-                    self.memory.write_bytes(value_copy.into(), &value)?;
+                    )?.with_default_tag();
+                    self.memory_mut().write_bytes(value_copy.into(), &value)?;
                     let trailing_zero_ptr = value_copy.offset(Size::from_bytes(value.len() as u64), &self)?.into();
-                    self.memory.write_bytes(trailing_zero_ptr, &[0])?;
+                    self.memory_mut().write_bytes(trailing_zero_ptr, &[0])?;
                     if let Some(var) = self.machine.env_vars.insert(
                         name.to_owned(),
                         value_copy,
                     )
                     {
-                        self.memory.deallocate(var, None, MiriMemoryKind::Env.into())?;
+                        self.memory_mut().deallocate(var, None, MiriMemoryKind::Env.into())?;
                     }
                     self.write_null(dest)?;
                 } else {
@@ -415,7 +424,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                     // stdout/stderr
                     use std::io::{self, Write};
 
-                    let buf_cont = self.memory.read_bytes(buf.with_default_tag(), Size::from_bytes(n))?;
+                    let buf_cont = self.memory().read_bytes(buf.with_default_tag(), Size::from_bytes(n))?;
                     let res = if fd == 1 {
                         io::stdout().write(buf_cont)
                     } else {
@@ -437,7 +446,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
 
             "strlen" => {
                 let ptr = self.read_scalar(args[0])?.to_ptr()?.erase_tag();
-                let n = self.memory.read_c_str(ptr.with_default_tag())?.len();
+                let n = self.memory().read_c_str(ptr.with_default_tag())?.len();
                 self.write_scalar(Scalar::from_uint(n as u64, dest.layout.size), dest)?;
             }
 
@@ -487,9 +496,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
 
                 // Extract the function type out of the signature (that seems easier than constructing it ourselves...)
                 let dtor = match self.read_scalar(args[1])?.not_undef()? {
-                    Scalar::Ptr(dtor_ptr) => Some(self.memory.get_fn(dtor_ptr)?),
+                    Scalar::Ptr(dtor_ptr) => Some(self.memory().get_fn(dtor_ptr)?),
                     Scalar::Bits { bits: 0, size } => {
-                        assert_eq!(size as u64, self.memory.pointer_size().bytes());
+                        assert_eq!(size as u64, self.memory().pointer_size().bytes());
                         None
                     },
                     Scalar::Bits { .. } => return err!(ReadBytesAsPointer),
@@ -505,7 +514,7 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                 if key_layout.size.bits() < 128 && key >= (1u128 << key_layout.size.bits() as u128) {
                     return err!(OutOfTls);
                 }
-                self.memory.write_scalar(
+                self.memory_mut().write_scalar(
                     key_ptr.with_default_tag(),
                     key_layout.align,
                     Scalar::from_uint(key, key_layout.size).into(),
