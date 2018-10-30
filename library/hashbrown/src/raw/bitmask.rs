@@ -1,5 +1,3 @@
-#[cfg(not(feature = "nightly"))]
-use core::hint;
 #[cfg(feature = "nightly")]
 use core::intrinsics;
 use raw::imp::{BitMaskWord, BITMASK_MASK, BITMASK_SHIFT};
