@@ -771,8 +771,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     }
 
     fn process_path(&mut self, id: NodeId, path: &'l ast::Path) {
-        debug!("process_path {:?}", path);
-        if generated_code(path.span) {
+        if self.span.filter_generated(path.span) {
             return;
         }
         self.dump_path_ref(id, path);

@@ -1754,7 +1754,6 @@ impl<'a> LoweringContext<'a> {
         &mut self,
         def: Def,
         p: &Path,
-        ident: Option<Ident>,
         param_mode: ParamMode,
         explicit_owner: Option<NodeId>,
     ) -> hir::Path {
@@ -1773,7 +1772,6 @@ impl<'a> LoweringContext<'a> {
                         explicit_owner,
                     )
                 })
-                .chain(ident.map(|ident| hir::PathSegment::from_ident(ident)))
                 .collect(),
             span: p.span,
         }
@@ -1781,7 +1779,7 @@ impl<'a> LoweringContext<'a> {
 
     fn lower_path(&mut self, id: NodeId, p: &Path, param_mode: ParamMode) -> hir::Path {
         let def = self.expect_full_def(id);
-        self.lower_path_extra(def, p, None, param_mode, None)
+        self.lower_path_extra(def, p, param_mode, None)
     }
 
     fn lower_path_segment(
@@ -3014,7 +3012,7 @@ impl<'a> LoweringContext<'a> {
                     self.with_hir_id_owner(new_node_id, |this| {
                         let new_id = this.lower_node_id(new_node_id);
                         let path =
-                            this.lower_path_extra(def, &path, None, ParamMode::Explicit, None);
+                            this.lower_path_extra(def, &path, ParamMode::Explicit, None);
                         let item = hir::ItemKind::Use(P(path), hir::UseKind::Single);
                         let vis_kind = match vis.node {
                             hir::VisibilityKind::Public => hir::VisibilityKind::Public,
@@ -3053,7 +3051,7 @@ impl<'a> LoweringContext<'a> {
                 }
 
                 let path =
-                    P(self.lower_path_extra(ret_def, &path, None, ParamMode::Explicit, None));
+                    P(self.lower_path_extra(ret_def, &path, ParamMode::Explicit, None));
                 hir::ItemKind::Use(path, hir::UseKind::Single)
             }
             UseTreeKind::Glob => {
@@ -3140,7 +3138,7 @@ impl<'a> LoweringContext<'a> {
                 // the stability of `use a::{};`, to avoid it showing up as
                 // a re-export by accident when `pub`, e.g. in documentation.
                 let def = self.expect_full_def_from_use(id).next().unwrap_or(Def::Err);
-                let path = P(self.lower_path_extra(def, &prefix, None, ParamMode::Explicit, None));
+                let path = P(self.lower_path_extra(def, &prefix, ParamMode::Explicit, None));
                 *vis = respan(prefix.span.shrink_to_lo(), hir::VisibilityKind::Inherited);
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
@@ -4550,7 +4548,6 @@ impl<'a> LoweringContext<'a> {
                     path: P(self.lower_path_extra(
                         def,
                         path,
-                        None,
                         ParamMode::Explicit,
                         explicit_owner,
                     )),
