@@ -104,11 +104,7 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
     flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
     flags.push("-Zmir-emit-validate=1".to_owned());
     if opt {
-        // FIXME: Using level 1 (instead of 3) for now, as the optimizer is pretty broken
-        // and crashes...
-        // Level 0 and 1 are not the same, so this still gives us *some* coverage.
-        // See https://github.com/rust-lang/rust/issues/50411
-        flags.push("-Zmir-opt-level=1".to_owned());
+        flags.push("-Zmir-opt-level=3".to_owned());
     } else {
         flags.push("-Zmir-opt-level=0".to_owned());
     }
