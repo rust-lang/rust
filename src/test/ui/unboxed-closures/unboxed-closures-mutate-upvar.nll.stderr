@@ -1,4 +1,4 @@
-warning[E0594]: cannot assign to `n`, as it is not declared as mutable
+error[E0594]: cannot assign to `n`, as it is not declared as mutable
   --> $DIR/unboxed-closures-mutate-upvar.rs:25:9
    |
 LL |     let n = 0;
@@ -6,10 +6,6 @@ LL |     let n = 0;
 LL |     let mut f = to_fn_mut(|| { //~ ERROR closure cannot assign
 LL |         n += 1;
    |         ^^^^^^ cannot assign
-   |
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
 
 error[E0594]: cannot assign to `n`, as it is not declared as mutable
   --> $DIR/unboxed-closures-mutate-upvar.rs:42:9
@@ -44,6 +40,6 @@ LL | |         n += 1; //~ ERROR cannot assign
 LL | |     });
    | |_____^
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0594`.
