@@ -17,6 +17,7 @@ expressive, which should behave better in corner cases, and be much easier to
 extend.
 
 ## Chalk Structure
+
 Chalk has two main "products". The first of these is the
 [`chalk_engine`][doc-chalk-engine] crate, which defines the core [SLG
 solver][slg]. This is the part rustc uses.
@@ -52,37 +53,9 @@ You can see more examples of programs and queries in the [unit tests][chalk-test
 
 Next we'll go through each stage required to produce the output above.
 
-### Crates
-- [**chalk_engine**][doc-chalk-engine]: Defines the core [SLG solver][slg].
-- [**chalk_ir**][doc-chalk-ir]: Defines chalk's internal representation of
-  types, lifetimes, and goals.
-- [**chalk_solve**][doc-chalk-solve]: Combines `chalk_ir` and `chalk_engine`,
-  effectively.
-  - [`chalk_engine::context`][engine-context] provides the necessary hooks.
-- [**chalk_parse**][doc-chalk-parse]: Defines the raw AST and a parser.
-- [**chalk**][doc-chalk]: Brings everything together. Defines the following
-  modules:
-  - [`rust_ir`][doc-chalk-rust-ir], containing the "HIR-like" form of the AST
-    - `rust_ir::lowering`, which converts AST to `rust_ir`
-  - `rules`, which implements logic rules
-    converting `rust_ir` to `chalk_ir`
-  - `coherence`, which implements coherence rules
-  - Also includes [chalki][doc-chalki], chalk's REPL.
-
-[Browse source on GitHub](https://github.com/rust-lang-nursery/chalk)
-
-[engine-context]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/context/index.html
-
-[doc-chalk-engine]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/index.html
-[doc-chalk-ir]: https://rust-lang-nursery.github.io/chalk/doc/chalk_ir/index.html
-[doc-chalk-solve]: https://rust-lang-nursery.github.io/chalk/doc/chalk_solve/index.html
-[doc-chalk-parse]: https://rust-lang-nursery.github.io/chalk/doc/chalk_parse/index.html
-[doc-chalk]: https://rust-lang-nursery.github.io/chalk/doc/chalk/index.html
-[doc-chalk-rust-ir]: https://rust-lang-nursery.github.io/chalk/doc/chalk/rules/index.html
-[doc-chalki]: https://rust-lang-nursery.github.io/chalk/doc/chalki/index.html
 [chalk-tests]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test.rs#L115
 
-## Parsing
+### Parsing
 
 Chalk is designed to be incorporated with the Rust compiler, so the syntax and
 concepts it deals with heavily borrow from Rust. It is convenient for the sake
@@ -98,7 +71,7 @@ impls, and struct definitions. Parsing is often the first "phase" of
 transformation that a program goes through in order to become a format that
 chalk can understand.
 
-## Lowering
+### Lowering
 
 After parsing, there is a "lowering" phase. This aims to convert traits/impls
 into "program clauses". A [`ProgramClause` (source code)][programclause] is
@@ -136,7 +109,7 @@ forall<T> { (Vec<T>: Clone) :- (T: Clone) }
 This rule dictates that `Vec<T>: Clone` is only satisfied if `T: Clone` is also
 satisfied (i.e. "provable").
 
-### Well-formedness checks
+#### Well-formedness checks
 
 As part of lowering from the AST to the internal IR, we also do some "well
 formedness" checks. See the [source code][well-formedness-checks] for where
@@ -144,7 +117,7 @@ those are done. The call to `record_specialization_priorities` checks
 "coherence" which means that it ensures that two impls of the same trait for the
 same type cannot exist.
 
-## Intermediate Representation (IR)
+### Intermediate Representation (IR)
 
 The second intermediate representation in chalk is called, well, the "ir". :)
 The [IR source code][ir-code] contains the complete definition. The
@@ -159,13 +132,47 @@ In addition to `ir::Program` which has "rust-like things", there is also
 `program_clauses` which contains the `ProgramClause`s that we generated
 previously.
 
-## Rules
+### Rules
 
 The `rules` module works by iterating over every trait, impl, etc. and emitting
 the rules that come from each one. See [Lowering Rules][lowering-rules] for the
 most up-to-date reference on that.
 
 The `ir::ProgramEnvironment` is created [in this module][rules-environment].
+
+### Solver
+
+See [The SLG Solver][slg].
+
+## Crates
+
+Chalk's functionality is broken up into the following crates:
+- [**chalk_engine**][doc-chalk-engine]: Defines the core [SLG solver][slg].
+- [**chalk_ir**][doc-chalk-ir]: Defines chalk's internal representation of
+  types, lifetimes, and goals.
+- [**chalk_solve**][doc-chalk-solve]: Combines `chalk_ir` and `chalk_engine`,
+  effectively.
+  - [`chalk_engine::context`][engine-context] provides the necessary hooks.
+- [**chalk_parse**][doc-chalk-parse]: Defines the raw AST and a parser.
+- [**chalk**][doc-chalk]: Brings everything together. Defines the following
+  modules:
+  - [`rust_ir`][doc-chalk-rust-ir], containing the "HIR-like" form of the AST
+    - `rust_ir::lowering`, which converts AST to `rust_ir`
+  - `rules`, which implements logic rules converting `rust_ir` to `chalk_ir`
+  - `coherence`, which implements coherence rules
+  - Also includes [chalki][doc-chalki], chalk's REPL.
+
+[Browse source on GitHub](https://github.com/rust-lang-nursery/chalk)
+
+[engine-context]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/context/index.html
+
+[doc-chalk-engine]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/index.html
+[doc-chalk-ir]: https://rust-lang-nursery.github.io/chalk/doc/chalk_ir/index.html
+[doc-chalk-solve]: https://rust-lang-nursery.github.io/chalk/doc/chalk_solve/index.html
+[doc-chalk-parse]: https://rust-lang-nursery.github.io/chalk/doc/chalk_parse/index.html
+[doc-chalk]: https://rust-lang-nursery.github.io/chalk/doc/chalk/index.html
+[doc-chalk-rust-ir]: https://rust-lang-nursery.github.io/chalk/doc/chalk/rules/index.html
+[doc-chalki]: https://rust-lang-nursery.github.io/chalk/doc/chalki/index.html
 
 ## Testing
 
