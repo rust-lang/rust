@@ -49,7 +49,8 @@ No possible solution.
 Ambiguous; no inference guidance
 ```
 
-You can see more examples of programs and queries in the [unit tests][chalk-tests].
+You can see more examples of programs and queries in the [unit
+tests][chalk-test-example].
 
 Next we'll go through each stage required to produce the output above.
 
@@ -175,11 +176,29 @@ Chalk's functionality is broken up into the following crates:
 
 ## Testing
 
-TODO: Basically, [there is a macro](https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/solve/test.rs#L112-L148)
-that will take chalk's Rust-like syntax and run it through the full pipeline
-described above.
-[This](https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/solve/test.rs#L83-L110)
-is the function that is ultimately called.
+chalk has a test framework for lowering programs to logic, checking the
+lowered logic, and performing queries on it. This is how we test the
+implementation of chalk itself, and the viability of the [lowering
+rules][lowering-rules].
+
+The main kind of tests in chalk are **goal tests**. They contain a program,
+which is expected to lower to logic successfully, and a set of queries
+(goals) along with the expected output. Here's an
+[example][chalk-test-example]. Since chalk's output can be quite long, goal
+tests support specifying only a prefix of the output.
+
+**Lowering tests** check the stages that occur before we can issue queries
+to the solver: the [lowering to rust_ir][chalk-test-lowering], and the
+[well-formedness checks][chalk-test-wf] that occur after that.
+
+### Testing internals
+
+Goal tests use a [`test!` macro][test-macro] that takes chalk's Rust-like
+syntax and runs it through the full pipeline described above. The macro
+ultimately calls the [`solve_goal` function][solve_goal].
+
+Likewise, lowering tests use the [`lowering_success!` and
+`lowering_error!` macros][test-lowering-macros].
 
 ## More Resources
 
@@ -222,7 +241,10 @@ is the function that is ultimately called.
 
 [binders-struct]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/ir.rs#L661
 [chalk-ast]: https://github.com/rust-lang-nursery/chalk/blob/master/chalk-parse/src/ast.rs
-[chalk-tests]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test.rs#L115
+[chalk-test-example]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test.rs#L115
+[chalk-test-lowering-example]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rust_ir/lowering/test.rs#L8-L31
+[chalk-test-lowering]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rust_ir/lowering/test.rs
+[chalk-test-wf]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rules/wf/test.rs#L1
 [chalki]: https://rust-lang-nursery.github.io/chalk/doc/chalki/index.html
 [clause]: https://github.com/rust-lang-nursery/chalk/blob/master/GLOSSARY.md#clause
 [coherence-src]: https://github.com/rust-lang-nursery/chalk/blob/master/src/coherence.rs
@@ -230,3 +252,6 @@ is the function that is ultimately called.
 [rules-environment]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/rules.rs#L9
 [rules-src]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rules.rs
 [rules-wf-src]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rules/wf.rs
+[solve_goal]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test.rs#L85
+[test-lowering-macros]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test_util.rs#L21-L54
+[test-macro]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test.rs#L33
