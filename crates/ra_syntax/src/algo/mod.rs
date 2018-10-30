@@ -2,7 +2,7 @@ pub mod visit;
 // pub mod walk;
 
 use crate::{
-    text_utils::{contains_offset_nonstrict, is_subrange},
+    text_utils::{contains_offset_nonstrict},
     SyntaxNodeRef, TextRange, TextUnit,
 };
 
@@ -91,7 +91,7 @@ impl<'f> Iterator for LeafAtOffset<'f> {
 
 pub fn find_covering_node(root: SyntaxNodeRef, range: TextRange) -> SyntaxNodeRef {
     assert!(
-        is_subrange(root.range(), range),
+        range.is_subrange(&root.range()),
         "node range: {:?}, target range: {:?}",
         root.range(),
         range,

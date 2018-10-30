@@ -12,6 +12,7 @@ mod descriptors;
 mod imp;
 mod symbol_index;
 mod completion;
+mod syntax_ptr;
 
 use std::{
     fmt,
