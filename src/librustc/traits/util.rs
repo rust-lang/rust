@@ -103,11 +103,10 @@ pub fn elaborate_trait_ref<'cx, 'gcx, 'tcx>(
 
 pub fn elaborate_trait_refs<'cx, 'gcx, 'tcx>(
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-    trait_refs: &[ty::PolyTraitRef<'tcx>])
+    trait_refs: impl Iterator<Item = ty::PolyTraitRef<'tcx>>)
     -> Elaborator<'cx, 'gcx, 'tcx>
 {
-    let predicates = trait_refs.iter()
-                               .map(|trait_ref| trait_ref.to_predicate())
+    let predicates = trait_refs.map(|trait_ref| trait_ref.to_predicate())
                                .collect();
     elaborate_predicates(tcx, predicates)
 }
@@ -271,7 +270,7 @@ pub fn supertraits<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
 }
 
 pub fn transitive_bounds<'cx, 'gcx, 'tcx>(tcx: TyCtxt<'cx, 'gcx, 'tcx>,
-                                          bounds: &[ty::PolyTraitRef<'tcx>])
+                                          bounds: impl Iterator<Item = ty::PolyTraitRef<'tcx>>)
                                           -> Supertraits<'cx, 'gcx, 'tcx>
 {
     elaborate_trait_refs(tcx, bounds).filter_to_traits()
