@@ -185,6 +185,153 @@ fn bar() {
     assert_eq!(param, Some(1));
 }
 
+#[test]
+fn test_fn_signature_with_docs_simple() {
+    let (desc, param) = get_signature(
+        r#"
+// test
+fn foo(j: u32) -> u32 {
+    j
+}
+
+fn bar() {
+    let _ = foo(<|>);
+}
+"#,
+    );
+
+    assert_eq!(desc.name, "foo".to_string());
+    assert_eq!(desc.params, vec!["j".to_string()]);
+    assert_eq!(desc.ret_type, Some("-> u32".to_string()));
+    assert_eq!(param, Some(0));
+    assert_eq!(desc.label, "fn foo(j: u32) -> u32".to_string());
+    assert_eq!(desc.doc, Some("test".into()));
+}
+
+#[test]
+fn test_fn_signature_with_docs() {
+    let (desc, param) = get_signature(
+        r#"
+/// Adds one to the number given.
+///
+/// # Examples
+///
+/// ```
+/// let five = 5;
+///
+/// assert_eq!(6, my_crate::add_one(5));
+/// ```
+pub fn add_one(x: i32) -> i32 {
+    x + 1
+}
+
+pub fn do() {
+    add_one(<|>
+}"#,
+    );
+
+    assert_eq!(desc.name, "add_one".to_string());
+    assert_eq!(desc.params, vec!["x".to_string()]);
+    assert_eq!(desc.ret_type, Some("-> i32".to_string()));
+    assert_eq!(param, Some(0));
+    assert_eq!(desc.label, "pub fn add_one(x: i32) -> i32".to_string());
+    assert_eq!(desc.doc, Some(
+r#"Adds one to the number given.
+
+# Examples
+
+```rust
+let five = 5;
+
+assert_eq!(6, my_crate::add_one(5));
+```"#.into()));
+}
+
+#[test]
+fn test_fn_signature_with_docs_impl() {
+    let (desc, param) = get_signature(
+        r#"
+struct addr;
+impl addr {
+    /// Adds one to the number given.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let five = 5;
+    ///
+    /// assert_eq!(6, my_crate::add_one(5));
+    /// ```
+    pub fn add_one(x: i32) -> i32 {
+        x + 1
+    }
+}
+
+pub fn do_it() {
+    addr {};
+    addr::add_one(<|>);
+}"#);
+
+    assert_eq!(desc.name, "add_one".to_string());
+    assert_eq!(desc.params, vec!["x".to_string()]);
+    assert_eq!(desc.ret_type, Some("-> i32".to_string()));
+    assert_eq!(param, Some(0));
+    assert_eq!(desc.label, "pub fn add_one(x: i32) -> i32".to_string());
+    assert_eq!(desc.doc, Some(
+r#"Adds one to the number given.
+
+# Examples
+
+```rust
+let five = 5;
+
+assert_eq!(6, my_crate::add_one(5));
+```"#.into()));
+}
+
+#[test]
+fn test_fn_signature_with_docs_from_actix() {
+    let (desc, param) = get_signature(
+        r#"
+pub trait WriteHandler<E>
+where
+    Self: Actor,
+    Self::Context: ActorContext,
+{
+    /// Method is called when writer emits error.
+    ///
+    /// If this method returns `ErrorAction::Continue` writer processing
+    /// continues otherwise stream processing stops.
+    fn error(&mut self, err: E, ctx: &mut Self::Context) -> Running {
+        Running::Stop
+    }
+
+    /// Method is called when writer finishes.
+    ///
+    /// By default this method stops actor's `Context`.
+    fn finished(&mut self, ctx: &mut Self::Context) {
+        ctx.stop()
+    }
+}
+
+pub fn foo() {
+    WriteHandler r;
+    r.finished(<|>);
+}
+
+"#);
+
+    assert_eq!(desc.name, "finished".to_string());
+    assert_eq!(desc.params, vec!["&mut self".to_string(), "ctx".to_string()]);
+    assert_eq!(desc.ret_type, None);
+    assert_eq!(param, Some(1));
+    assert_eq!(desc.doc, Some(
+r#"Method is called when writer finishes.
+
+By default this method stops actor's `Context`."#.into()));
+}
+
+
 fn get_all_refs(text: &str) -> Vec<(FileId, TextRange)> {
     let (offset, code) = extract_offset(text);
     let code = code.as_str();

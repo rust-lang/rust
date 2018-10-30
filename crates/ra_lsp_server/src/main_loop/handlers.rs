@@ -5,7 +5,7 @@ use languageserver_types::{
     CodeActionResponse, Command, CompletionItem, CompletionItemKind, Diagnostic,
     DiagnosticSeverity, DocumentSymbol, FoldingRange, FoldingRangeKind, FoldingRangeParams,
     InsertTextFormat, Location, Position, SymbolInformation, TextDocumentIdentifier, TextEdit,
-    RenameParams, WorkspaceEdit, PrepareRenameResponse
+    RenameParams, WorkspaceEdit, PrepareRenameResponse, Documentation, MarkupContent, MarkupKind
 };
 use gen_lsp_server::ErrorCode;
 use ra_analysis::{FileId, FoldKind, Query, RunnableKind};
@@ -465,9 +465,18 @@ pub fn handle_signature_help(
             })
             .collect();
 
+        let documentation = if let Some(doc) = descriptor.doc {
+            Some(Documentation::MarkupContent(MarkupContent {
+                kind: MarkupKind::Markdown,
+                value: doc
+            }))
+        } else {
+            None
+        };
+
         let sig_info = SignatureInformation {
             label: descriptor.label,
-            documentation: None,
+            documentation,
             parameters: Some(parameters),
         };
 
