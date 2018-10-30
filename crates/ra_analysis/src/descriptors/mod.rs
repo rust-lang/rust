@@ -2,7 +2,6 @@ pub(crate) mod module;
 
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
-    text_utils::is_subrange,
 };
 
 #[derive(Debug, Clone)]
@@ -23,7 +22,7 @@ impl FnDescriptor {
             let label: String = node
                 .syntax()
                 .children()
-                .filter(|child| !is_subrange(body_range, child.range()))
+                .filter(|child| !child.range().is_subrange(&body_range))
                 .map(|node| node.text().to_string())
                 .collect();
             label

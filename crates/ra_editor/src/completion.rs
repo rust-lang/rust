@@ -3,7 +3,6 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use ra_syntax::{
     algo::visit::{visitor, visitor_ctx, Visitor, VisitorCtx},
     ast::{self, AstChildren, LoopBodyOwner, ModuleItemOwner},
-    text_utils::is_subrange,
     AstNode, File,
     SyntaxKind::*,
     SyntaxNodeRef, TextUnit,
@@ -191,7 +190,7 @@ fn is_in_loop_body(name_ref: ast::NameRef) -> bool {
             .visit::<ast::LoopExpr, _>(LoopBodyOwner::loop_body)
             .accept(node);
         if let Some(Some(body)) = loop_body {
-            if is_subrange(body.syntax().range(), name_ref.syntax().range()) {
+            if name_ref.syntax().range().is_subrange(&body.syntax().range()) {
                 return true;
             }
         }
