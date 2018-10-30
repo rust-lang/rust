@@ -11,8 +11,8 @@ os:
 - osx
 
 before_script:
-# mac os weirdness (https://github.com/travis-ci/travis-ci/issues/6307)
-- rvm get stable
+# macOS weirdness (https://github.com/travis-ci/travis-ci/issues/6307)
+- if [[ "$TRAVIS_OS_NAME" == osx ]]; then rvm get stable; fi
 # Compute the rust version we use. We do not use "language: rust" to have more control here.
 - |
   if [ "$TRAVIS_EVENT_TYPE" = cron ]; then
@@ -36,35 +36,18 @@ script:
 - |
   # Test and install plain miri
   cargo build --release --all-features &&
-  #cargo test --release --all-features &&
+  cargo test --release --all-features &&
   cargo install --all-features --force --path .
 - |
   # get ourselves a MIR-full libstd
   xargo/build.sh &&
   export MIRI_SYSROOT=~/.xargo/HOST
-#- |
-#  # run all tests with full mir
-#  cargo test --release --all-features
+- |
+  # run all tests with full mir
+  cargo test --release --all-features
 - |
   # Test cargo integration
-  cd cargo-miri-test &&
-  # Test `cargo miri`
-    # We ignore the exit code because we want to see the output even on failure, and
-    # I found no way to preserve the exit code so that we can test for it later.
-    # Variables set in this subshell in the parenthesis are not available
-    # on the outside.
-    # We assume that if this fails, it'll also print something about the failure on
-    # stdout/stderr and we'll catch that.
-    # FIXME: Disabling validation, still investigating whether there is UB here
-    (cargo miri -q >stdout.real 2>stderr.real -- -Zmiri-disable-validation || true) &&
-    # Print file names and contents (`cat` would just print contents)
-    tail -n +0 stdout.real stderr.real &&
-    # Verify output
-    diff -u stdout.ref stdout.real &&
-    diff -u stderr.ref stderr.real &&
-  # test `cargo miri test`
-    cargo miri test &&
-  cd ..
+  (cd cargo-miri-test && ./run-test.py)
 
 notifications:
   email:
