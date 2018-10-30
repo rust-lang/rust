@@ -11,6 +11,7 @@ use std::{fmt, ops, iter};
 pub struct TextUnit(u32);
 
 impl TextUnit {
+    //TODO: rename to `from_char`: this is not ocaml!
     /// `TextUnit` equal to the length of this char.
     #[inline(always)]
     pub fn of_char(c: char) -> TextUnit {
@@ -32,6 +33,21 @@ impl TextUnit {
     #[inline(always)]
     pub fn checked_sub(self, other: TextUnit) -> Option<TextUnit> {
         self.0.checked_sub(other.0).map(TextUnit)
+    }
+
+    #[inline(always)]
+    pub fn from_usize(size: usize) -> TextUnit {
+        #[cfg(debug_assertions)] {
+            if size > u32::max_value() as usize {
+                panic!("overflow when converting to TextUnit: {}", size)
+            }
+        }
+        (size as u32).into()
+    }
+
+    #[inline(always)]
+    pub fn to_usize(self) -> usize {
+        u32::from(self) as usize
     }
 }
 
@@ -244,6 +260,7 @@ impl TextRange {
         TextRange::from_to(offset, offset + len)
     }
 
+    // TODO: pass by value
     /// The inclusive start of this range
     #[inline(always)]
     pub fn start(&self) -> TextUnit {
@@ -266,6 +283,12 @@ impl TextRange {
     #[inline(always)]
     pub fn is_empty(&self) -> bool {
         self.start() == self.end()
+    }
+
+    #[inline(always)]
+    pub fn is_subrange(&self, other: &TextRange) -> bool {
+        other.start() <= self.start()
+            && self.end() <= other.end()
     }
 }
 
@@ -351,5 +374,14 @@ mod tests {
         let r = TextRange::from_to(1.into(), 2.into());
         assert_eq!(r.checked_sub(1.into()), Some(TextRange::from_to(0.into(), 1.into())));
         assert_eq!(x.checked_sub(2.into()), None);
+    }
+
+    #[test]
+    fn test_subrange() {
+        let r1 = TextRange::from_to(2.into(), 4.into());
+        let r2 = TextRange::from_to(2.into(), 3.into());
+        let r3 = TextRange::from_to(1.into(), 3.into());
+        assert!(r2.is_subrange(&r1));
+        assert!(!r3.is_subrange(&r1));
     }
 }
