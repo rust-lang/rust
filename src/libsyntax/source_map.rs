@@ -110,14 +110,14 @@ pub struct StableSourceFileId(u128);
 
 impl StableSourceFileId {
     pub fn new(source_file: &SourceFile) -> StableSourceFileId {
-        StableFilemapId::new_from_pieces(&source_file.name,
+        StableSourceFileId::new_from_pieces(&source_file.name,
                                          source_file.name_was_remapped,
                                          source_file.unmapped_path.as_ref())
     }
 
     pub fn new_from_pieces(name: &FileName,
                            name_was_remapped: bool,
-                           unmapped_path: Option<&FileName>) -> StableFilemapId {
+                           unmapped_path: Option<&FileName>) -> StableSourceFileId {
         let mut hasher = StableHasher::new();
 
         name.hash(&mut hasher);
@@ -236,7 +236,7 @@ impl SourceMap {
             other => (other, false),
         };
 
-        let file_id = StableFilemapId::new_from_pieces(&filename,
+        let file_id = StableSourceFileId::new_from_pieces(&filename,
                                                        was_remapped,
                                                        Some(&unmapped_path));
 

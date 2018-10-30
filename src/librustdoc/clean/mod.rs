@@ -3008,7 +3008,7 @@ pub struct Span {
 impl Span {
     pub fn empty() -> Span {
         Span {
-            filename: FileName::Anon,
+            filename: FileName::Anon(0),
             loline: 0, locol: 0,
             hiline: 0, hicol: 0,
         }
