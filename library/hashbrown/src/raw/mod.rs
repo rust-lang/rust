@@ -11,10 +11,15 @@ use scopeguard::guard;
 // Branch prediction hint. This is currently only available on nightly but it
 // consistently improves performance by 10-15%.
 #[cfg(feature = "nightly")]
-use core::intrinsics::likely;
+use core::intrinsics::{likely, unlikely};
 #[cfg(not(feature = "nightly"))]
 #[inline]
 fn likely(b: bool) -> bool {
+    b
+}
+#[cfg(not(feature = "nightly"))]
+#[inline]
+fn unlikely(b: bool) -> bool {
     b
 }
 
@@ -390,9 +395,30 @@ impl<T> RawTable<T> {
     #[inline]
     fn find_insert_slot(&self, hash: u64) -> usize {
         for pos in self.probe_seq(hash) {
-            let group = unsafe { Group::load(self.ctrl(pos)) };
-            if let Some(bit) = group.match_empty_or_deleted().lowest_set_bit() {
-                return (pos + bit) & self.bucket_mask;
+            unsafe {
+                let group = Group::load(self.ctrl(pos));
+                if let Some(bit) = group.match_empty_or_deleted().lowest_set_bit() {
+                    let result = (pos + bit) & self.bucket_mask;
+
+                    // In tables smaller than the group width, trailing control
+                    // bytes outside the range of the table are filled with
+                    // DELETED entries. These will unfortunately trigger a
+                    // match, but once masked will point to a full bucket that
+                    // is already occupied. We detect this situation here and
+                    // perform a second scan starting at the begining of the
+                    // table. This second scan is guaranteed to find an empty
+                    // slot (due to the load factor) before hitting the trailing
+                    // control bytes (containing DELETED).
+                    if unlikely(is_full(*self.ctrl(result))) {
+                        debug_assert!(self.bucket_mask < Group::WIDTH);
+                        debug_assert_ne!(pos, 0);
+                        return Group::load_aligned(self.ctrl(0))
+                            .match_empty_or_deleted()
+                            .lowest_set_bit_nonzero();
+                    } else {
+                        return result;
+                    }
+                }
             }
         }
 
