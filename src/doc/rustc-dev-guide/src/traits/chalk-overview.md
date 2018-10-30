@@ -16,6 +16,71 @@ existing, somewhat ad-hoc implementation into something far more principled and
 expressive, which should behave better in corner cases, and be much easier to
 extend.
 
+## Chalk Structure
+Chalk has two main "products". The first of these is the
+[`chalk_engine`][doc-chalk-engine] crate, which defines the core [SLG
+solver][slg]. This is the part rustc uses.
+
+The rest of chalk can be considered an elaborate testing harness. Chalk is
+capable of parsing Rust-like "programs", lowering them to logic, and
+performing queries on them.
+
+Here's a sample session in the chalk repl, chalki. After feeding it our
+program, we perform some queries on it.
+
+```rust,ignore
+?- program
+Enter a program; press Ctrl-D when finished
+| struct Foo { }
+| struct Bar { }
+| struct Vec<T> { }
+| trait Clone { }
+| impl<T> Clone for Vec<T> where T: Clone { }
+| impl Clone for Foo { }
+
+?- Vec<Foo>: Clone
+Unique; substitution [], lifetime constraints []
+
+?- Vec<Bar>: Clone
+No possible solution.
+
+?- exists<T> { Vec<T>: Clone }
+Ambiguous; no inference guidance
+```
+
+You can see more examples of programs and queries in the [unit tests][chalk-tests].
+
+[chalk-tests]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test.rs#L115
+
+### Crates
+- [**chalk_engine**][doc-chalk-engine]: Defines the core [SLG solver][slg].
+- [**chalk_ir**][doc-chalk-ir]: Defines chalk's internal representation of
+  types, lifetimes, and goals.
+- [**chalk_solve**][doc-chalk-solve]: Combines `chalk_ir` and `chalk_engine`,
+  effectively.
+  - [`chalk_engine::context`][engine-context] provides the necessary hooks.
+- [**chalk_parse**][doc-chalk-parse]: Defines the raw AST and a parser.
+- [**chalk**][doc-chalk]: Brings everything together. Defines the following
+  modules:
+  - [`rust_ir`][doc-chalk-rust-ir], containing the "HIR-like" form of the AST
+    - `rust_ir::lowering`, which converts AST to `rust_ir`
+  - `rules`, which implements logic rules
+    converting `rust_ir` to `chalk_ir`
+  - `coherence`, which implements coherence rules
+  - Also includes [chalki][doc-chalki], chalk's REPL.
+
+[Browse source on GitHub](https://github.com/rust-lang-nursery/chalk)
+
+[engine-context]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/context/index.html
+
+[doc-chalk-engine]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/index.html
+[doc-chalk-ir]: https://rust-lang-nursery.github.io/chalk/doc/chalk_ir/index.html
+[doc-chalk-solve]: https://rust-lang-nursery.github.io/chalk/doc/chalk_solve/index.html
+[doc-chalk-parse]: https://rust-lang-nursery.github.io/chalk/doc/chalk_parse/index.html
+[doc-chalk]: https://rust-lang-nursery.github.io/chalk/doc/chalk/index.html
+[doc-chalk-rust-ir]: https://rust-lang-nursery.github.io/chalk/doc/chalk/rules/index.html
+[doc-chalki]: https://rust-lang-nursery.github.io/chalk/doc/chalki/index.html
+
 ## Resources
 
 * [Chalk Source Code](https://github.com/rust-lang-nursery/chalk)
