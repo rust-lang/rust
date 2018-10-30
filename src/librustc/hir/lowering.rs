@@ -3022,8 +3022,14 @@ impl<'a> LoweringContext<'a> {
                             hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
                             hir::VisibilityKind::Restricted { ref path, id: _, hir_id: _ } => {
                                 let id = this.next_id();
+                                let mut path = path.clone();
+                                for seg in path.segments.iter_mut() {
+                                    if seg.id.is_some() {
+                                        seg.id = Some(this.next_id().node_id);
+                                    }
+                                }
                                 hir::VisibilityKind::Restricted {
-                                    path: path.clone(),
+                                    path,
                                     id: id.node_id,
                                     hir_id: id.hir_id,
                                 }
