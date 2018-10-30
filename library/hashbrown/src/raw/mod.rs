@@ -417,9 +417,11 @@ impl<T> RawTable<T> {
         // Ensure that the table is reset even if one of the drops panic
         let self_ = guard(self, |self_| self_.clear_no_drop());
 
-        for item in self_.iter() {
-            unsafe {
-                item.drop();
+        if mem::needs_drop::<T>() {
+            for item in self_.iter() {
+                unsafe {
+                    item.drop();
+                }
             }
         }
     }
@@ -491,11 +493,13 @@ impl<T> RawTable<T> {
             // element since we lost their hash and have no way of recovering it
             // without risking another panic.
             let mut guard = guard(self, |self_| {
-                for i in 0..self_.buckets() {
-                    if *self_.ctrl(i) == DELETED {
-                        self_.set_ctrl(i, EMPTY);
-                        self_.bucket(i).drop();
-                        self_.items -= 1;
+                if mem::needs_drop::<T>() {
+                    for i in 0..self_.buckets() {
+                        if *self_.ctrl(i) == DELETED {
+                            self_.set_ctrl(i, EMPTY);
+                            self_.bucket(i).drop();
+                            self_.items -= 1;
+                        }
                     }
                 }
                 self_.growth_left = bucket_mask_to_capacity(self_.bucket_mask) - self_.items;
@@ -710,9 +714,11 @@ impl<T: Clone> Clone for RawTable<T> {
                     // to make sure we drop only the elements that have been
                     // cloned so far.
                     let mut guard = guard((0, &mut new_table), |(index, new_table)| {
-                        for i in 0..=*index {
-                            if is_full(*new_table.ctrl(i)) {
-                                new_table.bucket(i).drop();
+                        if mem::needs_drop::<T>() {
+                            for i in 0..=*index {
+                                if is_full(*new_table.ctrl(i)) {
+                                    new_table.bucket(i).drop();
+                                }
                             }
                         }
                         new_table.free_buckets();
@@ -745,8 +751,10 @@ impl<T> Drop for RawTable<T> {
     fn drop(&mut self) {
         if self.bucket_mask != 0 {
             unsafe {
-                for item in self.iter() {
-                    item.drop();
+                if mem::needs_drop::<T>() {
+                    for item in self.iter() {
+                        item.drop();
+                    }
                 }
                 self.free_buckets();
             }
@@ -855,8 +863,10 @@ impl<T> Drop for RawIntoIter<T> {
     fn drop(&mut self) {
         unsafe {
             // Drop all remaining elements
-            while let Some(item) = self.iter.next() {
-                item.drop();
+            if mem::needs_drop::<T>() {
+                while let Some(item) = self.iter.next() {
+                    item.drop();
+                }
             }
 
             // Free the table
@@ -909,8 +919,10 @@ impl<'a, T> Drop for RawDrain<'a, T> {
             let _guard = guard(self.table, |table| table.as_mut().clear_no_drop());
 
             // Drop all remaining elements
-            while let Some(item) = self.iter.next() {
-                item.drop();
+            if mem::needs_drop::<T>() {
+                while let Some(item) = self.iter.next() {
+                    item.drop();
+                }
             }
         }
     }
