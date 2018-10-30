@@ -4496,7 +4496,18 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 ty::Visibility::Restricted(self.current_module.normal_ancestor_id)
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
-                // Visibilities are resolved as global by default, add starting root segment.
+                // For visibilities we are not ready to provide correct implementation of "uniform
+                // paths" right now, so on 2018 edition we only allow module-relative paths for now.
+                let first_ident = path.segments[0].ident;
+                if self.session.rust_2018() && !first_ident.is_path_segment_keyword() {
+                    let msg = "relative paths are not supported in visibilities on 2018 edition";
+                    self.session.struct_span_err(first_ident.span, msg)
+                                .span_suggestion(path.span, "try", format!("crate::{}", path))
+                                .emit();
+                    return ty::Visibility::Public;
+                }
+                // On 2015 visibilities are resolved as crate-relative by default,
+                // add starting root segment if necessary.
                 let segments = path.make_root().iter().chain(path.segments.iter())
                     .map(|seg| seg.ident)
                     .collect::<Vec<_>>();
