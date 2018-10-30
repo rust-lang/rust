@@ -1,0 +1,15 @@
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/hrtb-exists-forall-trait-invariant.rs:28:5
+   |
+LL |     foo::<()>(); //~ ERROR cannot infer
+   |     ^^^^^^^^^
+   |
+   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U3, name: BrNamed(crate0:DefIndex(1:11), 'b) })...
+   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U3, name: BrNamed(crate0:DefIndex(1:11), 'b) })...
+   = note: ...so that the types are compatible:
+           expected Trait<for<'b> fn(std::cell::Cell<&'b u32>)>
+              found Trait<fn(std::cell::Cell<&u32>)>
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.

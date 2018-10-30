@@ -1,0 +1,24 @@
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/hrtb-exists-forall-fn.rs:22:34
+   |
+LL |     let _: for<'b> fn(&'b u32) = foo(); //~ ERROR cannot infer
+   |                                  ^^^
+   |
+   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:11), 'b) })...
+   = note: ...so that the expression is assignable:
+           expected for<'b> fn(&'b u32)
+              found fn(&u32)
+note: but, the lifetime must be valid for the call at 22:34...
+  --> $DIR/hrtb-exists-forall-fn.rs:22:34
+   |
+LL |     let _: for<'b> fn(&'b u32) = foo(); //~ ERROR cannot infer
+   |                                  ^^^^^
+note: ...so type `fn(&u32)` of expression is valid during the expression
+  --> $DIR/hrtb-exists-forall-fn.rs:22:34
+   |
+LL |     let _: for<'b> fn(&'b u32) = foo(); //~ ERROR cannot infer
+   |                                  ^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0495`.
