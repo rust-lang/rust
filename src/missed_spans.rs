@@ -308,9 +308,6 @@ impl<'a> FmtVisitor<'a> {
                 status.line_start = i + 1;
             } else if c.is_whitespace() && status.last_wspace.is_none() {
                 status.last_wspace = Some(i);
-            } else if c == ';' && status.last_wspace.is_some() {
-                status.line_start = i;
-                status.last_wspace = None;
             } else {
                 status.last_wspace = None;
             }
