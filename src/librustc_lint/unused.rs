@@ -278,10 +278,9 @@ impl UnusedParens {
                                 msg: &str,
                                 followed_by_block: bool) {
         if let ast::ExprKind::Paren(ref inner) = value.node {
-            let necessary = followed_by_block && if let ast::ExprKind::Ret(_) = inner.node {
-                true
-            } else {
-                parser::contains_exterior_struct_lit(&inner)
+            let necessary = followed_by_block && match inner.node {
+                ast::ExprKind::Ret(_) | ast::ExprKind::Break(..) => true,
+                _ => parser::contains_exterior_struct_lit(&inner),
             };
             if !necessary {
                 let expr_text = if let Ok(snippet) = cx.sess().source_map()
