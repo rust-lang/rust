@@ -233,22 +233,32 @@ impl<T> Foo<T> for f32 {
 }
 ```
 
-So where clauses on associated types work *exactly* like where clauses on
-trait methods: in an impl, we must substitute the parameters from the traits
-with values provided by the impl, we may omit them if we don't need them, but
-we cannot add new where clauses.
+> So in Rust, where clauses on associated types work *exactly* like where
+> clauses on trait methods: in an impl, we must substitute the parameters from
+> the traits with values provided by the impl, we may omit them if we don't
+> need them, but we cannot add new where clauses.
 
 Now let's see the generated goal for this general impl:
 ```text
 forall<P1...> {
-    if (FromEnv(WC_impl), FromEnv(InputTypes(SomeType<A2...>))) {
-        WellFormed(SomeType<A2...>: Trait<A1...>) &&
-            WellFormed(InputTypes(WC_impl)) &&
+    // Well-formedness of types appearing in the impl
+    if (FromEnv(WC_impl), FromEnv(InputTypes(SomeType<A2...>: Trait<A1...>))) {
+        WellFormed(InputTypes(WC_impl)) &&
 
             forall<P2...> {
                 if (FromEnv(WC_assoc)) {
-                    WellFormed(SomeValue<A3...>: Bounds_assoc) &&
                         WellFormed(InputTypes(SomeValue<A3...>))
+                }
+            }
+    }
+
+    // Implied bounds checking
+    if (FromEnv(WC_impl), FromEnv(InputTypes(SomeType<A2...>: Trait<A1...>))) {
+        WellFormed(SomeType<A2...>: Trait<A1...>) &&
+
+            forall<P2...> {
+                if (FromEnv(WC_assoc)) {
+                    WellFormed(SomeValue<A3...>: Bounds_assoc)
                 }
             }
     }
@@ -257,25 +267,32 @@ forall<P1...> {
 
 Here is the most complex goal. As always, first, assuming that
 the various where clauses hold, we prove that every type appearing in the impl
-is well-formed, ***except*** types appearing in the receiver type
-`SomeType<A2...>`. Instead, we *assume* that those types are well-formed
-(hence the `if (FromEnv(InputTypes(SomeType<A2...>)))` condition). This is
+is well-formed, ***except*** types appearing in the impl header
+`SomeType<A2...>: Trait<A1...>`. Instead, we *assume* that those types are
+well-formed
+(hence the `if (FromEnv(InputTypes(SomeType<A2...>: Trait<A1...>)))`
+conditions). This is
 part of the implied bounds proposal, so that we can rely on the bounds
-written on the definition of the `SomeType<A2...>` type (and that we don't
+written on the definition of e.g. the `SomeType<A2...>` type (and that we don't
 need to repeat those bounds).
+> Note that we don't need to check well-formedness of types appearing in
+> `WC_assoc` because we already did that in the trait decl (they are just
+> repeated with some substitutions of values which we already assume to be
+> well-formed)
 
-Next, assuming that the where clauses on the impl `WC_impl` hold and that the
-input types of `SomeType<A2...>` are well-formed, we prove that
+Next, still assuming that the where clauses on the impl `WC_impl` hold and that
+the input types of `SomeType<A2...>` are well-formed, we prove that
 `WellFormed(SomeType<A2...>: Trait<A1...>)` hold. That is, we want to prove
 that `SomeType<A2...>` verify all the where clauses that might transitively
 come from the `Trait` definition (see
 [this subsection](./implied-bounds.md#co-inductiveness-of-wellformed)).
 
-Lastly, assuming that the where clauses on the associated type `WC_assoc` hold,
+Lastly, assuming in addition that the where clauses on the associated type
+`WC_assoc` hold,
 we prove that `WellFormed(SomeValue<A3...>: Bounds_assoc)` hold. Again, we are
 not only proving `Implemented(SomeValue<A3...>: Bounds_assoc)`, but also
-all the facts that might transitively come from `Bounds_assoc`. This is because
-we allow the use of implied bounds on associated types: if we have
+all the facts that might transitively come from `Bounds_assoc`. We must do this
+because we allow the use of implied bounds on associated types: if we have
 `FromEnv(SomeType: Trait)` in our environment, the lowering rules
 chapter indicates that we are able to deduce
 `FromEnv(<SomeType as Trait>::Assoc: Bounds_assoc)` without knowing what the
@@ -283,6 +300,12 @@ precise value of `<SomeType as Trait>::Assoc` is.
 
 Some examples for the generated goal:
 ```rust,ignore
+// Trait Program Clauses
+
+// These are program clauses that come from the trait definitions below
+// and that the trait solver can use for its reasonings. I'm just restating
+// them here so that we have them in mind.
+
 trait Copy { }
 // This is a program clause that comes from the trait definition above
 // and that the trait solver can use for its reasonings. I'm just restating
@@ -303,6 +326,8 @@ trait Complete where Self: Partial { }
 //     Implemented(Self: Complete) &&
 //     WellFormed(Self: Partial).
 // ```
+
+// Impl WF Goals
 
 impl<T> Partial for T where T: Complete { }
 // The generated goal is:
