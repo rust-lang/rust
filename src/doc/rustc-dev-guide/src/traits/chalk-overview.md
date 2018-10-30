@@ -19,7 +19,7 @@ extend.
 ## Chalk Structure
 
 Chalk has two main "products". The first of these is the
-[`chalk_engine`][doc-chalk-engine] crate, which defines the core [SLG
+[`chalk_engine`][chalk_engine] crate, which defines the core [SLG
 solver][slg]. This is the part rustc uses.
 
 The rest of chalk can be considered an elaborate testing harness. Chalk is
@@ -52,8 +52,6 @@ Ambiguous; no inference guidance
 You can see more examples of programs and queries in the [unit tests][chalk-tests].
 
 Next we'll go through each stage required to produce the output above.
-
-[chalk-tests]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test.rs#L115
 
 ### Parsing ([chalk_parse])
 
@@ -134,10 +132,6 @@ etc. and emitting the rules that come from each one.
 
 *See also: [Lowering Rules][lowering-rules]*
 
-[`ProgramEnvironment`]: https://rust-lang-nursery.github.io/chalk/doc/chalk_ir/struct.ProgramEnvironment.html
-[`ProgramClause`]: https://rust-lang-nursery.github.io/chalk/doc/chalk_ir/enum.ProgramClause.html
-[rules-src]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rules.rs
-
 #### Well-formedness checks
 
 As part of lowering to logic, we also do some "well formedness" checks. See
@@ -145,15 +139,11 @@ the [`rules::wf` source code][rules-wf-src] for where those are done.
 
 *See also: [Well-formedness checking][wf-checking]*
 
-[rules-wf-src]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rules/wf.rs
-
 #### Coherence
 
 The function `record_specialization_priorities` in the `coherence` module
 ([source code][coherence-src]) checks "coherence", which means that it
 ensures that two impls of the same trait for the same type cannot exist.
-
-[coherence-src]: https://github.com/rust-lang-nursery/chalk/blob/master/src/coherence.rs
 
 ### Solver ([chalk_solve])
 
@@ -166,10 +156,10 @@ queries is called the *solver*.
 ## Crates
 
 Chalk's functionality is broken up into the following crates:
-- [**chalk_engine**][doc-chalk-engine]: Defines the core [SLG solver][slg].
+- [**chalk_engine**][chalk_engine]: Defines the core [SLG solver][slg].
 - [**chalk_ir**][chalk_ir]: Defines chalk's internal representation of
   types, lifetimes, and goals.
-- [**chalk_solve**][doc-chalk-solve]: Combines `chalk_ir` and `chalk_engine`,
+- [**chalk_solve**][chalk_solve]: Combines `chalk_ir` and `chalk_engine`,
   effectively.
   - [`chalk_engine::context`][engine-context] provides the necessary hooks.
 - [**chalk_parse**][chalk_parse]: Defines the raw AST and a parser.
@@ -179,20 +169,9 @@ Chalk's functionality is broken up into the following crates:
     - `rust_ir::lowering`, which converts AST to `rust_ir`
   - `rules`, which implements logic rules converting `rust_ir` to `chalk_ir`
   - `coherence`, which implements coherence rules
-  - Also includes [chalki][doc-chalki], chalk's REPL.
+  - Also includes [chalki][chalki], chalk's REPL.
 
-[Browse source on GitHub](https://github.com/rust-lang-nursery/chalk)
-
-[engine-context]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/context/index.html
-
-[doc-chalk-engine]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/index.html
-[chalk_ir]: https://rust-lang-nursery.github.io/chalk/doc/chalk_ir/index.html
-[doc-chalk-solve]: https://rust-lang-nursery.github.io/chalk/doc/chalk_solve/index.html
-[chalk_parse]: https://rust-lang-nursery.github.io/chalk/doc/chalk_parse/index.html
-[doc-chalk]: https://rust-lang-nursery.github.io/chalk/doc/chalk/index.html
-[rust_ir]: https://rust-lang-nursery.github.io/chalk/doc/chalk/rust_ir/index.html
-[rust_ir-program]: https://rust-lang-nursery.github.io/chalk/doc/chalk/rust_ir/struct.Program.html
-[doc-chalki]: https://rust-lang-nursery.github.io/chalk/doc/chalki/index.html
+[Browse source code on GitHub](https://github.com/rust-lang-nursery/chalk)
 
 ## Testing
 
@@ -217,19 +196,37 @@ is the function that is ultimately called.
 * [Cyclic queries in chalk](http://smallcultfollowing.com/babysteps/blog/2017/09/12/tabling-handling-cyclic-queries-in-chalk/)
 * [An on-demand SLG solver for chalk](http://smallcultfollowing.com/babysteps/blog/2018/01/31/an-on-demand-slg-solver-for-chalk/)
 
-[rustc-issues]: https://github.com/rust-lang-nursery/rustc-guide/issues
-[chalk]: https://github.com/rust-lang-nursery/chalk
-[lowering-to-logic]: ./lowering-to-logic.html
-[lowering-rules]: ./lowering-rules.html
-[wf-checking]: ./wf.html
-[ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
-[chalk-ast]: https://github.com/rust-lang-nursery/chalk/blob/master/chalk-parse/src/ast.rs
-[universal quantification]: https://en.wikipedia.org/wiki/Universal_quantification
-[lowering-forall]: ./lowering-to-logic.html#type-checking-generic-functions-beyond-horn-clauses
-[clause]: https://github.com/rust-lang-nursery/chalk/blob/master/GLOSSARY.md#clause
 [goals-and-clauses]: ./goals-and-clauses.html
-[ir-code]: https://github.com/rust-lang-nursery/chalk/blob/master/src/rust_ir.rs
 [HIR]: ../hir.html
-[binders-struct]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/ir.rs#L661
-[rules-environment]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/rules.rs#L9
+[lowering-forall]: ./lowering-to-logic.html#type-checking-generic-functions-beyond-horn-clauses
+[lowering-rules]: ./lowering-rules.html
+[lowering-to-logic]: ./lowering-to-logic.html
 [slg]: ./slg.html
+[wf-checking]: ./wf.html
+
+[ast]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
+[chalk]: https://github.com/rust-lang-nursery/chalk
+[rustc-issues]: https://github.com/rust-lang-nursery/rustc-guide/issues
+[universal quantification]: https://en.wikipedia.org/wiki/Universal_quantification
+
+[`ProgramClause`]: https://rust-lang-nursery.github.io/chalk/doc/chalk_ir/enum.ProgramClause.html
+[`ProgramEnvironment`]: https://rust-lang-nursery.github.io/chalk/doc/chalk_ir/struct.ProgramEnvironment.html
+[chalk_engine]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/index.html
+[chalk_ir]: https://rust-lang-nursery.github.io/chalk/doc/chalk_ir/index.html
+[chalk_parse]: https://rust-lang-nursery.github.io/chalk/doc/chalk_parse/index.html
+[chalk_solve]: https://rust-lang-nursery.github.io/chalk/doc/chalk_solve/index.html
+[doc-chalk]: https://rust-lang-nursery.github.io/chalk/doc/chalk/index.html
+[engine-context]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/context/index.html
+[rust_ir-program]: https://rust-lang-nursery.github.io/chalk/doc/chalk/rust_ir/struct.Program.html
+[rust_ir]: https://rust-lang-nursery.github.io/chalk/doc/chalk/rust_ir/index.html
+
+[binders-struct]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/ir.rs#L661
+[chalk-ast]: https://github.com/rust-lang-nursery/chalk/blob/master/chalk-parse/src/ast.rs
+[chalk-tests]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/test.rs#L115
+[chalki]: https://rust-lang-nursery.github.io/chalk/doc/chalki/index.html
+[clause]: https://github.com/rust-lang-nursery/chalk/blob/master/GLOSSARY.md#clause
+[coherence-src]: https://github.com/rust-lang-nursery/chalk/blob/master/src/coherence.rs
+[ir-code]: https://github.com/rust-lang-nursery/chalk/blob/master/src/rust_ir.rs
+[rules-environment]: https://github.com/rust-lang-nursery/chalk/blob/94a1941a021842a5fcb35cd043145c8faae59f08/src/rules.rs#L9
+[rules-src]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rules.rs
+[rules-wf-src]: https://github.com/rust-lang-nursery/chalk/blob/4bce000801de31bf45c02f742a5fce335c9f035f/src/rules/wf.rs
