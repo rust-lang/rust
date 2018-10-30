@@ -4,7 +4,7 @@ use crate::rustc::mir::interpret::{
     read_target_uint, AllocId, AllocType, Allocation, ConstValue, EvalResult, GlobalId, Scalar,
 };
 use crate::rustc::ty::Const;
-use crate::rustc_mir::interpret::{EvalContext, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer};
+use crate::rustc_mir::interpret::{EvalContext, Machine, Memory, MemoryKind, MemPlace, OpTy, PlaceTy, Pointer};
 use std::borrow::Cow;
 
 #[derive(Default)]
@@ -131,7 +131,7 @@ fn trans_const_place<'a, 'tcx: 'a>(
         let op = ecx.const_to_op(const_)?;
         let ptr = ecx.allocate(op.layout, MemoryKind::Stack)?;
         ecx.copy_op(op, ptr.into())?;
-        let alloc = ecx.memory.get(ptr.to_ptr()?.alloc_id)?;
+        let alloc = ecx.memory().get(ptr.to_ptr()?.alloc_id)?;
         Ok(fx.tcx.intern_const_alloc(alloc.clone()))
     };
     let alloc = result().expect("unable to convert ConstValue to Allocation");
@@ -318,10 +318,6 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn static_with_default_tag(alloc: &Allocation) -> Cow<Allocation<()>> {
-        Cow::Borrowed(alloc)
-    }
-
     fn ptr_op(
         _: &EvalContext<'a, 'mir, 'tcx, Self>,
         _: mir::BinOp,
@@ -337,11 +333,19 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn tag_reference(_: &mut EvalContext<'a, 'mir, 'tcx, Self>, _: Pointer<()>, _: Ty<'tcx>, _: Size, _: Option<BorrowKind>) -> EvalResult<'tcx> {
+    fn tag_reference(_: &mut EvalContext<'a, 'mir, 'tcx, Self>, _: MemPlace, _: Ty<'tcx>, _: Size, _: Option<crate::rustc::hir::Mutability>) -> EvalResult<'tcx, MemPlace> {
+        panic!()
+    }
+
+    fn tag_dereference(_: &EvalContext<'a, 'mir, 'tcx, Self>, _: MemPlace, _: Ty<'tcx>, _: Size, _: Option<crate::rustc::hir::Mutability>) -> EvalResult<'tcx, MemPlace> {
         panic!();
     }
 
-    fn tag_dereference(_: &EvalContext<'a, 'mir, 'tcx, Self>, _: Pointer<()>, _: Ty<'tcx>) -> EvalResult<'tcx> {
-        panic!();
+    fn adjust_static_allocation(alloc: &Allocation) -> Cow<'_, Allocation> {
+        Cow::Borrowed(alloc)
+    }
+
+    fn tag_new_allocation(_: &mut EvalContext<'a, 'mir, 'tcx, Self>, ptr: Pointer, _: MemoryKind<!>) -> EvalResult<'tcx, Pointer> {
+        Ok(ptr)
     }
 }
