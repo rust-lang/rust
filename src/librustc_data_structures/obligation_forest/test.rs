@@ -10,7 +10,7 @@
 
 #![cfg(test)]
 
-use super::{Error, ObligationForest, ObligationProcessor, Outcome, ProcessResult};
+use super::{Error, DoCompleted, ObligationForest, ObligationProcessor, Outcome, ProcessResult};
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -84,8 +84,8 @@ fn push_pop() {
                 "C" => ProcessResult::Changed(vec![]),
                 _ => unreachable!(),
             }
-        }, |_| {}));
-    assert_eq!(ok, vec!["C"]);
+        }, |_| {}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap(), vec!["C"]);
     assert_eq!(err,
                vec![Error {
                         error: "B is for broken",
@@ -108,8 +108,8 @@ fn push_pop() {
                 "D" => ProcessResult::Changed(vec!["D.1", "D.2"]),
                 _ => unreachable!(),
             }
-        }, |_| {}));
-    assert_eq!(ok, Vec::<&'static str>::new());
+        }, |_| {}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap(), Vec::<&'static str>::new());
     assert_eq!(err, Vec::new());
 
 
@@ -127,8 +127,8 @@ fn push_pop() {
                 "D.2" => ProcessResult::Changed(vec!["D.2.i"]),
                 _ => unreachable!(),
             }
-        }, |_| {}));
-    assert_eq!(ok, vec!["A.3", "A.1", "A.3.i"]);
+        }, |_| {}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap(), vec!["A.3", "A.1", "A.3.i"]);
     assert_eq!(err,
                vec![Error {
                         error: "A is for apple",
@@ -143,8 +143,8 @@ fn push_pop() {
                 "D.2.i" => ProcessResult::Changed(vec![]),
                 _ => panic!("unexpected obligation {:?}", obligation),
             }
-        }, |_| {}));
-    assert_eq!(ok, vec!["D.2.i", "D.2"]);
+        }, |_| {}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap(), vec!["D.2.i", "D.2"]);
     assert_eq!(err,
                vec![Error {
                         error: "D is for dumb",
@@ -171,8 +171,8 @@ fn success_in_grandchildren() {
                 "A" => ProcessResult::Changed(vec!["A.1", "A.2", "A.3"]),
                 _ => unreachable!(),
             }
-        }, |_| {}));
-    assert!(ok.is_empty());
+        }, |_| {}), DoCompleted::Yes);
+    assert!(ok.unwrap().is_empty());
     assert!(err.is_empty());
 
     let Outcome { completed: ok, errors: err, .. } =
@@ -183,8 +183,8 @@ fn success_in_grandchildren() {
                 "A.3" => ProcessResult::Changed(vec![]),
                 _ => unreachable!(),
             }
-        }, |_| {}));
-    assert_eq!(ok, vec!["A.3", "A.1"]);
+        }, |_| {}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap(), vec!["A.3", "A.1"]);
     assert!(err.is_empty());
 
     let Outcome { completed: ok, errors: err, .. } =
@@ -194,8 +194,8 @@ fn success_in_grandchildren() {
                 "A.2.ii" => ProcessResult::Changed(vec![]),
                 _ => unreachable!(),
             }
-        }, |_| {}));
-    assert_eq!(ok, vec!["A.2.ii"]);
+        }, |_| {}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap(), vec!["A.2.ii"]);
     assert!(err.is_empty());
 
     let Outcome { completed: ok, errors: err, .. } =
@@ -204,14 +204,15 @@ fn success_in_grandchildren() {
                 "A.2.i.a" => ProcessResult::Changed(vec![]),
                 _ => unreachable!(),
             }
-        }, |_| {}));
-    assert_eq!(ok, vec!["A.2.i.a", "A.2.i", "A.2", "A"]);
+        }, |_| {}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap(), vec!["A.2.i.a", "A.2.i", "A.2", "A"]);
     assert!(err.is_empty());
 
     let Outcome { completed: ok, errors: err, .. } =
-        forest.process_obligations(&mut C(|_| unreachable!(), |_| {}));
+        forest.process_obligations(&mut C(|_| unreachable!(), |_| {}),
+        DoCompleted::Yes);
 
-    assert!(ok.is_empty());
+    assert!(ok.unwrap().is_empty());
     assert!(err.is_empty());
 }
 
@@ -227,8 +228,8 @@ fn to_errors_no_throw() {
                 "A" => ProcessResult::Changed(vec!["A.1", "A.2", "A.3"]),
                 _ => unreachable!(),
             }
-        }, |_|{}));
-    assert_eq!(ok.len(), 0);
+        }, |_|{}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap().len(), 0);
     assert_eq!(err.len(), 0);
     let errors = forest.to_errors(());
     assert_eq!(errors[0].backtrace, vec!["A.1", "A"]);
@@ -248,8 +249,8 @@ fn diamond() {
                 "A" => ProcessResult::Changed(vec!["A.1", "A.2"]),
                 _ => unreachable!(),
             }
-        }, |_|{}));
-    assert_eq!(ok.len(), 0);
+        }, |_|{}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap().len(), 0);
     assert_eq!(err.len(), 0);
 
     let Outcome { completed: ok, errors: err, .. } =
@@ -259,8 +260,8 @@ fn diamond() {
                 "A.2" => ProcessResult::Changed(vec!["D"]),
                 _ => unreachable!(),
             }
-        }, |_|{}));
-    assert_eq!(ok.len(), 0);
+        }, |_|{}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap().len(), 0);
     assert_eq!(err.len(), 0);
 
     let mut d_count = 0;
@@ -270,9 +271,9 @@ fn diamond() {
                 "D" => { d_count += 1; ProcessResult::Changed(vec![]) },
                 _ => unreachable!(),
             }
-        }, |_|{}));
+        }, |_|{}), DoCompleted::Yes);
     assert_eq!(d_count, 1);
-    assert_eq!(ok, vec!["D", "A.2", "A.1", "A"]);
+    assert_eq!(ok.unwrap(), vec!["D", "A.2", "A.1", "A"]);
     assert_eq!(err.len(), 0);
 
     let errors = forest.to_errors(());
@@ -285,8 +286,8 @@ fn diamond() {
                 "A'" => ProcessResult::Changed(vec!["A'.1", "A'.2"]),
                 _ => unreachable!(),
             }
-        }, |_|{}));
-    assert_eq!(ok.len(), 0);
+        }, |_|{}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap().len(), 0);
     assert_eq!(err.len(), 0);
 
     let Outcome { completed: ok, errors: err, .. } =
@@ -296,8 +297,8 @@ fn diamond() {
                 "A'.2" => ProcessResult::Changed(vec!["D'"]),
                 _ => unreachable!(),
             }
-        }, |_|{}));
-    assert_eq!(ok.len(), 0);
+        }, |_|{}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap().len(), 0);
     assert_eq!(err.len(), 0);
 
     let mut d_count = 0;
@@ -307,9 +308,9 @@ fn diamond() {
                 "D'" => { d_count += 1; ProcessResult::Error("operation failed") },
                 _ => unreachable!(),
             }
-        }, |_|{}));
+        }, |_|{}), DoCompleted::Yes);
     assert_eq!(d_count, 1);
-    assert_eq!(ok.len(), 0);
+    assert_eq!(ok.unwrap().len(), 0);
     assert_eq!(err, vec![super::Error {
         error: "operation failed",
         backtrace: vec!["D'", "A'.1", "A'"]
@@ -333,8 +334,8 @@ fn done_dependency() {
                 "A: Sized" | "B: Sized" | "C: Sized" => ProcessResult::Changed(vec![]),
                 _ => unreachable!(),
             }
-        }, |_|{}));
-    assert_eq!(ok, vec!["C: Sized", "B: Sized", "A: Sized"]);
+        }, |_|{}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap(), vec!["C: Sized", "B: Sized", "A: Sized"]);
     assert_eq!(err.len(), 0);
 
     forest.register_obligation("(A,B,C): Sized");
@@ -348,8 +349,8 @@ fn done_dependency() {
                         ]),
                 _ => unreachable!(),
             }
-        }, |_|{}));
-    assert_eq!(ok, vec!["(A,B,C): Sized"]);
+        }, |_|{}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap(), vec!["(A,B,C): Sized"]);
     assert_eq!(err.len(), 0);
 }
 
@@ -371,8 +372,8 @@ fn orphan() {
                 "C2" => ProcessResult::Changed(vec![]),
                 _ => unreachable!(),
             }
-        }, |_|{}));
-    assert_eq!(ok, vec!["C2", "C1"]);
+        }, |_|{}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap(), vec!["C2", "C1"]);
     assert_eq!(err.len(), 0);
 
     let Outcome { completed: ok, errors: err, .. } =
@@ -382,8 +383,8 @@ fn orphan() {
                 "B" => ProcessResult::Changed(vec!["D"]),
                 _ => unreachable!(),
             }
-        }, |_|{}));
-    assert_eq!(ok.len(), 0);
+        }, |_|{}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap().len(), 0);
     assert_eq!(err.len(), 0);
 
     let Outcome { completed: ok, errors: err, .. } =
@@ -393,8 +394,8 @@ fn orphan() {
                 "E" => ProcessResult::Error("E is for error"),
                 _ => unreachable!(),
             }
-        }, |_|{}));
-    assert_eq!(ok.len(), 0);
+        }, |_|{}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap().len(), 0);
     assert_eq!(err, vec![super::Error {
         error: "E is for error",
         backtrace: vec!["E", "A"]
@@ -406,8 +407,8 @@ fn orphan() {
                 "D" => ProcessResult::Error("D is dead"),
                 _ => unreachable!(),
             }
-        }, |_|{}));
-    assert_eq!(ok.len(), 0);
+        }, |_|{}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap().len(), 0);
     assert_eq!(err, vec![super::Error {
         error: "D is dead",
         backtrace: vec!["D"]
@@ -431,8 +432,8 @@ fn simultaneous_register_and_error() {
                 "B" => ProcessResult::Changed(vec!["A"]),
                 _ => unreachable!(),
             }
-        }, |_|{}));
-    assert_eq!(ok.len(), 0);
+        }, |_|{}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap().len(), 0);
     assert_eq!(err, vec![super::Error {
         error: "An error",
         backtrace: vec!["A"]
@@ -449,8 +450,8 @@ fn simultaneous_register_and_error() {
                 "B" => ProcessResult::Changed(vec!["A"]),
                 _ => unreachable!(),
             }
-        }, |_|{}));
-    assert_eq!(ok.len(), 0);
+        }, |_|{}), DoCompleted::Yes);
+    assert_eq!(ok.unwrap().len(), 0);
     assert_eq!(err, vec![super::Error {
         error: "An error",
         backtrace: vec!["A"]

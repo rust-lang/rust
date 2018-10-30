@@ -162,8 +162,8 @@ enum NodeState {
 #[derive(Debug)]
 pub struct Outcome<O, E> {
     /// Obligations that were completely evaluated, including all
-    /// (transitive) subobligations.
-    pub completed: Vec<O>,
+    /// (transitive) subobligations. Only computed if requested.
+    pub completed: Option<Vec<O>>,
 
     /// Backtrace of obligations that were found to be in error.
     pub errors: Vec<Error<O, E>>,
@@ -175,6 +175,14 @@ pub struct Outcome<O, E> {
     /// inference state. (Note that if we invoke `process_obligations`
     /// with no pending obligations, stalled will be true.)
     pub stalled: bool,
+}
+
+/// Should `process_obligations` compute the `Outcome::completed` field of its
+/// result?
+#[derive(PartialEq)]
+pub enum DoCompleted {
+    No,
+    Yes,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -282,8 +290,8 @@ impl<O: ForestObligation> ObligationForest<O> {
                 });
             }
         }
-        let successful_obligations = self.compress();
-        assert!(successful_obligations.is_empty());
+        let successful_obligations = self.compress(DoCompleted::Yes);
+        assert!(successful_obligations.unwrap().is_empty());
         errors
     }
 
@@ -311,7 +319,8 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// be called in a loop until `outcome.stalled` is false.
     ///
     /// This CANNOT be unrolled (presently, at least).
-    pub fn process_obligations<P>(&mut self, processor: &mut P) -> Outcome<O, P::Error>
+    pub fn process_obligations<P>(&mut self, processor: &mut P, do_completed: DoCompleted)
+                                  -> Outcome<O, P::Error>
         where P: ObligationProcessor<Obligation=O>
     {
         debug!("process_obligations(len={})", self.nodes.len());
@@ -366,7 +375,7 @@ impl<O: ForestObligation> ObligationForest<O> {
             // There's no need to perform marking, cycle processing and compression when nothing
             // changed.
             return Outcome {
-                completed: vec![],
+                completed: if do_completed == DoCompleted::Yes { Some(vec![]) } else { None },
                 errors,
                 stalled,
             };
@@ -376,12 +385,12 @@ impl<O: ForestObligation> ObligationForest<O> {
         self.process_cycles(processor);
 
         // Now we have to compress the result
-        let completed_obligations = self.compress();
+        let completed = self.compress(do_completed);
 
         debug!("process_obligations: complete");
 
         Outcome {
-            completed: completed_obligations,
+            completed,
             errors,
             stalled,
         }
@@ -524,7 +533,7 @@ impl<O: ForestObligation> ObligationForest<O> {
     /// Beforehand, all nodes must be marked as `Done` and no cycles
     /// on these nodes may be present. This is done by e.g. `process_cycles`.
     #[inline(never)]
-    fn compress(&mut self) -> Vec<O> {
+    fn compress(&mut self, do_completed: DoCompleted) -> Option<Vec<O>> {
         let nodes_len = self.nodes.len();
         let mut node_rewrites: Vec<_> = self.scratch.take().unwrap();
         node_rewrites.extend(0..nodes_len);
@@ -573,21 +582,26 @@ impl<O: ForestObligation> ObligationForest<O> {
         if dead_nodes == 0 {
             node_rewrites.truncate(0);
             self.scratch = Some(node_rewrites);
-            return vec![];
+            return if do_completed == DoCompleted::Yes { Some(vec![]) } else { None };
         }
 
         // Pop off all the nodes we killed and extract the success
         // stories.
-        let successful = (0..dead_nodes)
-                             .map(|_| self.nodes.pop().unwrap())
-                             .flat_map(|node| {
-                                 match node.state.get() {
-                                     NodeState::Error => None,
-                                     NodeState::Done => Some(node.obligation),
-                                     _ => unreachable!()
-                                 }
-                             })
-            .collect();
+        let successful = if do_completed == DoCompleted::Yes {
+            Some((0..dead_nodes)
+                .map(|_| self.nodes.pop().unwrap())
+                .flat_map(|node| {
+                    match node.state.get() {
+                        NodeState::Error => None,
+                        NodeState::Done => Some(node.obligation),
+                        _ => unreachable!()
+                    }
+                })
+                .collect())
+        } else {
+            self.nodes.truncate(self.nodes.len() - dead_nodes);
+            None
+        };
         self.apply_rewrites(&node_rewrites);
 
         node_rewrites.truncate(0);
