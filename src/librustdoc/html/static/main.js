@@ -2088,7 +2088,7 @@
         return wrapper;
     }
 
-    var hideItemDeclarations = getCurrentValue('rustdoc-item-declarations') === "false";
+    var showItemDeclarations = getCurrentValue('rustdoc-item-declarations') === "false";
     function buildToggleWrapper(e) {
         if (hasClass(e, 'autohide')) {
             var wrap = e.previousElementSibling;
@@ -2117,7 +2117,7 @@
             if (hasClass(e, "type-decl")) {
                 fontSize = "20px";
                 otherMessage = '&nbsp;Show&nbsp;declaration';
-                if (hideItemDeclarations === false) {
+                if (showItemDeclarations === false) {
                     extraClass = 'collapsed';
                 }
             } else if (hasClass(e, "sub-variant")) {
@@ -2136,12 +2136,13 @@
                 extraClass = "marg-left";
             }
 
-            e.parentNode.insertBefore(createToggle(otherMessage,
-                                                   fontSize,
-                                                   extraClass,
-                                                   hideItemDeclarations),
-                                      e);
-            if (otherMessage.length > 0 && hideItemDeclarations === true) {
+            e.parentNode.insertBefore(
+                createToggle(otherMessage,
+                             fontSize,
+                             extraClass,
+                             hasClass(e, "type-decl") === false || showItemDeclarations === true),
+                e);
+            if (hasClass(e, "type-decl") === true && showItemDeclarations === true) {
                 collapseDocs(e.previousSibling.childNodes[0], "toggle");
             }
         }
