@@ -429,9 +429,11 @@ impl<T> RawTable<T> {
     /// Marks all table buckets as empty without dropping their contents.
     #[inline]
     fn clear_no_drop(&mut self) {
-        unsafe {
-            self.ctrl(0)
-                .write_bytes(EMPTY, self.buckets() + Group::WIDTH);
+        if self.bucket_mask != 0 {
+            unsafe {
+                self.ctrl(0)
+                    .write_bytes(EMPTY, self.buckets() + Group::WIDTH);
+            }
         }
         self.items = 0;
         self.growth_left = bucket_mask_to_capacity(self.bucket_mask);
