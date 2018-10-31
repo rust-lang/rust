@@ -3,7 +3,16 @@ hashbrown
 
 [![Build Status](https://travis-ci.com/Amanieu/hashbrown.svg?branch=master)](https://travis-ci.com/Amanieu/hashbrown) [![Crates.io](https://img.shields.io/crates/v/hashbrown.svg)](https://crates.io/crates/hashbrown)
 
-> A high-performance hash table for Rust.
+This crate is a Rust port of Google's high-performance [SwissTable] hash
+map, adapted to make it a drop-in replacement for Rust's standard `HashMap`
+and `HashSet` types.
+
+The original C++ version of SwissTable can be found [here], and this
+[CppCon talk] gives an overview of how the algorithm works.
+
+[SwissTable]: https://abseil.io/blog/20180927-swisstables
+[here]: https://github.com/abseil/abseil-cpp/blob/master/absl/container/internal/raw_hash_set.h
+[CppCon talk]: https://www.youtube.com/watch?v=ncHmEUmJZf4
 
 ## [Documentation](https://docs.rs/hashbrown)
 
@@ -12,11 +21,11 @@ hashbrown
 ## Features
 
 - Drop-in replacement for the standard library `HashMap` and `HashSet` types.
+- Uses `FxHash` as the default hasher, which is much faster than SipHash.
 - Around 2x faster than `FxHashMap` and 8x faster than the standard `HashMap`.
 - Compatible with `#[no_std]` (currently requires nightly for the `alloc` crate).
 - Empty hash maps do not allocate any memory.
-- Uses SIMD to speed up lookups. The algorithm is based on Google's ["Swiss Table"](https://abseil.io/blog/20180927-swisstables) hash map.
-  - Explained in detail in [this video](https://www.youtube.com/watch?v=ncHmEUmJZf4).
+- SIMD lookups to scan multiple hash entries in parallel.
 
 ## Performance
 
@@ -33,7 +42,7 @@ Compared to `std::collections::HashMap`:
  new_insert_drop    78               55                          -23   -29.49%   x 1.42
 ```
 
-Compared to `rustc_hash::FxHashMap`:
+Compared to `rustc_hash::FxHashMap` (standard `HashMap` using `FxHash` instead of `SipHash`):
 
 ```
  name               fxhash ns/iter  hashbrown ns/iter  diff ns/iter    diff %  speedup

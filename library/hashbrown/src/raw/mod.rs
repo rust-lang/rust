@@ -612,7 +612,7 @@ impl<T> RawTable<T> {
                 // This may panic.
                 let hash = hasher(item.as_ref());
 
-                // WE can use a simpler version of insert() here since there are no
+                // We can use a simpler version of insert() here since there are no
                 // DELETED entries.
                 let index = new_table.find_insert_slot(hash);
                 new_table.set_ctrl(index, h2(hash));

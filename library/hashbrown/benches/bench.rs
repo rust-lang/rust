@@ -11,11 +11,11 @@
 #![feature(test)]
 
 extern crate hashbrown;
-extern crate test;
 extern crate rustc_hash;
+extern crate test;
 
-use test::Bencher;
 use std::hash::Hash;
+use test::Bencher;
 
 use hashbrown::HashMap;
 //use rustc_hash::FxHashMap as HashMap;

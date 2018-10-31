@@ -1,7 +1,13 @@
-//! A high-performance replacement for the standard library `HashMap`.
+//! This crate is a Rust port of Google's high-performance [SwissTable] hash
+//! map, adapted to make it a drop-in replacement for Rust's standard `HashMap`
+//! and `HashSet` types.
 //!
-//! The API of this crate mirrors that of the hash table implementation in
-//! `std::collections`.
+//! The original C++ version of SwissTable can be found [here], and this
+//! [CppCon talk] gives an overview of how the algorithm works.
+//!
+//! [SwissTable]: https://abseil.io/blog/20180927-swisstables
+//! [here]: https://github.com/abseil/abseil-cpp/blob/master/absl/container/internal/raw_hash_set.h
+//! [CppCon talk]: https://www.youtube.com/watch?v=ncHmEUmJZf4
 
 #![no_std]
 #![cfg_attr(
@@ -23,7 +29,7 @@ mod raw;
 mod set;
 
 pub mod hash_map {
-    //! A hash map implemented with linear probing and Robin Hood bucket stealing.
+    //! A hash map implemented with quadratic probing and SIMD lookup.
     pub use map::*;
 }
 pub mod hash_set {

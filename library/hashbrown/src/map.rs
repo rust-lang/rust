@@ -21,7 +21,7 @@ use raw::{Bucket, RawDrain, RawIntoIter, RawIter, RawTable};
 
 pub use fx::FxHashBuilder as DefaultHashBuilder;
 
-/// A high-performance hash map which uses quadratic probing and SIMD.
+/// A hash map implemented with quadratic probing and SIMD lookup.
 ///
 /// The default hashing algorithm is currently `fx`, though this is
 /// subject to change at any point in the future. This hash function is very
@@ -1143,8 +1143,20 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a, S: 'a> {
     table: &'a mut HashMap<K, V, S>,
 }
 
-unsafe impl<'a, K, V, S> Send for OccupiedEntry<'a, K, V, S> where K: Send, V: Send, S: Send {}
-unsafe impl<'a, K, V, S> Sync for OccupiedEntry<'a, K, V, S> where K: Sync, V: Sync, S: Sync {}
+unsafe impl<'a, K, V, S> Send for OccupiedEntry<'a, K, V, S>
+where
+    K: Send,
+    V: Send,
+    S: Send,
+{
+}
+unsafe impl<'a, K, V, S> Sync for OccupiedEntry<'a, K, V, S>
+where
+    K: Sync,
+    V: Sync,
+    S: Sync,
+{
+}
 
 impl<'a, K: 'a + Debug, V: 'a + Debug, S> Debug for OccupiedEntry<'a, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
