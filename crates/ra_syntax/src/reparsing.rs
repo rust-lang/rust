@@ -48,7 +48,7 @@ fn reparse_leaf<'node>(
 ) -> Option<(SyntaxNodeRef<'node>, GreenNode, Vec<SyntaxError>)> {
     let node = algo::find_covering_node(node, edit.delete);
     match node.kind() {
-        WHITESPACE | COMMENT | DOC_COMMENT | IDENT | STRING | RAW_STRING => {
+        WHITESPACE | COMMENT | IDENT | STRING | RAW_STRING => {
             let text = get_text_after_edit(node, &edit);
             let tokens = tokenize(&text);
             let token = match tokens[..] {

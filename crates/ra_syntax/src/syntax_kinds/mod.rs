@@ -19,7 +19,7 @@ pub(crate) struct SyntaxInfo {
 impl SyntaxKind {
     pub fn is_trivia(self) -> bool {
         match self {
-            WHITESPACE | COMMENT | DOC_COMMENT => true,
+            WHITESPACE | COMMENT => true,
             _ => false,
         }
     }
