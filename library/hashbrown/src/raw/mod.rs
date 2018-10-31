@@ -446,8 +446,8 @@ impl<T> RawTable<T> {
         let self_ = guard(self, |self_| self_.clear_no_drop());
 
         if mem::needs_drop::<T>() {
-            for item in self_.iter() {
-                unsafe {
+            unsafe {
+                for item in self_.iter() {
                     item.drop();
                 }
             }
@@ -696,27 +696,30 @@ impl<T> RawTable<T> {
         self.bucket_mask + 1
     }
 
-    /// Returns an iterator over every element in the table.
+    /// Returns an iterator over every element in the table. It is up to
+    /// the caller to ensure that the `RawTable` outlives the `RawIter`.
+    /// Because we cannot make the `next` method unsafe on the `RawIter`
+    /// struct, we have to make the `iter` method unsafe.
     #[inline]
-    pub fn iter(&self) -> RawIter<T> {
-        unsafe {
-            let current_group = Group::load_aligned(self.ctrl.as_ptr())
-                .match_empty_or_deleted()
-                .invert();
-            RawIter {
-                data: self.data.as_ptr(),
-                ctrl: self.ctrl.as_ptr(),
-                current_group,
-                end: self.ctrl(self.bucket_mask),
-                items: self.items,
-            }
+    pub unsafe fn iter(&self) -> RawIter<T> {
+        let current_group = Group::load_aligned(self.ctrl.as_ptr())
+            .match_empty_or_deleted()
+            .invert();
+        RawIter {
+            data: self.data.as_ptr(),
+            ctrl: self.ctrl.as_ptr(),
+            current_group,
+            end: self.ctrl(self.bucket_mask),
+            items: self.items,
         }
     }
 
     /// Returns an iterator which removes all elements from the table without
-    /// freeing the memory.
+    /// freeing the memory. It is up to the caller to ensure that the `RawTable`
+    /// outlives the `RawDrain`. Because we cannot make the `next` method unsafe
+    /// on the `RawDrain`, we have to make the `drain` method unsafe.
     #[inline]
-    pub fn drain(&mut self) -> RawDrain<T> {
+    pub unsafe fn drain(&mut self) -> RawDrain<T> {
         RawDrain {
             iter: self.iter(),
             table: NonNull::from(self),
