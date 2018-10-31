@@ -126,6 +126,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             "atomic_xsub_acqrel" |
             "atomic_xsub_relaxed" => {
                 let ptr = self.ref_to_mplace(self.read_value(args[0])?)?;
+                if !ptr.layout.ty.is_integral() {
+                    return err!(Unimplemented(format!("Atomic arithmetic operations only work on integer types")));
+                }
                 let rhs = self.read_value(args[1])?;
                 let old = self.read_value(ptr.into())?;
                 self.write_value(*old, dest)?; // old value is returned
