@@ -78,26 +78,28 @@ pub fn gen_changelog_lint_list(lints: Vec<Lint>) -> Vec<String> {
     lint_list_sorted.sort_by_key(|l| l.name.clone());
     lint_list_sorted
         .iter()
-        .filter(|l| !l.is_internal())
-        .map(|l| {
-            format!("[`{}`]: {}#{}", l.name, DOCS_LINK.clone(), l.name)
-        })
-        .collect()
+        .filter_map(|l| {
+            if l.is_internal() {
+                None
+            } else {
+                Some(format!("[`{}`]: {}#{}", l.name, DOCS_LINK.clone(), l.name))
+            }
+        }).collect()
 }
 
-/// Generates the 'register_removed' code in `./clippy_lints/src/lib.rs`.
-pub fn gen_deprecated(lints: Vec<Lint>) -> Vec<String> {
+/// Generates the `register_removed` code in `./clippy_lints/src/lib.rs`.
+pub fn gen_deprecated(lints: &[Lint]) -> Vec<String> {
     lints.iter()
-        .filter(|l| l.deprecation.is_some())
-        .map(|l| {
-            format!(
-                r#"    store.register_removed(
-        "{}",
-        "{}",
-    );"#,
-                l.name,
-                l.deprecation.clone().unwrap()
-            )
+        .filter_map(|l| {
+            l.clone().deprecation.and_then(|depr_text| {
+                Some(
+                    format!(
+                        "    store.register_removed(\n        \"{}\",\n        \"{}\",\n    );",
+                        l.name,
+                        depr_text
+                    )
+                )
+            })
         })
         .collect()
 }
@@ -352,5 +354,5 @@ fn test_gen_deprecated() {
         "has been superseeded by should_assert_eq2",
     );"#.to_string()
     ];
-    assert_eq!(expected, gen_deprecated(lints));
+    assert_eq!(expected, gen_deprecated(&lints));
 }

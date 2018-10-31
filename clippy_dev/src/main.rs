@@ -88,6 +88,6 @@ fn update_lints() {
         "begin deprecated lints",
         "end deprecated lints",
         false,
-        || { gen_deprecated(lint_list.clone()) }
+        || { gen_deprecated(&lint_list) }
     );
 }
