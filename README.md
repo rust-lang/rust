@@ -114,7 +114,7 @@ Several `-Z` flags are relevant for miri:
 
 Since the heart of Miri (the main interpreter engine) lives in rustc, working on
 Miri will often require using a locally built rustc. This includes getting a
-trace of the execution, as distributed rustc has `trace!` disabled.
+trace of the execution, as distributed rustc has `debug!` and `trace!` disabled.
 
 The first-time setup for a local rustc looks as follows:
 ```
@@ -130,14 +130,28 @@ rustup override set custom
 ```
 The `build` step can take 30 minutes and more.
 
-Now you can `cargo build` Miri, and you can `cargo test --tests`.  (`--tests`
-is needed to skip doctests because we have not built rustdoc for your custom
-toolchain.) You can also set `RUST_LOG=rustc_mir::interpret=trace` as
-environment variable to get a step-by-step trace.
+Now you can `cargo build` Miri, and you can `cargo test` it.  But the key point
+is, you can now run Miri with a trace of all execution steps:
+
+```sh
+MIRI_LOG=debug cargo run tests/run-pass/vecs.rs
+```
+
+Setting `MIRI_LOG` like this will configure logging for miri itself as well as
+the `rustc::mir::interpret` and `rustc_mir::interpret` modules in rustc.  You
+can also do more targeted configuration, e.g. to debug the stacked borrows
+implementation:
+
+```sh
+MIRI_LOG=miri::stacked_borrows=trace,rustc_mir::interpret=debug cargo run tests/run-pass/vecs.rs
+```
+
+In addition, you can set `MIRI_BACKTRACE=1` to get a backtrace of where an
+evaluation error was originally created.
 
 If you changed something in rustc and want to re-build, run
 ```
-./x.py build src/rustc --keep-stage 0
+./x.py --keep-stage 0 build src/rustc
 ```
 This avoids rebuilding the entire stage 0, which can save a lot of time.
 
