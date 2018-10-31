@@ -1522,9 +1522,16 @@ impl UniverseIndex {
 
     /// True if `self` can name a name from `other` -- in other words,
     /// if the set of names in `self` is a superset of those in
-    /// `other`.
+    /// `other` (`self >= other`).
     pub fn can_name(self, other: UniverseIndex) -> bool {
         self.private >= other.private
+    }
+
+    /// True if `self` cannot name some names from `other` -- in other
+    /// words, if the set of names in `self` is a strict subset of
+    /// those in `other` (`self < other`).
+    pub fn cannot_name(self, other: UniverseIndex) -> bool {
+        self.private < other.private
     }
 }
 

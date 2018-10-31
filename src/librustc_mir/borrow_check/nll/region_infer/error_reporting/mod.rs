@@ -16,6 +16,7 @@ use borrow_check::nll::ConstraintDescription;
 use rustc::hir::def_id::DefId;
 use rustc::infer::error_reporting::nice_region_error::NiceRegionError;
 use rustc::infer::InferCtxt;
+use rustc::infer::NLLRegionVariableOrigin;
 use rustc::mir::{ConstraintCategory, Location, Mir};
 use rustc::ty::{self, RegionVid};
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -177,6 +178,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         deque.push_back(from_region);
 
         while let Some(r) = deque.pop_front() {
+            debug!(
+                "find_constraint_paths_between_regions: from_region={:?} r={:?} value={}",
+                from_region,
+                r,
+                self.region_value_str(r),
+            );
+
             // Check if we reached the region we were looking for. If so,
             // we can reconstruct the path that led to it and return it.
             if target_test(r) {
@@ -238,7 +246,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) {
         debug!("report_error(fr={:?}, outlived_fr={:?})", fr, outlived_fr);
 
-        let (category, _, span) = self.best_blame_constraint(mir, fr, |r| r == outlived_fr);
+        let (category, _, span) = self.best_blame_constraint(mir, fr, |r| {
+            self.provides_universal_region(r, fr, outlived_fr)
+        });
 
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
@@ -294,6 +304,33 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 errors_buffer,
             ),
         };
+    }
+
+    /// We have a constraint `fr1: fr2` that is not satisfied, where
+    /// `fr2` represents some universal region. Here, `r` is some
+    /// region where we know that `fr1: r` and this function has the
+    /// job of determining whether `r` is "to blame" for the fact that
+    /// `fr1: fr2` is required.
+    ///
+    /// This is true under two conditions:
+    ///
+    /// - `r == fr2`
+    /// - `fr2` is `'static` and `r` is some placeholder in a universe
+    ///   that cannot be named by `fr1`; in that case, we will require
+    ///   that `fr1: 'static` because it is the only way to `fr1: r` to
+    ///   be satisfied. (See `add_incompatible_universe`.)
+    fn provides_universal_region(&self, r: RegionVid, fr1: RegionVid, fr2: RegionVid) -> bool {
+        debug!(
+            "provides_universal_region(r={:?}, fr1={:?}, fr2={:?})",
+            r, fr1, fr2
+        );
+        let result = {
+            r == fr2 || {
+                fr2 == self.universal_regions.fr_static && self.cannot_name_placeholder(fr1, r)
+            }
+        };
+        debug!("provides_universal_region: result = {:?}", result);
+        result
     }
 
     /// Report a specialized error when `FnMut` closures return a reference to a captured variable.
@@ -636,11 +673,37 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     // `elem`.
     crate fn find_sub_region_live_at(&self, fr1: RegionVid, elem: Location) -> RegionVid {
         debug!("find_sub_region_live_at(fr1={:?}, elem={:?})", fr1, elem);
-        // Find all paths
-        let (_path, r) = self.find_constraint_paths_between_regions(fr1, |r| {
+        self.find_constraint_paths_between_regions(fr1, |r| {
+            // First look for some `r` such that `fr1: r` and `r` is live at `elem`
+            debug!(
+                "find_sub_region_live_at: liveness_constraints for {:?} are {:?}",
+                r,
+                self.liveness_constraints.region_value_str(r),
+            );
             self.liveness_constraints.contains(r, elem)
-        }).unwrap();
-        r
+        }).or_else(|| {
+                // If we fail to find that, we may find some `r` such that
+                // `fr1: r` and `r` is a placeholder from some universe
+                // `fr1` cannot name. This would force `fr1` to be
+                // `'static`.
+                self.find_constraint_paths_between_regions(fr1, |r| {
+                    self.cannot_name_placeholder(fr1, r)
+                })
+            })
+            .or_else(|| {
+                // If we fail to find THAT, it may be that `fr1` is a
+                // placeholder that cannot "fit" into its SCC. In that
+                // case, there should be some `r` where `fr1: r`, both
+                // `fr1` and `r` are in the same SCC, and `fr1` is a
+                // placeholder that `r` cannot name. We can blame that
+                // edge.
+                self.find_constraint_paths_between_regions(fr1, |r| {
+                    self.constraint_sccs.scc(fr1) == self.constraint_sccs.scc(r)
+                        && self.cannot_name_placeholder(r, fr1)
+                })
+            })
+            .map(|(_path, r)| r)
+            .unwrap()
     }
 
     // Finds a good span to blame for the fact that `fr1` outlives `fr2`.
@@ -650,7 +713,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         fr1: RegionVid,
         fr2: RegionVid,
     ) -> (ConstraintCategory, Span) {
-        let (category, _, span) = self.best_blame_constraint(mir, fr1, |r| r == fr2);
+        let (category, _, span) =
+            self.best_blame_constraint(mir, fr1, |r| self.provides_universal_region(r, fr1, fr2));
         (category, span)
     }
 
@@ -683,5 +747,25 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         }
 
         false
+    }
+
+    /// If `r2` represents a placeholder region, then this returns
+    /// true if `r1` cannot name that placeholder in its
+    /// value. Otherwise, returns false.
+    fn cannot_name_placeholder(&self, r1: RegionVid, r2: RegionVid) -> bool {
+        debug!("cannot_name_value_of(r1={:?}, r2={:?})", r1, r2);
+
+        match self.definitions[r2].origin {
+            NLLRegionVariableOrigin::Placeholder(placeholder) => {
+                let universe1 = self.definitions[r1].universe;
+                debug!(
+                    "cannot_name_value_of: universe1={:?} placeholder={:?}",
+                    universe1, placeholder
+                );
+                universe1.cannot_name(placeholder.universe)
+            }
+
+            NLLRegionVariableOrigin::FreeRegion | NLLRegionVariableOrigin::Existential => false,
+        }
     }
 }

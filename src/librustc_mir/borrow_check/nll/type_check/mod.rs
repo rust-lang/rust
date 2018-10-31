@@ -782,7 +782,7 @@ impl MirTypeckRegionConstraints<'tcx> {
             Some(&v) => v,
             None => {
                 let origin = NLLRegionVariableOrigin::Placeholder(placeholder);
-                let region = infcx.next_nll_region_var(origin);
+                let region = infcx.next_nll_region_var_in_universe(origin, placeholder.universe);
                 self.placeholder_index_to_region.push(region);
                 region
             }
