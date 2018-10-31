@@ -13,6 +13,7 @@ extern crate syntax;
 extern crate log;
 
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::env;
 
 use rustc::session::Session;
@@ -172,15 +173,14 @@ fn init_late_loggers() {
         if env::var("RUST_LOG").is_err() {
             // We try to be a bit clever here: If MIRI_LOG is just a single level
             // used for everything, we only apply it to the parts of rustc that are
-            // CTFE-related.  Only if MIRI_LOG contains `module=level`, we just
-            // use the same value for RUST_LOG.
+            // CTFE-related.  Otherwise, we use it verbatim for RUST_LOG.
             // This way, if you set `MIRI_LOG=trace`, you get only the right parts of
             // rustc traced, but you can also do `MIRI_LOG=miri=trace,rustc_mir::interpret=debug`.
-            if var.contains('=') {
-                env::set_var("RUST_LOG", &var);
-            } else {
+            if log::Level::from_str(&var).is_ok() {
                 env::set_var("RUST_LOG",
                     &format!("rustc::mir::interpret={0},rustc_mir::interpret={0}", var));
+            } else {
+                env::set_var("RUST_LOG", &var);
             }
             rustc_driver::init_rustc_env_logger();
         }
