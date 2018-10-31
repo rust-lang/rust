@@ -258,22 +258,6 @@ struct ScopeData {
     entries: Vec<ScopeEntry>,
 }
 
-pub fn resolve_local_name<'a>(
-    name_ref: ast::NameRef,
-    scopes: &'a FnScopes,
-) -> Option<&'a ScopeEntry> {
-    use rustc_hash::FxHashSet;
-
-    let mut shadowed = FxHashSet::default();
-    let ret = scopes
-        .scope_chain(name_ref.syntax())
-        .flat_map(|scope| scopes.entries(scope).iter())
-        .filter(|entry| shadowed.insert(entry.name()))
-        .filter(|entry| entry.name() == name_ref.text())
-        .nth(0);
-    ret
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -374,63 +358,6 @@ mod tests {
                 let x : &str = &x<|>;
             }",
             &["x"],
-        );
-    }
-
-    fn do_check_local_name(code: &str, expected_offset: u32) {
-        let (off, code) = extract_offset(code);
-        let file = File::parse(&code);
-        let fn_def: ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
-        let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
-
-        let scopes = FnScopes::new(fn_def);
-
-        let local_name = resolve_local_name(name_ref, &scopes)
-            .unwrap()
-            .ast()
-            .name()
-            .unwrap();
-        let expected_name =
-            find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into()).unwrap();
-        assert_eq!(local_name.syntax().range(), expected_name.syntax().range());
-    }
-
-    #[test]
-    fn test_resolve_local_name() {
-        do_check_local_name(
-            r#"
-            fn foo(x: i32, y: u32) {
-                {
-                    let z = x * 2;
-                }
-                {
-                    let t = x<|> * 3;
-                }
-            }"#,
-            21,
-        );
-    }
-
-    #[test]
-    fn test_resolve_local_name_declaration() {
-        do_check_local_name(
-            r#"
-            fn foo(x: String) {
-                let x : &str = &x<|>;
-            }"#,
-            21,
-        );
-    }
-
-    #[test]
-    fn test_resolve_local_name_shadow() {
-        do_check_local_name(
-            r"
-        fn foo(x: String) {
-            let x : &str = &x;
-            x<|>
-        }",
-            46,
         );
     }
 }

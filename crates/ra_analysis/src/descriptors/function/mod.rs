@@ -10,7 +10,7 @@ use crate::{
     syntax_ptr::SyntaxPtr
 };
 
-pub(crate) use self::scope::FnScopes;
+pub(crate) use self::scope::{FnScopes, resolve_local_name};
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

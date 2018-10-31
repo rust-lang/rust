@@ -1,4 +1,4 @@
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use ra_syntax::{
     algo::generate,
@@ -261,8 +261,6 @@ pub fn resolve_local_name<'a>(
     name_ref: ast::NameRef,
     scopes: &'a FnScopes,
 ) -> Option<&'a ScopeEntry> {
-    use rustc_hash::FxHashSet;
-
     let mut shadowed = FxHashSet::default();
     let ret = scopes
         .scope_chain(name_ref.syntax())

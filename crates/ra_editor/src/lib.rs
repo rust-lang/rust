@@ -151,15 +151,7 @@ pub fn find_node_at_offset<'a, N: AstNode<'a>>(
     leaf.ancestors().filter_map(N::cast).next()
 }
 
-pub fn resolve_local_name(
-    name_ref: ast::NameRef,
-) -> Option<(SmolStr, TextRange)> {
-    let fn_def = name_ref.syntax().ancestors().find_map(ast::FnDef::cast)?;
-    let scopes = scope::FnScopes::new(fn_def);
-    let scope_entry = scope::resolve_local_name(name_ref, &scopes)?;
-    let name = scope_entry.ast().name()?;
-    Some((scope_entry.name(), name.syntax().range()))
-}
+
 
 #[cfg(test)]
 mod tests {

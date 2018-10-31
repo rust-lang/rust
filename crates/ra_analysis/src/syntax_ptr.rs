@@ -84,6 +84,10 @@ impl LocalSyntaxPtr {
                 .unwrap_or_else(|| panic!("can't resovle local ptr to SyntaxNode: {:?}", self))
         }
     }
+
+    pub(crate) fn into_global(self, file_id: FileId) -> SyntaxPtr {
+        SyntaxPtr { file_id, local: self}
+    }
 }
 
 
