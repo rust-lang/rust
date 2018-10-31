@@ -600,14 +600,7 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
 
                 let mut strings: Vec<_> = clauses
                     .iter()
-                    .map(|clause| {
-                        // Skip the top-level binder for a less verbose output
-                        let program_clause = match clause {
-                            Clause::Implies(program_clause) => program_clause,
-                            Clause::ForAll(program_clause) => program_clause.skip_binder(),
-                        };
-                        program_clause.to_string()
-                    })
+                    .map(|clause| clause.to_string())
                     .collect();
 
                 strings.sort();

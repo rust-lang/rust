@@ -250,8 +250,8 @@ crate fn environment<'a, 'tcx>(
     // In an fn, we assume that the arguments and all their constituents are
     // well-formed.
     if is_fn {
-        // `skip_binder` because we move late bound regions to the root binder,
-        // restored in the return type
+        // `skip_binder` because we move region parameters to the root binder,
+        // restored in the return type of this query
         let fn_sig = tcx.fn_sig(def_id).skip_binder().subst(tcx, bound_vars);
 
         input_tys.extend(

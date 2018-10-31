@@ -14,9 +14,11 @@ use traits;
 use traits::project::Normalized;
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::{self, Lift, TyCtxt};
+use syntax::symbol::InternedString;
 
 use std::fmt;
 use std::rc::Rc;
+use std::collections::{BTreeSet, BTreeMap};
 
 // structural impls for the structs in traits
 
@@ -479,7 +481,12 @@ impl<'tcx> fmt::Display for traits::DomainGoal<'tcx> {
             Holds(wc) => write!(fmt, "{}", wc),
             WellFormed(wf) => write!(fmt, "{}", wf),
             FromEnv(from_env) => write!(fmt, "{}", from_env),
-            Normalize(projection) => write!(fmt, "Normalize({})", projection),
+            Normalize(projection) => write!(
+                fmt,
+                "Normalize({} -> {})",
+                projection.projection_ty,
+                projection.ty
+            ),
         }
     }
 }
@@ -492,6 +499,110 @@ impl fmt::Display for traits::QuantifierKind {
             Universal => write!(fmt, "forall"),
             Existential => write!(fmt, "exists"),
         }
+    }
+}
+
+/// Collect names for regions / types bound by a quantified goal / clause.
+/// This collector does not try to do anything clever like in ppaux, it's just used
+/// for debug output in tests anyway.
+struct BoundNamesCollector {
+    // Just sort by name because `BoundRegion::BrNamed` does not have a `BoundVar` index anyway.
+    regions: BTreeSet<InternedString>,
+
+    // Sort by `BoundVar` index, so usually this should be equivalent to the order given
+    // by the list of type parameters.
+    types: BTreeMap<u32, InternedString>,
+
+    binder_index: ty::DebruijnIndex,
+}
+
+impl BoundNamesCollector {
+    fn new() -> Self {
+        BoundNamesCollector {
+            regions: BTreeSet::new(),
+            types: BTreeMap::new(),
+            binder_index: ty::INNERMOST,
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        self.regions.is_empty() && self.types.is_empty()
+    }
+
+    fn write_names(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut start = true;
+        for r in &self.regions {
+            if !start {
+                write!(fmt, ", ")?;
+            }
+            start = false;
+            write!(fmt, "{}", r)?;
+        }
+        for (_, t) in &self.types {
+            if !start {
+                write!(fmt, ", ")?;
+            }
+            start = false;
+            write!(fmt, "{}", t)?;
+        }
+        Ok(())
+    }
+}
+
+impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
+    fn visit_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> bool {
+        self.binder_index.shift_in(1);
+        let result = t.super_visit_with(self);
+        self.binder_index.shift_out(1);
+        result
+    }
+
+    fn visit_ty(&mut self, t: ty::Ty<'tcx>) -> bool {
+        use syntax::symbol::Symbol;
+
+        match t.sty {
+            ty::Bound(bound_ty) if bound_ty.index == self.binder_index => {
+                self.types.insert(
+                    bound_ty.var.as_u32(),
+                    match bound_ty.kind {
+                        ty::BoundTyKind::Param(name) => name,
+                        ty::BoundTyKind::Anon => Symbol::intern(
+                            &format!("?{}", bound_ty.var.as_u32())
+                        ).as_interned_str(),
+                    }
+                );
+            }
+
+            _ => (),
+        };
+
+        t.super_visit_with(self)
+    }
+
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> bool {
+        use syntax::symbol::Symbol;
+
+        match r {
+            ty::ReLateBound(index, br) if *index == self.binder_index => {
+                match br {
+                    ty::BoundRegion::BrNamed(_, name) => {
+                        self.regions.insert(*name);
+                    }
+
+                    ty::BoundRegion::BrAnon(var) => {
+                        self.regions.insert(Symbol::intern(
+                            &format!("?'{}", var)
+                        ).as_interned_str());
+                    }
+
+                    _ => (),
+                }
+            }
+
+            _ => (),
+        };
+
+        r.super_visit_with(self)
     }
 }
 
@@ -514,8 +625,22 @@ impl<'tcx> fmt::Display for traits::Goal<'tcx> {
             Not(goal) => write!(fmt, "not {{ {} }}", goal),
             DomainGoal(goal) => write!(fmt, "{}", goal),
             Quantified(qkind, goal) => {
-                // FIXME: appropriate binder names
-                write!(fmt, "{}<> {{ {} }}", qkind, goal.skip_binder())
+                let mut collector = BoundNamesCollector::new();
+                goal.skip_binder().visit_with(&mut collector);
+
+                if !collector.is_empty() {
+                    write!(fmt, "{}<", qkind)?;
+                    collector.write_names(fmt)?;
+                    write!(fmt, "> {{ ")?;
+                }
+
+                write!(fmt, "{}", goal.skip_binder())?;
+
+                if !collector.is_empty() {
+                    write!(fmt, " }}")?;
+                }
+
+                Ok(())
             }
             CannotProve => write!(fmt, "CannotProve"),
         }
@@ -546,8 +671,22 @@ impl<'tcx> fmt::Display for traits::Clause<'tcx> {
         match self {
             Implies(clause) => write!(fmt, "{}", clause),
             ForAll(clause) => {
-                // FIXME: appropriate binder names
-                write!(fmt, "forall<> {{ {} }}", clause.skip_binder())
+                let mut collector = BoundNamesCollector::new();
+                clause.skip_binder().visit_with(&mut collector);
+
+                if !collector.is_empty() {
+                    write!(fmt, "forall<")?;
+                    collector.write_names(fmt)?;
+                    write!(fmt, "> {{ ")?;
+                }
+
+                write!(fmt, "{}", clause.skip_binder())?;
+
+                if !collector.is_empty() {
+                    write!(fmt, " }}")?;
+                }
+
+                Ok(())
             }
         }
     }

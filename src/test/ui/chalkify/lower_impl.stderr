@@ -4,7 +4,7 @@ error: program clause dump
 LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: Implemented(T: Foo) :- ProjectionEq(<T as std::iter::Iterator>::Item == i32), TypeOutlives(T : 'static), Implemented(T: std::iter::Iterator), Implemented(T: std::marker::Sized).
+   = note: forall<T> { Implemented(T: Foo) :- ProjectionEq(<T as std::iter::Iterator>::Item == i32), TypeOutlives(T : 'static), Implemented(T: std::iter::Iterator), Implemented(T: std::marker::Sized). }
 
 error: program clause dump
   --> $DIR/lower_impl.rs:23:5
@@ -12,7 +12,7 @@ error: program clause dump
 LL |     #[rustc_dump_program_clauses] //~ ERROR program clause dump
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: Normalize(<T as Bar>::Assoc == std::vec::Vec<T>) :- Implemented(T: Bar).
+   = note: forall<T> { Normalize(<T as Bar>::Assoc -> std::vec::Vec<T>) :- Implemented(T: Bar). }
 
 error: aborting due to 2 previous errors
 
