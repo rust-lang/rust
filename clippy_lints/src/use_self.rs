@@ -36,7 +36,7 @@ use crate::syntax_pos::symbol::keywords::SelfType;
 /// }
 /// ```
 /// could be
-/// ```
+/// ```rust
 /// struct Foo {}
 /// impl Foo {
 ///     fn new() -> Self {
