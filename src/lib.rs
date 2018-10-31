@@ -6,15 +6,16 @@
 extern crate log;
 
 // From rustc.
+extern crate syntax;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_data_structures;
 extern crate rustc_mir;
 extern crate rustc_target;
-extern crate syntax;
 
 use std::collections::HashMap;
 use std::borrow::Cow;
+use std::env;
 
 use rustc::ty::{self, Ty, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{TyLayout, LayoutOf, Size};
@@ -157,11 +158,21 @@ pub fn eval_main<'a, 'tcx: 'a>(
 ) {
     let mut ecx = create_ecx(tcx, main_id, validate).expect("Couldn't create ecx");
 
+    // If MIRI_BACKTRACE is set and RUST_CTFE_BACKTRACE is not, set RUST_CTFE_BACKTRACE.
+    // Do this late, so we really only apply this to miri's errors.
+    if let Ok(var) = env::var("MIRI_BACKTRACE") {
+        if env::var("RUST_CTFE_BACKTRACE") == Err(env::VarError::NotPresent) {
+            env::set_var("RUST_CTFE_BACKTRACE", &var);
+        }
+    }
+
+    // Run! The main execution.
     let res: EvalResult = (|| {
         ecx.run()?;
         ecx.run_tls_dtors()
     })();
 
+    // Process the result.
     match res {
         Ok(()) => {
             let leaks = ecx.memory().leak_report();
@@ -173,7 +184,8 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 tcx.sess.err("the evaluated program leaked memory");
             }
         }
-        Err(e) => {
+        Err(mut e) => {
+            e.print_backtrace();
             if let Some(frame) = ecx.stack().last() {
                 let block = &frame.mir.basic_blocks()[frame.block];
                 let span = if frame.stmt < block.statements.len() {
@@ -195,7 +207,6 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 ecx.tcx.sess.err(&e.to_string());
             }
 
-            /* Nice try, but with MIRI_BACKTRACE this shows 100s of backtraces.
             for (i, frame) in ecx.stack().iter().enumerate() {
                 trace!("-------------------");
                 trace!("Frame {}", i);
@@ -205,7 +216,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                         trace!("    local {}: {:?}", i, local);
                     }
                 }
-            }*/
+            }
         }
     }
 }
