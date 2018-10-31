@@ -18,6 +18,13 @@ use core::marker::PhantomData;
 use core::mem;
 use core::ops::Index;
 use raw::{Bucket, RawDrain, RawIntoIter, RawIter, RawTable};
+#[cfg(feature = "serde")]
+use serde::de::{Deserialize, Deserializer, MapAccess, Visitor};
+#[cfg(feature = "serde")]
+use serde::ser::{Serialize, Serializer};
+
+#[cfg(feature = "serde")]
+use super::size_hint;
 
 pub use fx::FxHashBuilder as DefaultHashBuilder;
 
@@ -1874,6 +1881,73 @@ where
         self.extend(iter.into_iter().map(|(&key, &value)| (key, value)));
     }
 }
+
+#[cfg(feature = "serde")]
+impl<K, V, H> Serialize for HashMap<K, V, H>
+where
+    K: Serialize + Eq + Hash,
+    V: Serialize,
+    H: BuildHasher,
+{
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.collect_map(self)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de, K, V, S> Deserialize<'de> for HashMap<K, V, S>
+where
+    K: Deserialize<'de> + Eq + Hash,
+    V: Deserialize<'de>,
+    S: BuildHasher + Default,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct MapVisitor<K, V, S> {
+            marker: PhantomData<HashMap<K, V, S>>,
+        }
+
+        impl<'de, K, V, S> Visitor<'de> for MapVisitor<K, V, S>
+        where
+            K: Deserialize<'de> + Eq + Hash,
+            V: Deserialize<'de>,
+            S: BuildHasher + Default,
+        {
+            type Value = HashMap<K, V, S>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a map")
+            }
+
+            #[inline]
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let mut values = HashMap::with_capacity_and_hasher(
+                    size_hint::cautious(map.size_hint()),
+                    S::default(),
+                );
+
+                while let Some((key, value)) = map.next_entry()? {
+                    values.insert(key, value);
+                }
+
+                Ok(values)
+            }
+        }
+
+        let visitor = MapVisitor { marker: PhantomData };
+        deserializer.deserialize_map(visitor)
+    }
+}
+
 
 #[allow(dead_code)]
 fn assert_covariance() {
