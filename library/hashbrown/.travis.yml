@@ -12,10 +12,11 @@ matrix:
        - FEATURES='nightly'
 
 branches:
-  only:
-    - staging
-    - trying
-    - master
+  # Don't build these branches
+  except:
+    # Used by bors
+    - trying.tmp
+    - staging.tmp
 
 script:
   - cargo build --verbose --features "$FEATURES"
