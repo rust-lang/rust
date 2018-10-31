@@ -477,7 +477,7 @@ fn search_hashed_nonempty<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F,
         }
 
         // If the hash doesn't match, it can't be this one..
-        if hash == full.hash() || !compare_hashes {
+        if !compare_hashes || hash == full.hash() {
             // If the key doesn't match, it can't be this one..
             if is_match(full.read().0) {
                 return InternalEntry::Occupied { elem: full };
@@ -489,7 +489,7 @@ fn search_hashed_nonempty<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F,
     }
 }
 
-/// Search for a pre-hashed key when the hash map is known to be non-empty.
+/// Same as `search_hashed_nonempty` but for mutable access.
 #[inline]
 fn search_hashed_nonempty_mut<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F,
                                           compare_hashes: bool)
@@ -1571,10 +1571,6 @@ impl<K, V, S> HashMap<K, V, S>
     /// so that the map now contains keys which compare equal, search may start
     /// acting eratically, with two keys randomly masking eachother. Implementations
     /// are free to assume this doesn't happen (within the limits of memory-safety).
-    ///
-    /// # Examples
-    ///
-    ///
     #[unstable(feature = "hash_raw_entry", issue = "54043")]
     pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<K, V, S> {
         self.reserve(1);
@@ -1595,7 +1591,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// Unless you are in such a situation, higher-level and more foolproof APIs like
     /// `get` should be preferred.
     ///
-    /// Immutable raw entries have very limited use; you might instead want `raw_entry`.
+    /// Immutable raw entries have very limited use; you might instead want `raw_entry_mut`.
     #[unstable(feature = "hash_raw_entry", issue = "54043")]
     pub fn raw_entry(&self) -> RawEntryBuilder<K, V, S> {
         RawEntryBuilder { map: self }
