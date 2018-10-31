@@ -175,22 +175,26 @@ pub fn decode_predicates<'a, 'tcx, D>(decoder: &mut D)
     where D: TyDecoder<'a, 'tcx>,
           'tcx: 'a,
 {
-    Ok(ty::GenericPredicates {
-        parent: Decodable::decode(decoder)?,
-        predicates: (0..decoder.read_usize()?).map(|_| {
-            // Handle shorthands first, if we have an usize > 0x80.
-            let predicate = if decoder.positioned_at_shorthand() {
-                let pos = decoder.read_usize()?;
-                assert!(pos >= SHORTHAND_OFFSET);
-                let shorthand = pos - SHORTHAND_OFFSET;
+    let parent = Decodable::decode(decoder)?;
+    let decoder_len = decoder.read_usize()?;
+    let mut predicates = Vec::with_capacity(decoder_len);
+    for _ in 0..decoder_len {
+        // Handle shorthands first, if we have an usize > 0x80.
+        let predicate = if decoder.positioned_at_shorthand() {
+            let pos = decoder.read_usize()?;
+            assert!(pos >= SHORTHAND_OFFSET);
+            let shorthand = pos - SHORTHAND_OFFSET;
 
-                decoder.with_position(shorthand, ty::Predicate::decode)
-            } else {
-                ty::Predicate::decode(decoder)
-            }?;
-            Ok((predicate, Decodable::decode(decoder)?))
-        })
-        .collect::<Result<Vec<_>, _>>()?,
+            decoder.with_position(shorthand, ty::Predicate::decode)
+        } else {
+            ty::Predicate::decode(decoder)
+        }?;
+        predicates.push((predicate, Decodable::decode(decoder)?))
+    }
+
+    Ok(ty::GenericPredicates {
+        parent,
+        predicates
     })
 }
 
