@@ -208,7 +208,6 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 ecx.tcx.sess.err(&e.to_string());
             }
 
-            /* Nice try, but with MIRI_BACKTRACE this shows 100s of backtraces.
             for (i, frame) in ecx.stack().iter().enumerate() {
                 trace!("-------------------");
                 trace!("Frame {}", i);
@@ -218,7 +217,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
                         trace!("    local {}: {:?}", i, local);
                     }
                 }
-            }*/
+            }
         }
     }
 }
