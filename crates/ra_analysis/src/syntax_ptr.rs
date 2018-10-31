@@ -72,6 +72,7 @@ impl LocalSyntaxPtr {
 
 #[test]
 fn test_local_syntax_ptr() {
+    use ra_syntax::{ast, AstNode};
     let file = File::parse("struct Foo { f: u32, }");
     let field = file
         .syntax()
