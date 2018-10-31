@@ -53,7 +53,7 @@ salsa::query_group! {
             storage input;
         }
         fn libraries() -> Arc<Vec<SourceRootId>> {
-            type LibrarieseQuery;
+            type LibrariesQuery;
             storage input;
         }
         fn library_symbols(id: SourceRootId) -> Arc<SymbolIndex> {
