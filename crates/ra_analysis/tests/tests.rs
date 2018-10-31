@@ -5,62 +5,16 @@ extern crate relative_path;
 extern crate rustc_hash;
 extern crate test_utils;
 
-use std::{
-    sync::Arc,
-};
-
 use ra_syntax::TextRange;
-use relative_path::{RelativePath, RelativePathBuf};
 use test_utils::{assert_eq_dbg, extract_offset};
 
 use ra_analysis::{
-    AnalysisChange, Analysis, AnalysisHost, CrateGraph, CrateId, FileId, FileResolver, FnDescriptor,
+    MockAnalysis,
+    AnalysisChange, Analysis, CrateGraph, CrateId, FileId, FnDescriptor,
 };
 
-#[derive(Debug)]
-struct FileMap(Vec<(FileId, RelativePathBuf)>);
-
-impl FileMap {
-    fn iter<'a>(&'a self) -> impl Iterator<Item = (FileId, &'a RelativePath)> + 'a {
-        self.0
-            .iter()
-            .map(|(id, path)| (*id, path.as_relative_path()))
-    }
-
-    fn path(&self, id: FileId) -> &RelativePath {
-        self.iter().find(|&(it, _)| it == id).unwrap().1
-    }
-}
-
-impl FileResolver for FileMap {
-    fn file_stem(&self, id: FileId) -> String {
-        self.path(id).file_stem().unwrap().to_string()
-    }
-    fn resolve(&self, id: FileId, rel: &RelativePath) -> Option<FileId> {
-        let path = self.path(id).join(rel).normalize();
-        let id = self.iter().find(|&(_, p)| path == p)?.0;
-        Some(id)
-    }
-}
-
-fn analysis_host(files: &[(&str, &str)]) -> AnalysisHost {
-    let mut host = AnalysisHost::new();
-    let mut file_map = Vec::new();
-    let mut change = AnalysisChange::new();
-    for (id, &(path, contents)) in files.iter().enumerate() {
-        let file_id = FileId((id + 1) as u32);
-        assert!(path.starts_with('/'));
-        let path = RelativePathBuf::from_path(&path[1..]).unwrap();
-        change.add_file(file_id, contents.to_string());
-        file_map.push((file_id, path));
-    }
-    change.set_file_resolver(Arc::new(FileMap(file_map)));
-    host.apply_change(change);
-    host
-}
-
 fn analysis(files: &[(&str, &str)]) -> Analysis {
-    analysis_host(files).analysis()
+    MockAnalysis::with_files(files).analysis()
 }
 
 fn get_signature(text: &str) -> (FnDescriptor, Option<usize>) {
@@ -125,7 +79,9 @@ fn test_resolve_parent_module() {
 
 #[test]
 fn test_resolve_crate_root() {
-    let mut host = analysis_host(&[("/lib.rs", "mod foo;"), ("/foo.rs", "")]);
+    let mut host = MockAnalysis::with_files(
+        &[("/lib.rs", "mod foo;"), ("/foo.rs", "")]
+    ).analysis_host();
     let snap = host.analysis();
     assert!(snap.crate_for(FileId(2)).unwrap().is_empty());
 

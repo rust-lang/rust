@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use ra_editor::{self, find_node_at_offset, FileSymbol, LineIndex, LocalEdit, CompletionItem};
+use ra_editor::{self, find_node_at_offset, FileSymbol, LineIndex, LocalEdit};
 use ra_syntax::{
     ast::{self, ArgListOwner, Expr, NameOwner},
     AstNode, File, SmolStr,
@@ -26,6 +26,7 @@ use crate::{
         module::{ModuleTree, Problem},
         function::{FnDescriptor, FnId},
     },
+    completion::{scope_completion, resolve_based_completion, CompletionItem},
     symbol_index::SymbolIndex,
     syntax_ptr::SyntaxPtrDatabase,
     CrateGraph, CrateId, Diagnostic, FileId, FileResolver, FileSystemEdit, Position,
@@ -179,7 +180,7 @@ impl AnalysisHostImpl {
 
 #[derive(Debug)]
 pub(crate) struct AnalysisImpl {
-    db: db::RootDatabase,
+    pub(crate) db: db::RootDatabase,
 }
 
 impl AnalysisImpl {
@@ -249,12 +250,11 @@ impl AnalysisImpl {
     pub fn completions(&self, file_id: FileId, offset: TextUnit) -> Cancelable<Option<Vec<CompletionItem>>> {
         let mut res = Vec::new();
         let mut has_completions = false;
-        let file = self.file_syntax(file_id);
-        if let Some(scope_based) = ra_editor::scope_completion(&file, offset) {
+        if let Some(scope_based) = scope_completion(&self.db, file_id, offset) {
             res.extend(scope_based);
             has_completions = true;
         }
-        if let Some(scope_based) = crate::completion::resolve_based_completion(&self.db, file_id, offset)? {
+        if let Some(scope_based) = resolve_based_completion(&self.db, file_id, offset)? {
             res.extend(scope_based);
             has_completions = true;
         }

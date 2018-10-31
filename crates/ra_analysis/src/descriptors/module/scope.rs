@@ -30,8 +30,12 @@ enum EntryKind {
 
 impl ModuleScope {
     pub fn new(file: &File) -> ModuleScope {
+        ModuleScope::from_items(file.ast().items())
+    }
+
+    pub fn from_items<'a>(items: impl Iterator<Item = ast::ModuleItem<'a>>) -> ModuleScope {
         let mut entries = Vec::new();
-        for item in file.ast().items() {
+        for item in items {
             let entry = match item {
                 ast::ModuleItem::StructDef(item) => Entry::new(item),
                 ast::ModuleItem::EnumDef(item) => Entry::new(item),
