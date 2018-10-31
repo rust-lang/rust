@@ -7,10 +7,10 @@
 
 fn main() {
     let ok1 = 0xABCD;
-    let ok3 = 0xab_cd;
-    let ok4 = 0xab_cd_i32;
-    let ok5 = 0xAB_CD_u32;
-    let ok5 = 0xAB_CD_isize;
+    let ok3 = 0xabcd;
+    let ok4 = 0xabcd_i32;
+    let ok5 = 0xABCD_u32;
+    let ok5 = 0xABCD_isize;
     let fail1 = 0xabCD;
     let fail2 = 0xabCD_u32;
     let fail2 = 0xabCD_isize;
@@ -33,4 +33,9 @@ fn main() {
     let fail19 = 12_3456_21;
     let fail22 = 3__4___23;
     let fail23 = 3__16___23;
+
+    let fail24 = 0xAB_ABC_AB;
+    let fail25 = 0b01_100_101;
+    let ok26 = 0x6_A0_BF;
+    let ok27 = 0b1_0010_0101;
 }
