@@ -20,7 +20,7 @@ use crate::{
     db::{self, FileSyntaxQuery, SyntaxDatabase},
     descriptors::{
         function::{FnDescriptor, FnId},
-        module::{ModuleTree, Problem},
+        module::{ModuleSource, ModuleTree, Problem},
         DeclarationDescriptor, DescriptorDatabase,
     },
     input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
@@ -222,7 +222,7 @@ impl AnalysisImpl {
             .into_iter()
             .filter_map(|module_id| {
                 let link = module_id.parent_link(&module_tree)?;
-                let file_id = link.owner(&module_tree).file_id(&module_tree);
+                let ModuleSource::File(file_id) = link.owner(&module_tree).source(&module_tree);
                 let syntax = self.db.file_syntax(file_id);
                 let decl = link.bind_source(&module_tree, syntax.ast());
 
@@ -243,7 +243,9 @@ impl AnalysisImpl {
             .modules_for_file(file_id)
             .into_iter()
             .map(|it| it.root(&module_tree))
-            .map(|it| it.file_id(&module_tree))
+            .map(|it| match it.source(&module_tree) {
+                ModuleSource::File(file_id) => file_id,
+            })
             .filter_map(|it| crate_graph.crate_id_for_crate_root(it))
             .collect();
 
@@ -533,7 +535,9 @@ impl AnalysisImpl {
         };
         module_id
             .child(module_tree, name.as_str())
-            .map(|it| it.file_id(module_tree))
+            .map(|it| match it.source(&module_tree) {
+                ModuleSource::File(file_id) => file_id,
+            })
             .into_iter()
             .collect()
     }

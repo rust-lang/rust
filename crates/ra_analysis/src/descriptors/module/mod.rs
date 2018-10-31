@@ -11,6 +11,13 @@ use crate::FileId;
 
 pub(crate) use self::scope::ModuleScope;
 
+/// Phisically, rust source is organized as a set of files, but logically it is
+/// organized as a tree of modules. Usually, a single file corresponds to a
+/// single module, but it is not nessary the case.
+///
+/// Module encapsulate the logic of transitioning from the fuzzy world of files
+/// (which can have multiple parents) to the precise world of modules (which
+/// always have one parent).
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub(crate) struct ModuleTree {
     mods: Vec<ModuleData>,
@@ -22,7 +29,7 @@ impl ModuleTree {
         self.mods
             .iter()
             .enumerate()
-            .filter(|(_idx, it)| it.file_id == file_id)
+            .filter(|(_idx, it)| it.source.is_file(file_id))
             .map(|(idx, _)| ModuleId(idx as u32))
             .collect()
     }
@@ -50,8 +57,8 @@ pub enum Problem {
 }
 
 impl ModuleId {
-    pub(crate) fn file_id(self, tree: &ModuleTree) -> FileId {
-        tree.module(self).file_id
+    pub(crate) fn source(self, tree: &ModuleTree) -> ModuleSource {
+        tree.module(self).source
     }
     pub(crate) fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
         tree.module(self).parent
@@ -110,9 +117,25 @@ impl LinkId {
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct ModuleData {
-    file_id: FileId,
+    source: ModuleSource,
     parent: Option<LinkId>,
     children: Vec<LinkId>,
+}
+
+/// `ModuleSource` is the syntax tree element that produced this module:
+/// either a file, or an inlinde module.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum ModuleSource {
+    File(FileId),
+    // Inline(SyntaxPtr),
+}
+
+impl ModuleSource {
+    fn is_file(self, file_id: FileId) -> bool {
+        match self {
+            ModuleSource::File(f) => f == file_id,
+        }
+    }
 }
 
 #[derive(Hash, Debug, PartialEq, Eq)]

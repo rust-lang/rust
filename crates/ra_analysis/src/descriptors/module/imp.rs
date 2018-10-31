@@ -14,7 +14,9 @@ use crate::{
     Cancelable, FileId, FileResolverImp,
 };
 
-use super::{LinkData, LinkId, ModuleData, ModuleId, ModuleScope, ModuleTree, Problem};
+use super::{
+    LinkData, LinkId, ModuleData, ModuleId, ModuleScope, ModuleSource, ModuleTree, Problem,
+};
 
 pub(crate) fn submodules(
     db: &impl DescriptorDatabase,
@@ -43,7 +45,7 @@ pub(crate) fn module_scope(
     module_id: ModuleId,
 ) -> Cancelable<Arc<ModuleScope>> {
     let tree = db.module_tree(source_root_id)?;
-    let file_id = module_id.file_id(&tree);
+    let ModuleSource::File(file_id) = module_id.source(&tree);
     let syntax = db.file_syntax(file_id);
     let res = ModuleScope::new(&syntax);
     Ok(Arc::new(res))
@@ -106,7 +108,7 @@ fn build_subtree(
 ) -> Cancelable<ModuleId> {
     visited.insert(file_id);
     let id = tree.push_mod(ModuleData {
-        file_id,
+        source: ModuleSource::File(file_id),
         parent,
         children: Vec::new(),
     });
