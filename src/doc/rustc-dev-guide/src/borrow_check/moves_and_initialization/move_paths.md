@@ -47,6 +47,7 @@ move_data.move_paths[mpi].place
 
 [move_paths]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MoveData.html#structfield.move_paths
 [`MovePath::place`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/struct.MovePath.html#structfield.place
+[`MovePathIndex`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/dataflow/move_paths/indexes/struct.MovePathIndex.html
 
 ## Building move paths
 
