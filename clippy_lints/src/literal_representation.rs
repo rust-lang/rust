@@ -329,7 +329,8 @@ impl LintPass for LiteralDigitGrouping {
         lint_array!(
             UNREADABLE_LITERAL,
             INCONSISTENT_DIGIT_GROUPING,
-            LARGE_DIGIT_GROUPS
+            LARGE_DIGIT_GROUPS,
+            MISTYPED_LITERAL_SUFFIXES,
         )
     }
 }
