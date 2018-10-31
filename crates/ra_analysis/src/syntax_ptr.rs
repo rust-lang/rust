@@ -39,23 +39,6 @@ impl SyntaxPtr {
     }
 }
 
-struct OwnedAst<T> {
-    syntax: SyntaxNode,
-    phantom: PhantomData<T>,
-}
-
-trait ToAst {
-    type Ast;
-    fn to_ast(self) -> Self::Ast;
-}
-
-impl<'a> ToAst for &'a OwnedAst<ast::FnDef<'static>> {
-    type Ast = ast::FnDef<'a>;
-    fn to_ast(self) -> ast::FnDef<'a> {
-        ast::FnDef::cast(self.syntax.borrowed()).unwrap()
-    }
-}
-
 /// A pionter to a syntax node inside a file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct LocalSyntaxPtr {
