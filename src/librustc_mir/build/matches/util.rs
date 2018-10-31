@@ -35,8 +35,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      opt_slice: Option<&'pat Pattern<'tcx>>,
                                      suffix: &'pat [Pattern<'tcx>]) {
         let min_length = prefix.len() + suffix.len();
-        assert!(min_length < u32::MAX as usize);
-        let min_length = min_length as u32;
+        let min_length = min_length.try_into().unwrap();
 
         match_pairs.extend(
             prefix.iter()
