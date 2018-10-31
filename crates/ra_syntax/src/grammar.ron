@@ -251,6 +251,7 @@ Grammar(
                 "NameOwner",
                 "TypeParamsOwner",
                 "AttrsOwner",
+                "DocCommentsOwner"
             ],
             options: [ "ParamList", ["body", "Block"], "RetType" ],
         ),

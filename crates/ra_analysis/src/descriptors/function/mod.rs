@@ -1,8 +1,11 @@
 pub(super) mod imp;
 mod scope;
 
+use std::cmp::{min, max};
+
 use ra_syntax::{
-    ast::{self, AstNode, NameOwner}
+    ast::{self, AstNode, DocCommentsOwner, NameOwner},
+    TextRange, TextUnit
 };
 
 use crate::{
@@ -30,14 +33,17 @@ pub struct FnDescriptor {
     pub label: String,
     pub ret_type: Option<String>,
     pub params: Vec<String>,
+    pub doc: Option<String>
 }
 
 impl FnDescriptor {
     pub fn new(node: ast::FnDef) -> Option<Self> {
         let name = node.name()?.text().to_string();
 
+        let mut doc = None;
+
         // Strip the body out for the label.
-        let label: String = if let Some(body) = node.body() {
+        let mut label: String = if let Some(body) = node.body() {
             let body_range = body.syntax().range();
             let label: String = node
                 .syntax()
@@ -50,6 +56,36 @@ impl FnDescriptor {
             node.syntax().text().to_string()
         };
 
+        if let Some((comment_range, docs)) = FnDescriptor::extract_doc_comments(node) {
+            let comment_range = comment_range.checked_sub(node.syntax().range().start()).unwrap();
+            let start = comment_range.start().to_usize();
+            let end = comment_range.end().to_usize();
+
+            // Remove the comment from the label
+            label.replace_range(start..end, "");
+
+            // Massage markdown
+            let mut processed_lines = Vec::new();
+            let mut in_code_block = false;
+            for line in docs.lines() {
+                if line.starts_with("```") {
+                    in_code_block = !in_code_block;
+                }
+
+                let line = if in_code_block && line.starts_with("```") && !line.contains("rust") {
+                    "```rust".into()
+                } else {
+                    line.to_string()
+                };
+
+                processed_lines.push(line);
+            }
+
+            if !processed_lines.is_empty() {
+                doc = Some(processed_lines.join("\n"));
+            }
+        }
+
         let params = FnDescriptor::param_list(node);
         let ret_type = node.ret_type().map(|r| r.syntax().text().to_string());
 
@@ -57,8 +93,26 @@ impl FnDescriptor {
             name,
             ret_type,
             params,
-            label,
+            label: label.trim().to_owned(),
+            doc
         })
+    }
+
+    fn extract_doc_comments(node: ast::FnDef) -> Option<(TextRange, String)> {
+        if node.doc_comments().count() == 0 {
+            return None;
+        }
+
+        let comment_text = node.doc_comment_text();
+
+        let (begin, end) = node.doc_comments()
+            .map(|comment| comment.syntax().range())
+            .map(|range| (range.start().to_usize(), range.end().to_usize()))
+            .fold((std::usize::MAX, std::usize::MIN), |acc, range| (min(acc.0, range.0), max(acc.1, range.1)));
+
+        let range = TextRange::from_to(TextUnit::from_usize(begin), TextUnit::from_usize(end));
+
+        Some((range, comment_text))
     }
 
     fn param_list(node: ast::FnDef) -> Vec<String> {
