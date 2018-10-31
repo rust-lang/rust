@@ -168,7 +168,7 @@ struct MatcherPos<'a> {
     /// all bound matches from the submatcher into the shared top-level `matches` vector. If `sep`
     /// and `up` are `Some`, then `matches` is _not_ the shared top-level list. Instead, if one
     /// wants the shared `matches`, one should use `up.matches`.
-    matches: Vec<Rc<Vec<NamedMatch>>>,
+    matches: Box<[Rc<Vec<NamedMatch>>]>,
     /// The position in `matches` corresponding to the first metavar in this matcher's sequence of
     /// token trees. In other words, the first metavar in the first token of `top_elts` corresponds
     /// to `matches[match_lo]`.
@@ -278,9 +278,14 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
     })
 }
 
-/// Initialize `len` empty shared `Vec`s to be used to store matches of metavars.
-fn create_matches(len: usize) -> Vec<Rc<Vec<NamedMatch>>> {
-    (0..len).into_iter().map(|_| Rc::new(Vec::new())).collect()
+/// `len` `Vec`s (initially shared and empty) that will store matches of metavars.
+fn create_matches(len: usize) -> Box<[Rc<Vec<NamedMatch>>]> {
+    if len == 0 {
+        vec![]
+    } else {
+        let empty_matches = Rc::new(Vec::new());
+        vec![empty_matches.clone(); len]
+    }.into_boxed_slice()
 }
 
 /// Generate the top-level matcher position in which the "dot" is before the first token of the
