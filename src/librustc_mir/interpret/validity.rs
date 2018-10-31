@@ -133,7 +133,7 @@ fn scalar_format<Tag>(value: ScalarMaybeUndef<Tag>) -> String {
     }
 }
 
-struct ValidityVisitor<'rt, 'a, 'tcx, Tag> {
+struct ValidityVisitor<'rt, 'a, 'tcx: 'a+'rt, Tag: 'static> {
     op: OpTy<'tcx, Tag>,
     /// The `path` may be pushed to, but the part that is present when a function
     /// starts must not be changed!  `visit_fields` and `visit_array` rely on
