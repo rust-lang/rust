@@ -1,5 +1,4 @@
 extern crate clap;
-#[macro_use]
 extern crate failure;
 extern crate tools;
 extern crate walkdir;
@@ -10,11 +9,11 @@ use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
-    process::Command,
 };
 use tools::{
-    collect_tests, Result, Test, generate, Mode, Overwrite, Verify, project_root,
+    collect_tests, Result, Test, generate, Mode, Overwrite, Verify, run, run_rustfmt,
 };
+use failure::bail;
 
 const GRAMMAR_DIR: &str = "./crates/ra_syntax/src/grammar";
 const INLINE_TESTS_DIR: &str = "./crates/ra_syntax/tests/data/parser/inline";
@@ -42,7 +41,7 @@ fn main() -> Result<()> {
         ("install-code", _) => install_code_extension()?,
         ("gen-tests", _) => gen_tests(mode)?,
         ("gen-syntax", _) => generate(Overwrite)?,
-        ("format", _) => run_rustfmt()?,
+        ("format", _) => run_rustfmt(Overwrite)?,
         _ => unreachable!(),
     }
     Ok(())
@@ -143,28 +142,5 @@ fn install_code_extension() -> Result<()> {
             "./editors/code",
         )?;
     }
-    Ok(())
-}
-
-fn run(cmdline: &'static str, dir: &str) -> Result<()> {
-    eprintln!("\nwill run: {}", cmdline);
-    let project_dir = project_root().join(dir);
-    let mut args = cmdline.split_whitespace();
-    let exec = args.next().unwrap();
-    let status = Command::new(exec)
-        .args(args)
-        .current_dir(project_dir)
-        .status()?;
-    if !status.success() {
-        bail!("`{}` exited with {}", cmdline, status);
-    }
-    Ok(())
-}
-
-fn run_rustfmt() -> Result<()> {
-    // Use beta toolchain for 2018 edition.
-    run("rustup install beta", ".")?;
-    run("rustup component add rustfmt-preview --toolchain beta", ".")?;
-    run("rustup run beta -- cargo fmt", ".")?;
     Ok(())
 }

@@ -4,9 +4,11 @@ extern crate teraron;
 
 use std::{
     path::{Path, PathBuf},
+    process::Command,
 };
 
 use itertools::Itertools;
+use failure::bail;
 
 pub use teraron::{Mode, Verify, Overwrite};
 
@@ -15,6 +17,7 @@ pub type Result<T> = ::std::result::Result<T, failure::Error>;
 pub const GRAMMAR: &str = "crates/ra_syntax/src/grammar.ron";
 pub const SYNTAX_KINDS: &str = "crates/ra_syntax/src/syntax_kinds/generated.rs.tera";
 pub const AST: &str = "crates/ra_syntax/src/ast/generated.rs.tera";
+const TOOLCHAIN: &str = "beta-2018-10-30";
 
 #[derive(Debug)]
 pub struct Test {
@@ -79,4 +82,30 @@ pub fn project_root() -> PathBuf {
         .nth(2)
         .unwrap()
         .to_path_buf()
+}
+
+pub fn run(cmdline: &str, dir: &str) -> Result<()> {
+    eprintln!("\nwill run: {}", cmdline);
+    let project_dir = project_root().join(dir);
+    let mut args = cmdline.split_whitespace();
+    let exec = args.next().unwrap();
+    let status = Command::new(exec)
+        .args(args)
+        .current_dir(project_dir)
+        .status()?;
+    if !status.success() {
+        bail!("`{}` exited with {}", cmdline, status);
+    }
+    Ok(())
+}
+
+pub fn run_rustfmt(mode: Mode) -> Result<()> {
+    run(&format!("rustup install {}", TOOLCHAIN), ".")?;
+    run(&format!("rustup component add rustfmt-preview --toolchain {}", TOOLCHAIN), ".")?;
+    if mode == Verify {
+        run(&format!("rustup run {} -- cargo fmt -- --check", TOOLCHAIN), ".")?;
+    } else {
+        run(&format!("rustup run {} -- cargo fmt", TOOLCHAIN), ".")?;
+    }
+    Ok(())
 }
