@@ -8,12 +8,10 @@ extern crate superslice;
 extern crate test_utils as _test_utils;
 
 mod code_actions;
-mod completion;
 mod edit;
 mod extend_selection;
 mod folding_ranges;
 mod line_index;
-mod scope;
 mod symbols;
 #[cfg(test)]
 mod test_utils;
@@ -21,7 +19,6 @@ mod typing;
 
 pub use self::{
     code_actions::{add_derive, add_impl, flip_comma, introduce_variable, LocalEdit},
-    completion::{scope_completion, complete_module_items, CompletionItem},
     edit::{Edit, EditBuilder},
     extend_selection::extend_selection,
     folding_ranges::{folding_ranges, Fold, FoldKind},
@@ -33,7 +30,7 @@ pub use ra_syntax::AtomEdit;
 use ra_syntax::{
     algo::find_leaf_at_offset,
     ast::{self, AstNode, NameOwner},
-    File, SmolStr,
+    File,
     SyntaxKind::{self, *},
     SyntaxNodeRef, TextRange, TextUnit,
 };
