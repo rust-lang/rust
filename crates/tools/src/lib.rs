@@ -4,7 +4,7 @@ extern crate teraron;
 
 use std::{
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
 };
 
 use failure::bail;
@@ -92,14 +92,16 @@ pub fn run(cmdline: &str, dir: &str) -> Result<()> {
 }
 
 pub fn run_rustfmt(mode: Mode) -> Result<()> {
-    run(&format!("rustup install {}", TOOLCHAIN), ".")?;
-    run(
-        &format!(
-            "rustup component add rustfmt-preview --toolchain {}",
-            TOOLCHAIN
-        ),
-        ".",
-    )?;
+    match Command::new("rustup")
+        .args(&["run", TOOLCHAIN, "--", "cargo", "fmt", "--version"])
+        .stderr(Stdio::null())
+        .stdout(Stdio::null())
+        .status()
+    {
+        Ok(status) if status.success() => (),
+        _ => install_rustfmt()?,
+    };
+
     if mode == Verify {
         run(
             &format!("rustup run {} -- cargo fmt -- --check", TOOLCHAIN),
@@ -109,4 +111,15 @@ pub fn run_rustfmt(mode: Mode) -> Result<()> {
         run(&format!("rustup run {} -- cargo fmt", TOOLCHAIN), ".")?;
     }
     Ok(())
+}
+
+fn install_rustfmt() -> Result<()> {
+    run(&format!("rustup install {}", TOOLCHAIN), ".")?;
+    run(
+        &format!(
+            "rustup component add rustfmt-preview --toolchain {}",
+            TOOLCHAIN
+        ),
+        ".",
+    )
 }

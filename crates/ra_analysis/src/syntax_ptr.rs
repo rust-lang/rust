@@ -1,9 +1,4 @@
-use std::marker::PhantomData;
-
-use ra_syntax::{
-    ast::{self, AstNode},
-    File, SyntaxKind, SyntaxNode, SyntaxNodeRef, TextRange,
-};
+use ra_syntax::{File, SyntaxKind, SyntaxNode, SyntaxNodeRef, TextRange};
 
 use crate::db::SyntaxDatabase;
 use crate::FileId;
