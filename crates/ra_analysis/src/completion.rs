@@ -368,18 +368,15 @@ fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<Completi
 
 #[cfg(test)]
 mod tests {
-    use test_utils::{assert_eq_dbg, extract_offset};
+    use test_utils::{assert_eq_dbg};
 
-    use crate::FileId;
-    use crate::mock_analysis::MockAnalysis;
+    use crate::mock_analysis::{single_file_with_position};
 
     use super::*;
 
     fn check_scope_completion(code: &str, expected_completions: &str) {
-        let (off, code) = extract_offset(&code);
-        let analysis = MockAnalysis::with_files(&[("/main.rs", &code)]).analysis();
-        let file_id = FileId(1);
-        let completions = scope_completion(&analysis.imp.db, file_id, off)
+        let (analysis, position) = single_file_with_position(code);
+        let completions = scope_completion(&analysis.imp.db, position.file_id, position.offset)
             .unwrap()
             .into_iter()
             .filter(|c| c.snippet.is_none())
@@ -388,10 +385,8 @@ mod tests {
     }
 
     fn check_snippet_completion(code: &str, expected_completions: &str) {
-        let (off, code) = extract_offset(&code);
-        let analysis = MockAnalysis::with_files(&[("/main.rs", &code)]).analysis();
-        let file_id = FileId(1);
-        let completions = scope_completion(&analysis.imp.db, file_id, off)
+        let (analysis, position) = single_file_with_position(code);
+        let completions = scope_completion(&analysis.imp.db, position.file_id, position.offset)
             .unwrap()
             .into_iter()
             .filter(|c| c.snippet.is_some())

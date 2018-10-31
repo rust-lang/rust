@@ -13,7 +13,7 @@ mod imp;
 mod symbol_index;
 mod completion;
 mod syntax_ptr;
-mod mock_analysis;
+pub mod mock_analysis;
 
 use std::{
     fmt,
@@ -33,7 +33,6 @@ pub use crate::{
     descriptors::function::FnDescriptor,
     completion::CompletionItem,
     input::{FileId, FileResolver, CrateGraph, CrateId},
-    mock_analysis::MockAnalysis,
 };
 pub use ra_editor::{
     FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable,

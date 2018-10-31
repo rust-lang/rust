@@ -8,6 +8,8 @@ use text_unit::{TextRange, TextUnit};
 
 pub use self::difference::Changeset as __Changeset;
 
+pub const CURSOR_MARKER: &str = "<|>";
+
 #[macro_export]
 macro_rules! assert_eq_text {
     ($expected:expr, $actual:expr) => {{
@@ -45,11 +47,10 @@ pub fn extract_offset(text: &str) -> (TextUnit, String) {
 }
 
 pub fn try_extract_offset(text: &str) -> Option<(TextUnit, String)> {
-    let cursor = "<|>";
-    let cursor_pos = text.find(cursor)?;
-    let mut new_text = String::with_capacity(text.len() - cursor.len());
+    let cursor_pos = text.find(CURSOR_MARKER)?;
+    let mut new_text = String::with_capacity(text.len() - CURSOR_MARKER.len());
     new_text.push_str(&text[..cursor_pos]);
-    new_text.push_str(&text[cursor_pos + cursor.len()..]);
+    new_text.push_str(&text[cursor_pos + CURSOR_MARKER.len()..]);
     let cursor_pos = TextUnit::from(cursor_pos as u32);
     Some((cursor_pos, new_text))
 }
@@ -116,7 +117,22 @@ pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
             }
         };
     };
-    for line in fixture.lines() {
+    let margin = fixture.lines()
+        .filter(|it| it.trim_start().starts_with("//-"))
+        .map(|it| it.len() - it.trim_start().len())
+        .next().expect("empty fixture");
+    let lines = fixture.lines()
+        .filter_map(|line| {
+            if line.len() >= margin {
+                assert!(line[..margin].trim().is_empty());
+                Some(&line[margin..])
+            } else {
+                assert!(line.trim().is_empty());
+                None
+            }
+        });
+
+    for line in lines {
         if line.starts_with("//-") {
             flush!();
             buf.clear();

@@ -25,7 +25,7 @@ impl CrateGraph {
     pub fn new() -> CrateGraph {
         CrateGraph::default()
     }
-    pub fn add_crate_root(&mut self, file_id: FileId) -> CrateId{
+    pub fn add_crate_root(&mut self, file_id: FileId) -> CrateId {
         let crate_id = CrateId(self.crate_roots.len() as u32);
         let prev = self.crate_roots.insert(crate_id, file_id);
         assert!(prev.is_none());

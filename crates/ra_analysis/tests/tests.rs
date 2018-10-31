@@ -5,38 +5,42 @@ extern crate relative_path;
 extern crate rustc_hash;
 extern crate test_utils;
 
-use ra_syntax::TextRange;
-use test_utils::{assert_eq_dbg, extract_offset};
+use ra_syntax::{TextRange};
+use test_utils::{assert_eq_dbg};
 
 use ra_analysis::{
-    MockAnalysis,
-    AnalysisChange, Analysis, CrateGraph, CrateId, FileId, FnDescriptor,
+    AnalysisChange, CrateGraph, FileId, FnDescriptor,
+    mock_analysis::{MockAnalysis, single_file, single_file_with_position, analysis_and_position},
 };
 
-fn analysis(files: &[(&str, &str)]) -> Analysis {
-    MockAnalysis::with_files(files).analysis()
-}
-
 fn get_signature(text: &str) -> (FnDescriptor, Option<usize>) {
-    let (offset, code) = extract_offset(text);
-    let code = code.as_str();
-
-    let snap = analysis(&[("/lib.rs", code)]);
-
-    snap.resolve_callable(FileId(1), offset).unwrap().unwrap()
+    let (analysis, position) = single_file_with_position(text);
+    analysis.resolve_callable(position.file_id, position.offset).unwrap().unwrap()
 }
 
 #[test]
 fn test_resolve_module() {
-    let snap = analysis(&[("/lib.rs", "mod foo;"), ("/foo.rs", "")]);
-    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into()).unwrap();
+    let (analysis, pos) = analysis_and_position("
+        //- /lib.rs
+        mod <|>foo;
+        //- /foo.rs
+        // empty
+    ");
+
+    let symbols = analysis.approximately_resolve_symbol(pos.file_id, pos.offset).unwrap();
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
         &symbols,
     );
 
-    let snap = analysis(&[("/lib.rs", "mod foo;"), ("/foo/mod.rs", "")]);
-    let symbols = snap.approximately_resolve_symbol(FileId(1), 4.into()).unwrap();
+    let (analysis, pos) = analysis_and_position("
+        //- /lib.rs
+        mod <|>foo;
+        //- /foo/mod.rs
+        // empty
+    ");
+
+    let symbols = analysis.approximately_resolve_symbol(pos.file_id, pos.offset).unwrap();
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
         &symbols,
@@ -45,8 +49,8 @@ fn test_resolve_module() {
 
 #[test]
 fn test_unresolved_module_diagnostic() {
-    let snap = analysis(&[("/lib.rs", "mod foo;")]);
-    let diagnostics = snap.diagnostics(FileId(1)).unwrap();
+    let (analysis, file_id) = single_file("mod foo;");
+    let diagnostics = analysis.diagnostics(file_id).unwrap();
     assert_eq_dbg(
         r#"[Diagnostic {
             message: "unresolved module",
@@ -62,15 +66,20 @@ fn test_unresolved_module_diagnostic() {
 
 #[test]
 fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
-    let snap = analysis(&[("/lib.rs", "mod foo {}")]);
-    let diagnostics = snap.diagnostics(FileId(1)).unwrap();
+    let (analysis, file_id) = single_file("mod foo {}");
+    let diagnostics = analysis.diagnostics(file_id).unwrap();
     assert_eq_dbg(r#"[]"#, &diagnostics);
 }
 
 #[test]
 fn test_resolve_parent_module() {
-    let snap = analysis(&[("/lib.rs", "mod foo;"), ("/foo.rs", "")]);
-    let symbols = snap.parent_module(FileId(2)).unwrap();
+    let (analysis, pos) = analysis_and_position("
+        //- /lib.rs
+        mod foo;
+        //- /foo.rs
+        <|>// empty
+    ");
+    let symbols = analysis.parent_module(pos.file_id).unwrap();
     assert_eq_dbg(
         r#"[(FileId(1), FileSymbol { name: "foo", node_range: [0; 8), kind: MODULE })]"#,
         &symbols,
@@ -79,23 +88,24 @@ fn test_resolve_parent_module() {
 
 #[test]
 fn test_resolve_crate_root() {
-    let mut host = MockAnalysis::with_files(
-        &[("/lib.rs", "mod foo;"), ("/foo.rs", "")]
-    ).analysis_host();
-    let snap = host.analysis();
-    assert!(snap.crate_for(FileId(2)).unwrap().is_empty());
+    let mock = MockAnalysis::with_files("
+        //- /lib.rs
+        mod foo;
+        //- /foo.rs
+        // emtpy <|>
+    ");
+    let root_file = mock.id_of("/lib.rs");
+    let mod_file = mock.id_of("/foo.rs");
+    let mut host = mock.analysis_host();
+    assert!(host.analysis().crate_for(mod_file).unwrap().is_empty());
 
-    let crate_graph = {
-        let mut g = CrateGraph::new();
-        g.add_crate_root(FileId(1));
-        g
-    };
+    let mut crate_graph = CrateGraph::new();
+    let crate_id = crate_graph.add_crate_root(root_file);
     let mut change = AnalysisChange::new();
     change.set_crate_graph(crate_graph);
     host.apply_change(change);
-    let snap = host.analysis();
 
-    assert_eq!(snap.crate_for(FileId(2)).unwrap(), vec![CrateId(0)],);
+    assert_eq!(host.analysis().crate_for(mod_file).unwrap(), vec![crate_id]);
 }
 
 #[test]
@@ -186,12 +196,8 @@ fn bar() {
 }
 
 fn get_all_refs(text: &str) -> Vec<(FileId, TextRange)> {
-    let (offset, code) = extract_offset(text);
-    let code = code.as_str();
-
-    let snap = analysis(&[("/lib.rs", code)]);
-
-    snap.find_all_refs(FileId(1), offset).unwrap()
+    let (analysis, position) = single_file_with_position(text);
+    analysis.find_all_refs(position.file_id, position.offset).unwrap()
 }
 
 #[test]
@@ -226,11 +232,14 @@ fn test_find_all_refs_for_param_inside() {
 
 #[test]
 fn test_complete_crate_path() {
-    let snap = analysis(&[
-        ("/lib.rs", "mod foo; struct Spam;"),
-        ("/foo.rs", "use crate::Sp"),
-    ]);
-    let completions = snap.completions(FileId(2), 13.into()).unwrap().unwrap();
+    let (analysis, position) = analysis_and_position("
+        //- /lib.rs
+        mod foo;
+        struct Spam;
+        //- /foo.rs
+        use crate::Sp<|>
+    ");
+    let completions = analysis.completions(position.file_id, position.offset).unwrap().unwrap();
     assert_eq_dbg(
         r#"[CompletionItem { label: "foo", lookup: None, snippet: None },
             CompletionItem { label: "Spam", lookup: None, snippet: None }]"#,
