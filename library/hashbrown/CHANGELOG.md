@@ -7,9 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## v0.1.2 - 2018-10-31
+
+### Fixed
+- `clear` segfaults when called on an empty table. (#13)
+
 ## v0.1.1 - 2018-10-30
 
-### Fixed:
+### Fixed
 - `erase_no_drop` optimization not triggering in the SSE2 implementation. (#3)
 - Missing `Send` and `Sync` for hash map and iterator types. (#7)
 - Bug when inserting into a table smaller than the group width. (#5)
