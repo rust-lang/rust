@@ -1,0 +1,3 @@
+status = [
+  "continuous-integration/travis-ci/push",
+]
