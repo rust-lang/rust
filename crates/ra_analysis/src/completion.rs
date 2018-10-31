@@ -148,7 +148,7 @@ fn complete_module_items(
     this_item: Option<ast::NameRef>,
     acc: &mut Vec<CompletionItem>,
 ) {
-    let scope = ModuleScope::from_items(items);
+    let scope = ModuleScope::new(items); // FIXME
     acc.extend(
         scope
             .entries()

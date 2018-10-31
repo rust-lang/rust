@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ra_syntax::{
-    ast::{self, NameOwner},
+    ast::{self, ModuleItemOwner, NameOwner},
     SmolStr,
 };
 use relative_path::RelativePathBuf;
@@ -15,7 +15,8 @@ use crate::{
 };
 
 use super::{
-    LinkData, LinkId, ModuleData, ModuleId, ModuleScope, ModuleSource, ModuleTree, Problem,
+    LinkData, LinkId, ModuleData, ModuleId, ModuleScope, ModuleSource, ModuleSourceNode,
+    ModuleTree, Problem,
 };
 
 pub(crate) fn submodules(
@@ -45,9 +46,14 @@ pub(crate) fn module_scope(
     module_id: ModuleId,
 ) -> Cancelable<Arc<ModuleScope>> {
     let tree = db.module_tree(source_root_id)?;
-    let ModuleSource::File(file_id) = module_id.source(&tree);
-    let syntax = db.file_syntax(file_id);
-    let res = ModuleScope::new(&syntax);
+    let source = module_id.source(&tree).resolve(db);
+    let res = match source {
+        ModuleSourceNode::Root(root) => ModuleScope::new(root.ast().items()),
+        ModuleSourceNode::Inline(inline) => match inline.ast().item_list() {
+            Some(items) => ModuleScope::new(items.items()),
+            None => ModuleScope::new(std::iter::empty()),
+        },
+    };
     Ok(Arc::new(res))
 }
 
