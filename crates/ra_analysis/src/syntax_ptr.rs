@@ -23,7 +23,7 @@ fn resolve_syntax_ptr(db: &impl SyntaxDatabase, ptr: SyntaxPtr) -> SyntaxNode {
 }
 
 /// SyntaxPtr is a cheap `Copy` id which identifies a particular syntax node,
-/// without retainig syntax tree in memory. You need to explicitelly `resovle`
+/// without retaining syntax tree in memory. You need to explicitly `resolve`
 /// `SyntaxPtr` to get a `SyntaxNode`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct SyntaxPtr {
@@ -80,7 +80,7 @@ impl LocalSyntaxPtr {
             }
             curr = curr.children()
                 .find(|it| self.range.is_subrange(&it.range()))
-                .unwrap_or_else(|| panic!("can't resovle local ptr to SyntaxNode: {:?}", self))
+                .unwrap_or_else(|| panic!("can't resolve local ptr to SyntaxNode: {:?}", self))
         }
     }
 }
