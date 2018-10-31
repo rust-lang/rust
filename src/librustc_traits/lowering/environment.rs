@@ -20,6 +20,8 @@ use rustc::traits::{
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashSet;
+use super::Lower;
+use std::iter;
 
 struct ClauseVisitor<'set, 'a, 'tcx: 'a + 'set> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -45,9 +47,32 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
                 );
             }
 
-            // forall<'a, T> { `Outlives(T, 'a) :- FromEnv(&'a T)` }
-            ty::Ref(_region, _sub_ty, ..) => {
-                // FIXME: we'd need bound tys in order to properly write the above rule
+            // forall<'a, T> { `Outlives(T: 'a) :- FromEnv(&'a T)` }
+            ty::Ref(..) => {
+                use rustc::hir;
+
+                let region = self.tcx.mk_region(
+                    ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
+                );
+                let ty = self.tcx.mk_ty(
+                    ty::Bound(ty::BoundTy::new(ty::INNERMOST, ty::BoundVar::from_u32(1)))
+                );
+
+                let ref_ty = self.tcx.mk_ref(region, ty::TypeAndMut {
+                    ty,
+                    mutbl: hir::Mutability::MutImmutable,
+                });
+                let from_env = DomainGoal::FromEnv(FromEnv::Ty(ref_ty));
+
+                let clause = ProgramClause {
+                    goal: ty::OutlivesPredicate(ty, region).lower(),
+                    hypotheses: self.tcx.mk_goals(
+                        iter::once(self.tcx.mk_goal(from_env.into_goal()))
+                    ),
+                    category: ProgramClauseCategory::ImpliedBound,
+                };
+                let clause = Clause::ForAll(ty::Binder::bind(clause));
+                self.round.insert(clause);
             }
 
             ty::Dynamic(..) => {

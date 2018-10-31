@@ -23,6 +23,7 @@ extern crate log;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_data_structures;
+extern crate rustc_target;
 extern crate syntax;
 extern crate syntax_pos;
 extern crate smallvec;
