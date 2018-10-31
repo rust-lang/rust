@@ -240,7 +240,7 @@ def main(print_only=False, check=False):
 
     # same for "deprecated" lint collection
     changed |= replace_region(
-        'clippy_lints/src/lib.rs', r'let mut store', r'end deprecated lints',
+        'clippy_lints/src/lib.rs', r'begin deprecated lints', r'end deprecated lints',
         lambda: gen_deprecated(deprecated_lints),
         replace_start=False,
         write_back=not check)
