@@ -57,7 +57,7 @@ salsa::database_storage! {
             fn file_text() for crate::input::FileTextQuery;
             fn file_source_root() for crate::input::FileSourceRootQuery;
             fn source_root() for crate::input::SourceRootQuery;
-            fn libraries() for crate::input::LibrarieseQuery;
+            fn libraries() for crate::input::LibrariesQuery;
             fn library_symbols() for crate::input::LibrarySymbolsQuery;
             fn crate_graph() for crate::input::CrateGraphQuery;
         }

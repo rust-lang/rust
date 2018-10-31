@@ -168,7 +168,7 @@ impl AnalysisHostImpl {
                     .set(source_root_id, Arc::new(library.symbol_index));
             }
             self.db
-                .query(crate::input::LibrarieseQuery)
+                .query(crate::input::LibrariesQuery)
                 .set((), Arc::new(libraries));
         }
         if let Some(crate_graph) = change.crate_graph {
