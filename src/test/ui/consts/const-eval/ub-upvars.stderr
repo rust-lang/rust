@@ -6,7 +6,7 @@ LL | |     let bad_ref: &'static u16 = unsafe { mem::transmute(0usize) };
 LL | |     let another_var = 13;
 LL | |     move || { let _ = bad_ref; let _ = another_var; }
 LL | | };
-   | |__^ type validation failed: encountered 0 at .<deref>.<closure-var(bad_ref)>, but expected something greater or equal to 1
+   | |__^ type validation failed: encountered 0 at .<deref>.<dyn-downcast>.<closure-var(bad_ref)>, but expected something greater or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 

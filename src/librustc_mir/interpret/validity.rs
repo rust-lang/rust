@@ -78,6 +78,7 @@ pub enum PathElem {
     TupleElem(usize),
     Deref,
     Tag,
+    DynDowncast,
 }
 
 /// State for tracking recursive validation of references
@@ -97,15 +98,6 @@ impl<'tcx, Tag: Copy+Eq+Hash> RefTracking<'tcx, Tag> {
     }
 }
 
-// Adding a Deref and making a copy of the path to be put into the queue
-// always go together.  This one does it with only new allocation.
-fn path_clone_and_deref(path: &Vec<PathElem>) -> Vec<PathElem> {
-    let mut new_path = Vec::with_capacity(path.len()+1);
-    new_path.clone_from(path);
-    new_path.push(PathElem::Deref);
-    new_path
-}
-
 /// Format a path
 fn path_format(path: &Vec<PathElem>) -> String {
     use self::PathElem::*;
@@ -113,57 +105,21 @@ fn path_format(path: &Vec<PathElem>) -> String {
     let mut out = String::new();
     for elem in path.iter() {
         match elem {
-            Field(name) => write!(out, ".{}", name).unwrap(),
-            ClosureVar(name) => write!(out, ".<closure-var({})>", name).unwrap(),
-            TupleElem(idx) => write!(out, ".{}", idx).unwrap(),
-            ArrayElem(idx) => write!(out, "[{}]", idx).unwrap(),
+            Field(name) => write!(out, ".{}", name),
+            ClosureVar(name) => write!(out, ".<closure-var({})>", name),
+            TupleElem(idx) => write!(out, ".{}", idx),
+            ArrayElem(idx) => write!(out, "[{}]", idx),
             Deref =>
                 // This does not match Rust syntax, but it is more readable for long paths -- and
                 // some of the other items here also are not Rust syntax.  Actually we can't
                 // even use the usual syntax because we are just showing the projections,
                 // not the root.
-                write!(out, ".<deref>").unwrap(),
-            Tag => write!(out, ".<enum-tag>").unwrap(),
-        }
+                write!(out, ".<deref>"),
+            Tag => write!(out, ".<enum-tag>"),
+            DynDowncast => write!(out, ".<dyn-downcast>"),
+        }.unwrap()
     }
     out
-}
-
-fn aggregate_field_path_elem<'a, 'tcx>(
-    layout: TyLayout<'tcx>,
-    field: usize,
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-) -> PathElem {
-    match layout.ty.sty {
-        // generators and closures.
-        ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
-            if let Some(upvar) = tcx.optimized_mir(def_id).upvar_decls.get(field) {
-                PathElem::ClosureVar(upvar.debug_name)
-            } else {
-                // Sometimes the index is beyond the number of freevars (seen
-                // for a generator).
-                PathElem::ClosureVar(Symbol::intern(&field.to_string()))
-            }
-        }
-
-        // tuples
-        ty::Tuple(_) => PathElem::TupleElem(field),
-
-        // enums
-        ty::Adt(def, ..) if def.is_enum() => {
-            let variant = match layout.variants {
-                layout::Variants::Single { index } => &def.variants[index],
-                _ => bug!("aggregate_field_path_elem: got enum but not in a specific variant"),
-            };
-            PathElem::Field(variant.fields[field].ident.name)
-        }
-
-        // other ADTs
-        ty::Adt(def, _) => PathElem::Field(def.non_enum_variant().fields[field].ident.name),
-
-        // nothing else has an aggregate layout
-        _ => bug!("aggregate_field_path_elem: got non-aggregate type {:?}", layout.ty),
-    }
 }
 
 fn scalar_format<Tag>(value: ScalarMaybeUndef<Tag>) -> String {
@@ -177,7 +133,7 @@ fn scalar_format<Tag>(value: ScalarMaybeUndef<Tag>) -> String {
     }
 }
 
-struct ValidityVisitor<'rt, 'tcx, Tag> {
+struct ValidityVisitor<'rt, 'a, 'tcx, Tag> {
     op: OpTy<'tcx, Tag>,
     /// The `path` may be pushed to, but the part that is present when a function
     /// starts must not be changed!  `visit_fields` and `visit_array` rely on
@@ -185,20 +141,89 @@ struct ValidityVisitor<'rt, 'tcx, Tag> {
     path: Vec<PathElem>,
     ref_tracking: Option<&'rt mut RefTracking<'tcx, Tag>>,
     const_mode: bool,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
-impl<Tag: fmt::Debug> fmt::Debug for ValidityVisitor<'_, '_, Tag> {
+impl<Tag: fmt::Debug> fmt::Debug for ValidityVisitor<'_, '_, '_, Tag> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?} ({:?})", *self.op, self.op.layout.ty)
+        write!(f, "{:?}, {:?}", *self.op, self.op.layout.ty)
+    }
+}
+
+impl<'rt, 'a, 'tcx, Tag> ValidityVisitor<'rt, 'a, 'tcx, Tag> {
+    fn push_aggregate_field_path_elem(
+        &mut self,
+        layout: TyLayout<'tcx>,
+        field: usize,
+    ) {
+        let elem = match layout.ty.sty {
+            // generators and closures.
+            ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
+                if let Some(upvar) = self.tcx.optimized_mir(def_id).upvar_decls.get(field) {
+                    PathElem::ClosureVar(upvar.debug_name)
+                } else {
+                    // Sometimes the index is beyond the number of freevars (seen
+                    // for a generator).
+                    PathElem::ClosureVar(Symbol::intern(&field.to_string()))
+                }
+            }
+
+            // tuples
+            ty::Tuple(_) => PathElem::TupleElem(field),
+
+            // enums
+            ty::Adt(def, ..) if def.is_enum() => {
+                let variant = match layout.variants {
+                    layout::Variants::Single { index } => &def.variants[index],
+                    _ => bug!("aggregate_field_path_elem: got enum but not in a specific variant"),
+                };
+                PathElem::Field(variant.fields[field].ident.name)
+            }
+
+            // other ADTs
+            ty::Adt(def, _) => PathElem::Field(def.non_enum_variant().fields[field].ident.name),
+
+            // arrays/slices
+            ty::Array(..) | ty::Slice(..) => PathElem::ArrayElem(field),
+
+            // dyn traits
+            ty::Dynamic(..) => PathElem::DynDowncast,
+
+            // nothing else has an aggregate layout
+            _ => bug!("aggregate_field_path_elem: got non-aggregate type {:?}", layout.ty),
+        };
+        self.path.push(elem);
     }
 }
 
 impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
-    ValueVisitor<'a, 'mir, 'tcx, M> for ValidityVisitor<'rt, 'tcx, M::PointerTag>
+    ValueVisitor<'a, 'mir, 'tcx, M> for ValidityVisitor<'rt, 'a, 'tcx, M::PointerTag>
 {
+    type V = OpTy<'tcx, M::PointerTag>;
+
     #[inline(always)]
-    fn layout(&self) -> TyLayout<'tcx> {
-        self.op.layout
+    fn value(&self) -> &OpTy<'tcx, M::PointerTag> {
+        &self.op
+    }
+
+    #[inline]
+    fn with_field(
+        &mut self,
+        val: Self::V,
+        field: usize,
+        f: impl FnOnce(&mut Self) -> EvalResult<'tcx>,
+    ) -> EvalResult<'tcx> {
+        // Remember the old state
+        let path_len = self.path.len();
+        let op = self.op;
+        // Perform operation
+        self.push_aggregate_field_path_elem(op.layout, field);
+        self.op = val;
+        f(self)?;
+        // Undo changes
+        self.path.truncate(path_len);
+        self.op = op;
+        Ok(())
     }
 
     fn downcast_enum(&mut self, ectx: &EvalContext<'a, 'mir, 'tcx, M>)
@@ -224,15 +249,6 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                                     .variants[variant].name));
         // Proceed with this variant
         self.op = ectx.operand_downcast(self.op, variant)?;
-        Ok(())
-    }
-
-    fn downcast_dyn_trait(&mut self, ectx: &EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx>
-    {
-        // FIXME: Should we reflect this in `self.path`?
-        let dest = self.op.to_mem_place(); // immediate trait objects are not a thing
-        self.op = ectx.unpack_dyn_trait(dest)?.1.into();
         Ok(())
     }
 
@@ -365,7 +381,13 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     let op = place.into();
                     if ref_tracking.seen.insert(op) {
                         trace!("Recursing below ptr {:#?}", *op);
-                        ref_tracking.todo.push((op, path_clone_and_deref(&self.path)));
+                        // We need to clone the path anyway, make sure it gets created
+                        // with enough space for the additional `Deref`.
+                        let mut new_path = Vec::with_capacity(self.path.len()+1);
+                        new_path.clone_from(&self.path);
+                        new_path.push(PathElem::Deref);
+                        // Remember to come back to this later.
+                        ref_tracking.todo.push((op, new_path));
                     }
                 }
             }
@@ -378,10 +400,15 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                 // FIXME: Check if the signature matches
             }
             // This should be all the primitive types
-            ty::Never => bug!("Uninhabited type should have been caught earlier"),
             _ => bug!("Unexpected primitive type {}", value.layout.ty)
         }
         Ok(())
+    }
+
+    fn visit_uninhabited(&mut self, _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
+        -> EvalResult<'tcx>
+    {
+        validation_failure!("a value of an uninhabited type", self.path)
     }
 
     fn visit_scalar(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>, layout: &layout::Scalar)
@@ -468,47 +495,16 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         }
     }
 
-    fn visit_fields(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>, num_fields: usize)
-        -> EvalResult<'tcx>
+    fn handle_array(&mut self, ectx: &EvalContext<'a, 'mir, 'tcx, M>)
+        -> EvalResult<'tcx, bool>
     {
-        // Remember some stuff that will change for the recursive calls
-        let op = self.op;
-        let path_len = self.path.len();
-        // Go look at all the fields
-        for i in 0..num_fields {
-            // Adapt our state
-            self.op = ectx.operand_field(op, i as u64)?;
-            self.path.push(aggregate_field_path_elem(op.layout, i, *ectx.tcx));
-            // Recursive visit
-            ectx.visit_value(self)?;
-            // Restore original state
-            self.op = op;
-            self.path.truncate(path_len);
-        }
-        Ok(())
-    }
-
-    fn visit_str(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx>
-    {
-        let mplace = self.op.to_mem_place(); // strings are never immediate
-        try_validation!(ectx.read_str(mplace),
-            "uninitialized or non-UTF-8 data in str", self.path);
-        Ok(())
-    }
-
-    fn visit_array(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>) -> EvalResult<'tcx>
-    {
-        let mplace = if self.op.layout.is_zst() {
-            // it's a ZST, the memory content cannot matter
-            MPlaceTy::dangling(self.op.layout, ectx)
-        } else {
-            // non-ZST array/slice/str cannot be immediate
-            self.op.to_mem_place()
-        };
-        match self.op.layout.ty.sty {
-            ty::Str => bug!("Strings should be handled separately"),
-            // Special handling for arrays/slices of builtin integer types
+        Ok(match self.op.layout.ty.sty {
+            ty::Str => {
+                let mplace = self.op.to_mem_place(); // strings are never immediate
+                try_validation!(ectx.read_str(mplace),
+                    "uninitialized or non-UTF-8 data in str", self.path);
+                true
+            }
             ty::Array(tys, ..) | ty::Slice(tys) if {
                 // This optimization applies only for integer and floating point types
                 // (i.e., types that can hold arbitrary bytes).
@@ -517,6 +513,13 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     _ => false,
                 }
             } => {
+                let mplace = if self.op.layout.is_zst() {
+                    // it's a ZST, the memory content cannot matter
+                    MPlaceTy::dangling(self.op.layout, ectx)
+                } else {
+                    // non-ZST array/slice/str cannot be immediate
+                    self.op.to_mem_place()
+                };
                 // This is the length of the array/slice.
                 let len = mplace.len(ectx)?;
                 // This is the element type size.
@@ -539,7 +542,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     /*allow_ptr_and_undef*/!self.const_mode,
                 ) {
                     // In the happy case, we needn't check anything else.
-                    Ok(()) => {},
+                    Ok(()) => true, // handled these arrays
                     // Some error happened, try to provide a more detailed description.
                     Err(err) => {
                         // For some errors we might be able to provide extra information
@@ -560,26 +563,9 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                         }
                     }
                 }
-            },
-            _ => {
-                // Remember some stuff that will change for the recursive calls
-                let op = self.op;
-                let path_len = self.path.len();
-                // This handles the unsized case correctly as well, as well as
-                // SIMD and all sorts of other array-like types.
-                for (i, field) in ectx.mplace_array_fields(mplace)?.enumerate() {
-                    // Adapt our state
-                    self.op = field?.into();
-                    self.path.push(PathElem::ArrayElem(i));
-                    // Recursive visit
-                    ectx.visit_value(self)?;
-                    // Restore original state
-                    self.op = op;
-                    self.path.truncate(path_len);
-                }
             }
-        }
-        Ok(())
+            _ => false, // not handled
+        })
     }
 }
 
@@ -605,7 +591,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             op,
             path,
             ref_tracking,
-            const_mode
+            const_mode,
+            tcx: *self.tcx,
         };
 
         // Run it
