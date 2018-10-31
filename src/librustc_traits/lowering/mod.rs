@@ -246,7 +246,8 @@ fn program_clauses_for_trait<'a, 'tcx>(
                 // and that named bound regions have a def-id, it is safe
                 // to just inject `hypotheses` (which contains named vars bound at index `0`)
                 // into this binding level. This may change if we ever allow where clauses
-                // to bind types (e.g. for GATs things).
+                // to bind types (e.g. for GATs things), because bound types only use a `BoundVar`
+                // index (no def-id).
                 hypotheses,
 
                 category: ProgramClauseCategory::ImpliedBound,
@@ -368,7 +369,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
     };
     let well_formed_clause = Clause::ForAll(ty::Binder::bind(well_formed_clause));
 
-    // Rule FromEnv-Type
+    // Rule Implied-Bound-From-Type
     //
     // For each where clause `WC`:
     // ```
@@ -409,7 +410,7 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     item_id: DefId,
 ) -> Clauses<'tcx> {
-    // Rule ProjectionEq-Skolemize
+    // Rule ProjectionEq-Placeholder
     //
     // ```
     // trait Trait<P1..Pn> {

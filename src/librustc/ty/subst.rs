@@ -179,6 +179,10 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         })
     }
 
+    /// Creates a `Substs` that maps each generic parameter to a higher-ranked
+    /// var bound at index `0`. For types, we use a `BoundVar` index equal to
+    /// the type parameter index. For regions, we use the `BoundRegion::BrNamed`
+    /// variant (which has a def-id).
     pub fn bound_vars_for_item(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         def_id: DefId
