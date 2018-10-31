@@ -1,13 +1,10 @@
-
 use std::sync::Arc;
 
-use relative_path::{RelativePath, RelativePathBuf};
 use ra_syntax::TextUnit;
+use relative_path::{RelativePath, RelativePathBuf};
 use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 
-use crate::{
-    AnalysisChange, Analysis, AnalysisHost, FileId, FileResolver,
-};
+use crate::{Analysis, AnalysisChange, AnalysisHost, FileId, FileResolver};
 
 #[derive(Debug)]
 pub struct FilePosition {
@@ -51,7 +48,10 @@ impl MockAnalysis {
         let mut res = MockAnalysis::new();
         for entry in parse_fixture(fixture) {
             if entry.text.contains(CURSOR_MARKER) {
-                assert!(position.is_none(), "only one marker (<|>) per fixture is allowed");
+                assert!(
+                    position.is_none(),
+                    "only one marker (<|>) per fixture is allowed"
+                );
                 position = Some(res.add_file_with_position(&entry.meta, &entry.text));
             } else {
                 res.add_file(&entry.meta, &entry.text);
@@ -73,7 +73,10 @@ impl MockAnalysis {
         FilePosition { file_id, offset }
     }
     pub fn id_of(&self, path: &str) -> FileId {
-        let (idx, _) = self.files.iter().enumerate()
+        let (idx, _) = self
+            .files
+            .iter()
+            .enumerate()
             .find(|(_, (p, _text))| path == p)
             .expect("no file in this mock");
         FileId(idx as u32 + 1)

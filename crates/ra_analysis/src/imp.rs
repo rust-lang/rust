@@ -13,24 +13,21 @@ use ra_syntax::{
 use rayon::prelude::*;
 use relative_path::RelativePath;
 use rustc_hash::FxHashSet;
-use salsa::{ParallelDatabase, Database};
+use salsa::{Database, ParallelDatabase};
 
 use crate::{
-    AnalysisChange,
-    db::{
-        self, SyntaxDatabase, FileSyntaxQuery,
-    },
-    input::{SourceRootId, FilesDatabase, SourceRoot, WORKSPACE},
+    completion::{resolve_based_completion, scope_completion, CompletionItem},
+    db::{self, FileSyntaxQuery, SyntaxDatabase},
     descriptors::{
-        DescriptorDatabase, DeclarationDescriptor,
-        module::{ModuleTree, Problem},
         function::{FnDescriptor, FnId},
+        module::{ModuleTree, Problem},
+        DeclarationDescriptor, DescriptorDatabase,
     },
-    completion::{scope_completion, resolve_based_completion, CompletionItem},
+    input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
     symbol_index::SymbolIndex,
     syntax_ptr::SyntaxPtrDatabase,
-    CrateGraph, CrateId, Diagnostic, FileId, FileResolver, FileSystemEdit, Position,
-    Query, SourceChange, SourceFileEdit, Cancelable,
+    AnalysisChange, Cancelable, CrateGraph, CrateId, Diagnostic, FileId, FileResolver,
+    FileSystemEdit, Position, Query, SourceChange, SourceFileEdit,
 };
 
 #[derive(Clone, Debug)]
@@ -94,7 +91,6 @@ pub(crate) struct AnalysisHostImpl {
     db: db::RootDatabase,
 }
 
-
 impl AnalysisHostImpl {
     pub fn new() -> AnalysisHostImpl {
         let db = db::RootDatabase::default();
@@ -108,7 +104,7 @@ impl AnalysisHostImpl {
     }
     pub fn analysis(&self) -> AnalysisImpl {
         AnalysisImpl {
-            db: self.db.fork() // freeze revision here
+            db: self.db.fork(), // freeze revision here
         }
     }
     pub fn apply_change(&mut self, change: AnalysisChange) {
@@ -120,7 +116,8 @@ impl AnalysisHostImpl {
                 .set(file_id, Arc::new(text))
         }
         if !(change.files_added.is_empty() && change.files_removed.is_empty()) {
-            let file_resolver = change.file_resolver
+            let file_resolver = change
+                .file_resolver
                 .expect("change resolver when changing set of files");
             let mut source_root = SourceRoot::clone(&self.db.source_root(WORKSPACE));
             for (file_id, text) in change.files_added {
@@ -174,7 +171,8 @@ impl AnalysisHostImpl {
                 .set((), Arc::new(libraries));
         }
         if let Some(crate_graph) = change.crate_graph {
-            self.db.query(crate::input::CrateGraphQuery)
+            self.db
+                .query(crate::input::CrateGraphQuery)
                 .set((), Arc::new(crate_graph))
         }
     }
@@ -194,18 +192,22 @@ impl AnalysisImpl {
     }
     pub fn world_symbols(&self, query: Query) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let buf: Vec<Arc<SymbolIndex>> = if query.libs {
-            self.db.libraries().iter()
+            self.db
+                .libraries()
+                .iter()
                 .map(|&lib_id| self.db.library_symbols(lib_id))
                 .collect()
         } else {
             let files = &self.db.source_root(WORKSPACE).files;
             let db = self.db.clone();
-            files.par_iter()
+            files
+                .par_iter()
                 .map_with(db, |db, &file_id| db.file_symbols(file_id))
                 .filter_map(|it| it.ok())
                 .collect()
         };
-        self.db.query(FileSyntaxQuery)
+        self.db
+            .query(FileSyntaxQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
         Ok(query.search(&buf))
     }
@@ -216,7 +218,8 @@ impl AnalysisImpl {
     pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let module_tree = self.module_tree(file_id)?;
 
-        let res = module_tree.modules_for_file(file_id)
+        let res = module_tree
+            .modules_for_file(file_id)
             .into_iter()
             .filter_map(|module_id| {
                 let link = module_id.parent_link(&module_tree)?;
@@ -237,7 +240,8 @@ impl AnalysisImpl {
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
         let module_tree = self.module_tree(file_id)?;
         let crate_graph = self.db.crate_graph();
-        let res = module_tree.modules_for_file(file_id)
+        let res = module_tree
+            .modules_for_file(file_id)
             .into_iter()
             .map(|it| it.root(&module_tree))
             .map(|it| it.file_id(&module_tree))
@@ -249,7 +253,11 @@ impl AnalysisImpl {
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
         self.db.crate_graph().crate_roots[&crate_id]
     }
-    pub fn completions(&self, file_id: FileId, offset: TextUnit) -> Cancelable<Option<Vec<CompletionItem>>> {
+    pub fn completions(
+        &self,
+        file_id: FileId,
+        offset: TextUnit,
+    ) -> Cancelable<Option<Vec<CompletionItem>>> {
         let mut res = Vec::new();
         let mut has_completions = false;
         if let Some(scope_based) = scope_completion(&self.db, file_id, offset) {
@@ -260,11 +268,7 @@ impl AnalysisImpl {
             res.extend(scope_based);
             has_completions = true;
         }
-        let res = if has_completions {
-            Some(res)
-        } else {
-            None
-        };
+        let res = if has_completions { Some(res) } else { None };
         Ok(res)
     }
     pub fn approximately_resolve_symbol(
@@ -326,12 +330,11 @@ impl AnalysisImpl {
         let syntax = file.syntax();
 
         // Find the binding associated with the offset
-        let maybe_binding = find_node_at_offset::<ast::BindPat>(syntax, offset)
-            .or_else(|| {
-                let name_ref = find_node_at_offset::<ast::NameRef>(syntax, offset)?;
-                let resolved = resolve_local_name(&self.db, file_id, name_ref)?;
-                find_node_at_offset::<ast::BindPat>(syntax, resolved.1.end())
-            });
+        let maybe_binding = find_node_at_offset::<ast::BindPat>(syntax, offset).or_else(|| {
+            let name_ref = find_node_at_offset::<ast::NameRef>(syntax, offset)?;
+            let resolved = resolve_local_name(&self.db, file_id, name_ref)?;
+            find_node_at_offset::<ast::BindPat>(syntax, resolved.1.end())
+        });
 
         let binding = match maybe_binding {
             None => return Vec::new(),
@@ -341,8 +344,11 @@ impl AnalysisImpl {
         let decl = DeclarationDescriptor::new(binding);
 
         let mut ret = vec![(file_id, decl.range)];
-        ret.extend(decl.find_all_refs().into_iter()
-            .map(|ref_desc| (file_id, ref_desc.range )));
+        ret.extend(
+            decl.find_all_refs()
+                .into_iter()
+                .map(|ref_desc| (file_id, ref_desc.range)),
+        );
 
         ret
     }
@@ -526,7 +532,8 @@ impl AnalysisImpl {
             Some(id) => id,
             None => return Vec::new(),
         };
-        module_id.child(module_tree, name.as_str())
+        module_id
+            .child(module_tree, name.as_str())
             .map(|it| it.file_id(module_tree))
             .into_iter()
             .collect()

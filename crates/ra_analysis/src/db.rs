@@ -1,6 +1,4 @@
-use std::{
-    sync::Arc,
-};
+use std::sync::Arc;
 
 use ra_editor::LineIndex;
 use ra_syntax::File;
@@ -8,14 +6,13 @@ use salsa;
 
 use crate::{
     db,
-    Cancelable, Canceled,
     descriptors::{
-        DescriptorDatabase, SubmodulesQuery, ModuleTreeQuery, ModuleScopeQuery,
-        FnSyntaxQuery, FnScopesQuery
+        DescriptorDatabase, FnScopesQuery, FnSyntaxQuery, ModuleScopeQuery, ModuleTreeQuery,
+        SubmodulesQuery,
     },
     symbol_index::SymbolIndex,
-    syntax_ptr::{SyntaxPtrDatabase, ResolveSyntaxPtrQuery},
-    FileId,
+    syntax_ptr::{ResolveSyntaxPtrQuery, SyntaxPtrDatabase},
+    Cancelable, Canceled, FileId,
 };
 
 #[derive(Default, Debug)]

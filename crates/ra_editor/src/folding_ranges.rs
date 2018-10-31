@@ -174,8 +174,16 @@ mod tests {
         let file = File::parse(&text);
         let folds = folding_ranges(&file);
 
-        assert_eq!(folds.len(), ranges.len(), "The amount of folds is different than the expected amount");
-        assert_eq!(folds.len(), fold_kinds.len(), "The amount of fold kinds is different than the expected amount");
+        assert_eq!(
+            folds.len(),
+            ranges.len(),
+            "The amount of folds is different than the expected amount"
+        );
+        assert_eq!(
+            folds.len(),
+            fold_kinds.len(),
+            "The amount of fold kinds is different than the expected amount"
+        );
         for ((fold, range), fold_kind) in folds
             .into_iter()
             .zip(ranges.into_iter())

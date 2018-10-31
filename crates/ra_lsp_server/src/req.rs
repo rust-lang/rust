@@ -6,8 +6,8 @@ pub use languageserver_types::{
     notification::*, request::*, ApplyWorkspaceEditParams, CodeActionParams, CompletionParams,
     CompletionResponse, DocumentOnTypeFormattingParams, DocumentSymbolParams,
     DocumentSymbolResponse, ExecuteCommandParams, Hover, InitializeResult,
-    PublishDiagnosticsParams, SignatureHelp, TextDocumentEdit, TextDocumentPositionParams,
-    TextEdit, WorkspaceSymbolParams, ReferenceParams,
+    PublishDiagnosticsParams, ReferenceParams, SignatureHelp, TextDocumentEdit,
+    TextDocumentPositionParams, TextEdit, WorkspaceSymbolParams,
 };
 
 pub enum SyntaxTree {}

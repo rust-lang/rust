@@ -1,21 +1,21 @@
-use rustc_hash::{FxHashMap, FxHashSet};
-use ra_editor::{find_node_at_offset};
+use ra_editor::find_node_at_offset;
 use ra_syntax::{
-    AtomEdit, File, TextUnit, AstNode, SyntaxNodeRef,
     algo::visit::{visitor, visitor_ctx, Visitor, VisitorCtx},
     ast::{self, AstChildren, LoopBodyOwner, ModuleItemOwner},
+    AstNode, AtomEdit, File,
     SyntaxKind::*,
+    SyntaxNodeRef, TextUnit,
 };
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    FileId, Cancelable,
-    input::FilesDatabase,
     db::{self, SyntaxDatabase},
-    descriptors::DescriptorDatabase,
     descriptors::function::FnScopes,
-    descriptors::module::{ModuleTree, ModuleId, ModuleScope},
+    descriptors::module::{ModuleId, ModuleScope, ModuleTree},
+    descriptors::DescriptorDatabase,
+    input::FilesDatabase,
+    Cancelable, FileId,
 };
-
 
 #[derive(Debug)]
 pub struct CompletionItem {
@@ -27,7 +27,11 @@ pub struct CompletionItem {
     pub snippet: Option<String>,
 }
 
-pub(crate) fn resolve_based_completion(db: &db::RootDatabase, file_id: FileId, offset: TextUnit) -> Cancelable<Option<Vec<CompletionItem>>> {
+pub(crate) fn resolve_based_completion(
+    db: &db::RootDatabase,
+    file_id: FileId,
+    offset: TextUnit,
+) -> Cancelable<Option<Vec<CompletionItem>>> {
     let source_root_id = db.file_source_root(file_id);
     let file = db.file_syntax(file_id);
     let module_tree = db.module_tree(source_root_id)?;
@@ -56,9 +60,12 @@ pub(crate) fn resolve_based_completion(db: &db::RootDatabase, file_id: FileId, o
     Ok(Some(res))
 }
 
-
-
-pub(crate) fn find_target_module(module_tree: &ModuleTree, module_id: ModuleId, file: &File, offset: TextUnit) -> Option<ModuleId> {
+pub(crate) fn find_target_module(
+    module_tree: &ModuleTree,
+    module_id: ModuleId,
+    file: &File,
+    offset: TextUnit,
+) -> Option<ModuleId> {
     let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), offset)?;
     let mut crate_path = crate_path(name_ref)?;
 
@@ -71,8 +78,10 @@ pub(crate) fn find_target_module(module_tree: &ModuleTree, module_id: ModuleId, 
 }
 
 fn crate_path(name_ref: ast::NameRef) -> Option<Vec<ast::NameRef>> {
-    let mut path = name_ref.syntax()
-        .parent().and_then(ast::PathSegment::cast)?
+    let mut path = name_ref
+        .syntax()
+        .parent()
+        .and_then(ast::PathSegment::cast)?
         .parent_path();
     let mut res = Vec::new();
     loop {
@@ -80,15 +89,13 @@ fn crate_path(name_ref: ast::NameRef) -> Option<Vec<ast::NameRef>> {
         match segment.kind()? {
             ast::PathSegmentKind::Name(name) => res.push(name),
             ast::PathSegmentKind::CrateKw => break,
-            ast::PathSegmentKind::SelfKw | ast::PathSegmentKind::SuperKw =>
-                return None,
+            ast::PathSegmentKind::SelfKw | ast::PathSegmentKind::SuperKw => return None,
         }
         path = path.qualifier()?;
     }
     res.reverse();
     Some(res)
 }
-
 
 pub(crate) fn scope_completion(
     db: &db::RootDatabase,
@@ -158,11 +165,7 @@ fn complete_module_items(
     );
 }
 
-fn complete_name_ref(
-    file: &File,
-    name_ref: ast::NameRef,
-    acc: &mut Vec<CompletionItem>,
-) {
+fn complete_name_ref(file: &File, name_ref: ast::NameRef, acc: &mut Vec<CompletionItem>) {
     if !is_node::<ast::Path>(name_ref.syntax()) {
         return;
     }
@@ -273,7 +276,11 @@ fn is_in_loop_body(name_ref: ast::NameRef) -> bool {
             .visit::<ast::LoopExpr, _>(LoopBodyOwner::loop_body)
             .accept(node);
         if let Some(Some(body)) = loop_body {
-            if name_ref.syntax().range().is_subrange(&body.syntax().range()) {
+            if name_ref
+                .syntax()
+                .range()
+                .is_subrange(&body.syntax().range())
+            {
                 return true;
             }
         }
@@ -368,9 +375,9 @@ fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<Completi
 
 #[cfg(test)]
 mod tests {
-    use test_utils::{assert_eq_dbg};
+    use test_utils::assert_eq_dbg;
 
-    use crate::mock_analysis::{single_file_with_position};
+    use crate::mock_analysis::single_file_with_position;
 
     use super::*;
 

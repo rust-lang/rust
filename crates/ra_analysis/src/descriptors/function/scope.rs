@@ -51,9 +51,7 @@ impl FnScopes {
         &self.get(scope).entries
     }
     pub fn scope_chain<'a>(&'a self, node: SyntaxNodeRef) -> impl Iterator<Item = ScopeId> + 'a {
-        generate(self.scope_for(node), move |&scope| {
-            self.get(scope).parent
-        })
+        generate(self.scope_for(node), move |&scope| self.get(scope).parent)
     }
     fn root_scope(&mut self) -> ScopeId {
         let res = ScopeId(self.scopes.len() as u32);
@@ -273,12 +271,11 @@ pub fn resolve_local_name<'a>(
 
 #[cfg(test)]
 mod tests {
+    use ra_editor::find_node_at_offset;
     use ra_syntax::File;
     use test_utils::extract_offset;
-    use ra_editor::{find_node_at_offset};
 
     use super::*;
-
 
     fn do_check(code: &str, expected: &[&str]) {
         let (off, code) = extract_offset(code);

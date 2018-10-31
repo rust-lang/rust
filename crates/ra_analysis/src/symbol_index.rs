@@ -57,10 +57,7 @@ impl SymbolIndex {
 }
 
 impl Query {
-    pub(crate) fn search(
-        self,
-        indices: &[Arc<SymbolIndex>],
-    ) -> Vec<(FileId, FileSymbol)> {
+    pub(crate) fn search(self, indices: &[Arc<SymbolIndex>]) -> Vec<(FileId, FileSymbol)> {
         let mut op = fst::map::OpBuilder::new();
         for file_symbols in indices.iter() {
             let automaton = fst::automaton::Subsequence::new(&self.lowercased);

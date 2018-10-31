@@ -5,7 +5,9 @@ use std::{
 };
 
 use languageserver_types::Url;
-use ra_analysis::{Analysis, AnalysisHost, AnalysisChange, CrateGraph, FileId, FileResolver, LibraryData};
+use ra_analysis::{
+    Analysis, AnalysisChange, AnalysisHost, CrateGraph, FileId, FileResolver, LibraryData,
+};
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -65,9 +67,7 @@ impl ServerWorldState {
                         Some((file_id, text))
                     }
                 })
-                .for_each(|(file_id, text)| {
-                    change.add_file(file_id, text)
-                });
+                .for_each(|(file_id, text)| change.add_file(file_id, text));
         }
         if inserted {
             change.set_file_resolver(Arc::new(self.path_map.clone()))

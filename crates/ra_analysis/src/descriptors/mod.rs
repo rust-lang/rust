@@ -1,23 +1,21 @@
-pub(crate) mod module;
 pub(crate) mod function;
+pub(crate) mod module;
 
 use std::sync::Arc;
 
 use ra_syntax::{
-    SmolStr,
     ast::{self, AstNode, FnDefNode},
-    TextRange
+    SmolStr, TextRange,
 };
 
 use crate::{
-    FileId, Cancelable,
     db::SyntaxDatabase,
-    descriptors::module::{ModuleTree, ModuleId, ModuleScope},
-    descriptors::function::{FnId, FnScopes, resolve_local_name},
+    descriptors::function::{resolve_local_name, FnId, FnScopes},
+    descriptors::module::{ModuleId, ModuleScope, ModuleTree},
     input::SourceRootId,
-    syntax_ptr::{SyntaxPtrDatabase, LocalSyntaxPtr},
+    syntax_ptr::{LocalSyntaxPtr, SyntaxPtrDatabase},
+    Cancelable, FileId,
 };
-
 
 salsa::query_group! {
     pub(crate) trait DescriptorDatabase: SyntaxDatabase + SyntaxPtrDatabase {
@@ -49,23 +47,20 @@ salsa::query_group! {
 #[derive(Debug)]
 pub struct ReferenceDescriptor {
     pub range: TextRange,
-    pub name: String
+    pub name: String,
 }
 
 #[derive(Debug)]
 pub struct DeclarationDescriptor<'a> {
     pat: ast::BindPat<'a>,
-    pub range: TextRange
+    pub range: TextRange,
 }
 
 impl<'a> DeclarationDescriptor<'a> {
     pub fn new(pat: ast::BindPat) -> DeclarationDescriptor {
         let range = pat.syntax().range();
 
-        DeclarationDescriptor {
-            pat,
-            range
-        }
+        DeclarationDescriptor { pat, range }
     }
 
     pub fn find_all_refs(&self) -> Vec<ReferenceDescriptor> {
@@ -73,22 +68,22 @@ impl<'a> DeclarationDescriptor<'a> {
 
         let fn_def = match self.pat.syntax().ancestors().find_map(ast::FnDef::cast) {
             Some(def) => def,
-            None => return Default::default()
+            None => return Default::default(),
         };
 
         let fn_scopes = FnScopes::new(fn_def);
 
-        let refs : Vec<_> = fn_def.syntax().descendants()
+        let refs: Vec<_> = fn_def
+            .syntax()
+            .descendants()
             .filter_map(ast::NameRef::cast)
-            .filter(|name_ref| {
-                match resolve_local_name(*name_ref, &fn_scopes) {
-                    None => false,
-                    Some(entry) => entry.ptr() == name_ptr,
-                }
+            .filter(|name_ref| match resolve_local_name(*name_ref, &fn_scopes) {
+                None => false,
+                Some(entry) => entry.ptr() == name_ptr,
             })
             .map(|name_ref| ReferenceDescriptor {
                 name: name_ref.syntax().text().to_string(),
-                range : name_ref.syntax().range(),
+                range: name_ref.syntax().range(),
             })
             .collect();
 

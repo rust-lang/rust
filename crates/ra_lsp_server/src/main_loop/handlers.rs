@@ -1,15 +1,16 @@
 use std::collections::HashMap;
 
-use rustc_hash::FxHashMap;
+use gen_lsp_server::ErrorCode;
 use languageserver_types::{
     CodeActionResponse, Command, CompletionItem, CompletionItemKind, Diagnostic,
-    DiagnosticSeverity, DocumentSymbol, FoldingRange, FoldingRangeKind, FoldingRangeParams,
-    InsertTextFormat, Location, Position, SymbolInformation, TextDocumentIdentifier, TextEdit,
-    RenameParams, WorkspaceEdit, PrepareRenameResponse, Documentation, MarkupContent, MarkupKind
+    DiagnosticSeverity, DocumentSymbol, Documentation, FoldingRange, FoldingRangeKind,
+    FoldingRangeParams, InsertTextFormat, Location, MarkupContent, MarkupKind, Position,
+    PrepareRenameResponse, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit,
+    WorkspaceEdit,
 };
-use gen_lsp_server::ErrorCode;
 use ra_analysis::{FileId, FoldKind, Query, RunnableKind};
 use ra_syntax::text_utils::contains_offset_nonstrict;
+use rustc_hash::FxHashMap;
 use serde_json::to_value;
 
 use crate::{
@@ -17,13 +18,10 @@ use crate::{
     project_model::TargetKind,
     req::{self, Decoration},
     server_world::ServerWorld,
-    Result, LspError
+    LspError, Result,
 };
 
-pub fn handle_syntax_tree(
-    world: ServerWorld,
-    params: req::SyntaxTreeParams,
-) -> Result<String> {
+pub fn handle_syntax_tree(world: ServerWorld, params: req::SyntaxTreeParams) -> Result<String> {
     let id = params.text_document.try_conv_with(&world)?;
     let res = world.analysis().syntax_tree(id);
     Ok(res)
@@ -182,10 +180,7 @@ pub fn handle_workspace_symbol(
 
     return Ok(Some(res));
 
-    fn exec_query(
-        world: &ServerWorld,
-        query: Query,
-    ) -> Result<Vec<SymbolInformation>> {
+    fn exec_query(world: &ServerWorld, query: Query) -> Result<Vec<SymbolInformation>> {
         let mut res = Vec::new();
         for (file_id, symbol) in world.analysis().symbol_search(query)? {
             let line_index = world.analysis().file_line_index(file_id);
@@ -290,7 +285,11 @@ pub fn handle_runnables(
     });
     return Ok(res);
 
-    fn runnable_args(world: &ServerWorld, file_id: FileId, kind: &RunnableKind) -> Result<Vec<String>> {
+    fn runnable_args(
+        world: &ServerWorld,
+        file_id: FileId,
+        kind: &RunnableKind,
+    ) -> Result<Vec<String>> {
         let spec = CargoTargetSpec::for_file(world, file_id)?;
         let mut res = Vec::new();
         match kind {
@@ -327,18 +326,15 @@ pub fn handle_runnables(
             };
             let file_id = world.analysis().crate_root(crate_id)?;
             let path = world.path_map.get_path(file_id);
-            let res = world
-                .workspaces
-                .iter()
-                .find_map(|ws| {
-                    let tgt = ws.target_by_root(path)?;
-                    let res = CargoTargetSpec {
-                        package: tgt.package(ws).name(ws).to_string(),
-                        target: tgt.name(ws).to_string(),
-                        target_kind: tgt.kind(ws),
-                    };
-                    Some(res)
-                });
+            let res = world.workspaces.iter().find_map(|ws| {
+                let tgt = ws.target_by_root(path)?;
+                let res = CargoTargetSpec {
+                    package: tgt.package(ws).name(ws).to_string(),
+                    target: tgt.name(ws).to_string(),
+                    target_kind: tgt.kind(ws),
+                };
+                Some(res)
+            });
             Ok(res)
         }
 
@@ -367,7 +363,6 @@ pub fn handle_runnables(
                 }
                 TargetKind::Other => (),
             }
-
         }
     }
 }
@@ -453,9 +448,7 @@ pub fn handle_signature_help(
     let line_index = world.analysis().file_line_index(file_id);
     let offset = params.position.conv_with(&line_index);
 
-    if let Some((descriptor, active_param)) =
-        world.analysis().resolve_callable(file_id, offset)?
-    {
+    if let Some((descriptor, active_param)) = world.analysis().resolve_callable(file_id, offset)? {
         let parameters: Vec<ParameterInformation> = descriptor
             .params
             .iter()
@@ -468,7 +461,7 @@ pub fn handle_signature_help(
         let documentation = if let Some(doc) = descriptor.doc {
             Some(Documentation::MarkupContent(MarkupContent {
                 kind: MarkupKind::Markdown,
-                value: doc
+                value: doc,
             }))
         } else {
             None
@@ -511,16 +504,17 @@ pub fn handle_prepare_rename(
     Ok(Some(PrepareRenameResponse::Range(loc.range)))
 }
 
-pub fn handle_rename(
-    world: ServerWorld,
-    params: RenameParams,
-) -> Result<Option<WorkspaceEdit>> {
+pub fn handle_rename(world: ServerWorld, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
     let offset = params.position.conv_with(&line_index);
 
     if params.new_name.is_empty() {
-        return Err(LspError::new(ErrorCode::InvalidParams as i32, "New Name cannot be empty".into()).into());
+        return Err(LspError::new(
+            ErrorCode::InvalidParams as i32,
+            "New Name cannot be empty".into(),
+        )
+        .into());
     }
 
     let refs = world.analysis().find_all_refs(file_id, offset)?;
@@ -531,11 +525,10 @@ pub fn handle_rename(
     let mut changes = HashMap::new();
     for r in refs {
         if let Ok(loc) = to_location(r.0, r.1, &world, &line_index) {
-            changes.entry(loc.uri).or_insert(Vec::new()).push(
-                TextEdit {
-                    range: loc.range,
-                    new_text: params.new_name.clone()
-                });
+            changes.entry(loc.uri).or_insert(Vec::new()).push(TextEdit {
+                range: loc.range,
+                new_text: params.new_name.clone(),
+            });
         }
     }
 
@@ -543,7 +536,7 @@ pub fn handle_rename(
         changes: Some(changes),
 
         // TODO: return this instead if client/server support it. See #144
-        document_changes : None,
+        document_changes: None,
     }))
 }
 
@@ -557,9 +550,11 @@ pub fn handle_references(
 
     let refs = world.analysis().find_all_refs(file_id, offset)?;
 
-    Ok(Some(refs.into_iter()
-        .filter_map(|r| to_location(r.0, r.1, &world, &line_index).ok())
-        .collect()))
+    Ok(Some(
+        refs.into_iter()
+            .filter_map(|r| to_location(r.0, r.1, &world, &line_index).ok())
+            .collect(),
+    ))
 }
 
 pub fn handle_code_action(

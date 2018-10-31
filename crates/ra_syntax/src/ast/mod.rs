@@ -66,7 +66,9 @@ pub trait AttrsOwner<'a>: AstNode<'a> {
 }
 
 pub trait DocCommentsOwner<'a>: AstNode<'a> {
-    fn doc_comments(self) -> AstChildren<'a, Comment<'a>> { children(self) }
+    fn doc_comments(self) -> AstChildren<'a, Comment<'a>> {
+        children(self)
+    }
 
     /// Returns the textual content of a doc comment block as a single string.
     /// That is, strips leading `///` and joins lines
@@ -74,12 +76,15 @@ pub trait DocCommentsOwner<'a>: AstNode<'a> {
         self.doc_comments()
             .map(|comment| {
                 let prefix = comment.prefix();
-                let trimmed = comment.text().as_str()
+                let trimmed = comment
+                    .text()
+                    .as_str()
                     .trim()
                     .trim_start_matches(prefix)
                     .trim_start();
                 trimmed.to_owned()
-            }).join("\n")
+            })
+            .join("\n")
     }
 }
 
@@ -250,7 +255,6 @@ impl<'a> IfExpr<'a> {
     }
 }
 
-
 #[derive(Debug, Clone, Copy)]
 pub enum PathSegmentKind<'a> {
     Name(NameRef<'a>),
@@ -261,7 +265,9 @@ pub enum PathSegmentKind<'a> {
 
 impl<'a> PathSegment<'a> {
     pub fn parent_path(self) -> Path<'a> {
-        self.syntax().parent().and_then(Path::cast)
+        self.syntax()
+            .parent()
+            .and_then(Path::cast)
             .expect("segments are always nested in paths")
     }
 

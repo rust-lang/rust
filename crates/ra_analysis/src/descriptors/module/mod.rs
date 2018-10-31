@@ -1,8 +1,11 @@
 pub(super) mod imp;
 pub(crate) mod scope;
 
+use ra_syntax::{
+    ast::{self, AstNode, NameOwner},
+    SmolStr, SyntaxNode,
+};
 use relative_path::RelativePathBuf;
-use ra_syntax::{ast::{self, NameOwner, AstNode}, SmolStr, SyntaxNode};
 
 use crate::FileId;
 
@@ -16,9 +19,11 @@ pub(crate) struct ModuleTree {
 
 impl ModuleTree {
     pub(crate) fn modules_for_file(&self, file_id: FileId) -> Vec<ModuleId> {
-        self.mods.iter()
+        self.mods
+            .iter()
             .enumerate()
-            .filter(|(_idx, it)| it.file_id == file_id).map(|(idx, _)| ModuleId(idx as u32))
+            .filter(|(_idx, it)| it.file_id == file_id)
+            .map(|(idx, _)| ModuleId(idx as u32))
             .collect()
     }
 
@@ -50,7 +55,7 @@ impl ModuleId {
     }
     pub(crate) fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
         tree.module(self).parent
-     }
+    }
     pub(crate) fn parent(self, tree: &ModuleTree) -> Option<ModuleId> {
         let link = self.parent_link(tree)?;
         Some(tree.link(link).owner)
@@ -69,18 +74,15 @@ impl ModuleId {
         curr
     }
     pub(crate) fn child(self, tree: &ModuleTree, name: &str) -> Option<ModuleId> {
-        let link = tree.module(self)
+        let link = tree
+            .module(self)
             .children
             .iter()
             .map(|&it| tree.link(it))
             .find(|it| it.name == name)?;
         Some(*link.points_to.first()?)
     }
-    pub(crate) fn problems(
-        self,
-        tree: &ModuleTree,
-        root: ast::Root,
-    ) -> Vec<(SyntaxNode, Problem)> {
+    pub(crate) fn problems(self, tree: &ModuleTree, root: ast::Root) -> Vec<(SyntaxNode, Problem)> {
         tree.module(self)
             .children
             .iter()
@@ -98,11 +100,7 @@ impl LinkId {
     pub(crate) fn owner(self, tree: &ModuleTree) -> ModuleId {
         tree.link(self).owner
     }
-    pub(crate) fn bind_source<'a>(
-        self,
-        tree: &ModuleTree,
-        root: ast::Root<'a>,
-    ) -> ast::Module<'a> {
+    pub(crate) fn bind_source<'a>(self, tree: &ModuleTree, root: ast::Root<'a>) -> ast::Module<'a> {
         imp::modules(root)
             .find(|(name, _)| name == &tree.link(self).name)
             .unwrap()
@@ -124,7 +122,6 @@ struct LinkData {
     points_to: Vec<ModuleId>,
     problem: Option<Problem>,
 }
-
 
 impl ModuleTree {
     fn module(&self, id: ModuleId) -> &ModuleData {
@@ -152,4 +149,3 @@ impl ModuleTree {
         id
     }
 }
-

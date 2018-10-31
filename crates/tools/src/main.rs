@@ -1,19 +1,17 @@
 extern crate clap;
 extern crate failure;
+extern crate teraron;
 extern crate tools;
 extern crate walkdir;
-extern crate teraron;
 
 use clap::{App, Arg, SubCommand};
+use failure::bail;
 use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
-use tools::{
-    collect_tests, Result, Test, generate, Mode, Overwrite, Verify, run, run_rustfmt,
-};
-use failure::bail;
+use tools::{collect_tests, generate, run, run_rustfmt, Mode, Overwrite, Result, Test, Verify};
 
 const GRAMMAR_DIR: &str = "./crates/ra_syntax/src/grammar";
 const INLINE_TESTS_DIR: &str = "./crates/ra_syntax/tests/data/parser/inline";

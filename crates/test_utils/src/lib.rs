@@ -89,7 +89,6 @@ pub fn add_cursor(text: &str, offset: TextUnit) -> String {
     res
 }
 
-
 #[derive(Debug)]
 pub struct FixtureEntry {
     pub meta: String,
@@ -112,25 +111,29 @@ pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
     macro_rules! flush {
         () => {
             if let Some(meta) = meta {
-                res.push(FixtureEntry { meta: meta.to_string(), text: buf.clone() });
+                res.push(FixtureEntry {
+                    meta: meta.to_string(),
+                    text: buf.clone(),
+                });
                 buf.clear();
             }
         };
     };
-    let margin = fixture.lines()
+    let margin = fixture
+        .lines()
         .filter(|it| it.trim_start().starts_with("//-"))
         .map(|it| it.len() - it.trim_start().len())
-        .next().expect("empty fixture");
-    let lines = fixture.lines()
-        .filter_map(|line| {
-            if line.len() >= margin {
-                assert!(line[..margin].trim().is_empty());
-                Some(&line[margin..])
-            } else {
-                assert!(line.trim().is_empty());
-                None
-            }
-        });
+        .next()
+        .expect("empty fixture");
+    let lines = fixture.lines().filter_map(|line| {
+        if line.len() >= margin {
+            assert!(line[..margin].trim().is_empty());
+            Some(&line[margin..])
+        } else {
+            assert!(line.trim().is_empty());
+            None
+        }
+    });
 
     for line in lines {
         if line.starts_with("//-") {

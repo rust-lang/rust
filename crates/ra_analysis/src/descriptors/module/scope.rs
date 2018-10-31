@@ -1,9 +1,8 @@
 //! Backend for module-level scope resolution & completion
 
-
 use ra_syntax::{
     ast::{self, ModuleItemOwner},
-    File, AstNode, SmolStr,
+    AstNode, File, SmolStr,
 };
 
 use crate::syntax_ptr::LocalSyntaxPtr;
@@ -103,7 +102,7 @@ fn collect_imports(tree: ast::UseTree, acc: &mut Vec<Entry>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ra_syntax::{File};
+    use ra_syntax::File;
 
     fn do_check(code: &str, expected: &[&str]) {
         let file = File::parse(&code);

@@ -1,12 +1,9 @@
-use std::{
-    sync::Arc,
-    fmt,
-};
+use std::{fmt, sync::Arc};
 
-use salsa;
-use rustc_hash::FxHashSet;
 use relative_path::RelativePath;
 use rustc_hash::FxHashMap;
+use rustc_hash::FxHashSet;
+use salsa;
 
 use crate::{symbol_index::SymbolIndex, FileResolverImp};
 

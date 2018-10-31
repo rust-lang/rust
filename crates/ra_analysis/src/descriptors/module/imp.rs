@@ -1,24 +1,25 @@
 use std::sync::Arc;
 
+use ra_syntax::{
+    ast::{self, NameOwner},
+    SmolStr,
+};
 use relative_path::RelativePathBuf;
 use rustc_hash::{FxHashMap, FxHashSet};
-use ra_syntax::{
-    SmolStr,
-    ast::{self, NameOwner},
-};
 
 use crate::{
-    FileId, Cancelable, FileResolverImp, db,
-    input::{SourceRoot, SourceRootId},
+    db,
     descriptors::DescriptorDatabase,
+    input::{SourceRoot, SourceRootId},
+    Cancelable, FileId, FileResolverImp,
 };
 
-use super::{
-    ModuleData, ModuleTree, ModuleId, LinkId, LinkData, Problem, ModuleScope
-};
+use super::{LinkData, LinkId, ModuleData, ModuleId, ModuleScope, ModuleTree, Problem};
 
-
-pub(crate) fn submodules(db: &impl DescriptorDatabase, file_id: FileId) -> Cancelable<Arc<Vec<SmolStr>>> {
+pub(crate) fn submodules(
+    db: &impl DescriptorDatabase,
+    file_id: FileId,
+) -> Cancelable<Arc<Vec<SmolStr>>> {
     db::check_canceled(db)?;
     let file = db.file_syntax(file_id);
     let root = file.ast();
@@ -57,12 +58,10 @@ pub(crate) fn module_tree(
     Ok(Arc::new(res))
 }
 
-
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub struct Submodule {
     pub name: SmolStr,
 }
-
 
 fn create_module_tree<'a>(
     db: &impl DescriptorDatabase,
@@ -82,7 +81,15 @@ fn create_module_tree<'a>(
             continue; // TODO: use explicit crate_roots here
         }
         assert!(!roots.contains_key(&file_id));
-        let module_id = build_subtree(db, &source_root, &mut tree, &mut visited, &mut roots, None, file_id)?;
+        let module_id = build_subtree(
+            db,
+            &source_root,
+            &mut tree,
+            &mut visited,
+            &mut roots,
+            None,
+            file_id,
+        )?;
         roots.insert(file_id, module_id);
     }
     Ok(tree)

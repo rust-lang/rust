@@ -1,10 +1,7 @@
 pub mod visit;
 // pub mod walk;
 
-use crate::{
-    text_utils::{contains_offset_nonstrict},
-    SyntaxNodeRef, TextRange, TextUnit,
-};
+use crate::{text_utils::contains_offset_nonstrict, SyntaxNodeRef, TextRange, TextUnit};
 
 pub fn find_leaf_at_offset(node: SyntaxNodeRef, offset: TextUnit) -> LeafAtOffset {
     let range = node.range();

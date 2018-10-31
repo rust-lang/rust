@@ -1,14 +1,10 @@
 use std::sync::Arc;
 
-use ra_syntax::{
-    ast::{AstNode, FnDef, FnDefNode},
-};
+use ra_syntax::ast::{AstNode, FnDef, FnDefNode};
 
-use crate::{
-    descriptors::{
-        DescriptorDatabase,
-        function::{FnId, FnScopes},
-    },
+use crate::descriptors::{
+    function::{FnId, FnScopes},
+    DescriptorDatabase,
 };
 
 /// Resolve `FnId` to the corresponding `SyntaxNode`

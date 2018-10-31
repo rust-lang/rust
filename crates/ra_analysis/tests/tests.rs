@@ -5,42 +5,53 @@ extern crate relative_path;
 extern crate rustc_hash;
 extern crate test_utils;
 
-use ra_syntax::{TextRange};
-use test_utils::{assert_eq_dbg};
+use ra_syntax::TextRange;
+use test_utils::assert_eq_dbg;
 
 use ra_analysis::{
+    mock_analysis::{analysis_and_position, single_file, single_file_with_position, MockAnalysis},
     AnalysisChange, CrateGraph, FileId, FnDescriptor,
-    mock_analysis::{MockAnalysis, single_file, single_file_with_position, analysis_and_position},
 };
 
 fn get_signature(text: &str) -> (FnDescriptor, Option<usize>) {
     let (analysis, position) = single_file_with_position(text);
-    analysis.resolve_callable(position.file_id, position.offset).unwrap().unwrap()
+    analysis
+        .resolve_callable(position.file_id, position.offset)
+        .unwrap()
+        .unwrap()
 }
 
 #[test]
 fn test_resolve_module() {
-    let (analysis, pos) = analysis_and_position("
+    let (analysis, pos) = analysis_and_position(
+        "
         //- /lib.rs
         mod <|>foo;
         //- /foo.rs
         // empty
-    ");
+    ",
+    );
 
-    let symbols = analysis.approximately_resolve_symbol(pos.file_id, pos.offset).unwrap();
+    let symbols = analysis
+        .approximately_resolve_symbol(pos.file_id, pos.offset)
+        .unwrap();
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
         &symbols,
     );
 
-    let (analysis, pos) = analysis_and_position("
+    let (analysis, pos) = analysis_and_position(
+        "
         //- /lib.rs
         mod <|>foo;
         //- /foo/mod.rs
         // empty
-    ");
+    ",
+    );
 
-    let symbols = analysis.approximately_resolve_symbol(pos.file_id, pos.offset).unwrap();
+    let symbols = analysis
+        .approximately_resolve_symbol(pos.file_id, pos.offset)
+        .unwrap();
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
         &symbols,
@@ -73,12 +84,14 @@ fn test_unresolved_module_diagnostic_no_diag_for_inline_mode() {
 
 #[test]
 fn test_resolve_parent_module() {
-    let (analysis, pos) = analysis_and_position("
+    let (analysis, pos) = analysis_and_position(
+        "
         //- /lib.rs
         mod foo;
         //- /foo.rs
         <|>// empty
-    ");
+    ",
+    );
     let symbols = analysis.parent_module(pos.file_id).unwrap();
     assert_eq_dbg(
         r#"[(FileId(1), FileSymbol { name: "foo", node_range: [0; 8), kind: MODULE })]"#,
@@ -88,12 +101,14 @@ fn test_resolve_parent_module() {
 
 #[test]
 fn test_resolve_crate_root() {
-    let mock = MockAnalysis::with_files("
+    let mock = MockAnalysis::with_files(
+        "
         //- /lib.rs
         mod foo;
         //- /foo.rs
         // emtpy <|>
-    ");
+    ",
+    );
     let root_file = mock.id_of("/lib.rs");
     let mod_file = mock.id_of("/foo.rs");
     let mut host = mock.analysis_host();
@@ -245,8 +260,10 @@ pub fn do() {
     assert_eq!(desc.ret_type, Some("-> i32".to_string()));
     assert_eq!(param, Some(0));
     assert_eq!(desc.label, "pub fn add_one(x: i32) -> i32".to_string());
-    assert_eq!(desc.doc, Some(
-r#"Adds one to the number given.
+    assert_eq!(
+        desc.doc,
+        Some(
+            r#"Adds one to the number given.
 
 # Examples
 
@@ -254,7 +271,10 @@ r#"Adds one to the number given.
 let five = 5;
 
 assert_eq!(6, my_crate::add_one(5));
-```"#.into()));
+```"#
+                .into()
+        )
+    );
 }
 
 #[test]
@@ -280,15 +300,18 @@ impl addr {
 pub fn do_it() {
     addr {};
     addr::add_one(<|>);
-}"#);
+}"#,
+    );
 
     assert_eq!(desc.name, "add_one".to_string());
     assert_eq!(desc.params, vec!["x".to_string()]);
     assert_eq!(desc.ret_type, Some("-> i32".to_string()));
     assert_eq!(param, Some(0));
     assert_eq!(desc.label, "pub fn add_one(x: i32) -> i32".to_string());
-    assert_eq!(desc.doc, Some(
-r#"Adds one to the number given.
+    assert_eq!(
+        desc.doc,
+        Some(
+            r#"Adds one to the number given.
 
 # Examples
 
@@ -296,7 +319,10 @@ r#"Adds one to the number given.
 let five = 5;
 
 assert_eq!(6, my_crate::add_one(5));
-```"#.into()));
+```"#
+                .into()
+        )
+    );
 }
 
 #[test]
@@ -329,22 +355,32 @@ pub fn foo() {
     r.finished(<|>);
 }
 
-"#);
+"#,
+    );
 
     assert_eq!(desc.name, "finished".to_string());
-    assert_eq!(desc.params, vec!["&mut self".to_string(), "ctx".to_string()]);
+    assert_eq!(
+        desc.params,
+        vec!["&mut self".to_string(), "ctx".to_string()]
+    );
     assert_eq!(desc.ret_type, None);
     assert_eq!(param, Some(1));
-    assert_eq!(desc.doc, Some(
-r#"Method is called when writer finishes.
+    assert_eq!(
+        desc.doc,
+        Some(
+            r#"Method is called when writer finishes.
 
-By default this method stops actor's `Context`."#.into()));
+By default this method stops actor's `Context`."#
+                .into()
+        )
+    );
 }
-
 
 fn get_all_refs(text: &str) -> Vec<(FileId, TextRange)> {
     let (analysis, position) = single_file_with_position(text);
-    analysis.find_all_refs(position.file_id, position.offset).unwrap()
+    analysis
+        .find_all_refs(position.file_id, position.offset)
+        .unwrap()
 }
 
 #[test]
@@ -390,14 +426,19 @@ fn test_find_all_refs_for_fn_param() {
 
 #[test]
 fn test_complete_crate_path() {
-    let (analysis, position) = analysis_and_position("
+    let (analysis, position) = analysis_and_position(
+        "
         //- /lib.rs
         mod foo;
         struct Spam;
         //- /foo.rs
         use crate::Sp<|>
-    ");
-    let completions = analysis.completions(position.file_id, position.offset).unwrap().unwrap();
+    ",
+    );
+    let completions = analysis
+        .completions(position.file_id, position.offset)
+        .unwrap()
+        .unwrap();
     assert_eq_dbg(
         r#"[CompletionItem { label: "foo", lookup: None, snippet: None },
             CompletionItem { label: "Spam", lookup: None, snippet: None }]"#,

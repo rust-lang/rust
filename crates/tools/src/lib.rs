@@ -1,5 +1,5 @@
-extern crate itertools;
 extern crate failure;
+extern crate itertools;
 extern crate teraron;
 
 use std::{
@@ -7,10 +7,10 @@ use std::{
     process::Command,
 };
 
-use itertools::Itertools;
 use failure::bail;
+use itertools::Itertools;
 
-pub use teraron::{Mode, Verify, Overwrite};
+pub use teraron::{Mode, Overwrite, Verify};
 
 pub type Result<T> = ::std::result::Result<T, failure::Error>;
 
@@ -63,16 +63,8 @@ pub fn generate(mode: Mode) -> Result<()> {
     let grammar = project_root().join(GRAMMAR);
     let syntax_kinds = project_root().join(SYNTAX_KINDS);
     let ast = project_root().join(AST);
-    teraron::generate(
-        &syntax_kinds,
-        &grammar,
-        mode,
-    )?;
-    teraron::generate(
-        &ast,
-        &grammar,
-        mode,
-    )?;
+    teraron::generate(&syntax_kinds, &grammar, mode)?;
+    teraron::generate(&ast, &grammar, mode)?;
     Ok(())
 }
 
@@ -101,9 +93,18 @@ pub fn run(cmdline: &str, dir: &str) -> Result<()> {
 
 pub fn run_rustfmt(mode: Mode) -> Result<()> {
     run(&format!("rustup install {}", TOOLCHAIN), ".")?;
-    run(&format!("rustup component add rustfmt-preview --toolchain {}", TOOLCHAIN), ".")?;
+    run(
+        &format!(
+            "rustup component add rustfmt-preview --toolchain {}",
+            TOOLCHAIN
+        ),
+        ".",
+    )?;
     if mode == Verify {
-        run(&format!("rustup run {} -- cargo fmt -- --check", TOOLCHAIN), ".")?;
+        run(
+            &format!("rustup run {} -- cargo fmt -- --check", TOOLCHAIN),
+            ".",
+        )?;
     } else {
         run(&format!("rustup run {} -- cargo fmt", TOOLCHAIN), ".")?;
     }

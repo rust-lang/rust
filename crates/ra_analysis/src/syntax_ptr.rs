@@ -1,12 +1,12 @@
 use std::marker::PhantomData;
 
 use ra_syntax::{
-    File, TextRange, SyntaxKind, SyntaxNode, SyntaxNodeRef,
     ast::{self, AstNode},
+    File, SyntaxKind, SyntaxNode, SyntaxNodeRef, TextRange,
 };
 
-use crate::FileId;
 use crate::db::SyntaxDatabase;
+use crate::FileId;
 
 salsa::query_group! {
     pub(crate) trait SyntaxPtrDatabase: SyntaxDatabase {
@@ -52,11 +52,9 @@ trait ToAst {
 impl<'a> ToAst for &'a OwnedAst<ast::FnDef<'static>> {
     type Ast = ast::FnDef<'a>;
     fn to_ast(self) -> ast::FnDef<'a> {
-        ast::FnDef::cast(self.syntax.borrowed())
-            .unwrap()
+        ast::FnDef::cast(self.syntax.borrowed()).unwrap()
     }
 }
-
 
 /// A pionter to a syntax node inside a file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -79,22 +77,29 @@ impl LocalSyntaxPtr {
             if curr.range() == self.range && curr.kind() == self.kind {
                 return curr.owned();
             }
-            curr = curr.children()
+            curr = curr
+                .children()
                 .find(|it| self.range.is_subrange(&it.range()))
                 .unwrap_or_else(|| panic!("can't resolve local ptr to SyntaxNode: {:?}", self))
         }
     }
 
     pub(crate) fn into_global(self, file_id: FileId) -> SyntaxPtr {
-        SyntaxPtr { file_id, local: self}
+        SyntaxPtr {
+            file_id,
+            local: self,
+        }
     }
 }
-
 
 #[test]
 fn test_local_syntax_ptr() {
     let file = File::parse("struct Foo { f: u32, }");
-    let field = file.syntax().descendants().find_map(ast::NamedFieldDef::cast).unwrap();
+    let field = file
+        .syntax()
+        .descendants()
+        .find_map(ast::NamedFieldDef::cast)
+        .unwrap();
     let ptr = LocalSyntaxPtr::new(field.syntax());
     let field_syntax = ptr.resolve(&file);
     assert_eq!(field.syntax(), field_syntax);

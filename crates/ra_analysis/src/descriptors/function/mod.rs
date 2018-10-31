@@ -1,20 +1,16 @@
 pub(super) mod imp;
 mod scope;
 
-use std::cmp::{min, max};
+use std::cmp::{max, min};
 
 use ra_syntax::{
     ast::{self, AstNode, DocCommentsOwner, NameOwner},
-    TextRange, TextUnit
+    TextRange, TextUnit,
 };
 
-use crate::{
-    FileId,
-    syntax_ptr::SyntaxPtr
-};
+use crate::{syntax_ptr::SyntaxPtr, FileId};
 
-pub(crate) use self::scope::{FnScopes, resolve_local_name};
-
+pub(crate) use self::scope::{resolve_local_name, FnScopes};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct FnId(SyntaxPtr);
@@ -26,14 +22,13 @@ impl FnId {
     }
 }
 
-
 #[derive(Debug, Clone)]
 pub struct FnDescriptor {
     pub name: String,
     pub label: String,
     pub ret_type: Option<String>,
     pub params: Vec<String>,
-    pub doc: Option<String>
+    pub doc: Option<String>,
 }
 
 impl FnDescriptor {
@@ -57,7 +52,9 @@ impl FnDescriptor {
         };
 
         if let Some((comment_range, docs)) = FnDescriptor::extract_doc_comments(node) {
-            let comment_range = comment_range.checked_sub(node.syntax().range().start()).unwrap();
+            let comment_range = comment_range
+                .checked_sub(node.syntax().range().start())
+                .unwrap();
             let start = comment_range.start().to_usize();
             let end = comment_range.end().to_usize();
 
@@ -94,7 +91,7 @@ impl FnDescriptor {
             ret_type,
             params,
             label: label.trim().to_owned(),
-            doc
+            doc,
         })
     }
 
@@ -105,10 +102,13 @@ impl FnDescriptor {
 
         let comment_text = node.doc_comment_text();
 
-        let (begin, end) = node.doc_comments()
+        let (begin, end) = node
+            .doc_comments()
             .map(|comment| comment.syntax().range())
             .map(|range| (range.start().to_usize(), range.end().to_usize()))
-            .fold((std::usize::MAX, std::usize::MIN), |acc, range| (min(acc.0, range.0), max(acc.1, range.1)));
+            .fold((std::usize::MAX, std::usize::MIN), |acc, range| {
+                (min(acc.0, range.0), max(acc.1, range.1))
+            });
 
         let range = TextRange::from_to(TextUnit::from_usize(begin), TextUnit::from_usize(end));
 
@@ -134,4 +134,3 @@ impl FnDescriptor {
         res
     }
 }
-

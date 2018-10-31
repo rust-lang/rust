@@ -6,23 +6,20 @@ extern crate relative_path;
 extern crate rustc_hash;
 extern crate salsa;
 
-mod input;
+mod completion;
 mod db;
 mod descriptors;
 mod imp;
-mod symbol_index;
-mod completion;
-mod syntax_ptr;
+mod input;
 pub mod mock_analysis;
+mod symbol_index;
+mod syntax_ptr;
 
-use std::{
-    fmt,
-    sync::Arc,
-};
+use std::{fmt, sync::Arc};
 
 use ra_syntax::{AtomEdit, File, TextRange, TextUnit};
-use relative_path::RelativePathBuf;
 use rayon::prelude::*;
+use relative_path::RelativePathBuf;
 
 use crate::{
     imp::{AnalysisHostImpl, AnalysisImpl, FileResolverImp},
@@ -30,13 +27,12 @@ use crate::{
 };
 
 pub use crate::{
-    descriptors::function::FnDescriptor,
     completion::CompletionItem,
-    input::{FileId, FileResolver, CrateGraph, CrateId},
+    descriptors::function::FnDescriptor,
+    input::{CrateGraph, CrateId, FileId, FileResolver},
 };
 pub use ra_editor::{
-    FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable,
-    RunnableKind, StructureNode,
+    FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable, RunnableKind, StructureNode,
 };
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -50,8 +46,7 @@ impl std::fmt::Display for Canceled {
     }
 }
 
-impl std::error::Error for Canceled {
-}
+impl std::error::Error for Canceled {}
 
 #[derive(Default)]
 pub struct AnalysisChange {
@@ -75,7 +70,6 @@ impl fmt::Debug for AnalysisChange {
             .finish()
     }
 }
-
 
 impl AnalysisChange {
     pub fn new() -> AnalysisChange {
@@ -251,12 +245,15 @@ impl Analysis {
     pub fn approximately_resolve_symbol(
         &self,
         file_id: FileId,
-        offset: TextUnit
+        offset: TextUnit,
     ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        self.imp
-            .approximately_resolve_symbol(file_id, offset)
+        self.imp.approximately_resolve_symbol(file_id, offset)
     }
-    pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit, ) -> Cancelable<Vec<(FileId, TextRange)>> {
+    pub fn find_all_refs(
+        &self,
+        file_id: FileId,
+        offset: TextUnit,
+    ) -> Cancelable<Vec<(FileId, TextRange)>> {
         Ok(self.imp.find_all_refs(file_id, offset))
     }
     pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
@@ -276,7 +273,11 @@ impl Analysis {
         let file = self.imp.file_syntax(file_id);
         Ok(ra_editor::highlight(&file))
     }
-    pub fn completions(&self, file_id: FileId, offset: TextUnit) -> Cancelable<Option<Vec<CompletionItem>>> {
+    pub fn completions(
+        &self,
+        file_id: FileId,
+        offset: TextUnit,
+    ) -> Cancelable<Option<Vec<CompletionItem>>> {
         self.imp.completions(file_id, offset)
     }
     pub fn assists(&self, file_id: FileId, range: TextRange) -> Cancelable<Vec<SourceChange>> {
@@ -307,7 +308,11 @@ impl LibraryData {
             let file = File::parse(text);
             (*file_id, file)
         }));
-        LibraryData { files, file_resolver: FileResolverImp::new(file_resolver), symbol_index }
+        LibraryData {
+            files,
+            file_resolver: FileResolverImp::new(file_resolver),
+            symbol_index,
+        }
     }
 }
 

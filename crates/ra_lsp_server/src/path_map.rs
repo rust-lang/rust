@@ -33,7 +33,8 @@ impl PathMap {
     }
     pub fn get_or_insert(&mut self, path: PathBuf, root: Root) -> (bool, FileId) {
         let mut inserted = false;
-        let file_id = self.path2id
+        let file_id = self
+            .path2id
             .get(path.as_path())
             .map(|&id| id)
             .unwrap_or_else(|| {

@@ -148,8 +148,6 @@ pub fn find_node_at_offset<'a, N: AstNode<'a>>(
     leaf.ancestors().filter_map(N::cast).next()
 }
 
-
-
 #[cfg(test)]
 mod tests {
     use super::*;

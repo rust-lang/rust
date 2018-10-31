@@ -1,6 +1,4 @@
-use crate::{
-    File, SyntaxKind, SyntaxNodeRef, WalkEvent
-};
+use crate::{File, SyntaxKind, SyntaxNodeRef, WalkEvent};
 use std::fmt::Write;
 
 /// Parse a file and create a string representation of the resulting parse tree.

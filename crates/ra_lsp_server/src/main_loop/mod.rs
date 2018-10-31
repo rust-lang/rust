@@ -24,7 +24,10 @@ use crate::{
 };
 
 #[derive(Debug, Fail)]
-#[fail(display = "Language Server request failed with {}. ({})", code, message)]
+#[fail(
+    display = "Language Server request failed with {}. ({})",
+    code, message
+)]
 pub struct LspError {
     pub code: i32,
     pub message: String,
@@ -32,7 +35,7 @@ pub struct LspError {
 
 impl LspError {
     pub fn new(code: i32, message: String) -> LspError {
-        LspError {code, message}
+        LspError { code, message }
     }
 }
 
@@ -214,11 +217,7 @@ fn main_loop_inner(
     }
 }
 
-fn on_task(
-    task: Task,
-    msg_sender: &Sender<RawMessage>,
-    pending_requests: &mut FxHashSet<u64>,
-) {
+fn on_task(task: Task, msg_sender: &Sender<RawMessage>, pending_requests: &mut FxHashSet<u64>) {
     match task {
         Task::Respond(response) => {
             if pending_requests.remove(&response.id) {
@@ -373,12 +372,16 @@ impl<'a> PoolDispatcher<'a> {
                 self.pool.spawn(move || {
                     let resp = match f(world, params) {
                         Ok(resp) => RawResponse::ok::<R>(id, &resp),
-                        Err(e) => {
-                            match e.downcast::<LspError>() {
-                                Ok(lsp_error) => RawResponse::err(id, lsp_error.code, lsp_error.message),
-                                Err(e) => RawResponse::err(id, ErrorCode::InternalError as i32, format!("{}\n{}", e, e.backtrace()))
+                        Err(e) => match e.downcast::<LspError>() {
+                            Ok(lsp_error) => {
+                                RawResponse::err(id, lsp_error.code, lsp_error.message)
                             }
-                        }
+                            Err(e) => RawResponse::err(
+                                id,
+                                ErrorCode::InternalError as i32,
+                                format!("{}\n{}", e, e.backtrace()),
+                            ),
+                        },
                     };
                     let task = Task::Respond(resp);
                     sender.send(task);
@@ -412,7 +415,7 @@ fn update_file_notifications_on_threadpool(
                     if !is_canceled(&e) {
                         error!("failed to compute diagnostics: {:?}", e);
                     }
-                },
+                }
                 Ok(params) => {
                     let not = RawNotification::new::<req::PublishDiagnostics>(&params);
                     sender.send(Task::Notify(not));
@@ -423,7 +426,7 @@ fn update_file_notifications_on_threadpool(
                     if !is_canceled(&e) {
                         error!("failed to compute decorations: {:?}", e);
                     }
-                },
+                }
                 Ok(params) => {
                     let not = RawNotification::new::<req::PublishDecorations>(&params);
                     sender.send(Task::Notify(not))
