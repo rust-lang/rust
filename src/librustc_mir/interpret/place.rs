@@ -489,6 +489,8 @@ where
 
     /// Get the place of a field inside the place, and also the field's type.
     /// Just a convenience function, but used quite a bit.
+    /// This is the only projection that might have a side-effect: We cannot project
+    /// into the field of a local `ScalarPair`, we have to first allocate it.
     pub fn place_field(
         &mut self,
         base: PlaceTy<'tcx, M::PointerTag>,
@@ -501,7 +503,7 @@ where
     }
 
     pub fn place_downcast(
-        &mut self,
+        &self,
         base: PlaceTy<'tcx, M::PointerTag>,
         variant: usize,
     ) -> EvalResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
@@ -643,7 +645,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(self.place_to_op(dest)?, &mut vec![], None, /*const_mode*/false)?;
+            self.validate_operand(self.place_to_op(dest)?, vec![], None, /*const_mode*/false)?;
         }
 
         Ok(())
@@ -765,7 +767,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(self.place_to_op(dest)?, &mut vec![], None, /*const_mode*/false)?;
+            self.validate_operand(self.place_to_op(dest)?, vec![], None, /*const_mode*/false)?;
         }
 
         Ok(())
@@ -843,7 +845,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(dest.into(), &mut vec![], None, /*const_mode*/false)?;
+            self.validate_operand(dest.into(), vec![], None, /*const_mode*/false)?;
         }
 
         Ok(())

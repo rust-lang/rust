@@ -535,14 +535,14 @@ fn validate_const<'a, 'tcx>(
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     let cid = key.value;
-    let ecx = mk_eval_cx(tcx, cid.instance, key.param_env).unwrap();
+    let mut ecx = mk_eval_cx(tcx, cid.instance, key.param_env).unwrap();
     let val = (|| {
         let op = ecx.const_to_op(constant)?;
         let mut ref_tracking = RefTracking::new(op);
-        while let Some((op, mut path)) = ref_tracking.todo.pop() {
+        while let Some((op, path)) = ref_tracking.todo.pop() {
             ecx.validate_operand(
                 op,
-                &mut path,
+                path,
                 Some(&mut ref_tracking),
                 /* const_mode */ true,
             )?;
