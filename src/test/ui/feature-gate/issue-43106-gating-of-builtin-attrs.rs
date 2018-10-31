@@ -40,7 +40,7 @@
 // inputs are handled by each, and (2.) to ease searching for related
 // occurrences in the source text.
 
-#![feature(rustc_attrs)] // For `rustc_error`; see note below.
+// skip-codegen
 #![warn(unused_attributes, unknown_lints)]
 #![allow(dead_code)]
 #![allow(stable_features)]
@@ -584,7 +584,7 @@ mod export_name {
     #[export_name = "2200"] impl S { }
 }
 
-// Note that this test ends with a `#[rustc_error] fn main()`, so it
+// Note that this test has a `skip-codegen`, so it
 // will never invoke the linker. These are here nonetheless to point
 // out that we allow them at non-crate-level (though I do not know
 // whether they have the same effect here as at crate-level).
@@ -835,12 +835,12 @@ mod type_length_limit {
     //~| WARN crate-level attribute should be an inner attribute
 }
 
-// Since we expect for the mix of attributes used here to compile
-// successfully, and we are just testing for the expected warnings of
-// various (mis)uses of attributes, we use the `rustc_error` attribute
-// on the `fn main()`.
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+
+
+
+
+fn main() {
     println!("Hello World");
 }
