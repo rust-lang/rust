@@ -9,7 +9,10 @@ use salsa;
 use crate::{
     db,
     Cancelable, Canceled,
-    descriptors::module::{SubmodulesQuery, ModuleTreeQuery, ModulesDatabase, ModuleScopeQuery},
+    descriptors::{
+        DescriptorDatabase, SubmodulesQuery, ModuleTreeQuery, ModuleScopeQuery,
+        FnSyntaxQuery, FnScopesQuery
+    },
     symbol_index::SymbolIndex,
     syntax_ptr::{SyntaxPtrDatabase, ResolveSyntaxPtrQuery},
     FileId,
@@ -63,10 +66,12 @@ salsa::database_storage! {
             fn file_lines() for FileLinesQuery;
             fn file_symbols() for FileSymbolsQuery;
         }
-        impl ModulesDatabase {
+        impl DescriptorDatabase {
             fn module_tree() for ModuleTreeQuery;
             fn module_descriptor() for SubmodulesQuery;
             fn module_scope() for ModuleScopeQuery;
+            fn fn_syntax() for FnSyntaxQuery;
+            fn fn_scopes() for FnScopesQuery;
         }
         impl SyntaxPtrDatabase {
             fn resolve_syntax_ptr() for ResolveSyntaxPtrQuery;

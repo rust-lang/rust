@@ -1,29 +1,42 @@
-use std::fmt;
-
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use ra_syntax::{
     algo::generate,
     ast::{self, ArgListOwner, LoopBodyOwner, NameOwner},
-    AstNode, SmolStr, SyntaxNode, SyntaxNodeRef,
+    AstNode, SmolStr, SyntaxNodeRef,
 };
 
-type ScopeId = usize;
+use crate::syntax_ptr::LocalSyntaxPtr;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) struct ScopeId(u32);
+
+#[derive(Debug, PartialEq, Eq)]
 pub struct FnScopes {
-    pub self_param: Option<SyntaxNode>,
+    pub(crate) self_param: Option<LocalSyntaxPtr>,
     scopes: Vec<ScopeData>,
-    scope_for: FxHashMap<SyntaxNode, ScopeId>,
+    scope_for: FxHashMap<LocalSyntaxPtr, ScopeId>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct ScopeEntry {
+    name: SmolStr,
+    ptr: LocalSyntaxPtr,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct ScopeData {
+    parent: Option<ScopeId>,
+    entries: Vec<ScopeEntry>,
 }
 
 impl FnScopes {
-    pub fn new(fn_def: ast::FnDef) -> FnScopes {
+    pub(crate) fn new(fn_def: ast::FnDef) -> FnScopes {
         let mut scopes = FnScopes {
             self_param: fn_def
                 .param_list()
                 .and_then(|it| it.self_param())
-                .map(|it| it.syntax().owned()),
+                .map(|it| LocalSyntaxPtr::new(it.syntax())),
             scopes: Vec::new(),
             scope_for: FxHashMap::default(),
         };
@@ -34,16 +47,16 @@ impl FnScopes {
         }
         scopes
     }
-    pub fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
-        &self.scopes[scope].entries
+    pub(crate) fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
+        &self.get(scope).entries
     }
     pub fn scope_chain<'a>(&'a self, node: SyntaxNodeRef) -> impl Iterator<Item = ScopeId> + 'a {
         generate(self.scope_for(node), move |&scope| {
-            self.scopes[scope].parent
+            self.get(scope).parent
         })
     }
     fn root_scope(&mut self) -> ScopeId {
-        let res = self.scopes.len();
+        let res = ScopeId(self.scopes.len() as u32);
         self.scopes.push(ScopeData {
             parent: None,
             entries: vec![],
@@ -51,7 +64,7 @@ impl FnScopes {
         res
     }
     fn new_scope(&mut self, parent: ScopeId) -> ScopeId {
-        let res = self.scopes.len();
+        let res = ScopeId(self.scopes.len() as u32);
         self.scopes.push(ScopeData {
             parent: Some(parent),
             entries: vec![],
@@ -64,7 +77,7 @@ impl FnScopes {
             .descendants()
             .filter_map(ast::BindPat::cast)
             .filter_map(ScopeEntry::new);
-        self.scopes[scope].entries.extend(entries);
+        self.get_mut(scope).entries.extend(entries);
     }
     fn add_params_bindings(&mut self, scope: ScopeId, params: Option<ast::ParamList>) {
         params
@@ -74,43 +87,36 @@ impl FnScopes {
             .for_each(|it| self.add_bindings(scope, it));
     }
     fn set_scope(&mut self, node: SyntaxNodeRef, scope: ScopeId) {
-        self.scope_for.insert(node.owned(), scope);
+        self.scope_for.insert(LocalSyntaxPtr::new(node), scope);
     }
     fn scope_for(&self, node: SyntaxNodeRef) -> Option<ScopeId> {
         node.ancestors()
-            .filter_map(|it| self.scope_for.get(&it.owned()).map(|&scope| scope))
+            .map(LocalSyntaxPtr::new)
+            .filter_map(|it| self.scope_for.get(&it).map(|&scope| scope))
             .next()
     }
-}
-
-pub struct ScopeEntry {
-    syntax: SyntaxNode,
+    fn get(&self, scope: ScopeId) -> &ScopeData {
+        &self.scopes[scope.0 as usize]
+    }
+    fn get_mut(&mut self, scope: ScopeId) -> &mut ScopeData {
+        &mut self.scopes[scope.0 as usize]
+    }
 }
 
 impl ScopeEntry {
     fn new(pat: ast::BindPat) -> Option<ScopeEntry> {
-        if pat.name().is_some() {
-            Some(ScopeEntry {
-                syntax: pat.syntax().owned(),
-            })
-        } else {
-            None
-        }
+        let name = pat.name()?;
+        let res = ScopeEntry {
+            name: name.text(),
+            ptr: LocalSyntaxPtr::new(pat.syntax()),
+        };
+        Some(res)
     }
-    pub fn name(&self) -> SmolStr {
-        self.ast().name().unwrap().text()
+    pub(crate) fn name(&self) -> &SmolStr {
+        &self.name
     }
-    pub fn ast(&self) -> ast::BindPat {
-        ast::BindPat::cast(self.syntax.borrowed()).unwrap()
-    }
-}
-
-impl fmt::Debug for ScopeEntry {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("ScopeEntry")
-            .field("name", &self.name())
-            .field("syntax", &self.syntax)
-            .finish()
+    pub(crate) fn ptr(&self) -> LocalSyntaxPtr {
+        self.ptr
     }
 }
 
@@ -251,33 +257,28 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
     }
 }
 
-#[derive(Debug)]
-struct ScopeData {
-    parent: Option<ScopeId>,
-    entries: Vec<ScopeEntry>,
-}
-
 pub fn resolve_local_name<'a>(
     name_ref: ast::NameRef,
     scopes: &'a FnScopes,
 ) -> Option<&'a ScopeEntry> {
-    use rustc_hash::FxHashSet;
-
     let mut shadowed = FxHashSet::default();
     let ret = scopes
         .scope_chain(name_ref.syntax())
         .flat_map(|scope| scopes.entries(scope).iter())
         .filter(|entry| shadowed.insert(entry.name()))
-        .filter(|entry| entry.name() == name_ref.text())
+        .filter(|entry| entry.name() == &name_ref.text())
         .nth(0);
     ret
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::{find_node_at_offset, test_utils::extract_offset};
     use ra_syntax::File;
+    use test_utils::extract_offset;
+    use ra_editor::{find_node_at_offset};
+
+    use super::*;
+
 
     fn do_check(code: &str, expected: &[&str]) {
         let (off, code) = extract_offset(code);
@@ -384,14 +385,11 @@ mod tests {
 
         let scopes = FnScopes::new(fn_def);
 
-        let local_name = resolve_local_name(name_ref, &scopes)
-            .unwrap()
-            .ast()
-            .name()
-            .unwrap();
+        let local_name_entry = resolve_local_name(name_ref, &scopes).unwrap();
+        let local_name = local_name_entry.ptr().resolve(&file);
         let expected_name =
             find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into()).unwrap();
-        assert_eq!(local_name.syntax().range(), expected_name.syntax().range());
+        assert_eq!(local_name.range(), expected_name.syntax().range());
     }
 
     #[test]

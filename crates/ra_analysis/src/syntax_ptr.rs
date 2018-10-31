@@ -12,6 +12,7 @@ salsa::query_group! {
     pub(crate) trait SyntaxPtrDatabase: SyntaxDatabase {
         fn resolve_syntax_ptr(ptr: SyntaxPtr) -> SyntaxNode {
             type ResolveSyntaxPtrQuery;
+            // Don't retain syntax trees in memory
             storage volatile;
         }
     }
@@ -82,6 +83,10 @@ impl LocalSyntaxPtr {
                 .find(|it| self.range.is_subrange(&it.range()))
                 .unwrap_or_else(|| panic!("can't resolve local ptr to SyntaxNode: {:?}", self))
         }
+    }
+
+    pub(crate) fn into_global(self, file_id: FileId) -> SyntaxPtr {
+        SyntaxPtr { file_id, local: self}
     }
 }
 

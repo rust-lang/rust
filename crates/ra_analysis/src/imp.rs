@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use ra_editor::{self, find_node_at_offset, resolve_local_name, FileSymbol, LineIndex, LocalEdit, CompletionItem};
+use ra_editor::{self, find_node_at_offset, FileSymbol, LineIndex, LocalEdit};
 use ra_syntax::{
     ast::{self, ArgListOwner, Expr, NameOwner},
     AstNode, File, SmolStr,
@@ -21,9 +21,14 @@ use crate::{
         self, SyntaxDatabase, FileSyntaxQuery,
     },
     input::{SourceRootId, FilesDatabase, SourceRoot, WORKSPACE},
-    descriptors::module::{ModulesDatabase, ModuleTree, Problem},
-    descriptors::{FnDescriptor},
+    descriptors::{
+        DescriptorDatabase,
+        module::{ModuleTree, Problem},
+        function::{FnDescriptor, FnId},
+    },
+    completion::{scope_completion, resolve_based_completion, CompletionItem},
     symbol_index::SymbolIndex,
+    syntax_ptr::SyntaxPtrDatabase,
     CrateGraph, CrateId, Diagnostic, FileId, FileResolver, FileSystemEdit, Position,
     Query, SourceChange, SourceFileEdit, Cancelable,
 };
@@ -175,7 +180,7 @@ impl AnalysisHostImpl {
 
 #[derive(Debug)]
 pub(crate) struct AnalysisImpl {
-    db: db::RootDatabase,
+    pub(crate) db: db::RootDatabase,
 }
 
 impl AnalysisImpl {
@@ -245,12 +250,11 @@ impl AnalysisImpl {
     pub fn completions(&self, file_id: FileId, offset: TextUnit) -> Cancelable<Option<Vec<CompletionItem>>> {
         let mut res = Vec::new();
         let mut has_completions = false;
-        let file = self.file_syntax(file_id);
-        if let Some(scope_based) = ra_editor::scope_completion(&file, offset) {
+        if let Some(scope_based) = scope_completion(&self.db, file_id, offset) {
             res.extend(scope_based);
             has_completions = true;
         }
-        if let Some(scope_based) = crate::completion::resolve_based_completion(&self.db, file_id, offset)? {
+        if let Some(scope_based) = resolve_based_completion(&self.db, file_id, offset)? {
             res.extend(scope_based);
             has_completions = true;
         }
@@ -271,7 +275,7 @@ impl AnalysisImpl {
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
             // First try to resolve the symbol locally
-            return if let Some((name, range)) = resolve_local_name(name_ref) {
+            return if let Some((name, range)) = resolve_local_name(&self.db, file_id, name_ref) {
                 let mut vec = vec![];
                 vec.push((
                     file_id,
@@ -325,7 +329,7 @@ impl AnalysisImpl {
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
 
             // We are only handing local references for now
-            if let Some(resolved) = resolve_local_name(name_ref) {
+            if let Some(resolved) = resolve_local_name(&self.db, file_id, name_ref) {
 
                 ret.push((file_id, resolved.1));
 
@@ -333,7 +337,7 @@ impl AnalysisImpl {
 
                     let refs : Vec<_> = fn_def.syntax().descendants()
                         .filter_map(ast::NameRef::cast)
-                        .filter(|&n: &ast::NameRef| resolve_local_name(n) == Some(resolved.clone()))
+                        .filter(|&n: &ast::NameRef| resolve_local_name(&self.db, file_id, n) == Some(resolved.clone()))
                         .collect();
 
                     for r in refs {
@@ -596,4 +600,17 @@ impl<'a> FnCallNode<'a> {
             FnCallNode::MethodCallExpr(expr) => expr.arg_list(),
         }
     }
+}
+
+fn resolve_local_name(
+    db: &db::RootDatabase,
+    file_id: FileId,
+    name_ref: ast::NameRef,
+) -> Option<(SmolStr, TextRange)> {
+    let fn_def = name_ref.syntax().ancestors().find_map(ast::FnDef::cast)?;
+    let fn_id = FnId::new(file_id, fn_def);
+    let scopes = db.fn_scopes(fn_id);
+    let scope_entry = crate::descriptors::function::resolve_local_name(name_ref, &scopes)?;
+    let syntax = db.resolve_syntax_ptr(scope_entry.ptr().into_global(file_id));
+    Some((scope_entry.name().clone(), syntax.range()))
 }

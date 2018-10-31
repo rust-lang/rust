@@ -15,7 +15,7 @@ use crate::{
 pub struct ArgListNode(SyntaxNode);
 
 impl ArgListNode {
-    pub fn new(&self, ast: ArgList) -> ArgListNode {
+    pub fn new(ast: ArgList) -> ArgListNode {
         let syntax = ast.syntax().owned();
         ArgListNode(syntax)
     }
@@ -50,7 +50,7 @@ impl<'a> ArgList<'a> {
 pub struct ArrayExprNode(SyntaxNode);
 
 impl ArrayExprNode {
-    pub fn new(&self, ast: ArrayExpr) -> ArrayExprNode {
+    pub fn new(ast: ArrayExpr) -> ArrayExprNode {
         let syntax = ast.syntax().owned();
         ArrayExprNode(syntax)
     }
@@ -81,7 +81,7 @@ impl<'a> ArrayExpr<'a> {}
 pub struct ArrayTypeNode(SyntaxNode);
 
 impl ArrayTypeNode {
-    pub fn new(&self, ast: ArrayType) -> ArrayTypeNode {
+    pub fn new(ast: ArrayType) -> ArrayTypeNode {
         let syntax = ast.syntax().owned();
         ArrayTypeNode(syntax)
     }
@@ -112,7 +112,7 @@ impl<'a> ArrayType<'a> {}
 pub struct AttrNode(SyntaxNode);
 
 impl AttrNode {
-    pub fn new(&self, ast: Attr) -> AttrNode {
+    pub fn new(ast: Attr) -> AttrNode {
         let syntax = ast.syntax().owned();
         AttrNode(syntax)
     }
@@ -147,7 +147,7 @@ impl<'a> Attr<'a> {
 pub struct BinExprNode(SyntaxNode);
 
 impl BinExprNode {
-    pub fn new(&self, ast: BinExpr) -> BinExprNode {
+    pub fn new(ast: BinExpr) -> BinExprNode {
         let syntax = ast.syntax().owned();
         BinExprNode(syntax)
     }
@@ -178,7 +178,7 @@ impl<'a> BinExpr<'a> {}
 pub struct BindPatNode(SyntaxNode);
 
 impl BindPatNode {
-    pub fn new(&self, ast: BindPat) -> BindPatNode {
+    pub fn new(ast: BindPat) -> BindPatNode {
         let syntax = ast.syntax().owned();
         BindPatNode(syntax)
     }
@@ -210,7 +210,7 @@ impl<'a> BindPat<'a> {}
 pub struct BlockNode(SyntaxNode);
 
 impl BlockNode {
-    pub fn new(&self, ast: Block) -> BlockNode {
+    pub fn new(ast: Block) -> BlockNode {
         let syntax = ast.syntax().owned();
         BlockNode(syntax)
     }
@@ -249,7 +249,7 @@ impl<'a> Block<'a> {
 pub struct BlockExprNode(SyntaxNode);
 
 impl BlockExprNode {
-    pub fn new(&self, ast: BlockExpr) -> BlockExprNode {
+    pub fn new(ast: BlockExpr) -> BlockExprNode {
         let syntax = ast.syntax().owned();
         BlockExprNode(syntax)
     }
@@ -284,7 +284,7 @@ impl<'a> BlockExpr<'a> {
 pub struct BreakExprNode(SyntaxNode);
 
 impl BreakExprNode {
-    pub fn new(&self, ast: BreakExpr) -> BreakExprNode {
+    pub fn new(ast: BreakExpr) -> BreakExprNode {
         let syntax = ast.syntax().owned();
         BreakExprNode(syntax)
     }
@@ -315,7 +315,7 @@ impl<'a> BreakExpr<'a> {}
 pub struct CallExprNode(SyntaxNode);
 
 impl CallExprNode {
-    pub fn new(&self, ast: CallExpr) -> CallExprNode {
+    pub fn new(ast: CallExpr) -> CallExprNode {
         let syntax = ast.syntax().owned();
         CallExprNode(syntax)
     }
@@ -351,7 +351,7 @@ impl<'a> CallExpr<'a> {
 pub struct CastExprNode(SyntaxNode);
 
 impl CastExprNode {
-    pub fn new(&self, ast: CastExpr) -> CastExprNode {
+    pub fn new(ast: CastExpr) -> CastExprNode {
         let syntax = ast.syntax().owned();
         CastExprNode(syntax)
     }
@@ -382,7 +382,7 @@ impl<'a> CastExpr<'a> {}
 pub struct CommentNode(SyntaxNode);
 
 impl CommentNode {
-    pub fn new(&self, ast: Comment) -> CommentNode {
+    pub fn new(ast: Comment) -> CommentNode {
         let syntax = ast.syntax().owned();
         CommentNode(syntax)
     }
@@ -413,7 +413,7 @@ impl<'a> Comment<'a> {}
 pub struct ConditionNode(SyntaxNode);
 
 impl ConditionNode {
-    pub fn new(&self, ast: Condition) -> ConditionNode {
+    pub fn new(ast: Condition) -> ConditionNode {
         let syntax = ast.syntax().owned();
         ConditionNode(syntax)
     }
@@ -452,7 +452,7 @@ impl<'a> Condition<'a> {
 pub struct ConstDefNode(SyntaxNode);
 
 impl ConstDefNode {
-    pub fn new(&self, ast: ConstDef) -> ConstDefNode {
+    pub fn new(ast: ConstDef) -> ConstDefNode {
         let syntax = ast.syntax().owned();
         ConstDefNode(syntax)
     }
@@ -486,7 +486,7 @@ impl<'a> ConstDef<'a> {}
 pub struct ContinueExprNode(SyntaxNode);
 
 impl ContinueExprNode {
-    pub fn new(&self, ast: ContinueExpr) -> ContinueExprNode {
+    pub fn new(ast: ContinueExpr) -> ContinueExprNode {
         let syntax = ast.syntax().owned();
         ContinueExprNode(syntax)
     }
@@ -517,7 +517,7 @@ impl<'a> ContinueExpr<'a> {}
 pub struct DynTraitTypeNode(SyntaxNode);
 
 impl DynTraitTypeNode {
-    pub fn new(&self, ast: DynTraitType) -> DynTraitTypeNode {
+    pub fn new(ast: DynTraitType) -> DynTraitTypeNode {
         let syntax = ast.syntax().owned();
         DynTraitTypeNode(syntax)
     }
@@ -548,7 +548,7 @@ impl<'a> DynTraitType<'a> {}
 pub struct EnumDefNode(SyntaxNode);
 
 impl EnumDefNode {
-    pub fn new(&self, ast: EnumDef) -> EnumDefNode {
+    pub fn new(ast: EnumDef) -> EnumDefNode {
         let syntax = ast.syntax().owned();
         EnumDefNode(syntax)
     }
@@ -582,7 +582,7 @@ impl<'a> EnumDef<'a> {}
 pub struct ExprNode(SyntaxNode);
 
 impl ExprNode {
-    pub fn new(&self, ast: Expr) -> ExprNode {
+    pub fn new(ast: Expr) -> ExprNode {
         let syntax = ast.syntax().owned();
         ExprNode(syntax)
     }
@@ -710,7 +710,7 @@ impl<'a> Expr<'a> {}
 pub struct ExprStmtNode(SyntaxNode);
 
 impl ExprStmtNode {
-    pub fn new(&self, ast: ExprStmt) -> ExprStmtNode {
+    pub fn new(ast: ExprStmt) -> ExprStmtNode {
         let syntax = ast.syntax().owned();
         ExprStmtNode(syntax)
     }
@@ -745,7 +745,7 @@ impl<'a> ExprStmt<'a> {
 pub struct ExternCrateItemNode(SyntaxNode);
 
 impl ExternCrateItemNode {
-    pub fn new(&self, ast: ExternCrateItem) -> ExternCrateItemNode {
+    pub fn new(ast: ExternCrateItem) -> ExternCrateItemNode {
         let syntax = ast.syntax().owned();
         ExternCrateItemNode(syntax)
     }
@@ -776,7 +776,7 @@ impl<'a> ExternCrateItem<'a> {}
 pub struct FieldExprNode(SyntaxNode);
 
 impl FieldExprNode {
-    pub fn new(&self, ast: FieldExpr) -> FieldExprNode {
+    pub fn new(ast: FieldExpr) -> FieldExprNode {
         let syntax = ast.syntax().owned();
         FieldExprNode(syntax)
     }
@@ -807,7 +807,7 @@ impl<'a> FieldExpr<'a> {}
 pub struct FieldPatListNode(SyntaxNode);
 
 impl FieldPatListNode {
-    pub fn new(&self, ast: FieldPatList) -> FieldPatListNode {
+    pub fn new(ast: FieldPatList) -> FieldPatListNode {
         let syntax = ast.syntax().owned();
         FieldPatListNode(syntax)
     }
@@ -838,7 +838,7 @@ impl<'a> FieldPatList<'a> {}
 pub struct FnDefNode(SyntaxNode);
 
 impl FnDefNode {
-    pub fn new(&self, ast: FnDef) -> FnDefNode {
+    pub fn new(ast: FnDef) -> FnDefNode {
         let syntax = ast.syntax().owned();
         FnDefNode(syntax)
     }
@@ -884,7 +884,7 @@ impl<'a> FnDef<'a> {
 pub struct FnPointerTypeNode(SyntaxNode);
 
 impl FnPointerTypeNode {
-    pub fn new(&self, ast: FnPointerType) -> FnPointerTypeNode {
+    pub fn new(ast: FnPointerType) -> FnPointerTypeNode {
         let syntax = ast.syntax().owned();
         FnPointerTypeNode(syntax)
     }
@@ -915,7 +915,7 @@ impl<'a> FnPointerType<'a> {}
 pub struct ForExprNode(SyntaxNode);
 
 impl ForExprNode {
-    pub fn new(&self, ast: ForExpr) -> ForExprNode {
+    pub fn new(ast: ForExpr) -> ForExprNode {
         let syntax = ast.syntax().owned();
         ForExprNode(syntax)
     }
@@ -955,7 +955,7 @@ impl<'a> ForExpr<'a> {
 pub struct ForTypeNode(SyntaxNode);
 
 impl ForTypeNode {
-    pub fn new(&self, ast: ForType) -> ForTypeNode {
+    pub fn new(ast: ForType) -> ForTypeNode {
         let syntax = ast.syntax().owned();
         ForTypeNode(syntax)
     }
@@ -986,7 +986,7 @@ impl<'a> ForType<'a> {}
 pub struct IfExprNode(SyntaxNode);
 
 impl IfExprNode {
-    pub fn new(&self, ast: IfExpr) -> IfExprNode {
+    pub fn new(ast: IfExpr) -> IfExprNode {
         let syntax = ast.syntax().owned();
         IfExprNode(syntax)
     }
@@ -1021,7 +1021,7 @@ impl<'a> IfExpr<'a> {
 pub struct ImplItemNode(SyntaxNode);
 
 impl ImplItemNode {
-    pub fn new(&self, ast: ImplItem) -> ImplItemNode {
+    pub fn new(ast: ImplItem) -> ImplItemNode {
         let syntax = ast.syntax().owned();
         ImplItemNode(syntax)
     }
@@ -1052,7 +1052,7 @@ impl<'a> ImplItem<'a> {}
 pub struct ImplTraitTypeNode(SyntaxNode);
 
 impl ImplTraitTypeNode {
-    pub fn new(&self, ast: ImplTraitType) -> ImplTraitTypeNode {
+    pub fn new(ast: ImplTraitType) -> ImplTraitTypeNode {
         let syntax = ast.syntax().owned();
         ImplTraitTypeNode(syntax)
     }
@@ -1083,7 +1083,7 @@ impl<'a> ImplTraitType<'a> {}
 pub struct IndexExprNode(SyntaxNode);
 
 impl IndexExprNode {
-    pub fn new(&self, ast: IndexExpr) -> IndexExprNode {
+    pub fn new(ast: IndexExpr) -> IndexExprNode {
         let syntax = ast.syntax().owned();
         IndexExprNode(syntax)
     }
@@ -1114,7 +1114,7 @@ impl<'a> IndexExpr<'a> {}
 pub struct ItemListNode(SyntaxNode);
 
 impl ItemListNode {
-    pub fn new(&self, ast: ItemList) -> ItemListNode {
+    pub fn new(ast: ItemList) -> ItemListNode {
         let syntax = ast.syntax().owned();
         ItemListNode(syntax)
     }
@@ -1147,7 +1147,7 @@ impl<'a> ItemList<'a> {}
 pub struct LabelNode(SyntaxNode);
 
 impl LabelNode {
-    pub fn new(&self, ast: Label) -> LabelNode {
+    pub fn new(ast: Label) -> LabelNode {
         let syntax = ast.syntax().owned();
         LabelNode(syntax)
     }
@@ -1178,7 +1178,7 @@ impl<'a> Label<'a> {}
 pub struct LambdaExprNode(SyntaxNode);
 
 impl LambdaExprNode {
-    pub fn new(&self, ast: LambdaExpr) -> LambdaExprNode {
+    pub fn new(ast: LambdaExpr) -> LambdaExprNode {
         let syntax = ast.syntax().owned();
         LambdaExprNode(syntax)
     }
@@ -1217,7 +1217,7 @@ impl<'a> LambdaExpr<'a> {
 pub struct LetStmtNode(SyntaxNode);
 
 impl LetStmtNode {
-    pub fn new(&self, ast: LetStmt) -> LetStmtNode {
+    pub fn new(ast: LetStmt) -> LetStmtNode {
         let syntax = ast.syntax().owned();
         LetStmtNode(syntax)
     }
@@ -1256,7 +1256,7 @@ impl<'a> LetStmt<'a> {
 pub struct LifetimeNode(SyntaxNode);
 
 impl LifetimeNode {
-    pub fn new(&self, ast: Lifetime) -> LifetimeNode {
+    pub fn new(ast: Lifetime) -> LifetimeNode {
         let syntax = ast.syntax().owned();
         LifetimeNode(syntax)
     }
@@ -1287,7 +1287,7 @@ impl<'a> Lifetime<'a> {}
 pub struct LifetimeParamNode(SyntaxNode);
 
 impl LifetimeParamNode {
-    pub fn new(&self, ast: LifetimeParam) -> LifetimeParamNode {
+    pub fn new(ast: LifetimeParam) -> LifetimeParamNode {
         let syntax = ast.syntax().owned();
         LifetimeParamNode(syntax)
     }
@@ -1322,7 +1322,7 @@ impl<'a> LifetimeParam<'a> {
 pub struct LiteralNode(SyntaxNode);
 
 impl LiteralNode {
-    pub fn new(&self, ast: Literal) -> LiteralNode {
+    pub fn new(ast: Literal) -> LiteralNode {
         let syntax = ast.syntax().owned();
         LiteralNode(syntax)
     }
@@ -1353,7 +1353,7 @@ impl<'a> Literal<'a> {}
 pub struct LoopExprNode(SyntaxNode);
 
 impl LoopExprNode {
-    pub fn new(&self, ast: LoopExpr) -> LoopExprNode {
+    pub fn new(ast: LoopExpr) -> LoopExprNode {
         let syntax = ast.syntax().owned();
         LoopExprNode(syntax)
     }
@@ -1385,7 +1385,7 @@ impl<'a> LoopExpr<'a> {}
 pub struct MatchArmNode(SyntaxNode);
 
 impl MatchArmNode {
-    pub fn new(&self, ast: MatchArm) -> MatchArmNode {
+    pub fn new(ast: MatchArm) -> MatchArmNode {
         let syntax = ast.syntax().owned();
         MatchArmNode(syntax)
     }
@@ -1428,7 +1428,7 @@ impl<'a> MatchArm<'a> {
 pub struct MatchArmListNode(SyntaxNode);
 
 impl MatchArmListNode {
-    pub fn new(&self, ast: MatchArmList) -> MatchArmListNode {
+    pub fn new(ast: MatchArmList) -> MatchArmListNode {
         let syntax = ast.syntax().owned();
         MatchArmListNode(syntax)
     }
@@ -1463,7 +1463,7 @@ impl<'a> MatchArmList<'a> {
 pub struct MatchExprNode(SyntaxNode);
 
 impl MatchExprNode {
-    pub fn new(&self, ast: MatchExpr) -> MatchExprNode {
+    pub fn new(ast: MatchExpr) -> MatchExprNode {
         let syntax = ast.syntax().owned();
         MatchExprNode(syntax)
     }
@@ -1502,7 +1502,7 @@ impl<'a> MatchExpr<'a> {
 pub struct MatchGuardNode(SyntaxNode);
 
 impl MatchGuardNode {
-    pub fn new(&self, ast: MatchGuard) -> MatchGuardNode {
+    pub fn new(ast: MatchGuard) -> MatchGuardNode {
         let syntax = ast.syntax().owned();
         MatchGuardNode(syntax)
     }
@@ -1533,7 +1533,7 @@ impl<'a> MatchGuard<'a> {}
 pub struct MethodCallExprNode(SyntaxNode);
 
 impl MethodCallExprNode {
-    pub fn new(&self, ast: MethodCallExpr) -> MethodCallExprNode {
+    pub fn new(ast: MethodCallExpr) -> MethodCallExprNode {
         let syntax = ast.syntax().owned();
         MethodCallExprNode(syntax)
     }
@@ -1569,7 +1569,7 @@ impl<'a> MethodCallExpr<'a> {
 pub struct ModuleNode(SyntaxNode);
 
 impl ModuleNode {
-    pub fn new(&self, ast: Module) -> ModuleNode {
+    pub fn new(ast: Module) -> ModuleNode {
         let syntax = ast.syntax().owned();
         ModuleNode(syntax)
     }
@@ -1606,7 +1606,7 @@ impl<'a> Module<'a> {
 pub struct ModuleItemNode(SyntaxNode);
 
 impl ModuleItemNode {
-    pub fn new(&self, ast: ModuleItem) -> ModuleItemNode {
+    pub fn new(ast: ModuleItem) -> ModuleItemNode {
         let syntax = ast.syntax().owned();
         ModuleItemNode(syntax)
     }
@@ -1671,7 +1671,7 @@ impl<'a> ModuleItem<'a> {}
 pub struct NameNode(SyntaxNode);
 
 impl NameNode {
-    pub fn new(&self, ast: Name) -> NameNode {
+    pub fn new(ast: Name) -> NameNode {
         let syntax = ast.syntax().owned();
         NameNode(syntax)
     }
@@ -1702,7 +1702,7 @@ impl<'a> Name<'a> {}
 pub struct NameRefNode(SyntaxNode);
 
 impl NameRefNode {
-    pub fn new(&self, ast: NameRef) -> NameRefNode {
+    pub fn new(ast: NameRef) -> NameRefNode {
         let syntax = ast.syntax().owned();
         NameRefNode(syntax)
     }
@@ -1733,7 +1733,7 @@ impl<'a> NameRef<'a> {}
 pub struct NamedFieldNode(SyntaxNode);
 
 impl NamedFieldNode {
-    pub fn new(&self, ast: NamedField) -> NamedFieldNode {
+    pub fn new(ast: NamedField) -> NamedFieldNode {
         let syntax = ast.syntax().owned();
         NamedFieldNode(syntax)
     }
@@ -1764,7 +1764,7 @@ impl<'a> NamedField<'a> {}
 pub struct NamedFieldDefNode(SyntaxNode);
 
 impl NamedFieldDefNode {
-    pub fn new(&self, ast: NamedFieldDef) -> NamedFieldDefNode {
+    pub fn new(ast: NamedFieldDef) -> NamedFieldDefNode {
         let syntax = ast.syntax().owned();
         NamedFieldDefNode(syntax)
     }
@@ -1797,7 +1797,7 @@ impl<'a> NamedFieldDef<'a> {}
 pub struct NamedFieldListNode(SyntaxNode);
 
 impl NamedFieldListNode {
-    pub fn new(&self, ast: NamedFieldList) -> NamedFieldListNode {
+    pub fn new(ast: NamedFieldList) -> NamedFieldListNode {
         let syntax = ast.syntax().owned();
         NamedFieldListNode(syntax)
     }
@@ -1828,7 +1828,7 @@ impl<'a> NamedFieldList<'a> {}
 pub struct NeverTypeNode(SyntaxNode);
 
 impl NeverTypeNode {
-    pub fn new(&self, ast: NeverType) -> NeverTypeNode {
+    pub fn new(ast: NeverType) -> NeverTypeNode {
         let syntax = ast.syntax().owned();
         NeverTypeNode(syntax)
     }
@@ -1859,7 +1859,7 @@ impl<'a> NeverType<'a> {}
 pub struct NominalDefNode(SyntaxNode);
 
 impl NominalDefNode {
-    pub fn new(&self, ast: NominalDef) -> NominalDefNode {
+    pub fn new(ast: NominalDef) -> NominalDefNode {
         let syntax = ast.syntax().owned();
         NominalDefNode(syntax)
     }
@@ -1900,7 +1900,7 @@ impl<'a> NominalDef<'a> {}
 pub struct ParamNode(SyntaxNode);
 
 impl ParamNode {
-    pub fn new(&self, ast: Param) -> ParamNode {
+    pub fn new(ast: Param) -> ParamNode {
         let syntax = ast.syntax().owned();
         ParamNode(syntax)
     }
@@ -1935,7 +1935,7 @@ impl<'a> Param<'a> {
 pub struct ParamListNode(SyntaxNode);
 
 impl ParamListNode {
-    pub fn new(&self, ast: ParamList) -> ParamListNode {
+    pub fn new(ast: ParamList) -> ParamListNode {
         let syntax = ast.syntax().owned();
         ParamListNode(syntax)
     }
@@ -1974,7 +1974,7 @@ impl<'a> ParamList<'a> {
 pub struct ParenExprNode(SyntaxNode);
 
 impl ParenExprNode {
-    pub fn new(&self, ast: ParenExpr) -> ParenExprNode {
+    pub fn new(ast: ParenExpr) -> ParenExprNode {
         let syntax = ast.syntax().owned();
         ParenExprNode(syntax)
     }
@@ -2005,7 +2005,7 @@ impl<'a> ParenExpr<'a> {}
 pub struct ParenTypeNode(SyntaxNode);
 
 impl ParenTypeNode {
-    pub fn new(&self, ast: ParenType) -> ParenTypeNode {
+    pub fn new(ast: ParenType) -> ParenTypeNode {
         let syntax = ast.syntax().owned();
         ParenTypeNode(syntax)
     }
@@ -2036,7 +2036,7 @@ impl<'a> ParenType<'a> {}
 pub struct PatNode(SyntaxNode);
 
 impl PatNode {
-    pub fn new(&self, ast: Pat) -> PatNode {
+    pub fn new(ast: Pat) -> PatNode {
         let syntax = ast.syntax().owned();
         PatNode(syntax)
     }
@@ -2098,7 +2098,7 @@ impl<'a> Pat<'a> {}
 pub struct PathNode(SyntaxNode);
 
 impl PathNode {
-    pub fn new(&self, ast: Path) -> PathNode {
+    pub fn new(ast: Path) -> PathNode {
         let syntax = ast.syntax().owned();
         PathNode(syntax)
     }
@@ -2137,7 +2137,7 @@ impl<'a> Path<'a> {
 pub struct PathExprNode(SyntaxNode);
 
 impl PathExprNode {
-    pub fn new(&self, ast: PathExpr) -> PathExprNode {
+    pub fn new(ast: PathExpr) -> PathExprNode {
         let syntax = ast.syntax().owned();
         PathExprNode(syntax)
     }
@@ -2172,7 +2172,7 @@ impl<'a> PathExpr<'a> {
 pub struct PathPatNode(SyntaxNode);
 
 impl PathPatNode {
-    pub fn new(&self, ast: PathPat) -> PathPatNode {
+    pub fn new(ast: PathPat) -> PathPatNode {
         let syntax = ast.syntax().owned();
         PathPatNode(syntax)
     }
@@ -2203,7 +2203,7 @@ impl<'a> PathPat<'a> {}
 pub struct PathSegmentNode(SyntaxNode);
 
 impl PathSegmentNode {
-    pub fn new(&self, ast: PathSegment) -> PathSegmentNode {
+    pub fn new(ast: PathSegment) -> PathSegmentNode {
         let syntax = ast.syntax().owned();
         PathSegmentNode(syntax)
     }
@@ -2238,7 +2238,7 @@ impl<'a> PathSegment<'a> {
 pub struct PathTypeNode(SyntaxNode);
 
 impl PathTypeNode {
-    pub fn new(&self, ast: PathType) -> PathTypeNode {
+    pub fn new(ast: PathType) -> PathTypeNode {
         let syntax = ast.syntax().owned();
         PathTypeNode(syntax)
     }
@@ -2269,7 +2269,7 @@ impl<'a> PathType<'a> {}
 pub struct PlaceholderPatNode(SyntaxNode);
 
 impl PlaceholderPatNode {
-    pub fn new(&self, ast: PlaceholderPat) -> PlaceholderPatNode {
+    pub fn new(ast: PlaceholderPat) -> PlaceholderPatNode {
         let syntax = ast.syntax().owned();
         PlaceholderPatNode(syntax)
     }
@@ -2300,7 +2300,7 @@ impl<'a> PlaceholderPat<'a> {}
 pub struct PlaceholderTypeNode(SyntaxNode);
 
 impl PlaceholderTypeNode {
-    pub fn new(&self, ast: PlaceholderType) -> PlaceholderTypeNode {
+    pub fn new(ast: PlaceholderType) -> PlaceholderTypeNode {
         let syntax = ast.syntax().owned();
         PlaceholderTypeNode(syntax)
     }
@@ -2331,7 +2331,7 @@ impl<'a> PlaceholderType<'a> {}
 pub struct PointerTypeNode(SyntaxNode);
 
 impl PointerTypeNode {
-    pub fn new(&self, ast: PointerType) -> PointerTypeNode {
+    pub fn new(ast: PointerType) -> PointerTypeNode {
         let syntax = ast.syntax().owned();
         PointerTypeNode(syntax)
     }
@@ -2362,7 +2362,7 @@ impl<'a> PointerType<'a> {}
 pub struct PrefixExprNode(SyntaxNode);
 
 impl PrefixExprNode {
-    pub fn new(&self, ast: PrefixExpr) -> PrefixExprNode {
+    pub fn new(ast: PrefixExpr) -> PrefixExprNode {
         let syntax = ast.syntax().owned();
         PrefixExprNode(syntax)
     }
@@ -2393,7 +2393,7 @@ impl<'a> PrefixExpr<'a> {}
 pub struct RangeExprNode(SyntaxNode);
 
 impl RangeExprNode {
-    pub fn new(&self, ast: RangeExpr) -> RangeExprNode {
+    pub fn new(ast: RangeExpr) -> RangeExprNode {
         let syntax = ast.syntax().owned();
         RangeExprNode(syntax)
     }
@@ -2424,7 +2424,7 @@ impl<'a> RangeExpr<'a> {}
 pub struct RangePatNode(SyntaxNode);
 
 impl RangePatNode {
-    pub fn new(&self, ast: RangePat) -> RangePatNode {
+    pub fn new(ast: RangePat) -> RangePatNode {
         let syntax = ast.syntax().owned();
         RangePatNode(syntax)
     }
@@ -2455,7 +2455,7 @@ impl<'a> RangePat<'a> {}
 pub struct RefExprNode(SyntaxNode);
 
 impl RefExprNode {
-    pub fn new(&self, ast: RefExpr) -> RefExprNode {
+    pub fn new(ast: RefExpr) -> RefExprNode {
         let syntax = ast.syntax().owned();
         RefExprNode(syntax)
     }
@@ -2486,7 +2486,7 @@ impl<'a> RefExpr<'a> {}
 pub struct RefPatNode(SyntaxNode);
 
 impl RefPatNode {
-    pub fn new(&self, ast: RefPat) -> RefPatNode {
+    pub fn new(ast: RefPat) -> RefPatNode {
         let syntax = ast.syntax().owned();
         RefPatNode(syntax)
     }
@@ -2517,7 +2517,7 @@ impl<'a> RefPat<'a> {}
 pub struct ReferenceTypeNode(SyntaxNode);
 
 impl ReferenceTypeNode {
-    pub fn new(&self, ast: ReferenceType) -> ReferenceTypeNode {
+    pub fn new(ast: ReferenceType) -> ReferenceTypeNode {
         let syntax = ast.syntax().owned();
         ReferenceTypeNode(syntax)
     }
@@ -2548,7 +2548,7 @@ impl<'a> ReferenceType<'a> {}
 pub struct RetTypeNode(SyntaxNode);
 
 impl RetTypeNode {
-    pub fn new(&self, ast: RetType) -> RetTypeNode {
+    pub fn new(ast: RetType) -> RetTypeNode {
         let syntax = ast.syntax().owned();
         RetTypeNode(syntax)
     }
@@ -2579,7 +2579,7 @@ impl<'a> RetType<'a> {}
 pub struct ReturnExprNode(SyntaxNode);
 
 impl ReturnExprNode {
-    pub fn new(&self, ast: ReturnExpr) -> ReturnExprNode {
+    pub fn new(ast: ReturnExpr) -> ReturnExprNode {
         let syntax = ast.syntax().owned();
         ReturnExprNode(syntax)
     }
@@ -2610,7 +2610,7 @@ impl<'a> ReturnExpr<'a> {}
 pub struct RootNode(SyntaxNode);
 
 impl RootNode {
-    pub fn new(&self, ast: Root) -> RootNode {
+    pub fn new(ast: Root) -> RootNode {
         let syntax = ast.syntax().owned();
         RootNode(syntax)
     }
@@ -2647,7 +2647,7 @@ impl<'a> Root<'a> {
 pub struct SelfParamNode(SyntaxNode);
 
 impl SelfParamNode {
-    pub fn new(&self, ast: SelfParam) -> SelfParamNode {
+    pub fn new(ast: SelfParam) -> SelfParamNode {
         let syntax = ast.syntax().owned();
         SelfParamNode(syntax)
     }
@@ -2678,7 +2678,7 @@ impl<'a> SelfParam<'a> {}
 pub struct SlicePatNode(SyntaxNode);
 
 impl SlicePatNode {
-    pub fn new(&self, ast: SlicePat) -> SlicePatNode {
+    pub fn new(ast: SlicePat) -> SlicePatNode {
         let syntax = ast.syntax().owned();
         SlicePatNode(syntax)
     }
@@ -2709,7 +2709,7 @@ impl<'a> SlicePat<'a> {}
 pub struct SliceTypeNode(SyntaxNode);
 
 impl SliceTypeNode {
-    pub fn new(&self, ast: SliceType) -> SliceTypeNode {
+    pub fn new(ast: SliceType) -> SliceTypeNode {
         let syntax = ast.syntax().owned();
         SliceTypeNode(syntax)
     }
@@ -2740,7 +2740,7 @@ impl<'a> SliceType<'a> {}
 pub struct StaticDefNode(SyntaxNode);
 
 impl StaticDefNode {
-    pub fn new(&self, ast: StaticDef) -> StaticDefNode {
+    pub fn new(ast: StaticDef) -> StaticDefNode {
         let syntax = ast.syntax().owned();
         StaticDefNode(syntax)
     }
@@ -2774,7 +2774,7 @@ impl<'a> StaticDef<'a> {}
 pub struct StmtNode(SyntaxNode);
 
 impl StmtNode {
-    pub fn new(&self, ast: Stmt) -> StmtNode {
+    pub fn new(ast: Stmt) -> StmtNode {
         let syntax = ast.syntax().owned();
         StmtNode(syntax)
     }
@@ -2812,7 +2812,7 @@ impl<'a> Stmt<'a> {}
 pub struct StructDefNode(SyntaxNode);
 
 impl StructDefNode {
-    pub fn new(&self, ast: StructDef) -> StructDefNode {
+    pub fn new(ast: StructDef) -> StructDefNode {
         let syntax = ast.syntax().owned();
         StructDefNode(syntax)
     }
@@ -2850,7 +2850,7 @@ impl<'a> StructDef<'a> {
 pub struct StructLitNode(SyntaxNode);
 
 impl StructLitNode {
-    pub fn new(&self, ast: StructLit) -> StructLitNode {
+    pub fn new(ast: StructLit) -> StructLitNode {
         let syntax = ast.syntax().owned();
         StructLitNode(syntax)
     }
@@ -2881,7 +2881,7 @@ impl<'a> StructLit<'a> {}
 pub struct StructPatNode(SyntaxNode);
 
 impl StructPatNode {
-    pub fn new(&self, ast: StructPat) -> StructPatNode {
+    pub fn new(ast: StructPat) -> StructPatNode {
         let syntax = ast.syntax().owned();
         StructPatNode(syntax)
     }
@@ -2912,7 +2912,7 @@ impl<'a> StructPat<'a> {}
 pub struct TokenTreeNode(SyntaxNode);
 
 impl TokenTreeNode {
-    pub fn new(&self, ast: TokenTree) -> TokenTreeNode {
+    pub fn new(ast: TokenTree) -> TokenTreeNode {
         let syntax = ast.syntax().owned();
         TokenTreeNode(syntax)
     }
@@ -2943,7 +2943,7 @@ impl<'a> TokenTree<'a> {}
 pub struct TraitDefNode(SyntaxNode);
 
 impl TraitDefNode {
-    pub fn new(&self, ast: TraitDef) -> TraitDefNode {
+    pub fn new(ast: TraitDef) -> TraitDefNode {
         let syntax = ast.syntax().owned();
         TraitDefNode(syntax)
     }
@@ -2976,7 +2976,7 @@ impl<'a> TraitDef<'a> {}
 pub struct TryExprNode(SyntaxNode);
 
 impl TryExprNode {
-    pub fn new(&self, ast: TryExpr) -> TryExprNode {
+    pub fn new(ast: TryExpr) -> TryExprNode {
         let syntax = ast.syntax().owned();
         TryExprNode(syntax)
     }
@@ -3007,7 +3007,7 @@ impl<'a> TryExpr<'a> {}
 pub struct TupleExprNode(SyntaxNode);
 
 impl TupleExprNode {
-    pub fn new(&self, ast: TupleExpr) -> TupleExprNode {
+    pub fn new(ast: TupleExpr) -> TupleExprNode {
         let syntax = ast.syntax().owned();
         TupleExprNode(syntax)
     }
@@ -3038,7 +3038,7 @@ impl<'a> TupleExpr<'a> {}
 pub struct TuplePatNode(SyntaxNode);
 
 impl TuplePatNode {
-    pub fn new(&self, ast: TuplePat) -> TuplePatNode {
+    pub fn new(ast: TuplePat) -> TuplePatNode {
         let syntax = ast.syntax().owned();
         TuplePatNode(syntax)
     }
@@ -3069,7 +3069,7 @@ impl<'a> TuplePat<'a> {}
 pub struct TupleStructPatNode(SyntaxNode);
 
 impl TupleStructPatNode {
-    pub fn new(&self, ast: TupleStructPat) -> TupleStructPatNode {
+    pub fn new(ast: TupleStructPat) -> TupleStructPatNode {
         let syntax = ast.syntax().owned();
         TupleStructPatNode(syntax)
     }
@@ -3100,7 +3100,7 @@ impl<'a> TupleStructPat<'a> {}
 pub struct TupleTypeNode(SyntaxNode);
 
 impl TupleTypeNode {
-    pub fn new(&self, ast: TupleType) -> TupleTypeNode {
+    pub fn new(ast: TupleType) -> TupleTypeNode {
         let syntax = ast.syntax().owned();
         TupleTypeNode(syntax)
     }
@@ -3131,7 +3131,7 @@ impl<'a> TupleType<'a> {}
 pub struct TypeDefNode(SyntaxNode);
 
 impl TypeDefNode {
-    pub fn new(&self, ast: TypeDef) -> TypeDefNode {
+    pub fn new(ast: TypeDef) -> TypeDefNode {
         let syntax = ast.syntax().owned();
         TypeDefNode(syntax)
     }
@@ -3165,7 +3165,7 @@ impl<'a> TypeDef<'a> {}
 pub struct TypeParamNode(SyntaxNode);
 
 impl TypeParamNode {
-    pub fn new(&self, ast: TypeParam) -> TypeParamNode {
+    pub fn new(ast: TypeParam) -> TypeParamNode {
         let syntax = ast.syntax().owned();
         TypeParamNode(syntax)
     }
@@ -3197,7 +3197,7 @@ impl<'a> TypeParam<'a> {}
 pub struct TypeParamListNode(SyntaxNode);
 
 impl TypeParamListNode {
-    pub fn new(&self, ast: TypeParamList) -> TypeParamListNode {
+    pub fn new(ast: TypeParamList) -> TypeParamListNode {
         let syntax = ast.syntax().owned();
         TypeParamListNode(syntax)
     }
@@ -3236,7 +3236,7 @@ impl<'a> TypeParamList<'a> {
 pub struct TypeRefNode(SyntaxNode);
 
 impl TypeRefNode {
-    pub fn new(&self, ast: TypeRef) -> TypeRefNode {
+    pub fn new(ast: TypeRef) -> TypeRefNode {
         let syntax = ast.syntax().owned();
         TypeRefNode(syntax)
     }
@@ -3307,7 +3307,7 @@ impl<'a> TypeRef<'a> {}
 pub struct UseItemNode(SyntaxNode);
 
 impl UseItemNode {
-    pub fn new(&self, ast: UseItem) -> UseItemNode {
+    pub fn new(ast: UseItem) -> UseItemNode {
         let syntax = ast.syntax().owned();
         UseItemNode(syntax)
     }
@@ -3342,7 +3342,7 @@ impl<'a> UseItem<'a> {
 pub struct UseTreeNode(SyntaxNode);
 
 impl UseTreeNode {
-    pub fn new(&self, ast: UseTree) -> UseTreeNode {
+    pub fn new(ast: UseTree) -> UseTreeNode {
         let syntax = ast.syntax().owned();
         UseTreeNode(syntax)
     }
@@ -3381,7 +3381,7 @@ impl<'a> UseTree<'a> {
 pub struct UseTreeListNode(SyntaxNode);
 
 impl UseTreeListNode {
-    pub fn new(&self, ast: UseTreeList) -> UseTreeListNode {
+    pub fn new(ast: UseTreeList) -> UseTreeListNode {
         let syntax = ast.syntax().owned();
         UseTreeListNode(syntax)
     }
@@ -3416,7 +3416,7 @@ impl<'a> UseTreeList<'a> {
 pub struct WhereClauseNode(SyntaxNode);
 
 impl WhereClauseNode {
-    pub fn new(&self, ast: WhereClause) -> WhereClauseNode {
+    pub fn new(ast: WhereClause) -> WhereClauseNode {
         let syntax = ast.syntax().owned();
         WhereClauseNode(syntax)
     }
@@ -3447,7 +3447,7 @@ impl<'a> WhereClause<'a> {}
 pub struct WhileExprNode(SyntaxNode);
 
 impl WhileExprNode {
-    pub fn new(&self, ast: WhileExpr) -> WhileExprNode {
+    pub fn new(ast: WhileExpr) -> WhileExprNode {
         let syntax = ast.syntax().owned();
         WhileExprNode(syntax)
     }
@@ -3483,7 +3483,7 @@ impl<'a> WhileExpr<'a> {
 pub struct WhitespaceNode(SyntaxNode);
 
 impl WhitespaceNode {
-    pub fn new(&self, ast: Whitespace) -> WhitespaceNode {
+    pub fn new(ast: Whitespace) -> WhitespaceNode {
         let syntax = ast.syntax().owned();
         WhitespaceNode(syntax)
     }

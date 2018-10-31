@@ -1,62 +1,46 @@
 pub(crate) mod module;
+pub(crate) mod function;
+
+use std::sync::Arc;
 
 use ra_syntax::{
-    ast::{self, AstNode, NameOwner},
+    SmolStr,
+    ast::{FnDefNode},
 };
 
-#[derive(Debug, Clone)]
-pub struct FnDescriptor {
-    pub name: String,
-    pub label: String,
-    pub ret_type: Option<String>,
-    pub params: Vec<String>,
-}
+use crate::{
+    FileId, Cancelable,
+    db::SyntaxDatabase,
+    descriptors::module::{ModuleTree, ModuleId, ModuleScope},
+    descriptors::function::{FnId, FnScopes},
+    input::SourceRootId,
+    syntax_ptr::SyntaxPtrDatabase,
+};
 
-impl FnDescriptor {
-    pub fn new(node: ast::FnDef) -> Option<Self> {
-        let name = node.name()?.text().to_string();
 
-        // Strip the body out for the label.
-        let label: String = if let Some(body) = node.body() {
-            let body_range = body.syntax().range();
-            let label: String = node
-                .syntax()
-                .children()
-                .filter(|child| !child.range().is_subrange(&body_range))
-                .map(|node| node.text().to_string())
-                .collect();
-            label
-        } else {
-            node.syntax().text().to_string()
-        };
-
-        let params = FnDescriptor::param_list(node);
-        let ret_type = node.ret_type().map(|r| r.syntax().text().to_string());
-
-        Some(FnDescriptor {
-            name,
-            ret_type,
-            params,
-            label,
-        })
-    }
-
-    fn param_list(node: ast::FnDef) -> Vec<String> {
-        let mut res = vec![];
-        if let Some(param_list) = node.param_list() {
-            if let Some(self_param) = param_list.self_param() {
-                res.push(self_param.syntax().text().to_string())
-            }
-
-            // Maybe use param.pat here? See if we can just extract the name?
-            //res.extend(param_list.params().map(|p| p.syntax().text().to_string()));
-            res.extend(
-                param_list
-                    .params()
-                    .filter_map(|p| p.pat())
-                    .map(|pat| pat.syntax().text().to_string()),
-            );
+salsa::query_group! {
+    pub(crate) trait DescriptorDatabase: SyntaxDatabase + SyntaxPtrDatabase {
+        fn module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
+            type ModuleTreeQuery;
+            use fn module::imp::module_tree;
         }
-        res
+        fn submodules(file_id: FileId) -> Cancelable<Arc<Vec<SmolStr>>> {
+            type SubmodulesQuery;
+            use fn module::imp::submodules;
+        }
+        fn module_scope(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleScope>> {
+            type ModuleScopeQuery;
+            use fn module::imp::module_scope;
+        }
+        fn fn_syntax(fn_id: FnId) -> FnDefNode {
+            type FnSyntaxQuery;
+            // Don't retain syntax trees in memory
+            storage volatile;
+            use fn function::imp::fn_syntax;
+        }
+        fn fn_scopes(fn_id: FnId) -> Arc<FnScopes> {
+            type FnScopesQuery;
+            use fn function::imp::fn_scopes;
+        }
     }
 }

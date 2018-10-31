@@ -13,6 +13,7 @@ mod imp;
 mod symbol_index;
 mod completion;
 mod syntax_ptr;
+mod mock_analysis;
 
 use std::{
     fmt,
@@ -29,11 +30,13 @@ use crate::{
 };
 
 pub use crate::{
-    descriptors::FnDescriptor,
-    input::{FileId, FileResolver, CrateGraph, CrateId}
+    descriptors::function::FnDescriptor,
+    completion::CompletionItem,
+    input::{FileId, FileResolver, CrateGraph, CrateId},
+    mock_analysis::MockAnalysis,
 };
 pub use ra_editor::{
-    CompletionItem, FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable,
+    FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable,
     RunnableKind, StructureNode,
 };
 
@@ -197,7 +200,7 @@ impl Query {
 
 #[derive(Debug)]
 pub struct Analysis {
-    imp: AnalysisImpl,
+    pub(crate) imp: AnalysisImpl,
 }
 
 impl Analysis {
