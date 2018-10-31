@@ -6,13 +6,3 @@ LL |     'a: loop {
 LL |         let b = Box::new(|x: &i8| *x) as Box<for <'a> Fn(&'a i8) -> i8>;
    |                                                   ^^ lifetime 'a already in scope
 
-error: compilation successful
-  --> $DIR/loops-reject-lifetime-shadowing-label.rs:39:1
-   |
-LL | / pub fn main() { //~ ERROR compilation successful
-LL | |     foo();
-LL | | }
-   | |_^
-
-error: aborting due to previous error
-

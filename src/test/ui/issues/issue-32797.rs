@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 
 pub use bar::*;
 mod bar {
@@ -20,5 +21,5 @@ mod baz {
     pub use main as f;
 }
 
-#[rustc_error]
-pub fn main() {} //~ ERROR compilation successful
+
+pub fn main() {}

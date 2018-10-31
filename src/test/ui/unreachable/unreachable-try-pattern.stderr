@@ -28,16 +28,3 @@ warning: unreachable pattern
 LL |     let y = (match x { Ok(n) => Ok(n), Err(e) => Err(e) })?;
    |                                        ^^^^^^
 
-error: compilation successful
-  --> $DIR/unreachable-try-pattern.rs:46:1
-   |
-LL | / fn main() { //~ ERROR: compilation successful
-LL | |     let _ = bar(Err(123));
-LL | |     let _ = foo(Err(123));
-LL | |     let _ = qux(Ok(123));
-LL | |     let _ = vom(Ok(123));
-LL | | }
-   | |_^
-
-error: aborting due to previous error
-

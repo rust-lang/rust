@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
 
 // ignore-tidy-linelength
 
@@ -46,8 +46,8 @@ impl S {
     fn m2(&self) { 'okay: loop { break 'okay; } }
 }
 
-#[rustc_error]
-pub fn main() { //~ ERROR compilation successful
+
+pub fn main() {
     let s = S;
     s.m1();
     s.m2();

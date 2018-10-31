@@ -12,7 +12,7 @@
 // be shortened.
 
 #![allow(dead_code)]
-#![feature(rustc_attrs)]
+// compile-pass
 
 struct SomeStruct<T>(T);
 
@@ -23,4 +23,4 @@ fn foo<'min,'max>(v: SomeStruct<&'max ()>)
     v
 }
 
-#[rustc_error] fn main() { } //~ ERROR compilation successful
+fn main() { }

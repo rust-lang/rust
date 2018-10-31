@@ -12,8 +12,8 @@
 // `MyType: !MyTrait` along with other "fundamental" wrappers.
 
 // aux-build:coherence_copy_like_lib.rs
-
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 #![allow(dead_code)]
 
 extern crate coherence_copy_like_lib as lib;
@@ -23,5 +23,5 @@ struct MyType { x: i32 }
 // naturally, legal
 impl lib::MyCopy for MyType { }
 
-#[rustc_error]
-fn main() { } //~ ERROR compilation successful
+
+fn main() { }

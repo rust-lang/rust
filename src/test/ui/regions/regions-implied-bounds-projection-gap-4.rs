@@ -12,7 +12,7 @@
 // "projection gap": in this test, we know that `T: 'x`, and that
 // is (naturally) enough to conclude that `T: 'x`.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
@@ -29,5 +29,5 @@ fn func<'x, T:Trait1<'x>>(t: &'x T)
     wf::<&'x T>();
 }
 
-#[rustc_error]
-fn main() { } //~ ERROR compilation successful
+
+fn main() { }

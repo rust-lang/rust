@@ -62,13 +62,3 @@ LL |     { 'lt: loop { break; } }
 LL |     { 'lt: while let Some(_) = None::<i32> { break; } }
    |       ^^^ lifetime 'lt already in scope
 
-error: compilation successful
-  --> $DIR/loops-reject-duplicate-labels-2.rs:43:1
-   |
-LL | / pub fn main() { //~ ERROR compilation successful
-LL | |     foo();
-LL | | }
-   | |_^
-
-error: aborting due to previous error
-

@@ -10,11 +10,3 @@ warning: unnecessary path disambiguator
 LL |     let g: Foo::<i32> = Foo { _a: 42 }; //~ WARN unnecessary path disambiguator
    |               ^^ try removing `::`
 
-error: compilation successful
-  --> $DIR/issue-36116.rs:37:1
-   |
-LL | fn main() {} //~ ERROR compilation successful
-   | ^^^^^^^^^^^^
-
-error: aborting due to previous error
-

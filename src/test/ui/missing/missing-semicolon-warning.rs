@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(unused)]
 
 macro_rules! m {
@@ -18,5 +18,5 @@ macro_rules! m {
     }
 }
 
-#[rustc_error]
-fn main() { m!(0, 0; 0, 0); } //~ ERROR compilation successful
+
+fn main() { m!(0, 0; 0, 0); }

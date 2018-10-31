@@ -10,7 +10,7 @@
 
 // Check that `Self` appearing in a phantom fn does not make a trait not object safe.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(dead_code)]
 
 trait Baz {
@@ -27,6 +27,6 @@ fn make_baz<T:Baz>(t: &T) -> &Baz {
     t
 }
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
 }

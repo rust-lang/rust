@@ -7,9 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-#![feature(unboxed_closures, fn_traits, rustc_attrs)]
-
+// skip-codegen
+// compile-pass
+#![feature(unboxed_closures, fn_traits)]
 struct Foo;
 
 impl<A> FnOnce<(A,)> for Foo {
@@ -17,7 +17,7 @@ impl<A> FnOnce<(A,)> for Foo {
     extern "rust-call" fn call_once(self, (_,): (A,)) {
     }
 }
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
     println!("{:?}", Foo("bar"));
 }

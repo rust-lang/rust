@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 #![allow(warnings)]
-
 struct Attr {
     name: String,
     value: String,
@@ -31,8 +31,8 @@ impl Element {
     }
 }
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
     let element = Element { attrs: Vec::new() };
     let _ = unsafe { element.get_attr("foo") };
 }

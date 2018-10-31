@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
+// compile-pass
+// skip-codegen
 pub trait Foo<P> {}
 
 pub trait Bar {
@@ -24,5 +24,5 @@ impl Bar for i32 {
     type Output = u32;
 }
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

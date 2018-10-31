@@ -11,7 +11,7 @@
 // Test related to #22779. In this case, the impl is an inherent impl,
 // so it doesn't have to match any trait, so no error results.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(dead_code)]
 
 struct MySlice<'a, T:'a>(&'a mut [T]);
@@ -22,5 +22,5 @@ impl<'a, T> MySlice<'a, T> {
     }
 }
 
-#[rustc_error]
-fn main() { } //~ ERROR compilation successful
+
+fn main() { }

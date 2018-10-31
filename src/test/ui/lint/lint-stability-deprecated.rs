@@ -8,15 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-pass
 // aux-build:lint_stability.rs
 // aux-build:inherited_stability.rs
 // aux-build:stability_cfg1.rs
 // aux-build:stability_cfg2.rs
 // ignore-tidy-linelength
-
 #![warn(deprecated)]
 #![allow(dead_code, unused_extern_crates)]
-#![feature(staged_api, unstable_test_feature, rustc_attrs)]
+#![feature(staged_api, unstable_test_feature)]
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -470,4 +470,4 @@ mod this_crate {
     trait LocalTrait : DeprecatedTrait { } //~ WARN use of deprecated item 'this_crate::DeprecatedTrait'
 }
 
-#[rustc_error] fn main() {} //~ ERROR: compilation successful
+fn main() {}

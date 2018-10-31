@@ -11,11 +11,3 @@ LL | #![deny(warnings)]
    |         ^^^^^^^^
    = note: #[warn(unused_imports)] implied by #[warn(warnings)]
 
-error: compilation successful
-  --> $DIR/bad-lint-cap3.rs:20:1
-   |
-LL | fn main() {} //~ ERROR: compilation successful
-   | ^^^^^^^^^^^^
-
-error: aborting due to previous error
-

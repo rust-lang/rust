@@ -21,14 +21,14 @@
 // ignore-mips
 // ignore-mips64
 
-#![feature(asm, rustc_attrs)]
-
+// compile-pass
+// skip-codegen
+#![feature(asm)]
 #![allow(dead_code, non_upper_case_globals)]
 
 #[cfg(any(target_arch = "x86",
           target_arch = "x86_64"))]
-#[rustc_error]
-pub fn main() { //~ ERROR compilation successful
+pub fn main() {
     // assignment not dead
     let mut x: isize = 0;
     unsafe {

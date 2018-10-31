@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(associated_consts, rustc_attrs)]
+// compile-pass
+// skip-codegen
+#![feature(associated_consts)]
 #![allow(warnings)]
-
 trait MyTrait {
     const MY_CONST: &'static str;
 }
@@ -27,5 +28,5 @@ macro_rules! my_macro {
 
 my_macro!();
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

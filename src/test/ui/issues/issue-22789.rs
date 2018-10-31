@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures, fn_traits, rustc_attrs)]
-
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+// compile-pass
+// skip-codegen
+#![feature(unboxed_closures, fn_traits)]
+fn main() {
     let k = |x: i32| { x + 1 };
     Fn::call(&k, (0,));
 }

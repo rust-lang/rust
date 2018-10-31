@@ -11,12 +11,3 @@ LL | #![warn(unused)]
    |         ^^^^^^
    = note: #[warn(dead_code)] implied by #[warn(unused)]
 
-error: compilation successful
-  --> $DIR/issue-37515.rs:18:1
-   |
-LL | / fn main() { //~ ERROR compilation successful
-LL | | }
-   | |_^
-
-error: aborting due to previous error
-

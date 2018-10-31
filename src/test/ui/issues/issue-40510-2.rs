@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(unused)]
 
 fn f() {
@@ -19,5 +19,5 @@ fn f() {
     };
 }
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

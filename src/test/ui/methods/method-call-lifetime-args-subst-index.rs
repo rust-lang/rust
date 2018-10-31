@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(unused)]
 
 struct S;
@@ -21,5 +21,5 @@ fn test() {
     S.early_and_type::<u16>();
 }
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

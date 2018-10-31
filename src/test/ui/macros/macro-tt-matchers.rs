@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(dead_code)]
 
 macro_rules! foo {
@@ -17,5 +17,5 @@ macro_rules! foo {
 
 foo!(Box);
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

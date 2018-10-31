@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 #![allow(warnings)]
-
 trait Mirror {
     type It;
 }
@@ -20,8 +20,8 @@ impl<T> Mirror for T {
 }
 
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
     let c: <u32 as Mirror>::It = 5;
     const CCCC: <u32 as Mirror>::It = 5;
 }

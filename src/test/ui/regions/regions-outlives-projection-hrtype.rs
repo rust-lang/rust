@@ -15,7 +15,7 @@
 // `'r` is bound, that leads to badness. This test checks that
 // everything works.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(dead_code)]
 
 trait TheTrait {
@@ -32,5 +32,5 @@ fn foo<'a,'b,T>()
     wf::< <FnType<T> as TheTrait>::TheType >();
 }
 
-#[rustc_error]
-fn main() { } //~ ERROR compilation successful
+
+fn main() { }

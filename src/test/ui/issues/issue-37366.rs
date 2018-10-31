@@ -9,8 +9,9 @@
 // except according to those terms.
 
 // ignore-emscripten
-
-#![feature(rustc_attrs, asm)]
+// compile-pass
+// skip-codegen
+#![feature(asm)]
 
 macro_rules! interrupt_handler {
     () => {
@@ -21,6 +22,6 @@ macro_rules! interrupt_handler {
 }
 interrupt_handler!{}
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
 }

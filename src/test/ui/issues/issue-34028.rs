@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 
 macro_rules! m {
     () => { #[cfg(any())] fn f() {} }
@@ -17,5 +18,5 @@ macro_rules! m {
 trait T {}
 impl T for () { m!(); }
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

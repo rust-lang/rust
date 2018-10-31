@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 
 pub trait Foo {
     type Bar;
@@ -26,7 +27,7 @@ impl<T> Broken for T {
     }
 }
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
     let _m: &Broken<Assoc=()> = &();
 }

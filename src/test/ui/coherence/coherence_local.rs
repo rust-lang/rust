@@ -12,8 +12,8 @@
 // `MyType: !MyTrait` along with other "fundamental" wrappers.
 
 // aux-build:coherence_copy_like_lib.rs
-
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 #![allow(dead_code)]
 
 extern crate coherence_copy_like_lib as lib;
@@ -29,5 +29,5 @@ impl lib::MyCopy for Box<MyType> { }
 impl lib::MyCopy for lib::MyFundamentalStruct<MyType> { }
 impl lib::MyCopy for lib::MyFundamentalStruct<Box<MyType>> { }
 
-#[rustc_error]
-fn main() { } //~ ERROR compilation successful
+
+fn main() { }

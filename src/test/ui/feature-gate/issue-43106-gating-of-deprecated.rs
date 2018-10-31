@@ -15,9 +15,9 @@
 //
 // (For non-crate-level cases, see issue-43106-gating-of-builtin-attrs.rs)
 
-#![feature(rustc_attrs)] // For `rustc_error`; see note below.
+// compile-pass
+// skip-codegen
 #![allow(dead_code)]
-
 #![deprecated           = "1100"]
 
 // Since we expect for the mix of attributes used here to compile
@@ -25,7 +25,7 @@
 // various (mis)uses of attributes, we use the `rustc_error` attribute
 // on the `fn main()`.
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
     println!("Hello World");
 }

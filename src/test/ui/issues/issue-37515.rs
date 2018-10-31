@@ -7,13 +7,13 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-#![feature(rustc_attrs)]
+// skip-codegen
+// compile-pass
 #![warn(unused)]
 
 type Z = for<'x> Send;
 //~^ WARN type alias is never used
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
 }

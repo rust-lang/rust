@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(never_type)]
-#![feature(exhaustive_patterns, rustc_attrs)]
+// compile-pass
+#![feature(never_type, exhaustive_patterns)]
 #![warn(unreachable_code)]
 #![warn(unreachable_patterns)]
 
@@ -42,8 +42,8 @@ fn vom(x: Result<u32, Void>) -> Result<u32, i32> {
     Ok(y)
 }
 
-#[rustc_error]
-fn main() { //~ ERROR: compilation successful
+
+fn main() {
     let _ = bar(Err(123));
     let _ = foo(Err(123));
     let _ = qux(Ok(123));

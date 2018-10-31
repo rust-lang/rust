@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
+// compile-pass
+// skip-codegen
 fn cb<'a,T>(_x: Box<Fn((&'a i32, &'a (Vec<&'static i32>, bool))) -> T>) -> T {
     panic!()
 }
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
     cb(Box::new(|(k, &(ref v, b))| (*k, v.clone(), b)));
 }

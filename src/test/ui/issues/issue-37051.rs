@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs, associated_type_defaults)]
+// compile-pass
+// skip-codegen
+#![feature(associated_type_defaults)]
 #![allow(warnings)]
-
 trait State: Sized {
     type NextState: State = StateMachineEnded;
     fn execute(self) -> Option<Self::NextState>;
@@ -24,6 +25,6 @@ impl State for StateMachineEnded {
     }
 }
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
 }
