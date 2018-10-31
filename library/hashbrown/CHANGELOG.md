@@ -23,4 +23,4 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Initial release
 
-[Unreleased]: https://github.com/japaric/heapless/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.1.2...HEAD
