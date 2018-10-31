@@ -1,70 +1,96 @@
 error: this if-then-else expression will always return true
-  --> $DIR/needless_bool.rs:19:5
+  --> $DIR/needless_bool.rs:41:5
    |
-19 |     if x { true } else { true };
+41 |     if x { true } else { true };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::needless-bool` implied by `-D warnings`
 
 error: this if-then-else expression will always return false
-  --> $DIR/needless_bool.rs:20:5
+  --> $DIR/needless_bool.rs:42:5
    |
-20 |     if x { false } else { false };
+42 |     if x { false } else { false };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:21:5
+  --> $DIR/needless_bool.rs:43:5
    |
-21 |     if x { true } else { false };
+43 |     if x { true } else { false };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:22:5
+  --> $DIR/needless_bool.rs:44:5
    |
-22 |     if x { false } else { true };
+44 |     if x { false } else { true };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `!x`
-
-error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:23:5
-   |
-23 |     if x && y { false } else { true };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `!(x && y)`
-
-error: this if-then-else expression will always return true
-  --> $DIR/needless_bool.rs:35:5
-   |
-35 |     if x { return true } else { return true };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: this if-then-else expression will always return false
-  --> $DIR/needless_bool.rs:40:5
-   |
-40 |     if x { return false } else { return false };
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this if-then-else expression returns a bool literal
   --> $DIR/needless_bool.rs:45:5
    |
-45 |     if x { return true } else { return false };
+45 |     if x && y { false } else { true };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `!(x && y)`
+
+error: this if-then-else expression will always return true
+  --> $DIR/needless_bool.rs:60:5
+   |
+60 |     if x { return true } else { return true };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this if-then-else expression will always return false
+  --> $DIR/needless_bool.rs:65:5
+   |
+65 |     if x { return false } else { return false };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: this if-then-else expression returns a bool literal
+  --> $DIR/needless_bool.rs:70:5
+   |
+70 |     if x { return true } else { return false };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `return x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:50:5
+  --> $DIR/needless_bool.rs:75:5
    |
-50 |     if x && y { return true } else { return false };
+75 |     if x && y { return true } else { return false };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `return x && y`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:55:5
+  --> $DIR/needless_bool.rs:80:5
    |
-55 |     if x { return false } else { return true };
+80 |     if x { return false } else { return true };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `return !x`
 
 error: this if-then-else expression returns a bool literal
-  --> $DIR/needless_bool.rs:60:5
+  --> $DIR/needless_bool.rs:85:5
    |
-60 |     if x && y { return false } else { return true };
+85 |     if x && y { return false } else { return true };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `return !(x && y)`
 
-error: aborting due to 11 previous errors
+error: equality checks against true are unnecessary
+  --> $DIR/needless_bool.rs:89:7
+   |
+89 |    if x  == true { };
+   |       ^^^^^^^^^^ help: try simplifying it as shown: `x`
+   |
+   = note: `-D clippy::bool-comparison` implied by `-D warnings`
+
+error: equality checks against false can be replaced by a negation
+  --> $DIR/needless_bool.rs:93:7
+   |
+93 |    if x  == false { };
+   |       ^^^^^^^^^^^ help: try simplifying it as shown: `!x`
+
+error: equality checks against true are unnecessary
+   --> $DIR/needless_bool.rs:104:8
+    |
+104 |     if x == true { };
+    |        ^^^^^^^^^ help: try simplifying it as shown: `x`
+
+error: equality checks against false can be replaced by a negation
+   --> $DIR/needless_bool.rs:105:8
+    |
+105 |     if x == false { };
+    |        ^^^^^^^^^^ help: try simplifying it as shown: `!x`
+
+error: aborting due to 15 previous errors
 

@@ -17,7 +17,7 @@ use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::hir::*;
 use crate::syntax::ast::LitKind;
 use crate::syntax::source_map::Spanned;
-use crate::utils::{snippet, span_lint, span_lint_and_sugg};
+use crate::utils::{in_macro, snippet, span_lint, span_lint_and_sugg};
 use crate::utils::sugg::Sugg;
 
 /// **What it does:** Checks for expressions of the form `if c { true } else {
@@ -133,6 +133,9 @@ impl LintPass for BoolComparison {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+        if in_macro(e.span) {
+            return;
+        }
         use self::Expression::*;
         if let ExprKind::Binary(Spanned { node: BinOpKind::Eq, .. }, ref left_side, ref right_side) = e.node {
             match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
