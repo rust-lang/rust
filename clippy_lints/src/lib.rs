@@ -48,6 +48,7 @@ use toml;
 
 // Currently, categories "style", "correctness", "complexity" and "perf" are enabled by default,
 // as said in the README.md of this repository. If this changes, please update README.md.
+#[macro_export]
 macro_rules! declare_clippy_lint {
     { pub $name:tt, style, $description:tt } => {
         declare_tool_lint! { pub clippy::$name, Warn, $description, report_in_external_macro: true }

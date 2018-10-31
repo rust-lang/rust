@@ -75,7 +75,10 @@ fn config(mode: &str, dir: PathBuf) -> compiletest::Config {
 }
 
 fn run_mode(mode: &str, dir: PathBuf) {
-    compiletest::run_tests(&config(mode, dir));
+    let cfg = config(mode, dir);
+    // clean rmeta data, otherwise "cargo check; cargo test" fails (#2896)
+    cfg.clean_rmeta();
+    compiletest::run_tests(&cfg);
 }
 
 fn run_ui_toml_tests(config: &compiletest::Config, mut tests: Vec<test::TestDescAndFn>) -> Result<bool, io::Error> {

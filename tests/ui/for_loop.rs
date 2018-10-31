@@ -7,10 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
-
 use std::collections::*;
 use std::rc::Rc;
 
@@ -18,60 +14,6 @@ static STATIC: [usize; 4] = [0, 1, 8, 16];
 const CONST: [usize; 4] = [0, 1, 8, 16];
 
 #[warn(clippy::all)]
-fn for_loop_over_option_and_result() {
-    let option = Some(1);
-    let result = option.ok_or("x not found");
-    let v = vec![0, 1, 2];
-
-    // check FOR_LOOP_OVER_OPTION lint
-    for x in option {
-        println!("{}", x);
-    }
-
-    // check FOR_LOOP_OVER_RESULT lint
-    for x in result {
-        println!("{}", x);
-    }
-
-    for x in option.ok_or("x not found") {
-        println!("{}", x);
-    }
-
-    // make sure LOOP_OVER_NEXT lint takes clippy::precedence when next() is the last call
-    // in the chain
-    for x in v.iter().next() {
-        println!("{}", x);
-    }
-
-    // make sure we lint when next() is not the last call in the chain
-    for x in v.iter().next().and(Some(0)) {
-        println!("{}", x);
-    }
-
-    for x in v.iter().next().ok_or("x not found") {
-        println!("{}", x);
-    }
-
-    // check for false positives
-
-    // for loop false positive
-    for x in v {
-        println!("{}", x);
-    }
-
-    // while let false positive for Option
-    while let Some(x) = option {
-        println!("{}", x);
-        break;
-    }
-
-    // while let false positive for Result
-    while let Ok(x) = result {
-        println!("{}", x);
-        break;
-    }
-}
-
 struct Unrelated(Vec<u8>);
 impl Unrelated {
     fn next(&self) -> std::slice::Iter<u8> {
@@ -84,7 +26,7 @@ impl Unrelated {
 }
 
 #[warn(clippy::needless_range_loop, clippy::explicit_iter_loop, clippy::explicit_into_iter_loop, clippy::iter_next_loop, clippy::reverse_range_loop,
-       clippy::explicit_counter_loop, clippy::for_kv_map)]
+       clippy::for_kv_map)]
 #[warn(clippy::unused_collect)]
 #[allow(clippy::linkedlist, clippy::shadow_unrelated, clippy::unnecessary_mut_passed, clippy::cyclomatic_complexity, clippy::similar_names)]
 #[allow(clippy::many_single_char_names, unused_variables)]
@@ -275,16 +217,6 @@ fn main() {
     let _y = vec.iter().cloned().map(|x| out.push(x)).collect::<Vec<_>>(); // this is fine
 
     // Loop with explicit counter variable
-    let mut _index = 0;
-    for _v in &vec {
-        _index += 1
-    }
-
-    let mut _index = 1;
-    _index = 0;
-    for _v in &vec {
-        _index += 1
-    }
 
     // Potential false positives
     let mut _index = 0;
@@ -388,8 +320,6 @@ fn main() {
         index += 1
     }
     println!("index: {}", index);
-
-    for_loop_over_option_and_result();
 
     let m: HashMap<u64, u64> = HashMap::new();
     for (_, v) in &m {
@@ -592,105 +522,5 @@ mod issue_2496 {
             println!("{}", next_handle.index());
         }
         unimplemented!()
-    }
-}
-
-mod issue_1219 {
-    #[warn(clippy::explicit_counter_loop)]
-    pub fn test() {
-        // should not trigger the lint because variable is used after the loop #473
-        let vec = vec![1,2,3];
-        let mut index = 0;
-        for _v in &vec { index += 1 }
-        println!("index: {}", index);
-
-        // should not trigger the lint because the count is conditional #1219
-        let text = "banana";
-        let mut count = 0;
-        for ch in text.chars() {
-            if ch == 'a' {
-                continue;
-            }
-            count += 1;
-            println!("{}", count);
-        }
-
-        // should not trigger the lint because the count is conditional
-        let text = "banana";
-        let mut count = 0;
-        for ch in text.chars() {
-            if ch == 'a' {
-                count += 1;
-            }
-            println!("{}", count);
-        }
-
-        // should trigger the lint because the count is not conditional
-        let text = "banana";
-        let mut count = 0;
-        for ch in text.chars() {
-            count += 1;
-            if ch == 'a' {
-                continue;
-            }
-            println!("{}", count);
-        }
-
-        // should trigger the lint because the count is not conditional
-        let text = "banana";
-        let mut count = 0;
-        for ch in text.chars() {
-            count += 1;
-            for i in 0..2 {
-                let _ = 123;
-            }
-            println!("{}", count);
-        }
-
-        // should not trigger the lint because the count is incremented multiple times
-        let text = "banana";
-        let mut count = 0;
-        for ch in text.chars() {
-            count += 1;
-            for i in 0..2 {
-                count += 1;
-            }
-            println!("{}", count);
-        }
-    }
-}
-
-mod issue_3308 {
-    #[warn(clippy::explicit_counter_loop)]
-    pub fn test() {
-        // should not trigger the lint because the count is incremented multiple times
-        let mut skips = 0;
-        let erasures = vec![];
-        for i in 0..10 {
-            while erasures.contains(&(i + skips)) {
-                skips += 1;
-            }
-            println!("{}", skips);
-        }
-
-        // should not trigger the lint because the count is incremented multiple times
-        let mut skips = 0;
-        for i in 0..10 {
-            let mut j = 0;
-            while j < 5 {
-                skips += 1;
-                j += 1;
-            }
-            println!("{}", skips);
-        }
-
-        // should not trigger the lint because the count is incremented multiple times
-        let mut skips = 0;
-        for i in 0..10 {
-            for j in 0..5 {
-                skips += 1;
-            }
-            println!("{}", skips);
-        }
     }
 }

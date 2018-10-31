@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
@@ -92,7 +91,14 @@ impl LintPass for StringAdd {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprKind::Binary(Spanned { node: BinOpKind::Add, .. }, ref left, _) = e.node {
+        if let ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::Add, ..
+            },
+            ref left,
+            _,
+        ) = e.node
+        {
             if is_string(cx, left) {
                 if !is_allowed(cx, STRING_ADD_ASSIGN, e.id) {
                     let parent = get_parent_expr(cx, e);
@@ -132,13 +138,15 @@ fn is_string(cx: &LateContext<'_, '_>, e: &Expr) -> bool {
 
 fn is_add(cx: &LateContext<'_, '_>, src: &Expr, target: &Expr) -> bool {
     match src.node {
-        ExprKind::Binary(Spanned { node: BinOpKind::Add, .. }, ref left, _) => SpanlessEq::new(cx).eq_expr(target, left),
+        ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::Add, ..
+            },
+            ref left,
+            _,
+        ) => SpanlessEq::new(cx).eq_expr(target, left),
         ExprKind::Block(ref block, _) => {
-            block.stmts.is_empty()
-                && block
-                    .expr
-                    .as_ref()
-                    .map_or(false, |expr| is_add(cx, expr, target))
+            block.stmts.is_empty() && block.expr.as_ref().map_or(false, |expr| is_add(cx, expr, target))
         },
         _ => false,
     }
@@ -155,14 +163,33 @@ impl LintPass for StringLitAsBytes {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        use crate::syntax::ast::LitKind;
+        use crate::syntax::ast::{LitKind, StrStyle};
         use crate::utils::{in_macro, snippet};
 
         if let ExprKind::MethodCall(ref path, _, ref args) = e.node {
             if path.ident.name == "as_bytes" {
                 if let ExprKind::Lit(ref lit) = args[0].node {
-                    if let LitKind::Str(ref lit_content, _) = lit.node {
-                        if lit_content.as_str().chars().all(|c| c.is_ascii()) && !in_macro(args[0].span) {
+                    if let LitKind::Str(ref lit_content, style) = lit.node {
+                        let callsite = snippet(cx, args[0].span.source_callsite(), r#""foo""#);
+                        let expanded = if let StrStyle::Raw(n) = style {
+                            let term = (0..n).map(|_| '#').collect::<String>();
+                            format!("r{0}\"{1}\"{0}", term, lit_content.as_str())
+                        } else {
+                            format!("\"{}\"", lit_content.as_str())
+                        };
+                        if callsite.starts_with("include_str!") {
+                            span_lint_and_sugg(
+                                cx,
+                                STRING_LIT_AS_BYTES,
+                                e.span,
+                                "calling `as_bytes()` on `include_str!(..)`",
+                                "consider using `include_bytes!(..)` instead",
+                                snippet(cx, args[0].span, r#""foo""#).replacen("include_str", "include_bytes", 1),
+                            );
+                        } else if callsite == expanded
+                            && lit_content.as_str().chars().all(|c| c.is_ascii())
+                            && !in_macro(args[0].span)
+                        {
                             span_lint_and_sugg(
                                 cx,
                                 STRING_LIT_AS_BYTES,

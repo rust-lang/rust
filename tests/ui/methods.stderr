@@ -297,7 +297,7 @@ error: use of `unwrap_or` followed by a function call
    --> $DIR/methods.rs:339:14
     |
 339 |     with_vec.unwrap_or(vec![]);
-    |              ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| < [ _ ] > :: into_vec ( box [ $ ( $ x ) , * ] ))`
+    |              ^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| vec![])`
 
 error: use of `unwrap_or` followed by a function call
    --> $DIR/methods.rs:344:21
