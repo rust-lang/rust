@@ -29,7 +29,7 @@ use crate::{
 };
 
 pub use crate::{
-    descriptors::FnDescriptor,
+    descriptors::function::FnDescriptor,
     input::{FileId, FileResolver, CrateGraph, CrateId}
 };
 pub use ra_editor::{

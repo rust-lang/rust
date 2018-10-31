@@ -12,6 +12,7 @@ salsa::query_group! {
     pub(crate) trait SyntaxPtrDatabase: SyntaxDatabase {
         fn resolve_syntax_ptr(ptr: SyntaxPtr) -> SyntaxNode {
             type ResolveSyntaxPtrQuery;
+            // Don't retain syntax trees in memory
             storage volatile;
         }
     }

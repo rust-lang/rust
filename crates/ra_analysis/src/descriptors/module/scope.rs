@@ -2,8 +2,8 @@
 
 
 use ra_syntax::{
-    ast::{self, AstChildren, ModuleItemOwner},
-    File, AstNode, SmolStr, SyntaxNode, SyntaxNodeRef,
+    ast::{self, ModuleItemOwner},
+    File, AstNode, SmolStr,
 };
 
 use crate::syntax_ptr::LocalSyntaxPtr;
@@ -99,7 +99,7 @@ fn collect_imports(tree: ast::UseTree, acc: &mut Vec<Entry>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ra_syntax::{ast::ModuleItemOwner, File};
+    use ra_syntax::{File};
 
     fn do_check(code: &str, expected: &[&str]) {
         let file = File::parse(&code);

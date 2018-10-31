@@ -1,14 +1,15 @@
 use ra_editor::{CompletionItem, find_node_at_offset};
 use ra_syntax::{
     AtomEdit, File, TextUnit, AstNode,
-    ast::{self, ModuleItemOwner, AstChildren},
+    ast,
 };
 
 use crate::{
     FileId, Cancelable,
     input::FilesDatabase,
     db::{self, SyntaxDatabase},
-    descriptors::module::{ModulesDatabase, ModuleTree, ModuleId, scope::ModuleScope},
+    descriptors::DescriptorDatabase,
+    descriptors::module::{ModuleTree, ModuleId},
 };
 
 pub(crate) fn resolve_based_completion(db: &db::RootDatabase, file_id: FileId, offset: TextUnit) -> Cancelable<Option<Vec<CompletionItem>>> {

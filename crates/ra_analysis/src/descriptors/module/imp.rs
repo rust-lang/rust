@@ -10,14 +10,15 @@ use ra_syntax::{
 use crate::{
     FileId, Cancelable, FileResolverImp, db,
     input::{SourceRoot, SourceRootId},
+    descriptors::DescriptorDatabase,
 };
 
 use super::{
-    ModuleData, ModuleTree, ModuleId, LinkId, LinkData, Problem, ModulesDatabase, ModuleScope
+    ModuleData, ModuleTree, ModuleId, LinkId, LinkData, Problem, ModuleScope
 };
 
 
-pub(super) fn submodules(db: &impl ModulesDatabase, file_id: FileId) -> Cancelable<Arc<Vec<SmolStr>>> {
+pub(crate) fn submodules(db: &impl DescriptorDatabase, file_id: FileId) -> Cancelable<Arc<Vec<SmolStr>>> {
     db::check_canceled(db)?;
     let file = db.file_syntax(file_id);
     let root = file.ast();
@@ -25,7 +26,7 @@ pub(super) fn submodules(db: &impl ModulesDatabase, file_id: FileId) -> Cancelab
     Ok(Arc::new(submodules))
 }
 
-pub(super) fn modules(root: ast::Root<'_>) -> impl Iterator<Item = (SmolStr, ast::Module<'_>)> {
+pub(crate) fn modules(root: ast::Root<'_>) -> impl Iterator<Item = (SmolStr, ast::Module<'_>)> {
     root.modules().filter_map(|module| {
         let name = module.name()?.text();
         if !module.has_semi() {
@@ -35,8 +36,8 @@ pub(super) fn modules(root: ast::Root<'_>) -> impl Iterator<Item = (SmolStr, ast
     })
 }
 
-pub(super) fn module_scope(
-    db: &impl ModulesDatabase,
+pub(crate) fn module_scope(
+    db: &impl DescriptorDatabase,
     source_root_id: SourceRootId,
     module_id: ModuleId,
 ) -> Cancelable<Arc<ModuleScope>> {
@@ -47,8 +48,8 @@ pub(super) fn module_scope(
     Ok(Arc::new(res))
 }
 
-pub(super) fn module_tree(
-    db: &impl ModulesDatabase,
+pub(crate) fn module_tree(
+    db: &impl DescriptorDatabase,
     source_root: SourceRootId,
 ) -> Cancelable<Arc<ModuleTree>> {
     db::check_canceled(db)?;
@@ -64,7 +65,7 @@ pub struct Submodule {
 
 
 fn create_module_tree<'a>(
-    db: &impl ModulesDatabase,
+    db: &impl DescriptorDatabase,
     source_root: SourceRootId,
 ) -> Cancelable<ModuleTree> {
     let mut tree = ModuleTree {
@@ -88,7 +89,7 @@ fn create_module_tree<'a>(
 }
 
 fn build_subtree(
-    db: &impl ModulesDatabase,
+    db: &impl DescriptorDatabase,
     source_root: &SourceRoot,
     tree: &mut ModuleTree,
     visited: &mut FxHashSet<FileId>,

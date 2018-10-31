@@ -1,36 +1,12 @@
-mod imp;
+pub(super) mod imp;
 pub(crate) mod scope;
-
-use std::sync::Arc;
 
 use relative_path::RelativePathBuf;
 use ra_syntax::{ast::{self, NameOwner, AstNode}, SmolStr, SyntaxNode};
 
-use crate::{
-    FileId, Cancelable,
-    db::SyntaxDatabase,
-    input::SourceRootId,
-};
+use crate::FileId;
 
 pub(crate) use self::scope::ModuleScope;
-
-salsa::query_group! {
-    pub(crate) trait ModulesDatabase: SyntaxDatabase {
-        fn module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
-            type ModuleTreeQuery;
-            use fn imp::module_tree;
-        }
-        fn submodules(file_id: FileId) -> Cancelable<Arc<Vec<SmolStr>>> {
-            type SubmodulesQuery;
-            use fn imp::submodules;
-        }
-        fn module_scope(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleScope>> {
-            type ModuleScopeQuery;
-            use fn imp::module_scope;
-        }
-    }
-}
-
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub(crate) struct ModuleTree {

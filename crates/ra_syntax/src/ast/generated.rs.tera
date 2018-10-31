@@ -17,7 +17,7 @@ use crate::{
 pub struct {{ node }}Node(SyntaxNode);
 
 impl {{ node }}Node {
-    pub fn new(&self, ast: {{ node }}) -> {{ node }}Node {
+    pub fn new(ast: {{ node }}) -> {{ node }}Node {
         let syntax = ast.syntax().owned();
         {{ node }}Node(syntax)
     }
