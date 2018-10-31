@@ -342,7 +342,12 @@ pub struct LiteralDigitGrouping;
 
 impl LintPass for LiteralDigitGrouping {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNREADABLE_LITERAL, INCONSISTENT_DIGIT_GROUPING, LARGE_DIGIT_GROUPS)
+        lint_array!(
+            UNREADABLE_LITERAL,
+            INCONSISTENT_DIGIT_GROUPING,
+            LARGE_DIGIT_GROUPS,
+            MISTYPED_LITERAL_SUFFIXES,
+        )
     }
 }
 
