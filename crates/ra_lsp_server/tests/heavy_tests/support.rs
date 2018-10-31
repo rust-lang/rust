@@ -17,6 +17,7 @@ use languageserver_types::{
 use serde::Serialize;
 use serde_json::{from_str, to_string_pretty, Value};
 use tempdir::TempDir;
+use test_utils::parse_fixture;
 
 use ra_lsp_server::{
     main_loop, req,
@@ -28,30 +29,14 @@ pub fn project(fixture: &str) -> Server {
     INIT.call_once(|| Logger::with_env_or_str(crate::LOG).start().unwrap());
 
     let tmp_dir = TempDir::new("test-project").unwrap();
-    let mut buf = String::new();
-    let mut file_name = None;
     let mut paths = vec![];
-    macro_rules! flush {
-        () => {
-            if let Some(file_name) = file_name {
-                let path = tmp_dir.path().join(file_name);
-                fs::create_dir_all(path.parent().unwrap()).unwrap();
-                fs::write(path.as_path(), buf.as_bytes()).unwrap();
-                paths.push((path, buf.clone()));
-            }
-        };
-    };
-    for line in fixture.lines() {
-        if line.starts_with("//-") {
-            flush!();
-            buf.clear();
-            file_name = Some(line["//-".len()..].trim());
-            continue;
-        }
-        buf.push_str(line);
-        buf.push('\n');
+
+    for entry in parse_fixture(fixture) {
+        let path = tmp_dir.path().join(entry.meta);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path.as_path(), entry.text.as_bytes()).unwrap();
+        paths.push((path, entry.text));
     }
-    flush!();
     Server::new(tmp_dir, paths)
 }
 

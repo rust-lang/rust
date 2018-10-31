@@ -87,3 +87,45 @@ pub fn add_cursor(text: &str, offset: TextUnit) -> String {
     res.push_str(&text[offset..]);
     res
 }
+
+
+#[derive(Debug)]
+pub struct FixtureEntry {
+    pub meta: String,
+    pub text: String,
+}
+
+/// Parses text wich looks like this:
+///
+///  ```notrust
+///  //- some meta
+///  line 1
+///  line 2
+///  // - other meta
+///  ```
+pub fn parse_fixture(fixture: &str) -> Vec<FixtureEntry> {
+    let mut res = Vec::new();
+    let mut buf = String::new();
+    let mut meta: Option<&str> = None;
+
+    macro_rules! flush {
+        () => {
+            if let Some(meta) = meta {
+                res.push(FixtureEntry { meta: meta.to_string(), text: buf.clone() });
+                buf.clear();
+            }
+        };
+    };
+    for line in fixture.lines() {
+        if line.starts_with("//-") {
+            flush!();
+            buf.clear();
+            meta = Some(line["//-".len()..].trim());
+            continue;
+        }
+        buf.push_str(line);
+        buf.push('\n');
+    }
+    flush!();
+    res
+}
