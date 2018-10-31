@@ -12,7 +12,16 @@ use core::borrow::Borrow;
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
 use core::iter::{Chain, FromIterator, FusedIterator};
+#[cfg(feature = "serde")]
+use core::marker::PhantomData;
 use core::ops::{BitAnd, BitOr, BitXor, Sub};
+#[cfg(feature = "serde")]
+use serde::de::{Deserialize, Deserializer, SeqAccess, Visitor};
+#[cfg(feature = "serde")]
+use serde::ser::{Serialize, Serializer};
+
+#[cfg(feature = "serde")]
+use super::size_hint;
 
 use super::map::{self, DefaultHashBuilder, HashMap, Keys};
 
@@ -1353,6 +1362,105 @@ where
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<T, H> Serialize for HashSet<T, H>
+where
+    T: Serialize + Eq + Hash,
+    H: BuildHasher,
+{
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.collect_seq(self)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de, T, S> Deserialize<'de> for HashSet<T, S>
+where
+    T: Deserialize<'de> + Eq + Hash,
+    S: BuildHasher + Default,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct SeqVisitor<T, S> {
+            marker: PhantomData<HashSet<T, S>>,
+        }
+
+        impl<'de, T, S> Visitor<'de> for SeqVisitor<T, S>
+        where
+            T: Deserialize<'de> + Eq + Hash,
+            S: BuildHasher + Default,
+        {
+            type Value = HashSet<T, S>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a sequence")
+            }
+
+            #[inline]
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                let mut values = HashSet::with_capacity_and_hasher(
+                    size_hint::cautious(seq.size_hint()),
+                    S::default(),
+                );
+
+                while let Some(value) = seq.next_element()? {
+                    values.insert(value);
+                }
+
+                Ok(values)
+            }
+        }
+
+        let visitor = SeqVisitor { marker: PhantomData };
+        deserializer.deserialize_seq(visitor)
+    }
+
+    fn deserialize_in_place<D>(deserializer: D, place: &mut Self) -> Result<(), D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct SeqInPlaceVisitor<'a, T: 'a, S: 'a>(&'a mut HashSet<T, S>);
+
+        impl<'a, 'de, T, S> Visitor<'de> for SeqInPlaceVisitor<'a, T, S>
+        where
+            T: Deserialize<'de> + Eq + Hash,
+            S: BuildHasher + Default,
+        {
+            type Value = ();
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a sequence")
+            }
+
+            #[inline]
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: SeqAccess<'de>,
+            {
+                self.0.clear();
+                self.0.reserve(size_hint::cautious(seq.size_hint()));
+
+                while let Some(value) = seq.next_element()? {
+                    self.0.insert(value);
+                }
+
+                Ok(())
+            }
+        }
+
+        deserializer.deserialize_seq(SeqInPlaceVisitor(place))
     }
 }
 
