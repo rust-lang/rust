@@ -492,9 +492,12 @@ where
     /// }
     /// ```
     pub fn iter(&self) -> Iter<K, V> {
-        Iter {
-            inner: self.table.iter(),
-            _marker: PhantomData,
+        // Here we tie the lifetime of self to the iter.
+        unsafe {
+            Iter {
+                inner: self.table.iter(),
+                _marker: PhantomData,
+            }
         }
     }
 
@@ -522,9 +525,12 @@ where
     /// }
     /// ```
     pub fn iter_mut(&mut self) -> IterMut<K, V> {
-        IterMut {
-            inner: self.table.iter(),
-            _marker: PhantomData,
+        // Here we tie the lifetime of self to the iter.
+        unsafe {
+            IterMut {
+                inner: self.table.iter(),
+                _marker: PhantomData,
+            }
         }
     }
 
@@ -618,8 +624,11 @@ where
     /// ```
     #[inline]
     pub fn drain(&mut self) -> Drain<K, V> {
-        Drain {
-            inner: self.table.drain(),
+        // Here we tie the lifetime of self to the iter.
+        unsafe {
+            Drain {
+                inner: self.table.drain(),
+            }
         }
     }
 
@@ -884,8 +893,9 @@ where
     where
         F: FnMut(&K, &mut V) -> bool,
     {
-        for item in self.table.iter() {
-            unsafe {
+        // Here we only use `iter` as a temporary, preventing use-after-free
+        unsafe {
+            for item in self.table.iter() {
                 let &mut (ref key, ref mut value) = item.as_mut();
                 if !f(key, value) {
                     // Erase the element from the table first since drop might panic.
