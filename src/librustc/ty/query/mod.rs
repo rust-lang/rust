@@ -687,7 +687,7 @@ define_queries! { <'tcx>
         ) -> Clauses<'tcx>,
 
         // Get the chalk-style environment of the given item.
-        [] fn environment: Environment(DefId) -> traits::Environment<'tcx>,
+        [] fn environment: Environment(DefId) -> ty::Binder<traits::Environment<'tcx>>,
     },
 
     Linking {

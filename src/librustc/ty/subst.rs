@@ -179,6 +179,30 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         })
     }
 
+    pub fn bound_vars_for_item(
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        def_id: DefId
+    ) -> &'tcx Substs<'tcx> {
+        Substs::for_item(tcx, def_id, |param, _| {
+            match param.kind {
+                ty::GenericParamDefKind::Type { .. } => {
+                    tcx.mk_ty(ty::Bound(ty::BoundTy {
+                        index: ty::INNERMOST,
+                        var: ty::BoundVar::from(param.index),
+                        kind: ty::BoundTyKind::Param(param.name),
+                    })).into()
+                }
+
+                ty::GenericParamDefKind::Lifetime => {
+                    tcx.mk_region(ty::RegionKind::ReLateBound(
+                        ty::INNERMOST,
+                        ty::BoundRegion::BrNamed(param.def_id, param.name)
+                    )).into()
+                }
+            }
+        })
+    }
+
     /// Creates a `Substs` for generic parameter definitions,
     /// by calling closures to obtain each kind.
     /// The closures get to observe the `Substs` as they're
