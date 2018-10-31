@@ -42,7 +42,6 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
-#![cfg_attr(stage0, feature(min_const_fn))]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 #![cfg_attr(windows, feature(libc))]
@@ -67,7 +66,6 @@
 #![feature(step_trait)]
 #![feature(integer_atomics)]
 #![feature(test)]
-#![cfg_attr(stage0, feature(impl_header_lifetime_elision))]
 #![feature(in_band_lifetimes)]
 #![feature(macro_at_most_once_rep)]
 #![feature(crate_visibility_modifier)]

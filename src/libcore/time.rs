@@ -109,7 +109,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    #[cfg_attr(not(stage0), rustc_promotable)]
+    #[rustc_promotable]
     pub const fn from_secs(secs: u64) -> Duration {
         Duration { secs, nanos: 0 }
     }
@@ -128,7 +128,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration", since = "1.3.0")]
     #[inline]
-    #[cfg_attr(not(stage0), rustc_promotable)]
+    #[rustc_promotable]
     pub const fn from_millis(millis: u64) -> Duration {
         Duration {
             secs: millis / MILLIS_PER_SEC,
@@ -150,7 +150,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_from_micros", since = "1.27.0")]
     #[inline]
-    #[cfg_attr(not(stage0), rustc_promotable)]
+    #[rustc_promotable]
     pub const fn from_micros(micros: u64) -> Duration {
         Duration {
             secs: micros / MICROS_PER_SEC,
@@ -172,7 +172,7 @@ impl Duration {
     /// ```
     #[stable(feature = "duration_extras", since = "1.27.0")]
     #[inline]
-    #[cfg_attr(not(stage0), rustc_promotable)]
+    #[rustc_promotable]
     pub const fn from_nanos(nanos: u64) -> Duration {
         Duration {
             secs: nanos / (NANOS_PER_SEC as u64),

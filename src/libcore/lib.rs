@@ -88,7 +88,6 @@
 #![feature(doc_spotlight)]
 #![feature(extern_types)]
 #![feature(fundamental)]
-#![cfg_attr(stage0, feature(impl_header_lifetime_elision))]
 #![feature(intrinsics)]
 #![feature(lang_items)]
 #![feature(link_llvm_intrinsics)]
