@@ -10,7 +10,7 @@ pub fn extend_selection(file: &File, range: TextRange) -> Option<TextRange> {
     extend(syntax.borrowed(), range)
 }
 
-pub fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange> {
+pub(crate) fn extend(root: SyntaxNodeRef, range: TextRange) -> Option<TextRange> {
     if range.is_empty() {
         let offset = range.start();
         let mut leaves = find_leaf_at_offset(root, offset);

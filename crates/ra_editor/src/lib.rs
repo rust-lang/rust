@@ -20,7 +20,7 @@ mod typing;
 pub use self::{
     code_actions::{add_derive, add_impl, flip_comma, introduce_variable, LocalEdit},
     edit::{Edit, EditBuilder},
-    extend_selection::{extend, extend_selection},
+    extend_selection::extend_selection,
     folding_ranges::{folding_ranges, Fold, FoldKind},
     line_index::{LineCol, LineIndex},
     symbols::{file_structure, file_symbols, FileSymbol, StructureNode},
