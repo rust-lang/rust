@@ -10,7 +10,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    Machine, EvalContext, MPlaceTy, OpTy,
+    Machine, EvalContext, MPlaceTy, PlaceTy, OpTy,
 };
 
 // A thing that we can project into, and that has a layout.
@@ -21,13 +21,16 @@ pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
     // Get this value's layout.
     fn layout(&self) -> TyLayout<'tcx>;
 
-    // Get the underlying `MPlaceTy`, or panic if there is no such thing.
-    fn to_mem_place(self) -> MPlaceTy<'tcx, M::PointerTag>;
+    // Make this a `MPlaceTy`, or panic if that's not possible.
+    fn force_allocation(
+        self,
+        ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>>;
 
-    // Create this from an `MPlaceTy`
+    // Create this from an `MPlaceTy`.
     fn from_mem_place(MPlaceTy<'tcx, M::PointerTag>) -> Self;
 
-    // Project to the n-th field
+    // Project to the n-th field.
     fn project_field(
         self,
         ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
@@ -45,8 +48,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     }
 
     #[inline(always)]
-    fn to_mem_place(self) -> MPlaceTy<'tcx, M::PointerTag> {
-        self.to_mem_place()
+    fn force_allocation(
+        self,
+        _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        Ok(self.to_mem_place())
     }
 
     #[inline(always)]
@@ -61,6 +67,66 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
         field: u64,
     ) -> EvalResult<'tcx, Self> {
         ectx.operand_field(self, field)
+    }
+}
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
+    for MPlaceTy<'tcx, M::PointerTag>
+{
+    #[inline(always)]
+    fn layout(&self) -> TyLayout<'tcx> {
+        self.layout
+    }
+
+    #[inline(always)]
+    fn force_allocation(
+        self,
+        _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        Ok(self)
+    }
+
+    #[inline(always)]
+    fn from_mem_place(mplace: MPlaceTy<'tcx, M::PointerTag>) -> Self {
+        mplace
+    }
+
+    #[inline(always)]
+    fn project_field(
+        self,
+        ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+        field: u64,
+    ) -> EvalResult<'tcx, Self> {
+        ectx.mplace_field(self, field)
+    }
+}
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
+    for PlaceTy<'tcx, M::PointerTag>
+{
+    #[inline(always)]
+    fn layout(&self) -> TyLayout<'tcx> {
+        self.layout
+    }
+
+    #[inline(always)]
+    fn force_allocation(
+        self,
+        ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        ectx.force_allocation(self)
+    }
+
+    #[inline(always)]
+    fn from_mem_place(mplace: MPlaceTy<'tcx, M::PointerTag>) -> Self {
+        mplace.into()
+    }
+
+    #[inline(always)]
+    fn project_field(
+        self,
+        ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+        field: u64,
+    ) -> EvalResult<'tcx, Self> {
+        ectx.place_field(self, field)
     }
 }
 
@@ -135,7 +201,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         // If it is a trait object, switch to the actual type that was used to create it.
         match v.layout().ty.sty {
             ty::Dynamic(..) => {
-                let dest = v.value().to_mem_place(); // immediate trait objects are not a thing
+                // immediate trait objects are not a thing
+                let dest = v.value().force_allocation(self)?;
                 let inner = self.unpack_dyn_trait(dest)?.1;
                 // recurse with the inner type
                 return v.with_field(Value::from_mem_place(inner), 0, |v| self.visit_value(v));
@@ -201,7 +268,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         MPlaceTy::dangling(v.layout(), self)
                     } else {
                         // non-ZST array/slice/str cannot be immediate
-                        v.value().to_mem_place()
+                        v.value().force_allocation(self)?
                     };
                     // Now iterate over it.
                     for (i, field) in self.mplace_array_fields(mplace)?.enumerate() {
