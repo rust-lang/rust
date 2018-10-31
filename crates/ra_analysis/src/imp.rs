@@ -102,6 +102,8 @@ impl AnalysisHostImpl {
             .set(WORKSPACE, Default::default());
         db.query(crate::input::CrateGraphQuery)
             .set((), Default::default());
+        db.query(crate::input::LibrariesQuery)
+            .set((), Default::default());
         AnalysisHostImpl { db }
     }
     pub fn analysis(&self) -> AnalysisImpl {
