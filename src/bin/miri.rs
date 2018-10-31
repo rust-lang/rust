@@ -107,6 +107,7 @@ fn after_analysis<'a, 'tcx>(
     state: &mut CompileState<'a, 'tcx>,
     validate: bool,
 ) {
+    init_late_loggers();
     state.session.abort_if_errors();
 
     let tcx = state.tcx.unwrap();
@@ -150,16 +151,25 @@ fn after_analysis<'a, 'tcx>(
     }
 }
 
-fn init_loggers() {
+fn init_early_loggers() {
     // Notice that our `extern crate log` is NOT the same as rustc's!  So we have to initialize
-    // them both.
-    // First, miri.
+    // them both.  We always initialize miri early.
     let env = env_logger::Env::new().filter("MIRI_LOG").write_style("MIRI_LOG_STYLE");
     env_logger::init_from_env(env);
-    // Now, change the RUST_LOG env var to control rustc's logger.
-    // If MIRI_LOG is set and RUST_LOG is not, set RUST_LOG.
+    // We only initialize rustc if the env var is set (so the user asked for it).
+    // If it is not set, we avoid initializing now so that we can initialize
+    // later with our custom settings, and NOT log anything for what happens before
+    // miri gets started.
+    if env::var("RUST_LOG").is_ok() {
+        rustc_driver::init_rustc_env_logger();
+    }
+}
+
+fn init_late_loggers() {
+    // Initializing loggers right before we start evaluation.  We overwrite the RUST_LOG
+    // env var if it is not set, control it based on MIRI_LOG.
     if let Ok(var) = env::var("MIRI_LOG") {
-        if env::var("RUST_LOG") == Err(env::VarError::NotPresent) {
+        if env::var("RUST_LOG").is_err() {
             // We try to be a bit clever here: If MIRI_LOG is just a single level
             // used for everything, we only apply it to the parts of rustc that are
             // CTFE-related.  Only if MIRI_LOG contains `module=level`, we just
@@ -172,9 +182,9 @@ fn init_loggers() {
                 env::set_var("RUST_LOG",
                     &format!("rustc::mir::interpret={0},rustc_mir::interpret={0}", var));
             }
+            rustc_driver::init_rustc_env_logger();
         }
     }
-    rustc_driver::init_rustc_env_logger();
 }
 
 fn find_sysroot() -> String {
@@ -199,7 +209,7 @@ fn find_sysroot() -> String {
 }
 
 fn main() {
-    init_loggers();
+    init_early_loggers();
     let mut args: Vec<String> = std::env::args().collect();
 
     let sysroot_flag = String::from("--sysroot");
