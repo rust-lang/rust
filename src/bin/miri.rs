@@ -12,6 +12,9 @@ extern crate log_settings;
 extern crate syntax;
 extern crate log;
 
+use std::path::PathBuf;
+use std::env;
+
 use rustc::session::Session;
 use rustc_metadata::cstore::CStore;
 use rustc_driver::{Compilation, CompilerCalls, RustcDefaultCalls};
@@ -21,7 +24,6 @@ use rustc::hir::{self, itemlikevisit};
 use rustc::ty::TyCtxt;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use syntax::ast;
-use std::path::PathBuf;
 
 struct MiriCompilerCalls {
     default: Box<RustcDefaultCalls>,
@@ -148,42 +150,31 @@ fn after_analysis<'a, 'tcx>(
     }
 }
 
-fn init_logger() {
-    let format = |formatter: &mut env_logger::fmt::Formatter, record: &log::Record| {
-        use std::io::Write;
-        if record.level() == log::Level::Trace {
-            // prepend frame number
-            let indentation = log_settings::settings().indentation;
-            writeln!(
-                formatter,
-                "{indentation}:{lvl}:{module}: {text}",
-                lvl = record.level(),
-                module = record.module_path().unwrap_or("<unknown module>"),
-                indentation = indentation,
-                text = record.args(),
-            )
-        } else {
-            writeln!(
-                formatter,
-                "{lvl}:{module}: {text}",
-                lvl = record.level(),
-                module = record.module_path().unwrap_or("<unknown_module>"),
-                text = record.args(),
-            )
+fn init_loggers() {
+    // Notice that our `extern crate log` is NOT the same as rustc's!  So we have to initialize
+    // them both.
+    // First, miri.
+    let env = env_logger::Env::new().filter("MIRI_LOG").write_style("MIRI_LOG_STYLE");
+    env_logger::init_from_env(env);
+    // Now, change the RUST_LOG env var to control rustc's logger.
+    // If MIRI_LOG is set and RUST_LOG is not, set RUST_LOG.
+    if let Ok(var) = env::var("MIRI_LOG") {
+        if env::var("RUST_LOG") == Err(env::VarError::NotPresent) {
+            // We try to be a bit clever here: If MIRI_LOG is just a single level
+            // used for everything, we only apply it to the parts of rustc that are
+            // CTFE-related.  Only if MIRI_LOG contains `module=level`, we just
+            // use the same value for RUST_LOG.
+            // This way, if you set `MIRI_LOG=trace`, you get only the right parts of
+            // rustc traced, but you can also do `MIRI_LOG=miri=trace,rustc_mir::interpret=debug`.
+            if var.contains('=') {
+                env::set_var("RUST_LOG", &var);
+            } else {
+                env::set_var("RUST_LOG",
+                    &format!("rustc::mir::interpret={0},rustc_mir::interpret={0}", var));
+            }
         }
-    };
-
-    let mut builder = env_logger::Builder::new();
-    builder.format(format).filter(
-        None,
-        log::LevelFilter::Info,
-    );
-
-    if std::env::var("MIRI_LOG").is_ok() {
-        builder.parse(&std::env::var("MIRI_LOG").unwrap());
     }
-
-    builder.init();
+    rustc_driver::init_rustc_env_logger();
 }
 
 fn find_sysroot() -> String {
@@ -208,8 +199,7 @@ fn find_sysroot() -> String {
 }
 
 fn main() {
-    rustc_driver::init_rustc_env_logger();
-    init_logger();
+    init_loggers();
     let mut args: Vec<String> = std::env::args().collect();
 
     let sysroot_flag = String::from("--sysroot");
