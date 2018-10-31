@@ -184,6 +184,7 @@ pub struct HashMap<K, V, S = DefaultHashBuilder> {
     table: RawTable<(K, V)>,
 }
 
+#[inline]
 fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: &K) -> u64 {
     let mut state = hash_builder.build_hasher();
     val.hash(&mut state);
@@ -300,6 +301,7 @@ where
     /// let map: HashMap<i32, i32> = HashMap::with_hasher(hasher);
     /// let hasher: &DefaultHashBuilder = map.hasher();
     /// ```
+    #[inline]
     pub fn hasher(&self) -> &S {
         &self.hash_builder
     }
@@ -338,6 +340,7 @@ where
     /// let mut map: HashMap<&str, i32> = HashMap::new();
     /// map.reserve(10);
     /// ```
+    #[inline]
     pub fn reserve(&mut self, additional: usize) {
         let hash_builder = &self.hash_builder;
         self.table
@@ -360,6 +363,7 @@ where
     /// map.shrink_to_fit();
     /// assert!(map.capacity() >= 2);
     /// ```
+    #[inline]
     pub fn shrink_to_fit(&mut self) {
         let hash_builder = &self.hash_builder;
         self.table.shrink_to(0, |x| make_hash(hash_builder, &x.0));
@@ -386,6 +390,7 @@ where
     /// map.shrink_to(0);
     /// assert!(map.capacity() >= 2);
     /// ```
+    #[inline]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         assert!(
             self.capacity() >= min_capacity,
@@ -414,6 +419,7 @@ where
     ///     println!("{}", key);
     /// }
     /// ```
+    #[inline]
     pub fn keys(&self) -> Keys<K, V> {
         Keys { inner: self.iter() }
     }
@@ -435,6 +441,7 @@ where
     ///     println!("{}", val);
     /// }
     /// ```
+    #[inline]
     pub fn values(&self) -> Values<K, V> {
         Values { inner: self.iter() }
     }
@@ -461,6 +468,7 @@ where
     ///     println!("{}", val);
     /// }
     /// ```
+    #[inline]
     pub fn values_mut(&mut self) -> ValuesMut<K, V> {
         ValuesMut {
             inner: self.iter_mut(),
@@ -484,6 +492,7 @@ where
     ///     println!("key: {} val: {}", key, val);
     /// }
     /// ```
+    #[inline]
     pub fn iter(&self) -> Iter<K, V> {
         Iter {
             inner: self.table.iter(),
@@ -514,6 +523,7 @@ where
     ///     println!("key: {} val: {}", key, val);
     /// }
     /// ```
+    #[inline]
     pub fn iter_mut(&mut self) -> IterMut<K, V> {
         IterMut {
             inner: self.table.iter(),
@@ -540,6 +550,7 @@ where
     /// assert_eq!(letters[&'u'], 1);
     /// assert_eq!(letters.get(&'y'), None);
     /// ```
+    #[inline]
     pub fn entry(&mut self, key: K) -> Entry<K, V, S> {
         let hash = make_hash(&self.hash_builder, &key);
         if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
@@ -569,6 +580,7 @@ where
     /// a.insert(1, "a");
     /// assert_eq!(a.len(), 1);
     /// ```
+    #[inline]
     pub fn len(&self) -> usize {
         self.table.len()
     }
@@ -681,6 +693,7 @@ where
     /// assert_eq!(map.get_key_value(&1), Some((&1, &"a")));
     /// assert_eq!(map.get_key_value(&2), None);
     /// ```
+    #[inline]
     pub fn get_key_value<Q: ?Sized>(&self, k: &Q) -> Option<(&K, &V)>
     where
         K: Borrow<Q>,
@@ -714,6 +727,7 @@ where
     /// assert_eq!(map.contains_key(&1), true);
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
+    #[inline]
     pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
     where
         K: Borrow<Q>,
@@ -743,6 +757,7 @@ where
     /// }
     /// assert_eq!(map[&1], "b");
     /// ```
+    #[inline]
     pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
     where
         K: Borrow<Q>,
@@ -779,6 +794,7 @@ where
     /// assert_eq!(map.insert(37, "c"), Some("b"));
     /// assert_eq!(map[&37], "c");
     /// ```
+    #[inline]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         unsafe {
             let hash = make_hash(&self.hash_builder, &k);
@@ -813,6 +829,7 @@ where
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
     /// ```
+    #[inline]
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
     where
         K: Borrow<Q>,
@@ -843,6 +860,7 @@ where
     /// assert_eq!(map.remove(&1), None);
     /// # }
     /// ```
+    #[inline]
     pub fn remove_entry<Q: ?Sized>(&mut self, k: &Q) -> Option<(K, V)>
     where
         K: Borrow<Q>,
@@ -931,6 +949,7 @@ where
     S: BuildHasher + Default,
 {
     /// Creates an empty `HashMap<K, V, S>`, with the `Default` value for the hasher.
+    #[inline]
     fn default() -> HashMap<K, V, S> {
         HashMap::with_hasher(Default::default())
     }
@@ -969,6 +988,7 @@ pub struct Iter<'a, K: 'a, V: 'a> {
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 impl<'a, K, V> Clone for Iter<'a, K, V> {
+    #[inline]
     fn clone(&self) -> Iter<'a, K, V> {
         Iter {
             inner: self.inner.clone(),
@@ -997,6 +1017,7 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 
 impl<'a, K, V> IterMut<'a, K, V> {
     /// Returns a iterator of references over the remaining items.
+    #[inline]
     pub(crate) fn iter(&self) -> Iter<K, V> {
         Iter {
             inner: self.inner.clone(),
@@ -1018,6 +1039,7 @@ pub struct IntoIter<K, V> {
 
 impl<K, V> IntoIter<K, V> {
     /// Returns a iterator of references over the remaining items.
+    #[inline]
     pub(crate) fn iter(&self) -> Iter<K, V> {
         Iter {
             inner: self.inner.iter(),
@@ -1039,6 +1061,7 @@ pub struct Keys<'a, K: 'a, V: 'a> {
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 impl<'a, K, V> Clone for Keys<'a, K, V> {
+    #[inline]
     fn clone(&self) -> Keys<'a, K, V> {
         Keys {
             inner: self.inner.clone(),
@@ -1065,6 +1088,7 @@ pub struct Values<'a, K: 'a, V: 'a> {
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 impl<'a, K, V> Clone for Values<'a, K, V> {
+    #[inline]
     fn clone(&self) -> Values<'a, K, V> {
         Values {
             inner: self.inner.clone(),
@@ -1091,6 +1115,7 @@ pub struct Drain<'a, K: 'a, V: 'a> {
 
 impl<'a, K, V> Drain<'a, K, V> {
     /// Returns a iterator of references over the remaining items.
+    #[inline]
     pub(crate) fn iter(&self) -> Iter<K, V> {
         Iter {
             inner: self.inner.iter(),
@@ -1191,6 +1216,7 @@ where
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
 
+    #[inline]
     fn into_iter(self) -> Iter<'a, K, V> {
         self.iter()
     }
@@ -1204,6 +1230,7 @@ where
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
 
+    #[inline]
     fn into_iter(self) -> IterMut<'a, K, V> {
         self.iter_mut()
     }
@@ -1234,6 +1261,7 @@ where
     /// // Not possible with .iter()
     /// let vec: Vec<(&str, i32)> = map.into_iter().collect();
     /// ```
+    #[inline]
     fn into_iter(self) -> IntoIter<K, V> {
         IntoIter {
             inner: self.table.into_iter(),
@@ -1441,6 +1469,7 @@ impl<'a, K: Eq + Hash, V, S: BuildHasher> Entry<'a, K, V, S> {
     /// *map.entry("poneyland").or_insert(12) += 10;
     /// assert_eq!(map["poneyland"], 22);
     /// ```
+    #[inline]
     pub fn or_insert(self, default: V) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
@@ -1463,6 +1492,7 @@ impl<'a, K: Eq + Hash, V, S: BuildHasher> Entry<'a, K, V, S> {
     ///
     /// assert_eq!(map["poneyland"], "hoho".to_string());
     /// ```
+    #[inline]
     pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
@@ -1480,6 +1510,7 @@ impl<'a, K: Eq + Hash, V, S: BuildHasher> Entry<'a, K, V, S> {
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
     /// ```
+    #[inline]
     pub fn key(&self) -> &K {
         match *self {
             Occupied(ref entry) => entry.key(),
@@ -1507,6 +1538,7 @@ impl<'a, K: Eq + Hash, V, S: BuildHasher> Entry<'a, K, V, S> {
     ///    .or_insert(42);
     /// assert_eq!(map["poneyland"], 43);
     /// ```
+    #[inline]
     pub fn and_modify<F>(self, f: F) -> Self
     where
         F: FnOnce(&mut V),
@@ -1537,6 +1569,7 @@ impl<'a, K: Eq + Hash, V: Default, S: BuildHasher> Entry<'a, K, V, S> {
     /// assert_eq!(map["poneyland"], None);
     /// # }
     /// ```
+    #[inline]
     pub fn or_default(self) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
@@ -1557,6 +1590,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// map.entry("poneyland").or_insert(12);
     /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
     /// ```
+    #[inline]
     pub fn key(&self) -> &K {
         unsafe { &self.elem.as_ref().0 }
     }
@@ -1579,6 +1613,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     ///
     /// assert_eq!(map.contains_key("poneyland"), false);
     /// ```
+    #[inline]
     pub fn remove_entry(self) -> (K, V) {
         unsafe {
             // Erase the element from the table first since drop might panic.
@@ -1602,6 +1637,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     ///     assert_eq!(o.get(), &12);
     /// }
     /// ```
+    #[inline]
     pub fn get(&self) -> &V {
         unsafe { &self.elem.as_ref().1 }
     }
@@ -1633,6 +1669,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     ///
     /// assert_eq!(map["poneyland"], 24);
     /// ```
+    #[inline]
     pub fn get_mut(&mut self) -> &mut V {
         unsafe { &mut self.elem.as_mut().1 }
     }
@@ -1660,6 +1697,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     ///
     /// assert_eq!(map["poneyland"], 22);
     /// ```
+    #[inline]
     pub fn into_mut(self) -> &'a mut V {
         unsafe { &mut self.elem.as_mut().1 }
     }
@@ -1681,6 +1719,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     ///
     /// assert_eq!(map["poneyland"], 15);
     /// ```
+    #[inline]
     pub fn insert(&mut self, mut value: V) -> V {
         let old_value = self.get_mut();
         mem::swap(&mut value, old_value);
@@ -1704,6 +1743,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     ///
     /// assert_eq!(map.contains_key("poneyland"), false);
     /// ```
+    #[inline]
     pub fn remove(self) -> V {
         self.remove_entry().1
     }
@@ -1728,6 +1768,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// }
     ///
     /// ```
+    #[inline]
     pub fn replace_entry(self, value: V) -> (K, V) {
         let entry = unsafe { self.elem.as_mut() };
 
@@ -1761,6 +1802,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     ///     }
     /// }
     /// ```
+    #[inline]
     pub fn replace_key(self) -> K {
         let entry = unsafe { self.elem.as_mut() };
         mem::replace(&mut entry.0, self.key.unwrap())
@@ -1779,6 +1821,7 @@ impl<'a, K: 'a + Eq + Hash, V: 'a, S: BuildHasher> VacantEntry<'a, K, V, S> {
     /// let mut map: HashMap<&str, u32> = HashMap::new();
     /// assert_eq!(map.entry("poneyland").key(), &"poneyland");
     /// ```
+    #[inline]
     pub fn key(&self) -> &K {
         &self.key
     }
@@ -1797,6 +1840,7 @@ impl<'a, K: 'a + Eq + Hash, V: 'a, S: BuildHasher> VacantEntry<'a, K, V, S> {
     ///     v.into_key();
     /// }
     /// ```
+    #[inline]
     pub fn into_key(self) -> K {
         self.key
     }
@@ -1817,6 +1861,7 @@ impl<'a, K: 'a + Eq + Hash, V: 'a, S: BuildHasher> VacantEntry<'a, K, V, S> {
     /// }
     /// assert_eq!(map["poneyland"], 37);
     /// ```
+    #[inline]
     pub fn insert(self, value: V) -> &'a mut V {
         let hash_builder = &self.table.hash_builder;
         let bucket = self.table.table.insert(self.hash, (self.key, value), |x| {
@@ -1831,6 +1876,7 @@ where
     K: Eq + Hash,
     S: BuildHasher + Default,
 {
+    #[inline]
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> HashMap<K, V, S> {
         let iter = iter.into_iter();
         let mut map = HashMap::with_capacity_and_hasher(iter.size_hint().0, Default::default());
@@ -1846,6 +1892,7 @@ where
     K: Eq + Hash,
     S: BuildHasher,
 {
+    #[inline]
     fn extend<T: IntoIterator<Item = (K, V)>>(&mut self, iter: T) {
         // Keys may be already present or show multiple times in the iterator.
         // Reserve the entire hint lower bound if the map is empty.

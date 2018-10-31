@@ -238,6 +238,7 @@ where
     /// let set: HashSet<i32> = HashSet::with_hasher(hasher);
     /// let hasher: &DefaultHashBuilder = set.hasher();
     /// ```
+    #[inline]
     pub fn hasher(&self) -> &S {
         self.map.hasher()
     }
@@ -272,6 +273,7 @@ where
     /// set.reserve(10);
     /// assert!(set.capacity() >= 10);
     /// ```
+    #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.map.reserve(additional)
     }
@@ -292,6 +294,7 @@ where
     /// set.shrink_to_fit();
     /// assert!(set.capacity() >= 2);
     /// ```
+    #[inline]
     pub fn shrink_to_fit(&mut self) {
         self.map.shrink_to_fit()
     }
@@ -338,6 +341,7 @@ where
     ///     println!("{}", x);
     /// }
     /// ```
+    #[inline]
     pub fn iter(&self) -> Iter<T> {
         Iter {
             iter: self.map.keys(),
@@ -367,6 +371,7 @@ where
     /// let diff: HashSet<_> = b.difference(&a).collect();
     /// assert_eq!(diff, [4].iter().collect());
     /// ```
+    #[inline]
     pub fn difference<'a>(&'a self, other: &'a HashSet<T, S>) -> Difference<'a, T, S> {
         Difference {
             iter: self.iter(),
@@ -395,6 +400,7 @@ where
     /// assert_eq!(diff1, diff2);
     /// assert_eq!(diff1, [1, 4].iter().collect());
     /// ```
+    #[inline]
     pub fn symmetric_difference<'a>(
         &'a self,
         other: &'a HashSet<T, S>,
@@ -422,6 +428,7 @@ where
     /// let intersection: HashSet<_> = a.intersection(&b).collect();
     /// assert_eq!(intersection, [2, 3].iter().collect());
     /// ```
+    #[inline]
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T, S>) -> Intersection<'a, T, S> {
         Intersection {
             iter: self.iter(),
@@ -447,6 +454,7 @@ where
     /// let union: HashSet<_> = a.union(&b).collect();
     /// assert_eq!(union, [1, 2, 3, 4].iter().collect());
     /// ```
+    #[inline]
     pub fn union<'a>(&'a self, other: &'a HashSet<T, S>) -> Union<'a, T, S> {
         Union {
             iter: self.iter().chain(other.difference(self)),
@@ -465,6 +473,7 @@ where
     /// v.insert(1);
     /// assert_eq!(v.len(), 1);
     /// ```
+    #[inline]
     pub fn len(&self) -> usize {
         self.map.len()
     }
@@ -481,6 +490,7 @@ where
     /// v.insert(1);
     /// assert!(!v.is_empty());
     /// ```
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()
     }
@@ -521,6 +531,7 @@ where
     /// v.clear();
     /// assert!(v.is_empty());
     /// ```
+    #[inline]
     pub fn clear(&mut self) {
         self.map.clear()
     }
@@ -543,6 +554,7 @@ where
     ///
     /// [`Eq`]: ../../std/cmp/trait.Eq.html
     /// [`Hash`]: ../../std/hash/trait.Hash.html
+    #[inline]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
     where
         T: Borrow<Q>,
@@ -569,6 +581,7 @@ where
     ///
     /// [`Eq`]: ../../std/cmp/trait.Eq.html
     /// [`Hash`]: ../../std/hash/trait.Hash.html
+    #[inline]
     pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
     where
         T: Borrow<Q>,
@@ -661,6 +674,7 @@ where
     /// assert_eq!(set.insert(2), false);
     /// assert_eq!(set.len(), 1);
     /// ```
+    #[inline]
     pub fn insert(&mut self, value: T) -> bool {
         self.map.insert(value, ()).is_none()
     }
@@ -680,6 +694,7 @@ where
     /// set.replace(Vec::with_capacity(10));
     /// assert_eq!(set.get(&[][..]).unwrap().capacity(), 10);
     /// ```
+    #[inline]
     pub fn replace(&mut self, value: T) -> Option<T> {
         match self.map.entry(value) {
             map::Entry::Occupied(occupied) => Some(occupied.replace_key()),
@@ -711,6 +726,7 @@ where
     ///
     /// [`Eq`]: ../../std/cmp/trait.Eq.html
     /// [`Hash`]: ../../std/hash/trait.Hash.html
+    #[inline]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
     where
         T: Borrow<Q>,
@@ -737,6 +753,7 @@ where
     ///
     /// [`Eq`]: ../../std/cmp/trait.Eq.html
     /// [`Hash`]: ../../std/hash/trait.Hash.html
+    #[inline]
     pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
     where
         T: Borrow<Q>,
@@ -815,6 +832,7 @@ where
     T: Eq + Hash,
     S: BuildHasher,
 {
+    #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         self.map.extend(iter.into_iter().map(|k| (k, ())));
     }
@@ -825,6 +843,7 @@ where
     T: 'a + Eq + Hash + Copy,
     S: BuildHasher,
 {
+    #[inline]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
     }
@@ -836,6 +855,7 @@ where
     S: BuildHasher + Default,
 {
     /// Creates an empty `HashSet<T, S>` with the `Default` value for the hasher.
+    #[inline]
     fn default() -> HashSet<T, S> {
         HashSet {
             map: HashMap::default(),
@@ -1062,6 +1082,7 @@ where
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
+    #[inline]
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
     }
@@ -1095,6 +1116,7 @@ where
     ///     println!("{}", x);
     /// }
     /// ```
+    #[inline]
     fn into_iter(self) -> IntoIter<T> {
         IntoIter {
             iter: self.map.into_iter(),
@@ -1103,6 +1125,7 @@ where
 }
 
 impl<'a, K> Clone for Iter<'a, K> {
+    #[inline]
     fn clone(&self) -> Iter<'a, K> {
         Iter {
             iter: self.iter.clone(),
@@ -1112,14 +1135,17 @@ impl<'a, K> Clone for Iter<'a, K> {
 impl<'a, K> Iterator for Iter<'a, K> {
     type Item = &'a K;
 
+    #[inline]
     fn next(&mut self) -> Option<&'a K> {
         self.iter.next()
     }
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
 }
 impl<'a, K> ExactSizeIterator for Iter<'a, K> {
+    #[inline]
     fn len(&self) -> usize {
         self.iter.len()
     }
@@ -1135,14 +1161,17 @@ impl<'a, K: fmt::Debug> fmt::Debug for Iter<'a, K> {
 impl<K> Iterator for IntoIter<K> {
     type Item = K;
 
+    #[inline]
     fn next(&mut self) -> Option<K> {
         self.iter.next().map(|(k, _)| k)
     }
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
 }
 impl<K> ExactSizeIterator for IntoIter<K> {
+    #[inline]
     fn len(&self) -> usize {
         self.iter.len()
     }
@@ -1159,14 +1188,17 @@ impl<K: fmt::Debug> fmt::Debug for IntoIter<K> {
 impl<'a, K> Iterator for Drain<'a, K> {
     type Item = K;
 
+    #[inline]
     fn next(&mut self) -> Option<K> {
         self.iter.next().map(|(k, _)| k)
     }
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
 }
 impl<'a, K> ExactSizeIterator for Drain<'a, K> {
+    #[inline]
     fn len(&self) -> usize {
         self.iter.len()
     }
@@ -1181,6 +1213,7 @@ impl<'a, K: fmt::Debug> fmt::Debug for Drain<'a, K> {
 }
 
 impl<'a, T, S> Clone for Intersection<'a, T, S> {
+    #[inline]
     fn clone(&self) -> Intersection<'a, T, S> {
         Intersection {
             iter: self.iter.clone(),
@@ -1196,6 +1229,7 @@ where
 {
     type Item = &'a T;
 
+    #[inline]
     fn next(&mut self) -> Option<&'a T> {
         loop {
             let elt = self.iter.next()?;
@@ -1205,6 +1239,7 @@ where
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper)
@@ -1229,6 +1264,7 @@ where
 }
 
 impl<'a, T, S> Clone for Difference<'a, T, S> {
+    #[inline]
     fn clone(&self) -> Difference<'a, T, S> {
         Difference {
             iter: self.iter.clone(),
@@ -1244,6 +1280,7 @@ where
 {
     type Item = &'a T;
 
+    #[inline]
     fn next(&mut self) -> Option<&'a T> {
         loop {
             let elt = self.iter.next()?;
@@ -1253,6 +1290,7 @@ where
         }
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper)
@@ -1277,6 +1315,7 @@ where
 }
 
 impl<'a, T, S> Clone for SymmetricDifference<'a, T, S> {
+    #[inline]
     fn clone(&self) -> SymmetricDifference<'a, T, S> {
         SymmetricDifference {
             iter: self.iter.clone(),
@@ -1291,9 +1330,11 @@ where
 {
     type Item = &'a T;
 
+    #[inline]
     fn next(&mut self) -> Option<&'a T> {
         self.iter.next()
     }
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
@@ -1317,6 +1358,7 @@ where
 }
 
 impl<'a, T, S> Clone for Union<'a, T, S> {
+    #[inline]
     fn clone(&self) -> Union<'a, T, S> {
         Union {
             iter: self.iter.clone(),
@@ -1348,9 +1390,11 @@ where
 {
     type Item = &'a T;
 
+    #[inline]
     fn next(&mut self) -> Option<&'a T> {
         self.iter.next()
     }
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
