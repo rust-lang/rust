@@ -1149,8 +1149,18 @@ impl Thread {
             _ => panic!("inconsistent state in unpark"),
         }
 
-        // Coordinate wakeup through the mutex and a condvar notification
-        let _lock = self.inner.lock.lock().unwrap();
+        // There is a period between when the parked thread sets `state` to
+        // `PARKED` (or last checked `state` in the case of a spurious wake
+        // up) and when it actually waits on `cvar`. If we were to notify
+        // during this period it would be ignored and then when the parked
+        // thread went to sleep it would never wake up. Fortunately, it has
+        // `lock` locked at this stage so we can acquire `lock` to wait until
+        // it is ready to receive the notification.
+        //
+        // Releasing `lock` before the call to `notify_one` means that when the
+        // parked thread wakes it doesn't get woken only to have to wait for us
+        // to release `lock`.
+        drop(self.inner.lock.lock().unwrap());
         self.inner.cvar.notify_one()
     }
 
