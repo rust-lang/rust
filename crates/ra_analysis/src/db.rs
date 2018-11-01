@@ -35,16 +35,10 @@ pub(crate) fn check_canceled(db: &impl salsa::Database) -> Cancelable<()> {
 }
 
 impl salsa::ParallelDatabase for RootDatabase {
-    fn fork(&self) -> Self {
-        RootDatabase {
-            runtime: self.runtime.fork(),
-        }
-    }
-}
-
-impl Clone for RootDatabase {
-    fn clone(&self) -> RootDatabase {
-        salsa::ParallelDatabase::fork(self)
+    fn snapshot(&self) -> salsa::Snapshot<RootDatabase> {
+        salsa::Snapshot::new(RootDatabase {
+            runtime: self.runtime.snapshot(self),
+        })
     }
 }
 
