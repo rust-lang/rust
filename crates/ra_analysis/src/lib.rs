@@ -9,14 +9,14 @@ extern crate relative_path;
 extern crate rustc_hash;
 extern crate salsa;
 
-mod completion;
 mod db;
-mod descriptors;
-mod imp;
 mod input;
-pub mod mock_analysis;
+mod imp;
+mod completion;
+mod descriptors;
 mod symbol_index;
 mod syntax_ptr;
+pub mod mock_analysis;
 
 use std::{fmt, sync::Arc};
 

@@ -188,7 +188,7 @@ mod tests {
     use super::{
         super::{test_utils::extract_range, text_utils::replace_range, utils::dump_tree, File},
         reparse_block, reparse_leaf, AtomEdit, GreenNode, SyntaxError, SyntaxNodeRef,
-    };
+};
 
     fn do_check<F>(before: &str, replace_with: &str, reparser: F)
     where
