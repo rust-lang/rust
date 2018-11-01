@@ -424,7 +424,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                     improvements.push(suggestion);
                 }
             }
-            let nonminimal_bool_lint = |suggestions| {
+            let nonminimal_bool_lint = |suggestions: Vec<_>| {
                 span_lint_and_then(
                     self.cx,
                     NONMINIMAL_BOOL,
@@ -434,7 +434,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                         db.span_suggestions_with_applicability(
                             e.span,
                             "try",
-                            suggestions,
+                            suggestions.into_iter(),
                             // nonminimal_bool can produce minimal but
                             // not human readable expressions (#3141)
                             Applicability::Unspecified,
