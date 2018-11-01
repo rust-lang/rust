@@ -110,10 +110,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // fnmut vs fnonce. If so, we have to defer further processing.
                 if self.closure_kind(def_id, substs).is_none() {
                     let closure_ty = self.closure_sig(def_id, substs);
-                    let fn_sig = self.replace_late_bound_regions_with_fresh_var(call_expr.span,
-                                                                   infer::FnCall,
-                                                                   &closure_ty)
-                        .0;
+                    let fn_sig = self.replace_bound_vars_with_fresh_vars(
+                        call_expr.span,
+                        infer::FnCall,
+                        &closure_ty
+                    ).0;
                     let adjustments = autoderef.adjust_steps(Needs::None);
                     self.record_deferred_call_resolution(def_id, DeferredCallResolution {
                         call_expr,
@@ -284,7 +285,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // previously appeared within a `Binder<>` and hence would not
         // have been normalized before.
         let fn_sig =
-            self.replace_late_bound_regions_with_fresh_var(call_expr.span, infer::FnCall, &fn_sig)
+            self.replace_bound_vars_with_fresh_vars(call_expr.span, infer::FnCall, &fn_sig)
                 .0;
         let fn_sig = self.normalize_associated_types_in(call_expr.span, &fn_sig);
 

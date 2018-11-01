@@ -520,22 +520,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn replace_late_bound_regions<T, F>(
         self,
         value: &Binder<T>,
-        mut fld_r: F
+        fld_r: F
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               T: TypeFoldable<'tcx>
     {
-        let mut map = BTreeMap::new();
-        let mut real_fldr = |br| {
-            *map.entry(br).or_insert_with(|| fld_r(br))
-        };
-
         // identity for bound types
-        let mut fld_t = |bound_ty| self.mk_ty(ty::Bound(bound_ty));
-
-        let mut replacer = BoundVarReplacer::new(self, &mut real_fldr, &mut fld_t);
-        let result = value.skip_binder().fold_with(&mut replacer);
-        (result, map)
+        let fld_t = |bound_ty| self.mk_ty(ty::Bound(bound_ty));
+        self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t)
     }
 
     /// Replace all escaping bound vars. The `fld_r` closure replaces escaping
@@ -545,17 +537,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         value: &T,
         mut fld_r: F,
         mut fld_t: G
-    ) -> T
+    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               G: FnMut(ty::BoundTy) -> ty::Ty<'tcx>,
               T: TypeFoldable<'tcx>
     {
+        let mut map = BTreeMap::new();
+
         if !value.has_escaping_bound_vars() {
-            value.clone()
+            (value.clone(), map)
         } else {
-            let mut replacer = BoundVarReplacer::new(self, &mut fld_r, &mut fld_t);
+            let mut real_fld_r = |br| {
+                *map.entry(br).or_insert_with(|| fld_r(br))
+            };
+
+            let mut replacer = BoundVarReplacer::new(self, &mut real_fld_r, &mut fld_t);
             let result = value.fold_with(&mut replacer);
-            result
+            (result, map)
         }
     }
 
@@ -567,7 +565,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         value: &Binder<T>,
         fld_r: F,
         fld_t: G
-    ) -> T
+    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               G: FnMut(ty::BoundTy) -> ty::Ty<'tcx>,
               T: TypeFoldable<'tcx>

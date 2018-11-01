@@ -1328,18 +1328,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.report_and_explain_type_error(trace, &err)
     }
 
-    pub fn replace_late_bound_regions_with_fresh_var<T>(
+    pub fn replace_bound_vars_with_fresh_vars<T>(
         &self,
         span: Span,
         lbrct: LateBoundRegionConversionTime,
-        value: &ty::Binder<T>,
+        value: &ty::Binder<T>
     ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeFoldable<'tcx>
     {
-        self.tcx.replace_late_bound_regions(value, |br| {
-            self.next_region_var(LateBoundRegion(span, br, lbrct))
-        })
+        let fld_r = |br| self.next_region_var(LateBoundRegion(span, br, lbrct));
+        let fld_t = |_| self.next_ty_var(TypeVariableOrigin::MiscVariable(span));
+        self.tcx.replace_bound_vars(value, fld_r, fld_t)
     }
 
     /// Given a higher-ranked projection predicate like:

@@ -755,8 +755,11 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 self.probe(|_| {
                     let substs = self.fresh_substs_for_item(self.span, method.def_id);
                     let fty = fty.subst(self.tcx, substs);
-                    let (fty, _) = self.replace_late_bound_regions_with_fresh_var(
-                        self.span, infer::FnCall, &fty);
+                    let (fty, _) = self.replace_bound_vars_with_fresh_vars(
+                        self.span,
+                        infer::FnCall,
+                        &fty
+                    );
 
                     if let Some(self_ty) = self_ty {
                         if self.at(&ObligationCause::dummy(), self.param_env)

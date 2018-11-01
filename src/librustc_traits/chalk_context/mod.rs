@@ -347,12 +347,11 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         &mut self,
         arg: &ty::Binder<Goal<'tcx>>,
     ) -> Goal<'tcx> {
-        let (value, _map) = self.infcx.replace_late_bound_regions_with_fresh_var(
+        self.infcx.replace_bound_vars_with_fresh_vars(
             DUMMY_SP,
             LateBoundRegionConversionTime::HigherRankedType,
-            arg,
-        );
-        value
+            arg
+        ).0
     }
 
     fn debug_ex_clause(&mut self, value: &'v ChalkExClause<'tcx>) -> Box<dyn Debug + 'v> {

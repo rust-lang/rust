@@ -245,7 +245,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     let original_poly_trait_ref = principal.with_self_ty(this.tcx, object_ty);
                     let upcast_poly_trait_ref = this.upcast(original_poly_trait_ref, trait_def_id);
                     let upcast_trait_ref =
-                        this.replace_late_bound_regions_with_fresh_var(&upcast_poly_trait_ref);
+                        this.replace_bound_vars_with_fresh_vars(&upcast_poly_trait_ref);
                     debug!("original_poly_trait_ref={:?} upcast_trait_ref={:?} target_trait={:?}",
                            original_poly_trait_ref,
                            upcast_trait_ref,
@@ -268,7 +268,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
             probe::WhereClausePick(ref poly_trait_ref) => {
                 // Where clauses can have bound regions in them. We need to instantiate
                 // those to convert from a poly-trait-ref to a trait-ref.
-                self.replace_late_bound_regions_with_fresh_var(&poly_trait_ref).substs
+                self.replace_bound_vars_with_fresh_vars(&poly_trait_ref).substs
             }
         }
     }
@@ -398,7 +398,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // NB: Instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let method_sig = self.replace_late_bound_regions_with_fresh_var(&sig);
+        let method_sig = self.replace_bound_vars_with_fresh_vars(&sig);
         debug!("late-bound lifetimes from method instantiated, method_sig={:?}",
                method_sig);
 
@@ -633,11 +633,9 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         upcast_trait_refs.into_iter().next().unwrap()
     }
 
-    fn replace_late_bound_regions_with_fresh_var<T>(&self, value: &ty::Binder<T>) -> T
+    fn replace_bound_vars_with_fresh_vars<T>(&self, value: &ty::Binder<T>) -> T
         where T: TypeFoldable<'tcx>
     {
-        self.fcx
-            .replace_late_bound_regions_with_fresh_var(self.span, infer::FnCall, value)
-            .0
+        self.fcx.replace_bound_vars_with_fresh_vars(self.span, infer::FnCall, value).0
     }
 }

@@ -564,7 +564,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // `liberated_sig` is E'.
             {
                 // Instantiate (this part of..) S to S', i.e., with fresh variables.
-                let (supplied_ty, _) = self.infcx.replace_late_bound_regions_with_fresh_var(
+                let (supplied_ty, _) = self.infcx.replace_bound_vars_with_fresh_vars(
                     hir_ty.span,
                     LateBoundRegionConversionTime::FnCall,
                     &ty::Binder::bind(supplied_ty),
@@ -605,7 +605,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 );
             }
 
-            let (supplied_output_ty, _) = self.infcx.replace_late_bound_regions_with_fresh_var(
+            let (supplied_output_ty, _) = self.infcx.replace_bound_vars_with_fresh_vars(
                 decl.output.span(),
                 LateBoundRegionConversionTime::FnCall,
                 &supplied_sig.output(),

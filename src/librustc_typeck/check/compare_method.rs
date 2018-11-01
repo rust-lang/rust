@@ -233,7 +233,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let mut selcx = traits::SelectionContext::new(&infcx);
 
         let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_skol_substs);
-        let (impl_m_own_bounds, _) = infcx.replace_late_bound_regions_with_fresh_var(
+        let (impl_m_own_bounds, _) = infcx.replace_bound_vars_with_fresh_vars(
             impl_m_span,
             infer::HigherRankedType,
             &ty::Binder::bind(impl_m_own_bounds.predicates)
@@ -262,10 +262,11 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Compute placeholder form of impl and trait method tys.
         let tcx = infcx.tcx;
 
-        let (impl_sig, _) =
-            infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
-                                                            infer::HigherRankedType,
-                                                            &tcx.fn_sig(impl_m.def_id));
+        let (impl_sig, _) = infcx.replace_bound_vars_with_fresh_vars(
+            impl_m_span,
+            infer::HigherRankedType,
+            &tcx.fn_sig(impl_m.def_id)
+        );
         let impl_sig =
             inh.normalize_associated_types_in(impl_m_span,
                                               impl_m_node_id,

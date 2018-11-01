@@ -1406,7 +1406,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         return;
                     }
                 };
-                let (sig, map) = self.infcx.replace_late_bound_regions_with_fresh_var(
+                let (sig, map) = self.infcx.replace_bound_vars_with_fresh_vars(
                     term.source_info.span,
                     LateBoundRegionConversionTime::FnCall,
                     &sig,

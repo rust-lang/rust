@@ -212,10 +212,11 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // cause I have no idea for a good error message.
             if let ty::Predicate::Projection(ref data) = predicate {
                 let mut selcx = SelectionContext::new(self);
-                let (data, _) = self.replace_late_bound_regions_with_fresh_var(
+                let (data, _) = self.replace_bound_vars_with_fresh_vars(
                     obligation.cause.span,
                     infer::LateBoundRegionConversionTime::HigherRankedType,
-                    data);
+                    data
+                );
                 let mut obligations = vec![];
                 let normalized_ty = super::normalize_projection_type(
                     &mut selcx,
