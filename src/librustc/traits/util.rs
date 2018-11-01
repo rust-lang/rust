@@ -333,7 +333,7 @@ impl<I> FilterToTraits<I> {
     }
 }
 
-impl<'tcx,I:Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<I> {
+impl<'tcx, I: Iterator<Item = ty::Predicate<'tcx>>> Iterator for FilterToTraits<I> {
     type Item = ty::PolyTraitRef<'tcx>;
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {

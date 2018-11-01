@@ -294,7 +294,7 @@ impl Visibility {
         }
     }
 
-    /// Returns true if an item with this visibility is accessible from the given block.
+    /// Returns `true` if an item with this visibility is accessible from the given block.
     pub fn is_accessible_from<T: DefIdTree>(self, module: DefId, tree: T) -> bool {
         let restriction = match self {
             // Public items are visible everywhere.
@@ -309,7 +309,7 @@ impl Visibility {
         tree.is_descendant_of(module, restriction)
     }
 
-    /// Returns true if this visibility is at least as accessible as the given visibility
+    /// Returns `true` if this visibility is at least as accessible as the given visibility
     pub fn is_at_least<T: DefIdTree>(self, vis: Visibility, tree: T) -> bool {
         let vis_restriction = match vis {
             Visibility::Public => return self == Visibility::Public,
@@ -320,7 +320,7 @@ impl Visibility {
         self.is_accessible_from(vis_restriction, tree)
     }
 
-    // Returns true if this item is visible anywhere in the local crate.
+    // Returns `true` if this item is visible anywhere in the local crate.
     pub fn is_visible_locally(self) -> bool {
         match self {
             Visibility::Public => true,
@@ -451,7 +451,7 @@ bitflags! {
         // FIXME: Rename this to the actual property since it's used for generators too
         const HAS_TY_CLOSURE     = 1 << 9;
 
-        // true if there are "names" of types and regions and so forth
+        // `true` if there are "names" of types and regions and so forth
         // that are local to a particular fn
         const HAS_FREE_LOCAL_NAMES    = 1 << 10;
 
@@ -953,7 +953,7 @@ impl<'a, 'gcx, 'tcx> Generics {
                 _ => bug!("expected lifetime parameter, but found another generic parameter")
             }
         } else {
-            tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
+            tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
                .region_param(param, tcx)
         }
     }
@@ -970,7 +970,7 @@ impl<'a, 'gcx, 'tcx> Generics {
                 _ => bug!("expected type parameter, but found another generic parameter")
             }
         } else {
-            tcx.generics_of(self.parent.expect("parent_count>0 but no parent?"))
+            tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
                .type_param(param, tcx)
         }
     }
@@ -993,6 +993,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
         self.instantiate_into(tcx, &mut instantiated, substs);
         instantiated
     }
+
     pub fn instantiate_own(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: &Substs<'tcx>)
                            -> InstantiatedPredicates<'tcx> {
         InstantiatedPredicates {
@@ -1256,14 +1257,14 @@ pub struct ProjectionPredicate<'tcx> {
 pub type PolyProjectionPredicate<'tcx> = Binder<ProjectionPredicate<'tcx>>;
 
 impl<'tcx> PolyProjectionPredicate<'tcx> {
-    /// Returns the def-id of the associated item being projected.
+    /// Returns the `DefId` of the associated item being projected.
     pub fn item_def_id(&self) -> DefId {
         self.skip_binder().projection_ty.item_def_id
     }
 
     pub fn to_poly_trait_ref(&self, tcx: TyCtxt<'_, '_, '_>) -> PolyTraitRef<'tcx> {
-        // Note: unlike with TraitRef::to_poly_trait_ref(),
-        // self.0.trait_ref is permitted to have escaping regions.
+        // Note: unlike with `TraitRef::to_poly_trait_ref()`,
+        // `self.0.trait_ref` is permitted to have escaping regions.
         // This is because here `self` has a `Binder` and so does our
         // return value, so we are preserving the number of binding
         // levels.
@@ -1274,12 +1275,12 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
         self.map_bound(|predicate| predicate.ty)
     }
 
-    /// The DefId of the TraitItem for the associated type.
+    /// The `DefId` of the `TraitItem` for the associated type.
     ///
-    /// Note that this is not the DefId of the TraitRef containing this
-    /// associated type, which is in tcx.associated_item(projection_def_id()).container.
+    /// Note that this is not the `DefId` of the `TraitRef` containing this
+    /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
     pub fn projection_def_id(&self) -> DefId {
-        // ok to skip binder since trait def-id does not care about regions
+        // okay to skip binder since trait def-id does not care about regions
         self.skip_binder().projection_ty.item_def_id
     }
 }
@@ -1515,14 +1516,14 @@ impl UniverseIndex {
         UniverseIndex::from_u32(self.private.checked_add(1).unwrap())
     }
 
-    /// True if `self` can name a name from `other` -- in other words,
+    /// `true` if `self` can name a name from `other` -- in other words,
     /// if the set of names in `self` is a superset of those in
     /// `other` (`self >= other`).
     pub fn can_name(self, other: UniverseIndex) -> bool {
         self.private >= other.private
     }
 
-    /// True if `self` cannot name some names from `other` -- in other
+    /// `true` if `self` cannot name some names from `other` -- in other
     /// words, if the set of names in `self` is a strict subset of
     /// those in `other` (`self < other`).
     pub fn cannot_name(self, other: UniverseIndex) -> bool {
@@ -1574,7 +1575,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// are revealed. This is suitable for monomorphized, post-typeck
     /// environments like codegen or doing optimizations.
     ///
-    /// NB. If you want to have predicates in scope, use `ParamEnv::new`,
+    /// N.B. If you want to have predicates in scope, use `ParamEnv::new`,
     /// or invoke `param_env.with_reveal_all()`.
     pub fn reveal_all() -> Self {
         Self::new(List::empty(), Reveal::All)
@@ -1979,14 +1980,14 @@ impl ReprOptions {
         self.int.unwrap_or(attr::SignedInt(ast::IntTy::Isize))
     }
 
-    /// Returns true if this `#[repr()]` should inhabit "smart enum
+    /// Returns `true` if this `#[repr()]` should inhabit "smart enum
     /// layout" optimizations, such as representing `Foo<&T>` as a
     /// single pointer.
     pub fn inhibit_enum_layout_opt(&self) -> bool {
         self.c() || self.int.is_some()
     }
 
-    /// Returns true if this `#[repr()]` should inhibit struct field reordering
+    /// Returns `true` if this `#[repr()]` should inhibit struct field reordering
     /// optimizations, such as with repr(C) or repr(packed(1)).
     pub fn inhibit_struct_field_reordering_opt(&self) -> bool {
         !(self.flags & ReprFlags::IS_UNOPTIMISABLE).is_empty() || (self.pack == 1)
@@ -2089,7 +2090,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.flags.intersects(AdtFlags::IS_FUNDAMENTAL)
     }
 
-    /// Returns true if this is PhantomData<T>.
+    /// Returns `true` if this is PhantomData<T>.
     #[inline]
     pub fn is_phantom_data(&self) -> bool {
         self.flags.intersects(AdtFlags::IS_PHANTOM_DATA)
@@ -2105,7 +2106,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.flags.intersects(AdtFlags::IS_RC)
     }
 
-    /// Returns true if this is Box<T>.
+    /// Returns `true` if this is Box<T>.
     #[inline]
     pub fn is_box(&self) -> bool {
         self.flags.intersects(AdtFlags::IS_BOX)
@@ -2422,7 +2423,7 @@ impl<'a, 'tcx> ClosureKind {
         }
     }
 
-    /// True if this a type that impls this closure kind
+    /// Returns `true` if this a type that impls this closure kind
     /// must also implement `other`.
     pub fn extends(self, other: ty::ClosureKind) -> bool {
         match (self, other) {
@@ -2678,7 +2679,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             as Box<dyn Iterator<Item = AssociatedItem> + 'a>
     }
 
-    /// Returns true if the impls are the same polarity and the trait either
+    /// Returns `true` if the impls are the same polarity and the trait either
     /// has no items or is annotated #[marker] and prevents item overrides.
     pub fn impls_are_allowed_to_overlap(self, def_id1: DefId, def_id2: DefId) -> bool {
         if self.features().overlapping_marker_traits {
@@ -2802,7 +2803,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         attr::contains_name(&self.get_attrs(did), attr)
     }
 
-    /// Returns true if this is an `auto trait`.
+    /// Returns `true` if this is an `auto trait`.
     pub fn trait_is_auto(self, trait_def_id: DefId) -> bool {
         self.trait_def(trait_def_id).has_auto_impl
     }

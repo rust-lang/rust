@@ -186,6 +186,8 @@ fn check_associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    item_id: ast::NodeId,
                                    span: Span,
                                    sig_if_method: Option<&hir::MethodSig>) {
+    debug!("check_associated_item: {:?}", item_id);
+
     let code = ObligationCauseCode::MiscObligation;
     for_id(tcx, item_id, span).with_fcx(|fcx, tcx| {
         let item = fcx.tcx.associated_item(fcx.tcx.hir.local_def_id(item_id));
@@ -311,6 +313,8 @@ fn check_type_defn<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item: &hir::Item) {
+    debug!("check_trait: {:?}", item.id);
+
     let trait_def_id = tcx.hir.local_def_id(item.id);
 
     let trait_def = tcx.trait_def(trait_def_id);
@@ -1012,7 +1016,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
 
             None => {
-                // Inherent impl: take implied bounds from the self type.
+                // Inherent impl: take implied bounds from the `self` type.
                 let self_ty = self.tcx.type_of(impl_def_id);
                 let self_ty = self.normalize_associated_types_in(span, &self_ty);
                 vec![self_ty]
