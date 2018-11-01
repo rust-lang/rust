@@ -1,0 +1,10 @@
+warning: unused `std::result::Result` that must be used
+  --> $DIR/must-use-in-macro-55516.rs:19:5
+   |
+LL |     write!(&mut example, "{}", 42); //~WARN must be used
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `-W unused-must-use` implied by `-W unused`
+   = note: this `Result` may be an `Err` variant, which should be handled
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
