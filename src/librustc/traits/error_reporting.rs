@@ -34,7 +34,6 @@ use hir::def_id::DefId;
 use infer::{self, InferCtxt};
 use infer::type_variable::TypeVariableOrigin;
 use std::fmt;
-use std::iter;
 use syntax::ast;
 use session::DiagnosticMessageId;
 use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
@@ -1095,10 +1094,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // found arguments is empty (assume the user just wants to ignore args in this case).
             // For example, if `expected_args_length` is 2, suggest `|_, _|`.
             if found_args.is_empty() && is_closure {
-                let underscores = iter::repeat("_")
-                                      .take(expected_args.len())
-                                      .collect::<Vec<_>>()
-                                      .join(", ");
+                let underscores = vec!["_"; expected_args.len()].join(", ");
                 err.span_suggestion_with_applicability(
                     found_span,
                     &format!(
