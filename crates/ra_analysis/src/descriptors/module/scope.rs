@@ -1,9 +1,6 @@
 //! Backend for module-level scope resolution & completion
 
-use ra_syntax::{
-    ast::{self, ModuleItemOwner},
-    AstNode, File, SmolStr,
-};
+use ra_syntax::{ast, AstNode, SmolStr};
 
 use crate::syntax_ptr::LocalSyntaxPtr;
 
@@ -28,11 +25,7 @@ enum EntryKind {
 }
 
 impl ModuleScope {
-    pub fn new(file: &File) -> ModuleScope {
-        ModuleScope::from_items(file.ast().items())
-    }
-
-    pub fn from_items<'a>(items: impl Iterator<Item = ast::ModuleItem<'a>>) -> ModuleScope {
+    pub(crate) fn new<'a>(items: impl Iterator<Item = ast::ModuleItem<'a>>) -> ModuleScope {
         let mut entries = Vec::new();
         for item in items {
             let entry = match item {
@@ -102,11 +95,11 @@ fn collect_imports(tree: ast::UseTree, acc: &mut Vec<Entry>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ra_syntax::File;
+    use ra_syntax::{ast::ModuleItemOwner, File};
 
     fn do_check(code: &str, expected: &[&str]) {
         let file = File::parse(&code);
-        let scope = ModuleScope::new(&file);
+        let scope = ModuleScope::new(file.ast().items());
         let actual = scope.entries.iter().map(|it| it.name()).collect::<Vec<_>>();
         assert_eq!(expected, actual.as_slice());
     }

@@ -20,7 +20,7 @@ use crate::{
     db::{self, FileSyntaxQuery, SyntaxDatabase},
     descriptors::{
         function::{FnDescriptor, FnId},
-        module::{ModuleTree, Problem},
+        module::{ModuleSource, ModuleTree, Problem},
         DeclarationDescriptor, DescriptorDatabase,
     },
     input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
@@ -222,9 +222,15 @@ impl AnalysisImpl {
             .into_iter()
             .filter_map(|module_id| {
                 let link = module_id.parent_link(&module_tree)?;
-                let file_id = link.owner(&module_tree).file_id(&module_tree);
-                let syntax = self.db.file_syntax(file_id);
-                let decl = link.bind_source(&module_tree, syntax.ast());
+                let file_id = match link.owner(&module_tree).source(&module_tree) {
+                    ModuleSource::File(file_id) => file_id,
+                    ModuleSource::Inline(..) => {
+                        //TODO: https://github.com/rust-analyzer/rust-analyzer/issues/181
+                        return None;
+                    }
+                };
+                let decl = link.bind_source(&module_tree, &self.db);
+                let decl = decl.ast();
 
                 let sym = FileSymbol {
                     name: decl.name().unwrap().text(),
@@ -243,7 +249,7 @@ impl AnalysisImpl {
             .modules_for_file(file_id)
             .into_iter()
             .map(|it| it.root(&module_tree))
-            .map(|it| it.file_id(&module_tree))
+            .filter_map(|it| it.source(&module_tree).as_file())
             .filter_map(|it| crate_graph.crate_id_for_crate_root(it))
             .collect();
 
@@ -365,7 +371,7 @@ impl AnalysisImpl {
             })
             .collect::<Vec<_>>();
         if let Some(m) = module_tree.any_module_for_file(file_id) {
-            for (name_node, problem) in m.problems(&module_tree, syntax.ast()) {
+            for (name_node, problem) in m.problems(&module_tree, &self.db) {
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
                         let create_file = FileSystemEdit::CreateFile {
@@ -533,7 +539,7 @@ impl AnalysisImpl {
         };
         module_id
             .child(module_tree, name.as_str())
-            .map(|it| it.file_id(module_tree))
+            .and_then(|it| it.source(&module_tree).as_file())
             .into_iter()
             .collect()
     }

@@ -7,10 +7,17 @@ use ra_syntax::{
 };
 use relative_path::RelativePathBuf;
 
-use crate::FileId;
+use crate::{db::SyntaxDatabase, syntax_ptr::SyntaxPtr, FileId};
 
 pub(crate) use self::scope::ModuleScope;
 
+/// Phisically, rust source is organized as a set of files, but logically it is
+/// organized as a tree of modules. Usually, a single file corresponds to a
+/// single module, but it is not nessary the case.
+///
+/// Module encapsulate the logic of transitioning from the fuzzy world of files
+/// (which can have multiple parents) to the precise world of modules (which
+/// always have one parent).
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub(crate) struct ModuleTree {
     mods: Vec<ModuleData>,
@@ -22,7 +29,7 @@ impl ModuleTree {
         self.mods
             .iter()
             .enumerate()
-            .filter(|(_idx, it)| it.file_id == file_id)
+            .filter(|(_idx, it)| it.source.is_file(file_id))
             .map(|(idx, _)| ModuleId(idx as u32))
             .collect()
     }
@@ -30,6 +37,23 @@ impl ModuleTree {
     pub(crate) fn any_module_for_file(&self, file_id: FileId) -> Option<ModuleId> {
         self.modules_for_file(file_id).pop()
     }
+}
+
+/// `ModuleSource` is the syntax tree element that produced this module:
+/// either a file, or an inlinde module.
+/// TODO: we don't produce Inline modules yet
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum ModuleSource {
+    File(FileId),
+    #[allow(dead_code)]
+    Inline(SyntaxPtr),
+}
+
+/// An owned syntax node for a module. Unlike `ModuleSource`,
+/// this holds onto the AST for the whole file.
+enum ModuleSourceNode {
+    Root(ast::RootNode),
+    Inline(ast::ModuleNode),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
@@ -50,8 +74,8 @@ pub enum Problem {
 }
 
 impl ModuleId {
-    pub(crate) fn file_id(self, tree: &ModuleTree) -> FileId {
-        tree.module(self).file_id
+    pub(crate) fn source(self, tree: &ModuleTree) -> ModuleSource {
+        tree.module(self).source
     }
     pub(crate) fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
         tree.module(self).parent
@@ -82,14 +106,18 @@ impl ModuleId {
             .find(|it| it.name == name)?;
         Some(*link.points_to.first()?)
     }
-    pub(crate) fn problems(self, tree: &ModuleTree, root: ast::Root) -> Vec<(SyntaxNode, Problem)> {
+    pub(crate) fn problems(
+        self,
+        tree: &ModuleTree,
+        db: &impl SyntaxDatabase,
+    ) -> Vec<(SyntaxNode, Problem)> {
         tree.module(self)
             .children
             .iter()
             .filter_map(|&it| {
                 let p = tree.link(it).problem.clone()?;
-                let s = it.bind_source(tree, root);
-                let s = s.name().unwrap().syntax().owned();
+                let s = it.bind_source(tree, db);
+                let s = s.ast().name().unwrap().syntax().owned();
                 Some((s, p))
             })
             .collect()
@@ -100,19 +128,60 @@ impl LinkId {
     pub(crate) fn owner(self, tree: &ModuleTree) -> ModuleId {
         tree.link(self).owner
     }
-    pub(crate) fn bind_source<'a>(self, tree: &ModuleTree, root: ast::Root<'a>) -> ast::Module<'a> {
-        imp::modules(root)
-            .find(|(name, _)| name == &tree.link(self).name)
-            .unwrap()
-            .1
+    pub(crate) fn bind_source<'a>(
+        self,
+        tree: &ModuleTree,
+        db: &impl SyntaxDatabase,
+    ) -> ast::ModuleNode {
+        let owner = self.owner(tree);
+        match owner.source(tree).resolve(db) {
+            ModuleSourceNode::Root(root) => {
+                let ast = imp::modules(root.ast())
+                    .find(|(name, _)| name == &tree.link(self).name)
+                    .unwrap()
+                    .1;
+                ast.into()
+            }
+            ModuleSourceNode::Inline(..) => {
+                unimplemented!("https://github.com/rust-analyzer/rust-analyzer/issues/181")
+            }
+        }
     }
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct ModuleData {
-    file_id: FileId,
+    source: ModuleSource,
     parent: Option<LinkId>,
     children: Vec<LinkId>,
+}
+
+impl ModuleSource {
+    pub(crate) fn as_file(self) -> Option<FileId> {
+        match self {
+            ModuleSource::File(f) => Some(f),
+            ModuleSource::Inline(..) => None,
+        }
+    }
+
+    fn resolve(self, db: &impl SyntaxDatabase) -> ModuleSourceNode {
+        match self {
+            ModuleSource::File(file_id) => {
+                let syntax = db.file_syntax(file_id);
+                ModuleSourceNode::Root(syntax.ast().into())
+            }
+            ModuleSource::Inline(ptr) => {
+                let syntax = db.resolve_syntax_ptr(ptr);
+                let syntax = syntax.borrowed();
+                let module = ast::Module::cast(syntax).unwrap();
+                ModuleSourceNode::Inline(module.into())
+            }
+        }
+    }
+
+    fn is_file(self, file_id: FileId) -> bool {
+        self.as_file() == Some(file_id)
+    }
 }
 
 #[derive(Hash, Debug, PartialEq, Eq)]
