@@ -20,7 +20,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    OpTy, MPlaceTy, Machine, EvalContext, ScalarMaybeUndef, ValueVisitor
+    OpTy, MPlaceTy, Machine, EvalContext, ValueVisitor
 };
 
 macro_rules! validation_failure {
@@ -120,17 +120,6 @@ fn path_format(path: &Vec<PathElem>) -> String {
         }.unwrap()
     }
     out
-}
-
-fn scalar_format<Tag>(value: ScalarMaybeUndef<Tag>) -> String {
-    match value {
-        ScalarMaybeUndef::Undef =>
-            "uninitialized bytes".to_owned(),
-        ScalarMaybeUndef::Scalar(Scalar::Ptr(_)) =>
-            "a pointer".to_owned(),
-        ScalarMaybeUndef::Scalar(Scalar::Bits { bits, .. }) =>
-            bits.to_string(),
-    }
 }
 
 struct ValidityVisitor<'rt, 'a, 'tcx: 'a+'rt, Tag: 'static> {
@@ -240,7 +229,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
             Err(err) => match err.kind {
                 EvalErrorKind::InvalidDiscriminant(val) =>
                     validation_failure!(
-                        format!("invalid enum discriminant {}", val), self.path
+                        val, self.path, "a valid enum discriminant"
                     ),
                 _ => Err(err),
             }
@@ -258,12 +247,12 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
             ty::Bool => {
                 let value = value.to_scalar_or_undef();
                 try_validation!(value.to_bool(),
-                    scalar_format(value), self.path, "a boolean");
+                    value, self.path, "a boolean");
             },
             ty::Char => {
                 let value = value.to_scalar_or_undef();
                 try_validation!(value.to_char(),
-                    scalar_format(value), self.path, "a valid unicode codepoint");
+                    value, self.path, "a valid unicode codepoint");
             },
             ty::Float(_) | ty::Int(_) | ty::Uint(_) => {
                 // NOTE: Keep this in sync with the array optimization for int/float
@@ -273,7 +262,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                 if self.const_mode {
                     // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
                     try_validation!(value.to_bits(size),
-                        scalar_format(value), self.path, "initialized plain bits");
+                        value, self.path, "initialized plain bits");
                 } else {
                     // At run-time, for now, we accept *anything* for these types, including
                     // undef. We should fix that, but let's start low.
@@ -389,9 +378,9 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
             ty::FnPtr(_sig) => {
                 let value = value.to_scalar_or_undef();
                 let ptr = try_validation!(value.to_ptr(),
-                    scalar_format(value), self.path, "a pointer");
+                    value, self.path, "a pointer");
                 let _fn = try_validation!(ectx.memory.get_fn(ptr),
-                    scalar_format(value), self.path, "a function pointer");
+                    value, self.path, "a function pointer");
                 // FIXME: Check if the signature matches
             }
             // This should be all the primitive types
@@ -423,7 +412,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         }
         // At least one value is excluded. Get the bits.
         let value = try_validation!(value.not_undef(),
-            scalar_format(value), self.path,
+            value, self.path,
             format!("something in the range {:?}", layout.valid_range));
         let bits = match value {
             Scalar::Ptr(ptr) => {

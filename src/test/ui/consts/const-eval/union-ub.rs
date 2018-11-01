@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(const_err)] // make sure we cannot allow away the errors tested here
+
 union DummyUnion {
     u8: u8,
     bool: bool,

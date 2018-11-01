@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unknown_lints)]
+use std::fmt;
 
 use ty::layout::{HasDataLayout, Size};
 use ty::subst::Substs;
@@ -97,6 +97,15 @@ pub enum Scalar<Tag=(), Id=AllocId> {
     /// relocations, but a `Scalar` is only large enough to contain one, so we just represent the
     /// relocation and its associated offset together as a `Pointer` here.
     Ptr(Pointer<Tag, Id>),
+}
+
+impl<Tag> fmt::Display for Scalar<Tag> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Scalar::Ptr(_) => write!(f, "a pointer"),
+            Scalar::Bits { bits, .. } => write!(f, "{}", bits),
+        }
+    }
 }
 
 impl<'tcx> Scalar<()> {
