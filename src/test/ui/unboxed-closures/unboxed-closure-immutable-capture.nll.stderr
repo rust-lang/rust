@@ -33,7 +33,7 @@ LL |     let x = 0;
 LL |     move || set(&mut x); //~ ERROR cannot borrow
    |                 ^^^^^^ cannot borrow as mutable
 
-warning[E0594]: cannot assign to `x`, as it is not declared as mutable
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/unboxed-closure-immutable-capture.rs:23:8
    |
 LL |     let x = 0;
@@ -41,12 +41,8 @@ LL |     let x = 0;
 ...
 LL |     || x = 1; //~ ERROR cannot assign
    |        ^^^^^ cannot assign
-   |
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
 
-warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/unboxed-closure-immutable-capture.rs:25:12
    |
 LL |     let x = 0;
@@ -54,12 +50,8 @@ LL |     let x = 0;
 ...
 LL |     || set(&mut x); //~ ERROR cannot assign
    |            ^^^^^^ cannot borrow as mutable
-   |
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
 
-warning[E0594]: cannot assign to `x`, as it is not declared as mutable
+error[E0594]: cannot assign to `x`, as it is not declared as mutable
   --> $DIR/unboxed-closure-immutable-capture.rs:26:8
    |
 LL |     let x = 0;
@@ -67,12 +59,8 @@ LL |     let x = 0;
 ...
 LL |     || x = 1; //~ ERROR cannot assign
    |        ^^^^^ cannot assign
-   |
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
 
-warning[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
+error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/unboxed-closure-immutable-capture.rs:28:12
    |
 LL |     let x = 0;
@@ -80,12 +68,8 @@ LL |     let x = 0;
 ...
 LL |     || set(&mut x); //~ ERROR cannot assign
    |            ^^^^^^ cannot borrow as mutable
-   |
-   = warning: This error has been downgraded to a warning for backwards compatibility with previous releases.
-           It represents potential unsoundness in your code.
-           This warning will become a hard error in the future.
 
-error: aborting due to 4 previous errors
+error: aborting due to 8 previous errors
 
 Some errors occurred: E0594, E0596.
 For more information about an error, try `rustc --explain E0594`.
