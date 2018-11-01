@@ -15,7 +15,7 @@ use ast::{self, CrateConfig, NodeId};
 use early_buffered_lints::{BufferedEarlyLint, BufferedEarlyLintId};
 use source_map::{SourceMap, FilePathMapping};
 use syntax_pos::{Span, SourceFile, FileName, MultiSpan};
-use errors::{Handler, ColorConfig, DiagnosticBuilder};
+use errors::{Handler, ColorConfig, Diagnostic, DiagnosticBuilder};
 use feature_gate::UnstableFeatures;
 use parse::parser::Parser;
 use ptr::P;
@@ -174,12 +174,23 @@ pub fn parse_stream_from_source_str(name: FileName, source: String, sess: &Parse
     source_file_to_stream(sess, sess.source_map().new_source_file(name, source), override_span)
 }
 
-// Create a new parser from a source string
+/// Create a new parser from a source string
 pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String)
                                       -> Parser {
     let mut parser = source_file_to_parser(sess, sess.source_map().new_source_file(name, source));
     parser.recurse_into_file_modules = false;
     parser
+}
+
+/// Create a new parser from a source string. Returns any buffered errors from lexing the initial
+/// token stream.
+pub fn maybe_new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String)
+    -> Result<Parser, Vec<Diagnostic>>
+{
+    let mut parser = maybe_source_file_to_parser(sess,
+                                                 sess.source_map().new_source_file(name, source))?;
+    parser.recurse_into_file_modules = false;
+    Ok(parser)
 }
 
 /// Create a new parser, handling errors as appropriate
@@ -214,6 +225,21 @@ fn source_file_to_parser(sess: & ParseSess, source_file: Lrc<SourceFile>) -> Par
     parser
 }
 
+/// Given a source_file and config, return a parser. Returns any buffered errors from lexing the
+/// initial token stream.
+fn maybe_source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>)
+    -> Result<Parser, Vec<Diagnostic>>
+{
+    let end_pos = source_file.end_pos;
+    let mut parser = stream_to_parser(sess, maybe_file_to_stream(sess, source_file, None)?);
+
+    if parser.token == token::Eof && parser.span.is_dummy() {
+        parser.span = Span::new(end_pos, end_pos, parser.span.ctxt());
+    }
+
+    Ok(parser)
+}
+
 // must preserve old name for now, because quote! from the *existing*
 // compiler expands into it
 pub fn new_parser_from_tts(sess: &ParseSess, tts: Vec<TokenTree>) -> Parser {
@@ -246,6 +272,24 @@ pub fn source_file_to_stream(sess: &ParseSess,
     let mut srdr = lexer::StringReader::new(sess, source_file, override_span);
     srdr.real_token();
     panictry!(srdr.parse_all_token_trees())
+}
+
+/// Given a source file, produce a sequence of token-trees. Returns any buffered errors from
+/// parsing the token tream.
+pub fn maybe_file_to_stream(sess: &ParseSess,
+                            source_file: Lrc<SourceFile>,
+                            override_span: Option<Span>) -> Result<TokenStream, Vec<Diagnostic>> {
+    let mut srdr = lexer::StringReader::new_or_buffered_errs(sess, source_file, override_span)?;
+    srdr.real_token();
+
+    match srdr.parse_all_token_trees() {
+        Ok(stream) => Ok(stream),
+        Err(err) => {
+            let mut buffer = Vec::with_capacity(1);
+            err.buffer(&mut buffer);
+            Err(buffer)
+        }
+    }
 }
 
 /// Given stream and the `ParseSess`, produce a parser

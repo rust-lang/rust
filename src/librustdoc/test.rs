@@ -422,12 +422,19 @@ pub fn make_test(s: &str,
 
         debug!("about to parse: \n{}", source);
 
-        // FIXME(misdreavus): this can still emit a FatalError (and thus halt rustdoc prematurely)
-        // if there is a lexing error in the first token
-        let mut parser = parse::new_parser_from_source_str(&sess, filename, source);
-
         let mut found_main = false;
         let mut found_extern_crate = cratename.is_none();
+
+        let mut parser = match parse::maybe_new_parser_from_source_str(&sess, filename, source) {
+            Ok(p) => p,
+            Err(errs) => {
+                for mut err in errs {
+                    err.cancel();
+                }
+
+                return (found_main, found_extern_crate);
+            }
+        };
 
         loop {
             match parser.parse_item() {
