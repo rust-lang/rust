@@ -197,6 +197,22 @@ issue][issue-include].
 [unstable-include]: ../unstable-book/language-features/external-doc.html
 [issue-include]: https://github.com/rust-lang/rust/issues/44732
 
+### Add aliases for an item in documentation search
+
+This feature allows you to add alias(es) to an item when using the `rustdoc` search through the
+`doc(alias)` attribute. Example:
+
+```rust,no_run
+#![feature(doc_alias)]
+
+#[doc(alias = "x")]
+#[doc(alias = "big")]
+pub struct BigX;
+```
+
+Then, when looking for it through the `rustdoc` search, if you enter "x" or
+"big", search will show the `BigX` struct first.
+
 ## Unstable command-line arguments
 
 These features are enabled by passing a command-line flag to Rustdoc, but the flags in question are
@@ -373,22 +389,6 @@ This is an internal flag intended for the standard library and compiler that app
 `#[unstable]` attribute to any dependent crate that doesn't have another stability attribute. This
 allows `rustdoc` to be able to generate documentation for the compiler crates and the standard
 library, as an equivalent command-line argument is provided to `rustc` when building those crates.
-
-### `doc_alias` feature
-
-This feature allows you to add alias(es) to an item when using the `rustdoc` search through the
-`doc(alias)` attribute. Example:
-
-```rust,no_run
-#![feature(doc_alias)]
-
-#[doc(alias = "x")]
-#[doc(alias = "big")]
-pub struct BigX;
-```
-
-Then, when looking for it through the `rustdoc` search, if you enter "x" or
-"big", search will show the `BigX` struct first.
 
 ### `--index-page`: provide a top-level landing page for docs
 
