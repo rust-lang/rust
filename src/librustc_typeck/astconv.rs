@@ -974,9 +974,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         let principal = self.instantiate_poly_trait_ref(&trait_bounds[0],
                                                         dummy_self,
                                                         &mut projection_bounds);
+        debug!("principal: {:?}", principal);
 
         for trait_bound in trait_bounds[1..].iter() {
-            // Sanity check for non-principal trait bounds
+            // sanity check for non-principal trait bounds
             self.instantiate_poly_trait_ref(trait_bound,
                                             dummy_self,
                                             &mut vec![]);
@@ -1008,9 +1009,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             })
         });
 
-        // check that there are no gross object safety violations,
+        // Check that there are no gross object safety violations;
         // most importantly, that the supertraits don't contain Self,
-        // to avoid ICE-s.
+        // to avoid ICEs.
         let object_safety_violations =
             tcx.astconv_object_safety_violations(principal.def_id());
         if !object_safety_violations.is_empty() {
@@ -1020,7 +1021,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             return tcx.types.err;
         }
 
-        // use a BTreeSet to keep output in a more consistent order
+        // Use a BTreeSet to keep output in a more consistent order.
         let mut associated_types = BTreeSet::default();
 
         for tr in traits::supertraits(tcx, principal) {
@@ -1059,7 +1060,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         v.sort_by(|a, b| a.stable_cmp(tcx, b));
         let existential_predicates = ty::Binder::bind(tcx.mk_existential_predicates(v.into_iter()));
 
-        // Explicitly specified region bound. Use that.
+        // Use explicitly-specified region bound.
         let region_bound = if !lifetime.is_elided() {
             self.ast_region_to_region(lifetime, None)
         } else {

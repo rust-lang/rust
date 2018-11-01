@@ -319,7 +319,8 @@ fn type_param_predicates<'a, 'tcx>(
     let icx = ItemCtxt::new(tcx, item_def_id);
     result
         .predicates
-        .extend(icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty, true));
+        .extend(icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty,
+            OnlySelfBounds(true)));
     result
 }
 
@@ -716,7 +717,7 @@ fn super_predicates_of<'a, 'tcx>(
     // as one of its "superpredicates".
     let is_trait_alias = ty::is_trait_alias(tcx, trait_def_id);
     let superbounds2 = icx.type_parameter_bounds_in_generics(
-        generics, item.id, self_param_ty, !is_trait_alias);
+        generics, item.id, self_param_ty, OnlySelfBounds(!is_trait_alias));
 
     // Combine the two lists to form the complete set of superbounds:
     let superbounds: Vec<_> = superbounds1.into_iter().chain(superbounds2).collect();
@@ -1694,6 +1695,7 @@ fn explicit_predicates_of<'a, 'tcx>(
 
     let icx = ItemCtxt::new(tcx, def_id);
     let no_generics = hir::Generics::empty();
+    let empty_trait_items = HirVec::new();
 
     let mut predicates = UniquePredicates::new();
 
@@ -1736,6 +1738,10 @@ fn explicit_predicates_of<'a, 'tcx>(
 
                 ItemKind::Trait(_, _, ref generics, .., ref items) => {
                     is_trait = Some((ty::TraitRef::identity(tcx, def_id), items));
+                    generics
+                }
+                ItemKind::TraitAlias(ref generics, _) => {
+                    is_trait = Some((ty::TraitRef::identity(tcx, def_id), &empty_trait_items));
                     generics
                 }
                 ItemKind::Existential(ExistTy {
