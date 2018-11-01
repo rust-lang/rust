@@ -200,8 +200,10 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 }
 
                 let visited = &mut self.visited;
+                let mut components = smallvec![];
+                tcx.push_outlives_components(ty_max, &mut components);
                 self.stack.extend(
-                    tcx.outlives_components(ty_max)
+                    components
                        .into_iter()
                        .filter_map(|component| match component {
                            Component::Region(r) => if r.is_late_bound() {

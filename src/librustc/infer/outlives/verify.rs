@@ -155,7 +155,8 @@ impl<'cx, 'gcx, 'tcx> VerifyBoundCx<'cx, 'gcx, 'tcx> {
             .map(|subty| self.type_bound(subty))
             .collect::<Vec<_>>();
 
-        let mut regions = ty.regions();
+        let mut regions = smallvec![];
+        ty.push_regions(&mut regions);
         regions.retain(|r| !r.is_late_bound()); // ignore late-bound regions
         bounds.push(VerifyBound::AllBounds(
             regions

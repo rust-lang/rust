@@ -37,6 +37,7 @@ use rustc::mir::{BasicBlock, FakeReadCause, Local, Location, Mir, Place};
 use rustc::mir::{Rvalue, Statement, StatementKind};
 use rustc::mir::visit::{MutVisitor, Visitor, TyContext};
 use rustc::ty::{Ty, RegionKind, TyCtxt};
+use smallvec::smallvec;
 use transform::{MirPass, MirSource};
 
 pub struct CleanEndRegions;
@@ -80,7 +81,11 @@ impl<'tcx> Visitor<'tcx> for GatherBorrowedRegions {
 
     fn visit_ty(&mut self, ty: &Ty<'tcx>, _: TyContext) {
         // Gather regions that occur in types
-        for re in ty.walk().flat_map(|t| t.regions()) {
+        let mut regions = smallvec![];
+        for t in ty.walk() {
+            t.push_regions(&mut regions);
+        }
+        for re in regions {
             match *re {
                 RegionKind::ReScope(ce) => { self.seen_regions.insert(ce); }
                 _ => {},
