@@ -687,7 +687,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         "proc_macro_hygiene",
                         self.span,
                         GateIssue::Language,
-                        &format!("procedural macros cannot expand to macro definitions"),
+                        "procedural macros cannot expand to macro definitions",
                     );
                 }
                 visit::walk_item(self, i);
