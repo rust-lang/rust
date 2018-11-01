@@ -207,11 +207,11 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
     }
 
     #[inline]
-    fn with_field(
+    fn visit_field(
         &mut self,
+        ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
         val: Self::V,
         field: usize,
-        f: impl FnOnce(&mut Self) -> EvalResult<'tcx>,
     ) -> EvalResult<'tcx> {
         // Remember the old state
         let path_len = self.path.len();
@@ -219,7 +219,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         // Perform operation
         self.push_aggregate_field_path_elem(op.layout, field);
         self.op = val;
-        f(self)?;
+        self.visit(ectx)?;
         // Undo changes
         self.path.truncate(path_len);
         self.op = op;
@@ -596,6 +596,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         };
 
         // Run it
-        self.visit_value(&mut visitor)
+        visitor.visit(self)
     }
 }

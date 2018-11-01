@@ -131,7 +131,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
 }
 
 // How to traverse a value and what to do when we are at the leaves.
-pub trait ValueVisitor<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: fmt::Debug {
+pub trait ValueVisitor<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: fmt::Debug + Sized {
     type V: Value<'a, 'mir, 'tcx, M>;
 
     // There's a value in here.
@@ -143,16 +143,16 @@ pub trait ValueVisitor<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: fmt::Debug {
         self.value().layout()
     }
 
-    // Replace the value by `val`, which must be the `field`th field of `self`,
-    // then call `f` and then un-do everything that might have happened to the visitor state.
+    // Replace the value by `val`, which must be the `field`th field of `self`, then call
+    // `visit_value` and then un-do everything that might have happened to the visitor state.
     // The point of this is that some visitors keep a stack of fields that we projected below,
     // and this lets us avoid copying that stack; instead they will pop the stack after
-    // executing `f`.
-    fn with_field(
+    // executing `visit_value`.
+    fn visit_field(
         &mut self,
+        ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
         val: Self::V,
         field: usize,
-        f: impl FnOnce(&mut Self) -> EvalResult<'tcx>,
     ) -> EvalResult<'tcx>;
 
     // This is an enum, downcast it to whatever the current variant is.
@@ -170,6 +170,14 @@ pub trait ValueVisitor<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: fmt::Debug {
         Ok(false)
     }
 
+    // Execute visitor on the current value.  Used for recursing.
+    #[inline]
+    fn visit(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
+        -> EvalResult<'tcx>
+    {
+        ectx.walk_value(self)
+    }
+
     // Actions on the leaves.
     fn visit_uninhabited(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
         -> EvalResult<'tcx>;
@@ -180,11 +188,11 @@ pub trait ValueVisitor<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: fmt::Debug {
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    pub fn visit_value<V: ValueVisitor<'a, 'mir, 'tcx, M>>(
+    pub fn walk_value<V: ValueVisitor<'a, 'mir, 'tcx, M>>(
         &mut self,
         v: &mut V,
     ) -> EvalResult<'tcx> {
-        trace!("visit_value: {:?}", v);
+        trace!("walk_value: {:?}", v);
 
         // If this is a multi-variant layout, we have find the right one and proceed with that.
         // (No benefit from making this recursion, but it is equivalent to that.)
@@ -205,7 +213,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let dest = v.value().force_allocation(self)?;
                 let inner = self.unpack_dyn_trait(dest)?.1;
                 // recurse with the inner type
-                return v.with_field(Value::from_mem_place(inner), 0, |v| self.visit_value(v));
+                return v.visit_field(self, Value::from_mem_place(inner), 0);
             },
             _ => {},
         };
@@ -256,7 +264,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
                 for i in 0..offsets.len() {
                     let val = v.value().project_field(self, i as u64)?;
-                    v.with_field(val, i, |v| self.visit_value(v))?;
+                    v.visit_field(self, val, i)?;
                 }
             },
             layout::FieldPlacement::Array { .. } => {
@@ -272,7 +280,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     };
                     // Now iterate over it.
                     for (i, field) in self.mplace_array_fields(mplace)?.enumerate() {
-                        v.with_field(Value::from_mem_place(field?), i, |v| self.visit_value(v))?;
+                        v.visit_field(self, Value::from_mem_place(field?), i)?;
                     }
                 }
             }
