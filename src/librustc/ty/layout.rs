@@ -23,6 +23,7 @@ use std::mem;
 use std::ops::Bound;
 
 use ich::StableHashingContext;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 
@@ -229,7 +230,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             let b_offset = a.value.size(dl).abi_align(b.value.align(dl));
             let size = (b_offset + b.value.size(dl)).abi_align(align);
             LayoutDetails {
-                variants: Variants::Single { index: 0 },
+                variants: Variants::Single { index: VariantIdx::new(0) },
                 fields: FieldPlacement::Arbitrary {
                     offsets: vec![Size::ZERO, b_offset],
                     memory_index: vec![0, 1]
@@ -454,7 +455,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }
 
             Ok(LayoutDetails {
-                variants: Variants::Single { index: 0 },
+                variants: Variants::Single { index: VariantIdx::new(0) },
                 fields: FieldPlacement::Arbitrary {
                     offsets,
                     memory_index
@@ -499,7 +500,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             // The never type.
             ty::Never => {
                 tcx.intern_layout(LayoutDetails {
-                    variants: Variants::Single { index: 0 },
+                    variants: Variants::Single { index: VariantIdx::new(0) },
                     fields: FieldPlacement::Union(0),
                     abi: Abi::Uninhabited,
                     align: dl.i8_align,
@@ -555,7 +556,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     .ok_or(LayoutError::SizeOverflow(ty))?;
 
                 tcx.intern_layout(LayoutDetails {
-                    variants: Variants::Single { index: 0 },
+                    variants: Variants::Single { index: VariantIdx::new(0) },
                     fields: FieldPlacement::Array {
                         stride: element.size,
                         count
@@ -568,7 +569,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             ty::Slice(element) => {
                 let element = self.layout_of(element)?;
                 tcx.intern_layout(LayoutDetails {
-                    variants: Variants::Single { index: 0 },
+                    variants: Variants::Single { index: VariantIdx::new(0) },
                     fields: FieldPlacement::Array {
                         stride: element.size,
                         count: 0
@@ -580,7 +581,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             }
             ty::Str => {
                 tcx.intern_layout(LayoutDetails {
-                    variants: Variants::Single { index: 0 },
+                    variants: Variants::Single { index: VariantIdx::new(0) },
                     fields: FieldPlacement::Array {
                         stride: Size::from_bytes(1),
                         count: 0
@@ -650,7 +651,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let size = size.abi_align(align);
 
                 tcx.intern_layout(LayoutDetails {
-                    variants: Variants::Single { index: 0 },
+                    variants: Variants::Single { index: VariantIdx::new(0) },
                     fields: FieldPlacement::Array {
                         stride: element.size,
                         count
@@ -671,7 +672,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     v.fields.iter().map(|field| {
                         self.layout_of(field.ty(tcx, substs))
                     }).collect::<Result<Vec<_>, _>>()
-                }).collect::<Result<Vec<_>, _>>()?;
+                }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
                 if def.is_union() {
                     let packed = def.repr.packed();
@@ -697,7 +698,8 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     }
 
                     let mut size = Size::ZERO;
-                    for field in &variants[0] {
+                    let index = VariantIdx::new(0);
+                    for field in &variants[index] {
                         assert!(!field.is_unsized());
 
                         if packed {
@@ -710,8 +712,8 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     }
 
                     return Ok(tcx.intern_layout(LayoutDetails {
-                        variants: Variants::Single { index: 0 },
-                        fields: FieldPlacement::Union(variants[0].len()),
+                        variants: Variants::Single { index },
+                        fields: FieldPlacement::Union(variants[index].len()),
                         abi: Abi::Aggregate { sized: true },
                         align,
                         size: size.abi_align(align)
@@ -729,8 +731,12 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     uninhabited && is_zst
                 };
                 let (present_first, present_second) = {
-                    let mut present_variants = (0..variants.len()).filter(|&v| {
-                        !absent(&variants[v])
+                    let mut present_variants = variants.iter_enumerated().filter_map(|(i, v)| {
+                        if absent(v) {
+                            None
+                        } else {
+                            Some(i)
+                        }
                     });
                     (present_variants.next(), present_variants.next())
                 };
@@ -792,16 +798,16 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 // The current code for niche-filling relies on variant indices
                 // instead of actual discriminants, so dataful enums with
                 // explicit discriminants (RFC #2363) would misbehave.
-                let no_explicit_discriminants = def.variants.iter().enumerate()
-                    .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i));
+                let no_explicit_discriminants = def.variants.iter_enumerated()
+                    .all(|(i, v)| v.discr == ty::VariantDiscr::Relative(i.as_u32()));
 
                 // Niche-filling enum optimization.
                 if !def.repr.inhibit_enum_layout_opt() && no_explicit_discriminants {
                     let mut dataful_variant = None;
-                    let mut niche_variants = usize::max_value()..=0;
+                    let mut niche_variants = VariantIdx::MAX..=VariantIdx::new(0);
 
                     // Find one non-ZST variant.
-                    'variants: for (v, fields) in variants.iter().enumerate() {
+                    'variants: for (v, fields) in variants.iter_enumerated() {
                         if absent(fields) {
                             continue 'variants;
                         }
@@ -824,7 +830,9 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     }
 
                     if let Some(i) = dataful_variant {
-                        let count = (niche_variants.end() - niche_variants.start() + 1) as u128;
+                        let count = (
+                            niche_variants.end().as_u32() - niche_variants.start().as_u32() + 1
+                        ) as u128;
                         for (field_index, &field) in variants[i].iter().enumerate() {
                             let niche = match self.find_niche(field)? {
                                 Some(niche) => niche,
@@ -836,7 +844,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                             };
 
                             let mut align = dl.aggregate_align;
-                            let st = variants.iter().enumerate().map(|(j, v)| {
+                            let st = variants.iter_enumerated().map(|(j, v)| {
                                 let mut st = univariant_uninterned(v,
                                     &def.repr, StructKind::AlwaysSized)?;
                                 st.variants = Variants::Single { index: j };
@@ -844,7 +852,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                                 align = align.max(st.align);
 
                                 Ok(st)
-                            }).collect::<Result<Vec<_>, _>>()?;
+                            }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
                             let offset = st[i].fields.offset(field_index) + niche.offset;
                             let size = st[i].size;
@@ -899,7 +907,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let (mut min, mut max) = (i128::max_value(), i128::min_value());
                 let discr_type = def.repr.discr_type();
                 let bits = Integer::from_attr(self, discr_type).size().bits();
-                for (i, discr) in def.discriminants(tcx).enumerate() {
+                for (i, discr) in def.discriminants(tcx) {
                     if variants[i].iter().any(|f| f.abi.is_uninhabited()) {
                         continue;
                     }
@@ -941,7 +949,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }
 
                 // Create the set of structs that represent each variant.
-                let mut layout_variants = variants.iter().enumerate().map(|(i, field_layouts)| {
+                let mut layout_variants = variants.iter_enumerated().map(|(i, field_layouts)| {
                     let mut st = univariant_uninterned(&field_layouts,
                         &def.repr, StructKind::Prefixed(min_ity.size(), prefix_align))?;
                     st.variants = Variants::Single { index: i };
@@ -956,7 +964,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     size = cmp::max(size, st.size);
                     align = align.max(st.align);
                     Ok(st)
-                }).collect::<Result<Vec<_>, _>>()?;
+                }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
                 // Align the maximum variant size to the largest alignment.
                 size = size.abi_align(align);
@@ -1259,7 +1267,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 debug!("print-type-size `{:#?}` adt general variants def {}",
                        layout.ty, adt_def.variants.len());
                 let variant_infos: Vec<_> =
-                    adt_def.variants.iter().enumerate().map(|(i, variant_def)| {
+                    adt_def.variants.iter_enumerated().map(|(i, variant_def)| {
                         let fields: Vec<_> =
                             variant_def.fields.iter().map(|f| f.ident.name).collect();
                         build_variant_info(Some(variant_def.name),
@@ -1339,7 +1347,8 @@ impl<'a, 'tcx> SizeSkeleton<'tcx> {
                 }
 
                 // Get a zero-sized variant or a pointer newtype.
-                let zero_or_ptr_variant = |i: usize| {
+                let zero_or_ptr_variant = |i| {
+                    let i = VariantIdx::new(i);
                     let fields = def.variants[i].fields.iter().map(|field| {
                         SizeSkeleton::compute(field.ty(tcx, substs), tcx, param_env)
                     });
@@ -1562,7 +1571,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
     where C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
           C::TyLayout: MaybeResult<TyLayout<'tcx>>
 {
-    fn for_variant(this: TyLayout<'tcx>, cx: &C, variant_index: usize) -> TyLayout<'tcx> {
+    fn for_variant(this: TyLayout<'tcx>, cx: &C, variant_index: VariantIdx) -> TyLayout<'tcx> {
         let details = match this.variants {
             Variants::Single { index } if index == variant_index => this.details,
 
@@ -1879,6 +1888,16 @@ impl<'a> HashStable<StableHashingContext<'a>> for FieldPlacement {
                 memory_index.hash_stable(hcx, hasher);
             }
         }
+    }
+}
+
+impl<'a> HashStable<StableHashingContext<'a>> for VariantIdx {
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>,
+    ) {
+        self.as_u32().hash_stable(hcx, hasher)
     }
 }
 

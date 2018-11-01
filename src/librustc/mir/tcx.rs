@@ -16,6 +16,7 @@
 use mir::*;
 use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, Ty, TyCtxt};
+use ty::layout::VariantIdx;
 use hir;
 use ty::util::IntTypeExt;
 
@@ -27,7 +28,7 @@ pub enum PlaceTy<'tcx> {
     /// Downcast to a particular variant of an enum.
     Downcast { adt_def: &'tcx AdtDef,
                substs: &'tcx Substs<'tcx>,
-               variant_index: u32 },
+               variant_index: VariantIdx },
 }
 
 static_assert!(PLACE_TY_IS_3_PTRS_LARGE:
@@ -58,11 +59,11 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn field_ty(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, f: &Field) -> Ty<'tcx>
     {
         // Pass `0` here so it can be used as a "default" variant_index in first arm below
-        let answer = match (self, 0) {
+        let answer = match (self, VariantIdx::new(0)) {
             (PlaceTy::Ty {
                 ty: &ty::TyS { sty: ty::TyKind::Adt(adt_def, substs), .. } }, variant_index) |
             (PlaceTy::Downcast { adt_def, substs, variant_index }, _) => {
-                let variant_def = &adt_def.variants[variant_index as usize];
+                let variant_def = &adt_def.variants[variant_index];
                 let field_def = &variant_def.fields[f.index()];
                 field_def.ty(tcx, substs)
             }
@@ -138,7 +139,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                 match self.to_ty(tcx).sty {
                     ty::Adt(adt_def, substs) => {
                         assert!(adt_def.is_enum());
-                        assert!(index < adt_def.variants.len() as u32);
+                        assert!(index.as_usize() < adt_def.variants.len());
                         assert_eq!(adt_def, adt_def1);
                         PlaceTy::Downcast { adt_def,
                                             substs,

@@ -16,6 +16,8 @@ use spec::Target;
 use std::{cmp, fmt};
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+
 pub mod call;
 
 /// Parsed [Data layout](http://llvm.org/docs/LangRef.html#data-layout)
@@ -825,11 +827,15 @@ impl Abi {
     }
 }
 
+newtype_index! {
+    pub struct VariantIdx { .. }
+}
+
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub enum Variants {
     /// Single enum variants, structs/tuples, unions, and all non-ADTs.
     Single {
-        index: usize
+        index: VariantIdx,
     },
 
     /// General-case enums: for each case there is a struct, and they all have
@@ -837,7 +843,7 @@ pub enum Variants {
     /// at a non-0 offset, after where the tag would go.
     Tagged {
         tag: Scalar,
-        variants: Vec<LayoutDetails>,
+        variants: IndexVec<VariantIdx, LayoutDetails>,
     },
 
     /// Multiple cases distinguished by a niche (values invalid for a type):
@@ -849,11 +855,11 @@ pub enum Variants {
     /// `None` has a null pointer for the second tuple field, and
     /// `Some` is the identity function (with a non-null reference).
     NicheFilling {
-        dataful_variant: usize,
-        niche_variants: RangeInclusive<usize>,
+        dataful_variant: VariantIdx,
+        niche_variants: RangeInclusive<VariantIdx>,
         niche: Scalar,
         niche_start: u128,
-        variants: Vec<LayoutDetails>,
+        variants: IndexVec<VariantIdx, LayoutDetails>,
     }
 }
 
@@ -871,7 +877,7 @@ impl LayoutDetails {
         let size = scalar.value.size(cx);
         let align = scalar.value.align(cx);
         LayoutDetails {
-            variants: Variants::Single { index: 0 },
+            variants: Variants::Single { index: VariantIdx::new(0) },
             fields: FieldPlacement::Union(0),
             abi: Abi::Scalar(scalar),
             size,
@@ -908,12 +914,12 @@ pub trait LayoutOf {
 }
 
 pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
-    fn for_variant(this: TyLayout<'a, Self>, cx: &C, variant_index: usize) -> TyLayout<'a, Self>;
+    fn for_variant(this: TyLayout<'a, Self>, cx: &C, variant_index: VariantIdx) -> TyLayout<'a, Self>;
     fn field(this: TyLayout<'a, Self>, cx: &C, i: usize) -> C::TyLayout;
 }
 
 impl<'a, Ty> TyLayout<'a, Ty> {
-    pub fn for_variant<C>(self, cx: &C, variant_index: usize) -> Self
+    pub fn for_variant<C>(self, cx: &C, variant_index: VariantIdx) -> Self
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
         Ty::for_variant(self, cx, variant_index)
     }

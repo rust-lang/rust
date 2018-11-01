@@ -2400,6 +2400,7 @@ dependencies = [
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_cratesio_shim 0.0.0",
+ "rustc_data_structures 0.0.0",
  "serialize 0.0.0",
 ]
 

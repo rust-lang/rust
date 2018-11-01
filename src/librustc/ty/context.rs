@@ -45,7 +45,7 @@ use ty::RegionKind;
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TyKind::*;
 use ty::GenericParamDefKind;
-use ty::layout::{LayoutDetails, TargetDataLayout};
+use ty::layout::{LayoutDetails, TargetDataLayout, VariantIdx};
 use ty::query;
 use ty::steal::Steal;
 use ty::BindingMode;
@@ -1009,7 +1009,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn alloc_adt_def(self,
                          did: DefId,
                          kind: AdtKind,
-                         variants: Vec<ty::VariantDef>,
+                         variants: IndexVec<VariantIdx, ty::VariantDef>,
                          repr: ReprOptions)
                          -> &'gcx ty::AdtDef {
         let def = ty::AdtDef::new(self, did, kind, variants, repr);

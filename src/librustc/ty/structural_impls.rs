@@ -33,7 +33,7 @@ CloneTypeFoldableAndLiftImpls! {
     (),
     bool,
     usize,
-    u32,
+    ::ty::layout::VariantIdx,
     u64,
     ::middle::region::Scope,
     ::syntax::ast::FloatTy,
