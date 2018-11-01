@@ -72,6 +72,19 @@ impl Lint {
     }
 }
 
+/// Generates the `pub mod module_name` list in `clippy_lints/src/lib.rs`.
+pub fn gen_modules_list(lints: Vec<Lint>) -> Vec<String> {
+    lints.into_iter()
+        .filter_map(|l| {
+            if l.is_internal() || l.deprecation.is_some() { None } else { Some(l.module) }
+        })
+        .unique()
+        .map(|module| {
+            format!("pub mod {};", module)
+        })
+        .sorted()
+}
+
 /// Generates the list of lint links at the bottom of the README
 pub fn gen_changelog_lint_list(lints: Vec<Lint>) -> Vec<String> {
     let mut lint_list_sorted: Vec<Lint> = lints;
@@ -113,7 +126,13 @@ fn gather_from_file(dir_entry: &walkdir::DirEntry) -> impl Iterator<Item=Lint> {
     let mut file = fs::File::open(dir_entry.path()).unwrap();
     let mut content = String::new();
     file.read_to_string(&mut content).unwrap();
-    parse_contents(&content, dir_entry.path().file_stem().unwrap().to_str().unwrap())
+    let mut filename = dir_entry.path().file_stem().unwrap().to_str().unwrap();
+    // If the lints are stored in mod.rs, we get the module name from
+    // the containing directory:
+    if filename == "mod" {
+        filename = dir_entry.path().parent().unwrap().file_stem().unwrap().to_str().unwrap()
+    }
+    parse_contents(&content, filename)
 }
 
 fn parse_contents(content: &str, filename: &str) -> impl Iterator<Item=Lint> {
@@ -215,7 +234,7 @@ pub fn replace_region_in_text<F>(text: &str, start: &str, end: &str, replace_sta
         // This happens if the provided regex in `clippy_dev/src/main.rs` is not found in the
         // given text or file. Most likely this is an error on the programmer's side and the Regex
         // is incorrect.
-        println!("regex {:?} not found. You may have to update it.", start);
+        eprintln!("error: regex `{:?}` not found. You may have to update it.", start);
     }
     new_lines.join("\n")
 }
@@ -355,4 +374,19 @@ fn test_gen_deprecated() {
     );"#.to_string()
     ];
     assert_eq!(expected, gen_deprecated(&lints));
+}
+
+#[test]
+fn test_gen_modules_list() {
+    let lints = vec![
+        Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
+        Lint::new("should_assert_eq2", "group2", "abc", Some("abc"), "deprecated"),
+        Lint::new("incorrect_internal", "internal_style", "abc", None, "another_module"),
+        Lint::new("incorrect_internal", "internal_style", "abc", None, "module_name"),
+    ];
+    let expected = vec![
+        "pub mod another_module;\n".to_string(),
+        "pub mod module_name;\n".to_string(),
+    ];
+    assert_eq!(expected, gen_modules_list(lints));
 }
