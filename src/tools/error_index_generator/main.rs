@@ -10,6 +10,7 @@
 
 #![feature(rustc_private)]
 
+extern crate env_logger;
 extern crate syntax;
 extern crate rustdoc;
 extern crate serialize as rustc_serialize;
@@ -264,6 +265,7 @@ fn parse_args() -> (OutputFormat, PathBuf) {
 }
 
 fn main() {
+    env_logger::init();
     PLAYGROUND.with(|slot| {
         *slot.borrow_mut() = Some((None, String::from("https://play.rust-lang.org/")));
     });
