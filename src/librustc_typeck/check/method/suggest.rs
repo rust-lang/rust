@@ -521,7 +521,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     with_crate_prefix(|| self.tcx.item_path_str(*did)),
                     additional_newline
                 )
-            }).collect();
+            });
 
             err.span_suggestions_with_applicability(
                                                     span,

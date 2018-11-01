@@ -4948,7 +4948,7 @@ fn show_candidates(err: &mut DiagnosticBuilder,
         err.span_suggestions_with_applicability(
             span,
             &msg,
-            path_strings,
+            path_strings.into_iter(),
             Applicability::Unspecified,
         );
     } else {

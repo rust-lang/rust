@@ -132,7 +132,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if compatible_variants.peek().is_some() {
                     let expr_text = print::to_string(print::NO_ANN, |s| s.print_expr(expr));
                     let suggestions = compatible_variants
-                        .map(|v| format!("{}({})", v, expr_text)).collect::<Vec<_>>();
+                        .map(|v| format!("{}({})", v, expr_text));
                     err.span_suggestions_with_applicability(
                         expr.span,
                         "try using a variant of the expected type",
