@@ -80,11 +80,15 @@ pub unsafe fn __cpuid(leaf: u32) -> CpuidResult {
 /// Does the host support the `cpuid` instruction?
 #[inline]
 pub fn has_cpuid() -> bool {
-    #[cfg(target_arch = "x86_64")]
+    #[cfg(target_env = "sgx")]
+    {
+        false
+    }
+    #[cfg(all(not(target_env = "sgx"), target_arch = "x86_64"))]
     {
         true
     }
-    #[cfg(target_arch = "x86")]
+    #[cfg(all(not(target_env = "sgx"), target_arch = "x86"))]
     {
         // Optimization for i586 and i686 Rust targets which SSE enabled
         // and support cpuid:
