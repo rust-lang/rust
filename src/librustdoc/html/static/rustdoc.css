@@ -658,9 +658,9 @@ a {
 	padding-right: 10px;
 }
 .content .search-results td:first-child a:after {
-    clear: both;
-    content: "";
-    display: block;
+	clear: both;
+	content: "";
+	display: block;
 }
 .content .search-results td:first-child a span {
 	float: left;
@@ -1114,6 +1114,13 @@ pre.rust {
 .search-failed {
 	text-align: center;
 	margin-top: 20px;
+}
+
+.search-failed > ul {
+	text-align: left;
+	max-width: 570px;
+	margin-left: auto;
+	margin-right: auto;
 }
 
 #titles {
