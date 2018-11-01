@@ -1,4 +1,4 @@
-// Copyright 2017-2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,13 +10,8 @@
 
 #![feature(trait_alias)]
 
-trait CloneDefault<T> = Default where T: Clone;
-trait BoundedAlias<T: Clone = ()> = Default;
-
 trait Foo {}
 trait A<T: Foo> {}
 trait B<T> = A<T>; // T cannot be unbounded
-
-impl CloneDefault for () {}
 
 fn main() {}

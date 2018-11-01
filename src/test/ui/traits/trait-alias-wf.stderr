@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `T: Foo` is not satisfied
+  --> $DIR/trait-alias-wf.rs:15:1
+   |
+LL | trait B<T> = A<T>; // T cannot be unbounded
+   | ^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `T`
+   |
+   = help: consider adding a `where T: Foo` bound
+note: required by `A`
+  --> $DIR/trait-alias-wf.rs:14:1
+   |
+LL | trait A<T: Foo> {}
+   | ^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.
