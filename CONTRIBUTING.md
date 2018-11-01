@@ -19,7 +19,7 @@ hop on [#rust-internals][pound-rust-internals].
 
 As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
 
-[pound-rust-internals]: https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
+[pound-rust-internals]: https://kiwiirc.com/nextclient/#ircs://irc.mozilla.org:6697/#rust-internals?nick=rustacean??
 [internals]: https://internals.rust-lang.org
 [coc]: https://www.rust-lang.org/conduct.html
 
@@ -620,7 +620,7 @@ Find a [requested community library][community-library], build it, and publish
 it to [Crates.io](http://crates.io). Easier said than done, but very, very
 valuable!
 
-[pound-rust]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
+[pound-rust]: https://kiwiirc.com/nextclient/#ircs://irc.mozilla.org:6697/#rust?nick=rustacean??
 [users]: https://users.rust-lang.org/
 [so]: http://stackoverflow.com/questions/tagged/rust
 [community-library]: https://github.com/rust-lang/rfcs/labels/A-community-library
