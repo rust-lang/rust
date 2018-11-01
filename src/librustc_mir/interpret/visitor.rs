@@ -22,9 +22,9 @@ pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
     fn layout(&self) -> TyLayout<'tcx>;
 
     // Make this a `MPlaceTy`, or panic if that's not possible.
-    fn force_allocation(
+    fn to_mem_place(
         self,
-        ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+        ectx: &EvalContext<'a, 'mir, 'tcx, M>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>>;
 
     // Create this from an `MPlaceTy`.
@@ -55,9 +55,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     }
 
     #[inline(always)]
-    fn force_allocation(
+    fn to_mem_place(
         self,
-        _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+        _ectx: &EvalContext<'a, 'mir, 'tcx, M>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         Ok(self.to_mem_place())
     }
@@ -94,9 +94,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     }
 
     #[inline(always)]
-    fn force_allocation(
+    fn to_mem_place(
         self,
-        _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+        _ectx: &EvalContext<'a, 'mir, 'tcx, M>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         Ok(self)
     }
@@ -133,11 +133,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     }
 
     #[inline(always)]
-    fn force_allocation(
+    fn to_mem_place(
         self,
-        ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+        ectx: &EvalContext<'a, 'mir, 'tcx, M>,
     ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        ectx.force_allocation(self)
+        // If this refers to a local, assert that it already has an allocation.
+        Ok(ectx.place_to_op(self)?.to_mem_place())
     }
 
     #[inline(always)]
@@ -243,7 +244,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         match v.layout().ty.sty {
             ty::Dynamic(..) => {
                 // immediate trait objects are not a thing
-                let dest = v.value().force_allocation(self)?;
+                let dest = v.value().to_mem_place(self)?;
                 let inner = self.unpack_dyn_trait(dest)?.1;
                 trace!("dyn object layout: {:#?}", inner.layout);
                 // recurse with the inner type
@@ -310,7 +311,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         MPlaceTy::dangling(v.layout(), self)
                     } else {
                         // non-ZST array/slice/str cannot be immediate
-                        v.value().force_allocation(self)?
+                        v.value().to_mem_place(self)?
                     };
                     // Now iterate over it.
                     for (i, field) in self.mplace_array_fields(mplace)?.enumerate() {
