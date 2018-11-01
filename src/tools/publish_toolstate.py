@@ -26,7 +26,7 @@ except ImportError:
 MAINTAINERS = {
     'miri': '@oli-obk @RalfJung @eddyb',
     'clippy-driver': '@Manishearth @llogiq @mcarton @oli-obk',
-    'rls': '@nrc',
+    'rls': '@nrc @Xanewok',
     'rustfmt': '@nrc',
     'book': '@carols10cents @steveklabnik',
     'nomicon': '@frewsxcv @Gankro',
@@ -81,8 +81,8 @@ def update_latest(
                 status[os] = new
                 if new > old:
                     changed = True
-                    message += '🎉 {} on {}: {} → {}.\n' \
-                        .format(tool, os, old, new)
+                    message += '🎉 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
+                        .format(tool, os, old, new, MAINTAINERS.get(tool))
                 elif new < old:
                     changed = True
                     message += '💔 {} on {}: {} → {} (cc {}, @rust-lang/infra).\n' \
