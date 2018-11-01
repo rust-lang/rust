@@ -517,9 +517,9 @@ impl EarlyLintPass for CfgAttrPass {
             // check for `rustfmt`
             if let Some(feature_item) = items[0].meta_item();
             if feature_item.name() == "rustfmt";
-            // check for `rustfmt_skip`
+            // check for `rustfmt_skip` and `rustfmt::skip`
             if let Some(skip_item) = &items[1].meta_item();
-            if skip_item.name() == "rustfmt_skip";
+            if skip_item.name() == "rustfmt_skip" || skip_item.name() == "skip";
             then {
                 let attr_style = match attr.style {
                     AttrStyle::Outer => "#[",
