@@ -315,6 +315,11 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                         _ => bug!("receiver type has unsupported layout: {:?}", layout)
                     }
 
+                    // In the case of Rc<Self>, we need to explicitly pass a *mut RcBox<Self>
+                    // with a Scalar (not ScalarPair) ABI. This is a hack that is understood
+                    // elsewhere in the compiler as a method on a `dyn Trait`.
+                    // To get the type `*mut RcBox<Self>`, we just keep unwrapping newtypes until we
+                    // get a built-in pointer type
                     let mut fat_pointer_layout = layout;
                     'descend_newtypes: while !fat_pointer_layout.ty.is_unsafe_ptr()
                         && !fat_pointer_layout.ty.is_region_ptr()

@@ -647,8 +647,12 @@ impl FunctionCx<'a, 'll, 'tcx> {
 
                     if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
                         if let Pair(..) = op.val {
-                            // descend through newtype wrappers until `op` is a builtin pointer to
-                            // `dyn Trait`, e.g. `*const dyn Trait`, `&mut dyn Trait`
+                            // In the case of Rc<Self>, we need to explicitly pass a
+                            // *mut RcBox<Self> with a Scalar (not ScalarPair) ABI. This is a hack
+                            // that is understood elsewhere in the compiler as a method on
+                            // `dyn Trait`.
+                            // To get a `*mut RcBox<Self>`, we just keep unwrapping newtypes until
+                            // we get a value of a built-in pointer type
                             'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
                                             && !op.layout.ty.is_region_ptr()
                             {
