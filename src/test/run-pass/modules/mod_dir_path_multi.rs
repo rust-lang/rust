@@ -11,13 +11,13 @@
 // run-pass
 // ignore-pretty issue #37195
 
-#[path = "mod_dir_simple"]
 mod biscuits {
+    #[path = "mod_dir_simple/test.rs"]
     pub mod test;
 }
 
-#[path = "mod_dir_simple"]
 mod gravy {
+    #[path = "mod_dir_simple/test.rs"]
     pub mod test;
 }
 

@@ -11,8 +11,8 @@
 // run-pass
 // ignore-pretty issue #37195
 
-#[path = "mod_dir_simple"]
 mod pancakes {
+    #[path = "mod_dir_simple/test.rs"]
     pub mod test;
 }
 

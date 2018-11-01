@@ -13,21 +13,23 @@
 // ignore-pretty issue #37195
 
 mod mod_dir_simple {
-    #[path = "test.rs"]
+    #[path = "mod_dir_simple/test.rs"]
     pub mod syrup;
 }
 
 pub fn main() {
     assert_eq!(mod_dir_simple::syrup::foo(), 10);
 
-    #[path = "auxiliary"]
     mod foo {
+        #[path = "auxiliary/two_macros_2.rs"]
         mod two_macros_2;
     }
 
-    #[path = "auxiliary"]
     mod bar {
-        macro_rules! m { () => { mod two_macros_2; } }
+        macro_rules! m { () => {
+            #[path = "auxiliary/two_macros_2.rs"]
+            mod two_macros_2;
+        } }
         m!();
     }
 }
