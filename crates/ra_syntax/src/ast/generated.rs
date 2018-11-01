@@ -15,12 +15,15 @@ use crate::{
 pub struct ArgListNode(SyntaxNode);
 
 impl ArgListNode {
-    pub fn new(ast: ArgList) -> ArgListNode {
-        let syntax = ast.syntax().owned();
-        ArgListNode(syntax)
-    }
     pub fn ast(&self) -> ArgList {
         ArgList::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ArgList<'a>> for ArgListNode {
+    fn from(ast: ArgList<'a>) -> ArgListNode {
+        let syntax = ast.syntax().owned();
+        ArgListNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -50,12 +53,15 @@ impl<'a> ArgList<'a> {
 pub struct ArrayExprNode(SyntaxNode);
 
 impl ArrayExprNode {
-    pub fn new(ast: ArrayExpr) -> ArrayExprNode {
-        let syntax = ast.syntax().owned();
-        ArrayExprNode(syntax)
-    }
     pub fn ast(&self) -> ArrayExpr {
         ArrayExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ArrayExpr<'a>> for ArrayExprNode {
+    fn from(ast: ArrayExpr<'a>) -> ArrayExprNode {
+        let syntax = ast.syntax().owned();
+        ArrayExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -81,12 +87,15 @@ impl<'a> ArrayExpr<'a> {}
 pub struct ArrayTypeNode(SyntaxNode);
 
 impl ArrayTypeNode {
-    pub fn new(ast: ArrayType) -> ArrayTypeNode {
-        let syntax = ast.syntax().owned();
-        ArrayTypeNode(syntax)
-    }
     pub fn ast(&self) -> ArrayType {
         ArrayType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ArrayType<'a>> for ArrayTypeNode {
+    fn from(ast: ArrayType<'a>) -> ArrayTypeNode {
+        let syntax = ast.syntax().owned();
+        ArrayTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -112,12 +121,15 @@ impl<'a> ArrayType<'a> {}
 pub struct AttrNode(SyntaxNode);
 
 impl AttrNode {
-    pub fn new(ast: Attr) -> AttrNode {
-        let syntax = ast.syntax().owned();
-        AttrNode(syntax)
-    }
     pub fn ast(&self) -> Attr {
         Attr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Attr<'a>> for AttrNode {
+    fn from(ast: Attr<'a>) -> AttrNode {
+        let syntax = ast.syntax().owned();
+        AttrNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -147,12 +159,15 @@ impl<'a> Attr<'a> {
 pub struct BinExprNode(SyntaxNode);
 
 impl BinExprNode {
-    pub fn new(ast: BinExpr) -> BinExprNode {
-        let syntax = ast.syntax().owned();
-        BinExprNode(syntax)
-    }
     pub fn ast(&self) -> BinExpr {
         BinExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<BinExpr<'a>> for BinExprNode {
+    fn from(ast: BinExpr<'a>) -> BinExprNode {
+        let syntax = ast.syntax().owned();
+        BinExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -178,12 +193,15 @@ impl<'a> BinExpr<'a> {}
 pub struct BindPatNode(SyntaxNode);
 
 impl BindPatNode {
-    pub fn new(ast: BindPat) -> BindPatNode {
-        let syntax = ast.syntax().owned();
-        BindPatNode(syntax)
-    }
     pub fn ast(&self) -> BindPat {
         BindPat::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<BindPat<'a>> for BindPatNode {
+    fn from(ast: BindPat<'a>) -> BindPatNode {
+        let syntax = ast.syntax().owned();
+        BindPatNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -210,12 +228,15 @@ impl<'a> BindPat<'a> {}
 pub struct BlockNode(SyntaxNode);
 
 impl BlockNode {
-    pub fn new(ast: Block) -> BlockNode {
-        let syntax = ast.syntax().owned();
-        BlockNode(syntax)
-    }
     pub fn ast(&self) -> Block {
         Block::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Block<'a>> for BlockNode {
+    fn from(ast: Block<'a>) -> BlockNode {
+        let syntax = ast.syntax().owned();
+        BlockNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -249,12 +270,15 @@ impl<'a> Block<'a> {
 pub struct BlockExprNode(SyntaxNode);
 
 impl BlockExprNode {
-    pub fn new(ast: BlockExpr) -> BlockExprNode {
-        let syntax = ast.syntax().owned();
-        BlockExprNode(syntax)
-    }
     pub fn ast(&self) -> BlockExpr {
         BlockExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<BlockExpr<'a>> for BlockExprNode {
+    fn from(ast: BlockExpr<'a>) -> BlockExprNode {
+        let syntax = ast.syntax().owned();
+        BlockExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -284,12 +308,15 @@ impl<'a> BlockExpr<'a> {
 pub struct BreakExprNode(SyntaxNode);
 
 impl BreakExprNode {
-    pub fn new(ast: BreakExpr) -> BreakExprNode {
-        let syntax = ast.syntax().owned();
-        BreakExprNode(syntax)
-    }
     pub fn ast(&self) -> BreakExpr {
         BreakExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<BreakExpr<'a>> for BreakExprNode {
+    fn from(ast: BreakExpr<'a>) -> BreakExprNode {
+        let syntax = ast.syntax().owned();
+        BreakExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -315,12 +342,15 @@ impl<'a> BreakExpr<'a> {}
 pub struct CallExprNode(SyntaxNode);
 
 impl CallExprNode {
-    pub fn new(ast: CallExpr) -> CallExprNode {
-        let syntax = ast.syntax().owned();
-        CallExprNode(syntax)
-    }
     pub fn ast(&self) -> CallExpr {
         CallExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<CallExpr<'a>> for CallExprNode {
+    fn from(ast: CallExpr<'a>) -> CallExprNode {
+        let syntax = ast.syntax().owned();
+        CallExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -351,12 +381,15 @@ impl<'a> CallExpr<'a> {
 pub struct CastExprNode(SyntaxNode);
 
 impl CastExprNode {
-    pub fn new(ast: CastExpr) -> CastExprNode {
-        let syntax = ast.syntax().owned();
-        CastExprNode(syntax)
-    }
     pub fn ast(&self) -> CastExpr {
         CastExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<CastExpr<'a>> for CastExprNode {
+    fn from(ast: CastExpr<'a>) -> CastExprNode {
+        let syntax = ast.syntax().owned();
+        CastExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -382,12 +415,15 @@ impl<'a> CastExpr<'a> {}
 pub struct CommentNode(SyntaxNode);
 
 impl CommentNode {
-    pub fn new(ast: Comment) -> CommentNode {
-        let syntax = ast.syntax().owned();
-        CommentNode(syntax)
-    }
     pub fn ast(&self) -> Comment {
         Comment::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Comment<'a>> for CommentNode {
+    fn from(ast: Comment<'a>) -> CommentNode {
+        let syntax = ast.syntax().owned();
+        CommentNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -413,12 +449,15 @@ impl<'a> Comment<'a> {}
 pub struct ConditionNode(SyntaxNode);
 
 impl ConditionNode {
-    pub fn new(ast: Condition) -> ConditionNode {
-        let syntax = ast.syntax().owned();
-        ConditionNode(syntax)
-    }
     pub fn ast(&self) -> Condition {
         Condition::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Condition<'a>> for ConditionNode {
+    fn from(ast: Condition<'a>) -> ConditionNode {
+        let syntax = ast.syntax().owned();
+        ConditionNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -452,12 +491,15 @@ impl<'a> Condition<'a> {
 pub struct ConstDefNode(SyntaxNode);
 
 impl ConstDefNode {
-    pub fn new(ast: ConstDef) -> ConstDefNode {
-        let syntax = ast.syntax().owned();
-        ConstDefNode(syntax)
-    }
     pub fn ast(&self) -> ConstDef {
         ConstDef::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ConstDef<'a>> for ConstDefNode {
+    fn from(ast: ConstDef<'a>) -> ConstDefNode {
+        let syntax = ast.syntax().owned();
+        ConstDefNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -486,12 +528,15 @@ impl<'a> ConstDef<'a> {}
 pub struct ContinueExprNode(SyntaxNode);
 
 impl ContinueExprNode {
-    pub fn new(ast: ContinueExpr) -> ContinueExprNode {
-        let syntax = ast.syntax().owned();
-        ContinueExprNode(syntax)
-    }
     pub fn ast(&self) -> ContinueExpr {
         ContinueExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ContinueExpr<'a>> for ContinueExprNode {
+    fn from(ast: ContinueExpr<'a>) -> ContinueExprNode {
+        let syntax = ast.syntax().owned();
+        ContinueExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -517,12 +562,15 @@ impl<'a> ContinueExpr<'a> {}
 pub struct DynTraitTypeNode(SyntaxNode);
 
 impl DynTraitTypeNode {
-    pub fn new(ast: DynTraitType) -> DynTraitTypeNode {
-        let syntax = ast.syntax().owned();
-        DynTraitTypeNode(syntax)
-    }
     pub fn ast(&self) -> DynTraitType {
         DynTraitType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<DynTraitType<'a>> for DynTraitTypeNode {
+    fn from(ast: DynTraitType<'a>) -> DynTraitTypeNode {
+        let syntax = ast.syntax().owned();
+        DynTraitTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -548,12 +596,15 @@ impl<'a> DynTraitType<'a> {}
 pub struct EnumDefNode(SyntaxNode);
 
 impl EnumDefNode {
-    pub fn new(ast: EnumDef) -> EnumDefNode {
-        let syntax = ast.syntax().owned();
-        EnumDefNode(syntax)
-    }
     pub fn ast(&self) -> EnumDef {
         EnumDef::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<EnumDef<'a>> for EnumDefNode {
+    fn from(ast: EnumDef<'a>) -> EnumDefNode {
+        let syntax = ast.syntax().owned();
+        EnumDefNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -582,12 +633,15 @@ impl<'a> EnumDef<'a> {}
 pub struct ExprNode(SyntaxNode);
 
 impl ExprNode {
-    pub fn new(ast: Expr) -> ExprNode {
-        let syntax = ast.syntax().owned();
-        ExprNode(syntax)
-    }
     pub fn ast(&self) -> Expr {
         Expr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Expr<'a>> for ExprNode {
+    fn from(ast: Expr<'a>) -> ExprNode {
+        let syntax = ast.syntax().owned();
+        ExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -710,12 +764,15 @@ impl<'a> Expr<'a> {}
 pub struct ExprStmtNode(SyntaxNode);
 
 impl ExprStmtNode {
-    pub fn new(ast: ExprStmt) -> ExprStmtNode {
-        let syntax = ast.syntax().owned();
-        ExprStmtNode(syntax)
-    }
     pub fn ast(&self) -> ExprStmt {
         ExprStmt::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ExprStmt<'a>> for ExprStmtNode {
+    fn from(ast: ExprStmt<'a>) -> ExprStmtNode {
+        let syntax = ast.syntax().owned();
+        ExprStmtNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -745,12 +802,15 @@ impl<'a> ExprStmt<'a> {
 pub struct ExternCrateItemNode(SyntaxNode);
 
 impl ExternCrateItemNode {
-    pub fn new(ast: ExternCrateItem) -> ExternCrateItemNode {
-        let syntax = ast.syntax().owned();
-        ExternCrateItemNode(syntax)
-    }
     pub fn ast(&self) -> ExternCrateItem {
         ExternCrateItem::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ExternCrateItem<'a>> for ExternCrateItemNode {
+    fn from(ast: ExternCrateItem<'a>) -> ExternCrateItemNode {
+        let syntax = ast.syntax().owned();
+        ExternCrateItemNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -776,12 +836,15 @@ impl<'a> ExternCrateItem<'a> {}
 pub struct FieldExprNode(SyntaxNode);
 
 impl FieldExprNode {
-    pub fn new(ast: FieldExpr) -> FieldExprNode {
-        let syntax = ast.syntax().owned();
-        FieldExprNode(syntax)
-    }
     pub fn ast(&self) -> FieldExpr {
         FieldExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<FieldExpr<'a>> for FieldExprNode {
+    fn from(ast: FieldExpr<'a>) -> FieldExprNode {
+        let syntax = ast.syntax().owned();
+        FieldExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -807,12 +870,15 @@ impl<'a> FieldExpr<'a> {}
 pub struct FieldPatListNode(SyntaxNode);
 
 impl FieldPatListNode {
-    pub fn new(ast: FieldPatList) -> FieldPatListNode {
-        let syntax = ast.syntax().owned();
-        FieldPatListNode(syntax)
-    }
     pub fn ast(&self) -> FieldPatList {
         FieldPatList::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<FieldPatList<'a>> for FieldPatListNode {
+    fn from(ast: FieldPatList<'a>) -> FieldPatListNode {
+        let syntax = ast.syntax().owned();
+        FieldPatListNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -838,12 +904,15 @@ impl<'a> FieldPatList<'a> {}
 pub struct FnDefNode(SyntaxNode);
 
 impl FnDefNode {
-    pub fn new(ast: FnDef) -> FnDefNode {
-        let syntax = ast.syntax().owned();
-        FnDefNode(syntax)
-    }
     pub fn ast(&self) -> FnDef {
         FnDef::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<FnDef<'a>> for FnDefNode {
+    fn from(ast: FnDef<'a>) -> FnDefNode {
+        let syntax = ast.syntax().owned();
+        FnDefNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -885,12 +954,15 @@ impl<'a> FnDef<'a> {
 pub struct FnPointerTypeNode(SyntaxNode);
 
 impl FnPointerTypeNode {
-    pub fn new(ast: FnPointerType) -> FnPointerTypeNode {
-        let syntax = ast.syntax().owned();
-        FnPointerTypeNode(syntax)
-    }
     pub fn ast(&self) -> FnPointerType {
         FnPointerType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<FnPointerType<'a>> for FnPointerTypeNode {
+    fn from(ast: FnPointerType<'a>) -> FnPointerTypeNode {
+        let syntax = ast.syntax().owned();
+        FnPointerTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -916,12 +988,15 @@ impl<'a> FnPointerType<'a> {}
 pub struct ForExprNode(SyntaxNode);
 
 impl ForExprNode {
-    pub fn new(ast: ForExpr) -> ForExprNode {
-        let syntax = ast.syntax().owned();
-        ForExprNode(syntax)
-    }
     pub fn ast(&self) -> ForExpr {
         ForExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ForExpr<'a>> for ForExprNode {
+    fn from(ast: ForExpr<'a>) -> ForExprNode {
+        let syntax = ast.syntax().owned();
+        ForExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -956,12 +1031,15 @@ impl<'a> ForExpr<'a> {
 pub struct ForTypeNode(SyntaxNode);
 
 impl ForTypeNode {
-    pub fn new(ast: ForType) -> ForTypeNode {
-        let syntax = ast.syntax().owned();
-        ForTypeNode(syntax)
-    }
     pub fn ast(&self) -> ForType {
         ForType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ForType<'a>> for ForTypeNode {
+    fn from(ast: ForType<'a>) -> ForTypeNode {
+        let syntax = ast.syntax().owned();
+        ForTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -987,12 +1065,15 @@ impl<'a> ForType<'a> {}
 pub struct IfExprNode(SyntaxNode);
 
 impl IfExprNode {
-    pub fn new(ast: IfExpr) -> IfExprNode {
-        let syntax = ast.syntax().owned();
-        IfExprNode(syntax)
-    }
     pub fn ast(&self) -> IfExpr {
         IfExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<IfExpr<'a>> for IfExprNode {
+    fn from(ast: IfExpr<'a>) -> IfExprNode {
+        let syntax = ast.syntax().owned();
+        IfExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1022,12 +1103,15 @@ impl<'a> IfExpr<'a> {
 pub struct ImplItemNode(SyntaxNode);
 
 impl ImplItemNode {
-    pub fn new(ast: ImplItem) -> ImplItemNode {
-        let syntax = ast.syntax().owned();
-        ImplItemNode(syntax)
-    }
     pub fn ast(&self) -> ImplItem {
         ImplItem::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ImplItem<'a>> for ImplItemNode {
+    fn from(ast: ImplItem<'a>) -> ImplItemNode {
+        let syntax = ast.syntax().owned();
+        ImplItemNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1053,12 +1137,15 @@ impl<'a> ImplItem<'a> {}
 pub struct ImplTraitTypeNode(SyntaxNode);
 
 impl ImplTraitTypeNode {
-    pub fn new(ast: ImplTraitType) -> ImplTraitTypeNode {
-        let syntax = ast.syntax().owned();
-        ImplTraitTypeNode(syntax)
-    }
     pub fn ast(&self) -> ImplTraitType {
         ImplTraitType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ImplTraitType<'a>> for ImplTraitTypeNode {
+    fn from(ast: ImplTraitType<'a>) -> ImplTraitTypeNode {
+        let syntax = ast.syntax().owned();
+        ImplTraitTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1084,12 +1171,15 @@ impl<'a> ImplTraitType<'a> {}
 pub struct IndexExprNode(SyntaxNode);
 
 impl IndexExprNode {
-    pub fn new(ast: IndexExpr) -> IndexExprNode {
-        let syntax = ast.syntax().owned();
-        IndexExprNode(syntax)
-    }
     pub fn ast(&self) -> IndexExpr {
         IndexExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<IndexExpr<'a>> for IndexExprNode {
+    fn from(ast: IndexExpr<'a>) -> IndexExprNode {
+        let syntax = ast.syntax().owned();
+        IndexExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1115,12 +1205,15 @@ impl<'a> IndexExpr<'a> {}
 pub struct ItemListNode(SyntaxNode);
 
 impl ItemListNode {
-    pub fn new(ast: ItemList) -> ItemListNode {
-        let syntax = ast.syntax().owned();
-        ItemListNode(syntax)
-    }
     pub fn ast(&self) -> ItemList {
         ItemList::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ItemList<'a>> for ItemListNode {
+    fn from(ast: ItemList<'a>) -> ItemListNode {
+        let syntax = ast.syntax().owned();
+        ItemListNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1148,12 +1241,15 @@ impl<'a> ItemList<'a> {}
 pub struct LabelNode(SyntaxNode);
 
 impl LabelNode {
-    pub fn new(ast: Label) -> LabelNode {
-        let syntax = ast.syntax().owned();
-        LabelNode(syntax)
-    }
     pub fn ast(&self) -> Label {
         Label::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Label<'a>> for LabelNode {
+    fn from(ast: Label<'a>) -> LabelNode {
+        let syntax = ast.syntax().owned();
+        LabelNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1179,12 +1275,15 @@ impl<'a> Label<'a> {}
 pub struct LambdaExprNode(SyntaxNode);
 
 impl LambdaExprNode {
-    pub fn new(ast: LambdaExpr) -> LambdaExprNode {
-        let syntax = ast.syntax().owned();
-        LambdaExprNode(syntax)
-    }
     pub fn ast(&self) -> LambdaExpr {
         LambdaExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<LambdaExpr<'a>> for LambdaExprNode {
+    fn from(ast: LambdaExpr<'a>) -> LambdaExprNode {
+        let syntax = ast.syntax().owned();
+        LambdaExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1218,12 +1317,15 @@ impl<'a> LambdaExpr<'a> {
 pub struct LetStmtNode(SyntaxNode);
 
 impl LetStmtNode {
-    pub fn new(ast: LetStmt) -> LetStmtNode {
-        let syntax = ast.syntax().owned();
-        LetStmtNode(syntax)
-    }
     pub fn ast(&self) -> LetStmt {
         LetStmt::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<LetStmt<'a>> for LetStmtNode {
+    fn from(ast: LetStmt<'a>) -> LetStmtNode {
+        let syntax = ast.syntax().owned();
+        LetStmtNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1257,12 +1359,15 @@ impl<'a> LetStmt<'a> {
 pub struct LifetimeNode(SyntaxNode);
 
 impl LifetimeNode {
-    pub fn new(ast: Lifetime) -> LifetimeNode {
-        let syntax = ast.syntax().owned();
-        LifetimeNode(syntax)
-    }
     pub fn ast(&self) -> Lifetime {
         Lifetime::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Lifetime<'a>> for LifetimeNode {
+    fn from(ast: Lifetime<'a>) -> LifetimeNode {
+        let syntax = ast.syntax().owned();
+        LifetimeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1288,12 +1393,15 @@ impl<'a> Lifetime<'a> {}
 pub struct LifetimeParamNode(SyntaxNode);
 
 impl LifetimeParamNode {
-    pub fn new(ast: LifetimeParam) -> LifetimeParamNode {
-        let syntax = ast.syntax().owned();
-        LifetimeParamNode(syntax)
-    }
     pub fn ast(&self) -> LifetimeParam {
         LifetimeParam::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<LifetimeParam<'a>> for LifetimeParamNode {
+    fn from(ast: LifetimeParam<'a>) -> LifetimeParamNode {
+        let syntax = ast.syntax().owned();
+        LifetimeParamNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1323,12 +1431,15 @@ impl<'a> LifetimeParam<'a> {
 pub struct LiteralNode(SyntaxNode);
 
 impl LiteralNode {
-    pub fn new(ast: Literal) -> LiteralNode {
-        let syntax = ast.syntax().owned();
-        LiteralNode(syntax)
-    }
     pub fn ast(&self) -> Literal {
         Literal::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Literal<'a>> for LiteralNode {
+    fn from(ast: Literal<'a>) -> LiteralNode {
+        let syntax = ast.syntax().owned();
+        LiteralNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1354,12 +1465,15 @@ impl<'a> Literal<'a> {}
 pub struct LoopExprNode(SyntaxNode);
 
 impl LoopExprNode {
-    pub fn new(ast: LoopExpr) -> LoopExprNode {
-        let syntax = ast.syntax().owned();
-        LoopExprNode(syntax)
-    }
     pub fn ast(&self) -> LoopExpr {
         LoopExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<LoopExpr<'a>> for LoopExprNode {
+    fn from(ast: LoopExpr<'a>) -> LoopExprNode {
+        let syntax = ast.syntax().owned();
+        LoopExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1386,12 +1500,15 @@ impl<'a> LoopExpr<'a> {}
 pub struct MatchArmNode(SyntaxNode);
 
 impl MatchArmNode {
-    pub fn new(ast: MatchArm) -> MatchArmNode {
-        let syntax = ast.syntax().owned();
-        MatchArmNode(syntax)
-    }
     pub fn ast(&self) -> MatchArm {
         MatchArm::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<MatchArm<'a>> for MatchArmNode {
+    fn from(ast: MatchArm<'a>) -> MatchArmNode {
+        let syntax = ast.syntax().owned();
+        MatchArmNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1429,12 +1546,15 @@ impl<'a> MatchArm<'a> {
 pub struct MatchArmListNode(SyntaxNode);
 
 impl MatchArmListNode {
-    pub fn new(ast: MatchArmList) -> MatchArmListNode {
-        let syntax = ast.syntax().owned();
-        MatchArmListNode(syntax)
-    }
     pub fn ast(&self) -> MatchArmList {
         MatchArmList::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<MatchArmList<'a>> for MatchArmListNode {
+    fn from(ast: MatchArmList<'a>) -> MatchArmListNode {
+        let syntax = ast.syntax().owned();
+        MatchArmListNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1464,12 +1584,15 @@ impl<'a> MatchArmList<'a> {
 pub struct MatchExprNode(SyntaxNode);
 
 impl MatchExprNode {
-    pub fn new(ast: MatchExpr) -> MatchExprNode {
-        let syntax = ast.syntax().owned();
-        MatchExprNode(syntax)
-    }
     pub fn ast(&self) -> MatchExpr {
         MatchExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<MatchExpr<'a>> for MatchExprNode {
+    fn from(ast: MatchExpr<'a>) -> MatchExprNode {
+        let syntax = ast.syntax().owned();
+        MatchExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1503,12 +1626,15 @@ impl<'a> MatchExpr<'a> {
 pub struct MatchGuardNode(SyntaxNode);
 
 impl MatchGuardNode {
-    pub fn new(ast: MatchGuard) -> MatchGuardNode {
-        let syntax = ast.syntax().owned();
-        MatchGuardNode(syntax)
-    }
     pub fn ast(&self) -> MatchGuard {
         MatchGuard::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<MatchGuard<'a>> for MatchGuardNode {
+    fn from(ast: MatchGuard<'a>) -> MatchGuardNode {
+        let syntax = ast.syntax().owned();
+        MatchGuardNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1534,12 +1660,15 @@ impl<'a> MatchGuard<'a> {}
 pub struct MethodCallExprNode(SyntaxNode);
 
 impl MethodCallExprNode {
-    pub fn new(ast: MethodCallExpr) -> MethodCallExprNode {
-        let syntax = ast.syntax().owned();
-        MethodCallExprNode(syntax)
-    }
     pub fn ast(&self) -> MethodCallExpr {
         MethodCallExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<MethodCallExpr<'a>> for MethodCallExprNode {
+    fn from(ast: MethodCallExpr<'a>) -> MethodCallExprNode {
+        let syntax = ast.syntax().owned();
+        MethodCallExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1570,12 +1699,15 @@ impl<'a> MethodCallExpr<'a> {
 pub struct ModuleNode(SyntaxNode);
 
 impl ModuleNode {
-    pub fn new(ast: Module) -> ModuleNode {
-        let syntax = ast.syntax().owned();
-        ModuleNode(syntax)
-    }
     pub fn ast(&self) -> Module {
         Module::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Module<'a>> for ModuleNode {
+    fn from(ast: Module<'a>) -> ModuleNode {
+        let syntax = ast.syntax().owned();
+        ModuleNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1607,12 +1739,15 @@ impl<'a> Module<'a> {
 pub struct ModuleItemNode(SyntaxNode);
 
 impl ModuleItemNode {
-    pub fn new(ast: ModuleItem) -> ModuleItemNode {
-        let syntax = ast.syntax().owned();
-        ModuleItemNode(syntax)
-    }
     pub fn ast(&self) -> ModuleItem {
         ModuleItem::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ModuleItem<'a>> for ModuleItemNode {
+    fn from(ast: ModuleItem<'a>) -> ModuleItemNode {
+        let syntax = ast.syntax().owned();
+        ModuleItemNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1672,12 +1807,15 @@ impl<'a> ModuleItem<'a> {}
 pub struct NameNode(SyntaxNode);
 
 impl NameNode {
-    pub fn new(ast: Name) -> NameNode {
-        let syntax = ast.syntax().owned();
-        NameNode(syntax)
-    }
     pub fn ast(&self) -> Name {
         Name::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Name<'a>> for NameNode {
+    fn from(ast: Name<'a>) -> NameNode {
+        let syntax = ast.syntax().owned();
+        NameNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1703,12 +1841,15 @@ impl<'a> Name<'a> {}
 pub struct NameRefNode(SyntaxNode);
 
 impl NameRefNode {
-    pub fn new(ast: NameRef) -> NameRefNode {
-        let syntax = ast.syntax().owned();
-        NameRefNode(syntax)
-    }
     pub fn ast(&self) -> NameRef {
         NameRef::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<NameRef<'a>> for NameRefNode {
+    fn from(ast: NameRef<'a>) -> NameRefNode {
+        let syntax = ast.syntax().owned();
+        NameRefNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1734,12 +1875,15 @@ impl<'a> NameRef<'a> {}
 pub struct NamedFieldNode(SyntaxNode);
 
 impl NamedFieldNode {
-    pub fn new(ast: NamedField) -> NamedFieldNode {
-        let syntax = ast.syntax().owned();
-        NamedFieldNode(syntax)
-    }
     pub fn ast(&self) -> NamedField {
         NamedField::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<NamedField<'a>> for NamedFieldNode {
+    fn from(ast: NamedField<'a>) -> NamedFieldNode {
+        let syntax = ast.syntax().owned();
+        NamedFieldNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1765,12 +1909,15 @@ impl<'a> NamedField<'a> {}
 pub struct NamedFieldDefNode(SyntaxNode);
 
 impl NamedFieldDefNode {
-    pub fn new(ast: NamedFieldDef) -> NamedFieldDefNode {
-        let syntax = ast.syntax().owned();
-        NamedFieldDefNode(syntax)
-    }
     pub fn ast(&self) -> NamedFieldDef {
         NamedFieldDef::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<NamedFieldDef<'a>> for NamedFieldDefNode {
+    fn from(ast: NamedFieldDef<'a>) -> NamedFieldDefNode {
+        let syntax = ast.syntax().owned();
+        NamedFieldDefNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1798,12 +1945,15 @@ impl<'a> NamedFieldDef<'a> {}
 pub struct NamedFieldListNode(SyntaxNode);
 
 impl NamedFieldListNode {
-    pub fn new(ast: NamedFieldList) -> NamedFieldListNode {
-        let syntax = ast.syntax().owned();
-        NamedFieldListNode(syntax)
-    }
     pub fn ast(&self) -> NamedFieldList {
         NamedFieldList::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<NamedFieldList<'a>> for NamedFieldListNode {
+    fn from(ast: NamedFieldList<'a>) -> NamedFieldListNode {
+        let syntax = ast.syntax().owned();
+        NamedFieldListNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1829,12 +1979,15 @@ impl<'a> NamedFieldList<'a> {}
 pub struct NeverTypeNode(SyntaxNode);
 
 impl NeverTypeNode {
-    pub fn new(ast: NeverType) -> NeverTypeNode {
-        let syntax = ast.syntax().owned();
-        NeverTypeNode(syntax)
-    }
     pub fn ast(&self) -> NeverType {
         NeverType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<NeverType<'a>> for NeverTypeNode {
+    fn from(ast: NeverType<'a>) -> NeverTypeNode {
+        let syntax = ast.syntax().owned();
+        NeverTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1860,12 +2013,15 @@ impl<'a> NeverType<'a> {}
 pub struct NominalDefNode(SyntaxNode);
 
 impl NominalDefNode {
-    pub fn new(ast: NominalDef) -> NominalDefNode {
-        let syntax = ast.syntax().owned();
-        NominalDefNode(syntax)
-    }
     pub fn ast(&self) -> NominalDef {
         NominalDef::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<NominalDef<'a>> for NominalDefNode {
+    fn from(ast: NominalDef<'a>) -> NominalDefNode {
+        let syntax = ast.syntax().owned();
+        NominalDefNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1901,12 +2057,15 @@ impl<'a> NominalDef<'a> {}
 pub struct ParamNode(SyntaxNode);
 
 impl ParamNode {
-    pub fn new(ast: Param) -> ParamNode {
-        let syntax = ast.syntax().owned();
-        ParamNode(syntax)
-    }
     pub fn ast(&self) -> Param {
         Param::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Param<'a>> for ParamNode {
+    fn from(ast: Param<'a>) -> ParamNode {
+        let syntax = ast.syntax().owned();
+        ParamNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1936,12 +2095,15 @@ impl<'a> Param<'a> {
 pub struct ParamListNode(SyntaxNode);
 
 impl ParamListNode {
-    pub fn new(ast: ParamList) -> ParamListNode {
-        let syntax = ast.syntax().owned();
-        ParamListNode(syntax)
-    }
     pub fn ast(&self) -> ParamList {
         ParamList::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ParamList<'a>> for ParamListNode {
+    fn from(ast: ParamList<'a>) -> ParamListNode {
+        let syntax = ast.syntax().owned();
+        ParamListNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -1975,12 +2137,15 @@ impl<'a> ParamList<'a> {
 pub struct ParenExprNode(SyntaxNode);
 
 impl ParenExprNode {
-    pub fn new(ast: ParenExpr) -> ParenExprNode {
-        let syntax = ast.syntax().owned();
-        ParenExprNode(syntax)
-    }
     pub fn ast(&self) -> ParenExpr {
         ParenExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ParenExpr<'a>> for ParenExprNode {
+    fn from(ast: ParenExpr<'a>) -> ParenExprNode {
+        let syntax = ast.syntax().owned();
+        ParenExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2006,12 +2171,15 @@ impl<'a> ParenExpr<'a> {}
 pub struct ParenTypeNode(SyntaxNode);
 
 impl ParenTypeNode {
-    pub fn new(ast: ParenType) -> ParenTypeNode {
-        let syntax = ast.syntax().owned();
-        ParenTypeNode(syntax)
-    }
     pub fn ast(&self) -> ParenType {
         ParenType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ParenType<'a>> for ParenTypeNode {
+    fn from(ast: ParenType<'a>) -> ParenTypeNode {
+        let syntax = ast.syntax().owned();
+        ParenTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2037,12 +2205,15 @@ impl<'a> ParenType<'a> {}
 pub struct PatNode(SyntaxNode);
 
 impl PatNode {
-    pub fn new(ast: Pat) -> PatNode {
-        let syntax = ast.syntax().owned();
-        PatNode(syntax)
-    }
     pub fn ast(&self) -> Pat {
         Pat::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Pat<'a>> for PatNode {
+    fn from(ast: Pat<'a>) -> PatNode {
+        let syntax = ast.syntax().owned();
+        PatNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2099,12 +2270,15 @@ impl<'a> Pat<'a> {}
 pub struct PathNode(SyntaxNode);
 
 impl PathNode {
-    pub fn new(ast: Path) -> PathNode {
-        let syntax = ast.syntax().owned();
-        PathNode(syntax)
-    }
     pub fn ast(&self) -> Path {
         Path::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Path<'a>> for PathNode {
+    fn from(ast: Path<'a>) -> PathNode {
+        let syntax = ast.syntax().owned();
+        PathNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2138,12 +2312,15 @@ impl<'a> Path<'a> {
 pub struct PathExprNode(SyntaxNode);
 
 impl PathExprNode {
-    pub fn new(ast: PathExpr) -> PathExprNode {
-        let syntax = ast.syntax().owned();
-        PathExprNode(syntax)
-    }
     pub fn ast(&self) -> PathExpr {
         PathExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<PathExpr<'a>> for PathExprNode {
+    fn from(ast: PathExpr<'a>) -> PathExprNode {
+        let syntax = ast.syntax().owned();
+        PathExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2173,12 +2350,15 @@ impl<'a> PathExpr<'a> {
 pub struct PathPatNode(SyntaxNode);
 
 impl PathPatNode {
-    pub fn new(ast: PathPat) -> PathPatNode {
-        let syntax = ast.syntax().owned();
-        PathPatNode(syntax)
-    }
     pub fn ast(&self) -> PathPat {
         PathPat::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<PathPat<'a>> for PathPatNode {
+    fn from(ast: PathPat<'a>) -> PathPatNode {
+        let syntax = ast.syntax().owned();
+        PathPatNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2204,12 +2384,15 @@ impl<'a> PathPat<'a> {}
 pub struct PathSegmentNode(SyntaxNode);
 
 impl PathSegmentNode {
-    pub fn new(ast: PathSegment) -> PathSegmentNode {
-        let syntax = ast.syntax().owned();
-        PathSegmentNode(syntax)
-    }
     pub fn ast(&self) -> PathSegment {
         PathSegment::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<PathSegment<'a>> for PathSegmentNode {
+    fn from(ast: PathSegment<'a>) -> PathSegmentNode {
+        let syntax = ast.syntax().owned();
+        PathSegmentNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2239,12 +2422,15 @@ impl<'a> PathSegment<'a> {
 pub struct PathTypeNode(SyntaxNode);
 
 impl PathTypeNode {
-    pub fn new(ast: PathType) -> PathTypeNode {
-        let syntax = ast.syntax().owned();
-        PathTypeNode(syntax)
-    }
     pub fn ast(&self) -> PathType {
         PathType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<PathType<'a>> for PathTypeNode {
+    fn from(ast: PathType<'a>) -> PathTypeNode {
+        let syntax = ast.syntax().owned();
+        PathTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2270,12 +2456,15 @@ impl<'a> PathType<'a> {}
 pub struct PlaceholderPatNode(SyntaxNode);
 
 impl PlaceholderPatNode {
-    pub fn new(ast: PlaceholderPat) -> PlaceholderPatNode {
-        let syntax = ast.syntax().owned();
-        PlaceholderPatNode(syntax)
-    }
     pub fn ast(&self) -> PlaceholderPat {
         PlaceholderPat::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<PlaceholderPat<'a>> for PlaceholderPatNode {
+    fn from(ast: PlaceholderPat<'a>) -> PlaceholderPatNode {
+        let syntax = ast.syntax().owned();
+        PlaceholderPatNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2301,12 +2490,15 @@ impl<'a> PlaceholderPat<'a> {}
 pub struct PlaceholderTypeNode(SyntaxNode);
 
 impl PlaceholderTypeNode {
-    pub fn new(ast: PlaceholderType) -> PlaceholderTypeNode {
-        let syntax = ast.syntax().owned();
-        PlaceholderTypeNode(syntax)
-    }
     pub fn ast(&self) -> PlaceholderType {
         PlaceholderType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<PlaceholderType<'a>> for PlaceholderTypeNode {
+    fn from(ast: PlaceholderType<'a>) -> PlaceholderTypeNode {
+        let syntax = ast.syntax().owned();
+        PlaceholderTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2332,12 +2524,15 @@ impl<'a> PlaceholderType<'a> {}
 pub struct PointerTypeNode(SyntaxNode);
 
 impl PointerTypeNode {
-    pub fn new(ast: PointerType) -> PointerTypeNode {
-        let syntax = ast.syntax().owned();
-        PointerTypeNode(syntax)
-    }
     pub fn ast(&self) -> PointerType {
         PointerType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<PointerType<'a>> for PointerTypeNode {
+    fn from(ast: PointerType<'a>) -> PointerTypeNode {
+        let syntax = ast.syntax().owned();
+        PointerTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2363,12 +2558,15 @@ impl<'a> PointerType<'a> {}
 pub struct PrefixExprNode(SyntaxNode);
 
 impl PrefixExprNode {
-    pub fn new(ast: PrefixExpr) -> PrefixExprNode {
-        let syntax = ast.syntax().owned();
-        PrefixExprNode(syntax)
-    }
     pub fn ast(&self) -> PrefixExpr {
         PrefixExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<PrefixExpr<'a>> for PrefixExprNode {
+    fn from(ast: PrefixExpr<'a>) -> PrefixExprNode {
+        let syntax = ast.syntax().owned();
+        PrefixExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2394,12 +2592,15 @@ impl<'a> PrefixExpr<'a> {}
 pub struct RangeExprNode(SyntaxNode);
 
 impl RangeExprNode {
-    pub fn new(ast: RangeExpr) -> RangeExprNode {
-        let syntax = ast.syntax().owned();
-        RangeExprNode(syntax)
-    }
     pub fn ast(&self) -> RangeExpr {
         RangeExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<RangeExpr<'a>> for RangeExprNode {
+    fn from(ast: RangeExpr<'a>) -> RangeExprNode {
+        let syntax = ast.syntax().owned();
+        RangeExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2425,12 +2626,15 @@ impl<'a> RangeExpr<'a> {}
 pub struct RangePatNode(SyntaxNode);
 
 impl RangePatNode {
-    pub fn new(ast: RangePat) -> RangePatNode {
-        let syntax = ast.syntax().owned();
-        RangePatNode(syntax)
-    }
     pub fn ast(&self) -> RangePat {
         RangePat::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<RangePat<'a>> for RangePatNode {
+    fn from(ast: RangePat<'a>) -> RangePatNode {
+        let syntax = ast.syntax().owned();
+        RangePatNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2456,12 +2660,15 @@ impl<'a> RangePat<'a> {}
 pub struct RefExprNode(SyntaxNode);
 
 impl RefExprNode {
-    pub fn new(ast: RefExpr) -> RefExprNode {
-        let syntax = ast.syntax().owned();
-        RefExprNode(syntax)
-    }
     pub fn ast(&self) -> RefExpr {
         RefExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<RefExpr<'a>> for RefExprNode {
+    fn from(ast: RefExpr<'a>) -> RefExprNode {
+        let syntax = ast.syntax().owned();
+        RefExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2487,12 +2694,15 @@ impl<'a> RefExpr<'a> {}
 pub struct RefPatNode(SyntaxNode);
 
 impl RefPatNode {
-    pub fn new(ast: RefPat) -> RefPatNode {
-        let syntax = ast.syntax().owned();
-        RefPatNode(syntax)
-    }
     pub fn ast(&self) -> RefPat {
         RefPat::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<RefPat<'a>> for RefPatNode {
+    fn from(ast: RefPat<'a>) -> RefPatNode {
+        let syntax = ast.syntax().owned();
+        RefPatNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2518,12 +2728,15 @@ impl<'a> RefPat<'a> {}
 pub struct ReferenceTypeNode(SyntaxNode);
 
 impl ReferenceTypeNode {
-    pub fn new(ast: ReferenceType) -> ReferenceTypeNode {
-        let syntax = ast.syntax().owned();
-        ReferenceTypeNode(syntax)
-    }
     pub fn ast(&self) -> ReferenceType {
         ReferenceType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ReferenceType<'a>> for ReferenceTypeNode {
+    fn from(ast: ReferenceType<'a>) -> ReferenceTypeNode {
+        let syntax = ast.syntax().owned();
+        ReferenceTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2549,12 +2762,15 @@ impl<'a> ReferenceType<'a> {}
 pub struct RetTypeNode(SyntaxNode);
 
 impl RetTypeNode {
-    pub fn new(ast: RetType) -> RetTypeNode {
-        let syntax = ast.syntax().owned();
-        RetTypeNode(syntax)
-    }
     pub fn ast(&self) -> RetType {
         RetType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<RetType<'a>> for RetTypeNode {
+    fn from(ast: RetType<'a>) -> RetTypeNode {
+        let syntax = ast.syntax().owned();
+        RetTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2580,12 +2796,15 @@ impl<'a> RetType<'a> {}
 pub struct ReturnExprNode(SyntaxNode);
 
 impl ReturnExprNode {
-    pub fn new(ast: ReturnExpr) -> ReturnExprNode {
-        let syntax = ast.syntax().owned();
-        ReturnExprNode(syntax)
-    }
     pub fn ast(&self) -> ReturnExpr {
         ReturnExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<ReturnExpr<'a>> for ReturnExprNode {
+    fn from(ast: ReturnExpr<'a>) -> ReturnExprNode {
+        let syntax = ast.syntax().owned();
+        ReturnExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2611,12 +2830,15 @@ impl<'a> ReturnExpr<'a> {}
 pub struct RootNode(SyntaxNode);
 
 impl RootNode {
-    pub fn new(ast: Root) -> RootNode {
-        let syntax = ast.syntax().owned();
-        RootNode(syntax)
-    }
     pub fn ast(&self) -> Root {
         Root::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Root<'a>> for RootNode {
+    fn from(ast: Root<'a>) -> RootNode {
+        let syntax = ast.syntax().owned();
+        RootNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2648,12 +2870,15 @@ impl<'a> Root<'a> {
 pub struct SelfParamNode(SyntaxNode);
 
 impl SelfParamNode {
-    pub fn new(ast: SelfParam) -> SelfParamNode {
-        let syntax = ast.syntax().owned();
-        SelfParamNode(syntax)
-    }
     pub fn ast(&self) -> SelfParam {
         SelfParam::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<SelfParam<'a>> for SelfParamNode {
+    fn from(ast: SelfParam<'a>) -> SelfParamNode {
+        let syntax = ast.syntax().owned();
+        SelfParamNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2679,12 +2904,15 @@ impl<'a> SelfParam<'a> {}
 pub struct SlicePatNode(SyntaxNode);
 
 impl SlicePatNode {
-    pub fn new(ast: SlicePat) -> SlicePatNode {
-        let syntax = ast.syntax().owned();
-        SlicePatNode(syntax)
-    }
     pub fn ast(&self) -> SlicePat {
         SlicePat::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<SlicePat<'a>> for SlicePatNode {
+    fn from(ast: SlicePat<'a>) -> SlicePatNode {
+        let syntax = ast.syntax().owned();
+        SlicePatNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2710,12 +2938,15 @@ impl<'a> SlicePat<'a> {}
 pub struct SliceTypeNode(SyntaxNode);
 
 impl SliceTypeNode {
-    pub fn new(ast: SliceType) -> SliceTypeNode {
-        let syntax = ast.syntax().owned();
-        SliceTypeNode(syntax)
-    }
     pub fn ast(&self) -> SliceType {
         SliceType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<SliceType<'a>> for SliceTypeNode {
+    fn from(ast: SliceType<'a>) -> SliceTypeNode {
+        let syntax = ast.syntax().owned();
+        SliceTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2741,12 +2972,15 @@ impl<'a> SliceType<'a> {}
 pub struct StaticDefNode(SyntaxNode);
 
 impl StaticDefNode {
-    pub fn new(ast: StaticDef) -> StaticDefNode {
-        let syntax = ast.syntax().owned();
-        StaticDefNode(syntax)
-    }
     pub fn ast(&self) -> StaticDef {
         StaticDef::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<StaticDef<'a>> for StaticDefNode {
+    fn from(ast: StaticDef<'a>) -> StaticDefNode {
+        let syntax = ast.syntax().owned();
+        StaticDefNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2775,12 +3009,15 @@ impl<'a> StaticDef<'a> {}
 pub struct StmtNode(SyntaxNode);
 
 impl StmtNode {
-    pub fn new(ast: Stmt) -> StmtNode {
-        let syntax = ast.syntax().owned();
-        StmtNode(syntax)
-    }
     pub fn ast(&self) -> Stmt {
         Stmt::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Stmt<'a>> for StmtNode {
+    fn from(ast: Stmt<'a>) -> StmtNode {
+        let syntax = ast.syntax().owned();
+        StmtNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2813,12 +3050,15 @@ impl<'a> Stmt<'a> {}
 pub struct StructDefNode(SyntaxNode);
 
 impl StructDefNode {
-    pub fn new(ast: StructDef) -> StructDefNode {
-        let syntax = ast.syntax().owned();
-        StructDefNode(syntax)
-    }
     pub fn ast(&self) -> StructDef {
         StructDef::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<StructDef<'a>> for StructDefNode {
+    fn from(ast: StructDef<'a>) -> StructDefNode {
+        let syntax = ast.syntax().owned();
+        StructDefNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2851,12 +3091,15 @@ impl<'a> StructDef<'a> {
 pub struct StructLitNode(SyntaxNode);
 
 impl StructLitNode {
-    pub fn new(ast: StructLit) -> StructLitNode {
-        let syntax = ast.syntax().owned();
-        StructLitNode(syntax)
-    }
     pub fn ast(&self) -> StructLit {
         StructLit::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<StructLit<'a>> for StructLitNode {
+    fn from(ast: StructLit<'a>) -> StructLitNode {
+        let syntax = ast.syntax().owned();
+        StructLitNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2882,12 +3125,15 @@ impl<'a> StructLit<'a> {}
 pub struct StructPatNode(SyntaxNode);
 
 impl StructPatNode {
-    pub fn new(ast: StructPat) -> StructPatNode {
-        let syntax = ast.syntax().owned();
-        StructPatNode(syntax)
-    }
     pub fn ast(&self) -> StructPat {
         StructPat::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<StructPat<'a>> for StructPatNode {
+    fn from(ast: StructPat<'a>) -> StructPatNode {
+        let syntax = ast.syntax().owned();
+        StructPatNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2913,12 +3159,15 @@ impl<'a> StructPat<'a> {}
 pub struct TokenTreeNode(SyntaxNode);
 
 impl TokenTreeNode {
-    pub fn new(ast: TokenTree) -> TokenTreeNode {
-        let syntax = ast.syntax().owned();
-        TokenTreeNode(syntax)
-    }
     pub fn ast(&self) -> TokenTree {
         TokenTree::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<TokenTree<'a>> for TokenTreeNode {
+    fn from(ast: TokenTree<'a>) -> TokenTreeNode {
+        let syntax = ast.syntax().owned();
+        TokenTreeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2944,12 +3193,15 @@ impl<'a> TokenTree<'a> {}
 pub struct TraitDefNode(SyntaxNode);
 
 impl TraitDefNode {
-    pub fn new(ast: TraitDef) -> TraitDefNode {
-        let syntax = ast.syntax().owned();
-        TraitDefNode(syntax)
-    }
     pub fn ast(&self) -> TraitDef {
         TraitDef::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<TraitDef<'a>> for TraitDefNode {
+    fn from(ast: TraitDef<'a>) -> TraitDefNode {
+        let syntax = ast.syntax().owned();
+        TraitDefNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -2977,12 +3229,15 @@ impl<'a> TraitDef<'a> {}
 pub struct TryExprNode(SyntaxNode);
 
 impl TryExprNode {
-    pub fn new(ast: TryExpr) -> TryExprNode {
-        let syntax = ast.syntax().owned();
-        TryExprNode(syntax)
-    }
     pub fn ast(&self) -> TryExpr {
         TryExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<TryExpr<'a>> for TryExprNode {
+    fn from(ast: TryExpr<'a>) -> TryExprNode {
+        let syntax = ast.syntax().owned();
+        TryExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3008,12 +3263,15 @@ impl<'a> TryExpr<'a> {}
 pub struct TupleExprNode(SyntaxNode);
 
 impl TupleExprNode {
-    pub fn new(ast: TupleExpr) -> TupleExprNode {
-        let syntax = ast.syntax().owned();
-        TupleExprNode(syntax)
-    }
     pub fn ast(&self) -> TupleExpr {
         TupleExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<TupleExpr<'a>> for TupleExprNode {
+    fn from(ast: TupleExpr<'a>) -> TupleExprNode {
+        let syntax = ast.syntax().owned();
+        TupleExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3039,12 +3297,15 @@ impl<'a> TupleExpr<'a> {}
 pub struct TuplePatNode(SyntaxNode);
 
 impl TuplePatNode {
-    pub fn new(ast: TuplePat) -> TuplePatNode {
-        let syntax = ast.syntax().owned();
-        TuplePatNode(syntax)
-    }
     pub fn ast(&self) -> TuplePat {
         TuplePat::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<TuplePat<'a>> for TuplePatNode {
+    fn from(ast: TuplePat<'a>) -> TuplePatNode {
+        let syntax = ast.syntax().owned();
+        TuplePatNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3070,12 +3331,15 @@ impl<'a> TuplePat<'a> {}
 pub struct TupleStructPatNode(SyntaxNode);
 
 impl TupleStructPatNode {
-    pub fn new(ast: TupleStructPat) -> TupleStructPatNode {
-        let syntax = ast.syntax().owned();
-        TupleStructPatNode(syntax)
-    }
     pub fn ast(&self) -> TupleStructPat {
         TupleStructPat::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<TupleStructPat<'a>> for TupleStructPatNode {
+    fn from(ast: TupleStructPat<'a>) -> TupleStructPatNode {
+        let syntax = ast.syntax().owned();
+        TupleStructPatNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3101,12 +3365,15 @@ impl<'a> TupleStructPat<'a> {}
 pub struct TupleTypeNode(SyntaxNode);
 
 impl TupleTypeNode {
-    pub fn new(ast: TupleType) -> TupleTypeNode {
-        let syntax = ast.syntax().owned();
-        TupleTypeNode(syntax)
-    }
     pub fn ast(&self) -> TupleType {
         TupleType::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<TupleType<'a>> for TupleTypeNode {
+    fn from(ast: TupleType<'a>) -> TupleTypeNode {
+        let syntax = ast.syntax().owned();
+        TupleTypeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3132,12 +3399,15 @@ impl<'a> TupleType<'a> {}
 pub struct TypeDefNode(SyntaxNode);
 
 impl TypeDefNode {
-    pub fn new(ast: TypeDef) -> TypeDefNode {
-        let syntax = ast.syntax().owned();
-        TypeDefNode(syntax)
-    }
     pub fn ast(&self) -> TypeDef {
         TypeDef::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<TypeDef<'a>> for TypeDefNode {
+    fn from(ast: TypeDef<'a>) -> TypeDefNode {
+        let syntax = ast.syntax().owned();
+        TypeDefNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3166,12 +3436,15 @@ impl<'a> TypeDef<'a> {}
 pub struct TypeParamNode(SyntaxNode);
 
 impl TypeParamNode {
-    pub fn new(ast: TypeParam) -> TypeParamNode {
-        let syntax = ast.syntax().owned();
-        TypeParamNode(syntax)
-    }
     pub fn ast(&self) -> TypeParam {
         TypeParam::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<TypeParam<'a>> for TypeParamNode {
+    fn from(ast: TypeParam<'a>) -> TypeParamNode {
+        let syntax = ast.syntax().owned();
+        TypeParamNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3198,12 +3471,15 @@ impl<'a> TypeParam<'a> {}
 pub struct TypeParamListNode(SyntaxNode);
 
 impl TypeParamListNode {
-    pub fn new(ast: TypeParamList) -> TypeParamListNode {
-        let syntax = ast.syntax().owned();
-        TypeParamListNode(syntax)
-    }
     pub fn ast(&self) -> TypeParamList {
         TypeParamList::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<TypeParamList<'a>> for TypeParamListNode {
+    fn from(ast: TypeParamList<'a>) -> TypeParamListNode {
+        let syntax = ast.syntax().owned();
+        TypeParamListNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3237,12 +3513,15 @@ impl<'a> TypeParamList<'a> {
 pub struct TypeRefNode(SyntaxNode);
 
 impl TypeRefNode {
-    pub fn new(ast: TypeRef) -> TypeRefNode {
-        let syntax = ast.syntax().owned();
-        TypeRefNode(syntax)
-    }
     pub fn ast(&self) -> TypeRef {
         TypeRef::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<TypeRef<'a>> for TypeRefNode {
+    fn from(ast: TypeRef<'a>) -> TypeRefNode {
+        let syntax = ast.syntax().owned();
+        TypeRefNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3308,12 +3587,15 @@ impl<'a> TypeRef<'a> {}
 pub struct UseItemNode(SyntaxNode);
 
 impl UseItemNode {
-    pub fn new(ast: UseItem) -> UseItemNode {
-        let syntax = ast.syntax().owned();
-        UseItemNode(syntax)
-    }
     pub fn ast(&self) -> UseItem {
         UseItem::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<UseItem<'a>> for UseItemNode {
+    fn from(ast: UseItem<'a>) -> UseItemNode {
+        let syntax = ast.syntax().owned();
+        UseItemNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3343,12 +3625,15 @@ impl<'a> UseItem<'a> {
 pub struct UseTreeNode(SyntaxNode);
 
 impl UseTreeNode {
-    pub fn new(ast: UseTree) -> UseTreeNode {
-        let syntax = ast.syntax().owned();
-        UseTreeNode(syntax)
-    }
     pub fn ast(&self) -> UseTree {
         UseTree::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<UseTree<'a>> for UseTreeNode {
+    fn from(ast: UseTree<'a>) -> UseTreeNode {
+        let syntax = ast.syntax().owned();
+        UseTreeNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3382,12 +3667,15 @@ impl<'a> UseTree<'a> {
 pub struct UseTreeListNode(SyntaxNode);
 
 impl UseTreeListNode {
-    pub fn new(ast: UseTreeList) -> UseTreeListNode {
-        let syntax = ast.syntax().owned();
-        UseTreeListNode(syntax)
-    }
     pub fn ast(&self) -> UseTreeList {
         UseTreeList::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<UseTreeList<'a>> for UseTreeListNode {
+    fn from(ast: UseTreeList<'a>) -> UseTreeListNode {
+        let syntax = ast.syntax().owned();
+        UseTreeListNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3417,12 +3705,15 @@ impl<'a> UseTreeList<'a> {
 pub struct WhereClauseNode(SyntaxNode);
 
 impl WhereClauseNode {
-    pub fn new(ast: WhereClause) -> WhereClauseNode {
-        let syntax = ast.syntax().owned();
-        WhereClauseNode(syntax)
-    }
     pub fn ast(&self) -> WhereClause {
         WhereClause::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<WhereClause<'a>> for WhereClauseNode {
+    fn from(ast: WhereClause<'a>) -> WhereClauseNode {
+        let syntax = ast.syntax().owned();
+        WhereClauseNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3448,12 +3739,15 @@ impl<'a> WhereClause<'a> {}
 pub struct WhileExprNode(SyntaxNode);
 
 impl WhileExprNode {
-    pub fn new(ast: WhileExpr) -> WhileExprNode {
-        let syntax = ast.syntax().owned();
-        WhileExprNode(syntax)
-    }
     pub fn ast(&self) -> WhileExpr {
         WhileExpr::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<WhileExpr<'a>> for WhileExprNode {
+    fn from(ast: WhileExpr<'a>) -> WhileExprNode {
+        let syntax = ast.syntax().owned();
+        WhileExprNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]
@@ -3484,12 +3778,15 @@ impl<'a> WhileExpr<'a> {
 pub struct WhitespaceNode(SyntaxNode);
 
 impl WhitespaceNode {
-    pub fn new(ast: Whitespace) -> WhitespaceNode {
-        let syntax = ast.syntax().owned();
-        WhitespaceNode(syntax)
-    }
     pub fn ast(&self) -> Whitespace {
         Whitespace::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Whitespace<'a>> for WhitespaceNode {
+    fn from(ast: Whitespace<'a>) -> WhitespaceNode {
+        let syntax = ast.syntax().owned();
+        WhitespaceNode(syntax)
     }
 }
 #[derive(Debug, Clone, Copy)]

@@ -17,12 +17,15 @@ use crate::{
 pub struct {{ node }}Node(SyntaxNode);
 
 impl {{ node }}Node {
-    pub fn new(ast: {{ node }}) -> {{ node }}Node {
-        let syntax = ast.syntax().owned();
-        {{ node }}Node(syntax)
-    }
     pub fn ast(&self) -> {{ node }} {
         {{ node }}::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<{{ node }}<'a>> for {{ node }}Node {
+    fn from(ast: {{ node}}<'a>) -> {{ node }}Node {
+        let syntax = ast.syntax().owned();
+        {{ node }}Node(syntax)
     }
 }
 
