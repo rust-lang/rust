@@ -786,16 +786,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
         let (method_names, arg_lists) = method_calls(expr, 2);
         let method_names: Vec<LocalInternedString> = method_names.iter().map(|s| s.as_str()).collect();
-        let mut method_names = method_names.iter().map(|s| s.as_ref()).chain(iter::repeat(""));
+        let method_names: Vec<&str> = method_names.iter().map(|s| s.as_ref()).collect();
 
-        match [method_names.next().unwrap(), method_names.next().unwrap()] {
+        match method_names.as_slice() {
             ["unwrap", "get"] => lint_get_unwrap(cx, expr, arg_lists[1], false),
             ["unwrap", "get_mut"] => lint_get_unwrap(cx, expr, arg_lists[1], true),
-            ["unwrap", _] => lint_unwrap(cx, expr, arg_lists[0]),
+            ["unwrap", ..] => lint_unwrap(cx, expr, arg_lists[0]),
             ["expect", "ok"] => lint_ok_expect(cx, expr, arg_lists[1]),
             ["unwrap_or", "map"] => lint_map_unwrap_or(cx, expr, arg_lists[1], arg_lists[0]),
             ["unwrap_or_else", "map"] => lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0]),
-            ["map_or", _] => lint_map_or_none(cx, expr, arg_lists[0]),
+            ["map_or", ..] => lint_map_or_none(cx, expr, arg_lists[0]),
             ["next", "filter"] => lint_filter_next(cx, expr, arg_lists[1]),
             ["map", "filter"] => lint_filter_map(cx, expr, arg_lists[1], arg_lists[0]),
             ["map", "filter_map"] => lint_filter_map_map(cx, expr, arg_lists[1], arg_lists[0]),
@@ -805,16 +805,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             ["is_some", "find"] => lint_search_is_some(cx, expr, "find", arg_lists[1], arg_lists[0]),
             ["is_some", "position"] => lint_search_is_some(cx, expr, "position", arg_lists[1], arg_lists[0]),
             ["is_some", "rposition"] => lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0]),
-            ["extend", _] => lint_extend(cx, expr, arg_lists[0]),
+            ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
             ["as_ptr", "unwrap"] => lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0]),
             ["nth", "iter"] => lint_iter_nth(cx, expr, arg_lists[1], false),
             ["nth", "iter_mut"] => lint_iter_nth(cx, expr, arg_lists[1], true),
             ["next", "skip"] => lint_iter_skip_next(cx, expr),
             ["collect", "cloned"] => lint_iter_cloned_collect(cx, expr, arg_lists[1]),
-            ["as_ref", _] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
-            ["as_mut", _] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
-            ["fold", _] => lint_unnecessary_fold(cx, expr, arg_lists[0]),
-            ["filter_map", _] => unnecessary_filter_map::lint(cx, expr, arg_lists[0]),
+            ["as_ref", ..] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
+            ["as_mut", ..] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
+            ["fold", ..] => lint_unnecessary_fold(cx, expr, arg_lists[0]),
+            ["filter_map", ..] => unnecessary_filter_map::lint(cx, expr, arg_lists[0]),
             _ => {}
         }
 
