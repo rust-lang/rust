@@ -1,3 +1,6 @@
+//! ra_analyzer crate is the brain of Rust analyzer. It relies on the `salsa`
+//! crate, which provides and incremental on-deman database of facts.
+
 extern crate fst;
 extern crate ra_editor;
 extern crate ra_syntax;
@@ -95,6 +98,7 @@ impl AnalysisChange {
     }
 }
 
+/// `AnalysisHost` stores the current state of the world.
 #[derive(Debug)]
 pub struct AnalysisHost {
     imp: AnalysisHostImpl,
@@ -106,11 +110,15 @@ impl AnalysisHost {
             imp: AnalysisHostImpl::new(),
         }
     }
+    /// Returns a snapshot of the current state, which you can query for
+    /// semantic information.
     pub fn analysis(&self) -> Analysis {
         Analysis {
             imp: self.imp.analysis(),
         }
     }
+    /// Applies changes to the current state of the world. If there are
+    /// outstanding snapshots, they will be canceled.
     pub fn apply_change(&mut self, change: AnalysisChange) {
         self.imp.apply_change(change)
     }
@@ -191,6 +199,10 @@ impl Query {
     }
 }
 
+/// Analysis is a snapshot of a world state at a moment in time. It is the main
+/// entry point for asking semantic information about the world. When the world
+/// state is advanced using `AnalysisHost::apply_change` method, all existing
+/// `Analysis` are canceled (most method return `Err(Canceled)`).
 #[derive(Debug)]
 pub struct Analysis {
     pub(crate) imp: AnalysisImpl,
