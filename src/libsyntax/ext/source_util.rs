@@ -100,7 +100,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[tokenstream::T
     };
     // The file will be added to the code map by the parser
     let path = res_rel_file(cx, sp, file);
-    let directory_ownership = DirectoryOwnership::Owned { relative: None };
+    let directory_ownership = DirectoryOwnership::Owned { relative: vec![] };
     let p = parse::new_sub_parser_from_file(cx.parse_sess(), &path, directory_ownership, None, sp);
 
     struct ExpandResult<'a> {

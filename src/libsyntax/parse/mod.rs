@@ -52,9 +52,6 @@ pub struct ParseSess {
     pub raw_identifier_spans: Lock<Vec<Span>>,
     /// The registered diagnostics codes
     crate registered_diagnostics: Lock<ErrorMap>,
-    // Spans where a `mod foo;` statement was included in a non-mod.rs file.
-    // These are used to issue errors if the non_modrs_mods feature is not enabled.
-    pub non_modrs_mods: Lock<Vec<(ast::Ident, Span)>>,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: Lock<Vec<PathBuf>>,
     source_map: Lrc<SourceMap>,
@@ -81,7 +78,6 @@ impl ParseSess {
             registered_diagnostics: Lock::new(ErrorMap::new()),
             included_mod_stack: Lock::new(vec![]),
             source_map,
-            non_modrs_mods: Lock::new(vec![]),
             buffered_lints: Lock::new(vec![]),
         }
     }
@@ -113,11 +109,14 @@ pub struct Directory<'a> {
     pub ownership: DirectoryOwnership,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub enum DirectoryOwnership {
     Owned {
-        // None if `mod.rs`, `Some("foo")` if we're in `foo.rs`
-        relative: Option<ast::Ident>,
+        // Module offset from the current directory.
+        // Starts out as empty in `mod.rs`, starts as `["foo"]` in `foo.rs`.
+        // Contains one additional element for every inline nested module we've entered.
+        // e.g. `mod y { mod z { ... } }` in `x.rs` would have `["x", "y", "z"]`
+        relative: Vec<ast::Ident>,
     },
     UnownedViaBlock,
     UnownedViaMod(bool /* legacy warnings? */),

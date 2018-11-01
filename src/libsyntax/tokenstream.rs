@@ -107,7 +107,7 @@ impl TokenTree {
         // `None` is because we're not interpolating
         let directory = Directory {
             path: Cow::from(cx.current_expansion.module.directory.as_path()),
-            ownership: cx.current_expansion.directory_ownership,
+            ownership: cx.current_expansion.directory_ownership.clone(),
         };
         macro_parser::parse(cx.parse_sess(), tts, mtch, Some(directory), true)
     }

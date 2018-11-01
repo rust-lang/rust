@@ -556,7 +556,7 @@ impl<'a> Parser<'a> {
             recurse_into_file_modules,
             directory: Directory {
                 path: Cow::from(PathBuf::new()),
-                ownership: DirectoryOwnership::Owned { relative: None }
+                ownership: DirectoryOwnership::Owned { relative: vec![] }
             },
             root_module_name: None,
             expected_tokens: Vec::new(),
@@ -6409,8 +6409,12 @@ impl<'a> Parser<'a> {
             }
         } else {
             let old_directory = self.directory.clone();
-            self.push_directory(id, &outer_attrs);
-
+            // Push inline `mod x { ... }`'s `x` onto the `relative` offset of the module
+            // from the current directory's location. This ensures that `mod x { mod y; }`
+            // corresponds to `x/y.rs`, not `y.rs`
+            if let DirectoryOwnership::Owned { relative } = &mut self.directory.ownership {
+                relative.push(id);
+            }
             self.expect(&token::OpenDelim(token::Brace))?;
             let mod_inner_lo = self.span;
             let attrs = self.parse_inner_attributes()?;
@@ -6418,26 +6422,6 @@ impl<'a> Parser<'a> {
 
             self.directory = old_directory;
             Ok((id, ItemKind::Mod(module), Some(attrs)))
-        }
-    }
-
-    fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) {
-        if let Some(path) = attr::first_attr_value_str_by_name(attrs, "path") {
-            self.directory.path.to_mut().push(&path.as_str());
-            self.directory.ownership = DirectoryOwnership::Owned { relative: None };
-        } else {
-            // We have to push on the current module name in the case of relative
-            // paths in order to ensure that any additional module paths from inline
-            // `mod x { ... }` come after the relative extension.
-            //
-            // For example, a `mod z { ... }` inside `x/y.rs` should set the current
-            // directory path to `/x/y/z`, not `/x/z` with a relative offset of `y`.
-            if let DirectoryOwnership::Owned { relative } = &mut self.directory.ownership {
-                if let Some(ident) = relative.take() { // remove the relative offset
-                    self.directory.path.to_mut().push(ident.as_str());
-                }
-            }
-            self.directory.path.to_mut().push(&id.as_str());
         }
     }
 
@@ -6460,21 +6444,20 @@ impl<'a> Parser<'a> {
     /// Returns either a path to a module, or .
     pub fn default_submod_path(
         id: ast::Ident,
-        relative: Option<ast::Ident>,
+        relative: &[ast::Ident],
         dir_path: &Path,
         source_map: &SourceMap) -> ModulePath
     {
-        // If we're in a foo.rs file instead of a mod.rs file,
-        // we need to look for submodules in
-        // `./foo/<id>.rs` and `./foo/<id>/mod.rs` rather than
-        // `./<id>.rs` and `./<id>/mod.rs`.
-        let relative_prefix_string;
-        let relative_prefix = if let Some(ident) = relative {
-            relative_prefix_string = format!("{}{}", ident.as_str(), path::MAIN_SEPARATOR);
-            &relative_prefix_string
-        } else {
-            ""
-        };
+        // Offset the current directory first by the name of
+        // the file if not `mod.rs`, then by any nested modules.
+        // e.g. `mod y { mod z; }` in `x.rs` should look for
+        // `./x/y/z.rs` and `./x/y/z/mod.rs` rather than
+        // `./z.rs` and `./z/mod.rs`.
+        let mut relative_prefix = String::new();
+        for ident in relative {
+            relative_prefix.push_str(&ident.as_str());
+            relative_prefix.push(path::MAIN_SEPARATOR);
+        }
 
         let mod_name = id.to_string();
         let default_path_str = format!("{}{}.rs", relative_prefix, mod_name);
@@ -6489,14 +6472,14 @@ impl<'a> Parser<'a> {
             (true, false) => Ok(ModulePathSuccess {
                 path: default_path,
                 directory_ownership: DirectoryOwnership::Owned {
-                    relative: Some(id),
+                    relative: vec![id],
                 },
                 warn: false,
             }),
             (false, true) => Ok(ModulePathSuccess {
                 path: secondary_path,
                 directory_ownership: DirectoryOwnership::Owned {
-                    relative: None,
+                    relative: vec![],
                 },
                 warn: false,
             }),
@@ -6535,7 +6518,7 @@ impl<'a> Parser<'a> {
                     // Note that this will produce weirdness when a file named `foo.rs` is
                     // `#[path]` included and contains a `mod foo;` declaration.
                     // If you encounter this, it's your own darn fault :P
-                    Some(_) => DirectoryOwnership::Owned { relative: None },
+                    Some(_) => DirectoryOwnership::Owned { relative: vec![] },
                     _ => DirectoryOwnership::UnownedViaMod(true),
                 },
                 path,
@@ -6543,19 +6526,10 @@ impl<'a> Parser<'a> {
             });
         }
 
-        let relative = match self.directory.ownership {
-            DirectoryOwnership::Owned { relative } => {
-                // Push the usage onto the list of non-mod.rs mod uses.
-                // This is used later for feature-gate error reporting.
-                if let Some(cur_file_ident) = relative {
-                    self.sess
-                        .non_modrs_mods.borrow_mut()
-                        .push((cur_file_ident, id_sp));
-                }
-                relative
-            },
+        let relative = match &self.directory.ownership {
+            DirectoryOwnership::Owned { relative } => &**relative,
             DirectoryOwnership::UnownedViaBlock |
-            DirectoryOwnership::UnownedViaMod(_) => None,
+            DirectoryOwnership::UnownedViaMod(_) => &[],
         };
         let paths = Parser::default_submod_path(
                         id, relative, &self.directory.path, self.sess.source_map());

@@ -1309,8 +1309,9 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_block(&mut self, block: P<Block>) -> P<Block> {
-        let old_directory_ownership = self.cx.current_expansion.directory_ownership;
-        self.cx.current_expansion.directory_ownership = DirectoryOwnership::UnownedViaBlock;
+        let old_directory_ownership =
+            mem::replace(&mut self.cx.current_expansion.directory_ownership,
+                         DirectoryOwnership::UnownedViaBlock);
         let result = noop_fold_block(block, self);
         self.cx.current_expansion.directory_ownership = old_directory_ownership;
         result
@@ -1344,7 +1345,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                     return noop_fold_item(item, self);
                 }
 
-                let orig_directory_ownership = self.cx.current_expansion.directory_ownership;
+                let mut orig_directory_ownership = None;
                 let mut module = (*self.cx.current_expansion.module).clone();
                 module.mod_path.push(item.ident);
 
@@ -1355,8 +1356,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                 if inline_module {
                     if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, "path") {
-                        self.cx.current_expansion.directory_ownership =
-                            DirectoryOwnership::Owned { relative: None };
+                        orig_directory_ownership =
+                            Some(mem::replace(
+                                &mut self.cx.current_expansion.directory_ownership,
+                                DirectoryOwnership::Owned { relative: vec![] }));
                         module.directory.push(&*path.as_str());
                     } else {
                         module.directory.push(&*item.ident.as_str());
@@ -1368,22 +1371,27 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         other => PathBuf::from(other.to_string()),
                     };
                     let directory_ownership = match path.file_name().unwrap().to_str() {
-                        Some("mod.rs") => DirectoryOwnership::Owned { relative: None },
+                        Some("mod.rs") => DirectoryOwnership::Owned { relative: vec![] },
                         Some(_) => DirectoryOwnership::Owned {
-                            relative: Some(item.ident),
+                            relative: vec![item.ident],
                         },
                         None => DirectoryOwnership::UnownedViaMod(false),
                     };
                     path.pop();
                     module.directory = path;
-                    self.cx.current_expansion.directory_ownership = directory_ownership;
+                    orig_directory_ownership =
+                        Some(mem::replace(
+                            &mut self.cx.current_expansion.directory_ownership,
+                            directory_ownership));
                 }
 
                 let orig_module =
                     mem::replace(&mut self.cx.current_expansion.module, Rc::new(module));
                 let result = noop_fold_item(item, self);
                 self.cx.current_expansion.module = orig_module;
-                self.cx.current_expansion.directory_ownership = orig_directory_ownership;
+                if let Some(orig_directory_ownership) = orig_directory_ownership {
+                    self.cx.current_expansion.directory_ownership = orig_directory_ownership;
+                }
                 result
             }
 
