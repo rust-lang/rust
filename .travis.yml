@@ -200,7 +200,7 @@ matrix:
 before_install:
   # We'll use the AWS cli to download/upload cached docker layers as well as
   # push our deployments, so download that here.
-  - pip install --user awscli; export PATH=$PATH:$HOME/.local/bin
+  - pip install --user awscli; export PATH=$PATH:$HOME/.local/bin:$HOME/Library/Python/2.7/bin/
   - mkdir -p $HOME/rustsrc
   # FIXME(#46924): these two commands are required to enable IPv6,
   # they shouldn't exist, please revert once more official solutions appeared.
