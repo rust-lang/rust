@@ -1801,6 +1801,7 @@ pub struct FieldDef {
 /// table.
 pub struct AdtDef {
     pub did: DefId,
+    // TODO: make this an IndexVec
     pub variants: Vec<VariantDef>,
     flags: AdtFlags,
     pub repr: ReprOptions,

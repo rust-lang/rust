@@ -27,8 +27,12 @@ pub enum PlaceTy<'tcx> {
     /// Downcast to a particular variant of an enum.
     Downcast { adt_def: &'tcx AdtDef,
                substs: &'tcx Substs<'tcx>,
-               variant_index: usize },
+               variant_index: u32 },
 }
+
+static_assert!(PLACE_TY_IS_3_PTRS_LARGE:
+    mem::size_of::<PlaceTy<'_>>() <= 24
+);
 
 impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {
@@ -58,7 +62,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
             (PlaceTy::Ty {
                 ty: &ty::TyS { sty: ty::TyKind::Adt(adt_def, substs), .. } }, variant_index) |
             (PlaceTy::Downcast { adt_def, substs, variant_index }, _) => {
-                let variant_def = &adt_def.variants[variant_index];
+                let variant_def = &adt_def.variants[variant_index as usize];
                 let field_def = &variant_def.fields[f.index()];
                 field_def.ty(tcx, substs)
             }
@@ -134,7 +138,7 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                 match self.to_ty(tcx).sty {
                     ty::Adt(adt_def, substs) => {
                         assert!(adt_def.is_enum());
-                        assert!(index < adt_def.variants.len());
+                        assert!(index < adt_def.variants.len() as u32);
                         assert_eq!(adt_def, adt_def1);
                         PlaceTy::Downcast { adt_def,
                                             substs,

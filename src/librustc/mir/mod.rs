@@ -1939,7 +1939,7 @@ pub enum ProjectionElem<'tcx, V, T> {
     /// "Downcast" to a variant of an ADT. Currently, we only introduce
     /// this for ADTs with more than one variant. It may be better to
     /// just introduce it always, or always for enums.
-    Downcast(&'tcx AdtDef, usize),
+    Downcast(&'tcx AdtDef, u32),
 }
 
 /// Alias for projections as they appear in places, where the base is a place
@@ -1949,6 +1949,11 @@ pub type PlaceProjection<'tcx> = Projection<'tcx, Place<'tcx>, Local, Ty<'tcx>>;
 /// Alias for projections as they appear in places, where the base is a place
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
+
+// at least on 64 bit systems, `PlaceElem` should not be larger than two pointers
+static_assert!(PROJECTION_ELEM_IS_2_PTRS_LARGE:
+    mem::size_of::<PlaceElem<'_>>() <= 16
+);
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
@@ -1970,7 +1975,7 @@ impl<'tcx> Place<'tcx> {
     }
 
     pub fn downcast(self, adt_def: &'tcx AdtDef, variant_index: usize) -> Place<'tcx> {
-        self.elem(ProjectionElem::Downcast(adt_def, variant_index))
+        self.elem(ProjectionElem::Downcast(adt_def, variant_index as u32))
     }
 
     pub fn index(self, index: Local) -> Place<'tcx> {
@@ -2021,7 +2026,7 @@ impl<'tcx> Debug for Place<'tcx> {
             Promoted(ref promoted) => write!(fmt, "({:?}: {:?})", promoted.0, promoted.1),
             Projection(ref data) => match data.elem {
                 ProjectionElem::Downcast(ref adt_def, index) => {
-                    write!(fmt, "({:?} as {})", data.base, adt_def.variants[index].name)
+                    write!(fmt, "({:?} as {})", data.base, adt_def.variants[index as usize].name)
                 }
                 ProjectionElem::Deref => write!(fmt, "(*{:?})", data.base),
                 ProjectionElem::Field(field, ty) => {
