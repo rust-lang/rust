@@ -179,12 +179,15 @@ pub trait ValueVisitor<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: fmt::Debug +
     }
 
     // Actions on the leaves.
-    fn visit_uninhabited(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx>;
-    fn visit_scalar(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>, layout: &layout::Scalar)
-        -> EvalResult<'tcx>;
-    fn visit_primitive(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx>;
+    fn visit_uninhabited(&mut self, _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
+        -> EvalResult<'tcx>
+    { Ok(()) }
+    fn visit_scalar(&mut self, _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>, _layout: &layout::Scalar)
+        -> EvalResult<'tcx>
+    { Ok(()) }
+    fn visit_primitive(&mut self, _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
+        -> EvalResult<'tcx>
+    { Ok(()) }
 }
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
