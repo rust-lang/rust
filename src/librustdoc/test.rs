@@ -412,6 +412,8 @@ pub fn make_test(s: &str,
         let source = crates + &everything_else;
         let sess = ParseSess::new(FilePathMapping::empty());
 
+        debug!("about to parse: \n{}", source);
+
         let mut parser = parse::new_parser_from_source_str(&sess, filename, source);
 
         let mut found_main = false;
@@ -503,6 +505,7 @@ fn partition_source(s: &str) -> (String, String, String) {
             if trimline.starts_with("#[macro_use] extern crate")
                 || trimline.starts_with("extern crate") {
                 crates.push_str(line);
+                crates.push_str("\n");
             }
             before.push_str(line);
             before.push_str("\n");
