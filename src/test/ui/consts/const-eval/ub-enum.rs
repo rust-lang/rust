@@ -33,8 +33,13 @@ enum Enum2 {
 union TransmuteEnum2 {
     a: usize,
     b: Enum2,
+    c: (),
 }
 const BAD_ENUM2 : Enum2 = unsafe { TransmuteEnum2 { a: 0 }.b };
+//~^ ERROR is undefined behavior
+
+// Undef enum discriminant. In an arry to avoid `Scalar` layout.
+const BAD_ENUM3 : [Enum2; 2] = [unsafe { TransmuteEnum2 { c: () }.b }; 2];
 //~^ ERROR is undefined behavior
 
 // Invalid enum field content (mostly to test printing of apths for enum tuple

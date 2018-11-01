@@ -7,7 +7,7 @@ LL | const BAD_ENUM: Enum = unsafe { TransmuteEnum { a: &1 }.b };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:37:1
+  --> $DIR/ub-enum.rs:38:1
    |
 LL | const BAD_ENUM2 : Enum2 = unsafe { TransmuteEnum2 { a: 0 }.b };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 0, but expected a valid enum discriminant
@@ -15,13 +15,21 @@ LL | const BAD_ENUM2 : Enum2 = unsafe { TransmuteEnum2 { a: 0 }.b };
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/ub-enum.rs:47:1
+  --> $DIR/ub-enum.rs:42:1
+   |
+LL | const BAD_ENUM3 : [Enum2; 2] = [unsafe { TransmuteEnum2 { c: () }.b }; 2];
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempted to read undefined bytes
+   |
+   = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
+
+error[E0080]: it is undefined behavior to use this value
+  --> $DIR/ub-enum.rs:52:1
    |
 LL | const BAD_ENUM_CHAR : Option<(char, char)> = Some(('x', unsafe { TransmuteChar { a: !0 }.b }));
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 4294967295 at .Some.0.1, but expected something in the range 0..=1114111
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0080`.
