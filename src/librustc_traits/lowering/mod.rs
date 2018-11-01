@@ -113,13 +113,14 @@ impl<'tcx> Lower<PolyDomainGoal<'tcx>> for ty::Predicate<'tcx> {
             Predicate::RegionOutlives(predicate) => predicate.lower(),
             Predicate::TypeOutlives(predicate) => predicate.lower(),
             Predicate::Projection(predicate) => predicate.lower(),
-            Predicate::WellFormed(ty) => {
-                ty::Binder::dummy(DomainGoal::WellFormed(WellFormed::Ty(*ty)))
+
+            Predicate::WellFormed(..) |
+            Predicate::ObjectSafe(..) |
+            Predicate::ClosureKind(..) |
+            Predicate::Subtype(..) |
+            Predicate::ConstEvaluatable(..) => {
+                bug!("unexpected predicate {}", self)
             }
-            Predicate::ObjectSafe(..)
-            | Predicate::ClosureKind(..)
-            | Predicate::Subtype(..)
-            | Predicate::ConstEvaluatable(..) => unimplemented!(),
         }
     }
 }
