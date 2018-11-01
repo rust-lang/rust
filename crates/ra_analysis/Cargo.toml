@@ -9,7 +9,7 @@ log = "0.4.5"
 relative-path = "0.4.0"
 rayon = "1.0.2"
 fst = "0.3.1"
-salsa = "0.7.0"
+salsa = "0.8.0"
 rustc-hash = "1.0"
 ra_syntax = { path = "../ra_syntax" }
 ra_editor = { path = "../ra_editor" }

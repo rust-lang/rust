@@ -1,4 +1,5 @@
 use std::{
+    fmt,
     hash::{Hash, Hasher},
     sync::Arc,
 };
@@ -92,18 +93,18 @@ pub(crate) struct AnalysisHostImpl {
 
 impl AnalysisHostImpl {
     pub fn new() -> AnalysisHostImpl {
-        let db = db::RootDatabase::default();
-        db.query(crate::input::SourceRootQuery)
+        let mut db = db::RootDatabase::default();
+        db.query_mut(crate::input::SourceRootQuery)
             .set(WORKSPACE, Default::default());
-        db.query(crate::input::CrateGraphQuery)
+        db.query_mut(crate::input::CrateGraphQuery)
             .set((), Default::default());
-        db.query(crate::input::LibrariesQuery)
+        db.query_mut(crate::input::LibrariesQuery)
             .set((), Default::default());
         AnalysisHostImpl { db }
     }
     pub fn analysis(&self) -> AnalysisImpl {
         AnalysisImpl {
-            db: self.db.fork(), // freeze revision here
+            db: self.db.snapshot(),
         }
     }
     pub fn apply_change(&mut self, change: AnalysisChange) {
@@ -111,7 +112,7 @@ impl AnalysisHostImpl {
 
         for (file_id, text) in change.files_changed {
             self.db
-                .query(crate::input::FileTextQuery)
+                .query_mut(crate::input::FileTextQuery)
                 .set(file_id, Arc::new(text))
         }
         if !(change.files_added.is_empty() && change.files_removed.is_empty()) {
@@ -121,22 +122,22 @@ impl AnalysisHostImpl {
             let mut source_root = SourceRoot::clone(&self.db.source_root(WORKSPACE));
             for (file_id, text) in change.files_added {
                 self.db
-                    .query(crate::input::FileTextQuery)
+                    .query_mut(crate::input::FileTextQuery)
                     .set(file_id, Arc::new(text));
                 self.db
-                    .query(crate::input::FileSourceRootQuery)
+                    .query_mut(crate::input::FileSourceRootQuery)
                     .set(file_id, crate::input::WORKSPACE);
                 source_root.files.insert(file_id);
             }
             for file_id in change.files_removed {
                 self.db
-                    .query(crate::input::FileTextQuery)
+                    .query_mut(crate::input::FileTextQuery)
                     .set(file_id, Arc::new(String::new()));
                 source_root.files.remove(&file_id);
             }
             source_root.file_resolver = file_resolver;
             self.db
-                .query(crate::input::SourceRootQuery)
+                .query_mut(crate::input::SourceRootQuery)
                 .set(WORKSPACE, Arc::new(source_root))
         }
         if !change.libraries_added.is_empty() {
@@ -148,10 +149,10 @@ impl AnalysisHostImpl {
                 for (file_id, text) in library.files {
                     files.insert(file_id);
                     self.db
-                        .query(crate::input::FileSourceRootQuery)
+                        .query_mut(crate::input::FileSourceRootQuery)
                         .set_constant(file_id, source_root_id);
                     self.db
-                        .query(crate::input::FileTextQuery)
+                        .query_mut(crate::input::FileTextQuery)
                         .set_constant(file_id, Arc::new(text));
                 }
                 let source_root = SourceRoot {
@@ -159,27 +160,33 @@ impl AnalysisHostImpl {
                     file_resolver: library.file_resolver,
                 };
                 self.db
-                    .query(crate::input::SourceRootQuery)
+                    .query_mut(crate::input::SourceRootQuery)
                     .set(source_root_id, Arc::new(source_root));
                 self.db
-                    .query(crate::input::LibrarySymbolsQuery)
+                    .query_mut(crate::input::LibrarySymbolsQuery)
                     .set(source_root_id, Arc::new(library.symbol_index));
             }
             self.db
-                .query(crate::input::LibrariesQuery)
+                .query_mut(crate::input::LibrariesQuery)
                 .set((), Arc::new(libraries));
         }
         if let Some(crate_graph) = change.crate_graph {
             self.db
-                .query(crate::input::CrateGraphQuery)
+                .query_mut(crate::input::CrateGraphQuery)
                 .set((), Arc::new(crate_graph))
         }
     }
 }
 
-#[derive(Debug)]
 pub(crate) struct AnalysisImpl {
-    pub(crate) db: db::RootDatabase,
+    pub(crate) db: salsa::Snapshot<db::RootDatabase>,
+}
+
+impl fmt::Debug for AnalysisImpl {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let db: &db::RootDatabase = &self.db;
+        fmt.debug_struct("AnalysisImpl").field("db", db).finish()
+    }
 }
 
 impl AnalysisImpl {
@@ -198,10 +205,19 @@ impl AnalysisImpl {
                 .collect()
         } else {
             let files = &self.db.source_root(WORKSPACE).files;
-            let db = self.db.clone();
+
+            /// Need to wrap Snapshot to provide `Clon` impl for `map_with`
+            struct Snap(salsa::Snapshot<db::RootDatabase>);
+            impl Clone for Snap {
+                fn clone(&self) -> Snap {
+                    Snap(self.0.snapshot())
+                }
+            }
+
+            let snap = Snap(self.db.snapshot());
             files
                 .par_iter()
-                .map_with(db, |db, &file_id| db.file_symbols(file_id))
+                .map_with(snap, |db, &file_id| db.0.file_symbols(file_id))
                 .filter_map(|it| it.ok())
                 .collect()
         };
@@ -229,7 +245,7 @@ impl AnalysisImpl {
                         return None;
                     }
                 };
-                let decl = link.bind_source(&module_tree, &self.db);
+                let decl = link.bind_source(&module_tree, &*self.db);
                 let decl = decl.ast();
 
                 let sym = FileSymbol {
@@ -371,7 +387,7 @@ impl AnalysisImpl {
             })
             .collect::<Vec<_>>();
         if let Some(m) = module_tree.any_module_for_file(file_id) {
-            for (name_node, problem) in m.problems(&module_tree, &self.db) {
+            for (name_node, problem) in m.problems(&module_tree, &*self.db) {
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
                         let create_file = FileSystemEdit::CreateFile {
