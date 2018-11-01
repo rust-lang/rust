@@ -58,6 +58,8 @@ use rustc::hir::{self, CodegenFnAttrFlags, CodegenFnAttrs, Unsafety};
 
 use std::iter;
 
+struct OnlySelfBounds(bool);
+
 ///////////////////////////////////////////////////////////////////////////
 // Main entry point
 
@@ -331,7 +333,7 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
         ast_generics: &hir::Generics,
         param_id: ast::NodeId,
         ty: Ty<'tcx>,
-        only_self_bounds: bool,
+        only_self_bounds: OnlySelfBounds,
     ) -> Vec<(ty::Predicate<'tcx>, Span)> {
         let from_ty_params = ast_generics
             .params
@@ -354,12 +356,10 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
             .flat_map(|bp| {
                 let bt = if is_param(self.tcx, &bp.bounded_ty, param_id) {
                     Some(ty)
+                } else if only_self_bounds.0 {
+                    None
                 } else {
-                    if only_self_bounds {
-                        None
-                    } else {
-                        Some(self.to_ty(&bp.bounded_ty))
-                    }
+                    Some(self.to_ty(&bp.bounded_ty))
                 };
                 bp.bounds.iter().filter_map(move |b| {
                     if let Some(bt) = bt { Some((bt, b)) } else { None }
@@ -710,7 +710,10 @@ fn super_predicates_of<'a, 'tcx>(
     let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
     // Convert any explicit superbounds in the where clause,
-    // e.g. `trait Foo where Self : Bar`:
+    // e.g. `trait Foo where Self : Bar`.
+    // In the case of trait aliases, however, we include all bounds in the where clause,
+    // so e.g. `trait Foo = where u32: PartialEq<Self>` would include `u32: PartialEq<Self>`
+    // as one of its "superpredicates".
     let is_trait_alias = ty::is_trait_alias(tcx, trait_def_id);
     let superbounds2 = icx.type_parameter_bounds_in_generics(
         generics, item.id, self_param_ty, !is_trait_alias);
