@@ -35,8 +35,6 @@ matrix:
     - env: INTEGRATION=stdsimd
     - env: INTEGRATION=tempdir
   allow_failures:
-    # Doesn't build
-    - env: INTEGRATION=futures-rs
     # Doesn't build - seems to be because of an option
     - env: INTEGRATION=packed_simd
     # Test failure
