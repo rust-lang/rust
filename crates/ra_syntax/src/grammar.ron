@@ -113,7 +113,6 @@ Grammar(
         "BYTE_STRING",
         "RAW_BYTE_STRING",
         "COMMENT",
-        "DOC_COMMENT",
         "SHEBANG",
     ],
     nodes: [
