@@ -30,6 +30,13 @@ pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
     // Create this from an `MPlaceTy`.
     fn from_mem_place(MPlaceTy<'tcx, M::PointerTag>) -> Self;
 
+    // Read the current enum discriminant, and downcast to that.  Also return the
+    // variant index.
+    fn project_downcast(
+        self,
+        ectx: &EvalContext<'a, 'mir, 'tcx, M>
+    ) -> EvalResult<'tcx, (Self, usize)>;
+
     // Project to the n-th field.
     fn project_field(
         self,
@@ -58,6 +65,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn from_mem_place(mplace: MPlaceTy<'tcx, M::PointerTag>) -> Self {
         mplace.into()
+    }
+
+    #[inline(always)]
+    fn project_downcast(
+        self,
+        ectx: &EvalContext<'a, 'mir, 'tcx, M>
+    ) -> EvalResult<'tcx, (Self, usize)> {
+        let idx = ectx.read_discriminant(self)?.1;
+        Ok((ectx.operand_downcast(self, idx)?, idx))
     }
 
     #[inline(always)]
@@ -91,6 +107,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     }
 
     #[inline(always)]
+    fn project_downcast(
+        self,
+        ectx: &EvalContext<'a, 'mir, 'tcx, M>
+    ) -> EvalResult<'tcx, (Self, usize)> {
+        let idx = ectx.read_discriminant(self.into())?.1;
+        Ok((ectx.mplace_downcast(self, idx)?, idx))
+    }
+
+    #[inline(always)]
     fn project_field(
         self,
         ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
@@ -118,6 +143,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn from_mem_place(mplace: MPlaceTy<'tcx, M::PointerTag>) -> Self {
         mplace.into()
+    }
+
+    #[inline(always)]
+    fn project_downcast(
+        self,
+        ectx: &EvalContext<'a, 'mir, 'tcx, M>
+    ) -> EvalResult<'tcx, (Self, usize)> {
+        let idx = ectx.read_discriminant(ectx.place_to_op(self)?)?.1;
+        Ok((ectx.place_downcast(self, idx)?, idx))
     }
 
     #[inline(always)]
@@ -154,12 +188,6 @@ pub trait ValueVisitor<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: fmt::Debug +
         val: Self::V,
         field: usize,
     ) -> EvalResult<'tcx>;
-
-    // This is an enum, downcast it to whatever the current variant is.
-    // (We do this here and not in `Value` to keep error handling
-    // under control of th visitor.)
-    fn downcast_enum(&mut self, ectx: &EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx>;
 
     // A chance for the visitor to do special (different or more efficient) handling for some
     // array types.  Return `true` if the value was handled and we should return.
@@ -202,8 +230,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         match v.layout().variants {
             layout::Variants::NicheFilling { .. } |
             layout::Variants::Tagged { .. } => {
-                v.downcast_enum(self)?;
-                trace!("variant layout: {:#?}", v.layout());
+                let (inner, idx) = v.value().project_downcast(self)?;
+                trace!("variant layout: {:#?}", inner.layout());
+                // recurse with the inner type
+                return v.visit_field(self, inner, idx);
             }
             layout::Variants::Single { .. } => {}
         }
@@ -215,6 +245,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 // immediate trait objects are not a thing
                 let dest = v.value().force_allocation(self)?;
                 let inner = self.unpack_dyn_trait(dest)?.1;
+                trace!("dyn object layout: {:#?}", inner.layout);
                 // recurse with the inner type
                 return v.visit_field(self, Value::from_mem_place(inner), 0);
             },

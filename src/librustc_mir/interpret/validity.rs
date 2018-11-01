@@ -173,11 +173,15 @@ impl<'rt, 'a, 'tcx, Tag> ValidityVisitor<'rt, 'a, 'tcx, Tag> {
 
             // enums
             ty::Adt(def, ..) if def.is_enum() => {
-                let variant = match layout.variants {
-                    layout::Variants::Single { index } => &def.variants[index],
-                    _ => bug!("aggregate_field_path_elem: got enum but not in a specific variant"),
-                };
-                PathElem::Field(variant.fields[field].ident.name)
+                // we might be projecting *to* a variant, or to a field *in*a variant.
+                match layout.variants {
+                    layout::Variants::Single { index } =>
+                        // Inside a variant
+                        PathElem::Field(def.variants[index].fields[field].ident.name),
+                    _ =>
+                        // To a variant
+                        PathElem::Field(def.variants[field].name)
+                }
             }
 
             // other ADTs
@@ -226,30 +230,21 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         Ok(())
     }
 
-    fn downcast_enum(&mut self, ectx: &EvalContext<'a, 'mir, 'tcx, M>)
+    #[inline]
+    fn visit(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
         -> EvalResult<'tcx>
     {
-        let variant = match ectx.read_discriminant(self.op) {
-            Ok(res) => res.1,
-            Err(err) => return match err.kind {
+        // Translate enum discriminant errors to something nicer.
+        match ectx.walk_value(self) {
+            Ok(()) => Ok(()),
+            Err(err) => match err.kind {
                 EvalErrorKind::InvalidDiscriminant(val) =>
                     validation_failure!(
                         format!("invalid enum discriminant {}", val), self.path
                     ),
-                _ =>
-                    validation_failure!(
-                        format!("non-integer enum discriminant"), self.path
-                    ),
+                _ => Err(err),
             }
-        };
-        // Put the variant projection onto the path, as a field
-        self.path.push(PathElem::Field(self.op.layout.ty
-                                    .ty_adt_def()
-                                    .unwrap()
-                                    .variants[variant].name));
-        // Proceed with this variant
-        self.op = ectx.operand_downcast(self.op, variant)?;
-        Ok(())
+        }
     }
 
     fn visit_primitive(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
