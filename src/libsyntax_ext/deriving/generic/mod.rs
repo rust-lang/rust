@@ -1384,7 +1384,7 @@ impl<'a> MethodDef<'a> {
             // let __self2_vi = unsafe {
             //     std::intrinsics::discriminant_value(&arg2) } as i32;
             // ```
-            let mut index_let_stmts: Vec<ast::Stmt> = Vec::new();
+            let mut index_let_stmts: Vec<ast::Stmt> = Vec::with_capacity(vi_idents.len() + 1);
 
             // We also build an expression which checks whether all discriminants are equal
             // discriminant_test = __self0_vi == __self1_vi && __self0_vi == __self2_vi && ...
