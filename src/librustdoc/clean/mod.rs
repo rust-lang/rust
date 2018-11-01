@@ -556,7 +556,6 @@ impl ItemEnum {
     pub fn is_associated(&self) -> bool {
         match *self {
             ItemEnum::TypedefItem(_, _) |
-            ItemEnum::AssociatedConstItem(_, _) |
             ItemEnum::AssociatedTypeItem(_, _) => true,
             _ => false,
         }
