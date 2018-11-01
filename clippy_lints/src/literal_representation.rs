@@ -557,7 +557,8 @@ impl LiteralRepresentation {
             // Lint for Literals with a hex-representation of 2 or 3 digits
             let f = &digits[0..1]; // first digit
             let s = &digits[1..]; // suffix
-                                  // Powers of 2
+            
+            // Powers of 2
             if ((f.eq("1") || f.eq("2") || f.eq("4") || f.eq("8")) && s.chars().all(|c| c == '0'))
                 // Powers of 2 minus 1
                 || ((f.eq("1") || f.eq("3") || f.eq("7") || f.eq("F")) && s.chars().all(|c| c == 'F'))
@@ -569,7 +570,8 @@ impl LiteralRepresentation {
             let f = &digits[0..1]; // first digit
             let m = &digits[1..digits.len() - 1]; // middle digits, except last
             let s = &digits[1..]; // suffix
-                                  // Powers of 2 with a margin of +15/-16
+            
+            // Powers of 2 with a margin of +15/-16
             if ((f.eq("1") || f.eq("2") || f.eq("4") || f.eq("8")) && m.chars().all(|c| c == '0'))
                 || ((f.eq("1") || f.eq("3") || f.eq("7") || f.eq("F")) && m.chars().all(|c| c == 'F'))
                 // Lint for representations with only 0s and Fs, while allowing 7 as the first
