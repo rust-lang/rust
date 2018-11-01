@@ -1515,7 +1515,10 @@ impl<T: ?Sized> UnsafeCell<T> {
 #[stable(feature = "unsafe_cell_copy_clone_conservative", since = "1.31.0")]
 impl<T: Clone + Copy> Clone for UnsafeCell<T> {
     fn clone(&self) -> UnsafeCell<T> {
-        UnsafeCell::new(self.value.clone())
+        // NOTE: we are explicitly not calling `.clone()` here, to enforce the
+        // use of Copy, rather than relying on what could be a custom impl
+        // of Clone
+        UnsafeCell::new(self.value)
     }
 }
 
