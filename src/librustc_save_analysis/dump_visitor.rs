@@ -92,7 +92,7 @@ pub struct DumpVisitor<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> {
     // we only write one macro def per unique macro definition, and
     // one macro use per unique callsite span.
     // mac_defs: FxHashSet<Span>,
-    macro_calls: FxHashSet<Span>,
+    // macro_calls: FxHashSet<Span>,
 }
 
 impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
@@ -108,7 +108,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
             span: span_utils,
             cur_scope: CRATE_NODE_ID,
             // mac_defs: FxHashSet::default(),
-            macro_calls: FxHashSet::default(),
+            // macro_calls: FxHashSet::default(),
         }
     }
 
@@ -771,8 +771,7 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     }
 
     fn process_path(&mut self, id: NodeId, path: &'l ast::Path) {
-        debug!("process_path {:?}", path);
-        if generated_code(path.span) {
+        if self.span.filter_generated(path.span) {
             return;
         }
         self.dump_path_ref(id, path);
@@ -1031,18 +1030,20 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
     /// If the span is not macro-generated, do nothing, else use callee and
     /// callsite spans to record macro definition and use data, using the
     /// mac_uses and mac_defs sets to prevent multiples.
-    fn process_macro_use(&mut self, span: Span) {
-        let source_span = span.source_callsite();
-        if !self.macro_calls.insert(source_span) {
-            return;
-        }
+    fn process_macro_use(&mut self, _span: Span) {
+        // FIXME if we're not dumping the defs (see below), there is no point
+        // dumping refs either.
+        // let source_span = span.source_callsite();
+        // if !self.macro_calls.insert(source_span) {
+        //     return;
+        // }
 
-        let data = match self.save_ctxt.get_macro_use_data(span) {
-            None => return,
-            Some(data) => data,
-        };
+        // let data = match self.save_ctxt.get_macro_use_data(span) {
+        //     None => return,
+        //     Some(data) => data,
+        // };
 
-        self.dumper.macro_use(data);
+        // self.dumper.macro_use(data);
 
         // FIXME write the macro def
         // let mut hasher = DefaultHasher::new();

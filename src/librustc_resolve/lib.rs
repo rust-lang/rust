@@ -3589,7 +3589,17 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         );
 
         for (i, &Segment { ident, id }) in path.iter().enumerate() {
-            debug!("resolve_path ident {} {:?}", i, ident);
+            debug!("resolve_path ident {} {:?} {:?}", i, ident, id);
+            let record_segment_def = |this: &mut Self, def| {
+                if record_used {
+                    if let Some(id) = id {
+                        if !this.def_map.contains_key(&id) {
+                            assert!(id != ast::DUMMY_NODE_ID, "Trying to resolve dummy id");
+                            this.record_def(id, PathResolution::new(def));
+                        }
+                    }
+                }
+            };
 
             let is_last = i == path.len() - 1;
             let ns = if is_last { opt_ns.unwrap_or(TypeNS) } else { TypeNS };
@@ -3673,6 +3683,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     // we found a local variable or type param
                     Some(LexicalScopeBinding::Def(def))
                             if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) => {
+                        record_segment_def(self, def);
                         return PathResult::NonModule(PathResolution::with_unresolved_segments(
                             def, path.len() - 1
                         ));
@@ -3690,14 +3701,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(def);
                     if let Some(next_module) = binding.module() {
                         module = Some(ModuleOrUniformRoot::Module(next_module));
-                        if record_used {
-                            if let Some(id) = id {
-                                if !self.def_map.contains_key(&id) {
-                                    assert!(id != ast::DUMMY_NODE_ID, "Trying to resolve dummy id");
-                                    self.record_def(id, PathResolution::new(def));
-                                }
-                            }
-                        }
+                        record_segment_def(self, def);
                     } else if def == Def::ToolMod && i + 1 != path.len() {
                         let def = Def::NonMacroAttr(NonMacroAttrKind::Tool);
                         return PathResult::NonModule(PathResolution::new(def));
