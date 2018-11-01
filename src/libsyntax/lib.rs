@@ -70,6 +70,23 @@ macro_rules! panictry {
     })
 }
 
+// A variant of 'panictry!' that works on a Vec<Diagnostic> instead of a single DiagnosticBuilder.
+macro_rules! panictry_buffer {
+    ($handler:expr, $e:expr) => ({
+        use std::result::Result::{Ok, Err};
+        use errors::{FatalError, DiagnosticBuilder};
+        match $e {
+            Ok(e) => e,
+            Err(errs) => {
+                for e in errs {
+                    DiagnosticBuilder::new_diagnostic($handler, e).emit();
+                }
+                FatalError.raise()
+            }
+        }
+    })
+}
+
 #[macro_export]
 macro_rules! unwrap_or {
     ($opt:expr, $default:expr) => {

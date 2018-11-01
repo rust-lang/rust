@@ -177,9 +177,7 @@ pub fn parse_stream_from_source_str(name: FileName, source: String, sess: &Parse
 /// Create a new parser from a source string
 pub fn new_parser_from_source_str(sess: &ParseSess, name: FileName, source: String)
                                       -> Parser {
-    let mut parser = source_file_to_parser(sess, sess.source_map().new_source_file(name, source));
-    parser.recurse_into_file_modules = false;
-    parser
+    panictry_buffer!(&sess.span_diagnostic, maybe_new_parser_from_source_str(sess, name, source))
 }
 
 /// Create a new parser from a source string. Returns any buffered errors from lexing the initial
@@ -215,14 +213,8 @@ crate fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
 
 /// Given a source_file and config, return a parser
 fn source_file_to_parser(sess: & ParseSess, source_file: Lrc<SourceFile>) -> Parser {
-    let end_pos = source_file.end_pos;
-    let mut parser = stream_to_parser(sess, source_file_to_stream(sess, source_file, None));
-
-    if parser.token == token::Eof && parser.span.is_dummy() {
-        parser.span = Span::new(end_pos, end_pos, parser.span.ctxt());
-    }
-
-    parser
+    panictry_buffer!(&sess.span_diagnostic,
+                     maybe_source_file_to_parser(sess, source_file))
 }
 
 /// Given a source_file and config, return a parser. Returns any buffered errors from lexing the
@@ -269,9 +261,7 @@ fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 pub fn source_file_to_stream(sess: &ParseSess,
                              source_file: Lrc<SourceFile>,
                              override_span: Option<Span>) -> TokenStream {
-    let mut srdr = lexer::StringReader::new(sess, source_file, override_span);
-    srdr.real_token();
-    panictry!(srdr.parse_all_token_trees())
+    panictry_buffer!(&sess.span_diagnostic, maybe_file_to_stream(sess, source_file, override_span))
 }
 
 /// Given a source file, produce a sequence of token-trees. Returns any buffered errors from
