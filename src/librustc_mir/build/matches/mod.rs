@@ -22,6 +22,7 @@ use hair::pattern::PatternTypeProjections;
 use rustc::hir;
 use rustc::mir::*;
 use rustc::ty::{self, Ty};
+use rustc::ty::layout::VariantIdx;
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::fx::FxHashMap;
 use syntax::ast::{Name, NodeId};
@@ -663,7 +664,7 @@ enum TestKind<'tcx> {
     // test the branches of enum
     Switch {
         adt_def: &'tcx ty::AdtDef,
-        variants: BitSet<usize>,
+        variants: BitSet<VariantIdx>,
     },
 
     // test the branches of enum

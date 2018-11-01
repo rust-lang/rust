@@ -14,7 +14,7 @@
 use std::convert::TryInto;
 
 use rustc::{mir, ty};
-use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt};
+use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx};
 
 use rustc::mir::interpret::{
     GlobalId, AllocId,
@@ -417,7 +417,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn operand_downcast(
         &self,
         op: OpTy<'tcx, M::PointerTag>,
-        variant: usize,
+        variant: VariantIdx,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
         // Downcasts only change the layout
         Ok(match op.try_as_mplace() {
@@ -596,13 +596,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn read_discriminant(
         &self,
         rval: OpTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx, (u128, usize)> {
+    ) -> EvalResult<'tcx, (u128, VariantIdx)> {
         trace!("read_discriminant_value {:#?}", rval.layout);
 
         match rval.layout.variants {
             layout::Variants::Single { index } => {
                 let discr_val = rval.layout.ty.ty_adt_def().map_or(
-                    index as u128,
+                    index.as_u32() as u128,
                     |def| def.discriminant_for_variant(*self.tcx, index).val);
                 return Ok((discr_val, index));
             }
@@ -645,9 +645,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     .ty_adt_def()
                     .expect("tagged layout for non adt")
                     .discriminants(self.tcx.tcx)
-                    .position(|var| var.val == real_discr)
+                    .find(|(_, var)| var.val == real_discr)
                     .ok_or_else(|| EvalErrorKind::InvalidDiscriminant(raw_discr.erase_tag()))?;
-                (real_discr, index)
+                (real_discr, index.0)
             },
             layout::Variants::NicheFilling {
                 dataful_variant,
@@ -655,33 +655,32 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 niche_start,
                 ..
             } => {
-                let variants_start = *niche_variants.start() as u128;
-                let variants_end = *niche_variants.end() as u128;
-                let real_discr = match raw_discr {
+                let variants_start = niche_variants.start().as_u32() as u128;
+                let variants_end = niche_variants.end().as_u32() as u128;
+                match raw_discr {
                     Scalar::Ptr(_) => {
                         // The niche must be just 0 (which a pointer value never is)
                         assert!(niche_start == 0);
                         assert!(variants_start == variants_end);
-                        dataful_variant as u128
+                        (dataful_variant.as_u32() as u128, dataful_variant)
                     },
                     Scalar::Bits { bits: raw_discr, size } => {
                         assert_eq!(size as u64, discr_val.layout.size.bytes());
                         let discr = raw_discr.wrapping_sub(niche_start)
                             .wrapping_add(variants_start);
                         if variants_start <= discr && discr <= variants_end {
-                            discr
+                            let index = discr as usize;
+                            assert_eq!(index as u128, discr);
+                            assert!(index < rval.layout.ty
+                                .ty_adt_def()
+                                .expect("tagged layout for non adt")
+                                .variants.len());
+                            (discr, VariantIdx::from_usize(index))
                         } else {
-                            dataful_variant as u128
+                            (dataful_variant.as_u32() as u128, dataful_variant)
                         }
                     },
-                };
-                let index = real_discr as usize;
-                assert_eq!(index as u128, real_discr);
-                assert!(index < rval.layout.ty
-                    .ty_adt_def()
-                    .expect("tagged layout for non adt")
-                    .variants.len());
-                (real_discr, index)
+                }
             }
         })
     }

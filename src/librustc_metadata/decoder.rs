@@ -601,7 +601,7 @@ impl<'a, 'tcx> CrateMetadata {
                 })
                 .collect()
         } else {
-            vec![self.get_variant(tcx, &item, item_id, kind)]
+            std::iter::once(self.get_variant(tcx, &item, item_id, kind)).collect()
         };
 
         tcx.alloc_adt_def(did, kind, variants, repr)

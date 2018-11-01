@@ -1754,7 +1754,7 @@ pub enum StatementKind<'tcx> {
     /// Write the discriminant for a variant to the enum Place.
     SetDiscriminant {
         place: Place<'tcx>,
-        variant_index: usize,
+        variant_index: VariantIdx,
     },
 
     /// Start a live range for the storage of the local.

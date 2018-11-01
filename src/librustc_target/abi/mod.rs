@@ -914,7 +914,11 @@ pub trait LayoutOf {
 }
 
 pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
-    fn for_variant(this: TyLayout<'a, Self>, cx: &C, variant_index: VariantIdx) -> TyLayout<'a, Self>;
+    fn for_variant(
+        this: TyLayout<'a, Self>,
+        cx: &C,
+        variant_index: VariantIdx,
+    ) -> TyLayout<'a, Self>;
     fn field(this: TyLayout<'a, Self>, cx: &C, i: usize) -> C::TyLayout;
 }
 

@@ -179,7 +179,7 @@ use super::{PatternFoldable, PatternFolder, compare_const_vals};
 use rustc::hir::def_id::DefId;
 use rustc::hir::RangeEnd;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
-use rustc::ty::layout::{Integer, IntegerExt};
+use rustc::ty::layout::{Integer, IntegerExt, VariantIdx};
 
 use rustc::mir::Field;
 use rustc::mir::interpret::ConstValue;
@@ -422,12 +422,12 @@ pub enum Constructor<'tcx> {
 }
 
 impl<'tcx> Constructor<'tcx> {
-    fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> usize {
+    fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> VariantIdx {
         match self {
             &Variant(vid) => adt.variant_index_with_id(vid),
             &Single => {
                 assert!(!adt.is_enum());
-                0
+                VariantIdx::new(0)
             }
             _ => bug!("bad constructor {:?} for adt {:?}", self, adt)
         }

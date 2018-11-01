@@ -13,6 +13,7 @@ use build::matches::MatchPair;
 use hair::*;
 use rustc::mir::*;
 use std::u32;
+use std::convert::TryInto;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn field_match_pairs<'pat>(&mut self,

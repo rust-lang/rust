@@ -39,7 +39,7 @@ use rustc::middle::weak_lang_items;
 use rustc::mir::mono::{Linkage, Visibility, Stats, CodegenUnitNameBuilder};
 use rustc::middle::cstore::{EncodedMetadata};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, TyLayout, LayoutOf};
+use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty::query::Providers;
 use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::middle::exported_symbols;
@@ -73,6 +73,7 @@ use rustc::util::nodemap::FxHashMap;
 use CrateInfo;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::indexed_vec::Idx;
 
 use std::any::Any;
 use std::cmp;
@@ -309,7 +310,7 @@ pub fn coerce_unsized_into(
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
-            for i in 0..def_a.variants[0].fields.len() {
+            for i in 0..def_a.variants[VariantIdx::new(0)].fields.len() {
                 let src_f = src.project_field(bx, i);
                 let dst_f = dst.project_field(bx, i);
 

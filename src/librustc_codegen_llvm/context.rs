@@ -29,7 +29,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc::mir::mono::Stats;
 use rustc::session::config::{self, DebugInfo};
 use rustc::session::Session;
-use rustc::ty::layout::{LayoutError, LayoutOf, Size, TyLayout};
+use rustc::ty::layout::{LayoutError, LayoutOf, Size, TyLayout, VariantIdx};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_target::spec::{HasTargetSpec, Target};
@@ -87,7 +87,7 @@ pub struct CodegenCx<'a, 'tcx: 'a> {
     /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
     pub used_statics: RefCell<Vec<&'a Value>>,
 
-    pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<usize>), &'a Type>>,
+    pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'a Type>>,
     pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'a Type>>,
     pub pointee_infos: RefCell<FxHashMap<(Ty<'tcx>, Size), Option<PointeeInfo>>>,
     pub isize_ty: &'a Type,

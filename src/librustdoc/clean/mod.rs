@@ -38,10 +38,12 @@ use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
+use rustc::ty::layout::VariantIdx;
 use rustc::middle::stability;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_typeck::hir_ty_to_ty;
 use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 use std::collections::hash_map::Entry;
 use std::fmt;
@@ -94,6 +96,12 @@ pub trait Clean<T> {
 
 impl<T: Clean<U>, U> Clean<Vec<U>> for [T] {
     fn clean(&self, cx: &DocContext) -> Vec<U> {
+        self.iter().map(|x| x.clean(cx)).collect()
+    }
+}
+
+impl<T: Clean<U>, U, V: Idx> Clean<IndexVec<V, U>> for IndexVec<V, T> {
+    fn clean(&self, cx: &DocContext) -> IndexVec<V, U> {
         self.iter().map(|x| x.clean(cx)).collect()
     }
 }
@@ -2886,7 +2894,7 @@ impl Clean<VariantStruct> for ::rustc::hir::VariantData {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Enum {
-    pub variants: Vec<Item>,
+    pub variants: IndexVec<VariantIdx, Item>,
     pub generics: Generics,
     pub variants_stripped: bool,
 }
@@ -2902,7 +2910,7 @@ impl Clean<Item> for doctree::Enum {
             stability: self.stab.clean(cx),
             deprecation: self.depr.clean(cx),
             inner: EnumItem(Enum {
-                variants: self.variants.clean(cx),
+                variants: self.variants.iter().map(|v| v.clean(cx)).collect(),
                 generics: self.generics.clean(cx),
                 variants_stripped: false,
             }),

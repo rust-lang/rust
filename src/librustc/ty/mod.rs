@@ -2149,11 +2149,12 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             .expect("variant_with_id: unknown variant")
     }
 
-    pub fn variant_index_with_id(&self, vid: DefId) -> usize {
+    pub fn variant_index_with_id(&self, vid: DefId) -> VariantIdx {
         self.variants
-            .iter()
-            .position(|v| v.did == vid)
+            .iter_enumerated()
+            .find(|(_, v)| v.did == vid)
             .expect("variant_index_with_id: unknown variant")
+            .0
     }
 
     pub fn variant_of_def(&self, def: Def) -> &VariantDef {

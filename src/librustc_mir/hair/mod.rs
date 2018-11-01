@@ -19,6 +19,7 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::region;
 use rustc::ty::subst::Substs;
 use rustc::ty::{AdtDef, UpvarSubsts, Region, Ty, Const};
+use rustc::ty::layout::VariantIdx;
 use rustc::hir;
 use syntax::ast;
 use syntax_pos::Span;
@@ -264,7 +265,7 @@ pub enum ExprKind<'tcx> {
     },
     Adt {
         adt_def: &'tcx AdtDef,
-        variant_index: usize,
+        variant_index: VariantIdx,
         substs: &'tcx Substs<'tcx>,
 
         /// Optional user-given substs: for something like `let x =
