@@ -4,7 +4,7 @@ use rustc::ty;
 
 use rustc::mir::interpret::{EvalResult, PointerArithmetic};
 
-use super::{
+use crate::{
     PlaceTy, OpTy, Value, Scalar, ScalarMaybeUndef, Borrow,
     ScalarExt, OperatorEvalContextExt
 };

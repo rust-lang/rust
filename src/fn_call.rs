@@ -4,7 +4,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir;
 use syntax::attr;
 
-use super::*;
+use crate::*;
 
 pub trait EvalContextExt<'tcx, 'mir> {
     /// Emulate calling a foreign item, fail if the item is not supported.

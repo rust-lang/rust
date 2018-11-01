@@ -3,7 +3,7 @@ use std::mem;
 use rustc::ty;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 
-use super::*;
+use crate::*;
 
 pub trait ScalarExt {
     /// HACK: this function just extracts all bits if `defined != 0`
