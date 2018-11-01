@@ -23,6 +23,7 @@ The original C++ version of SwissTable can be found [here], and this
 - Drop-in replacement for the standard library `HashMap` and `HashSet` types.
 - Uses `FxHash` as the default hasher, which is much faster than SipHash.
 - Around 2x faster than `FxHashMap` and 8x faster than the standard `HashMap`.
+- Lower memory usage: only 1 byte of overhead per entry instead of 8.
 - Compatible with `#[no_std]` (currently requires nightly for the `alloc` crate).
 - Empty hash maps do not allocate any memory.
 - SIMD lookups to scan multiple hash entries in parallel.
