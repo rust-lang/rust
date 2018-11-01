@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use rustc::ty::{self, Ty, layout::Size};
 use rustc::hir;
 
-use super::{
+use crate::{
     MemoryKind, MiriMemoryKind, RangeMap, EvalResult, AllocId,
     Pointer, PlaceTy,
 };

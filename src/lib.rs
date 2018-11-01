@@ -48,7 +48,7 @@ use mono_hash_map::MonoHashMap;
 use stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
 
 // Used by priroda
-pub use stacked_borrows::{Borrow, Stack, Stacks, Mut as MutBorrow, BorStackItem};
+pub use crate::stacked_borrows::{Borrow, Stack, Stacks, Mut as MutBorrow, BorStackItem};
 
 /// Insert rustc arguments at the beginning of the argument listthat miri wants to be
 /// set per default, for maximal validation power.
