@@ -407,13 +407,23 @@ pub fn make_test(s: &str,
     let (already_has_main, already_has_extern_crate) = crate::syntax::with_globals(|| {
         use crate::syntax::{ast, parse::{self, ParseSess}, source_map::FilePathMapping};
         use crate::syntax_pos::FileName;
+        use errors::emitter::EmitterWriter;
+        use errors::Handler;
 
         let filename = FileName::Anon;
         let source = crates + &everything_else;
-        let sess = ParseSess::new(FilePathMapping::empty());
+
+        // any errors in parsing should also appear when the doctest is compiled for real, so just
+        // send all the errors that libsyntax emits directly into a Sink instead of stderr
+        let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let emitter = EmitterWriter::new(box io::sink(), None, false, false);
+        let handler = Handler::with_emitter(false, false, box emitter);
+        let sess = ParseSess::with_span_handler(handler, cm);
 
         debug!("about to parse: \n{}", source);
 
+        // FIXME(misdreavus): this can still emit a FatalError (and thus halt rustdoc prematurely)
+        // if there is a lexing error in the first token
         let mut parser = parse::new_parser_from_source_str(&sess, filename, source);
 
         let mut found_main = false;
