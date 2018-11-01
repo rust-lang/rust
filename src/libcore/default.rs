@@ -76,7 +76,7 @@
 /// }
 ///
 /// impl Default for Kind {
-///     fn default() -> Kind { Kind::A }
+///     fn default() -> Self { Kind::A }
 /// }
 /// ```
 ///
@@ -118,7 +118,7 @@ pub trait Default: Sized {
     /// }
     ///
     /// impl Default for Kind {
-    ///     fn default() -> Kind { Kind::A }
+    ///     fn default() -> Self { Kind::A }
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
