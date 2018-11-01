@@ -357,14 +357,12 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
             .flat_map(|bp| {
                 let bt = if is_param(self.tcx, &bp.bounded_ty, param_id) {
                     Some(ty)
-                } else if only_self_bounds.0 {
-                    None
-                } else {
+                } else if !only_self_bounds.0 {
                     Some(self.to_ty(&bp.bounded_ty))
+                } else {
+                    None
                 };
-                bp.bounds.iter().filter_map(move |b| {
-                    if let Some(bt) = bt { Some((bt, b)) } else { None }
-                })
+                bp.bounds.iter().filter_map(move |b| bt.map(|bt| (bt, b)))
             })
             .flat_map(|(bt, b)| predicates_from_bound(self, bt, b));
 

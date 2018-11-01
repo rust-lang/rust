@@ -1,4 +1,4 @@
-// Copyright 2017-2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -11,25 +11,6 @@
 #![feature(trait_alias)]
 
 use std::marker::PhantomData;
-
-trait SimpleAlias = Default;
-trait GenericAlias<T> = Iterator<Item = T>;
-trait Partial<T> = IntoIterator<Item = T>;
-trait SpecificAlias = GenericAlias<i32>;
-trait PartialEqRef<'a, T> = PartialEq<&'a T>;
-trait StaticAlias = 'static;
-
-trait Things<T> {}
-trait Romeo {}
-#[allow(dead_code)]
-struct The<T>(T);
-#[allow(dead_code)]
-struct Fore<T>(T);
-impl<T, U> Things<T> for The<U> {}
-impl<T> Romeo for Fore<T> {}
-
-trait WithWhere<Art, Thou> = Romeo + Romeo where Fore<(Art, Thou)>: Romeo;
-trait BareWhere<Wild, Are> = where The<Wild>: Things<Are>;
 
 trait Empty {}
 trait EmptyAlias = Empty;
