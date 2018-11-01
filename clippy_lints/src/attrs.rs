@@ -147,7 +147,7 @@ declare_clippy_lint! {
 /// (not the tool name) and a lowercase version of this lint exists, it will suggest to lowercase
 /// the lint name.
 ///
-/// **Why is this bad?** An lint attribute with a misstyped lint name won't have an effect.
+/// **Why is this bad?** A lint attribute with a mistyped lint name won't have an effect.
 ///
 /// **Known problems:** None.
 ///
