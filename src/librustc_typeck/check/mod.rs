@@ -1167,7 +1167,7 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
         }
     }
 
-    // Check that a function marked as `#[panic_implementation]` has signature `fn(&PanicInfo) -> !`
+    // Check that a function marked as `#[panic_handler]` has signature `fn(&PanicInfo) -> !`
     if let Some(panic_impl_did) = fcx.tcx.lang_items().panic_impl() {
         if panic_impl_did == fcx.tcx.hir.local_def_id(fn_id) {
             if let Some(panic_info_did) = fcx.tcx.lang_items().panic_info() {

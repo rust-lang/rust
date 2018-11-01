@@ -448,9 +448,6 @@ declare_features! (
     // Integer match exhaustiveness checking
     (active, exhaustive_integer_patterns, "1.30.0", Some(50907), None),
 
-    // RFC 2070: #[panic_implementation] / #[panic_handler]
-    (active, panic_implementation, "1.28.0", Some(44489), None),
-
     // #[doc(keyword = "...")]
     (active, doc_keyword, "1.28.0", Some(51315), None),
 
@@ -541,6 +538,8 @@ declare_features! (
      Some("subsumed by `#![feature(proc_macro_hygiene)]`")),
     (removed, proc_macro_gen, "1.27.0", Some(54727), None,
      Some("subsumed by `#![feature(proc_macro_hygiene)]`")),
+    (removed, panic_implementation, "1.28.0", Some(44489), None,
+     Some("subsumed by `#[panic_handler]`")),
 );
 
 declare_features! (
@@ -1159,16 +1158,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                    "infer_static_outlives_requirements",
                                    "infer 'static lifetime requirements",
                                    cfg_fn!(infer_static_outlives_requirements))),
-
-    // RFC 2070 (deprecated attribute name)
-    ("panic_implementation",
-     Normal,
-     Gated(Stability::Deprecated("https://github.com/rust-lang/rust/issues/44489\
-                                  #issuecomment-415140224",
-                                 Some("replace this attribute with `#[panic_handler]`")),
-           "panic_implementation",
-           "this attribute was renamed to `panic_handler`",
-           cfg_fn!(panic_implementation))),
 
     // RFC 2070
     ("panic_handler", Normal, Ungated),

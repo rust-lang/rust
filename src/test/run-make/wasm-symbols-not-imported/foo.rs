@@ -9,8 +9,6 @@
 // except according to those terms.
 
 #![crate_type = "cdylib"]
-
-#![feature(panic_implementation)]
 #![no_std]
 
 use core::panic::PanicInfo;
@@ -20,7 +18,7 @@ pub extern fn foo() {
     panic!()
 }
 
-#[panic_implementation]
+#[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
