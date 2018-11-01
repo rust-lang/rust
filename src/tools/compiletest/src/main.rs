@@ -766,7 +766,7 @@ fn make_test_name(
         .join(&testpaths.file.file_name().unwrap());
     let mode_suffix = match config.compare_mode {
         Some(ref mode) => format!(" ({})", mode.to_str()),
-        None => format!(""),
+        None => String::new(),
     };
     test::DynTestName(format!(
         "[{}{}] {}{}",

@@ -12,12 +12,12 @@ use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 use rustc::mir::tcx::RvalueInitializationState;
 use rustc_data_structures::indexed_vec::{IndexVec};
+use smallvec::{SmallVec, smallvec};
 
 use std::collections::hash_map::Entry;
 use std::mem;
 
 use super::abs_domain::Lift;
-
 use super::{LocationMap, MoveData, MovePath, MovePathLookup, MovePathIndex, MoveOut, MoveOutIndex};
 use super::{MoveError, InitIndex, Init, InitLocation, LookupResult, InitKind};
 use super::IllegalMoveOriginKind::*;
@@ -64,8 +64,8 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
     }
 
     fn new_move_path(move_paths: &mut IndexVec<MovePathIndex, MovePath<'tcx>>,
-                     path_map: &mut IndexVec<MovePathIndex, Vec<MoveOutIndex>>,
-                     init_path_map: &mut IndexVec<MovePathIndex, Vec<InitIndex>>,
+                     path_map: &mut IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
+                     init_path_map: &mut IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
                      parent: Option<MovePathIndex>,
                      place: Place<'tcx>)
                      -> MovePathIndex
@@ -83,10 +83,10 @@ impl<'a, 'gcx, 'tcx> MoveDataBuilder<'a, 'gcx, 'tcx> {
             move_paths[move_path].next_sibling = next_sibling;
         }
 
-        let path_map_ent = path_map.push(vec![]);
+        let path_map_ent = path_map.push(smallvec![]);
         assert_eq!(path_map_ent, move_path);
 
-        let init_path_map_ent = init_path_map.push(vec![]);
+        let init_path_map_ent = init_path_map.push(smallvec![]);
         assert_eq!(init_path_map_ent, move_path);
 
         move_path

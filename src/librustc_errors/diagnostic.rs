@@ -350,10 +350,10 @@ impl Diagnostic {
     }
 
     pub fn span_suggestions_with_applicability(&mut self, sp: Span, msg: &str,
-                                        suggestions: Vec<String>,
-                                        applicability: Applicability) -> &mut Self {
+        suggestions: impl Iterator<Item = String>, applicability: Applicability) -> &mut Self
+    {
         self.suggestions.push(CodeSuggestion {
-            substitutions: suggestions.into_iter().map(|snippet| Substitution {
+            substitutions: suggestions.map(|snippet| Substitution {
                 parts: vec![SubstitutionPart {
                     snippet,
                     span: sp,

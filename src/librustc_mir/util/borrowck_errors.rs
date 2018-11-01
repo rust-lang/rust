@@ -575,7 +575,7 @@ pub trait BorrowckErrors<'cx>: Sized + Copy {
             OGN = o
         );
         err.span_label(mutate_span, format!("cannot {}", action));
-        err.span_label(match_span, format!("value is immutable in match guard"));
+        err.span_label(match_span, String::from("value is immutable in match guard"));
 
         self.cancel_if_wrong_origin(err, o)
     }

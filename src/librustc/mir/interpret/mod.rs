@@ -295,12 +295,10 @@ impl AllocDecodingState {
     }
 
     pub fn new(data_offsets: Vec<u32>) -> AllocDecodingState {
-        let decoding_state: Vec<_> = ::std::iter::repeat(Mutex::new(State::Empty))
-            .take(data_offsets.len())
-            .collect();
+        let decoding_state = vec![Mutex::new(State::Empty); data_offsets.len()];
 
         AllocDecodingState {
-            decoding_state: decoding_state,
+            decoding_state,
             data_offsets,
         }
     }

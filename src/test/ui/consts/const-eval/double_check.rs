@@ -21,12 +21,12 @@ enum Bar {
 union Union {
     foo: &'static Foo,
     bar: &'static Bar,
-    usize: &'static usize,
+    u8: &'static u8,
 }
-static BAR: usize = 42;
+static BAR: u8 = 42;
 static FOO: (&Foo, &Bar) = unsafe {(
-    Union { usize: &BAR }.foo,
-    Union { usize: &BAR }.bar,
+    Union { u8: &BAR }.foo,
+    Union { u8: &BAR }.bar,
 )};
 
 fn main() {}

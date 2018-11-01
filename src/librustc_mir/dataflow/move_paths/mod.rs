@@ -13,6 +13,7 @@ use rustc::ty::{self, TyCtxt};
 use rustc::mir::*;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::{IndexVec};
+use smallvec::SmallVec;
 use syntax_pos::{Span};
 
 use std::fmt;
@@ -141,14 +142,14 @@ pub struct MoveData<'tcx> {
     /// of executing the code at `l`. (There can be multiple MoveOut's
     /// for a given `l` because each MoveOut is associated with one
     /// particular path being moved.)
-    pub loc_map: LocationMap<Vec<MoveOutIndex>>,
-    pub path_map: IndexVec<MovePathIndex, Vec<MoveOutIndex>>,
+    pub loc_map: LocationMap<SmallVec<[MoveOutIndex; 4]>>,
+    pub path_map: IndexVec<MovePathIndex, SmallVec<[MoveOutIndex; 4]>>,
     pub rev_lookup: MovePathLookup<'tcx>,
     pub inits: IndexVec<InitIndex, Init>,
     /// Each Location `l` is mapped to the Inits that are effects
     /// of executing the code at `l`.
-    pub init_loc_map: LocationMap<Vec<InitIndex>>,
-    pub init_path_map: IndexVec<MovePathIndex, Vec<InitIndex>>,
+    pub init_loc_map: LocationMap<SmallVec<[InitIndex; 4]>>,
+    pub init_path_map: IndexVec<MovePathIndex, SmallVec<[InitIndex; 4]>>,
 }
 
 pub trait HasMoveData<'tcx> {

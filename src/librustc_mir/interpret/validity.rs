@@ -408,7 +408,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             ),
                         _ =>
                             return validation_failure!(
-                                format!("non-integer enum discriminant"), path
+                                String::from("non-integer enum discriminant"), path
                             ),
                     }
                 };

@@ -143,6 +143,8 @@ struct MatcherTtFrame<'a> {
     idx: usize,
 }
 
+type NamedMatchVec = SmallVec<[NamedMatch; 4]>;
+
 /// Represents a single "position" (aka "matcher position", aka "item"), as described in the module
 /// documentation.
 #[derive(Clone)]
@@ -168,7 +170,7 @@ struct MatcherPos<'a> {
     /// all bound matches from the submatcher into the shared top-level `matches` vector. If `sep`
     /// and `up` are `Some`, then `matches` is _not_ the shared top-level list. Instead, if one
     /// wants the shared `matches`, one should use `up.matches`.
-    matches: Vec<Rc<Vec<NamedMatch>>>,
+    matches: Box<[Rc<NamedMatchVec>]>,
     /// The position in `matches` corresponding to the first metavar in this matcher's sequence of
     /// token trees. In other words, the first metavar in the first token of `top_elts` corresponds
     /// to `matches[match_lo]`.
@@ -278,9 +280,14 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
     })
 }
 
-/// Initialize `len` empty shared `Vec`s to be used to store matches of metavars.
-fn create_matches(len: usize) -> Vec<Rc<Vec<NamedMatch>>> {
-    (0..len).into_iter().map(|_| Rc::new(Vec::new())).collect()
+/// `len` `Vec`s (initially shared and empty) that will store matches of metavars.
+fn create_matches(len: usize) -> Box<[Rc<NamedMatchVec>]> {
+    if len == 0 {
+        vec![]
+    } else {
+        let empty_matches = Rc::new(SmallVec::new());
+        vec![empty_matches.clone(); len]
+    }.into_boxed_slice()
 }
 
 /// Generate the top-level matcher position in which the "dot" is before the first token of the
@@ -332,7 +339,7 @@ fn initial_matcher_pos(ms: &[TokenTree], open: Span) -> MatcherPos {
 /// token tree it was derived from.
 #[derive(Debug, Clone)]
 pub enum NamedMatch {
-    MatchedSeq(Rc<Vec<NamedMatch>>, DelimSpan),
+    MatchedSeq(Rc<NamedMatchVec>, DelimSpan),
     MatchedNonterminal(Rc<Nonterminal>),
 }
 
@@ -540,7 +547,7 @@ fn inner_parse_loop<'a>(
                         new_item.match_cur += seq.num_captures;
                         new_item.idx += 1;
                         for idx in item.match_cur..item.match_cur + seq.num_captures {
-                            new_item.push_match(idx, MatchedSeq(Rc::new(vec![]), sp));
+                            new_item.push_match(idx, MatchedSeq(Rc::new(smallvec![]), sp));
                         }
                         cur_items.push(new_item);
                     }
