@@ -5,8 +5,8 @@ LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: forall<'a, T> { FromEnv(T: Foo) :- FromEnv(S<'a, T>). }
-   = note: forall<'a, T> { TypeOutlives(T : 'a) :- FromEnv(S<'a, T>). }
-   = note: forall<'a, T> { WellFormed(S<'a, T>) :- Implemented(T: Foo), TypeOutlives(T : 'a). }
+   = note: forall<'a, T> { TypeOutlives(T: 'a) :- FromEnv(S<'a, T>). }
+   = note: forall<'a, T> { WellFormed(S<'a, T>) :- Implemented(T: Foo), TypeOutlives(T: 'a). }
 
 error: program clause dump
   --> $DIR/lower_env2.rs:21:1
@@ -15,7 +15,7 @@ LL | #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: forall<'a, T> { FromEnv(T: Foo) :- FromEnv(S<'a, T>). }
-   = note: forall<'a, T> { TypeOutlives(T : 'a) :- FromEnv(S<'a, T>). }
+   = note: forall<'a, T> { TypeOutlives(T: 'a) :- FromEnv(S<'a, T>). }
    = note: forall<Self> { Implemented(Self: Foo) :- FromEnv(Self: Foo). }
    = note: forall<Self> { Implemented(Self: std::marker::Sized) :- FromEnv(Self: std::marker::Sized). }
 

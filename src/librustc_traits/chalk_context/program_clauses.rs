@@ -191,7 +191,7 @@ fn program_clauses_for_tuple<'tcx>(
             .map(|i| ty::BoundTy::new(ty::INNERMOST, ty::BoundVar::from(i)))
             .map(|t| tcx.mk_ty(ty::Bound(t)))
     );
-    
+
     let tuple_ty = tcx.mk_ty(ty::Tuple(type_list));
 
     let sized_trait = match tcx.lang_items().sized_trait() {

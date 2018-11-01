@@ -442,11 +442,41 @@ impl<'tcx> fmt::Display for traits::WhereClause<'tcx> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         use traits::WhereClause::*;
 
+        // Bypass ppaux because it does not print out anonymous regions.
+        fn write_region_name<'tcx>(
+            r: ty::Region<'tcx>,
+            fmt: &mut fmt::Formatter<'_>
+        ) -> fmt::Result {
+            match r {
+                ty::ReLateBound(index, br) => match br {
+                    ty::BoundRegion::BrNamed(_, name) => write!(fmt, "{}", name),
+                    ty::BoundRegion::BrAnon(var) => {
+                        if *index == ty::INNERMOST {
+                            write!(fmt, "'^{}", var)
+                        } else {
+                            write!(fmt, "'^{}_{}", index.index(), var)
+                        }
+                    }
+                    _ => write!(fmt, "'_"),
+                }
+
+                _ => write!(fmt, "{}", r),
+            }
+        }
+
         match self {
             Implemented(trait_ref) => write!(fmt, "Implemented({})", trait_ref),
             ProjectionEq(projection) => write!(fmt, "ProjectionEq({})", projection),
-            RegionOutlives(predicate) => write!(fmt, "RegionOutlives({})", predicate),
-            TypeOutlives(predicate) => write!(fmt, "TypeOutlives({})", predicate),
+            RegionOutlives(predicate) => {
+                write!(fmt, "RegionOutlives({}: ", predicate.0)?;
+                write_region_name(predicate.1, fmt)?;
+                write!(fmt, ")")
+            }
+            TypeOutlives(predicate) => {
+                write!(fmt, "TypeOutlives({}: ", predicate.0)?;
+                write_region_name(predicate.1, fmt)?;
+                write!(fmt, ")")
+            }
         }
     }
 }
@@ -567,7 +597,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
                     match bound_ty.kind {
                         ty::BoundTyKind::Param(name) => name,
                         ty::BoundTyKind::Anon => Symbol::intern(
-                            &format!("?{}", bound_ty.var.as_u32())
+                            &format!("^{}", bound_ty.var.as_u32())
                         ).as_interned_str(),
                     }
                 );
@@ -591,7 +621,7 @@ impl<'tcx> TypeVisitor<'tcx> for BoundNamesCollector {
 
                     ty::BoundRegion::BrAnon(var) => {
                         self.regions.insert(Symbol::intern(
-                            &format!("?'{}", var)
+                            &format!("'^{}", var)
                         ).as_interned_str());
                     }
 
