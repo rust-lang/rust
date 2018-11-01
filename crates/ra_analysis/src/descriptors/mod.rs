@@ -13,12 +13,12 @@ use crate::{
     descriptors::function::{resolve_local_name, FnId, FnScopes},
     descriptors::module::{ModuleId, ModuleScope, ModuleTree},
     input::SourceRootId,
-    syntax_ptr::{LocalSyntaxPtr, SyntaxPtrDatabase},
+    syntax_ptr::LocalSyntaxPtr,
     Cancelable, FileId,
 };
 
 salsa::query_group! {
-    pub(crate) trait DescriptorDatabase: SyntaxDatabase + SyntaxPtrDatabase {
+    pub(crate) trait DescriptorDatabase: SyntaxDatabase {
         fn module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
             type ModuleTreeQuery;
             use fn module::imp::module_tree;

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ra_editor::LineIndex;
-use ra_syntax::File;
+use ra_syntax::{File, SyntaxNode};
 use salsa;
 
 use crate::{
@@ -11,7 +11,7 @@ use crate::{
         SubmodulesQuery,
     },
     symbol_index::SymbolIndex,
-    syntax_ptr::{ResolveSyntaxPtrQuery, SyntaxPtrDatabase},
+    syntax_ptr::SyntaxPtr,
     Cancelable, Canceled, FileId,
 };
 
@@ -62,6 +62,7 @@ salsa::database_storage! {
             fn file_syntax() for FileSyntaxQuery;
             fn file_lines() for FileLinesQuery;
             fn file_symbols() for FileSymbolsQuery;
+            fn resolve_syntax_ptr() for ResolveSyntaxPtrQuery;
         }
         impl DescriptorDatabase {
             fn module_tree() for ModuleTreeQuery;
@@ -69,9 +70,6 @@ salsa::database_storage! {
             fn module_scope() for ModuleScopeQuery;
             fn fn_syntax() for FnSyntaxQuery;
             fn fn_scopes() for FnScopesQuery;
-        }
-        impl SyntaxPtrDatabase {
-            fn resolve_syntax_ptr() for ResolveSyntaxPtrQuery;
         }
     }
 }
@@ -86,6 +84,12 @@ salsa::query_group! {
         }
         fn file_symbols(file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
             type FileSymbolsQuery;
+        }
+        fn resolve_syntax_ptr(ptr: SyntaxPtr) -> SyntaxNode {
+            type ResolveSyntaxPtrQuery;
+            // Don't retain syntax trees in memory
+            storage volatile;
+            use fn crate::syntax_ptr::resolve_syntax_ptr;
         }
     }
 }

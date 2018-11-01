@@ -3,17 +3,7 @@ use ra_syntax::{File, SyntaxKind, SyntaxNode, SyntaxNodeRef, TextRange};
 use crate::db::SyntaxDatabase;
 use crate::FileId;
 
-salsa::query_group! {
-    pub(crate) trait SyntaxPtrDatabase: SyntaxDatabase {
-        fn resolve_syntax_ptr(ptr: SyntaxPtr) -> SyntaxNode {
-            type ResolveSyntaxPtrQuery;
-            // Don't retain syntax trees in memory
-            storage volatile;
-        }
-    }
-}
-
-fn resolve_syntax_ptr(db: &impl SyntaxDatabase, ptr: SyntaxPtr) -> SyntaxNode {
+pub(crate) fn resolve_syntax_ptr(db: &impl SyntaxDatabase, ptr: SyntaxPtr) -> SyntaxNode {
     let syntax = db.file_syntax(ptr.file_id);
     ptr.local.resolve(&syntax)
 }

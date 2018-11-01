@@ -25,7 +25,6 @@ use crate::{
     },
     input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
     symbol_index::SymbolIndex,
-    syntax_ptr::SyntaxPtrDatabase,
     AnalysisChange, Cancelable, CrateGraph, CrateId, Diagnostic, FileId, FileResolver,
     FileSystemEdit, Position, Query, SourceChange, SourceFileEdit,
 };
