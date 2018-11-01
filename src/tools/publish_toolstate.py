@@ -14,7 +14,6 @@
 import sys
 import re
 import json
-import copy
 import datetime
 import collections
 import textwrap
