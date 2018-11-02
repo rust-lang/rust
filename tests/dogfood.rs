@@ -23,7 +23,7 @@ fn dogfood() {
             .arg("--all-features")
             .arg("--manifest-path")
             .arg(root_dir.join("Cargo.toml"))
-            .args(&["--", "-W clippy::internal"])
+            .args(&["--", "-W clippy::internal -W clippy::pedantic"])
             .env("CLIPPY_DOGFOOD", "true")
             .output()
             .unwrap();

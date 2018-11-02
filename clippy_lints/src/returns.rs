@@ -200,6 +200,7 @@ impl EarlyLintPass for ReturnPass {
                         cx.sess().source_map()
                                  .span_to_snippet(span.with_hi(ty.span.hi())) {
                     if let Some(rpos) = fn_source.rfind("->") {
+                        #[allow(clippy::cast_possible_truncation)]
                         (ty.span.with_lo(BytePos(span.lo().0 + rpos as u32)),
                             Applicability::MachineApplicable)
                     } else {

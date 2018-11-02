@@ -133,10 +133,12 @@ impl LintPass for BoolComparison {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
+        use self::Expression::*;
+
         if in_macro(e.span) {
             return;
         }
-        use self::Expression::*;
+
         if let ExprKind::Binary(Spanned { node: BinOpKind::Eq, .. }, ref left_side, ref right_side) = e.node {
             match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
                 (Bool(true), Other) => {

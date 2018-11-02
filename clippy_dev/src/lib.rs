@@ -8,7 +8,6 @@
 // except according to those terms.
 
 
-
 #![allow(clippy::default_hash_types)]
 
 use itertools::Itertools;
