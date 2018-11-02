@@ -1,0 +1,16 @@
+error[E0599]: no method named `extern_baz` found for type `Local` in the current scope
+  --> $DIR/extern-trait-impl-suggestions.rs:12:11
+   |
+LL | struct Local;
+   | ------------- method `extern_baz` not found for this
+...
+LL |     local.extern_baz(); //~ ERROR no method named `extern_baz`
+   |           ^^^^^^^^^^
+   |
+   = help: items from traits can only be used if the trait is implemented and in scope
+   = note: the following trait defines an item `extern_baz`, perhaps you need to implement it:
+           candidate #1: `baz::BazTrait`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0599`.
