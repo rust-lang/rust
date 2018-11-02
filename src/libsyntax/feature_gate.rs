@@ -492,6 +492,9 @@ declare_features! (
 
     // `extern crate self as foo;` puts local crate root into extern prelude under name `foo`.
     (active, extern_crate_self, "1.31.0", Some(56409), None),
+    
+    // Allows calling `const unsafe fn` inside `unsafe` blocks in `const fn` functions.
+    (active, min_const_unsafe_fn, "1.31.0", Some(55607), None),
 );
 
 declare_features! (

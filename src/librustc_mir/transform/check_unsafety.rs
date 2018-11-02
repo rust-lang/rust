@@ -34,6 +34,7 @@ pub struct UnsafetyChecker<'a, 'tcx: 'a> {
     source_info: SourceInfo,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
+    /// mark an `unsafe` block as used, so we don't lint it
     used_unsafe: FxHashSet<ast::NodeId>,
     inherited_blocks: Vec<(ast::NodeId, bool)>,
 }
@@ -93,7 +94,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 if let hir::Unsafety::Unsafe = sig.unsafety() {
                     self.require_unsafe("call to unsafe function",
                         "consult the function's documentation for information on how to avoid \
-                         undefined behavior")
+                         undefined behavior", UnsafetyViolationKind::MinConstFn)
                 }
             }
         }
@@ -121,7 +122,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
 
             StatementKind::InlineAsm { .. } => {
                 self.require_unsafe("use of inline assembly",
-                    "inline assembly is entirely unchecked and can cause undefined behavior")
+                    "inline assembly is entirely unchecked and can cause undefined behavior",
+                    UnsafetyViolationKind::General)
             },
         }
         self.super_statement(block, statement, location);
@@ -189,7 +191,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         self.require_unsafe("dereference of raw pointer",
                             "raw pointers may be NULL, dangling or unaligned; they can violate \
                              aliasing rules and cause data races: all of these are undefined \
-                             behavior")
+                             behavior", UnsafetyViolationKind::General)
                     }
                     ty::Adt(adt, _) => {
                         if adt.is_union() {
@@ -212,14 +214,15 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                                         "assignment to non-`Copy` union field",
                                         "the previous content of the field will be dropped, which \
                                          causes undefined behavior if the field was not properly \
-                                         initialized")
+                                         initialized", UnsafetyViolationKind::General)
                                 } else {
                                     // write to non-move union, safe
                                 }
                             } else {
                                 self.require_unsafe("access to union field",
                                     "the field may not be properly initialized: using \
-                                     uninitialized data will cause undefined behavior")
+                                     uninitialized data will cause undefined behavior",
+                                     UnsafetyViolationKind::General)
                             }
                         }
                     }
@@ -237,7 +240,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 if self.tcx.is_static(def_id) == Some(hir::Mutability::MutMutable) {
                     self.require_unsafe("use of mutable static",
                         "mutable statics can be mutated by multiple threads: aliasing violations \
-                         or data races will cause undefined behavior");
+                         or data races will cause undefined behavior",
+                         UnsafetyViolationKind::General);
                 } else if self.tcx.is_foreign_item(def_id) {
                     let source_info = self.source_info;
                     let lint_root =
@@ -260,44 +264,69 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
-    fn require_unsafe(&mut self,
-                      description: &'static str,
-                      details: &'static str)
-    {
+    fn require_unsafe(
+        &mut self,
+        description: &'static str,
+        details: &'static str,
+        kind: UnsafetyViolationKind,
+    ) {
         let source_info = self.source_info;
         self.register_violations(&[UnsafetyViolation {
             source_info,
             description: Symbol::intern(description).as_interned_str(),
             details: Symbol::intern(details).as_interned_str(),
-            kind: UnsafetyViolationKind::General,
+            kind,
         }], &[]);
     }
 
     fn register_violations(&mut self,
                            violations: &[UnsafetyViolation],
                            unsafe_blocks: &[(ast::NodeId, bool)]) {
-        if self.min_const_fn {
-            for violation in violations {
-                let mut violation = violation.clone();
-                violation.kind = UnsafetyViolationKind::MinConstFn;
-                if !self.violations.contains(&violation) {
-                    self.violations.push(violation)
-                }
-            }
-        }
-        let within_unsafe = match self.source_scope_local_data[self.source_info.scope].safety {
-            Safety::Safe => {
+        let safety = self.source_scope_local_data[self.source_info.scope].safety;
+        let within_unsafe = match (safety, self.min_const_fn) {
+            // FIXME: erring on the safe side here and disallowing builtin unsafety in const fn
+            (Safety::BuiltinUnsafe, true) |
+            // `unsafe` blocks are required even in `const unsafe fn`
+            (Safety::FnUnsafe, true) |
+            // `unsafe` blocks are required in safe code
+            (Safety::Safe, _) => {
                 for violation in violations {
-                    if !self.violations.contains(violation) {
-                        self.violations.push(violation.clone())
+                    let mut violation = violation.clone();
+                    if self.min_const_fn {
+                        // overwrite unsafety violation in const fn with a single hard error kind
+                        violation.kind = UnsafetyViolationKind::MinConstFn;
+                    } else if let UnsafetyViolationKind::MinConstFn = violation.kind {
+                        // outside of const fns we treat `MinConstFn` and `General` the same
+                        violation.kind = UnsafetyViolationKind::General;
+                    }
+                    if !self.violations.contains(&violation) {
+                        self.violations.push(violation)
                     }
                 }
                 false
             }
-            Safety::BuiltinUnsafe | Safety::FnUnsafe => true,
-            Safety::ExplicitUnsafe(node_id) => {
+            (Safety::BuiltinUnsafe, false) | (Safety::FnUnsafe, false) => true,
+            (Safety::ExplicitUnsafe(node_id), _) => {
                 if !violations.is_empty() {
                     self.used_unsafe.insert(node_id);
+                }
+                // only some unsafety is allowed in const fn
+                if self.min_const_fn {
+                    for violation in violations {
+                        match violation.kind {
+                            // these are allowed
+                            UnsafetyViolationKind::MinConstFn
+                                if self.tcx.sess.features_untracked().min_const_unsafe_fn => {},
+                            _ => {
+                                let mut violation = violation.clone();
+                                // overwrite unsafety violation in const fn with a hard error
+                                violation.kind = UnsafetyViolationKind::MinConstFn;
+                                if !self.violations.contains(&violation) {
+                                    self.violations.push(violation)
+                                }
+                            },
+                        }
+                    }
                 }
                 true
             }

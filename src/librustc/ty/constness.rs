@@ -55,7 +55,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             }
             // in order for a libstd function to be considered min_const_fn
             // it needs to be stable and have no `rustc_const_unstable` attribute
-            match self.lookup_stability(def_id) {
+            self.is_const_fn_raw(def_id) && match self.lookup_stability(def_id) {
                 // stable functions with unstable const fn aren't `min_const_fn`
                 Some(&attr::Stability { const_stability: Some(_), .. }) => false,
                 // unstable functions don't need to conform
@@ -66,7 +66,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             }
         } else {
             // users enabling the `const_fn` feature gate can do what they want
-            !self.features().const_fn
+            self.is_const_fn_raw(def_id) && !self.features().const_fn
         }
     }
 }

@@ -91,8 +91,9 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             // types/lifetimes replaced)
             let fn_hir_id = tcx.hir.node_to_hir_id(id);
             let fn_sig = cx.tables().liberated_fn_sigs()[fn_hir_id].clone();
+            let fn_def_id = tcx.hir.local_def_id(id);
 
-            let ty = tcx.type_of(tcx.hir.local_def_id(id));
+            let ty = tcx.type_of(fn_def_id);
             let mut abi = fn_sig.abi;
             let implicit_argument = match ty.sty {
                 ty::Closure(..) => {
@@ -112,6 +113,12 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
             let safety = match fn_sig.unsafety {
                 hir::Unsafety::Normal => Safety::Safe,
                 hir::Unsafety::Unsafe => Safety::FnUnsafe,
+            };
+            let safety = if implicit_argument.is_none() && tcx.is_min_const_fn(fn_def_id) {
+                // the body of `const unsafe fn`s is treated like the body of safe `const fn`s
+                Safety::Safe
+            } else {
+                safety
             };
 
             let body = tcx.hir.body(body_id);

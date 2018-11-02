@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-min_const_unsafe_fn
+#![feature(min_const_unsafe_fn)]
 
 // ok
 const unsafe fn foo4() -> i32 { 42 }
@@ -16,15 +16,33 @@ const unsafe fn foo5<T>() -> *const T { 0 as *const T }
 const unsafe fn foo6<T>() -> *mut T { 0 as *mut T }
 const fn no_unsafe() { unsafe {} }
 
-// not ok
 const fn foo8() -> i32 {
-    unsafe { foo4() } //~ ERROR unsafe operations are not allowed in const fn
+    unsafe { foo4() }
 }
 const fn foo9() -> *const String {
-    unsafe { foo5::<String>() } //~ ERROR unsafe operations are not allowed in const fn
+    unsafe { foo5::<String>() }
 }
 const fn foo10() -> *const Vec<std::cell::Cell<u32>> {
-    unsafe { foo6::<Vec<std::cell::Cell<u32>>>() } //~ ERROR not allowed in const fn
+    unsafe { foo6::<Vec<std::cell::Cell<u32>>>() }
+}
+const unsafe fn foo8_3() -> i32 {
+    unsafe { foo4() }
+}
+const unsafe fn foo9_3() -> *const String {
+    unsafe { foo5::<String>() }
+}
+const unsafe fn foo10_3() -> *const Vec<std::cell::Cell<u32>> {
+    unsafe { foo6::<Vec<std::cell::Cell<u32>>>() }
+}
+// not ok
+const unsafe fn foo8_2() -> i32 {
+    foo4() //~ ERROR not allowed in const fn
+}
+const unsafe fn foo9_2() -> *const String {
+    foo5::<String>() //~ ERROR not allowed in const fn
+}
+const unsafe fn foo10_2() -> *const Vec<std::cell::Cell<u32>> {
+    foo6::<Vec<std::cell::Cell<u32>>>() //~ ERROR not allowed in const fn
 }
 const unsafe fn foo30_3(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
 //~^ dereferencing raw pointers in constant functions

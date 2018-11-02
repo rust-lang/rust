@@ -2770,7 +2770,8 @@ impl Location {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum UnsafetyViolationKind {
     General,
-    /// unsafety is not allowed at all in min const fn
+    /// Right now function calls to `const unsafe fn` are the only permitted unsafe operation in
+    /// const fn. Also, even `const unsafe fn` need an `unsafe` block to do the allowed operations
     MinConstFn,
     ExternStatic(ast::NodeId),
     BorrowPacked(ast::NodeId),
