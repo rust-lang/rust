@@ -226,8 +226,8 @@ impl<'tcx, Tag> Immediate<Tag> {
     #[inline]
     pub fn to_meta(self) -> EvalResult<'tcx, Option<Scalar<Tag>>> {
         Ok(match self {
-            Value::Scalar(_) => None,
-            Value::ScalarPair(_, meta) => Some(meta.not_undef()?),
+            Immediate::Scalar(_) => None,
+            Immediate::ScalarPair(_, meta) => Some(meta.not_undef()?),
         })
     }
 }
