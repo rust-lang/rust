@@ -19,26 +19,26 @@ pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
     // Get this value's layout.
     fn layout(&self) -> TyLayout<'tcx>;
 
-    // Make this a `MPlaceTy`, or panic if that's not possible.
-    fn to_mem_place(
+    // Make this into an `OpTy`.
+    fn to_op(
         self,
-        ectx: &EvalContext<'a, 'mir, 'tcx, M>,
-    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>>;
+        ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>>;
 
     // Create this from an `MPlaceTy`.
     fn from_mem_place(MPlaceTy<'tcx, M::PointerTag>) -> Self;
 
-    // Read the current enum discriminant, and downcast to that.  Also return the
-    // variant index.
+    // Project to the given enum variant.
     fn project_downcast(
         self,
-        ectx: &EvalContext<'a, 'mir, 'tcx, M>
-    ) -> EvalResult<'tcx, (Self, usize)>;
+        ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+        variant: usize,
+    ) -> EvalResult<'tcx, Self>;
 
     // Project to the n-th field.
     fn project_field(
         self,
-        ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, M>,
         field: u64,
     ) -> EvalResult<'tcx, Self>;
 }
@@ -53,11 +53,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     }
 
     #[inline(always)]
-    fn to_mem_place(
+    fn to_op(
         self,
-        _ectx: &EvalContext<'a, 'mir, 'tcx, M>,
-    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        Ok(self.to_mem_place())
+        _ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        Ok(self)
     }
 
     #[inline(always)]
@@ -68,19 +68,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn project_downcast(
         self,
-        ectx: &EvalContext<'a, 'mir, 'tcx, M>
-    ) -> EvalResult<'tcx, (Self, usize)> {
-        let idx = ectx.read_discriminant(self)?.1;
-        Ok((ectx.operand_downcast(self, idx)?, idx))
+        ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+        variant: usize,
+    ) -> EvalResult<'tcx, Self> {
+        ecx.operand_downcast(self, variant)
     }
 
     #[inline(always)]
     fn project_field(
         self,
-        ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, M>,
         field: u64,
     ) -> EvalResult<'tcx, Self> {
-        ectx.operand_field(self, field)
+        ecx.operand_field(self, field)
     }
 }
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
@@ -92,11 +92,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     }
 
     #[inline(always)]
-    fn to_mem_place(
+    fn to_op(
         self,
-        _ectx: &EvalContext<'a, 'mir, 'tcx, M>,
-    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        Ok(self)
+        _ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        Ok(self.into())
     }
 
     #[inline(always)]
@@ -107,19 +107,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn project_downcast(
         self,
-        ectx: &EvalContext<'a, 'mir, 'tcx, M>
-    ) -> EvalResult<'tcx, (Self, usize)> {
-        let idx = ectx.read_discriminant(self.into())?.1;
-        Ok((ectx.mplace_downcast(self, idx)?, idx))
+        ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+        variant: usize,
+    ) -> EvalResult<'tcx, Self> {
+        ecx.mplace_downcast(self, variant)
     }
 
     #[inline(always)]
     fn project_field(
         self,
-        ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, M>,
         field: u64,
     ) -> EvalResult<'tcx, Self> {
-        ectx.mplace_field(self, field)
+        ecx.mplace_field(self, field)
     }
 }
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
@@ -131,12 +131,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     }
 
     #[inline(always)]
-    fn to_mem_place(
+    fn to_op(
         self,
-        ectx: &EvalContext<'a, 'mir, 'tcx, M>,
-    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        // If this refers to a local, assert that it already has an allocation.
-        Ok(ectx.place_to_op(self)?.to_mem_place())
+        ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
+        ecx.place_to_op(self)
     }
 
     #[inline(always)]
@@ -147,19 +146,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     #[inline(always)]
     fn project_downcast(
         self,
-        ectx: &EvalContext<'a, 'mir, 'tcx, M>
-    ) -> EvalResult<'tcx, (Self, usize)> {
-        let idx = ectx.read_discriminant(ectx.place_to_op(self)?)?.1;
-        Ok((ectx.place_downcast(self, idx)?, idx))
+        ecx: &EvalContext<'a, 'mir, 'tcx, M>,
+        variant: usize,
+    ) -> EvalResult<'tcx, Self> {
+        ecx.place_downcast(self, variant)
     }
 
     #[inline(always)]
     fn project_field(
         self,
-        ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, M>,
         field: u64,
     ) -> EvalResult<'tcx, Self> {
-        ectx.place_field(self, field)
+        ecx.place_field(self, field)
     }
 }
 
@@ -228,7 +227,7 @@ pub trait ValueVisitor<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Siz
             MPlaceTy::dangling(v.layout(), self.ecx())
         } else {
             // non-ZST array/slice/str cannot be immediate
-            v.to_mem_place(self.ecx())?
+            v.to_op(self.ecx())?.to_mem_place()
         };
         // Now iterate over it.
         for (i, field) in self.ecx().mplace_array_fields(mplace)?.enumerate() {
@@ -243,8 +242,10 @@ pub trait ValueVisitor<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Siz
         match v.layout().variants {
             layout::Variants::NicheFilling { .. } |
             layout::Variants::Tagged { .. } => {
-                let (inner, idx) = v.project_downcast(self.ecx())?;
-                trace!("variant layout: {:#?}", inner.layout());
+                let op = v.to_op(self.ecx())?;
+                let idx = self.ecx().read_discriminant(op)?.1;
+                let inner = v.project_downcast(self.ecx(), idx)?;
+                trace!("walk_value: variant layout: {:#?}", inner.layout());
                 // recurse with the inner type
                 return self.visit_field(v, idx, inner);
             }
@@ -256,9 +257,9 @@ pub trait ValueVisitor<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Siz
         match v.layout().ty.sty {
             ty::Dynamic(..) => {
                 // immediate trait objects are not a thing
-                let dest = v.to_mem_place(self.ecx())?;
+                let dest = v.to_op(self.ecx())?.to_mem_place();
                 let inner = self.ecx().unpack_dyn_trait(dest)?.1;
-                trace!("dyn object layout: {:#?}", inner.layout);
+                trace!("walk_value: dyn object layout: {:#?}", inner.layout);
                 // recurse with the inner type
                 return self.visit_field(v, 0, Value::from_mem_place(inner));
             },
