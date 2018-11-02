@@ -21,6 +21,7 @@ use ty::subst::{Substs, UnpackedKind};
 use ty::query::TyCtxtAt;
 use ty::TyKind::*;
 use ty::layout::{Integer, IntegerExt};
+use util::captures::Captures;
 use util::common::ErrorReported;
 use middle::lang_items;
 
@@ -358,7 +359,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn required_region_bounds(self,
                                   erased_self_ty: Ty<'tcx>,
                                   predicates: Vec<ty::Predicate<'tcx>>)
-                                  -> Vec<ty::Region<'tcx>>    {
+                                  -> impl Iterator<Item = ty::Region<'tcx>> + Captures<'gcx> + 'a {
         debug!("required_region_bounds(erased_self_ty={:?}, predicates={:?})",
                erased_self_ty,
                predicates);
@@ -366,7 +367,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         assert!(!erased_self_ty.has_escaping_regions());
 
         traits::elaborate_predicates(self, predicates)
-            .filter_map(|predicate| {
+            .filter_map(move |predicate| {
                 match predicate {
                     ty::Predicate::Projection(..) |
                     ty::Predicate::Trait(..) |
@@ -397,7 +398,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             })
-            .collect()
     }
 
     /// Calculate the destructor of a given type.

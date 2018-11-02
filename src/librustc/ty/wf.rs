@@ -18,6 +18,7 @@ use std::iter::once;
 use syntax::ast;
 use syntax_pos::Span;
 use middle::lang_items;
+use util::captures::Captures;
 
 /// Returns the set of obligations needed to make `ty` well-formed.
 /// If `ty` contains unresolved inference variables, this may include
@@ -495,7 +496,6 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 
             let explicit_bound = region;
 
-            self.out.reserve(implicit_bounds.len());
             for implicit_bound in implicit_bounds {
                 let cause = self.cause(traits::ObjectTypeBound(ty, explicit_bound));
                 let outlives = ty::Binder::dummy(
@@ -517,7 +517,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
 pub fn object_region_bounds<'a, 'gcx, 'tcx>(
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     existential_predicates: ty::Binder<&'tcx ty::List<ty::ExistentialPredicate<'tcx>>>)
-    -> Vec<ty::Region<'tcx>>
+    -> impl Iterator<Item = ty::Region<'tcx>> + Captures<'gcx> + 'a
 {
     // Since we don't actually *know* the self type for an object,
     // this "open(err)" serves as a kind of dummy standin -- basically

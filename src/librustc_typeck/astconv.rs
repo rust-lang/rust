@@ -1665,30 +1665,40 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
 
         // No explicit region bound specified. Therefore, examine trait
         // bounds and see if we can derive region bounds from those.
-        let derived_region_bounds =
-            object_region_bounds(tcx, existential_predicates);
+        let mut derived_region_bounds =
+            object_region_bounds(tcx, existential_predicates).peekable();
 
         // If there are no derived region bounds, then report back that we
         // can find no region bound. The caller will use the default.
-        if derived_region_bounds.is_empty() {
+        if derived_region_bounds.peek().is_none() {
             return None;
         }
 
-        // If any of the derived region bounds are 'static, that is always
-        // the best choice.
-        if derived_region_bounds.iter().any(|&r| ty::ReStatic == *r) {
-            return Some(tcx.types.re_static);
+        let first_region = derived_region_bounds.peek().cloned().unwrap();
+        let mut just_one_region = true;
+
+        for (i, region) in derived_region_bounds.enumerate() {
+            // If any of the derived region bounds are 'static, that is always
+            // the best choice.
+            if *region == ty::ReStatic {
+                return Some(tcx.types.re_static);
+            }
+
+            // Determine whether there is exactly one unique region in the set
+            // of derived region bounds.
+            if i > 0 && region != first_region {
+                just_one_region = false;
+            }
+
+            // If there was more than one region, report an error.
+            if !just_one_region {
+                span_err!(tcx.sess, span, E0227,
+                    "ambiguous lifetime bound, explicit lifetime bound required");
+            }
         }
 
-        // Determine whether there is exactly one unique region in the set
-        // of derived region bounds. If so, use that. Otherwise, report an
-        // error.
-        let r = derived_region_bounds[0];
-        if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
-            span_err!(tcx.sess, span, E0227,
-                      "ambiguous lifetime bound, explicit lifetime bound required");
-        }
-        return Some(r);
+        // If there was only one unique region, return it.
+        return Some(first_region);
     }
 }
 

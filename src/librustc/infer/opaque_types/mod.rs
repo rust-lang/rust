@@ -775,10 +775,11 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
         let bounds = predicates_of.instantiate(tcx, substs);
         debug!("instantiate_opaque_types: bounds={:?}", bounds);
 
-        let required_region_bounds = tcx.required_region_bounds(ty, bounds.predicates.clone());
+        let mut required_region_bounds = tcx.required_region_bounds(ty, bounds.predicates.clone())
+            .peekable();
         debug!(
             "instantiate_opaque_types: required_region_bounds={:?}",
-            required_region_bounds
+            tcx.required_region_bounds(ty, bounds.predicates.clone()).collect::<Vec<_>>()
         );
 
         // make sure that we are in fact defining the *entire* type
@@ -798,7 +799,7 @@ impl<'a, 'gcx, 'tcx> Instantiator<'a, 'gcx, 'tcx> {
             OpaqueTypeDecl {
                 substs,
                 concrete_ty: ty_var,
-                has_required_region_bounds: !required_region_bounds.is_empty(),
+                has_required_region_bounds: required_region_bounds.peek().is_some(),
             },
         );
         debug!("instantiate_opaque_types: ty_var={:?}", ty_var);
