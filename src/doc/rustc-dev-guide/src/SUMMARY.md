@@ -39,6 +39,7 @@
     - [The HIR (High-level IR)](./hir.md)
         - [Lowering AST to HIR](./lowering.md)
         - [Debugging](./hir-debugging.md)
+    - [Closure expansion](./closure.md)
     - [The `ty` module: representing types](./ty.md)
     - [Kinds](./kinds.md)
     - [Type inference](./type-inference.md)
