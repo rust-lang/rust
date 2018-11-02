@@ -72,14 +72,34 @@ impl Lint {
     }
 }
 
+/// Generates the list of lint links at the bottom of the README
 pub fn gen_changelog_lint_list(lints: Vec<Lint>) -> Vec<String> {
     let mut lint_list_sorted: Vec<Lint> = lints;
     lint_list_sorted.sort_by_key(|l| l.name.clone());
     lint_list_sorted
         .iter()
-        .filter(|l| !l.is_internal())
-        .map(|l| {
-            format!("[`{}`]: {}#{}", l.name, DOCS_LINK.clone(), l.name)
+        .filter_map(|l| {
+            if l.is_internal() {
+                None
+            } else {
+                Some(format!("[`{}`]: {}#{}", l.name, DOCS_LINK.clone(), l.name))
+            }
+        }).collect()
+}
+
+/// Generates the `register_removed` code in `./clippy_lints/src/lib.rs`.
+pub fn gen_deprecated(lints: &[Lint]) -> Vec<String> {
+    lints.iter()
+        .filter_map(|l| {
+            l.clone().deprecation.and_then(|depr_text| {
+                Some(
+                    format!(
+                        "    store.register_removed(\n        \"{}\",\n        \"{}\",\n    );",
+                        l.name,
+                        depr_text
+                    )
+                )
+            })
         })
         .collect()
 }
@@ -320,4 +340,19 @@ fn test_gen_changelog_lint_list() {
         format!("[`should_assert_eq2`]: {}#should_assert_eq2", DOCS_LINK.to_string())
     ];
     assert_eq!(expected, gen_changelog_lint_list(lints));
+}
+
+#[test]
+fn test_gen_deprecated() {
+    let lints = vec![
+        Lint::new("should_assert_eq", "group1", "abc", Some("has been superseeded by should_assert_eq2"), "module_name"),
+        Lint::new("should_assert_eq2", "group2", "abc", None, "module_name")
+    ];
+    let expected: Vec<String> = vec![
+        r#"    store.register_removed(
+        "should_assert_eq",
+        "has been superseeded by should_assert_eq2",
+    );"#.to_string()
+    ];
+    assert_eq!(expected, gen_deprecated(&lints));
 }

@@ -82,4 +82,12 @@ fn update_lints() {
         false,
         || { gen_changelog_lint_list(lint_list.clone()) }
     );
+
+    replace_region_in_file(
+        "../clippy_lints/src/lib.rs",
+        "begin deprecated lints",
+        "end deprecated lints",
+        false,
+        || { gen_deprecated(&lint_list) }
+    );
 }

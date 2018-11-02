@@ -271,6 +271,7 @@ pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
 #[rustfmt::skip]
 pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     let mut store = reg.sess.lint_store.borrow_mut();
+    // begin deprecated lints, do not remove this comment, it’s used in `update_lints`
     store.register_removed(
         "should_assert_eq",
         "`assert!()` will be more flexible with RFC 2011",
