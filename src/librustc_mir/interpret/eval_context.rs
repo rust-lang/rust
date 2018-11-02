@@ -368,10 +368,15 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 );
 
                 // Recurse to get the size of the dynamically sized field (must be
-                // the last field).  Can't have foreign types here, how would we
-                // adjust alignment and size for them?
+                // the last field).  Can't have foreign types here unless they're
+                // in a #[repr(transparent)] struct, otherwise how would we adjust
+                // alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1)?;
-                let (unsized_size, unsized_align) = self.size_and_align_of(metadata, field)?
+                let unsized_size_and_align = self.size_and_align_of(metadata, field)?;
+                if unsized_size_and_align.is_none() && layout.ty.is_transparent() {
+                    return Ok(None);
+                }
+                let (unsized_size, unsized_align) = unsized_size_and_align
                     .expect("Fields cannot be extern types");
 
                 // FIXME (#26403, #27023): We should be adding padding

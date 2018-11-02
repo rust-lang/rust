@@ -1578,6 +1578,13 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    pub fn is_transparent(&self) -> bool {
+        match self.sty {
+            Adt(def, _) => def.repr.transparent(),
+            _ => false,
+        }
+    }
+
     pub fn sequence_element_type(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match self.sty {
             Array(ty, _) | Slice(ty) => ty,
