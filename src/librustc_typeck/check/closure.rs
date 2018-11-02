@@ -13,10 +13,12 @@
 use super::{check_fn, Expectation, FnCtxt, GeneratorTypes};
 
 use astconv::AstConv;
+use middle::region;
 use rustc::hir::def_id::DefId;
 use rustc::infer::{InferOk, InferResult};
 use rustc::infer::LateBoundRegionConversionTime;
 use rustc::infer::type_variable::TypeVariableOrigin;
+use rustc::traits::Obligation;
 use rustc::traits::error_reporting::ArgKind;
 use rustc::ty::{self, ToPolyTraitRef, Ty, GenericParamDefKind};
 use rustc::ty::fold::TypeFoldable;
@@ -479,7 +481,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Along the way, it also writes out entries for types that the user
         // wrote into our tables, which are then later used by the privacy
         // check.
-        match self.check_supplied_sig_against_expectation(expr_def_id, decl, &closure_sigs) {
+        match self.check_supplied_sig_against_expectation(expr_def_id, decl, body, &closure_sigs) {
             Ok(infer_ok) => self.register_infer_ok_obligations(infer_ok),
             Err(_) => return self.sig_of_closure_no_expectation(expr_def_id, decl, body),
         }
@@ -523,6 +525,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         &self,
         expr_def_id: DefId,
         decl: &hir::FnDecl,
+        body: &hir::Body,
         expected_sigs: &ClosureSignatures<'tcx>,
     ) -> InferResult<'tcx, ()> {
         // Get the signature S that the user gave.
@@ -575,6 +578,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 } = self.at(cause, self.param_env)
                     .eq(*expected_ty, supplied_ty)?;
                 all_obligations.extend(obligations);
+
+                // Also, require that the supplied type must outlive
+                // the closure body.
+                let closure_body_region = self.tcx.mk_region(
+                    ty::ReScope(
+                        region::Scope {
+                            id: body.value.hir_id.local_id,
+                            data: region::ScopeData::Node,
+                        },
+                    ),
+                );
+                all_obligations.push(
+                    Obligation::new(
+                        cause.clone(),
+                        self.param_env,
+                        ty::Predicate::TypeOutlives(
+                            ty::Binder::dummy(
+                                ty::OutlivesPredicate(
+                                    supplied_ty,
+                                    closure_body_region,
+                                ),
+                            ),
+                        ),
+                    ),
+                );
             }
 
             let (supplied_output_ty, _) = self.infcx.replace_late_bound_regions_with_fresh_var(

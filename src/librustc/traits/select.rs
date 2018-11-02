@@ -1368,7 +1368,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         // Winnow, but record the exact outcome of evaluation, which
         // is needed for specialization. Propagate overflow if it occurs.
-        let mut candidates = candidates.into_iter()
+        let mut candidates = candidates
+            .into_iter()
             .map(|c| match self.evaluate_candidate(stack, &c) {
                 Ok(eval) if eval.may_apply() => Ok(Some(EvaluatedCandidate {
                     candidate: c,
@@ -1377,8 +1378,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Ok(_) => Ok(None),
                 Err(OverflowError) => Err(Overflow),
             })
-           .flat_map(Result::transpose)
-           .collect::<Result<Vec<_>, _>>()?;
+            .flat_map(Result::transpose)
+            .collect::<Result<Vec<_>, _>>()?;
 
         debug!(
             "winnowed to {} candidates for {:?}: {:?}",
@@ -3004,9 +3005,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let self_ty = self.infcx
             .shallow_resolve(*obligation.self_ty().skip_binder());
         let poly_trait_ref = match self_ty.sty {
-            ty::Dynamic(ref data, ..) => {
-                data.principal().with_self_ty(self.tcx(), self_ty)
-            }
+            ty::Dynamic(ref data, ..) => data.principal().with_self_ty(self.tcx(), self_ty),
             _ => span_bug!(obligation.cause.span, "object candidate with non-object"),
         };
 
@@ -3666,7 +3665,16 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         closure_def_id: DefId,
         substs: ty::ClosureSubsts<'tcx>,
     ) -> ty::PolyTraitRef<'tcx> {
+        debug!(
+            "closure_trait_ref_unnormalized(obligation={:?}, closure_def_id={:?}, substs={:?})",
+            obligation, closure_def_id, substs,
+        );
         let closure_type = self.infcx.closure_sig(closure_def_id, substs);
+
+        debug!(
+            "closure_trait_ref_unnormalized: closure_type = {:?}",
+            closure_type
+        );
 
         // (1) Feels icky to skip the binder here, but OTOH we know
         // that the self-type is an unboxed closure type and hence is

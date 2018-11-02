@@ -76,16 +76,20 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, '_, 'tcx> {
     }
 
     fn next_existential_region_var(&mut self) -> ty::Region<'tcx> {
-        let origin = NLLRegionVariableOrigin::Existential;
-        self.infcx.next_nll_region_var(origin)
+        if let Some(_) = &mut self.borrowck_context {
+            let origin = NLLRegionVariableOrigin::Existential;
+            self.infcx.next_nll_region_var(origin)
+        } else {
+            self.infcx.tcx.types.re_erased
+        }
     }
 
     fn next_placeholder_region(&mut self, placeholder: ty::Placeholder) -> ty::Region<'tcx> {
-        let origin = NLLRegionVariableOrigin::Placeholder(placeholder);
         if let Some(borrowck_context) = &mut self.borrowck_context {
-            borrowck_context.placeholder_indices.insert(placeholder);
+            borrowck_context.constraints.placeholder_region(self.infcx, placeholder)
+        } else {
+            self.infcx.tcx.types.re_erased
         }
-        self.infcx.next_nll_region_var(origin)
     }
 
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx> {

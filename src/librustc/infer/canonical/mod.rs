@@ -33,14 +33,14 @@
 
 use infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin};
 use rustc_data_structures::indexed_vec::IndexVec;
-use smallvec::SmallVec;
 use rustc_data_structures::sync::Lrc;
 use serialize::UseSpecializedDecodable;
+use smallvec::SmallVec;
 use std::ops::Index;
 use syntax::source_map::Span;
 use ty::fold::TypeFoldable;
 use ty::subst::Kind;
-use ty::{self, BoundTyIndex, Lift, Region, List, TyCtxt};
+use ty::{self, BoundTyIndex, Lift, List, Region, TyCtxt};
 
 mod canonicalizer;
 
@@ -53,6 +53,7 @@ mod substitute;
 /// numbered starting from 0 in order of first appearance.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub struct Canonical<'gcx, V> {
+    pub max_universe: ty::UniverseIndex,
     pub variables: CanonicalVarInfos<'gcx>,
     pub value: V,
 }
@@ -79,11 +80,29 @@ pub struct CanonicalVarValues<'tcx> {
 /// various parts of it with canonical variables. This struct stores
 /// those replaced bits to remember for when we process the query
 /// result.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub struct OriginalQueryValues<'tcx> {
+    /// Map from the universes that appear in the query to the
+    /// universes in the caller context. For the time being, we only
+    /// ever put ROOT values into the query, so this map is very
+    /// simple.
+    pub universe_map: SmallVec<[ty::UniverseIndex; 4]>,
+
     /// This is equivalent to `CanonicalVarValues`, but using a
     /// `SmallVec` yields a significant performance win.
     pub var_values: SmallVec<[Kind<'tcx>; 8]>,
+}
+
+impl Default for OriginalQueryValues<'tcx> {
+    fn default() -> Self {
+        let mut universe_map = SmallVec::default();
+        universe_map.push(ty::UniverseIndex::ROOT);
+
+        Self {
+            universe_map,
+            var_values: SmallVec::default(),
+        }
+    }
 }
 
 /// Information about a canonical variable that is included with the
@@ -95,6 +114,20 @@ pub struct CanonicalVarInfo {
     pub kind: CanonicalVarKind,
 }
 
+impl CanonicalVarInfo {
+    pub fn universe(&self) -> ty::UniverseIndex {
+        self.kind.universe()
+    }
+
+    pub fn is_existential(&self) -> bool {
+        match self.kind {
+            CanonicalVarKind::Ty(_) => true,
+            CanonicalVarKind::Region(_) => true,
+            CanonicalVarKind::PlaceholderRegion(..) => false,
+        }
+    }
+}
+
 /// Describes the "kind" of the canonical variable. This is a "kind"
 /// in the type-theory sense of the term -- i.e., a "meta" type system
 /// that analyzes type-like values.
@@ -104,7 +137,27 @@ pub enum CanonicalVarKind {
     Ty(CanonicalTyVarKind),
 
     /// Region variable `'?R`.
-    Region,
+    Region(ty::UniverseIndex),
+
+    /// A "placeholder" that represents "any region". Created when you
+    /// are solving a goal like `for<'a> T: Foo<'a>` to represent the
+    /// bound region `'a`.
+    PlaceholderRegion(ty::Placeholder),
+}
+
+impl CanonicalVarKind {
+    pub fn universe(self) -> ty::UniverseIndex {
+        match self {
+            // At present, we don't support higher-ranked
+            // quantification over types, so all type variables are in
+            // the root universe.
+            CanonicalVarKind::Ty(_) => ty::UniverseIndex::ROOT,
+
+            // Region variables can be created in sub-universes.
+            CanonicalVarKind::Region(ui) => ui,
+            CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.universe,
+        }
+    }
 }
 
 /// Rust actually has more than one category of type variables;
@@ -220,8 +273,16 @@ impl<'gcx, V> Canonical<'gcx, V> {
     /// let b: Canonical<'tcx, (T, Ty<'tcx>)> = a.unchecked_map(|v| (v, ty));
     /// ```
     pub fn unchecked_map<W>(self, map_op: impl FnOnce(V) -> W) -> Canonical<'gcx, W> {
-        let Canonical { variables, value } = self;
-        Canonical { variables, value: map_op(value) }
+        let Canonical {
+            max_universe,
+            variables,
+            value,
+        } = self;
+        Canonical {
+            max_universe,
+            variables,
+            value: map_op(value),
+        }
     }
 }
 
@@ -249,35 +310,50 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
+        // For each universe that is referred to in the incoming
+        // query, create a universe in our local inference context. In
+        // practice, as of this writing, all queries have no universes
+        // in them, so this code has no effect, but it is looking
+        // forward to the day when we *do* want to carry universes
+        // through into queries.
+        let universes: IndexVec<ty::UniverseIndex, _> = std::iter::once(ty::UniverseIndex::ROOT)
+            .chain((0..canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
+            .collect();
+
         let canonical_inference_vars =
-            self.fresh_inference_vars_for_canonical_vars(span, canonical.variables);
+            self.instantiate_canonical_vars(span, canonical.variables, |ui| universes[ui]);
         let result = canonical.substitute(self.tcx, &canonical_inference_vars);
         (result, canonical_inference_vars)
     }
 
     /// Given the "infos" about the canonical variables from some
-    /// canonical, creates fresh inference variables with the same
-    /// characteristics. You can then use `substitute` to instantiate
-    /// the canonical variable with these inference variables.
-    fn fresh_inference_vars_for_canonical_vars(
+    /// canonical, creates fresh variables with the same
+    /// characteristics (see `instantiate_canonical_var` for
+    /// details). You can then use `substitute` to instantiate the
+    /// canonical variable with these inference variables.
+    fn instantiate_canonical_vars(
         &self,
         span: Span,
         variables: &List<CanonicalVarInfo>,
+        universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> CanonicalVarValues<'tcx> {
         let var_values: IndexVec<BoundTyIndex, Kind<'tcx>> = variables
             .iter()
-            .map(|info| self.fresh_inference_var_for_canonical_var(span, *info))
+            .map(|info| self.instantiate_canonical_var(span, *info, &universe_map))
             .collect();
 
         CanonicalVarValues { var_values }
     }
 
     /// Given the "info" about a canonical variable, creates a fresh
-    /// inference variable with the same characteristics.
-    fn fresh_inference_var_for_canonical_var(
+    /// variable for it. If this is an existentially quantified
+    /// variable, then you'll get a new inference variable; if it is a
+    /// universally quantified variable, you get a placeholder.
+    fn instantiate_canonical_var(
         &self,
         span: Span,
         cv_info: CanonicalVarInfo,
+        universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> Kind<'tcx> {
         match cv_info.kind {
             CanonicalVarKind::Ty(ty_kind) => {
@@ -293,9 +369,21 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 ty.into()
             }
 
-            CanonicalVarKind::Region => self
-                .next_region_var(RegionVariableOrigin::MiscVariable(span))
-                .into(),
+            CanonicalVarKind::Region(ui) => self.next_region_var_in_universe(
+                RegionVariableOrigin::MiscVariable(span),
+                universe_map(ui),
+            ).into(),
+
+            CanonicalVarKind::PlaceholderRegion(ty::Placeholder { universe, name }) => {
+                let universe_mapped = universe_map(universe);
+                let placeholder_mapped = ty::Placeholder {
+                    universe: universe_mapped,
+                    name,
+                };
+                self.tcx
+                    .mk_region(ty::RePlaceholder(placeholder_mapped))
+                    .into()
+            }
         }
     }
 }
@@ -314,6 +402,7 @@ CloneTypeFoldableImpls! {
 
 BraceStructTypeFoldableImpl! {
     impl<'tcx, C> TypeFoldable<'tcx> for Canonical<'tcx, C> {
+        max_universe,
         variables,
         value,
     } where C: TypeFoldable<'tcx>
@@ -322,7 +411,7 @@ BraceStructTypeFoldableImpl! {
 BraceStructLiftImpl! {
     impl<'a, 'tcx, T> Lift<'tcx> for Canonical<'a, T> {
         type Lifted = Canonical<'tcx, T::Lifted>;
-        variables, value
+        max_universe, variables, value
     } where T: Lift<'tcx>
 }
 

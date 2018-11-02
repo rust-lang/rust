@@ -11,8 +11,6 @@ LL | |     };
    |
    = note: expected type `for<'r, 's> fn(&'r u8, &'s u8)`
               found type `for<'a> fn(&'a u8, &'a u8)`
-   = note: this was previously accepted by the compiler but has been phased out
-   = note: for more information, see https://github.com/rust-lang/rust/issues/45852
 
 error: aborting due to previous error
 

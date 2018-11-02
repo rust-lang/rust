@@ -976,7 +976,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
                     o_ty
                 };
 
-                let c_ty = self.fcx.inh.infcx.canonicalize_response(&revealed_ty);
+                let c_ty = self.fcx.inh.infcx.canonicalize_user_type_annotation(&revealed_ty);
                 debug!("visit_local: ty.hir_id={:?} o_ty={:?} revealed_ty={:?} c_ty={:?}",
                        ty.hir_id, o_ty, revealed_ty, c_ty);
                 self.fcx.tables.borrow_mut().user_provided_tys_mut().insert(ty.hir_id, c_ty);
@@ -2137,7 +2137,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             method.substs[i]
                         }
                     });
-                    self.infcx.canonicalize_response(&UserSubsts {
+                    self.infcx.canonicalize_user_type_annotation(&UserSubsts {
                         substs: just_method_substs,
                         user_self_ty: None, // not relevant here
                     })
@@ -2181,7 +2181,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         );
 
         if !substs.is_noop() {
-            let user_substs = self.infcx.canonicalize_response(&UserSubsts {
+            let user_substs = self.infcx.canonicalize_user_type_annotation(&UserSubsts {
                 substs,
                 user_self_ty,
             });

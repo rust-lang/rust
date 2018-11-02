@@ -59,18 +59,10 @@ where
         // FIXME convert to the type expected by the `dropck_outlives`
         // query. This should eventually be fixed by changing the
         // *underlying query*.
-        let Canonical {
-            variables,
-            value:
-                ParamEnvAnd {
-                    param_env,
-                    value: DropckOutlives { dropped_ty },
-                },
-        } = canonicalized;
-        let canonicalized = Canonical {
-            variables,
-            value: param_env.and(dropped_ty),
-        };
+        let canonicalized = canonicalized.unchecked_map(|ParamEnvAnd { param_env, value }| {
+            let DropckOutlives { dropped_ty } = value;
+            param_env.and(dropped_ty)
+        });
 
         tcx.dropck_outlives(canonicalized)
     }

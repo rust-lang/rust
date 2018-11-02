@@ -107,6 +107,20 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         )
     }
 
+    pub fn canonicalize_user_type_annotation<V>(&self, value: &V) -> Canonicalized<'gcx, V>
+    where
+        V: TypeFoldable<'tcx> + Lift<'gcx>,
+    {
+        let mut query_state = OriginalQueryValues::default();
+        Canonicalizer::canonicalize(
+            value,
+            Some(self),
+            self.tcx,
+            &CanonicalizeUserTypeAnnotation,
+            &mut query_state,
+        )
+    }
+
     /// A hacky variant of `canonicalize_query` that does not
     /// canonicalize `'static`.  Unfortunately, the existing leak
     /// check treaks `'static` differently in some cases (see also
@@ -162,16 +176,54 @@ struct CanonicalizeQueryResponse;
 impl CanonicalizeRegionMode for CanonicalizeQueryResponse {
     fn canonicalize_free_region(
         &self,
-        _canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
+        canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         match r {
             ty::ReFree(_) | ty::ReEmpty | ty::ReErased | ty::ReStatic | ty::ReEarlyBound(..) => r,
+            ty::RePlaceholder(placeholder) => canonicalizer.canonical_var_for_region(
+                CanonicalVarInfo {
+                    kind: CanonicalVarKind::PlaceholderRegion(*placeholder),
+                },
+                r,
+            ),
+            ty::ReVar(vid) => {
+                let universe = canonicalizer.region_var_universe(*vid);
+                canonicalizer.canonical_var_for_region(
+                    CanonicalVarInfo {
+                        kind: CanonicalVarKind::Region(universe),
+                    },
+                    r,
+                )
+            }
             _ => {
                 // Other than `'static` or `'empty`, the query
                 // response should be executing in a fully
                 // canonicalized environment, so there shouldn't be
                 // any other region names it can come up.
+                bug!("unexpected region in query response: `{:?}`", r)
+            }
+        }
+    }
+
+    fn any(&self) -> bool {
+        false
+    }
+}
+
+struct CanonicalizeUserTypeAnnotation;
+
+impl CanonicalizeRegionMode for CanonicalizeUserTypeAnnotation {
+    fn canonicalize_free_region(
+        &self,
+        canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
+        match r {
+            ty::ReEarlyBound(_) | ty::ReFree(_) | ty::ReErased | ty::ReEmpty | ty::ReStatic => r,
+            ty::ReVar(_) => canonicalizer.canonical_var_for_region_in_root_universe(r),
+            _ => {
+                // We only expect region names that the user can type.
                 bug!("unexpected region in query response: `{:?}`", r)
             }
         }
@@ -190,7 +242,7 @@ impl CanonicalizeRegionMode for CanonicalizeAllFreeRegions {
         canonicalizer: &mut Canonicalizer<'_, '_, 'tcx>,
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
-        canonicalizer.canonical_var_for_region(r)
+        canonicalizer.canonical_var_for_region_in_root_universe(r)
     }
 
     fn any(&self) -> bool {
@@ -209,7 +261,7 @@ impl CanonicalizeRegionMode for CanonicalizeFreeRegionsOtherThanStatic {
         if let ty::ReStatic = r {
             r
         } else {
-            canonicalizer.canonical_var_for_region(r)
+            canonicalizer.canonical_var_for_region_in_root_universe(r)
         }
     }
 
@@ -252,7 +304,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                      opportunistically resolved to {:?}",
                     vid, r
                 );
-                self.canonical_var_for_region(r)
+                self.canonicalize_region_mode
+                    .canonicalize_free_region(self, r)
             }
 
             ty::ReStatic
@@ -261,7 +314,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             | ty::ReScope(_)
             | ty::RePlaceholder(..)
             | ty::ReEmpty
-            | ty::ReErased => self.canonicalize_region_mode.canonicalize_free_region(self, r),
+            | ty::ReErased => self.canonicalize_region_mode
+                .canonicalize_free_region(self, r),
 
             ty::ReClosureBound(..) | ty::ReCanonical(_) => {
                 bug!("canonical region encountered during canonicalization")
@@ -353,6 +407,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         if !value.has_type_flags(needs_canonical_flags) {
             let out_value = gcx.lift(value).unwrap();
             let canon_value = Canonical {
+                max_universe: ty::UniverseIndex::ROOT,
                 variables: List::empty(),
                 value: out_value,
             };
@@ -383,7 +438,14 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
 
         let canonical_variables = tcx.intern_canonical_var_infos(&canonicalizer.variables);
 
+        let max_universe = canonical_variables
+            .iter()
+            .map(|cvar| cvar.universe())
+            .max()
+            .unwrap_or(ty::UniverseIndex::ROOT);
+
         Canonical {
+            max_universe,
             variables: canonical_variables,
             value: out_value,
         }
@@ -450,10 +512,46 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn canonical_var_for_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-        let info = CanonicalVarInfo {
-            kind: CanonicalVarKind::Region,
-        };
+    /// Shorthand helper that creates a canonical region variable for
+    /// `r` (always in the root universe). The reason that we always
+    /// put these variables into the root universe is because this
+    /// method is used during **query construction:** in that case, we
+    /// are taking all the regions and just putting them into the most
+    /// generic context we can. This may generate solutions that don't
+    /// fit (e.g., that equate some region variable with a placeholder
+    /// it can't name) on the caller side, but that's ok, the caller
+    /// can figure that out. In the meantime, it maximizes our
+    /// caching.
+    ///
+    /// (This works because unification never fails -- and hence trait
+    /// selection is never affected -- due to a universe mismatch.)
+    fn canonical_var_for_region_in_root_universe(
+        &mut self,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
+        self.canonical_var_for_region(
+            CanonicalVarInfo {
+                kind: CanonicalVarKind::Region(ty::UniverseIndex::ROOT),
+            },
+            r,
+        )
+    }
+
+    /// Returns the universe in which `vid` is defined.
+    fn region_var_universe(&self, vid: ty::RegionVid) -> ty::UniverseIndex {
+        self.infcx
+            .unwrap()
+            .borrow_region_constraints()
+            .var_universe(vid)
+    }
+
+    /// Create a canonical variable (with the given `info`)
+    /// representing the region `r`; return a region referencing it.
+    fn canonical_var_for_region(
+        &mut self,
+        info: CanonicalVarInfo,
+        r: ty::Region<'tcx>,
+    ) -> ty::Region<'tcx> {
         let b = self.canonical_var(info, r.into());
         debug_assert_eq!(ty::INNERMOST, b.level);
         self.tcx().mk_region(ty::ReCanonical(b.var))
