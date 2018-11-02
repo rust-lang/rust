@@ -608,6 +608,7 @@ impl<R: TreeRoot<RaTypes>> ConstDefNode<R> {
 impl<'a> ast::NameOwner<'a> for ConstDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for ConstDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for ConstDef<'a> {}
+impl<'a> ast::DocCommentsOwner<'a> for ConstDef<'a> {}
 impl<'a> ConstDef<'a> {}
 
 // ContinueExpr
@@ -722,6 +723,7 @@ impl<R: TreeRoot<RaTypes>> EnumDefNode<R> {
 impl<'a> ast::NameOwner<'a> for EnumDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for EnumDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for EnumDef<'a> {}
+impl<'a> ast::DocCommentsOwner<'a> for EnumDef<'a> {}
 impl<'a> EnumDef<'a> {}
 
 // Expr
@@ -1886,6 +1888,7 @@ impl<R: TreeRoot<RaTypes>> ModuleNode<R> {
 
 impl<'a> ast::NameOwner<'a> for Module<'a> {}
 impl<'a> ast::AttrsOwner<'a> for Module<'a> {}
+impl<'a> ast::DocCommentsOwner<'a> for Module<'a> {}
 impl<'a> Module<'a> {
     pub fn item_list(self) -> Option<ItemList<'a>> {
         super::child_opt(self)
@@ -3205,6 +3208,7 @@ impl<R: TreeRoot<RaTypes>> StaticDefNode<R> {
 impl<'a> ast::NameOwner<'a> for StaticDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for StaticDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for StaticDef<'a> {}
+impl<'a> ast::DocCommentsOwner<'a> for StaticDef<'a> {}
 impl<'a> StaticDef<'a> {}
 
 // Stmt
@@ -3270,6 +3274,7 @@ impl<R: TreeRoot<RaTypes>> StructDefNode<R> {
 impl<'a> ast::NameOwner<'a> for StructDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for StructDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for StructDef<'a> {}
+impl<'a> ast::DocCommentsOwner<'a> for StructDef<'a> {}
 impl<'a> StructDef<'a> {
     pub fn fields(self) -> impl Iterator<Item = NamedFieldDef<'a>> + 'a {
         super::children(self)
@@ -3424,6 +3429,7 @@ impl<R: TreeRoot<RaTypes>> TraitDefNode<R> {
 
 impl<'a> ast::NameOwner<'a> for TraitDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for TraitDef<'a> {}
+impl<'a> ast::DocCommentsOwner<'a> for TraitDef<'a> {}
 impl<'a> TraitDef<'a> {}
 
 // TryExpr
@@ -3649,6 +3655,7 @@ impl<R: TreeRoot<RaTypes>> TypeDefNode<R> {
 impl<'a> ast::NameOwner<'a> for TypeDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for TypeDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for TypeDef<'a> {}
+impl<'a> ast::DocCommentsOwner<'a> for TypeDef<'a> {}
 impl<'a> TypeDef<'a> {}
 
 // TypeParam

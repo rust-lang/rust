@@ -260,6 +260,7 @@ Grammar(
                 "NameOwner",
                 "TypeParamsOwner",
                 "AttrsOwner",
+                "DocCommentsOwner"
             ],
             collections: [
                 ["fields", "NamedFieldDef"]
@@ -270,10 +271,11 @@ Grammar(
             "NameOwner",
             "TypeParamsOwner",
             "AttrsOwner",
+            "DocCommentsOwner"
         ] ),
-        "TraitDef": ( traits: ["NameOwner", "AttrsOwner"] ),
+        "TraitDef": ( traits: ["NameOwner", "AttrsOwner", "DocCommentsOwner"] ),
         "Module": (
-            traits: ["NameOwner", "AttrsOwner" ],
+            traits: ["NameOwner", "AttrsOwner", "DocCommentsOwner" ],
             options: [ "ItemList" ]
         ),
         "ItemList": (
@@ -283,16 +285,19 @@ Grammar(
             "NameOwner",
             "TypeParamsOwner",
             "AttrsOwner",
+            "DocCommentsOwner"
         ] ),
         "StaticDef": ( traits: [
             "NameOwner",
             "TypeParamsOwner",
             "AttrsOwner",
+            "DocCommentsOwner"
         ] ),
         "TypeDef": ( traits: [
             "NameOwner",
             "TypeParamsOwner",
             "AttrsOwner",
+            "DocCommentsOwner"
         ] ),
         "ImplItem": (),
 
