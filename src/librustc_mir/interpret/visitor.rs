@@ -317,7 +317,7 @@ pub trait ValueVisitor<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Siz
                 self.visit_union(v)?;
             },
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
-                // We collect in a vec because otherwise there are lifetime errors:
+                // FIXME: We collect in a vec because otherwise there are lifetime errors:
                 // Projecting to a field needs (mutable!) access to `ecx`.
                 let fields: Vec<EvalResult<'tcx, Self::V>> =
                     (0..offsets.len()).map(|i| {
