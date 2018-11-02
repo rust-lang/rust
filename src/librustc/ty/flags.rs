@@ -74,7 +74,6 @@ impl FlagComputation {
             &ty::Uint(_) |
             &ty::Never |
             &ty::Str |
-            &ty::Placeholder(..) |
             &ty::Foreign(..) => {
             }
 
@@ -118,6 +117,10 @@ impl FlagComputation {
 
             &ty::Bound(bound_ty) => {
                 self.add_binder(bound_ty.index);
+            }
+
+            &ty::Placeholder(..) => {
+                self.add_flags(TypeFlags::HAS_TY_PLACEHOLDER);
             }
 
             &ty::Infer(infer) => {
