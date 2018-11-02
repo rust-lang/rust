@@ -1,6 +1,7 @@
 use super::{ImplTraitContext, LoweringContext, ParamMode, ParenthesizedGenericArgs};
 
 use rustc::bug;
+use rustc::middle::limits::ensure_sufficient_stack;
 use rustc_ast::ast::*;
 use rustc_ast::attr;
 use rustc_ast::ptr::P as AstP;
@@ -22,6 +23,37 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     pub(super) fn lower_expr_mut(&mut self, e: &Expr) -> hir::Expr<'hir> {
         let kind = match e.kind {
+            ExprKind::Paren(ref ex) => {
+                let mut ex = self.lower_expr_mut(ex);
+                // Include parens in span, but only if it is a super-span.
+                if e.span.contains(ex.span) {
+                    ex.span = e.span;
+                }
+                // Merge attributes into the inner expression.
+                let mut attrs = e.attrs.clone();
+                attrs.extend::<Vec<_>>(ex.attrs.into());
+                ex.attrs = attrs;
+                return ex;
+            }
+
+            // Desugar `ExprForLoop`
+            // from: `[opt_ident]: for <pat> in <head> <body>`
+            ExprKind::ForLoop(ref pat, ref head, ref body, opt_label) => {
+                return self.lower_expr_for(e, pat, head, body, opt_label);
+            }
+            _ => ensure_sufficient_stack(|| self.lower_expr_kind(e)),
+        };
+
+        hir::Expr {
+            hir_id: self.lower_node_id(e.id),
+            kind,
+            span: e.span,
+            attrs: e.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
+        }
+    }
+
+    fn lower_expr_kind(&mut self, e: &Expr) -> hir::ExprKind<'hir> {
+        match e.kind {
             ExprKind::Box(ref inner) => hir::ExprKind::Box(self.lower_expr(inner)),
             ExprKind::Array(ref exprs) => hir::ExprKind::Array(self.lower_exprs(exprs)),
             ExprKind::Repeat(ref expr, ref count) => {
@@ -175,37 +207,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     maybe_expr,
                 )
             }
-            ExprKind::Paren(ref ex) => {
-                let mut ex = self.lower_expr_mut(ex);
-                // Include parens in span, but only if it is a super-span.
-                if e.span.contains(ex.span) {
-                    ex.span = e.span;
-                }
-                // Merge attributes into the inner expression.
-                let mut attrs = e.attrs.clone();
-                attrs.extend::<Vec<_>>(ex.attrs.into());
-                ex.attrs = attrs;
-                return ex;
-            }
-
             ExprKind::Yield(ref opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
-
             ExprKind::Err => hir::ExprKind::Err,
-
-            // Desugar `ExprForLoop`
-            // from: `[opt_ident]: for <pat> in <head> <body>`
-            ExprKind::ForLoop(ref pat, ref head, ref body, opt_label) => {
-                return self.lower_expr_for(e, pat, head, body, opt_label);
-            }
             ExprKind::Try(ref sub_expr) => self.lower_expr_try(e.span, sub_expr),
-            ExprKind::MacCall(_) => panic!("Shouldn't exist here"),
-        };
 
-        hir::Expr {
-            hir_id: self.lower_node_id(e.id),
-            kind,
-            span: e.span,
-            attrs: e.attrs.iter().map(|a| self.lower_attr(a)).collect::<Vec<_>>().into(),
+            ExprKind::ForLoop(..) | ExprKind::Paren(_) => {
+                span_bug!(e.span, "Should be handled by `lower_expr`")
+            }
+            ExprKind::MacCall(_) => span_bug!(e.span, "Shouldn't exist here"),
         }
     }
 
