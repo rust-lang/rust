@@ -36,7 +36,6 @@ use syntax_pos::{MultiSpan, Span};
 
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
-use std::fmt::Write;
 use std::{mem, ptr};
 
 /// Contains data for specific types of import directives.
@@ -778,17 +777,14 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
 
             let msg = format!("`{}` import is ambiguous", name);
             let mut err = self.session.struct_span_err(span, &msg);
-            let mut suggestion_choices = String::new();
+            let mut suggestion_choices = vec![];
             if external_crate.is_some() {
-                write!(suggestion_choices, "`::{}`", name);
+                suggestion_choices.push(format!("`::{}`", name));
                 err.span_label(span,
                     format!("can refer to external crate `::{}`", name));
             }
             if let Some(result) = results.module_scope {
-                if !suggestion_choices.is_empty() {
-                    suggestion_choices.push_str(" or ");
-                }
-                write!(suggestion_choices, "`self::{}`", name);
+                suggestion_choices.push(format!("`self::{}`", name));
                 if uniform_paths_feature {
                     err.span_label(result.span,
                         format!("can refer to `self::{}`", name));
@@ -801,7 +797,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 err.span_label(result.span,
                     format!("shadowed by block-scoped `{}`", name));
             }
-            err.help(&format!("write {} explicitly instead", suggestion_choices));
+            err.help(&format!("write {} explicitly instead", suggestion_choices.join(" or ")));
             if uniform_paths_feature {
                 err.note("relative `use` paths enabled by `#![feature(uniform_paths)]`");
             } else {
