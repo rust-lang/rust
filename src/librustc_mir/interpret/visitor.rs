@@ -1,8 +1,6 @@
 //! Visitor for a run-time value with a given layout: Traverse enums, structs and other compound
 //! types until we arrive at the leaves, with custom handling for primitive types.
 
-use std::fmt;
-
 use rustc::ty::layout::{self, TyLayout};
 use rustc::ty;
 use rustc::mir::interpret::{
@@ -166,103 +164,103 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
 }
 
 // How to traverse a value and what to do when we are at the leaves.
-pub trait ValueVisitor<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: fmt::Debug + Sized {
+pub trait ValueVisitor<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Sized {
     type V: Value<'a, 'mir, 'tcx, M>;
 
-    // There's a value in here.
-    fn value(&self) -> &Self::V;
-
-    // The value's layout (not meant to be overwritten).
-    #[inline(always)]
-    fn layout(&self) -> TyLayout<'tcx> {
-        self.value().layout()
-    }
+    // The visitor must have an `EvalContext` in it.
+    fn ecx(&mut self) -> &mut EvalContext<'a, 'mir, 'tcx, M>;
 
     // Recursie actions, ready to be overloaded.
-    /// Visit the current value, dispatching as appropriate to more speicalized visitors.
-    #[inline]
-    fn visit_value(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx>
+    /// Visit the given value, dispatching as appropriate to more speicalized visitors.
+    #[inline(always)]
+    fn visit_value(&mut self, v: Self::V) -> EvalResult<'tcx>
     {
-        self.walk_value(ectx)
+        self.walk_value(v)
     }
-    /// Visit the current value as an array.
-    #[inline]
-    fn visit_array(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx>
+    /// Visit the given value as a union.
+    #[inline(always)]
+    fn visit_union(&mut self, _v: Self::V) -> EvalResult<'tcx>
     {
-        self.walk_array(ectx)
+        Ok(())
     }
-    /// Called each time we recurse down to a field of the value, to (a) let
-    /// the visitor change its internal state (recording the new current value),
-    /// and (b) let the visitor track the "stack" of fields that we descended below.
+    /// Visit the given value as an array.
+    #[inline(always)]
+    fn visit_array(&mut self, v: Self::V) -> EvalResult<'tcx>
+    {
+        self.walk_array(v)
+    }
+    /// Called each time we recurse down to a field, passing in old and new value.
+    /// This gives the visitor the chance to track the stack of nested fields that
+    /// we are descending through.
+    #[inline(always)]
     fn visit_field(
         &mut self,
-        ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
-        val: Self::V,
-        field: usize,
-    ) -> EvalResult<'tcx>;
+        _old_val: Self::V,
+        _field: usize,
+        new_val: Self::V,
+    ) -> EvalResult<'tcx> {
+        self.visit_value(new_val)
+    }
 
     // Actions on the leaves, ready to be overloaded.
-    #[inline]
-    fn visit_uninhabited(&mut self, _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx>
+    /// Called whenever we reach a value with uninhabited layout.
+    /// Recursing to fields will continue after this!
+    #[inline(always)]
+    fn visit_uninhabited(&mut self, _v: Self::V) -> EvalResult<'tcx>
     { Ok(()) }
-    #[inline]
-    fn visit_scalar(&mut self, _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>, _layout: &layout::Scalar)
-        -> EvalResult<'tcx>
+    /// Called whenever we reach a value with scalar layout.
+    /// Recursing to fields will continue after this!
+    #[inline(always)]
+    fn visit_scalar(&mut self, _v: Self::V, _layout: &layout::Scalar) -> EvalResult<'tcx>
     { Ok(()) }
-    #[inline]
-    fn visit_primitive(&mut self, _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx>
+    /// Called whenever we reach a value of primitive type.  There can be no recursion
+    /// below such a value.
+    #[inline(always)]
+    fn visit_primitive(&mut self, _v: Self::V) -> EvalResult<'tcx>
     { Ok(()) }
 
     // Default recursors. Not meant to be overloaded.
-    fn walk_array(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx>
+    fn walk_array(&mut self, v: Self::V) -> EvalResult<'tcx>
     {
         // Let's get an mplace first.
-        let mplace = if self.layout().is_zst() {
+        let mplace = if v.layout().is_zst() {
             // it's a ZST, the memory content cannot matter
-            MPlaceTy::dangling(self.layout(), ectx)
+            MPlaceTy::dangling(v.layout(), self.ecx())
         } else {
             // non-ZST array/slice/str cannot be immediate
-            self.value().to_mem_place(ectx)?
+            v.to_mem_place(self.ecx())?
         };
         // Now iterate over it.
-        for (i, field) in ectx.mplace_array_fields(mplace)?.enumerate() {
-            self.visit_field(ectx, Value::from_mem_place(field?), i)?;
+        for (i, field) in self.ecx().mplace_array_fields(mplace)?.enumerate() {
+            self.visit_field(v, i, Value::from_mem_place(field?))?;
         }
         Ok(())
     }
-    fn walk_value(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx>
+    fn walk_value(&mut self, v: Self::V) -> EvalResult<'tcx>
     {
-        trace!("walk_value: {:?}", self);
-
         // If this is a multi-variant layout, we have find the right one and proceed with that.
         // (No benefit from making this recursion, but it is equivalent to that.)
-        match self.layout().variants {
+        match v.layout().variants {
             layout::Variants::NicheFilling { .. } |
             layout::Variants::Tagged { .. } => {
-                let (inner, idx) = self.value().project_downcast(ectx)?;
+                let (inner, idx) = v.project_downcast(self.ecx())?;
                 trace!("variant layout: {:#?}", inner.layout());
                 // recurse with the inner type
-                return self.visit_field(ectx, inner, idx);
+                return self.visit_field(v, idx, inner);
             }
             layout::Variants::Single { .. } => {}
         }
 
         // Even for single variants, we might be able to get a more refined type:
         // If it is a trait object, switch to the actual type that was used to create it.
-        match self.layout().ty.sty {
+        match v.layout().ty.sty {
             ty::Dynamic(..) => {
                 // immediate trait objects are not a thing
-                let dest = self.value().to_mem_place(ectx)?;
-                let inner = ectx.unpack_dyn_trait(dest)?.1;
+                let dest = v.to_mem_place(self.ecx())?;
+                let inner = self.ecx().unpack_dyn_trait(dest)?.1;
                 trace!("dyn object layout: {:#?}", inner.layout);
                 // recurse with the inner type
-                return self.visit_field(ectx, Value::from_mem_place(inner), 0);
+                return self.visit_field(v, 0, Value::from_mem_place(inner));
             },
             _ => {},
         };
@@ -274,12 +272,12 @@ pub trait ValueVisitor<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: fmt::Debug +
         // FIXME: We could avoid some redundant checks here. For newtypes wrapping
         // scalars, we do the same check on every "level" (e.g. first we check
         // MyNewtype and then the scalar in there).
-        match self.layout().abi {
+        match v.layout().abi {
             layout::Abi::Uninhabited => {
-                self.visit_uninhabited(ectx)?;
+                self.visit_uninhabited(v)?;
             }
             layout::Abi::Scalar(ref layout) => {
-                self.visit_scalar(ectx, layout)?;
+                self.visit_scalar(v, layout)?;
             }
             // FIXME: Should we do something for ScalarPair? Vector?
             _ => {}
@@ -290,34 +288,32 @@ pub trait ValueVisitor<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: fmt::Debug +
         // so we check them separately and before aggregate handling.
         // It is CRITICAL that we get this check right, or we might be
         // validating the wrong thing!
-        let primitive = match self.layout().fields {
+        let primitive = match v.layout().fields {
             // Primitives appear as Union with 0 fields -- except for Boxes and fat pointers.
             layout::FieldPlacement::Union(0) => true,
-            _ => self.layout().ty.builtin_deref(true).is_some(),
+            _ => v.layout().ty.builtin_deref(true).is_some(),
         };
         if primitive {
-            return self.visit_primitive(ectx);
+            return self.visit_primitive(v);
         }
 
         // Proceed into the fields.
-        match self.layout().fields {
+        match v.layout().fields {
             layout::FieldPlacement::Union(fields) => {
                 // Empty unions are not accepted by rustc. That's great, it means we can
                 // use that as an unambiguous signal for detecting primitives.  Make sure
                 // we did not miss any primitive.
                 debug_assert!(fields > 0);
-                // We can't traverse unions, their bits are allowed to be anything.
-                // The fields don't need to correspond to any bit pattern of the union's fields.
-                // See https://github.com/rust-lang/rust/issues/32836#issuecomment-406875389
+                self.visit_union(v)?;
             },
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
                 for i in 0..offsets.len() {
-                    let val = self.value().project_field(ectx, i as u64)?;
-                    self.visit_field(ectx, val, i)?;
+                    let val = v.project_field(self.ecx(), i as u64)?;
+                    self.visit_field(v, i, val)?;
                 }
             },
             layout::FieldPlacement::Array { .. } => {
-                self.visit_array(ectx)?;
+                self.visit_array(v)?;
             }
         }
         Ok(())
