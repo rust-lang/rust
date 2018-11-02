@@ -467,6 +467,8 @@ bitflags! {
         /// if a global bound is safe to evaluate.
         const HAS_RE_LATE_BOUND = 1 << 13;
 
+        const HAS_TY_PLACEHOLDER = 1 << 14;
+
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits;
@@ -486,7 +488,8 @@ bitflags! {
                                   TypeFlags::HAS_TY_CLOSURE.bits |
                                   TypeFlags::HAS_FREE_LOCAL_NAMES.bits |
                                   TypeFlags::KEEP_IN_LOCAL_TCX.bits |
-                                  TypeFlags::HAS_RE_LATE_BOUND.bits;
+                                  TypeFlags::HAS_RE_LATE_BOUND.bits |
+                                  TypeFlags::HAS_TY_PLACEHOLDER.bits;
     }
 }
 

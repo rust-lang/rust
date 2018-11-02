@@ -103,7 +103,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
         self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
     }
     fn has_placeholders(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_PLACEHOLDER)
+        self.has_type_flags(TypeFlags::HAS_RE_PLACEHOLDER | TypeFlags::HAS_TY_PLACEHOLDER)
     }
     fn needs_subst(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_SUBST)
