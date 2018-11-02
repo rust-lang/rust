@@ -102,14 +102,14 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn needs_infer(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
     }
-    fn has_skol(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_SKOL)
+    fn has_placeholders(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_PLACEHOLDER)
     }
     fn needs_subst(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_SUBST)
     }
-    fn has_re_skol(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_SKOL)
+    fn has_re_placeholders(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_PLACEHOLDER)
     }
     fn has_closure_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_CLOSURE)

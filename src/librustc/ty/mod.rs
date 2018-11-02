@@ -432,7 +432,7 @@ bitflags! {
         const HAS_SELF           = 1 << 1;
         const HAS_TY_INFER       = 1 << 2;
         const HAS_RE_INFER       = 1 << 3;
-        const HAS_RE_SKOL        = 1 << 4;
+        const HAS_RE_PLACEHOLDER = 1 << 4;
 
         /// Does this have any `ReEarlyBound` regions? Used to
         /// determine whether substitition is required, since those
@@ -478,7 +478,7 @@ bitflags! {
                                   TypeFlags::HAS_SELF.bits |
                                   TypeFlags::HAS_TY_INFER.bits |
                                   TypeFlags::HAS_RE_INFER.bits |
-                                  TypeFlags::HAS_RE_SKOL.bits |
+                                  TypeFlags::HAS_RE_PLACEHOLDER.bits |
                                   TypeFlags::HAS_RE_EARLY_BOUND.bits |
                                   TypeFlags::HAS_FREE_REGIONS.bits |
                                   TypeFlags::HAS_TY_ERR.bits |
@@ -1689,7 +1689,7 @@ impl<'tcx> ParamEnv<'tcx> {
             }
 
             Reveal::All => {
-                if value.has_skol()
+                if value.has_placeholders()
                     || value.needs_infer()
                     || value.has_param_types()
                     || value.has_self_ty()
