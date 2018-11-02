@@ -197,6 +197,22 @@ issue][issue-include].
 [unstable-include]: ../unstable-book/language-features/external-doc.html
 [issue-include]: https://github.com/rust-lang/rust/issues/44732
 
+### Add aliases for an item in documentation search
+
+This feature allows you to add alias(es) to an item when using the `rustdoc` search through the
+`doc(alias)` attribute. Example:
+
+```rust,no_run
+#![feature(doc_alias)]
+
+#[doc(alias = "x")]
+#[doc(alias = "big")]
+pub struct BigX;
+```
+
+Then, when looking for it through the `rustdoc` search, if you enter "x" or
+"big", search will show the `BigX` struct first.
+
 ## Unstable command-line arguments
 
 These features are enabled by passing a command-line flag to Rustdoc, but the flags in question are
@@ -374,18 +390,15 @@ This is an internal flag intended for the standard library and compiler that app
 allows `rustdoc` to be able to generate documentation for the compiler crates and the standard
 library, as an equivalent command-line argument is provided to `rustc` when building those crates.
 
-### `doc_alias` feature
+### `--index-page`: provide a top-level landing page for docs
 
-This feature allows you to add alias(es) to an item when using the `rustdoc` search through the
-`doc(alias)` attribute. Example:
+This feature allows you to generate an index-page with a given markdown file. A good example of it
+is the [rust documentation index](https://doc.rust-lang.org/index.html).
 
-```rust,no_run
-#![feature(doc_alias)]
+With this, you'll have a page which you can custom as much as you want at the top of your crates.
 
-#[doc(alias = "x")]
-#[doc(alias = "big")]
-pub struct BigX;
-```
+Using `index-page` option enables `enable-index-page` option as well.
 
-Then, when looking for it through the `rustdoc` search, if you enter "x" or
-"big", search will show the `BigX` struct first.
+### `--enable-index-page`: generate a default index page for docs
+
+This feature allows the generation of a default index-page which lists the generated crates.

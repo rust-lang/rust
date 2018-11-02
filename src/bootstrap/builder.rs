@@ -713,7 +713,7 @@ impl<'a> Builder<'a> {
             "build" => self.cargo_out(compiler, mode, target),
 
             // This is the intended out directory for crate documentation.
-            "doc" =>  self.crate_doc_out(target),
+            "doc" | "rustdoc" =>  self.crate_doc_out(target),
 
             _ => self.stage_out(compiler, mode),
         };
@@ -742,7 +742,7 @@ impl<'a> Builder<'a> {
             _ => compile::librustc_stamp(self, cmp, target),
         };
 
-        if cmd == "doc" {
+        if cmd == "doc" || cmd == "rustdoc" {
             if mode == Mode::Rustc || mode == Mode::ToolRustc || mode == Mode::Codegen {
                 // This is the intended out directory for compiler documentation.
                 my_out = self.compiler_doc_out(target);
@@ -882,7 +882,7 @@ impl<'a> Builder<'a> {
             .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
             .env(
                 "RUSTDOC_REAL",
-                if cmd == "doc" || (cmd == "test" && want_rustdoc) {
+                if cmd == "doc" || cmd == "rustdoc" || (cmd == "test" && want_rustdoc) {
                     self.rustdoc(compiler.host)
                 } else {
                     PathBuf::from("/path/to/nowhere/rustdoc/not/required")

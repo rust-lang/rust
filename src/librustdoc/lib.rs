@@ -334,6 +334,17 @@ fn opts() -> Vec<RustcOptGroup> {
                 "LEVEL",
             )
         }),
+        unstable("index-page", |o| {
+             o.optopt("",
+                      "index-page",
+                      "Markdown file to be used as index page",
+                      "PATH")
+        }),
+        unstable("enable-index-page", |o| {
+             o.optflag("",
+                       "enable-index-page",
+                       "To enable generation of the index page")
+        }),
     ]
 }
 
@@ -451,7 +462,7 @@ fn main_args(args: &[String]) -> isize {
         diag.struct_err("too many file operands").emit();
         return 1;
     }
-    let input = &matches.free[0];
+    let input = matches.free[0].clone();
 
     let mut libs = SearchPaths::new();
     for s in &matches.opt_strs("L") {
@@ -479,7 +490,7 @@ fn main_args(args: &[String]) -> isize {
                                           .collect();
 
     let should_test = matches.opt_present("test");
-    let markdown_input = Path::new(input).extension()
+    let markdown_input = Path::new(&input).extension()
         .map_or(false, |e| e == "md" || e == "markdown");
 
     let output = matches.opt_str("o").map(|s| PathBuf::from(&s));
@@ -534,6 +545,8 @@ fn main_args(args: &[String]) -> isize {
     let linker = matches.opt_str("linker").map(PathBuf::from);
     let sort_modules_alphabetically = !matches.opt_present("sort-modules-by-appearance");
     let resource_suffix = matches.opt_str("resource-suffix");
+    let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
+    let enable_index_page = matches.opt_present("enable-index-page") || index_page.is_some();
     let enable_minification = !matches.opt_present("disable-minification");
 
     let edition = matches.opt_str("edition").unwrap_or("2015".to_string());
@@ -544,19 +557,25 @@ fn main_args(args: &[String]) -> isize {
             return 1;
         }
     };
+    if let Some(ref index_page) = index_page {
+        if !index_page.is_file() {
+            diag.struct_err("option `--index-page` argument must be a file").emit();
+            return 1;
+        }
+    }
 
     let cg = build_codegen_options(&matches, ErrorOutputType::default());
 
     match (should_test, markdown_input) {
         (true, true) => {
-            return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot,
+            return markdown::test(&input, cfgs, libs, externs, test_args, maybe_sysroot,
                                   display_warnings, linker, edition, cg, &diag)
         }
         (true, false) => {
-            return test::run(Path::new(input), cfgs, libs, externs, test_args, crate_name,
+            return test::run(Path::new(&input), cfgs, libs, externs, test_args, crate_name,
                              maybe_sysroot, display_warnings, linker, edition, cg)
         }
-        (false, true) => return markdown::render(Path::new(input),
+        (false, true) => return markdown::render(Path::new(&input),
                                                  output.unwrap_or(PathBuf::from("doc")),
                                                  &matches, &external_html,
                                                  !matches.opt_present("markdown-no-toc"), &diag),
@@ -565,8 +584,8 @@ fn main_args(args: &[String]) -> isize {
 
     let output_format = matches.opt_str("w");
 
-    let res = acquire_input(PathBuf::from(input), externs, edition, cg, &matches, error_format,
-                            move |out| {
+    let res = acquire_input(PathBuf::from(input), externs, edition, cg, matches, error_format,
+                            move |out, matches| {
         let Output { krate, passes, renderinfo } = out;
         let diag = core::new_handler(error_format, None, treat_err_as_bug, ui_testing);
         info!("going to format");
@@ -580,7 +599,10 @@ fn main_args(args: &[String]) -> isize {
                                   renderinfo,
                                   sort_modules_alphabetically,
                                   themes,
-                                  enable_minification, id_map)
+                                  enable_minification, id_map,
+                                  enable_index_page, index_page,
+                                  &matches,
+                                  &diag)
                     .expect("failed to generate documentation");
                 0
             }
@@ -602,11 +624,11 @@ fn acquire_input<R, F>(input: PathBuf,
                        externs: Externs,
                        edition: Edition,
                        cg: CodegenOptions,
-                       matches: &getopts::Matches,
+                       matches: getopts::Matches,
                        error_format: ErrorOutputType,
                        f: F)
                        -> Result<R, String>
-where R: 'static + Send, F: 'static + Send + FnOnce(Output) -> R {
+where R: 'static + Send, F: 'static + Send + FnOnce(Output, &getopts::Matches) -> R {
     match matches.opt_str("r").as_ref().map(|s| &**s) {
         Some("rust") => Ok(rust_input(input, externs, edition, cg, matches, error_format, f)),
         Some(s) => Err(format!("unknown input format: {}", s)),
@@ -660,11 +682,11 @@ fn rust_input<R, F>(cratefile: PathBuf,
                     externs: Externs,
                     edition: Edition,
                     cg: CodegenOptions,
-                    matches: &getopts::Matches,
+                    matches: getopts::Matches,
                     error_format: ErrorOutputType,
                     f: F) -> R
 where R: 'static + Send,
-      F: 'static + Send + FnOnce(Output) -> R
+      F: 'static + Send + FnOnce(Output, &getopts::Matches) -> R
 {
     let default_passes = if matches.opt_present("no-defaults") {
         passes::DefaultPassOption::None
@@ -709,7 +731,7 @@ where R: 'static + Send,
         *x == "ui-testing"
     });
 
-    let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(matches, error_format);
+    let (lint_opts, describe_lints, lint_cap) = get_cmd_lint_options(&matches, error_format);
 
     let (tx, rx) = channel();
 
@@ -761,7 +783,8 @@ where R: 'static + Send,
             krate = pass(krate);
         }
 
-        tx.send(f(Output { krate: krate, renderinfo: renderinfo, passes: passes })).unwrap();
+        tx.send(f(Output { krate: krate, renderinfo: renderinfo, passes: passes },
+                  &matches)).unwrap();
     }));
 
     match result {
