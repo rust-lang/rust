@@ -409,7 +409,8 @@ macro_rules! make_mir_visitor {
                                 location
                             );
                         }
-                        for input in & $($mutability)* inputs[..] {
+                        for (span, input) in & $($mutability)* inputs[..] {
+                            self.visit_span(span);
                             self.visit_operand(input, location);
                         }
                     }

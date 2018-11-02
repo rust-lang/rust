@@ -1751,7 +1751,7 @@ pub enum StatementKind<'tcx> {
     InlineAsm {
         asm: Box<InlineAsm>,
         outputs: Box<[Place<'tcx>]>,
-        inputs: Box<[Operand<'tcx>]>,
+        inputs: Box<[(Span, Operand<'tcx>)]>,
     },
 
     /// Retag references in the given place, ensuring they got fresh tags.  This is

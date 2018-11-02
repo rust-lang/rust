@@ -21,6 +21,7 @@ fn main() {
     issue_37437();
     issue_40187();
     issue_54067();
+    multiple_errors();
 }
 
 fn issue_37433() {
@@ -53,5 +54,13 @@ fn issue_54067() {
     let addr: Option<u32> = Some(123);
     unsafe {
         asm!("mov sp, $0"::"r"(addr)); //~ ERROR E0669
+    }
+}
+
+fn multiple_errors() {
+    let addr: (u32, u32) = (1, 2);
+    unsafe {
+        asm!("mov sp, $0"::"r"(addr), //~ ERROR E0669
+                           "r"("hello e0669")); //~ ERROR E0669
     }
 }

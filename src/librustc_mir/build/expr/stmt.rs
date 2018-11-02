@@ -167,8 +167,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     .into_boxed_slice();
                 let inputs = inputs
                     .into_iter()
-                    .map(|input| unpack!(block = this.as_local_operand(block, input)))
-                    .collect::<Vec<_>>()
+                    .map(|input| {
+                        (
+                            input.span(),
+                            unpack!(block = this.as_local_operand(block, input)),
+                        )
+                    }).collect::<Vec<_>>()
                     .into_boxed_slice();
                 this.cfg.push(
                     block,
