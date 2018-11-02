@@ -411,7 +411,7 @@ pub enum NLLRegionVariableOrigin {
 
     /// "Universal" instantiation of a higher-ranked region (e.g.,
     /// from a `for<'a> T` binder). Meant to represent "any region".
-    Placeholder(ty::Placeholder),
+    Placeholder(ty::PlaceholderRegion),
 
     Existential,
 }

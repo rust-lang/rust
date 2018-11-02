@@ -792,7 +792,7 @@ define_print! {
                 }
                 ty::ReLateBound(_, br) |
                 ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
-                ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
+                ty::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
                     write!(f, "{}", br)
                 }
                 ty::ReScope(scope) if cx.identify_regions => {

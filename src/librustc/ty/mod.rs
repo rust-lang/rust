@@ -1587,12 +1587,27 @@ impl UniverseIndex {
 /// universe are just two regions with an unknown relationship to one
 /// another.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
-pub struct Placeholder {
+pub struct Placeholder<T> {
     pub universe: UniverseIndex,
-    pub name: BoundRegion,
+    pub name: T,
 }
 
-impl_stable_hash_for!(struct Placeholder { universe, name });
+impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>> for Placeholder<T>
+    where T: HashStable<StableHashingContext<'a>>
+{
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>
+    ) {
+        self.universe.hash_stable(hcx, hasher);
+        self.name.hash_stable(hcx, hasher);
+    }
+}
+
+pub type PlaceholderRegion = Placeholder<BoundRegion>;
+
+pub type PlaceholderType = Placeholder<BoundVar>;
 
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this

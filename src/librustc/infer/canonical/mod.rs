@@ -142,7 +142,7 @@ pub enum CanonicalVarKind {
     /// A "placeholder" that represents "any region". Created when you
     /// are solving a goal like `for<'a> T: Foo<'a>` to represent the
     /// bound region `'a`.
-    PlaceholderRegion(ty::Placeholder),
+    PlaceholderRegion(ty::PlaceholderRegion),
 }
 
 impl CanonicalVarKind {
@@ -374,9 +374,9 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                 universe_map(ui),
             ).into(),
 
-            CanonicalVarKind::PlaceholderRegion(ty::Placeholder { universe, name }) => {
+            CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion { universe, name }) => {
                 let universe_mapped = universe_map(universe);
-                let placeholder_mapped = ty::Placeholder {
+                let placeholder_mapped = ty::PlaceholderRegion {
                     universe: universe_mapped,
                     name,
                 };

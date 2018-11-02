@@ -2193,7 +2193,7 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
         match ty.sty {
             ty::TyKind::Ref(ty::RegionKind::ReLateBound(_, br), _, _)
             | ty::TyKind::Ref(
-                ty::RegionKind::RePlaceholder(ty::Placeholder { name: br, .. }),
+                ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }),
                 _,
                 _,
             ) => with_highlight_region_for_bound_region(*br, counter, || ty.to_string()),
@@ -2207,7 +2207,7 @@ impl<'tcx> AnnotatedBorrowFnSignature<'tcx> {
         match ty.sty {
             ty::TyKind::Ref(region, _, _) => match region {
                 ty::RegionKind::ReLateBound(_, br)
-                | ty::RegionKind::RePlaceholder(ty::Placeholder { name: br, .. }) => {
+                | ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
                     with_highlight_region_for_bound_region(*br, counter, || region.to_string())
                 }
                 _ => region.to_string(),
