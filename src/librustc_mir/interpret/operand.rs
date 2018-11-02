@@ -144,7 +144,7 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
 /// primitive values (`ScalarPair`). It allows Miri to avoid making allocations for checked binary
 /// operations and fat pointers. This idea was taken from rustc's codegen.
 /// In particular, thanks to `ScalarPair`, arithmetic operations and casts can be entirely
-/// defined on `Value`, and do not have to work with a `Place`.
+/// defined on `Immediate`, and do not have to work with a `Place`.
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Immediate<Tag=(), Id=AllocId> {
     Scalar(ScalarMaybeUndef<Tag, Id>),
