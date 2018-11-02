@@ -12,7 +12,7 @@ use std::borrow::Borrow;
 
 use rustc_data_structures::fx::FxHashMap;
 
-use super::AllocMap;
+use crate::AllocMap;
 
 #[derive(Debug, Clone)]
 pub struct MonoHashMap<K: Hash + Eq, V>(RefCell<FxHashMap<K, Box<V>>>);

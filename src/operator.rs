@@ -1,7 +1,7 @@
 use rustc::ty::{Ty, layout::TyLayout};
 use rustc::mir;
 
-use super::*;
+use crate::*;
 
 pub trait EvalContextExt<'tcx> {
     fn ptr_op(

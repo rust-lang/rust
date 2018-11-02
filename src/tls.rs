@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use rustc_target::abi::LayoutOf;
 use rustc::{ty, ty::layout::HasDataLayout, mir};
 
-use super::{
+use crate::{
     EvalResult, EvalErrorKind, StackPopCleanup,
     MPlaceTy, Scalar, Borrow,
 };
