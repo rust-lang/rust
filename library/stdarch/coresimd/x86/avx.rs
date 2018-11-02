@@ -1941,8 +1941,8 @@ pub unsafe fn _mm256_lddqu_si256(mem_addr: *const __m256i) -> __m256i {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovntps))] // FIXME vmovntdq
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_stream_si256(mem_addr: *const __m256i, a: __m256i) {
-    intrinsics::nontemporal_store(mem::transmute(mem_addr), a);
+pub unsafe fn _mm256_stream_si256(mem_addr: *mut __m256i, a: __m256i) {
+    intrinsics::nontemporal_store(mem_addr, a);
 }
 
 /// Moves double-precision values from a 256-bit vector of `[4 x double]`
@@ -1954,8 +1954,8 @@ pub unsafe fn _mm256_stream_si256(mem_addr: *const __m256i, a: __m256i) {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovntps))] // FIXME vmovntpd
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_stream_pd(mem_addr: *const f64, a: __m256d) {
-    intrinsics::nontemporal_store(mem::transmute(mem_addr), a);
+pub unsafe fn _mm256_stream_pd(mem_addr: *mut f64, a: __m256d) {
+    intrinsics::nontemporal_store(mem_addr as *mut __m256d, a);
 }
 
 /// Moves single-precision floating point values from a 256-bit vector
@@ -1968,8 +1968,8 @@ pub unsafe fn _mm256_stream_pd(mem_addr: *const f64, a: __m256d) {
 #[target_feature(enable = "avx")]
 #[cfg_attr(test, assert_instr(vmovntps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
-pub unsafe fn _mm256_stream_ps(mem_addr: *const f32, a: __m256) {
-    intrinsics::nontemporal_store(mem::transmute(mem_addr), a);
+pub unsafe fn _mm256_stream_ps(mem_addr: *mut f32, a: __m256) {
+    intrinsics::nontemporal_store(mem_addr as *mut __m256, a);
 }
 
 /// Compute the approximate reciprocal of packed single-precision (32-bit)
