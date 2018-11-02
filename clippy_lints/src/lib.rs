@@ -365,7 +365,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box zero_div_zero::Pass);
     reg.register_late_lint_pass(box mutex_atomic::MutexAtomic);
     reg.register_late_lint_pass(box needless_update::Pass);
-    reg.register_late_lint_pass(box needless_borrow::NeedlessBorrow);
+    reg.register_late_lint_pass(box needless_borrow::NeedlessBorrow::default());
     reg.register_late_lint_pass(box needless_borrowed_ref::NeedlessBorrowedRef);
     reg.register_late_lint_pass(box no_effect::Pass);
     reg.register_late_lint_pass(box temporary_assignment::Pass);
