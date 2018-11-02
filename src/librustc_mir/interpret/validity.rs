@@ -129,7 +129,7 @@ struct ValidityVisitor<'rt, 'a: 'rt, 'mir: 'rt, 'tcx: 'a+'rt+'mir, M: Machine<'a
     path: Vec<PathElem>,
     ref_tracking: Option<&'rt mut RefTracking<'tcx, M::PointerTag>>,
     const_mode: bool,
-    ecx: &'rt mut EvalContext<'a, 'mir, 'tcx, M>,
+    ecx: &'rt EvalContext<'a, 'mir, 'tcx, M>,
 }
 
 impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, 'mir, 'tcx, M> {
@@ -188,8 +188,8 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
     type V = OpTy<'tcx, M::PointerTag>;
 
     #[inline(always)]
-    fn ecx(&mut self) -> &mut EvalContext<'a, 'mir, 'tcx, M> {
-        &mut self.ecx
+    fn ecx(&self) -> &EvalContext<'a, 'mir, 'tcx, M> {
+        &self.ecx
     }
 
     #[inline]
@@ -557,7 +557,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// This also toggles between "run-time" (no recursion) and "compile-time" (with recursion)
     /// validation (e.g., pointer values are fine in integers at runtime).
     pub fn validate_operand(
-        &mut self,
+        &self,
         op: OpTy<'tcx, M::PointerTag>,
         path: Vec<PathElem>,
         ref_tracking: Option<&mut RefTracking<'tcx, M::PointerTag>>,

@@ -535,7 +535,7 @@ fn validate_const<'a, 'tcx>(
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     let cid = key.value;
-    let mut ecx = mk_eval_cx(tcx, cid.instance, key.param_env).unwrap();
+    let ecx = mk_eval_cx(tcx, cid.instance, key.param_env).unwrap();
     let val = (|| {
         let op = ecx.const_to_op(constant)?;
         let mut ref_tracking = RefTracking::new(op);
