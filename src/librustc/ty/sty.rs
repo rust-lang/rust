@@ -1165,7 +1165,7 @@ pub enum RegionKind {
 
     /// A placeholder region - basically the higher-ranked version of ReFree.
     /// Should not exist after typeck.
-    RePlaceholder(ty::Placeholder),
+    RePlaceholder(ty::PlaceholderRegion),
 
     /// Empty lifetime is for data that is never accessed.
     /// Bottom in the region lattice. We treat ReEmpty somewhat

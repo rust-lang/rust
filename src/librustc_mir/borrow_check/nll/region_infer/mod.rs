@@ -1230,7 +1230,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         mir: &Mir<'tcx>,
         _mir_def_id: DefId,
         longer_fr: RegionVid,
-        placeholder: ty::Placeholder,
+        placeholder: ty::PlaceholderRegion,
     ) {
         debug!(
             "check_bound_universal_region(fr={:?}, placeholder={:?})",

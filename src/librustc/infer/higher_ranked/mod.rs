@@ -340,7 +340,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let next_universe = self.create_next_universe();
 
         let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
-            self.tcx.mk_region(ty::RePlaceholder(ty::Placeholder {
+            self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
                 universe: next_universe,
                 name: br,
             }))
