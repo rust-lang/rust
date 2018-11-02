@@ -2250,7 +2250,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     pub fn print_debug_stats(self) {
         sty_debug_print!(
             self,
-            Adt, Array, Slice, RawPtr, Ref, FnDef, FnPtr,
+            Adt, Array, Slice, RawPtr, Ref, FnDef, FnPtr, Placeholder,
             Generator, GeneratorWitness, Dynamic, Closure, Tuple, Bound,
             Param, Infer, UnnormalizedProjection, Projection, Opaque, Foreign);
 

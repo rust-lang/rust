@@ -455,7 +455,7 @@ fn ty_is_local_constructor(ty: Ty<'_>, in_crate: InCrate) -> bool {
             false
         }
 
-        ty::Bound(..) | ty::Infer(..) => match in_crate {
+        ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) => match in_crate {
             InCrate::Local => false,
             // The inference variable might be unified with a local
             // type in that remote crate.
