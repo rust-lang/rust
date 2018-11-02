@@ -20,7 +20,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    OpTy, MPlaceTy, Machine, EvalContext, ValueVisitor
+    OpTy, MPlaceTy, ImmTy, Machine, EvalContext, ValueVisitor
 };
 
 macro_rules! validation_failure {
@@ -213,7 +213,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
     fn visit_value(&mut self, op: OpTy<'tcx, M::PointerTag>) -> EvalResult<'tcx>
     {
         trace!("visit_value: {:?}, {:?}", *op, op.layout);
-        // Translate enum discriminant errors to something nicer.
+        // Translate some possible errors to something nicer.
         match self.walk_value(op) {
             Ok(()) => Ok(()),
             Err(err) => match err.kind {
@@ -221,16 +221,17 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     validation_failure!(
                         val, self.path, "a valid enum discriminant"
                     ),
+                EvalErrorKind::ReadPointerAsBytes =>
+                    validation_failure!(
+                        "a pointer", self.path, "plain bytes"
+                    ),
                 _ => Err(err),
             }
         }
     }
 
-    fn visit_primitive(&mut self, op: OpTy<'tcx, M::PointerTag>)
-        -> EvalResult<'tcx>
+    fn visit_primitive(&mut self, value: ImmTy<'tcx, M::PointerTag>) -> EvalResult<'tcx>
     {
-        let value = try_validation!(self.ecx.read_immediate(op),
-            "uninitialized or unrepresentable data", self.path);
         // Go over all the primitive types
         let ty = value.layout.ty;
         match ty.sty {
@@ -379,8 +380,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         Ok(())
     }
 
-    fn visit_uninhabited(&mut self, _op: OpTy<'tcx, M::PointerTag>)
-        -> EvalResult<'tcx>
+    fn visit_uninhabited(&mut self) -> EvalResult<'tcx>
     {
         validation_failure!("a value of an uninhabited type", self.path)
     }
@@ -390,8 +390,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         op: OpTy<'tcx, M::PointerTag>,
         layout: &layout::Scalar,
     ) -> EvalResult<'tcx> {
-        let value = try_validation!(self.ecx.read_scalar(op),
-            "uninitialized or unrepresentable data", self.path);
+        let value = self.ecx.read_scalar(op)?;
         // Determine the allowed range
         let (lo, hi) = layout.valid_range.clone().into_inner();
         // `max_hi` is as big as the size fits

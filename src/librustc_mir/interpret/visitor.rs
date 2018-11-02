@@ -8,7 +8,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    Machine, EvalContext, MPlaceTy, PlaceTy, OpTy,
+    Machine, EvalContext, MPlaceTy, PlaceTy, OpTy, ImmTy,
 };
 
 // A thing that we can project into, and that has a layout.
@@ -205,9 +205,11 @@ pub trait ValueVisitor<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Siz
     /// Called whenever we reach a value with uninhabited layout.
     /// Recursing to fields will continue after this!
     #[inline(always)]
-    fn visit_uninhabited(&mut self, _v: Self::V) -> EvalResult<'tcx>
+    fn visit_uninhabited(&mut self) -> EvalResult<'tcx>
     { Ok(()) }
     /// Called whenever we reach a value with scalar layout.
+    /// We do NOT provide a `ScalarMaybeUndef` here to avoid accessing memory
+    /// if the visitor is not even interested in scalars.
     /// Recursing to fields will continue after this!
     #[inline(always)]
     fn visit_scalar(&mut self, _v: Self::V, _layout: &layout::Scalar) -> EvalResult<'tcx>
@@ -215,7 +217,7 @@ pub trait ValueVisitor<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Siz
     /// Called whenever we reach a value of primitive type.  There can be no recursion
     /// below such a value.
     #[inline(always)]
-    fn visit_primitive(&mut self, _v: Self::V) -> EvalResult<'tcx>
+    fn visit_primitive(&mut self, _val: ImmTy<'tcx, M::PointerTag>) -> EvalResult<'tcx>
     { Ok(()) }
 
     // Default recursors. Not meant to be overloaded.
@@ -275,7 +277,7 @@ pub trait ValueVisitor<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Siz
         // MyNewtype and then the scalar in there).
         match v.layout().abi {
             layout::Abi::Uninhabited => {
-                self.visit_uninhabited(v)?;
+                self.visit_uninhabited()?;
             }
             layout::Abi::Scalar(ref layout) => {
                 self.visit_scalar(v, layout)?;
@@ -295,7 +297,9 @@ pub trait ValueVisitor<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Siz
             _ => v.layout().ty.builtin_deref(true).is_some(),
         };
         if primitive {
-            return self.visit_primitive(v);
+            let op = v.to_op(self.ecx())?;
+            let val = self.ecx().read_immediate(op)?;
+            return self.visit_primitive(val);
         }
 
         // Proceed into the fields.
