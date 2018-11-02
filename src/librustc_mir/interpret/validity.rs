@@ -212,7 +212,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         // Perform operation
         self.push_aggregate_field_path_elem(op.layout, field);
         self.op = val;
-        self.visit(ectx)?;
+        self.visit_value(ectx)?;
         // Undo changes
         self.path.truncate(path_len);
         self.op = op;
@@ -220,11 +220,11 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
     }
 
     #[inline]
-    fn visit(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
+    fn visit_value(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
         -> EvalResult<'tcx>
     {
         // Translate enum discriminant errors to something nicer.
-        match ectx.walk_value(self) {
+        match self.walk_value(ectx) {
             Ok(()) => Ok(()),
             Err(err) => match err.kind {
                 EvalErrorKind::InvalidDiscriminant(val) =>
@@ -479,15 +479,14 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         }
     }
 
-    fn handle_array(&mut self, ectx: &EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx, bool>
+    fn visit_array(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
+        -> EvalResult<'tcx>
     {
-        Ok(match self.op.layout.ty.sty {
+        match self.op.layout.ty.sty {
             ty::Str => {
                 let mplace = self.op.to_mem_place(); // strings are never immediate
                 try_validation!(ectx.read_str(mplace),
                     "uninitialized or non-UTF-8 data in str", self.path);
-                true
             }
             ty::Array(tys, ..) | ty::Slice(tys) if {
                 // This optimization applies only for integer and floating point types
@@ -526,7 +525,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     /*allow_ptr_and_undef*/!self.const_mode,
                 ) {
                     // In the happy case, we needn't check anything else.
-                    Ok(()) => true, // handled these arrays
+                    Ok(()) => {},
                     // Some error happened, try to provide a more detailed description.
                     Err(err) => {
                         // For some errors we might be able to provide extra information
@@ -548,8 +547,11 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     }
                 }
             }
-            _ => false, // not handled
-        })
+            _ => {
+                self.walk_array(ectx)? // default handler
+            }
+        }
+        Ok(())
     }
 }
 
@@ -580,6 +582,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         };
 
         // Run it
-        visitor.visit(self)
+        visitor.visit_value(self)
     }
 }

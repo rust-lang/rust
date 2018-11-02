@@ -178,11 +178,24 @@ pub trait ValueVisitor<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: fmt::Debug +
         self.value().layout()
     }
 
-    // Replace the value by `val`, which must be the `field`th field of `self`, then call
-    // `visit_value` and then un-do everything that might have happened to the visitor state.
-    // The point of this is that some visitors keep a stack of fields that we projected below,
-    // and this lets us avoid copying that stack; instead they will pop the stack after
-    // executing `visit_value`.
+    // Recursie actions, ready to be overloaded.
+    /// Visit the current value, dispatching as appropriate to more speicalized visitors.
+    #[inline]
+    fn visit_value(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
+        -> EvalResult<'tcx>
+    {
+        self.walk_value(ectx)
+    }
+    /// Visit the current value as an array.
+    #[inline]
+    fn visit_array(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
+        -> EvalResult<'tcx>
+    {
+        self.walk_array(ectx)
+    }
+    /// Called each time we recurse down to a field of the value, to (a) let
+    /// the visitor change its internal state (recording the new current value),
+    /// and (b) let the visitor track the "stack" of fields that we descended below.
     fn visit_field(
         &mut self,
         ectx: &mut EvalContext<'a, 'mir, 'tcx, M>,
@@ -190,65 +203,66 @@ pub trait ValueVisitor<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: fmt::Debug +
         field: usize,
     ) -> EvalResult<'tcx>;
 
-    // A chance for the visitor to do special (different or more efficient) handling for some
-    // array types.  Return `true` if the value was handled and we should return.
+    // Actions on the leaves, ready to be overloaded.
     #[inline]
-    fn handle_array(&mut self, _ectx: &EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx, bool>
-    {
-        Ok(false)
-    }
-
-    // Execute visitor on the current value.  Used for recursing.
-    #[inline]
-    fn visit(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
-        -> EvalResult<'tcx>
-    {
-        ectx.walk_value(self)
-    }
-
-    // Actions on the leaves.
     fn visit_uninhabited(&mut self, _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
         -> EvalResult<'tcx>
     { Ok(()) }
+    #[inline]
     fn visit_scalar(&mut self, _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>, _layout: &layout::Scalar)
         -> EvalResult<'tcx>
     { Ok(()) }
+    #[inline]
     fn visit_primitive(&mut self, _ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
         -> EvalResult<'tcx>
     { Ok(()) }
-}
 
-impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
-    pub fn walk_value<V: ValueVisitor<'a, 'mir, 'tcx, M>>(
-        &mut self,
-        v: &mut V,
-    ) -> EvalResult<'tcx> {
-        trace!("walk_value: {:?}", v);
+    // Default recursors. Not meant to be overloaded.
+    fn walk_array(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
+        -> EvalResult<'tcx>
+    {
+        // Let's get an mplace first.
+        let mplace = if self.layout().is_zst() {
+            // it's a ZST, the memory content cannot matter
+            MPlaceTy::dangling(self.layout(), ectx)
+        } else {
+            // non-ZST array/slice/str cannot be immediate
+            self.value().to_mem_place(ectx)?
+        };
+        // Now iterate over it.
+        for (i, field) in ectx.mplace_array_fields(mplace)?.enumerate() {
+            self.visit_field(ectx, Value::from_mem_place(field?), i)?;
+        }
+        Ok(())
+    }
+    fn walk_value(&mut self, ectx: &mut EvalContext<'a, 'mir, 'tcx, M>)
+        -> EvalResult<'tcx>
+    {
+        trace!("walk_value: {:?}", self);
 
         // If this is a multi-variant layout, we have find the right one and proceed with that.
         // (No benefit from making this recursion, but it is equivalent to that.)
-        match v.layout().variants {
+        match self.layout().variants {
             layout::Variants::NicheFilling { .. } |
             layout::Variants::Tagged { .. } => {
-                let (inner, idx) = v.value().project_downcast(self)?;
+                let (inner, idx) = self.value().project_downcast(ectx)?;
                 trace!("variant layout: {:#?}", inner.layout());
                 // recurse with the inner type
-                return v.visit_field(self, inner, idx);
+                return self.visit_field(ectx, inner, idx);
             }
             layout::Variants::Single { .. } => {}
         }
 
         // Even for single variants, we might be able to get a more refined type:
         // If it is a trait object, switch to the actual type that was used to create it.
-        match v.layout().ty.sty {
+        match self.layout().ty.sty {
             ty::Dynamic(..) => {
                 // immediate trait objects are not a thing
-                let dest = v.value().to_mem_place(self)?;
-                let inner = self.unpack_dyn_trait(dest)?.1;
+                let dest = self.value().to_mem_place(ectx)?;
+                let inner = ectx.unpack_dyn_trait(dest)?.1;
                 trace!("dyn object layout: {:#?}", inner.layout);
                 // recurse with the inner type
-                return v.visit_field(self, Value::from_mem_place(inner), 0);
+                return self.visit_field(ectx, Value::from_mem_place(inner), 0);
             },
             _ => {},
         };
@@ -260,12 +274,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         // FIXME: We could avoid some redundant checks here. For newtypes wrapping
         // scalars, we do the same check on every "level" (e.g. first we check
         // MyNewtype and then the scalar in there).
-        match v.layout().abi {
+        match self.layout().abi {
             layout::Abi::Uninhabited => {
-                v.visit_uninhabited(self)?;
+                self.visit_uninhabited(ectx)?;
             }
             layout::Abi::Scalar(ref layout) => {
-                v.visit_scalar(self, layout)?;
+                self.visit_scalar(ectx, layout)?;
             }
             // FIXME: Should we do something for ScalarPair? Vector?
             _ => {}
@@ -276,17 +290,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         // so we check them separately and before aggregate handling.
         // It is CRITICAL that we get this check right, or we might be
         // validating the wrong thing!
-        let primitive = match v.layout().fields {
+        let primitive = match self.layout().fields {
             // Primitives appear as Union with 0 fields -- except for Boxes and fat pointers.
             layout::FieldPlacement::Union(0) => true,
-            _ => v.layout().ty.builtin_deref(true).is_some(),
+            _ => self.layout().ty.builtin_deref(true).is_some(),
         };
         if primitive {
-            return v.visit_primitive(self);
+            return self.visit_primitive(ectx);
         }
 
         // Proceed into the fields.
-        match v.layout().fields {
+        match self.layout().fields {
             layout::FieldPlacement::Union(fields) => {
                 // Empty unions are not accepted by rustc. That's great, it means we can
                 // use that as an unambiguous signal for detecting primitives.  Make sure
@@ -298,26 +312,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             },
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
                 for i in 0..offsets.len() {
-                    let val = v.value().project_field(self, i as u64)?;
-                    v.visit_field(self, val, i)?;
+                    let val = self.value().project_field(ectx, i as u64)?;
+                    self.visit_field(ectx, val, i)?;
                 }
             },
             layout::FieldPlacement::Array { .. } => {
-                if !v.handle_array(self)? {
-                    // We still have to work!
-                    // Let's get an mplace first.
-                    let mplace = if v.layout().is_zst() {
-                        // it's a ZST, the memory content cannot matter
-                        MPlaceTy::dangling(v.layout(), self)
-                    } else {
-                        // non-ZST array/slice/str cannot be immediate
-                        v.value().to_mem_place(self)?
-                    };
-                    // Now iterate over it.
-                    for (i, field) in self.mplace_array_fields(mplace)?.enumerate() {
-                        v.visit_field(self, Value::from_mem_place(field?), i)?;
-                    }
-                }
+                self.visit_array(ectx)?;
             }
         }
         Ok(())
