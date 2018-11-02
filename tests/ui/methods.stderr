@@ -323,139 +323,83 @@ error: use of `unwrap_or` followed by a function call
 353 |     let _ = stringy.unwrap_or("".to_owned());
     |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| "".to_owned())`
 
-error: `error_code` is shadowed by `123_i32`
-   --> $DIR/methods.rs:387:9
-    |
-387 |     let error_code = 123_i32;
-    |         ^^^^^^^^^^
-    |
-    = note: `-D clippy::shadow-unrelated` implied by `-D warnings`
-note: initialization happens here
-   --> $DIR/methods.rs:387:22
-    |
-387 |     let error_code = 123_i32;
-    |                      ^^^^^^^
-note: previous binding is here
-   --> $DIR/methods.rs:374:9
-    |
-374 |     let error_code = 123_i32;
-    |         ^^^^^^^^^^
-
-error: use of `expect` followed by a function call
-   --> $DIR/methods.rs:376:26
-    |
-376 |     with_none_and_format.expect(&format!("Error {}: fake error", error_code));
-    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
-    |
-    = note: `-D clippy::expect-fun-call` implied by `-D warnings`
-
-error: use of `expect` followed by a function call
-   --> $DIR/methods.rs:379:26
-    |
-379 |     with_none_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
-    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("Error {}: fake error", error_code))`
-
-error: use of `expect` followed by a function call
-   --> $DIR/methods.rs:389:25
-    |
-389 |     with_err_and_format.expect(&format!("Error {}: fake error", error_code));
-    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| panic!("Error {}: fake error", error_code))`
-
-error: use of `expect` followed by a function call
-   --> $DIR/methods.rs:392:25
-    |
-392 |     with_err_and_as_str.expect(format!("Error {}: fake error", error_code).as_str());
-    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|_| panic!("Error {}: fake error", error_code))`
-
-error: use of `expect` followed by a function call
-   --> $DIR/methods.rs:407:17
-    |
-407 |     Some("foo").expect({ &format!("error") });
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| { let msg = { &format!("error") }; panic!(msg) }))`
-
-error: use of `expect` followed by a function call
-   --> $DIR/methods.rs:408:17
-    |
-408 |     Some("foo").expect(format!("error").as_ref());
-    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try this: `unwrap_or_else(|| panic!("error"))`
-
 error: called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:419:23
+   --> $DIR/methods.rs:364:23
     |
-419 |         let bad_vec = some_vec.iter().nth(3);
+364 |         let bad_vec = some_vec.iter().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D clippy::iter-nth` implied by `-D warnings`
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:420:26
+   --> $DIR/methods.rs:365:26
     |
-420 |         let bad_slice = &some_vec[..].iter().nth(3);
+365 |         let bad_slice = &some_vec[..].iter().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:421:31
+   --> $DIR/methods.rs:366:31
     |
-421 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
+366 |         let bad_boxed_slice = boxed_slice.iter().nth(3);
     |                               ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter().nth()` on a VecDeque. Calling `.get()` is both faster and more readable
-   --> $DIR/methods.rs:422:29
+   --> $DIR/methods.rs:367:29
     |
-422 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
+367 |         let bad_vec_deque = some_vec_deque.iter().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a Vec. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:427:23
+   --> $DIR/methods.rs:372:23
     |
-427 |         let bad_vec = some_vec.iter_mut().nth(3);
+372 |         let bad_vec = some_vec.iter_mut().nth(3);
     |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a slice. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:430:26
+   --> $DIR/methods.rs:375:26
     |
-430 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
+375 |         let bad_slice = &some_vec[..].iter_mut().nth(3);
     |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `.iter_mut().nth()` on a VecDeque. Calling `.get_mut()` is both faster and more readable
-   --> $DIR/methods.rs:433:29
+   --> $DIR/methods.rs:378:29
     |
-433 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
+378 |         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
     |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:445:13
+   --> $DIR/methods.rs:390:13
     |
-445 |     let _ = some_vec.iter().skip(42).next();
+390 |     let _ = some_vec.iter().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: `-D clippy::iter-skip-next` implied by `-D warnings`
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:446:13
+   --> $DIR/methods.rs:391:13
     |
-446 |     let _ = some_vec.iter().cycle().skip(42).next();
+391 |     let _ = some_vec.iter().cycle().skip(42).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:447:13
+   --> $DIR/methods.rs:392:13
     |
-447 |     let _ = (1..10).skip(10).next();
+392 |     let _ = (1..10).skip(10).next();
     |             ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
-   --> $DIR/methods.rs:448:14
+   --> $DIR/methods.rs:393:14
     |
-448 |     let _ = &some_vec[..].iter().skip(3).next();
+393 |     let _ = &some_vec[..].iter().skip(3).next();
     |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
-   --> $DIR/methods.rs:457:13
+   --> $DIR/methods.rs:402:13
     |
-457 |     let _ = opt.unwrap();
+402 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: `-D clippy::option-unwrap-used` implied by `-D warnings`
 
-error: aborting due to 57 previous errors
+error: aborting due to 50 previous errors
 

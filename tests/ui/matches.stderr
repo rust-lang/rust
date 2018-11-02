@@ -88,276 +88,215 @@ help: try
 72 |     if let None = b {
    |            ^^^^   ^
 
-error: some ranges overlap
-  --> $DIR/matches.rs:81:9
+error: Err(_) will match all errors, maybe not a good idea
+  --> $DIR/matches.rs:83:9
    |
-81 |         0 ... 10 => println!("0 ... 10"),
-   |         ^^^^^^^^
+83 |         Err(_) => panic!("err")
+   |         ^^^^^^
    |
-   = note: `-D clippy::match-overlapping-arm` implied by `-D warnings`
-note: overlaps with this
-  --> $DIR/matches.rs:82:9
-   |
-82 |         0 ... 11 => println!("0 ... 11"),
-   |         ^^^^^^^^
+   = note: `-D clippy::match-wild-err-arm` implied by `-D warnings`
+   = note: to remove this warning, match each error separately or use unreachable macro
 
-error: some ranges overlap
-  --> $DIR/matches.rs:87:9
+error: this `match` has identical arm bodies
+  --> $DIR/matches.rs:82:18
    |
-87 |         0 ... 5 => println!("0 ... 5"),
-   |         ^^^^^^^
+82 |         Ok(_) => println!("ok"),
+   |                  ^^^^^^^^^^^^^^
    |
-note: overlaps with this
+   = note: `-D clippy::match-same-arms` implied by `-D warnings`
+note: same as this
+  --> $DIR/matches.rs:81:18
+   |
+81 |         Ok(3) => println!("ok"),
+   |                  ^^^^^^^^^^^^^^
+note: consider refactoring into `Ok(3) | Ok(_)`
+  --> $DIR/matches.rs:81:18
+   |
+81 |         Ok(3) => println!("ok"),
+   |                  ^^^^^^^^^^^^^^
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: Err(_) will match all errors, maybe not a good idea
   --> $DIR/matches.rs:89:9
    |
-89 |         FOO ... 11 => println!("0 ... 11"),
-   |         ^^^^^^^^^^
+89 |         Err(_) => {panic!()}
+   |         ^^^^^^
+   |
+   = note: to remove this warning, match each error separately or use unreachable macro
 
-error: some ranges overlap
+error: this `match` has identical arm bodies
+  --> $DIR/matches.rs:88:18
+   |
+88 |         Ok(_) => println!("ok"),
+   |                  ^^^^^^^^^^^^^^
+   |
+note: same as this
+  --> $DIR/matches.rs:87:18
+   |
+87 |         Ok(3) => println!("ok"),
+   |                  ^^^^^^^^^^^^^^
+note: consider refactoring into `Ok(3) | Ok(_)`
+  --> $DIR/matches.rs:87:18
+   |
+87 |         Ok(3) => println!("ok"),
+   |                  ^^^^^^^^^^^^^^
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
+
+error: Err(_) will match all errors, maybe not a good idea
   --> $DIR/matches.rs:95:9
    |
-95 |         0 ... 5 => println!("0 ... 5"),
-   |         ^^^^^^^
+95 |         Err(_) => {panic!();}
+   |         ^^^^^^
    |
-note: overlaps with this
-  --> $DIR/matches.rs:94:9
+   = note: to remove this warning, match each error separately or use unreachable macro
+
+error: this `match` has identical arm bodies
+  --> $DIR/matches.rs:94:18
    |
-94 |         2 => println!("2"),
-   |         ^
-
-error: some ranges overlap
-   --> $DIR/matches.rs:101:9
-    |
-101 |         0 ... 2 => println!("0 ... 2"),
-    |         ^^^^^^^
-    |
-note: overlaps with this
-   --> $DIR/matches.rs:100:9
-    |
-100 |         2 => println!("2"),
-    |         ^
-
-error: some ranges overlap
-   --> $DIR/matches.rs:124:9
-    |
-124 |         0 .. 11 => println!("0 .. 11"),
-    |         ^^^^^^^
-    |
-note: overlaps with this
-   --> $DIR/matches.rs:125:9
-    |
-125 |         0 ... 11 => println!("0 ... 11"),
-    |         ^^^^^^^^
-
-error: Err(_) will match all errors, maybe not a good idea
-   --> $DIR/matches.rs:142:9
-    |
-142 |         Err(_) => panic!("err")
-    |         ^^^^^^
-    |
-    = note: `-D clippy::match-wild-err-arm` implied by `-D warnings`
-    = note: to remove this warning, match each error separately or use unreachable macro
-
-error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:141:18
-    |
-141 |         Ok(_) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-    |
-    = note: `-D clippy::match-same-arms` implied by `-D warnings`
+94 |         Ok(_) => println!("ok"),
+   |                  ^^^^^^^^^^^^^^
+   |
 note: same as this
-   --> $DIR/matches.rs:140:18
-    |
-140 |         Ok(3) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
+  --> $DIR/matches.rs:93:18
+   |
+93 |         Ok(3) => println!("ok"),
+   |                  ^^^^^^^^^^^^^^
 note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:140:18
-    |
-140 |         Ok(3) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-error: Err(_) will match all errors, maybe not a good idea
-   --> $DIR/matches.rs:148:9
-    |
-148 |         Err(_) => {panic!()}
-    |         ^^^^^^
-    |
-    = note: to remove this warning, match each error separately or use unreachable macro
+  --> $DIR/matches.rs:93:18
+   |
+93 |         Ok(3) => println!("ok"),
+   |                  ^^^^^^^^^^^^^^
+   = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:147:18
+   --> $DIR/matches.rs:101:18
     |
-147 |         Ok(_) => println!("ok"),
+101 |         Ok(_) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     |
 note: same as this
-   --> $DIR/matches.rs:146:18
+   --> $DIR/matches.rs:100:18
     |
-146 |         Ok(3) => println!("ok"),
+100 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
 note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:146:18
+   --> $DIR/matches.rs:100:18
     |
-146 |         Ok(3) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-error: Err(_) will match all errors, maybe not a good idea
-   --> $DIR/matches.rs:154:9
-    |
-154 |         Err(_) => {panic!();}
-    |         ^^^^^^
-    |
-    = note: to remove this warning, match each error separately or use unreachable macro
-
-error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:153:18
-    |
-153 |         Ok(_) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-    |
-note: same as this
-   --> $DIR/matches.rs:152:18
-    |
-152 |         Ok(3) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:152:18
-    |
-152 |         Ok(3) => println!("ok"),
+100 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:160:18
+   --> $DIR/matches.rs:108:18
     |
-160 |         Ok(_) => println!("ok"),
+108 |         Ok(_) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     |
 note: same as this
-   --> $DIR/matches.rs:159:18
+   --> $DIR/matches.rs:107:18
     |
-159 |         Ok(3) => println!("ok"),
+107 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
 note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:159:18
+   --> $DIR/matches.rs:107:18
     |
-159 |         Ok(3) => println!("ok"),
+107 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:167:18
+   --> $DIR/matches.rs:114:18
     |
-167 |         Ok(_) => println!("ok"),
+114 |         Ok(_) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     |
 note: same as this
-   --> $DIR/matches.rs:166:18
+   --> $DIR/matches.rs:113:18
     |
-166 |         Ok(3) => println!("ok"),
+113 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
 note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:166:18
+   --> $DIR/matches.rs:113:18
     |
-166 |         Ok(3) => println!("ok"),
+113 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:173:18
+   --> $DIR/matches.rs:120:18
     |
-173 |         Ok(_) => println!("ok"),
+120 |         Ok(_) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     |
 note: same as this
-   --> $DIR/matches.rs:172:18
+   --> $DIR/matches.rs:119:18
     |
-172 |         Ok(3) => println!("ok"),
+119 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
 note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:172:18
+   --> $DIR/matches.rs:119:18
     |
-172 |         Ok(3) => println!("ok"),
+119 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:179:18
+   --> $DIR/matches.rs:141:29
     |
-179 |         Ok(_) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-    |
-note: same as this
-   --> $DIR/matches.rs:178:18
-    |
-178 |         Ok(3) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:178:18
-    |
-178 |         Ok(3) => println!("ok"),
-    |                  ^^^^^^^^^^^^^^
-    = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
-
-error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:200:29
-    |
-200 |         (Ok(_), Some(x)) => println!("ok {}", x),
+141 |         (Ok(_), Some(x)) => println!("ok {}", x),
     |                             ^^^^^^^^^^^^^^^^^^^^
     |
 note: same as this
-   --> $DIR/matches.rs:199:29
+   --> $DIR/matches.rs:140:29
     |
-199 |         (Ok(x), Some(_)) => println!("ok {}", x),
+140 |         (Ok(x), Some(_)) => println!("ok {}", x),
     |                             ^^^^^^^^^^^^^^^^^^^^
 note: consider refactoring into `(Ok(x), Some(_)) | (Ok(_), Some(x))`
-   --> $DIR/matches.rs:199:29
+   --> $DIR/matches.rs:140:29
     |
-199 |         (Ok(x), Some(_)) => println!("ok {}", x),
+140 |         (Ok(x), Some(_)) => println!("ok {}", x),
     |                             ^^^^^^^^^^^^^^^^^^^^
     = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: this `match` has identical arm bodies
-   --> $DIR/matches.rs:215:18
+   --> $DIR/matches.rs:156:18
     |
-215 |         Ok(_) => println!("ok"),
+156 |         Ok(_) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     |
 note: same as this
-   --> $DIR/matches.rs:214:18
+   --> $DIR/matches.rs:155:18
     |
-214 |         Ok(3) => println!("ok"),
+155 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
 note: consider refactoring into `Ok(3) | Ok(_)`
-   --> $DIR/matches.rs:214:18
+   --> $DIR/matches.rs:155:18
     |
-214 |         Ok(3) => println!("ok"),
+155 |         Ok(3) => println!("ok"),
     |                  ^^^^^^^^^^^^^^
     = note: this error originates in a macro outside of the current crate (in Nightly builds, run with -Z external-macro-backtrace for more info)
 
 error: use as_ref() instead
-   --> $DIR/matches.rs:222:33
+   --> $DIR/matches.rs:163:33
     |
-222 |       let borrowed: Option<&()> = match owned {
+163 |       let borrowed: Option<&()> = match owned {
     |  _________________________________^
-223 | |         None => None,
-224 | |         Some(ref v) => Some(v),
-225 | |     };
+164 | |         None => None,
+165 | |         Some(ref v) => Some(v),
+166 | |     };
     | |_____^ help: try this: `owned.as_ref()`
     |
     = note: `-D clippy::match-as-ref` implied by `-D warnings`
 
 error: use as_mut() instead
-   --> $DIR/matches.rs:228:39
+   --> $DIR/matches.rs:169:39
     |
-228 |       let borrow_mut: Option<&mut ()> = match mut_owned {
+169 |       let borrow_mut: Option<&mut ()> = match mut_owned {
     |  _______________________________________^
-229 | |         None => None,
-230 | |         Some(ref mut v) => Some(v),
-231 | |     };
+170 | |         None => None,
+171 | |         Some(ref mut v) => Some(v),
+172 | |     };
     | |_____^ help: try this: `mut_owned.as_mut()`
 
-error: aborting due to 26 previous errors
+error: aborting due to 21 previous errors
 
