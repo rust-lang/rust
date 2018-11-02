@@ -20,6 +20,7 @@ use crate::traits::error_reporting::InferCtxtExt;
 use rustc_ast::ast::Ident;
 use rustc_errors::ErrorReported;
 use rustc_hir::def_id::DefId;
+use rustc_middle::limits::ensure_sufficient_stack;
 use rustc_middle::ty::fold::{TypeFoldable, TypeFolder};
 use rustc_middle::ty::subst::{InternalSubsts, Subst};
 use rustc_middle::ty::{self, ToPolyTraitRef, ToPredicate, Ty, TyCtxt, WithConstness};
@@ -261,7 +262,7 @@ where
 {
     debug!("normalize_with_depth(depth={}, value={:?})", depth, value);
     let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth, obligations);
-    let result = normalizer.fold(value);
+    let result = ensure_sufficient_stack(|| normalizer.fold(value));
     debug!(
         "normalize_with_depth: depth={} result={:?} with {} obligations",
         depth,
