@@ -388,6 +388,16 @@ fn symbol_export_level(tcx: TyCtxt, sym_def_id: DefId) -> SymbolExportLevel {
         codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
 
     if is_extern && !std_internal {
+        // Emscripten cannot export statics, so reduce their export level here
+        if tcx.sess.target.target.options.is_like_emscripten {
+            if let Some(Node::Item(&hir::Item {
+                node: hir::ItemKind::Static(..),
+                ..
+            })) = tcx.hir.get_if_local(sym_def_id) {
+                return SymbolExportLevel::Rust;
+            }
+        }
+
         SymbolExportLevel::C
     } else {
         SymbolExportLevel::Rust
