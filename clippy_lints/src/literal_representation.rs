@@ -210,7 +210,7 @@ impl<'a> DigitInfo<'a> {
                 .filter(|&c| c != '_')
                 .collect::<Vec<_>>()
                 .chunks(group_size)
-                .map(|chunk| chunk.into_iter().rev().collect())
+                .map(|chunk| chunk.iter().rev().collect())
                 .rev()
                 .collect::<Vec<String>>()
                 .join("_");
@@ -221,7 +221,7 @@ impl<'a> DigitInfo<'a> {
                 .filter(|&c| c != '_')
                 .collect::<Vec<_>>()
                 .chunks(group_size)
-                .map(|chunk| chunk.into_iter().collect())
+                .map(|chunk| chunk.iter().collect())
                 .collect::<Vec<String>>()
                 .join("_");
             format!(
@@ -238,7 +238,7 @@ impl<'a> DigitInfo<'a> {
                 .collect::<Vec<_>>();
             let mut hint = filtered_digits_vec
                 .chunks(group_size)
-                .map(|chunk| chunk.into_iter().rev().collect())
+                .map(|chunk| chunk.iter().rev().collect())
                 .rev()
                 .collect::<Vec<String>>()
                 .join("_");

@@ -713,6 +713,8 @@ All notable changes to this project will be documented in this file.
 [`inline_fn_without_body`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#inline_fn_without_body
 [`int_plus_one`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#int_plus_one
 [`integer_arithmetic`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#integer_arithmetic
+[`into_iter_on_array`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#into_iter_on_array
+[`into_iter_on_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#into_iter_on_ref
 [`invalid_ref`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#invalid_ref
 [`invalid_regex`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#invalid_regex
 [`invalid_upcast_comparisons`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#invalid_upcast_comparisons
