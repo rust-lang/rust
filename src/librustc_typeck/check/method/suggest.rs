@@ -430,15 +430,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                       bound_list));
                 }
 
-                if actual.is_numeric() && actual.is_fresh() {
-
-                } else {
-                    self.suggest_traits_to_import(&mut err,
-                                                  span,
-                                                  rcvr_ty,
-                                                  item_name,
-                                                  source,
-                                                  out_of_scope_traits);
+                if !actual.is_numeric() || !actual.is_fresh() {
+                    self.suggest_traits_to_import(
+                        &mut err, span, rcvr_ty, item_name, source, out_of_scope_traits
+                    );
                 }
 
                 if let Some(lev_candidate) = lev_candidate {
@@ -575,13 +570,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn suggest_traits_to_import<'b>(&self,
-                                    err: &mut DiagnosticBuilder,
-                                    span: Span,
-                                    rcvr_ty: Ty<'tcx>,
-                                    item_name: ast::Ident,
-                                    source: SelfSource<'b>,
-                                    valid_out_of_scope_traits: Vec<DefId>) {
+    fn suggest_traits_to_import(
+        &self,
+        err: &mut DiagnosticBuilder,
+        span: Span,
+        rcvr_ty: Ty<'tcx>,
+        item_name: ast::Ident,
+        source: SelfSource<'a>,
+        valid_out_of_scope_traits: Vec<DefId>
+    ) {
+        debug!(
+            "suggest_traits_to_import: rcvr_ty={:?} item_name={:?} source={:?} \
+             valid_out_of_scope_traits={:?}",
+             rcvr_ty, item_name, source, valid_out_of_scope_traits,
+        );
         if self.suggest_valid_traits(err, valid_out_of_scope_traits) {
             return;
         }
@@ -610,6 +612,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             })
             .collect::<Vec<_>>();
 
+        debug!("suggest_traits_to_import: candidates={:?}", candidates);
         if !candidates.is_empty() {
             // Sort from most relevant to least relevant.
             candidates.sort_by(|a, b| a.cmp(b).reverse());
@@ -676,13 +679,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum SelfSource<'a> {
     QPath(&'a hir::Ty),
     MethodCall(&'a hir::Expr /* rcvr */),
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct TraitInfo {
     pub def_id: DefId,
 }
@@ -692,12 +695,15 @@ impl PartialEq for TraitInfo {
         self.cmp(other) == Ordering::Equal
     }
 }
+
 impl Eq for TraitInfo {}
+
 impl PartialOrd for TraitInfo {
     fn partial_cmp(&self, other: &TraitInfo) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
+
 impl Ord for TraitInfo {
     fn cmp(&self, other: &TraitInfo) -> Ordering {
         // Local crates are more important than remote ones (local:

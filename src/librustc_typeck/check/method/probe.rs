@@ -491,6 +491,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     fn reset(&mut self) {
+        debug!("reset");
         self.inherent_candidates.clear();
         self.extension_candidates.clear();
         self.impl_dups.clear();
@@ -505,6 +506,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                       candidate: Candidate<'tcx>,
                       is_inherent: bool)
     {
+        debug!("push_candidate: candidate={:?} is_inherent={:?}", candidate, is_inherent);
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
             let def_scope = self.tcx.adjust_ident(name, item.container.id(), self.body_id).1;
@@ -512,6 +514,8 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         } else {
             true
         };
+
+        debug!("push_candidate: is_accessible={:?}", is_accessible);
         if is_accessible {
             if is_inherent {
                 self.inherent_candidates.push(candidate);
@@ -847,6 +851,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     fn assemble_extension_candidates_for_all_traits(&mut self) -> Result<(), MethodError<'tcx>> {
+        debug!("assemble_extension_candidates_for_all_traits");
         let mut duplicates = FxHashSet::default();
         for trait_info in suggest::all_traits(self.tcx) {
             if duplicates.insert(trait_info.def_id) {
@@ -939,6 +944,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     // THE ACTUAL SEARCH
 
     fn pick(mut self) -> PickResult<'tcx> {
+        debug!("pick: method_name={:?}", self.method_name);
         assert!(self.method_name.is_some());
 
         if let Some(r) = self.pick_core() {
@@ -958,9 +964,13 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         self.assemble_extension_candidates_for_all_traits()?;
 
         let out_of_scope_traits = match self.pick_core() {
-            Some(Ok(p)) => vec![p.item.container.id()],
+            Some(Ok(p)) => {
+                debug!("pick: (ok) p={:?}", p);
+                vec![p.item.container.id()]
+            },
             //Some(Ok(p)) => p.iter().map(|p| p.item.container().id()).collect(),
             Some(Err(MethodError::Ambiguity(v))) => {
+                debug!("pick: (ambiguity) v={:?}", v);
                 v.into_iter()
                     .map(|source| {
                         match source {
@@ -979,6 +989,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     .collect()
             }
             Some(Err(MethodError::NoMatch(NoMatchData { out_of_scope_traits: others, .. }))) => {
+                debug!("pick: (no match) others={:?}", others);
                 assert!(others.is_empty());
                 vec![]
             }
@@ -990,6 +1001,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         }
         let lev_candidate = self.probe_for_lev_candidate()?;
 
+        debug!("pick: out_of_scope_traits={:?}", out_of_scope_traits);
         Err(MethodError::NoMatch(NoMatchData::new(static_candidates,
                                                   unsatisfied_predicates,
                                                   out_of_scope_traits,
@@ -1302,13 +1314,20 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                     let predicate = trait_ref.to_predicate();
                     let obligation =
                         traits::Obligation::new(cause, self.param_env, predicate);
+                    debug!(
+                        "consider_probe: predicate={:?} obligation={:?} trait_ref={:?}",
+                        predicate, obligation, trait_ref
+                    );
                     if !self.predicate_may_hold(&obligation) {
+                        debug!("consider_probe: predicate did not hold");
                         if self.probe(|_| self.select_trait_candidate(trait_ref).is_err()) {
+                            debug!("consider_probe: select_trait_candidate.is_err=true");
                             // This candidate's primary obligation doesn't even
                             // select - don't bother registering anything in
                             // `potentially_unsatisfied_predicates`.
                             return ProbeResult::NoMatch;
                         } else {
+                            debug!("consider_probe: nested subobligation");
                             // Some nested subobligation of this predicate
                             // failed.
                             //
