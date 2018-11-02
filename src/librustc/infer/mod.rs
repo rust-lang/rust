@@ -972,6 +972,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.tcx.mk_var(self.next_ty_var_id(false, origin))
     }
 
+    pub fn next_ty_var_in_universe(
+        &self,
+        origin: TypeVariableOrigin,
+        universe: ty::UniverseIndex
+    ) -> Ty<'tcx> {
+        let vid = self.type_variables
+            .borrow_mut()
+            .new_var(universe, false, origin);
+        self.tcx.mk_var(vid)
+    }
+
     pub fn next_diverging_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
         self.tcx.mk_var(self.next_ty_var_id(true, origin))
     }
@@ -1224,6 +1235,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 .unwrap_or(typ),
 
             _ => typ,
+        }
+    }
+
+    /// If `TyVar(vid)` resolves to a type, return that type. Else, return the
+    /// universe index of `TyVar(vid)`.
+    pub fn probe_ty_var(&self, vid: TyVid) -> Result<Ty<'tcx>, ty::UniverseIndex> {
+        use self::type_variable::TypeVariableValue;
+
+        match self.type_variables.borrow_mut().probe(vid) {
+            TypeVariableValue::Known { value } => Ok(value),
+            TypeVariableValue::Unknown { universe } => Err(universe),
         }
     }
 

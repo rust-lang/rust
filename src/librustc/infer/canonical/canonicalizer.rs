@@ -339,17 +339,48 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.sty {
-            ty::Infer(ty::TyVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::General, t),
+            ty::Infer(ty::TyVar(vid)) => {
+                match self.infcx.unwrap().probe_ty_var(vid) {
+                    // `t` could be a float / int variable: canonicalize that instead
+                    Ok(t) => self.fold_ty(t),
 
-            ty::Infer(ty::IntVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::Int, t),
+                    // `TyVar(vid)` is unresolved, track its universe index in the canonicalized
+                    // result
+                    Err(ui) => self.canonicalize_ty_var(
+                        CanonicalVarInfo {
+                            kind: CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui))
+                        },
+                        t
+                    )
+                }
+            }
 
-            ty::Infer(ty::FloatVar(_)) => self.canonicalize_ty_var(CanonicalTyVarKind::Float, t),
+            ty::Infer(ty::IntVar(_)) => self.canonicalize_ty_var(
+                CanonicalVarInfo {
+                    kind: CanonicalVarKind::Ty(CanonicalTyVarKind::Int)
+                },
+                t
+            ),
+
+            ty::Infer(ty::FloatVar(_)) => self.canonicalize_ty_var(
+                CanonicalVarInfo {
+                    kind: CanonicalVarKind::Ty(CanonicalTyVarKind::Float)
+                },
+                t
+            ),
 
             ty::Infer(ty::FreshTy(_))
             | ty::Infer(ty::FreshIntTy(_))
             | ty::Infer(ty::FreshFloatTy(_)) => {
                 bug!("encountered a fresh type during canonicalization")
             }
+
+            ty::Placeholder(placeholder) => self.canonicalize_ty_var(
+                CanonicalVarInfo {
+                    kind: CanonicalVarKind::PlaceholderTy(placeholder)
+                },
+                t
+            ),
 
             ty::Bound(bound_ty) => {
                 if bound_ty.index >= self.binder_index {
@@ -380,7 +411,6 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
             | ty::Never
             | ty::Tuple(..)
             | ty::Projection(..)
-            | ty::Placeholder(..)
             | ty::UnnormalizedProjection(..)
             | ty::Foreign(..)
             | ty::Param(..)
@@ -579,15 +609,12 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
     /// if `ty_var` is bound to anything; if so, canonicalize
     /// *that*. Otherwise, create a new canonical variable for
     /// `ty_var`.
-    fn canonicalize_ty_var(&mut self, ty_kind: CanonicalTyVarKind, ty_var: Ty<'tcx>) -> Ty<'tcx> {
+    fn canonicalize_ty_var(&mut self, info: CanonicalVarInfo, ty_var: Ty<'tcx>) -> Ty<'tcx> {
         let infcx = self.infcx.expect("encountered ty-var without infcx");
         let bound_to = infcx.shallow_resolve(ty_var);
         if bound_to != ty_var {
             self.fold_ty(bound_to)
         } else {
-            let info = CanonicalVarInfo {
-                kind: CanonicalVarKind::Ty(ty_kind),
-            };
             let var = self.canonical_var(info, ty_var.into());
             self.tcx().mk_ty(ty::Bound(BoundTy::new(self.binder_index, var)))
         }
