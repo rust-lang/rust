@@ -31,7 +31,7 @@ use crate::syntax::ast::{self, LitKind};
 use crate::syntax::attr;
 use crate::syntax::source_map::{Span, DUMMY_SP};
 use crate::syntax::errors::DiagnosticBuilder;
-use crate::syntax::symbol::keywords;
+use crate::syntax::symbol::{keywords, Symbol};
 
 pub mod camel_case;
 
@@ -272,6 +272,29 @@ pub fn has_drop(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
 /// Resolve the definition of a node from its `HirId`.
 pub fn resolve_node(cx: &LateContext<'_, '_>, qpath: &QPath, id: HirId) -> def::Def {
     cx.tables.qpath_def(qpath, id)
+}
+
+/// Return the method names and argument list of nested method call expressions that make up
+/// `expr`.
+pub fn method_calls<'a>(expr: &'a Expr, max_depth: usize) -> (Vec<Symbol>, Vec<&'a [Expr]>) {
+    let mut method_names = Vec::with_capacity(max_depth);
+    let mut arg_lists = Vec::with_capacity(max_depth);
+
+    let mut current = expr;
+    for _ in 0..max_depth {
+        if let ExprKind::MethodCall(path, _, args) = &current.node {
+            if args.iter().any(|e| in_macro(e.span)) {
+                break;
+            }
+            method_names.push(path.ident.name);
+            arg_lists.push(&**args);
+            current = &args[0];
+        } else {
+            break;
+        }
+    }
+
+    (method_names, arg_lists)
 }
 
 /// Match an `Expr` against a chain of methods, and return the matched `Expr`s.

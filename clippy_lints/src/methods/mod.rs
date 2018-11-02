@@ -16,12 +16,13 @@ use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::syntax::ast;
 use crate::syntax::source_map::{BytePos, Span};
+use crate::syntax::symbol::LocalInternedString;
 use crate::utils::paths;
 use crate::utils::sugg;
 use crate::utils::{
     get_arg_name, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of, is_self, is_self_ty,
     iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method, match_type,
-    match_var, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path, snippet, snippet_with_macro_callsite, span_lint,
+    match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path, snippet, snippet_with_macro_callsite, span_lint,
     span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
 use if_chain::if_chain;
@@ -790,63 +791,42 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             return;
         }
 
+        let (method_names, arg_lists) = method_calls(expr, 2);
+        let method_names: Vec<LocalInternedString> = method_names.iter().map(|s| s.as_str()).collect();
+        let method_names: Vec<&str> = method_names.iter().map(|s| s.as_ref()).collect();
+
+        match method_names.as_slice() {
+            ["unwrap", "get"] => lint_get_unwrap(cx, expr, arg_lists[1], false),
+            ["unwrap", "get_mut"] => lint_get_unwrap(cx, expr, arg_lists[1], true),
+            ["unwrap", ..] => lint_unwrap(cx, expr, arg_lists[0]),
+            ["expect", "ok"] => lint_ok_expect(cx, expr, arg_lists[1]),
+            ["unwrap_or", "map"] => lint_map_unwrap_or(cx, expr, arg_lists[1], arg_lists[0]),
+            ["unwrap_or_else", "map"] => lint_map_unwrap_or_else(cx, expr, arg_lists[1], arg_lists[0]),
+            ["map_or", ..] => lint_map_or_none(cx, expr, arg_lists[0]),
+            ["next", "filter"] => lint_filter_next(cx, expr, arg_lists[1]),
+            ["map", "filter"] => lint_filter_map(cx, expr, arg_lists[1], arg_lists[0]),
+            ["map", "filter_map"] => lint_filter_map_map(cx, expr, arg_lists[1], arg_lists[0]),
+            ["flat_map", "filter"] => lint_filter_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
+            ["flat_map", "filter_map"] => lint_filter_map_flat_map(cx, expr, arg_lists[1], arg_lists[0]),
+            ["flatten", "map"] => lint_map_flatten(cx, expr, arg_lists[1]),
+            ["is_some", "find"] => lint_search_is_some(cx, expr, "find", arg_lists[1], arg_lists[0]),
+            ["is_some", "position"] => lint_search_is_some(cx, expr, "position", arg_lists[1], arg_lists[0]),
+            ["is_some", "rposition"] => lint_search_is_some(cx, expr, "rposition", arg_lists[1], arg_lists[0]),
+            ["extend", ..] => lint_extend(cx, expr, arg_lists[0]),
+            ["as_ptr", "unwrap"] => lint_cstring_as_ptr(cx, expr, &arg_lists[1][0], &arg_lists[0][0]),
+            ["nth", "iter"] => lint_iter_nth(cx, expr, arg_lists[1], false),
+            ["nth", "iter_mut"] => lint_iter_nth(cx, expr, arg_lists[1], true),
+            ["next", "skip"] => lint_iter_skip_next(cx, expr),
+            ["collect", "cloned"] => lint_iter_cloned_collect(cx, expr, arg_lists[1]),
+            ["as_ref", ..] => lint_asref(cx, expr, "as_ref", arg_lists[0]),
+            ["as_mut", ..] => lint_asref(cx, expr, "as_mut", arg_lists[0]),
+            ["fold", ..] => lint_unnecessary_fold(cx, expr, arg_lists[0]),
+            ["filter_map", ..] => unnecessary_filter_map::lint(cx, expr, arg_lists[0]),
+            _ => {}
+        }
+
         match expr.node {
             hir::ExprKind::MethodCall(ref method_call, ref method_span, ref args) => {
-                // Chain calls
-                // GET_UNWRAP needs to be checked before general `UNWRAP` lints
-                if let Some(arglists) = method_chain_args(expr, &["get", "unwrap"]) {
-                    lint_get_unwrap(cx, expr, arglists[0], false);
-                } else if let Some(arglists) = method_chain_args(expr, &["get_mut", "unwrap"]) {
-                    lint_get_unwrap(cx, expr, arglists[0], true);
-                } else if let Some(arglists) = method_chain_args(expr, &["unwrap"]) {
-                    lint_unwrap(cx, expr, arglists[0]);
-                } else if let Some(arglists) = method_chain_args(expr, &["ok", "expect"]) {
-                    lint_ok_expect(cx, expr, arglists[0]);
-                } else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or"]) {
-                    lint_map_unwrap_or(cx, expr, arglists[0], arglists[1]);
-                } else if let Some(arglists) = method_chain_args(expr, &["map", "unwrap_or_else"]) {
-                    lint_map_unwrap_or_else(cx, expr, arglists[0], arglists[1]);
-                } else if let Some(arglists) = method_chain_args(expr, &["map_or"]) {
-                    lint_map_or_none(cx, expr, arglists[0]);
-                } else if let Some(arglists) = method_chain_args(expr, &["filter", "next"]) {
-                    lint_filter_next(cx, expr, arglists[0]);
-                } else if let Some(arglists) = method_chain_args(expr, &["filter", "map"]) {
-                    lint_filter_map(cx, expr, arglists[0], arglists[1]);
-                } else if let Some(arglists) = method_chain_args(expr, &["filter_map", "map"]) {
-                    lint_filter_map_map(cx, expr, arglists[0], arglists[1]);
-                } else if let Some(arglists) = method_chain_args(expr, &["filter", "flat_map"]) {
-                    lint_filter_flat_map(cx, expr, arglists[0], arglists[1]);
-                } else if let Some(arglists) = method_chain_args(expr, &["filter_map", "flat_map"]) {
-                    lint_filter_map_flat_map(cx, expr, arglists[0], arglists[1]);
-                } else if let Some(arglists) = method_chain_args(expr, &["map", "flatten"]) {
-                    lint_map_flatten(cx, expr, arglists[0]);
-                } else if let Some(arglists) = method_chain_args(expr, &["find", "is_some"]) {
-                    lint_search_is_some(cx, expr, "find", arglists[0], arglists[1]);
-                } else if let Some(arglists) = method_chain_args(expr, &["position", "is_some"]) {
-                    lint_search_is_some(cx, expr, "position", arglists[0], arglists[1]);
-                } else if let Some(arglists) = method_chain_args(expr, &["rposition", "is_some"]) {
-                    lint_search_is_some(cx, expr, "rposition", arglists[0], arglists[1]);
-                } else if let Some(arglists) = method_chain_args(expr, &["extend"]) {
-                    lint_extend(cx, expr, arglists[0]);
-                } else if let Some(arglists) = method_chain_args(expr, &["unwrap", "as_ptr"]) {
-                    lint_cstring_as_ptr(cx, expr, &arglists[0][0], &arglists[1][0]);
-                } else if let Some(arglists) = method_chain_args(expr, &["iter", "nth"]) {
-                    lint_iter_nth(cx, expr, arglists[0], false);
-                } else if let Some(arglists) = method_chain_args(expr, &["iter_mut", "nth"]) {
-                    lint_iter_nth(cx, expr, arglists[0], true);
-                } else if method_chain_args(expr, &["skip", "next"]).is_some() {
-                    lint_iter_skip_next(cx, expr);
-                } else if let Some(arglists) = method_chain_args(expr, &["cloned", "collect"]) {
-                    lint_iter_cloned_collect(cx, expr, arglists[0]);
-                } else if let Some(arglists) = method_chain_args(expr, &["as_ref"]) {
-                    lint_asref(cx, expr, "as_ref", arglists[0]);
-                } else if let Some(arglists) = method_chain_args(expr, &["as_mut"]) {
-                    lint_asref(cx, expr, "as_mut", arglists[0]);
-                } else if let Some(arglists) = method_chain_args(expr, &["fold"]) {
-                    lint_unnecessary_fold(cx, expr, arglists[0]);
-                } else if let Some(arglists) = method_chain_args(expr, &["filter_map"]) {
-                    unnecessary_filter_map::lint(cx, expr, arglists[0]);
-                }
 
                 lint_or_fun_call(cx, expr, *method_span, &method_call.ident.as_str(), args);
                 lint_expect_fun_call(cx, expr, *method_span, &method_call.ident.as_str(), args);
