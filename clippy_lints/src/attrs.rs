@@ -285,6 +285,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     }
 }
 
+#[allow(clippy::single_match_else)]
 fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
     let lint_store = cx.lints();
     for lint in items {
@@ -310,7 +311,7 @@ fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
                                 &name_lower,
                                 Some(tool_name.as_str())
                             ) {
-                                CheckLintNameResult::NoLint => {}
+                                CheckLintNameResult::NoLint => (),
                                 _ => {
                                     db.span_suggestion(lint.span,
                                                        "lowercase the lint name",
