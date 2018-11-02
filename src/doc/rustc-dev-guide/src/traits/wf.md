@@ -27,18 +27,18 @@ In addition to the notations introduced in the chapter about
 lowering rules, we'll introduce another notation: when checking WF of a
 declaration, we'll often have to prove that all types that appear are
 well-formed, except type parameters that we always assume to be WF. Hence,
-we'll use the following notation: for a type `SomeType<...>`, we denote
-`InputTypes(SomeType<...>)` the set of all non-parameter types appearing in
-`SomeType<...>`, including `SomeType<...>` itself.
+we'll use the following notation: for a type `SomeType<...>`, we define
+`InputTypes(SomeType<...>)` to be the set of all non-parameter types appearing
+in `SomeType<...>`, including `SomeType<...>` itself.
 
 Examples:
 * `InputTypes((u32, f32)) = [u32, f32, (u32, f32)]`
-* `InputTypes(Box<T>) = [Box<T>]`
+* `InputTypes(Box<T>) = [Box<T>]` (assuming that `T` is a type parameter)
 * `InputTypes(Box<Box<T>>) = [Box<T>, Box<Box<T>>]`
 
-We may naturally extend the `InputTypes` notation to where clauses, for example
-`InputTypes(A0: Trait<A1,...,An>)` is the union of `InputTypes(A0)`,
-`InputTypes(A1)`, ..., `InputTypes(An)`.
+We also extend the `InputTypes` notation to where clauses in the natural way.
+So, for example `InputTypes(A0: Trait<A1,...,An>)` is the union of
+`InputTypes(A0)`, `InputTypes(A1)`, ..., `InputTypes(An)`.
 
 # Type definitions
 
@@ -51,7 +51,7 @@ struct Type<P...> where WC_type {
 }
 ```
 
-we generate the following goal:
+we generate the following goal, which represents its well-formedness condition:
 ```text
 forall<P...> {
     if (FromEnv(WC_type)) {
@@ -63,7 +63,7 @@ forall<P...> {
 }
 ```
 
-which in English gives: assuming that the where clauses defined on the type
+which in English states: assuming that the where clauses defined on the type
 hold, prove that every type appearing in the type definition is well-formed.
 
 Some examples:
@@ -284,7 +284,7 @@ Next, still assuming that the where clauses on the impl `WC_impl` hold and that
 the input types of `SomeType<A2...>` are well-formed, we prove that
 `WellFormed(SomeType<A2...>: Trait<A1...>)` hold. That is, we want to prove
 that `SomeType<A2...>` verify all the where clauses that might transitively
-come from the `Trait` definition (see
+be required by the `Trait` definition (see
 [this subsection](./implied-bounds.md#co-inductiveness-of-wellformed)).
 
 Lastly, assuming in addition that the where clauses on the associated type
