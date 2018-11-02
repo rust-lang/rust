@@ -12,14 +12,6 @@ else
    exit 1
 fi
 
-build_lib() {
-    $RUSTC $2 --crate-name $1 --crate-type lib
-}
-
-run_bin() {
-    SHOULD_RUN=1 $RUSTC $@ --crate-type bin
-}
-
 build_example_bin() {
     $RUSTC $2 --crate-name $1 --crate-type bin
 
@@ -44,12 +36,13 @@ rm -r target/out || true
 mkdir -p target/out/clif
 
 echo "[BUILD] mini_core"
-build_lib mini_core example/mini_core.rs
+$RUSTC example/mini_core.rs --crate-name mini_core --crate-type lib
 
+echo "[BUILD] example"
 $RUSTC example/example.rs --crate-type lib
 
 echo "[JIT] mini_core_hello_world"
-run_bin example/mini_core_hello_world.rs --cfg jit
+SHOULD_RUN=1 $RUSTC --crate-type bin example/mini_core_hello_world.rs --cfg jit
 
 echo "[AOT] mini_core_hello_world"
 build_example_bin mini_core_hello_world example/mini_core_hello_world.rs
