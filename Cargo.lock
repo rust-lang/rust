@@ -661,7 +661,7 @@ dependencies = [
 
 [[package]]
 name = "ena"
-version = "0.10.1"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2230,7 +2230,7 @@ name = "rustc_data_structures"
 version = "0.0.0"
 dependencies = [
  "cfg-if 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "ena 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ena 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -3295,7 +3295,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum difference 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "524cbf6897b527295dff137cec09ecf3a05f4fddffd7dfcd1585403449e74198"
 "checksum either 1.5.0 (registry+https://github.com/rust-lang/crates.io-index)" = "3be565ca5c557d7f59e7cfcf1844f9e3033650c929c6566f511e8005f205c1d0"
 "checksum elasticlunr-rs 2.3.3 (registry+https://github.com/rust-lang/crates.io-index)" = "4837d77a1e157489a3933b743fd774ae75074e0e390b2b7f071530048a0d87ee"
-"checksum ena 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)" = "25b4e5febb25f08c49f1b07dc33a182729a6b21edfb562b5aef95f78e0dbe5bb"
+"checksum ena 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f56c93cc076508c549d9bb747f79aa9b4eb098be7b8cad8830c3137ef52d1e00"
 "checksum ena 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)" = "88dc8393b3c7352f94092497f6b52019643e493b6b890eb417cdb7c46117e621"
 "checksum env_logger 0.5.12 (registry+https://github.com/rust-lang/crates.io-index)" = "f4d7e69c283751083d53d01eac767407343b8b69c4bd70058e08adc2637cb257"
 "checksum env_logger 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "afb070faf94c85d17d50ca44f6ad076bce18ae92f0037d350947240a36e9d42e"
