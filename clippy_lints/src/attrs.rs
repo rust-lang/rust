@@ -12,16 +12,20 @@
 
 use crate::reexport::*;
 use crate::utils::{
-    in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_then,
-    without_block_comments,
+    in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint,
+    span_lint_and_then, without_block_comments,
 };
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
+use crate::rustc::hir::*;
+use crate::rustc::lint::{
+    CheckLintNameResult, LateContext, LateLintPass, LintArray, LintContext, LintPass,
+};
 use crate::rustc::ty::{self, TyCtxt};
+use crate::rustc::{declare_tool_lint, lint_array};
 use semver::Version;
-use crate::syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
+use crate::syntax::ast::{
+    AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind,
+};
 use crate::syntax::source_map::Span;
 use crate::rustc_errors::Applicability;
 
@@ -138,6 +142,33 @@ declare_clippy_lint! {
     "empty line after outer attribute"
 }
 
+/// **What it does:** Checks for `allow`/`warn`/`deny`/`forbid` attributes with scoped clippy
+/// lints and if those lints exist in clippy. If there is a uppercase letter in the lint name
+/// (not the tool name) and a lowercase version of this lint exists, it will suggest to lowercase
+/// the lint name.
+///
+/// **Why is this bad?** A lint attribute with a mistyped lint name won't have an effect.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// Bad:
+/// ```rust
+/// #![warn(if_not_els)]
+/// #![deny(clippy::All)]
+/// ```
+///
+/// Good:
+/// ```rust
+/// #![warn(if_not_else)]
+/// #![deny(clippy::all)]
+/// ```
+declare_clippy_lint! {
+    pub UNKNOWN_CLIPPY_LINTS,
+    style,
+    "unknown_lints for scoped Clippy lints"
+}
+
 #[derive(Copy, Clone)]
 pub struct AttrPass;
 
@@ -147,7 +178,8 @@ impl LintPass for AttrPass {
             INLINE_ALWAYS,
             DEPRECATED_SEMVER,
             USELESS_ATTRIBUTE,
-            EMPTY_LINE_AFTER_OUTER_ATTR
+            EMPTY_LINE_AFTER_OUTER_ATTR,
+            UNKNOWN_CLIPPY_LINTS,
         )
     }
 }
@@ -155,6 +187,12 @@ impl LintPass for AttrPass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     fn check_attribute(&mut self, cx: &LateContext<'a, 'tcx>, attr: &'tcx Attribute) {
         if let Some(ref items) = attr.meta_item_list() {
+            match &*attr.name().as_str() {
+                "allow" | "warn" | "deny" | "forbid" => {
+                    check_clippy_lint_names(cx, items);
+                }
+                _ => {}
+            }
             if items.is_empty() || attr.name() != "deprecated" {
                 return;
             }
@@ -244,6 +282,47 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
         if is_relevant_trait(cx.tcx, item) {
             check_attrs(cx, item.span, item.ident.name, &item.attrs)
         }
+    }
+}
+
+#[allow(clippy::single_match_else)]
+fn check_clippy_lint_names(cx: &LateContext<'_, '_>, items: &[NestedMetaItem]) {
+    let lint_store = cx.lints();
+    for lint in items {
+        if_chain! {
+            if let Some(word) = lint.word();
+            if let Some(tool_name) = word.is_scoped();
+            if tool_name.as_str() == "clippy";
+            let name = word.name();
+            if let CheckLintNameResult::Tool(Err((None, _))) = lint_store.check_lint_name(
+                &name.as_str(),
+                Some(tool_name.as_str()),
+            );
+            then {
+                span_lint_and_then(
+                    cx,
+                    UNKNOWN_CLIPPY_LINTS,
+                    lint.span,
+                    &format!("unknown clippy lint: clippy::{}", name),
+                    |db| {
+                        if name.as_str().chars().any(|c| c.is_uppercase()) {
+                            let name_lower = name.as_str().to_lowercase().to_string();
+                            match lint_store.check_lint_name(
+                                &name_lower,
+                                Some(tool_name.as_str())
+                            ) {
+                                CheckLintNameResult::NoLint => (),
+                                _ => {
+                                    db.span_suggestion(lint.span,
+                                                       "lowercase the lint name",
+                                                       name_lower);
+                                }
+                            }
+                        }
+                    }
+                );
+            }
+        };
     }
 }
 
