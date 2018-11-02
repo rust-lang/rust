@@ -11,6 +11,8 @@
 // Test that the compiler will catch passing invalid values to inline assembly
 // operands.
 
+// ignore-emscripten
+
 #![feature(asm)]
 
 #[repr(C)]
