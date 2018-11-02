@@ -33,8 +33,8 @@ curl -fL https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portab
 
 cd /emsdk-portable
 ./emsdk update
-hide_output ./emsdk install sdk-1.37.13-64bit
-./emsdk activate sdk-1.37.13-64bit
+hide_output ./emsdk install sdk-1.38.15-64bit
+./emsdk activate sdk-1.38.15-64bit
 
 # Compile and cache libc
 source ./emsdk_env.sh
