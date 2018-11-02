@@ -299,23 +299,17 @@ where
 
     /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
     /// This is the inverse of `ref_to_mplace`.
+    /// `mutbl` indicates whether we are create a shared or mutable ref, or a raw pointer (`None`).
     pub fn create_ref(
         &mut self,
         place: MPlaceTy<'tcx, M::PointerTag>,
-        borrow_kind: Option<mir::BorrowKind>,
+        mutbl: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Value<M::PointerTag>> {
         // Pointer tag tracking might want to adjust the tag
         let place = if M::ENABLE_PTR_TRACKING_HOOKS {
             let (size, _) = self.size_and_align_of_mplace(place)?
                 // for extern types, just cover what we can
                 .unwrap_or_else(|| place.layout.size_and_align());
-            let mutbl = match borrow_kind {
-                Some(mir::BorrowKind::Mut { .. }) |
-                Some(mir::BorrowKind::Unique) =>
-                    Some(hir::MutMutable),
-                Some(_) => Some(hir::MutImmutable),
-                None => None,
-            };
             M::tag_reference(self, *place, place.layout.ty, size, mutbl)?
         } else {
             *place

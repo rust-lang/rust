@@ -600,9 +600,9 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
             }
             StatementKind::Nop
             | StatementKind::AscribeUserType(..)
-            | StatementKind::Validate(..)
+            | StatementKind::Retag { .. }
             | StatementKind::StorageLive(..) => {
-                // `Nop`, `AscribeUserType`, `Validate`, and `StorageLive` are irrelevant
+                // `Nop`, `AscribeUserType`, `Retag`, and `StorageLive` are irrelevant
                 // to borrow check.
             }
             StatementKind::StorageDead(local) => {

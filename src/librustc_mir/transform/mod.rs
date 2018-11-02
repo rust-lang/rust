@@ -23,7 +23,7 @@ use std::borrow::Cow;
 use syntax::ast;
 use syntax_pos::Span;
 
-pub mod add_validation;
+pub mod add_retag;
 pub mod add_moves_for_packed_drops;
 pub mod cleanup_post_borrowck;
 pub mod check_unsafety;
@@ -258,19 +258,21 @@ fn optimized_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx 
         // Remove all `FakeRead` statements and the borrows that are only
         // used for checking matches
         &cleanup_post_borrowck::CleanFakeReadsAndBorrows,
+
         &simplify::SimplifyCfg::new("early-opt"),
 
         // These next passes must be executed together
         &add_call_guards::CriticalCallEdges,
         &elaborate_drops::ElaborateDrops,
         &no_landing_pads::NoLandingPads,
-        // AddValidation needs to run after ElaborateDrops and before EraseRegions, and it needs
-        // an AllCallEdges pass right before it.
-        &add_call_guards::AllCallEdges,
-        &add_validation::AddValidation,
         // AddMovesForPackedDrops needs to run after drop
         // elaboration.
         &add_moves_for_packed_drops::AddMovesForPackedDrops,
+        // AddRetag needs to run after ElaborateDrops, and it needs
+        // an AllCallEdges pass right before it.  Otherwise it should
+        // run fairly late, but before optimizations begin.
+        &add_call_guards::AllCallEdges,
+        &add_retag::AddRetag,
 
         &simplify::SimplifyCfg::new("elaborate-drops"),
 

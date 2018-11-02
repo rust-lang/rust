@@ -152,6 +152,13 @@ macro_rules! make_mir_visitor {
                 self.super_ascribe_user_ty(place, variance, user_ty, location);
             }
 
+            fn visit_retag(&mut self,
+                           fn_entry: & $($mutability)* bool,
+                           place: & $($mutability)* Place<'tcx>,
+                           location: Location) {
+                self.super_retag(fn_entry, place, location);
+            }
+
             fn visit_place(&mut self,
                             place: & $($mutability)* Place<'tcx>,
                             context: PlaceContext<'tcx>,
@@ -371,17 +378,6 @@ macro_rules! make_mir_visitor {
                         );
                     }
                     StatementKind::EndRegion(_) => {}
-                    StatementKind::Validate(_, ref $($mutability)* places) => {
-                        for operand in places {
-                            self.visit_place(
-                                & $($mutability)* operand.place,
-                                PlaceContext::NonUse(NonUseContext::Validate),
-                                location
-                            );
-                            self.visit_ty(& $($mutability)* operand.ty,
-                                          TyContext::Location(location));
-                        }
-                    }
                     StatementKind::SetDiscriminant{ ref $($mutability)* place, .. } => {
                         self.visit_place(
                             place,
@@ -416,6 +412,10 @@ macro_rules! make_mir_visitor {
                         for input in & $($mutability)* inputs[..] {
                             self.visit_operand(input, location);
                         }
+                    }
+                    StatementKind::Retag { ref $($mutability)* fn_entry,
+                                           ref $($mutability)* place } => {
+                        self.visit_retag(fn_entry, place, location);
                     }
                     StatementKind::AscribeUserType(
                         ref $($mutability)* place,
@@ -719,6 +719,17 @@ macro_rules! make_mir_visitor {
                 self.visit_user_type_projection(user_ty);
             }
 
+            fn super_retag(&mut self,
+                           _fn_entry: & $($mutability)* bool,
+                           place: & $($mutability)* Place<'tcx>,
+                           location: Location) {
+                self.visit_place(
+                    place,
+                    PlaceContext::MutatingUse(MutatingUseContext::Retag),
+                    location,
+                );
+            }
+
             fn super_place(&mut self,
                             place: & $($mutability)* Place<'tcx>,
                             context: PlaceContext<'tcx>,
@@ -1010,6 +1021,8 @@ pub enum MutatingUseContext<'tcx> {
     ///     f(&mut x.y);
     ///
     Projection,
+    /// Retagging (updating the "Stacked Borrows" tag)
+    Retag,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -1020,8 +1033,6 @@ pub enum NonUseContext {
     StorageDead,
     /// User type annotation assertions for NLL.
     AscribeUserTy,
-    /// Validation command.
-    Validate,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

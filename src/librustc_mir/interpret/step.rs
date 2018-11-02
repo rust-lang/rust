@@ -12,7 +12,7 @@
 //!
 //! The main entry point is the `step` method.
 
-use rustc::mir;
+use rustc::{hir, mir};
 use rustc::ty::layout::LayoutOf;
 use rustc::mir::interpret::{EvalResult, Scalar, PointerArithmetic};
 
@@ -118,11 +118,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             // interpreter is solely intended for borrowck'ed code.
             FakeRead(..) => {}
 
-            // Validity checks.
-            Validate(op, ref places) => {
-                for operand in places {
-                    M::validation_op(self, op, operand)?;
-                }
+            // Retagging.
+            Retag { fn_entry, ref place } => {
+                let dest = self.eval_place(place)?;
+                M::retag(self, fn_entry, dest)?;
             }
 
             EndRegion(..) => {}
@@ -251,7 +250,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             Ref(_, borrow_kind, ref place) => {
                 let src = self.eval_place(place)?;
                 let val = self.force_allocation(src)?;
-                let val = self.create_ref(val, Some(borrow_kind))?;
+                let mutbl = match borrow_kind {
+                    mir::BorrowKind::Mut { .. } |
+                    mir::BorrowKind::Unique =>
+                        hir::MutMutable,
+                    mir::BorrowKind::Shared |
+                    mir::BorrowKind::Shallow =>
+                        hir::MutImmutable,
+                };
+                let val = self.create_ref(val, Some(mutbl))?;
                 self.write_value(val, dest)?;
             }
 

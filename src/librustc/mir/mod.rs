@@ -1754,10 +1754,17 @@ pub enum StatementKind<'tcx> {
         inputs: Box<[Operand<'tcx>]>,
     },
 
-    /// Assert the given places to be valid inhabitants of their type.  These statements are
-    /// currently only interpreted by miri and only generated when "-Z mir-emit-validate" is passed.
-    /// See <https://internals.rust-lang.org/t/types-as-contracts/5562/73> for more details.
-    Validate(ValidationOp, Vec<ValidationOperand<'tcx, Place<'tcx>>>),
+    /// Retag references in the given place, ensuring they got fresh tags.  This is
+    /// part of the Stacked Borrows model. These statements are currently only interpreted
+    /// by miri and only generated when "-Z mir-emit-retag" is passed.
+    /// See <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/>
+    /// for more details.
+    Retag {
+        /// `fn_entry` indicates whether this is the initial retag that happens in the
+        /// function prolog.
+        fn_entry: bool,
+        place: Place<'tcx>,
+    },
 
     /// Mark one terminating point of a region scope (i.e. static region).
     /// (The starting point(s) arise implicitly from borrows.)
@@ -1810,57 +1817,6 @@ pub enum FakeReadCause {
     ForLet,
 }
 
-/// The `ValidationOp` describes what happens with each of the operands of a
-/// `Validate` statement.
-#[derive(Copy, Clone, RustcEncodable, RustcDecodable, PartialEq, Eq)]
-pub enum ValidationOp {
-    /// Recursively traverse the place following the type and validate that all type
-    /// invariants are maintained.  Furthermore, acquire exclusive/read-only access to the
-    /// memory reachable from the place.
-    Acquire,
-    /// Recursive traverse the *mutable* part of the type and relinquish all exclusive
-    /// access.
-    Release,
-    /// Recursive traverse the *mutable* part of the type and relinquish all exclusive
-    /// access *until* the given region ends.  Then, access will be recovered.
-    Suspend(region::Scope),
-}
-
-impl Debug for ValidationOp {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        use self::ValidationOp::*;
-        match *self {
-            Acquire => write!(fmt, "Acquire"),
-            Release => write!(fmt, "Release"),
-            // (reuse lifetime rendering policy from ppaux.)
-            Suspend(ref ce) => write!(fmt, "Suspend({})", ty::ReScope(*ce)),
-        }
-    }
-}
-
-// This is generic so that it can be reused by miri
-#[derive(Clone, Hash, PartialEq, Eq, RustcEncodable, RustcDecodable)]
-pub struct ValidationOperand<'tcx, T> {
-    pub place: T,
-    pub ty: Ty<'tcx>,
-    pub re: Option<region::Scope>,
-    pub mutbl: hir::Mutability,
-}
-
-impl<'tcx, T: Debug> Debug for ValidationOperand<'tcx, T> {
-    fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
-        write!(fmt, "{:?}: {:?}", self.place, self.ty)?;
-        if let Some(ce) = self.re {
-            // (reuse lifetime rendering policy from ppaux.)
-            write!(fmt, "/{}", ty::ReScope(ce))?;
-        }
-        if let hir::MutImmutable = self.mutbl {
-            write!(fmt, " (imm)")?;
-        }
-        Ok(())
-    }
-}
-
 impl<'tcx> Debug for Statement<'tcx> {
     fn fmt(&self, fmt: &mut Formatter<'_>) -> fmt::Result {
         use self::StatementKind::*;
@@ -1869,7 +1825,8 @@ impl<'tcx> Debug for Statement<'tcx> {
             FakeRead(ref cause, ref place) => write!(fmt, "FakeRead({:?}, {:?})", cause, place),
             // (reuse lifetime rendering policy from ppaux.)
             EndRegion(ref ce) => write!(fmt, "EndRegion({})", ty::ReScope(*ce)),
-            Validate(ref op, ref places) => write!(fmt, "Validate({:?}, {:?})", op, places),
+            Retag { fn_entry, ref place } =>
+                write!(fmt, "Retag({}{:?})", if fn_entry { "[fn entry] " } else { "" }, place),
             StorageLive(ref place) => write!(fmt, "StorageLive({:?})", place),
             StorageDead(ref place) => write!(fmt, "StorageDead({:?})", place),
             SetDiscriminant {
@@ -2944,7 +2901,6 @@ CloneTypeFoldableAndLiftImpls! {
     SourceInfo,
     UpvarDecl,
     FakeReadCause,
-    ValidationOp,
     SourceScope,
     SourceScopeData,
     SourceScopeLocalData,
@@ -2998,12 +2954,6 @@ BraceStructTypeFoldableImpl! {
 }
 
 BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for ValidationOperand<'tcx, Place<'tcx>> {
-        place, ty, re, mutbl
-    }
-}
-
-BraceStructTypeFoldableImpl! {
     impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
         source_info, kind
     }
@@ -3017,7 +2967,7 @@ EnumTypeFoldableImpl! {
         (StatementKind::StorageLive)(a),
         (StatementKind::StorageDead)(a),
         (StatementKind::InlineAsm) { asm, outputs, inputs },
-        (StatementKind::Validate)(a, b),
+        (StatementKind::Retag) { fn_entry, place },
         (StatementKind::EndRegion)(a),
         (StatementKind::AscribeUserType)(a, v, b),
         (StatementKind::Nop),

@@ -204,7 +204,7 @@ pub fn categorize<'tcx>(context: PlaceContext<'tcx>) -> Option<DefUse> {
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) |
         PlaceContext::NonUse(NonUseContext::AscribeUserTy) |
-        PlaceContext::NonUse(NonUseContext::Validate) =>
+        PlaceContext::MutatingUse(MutatingUseContext::Retag) =>
             Some(DefUse::Use),
 
         ///////////////////////////////////////////////////////////////////////////

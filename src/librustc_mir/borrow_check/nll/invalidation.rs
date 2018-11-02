@@ -136,9 +136,9 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
             StatementKind::EndRegion(..) |
             StatementKind::Nop |
             StatementKind::AscribeUserType(..) |
-            StatementKind::Validate(..) |
+            StatementKind::Retag { .. } |
             StatementKind::StorageLive(..) => {
-                // `Nop`, `AscribeUserType`, `Validate`, and `StorageLive` are irrelevant
+                // `Nop`, `AscribeUserType`, `Retag`, and `StorageLive` are irrelevant
                 // to borrow check.
             }
             StatementKind::StorageDead(local) => {

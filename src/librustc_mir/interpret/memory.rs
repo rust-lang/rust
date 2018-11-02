@@ -30,7 +30,7 @@ use syntax::ast::Mutability;
 use super::{
     Pointer, AllocId, Allocation, ConstValue, GlobalId,
     EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
-    Machine, MemoryAccess, AllocMap, MayLeak, ScalarMaybeUndef, ErrorHandled,
+    Machine, AllocMap, MayLeak, ScalarMaybeUndef, ErrorHandled,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -232,7 +232,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
 
         // Let the machine take some extra action
-        M::memory_deallocated(&mut alloc, ptr)?;
+        let size = Size::from_bytes(alloc.bytes.len() as u64);
+        M::memory_deallocated(&mut alloc, ptr, size)?;
 
         // Don't forget to remember size and align of this now-dead allocation
         let old = self.dead_alloc_map.insert(
@@ -644,7 +645,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
 
         let alloc = self.get(ptr.alloc_id)?;
-        M::memory_accessed(alloc, ptr, size, MemoryAccess::Read)?;
+        M::memory_read(alloc, ptr, size)?;
 
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
@@ -690,7 +691,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.clear_relocations(ptr, size)?;
 
         let alloc = self.get_mut(ptr.alloc_id)?;
-        M::memory_accessed(alloc, ptr, size, MemoryAccess::Write)?;
+        M::memory_written(alloc, ptr, size)?;
 
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());

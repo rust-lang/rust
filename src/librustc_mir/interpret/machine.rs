@@ -24,13 +24,6 @@ use super::{
     EvalContext, PlaceTy, OpTy, Pointer, MemPlace, MemoryKind,
 };
 
-/// Classifying memory accesses
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum MemoryAccess {
-    Read,
-    Write,
-}
-
 /// Whether this kind of memory is allowed to leak
 pub trait MayLeak: Copy {
     fn may_leak(self) -> bool;
@@ -181,17 +174,22 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx>;
 
-    /// Hook for performing extra checks on a memory access.
-    ///
-    /// Takes read-only access to the allocation so we can keep all the memory read
-    /// operations take `&self`.  Use a `RefCell` in `AllocExtra` if you
-    /// need to mutate.
+    /// Hook for performing extra checks on a memory read access.
     #[inline]
-    fn memory_accessed(
+    fn memory_read(
         _alloc: &Allocation<Self::PointerTag, Self::AllocExtra>,
         _ptr: Pointer<Self::PointerTag>,
         _size: Size,
-        _access: MemoryAccess,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
+
+    /// Hook for performing extra checks on a memory write access.
+    #[inline]
+    fn memory_written(
+        _alloc: &mut Allocation<Self::PointerTag, Self::AllocExtra>,
+        _ptr: Pointer<Self::PointerTag>,
+        _size: Size,
     ) -> EvalResult<'tcx> {
         Ok(())
     }
@@ -201,6 +199,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     fn memory_deallocated(
         _alloc: &mut Allocation<Self::PointerTag, Self::AllocExtra>,
         _ptr: Pointer<Self::PointerTag>,
+        _size: Size,
     ) -> EvalResult<'tcx> {
         Ok(())
     }
@@ -242,10 +241,10 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
 
     /// Execute a validation operation
     #[inline]
-    fn validation_op(
+    fn retag(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _op: ::rustc::mir::ValidationOp,
-        _operand: &::rustc::mir::ValidationOperand<'tcx, ::rustc::mir::Place<'tcx>>,
+        _fn_entry: bool,
+        _place: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx> {
         Ok(())
     }
