@@ -334,6 +334,12 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     fx.top_nop = Some(fx.bcx.ins().nop());
     fx.add_global_comment(format!("ssa {:?}", ssa_analyzed));
 
+    for local in fx.mir.args_iter() {
+        let arg_ty = fx.monomorphize(&fx.mir.local_decls[local].ty);
+        let pass_mode = get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false);
+        fx.add_global_comment(format!("pass {:?}: {:?} {:?}", local, arg_ty, pass_mode));
+    }
+
     match output_pass_mode {
         PassMode::NoPass => {
             let null = fx.bcx.ins().iconst(fx.module.pointer_type(), 0);
