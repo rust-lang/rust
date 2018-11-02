@@ -72,7 +72,7 @@ pub type TypeVariableMap = FxHashMap<ty::TyVid, TypeVariableOrigin>;
 
 struct TypeVariableData {
     origin: TypeVariableOrigin,
-    diverging: bool
+    diverging: bool,
 }
 
 #[derive(Copy, Clone, Debug)]

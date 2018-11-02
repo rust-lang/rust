@@ -122,6 +122,7 @@ impl CanonicalVarInfo {
     pub fn is_existential(&self) -> bool {
         match self.kind {
             CanonicalVarKind::Ty(_) => true,
+            CanonicalVarKind::PlaceholderTy(_) => false,
             CanonicalVarKind::Region(_) => true,
             CanonicalVarKind::PlaceholderRegion(..) => false,
         }
@@ -136,6 +137,9 @@ pub enum CanonicalVarKind {
     /// Some kind of type inference variable.
     Ty(CanonicalTyVarKind),
 
+    /// A "placeholder" that represents "any type".
+    PlaceholderTy(ty::PlaceholderType),
+
     /// Region variable `'?R`.
     Region(ty::UniverseIndex),
 
@@ -148,12 +152,12 @@ pub enum CanonicalVarKind {
 impl CanonicalVarKind {
     pub fn universe(self) -> ty::UniverseIndex {
         match self {
-            // At present, we don't support higher-ranked
-            // quantification over types, so all type variables are in
-            // the root universe.
-            CanonicalVarKind::Ty(_) => ty::UniverseIndex::ROOT,
+            CanonicalVarKind::Ty(kind) => match kind {
+                CanonicalTyVarKind::General(ui) => ui,
+                CanonicalTyVarKind::Float | CanonicalTyVarKind::Int => ty::UniverseIndex::ROOT,
+            }
 
-            // Region variables can be created in sub-universes.
+            CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.universe,
             CanonicalVarKind::Region(ui) => ui,
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.universe,
         }
@@ -168,7 +172,7 @@ impl CanonicalVarKind {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub enum CanonicalTyVarKind {
     /// General type variable `?T` that can be unified with arbitrary types.
-    General,
+    General(ty::UniverseIndex),
 
     /// Integral type variable `?I` (that can only be unified with integral types).
     Int,
@@ -358,8 +362,11 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         match cv_info.kind {
             CanonicalVarKind::Ty(ty_kind) => {
                 let ty = match ty_kind {
-                    CanonicalTyVarKind::General => {
-                        self.next_ty_var(TypeVariableOrigin::MiscVariable(span))
+                    CanonicalTyVarKind::General(ui) => {
+                        self.next_ty_var_in_universe(
+                            TypeVariableOrigin::MiscVariable(span),
+                            universe_map(ui)
+                        )
                     }
 
                     CanonicalTyVarKind::Int => self.tcx.mk_int_var(self.next_int_var_id()),
@@ -367,6 +374,15 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     CanonicalTyVarKind::Float => self.tcx.mk_float_var(self.next_float_var_id()),
                 };
                 ty.into()
+            }
+
+            CanonicalVarKind::PlaceholderTy(ty::PlaceholderType { universe, name }) => {
+                let universe_mapped = universe_map(universe);
+                let placeholder_mapped = ty::PlaceholderType {
+                    universe: universe_mapped,
+                    name,
+                };
+                self.tcx.mk_ty(ty::Placeholder(placeholder_mapped)).into()
             }
 
             CanonicalVarKind::Region(ui) => self.next_region_var_in_universe(
@@ -380,9 +396,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
                     universe: universe_mapped,
                     name,
                 };
-                self.tcx
-                    .mk_region(ty::RePlaceholder(placeholder_mapped))
-                    .into()
+                self.tcx.mk_region(ty::RePlaceholder(placeholder_mapped)).into()
             }
         }
     }
