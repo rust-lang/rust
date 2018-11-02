@@ -53,7 +53,7 @@ use mir::place::PlaceRef;
 use attributes;
 use builder::{Builder, MemFlags};
 use callee;
-use common::{C_bool, C_bytes_in_context, C_i32, C_usize};
+use common::{C_bool, C_bytes_in_context, C_usize};
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use common::{C_struct_in_context, C_array, val_ty};
 use consts;
@@ -77,7 +77,6 @@ use rustc_data_structures::sync::Lrc;
 use std::any::Any;
 use std::cmp;
 use std::ffi::CString;
-use std::i32;
 use std::ops::{Deref, DerefMut};
 use std::sync::mpsc;
 use std::time::{Instant, Duration};
@@ -319,8 +318,8 @@ pub fn coerce_unsized_into(
                 }
 
                 if src_f.layout.ty == dst_f.layout.ty {
-                    memcpy_ty(bx, dst_f.llval, src_f.llval, src_f.layout,
-                              src_f.align.min(dst_f.align), MemFlags::empty());
+                    memcpy_ty(bx, dst_f.llval, dst_f.align, src_f.llval, src_f.align,
+                              src_f.layout, MemFlags::empty());
                 } else {
                     coerce_unsized_into(bx, src_f, dst_f);
                 }
@@ -420,36 +419,34 @@ pub fn to_immediate_scalar(
 pub fn call_memcpy(
     bx: &Builder<'_, 'll, '_>,
     dst: &'ll Value,
+    dst_align: Align,
     src: &'ll Value,
+    src_align: Align,
     n_bytes: &'ll Value,
-    align: Align,
     flags: MemFlags,
 ) {
     if flags.contains(MemFlags::NONTEMPORAL) {
         // HACK(nox): This is inefficient but there is no nontemporal memcpy.
-        let val = bx.load(src, align);
+        let val = bx.load(src, src_align);
         let ptr = bx.pointercast(dst, val_ty(val).ptr_to());
-        bx.store_with_flags(val, ptr, align, flags);
+        bx.store_with_flags(val, ptr, dst_align, flags);
         return;
     }
     let cx = bx.cx;
-    let ptr_width = &cx.sess().target.target.target_pointer_width;
-    let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
-    let memcpy = cx.get_intrinsic(&key);
     let src_ptr = bx.pointercast(src, Type::i8p(cx));
     let dst_ptr = bx.pointercast(dst, Type::i8p(cx));
     let size = bx.intcast(n_bytes, cx.isize_ty, false);
-    let align = C_i32(cx, align.abi() as i32);
-    let volatile = C_bool(cx, flags.contains(MemFlags::VOLATILE));
-    bx.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
+    let volatile = flags.contains(MemFlags::VOLATILE);
+    bx.memcpy(dst_ptr, dst_align.abi(), src_ptr, src_align.abi(), size, volatile);
 }
 
 pub fn memcpy_ty(
     bx: &Builder<'_, 'll, 'tcx>,
     dst: &'ll Value,
+    dst_align: Align,
     src: &'ll Value,
+    src_align: Align,
     layout: TyLayout<'tcx>,
-    align: Align,
     flags: MemFlags,
 ) {
     let size = layout.size.bytes();
@@ -457,7 +454,7 @@ pub fn memcpy_ty(
         return;
     }
 
-    call_memcpy(bx, dst, src, C_usize(bx.cx, size), align, flags);
+    call_memcpy(bx, dst, dst_align, src, src_align, C_usize(bx.cx, size), flags);
 }
 
 pub fn call_memset(

@@ -282,8 +282,8 @@ impl OperandValue<'ll> {
         }
         match self {
             OperandValue::Ref(r, None, source_align) => {
-                base::memcpy_ty(bx, dest.llval, r, dest.layout,
-                                source_align.min(dest.align), flags)
+                base::memcpy_ty(bx, dest.llval, dest.align, r, source_align,
+                                dest.layout, flags)
             }
             OperandValue::Ref(_, Some(_), _) => {
                 bug!("cannot directly store unsized values");
@@ -324,7 +324,7 @@ impl OperandValue<'ll> {
         // Allocate an appropriate region on the stack, and copy the value into it
         let (llsize, _) = glue::size_and_align_of_dst(&bx, unsized_ty, Some(llextra));
         let lldst = bx.array_alloca(Type::i8(bx.cx), llsize, "unsized_tmp", max_align);
-        base::call_memcpy(&bx, lldst, llptr, llsize, min_align, flags);
+        base::call_memcpy(&bx, lldst, max_align, llptr, min_align, llsize, flags);
 
         // Store the allocated region and the extra to the indirect place.
         let indirect_operand = OperandValue::Pair(lldst, llextra);

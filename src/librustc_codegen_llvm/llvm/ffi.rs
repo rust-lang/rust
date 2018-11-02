@@ -998,6 +998,22 @@ extern "C" {
                              Bundle: Option<&OperandBundleDef<'a>>,
                              Name: *const c_char)
                              -> &'a Value;
+    pub fn LLVMRustBuildMemCpy(B: &Builder<'a>,
+                               Dst: &'a Value,
+                               DstAlign: c_uint,
+                               Src: &'a Value,
+                               SrcAlign: c_uint,
+                               Size: &'a Value,
+                               IsVolatile: bool)
+                               -> &'a Value;
+    pub fn LLVMRustBuildMemMove(B: &Builder<'a>,
+                                Dst: &'a Value,
+                                DstAlign: c_uint,
+                                Src: &'a Value,
+                                SrcAlign: c_uint,
+                                Size: &'a Value,
+                                IsVolatile: bool)
+                                -> &'a Value;
     pub fn LLVMBuildSelect(B: &Builder<'a>,
                            If: &'a Value,
                            Then: &'a Value,
