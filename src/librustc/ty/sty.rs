@@ -1465,7 +1465,7 @@ impl RegionKind {
             }
             ty::RePlaceholder(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
-                flags = flags | TypeFlags::HAS_RE_SKOL;
+                flags = flags | TypeFlags::HAS_RE_PLACEHOLDER;
             }
             ty::ReLateBound(..) => {
                 flags = flags | TypeFlags::HAS_RE_LATE_BOUND;
