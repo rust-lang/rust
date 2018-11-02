@@ -470,8 +470,11 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         }
     }
 
-    fn visit_array(&mut self, op: OpTy<'tcx, M::PointerTag>) -> EvalResult<'tcx>
-    {
+    fn visit_aggregate(
+        &mut self,
+        op: OpTy<'tcx, M::PointerTag>,
+        fields: impl Iterator<Item=EvalResult<'tcx, Self::V>>,
+    ) -> EvalResult<'tcx> {
         match op.layout.ty.sty {
             ty::Str => {
                 let mplace = op.to_mem_place(); // strings are never immediate
@@ -538,7 +541,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                 }
             }
             _ => {
-                self.walk_array(op)? // default handler
+                self.walk_aggregate(op, fields)? // default handler
             }
         }
         Ok(())

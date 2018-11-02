@@ -13,29 +13,29 @@ use super::{
 
 // A thing that we can project into, and that has a layout.
 // This wouldn't have to depend on `Machine` but with the current type inference,
-// that's just more convenient to work with (avoids repeading all the `Machine` bounds).
+// that's just more convenient to work with (avoids repeating all the `Machine` bounds).
 pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
 {
-    // Get this value's layout.
+    /// Get this value's layout.
     fn layout(&self) -> TyLayout<'tcx>;
 
-    // Make this into an `OpTy`.
+    /// Make this into an `OpTy`.
     fn to_op(
         self,
         ecx: &EvalContext<'a, 'mir, 'tcx, M>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>>;
 
-    // Create this from an `MPlaceTy`.
+    /// Create this from an `MPlaceTy`.
     fn from_mem_place(MPlaceTy<'tcx, M::PointerTag>) -> Self;
 
-    // Project to the given enum variant.
+    /// Project to the given enum variant.
     fn project_downcast(
         self,
         ecx: &EvalContext<'a, 'mir, 'tcx, M>,
         variant: usize,
     ) -> EvalResult<'tcx, Self>;
 
-    // Project to the n-th field.
+    /// Project to the n-th field.
     fn project_field(
         self,
         ecx: &mut EvalContext<'a, 'mir, 'tcx, M>,
@@ -166,27 +166,32 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
 pub trait ValueVisitor<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Sized {
     type V: Value<'a, 'mir, 'tcx, M>;
 
-    // The visitor must have an `EvalContext` in it.
+    /// The visitor must have an `EvalContext` in it.
     fn ecx(&mut self) -> &mut EvalContext<'a, 'mir, 'tcx, M>;
 
-    // Recursie actions, ready to be overloaded.
-    /// Visit the given value, dispatching as appropriate to more speicalized visitors.
+    // Recursive actions, ready to be overloaded.
+    /// Visit the given value, dispatching as appropriate to more specialized visitors.
     #[inline(always)]
     fn visit_value(&mut self, v: Self::V) -> EvalResult<'tcx>
     {
         self.walk_value(v)
     }
-    /// Visit the given value as a union.
+    /// Visit the given value as a union.  No automatic recursion can happen here.
     #[inline(always)]
     fn visit_union(&mut self, _v: Self::V) -> EvalResult<'tcx>
     {
         Ok(())
     }
-    /// Visit the given value as an array.
+    /// Visit this vale as an aggregate, you are even getting an iterator yielding
+    /// all the fields (still in an `EvalResult`, you have to do error handling yourself).
+    /// Recurses into the fields.
     #[inline(always)]
-    fn visit_array(&mut self, v: Self::V) -> EvalResult<'tcx>
-    {
-        self.walk_array(v)
+    fn visit_aggregate(
+        &mut self,
+        v: Self::V,
+        fields: impl Iterator<Item=EvalResult<'tcx, Self::V>>,
+    ) -> EvalResult<'tcx> {
+        self.walk_aggregate(v, fields)
     }
     /// Called each time we recurse down to a field, passing in old and new value.
     /// This gives the visitor the chance to track the stack of nested fields that
@@ -201,39 +206,39 @@ pub trait ValueVisitor<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Siz
         self.visit_value(new_val)
     }
 
-    // Actions on the leaves, ready to be overloaded.
     /// Called whenever we reach a value with uninhabited layout.
-    /// Recursing to fields will continue after this!
+    /// Recursing to fields will *always* continue after this!  This is not meant to control
+    /// whether and how we descend recursively/ into the scalar's fields if there are any, it is
+    /// meant to provide the chance for additional checks when a value of uninhabited layout is
+    /// detected.
     #[inline(always)]
     fn visit_uninhabited(&mut self) -> EvalResult<'tcx>
     { Ok(()) }
     /// Called whenever we reach a value with scalar layout.
-    /// We do NOT provide a `ScalarMaybeUndef` here to avoid accessing memory
-    /// if the visitor is not even interested in scalars.
-    /// Recursing to fields will continue after this!
+    /// We do NOT provide a `ScalarMaybeUndef` here to avoid accessing memory if the visitor is not
+    /// even interested in scalars.
+    /// Recursing to fields will *always* continue after this!  This is not meant to control
+    /// whether and how we descend recursively/ into the scalar's fields if there are any, it is
+    /// meant to provide the chance for additional checks when a value of scalar layout is detected.
     #[inline(always)]
     fn visit_scalar(&mut self, _v: Self::V, _layout: &layout::Scalar) -> EvalResult<'tcx>
     { Ok(()) }
+
     /// Called whenever we reach a value of primitive type.  There can be no recursion
-    /// below such a value.
+    /// below such a value.  This is the leave function.
     #[inline(always)]
     fn visit_primitive(&mut self, _val: ImmTy<'tcx, M::PointerTag>) -> EvalResult<'tcx>
     { Ok(()) }
 
     // Default recursors. Not meant to be overloaded.
-    fn walk_array(&mut self, v: Self::V) -> EvalResult<'tcx>
-    {
-        // Let's get an mplace first.
-        let mplace = if v.layout().is_zst() {
-            // it's a ZST, the memory content cannot matter
-            MPlaceTy::dangling(v.layout(), self.ecx())
-        } else {
-            // non-ZST array/slice/str cannot be immediate
-            v.to_op(self.ecx())?.to_mem_place()
-        };
+    fn walk_aggregate(
+        &mut self,
+        v: Self::V,
+        fields: impl Iterator<Item=EvalResult<'tcx, Self::V>>,
+    ) -> EvalResult<'tcx> {
         // Now iterate over it.
-        for (i, field) in self.ecx().mplace_array_fields(mplace)?.enumerate() {
-            self.visit_field(v, i, Value::from_mem_place(field?))?;
+        for (idx, field_val) in fields.enumerate() {
+            self.visit_field(v, idx, field_val?)?;
         }
         Ok(())
     }
@@ -312,13 +317,30 @@ pub trait ValueVisitor<'a, 'mir, 'tcx: 'mir+'a, M: Machine<'a, 'mir, 'tcx>>: Siz
                 self.visit_union(v)?;
             },
             layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
-                for i in 0..offsets.len() {
-                    let val = v.project_field(self.ecx(), i as u64)?;
-                    self.visit_field(v, i, val)?;
-                }
+                // We collect in a vec because otherwise there are lifetime errors:
+                // Projecting to a field needs (mutable!) access to `ecx`.
+                let fields: Vec<EvalResult<'tcx, Self::V>> =
+                    (0..offsets.len()).map(|i| {
+                        v.project_field(self.ecx(), i as u64)
+                    })
+                    .collect();
+                self.visit_aggregate(v, fields.into_iter())?;
             },
             layout::FieldPlacement::Array { .. } => {
-                self.visit_array(v)?;
+                // Let's get an mplace first.
+                let mplace = if v.layout().is_zst() {
+                    // it's a ZST, the memory content cannot matter
+                    MPlaceTy::dangling(v.layout(), self.ecx())
+                } else {
+                    // non-ZST array/slice/str cannot be immediate
+                    v.to_op(self.ecx())?.to_mem_place()
+                };
+                // Now we can go over all the fields.
+                let iter = self.ecx().mplace_array_fields(mplace)?
+                    .map(|f| f.and_then(|f| {
+                        Ok(Value::from_mem_place(f))
+                    }));
+                self.visit_aggregate(v, iter)?;
             }
         }
         Ok(())
