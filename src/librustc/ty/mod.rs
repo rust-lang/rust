@@ -2445,6 +2445,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 }
             }
 
+            Placeholder(..) |
             Bound(..) |
             Infer(..) => {
                 bug!("unexpected type `{:?}` in sized_constraint_for_ty",

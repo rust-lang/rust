@@ -128,7 +128,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             ty::Opaque(def_id, substs) => Some(PointerKind::OfOpaque(def_id, substs)),
             ty::Param(ref p) => Some(PointerKind::OfParam(p)),
             // Insufficient type information.
-            ty::Bound(..) | ty::Infer(_) => None,
+            ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) => None,
 
             ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
             ty::Float(_) | ty::Array(..) | ty::GeneratorWitness(..) |

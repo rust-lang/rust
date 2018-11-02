@@ -203,6 +203,9 @@ pub enum TyKind<'tcx> {
     /// Bound type variable, used only when preparing a trait query.
     Bound(BoundTy),
 
+    /// A placeholder type - universally quantified higher-ranked type.
+    Placeholder(ty::PlaceholderType),
+
     /// A type variable used during type checking.
     Infer(InferTy),
 
@@ -1890,6 +1893,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             Foreign(..) |
             Param(_) |
             Bound(..) |
+            Placeholder(..) |
             Infer(_) |
             Error => {}
         }
@@ -1954,6 +1958,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             ty::Infer(ty::TyVar(_)) => false,
 
             ty::Bound(_) |
+            ty::Placeholder(..) |
             ty::Infer(ty::FreshTy(_)) |
             ty::Infer(ty::FreshIntTy(_)) |
             ty::Infer(ty::FreshFloatTy(_)) =>

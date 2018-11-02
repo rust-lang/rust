@@ -114,6 +114,7 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
             ty::Tuple(..) |
             ty::Never |
             ty::Infer(..) |
+            ty::Placeholder(..) |
             ty::Bound(..) => (),
 
             ty::GeneratorWitness(..) |

@@ -952,7 +952,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Can refer to a type which may drop.
         // FIXME(eddyb) check this against a ParamEnv.
         ty::Dynamic(..) | ty::Projection(..) | ty::Param(_) | ty::Bound(..) |
-        ty::Opaque(..) | ty::Infer(_) | ty::Error => true,
+        ty::Placeholder(..) | ty::Opaque(..) | ty::Infer(_) | ty::Error => true,
 
         ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
 

@@ -687,6 +687,9 @@ for ty::TyKind<'gcx>
             Bound(bound_ty) => {
                 bound_ty.hash_stable(hcx, hasher);
             }
+            ty::Placeholder(placeholder_ty) => {
+                placeholder_ty.hash_stable(hcx, hasher);
+            }
             Foreign(def_id) => {
                 def_id.hash_stable(hcx, hasher);
             }

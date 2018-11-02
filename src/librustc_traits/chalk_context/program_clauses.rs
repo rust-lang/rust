@@ -418,6 +418,7 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                     }
 
                     ty::GeneratorWitness(..) |
+                    ty::Placeholder(..) |
                     ty::UnnormalizedProjection(..) |
                     ty::Infer(..) |
                     ty::Bound(..) |

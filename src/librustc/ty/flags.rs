@@ -74,6 +74,7 @@ impl FlagComputation {
             &ty::Uint(_) |
             &ty::Never |
             &ty::Str |
+            &ty::Placeholder(..) |
             &ty::Foreign(..) => {
             }
 
