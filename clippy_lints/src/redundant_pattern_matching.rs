@@ -83,8 +83,8 @@ fn find_sugg_for_if_let<'a, 'tcx>(
 ) {
     if arms[0].pats.len() == 1 {
         let good_method = match arms[0].pats[0].node {
-            PatKind::TupleStruct(ref path, ref pats, _) if pats.len() == 1 => {
-                if let PatKind::Wild = pats[0].node {
+            PatKind::TupleStruct(ref path, ref patterns, _) if patterns.len() == 1 => {
+                if let PatKind::Wild = patterns[0].node {
                     if match_qpath(path, &paths::RESULT_OK) {
                         "is_ok()"
                     } else if match_qpath(path, &paths::RESULT_ERR) {
@@ -135,10 +135,10 @@ fn find_sugg_for_match<'a, 'tcx>(
 
         let found_good_method = match node_pair {
             (
-                PatKind::TupleStruct(ref path_left, ref pats_left, _),
-                PatKind::TupleStruct(ref path_right, ref pats_right, _)
-            ) if pats_left.len() == 1 && pats_right.len() == 1 => {
-                if let (PatKind::Wild, PatKind::Wild) = (&pats_left[0].node, &pats_right[0].node) {
+                PatKind::TupleStruct(ref path_left, ref patterns_left, _),
+                PatKind::TupleStruct(ref path_right, ref patterns_right, _)
+            ) if patterns_left.len() == 1 && patterns_right.len() == 1 => {
+                if let (PatKind::Wild, PatKind::Wild) = (&patterns_left[0].node, &patterns_right[0].node) {
                     find_good_method_for_match(
                         arms,
                         path_left,
@@ -153,13 +153,13 @@ fn find_sugg_for_match<'a, 'tcx>(
                 }
             },
             (
-                PatKind::TupleStruct(ref path_left, ref pats, _),
+                PatKind::TupleStruct(ref path_left, ref patterns, _),
                 PatKind::Path(ref path_right)
             ) | (
                 PatKind::Path(ref path_left),
-                PatKind::TupleStruct(ref path_right, ref pats, _)
-            ) if pats.len() == 1 => {
-                if let PatKind::Wild = pats[0].node {
+                PatKind::TupleStruct(ref path_right, ref patterns, _)
+            ) if patterns.len() == 1 => {
+                if let PatKind::Wild = patterns[0].node {
                     find_good_method_for_match(
                         arms,
                         path_left,
