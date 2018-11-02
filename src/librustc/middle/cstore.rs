@@ -201,6 +201,9 @@ pub trait CrateStore {
     fn extern_mod_stmt_cnum_untracked(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
     fn item_generics_cloned_untracked(&self, def: DefId, sess: &Session) -> ty::Generics;
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum>;
+    fn maybe_load_extern_crate_untracked(
+        &self, sess: &Session, name: Symbol
+    ) -> Option<CrateNum>;
 
     // This is basically a 1-based range of ints, which is a little
     // silly - I may fix that.

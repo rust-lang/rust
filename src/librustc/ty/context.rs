@@ -2989,6 +2989,9 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(id, LOCAL_CRATE);
         tcx.crate_name
     };
+    providers.maybe_load_extern_crate = |tcx, name| {
+        tcx.cstore.maybe_load_extern_crate_untracked(tcx.sess, name)
+    };
     providers.get_lib_features = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         Lrc::new(middle::lib_features::collect(tcx))

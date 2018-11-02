@@ -1,4 +1,5 @@
 use crate::cstore::{self, LoadedMacro};
+use crate::creader::CrateLoader;
 use crate::encoder;
 use crate::link_args;
 use crate::native_libs;
@@ -31,7 +32,7 @@ use syntax::edition::Edition;
 use syntax::parse::source_file_to_stream;
 use syntax::parse::parser::emit_unclosed_delims;
 use syntax::symbol::Symbol;
-use syntax_pos::{Span, NO_EXPANSION, FileName};
+use syntax_pos::{Span, DUMMY_SP, NO_EXPANSION, FileName};
 use rustc_data_structures::bit_set::BitSet;
 
 macro_rules! provide {
@@ -539,6 +540,15 @@ impl CrateStore for cstore::CStore {
 
     fn postorder_cnums_untracked(&self) -> Vec<CrateNum> {
         self.do_postorder_cnums_untracked()
+    }
+
+    fn maybe_load_extern_crate_untracked(
+        &self,
+        sess: &Session,
+        name: Symbol
+    ) -> Option<CrateNum> {
+        let mut crate_loader = CrateLoader::new(sess, self, "");
+        crate_loader.maybe_process_path_extern(name, DUMMY_SP)
     }
 
     fn encode_metadata<'a, 'tcx>(&self,

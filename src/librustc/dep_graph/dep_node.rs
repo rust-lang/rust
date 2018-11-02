@@ -58,7 +58,7 @@ use crate::ich::{Fingerprint, StableHashingContext};
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use std::fmt;
 use std::hash::Hash;
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::{InternedString, Symbol};
 use crate::traits;
 use crate::traits::query::{
     CanonicalProjectionGoal, CanonicalTyGoal, CanonicalTypeOpAscribeUserTypeGoal,
@@ -593,6 +593,7 @@ define_dep_nodes!( <'tcx>
     [input] CrateDisambiguator(CrateNum),
     [input] CrateHash(CrateNum),
     [input] OriginalCrateName(CrateNum),
+    [input] MaybeLoadExternCrate(Symbol),
     [input] ExtraFileName(CrateNum),
 
     [] ImplementationsOfTrait { krate: CrateNum, trait_id: DefId },

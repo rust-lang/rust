@@ -493,6 +493,7 @@ define_queries! { <'tcx>
         [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> CrateDisambiguator,
         [] fn crate_hash: CrateHash(CrateNum) -> Svh,
         [] fn original_crate_name: OriginalCrateName(CrateNum) -> Symbol,
+        [] fn maybe_load_extern_crate: MaybeLoadExternCrate(Symbol) -> Option<CrateNum>,
         [] fn extra_filename: ExtraFileName(CrateNum) -> String,
     },
 

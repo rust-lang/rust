@@ -18,7 +18,7 @@ use crate::util::profiling::ProfileCategory;
 use std::borrow::Cow;
 use std::hash::Hash;
 use std::fmt::Debug;
-use syntax_pos::symbol::InternedString;
+use syntax_pos::symbol::{Symbol, InternedString};
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::fingerprint::Fingerprint;
 use crate::ich::StableHashingContext;
@@ -703,6 +703,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::crate_hash<'tcx> {
 impl<'tcx> QueryDescription<'tcx> for queries::original_crate_name<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
         "looking up the original name a crate".into()
+    }
+}
+
+impl<'tcx> QueryDescription<'tcx> for queries::maybe_load_extern_crate<'tcx> {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, name: Symbol) -> Cow<'static, str> {
+        format!("loading crate with name {}", name).into()
     }
 }
 
