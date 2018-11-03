@@ -462,7 +462,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 // also using `var`, and that would be okay.
             }
             (UsageKind::Read, Borrow::Mut(Mut::Uniq(_))) => {
-                // A mut got transmuted to shr.  The mut borrow must be reactivatable.
+                // A mut got transmuted to shr.  Can happen even from compiler transformations:
+                // `&*x` gets optimized to `x` even when `x` is a `&mut`.
             }
             (UsageKind::Write, Borrow::Frz(_)) => {
                 // This is just invalid.
