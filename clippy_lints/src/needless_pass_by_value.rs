@@ -125,7 +125,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             .filter(|p| !p.is_global())
             .filter_map(|pred| {
                 if let ty::Predicate::Trait(poly_trait_ref) = pred {
-                    if poly_trait_ref.def_id() == sized_trait || poly_trait_ref.skip_binder().has_escaping_regions() {
+                    if poly_trait_ref.def_id() == sized_trait || poly_trait_ref.skip_binder().has_escaping_bound_vars() {
                         return None;
                     }
                     Some(poly_trait_ref)

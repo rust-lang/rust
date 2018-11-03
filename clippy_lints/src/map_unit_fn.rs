@@ -106,7 +106,7 @@ fn is_unit_function(cx: &LateContext<'_, '_>, expr: &hir::Expr) -> bool {
     let ty = cx.tables.expr_ty(expr);
 
     if let ty::FnDef(id, _) = ty.sty {
-        if let Some(fn_type) = cx.tcx.fn_sig(id).no_late_bound_regions() {
+        if let Some(fn_type) = cx.tcx.fn_sig(id).no_bound_vars() {
             return is_unit_type(fn_type.output());
         }
     }
