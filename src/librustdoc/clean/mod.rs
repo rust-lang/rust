@@ -552,6 +552,14 @@ impl ItemEnum {
             _ => return None,
         })
     }
+
+    pub fn is_associated(&self) -> bool {
+        match *self {
+            ItemEnum::TypedefItem(_, _) |
+            ItemEnum::AssociatedTypeItem(_, _) => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]

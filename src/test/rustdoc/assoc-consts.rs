@@ -75,8 +75,8 @@ pub trait Qux {
     /// Docs for QUX1 in trait.
     const QUX1: i8;
     // @has - '//*[@id="associatedconstant.QUX_DEFAULT0"]' 'const QUX_DEFAULT0: u16'
-    // @has - '//*[@class="docblock"]' "Docs for QUX_DEFAULT0 in trait."
-    /// Docs for QUX_DEFAULT0 in trait.
+    // @has - '//*[@class="docblock"]' "Docs for QUX_DEFAULT12 in trait."
+    /// Docs for QUX_DEFAULT12 in trait.
     const QUX_DEFAULT0: u16 = 1;
     // @has - '//*[@id="associatedconstant.QUX_DEFAULT1"]' 'const QUX_DEFAULT1: i16'
     // @has - '//*[@class="docblock"]' "Docs for QUX_DEFAULT1 in trait."
@@ -99,7 +99,7 @@ impl Qux for Bar {
     /// Docs for QUX1 in impl.
     const QUX1: i8 = 5;
     // @has - '//*[@id="associatedconstant.QUX_DEFAULT0"]' 'const QUX_DEFAULT0: u16'
-    // @has - '//*[@class="docblock"]' "Docs for QUX_DEFAULT0 in trait."
+    // @has - '//*[@class="docblock hidden"]' "Docs for QUX_DEFAULT12 in trait."
     const QUX_DEFAULT0: u16 = 6;
     // @has - '//*[@id="associatedconstant.QUX_DEFAULT1"]' 'const QUX_DEFAULT1: i16'
     // @has - '//*[@class="docblock"]' "Docs for QUX_DEFAULT1 in impl."

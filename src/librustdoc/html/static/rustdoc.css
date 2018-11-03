@@ -479,17 +479,6 @@ h4 > code, h3 > code, .invisible > code {
 	margin-bottom: 15px;
 }
 
-.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
-	margin-left: 20px;
-}
-.content .impl-items .docblock, .content .impl-items .stability {
-	margin-bottom: .6em;
-}
-
-.content .impl-items > .stability {
-	margin-left: 40px;
-}
-
 .content .docblock > .impl-items {
 	margin-left: 20px;
 	margin-top: -34px;
@@ -531,7 +520,20 @@ h4 > code, h3 > code, .invisible > code {
 	top: -9px;
 	left: -13px;
 }
-.methods > .stability {
+
+.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
+	margin-left: 20px;
+}
+
+.content .impl-items .docblock, .content .impl-items .stability {
+	margin-bottom: .6em;
+}
+
+.content .impl-items > .stability {
+	margin-left: 40px;
+}
+
+.methods > .stability, .content .impl-items > .stability {
 	margin-top: -8px;
 }
 
@@ -837,6 +839,11 @@ h3 > .collapse-toggle, h4 > .collapse-toggle {
 	display: inline-block;
 	width: 1.2ch;
 	text-align: center;
+}
+
+.collapse-toggle.hidden-default {
+	position: relative;
+	margin-left: 20px;
 }
 
 .ghost {

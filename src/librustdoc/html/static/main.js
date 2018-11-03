@@ -2052,6 +2052,50 @@
     onEach(document.getElementsByClassName('method'), func);
     onEach(document.getElementsByClassName('associatedconstant'), func);
     onEach(document.getElementsByClassName('impl'), func);
+    onEach(document.getElementsByClassName('impl-items'), function(e) {
+        onEach(e.getElementsByClassName('associatedconstant'), func);
+        var hiddenElems = e.getElementsByClassName('hidden');
+        var needToggle = false;
+
+        for (var i = 0; i < hiddenElems.length; ++i) {
+            if (hasClass(hiddenElems[i], "content") === false &&
+                hasClass(hiddenElems[i], "docblock") === false) {
+                needToggle = true;
+                break;
+            }
+        }
+        if (needToggle === true) {
+            var newToggle = document.createElement('a');
+            newToggle.href = 'javascript:void(0)';
+            newToggle.className = 'collapse-toggle hidden-default collapsed';
+            newToggle.innerHTML = "[<span class='inner'>" + labelForToggleButton(true) + "</span>" +
+                                  "] Show hidden undocumented items";
+            newToggle.onclick = function() {
+                if (hasClass(this, "collapsed")) {
+                    removeClass(this, "collapsed");
+                    onEach(this.parentNode.getElementsByClassName("hidden"), function(x) {
+                        if (hasClass(x, "content") === false) {
+                            removeClass(x, "hidden");
+                            addClass(x, "x");
+                        }
+                    }, true);
+                    this.innerHTML = "[<span class='inner'>" + labelForToggleButton(false) +
+                                     "</span>] Hide undocumented items"
+                } else {
+                    addClass(this, "collapsed");
+                    onEach(this.parentNode.getElementsByClassName("x"), function(x) {
+                        if (hasClass(x, "content") === false) {
+                            addClass(x, "hidden");
+                            removeClass(x, "x");
+                        }
+                    }, true);
+                    this.innerHTML = "[<span class='inner'>" + labelForToggleButton(true) +
+                                     "</span>] Show hidden undocumented items";
+                }
+            };
+            e.insertBefore(newToggle, e.firstChild);
+        }
+    });
 
     function createToggle(otherMessage, fontSize, extraClass, show) {
         var span = document.createElement('span');
