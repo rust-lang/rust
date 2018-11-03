@@ -16,16 +16,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alloc_system"
-version = "0.0.0"
-dependencies = [
- "compiler_builtins 0.0.0",
- "core 0.0.0",
- "dlmalloc 0.0.0",
- "libc 0.0.0",
-]
-
-[[package]]
 name = "ammonia"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2104,7 +2094,6 @@ name = "rustc_asan"
 version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
- "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.0.0",
@@ -2276,7 +2265,6 @@ name = "rustc_lsan"
 version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
- "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.0.0",
@@ -2328,7 +2316,6 @@ name = "rustc_msan"
 version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
- "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.0.0",
@@ -2440,7 +2427,6 @@ name = "rustc_tsan"
 version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
- "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cmake 0.1.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.0.0",
@@ -2679,11 +2665,11 @@ name = "std"
 version = "0.0.0"
 dependencies = [
  "alloc 0.0.0",
- "alloc_system 0.0.0",
  "build_helper 0.1.0",
  "cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiler_builtins 0.0.0",
  "core 0.0.0",
+ "dlmalloc 0.0.0",
  "libc 0.0.0",
  "panic_abort 0.0.0",
  "panic_unwind 0.0.0",

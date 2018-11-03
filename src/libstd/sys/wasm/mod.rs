@@ -32,6 +32,7 @@ use sys_common::{AsInner, FromInner};
 use ffi::{OsString, OsStr};
 use time::Duration;
 
+pub mod alloc;
 pub mod args;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;

@@ -22,6 +22,7 @@ pub use self::rand::hashmap_random_keys;
 
 #[macro_use] pub mod compat;
 
+pub mod alloc;
 pub mod args;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;

@@ -38,6 +38,7 @@ macro_rules! rtassert {
     })
 }
 
+pub mod alloc;
 pub mod at_exit_imp;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;

@@ -16,7 +16,7 @@ use decoder::proc_macro_def_path_table;
 use schema::CrateRoot;
 use rustc_data_structures::sync::{Lrc, RwLock, Lock};
 
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX};
+use rustc::hir::def_id::CrateNum;
 use rustc_data_structures::svh::Svh;
 use rustc::middle::allocator::AllocatorKind;
 use rustc::middle::cstore::DepKind;
@@ -871,17 +871,14 @@ impl<'a> CrateLoader<'a> {
         // At this point we've determined that we need an allocator. Let's see
         // if our compilation session actually needs an allocator based on what
         // we're emitting.
-        let mut all_rlib = true;
-        for ct in self.sess.crate_types.borrow().iter() {
-            match *ct {
-                config::CrateType::Executable |
-                config::CrateType::Dylib |
-                config::CrateType::ProcMacro |
-                config::CrateType::Cdylib |
-                config::CrateType::Staticlib => all_rlib = false,
-                config::CrateType::Rlib => {}
-            }
-        }
+        let all_rlib = self.sess.crate_types.borrow()
+            .iter()
+            .all(|ct| {
+                match *ct {
+                    config::CrateType::Rlib => true,
+                    _ => false,
+                }
+            });
         if all_rlib {
             self.sess.allocator_kind.set(None);
             return
@@ -1004,8 +1001,6 @@ impl<'a> CrateLoader<'a> {
 
 impl<'a> CrateLoader<'a> {
     pub fn postprocess(&mut self, krate: &ast::Crate) {
-        // inject the sanitizer runtime before the allocator runtime because all
-        // sanitizers force the use of the `alloc_system` allocator
         self.inject_sanitizer_runtime();
         self.inject_profiler_runtime();
         self.inject_allocator_crate(krate);
