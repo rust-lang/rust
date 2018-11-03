@@ -178,6 +178,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 self.msg_span_from_early_bound_and_free_regions(region)
             }
             ty::ReStatic => ("the static lifetime".to_owned(), None),
+            ty::ReEmpty => ("an empty lifetime".to_owned(), None),
             _ => bug!("{:?}", region),
         }
     }
