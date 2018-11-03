@@ -650,7 +650,7 @@ impl<'tcx> TraitRef<'tcx> {
         TraitRef { def_id: def_id, substs: substs }
     }
 
-    /// Returns a TraitRef of the form `P0: Foo<P1..Pn>` where `Pi`
+    /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
     /// are the parameters defined on trait.
     pub fn identity<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId) -> TraitRef<'tcx> {
         TraitRef {

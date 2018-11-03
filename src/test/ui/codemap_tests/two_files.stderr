@@ -2,7 +2,9 @@ error[E0404]: expected trait, found type alias `Bar`
   --> $DIR/two_files.rs:15:6
    |
 LL | impl Bar for Baz { } //~ ERROR expected trait, found type alias
-   |      ^^^ type aliases cannot be used for traits
+   |      ^^^ type aliases cannot be used as traits
+   |
+   = note: did you mean to use a trait alias?
 
 error: aborting due to previous error
 

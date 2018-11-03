@@ -1118,6 +1118,7 @@ for traits::Vtable<'gcx, N> where N: HashStable<StableHashingContext<'a>> {
             &VtableClosure(ref table_closure) => table_closure.hash_stable(hcx, hasher),
             &VtableFnPointer(ref table_fn_pointer) => table_fn_pointer.hash_stable(hcx, hasher),
             &VtableGenerator(ref table_generator) => table_generator.hash_stable(hcx, hasher),
+            &VtableTraitAlias(ref table_alias) => table_alias.hash_stable(hcx, hasher),
         }
     }
 }
@@ -1221,6 +1222,22 @@ for traits::VtableGeneratorData<'gcx, N> where N: HashStable<StableHashingContex
             ref nested,
         } = *self;
         generator_def_id.hash_stable(hcx, hasher);
+        substs.hash_stable(hcx, hasher);
+        nested.hash_stable(hcx, hasher);
+    }
+}
+
+impl<'a, 'gcx, N> HashStable<StableHashingContext<'a>>
+for traits::VtableTraitAliasData<'gcx, N> where N: HashStable<StableHashingContext<'a>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        let traits::VtableTraitAliasData {
+            alias_def_id,
+            substs,
+            ref nested,
+        } = *self;
+        alias_def_id.hash_stable(hcx, hasher);
         substs.hash_stable(hcx, hasher);
         nested.hash_stable(hcx, hasher);
     }

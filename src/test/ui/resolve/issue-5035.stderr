@@ -11,7 +11,9 @@ LL | impl K for isize {} //~ ERROR expected trait, found type alias `K`
    |      ^
    |      |
    |      did you mean `I`?
-   |      type aliases cannot be used for traits
+   |      type aliases cannot be used as traits
+   |
+   = note: did you mean to use a trait alias?
 
 error: aborting due to 2 previous errors
 

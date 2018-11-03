@@ -1635,17 +1635,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                             if name == "packed" {
                                 gate_feature_post!(&self, repr_packed, attr.span,
                                                    "the `#[repr(packed(n))]` attribute \
-                                                   is experimental");
+                                                    is experimental");
                             }
                         }
                     }
                 }
-            }
-
-            ast::ItemKind::TraitAlias(..) => {
-                gate_feature_post!(&self, trait_alias,
-                                   i.span,
-                                   "trait aliases are not yet fully implemented");
             }
 
             ast::ItemKind::Impl(_, polarity, defaultness, _, _, _, _) => {
@@ -1667,6 +1661,15 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, optin_builtin_traits,
                                    i.span,
                                    "auto traits are experimental and possibly buggy");
+            }
+
+            ast::ItemKind::TraitAlias(..) => {
+                gate_feature_post!(
+                    &self,
+                    trait_alias,
+                    i.span,
+                    "trait aliases are experimental"
+                );
             }
 
             ast::ItemKind::MacroDef(ast::MacroDef { legacy: false, .. }) => {

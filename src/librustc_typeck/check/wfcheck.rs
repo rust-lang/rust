@@ -153,6 +153,9 @@ pub fn check_item_well_formed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: Def
         hir::ItemKind::Trait(..) => {
             check_trait(tcx, item);
         }
+        hir::ItemKind::TraitAlias(..) => {
+            check_trait(tcx, item);
+        }
         _ => {}
     }
 }

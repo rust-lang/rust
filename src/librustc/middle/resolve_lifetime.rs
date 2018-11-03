@@ -447,6 +447,17 @@ fn krate<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> NamedRegionMap {
     map
 }
 
+/// In traits, there is an implicit `Self` type parameter which comes before the generics.
+/// We have to account for this when computing the index of the other generic parameters.
+/// This function returns whether there is such an implicit parameter defined on the given item.
+fn sub_items_have_self_param(node: &hir::ItemKind) -> bool {
+    match *node {
+        hir::ItemKind::Trait(..) |
+        hir::ItemKind::TraitAlias(..) => true,
+        _ => false,
+    }
+}
+
 impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
         NestedVisitorMap::All(&self.tcx.hir)
@@ -522,8 +533,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     hir::ItemKind::Impl(..) => true,
                     _ => false,
                 };
-                // These kinds of items have only early bound lifetime parameters.
-                let mut index = if let hir::ItemKind::Trait(..) = item.node {
+                // These kinds of items have only early-bound lifetime parameters.
+                let mut index = if sub_items_have_self_param(&item.node) {
                     1 // Self comes before lifetimes
                 } else {
                     0
@@ -1602,8 +1613,8 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         let mut index = 0;
         if let Some(parent_id) = parent_id {
             let parent = self.tcx.hir.expect_item(parent_id);
-            if let hir::ItemKind::Trait(..) = parent.node {
-                index += 1; // Self comes first.
+            if sub_items_have_self_param(&parent.node) {
+                index += 1; // Self comes before lifetimes
             }
             match parent.node {
                 hir::ItemKind::Trait(_, _, ref generics, ..)

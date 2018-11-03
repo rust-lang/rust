@@ -1046,24 +1046,24 @@ pub enum Predicate<'tcx> {
     /// would be the type parameters.
     Trait(PolyTraitPredicate<'tcx>),
 
-    /// where 'a : 'b
+    /// where `'a : 'b`
     RegionOutlives(PolyRegionOutlivesPredicate<'tcx>),
 
-    /// where T : 'a
+    /// where `T : 'a`
     TypeOutlives(PolyTypeOutlivesPredicate<'tcx>),
 
-    /// where <T as TraitRef>::Name == X, approximately.
-    /// See `ProjectionPredicate` struct for details.
+    /// where `<T as TraitRef>::Name == X`, approximately.
+    /// See the `ProjectionPredicate` struct for details.
     Projection(PolyProjectionPredicate<'tcx>),
 
-    /// no syntax: T WF
+    /// no syntax: `T` well-formed
     WellFormed(Ty<'tcx>),
 
     /// trait must be object-safe
     ObjectSafe(DefId),
 
     /// No direct syntax. May be thought of as `where T : FnFoo<...>`
-    /// for some substitutions `...` and T being a closure type.
+    /// for some substitutions `...` and `T` being a closure type.
     /// Satisfied (or refuted) once we know the closure's kind.
     ClosureKind(DefId, ClosureSubsts<'tcx>, ClosureKind),
 
@@ -2797,7 +2797,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Determine whether an item is annotated with an attribute
+    /// Determine whether an item is annotated with an attribute.
     pub fn has_attr(self, did: DefId, attr: &str) -> bool {
         attr::contains_name(&self.get_attrs(did), attr)
     }
@@ -2811,14 +2811,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.optimized_mir(def_id).generator_layout.as_ref().unwrap()
     }
 
-    /// Given the def_id of an impl, return the def_id of the trait it implements.
+    /// Given the def-id of an impl, return the def_id of the trait it implements.
     /// If it implements no trait, return `None`.
     pub fn trait_id_of_impl(self, def_id: DefId) -> Option<DefId> {
         self.impl_trait_ref(def_id).map(|tr| tr.def_id)
     }
 
-    /// If the given def ID describes a method belonging to an impl, return the
-    /// ID of the impl that the method belongs to. Otherwise, return `None`.
+    /// If the given defid describes a method belonging to an impl, return the
+    /// def-id of the impl that the method belongs to. Otherwise, return `None`.
     pub fn impl_of_method(self, def_id: DefId) -> Option<DefId> {
         let item = if def_id.krate != LOCAL_CRATE {
             if let Some(Def::Method(_)) = self.describe_def(def_id) {
@@ -2983,7 +2983,7 @@ fn trait_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Option
         })
 }
 
-/// Yields the parent function's `DefId` if `def_id` is an `impl Trait` definition
+/// Yields the parent function's `DefId` if `def_id` is an `impl Trait` definition.
 pub fn is_impl_trait_defn(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefId> {
     if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
         if let Node::Item(item) = tcx.hir.get(node_id) {
@@ -2995,7 +2995,19 @@ pub fn is_impl_trait_defn(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> Option<DefI
     None
 }
 
-/// See `ParamEnv` struct def'n for details.
+/// Returns `true` if `def_id` is a trait alias.
+pub fn is_trait_alias(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> bool {
+    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
+        if let Node::Item(item) = tcx.hir.get(node_id) {
+            if let hir::ItemKind::TraitAlias(..) = item.node {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// See `ParamEnv` struct definition for details.
 fn param_env<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                        def_id: DefId)
                        -> ParamEnv<'tcx>

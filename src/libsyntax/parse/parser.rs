@@ -1295,7 +1295,7 @@ impl<'a> Parser<'a> {
             self.check_keyword(keywords::Extern) && self.is_extern_non_path()
     }
 
-    /// parse a TyKind::BareFn type:
+    /// parse a `TyKind::BareFn` type:
     fn parse_ty_bare_fn(&mut self, generic_params: Vec<GenericParam>) -> PResult<'a, TyKind> {
         /*
 
@@ -1532,7 +1532,7 @@ impl<'a> Parser<'a> {
                             if maybe_bounds && bounds.len() == 1 && !trailing_plus => {
                         let path = match bounds[0] {
                             GenericBound::Trait(ref pt, ..) => pt.trait_ref.path.clone(),
-                            _ => self.bug("unexpected lifetime bound"),
+                            GenericBound::Outlives(..) => self.bug("unexpected lifetime bound"),
                         };
                         self.parse_remaining_bounds(Vec::new(), path, lo, true)?
                     }
@@ -5779,7 +5779,7 @@ impl<'a> Parser<'a> {
                              ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
         if let Some(mac) = self.parse_assoc_macro_invoc("impl", Some(vis), at_end)? {
-            // Method macro.
+            // method macro
             Ok((keywords::Invalid.ident(), vec![], ast::Generics::default(),
                 ast::ImplItemKind::Macro(mac)))
         } else {
@@ -6792,11 +6792,11 @@ impl<'a> Parser<'a> {
         Ok(self.mk_item(lo.to(prev_span), invalid, ItemKind::ForeignMod(m), visibility, attrs))
     }
 
-    /// Parse type Foo = Bar;
+    /// Parse `type Foo = Bar;`
     /// or
-    /// existential type Foo: Bar;
+    /// `existential type Foo: Bar;`
     /// or
-    /// return None without modifying the parser state
+    /// `return None` without modifying the parser state
     fn eat_type(&mut self) -> Option<PResult<'a, (Ident, AliasKind, ast::Generics)>> {
         // This parses the grammar:
         //     Ident ["<"...">"] ["where" ...] ("=" | ":") Ty ";"

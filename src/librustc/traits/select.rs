@@ -30,11 +30,11 @@ use super::{ObligationCause, PredicateObligation, TraitObligation};
 use super::{OutputTypeParameterMismatch, Overflow, SelectionError, Unimplemented};
 use super::{
     VtableAutoImpl, VtableBuiltin, VtableClosure, VtableFnPointer, VtableGenerator, VtableImpl,
-    VtableObject, VtableParam,
+    VtableObject, VtableParam, VtableTraitAlias,
 };
 use super::{
     VtableAutoImplData, VtableBuiltinData, VtableClosureData, VtableFnPointerData,
-    VtableGeneratorData, VtableImplData, VtableObjectData,
+    VtableGeneratorData, VtableImplData, VtableObjectData, VtableTraitAliasData,
 };
 
 use dep_graph::{DepKind, DepNodeIndex};
@@ -271,6 +271,8 @@ enum SelectionCandidate<'tcx> {
     /// types generated for a fn pointer type (e.g., `fn(int)->int`)
     FnPointerCandidate,
 
+    TraitAliasCandidate(DefId),
+
     ObjectCandidate,
 
     BuiltinObjectCandidate,
@@ -286,12 +288,13 @@ impl<'a, 'tcx> ty::Lift<'tcx> for SelectionCandidate<'a> {
             ImplCandidate(def_id) => ImplCandidate(def_id),
             AutoImplCandidate(def_id) => AutoImplCandidate(def_id),
             ProjectionCandidate => ProjectionCandidate,
+            ClosureCandidate => ClosureCandidate,
+            GeneratorCandidate => GeneratorCandidate,
             FnPointerCandidate => FnPointerCandidate,
+            TraitAliasCandidate(def_id) => TraitAliasCandidate(def_id),
             ObjectCandidate => ObjectCandidate,
             BuiltinObjectCandidate => BuiltinObjectCandidate,
             BuiltinUnsizeCandidate => BuiltinUnsizeCandidate,
-            ClosureCandidate => ClosureCandidate,
-            GeneratorCandidate => GeneratorCandidate,
 
             ParamCandidate(ref trait_ref) => {
                 return tcx.lift(trait_ref).map(ParamCandidate);
@@ -1452,7 +1455,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let predicate = self.infcx()
             .resolve_type_vars_if_possible(&obligation.predicate);
 
-        // ok to skip binder because of the nature of the
+        // OK to skip binder because of the nature of the
         // trait-ref-is-knowable check, which does not care about
         // bound regions
         let trait_ref = predicate.skip_binder().trait_ref;
@@ -1631,6 +1634,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             vec: Vec::new(),
             ambiguous: false,
         };
+
+        self.assemble_candidates_for_trait_alias(obligation, &mut candidates)?;
 
         // Other bounds. Consider both in-scope bounds from fn decl
         // and applicable impls. There is a certain set of precedence rules here.
@@ -1879,7 +1884,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return Ok(());
         }
 
-        // ok to skip binder because the substs on generator types never
+        // OK to skip binder because the substs on generator types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         let self_ty = *obligation.self_ty().skip_binder();
@@ -1923,7 +1928,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
         };
 
-        // ok to skip binder because the substs on closure types never
+        // OK to skip binder because the substs on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         match obligation.self_ty().skip_binder().sty {
@@ -1973,7 +1978,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             return Ok(());
         }
 
-        // ok to skip binder because what we are inspecting doesn't involve bound regions
+        // OK to skip binder because what we are inspecting doesn't involve bound regions
         let self_ty = *obligation.self_ty().skip_binder();
         match self_ty.sty {
             ty::Infer(ty::TyVar(_)) => {
@@ -2238,6 +2243,24 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
     }
 
+    fn assemble_candidates_for_trait_alias(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        candidates: &mut SelectionCandidateSet<'tcx>,
+    ) -> Result<(), SelectionError<'tcx>> {
+        // OK to skip binder here because the tests we do below do not involve bound regions
+        let self_ty = *obligation.self_ty().skip_binder();
+        debug!("assemble_candidates_for_trait_alias(self_ty={:?})", self_ty);
+
+        let def_id = obligation.predicate.def_id();
+
+        if ty::is_trait_alias(self.tcx(), def_id) {
+            candidates.vec.push(TraitAliasCandidate(def_id.clone()));
+        }
+
+        Ok(())
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // WINNOW
     //
@@ -2288,7 +2311,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 | FnPointerCandidate
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
-                | BuiltinCandidate { .. } => {
+                | BuiltinCandidate { .. }
+                | TraitAliasCandidate(..) => {
                     // Global bounds from the where clause should be ignored
                     // here (see issue #50825). Otherwise, we have a where
                     // clause so don't go around looking for impls.
@@ -2318,7 +2342,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 | FnPointerCandidate
                 | BuiltinObjectCandidate
                 | BuiltinUnsizeCandidate
-                | BuiltinCandidate { .. } => true,
+                | BuiltinCandidate { .. }
+                | TraitAliasCandidate(..) => true,
                 ObjectCandidate | ProjectionCandidate => {
                     // Arbitrarily give param candidates priority
                     // over projection and object candidates.
@@ -2712,15 +2737,20 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Ok(VtableParam(obligations))
             }
 
+            ImplCandidate(impl_def_id) => Ok(VtableImpl(self.confirm_impl_candidate(
+                obligation,
+                impl_def_id,
+            ))),
+
             AutoImplCandidate(trait_def_id) => {
                 let data = self.confirm_auto_impl_candidate(obligation, trait_def_id);
                 Ok(VtableAutoImpl(data))
             }
 
-            ImplCandidate(impl_def_id) => Ok(VtableImpl(self.confirm_impl_candidate(
-                obligation,
-                impl_def_id,
-            ))),
+            ProjectionCandidate => {
+                self.confirm_projection_candidate(obligation);
+                Ok(VtableParam(Vec::new()))
+            }
 
             ClosureCandidate => {
                 let vtable_closure = self.confirm_closure_candidate(obligation)?;
@@ -2732,13 +2762,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Ok(VtableGenerator(vtable_generator))
             }
 
-            BuiltinObjectCandidate => {
-                // This indicates something like `(Trait+Send) :
-                // Send`. In this case, we know that this holds
-                // because that's what the object type is telling us,
-                // and there's really no additional obligations to
-                // prove and no types in particular to unify etc.
-                Ok(VtableParam(Vec::new()))
+            FnPointerCandidate => {
+                let data = self.confirm_fn_pointer_candidate(obligation)?;
+                Ok(VtableFnPointer(data))
+            }
+
+            TraitAliasCandidate(alias_def_id) => {
+                let data = self.confirm_trait_alias_candidate(obligation, alias_def_id);
+                Ok(VtableTraitAlias(data))
             }
 
             ObjectCandidate => {
@@ -2746,13 +2777,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 Ok(VtableObject(data))
             }
 
-            FnPointerCandidate => {
-                let data = self.confirm_fn_pointer_candidate(obligation)?;
-                Ok(VtableFnPointer(data))
-            }
-
-            ProjectionCandidate => {
-                self.confirm_projection_candidate(obligation);
+            BuiltinObjectCandidate => {
+                // This indicates something like `(Trait+Send) :
+                // Send`. In this case, we know that this holds
+                // because that's what the object type is telling us,
+                // and there's really no additional obligations to
+                // prove and no types in particular to unify etc.
                 Ok(VtableParam(Vec::new()))
             }
 
@@ -2865,7 +2895,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         self.vtable_auto_impl(obligation, trait_def_id, types)
     }
 
-    /// See `confirm_auto_impl_candidate`
+    /// See `confirm_auto_impl_candidate`.
     fn vtable_auto_impl(
         &mut self,
         obligation: &TraitObligation<'tcx>,
@@ -2922,7 +2952,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // this time not in a probe.
         self.in_snapshot(|this, snapshot| {
             let (substs, placeholder_map) = this.rematch_impl(impl_def_id, obligation, snapshot);
-            debug!("confirm_impl_candidate substs={:?}", substs);
+            debug!("confirm_impl_candidate: substs={:?}", substs);
             let cause = obligation.derived_cause(ImplDerivedObligation);
             this.vtable_impl(
                 impl_def_id,
@@ -2986,10 +3016,10 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     ) -> VtableObjectData<'tcx, PredicateObligation<'tcx>> {
         debug!("confirm_object_candidate({:?})", obligation);
 
-        // FIXME skipping binder here seems wrong -- we should
-        // probably flatten the binder from the obligation and the
-        // binder from the object. Have to try to make a broken test
-        // case that results. -nmatsakis
+        // FIXME(nmatsakis) skipping binder here seems wrong -- we should
+        // probably flatten the binder from the obligation and the binder
+        // from the object. Have to try to make a broken test case that
+        // results.
         let self_ty = self.infcx
             .shallow_resolve(*obligation.self_ty().skip_binder());
         let poly_trait_ref = match self_ty.sty {
@@ -3041,7 +3071,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     ) -> Result<VtableFnPointerData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
         debug!("confirm_fn_pointer_candidate({:?})", obligation);
 
-        // ok to skip binder; it is reintroduced below
+        // OK to skip binder; it is reintroduced below
         let self_ty = self.infcx
             .shallow_resolve(*obligation.self_ty().skip_binder());
         let sig = self_ty.fn_sig(self.tcx());
@@ -3077,11 +3107,51 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         })
     }
 
+    fn confirm_trait_alias_candidate(
+        &mut self,
+        obligation: &TraitObligation<'tcx>,
+        alias_def_id: DefId,
+    ) -> VtableTraitAliasData<'tcx, PredicateObligation<'tcx>> {
+        debug!(
+            "confirm_trait_alias_candidate({:?}, {:?})",
+            obligation, alias_def_id
+        );
+
+        self.in_snapshot(|this, snapshot| {
+            let (predicate, placeholder_map) = this.infcx()
+                .replace_late_bound_regions_with_placeholders(&obligation.predicate);
+            let trait_ref = predicate.trait_ref;
+            let trait_def_id = trait_ref.def_id;
+            let substs = trait_ref.substs;
+
+            let trait_obligations = this.impl_or_trait_obligations(
+                obligation.cause.clone(),
+                obligation.recursion_depth,
+                obligation.param_env,
+                trait_def_id,
+                &substs,
+                placeholder_map,
+                snapshot,
+            );
+
+            debug!(
+                "confirm_trait_alias_candidate: trait_def_id={:?} trait_obligations={:?}",
+                trait_def_id, trait_obligations
+            );
+
+            VtableTraitAliasData {
+                alias_def_id,
+                substs: substs,
+                nested: trait_obligations,
+            }
+        })
+    }
+
     fn confirm_generator_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
     ) -> Result<VtableGeneratorData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>> {
-        // ok to skip binder because the substs on generator types never
+        // OK to skip binder because the substs on generator types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         let self_ty = self.infcx
@@ -3139,7 +3209,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             .fn_trait_kind(obligation.predicate.def_id())
             .unwrap_or_else(|| bug!("closure candidate for non-fn trait {:?}", obligation));
 
-        // ok to skip binder because the substs on closure types never
+        // OK to skip binder because the substs on closure types never
         // touch bound regions, they just capture the in-scope
         // type/region parameters
         let self_ty = self.infcx

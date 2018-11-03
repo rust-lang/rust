@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Conversion from AST representation of types to the ty.rs
+//! Conversion from AST representation of types to the `ty.rs`
 //! representation.  The main routine here is `ast_ty_to_ty()`: each use
 //! is parameterized by an instance of `AstConv`.
 
@@ -181,7 +181,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         item_segment: &hir::PathSegment)
         -> &'tcx Substs<'tcx>
     {
-
         let (substs, assoc_bindings) = item_segment.with_generic_args(|generic_args| {
             self.create_substs_for_ast_path(
                 span,
@@ -545,7 +544,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     }
 
     /// Given the type/region arguments provided to some path (along with
-    /// an implicit Self, if this is a trait reference) returns the complete
+    /// an implicit `Self`, if this is a trait reference) returns the complete
     /// set of substitutions. This may involve applying defaulted type parameters.
     ///
     /// Note that the type listing given here is *exactly* what the user provided.
@@ -722,7 +721,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     {
         let trait_def_id = self.trait_def_id(trait_ref);
 
-        debug!("ast_path_to_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
+        debug!("instantiate_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
 
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1);
 
@@ -739,11 +738,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             let predicate: Result<_, ErrorReported> =
                 self.ast_type_binding_to_poly_projection_predicate(
                     trait_ref.ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
-            // ok to ignore Err() because ErrorReported (see above)
+            // ok to ignore Err because ErrorReported (see above)
             Some((predicate.ok()?, binding.span))
         }));
 
-        debug!("ast_path_to_poly_trait_ref({:?}, projections={:?}) -> {:?}",
+        debug!("instantiate_poly_trait_ref({:?}, projections={:?}) -> {:?}",
                trait_ref, poly_projections, poly_trait_ref);
         poly_trait_ref
     }
@@ -948,8 +947,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         )
     }
 
-    /// Transform a PolyTraitRef into a PolyExistentialTraitRef by
-    /// removing the dummy Self type (TRAIT_OBJECT_DUMMY_SELF).
+    /// Transform a `PolyTraitRef` into a `PolyExistentialTraitRef` by
+    /// removing the dummy `Self` type (`TRAIT_OBJECT_DUMMY_SELF`).
     fn trait_ref_to_existential(&self, trait_ref: ty::TraitRef<'tcx>)
                                 -> ty::ExistentialTraitRef<'tcx> {
         assert_eq!(trait_ref.self_ty().sty, TRAIT_OBJECT_DUMMY_SELF);
@@ -975,9 +974,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         let principal = self.instantiate_poly_trait_ref(&trait_bounds[0],
                                                         dummy_self,
                                                         &mut projection_bounds);
+        debug!("principal: {:?}", principal);
 
         for trait_bound in trait_bounds[1..].iter() {
-            // Sanity check for non-principal trait bounds
+            // sanity check for non-principal trait bounds
             self.instantiate_poly_trait_ref(trait_bound,
                                             dummy_self,
                                             &mut vec![]);
@@ -1009,9 +1009,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             })
         });
 
-        // check that there are no gross object safety violations,
+        // Check that there are no gross object safety violations;
         // most importantly, that the supertraits don't contain Self,
-        // to avoid ICE-s.
+        // to avoid ICEs.
         let object_safety_violations =
             tcx.global_tcx().astconv_object_safety_violations(principal.def_id());
         if !object_safety_violations.is_empty() {
@@ -1021,7 +1021,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             return tcx.types.err;
         }
 
-        // use a btreeset to keep output in a more consistent order
+        // Use a BTreeSet to keep output in a more consistent order.
         let mut associated_types = BTreeSet::default();
 
         for tr in traits::supertraits(tcx, principal) {
@@ -1060,7 +1060,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         v.sort_by(|a, b| a.stable_cmp(tcx, b));
         let existential_predicates = ty::Binder::bind(tcx.mk_existential_predicates(v.into_iter()));
 
-        // Explicitly specified region bound. Use that.
+        // Use explicitly-specified region bound.
         let region_bound = if !lifetime.is_elided() {
             self.ast_region_to_region(lifetime, None)
         } else {
@@ -1347,7 +1347,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         err.span_label(span, "associated type not allowed here").emit();
     }
 
-    // Check a type Path and convert it to a Ty.
+    // Check a type `Path` and convert it to a `Ty`.
     pub fn def_to_ty(&self,
                      opt_self_ty: Option<Ty<'tcx>>,
                      path: &hir::Path,
@@ -1442,8 +1442,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
     /// Parses the programmer's textual representation of a type into our
     /// internal notion of a type.
     pub fn ast_ty_to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
-        debug!("ast_ty_to_ty(id={:?}, ast_ty={:?})",
-               ast_ty.id, ast_ty);
+        debug!("ast_ty_to_ty(id={:?}, ast_ty={:?} ty_ty={:?})",
+               ast_ty.id, ast_ty, ast_ty.node);
 
         let tcx = self.tcx();
 

@@ -538,9 +538,9 @@ impl<'a> PathSource<'a> {
         match self {
             PathSource::Type => match def {
                 Def::Struct(..) | Def::Union(..) | Def::Enum(..) |
-                Def::Trait(..) | Def::TyAlias(..) | Def::AssociatedTy(..) |
-                Def::PrimTy(..) | Def::TyParam(..) | Def::SelfTy(..) |
-                Def::Existential(..) |
+                Def::Trait(..) | Def::TraitAlias(..) | Def::TyAlias(..) |
+                Def::AssociatedTy(..) | Def::PrimTy(..) | Def::TyParam(..) |
+                Def::SelfTy(..) | Def::Existential(..) |
                 Def::ForeignTy(..) => true,
                 _ => false,
             },
@@ -3122,7 +3122,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         return (err, candidates);
                     }
                     (Def::TyAlias(..), PathSource::Trait(_)) => {
-                        err.span_label(span, "type aliases cannot be used for traits");
+                        err.span_label(span, "type aliases cannot be used as traits");
+                        if nightly_options::is_nightly_build() {
+                            err.note("did you mean to use a trait alias?");
+                        }
                         return (err, candidates);
                     }
                     (Def::Mod(..), PathSource::Expr(Some(parent))) => match parent.node {
@@ -3888,7 +3891,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             // report an error.
                             if record_used {
                                 resolve_error(self, span,
-                                        ResolutionError::CannotCaptureDynamicEnvironmentInFnItem);
+                                    ResolutionError::CannotCaptureDynamicEnvironmentInFnItem);
                             }
                             return Def::Err;
                         }
@@ -3896,7 +3899,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             // Still doesn't deal with upvars
                             if record_used {
                                 resolve_error(self, span,
-                                        ResolutionError::AttemptToUseNonConstantValueInConstant);
+                                    ResolutionError::AttemptToUseNonConstantValueInConstant);
                             }
                             return Def::Err;
                         }
