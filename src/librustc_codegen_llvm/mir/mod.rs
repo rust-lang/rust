@@ -12,6 +12,7 @@ use common::{C_i32, C_null};
 use libc::c_uint;
 use llvm::{self, BasicBlock};
 use llvm::debuginfo::DIScope;
+use llvm_util;
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
 use rustc::ty::layout::{LayoutOf, TyLayout};
 use rustc::mir::{self, Mir};
@@ -612,7 +613,7 @@ fn arg_local_refs(
             // doesn't actually strip the offset when splitting the closure
             // environment into its components so it ends up out of bounds.
             // (cuviper) It seems to be fine without the alloca on LLVM 6 and later.
-            let env_alloca = !env_ref && unsafe { llvm::LLVMRustVersionMajor() < 6 };
+            let env_alloca = !env_ref && llvm_util::get_major_version() < 6;
             let env_ptr = if env_alloca {
                 let scratch = PlaceRef::alloca(bx,
                     bx.cx.layout_of(tcx.mk_mut_ptr(arg.layout.ty)),

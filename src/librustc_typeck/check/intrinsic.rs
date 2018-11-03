@@ -292,7 +292,8 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             "unchecked_div" | "unchecked_rem" | "exact_div" =>
                 (1, vec![param(0), param(0)], param(0)),
-            "unchecked_shl" | "unchecked_shr" =>
+            "unchecked_shl" | "unchecked_shr" |
+            "rotate_left" | "rotate_right" =>
                 (1, vec![param(0), param(0)], param(0)),
 
             "overflowing_add" | "overflowing_sub" | "overflowing_mul" =>

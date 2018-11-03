@@ -13,6 +13,7 @@
 use attributes;
 use intrinsics::{self, Intrinsic};
 use llvm::{self, TypeKind};
+use llvm_util;
 use abi::{Abi, FnType, LlvmType, PassMode};
 use mir::place::PlaceRef;
 use mir::operand::{OperandRef, OperandValue};
@@ -284,7 +285,8 @@ pub fn codegen_intrinsic_call(
         "ctlz" | "ctlz_nonzero" | "cttz" | "cttz_nonzero" | "ctpop" | "bswap" |
         "bitreverse" | "add_with_overflow" | "sub_with_overflow" |
         "mul_with_overflow" | "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
-        "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" | "exact_div" => {
+        "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" | "exact_div" |
+        "rotate_left" | "rotate_right" => {
             let ty = arg_tys[0];
             match int_type_width_signed(ty, cx) {
                 Some((width, signed)) =>
@@ -363,6 +365,27 @@ pub fn codegen_intrinsic_call(
                             } else {
                                 bx.lshr(args[0].immediate(), args[1].immediate())
                             },
+                        "rotate_left" | "rotate_right" => {
+                            let is_left = name == "rotate_left";
+                            let val = args[0].immediate();
+                            let raw_shift = args[1].immediate();
+                            if llvm_util::get_major_version() >= 7 {
+                                // rotate = funnel shift with first two args the same
+                                let llvm_name = &format!("llvm.fsh{}.i{}",
+                                                         if is_left { 'l' } else { 'r' }, width);
+                                let llfn = cx.get_intrinsic(llvm_name);
+                                bx.call(llfn, &[val, val, raw_shift], None)
+                            } else {
+                                // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
+                                // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
+                                let width = C_uint(Type::ix(cx, width), width);
+                                let shift = bx.urem(raw_shift, width);
+                                let inv_shift = bx.urem(bx.sub(width, raw_shift), width);
+                                let shift1 = bx.shl(val, if is_left { shift } else { inv_shift });
+                                let shift2 = bx.lshr(val, if !is_left { shift } else { inv_shift });
+                                bx.or(shift1, shift2)
+                            }
+                        },
                         _ => bug!(),
                     },
                 None => {
