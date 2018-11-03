@@ -11,7 +11,7 @@
 mod program_clauses;
 
 use chalk_engine::fallible::Fallible as ChalkEngineFallible;
-use chalk_engine::{context, hh::HhGoal, DelayedLiteral, ExClause};
+use chalk_engine::{context, hh::HhGoal, DelayedLiteral, Literal, ExClause};
 use rustc::infer::canonical::{
     Canonical, CanonicalVarValues, OriginalQueryValues, QueryRegionConstraint, QueryResponse,
 };
@@ -28,7 +28,7 @@ use rustc::traits::{
     InEnvironment,
 };
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use rustc::ty::subst::Kind;
+use rustc::ty::subst::{Kind, UnpackedKind};
 use rustc::ty::{self, TyCtxt};
 
 use std::fmt::{self, Debug};
@@ -44,7 +44,7 @@ crate struct ChalkArenas<'gcx> {
 #[derive(Copy, Clone)]
 crate struct ChalkContext<'cx, 'gcx: 'cx> {
     _arenas: ChalkArenas<'gcx>,
-    _tcx: TyCtxt<'cx, 'gcx, 'gcx>,
+    tcx: TyCtxt<'cx, 'gcx, 'gcx>,
 }
 
 #[derive(Copy, Clone)]
@@ -68,7 +68,7 @@ BraceStructTypeFoldableImpl! {
 }
 
 impl context::Context for ChalkArenas<'tcx> {
-    type CanonicalExClause = Canonical<'tcx, ExClause<Self>>;
+    type CanonicalExClause = Canonical<'tcx, ChalkExClause<'tcx>>;
 
     type CanonicalGoalInEnvironment = Canonical<'tcx, InEnvironment<'tcx, Goal<'tcx>>>;
 
@@ -147,19 +147,29 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
     /// - the environment and goal found by substitution `S` into `arg`
     fn instantiate_ucanonical_goal<R>(
         &self,
-        _arg: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
-        _op: impl context::WithInstantiatedUCanonicalGoal<ChalkArenas<'gcx>, Output = R>,
+        arg: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
+        op: impl context::WithInstantiatedUCanonicalGoal<ChalkArenas<'gcx>, Output = R>,
     ) -> R {
-        unimplemented!()
+        self.tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, arg, |ref infcx, arg, subst| {
+            let chalk_infcx = &mut ChalkInferenceContext {
+                infcx,
+            };
+            op.with(chalk_infcx, subst, arg.environment, arg.goal)
+        })
     }
 
     fn instantiate_ex_clause<R>(
         &self,
         _num_universes: usize,
-        _canonical_ex_clause: &Canonical<'gcx, ChalkExClause<'gcx>>,
-        _op: impl context::WithInstantiatedExClause<ChalkArenas<'gcx>, Output = R>,
+        arg: &Canonical<'gcx, ChalkExClause<'gcx>>,
+        op: impl context::WithInstantiatedExClause<ChalkArenas<'gcx>, Output = R>,
     ) -> R {
-        unimplemented!()
+        self.tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &arg.upcast(), |ref infcx, arg, _| {
+            let chalk_infcx = &mut ChalkInferenceContext {
+                infcx,
+            };
+            op.with(chalk_infcx,arg)
+        })
     }
 
     /// True if this solution has no region constraints.
@@ -186,14 +196,33 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
     }
 
     fn is_trivial_substitution(
-        _u_canon: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
-        _canonical_subst: &Canonical<'gcx, ConstrainedSubst<'gcx>>,
+        u_canon: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
+        canonical_subst: &Canonical<'tcx, ConstrainedSubst<'tcx>>,
     ) -> bool {
-        unimplemented!()
+        let subst = &canonical_subst.value.subst;
+        assert_eq!(u_canon.variables.len(), subst.var_values.len());
+        subst.var_values
+            .iter_enumerated()
+            .all(|(cvar, kind)| match kind.unpack() {
+                UnpackedKind::Lifetime(r) => match r {
+                    &ty::ReLateBound(debruijn, br) => {
+                        debug_assert_eq!(debruijn, ty::INNERMOST);
+                        cvar == br.assert_bound_var()
+                    }
+                    _ => false,
+                },
+                UnpackedKind::Type(ty) => match ty.sty {
+                    ty::Bound(debruijn, bound_ty) => {
+                        debug_assert_eq!(debruijn, ty::INNERMOST);
+                        cvar == bound_ty.var
+                    }
+                    _ => false,
+                },
+            })
     }
 
-    fn num_universes(_: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>) -> usize {
-        0 // FIXME
+    fn num_universes(canon: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>) -> usize {
+        canon.max_universe.index() + 1
     }
 
     /// Convert a goal G *from* the canonical universes *into* our
@@ -213,39 +242,6 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
         value.clone() // FIXME universe maps not implemented yet
     }
 }
-
-//impl context::UCanonicalGoalInEnvironment<ChalkContext<'cx, 'gcx>>
-//    for Canonical<'gcx, ty::ParamEnvAnd<'gcx, Goal<'gcx>>>
-//{
-//    fn canonical(&self) -> &Canonical<'gcx, ty::ParamEnvAnd<'gcx, Goal<'gcx>>> {
-//        self
-//    }
-//
-//    fn is_trivial_substitution(
-//        &self,
-//        canonical_subst: &Canonical<'tcx, ConstrainedSubst<'tcx>>,
-//    ) -> bool {
-//        let subst = &canonical_subst.value.subst;
-//        assert_eq!(self.canonical.variables.len(), subst.var_values.len());
-//        subst
-//            .var_values
-//            .iter_enumerated()
-//            .all(|(cvar, kind)| match kind.unpack() {
-//                Kind::Lifetime(r) => match r {
-//                    ty::ReCanonical(cvar1) => cvar == cvar1,
-//                    _ => false,
-//                },
-//                Kind::Type(ty) => match ty.sty {
-//                    ty::Infer(ty::InferTy::CanonicalTy(cvar1)) => cvar == cvar1,
-//                    _ => false,
-//                },
-//            })
-//    }
-//
-//    fn num_universes(&self) -> usize {
-//        0 // FIXME
-//    }
-//}
 
 impl context::InferenceTable<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     for ChalkInferenceContext<'cx, 'gcx, 'tcx>
@@ -338,9 +334,9 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
 
     fn instantiate_binders_universally(
         &mut self,
-        _arg: &ty::Binder<Goal<'tcx>>,
+        arg: &ty::Binder<Goal<'tcx>>,
     ) -> Goal<'tcx> {
-        panic!("FIXME -- universal instantiation needs sgrif's branch")
+        self.infcx.replace_bound_vars_with_placeholders(arg).0
     }
 
     fn instantiate_binders_existentially(
@@ -489,5 +485,70 @@ BraceStructLiftImpl! {
         type Lifted = ConstrainedSubst<'tcx>;
 
         subst, constraints
+    }
+}
+
+trait Upcast<'tcx, 'gcx: 'tcx>: 'gcx {
+    type Upcasted: 'tcx;
+
+    fn upcast(&self) -> Self::Upcasted;
+}
+
+impl<'tcx, 'gcx: 'tcx> Upcast<'tcx, 'gcx> for DelayedLiteral<ChalkArenas<'gcx>> {
+    type Upcasted = DelayedLiteral<ChalkArenas<'tcx>>;
+
+    fn upcast(&self) -> Self::Upcasted {
+        match self {
+            &DelayedLiteral::CannotProve(..) => DelayedLiteral::CannotProve(()),
+            &DelayedLiteral::Negative(index) => DelayedLiteral::Negative(index),
+            DelayedLiteral::Positive(index, subst) => DelayedLiteral::Positive(
+                *index,
+                subst.clone()
+            ),
+        }
+    }
+}
+
+impl<'tcx, 'gcx: 'tcx> Upcast<'tcx, 'gcx> for Literal<ChalkArenas<'gcx>> {
+    type Upcasted = Literal<ChalkArenas<'tcx>>;
+
+    fn upcast(&self) -> Self::Upcasted {
+        match self {
+            &Literal::Negative(goal) => Literal::Negative(goal),
+            &Literal::Positive(goal) => Literal::Positive(goal),
+        }
+    }
+}
+
+impl<'tcx, 'gcx: 'tcx> Upcast<'tcx, 'gcx> for ExClause<ChalkArenas<'gcx>> {
+    type Upcasted = ExClause<ChalkArenas<'tcx>>;
+
+    fn upcast(&self) -> Self::Upcasted {
+        ExClause {
+            subst: self.subst.clone(),
+            delayed_literals: self.delayed_literals
+                .iter()
+                .map(|l| l.upcast())
+                .collect(),
+            constraints: self.constraints.clone(),
+            subgoals: self.subgoals
+                .iter()
+                .map(|g| g.upcast())
+                .collect(),
+        }
+    }
+}
+
+impl<'tcx, 'gcx: 'tcx, T> Upcast<'tcx, 'gcx> for Canonical<'gcx, T>
+    where T: Upcast<'tcx, 'gcx>
+{
+    type Upcasted = Canonical<'tcx, T::Upcasted>;
+
+    fn upcast(&self) -> Self::Upcasted {
+        Canonical {
+            max_universe: self.max_universe,
+            value: self.value.upcast(),
+            variables: self.variables,
+        }
     }
 }
