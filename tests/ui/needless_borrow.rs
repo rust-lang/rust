@@ -63,3 +63,10 @@ fn issue_1432() {
 
     let _ = v.iter().filter(|&a| a.is_empty());
 }
+
+#[allow(dead_code)]
+#[warn(clippy::needless_borrow)]
+#[derive(Debug)]
+enum Foo<'a> {
+    Str(&'a str),
+}
