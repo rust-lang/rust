@@ -53,7 +53,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // First, we instantiate each bound region in the supertype with a
             // fresh placeholder region.
             let (b_prime, placeholder_map) =
-                self.infcx.replace_late_bound_regions_with_placeholders(b);
+                self.infcx.replace_bound_vars_with_placeholders(b);
 
             // Next, we instantiate each bound region in the subtype
             // with a fresh region variable. These region variables --
@@ -115,7 +115,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // First, we instantiate each bound region in the matcher
             // with a placeholder region.
             let ((a_match, a_value), placeholder_map) =
-                self.infcx.replace_late_bound_regions_with_placeholders(a_pair);
+                self.infcx.replace_bound_vars_with_placeholders(a_pair);
 
             debug!("higher_ranked_match: a_match={:?}", a_match);
             debug!("higher_ranked_match: placeholder_map={:?}", placeholder_map);
@@ -314,10 +314,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         region_vars
     }
 
-    /// Replace all regions bound by `binder` with placeholder regions and
-    /// return a map indicating which bound-region was replaced with what
-    /// placeholder region. This is the first step of checking subtyping
-    /// when higher-ranked things are involved.
+    /// Replace all regions (resp. types) bound by `binder` with placeholder
+    /// regions (resp. types) and return a map indicating which bound-region
+    /// was replaced with what placeholder region. This is the first step of
+    /// checking subtyping when higher-ranked things are involved.
     ///
     /// **Important:** you must call this function from within a snapshot.
     /// Moreover, before committing the snapshot, you must eventually call
@@ -330,26 +330,37 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// the [rustc guide].
     ///
     /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/hrtb.html
-    pub fn replace_late_bound_regions_with_placeholders<T>(
+    pub fn replace_bound_vars_with_placeholders<T>(
         &self,
-        binder: &ty::Binder<T>,
+        binder: &ty::Binder<T>
     ) -> (T, PlaceholderMap<'tcx>)
     where
-        T : TypeFoldable<'tcx>,
+        T: TypeFoldable<'tcx>
     {
         let next_universe = self.create_next_universe();
 
-        let (result, map) = self.tcx.replace_late_bound_regions(binder, |br| {
+        let fld_r = |br| {
             self.tcx.mk_region(ty::RePlaceholder(ty::PlaceholderRegion {
                 universe: next_universe,
                 name: br,
             }))
-        });
+        };
 
-        debug!("replace_late_bound_regions_with_placeholders(binder={:?}, result={:?}, map={:?})",
-               binder,
-               result,
-               map);
+        let fld_t = |bound_ty: ty::BoundTy| {
+            self.tcx.mk_ty(ty::Placeholder(ty::PlaceholderType {
+                universe: next_universe,
+                name: bound_ty.var,
+            }))
+        };
+
+        let (result, map) = self.tcx.replace_bound_vars(binder, fld_r, fld_t);
+
+        debug!(
+            "replace_bound_vars_with_placeholders(binder={:?}, result={:?}, map={:?})",
+            binder,
+            result,
+            map
+        );
 
         (result, map)
     }
@@ -530,7 +541,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     /// Pops the placeholder regions found in `placeholder_map` from the region
     /// inference context. Whenever you create placeholder regions via
-    /// `replace_late_bound_regions_with_placeholders`, they must be popped before you
+    /// `replace_bound_vars_with_placeholders`, they must be popped before you
     /// commit the enclosing snapshot (if you do not commit, e.g. within a
     /// probe or as a result of an error, then this is not necessary, as
     /// popping happens as part of the rollback).

@@ -227,7 +227,7 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     universe: Cell<ty::UniverseIndex>,
 }
 
-/// A map returned by `replace_late_bound_regions_with_placeholders()`
+/// A map returned by `replace_bound_vars_with_placeholders()`
 /// indicating the placeholder region that each late-bound region was
 /// replaced with.
 pub type PlaceholderMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
@@ -935,7 +935,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     b,
                 },
                 placeholder_map,
-            ) = self.replace_late_bound_regions_with_placeholders(predicate);
+            ) = self.replace_bound_vars_with_placeholders(predicate);
 
             let cause_span = cause.span;
             let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
@@ -952,7 +952,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) -> UnitResult<'tcx> {
         self.commit_if_ok(|snapshot| {
             let (ty::OutlivesPredicate(r_a, r_b), placeholder_map) =
-                self.replace_late_bound_regions_with_placeholders(predicate);
+                self.replace_bound_vars_with_placeholders(predicate);
             let origin = SubregionOrigin::from_obligation_cause(cause, || {
                 RelateRegionParamBound(cause.span)
             });
