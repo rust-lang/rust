@@ -35,7 +35,6 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{MultiSpan, Span};
 
 use std::cell::{Cell, RefCell};
-use std::collections::BTreeMap;
 use std::{mem, ptr};
 
 /// Contains data for specific types of import directives.
@@ -95,13 +94,6 @@ pub struct ImportDirective<'a> {
     pub subclass: ImportDirectiveSubclass<'a>,
     pub vis: Cell<ty::Visibility>,
     pub used: Cell<bool>,
-
-    /// Whether this import is a "canary" for the `uniform_paths` feature,
-    /// i.e. `use x::...;` results in an `use self::x as _;` canary.
-    /// This flag affects diagnostics: an error is reported if and only if
-    /// the import resolves successfully and an external crate with the same
-    /// name (`x` above) also exists; any resolution failures are ignored.
-    pub is_uniform_paths_canary: bool,
 }
 
 impl<'a> ImportDirective<'a> {
@@ -188,11 +180,6 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     // But when a crate does exist, it will get chosen even when
                     // macro expansion could result in a success from the lookup
                     // in the `self` module, later on.
-                    //
-                    // NB. This is currently alleviated by the "ambiguity canaries"
-                    // (see `is_uniform_paths_canary`) that get introduced for the
-                    // maybe-relative imports handled here: if the false negative
-                    // case were to arise, it would *also* cause an ambiguity error.
                     if binding.is_ok() {
                         return binding;
                     }
@@ -404,8 +391,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                                 root_span: Span,
                                 root_id: NodeId,
                                 vis: ty::Visibility,
-                                parent_scope: ParentScope<'a>,
-                                is_uniform_paths_canary: bool) {
+                                parent_scope: ParentScope<'a>) {
         let current_module = parent_scope.module;
         let directive = self.arenas.alloc_import_directive(ImportDirective {
             parent_scope,
@@ -418,7 +404,6 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             root_id,
             vis: Cell::new(vis),
             used: Cell::new(false),
-            is_uniform_paths_canary,
         });
 
         debug!("add_import_directive({:?})", directive);
@@ -648,18 +633,6 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             self.finalize_resolutions_in(module);
         }
 
-        struct UniformPathsCanaryResults<'a> {
-            name: Name,
-            module_scope: Option<&'a NameBinding<'a>>,
-            block_scopes: Vec<&'a NameBinding<'a>>,
-        }
-
-        // Collect all tripped `uniform_paths` canaries separately.
-        let mut uniform_paths_canaries: BTreeMap<
-            (Span, NodeId, Namespace),
-            UniformPathsCanaryResults,
-        > = BTreeMap::new();
-
         let mut errors = false;
         let mut seen_spans = FxHashSet::default();
         let mut error_vec = Vec::new();
@@ -667,46 +640,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         for i in 0 .. self.determined_imports.len() {
             let import = self.determined_imports[i];
             let error = self.finalize_import(import);
-
-            // For a `#![feature(uniform_paths)]` `use self::x as _` canary,
-            // failure is ignored, while success may cause an ambiguity error.
-            if import.is_uniform_paths_canary {
-                if error.is_some() {
-                    continue;
-                }
-
-                let (name, result) = match import.subclass {
-                    SingleImport { source, ref result, .. } => (source.name, result),
-                    _ => bug!(),
-                };
-
-                let has_explicit_self =
-                    !import.module_path.is_empty() &&
-                    import.module_path[0].name == keywords::SelfValue.name();
-
-                self.per_ns(|_, ns| {
-                    if let Some(result) = result[ns].get().ok() {
-                        let canary_results =
-                            uniform_paths_canaries.entry((import.span, import.id, ns))
-                                .or_insert(UniformPathsCanaryResults {
-                                    name,
-                                    module_scope: None,
-                                    block_scopes: vec![],
-                                });
-
-                        // All the canaries with the same `id` should have the same `name`.
-                        assert_eq!(canary_results.name, name);
-
-                        if has_explicit_self {
-                            // There should only be one `self::x` (module-scoped) canary.
-                            assert!(canary_results.module_scope.is_none());
-                            canary_results.module_scope = Some(result);
-                        } else {
-                            canary_results.block_scopes.push(result);
-                        }
-                    }
-                });
-            } else if let Some((span, err, note)) = error {
+            if let Some((span, err, note)) = error {
                 errors = true;
 
                 if let SingleImport { source, ref result, .. } = import.subclass {
@@ -741,71 +675,6 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             }
         }
 
-        let uniform_paths_feature = self.session.features_untracked().uniform_paths;
-        for ((span, _, ns), results) in uniform_paths_canaries {
-            let name = results.name;
-            let external_crate = if ns == TypeNS {
-                self.extern_prelude_get(Ident::with_empty_ctxt(name), true, false)
-                    .map(|binding| binding.def())
-            } else {
-                None
-            };
-
-            // Currently imports can't resolve in non-module scopes,
-            // we only have canaries in them for future-proofing.
-            if external_crate.is_none() && results.module_scope.is_none() {
-                continue;
-            }
-
-            {
-                let mut all_results = external_crate.into_iter().chain(
-                    results.module_scope.iter()
-                        .chain(&results.block_scopes)
-                        .map(|binding| binding.def())
-                );
-                let first = all_results.next().unwrap();
-
-                // An ambiguity requires more than one *distinct* possible resolution.
-                let possible_resultions =
-                    1 + all_results.filter(|&def| def != first).count();
-                if possible_resultions <= 1 {
-                    continue;
-                }
-            }
-
-            errors = true;
-
-            let msg = format!("`{}` import is ambiguous", name);
-            let mut err = self.session.struct_span_err(span, &msg);
-            let mut suggestion_choices = vec![];
-            if external_crate.is_some() {
-                suggestion_choices.push(format!("`::{}`", name));
-                err.span_label(span,
-                    format!("can refer to external crate `::{}`", name));
-            }
-            if let Some(result) = results.module_scope {
-                suggestion_choices.push(format!("`self::{}`", name));
-                if uniform_paths_feature {
-                    err.span_label(result.span,
-                        format!("can refer to `self::{}`", name));
-                } else {
-                    err.span_label(result.span,
-                        format!("may refer to `self::{}` in the future", name));
-                }
-            }
-            for result in results.block_scopes {
-                err.span_label(result.span,
-                    format!("shadowed by block-scoped `{}`", name));
-            }
-            err.help(&format!("write {} explicitly instead", suggestion_choices.join(" or ")));
-            if uniform_paths_feature {
-                err.note("relative `use` paths enabled by `#![feature(uniform_paths)]`");
-            } else {
-                err.note("in the future, `#![feature(uniform_paths)]` may become the default");
-            }
-            err.emit();
-        }
-
         if !error_vec.is_empty() {
             self.throw_unresolved_import_error(error_vec.clone(), None);
         }
@@ -814,9 +683,6 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         // to avoid generating multiple errors on the same import.
         if !errors {
             for import in &self.indeterminate_imports {
-                if import.is_uniform_paths_canary {
-                    continue;
-                }
                 self.throw_unresolved_import_error(error_vec, Some(MultiSpan::from(import.span)));
                 break;
             }
@@ -882,11 +748,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             // while resolving its module path.
             directive.vis.set(ty::Visibility::Invisible);
             let result = self.resolve_path(
-                Some(if directive.is_uniform_paths_canary {
-                    ModuleOrUniformRoot::Module(directive.parent_scope.module)
-                } else {
-                    ModuleOrUniformRoot::UniformRoot(keywords::Invalid.name())
-                }),
+                Some(ModuleOrUniformRoot::UniformRoot(keywords::Invalid.name())),
                 &directive.module_path[..],
                 None,
                 &directive.parent_scope,
@@ -965,11 +827,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         let ImportDirective { ref module_path, span, .. } = *directive;
 
         let module_result = self.resolve_path(
-            Some(if directive.is_uniform_paths_canary {
-                ModuleOrUniformRoot::Module(directive.parent_scope.module)
-            } else {
-                ModuleOrUniformRoot::UniformRoot(keywords::Invalid.name())
-            }),
+            Some(ModuleOrUniformRoot::UniformRoot(keywords::Invalid.name())),
             &module_path,
             None,
             &directive.parent_scope,
@@ -1036,21 +894,17 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             _ => unreachable!(),
         };
 
-        // Do not record uses from canaries, to avoid interfering with other
-        // diagnostics or suggestions that rely on some items not being used.
-        let record_used = !directive.is_uniform_paths_canary;
-
         let mut all_ns_err = true;
         self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
             if let Ok(binding) = result[ns].get() {
                 all_ns_err = false;
-                if record_used && this.record_use(ident, ns, binding) {
+                if this.record_use(ident, ns, binding) {
                     if let ModuleOrUniformRoot::Module(module) = module {
                         this.resolution(module, ident, ns).borrow_mut().binding =
                             Some(this.dummy_binding);
                     }
                 }
-                if record_used && ns == TypeNS {
+                if ns == TypeNS {
                     if let ModuleOrUniformRoot::UniformRoot(..) = module {
                         // Make sure single-segment import is resolved non-speculatively
                         // at least once to report the feature error.
@@ -1063,7 +917,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         if all_ns_err {
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
-                if this.resolve_ident_in_module(module, ident, ns, record_used, span).is_ok() {
+                if this.resolve_ident_in_module(module, ident, ns, true, span).is_ok() {
                     all_ns_failed = false;
                 }
             });
@@ -1260,15 +1114,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 None => continue,
             };
 
-            // Don't reexport `uniform_path` canaries.
-            let non_canary_import = match binding.kind {
-                NameBindingKind::Import { directive, .. } => {
-                    !directive.is_uniform_paths_canary
-                }
-                _ => false,
-            };
-
-            if non_canary_import || binding.is_macro_def() {
+            if binding.is_import() || binding.is_macro_def() {
                 let def = binding.def();
                 if def != Def::Err {
                     if !def.def_id().is_local() {
