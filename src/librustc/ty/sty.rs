@@ -1571,10 +1571,10 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             }
             ty::Tuple(tys) => tys.iter().any(|ty| ty.conservative_is_uninhabited(tcx)),
             ty::Array(ty, len) => {
-                match len.val.try_to_scalar() {
+                match len.assert_usize(tcx) {
                     // If the array is definitely non-empty, it's uninhabited if
                     // the type of its elements is uninhabited.
-                    Some(n) if !n.is_null() => ty.conservative_is_uninhabited(tcx),
+                    Some(n) if n != 0 => ty.conservative_is_uninhabited(tcx),
                     _ => false
                 }
             }
