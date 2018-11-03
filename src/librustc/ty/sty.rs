@@ -201,7 +201,7 @@ pub enum TyKind<'tcx> {
     Param(ParamTy),
 
     /// Bound type variable, used only when preparing a trait query.
-    Bound(BoundTy),
+    Bound(ty::DebruijnIndex, BoundTy),
 
     /// A placeholder type - universally quantified higher-ranked type.
     Placeholder(ty::PlaceholderType),
@@ -1245,7 +1245,6 @@ newtype_index! {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct BoundTy {
-    pub index: DebruijnIndex,
     pub var: BoundVar,
     pub kind: BoundTyKind,
 }
@@ -1256,13 +1255,12 @@ pub enum BoundTyKind {
     Param(InternedString),
 }
 
-impl_stable_hash_for!(struct BoundTy { index, var, kind });
+impl_stable_hash_for!(struct BoundTy { var, kind });
 impl_stable_hash_for!(enum self::BoundTyKind { Anon, Param(a) });
 
-impl BoundTy {
-    pub fn new(index: DebruijnIndex, var: BoundVar) -> Self {
+impl From<BoundVar> for BoundTy {
+    fn from(var: BoundVar) -> Self {
         BoundTy {
-            index,
             var,
             kind: BoundTyKind::Anon,
         }
@@ -1957,7 +1955,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
 
             ty::Infer(ty::TyVar(_)) => false,
 
-            ty::Bound(_) |
+            ty::Bound(..) |
             ty::Placeholder(..) |
             ty::Infer(ty::FreshTy(_)) |
             ty::Infer(ty::FreshIntTy(_)) |

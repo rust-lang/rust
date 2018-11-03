@@ -59,7 +59,8 @@ fn assemble_clauses_from_assoc_ty_values<'tcx>(
 
 fn program_clauses_for_raw_ptr<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
     let ty = ty::Bound(
-        ty::BoundTy::new(ty::INNERMOST, ty::BoundVar::from_u32(0))
+        ty::INNERMOST,
+        ty::BoundVar::from_u32(0).into()
     );
     let ty = tcx.mk_ty(ty);
 
@@ -88,9 +89,9 @@ fn program_clauses_for_fn_ptr<'tcx>(
 ) -> Clauses<'tcx> {
     let inputs_and_output = tcx.mk_type_list(
         (0..arity_and_output).into_iter()
+            .map(|i| ty::BoundVar::from(i))
             // DebruijnIndex(1) because we are going to inject these in a `PolyFnSig`
-            .map(|i| ty::BoundTy::new(ty::DebruijnIndex::from(1usize), ty::BoundVar::from(i)))
-            .map(|t| tcx.mk_ty(ty::Bound(t)))
+            .map(|var| tcx.mk_ty(ty::Bound(ty::DebruijnIndex::from(1usize), var.into())))
     );
 
     let fn_sig = ty::Binder::bind(ty::FnSig {
@@ -115,7 +116,8 @@ fn program_clauses_for_fn_ptr<'tcx>(
 
 fn program_clauses_for_slice<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
     let ty = ty::Bound(
-        ty::BoundTy::new(ty::INNERMOST, ty::BoundVar::from_u32(0))
+        ty::INNERMOST,
+        ty::BoundVar::from_u32(0).into()
     );
     let ty = tcx.mk_ty(ty);
 
@@ -151,7 +153,8 @@ fn program_clauses_for_array<'tcx>(
     length: &'tcx ty::Const<'tcx>
 ) -> Clauses<'tcx> {
     let ty = ty::Bound(
-        ty::BoundTy::new(ty::INNERMOST, ty::BoundVar::from_u32(0))
+        ty::INNERMOST,
+        ty::BoundVar::from_u32(0).into()
     );
     let ty = tcx.mk_ty(ty);
 
@@ -188,8 +191,8 @@ fn program_clauses_for_tuple<'tcx>(
 ) -> Clauses<'tcx> {
     let type_list = tcx.mk_type_list(
         (0..arity).into_iter()
-            .map(|i| ty::BoundTy::new(ty::INNERMOST, ty::BoundVar::from(i)))
-            .map(|t| tcx.mk_ty(ty::Bound(t)))
+            .map(|i| ty::BoundVar::from(i))
+            .map(|var| tcx.mk_ty(ty::Bound(ty::INNERMOST, var.into())))
     );
 
     let tuple_ty = tcx.mk_ty(ty::Tuple(type_list));
@@ -233,7 +236,7 @@ fn program_clauses_for_ref<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx>
         ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
     );
     let ty = tcx.mk_ty(
-        ty::Bound(ty::BoundTy::new(ty::INNERMOST, ty::BoundVar::from_u32(1)))
+        ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(1).into())
     );
 
     let ref_ty = tcx.mk_ref(region, ty::TypeAndMut {

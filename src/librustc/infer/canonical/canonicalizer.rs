@@ -23,7 +23,7 @@ use infer::InferCtxt;
 use std::sync::atomic::Ordering;
 use ty::fold::{TypeFoldable, TypeFolder};
 use ty::subst::Kind;
-use ty::{self, BoundTy, BoundVar, Lift, List, Ty, TyCtxt, TypeFlags};
+use ty::{self, BoundVar, Lift, List, Ty, TyCtxt, TypeFlags};
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
@@ -382,8 +382,8 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
                 t
             ),
 
-            ty::Bound(bound_ty) => {
-                if bound_ty.index >= self.binder_index {
+            ty::Bound(debruijn, _) => {
+                if debruijn >= self.binder_index {
                     bug!("escaping bound type during canonicalization")
                 } else {
                     t
@@ -616,7 +616,7 @@ impl<'cx, 'gcx, 'tcx> Canonicalizer<'cx, 'gcx, 'tcx> {
             self.fold_ty(bound_to)
         } else {
             let var = self.canonical_var(info, ty_var.into());
-            self.tcx().mk_ty(ty::Bound(BoundTy::new(self.binder_index, var)))
+            self.tcx().mk_ty(ty::Bound(self.binder_index, var.into()))
         }
     }
 }
