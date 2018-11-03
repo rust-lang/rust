@@ -180,23 +180,24 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 ///   threads see the relative orders of operations on *different* atomics (which is not something
 ///   human brain interprets as remotely "sane").
 /// * Additionally, synchronize other (even non-atomic) memory. A store with [`Release`] ordering
-///   forms a synchronization (unidirectional) edge with any thread that does a load with [`Acquire`]
-///   *on the written value*. Conceptually, imagine the threads being independent entities, the
-///   value being tagged with a snapshot of all the memory on release and acquire waiting for all
-///   that bulk of data to arrive (this is of course not what actually happens in the hardware, but
-///   about the least broken intuitive understanding of the model).
-/// * Finally, a [`SeqCst`] operation participates in a globally consistent time line (in addition to
-///   being [`AcqRel`]). Two [`SeqCst`] operations have a well defined relation which one happened
-///   earlier and which one later. This allows to synchronize memory without the need to "meet" on
-///   the common value or even the same atomic variable ‒ a [`SeqCst`] load acquires from any
-///   previous [`SeqCst`] store.
+///   forms a synchronization (unidirectional) edge with any thread that does a load with
+///   [`Acquire`] *on the written value*. Conceptually, imagine the threads being independent
+///   entities, the value being tagged with a snapshot of all the memory on release and acquire
+///   waiting for all that bulk of data to arrive (this is of course not what actually happens in
+///   the hardware, but about the least broken intuitive understanding of the model).
+/// * Finally, a [`SeqCst`] operation participates in a globally consistent time line (in addition
+///   to being [`AcqRel`]). Two [`SeqCst`] operations have a well defined relation which one
+///   happened earlier and which one later. This allows to synchronize memory without the need to
+///   "meet" on the common value or even the same atomic variable ‒ a [`SeqCst`] load acquires from
+///   any previous [`SeqCst`] store.
 ///
 /// # Common traps for the unaware
 ///
 /// The rules of the memory model have some very unintuitive consequences.
 ///
 /// * Load-only operations never "publish". Even [`load(Ordering::SeqCst)`][AtomicUsize::load] has
-///   only acquire semantics, reads and writes of other memory can be reordered after that operation.
+///   only acquire semantics, reads and writes of other memory can be reordered after that
+///   operation.
 /// * Similarly, store-only operations allow reordering before them.
 /// * Some operations ([`compare_and_swap`]) may fail. In such case
 ///   they don't write any value and are load-only and therefore don't have the "release" semantics
