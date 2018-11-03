@@ -187,6 +187,9 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                             kind: UnsafetyViolationKind::BorrowPacked(lint_root)
                         }], &[]);
                     }
+                    if context.is_mutating_use() {
+                        self.check_mut_borrowing_layout_constrained_field(place);
+                    }
                 }
                 let old_source_info = self.source_info;
                 if let &Place::Local(local) = base {
@@ -349,6 +352,43 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
         self.inherited_blocks.extend(unsafe_blocks.iter().map(|&(node_id, is_used)| {
             (node_id, is_used && !within_unsafe)
         }));
+    }
+    fn check_mut_borrowing_layout_constrained_field(
+        &mut self,
+        mut place: &Place<'tcx>,
+    ) {
+        while let &Place::Projection(box Projection {
+            ref base, ref elem
+        }) = place {
+            match *elem {
+                ProjectionElem::Field(..) => {
+                    let ty = base.ty(&self.mir.local_decls, self.tcx).to_ty(self.tcx);
+                    match ty.sty {
+                        ty::Adt(def, _) => match self.tcx.layout_scalar_valid_range(def.did) {
+                            (Bound::Unbounded, Bound::Unbounded) => {},
+                            _ => {
+                                let source_info = self.source_info;
+                                self.register_violations(&[UnsafetyViolation {
+                                    source_info,
+                                    description: Symbol::intern(
+                                        "borrow of layout constrained field",
+                                    ).as_interned_str(),
+                                    details:
+                                        Symbol::intern(
+                                            "references to fields of layout constrained fields \
+                                            lose the constraints",
+                                        ).as_interned_str(),
+                                    kind: UnsafetyViolationKind::MinConstFn,
+                                }], &[]);
+                            }
+                        },
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+            place = base;
+        }
     }
 }
 
