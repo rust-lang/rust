@@ -65,13 +65,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             true
         } else {
             match t.sty {
-                ty::Adt(def, _) => check_must_use(cx, def.did, s.span, ""),
+                ty::Adt(def, _) => check_must_use(cx, def.did, s.span, "", ""),
                 ty::Opaque(def, _) => {
                     let mut must_use = false;
                     for (predicate, _) in cx.tcx.predicates_of(def).predicates {
                         if let ty::Predicate::Trait(ref poly_trait_predicate) = predicate {
                             let trait_ref = poly_trait_predicate.skip_binder().trait_ref;
-                            if check_must_use(cx, trait_ref.def_id, s.span, "implementer of ") {
+                            if check_must_use(cx, trait_ref.def_id, s.span, "implementer of ", "") {
+                                must_use = true;
+                                break;
+                            }
+                        }
+                    }
+                    must_use
+                }
+                ty::Dynamic(binder, _) => {
+                    let mut must_use = false;
+                    for predicate in binder.skip_binder().iter() {
+                        if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate {
+                            if check_must_use(cx, trait_ref.def_id, s.span, "", " trait object") {
                                 must_use = true;
                                 break;
                             }
@@ -107,7 +119,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         };
         if let Some(def) = maybe_def {
             let def_id = def.def_id();
-            fn_warned = check_must_use(cx, def_id, s.span, "return value of ");
+            fn_warned = check_must_use(cx, def_id, s.span, "return value of ", "");
         } else if type_permits_lack_of_use {
             // We don't warn about unused unit or uninhabited types.
             // (See https://github.com/rust-lang/rust/issues/43806 for details.)
@@ -161,11 +173,17 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
 
-        fn check_must_use(cx: &LateContext, def_id: DefId, sp: Span, describe_path: &str) -> bool {
+        fn check_must_use(
+            cx: &LateContext,
+            def_id: DefId,
+            sp: Span,
+            descr_pre_path: &str,
+            descr_post_path: &str,
+        ) -> bool {
             for attr in cx.tcx.get_attrs(def_id).iter() {
                 if attr.check_name("must_use") {
-                    let msg = format!("unused {}`{}` that must be used",
-                                          describe_path, cx.tcx.item_path_str(def_id));
+                    let msg = format!("unused {}`{}`{} that must be used",
+                        descr_pre_path, descr_post_path, cx.tcx.item_path_str(def_id));
                     let mut err = cx.struct_span_lint(UNUSED_MUST_USE, sp, &msg);
                     // check for #[must_use = "..."]
                     if let Some(note) = attr.value_str() {
