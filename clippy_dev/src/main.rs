@@ -19,12 +19,17 @@ fn main() {
     let matches = App::new("Clippy developer tooling")
         .subcommand(
             SubCommand::with_name("update_lints")
-                .about("Update the lint list")
+                .about("Makes sure that:\n \
+                       * the lint count in README.md is correct\n \
+                       * the changelog contains markdown link references at the bottom\n \
+                       * all lint groups include the correct lints\n \
+                       * lint modules in `clippy_lints/*` are visible in `src/lib.rs` via `pub mod`\n \
+                       * all lints are registered in the lint store")
                 .arg(
                     Arg::with_name("print-only")
                         .long("print-only")
                         .short("p")
-                        .help("Print a table of lints to STDOUT. Does not modify any files."),
+                        .help("Print a table of lints to STDOUT. This does not include deprecated and internal lints. (Does not modify any files)"),
                 )
         )
         .get_matches();
@@ -90,4 +95,42 @@ fn update_lints() {
         false,
         || { gen_deprecated(&lint_list) }
     );
+
+    replace_region_in_file(
+        "../clippy_lints/src/lib.rs",
+        "begin lints modules",
+        "end lints modules",
+        false,
+        || { gen_modules_list(lint_list.clone()) }
+    );
+
+    // Generate lists of lints in the clippy::all lint group
+    replace_region_in_file(
+        "../clippy_lints/src/lib.rs",
+        r#"reg.register_lint_group\("clippy::all""#,
+        r#"\]\);"#,
+        false,
+        || {
+            // clippy::all should only include the following lint groups:
+            let all_group_lints = usable_lints.clone().into_iter().filter(|l| {
+                l.group == "correctness" ||
+                  l.group == "style" ||
+                  l.group == "complexity" ||
+                  l.group == "perf"
+            }).collect();
+
+            gen_lint_group_list(all_group_lints)
+        }
+    );
+
+    // Generate the list of lints for all other lint groups
+    for (lint_group, lints) in Lint::by_lint_group(&usable_lints) {
+        replace_region_in_file(
+            "../clippy_lints/src/lib.rs",
+            &format!("reg.register_lint_group\\(\"clippy::{}\"", lint_group),
+            r#"\]\);"#,
+            false,
+            || { gen_lint_group_list(lints.clone()) }
+        );
+    }
 }
