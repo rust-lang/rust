@@ -17,6 +17,7 @@ serde = { version = "1.0", default-features = false, optional = true }
 [dev-dependencies]
 rustc-hash = "1.0"
 serde_test = "1.0"
+rand = "0.5.1"
 
 [features]
 nightly = []
