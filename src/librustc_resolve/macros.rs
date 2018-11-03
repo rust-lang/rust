@@ -473,7 +473,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         if path.len() > 1 {
-            let def = match self.resolve_path(None, &path, Some(MacroNS), parent_scope,
+            let def = match self.resolve_path(&path, Some(MacroNS), parent_scope,
                                               false, path_span, CrateLint::No) {
                 PathResult::NonModule(path_res) => match path_res.base_def() {
                     Def::Err => Err(Determinacy::Determined),
@@ -502,7 +502,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             def
         } else {
             let binding = self.early_resolve_ident_in_lexical_scope(
-                path[0], MacroNS, Some(kind), parent_scope, false, force, path_span
+                path[0], MacroNS, Some(kind), false, parent_scope, false, force, path_span
             );
             match binding {
                 Ok(..) => {}
@@ -521,12 +521,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     // This is a variation of `fn resolve_ident_in_lexical_scope` that can be run during
     // expansion and import resolution (perhaps they can be merged in the future).
     // The function is used for resolving initial segments of macro paths (e.g. `foo` in
-    // `foo::bar!(); or `foo!();`) and can be used for "uniform path" imports in the future.
+    // `foo::bar!(); or `foo!();`) and also for import paths on 2018 edition.
     crate fn early_resolve_ident_in_lexical_scope(
         &mut self,
         mut ident: Ident,
         ns: Namespace,
-        kind: Option<MacroKind>,
+        macro_kind: Option<MacroKind>,
+        is_import: bool,
         parent_scope: &ParentScope<'a>,
         record_used: bool,
         force: bool,
@@ -600,6 +601,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         assert!(force || !record_used); // `record_used` implies `force`
+        assert!(macro_kind.is_none() || !is_import); // `is_import` implies no macro kind
         ident = ident.modern();
 
         // This is *the* result, resolution from the scope closest to the resolved identifier.
@@ -788,7 +790,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
             match result {
                 Ok((binding, flags, ambig_flags)) => {
-                    if sub_namespace_mismatch(kind, binding.macro_kind()) {
+                    if sub_namespace_mismatch(macro_kind, binding.macro_kind()) {
                         continue_search!();
                     }
 
@@ -800,7 +802,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                             = innermost_result {
                         // Found another solution, if the first one was "weak", report an error.
                         if binding.def() != innermost_binding.def() &&
-                           (innermost_binding.is_glob_import() ||
+                           (is_import ||
+                            innermost_binding.is_glob_import() ||
                             innermost_binding.may_appear_after(parent_scope.expansion, binding) ||
                             innermost_flags.intersects(ambig_flags) ||
                             flags.intersects(innermost_ambig_flags) ||
@@ -834,7 +837,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         let determinacy = Determinacy::determined(force);
-        if determinacy == Determinacy::Determined && kind == Some(MacroKind::Attr) {
+        if determinacy == Determinacy::Determined && macro_kind == Some(MacroKind::Attr) {
             // For single-segment attributes interpret determinate "no resolution" as a custom
             // attribute. (Lexical resolution implies the first segment and attr kind should imply
             // the last segment, so we are certainly working with a single-segment attribute here.)
@@ -854,7 +857,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let macro_resolutions =
             mem::replace(&mut *module.macro_resolutions.borrow_mut(), Vec::new());
         for (path, parent_scope, path_span) in macro_resolutions {
-            match self.resolve_path(None, &path, Some(MacroNS), &parent_scope,
+            match self.resolve_path(&path, Some(MacroNS), &parent_scope,
                                     true, path_span, CrateLint::No) {
                 PathResult::NonModule(_) => {},
                 PathResult::Failed(span, msg, _) => {
@@ -868,7 +871,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             mem::replace(&mut *module.legacy_macro_resolutions.borrow_mut(), Vec::new());
         for (ident, kind, parent_scope, initial_binding) in legacy_macro_resolutions {
             let binding = self.early_resolve_ident_in_lexical_scope(
-                ident, MacroNS, Some(kind), &parent_scope, true, true, ident.span
+                ident, MacroNS, Some(kind), false, &parent_scope, true, true, ident.span
             );
             match binding {
                 Ok(binding) => {
@@ -909,7 +912,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let builtin_attrs = mem::replace(&mut *module.builtin_attrs.borrow_mut(), Vec::new());
         for (ident, parent_scope) in builtin_attrs {
             let binding = self.early_resolve_ident_in_lexical_scope(
-                ident, MacroNS, Some(MacroKind::Attr), &parent_scope, true, true, ident.span
+                ident, MacroNS, Some(MacroKind::Attr), false, &parent_scope, true, true, ident.span
             );
             if let Ok(binding) = binding {
                 if binding.def_ignoring_ambiguity() !=

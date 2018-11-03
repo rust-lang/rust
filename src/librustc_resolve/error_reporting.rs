@@ -68,7 +68,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     ) -> Option<(Vec<Ident>, Option<String>)> {
         // Replace first ident with `self` and check if that is valid.
         path[0].name = keywords::SelfValue.name();
-        let result = self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
+        let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_self_suggestion: path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some((path, None))
@@ -92,7 +92,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     ) -> Option<(Vec<Ident>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].name = keywords::Crate.name();
-        let result = self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
+        let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_crate_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some((
@@ -123,7 +123,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     ) -> Option<(Vec<Ident>, Option<String>)> {
         // Replace first ident with `crate` and check if that is valid.
         path[0].name = keywords::Super.name();
-        let result = self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
+        let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
         debug!("make_missing_super_suggestion:  path={:?} result={:?}", path, result);
         if let PathResult::Module(..) = result {
             Some((path, None))
@@ -164,8 +164,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             // Replace the first after root (a placeholder we inserted) with a crate name
             // and check if that is valid.
             path[1].name = *name;
-            let result =
-                self.resolve_path(None, &path, None, parent_scope, false, span, CrateLint::No);
+            let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
             debug!("make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                     name, path, result);
             if let PathResult::Module(..) = result {

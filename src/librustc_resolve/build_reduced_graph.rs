@@ -125,36 +125,24 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         debug!("build_reduced_graph_for_use_tree(parent_prefix={:?}, use_tree={:?}, nested={})",
                parent_prefix, use_tree, nested);
 
-        let uniform_paths =
-            self.session.rust_2018() &&
-            self.session.features_untracked().uniform_paths;
+        let mut prefix_iter = parent_prefix.iter().cloned()
+            .chain(use_tree.prefix.segments.iter().map(|seg| seg.ident)).peekable();
 
-        let prefix_iter = || parent_prefix.iter().cloned()
-            .chain(use_tree.prefix.segments.iter().map(|seg| seg.ident));
-        let prefix_start = prefix_iter().next();
-        let starts_with_non_keyword = prefix_start.map_or(false, |ident| {
-            !ident.is_path_segment_keyword()
-        });
-
-        // Imports are resolved as global by default, prepend `CrateRoot`,
-        // unless `#![feature(uniform_paths)]` is enabled.
-        let inject_crate_root =
-            !uniform_paths &&
-            match use_tree.kind {
-                // HACK(eddyb) special-case `use *` to mean `use ::*`.
-                ast::UseTreeKind::Glob if prefix_start.is_none() => true,
-                _ => starts_with_non_keyword,
-            };
-        let root = if inject_crate_root {
-            let span = use_tree.prefix.span.shrink_to_lo();
-            Some(Ident::new(keywords::CrateRoot.name(), span))
+        // On 2015 edition imports are resolved as crate-relative by default,
+        // so prefixes are prepended with crate root segment if necessary.
+        // The root is prepended lazily, when the first non-empty prefix or terminating glob
+        // appears, so imports in braced groups can have roots prepended independently.
+        let is_glob = if let ast::UseTreeKind::Glob = use_tree.kind { true } else { false };
+        let crate_root = if !self.session.rust_2018() &&
+                prefix_iter.peek().map_or(is_glob, |ident| !ident.is_path_segment_keyword()) {
+            Some(Ident::new(keywords::CrateRoot.name(), use_tree.prefix.span.shrink_to_lo()))
         } else {
             None
         };
 
-        let prefix: Vec<_> = root.into_iter().chain(prefix_iter()).collect();
-
+        let prefix = crate_root.into_iter().chain(prefix_iter).collect::<Vec<_>>();
         debug!("build_reduced_graph_for_use_tree: prefix={:?}", prefix);
+
         let empty_for_self = |prefix: &[Ident]| {
             prefix.is_empty() ||
             prefix.len() == 1 && prefix[0].name == keywords::CrateRoot.name()

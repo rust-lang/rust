@@ -152,10 +152,6 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 let can_be_relative = !ident.is_path_segment_keyword() &&
                     root == keywords::Invalid.name();
                 if can_be_relative {
-                    // Relative paths should only get here if the feature-gate is on.
-                    assert!(self.session.rust_2018() &&
-                            self.session.features_untracked().uniform_paths);
-
                     // Try first to resolve relatively.
                     let mut ctxt = ident.span.ctxt().modern();
                     let self_module = self.resolve_self(&mut ctxt, self.current_module);
@@ -748,7 +744,6 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             // while resolving its module path.
             directive.vis.set(ty::Visibility::Invisible);
             let result = self.resolve_path(
-                Some(ModuleOrUniformRoot::UniformRoot(keywords::Invalid.name())),
                 &directive.module_path[..],
                 None,
                 &directive.parent_scope,
@@ -827,7 +822,6 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         let ImportDirective { ref module_path, span, .. } = *directive;
 
         let module_result = self.resolve_path(
-            Some(ModuleOrUniformRoot::UniformRoot(keywords::Invalid.name())),
             &module_path,
             None,
             &directive.parent_scope,
