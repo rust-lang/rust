@@ -16,7 +16,6 @@ pub fn target() -> TargetResult {
     // llvm calls this "v9"
     base.cpu = "v9".to_string();
     base.max_atomic_width = Some(64);
-    base.exe_allocation_crate = None;
 
     Ok(Target {
         llvm_target: "sparcv9-sun-solaris".to_string(),

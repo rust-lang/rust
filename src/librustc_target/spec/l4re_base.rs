@@ -30,7 +30,6 @@ pub fn opts() -> TargetOptions {
     TargetOptions {
         executables: true,
         has_elf_tls: false,
-        exe_allocation_crate: None,
         panic_strategy: PanicStrategy::Abort,
         linker: Some("ld".to_string()),
         pre_link_args: args,

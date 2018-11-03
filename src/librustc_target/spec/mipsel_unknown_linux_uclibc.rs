@@ -28,9 +28,6 @@ pub fn target() -> TargetResult {
             features: "+mips32r2,+soft-float".to_string(),
             max_atomic_width: Some(32),
 
-            // see #36994
-            exe_allocation_crate: None,
-
             ..super::linux_base::opts()
         },
     })

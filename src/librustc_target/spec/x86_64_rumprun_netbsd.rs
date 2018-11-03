@@ -21,7 +21,6 @@ pub fn target() -> TargetResult {
     base.has_rpath = false;
     base.position_independent_executables = false;
     base.disable_redzone = true;
-    base.exe_allocation_crate = None;
     base.stack_probes = true;
 
     Ok(Target {

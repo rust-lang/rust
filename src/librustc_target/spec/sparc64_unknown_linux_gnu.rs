@@ -14,7 +14,6 @@ pub fn target() -> TargetResult {
     let mut base = super::linux_base::opts();
     base.cpu = "v9".to_string();
     base.max_atomic_width = Some(64);
-    base.exe_allocation_crate = None;
 
     Ok(Target {
         llvm_target: "sparc64-unknown-linux-gnu".to_string(),

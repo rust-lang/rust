@@ -16,9 +16,6 @@ pub fn target() -> TargetResult {
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
     base.max_atomic_width = Some(64);
 
-    // see #36994
-    base.exe_allocation_crate = None;
-
     Ok(Target {
         llvm_target: "powerpc64le-unknown-linux-gnu".to_string(),
         target_endian: "little".to_string(),
