@@ -134,7 +134,7 @@ impl<'tcx> CValue<'tcx> {
                 let addr = fx
                     .bcx
                     .ins()
-                    .stack_addr(fx.module.pointer_type(), stack_slot, 0);
+                    .stack_addr(fx.pointer_type, stack_slot, 0);
                 fx.bcx.ins().store(MemFlags::new(), value, addr, 0);
                 addr
             }
@@ -193,11 +193,11 @@ impl<'tcx> CValue<'tcx> {
                 let val1 =
                     fx.bcx
                         .ins()
-                        .load(fx.module.pointer_type(), MemFlags::new(), addr, val1_offset);
+                        .load(fx.pointer_type, MemFlags::new(), addr, val1_offset);
                 let val2 =
                     fx.bcx
                         .ins()
-                        .load(fx.module.pointer_type(), MemFlags::new(), addr, val2_offset);
+                        .load(fx.pointer_type, MemFlags::new(), addr, val2_offset);
                 (val1, val2)
             }
             CValue::ByVal(_, _layout) => bug!("Please use load_value for ByVal"),
@@ -248,7 +248,7 @@ impl<'tcx> CValue<'tcx> {
                             let extra = fx
                                 .bcx
                                 .ins()
-                                .iconst(fx.module.pointer_type(), size.unwrap_usize(fx.tcx) as i64);
+                                .iconst(fx.pointer_type, size.unwrap_usize(fx.tcx) as i64);
                             (ptr, extra)
                         }
                         _ => bug!("unsize non array {:?} to slice", ty),
@@ -346,7 +346,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         CPlace::Addr(
             fx.bcx
                 .ins()
-                .stack_addr(fx.module.pointer_type(), stack_slot, 0),
+                .stack_addr(fx.pointer_type, stack_slot, 0),
             None,
             layout,
         )
@@ -362,7 +362,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         CPlace::Addr(
             fx.bcx
                 .ins()
-                .stack_addr(fx.module.pointer_type(), stack_slot, 0),
+                .stack_addr(fx.pointer_type, stack_slot, 0),
             None,
             layout,
         )
@@ -433,12 +433,12 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                     CValue::ByRef(from, _src_layout) => {
                         let size = dst_layout.size.bytes() as i32;
                         // FIXME emit_small_memcpy has a bug as of commit CraneStation/cranelift@b2281ed
-                        // fx.bcx.emit_small_memcpy(fx.isa, addr, from, size, layout.align.abi() as u8, src_layout.align.abi() as u8);
+                        // fx.bcx.emit_small_memcpy(fx.module.target_config(), addr, from, size, layout.align.abi() as u8, src_layout.align.abi() as u8);
 
                         let mut offset = 0;
                         while size - offset >= 8 {
                             let byte = fx.bcx.ins().load(
-                                fx.module.pointer_type(),
+                                fx.pointer_type,
                                 MemFlags::new(),
                                 from,
                                 offset,
@@ -609,9 +609,8 @@ pub fn cton_intcast<'a, 'tcx: 'a>(
 
 pub struct FunctionCx<'a, 'tcx: 'a, B: Backend + 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    // FIXME get isa from Module
-    pub isa: &'a isa::TargetIsa,
     pub module: &'a mut Module<B>,
+    pub pointer_type: Type, // Cached from module
     pub instance: Instance<'tcx>,
     pub mir: &'tcx Mir<'tcx>,
     pub param_substs: &'tcx Substs<'tcx>,

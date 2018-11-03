@@ -110,7 +110,7 @@ fn trans_const_value<'a, 'tcx: 'a>(
             let func_ref = fx.get_function_ref(
                 Instance::resolve(fx.tcx, ParamEnv::reveal_all(), def_id, substs).unwrap(),
             );
-            let func_addr = fx.bcx.ins().func_addr(fx.module.pointer_type(), func_ref);
+            let func_addr = fx.bcx.ins().func_addr(fx.pointer_type, func_ref);
             CValue::ByVal(func_addr, layout)
         }
         _ => trans_const_place(fx, const_).to_cvalue(fx),
@@ -176,7 +176,7 @@ fn cplace_for_dataid<'a, 'tcx: 'a>(
     let global_ptr = fx
         .bcx
         .ins()
-        .global_value(fx.module.pointer_type(), local_data_id);
+        .global_value(fx.pointer_type, local_data_id);
     let layout = fx.layout_of(fx.monomorphize(&ty));
     assert!(!layout.is_unsized(), "unsized statics aren't supported");
     CPlace::Addr(global_ptr, None, layout)

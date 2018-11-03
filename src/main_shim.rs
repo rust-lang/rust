@@ -38,10 +38,10 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
 
         let cmain_sig = Signature {
             params: vec![
-                AbiParam::new(m.pointer_type()),
-                AbiParam::new(m.pointer_type()),
+                AbiParam::new(m.target_config().pointer_type()),
+                AbiParam::new(m.target_config().pointer_type()),
             ],
-            returns: vec![AbiParam::new(m.pointer_type() /*isize*/)],
+            returns: vec![AbiParam::new(m.target_config().pointer_type() /*isize*/)],
             call_conv: CallConv::SystemV,
         };
 
@@ -65,8 +65,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
 
             let ebb = bcx.create_ebb();
             bcx.switch_to_block(ebb);
-            let arg_argc = bcx.append_ebb_param(ebb, m.pointer_type());
-            let arg_argv = bcx.append_ebb_param(ebb, m.pointer_type());
+            let arg_argc = bcx.append_ebb_param(ebb, m.target_config().pointer_type());
+            let arg_argv = bcx.append_ebb_param(ebb, m.target_config().pointer_type());
 
             let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
 
@@ -85,7 +85,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
                     .declare_function(&start_name, Linkage::Import, &start_sig)
                     .unwrap();
 
-                let main_val = bcx.ins().func_addr(m.pointer_type(), main_func_ref);
+                let main_val = bcx.ins().func_addr(m.target_config().pointer_type(), main_func_ref);
 
                 let func_ref = m.declare_func_in_func(start_func_id, &mut bcx.func);
                 bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv])

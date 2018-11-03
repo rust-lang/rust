@@ -132,14 +132,14 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let elem_size = fx
                 .bcx
                 .ins()
-                .iconst(fx.module.pointer_type(), elem_size as i64);
+                .iconst(fx.pointer_type, elem_size as i64);
             assert_eq!(args.len(), 3);
             let byte_amount = fx.bcx.ins().imul(count, elem_size);
 
             if intrinsic.ends_with("_nonoverlapping") {
-                fx.bcx.call_memcpy(fx.isa, dst, src, byte_amount);
+                fx.bcx.call_memcpy(&fx.module.target_config(), dst, src, byte_amount);
             } else {
-                fx.bcx.call_memmove(fx.isa, dst, src, byte_amount);
+                fx.bcx.call_memmove(&fx.module.target_config(), dst, src, byte_amount);
             }
         };
         discriminant_value, (c val) {
@@ -157,7 +157,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 _ if !layout.is_unsized() => fx
                     .bcx
                     .ins()
-                    .iconst(fx.module.pointer_type(), layout.size.bytes() as i64),
+                    .iconst(fx.pointer_type, layout.size.bytes() as i64),
                 ty::Slice(elem) => {
                     let len = ptr.load_value_pair(fx).1;
                     let elem_size = fx.layout_of(elem).size.bytes();
@@ -179,10 +179,10 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 _ if !layout.is_unsized() => fx
                     .bcx
                     .ins()
-                    .iconst(fx.module.pointer_type(), layout.align.abi() as i64),
+                    .iconst(fx.pointer_type, layout.align.abi() as i64),
                 ty::Slice(elem) => {
                     let align = fx.layout_of(elem).align.abi() as i64;
-                    fx.bcx.ins().iconst(fx.module.pointer_type(), align)
+                    fx.bcx.ins().iconst(fx.pointer_type, align)
                 }
                 ty::Dynamic(..) => crate::vtable::min_align_of_obj(fx, ptr),
                 ty => unimplemented!("min_align_of_val for {:?}", ty),
@@ -301,14 +301,14 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let addr = fx.bcx.ins().stack_addr(pointer_ty(fx.tcx), stack_slot, 0);
             let zero_val = fx.bcx.ins().iconst(types::I8, 0);
             let len_val = fx.bcx.ins().iconst(pointer_ty(fx.tcx), layout.size.bytes() as i64);
-            fx.bcx.call_memset(fx.isa, addr, zero_val, len_val);
+            fx.bcx.call_memset(&fx.module.target_config(), addr, zero_val, len_val);
 
             let uninit_place = CPlace::from_stack_slot(fx, stack_slot, T);
             let uninit_val = uninit_place.to_cvalue(fx);
             ret.write_cvalue(fx, uninit_val);
         };
         write_bytes, (v dst, v val, v count) {
-            fx.bcx.call_memset(fx.isa, dst, val, count);
+            fx.bcx.call_memset(&fx.module.target_config(), dst, val, count);
         };
         uninit, <T> () {
             let layout = fx.layout_of(T);

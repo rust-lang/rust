@@ -17,7 +17,7 @@ impl PassMode {
         match self {
             PassMode::NoPass => unimplemented!("pass mode nopass"),
             PassMode::ByVal(cton_type) => cton_type,
-            PassMode::ByRef => fx.module.pointer_type(),
+            PassMode::ByRef => fx.pointer_type,
         }
     }
 }
@@ -257,7 +257,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
             CValue::ByVal(val, return_layout)
         } else {
             CValue::ByRef(
-                self.bcx.ins().iconst(self.module.pointer_type(), 0),
+                self.bcx.ins().iconst(self.pointer_type, 0),
                 return_layout,
             )
         }
@@ -283,7 +283,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
     let ret_param = match output_pass_mode {
         PassMode::NoPass => None,
         PassMode::ByVal(_) => None,
-        PassMode::ByRef => Some(fx.bcx.append_ebb_param(start_ebb, fx.module.pointer_type())),
+        PassMode::ByRef => Some(fx.bcx.append_ebb_param(start_ebb, fx.pointer_type)),
     };
 
     enum ArgKind {
@@ -342,7 +342,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
 
     match output_pass_mode {
         PassMode::NoPass => {
-            let null = fx.bcx.ins().iconst(fx.module.pointer_type(), 0);
+            let null = fx.bcx.ins().iconst(fx.pointer_type, 0);
             //unimplemented!("pass mode nopass");
             fx.local_map.insert(
                 RETURN_PLACE,
@@ -526,7 +526,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         PassMode::NoPass => None,
         PassMode::ByRef => match ret_place {
             Some(ret_place) => Some(ret_place.expect_addr()),
-            None => Some(fx.bcx.ins().iconst(fx.module.pointer_type(), 0)),
+            None => Some(fx.bcx.ins().iconst(fx.pointer_type, 0)),
         },
         PassMode::ByVal(_) => None,
     };

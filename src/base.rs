@@ -11,7 +11,6 @@ impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
 
 pub fn trans_mono_item<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    isa: &isa::TargetIsa,
     module: &mut Module<impl Backend>,
     caches: &mut Caches<'tcx>,
     ccx: &mut crate::constant::ConstantCx,
@@ -43,7 +42,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
                 }
             });
 
-            trans_fn(tcx, isa, module, ccx, caches, inst);
+            trans_fn(tcx, module, ccx, caches, inst);
         }
         MonoItem::Static(def_id) => {
             crate::constant::codegen_static(ccx, def_id);
@@ -56,7 +55,6 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
 
 fn trans_fn<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    isa: &isa::TargetIsa,
     module: &mut Module<impl Backend>,
     constants: &mut crate::constant::ConstantCx,
     caches: &mut Caches<'tcx>,
@@ -84,10 +82,11 @@ fn trans_fn<'a, 'tcx: 'a>(
     }
 
     // Step 5. Make FunctionCx
+    let pointer_type = module.target_config().pointer_type();
     let mut fx = FunctionCx {
         tcx,
-        isa,
         module,
+        pointer_type,
         instance,
         mir,
         bcx,
@@ -584,7 +583,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 Rvalue::Repeat(operand, times) => {
                     let operand = trans_operand(fx, operand);
                     for i in 0..*times {
-                        let index = fx.bcx.ins().iconst(fx.module.pointer_type(), i as i64);
+                        let index = fx.bcx.ins().iconst(fx.pointer_type, i as i64);
                         let to = lval.place_index(fx, index);
                         to.write_cvalue(fx, operand);
                     }
@@ -596,7 +595,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         ty::Array(_elem_ty, len) => {
                             let len = crate::constant::force_eval_const(fx, len)
                                 .unwrap_usize(fx.tcx) as i64;
-                            fx.bcx.ins().iconst(fx.module.pointer_type(), len)
+                            fx.bcx.ins().iconst(fx.pointer_type, len)
                         }
                         ty::Slice(_elem_ty) => match place {
                             CPlace::Addr(_, size, _) => size.unwrap(),
@@ -644,7 +643,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     AggregateKind::Array(_ty) => {
                         for (i, operand) in operands.into_iter().enumerate() {
                             let operand = trans_operand(fx, operand);
-                            let index = fx.bcx.ins().iconst(fx.module.pointer_type(), i as i64);
+                            let index = fx.bcx.ins().iconst(fx.pointer_type, i as i64);
                             let to = lval.place_index(fx, index);
                             to.write_cvalue(fx, operand);
                         }
