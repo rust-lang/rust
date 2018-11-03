@@ -1110,13 +1110,13 @@ define_print! {
                 Infer(infer_ty) => write!(f, "{}", infer_ty),
                 Error => write!(f, "[type error]"),
                 Param(ref param_ty) => write!(f, "{}", param_ty),
-                Bound(bound_ty) => {
+                Bound(debruijn, bound_ty) => {
                     match bound_ty.kind {
                         ty::BoundTyKind::Anon => {
-                            if bound_ty.index == ty::INNERMOST {
+                            if debruijn == ty::INNERMOST {
                                 write!(f, "^{}", bound_ty.var.index())
                             } else {
-                                write!(f, "^{}_{}", bound_ty.index.index(), bound_ty.var.index())
+                                write!(f, "^{}_{}", debruijn.index(), bound_ty.var.index())
                             }
                         }
 

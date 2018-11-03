@@ -684,7 +684,8 @@ for ty::TyKind<'gcx>
             Param(param_ty) => {
                 param_ty.hash_stable(hcx, hasher);
             }
-            Bound(bound_ty) => {
+            Bound(debruijn, bound_ty) => {
+                debruijn.hash_stable(hcx, hasher);
                 bound_ty.hash_stable(hcx, hasher);
             }
             ty::Placeholder(placeholder_ty) => {

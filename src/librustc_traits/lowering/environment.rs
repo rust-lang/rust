@@ -55,7 +55,7 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
                     ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
                 );
                 let ty = self.tcx.mk_ty(
-                    ty::Bound(ty::BoundTy::new(ty::INNERMOST, ty::BoundVar::from_u32(1)))
+                    ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(1).into())
                 );
 
                 let ref_ty = self.tcx.mk_ref(region, ty::TypeAndMut {

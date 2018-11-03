@@ -2471,7 +2471,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::UnnormalizedProjection(..)
             | ty::Placeholder(..)
-            | ty::Bound(_)
+            | ty::Bound(..)
             | ty::Infer(ty::FreshTy(_))
             | ty::Infer(ty::FreshIntTy(_))
             | ty::Infer(ty::FreshFloatTy(_)) => {
@@ -2557,7 +2557,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
             ty::UnnormalizedProjection(..)
             | ty::Placeholder(..)
-            | ty::Bound(_)
+            | ty::Bound(..)
             | ty::Infer(ty::FreshTy(_))
             | ty::Infer(ty::FreshIntTy(_))
             | ty::Infer(ty::FreshFloatTy(_)) => {
@@ -2601,7 +2601,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             | ty::Param(..)
             | ty::Foreign(..)
             | ty::Projection(..)
-            | ty::Bound(_)
+            | ty::Bound(..)
             | ty::Infer(ty::TyVar(_))
             | ty::Infer(ty::FreshTy(_))
             | ty::Infer(ty::FreshIntTy(_))
