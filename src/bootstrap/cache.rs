@@ -286,4 +286,9 @@ impl Cache {
         v.sort_by_key(|&(a, _)| a);
         v
     }
+
+    #[cfg(test)]
+    pub fn contains<S: Step>(&self) -> bool {
+        self.0.borrow().contains_key(&TypeId::of::<S>())
+    }
 }

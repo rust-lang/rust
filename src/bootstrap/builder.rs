@@ -130,7 +130,7 @@ impl PathSet {
     fn has(&self, needle: &Path) -> bool {
         match self {
             PathSet::Set(set) => set.iter().any(|p| p.ends_with(needle)),
-            PathSet::Suite(_) => false,
+            PathSet::Suite(suite) => suite.ends_with(needle),
         }
     }
 
@@ -1849,7 +1849,7 @@ mod __test {
         );
 
         // Ensure we don't build any compiler artifacts.
-        assert!(builder.cache.all::<compile::Rustc>().is_empty());
+        assert!(!builder.cache.contains::<compile::Rustc>());
         assert_eq!(
             first(builder.cache.all::<test::Crate>()),
             &[test::Crate {
@@ -1860,5 +1860,35 @@ mod __test {
                 krate: INTERNER.intern_str("std"),
             },]
         );
+    }
+
+    #[test]
+    fn test_exclude() {
+        let mut config = configure(&[], &[]);
+        config.exclude = vec![
+            "src/test/run-pass".into(),
+            "src/tools/tidy".into(),
+        ];
+        config.cmd = Subcommand::Test {
+            paths: Vec::new(),
+            test_args: Vec::new(),
+            rustc_args: Vec::new(),
+            fail_fast: true,
+            doc_tests: DocTests::No,
+            bless: false,
+            compare_mode: None,
+        };
+
+        let build = Build::new(config);
+        let builder = Builder::new(&build);
+        builder.run_step_descriptions(&Builder::get_step_descriptions(Kind::Test), &[]);
+
+        // Ensure we have really excluded run-pass & tidy
+        assert!(!builder.cache.contains::<test::RunPass>());
+        assert!(!builder.cache.contains::<test::Tidy>());
+
+        // Ensure other tests are not affected.
+        assert!(builder.cache.contains::<test::RunPassFullDeps>());
+        assert!(builder.cache.contains::<test::RustdocUi>());
     }
 }
