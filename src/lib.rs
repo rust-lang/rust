@@ -50,7 +50,7 @@ use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
 // Used by priroda
 pub use crate::stacked_borrows::{Borrow, Stack, Stacks, Mut as MutBorrow, BorStackItem};
 
-/// Insert rustc arguments at the beginning of the argument listthat miri wants to be
+/// Insert rustc arguments at the beginning of the argument list that miri wants to be
 /// set per default, for maximal validation power.
 pub fn miri_default_args() -> &'static [&'static str] {
     // The flags here should be kept in sync with what bootstrap adds when `test-miri` is
