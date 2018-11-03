@@ -10,6 +10,8 @@ extern crate rustc_codegen_utils;
 extern crate env_logger;
 extern crate log_settings;
 extern crate syntax;
+
+#[macro_use]
 extern crate log;
 
 use std::path::PathBuf;
@@ -212,12 +214,7 @@ fn main() {
     init_early_loggers();
     let mut args: Vec<String> = std::env::args().collect();
 
-    let sysroot_flag = String::from("--sysroot");
-    if !args.contains(&sysroot_flag) {
-        args.push(sysroot_flag);
-        args.push(find_sysroot());
-    }
-
+    // Parse our own -Z flags and remove them before rustc gets their hand on them.
     let mut validate = true;
     args.retain(|arg| {
         match arg.as_str() {
@@ -229,7 +226,16 @@ fn main() {
         }
     });
 
+    // Determine sysroot and let rustc know about it
+    let sysroot_flag = String::from("--sysroot");
+    if !args.contains(&sysroot_flag) {
+        args.push(sysroot_flag);
+        args.push(find_sysroot());
+    }
+    // Finally, add the default flags all the way in the beginning, but after the binary name.
+    args.splice(1..1, miri::miri_default_args().iter().map(ToString::to_string));
 
+    trace!("rustc arguments: {:?}", args);
     let result = rustc_driver::run(move || {
         rustc_driver::run_compiler(&args, Box::new(MiriCompilerCalls {
             default: Box::new(RustcDefaultCalls),

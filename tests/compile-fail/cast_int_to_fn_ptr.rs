@@ -1,5 +1,5 @@
 // Validation makes this fail in the wrong place
-// compile-flags: -Zmir-emit-validate=0 -Zmiri-disable-validation
+// compile-flags: -Zmiri-disable-validation
 
 fn main() {
     let g = unsafe {

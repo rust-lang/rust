@@ -1,5 +1,5 @@
 // This should fail even without validation
-// compile-flags: -Zmir-emit-validate=0
+// compile-flags: -Zmiri-disable-validation
 
 fn main() {
     #[cfg(target_pointer_width="64")]

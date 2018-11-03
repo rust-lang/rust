@@ -1,11 +1,11 @@
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 
-use rustc::ty::{Ty, layout::Size};
+use rustc::ty::{self, Ty, layout::Size};
 use rustc::hir;
 
-use super::{
-    MemoryAccess, MemoryKind, MiriMemoryKind, RangeMap, EvalResult, AllocId,
-    Pointer,
+use crate::{
+    MemoryKind, MiriMemoryKind, RangeMap, EvalResult, AllocId,
+    Pointer, PlaceTy,
 };
 
 pub type Timestamp = u64;
@@ -64,6 +64,12 @@ impl Borrow {
     }
 }
 
+impl Default for Borrow {
+    fn default() -> Self {
+        Borrow::Mut(Mut::Raw)
+    }
+}
+
 /// An item in the borrow stack
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum BorStackItem {
@@ -74,26 +80,33 @@ pub enum BorStackItem {
     FnBarrier(usize)
 }
 
-impl Default for Borrow {
-    fn default() -> Self {
-        Borrow::Mut(Mut::Raw)
+impl BorStackItem {
+    #[inline(always)]
+    pub fn is_fn_barrier(self) -> bool {
+        match self {
+            BorStackItem::FnBarrier(_) => true,
+            _ => false,
+        }
     }
 }
 
-/// What kind of reference are we talking about?
+/// What kind of usage of the pointer are we talking about?
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum RefKind {
-    Mut,
-    Shr,
+pub enum UsageKind {
+    /// Write, or create &mut
+    Write,
+    /// Read, or create &
+    Read,
+    /// Create *
     Raw,
 }
 
-impl From<Option<hir::Mutability>> for RefKind {
+impl From<Option<hir::Mutability>> for UsageKind {
     fn from(mutbl: Option<hir::Mutability>) -> Self {
         match mutbl {
-            None => RefKind::Raw,
-            Some(hir::MutMutable) => RefKind::Mut,
-            Some(hir::MutImmutable) => RefKind::Shr,
+            None => UsageKind::Raw,
+            Some(hir::MutMutable) => UsageKind::Write,
+            Some(hir::MutImmutable) => UsageKind::Read,
         }
     }
 }
@@ -101,18 +114,18 @@ impl From<Option<hir::Mutability>> for RefKind {
 /// Extra global machine state
 #[derive(Clone, Debug)]
 pub struct State {
-    clock: Cell<Timestamp>
+    clock: Timestamp
 }
 
 impl State {
     pub fn new() -> State {
-        State { clock: Cell::new(0) }
+        State { clock: 0 }
     }
 }
 
 /// Extra per-location state
 #[derive(Clone, Debug)]
-struct Stack {
+pub struct Stack {
     borrows: Vec<BorStackItem>, // used as a stack
     frozen_since: Option<Timestamp>,
 }
@@ -126,87 +139,103 @@ impl Default for Stack {
     }
 }
 
+impl Stack {
+    #[inline(always)]
+    fn is_frozen(&self) -> bool {
+        self.frozen_since.is_some()
+    }
+}
+
 /// Extra per-allocation state
 #[derive(Clone, Debug, Default)]
 pub struct Stacks {
+    // Even reading memory can have effects on the stack, so we need a `RefCell` here.
     stacks: RefCell<RangeMap<Stack>>,
 }
 
 /// Core operations
 impl<'tcx> Stack {
-    /// Check if `bor` is currently active.  We accept a `Raw` on a frozen location
-    /// because this could be a shared (re)borrow.  If you want to mutate, this
-    /// is not the right function to call!
-    fn check(&self, bor: Borrow) -> bool {
-        match bor {
-            Borrow::Frz(acc_t) =>
-                // Must be frozen at least as long as the `acc_t` says.
-                self.frozen_since.map_or(false, |loc_t| loc_t <= acc_t),
-            Borrow::Mut(acc_m) =>
-                // Raw pointers are fine with frozen locations. This is important because &Cell is raw!
-                if self.frozen_since.is_some() {
-                    acc_m.is_raw()
-                } else {
-                    self.borrows.last().map_or(false, |&loc_itm| loc_itm == BorStackItem::Mut(acc_m))
-                }
-        }
-    }
-
     /// Check if `bor` could be activated by unfreezing and popping.
-    /// `force_mut` indicates whether being frozen is potentially acceptable.
+    /// `usage` indicates whether this is being used to read/write (or, equivalently, to
+    /// borrow as &/&mut), or to borrow as raw.
     /// Returns `Err` if the answer is "no"; otherwise the data says
     /// what needs to happen to activate this: `None` = nothing,
     /// `Some(n)` = unfreeze and make item `n` the top item of the stack.
-    fn reactivatable(&self, bor: Borrow, force_mut: bool) -> Result<Option<usize>, String> {
-        // Unless mutation is bound to happen, do NOT change anything if `bor` is already active.
-        // In particular, if it is a `Mut(Raw)` and we are frozen, this should be a NOP.
-        if !force_mut && self.check(bor) {
-            return Ok(None);
-        }
-
-        let acc_m = match bor {
+    fn reactivatable(&self, bor: Borrow, usage: UsageKind) -> Result<Option<usize>, String> {
+        let mut_borrow = match bor {
             Borrow::Frz(since) =>
-                return Err(if force_mut {
-                    format!("Using a shared borrow for mutation")
-                } else {
-                    format!(
-                        "Location should be frozen since {} but {}",
-                        since,
-                        match self.frozen_since {
-                            None => format!("it is not frozen at all"),
-                            Some(since) => format!("it is only frozen since {}", since),
-                        }
-                    )
-                }),
-            Borrow::Mut(acc_m) => acc_m
+                // The only way to reactivate a `Frz` is if this is already frozen.
+                return match self.frozen_since {
+                    _ if usage == UsageKind::Write =>
+                        Err(format!("Using a shared borrow for mutation")),
+                    None =>
+                        Err(format!("Location should be frozen but it is not")),
+                    Some(loc) if loc <= since =>
+                        Ok(None),
+                    Some(loc) =>
+                        Err(format!("Location should be frozen since {} but it is only frozen \
+                                     since {}", since, loc)),
+                },
+            Borrow::Mut(Mut::Raw) if self.is_frozen() && usage != UsageKind::Write =>
+                // Non-mutating access with a raw from a frozen location is a special case: The
+                // shared refs do not mind raw reads, and the raw itself does not assume any
+                // exclusivity. So we do not even require there to be a raw on the stack,
+                // the raw is instead "matched" by the fact that this location is frozen.
+                // This does not break the assumption that an `&mut` we own is
+                // exclusive for reads, because there we have the invariant that
+                // the location is *not* frozen.
+                return Ok(None),
+            Borrow::Mut(mut_borrow) => mut_borrow
         };
-        // This is where we would unfreeze.
+        // See if we can get there via popping.
         for (idx, &itm) in self.borrows.iter().enumerate().rev() {
             match itm {
                 BorStackItem::FnBarrier(_) =>
-                    return Err(format!("Trying to reactivate a mutable borrow ({:?}) that lives behind a barrier", acc_m)),
-                BorStackItem::Mut(loc_m) => {
-                    if loc_m == acc_m { return Ok(Some(idx)); }
+                    return Err(format!("Trying to reactivate a mutable borrow ({:?}) that lives \
+                                        behind a barrier", mut_borrow)),
+                BorStackItem::Mut(loc) => {
+                    if loc == mut_borrow {
+                        // We found it!  This is good to know.
+                        // Yet, maybe we do not really want to pop?
+                        if usage == UsageKind::Read && self.is_frozen() {
+                            // Whoever had exclusive access to this location allowed it
+                            // to become frozen.  That can only happen if they reborrowed
+                            // to a shared ref, at which point they gave up on exclusive access.
+                            // Hence we allow more reads, entirely ignoring everything above
+                            // on the stack (but still making sure it is on the stack).
+                            // This does not break the assumption that an `&mut` we own is
+                            // exclusive for reads, because there we have the invariant that
+                            // the location is *not* frozen.
+                            return Ok(None);
+                        } else {
+                            return Ok(Some(idx));
+                        }
+                    }
                 }
             }
         }
         // Nothing to be found.
-        Err(format!("Mutable borrow-to-reactivate ({:?}) does not exist on the stack", acc_m))
+        Err(format!("Mutable borrow-to-reactivate ({:?}) does not exist on the stack", mut_borrow))
     }
 
-    /// Reactive `bor` for this stack.  If `force_mut` is set, we want to aggressively
-    /// unfreeze this location (because we are about to mutate, so a frozen `Raw` is not okay).
-    fn reactivate(&mut self, bor: Borrow, force_mut: bool) -> EvalResult<'tcx> {
-        let action = match self.reactivatable(bor, force_mut) {
+    /// Reactive `bor` for this stack.  `usage` indicates whether this is being
+    /// used to read/write (or, equivalently, to borrow as &/&mut), or to borrow as raw.
+    fn reactivate(&mut self, bor: Borrow, usage: UsageKind) -> EvalResult<'tcx> {
+        let action = match self.reactivatable(bor, usage) {
             Ok(action) => action,
             Err(err) => return err!(MachineError(err)),
         };
-
+        // Execute what `reactivatable` told us to do.
         match action {
             None => {}, // nothing to do
             Some(top) => {
+                if self.frozen_since.is_some() {
+                    trace!("reactivate: Unfreezing");
+                }
                 self.frozen_since = None;
-                self.borrows.truncate(top+1);
+                for itm in self.borrows.drain(top+1..).rev() {
+                    trace!("reactivate: Popping {:?}", itm);
+                }
             }
         }
 
@@ -214,7 +243,9 @@ impl<'tcx> Stack {
     }
 
     /// Initiate `bor`; mostly this means freezing or pushing.
-    fn initiate(&mut self, bor: Borrow) -> EvalResult<'tcx> {
+    /// This operation cannot fail; it is up to the caller to ensure that the precondition
+    /// is met: We cannot push onto frozen stacks.
+    fn initiate(&mut self, bor: Borrow) {
         match bor {
             Borrow::Frz(t) => {
                 match self.frozen_since {
@@ -240,83 +271,73 @@ impl<'tcx> Stack {
                         // from it is fine with this as well.
                         trace!("initiate: Initiating a raw on a frozen location, not doing a thing"),
                     Some(_) =>
-                        return err!(MachineError(format!("Trying to mutate frozen location")))
+                        bug!("Trying to mutate frozen location")
                 }
             }
         }
-        Ok(())
     }
 }
 
 impl State {
-    fn increment_clock(&self) -> Timestamp {
-        let val = self.clock.get();
-        self.clock.set(val + 1);
+    fn increment_clock(&mut self) -> Timestamp {
+        let val = self.clock;
+        self.clock = val + 1;
         val
     }
 }
 
 /// Higher-level operations
 impl<'tcx> Stacks {
-    pub fn memory_accessed(
+    /// The single most operation: Make sure that using `ptr` as `usage` is okay,
+    /// and if `new_bor` is present then make that the new current borrow.
+    fn use_and_maybe_re_borrow(
         &self,
         ptr: Pointer<Borrow>,
         size: Size,
-        access: MemoryAccess,
+        usage: UsageKind,
+        new_bor: Option<Borrow>,
     ) -> EvalResult<'tcx> {
-        trace!("memory_accessed({:?}) with tag {:?}: {:?}, size {}", access, ptr.tag, ptr, size.bytes());
+        trace!("use_and_maybe_re_borrow of tag {:?} as {:?}, new {:?}: {:?}, size {}",
+            ptr.tag, usage, new_bor, ptr, size.bytes());
         let mut stacks = self.stacks.borrow_mut();
         for stack in stacks.iter_mut(ptr.offset, size) {
-            // FIXME: Compare this with what the blog post says.
-            stack.reactivate(ptr.tag, /*force_mut*/access == MemoryAccess::Write)?;
+            stack.reactivate(ptr.tag, usage)?;
+            if let Some(new_bor) = new_bor {
+                stack.initiate(new_bor);
+            }
         }
+
         Ok(())
+    }
+
+    #[inline(always)]
+    pub fn memory_read(
+        &self,
+        ptr: Pointer<Borrow>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        // Reads behave exactly like the first half of a reborrow-to-shr
+        self.use_and_maybe_re_borrow(ptr, size, UsageKind::Read, None)
+    }
+
+    #[inline(always)]
+    pub fn memory_written(
+        &mut self,
+        ptr: Pointer<Borrow>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        // Writes behave exactly like the first half of a reborrow-to-mut
+        self.use_and_maybe_re_borrow(ptr, size, UsageKind::Write, None)
     }
 
     pub fn memory_deallocated(
         &mut self,
         ptr: Pointer<Borrow>,
-    ) -> EvalResult<'tcx> {
-        trace!("memory_deallocated with tag {:?}: {:?}", ptr.tag, ptr);
-        let stacks = self.stacks.get_mut();
-        for stack in stacks.iter_mut_all() {
-            // This is like mutating.
-            stack.reactivate(ptr.tag, /*force_mut*/true)?;
-        }
-        Ok(())
-    }
-
-    fn reborrow(
-        &self,
-        ptr: Pointer<Borrow>,
         size: Size,
-        new_bor: Borrow,
-        permit_redundant: bool,
     ) -> EvalResult<'tcx> {
-        let mut stacks = self.stacks.borrow_mut();
-        for stack in stacks.iter_mut(ptr.offset, size) {
-            if permit_redundant && stack.check(new_bor) {
-                // The new borrow is already active!  This can happen when creating multiple
-                // shared references from the same mutable reference.  Do nothing.
-                trace!("reborrow: New borrow {:?} is already active, not doing a thing", new_bor);
-            } else {
-                // If we are creating a uniq ref, we certainly want to unfreeze.
-                // Even if we are doing so from a raw.
-                // Notice that if this is a local, whenever we access it directly the
-                // tag here will be the bottommost `Uniq` for that local.  That `Uniq`
-                // never is accessible by the program, so it will not be used by any
-                // other access.  IOW, whenever we directly use a local this will pop
-                // everything else off the stack, invalidating all previous pointers
-                // and, in particular, *all* raw pointers.  This subsumes the explicit
-                // `reset` which the blog post [1] says to perform when accessing a local.
-                //
-                // [1] https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html
-                stack.reactivate(ptr.tag, /*force_mut*/new_bor.is_uniq())?;
-                stack.initiate(new_bor)?;
-            }
-        }
-
-        Ok(())
+        // This is like mutating
+        self.use_and_maybe_re_borrow(ptr, size, UsageKind::Write, None)
+        // FIXME: Error out of there are any barriers?
     }
 
     /// Pushes the first borrow to the stacks, must be a mutable one.
@@ -334,18 +355,12 @@ impl<'tcx> Stacks {
 }
 
 pub trait EvalContextExt<'tcx> {
-    fn tag_for_pointee(
-        &self,
-        pointee_ty: Ty<'tcx>,
-        ref_kind: RefKind,
-    ) -> Borrow;
-
     fn tag_reference(
-        &self,
+        &mut self,
         ptr: Pointer<Borrow>,
         pointee_ty: Ty<'tcx>,
         size: Size,
-        ref_kind: RefKind,
+        usage: UsageKind,
     ) -> EvalResult<'tcx, Borrow>;
 
 
@@ -354,7 +369,7 @@ pub trait EvalContextExt<'tcx> {
         ptr: Pointer<Borrow>,
         pointee_ty: Ty<'tcx>,
         size: Size,
-        ref_kind: RefKind,
+        usage: UsageKind,
     ) -> EvalResult<'tcx, Borrow>;
 
     fn tag_new_allocation(
@@ -362,18 +377,27 @@ pub trait EvalContextExt<'tcx> {
         id: AllocId,
         kind: MemoryKind<MiriMemoryKind>,
     ) -> Borrow;
+
+    fn retag(
+        &mut self,
+        fn_entry: bool,
+        place: PlaceTy<'tcx, Borrow>
+    ) -> EvalResult<'tcx>;
 }
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
-    fn tag_for_pointee(
-        &self,
+    /// Called for place-to-value conversion.
+    fn tag_reference(
+        &mut self,
+        ptr: Pointer<Borrow>,
         pointee_ty: Ty<'tcx>,
-        ref_kind: RefKind,
-    ) -> Borrow {
+        size: Size,
+        usage: UsageKind,
+    ) -> EvalResult<'tcx, Borrow> {
         let time = self.machine.stacked_borrows.increment_clock();
-        match ref_kind {
-            RefKind::Mut => Borrow::Mut(Mut::Uniq(time)),
-            RefKind::Shr =>
+        let new_bor = match usage {
+            UsageKind::Write => Borrow::Mut(Mut::Uniq(time)),
+            UsageKind::Read =>
                 // FIXME This does not do enough checking when only part of the data has
                 // interior mutability. When the type is `(i32, Cell<i32>)`, we want the
                 // first field to be frozen but not the second.
@@ -383,21 +407,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                     // Shared reference with interior mutability.
                     Borrow::Mut(Mut::Raw)
                 },
-            RefKind::Raw => Borrow::Mut(Mut::Raw),
-        }
-    }
-
-    /// Called for place-to-value conversion.
-    fn tag_reference(
-        &self,
-        ptr: Pointer<Borrow>,
-        pointee_ty: Ty<'tcx>,
-        size: Size,
-        ref_kind: RefKind,
-    ) -> EvalResult<'tcx, Borrow> {
-        let new_bor = self.tag_for_pointee(pointee_ty, ref_kind);
+            UsageKind::Raw => Borrow::Mut(Mut::Raw),
+        };
         trace!("tag_reference: Creating new reference ({:?}) for {:?} (pointee {}, size {}): {:?}",
-            ref_kind, ptr, pointee_ty, size.bytes(), new_bor);
+            usage, ptr, pointee_ty, size.bytes(), new_bor);
 
         // Make sure this reference is not dangling or so
         self.memory().check_bounds(ptr, size, false)?;
@@ -405,8 +418,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         // Update the stacks.  We cannot use `get_mut` becuse this might be immutable
         // memory.
         let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
-        let permit_redundant = ref_kind == RefKind::Shr; // redundant shared refs are okay
-        alloc.extra.reborrow(ptr, size, new_bor, permit_redundant)?;
+        alloc.extra.use_and_maybe_re_borrow(ptr, size, usage, Some(new_bor))?;
 
         Ok(new_bor)
     }
@@ -420,43 +432,40 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         ptr: Pointer<Borrow>,
         pointee_ty: Ty<'tcx>,
         size: Size,
-        ref_kind: RefKind,
+        usage: UsageKind,
     ) -> EvalResult<'tcx, Borrow> {
+        trace!("tag_reference: Accessing reference ({:?}) for {:?} (pointee {}, size {})",
+            usage, ptr, pointee_ty, size.bytes());
         // In principle we should not have to do anything here.  However, with transmutes involved,
-        // it can happen that the tag of `ptr` does not actually match `ref_kind`, and we
+        // it can happen that the tag of `ptr` does not actually match `usage`, and we
         // should adjust for that.
         // Notably, the compiler can introduce such transmutes by optimizing away `&[mut]*`.
         // That can transmute a raw ptr to a (shared/mut) ref, and a mut ref to a shared one.
-        match (ref_kind, ptr.tag) {
-            (RefKind::Raw, _) => {
+        match (usage, ptr.tag) {
+            (UsageKind::Raw, _) => {
                 // Don't use the tag, this is a raw access!  Even if there is a tag,
                 // that means transmute happened and we ignore the tag.
                 // Also don't do any further validation, this is raw after all.
                 return Ok(Borrow::Mut(Mut::Raw));
             }
-            (RefKind::Mut, Borrow::Mut(Mut::Uniq(_))) |
-            (RefKind::Shr, Borrow::Frz(_)) |
-            (RefKind::Shr, Borrow::Mut(Mut::Raw)) => {
+            (UsageKind::Write, Borrow::Mut(Mut::Uniq(_))) |
+            (UsageKind::Read, Borrow::Frz(_)) |
+            (UsageKind::Read, Borrow::Mut(Mut::Raw)) => {
                 // Expected combinations.  Nothing to do.
                 // FIXME: We probably shouldn't accept this if we got a raw shr without
                 // interior mutability.
             }
-            (RefKind::Mut, Borrow::Mut(Mut::Raw)) => {
+            (UsageKind::Write, Borrow::Mut(Mut::Raw)) => {
                 // Raw transmuted to mut ref.  Keep this as raw access.
                 // We cannot reborrow here; there might be a raw in `&(*var).1` where
                 // `var` is an `&mut`.  The other field of the struct might be already frozen,
                 // also using `var`, and that would be okay.
             }
-            (RefKind::Shr, Borrow::Mut(Mut::Uniq(_))) => {
-                // A mut got transmuted to shr.  High time we freeze this location!
-                // Make this a delayed reborrow.  Redundant reborows to shr are okay,
-                // so we do not have to be worried about doing too much.
-                // FIXME: Reconsider if we really want to mutate things while doing just a deref,
-                // which, in particular, validation does.
-                trace!("tag_dereference: Lazy freezing of {:?}", ptr);
-                return self.tag_reference(ptr, pointee_ty, size, ref_kind);
+            (UsageKind::Read, Borrow::Mut(Mut::Uniq(_))) => {
+                // A mut got transmuted to shr.  Can happen even from compiler transformations:
+                // `&*x` gets optimized to `x` even when `x` is a `&mut`.
             }
-            (RefKind::Mut, Borrow::Frz(_)) => {
+            (UsageKind::Write, Borrow::Frz(_)) => {
                 // This is just invalid.
                 // If we ever allow this, we have to consider what we do when a turn a
                 // `Raw`-tagged `&mut` into a raw pointer pointing to a frozen location.
@@ -472,12 +481,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         let mut stacks = alloc.extra.stacks.borrow_mut();
         // We need `iter_mut` because `iter` would skip gaps!
         for stack in stacks.iter_mut(ptr.offset, size) {
-            // We accept &mut to a frozen location here, that is just normal.  There might
-            // be shared reborrows that we are about to invalidate with this access.
-            // We cannot invalidate them aggressively here because the deref might also be
-            // to just create more shared refs.
-            if let Err(err) = stack.reactivatable(ptr.tag, /*force_mut*/false) {
-                return err!(MachineError(format!("Encountered {:?} reference with non-reactivatable tag: {}", ref_kind, err)))
+            // Conservatively assume that we will only read.
+            if let Err(err) = stack.reactivatable(ptr.tag, UsageKind::Read) {
+                return err!(MachineError(format!(
+                    "Encountered {} reference with non-reactivatable tag: {}",
+                    if usage == UsageKind::Write { "mutable" } else { "shared" },
+                    err
+                )))
             }
         }
         // All is good.
@@ -491,7 +501,14 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
     ) -> Borrow {
         let mut_borrow = match kind {
             MemoryKind::Stack => {
-                // New unique borrow
+                // New unique borrow. This `Uniq` is not accessible by the program,
+                // so it will only ever be used when using the local directly (i.e.,
+                // not through a pointer).  IOW, whenever we directly use a local this will pop
+                // everything else off the stack, invalidating all previous pointers
+                // and, in particular, *all* raw pointers.  This subsumes the explicit
+                // `reset` which the blog post [1] says to perform when accessing a local.
+                //
+                // [1] https://www.ralfj.de/blog/2018/08/07/stacked-borrows.html
                 let time = self.machine.stacked_borrows.increment_clock();
                 Mut::Uniq(time)
             }
@@ -505,5 +522,29 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         let size = Size::from_bytes(alloc.bytes.len() as u64);
         alloc.extra.first_borrow(mut_borrow, size);
         Borrow::Mut(mut_borrow)
+    }
+
+    fn retag(
+        &mut self,
+        _fn_entry: bool,
+        place: PlaceTy<'tcx, Borrow>
+    ) -> EvalResult<'tcx> {
+        // For now, we only retag if the toplevel type is a reference.
+        // TODO: Recurse into structs and enums, sharing code with validation.
+        let mutbl = match place.layout.ty.sty {
+            ty::Ref(_, _, mutbl) => mutbl, // go ahead
+            _ => return Ok(()), // don't do a thing
+        };
+        // We want to reborrow the reference stored there. This will call the hooks
+        // above.  First deref, which will call `tag_dereference`.
+        // (This is somewhat redundant because validation already did the same thing,
+        // but what can you do.)
+        let val = self.read_value(self.place_to_op(place)?)?;
+        let dest = self.ref_to_mplace(val)?;
+        // Now put a new ref into the old place, which will call `tag_reference`.
+        // FIXME: Honor `fn_entry`!
+        let val = self.create_ref(dest, Some(mutbl))?;
+        self.write_value(val, place)?;
+        Ok(())
     }
 }

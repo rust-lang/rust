@@ -1,5 +1,5 @@
 // This should fail even without validation
-// compile-flags: -Zmir-emit-validate=0 -Zmiri-disable-validation
+// compile-flags: -Zmiri-disable-validation
 
 static mut LEAK: usize = 0;
 

@@ -6,5 +6,5 @@ fn main() {
     let xraw = x as *mut _;
     let xref = unsafe { &mut *xraw };
     let _val = *x; // invalidate xraw
-    foo(xref); //~ ERROR Mut reference with non-reactivatable tag
+    foo(xref); //~ ERROR mutable reference with non-reactivatable tag
 }

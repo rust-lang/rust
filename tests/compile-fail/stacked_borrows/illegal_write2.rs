@@ -1,4 +1,5 @@
-// The reborow gets optimized away, so we can only detect this issue without optimizations
+// We fail to detect this when neither this nor libstd are optimized/have retagging.
+// FIXME: Investigate that.
 // compile-flags: -Zmir-opt-level=0
 
 #![allow(unused_variables)]

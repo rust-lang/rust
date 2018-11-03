@@ -1,6 +1,3 @@
-// With optimizations, we just store a raw in `x`, and there is no problem.
-// compile-flags: -Zmir-opt-level=0
-
 #![allow(unused_variables)]
 
 // This makes a ref that was passed to us via &mut alias with things it should not alias with
@@ -14,5 +11,5 @@ fn main() {
     retarget(&mut target_alias, target);
     // now `target_alias` points to the same thing as `target`
     *target = 13;
-    let _val = *target_alias; //~ ERROR Shr reference with non-reactivatable tag
+    let _val = *target_alias; //~ ERROR reference with non-reactivatable tag
 }

@@ -5,6 +5,6 @@ fn main() {
     let x = &mut 42;
     let xraw = &*x as *const _;
     let xref = unsafe { &*xraw };
-    let _val = *x; // invalidate xraw
-    foo(xref); //~ ERROR Shr reference with non-reactivatable tag: Location should be frozen
+    *x = 42; // invalidate xraw
+    foo(xref); //~ ERROR shared reference with non-reactivatable tag: Location should be frozen
 }

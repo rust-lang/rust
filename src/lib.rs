@@ -26,7 +26,7 @@ use syntax::attr;
 
 
 pub use rustc_mir::interpret::*;
-pub use rustc_mir::interpret::{self, AllocMap}; // resolve ambiguity
+pub use rustc_mir::interpret::{self, AllocMap, PlaceTy}; // resolve ambiguity
 
 mod fn_call;
 mod operator;
@@ -48,7 +48,16 @@ use crate::mono_hash_map::MonoHashMap;
 use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
 
 // Used by priroda
-pub use stacked_borrows::{Borrow, Stacks, Mut as MutBorrow};
+pub use crate::stacked_borrows::{Borrow, Stack, Stacks, Mut as MutBorrow, BorStackItem};
+
+/// Insert rustc arguments at the beginning of the argument list that miri wants to be
+/// set per default, for maximal validation power.
+pub fn miri_default_args() -> &'static [&'static str] {
+    // The flags here should be kept in sync with what bootstrap adds when `test-miri` is
+    // set, which happens in `bootstrap/bin/rustc.rs` in the rustc sources; and also
+    // kept in sync with `xargo/build.sh` in this repo and `appveyor.yml`.
+    &["-Zalways-encode-mir", "-Zmir-emit-retag", "-Zmir-opt-level=0"]
+}
 
 // Used by priroda
 pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
@@ -438,21 +447,30 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
-    fn memory_accessed(
+    fn memory_read(
         alloc: &Allocation<Borrow, Self::AllocExtra>,
         ptr: Pointer<Borrow>,
         size: Size,
-        access: MemoryAccess,
     ) -> EvalResult<'tcx> {
-        alloc.extra.memory_accessed(ptr, size, access)
+        alloc.extra.memory_read(ptr, size)
+    }
+
+    #[inline(always)]
+    fn memory_written(
+        alloc: &mut Allocation<Borrow, Self::AllocExtra>,
+        ptr: Pointer<Borrow>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        alloc.extra.memory_written(ptr, size)
     }
 
     #[inline(always)]
     fn memory_deallocated(
         alloc: &mut Allocation<Borrow, Self::AllocExtra>,
         ptr: Pointer<Borrow>,
+        size: Size,
     ) -> EvalResult<'tcx> {
-        alloc.extra.memory_deallocated(ptr)
+        alloc.extra.memory_deallocated(ptr, size)
     }
 
     #[inline(always)]
@@ -506,5 +524,21 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             let tag = ecx.tag_new_allocation(ptr.alloc_id, kind);
             Ok(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag))
         }
+    }
+
+    #[inline(always)]
+    fn retag(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        fn_entry: bool,
+        place: PlaceTy<'tcx, Borrow>,
+    ) -> EvalResult<'tcx> {
+        if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag || !Self::enforce_validity(ecx) {
+            // No tracking, or no retagging. This is possible because a dependency of ours might be
+            // called with different flags than we are,
+            // Also, honor the whitelist in `enforce_validity` because otherwise we might retag
+            // uninitialized data.
+            return Ok(())
+        }
+        ecx.retag(fn_entry, place)
     }
 }

@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME: We handle uninitialized storage here, which currently makes validation fail.
-// compile-flags: -Zmir-emit-validate=0
-
 //ignore-windows: Uses POSIX APIs
 
 #![feature(libc)]

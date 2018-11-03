@@ -58,13 +58,11 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullm
     let mut flags = Vec::new();
     flags.push(format!("--sysroot {}", sysroot.display()));
     flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
-    flags.push("-Zmir-emit-validate=1".to_owned());
     if opt {
         // Optimizing too aggressivley makes UB detection harder, but test at least
         // the default value.
+        // FIXME: Opt level 3 ICEs during stack trace generation.
         flags.push("-Zmir-opt-level=1".to_owned());
-    } else {
-        flags.push("-Zmir-opt-level=0".to_owned());
     }
 
     let mut config = compiletest::Config::default().tempdir();
@@ -102,11 +100,8 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
     let mut flags = Vec::new();
     flags.push(format!("--sysroot {}", sysroot.display()));
     flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
-    flags.push("-Zmir-emit-validate=1".to_owned());
     if opt {
         flags.push("-Zmir-opt-level=3".to_owned());
-    } else {
-        flags.push("-Zmir-opt-level=0".to_owned());
     }
 
     let mut config = compiletest::Config::default().tempdir();
