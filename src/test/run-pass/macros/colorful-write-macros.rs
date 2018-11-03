@@ -27,18 +27,18 @@ impl fmt::Write for Bar {
 }
 
 fn borrowing_writer_from_struct_and_formatting_struct_field(foo: Foo) {
-    write!(foo.writer, "{}", foo.other);
+    write!(foo.writer, "{}", foo.other).unwrap();
 }
 
 fn main() {
     let mut w = Vec::new();
-    write!(&mut w as &mut Write, "");
-    write!(&mut w, ""); // should coerce
+    write!(&mut w as &mut Write, "").unwrap();
+    write!(&mut w, "").unwrap(); // should coerce
     println!("ok");
 
     let mut s = Bar;
     {
         use std::fmt::Write;
-        write!(&mut s, "test");
+        write!(&mut s, "test").unwrap();
     }
 }
