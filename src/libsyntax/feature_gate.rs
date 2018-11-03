@@ -433,9 +433,6 @@ declare_features! (
     // #[doc(alias = "...")]
     (active, doc_alias, "1.27.0", Some(50146), None),
 
-    // Allows irrefutable patterns in if-let and while-let statements (RFC 2086)
-    (active, irrefutable_let_patterns, "1.27.0", Some(44495), None),
-
     // Allows use of the :literal macro fragment specifier (RFC 1576)
     (active, macro_literal_matcher, "1.27.0", Some(35625), None),
 
@@ -691,6 +688,8 @@ declare_features! (
     // impl<I:Iterator> Iterator for &mut Iterator
     // impl Debug for Foo<'_>
     (accepted, impl_header_lifetime_elision, "1.31.0", Some(15872), None),
+    // Allows irrefutable patterns in if-let and while-let statements (RFC 2086)
+    (accepted, irrefutable_let_patterns, "1.32.0", Some(44495), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must

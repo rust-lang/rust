@@ -1,0 +1,8 @@
+warning: the feature `irrefutable_let_patterns` has been stable since 1.32.0 and no longer requires an attribute to enable
+  --> $DIR/allow_irrefutable_let_patterns.rs:12:12
+   |
+LL | #![feature(irrefutable_let_patterns)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[warn(stable_features)] on by default
+
