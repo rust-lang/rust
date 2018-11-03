@@ -52,16 +52,11 @@ pub use crate::stacked_borrows::{Borrow, Stack, Stacks, Mut as MutBorrow, BorSta
 
 /// Insert rustc arguments at the beginning of the argument listthat miri wants to be
 /// set per default, for maximal validation power.
-pub fn add_miri_default_args(args: &mut Vec<String>) {
+pub fn miri_default_args() -> &'static [&'static str] {
     // The flags here should be kept in sync with what bootstrap adds when `test-miri` is
     // set, which happens in `bootstrap/bin/rustc.rs` in the rustc sources; and also
     // kept in sync with `xargo/build.sh` in this repo and `appveyor.yml`.
-
-    // Inserting at index 1, after the binary name
-    args.splice(1..1,
-        ["-Zalways-encode-mir", "-Zmir-emit-retag", "-Zmir-opt-level=0"]
-        .iter().map(|s| s.to_string())
-    );
+    &["-Zalways-encode-mir", "-Zmir-emit-retag", "-Zmir-opt-level=0"]
 }
 
 // Used by priroda

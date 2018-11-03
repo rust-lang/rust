@@ -156,6 +156,7 @@ fn main() {
                 true
             }
         }).collect();
+        args.splice(1..1, miri::miri_default_args().iter().map(ToString::to_string));
         // file to process
         args.push(path.display().to_string());
 
@@ -164,8 +165,6 @@ fn main() {
             args.push(sysroot_flag);
             args.push(Path::new(&std::env::var("HOME").unwrap()).join(".xargo").join("HOST").display().to_string());
         }
-
-        miri::add_miri_default_args(&mut args);
 
         // A threadsafe buffer for writing.
         #[derive(Default, Clone)]

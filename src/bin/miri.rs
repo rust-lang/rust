@@ -232,8 +232,8 @@ fn main() {
         args.push(sysroot_flag);
         args.push(find_sysroot());
     }
-    // Finally, add the default flags all the way in the beginning.
-    miri::add_miri_default_args(&mut args);
+    // Finally, add the default flags all the way in the beginning, but after the binary name.
+    args.splice(1..1, miri::miri_default_args().iter().map(ToString::to_string));
 
     trace!("rustc arguments: {:?}", args);
     let result = rustc_driver::run(move || {

@@ -173,6 +173,7 @@ fn main() {
                 .chain(Some(sys_root))
                 .collect()
         };
+        args.splice(0..0, miri::miri_default_args().iter().map(ToString::to_string));
 
         // this check ensures that dependencies are built but not interpreted and the final crate is
         // interpreted but not built
@@ -186,7 +187,6 @@ fn main() {
             Command::new("rustc")
         };
 
-        miri::add_miri_default_args(&mut args);
         args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-miri""#.to_owned()]);
 
         match command.args(&args).status() {
