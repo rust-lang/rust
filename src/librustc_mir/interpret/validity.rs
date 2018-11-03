@@ -143,7 +143,10 @@ fn wrapping_range_format(r: &RangeInclusive<u128>, max_hi: u128) -> String {
     if lo > hi {
         format!("less or equal to {}, or greater or equal to {}", hi, lo)
     } else {
-        if hi == max_hi {
+        if lo == 0 {
+            debug_assert!(hi < max_hi, "should not be printing if the range covers everything");
+            format!("less or equal to {}", hi)
+        } else if hi == max_hi {
             format!("greater or equal to {}", lo)
         } else {
             format!("in the range {:?}", r)
