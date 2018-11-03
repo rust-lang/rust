@@ -4,10 +4,10 @@ error: user substs: Canonical { max_universe: U0, variables: [], value: UserSubs
 LL |     let x = foo::<u32>; //~ ERROR [u32]
    |             ^^^^^^^^^^
 
-error: user substs: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General) }, CanonicalVarInfo { kind: Ty(General) }], value: UserSubsts { substs: [?0, u32, ?1], user_self_ty: None } }
+error: user substs: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General) }, CanonicalVarInfo { kind: Ty(General) }], value: UserSubsts { substs: [^0, u32, ^1], user_self_ty: None } }
   --> $DIR/dump-fn-method.rs:42:13
    |
-LL |     let x = <_ as Bazoom<u32>>::method::<_>; //~ ERROR [?0, u32, ?1]
+LL |     let x = <_ as Bazoom<u32>>::method::<_>; //~ ERROR [^0, u32, ^1]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: user substs: Canonical { max_universe: U0, variables: [], value: UserSubsts { substs: [u8, u16, u32], user_self_ty: None } }
@@ -16,10 +16,10 @@ error: user substs: Canonical { max_universe: U0, variables: [], value: UserSubs
 LL |     let x = <u8 as Bazoom<u16>>::method::<u32>; //~ ERROR [u8, u16, u32]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: user substs: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General) }, CanonicalVarInfo { kind: Ty(General) }], value: UserSubsts { substs: [?0, ?1, u32], user_self_ty: None } }
+error: user substs: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General) }, CanonicalVarInfo { kind: Ty(General) }], value: UserSubsts { substs: [^0, ^1, u32], user_self_ty: None } }
   --> $DIR/dump-fn-method.rs:54:5
    |
-LL |     y.method::<u32>(44, 66); //~ ERROR [?0, ?1, u32]
+LL |     y.method::<u32>(44, 66); //~ ERROR [^0, ^1, u32]
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
