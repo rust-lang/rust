@@ -904,7 +904,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
     cnum: CrateNum,
 ) -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>)
 {
-assert_eq!(cnum, LOCAL_CRATE);
+    assert_eq!(cnum, LOCAL_CRATE);
 
     let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {
         Some(ref s) => {
