@@ -15,11 +15,19 @@ var mainTheme = document.getElementById("mainThemeStyle");
 
 var savedHref = [];
 
-function onEach(arr, func) {
+function onEach(arr, func, reversed) {
     if (arr && arr.length > 0 && func) {
-        for (var i = 0; i < arr.length; i++) {
-            if (func(arr[i]) === true) {
-                return true;
+        if (reversed !== true) {
+            for (var i = 0; i < arr.length; ++i) {
+                if (func(arr[i]) === true) {
+                    return true;
+                }
+            }
+        } else {
+            for (var i = arr.length - 1; i >= 0; --i) {
+                if (func(arr[i]) === true) {
+                    return true;
+                }
             }
         }
     }
