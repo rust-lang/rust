@@ -93,6 +93,7 @@
 #![feature(never_type)]
 #![feature(nll)]
 #![feature(exhaustive_patterns)]
+#![cfg_attr(not(stage0), feature(min_const_unsafe_fn))]
 #![feature(no_core)]
 #![feature(on_unimplemented)]
 #![feature(optin_builtin_traits)]

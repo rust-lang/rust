@@ -24,6 +24,8 @@ use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext};
 use syntax::ast;
 use syntax::symbol::Symbol;
 
+use std::ops::Bound;
+
 use util;
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
@@ -136,8 +138,18 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
         if let &Rvalue::Aggregate(box ref aggregate, _) = rvalue {
             match aggregate {
                 &AggregateKind::Array(..) |
-                &AggregateKind::Tuple |
-                &AggregateKind::Adt(..) => {}
+                &AggregateKind::Tuple => {}
+                &AggregateKind::Adt(ref def, ..) => {
+                    match self.tcx.layout_scalar_valid_range(def.did) {
+                        (Bound::Unbounded, Bound::Unbounded) => {},
+                        _ => self.require_unsafe(
+                            "initializing type with `rustc_layout_scalar_valid_range` attr",
+                            "initializing `NonZero` with a `0` violates layout constraints \
+                            and is undefined behavior",
+                            UnsafetyViolationKind::MinConstFn,
+                        ),
+                    }
+                }
                 &AggregateKind::Closure(def_id, _) |
                 &AggregateKind::Generator(def_id, _, _) => {
                     let UnsafetyCheckResult {

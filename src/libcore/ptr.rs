@@ -2759,7 +2759,7 @@ impl<T: ?Sized> Unique<T> {
     /// Creates a new `Unique` if `ptr` is non-null.
     pub fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
-            Some(Unique { pointer: NonZero(ptr as _), _marker: PhantomData })
+            Some(Unique { pointer: unsafe { NonZero(ptr as _) }, _marker: PhantomData })
         } else {
             None
         }
@@ -2815,14 +2815,14 @@ impl<T: ?Sized> fmt::Pointer for Unique<T> {
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<'a, T: ?Sized> From<&'a mut T> for Unique<T> {
     fn from(reference: &'a mut T) -> Self {
-        Unique { pointer: NonZero(reference as _), _marker: PhantomData }
+        Unique { pointer: unsafe { NonZero(reference as _) }, _marker: PhantomData }
     }
 }
 
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
     fn from(reference: &'a T) -> Self {
-        Unique { pointer: NonZero(reference as _), _marker: PhantomData }
+        Unique { pointer: unsafe { NonZero(reference as _) }, _marker: PhantomData }
     }
 }
 
@@ -2895,7 +2895,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[inline]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
-        NonNull { pointer: NonZero(ptr as _) }
+        NonNull { pointer: unsafe { NonZero(ptr as _) } }
     }
 
     /// Creates a new `NonNull` if `ptr` is non-null.
@@ -2903,7 +2903,7 @@ impl<T: ?Sized> NonNull<T> {
     #[inline]
     pub fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
-            Some(NonNull { pointer: NonZero(ptr as _) })
+            Some(NonNull { pointer: unsafe { NonZero(ptr as _) } })
         } else {
             None
         }
@@ -3025,7 +3025,7 @@ impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
 impl<'a, T: ?Sized> From<&'a mut T> for NonNull<T> {
     #[inline]
     fn from(reference: &'a mut T) -> Self {
-        NonNull { pointer: NonZero(reference as _) }
+        NonNull { pointer: unsafe { NonZero(reference as _) } }
     }
 }
 
@@ -3033,6 +3033,6 @@ impl<'a, T: ?Sized> From<&'a mut T> for NonNull<T> {
 impl<'a, T: ?Sized> From<&'a T> for NonNull<T> {
     #[inline]
     fn from(reference: &'a T) -> Self {
-        NonNull { pointer: NonZero(reference as _) }
+        NonNull { pointer: unsafe { NonZero(reference as _) } }
     }
 }
