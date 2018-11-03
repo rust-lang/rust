@@ -1355,14 +1355,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 let inline_module = item.span.contains(inner) || inner.is_dummy();
 
                 if inline_module {
-                    if let Some(path) = attr::first_attr_value_str_by_name(&item.attrs, "path") {
-                        orig_directory_ownership =
-                            Some(mem::replace(
-                                &mut self.cx.current_expansion.directory_ownership,
-                                DirectoryOwnership::Owned { relative: vec![] }));
-                        module.directory.push(&*path.as_str());
-                    } else {
-                        module.directory.push(&*item.ident.as_str());
+                    if let DirectoryOwnership::Owned { relative } =
+                        &mut self.directory.ownership
+                    {
+                        relative.push(item.ident);
                     }
                 } else {
                     let path = self.cx.parse_sess.source_map().span_to_unmapped_path(inner);
