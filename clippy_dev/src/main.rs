@@ -19,12 +19,17 @@ fn main() {
     let matches = App::new("Clippy developer tooling")
         .subcommand(
             SubCommand::with_name("update_lints")
-                .about("Update the lint list")
+                .about("Makes sure that:\n \
+                       * the lint count in README.md is correct\n \
+                       * the changelog contains markdown link references at the bottom\n \
+                       * all lints groups include the correct lints\n \
+                       * lint modules in `clippy_lints/*` are visible in `src/lib.rs` via `pub mod`\n \
+                       * all lints are registered in the lint store")
                 .arg(
                     Arg::with_name("print-only")
                         .long("print-only")
                         .short("p")
-                        .help("Print a table of lints to STDOUT. Does not modify any files."),
+                        .help("Print a table of lints to STDOUT. This does not include deprecated and internal lints. (Does not modify any files)"),
                 )
         )
         .get_matches();
