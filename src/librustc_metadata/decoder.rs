@@ -400,7 +400,7 @@ impl<'a, 'tcx> MetadataBlob {
         for (i, dep) in root.crate_deps
                             .decode(self)
                             .enumerate() {
-            write!(out, "{} {}-{}\n", i + 1, dep.name, dep.hash)?;
+            write!(out, "{} {}{}\n", i + 1, dep.name, dep.extra_filename)?;
         }
         write!(out, "\n")?;
         Ok(())
