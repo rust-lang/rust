@@ -72,6 +72,19 @@ impl Lint {
     }
 }
 
+/// Generates the Vec items for `register_lint_group` calls in `clippy_lints/src/lib.rs`.
+pub fn gen_lint_group_list(lints: Vec<Lint>) -> Vec<String> {
+    lints.into_iter()
+        .filter_map(|l| {
+            if l.is_internal() || l.deprecation.is_some() {
+                None
+            } else {
+                Some(format!("        {}::{},", l.module, l.name.to_uppercase()))
+            }
+        })
+        .sorted()
+}
+
 /// Generates the `pub mod module_name` list in `clippy_lints/src/lib.rs`.
 pub fn gen_modules_list(lints: Vec<Lint>) -> Vec<String> {
     lints.into_iter()
@@ -389,4 +402,19 @@ fn test_gen_modules_list() {
         "pub mod module_name;".to_string(),
     ];
     assert_eq!(expected, gen_modules_list(lints));
+}
+
+#[test]
+fn test_gen_lint_group_list() {
+    let lints = vec![
+        Lint::new("abc", "group1", "abc", None, "module_name"),
+        Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
+        Lint::new("should_assert_eq2", "group2", "abc", Some("abc"), "deprecated"),
+        Lint::new("incorrect_internal", "internal_style", "abc", None, "module_name"),
+    ];
+    let expected = vec![
+        "        module_name::ABC,".to_string(),
+        "        module_name::SHOULD_ASSERT_EQ,".to_string(),
+    ];
+    assert_eq!(expected, gen_lint_group_list(lints));
 }

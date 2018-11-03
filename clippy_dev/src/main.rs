@@ -98,4 +98,34 @@ fn update_lints() {
         false,
         || { gen_modules_list(lint_list.clone()) }
     );
+
+    // Generate lists of lints in the clippy::all lint group
+    replace_region_in_file(
+        "../clippy_lints/src/lib.rs",
+        r#"reg.register_lint_group\("clippy::all""#,
+        r#"\]\);"#,
+        false,
+        || {
+            // clippy::all should only include the following lint groups:
+            let all_group_lints = usable_lints.clone().into_iter().filter(|l| {
+                l.group == "correctness" ||
+                  l.group == "style" ||
+                  l.group == "complexity" ||
+                  l.group == "perf"
+            }).collect();
+
+            gen_lint_group_list(all_group_lints)
+        }
+    );
+
+    // Generate the list of lints for all other lint groups
+    for (lint_group, lints) in Lint::by_lint_group(&usable_lints) {
+        replace_region_in_file(
+            "../clippy_lints/src/lib.rs",
+            &format!("reg.register_lint_group\\(\"clippy::{}\"", lint_group),
+            r#"\]\);"#,
+            false,
+            || { gen_lint_group_list(lints.clone()) }
+        );
+    }
 }
