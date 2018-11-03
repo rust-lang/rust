@@ -152,7 +152,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }
 
             // We shouldn't encounter an error message with ReClosureBound.
-            ty::ReCanonical(..) | ty::ReClosureBound(..) => {
+            ty::ReClosureBound(..) => {
                 bug!("encountered unexpected ReClosureBound: {:?}", region,);
             }
         };

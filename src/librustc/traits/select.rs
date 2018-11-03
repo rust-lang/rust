@@ -587,7 +587,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         obligation: &TraitObligation<'tcx>,
     ) -> SelectionResult<'tcx, Selection<'tcx>> {
         debug!("select({:?})", obligation);
-        debug_assert!(!obligation.predicate.has_escaping_regions());
+        debug_assert!(!obligation.predicate.has_escaping_bound_vars());
 
         let stack = self.push_stack(TraitObligationStackList::empty(), obligation);
 
@@ -690,7 +690,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         match obligation.predicate {
             ty::Predicate::Trait(ref t) => {
-                debug_assert!(!t.has_escaping_regions());
+                debug_assert!(!t.has_escaping_bound_vars());
                 let obligation = obligation.with(t.clone());
                 self.evaluate_trait_predicate_recursively(previous_stack, obligation)
             }
@@ -722,9 +722,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             },
 
             ty::Predicate::TypeOutlives(ref binder) => {
-                assert!(!binder.has_escaping_regions());
-                // Check if the type has higher-ranked regions.
-                if binder.skip_binder().0.has_escaping_regions() {
+                assert!(!binder.has_escaping_bound_vars());
+                // Check if the type has higher-ranked vars.
+                if binder.skip_binder().0.has_escaping_bound_vars() {
                     // If so, this obligation is an error (for now). Eventually we should be
                     // able to support additional cases here, like `for<'a> &'a str: 'a`.
 
@@ -740,7 +740,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                         Ok(EvaluatedToErr)
                     }
                 } else {
-                    // If the type has no late bound regions, then if we assign all
+                    // If the type has no late bound vars, then if we assign all
                     // the inference variables in it to be 'static, then the type
                     // will be 'static itself.
                     //
@@ -1199,7 +1199,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             "candidate_from_obligation(cache_fresh_trait_pred={:?}, obligation={:?})",
             cache_fresh_trait_pred, stack
         );
-        debug_assert!(!stack.obligation.predicate.has_escaping_regions());
+        debug_assert!(!stack.obligation.predicate.has_escaping_bound_vars());
 
         if let Some(c) =
             self.check_candidate_cache(stack.obligation.param_env, &cache_fresh_trait_pred)
@@ -1801,7 +1801,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         placeholder_map: &infer::PlaceholderMap<'tcx>,
         snapshot: &infer::CombinedSnapshot<'cx, 'tcx>,
     ) -> bool {
-        debug_assert!(!skol_trait_ref.has_escaping_regions());
+        debug_assert!(!skol_trait_ref.has_escaping_bound_vars());
         if self.infcx
             .at(&obligation.cause, obligation.param_env)
             .sup(ty::Binder::dummy(skol_trait_ref), trait_bound)
@@ -2168,7 +2168,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         //     T: Trait
         // so it seems ok if we (conservatively) fail to accept that `Unsize`
         // obligation above. Should be possible to extend this in the future.
-        let source = match obligation.self_ty().no_late_bound_regions() {
+        let source = match obligation.self_ty().no_bound_vars() {
             Some(t) => t,
             None => {
                 // Don't add any candidates if there are bound regions.
@@ -2445,7 +2445,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::Infer(ty::TyVar(_)) => Ambiguous,
 
             ty::UnnormalizedProjection(..)
-            | ty::Infer(ty::BoundTy(_))
+            | ty::Bound(_)
             | ty::Infer(ty::FreshTy(_))
             | ty::Infer(ty::FreshIntTy(_))
             | ty::Infer(ty::FreshFloatTy(_)) => {
@@ -2530,7 +2530,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             ty::UnnormalizedProjection(..)
-            | ty::Infer(ty::BoundTy(_))
+            | ty::Bound(_)
             | ty::Infer(ty::FreshTy(_))
             | ty::Infer(ty::FreshIntTy(_))
             | ty::Infer(ty::FreshFloatTy(_)) => {
@@ -2573,7 +2573,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             | ty::Param(..)
             | ty::Foreign(..)
             | ty::Projection(..)
-            | ty::Infer(ty::BoundTy(_))
+            | ty::Bound(_)
             | ty::Infer(ty::TyVar(_))
             | ty::Infer(ty::FreshTy(_))
             | ty::Infer(ty::FreshIntTy(_))
@@ -3235,7 +3235,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // assemble_candidates_for_unsizing should ensure there are no late bound
         // regions here. See the comment there for more details.
         let source = self.infcx
-            .shallow_resolve(obligation.self_ty().no_late_bound_regions().unwrap());
+            .shallow_resolve(obligation.self_ty().no_bound_vars().unwrap());
         let target = obligation
             .predicate
             .skip_binder()

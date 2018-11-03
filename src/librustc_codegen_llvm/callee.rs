@@ -44,7 +44,7 @@ pub fn get_fn(
     debug!("get_fn(instance={:?})", instance);
 
     assert!(!instance.substs.needs_infer());
-    assert!(!instance.substs.has_escaping_regions());
+    assert!(!instance.substs.has_escaping_bound_vars());
     assert!(!instance.substs.has_param_types());
 
     let sig = instance.fn_sig(cx.tcx);

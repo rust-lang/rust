@@ -106,7 +106,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
             ty::Projection(ref data) => {
-                if !data.has_escaping_regions() {
+                if !data.has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no
                     // constraints for Pi). This defers the choice between
@@ -156,6 +156,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::FnDef(..) |       // OutlivesFunction (*)
             ty::FnPtr(_) |        // OutlivesFunction (*)
             ty::Dynamic(..) |       // OutlivesObject, OutlivesFragment (*)
+            ty::Bound(..) |
             ty::Error => {
                 // (*) Bare functions and traits are both binders. In the
                 // RFC, this means we would add the bound regions to the

@@ -208,7 +208,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
         item_def_id: DefId,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Ty<'tcx> {
-        if let Some(trait_ref) = poly_trait_ref.no_late_bound_regions() {
+        if let Some(trait_ref) = poly_trait_ref.no_bound_vars() {
             self.tcx().mk_projection(item_def_id, trait_ref.substs)
         } else {
             // no late-bound regions, we can just ignore the binder

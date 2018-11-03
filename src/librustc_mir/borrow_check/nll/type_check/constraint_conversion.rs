@@ -82,9 +82,9 @@ impl<'a, 'gcx, 'tcx> ConstraintConversion<'a, 'gcx, 'tcx> {
         // when we move to universes, we will, and this assertion
         // will start to fail.
         let ty::OutlivesPredicate(k1, r2) =
-            query_constraint.no_late_bound_regions().unwrap_or_else(|| {
+            query_constraint.no_bound_vars().unwrap_or_else(|| {
                 bug!(
-                    "query_constraint {:?} contained bound regions",
+                    "query_constraint {:?} contained bound vars",
                     query_constraint,
                 );
             });

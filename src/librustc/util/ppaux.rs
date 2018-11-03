@@ -16,7 +16,7 @@ use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{Bool, Char, Adt};
 use ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
-use ty::{Param, RawPtr, Ref, Never, Tuple};
+use ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
 use ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
 use ty::{UnnormalizedProjection, Dynamic, Int, Uint, Infer};
 use ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
@@ -790,9 +790,6 @@ define_print! {
                 ty::ReEarlyBound(ref data) => {
                     write!(f, "{}", data.name)
                 }
-                ty::ReCanonical(_) => {
-                    write!(f, "'_")
-                }
                 ty::ReLateBound(_, br) |
                 ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
                 ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
@@ -858,10 +855,6 @@ define_print! {
 
                 ty::ReVar(ref vid) => {
                     write!(f, "{:?}", vid)
-                }
-
-                ty::ReCanonical(c) => {
-                    write!(f, "'?{}", c.index())
                 }
 
                 ty::RePlaceholder(placeholder) => {
@@ -976,7 +969,6 @@ define_print! {
                     ty::TyVar(_) => write!(f, "_"),
                     ty::IntVar(_) => write!(f, "{}", "{integer}"),
                     ty::FloatVar(_) => write!(f, "{}", "{float}"),
-                    ty::BoundTy(_) => write!(f, "_"),
                     ty::FreshTy(v) => write!(f, "FreshTy({})", v),
                     ty::FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
                     ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v)
@@ -988,7 +980,6 @@ define_print! {
                 ty::TyVar(ref v) => write!(f, "{:?}", v),
                 ty::IntVar(ref v) => write!(f, "{:?}", v),
                 ty::FloatVar(ref v) => write!(f, "{:?}", v),
-                ty::BoundTy(v) => write!(f, "?{:?}", v.var.index()),
                 ty::FreshTy(v) => write!(f, "FreshTy({:?})", v),
                 ty::FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
                 ty::FreshFloatTy(v) => write!(f, "FreshFloatTy({:?})", v)
@@ -1119,6 +1110,19 @@ define_print! {
                 Infer(infer_ty) => write!(f, "{}", infer_ty),
                 Error => write!(f, "[type error]"),
                 Param(ref param_ty) => write!(f, "{}", param_ty),
+                Bound(bound_ty) => {
+                    match bound_ty.kind {
+                        ty::BoundTyKind::Anon => {
+                            if bound_ty.index == ty::INNERMOST {
+                                write!(f, "?{}", bound_ty.var.index())
+                            } else {
+                                write!(f, "?{}_{}", bound_ty.index.index(), bound_ty.var.index())
+                            }
+                        }
+
+                        ty::BoundTyKind::Param(p) => write!(f, "{}", p),
+                    }
+                }
                 Adt(def, substs) => cx.parameterized(f, substs, def.did, &[]),
                 Dynamic(data, r) => {
                     let r = r.print_to_string(cx);

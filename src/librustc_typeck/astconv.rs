@@ -1748,7 +1748,7 @@ impl<'a, 'gcx, 'tcx> Bounds<'tcx> {
             self.region_bounds.iter().map(|&(region_bound, span)| {
                 // account for the binder being introduced below; no need to shift `param_ty`
                 // because, at present at least, it can only refer to early-bound regions
-                let region_bound = tcx.mk_region(ty::fold::shift_region(*region_bound, 1));
+                let region_bound = ty::fold::shift_region(tcx, region_bound, 1);
                 let outlives = ty::OutlivesPredicate(param_ty, region_bound);
                 (ty::Binder::dummy(outlives).to_predicate(), span)
             }).chain(

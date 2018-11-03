@@ -1374,7 +1374,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                fn_sig,
                substs);
 
-        assert!(!substs.has_escaping_regions());
+        assert!(!substs.has_escaping_bound_vars());
 
         // It is possible for type parameters or early-bound lifetimes
         // to appear in the signature of `self`. The substitutions we

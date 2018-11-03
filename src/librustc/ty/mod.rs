@@ -63,7 +63,7 @@ use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
 
 use hir;
 
-pub use self::sty::{Binder, BoundTy, BoundTyIndex, DebruijnIndex, INNERMOST};
+pub use self::sty::{Binder, BoundTy, BoundTyKind, BoundVar, DebruijnIndex, INNERMOST};
 pub use self::sty::{FnSig, GenSig, CanonicalPolyFnSig, PolyFnSig, PolyGenSig};
 pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, GeneratorSubsts, UpvarSubsts, TypeAndMut};
@@ -463,13 +463,9 @@ bitflags! {
         // Currently we can't normalize projections w/ bound regions.
         const HAS_NORMALIZABLE_PROJECTION = 1 << 12;
 
-        // Set if this includes a "canonical" type or region var --
-        // ought to be true only for the results of canonicalization.
-        const HAS_CANONICAL_VARS = 1 << 13;
-
         /// Does this have any `ReLateBound` regions? Used to check
         /// if a global bound is safe to evaluate.
-        const HAS_RE_LATE_BOUND = 1 << 14;
+        const HAS_RE_LATE_BOUND = 1 << 13;
 
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
@@ -490,7 +486,6 @@ bitflags! {
                                   TypeFlags::HAS_TY_CLOSURE.bits |
                                   TypeFlags::HAS_FREE_LOCAL_NAMES.bits |
                                   TypeFlags::KEEP_IN_LOCAL_TCX.bits |
-                                  TypeFlags::HAS_CANONICAL_VARS.bits |
                                   TypeFlags::HAS_RE_LATE_BOUND.bits;
     }
 }
@@ -2378,6 +2373,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 }
             }
 
+            Bound(..) |
             Infer(..) => {
                 bug!("unexpected type `{:?}` in sized_constraint_for_ty",
                      ty)

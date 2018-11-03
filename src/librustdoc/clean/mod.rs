@@ -1260,7 +1260,6 @@ impl Clean<Option<Lifetime>> for ty::RegionKind {
             ty::RePlaceholder(..) |
             ty::ReEmpty |
             ty::ReClosureBound(_) |
-            ty::ReCanonical(_) |
             ty::ReErased => None
         }
     }
@@ -2733,6 +2732,7 @@ impl<'tcx> Clean<Type> for Ty<'tcx> {
 
             ty::Closure(..) | ty::Generator(..) => Tuple(vec![]), // FIXME(pcwalton)
 
+            ty::Bound(..) => panic!("Bound"),
             ty::UnnormalizedProjection(..) => panic!("UnnormalizedProjection"),
             ty::GeneratorWitness(..) => panic!("GeneratorWitness"),
             ty::Infer(..) => panic!("Infer"),

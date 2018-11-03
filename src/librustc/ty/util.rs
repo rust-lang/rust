@@ -363,7 +363,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                erased_self_ty,
                predicates);
 
-        assert!(!erased_self_ty.has_escaping_regions());
+        assert!(!erased_self_ty.has_escaping_bound_vars());
 
         traits::elaborate_predicates(self, predicates)
             .filter_map(|predicate| {
@@ -389,7 +389,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         // construct such an object, but this seems
                         // correct even if that code changes).
                         let ty::OutlivesPredicate(ref t, ref r) = predicate.skip_binder();
-                        if t == &erased_self_ty && !r.has_escaping_regions() {
+                        if t == &erased_self_ty && !r.has_escaping_bound_vars() {
                             Some(*r)
                         } else {
                             None
@@ -951,7 +951,7 @@ fn needs_drop_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Can refer to a type which may drop.
         // FIXME(eddyb) check this against a ParamEnv.
-        ty::Dynamic(..) | ty::Projection(..) | ty::Param(_) |
+        ty::Dynamic(..) | ty::Projection(..) | ty::Param(_) | ty::Bound(..) |
         ty::Opaque(..) | ty::Infer(_) | ty::Error => true,
 
         ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),

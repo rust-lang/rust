@@ -280,7 +280,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ty::Generator(..) => Some(18),
                 ty::Foreign(..) => Some(19),
                 ty::GeneratorWitness(..) => Some(20),
-                ty::Infer(..) | ty::Error => None,
+                ty::Bound(..) | ty::Infer(..) | ty::Error => None,
                 ty::UnnormalizedProjection(..) => bug!("only used with chalk-engine"),
             }
         }

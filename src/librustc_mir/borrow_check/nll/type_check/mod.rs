@@ -359,7 +359,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
     }
 
     fn sanitize_type(&mut self, parent: &dyn fmt::Debug, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if ty.has_escaping_regions() || ty.references_error() {
+        if ty.has_escaping_bound_vars() || ty.references_error() {
             span_mirbug_and_err!(self, parent, "bad type {:?}", ty)
         } else {
             ty
@@ -2214,8 +2214,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     .enumerate()
                     .filter_map(|(idx, constraint)| {
                         let ty::OutlivesPredicate(k1, r2) =
-                            constraint.no_late_bound_regions().unwrap_or_else(|| {
-                                bug!("query_constraint {:?} contained bound regions", constraint,);
+                            constraint.no_bound_vars().unwrap_or_else(|| {
+                                bug!("query_constraint {:?} contained bound vars", constraint,);
                             });
 
                         match k1.unpack() {

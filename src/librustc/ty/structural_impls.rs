@@ -734,9 +734,19 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
                 ty::UnnormalizedProjection(data.fold_with(folder))
             }
             ty::Opaque(did, substs) => ty::Opaque(did, substs.fold_with(folder)),
-            ty::Bool | ty::Char | ty::Str | ty::Int(_) |
-            ty::Uint(_) | ty::Float(_) | ty::Error | ty::Infer(_) |
-            ty::Param(..) | ty::Never | ty::Foreign(..) => return self
+
+            ty::Bool |
+            ty::Char |
+            ty::Str |
+            ty::Int(_) |
+            ty::Uint(_) |
+            ty::Float(_) |
+            ty::Error |
+            ty::Infer(_) |
+            ty::Param(..) |
+            ty::Bound(..) |
+            ty::Never |
+            ty::Foreign(..) => return self
         };
 
         if self.sty == sty {
@@ -771,9 +781,19 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
                 data.visit_with(visitor)
             }
             ty::Opaque(_, ref substs) => substs.visit_with(visitor),
-            ty::Bool | ty::Char | ty::Str | ty::Int(_) |
-            ty::Uint(_) | ty::Float(_) | ty::Error | ty::Infer(_) |
-            ty::Param(..) | ty::Never | ty::Foreign(..) => false,
+
+            ty::Bool |
+            ty::Char |
+            ty::Str |
+            ty::Int(_) |
+            ty::Uint(_) |
+            ty::Float(_) |
+            ty::Error |
+            ty::Infer(_) |
+            ty::Bound(..) |
+            ty::Param(..) |
+            ty::Never |
+            ty::Foreign(..) => false,
         }
     }
 

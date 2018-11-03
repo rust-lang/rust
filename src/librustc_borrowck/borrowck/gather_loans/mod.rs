@@ -363,7 +363,6 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
 
                     ty::ReStatic => self.item_ub,
 
-                    ty::ReCanonical(_) |
                     ty::ReEmpty |
                     ty::ReClosureBound(..) |
                     ty::ReLateBound(..) |

@@ -419,7 +419,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let mut structural_to_nomimal = FxHashMap::default();
 
                     let sig = tcx.fn_sig(def_id);
-                    let sig = sig.no_late_bound_regions().unwrap();
+                    let sig = sig.no_bound_vars().unwrap();
                     if intr.inputs.len() != sig.inputs().len() {
                         span_err!(tcx.sess, it.span, E0444,
                                   "platform-specific intrinsic has invalid number of \

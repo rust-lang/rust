@@ -20,7 +20,7 @@
 //! - a map M (of type `CanonicalVarValues`) from those canonical
 //!   variables back to the original.
 //!
-//! We can then do queries using T2. These will give back constriants
+//! We can then do queries using T2. These will give back constraints
 //! on the canonical variables which can be translated, using the map
 //! M, into constraints in our source context. This process of
 //! translating the results back is done by the
@@ -40,7 +40,7 @@ use std::ops::Index;
 use syntax::source_map::Span;
 use ty::fold::TypeFoldable;
 use ty::subst::Kind;
-use ty::{self, BoundTyIndex, Lift, List, Region, TyCtxt};
+use ty::{self, BoundVar, Lift, List, Region, TyCtxt};
 
 mod canonicalizer;
 
@@ -73,7 +73,7 @@ impl<'gcx> UseSpecializedDecodable for CanonicalVarInfos<'gcx> {}
 /// canonicalized query response.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub struct CanonicalVarValues<'tcx> {
-    pub var_values: IndexVec<BoundTyIndex, Kind<'tcx>>,
+    pub var_values: IndexVec<BoundVar, Kind<'tcx>>,
 }
 
 /// When we canonicalize a value to form a query, we wind up replacing
@@ -337,7 +337,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         variables: &List<CanonicalVarInfo>,
         universe_map: impl Fn(ty::UniverseIndex) -> ty::UniverseIndex,
     ) -> CanonicalVarValues<'tcx> {
-        let var_values: IndexVec<BoundTyIndex, Kind<'tcx>> = variables
+        let var_values: IndexVec<BoundVar, Kind<'tcx>> = variables
             .iter()
             .map(|info| self.instantiate_canonical_var(span, *info, &universe_map))
             .collect();
@@ -456,10 +456,10 @@ BraceStructLiftImpl! {
     } where R: Lift<'tcx>
 }
 
-impl<'tcx> Index<BoundTyIndex> for CanonicalVarValues<'tcx> {
+impl<'tcx> Index<BoundVar> for CanonicalVarValues<'tcx> {
     type Output = Kind<'tcx>;
 
-    fn index(&self, value: BoundTyIndex) -> &Kind<'tcx> {
+    fn index(&self, value: BoundVar) -> &Kind<'tcx> {
         &self.var_values[value]
     }
 }
