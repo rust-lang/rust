@@ -1,8 +1,9 @@
 
-use std::fs::OpenOptions;
+use std::fs::{copy, OpenOptions};
 use std::io::{Seek, SeekFrom, Read, Write, Result};
 use std::path::PathBuf;
-
+extern crate tempfile;
+use self::tempfile::tempdir;
 
 #[cfg(all(test, any(target_os = "linux", target_os = "android")))]
 mod test_linux {
@@ -64,4 +65,22 @@ mod test_linux {
     fn test_tests() {
         assert!(true);
     }
+
+    #[test]
+    fn test_sparse() {
+        let dir = tempdir().unwrap();
+        let from = dir.path().join("sparse.bin");
+        let to = dir.path().join("target.bin");
+
+        let slen = create_sparse(&from, 0, 0).unwrap();
+        assert_eq!(slen, from.metadata().unwrap().len());
+        assert!(probably_sparse(&from).unwrap());
+
+        let written = copy(&from, &to).unwrap();
+        assert_eq!(slen, written);
+        assert!(probably_sparse(&to).unwrap());
+
+    }
+
+
 }
