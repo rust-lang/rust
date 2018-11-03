@@ -30,7 +30,7 @@ matrix:
 
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler --enable-lldb"
+        RUST_CONFIGURE_ARGS="--enable-extended --enable-profiler --enable-lldb --set rust.jemalloc"
         SRC=.
         DEPLOY_ALT=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
@@ -53,7 +53,7 @@ matrix:
     # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
     - env: >
         RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler"
+        RUST_CONFIGURE_ARGS="--build=x86_64-apple-darwin --enable-sanitizers --enable-profiler --set rust.jemalloc"
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         MACOSX_DEPLOYMENT_TARGET=10.8
@@ -67,7 +67,7 @@ matrix:
 
     - env: >
         RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
+        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --set rust.jemalloc"
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         MACOSX_DEPLOYMENT_TARGET=10.8
@@ -87,7 +87,7 @@ matrix:
     # OSX 10.7 and `xcode7` is the latest Xcode able to compile LLVM for 10.7.
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-full-tools --enable-profiler --enable-lldb"
+        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-full-tools --enable-profiler --enable-lldb --set rust.jemalloc"
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
@@ -102,7 +102,7 @@ matrix:
 
     - env: >
         RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --enable-lldb"
+        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-full-tools --enable-sanitizers --enable-profiler --enable-lldb --set rust.jemalloc"
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1

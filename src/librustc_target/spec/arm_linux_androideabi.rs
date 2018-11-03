@@ -14,7 +14,7 @@ pub fn target() -> TargetResult {
     let mut base = super::android_base::opts();
     // https://developer.android.com/ndk/guides/abis.html#armeabi
     base.features = "+strict-align,+v5te".to_string();
-    base.max_atomic_width = Some(64);
+    base.max_atomic_width = Some(32);
 
     Ok(Target {
         llvm_target: "arm-linux-androideabi".to_string(),

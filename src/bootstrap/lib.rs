@@ -516,12 +516,6 @@ impl Build {
     fn std_features(&self) -> String {
         let mut features = "panic-unwind".to_string();
 
-        if self.config.debug_jemalloc {
-            features.push_str(" debug-jemalloc");
-        }
-        if self.config.use_jemalloc {
-            features.push_str(" jemalloc");
-        }
         if self.config.backtrace {
             features.push_str(" backtrace");
         }
@@ -537,8 +531,8 @@ impl Build {
     /// Get the space-separated set of activated features for the compiler.
     fn rustc_features(&self) -> String {
         let mut features = String::new();
-        if self.config.use_jemalloc {
-            features.push_str(" jemalloc");
+        if self.config.jemalloc {
+            features.push_str("jemalloc");
         }
         features
     }
@@ -791,7 +785,7 @@ impl Build {
         // If we're compiling on macOS then we add a few unconditional flags
         // indicating that we want libc++ (more filled out than libstdc++) and
         // we want to compile for 10.7. This way we can ensure that
-        // LLVM/jemalloc/etc are all properly compiled.
+        // LLVM/etc are all properly compiled.
         if target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
         }

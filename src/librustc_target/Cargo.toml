@@ -13,6 +13,3 @@ bitflags = "1.0"
 log = "0.4"
 rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 serialize = { path = "../libserialize" }
-
-[features]
-jemalloc = []

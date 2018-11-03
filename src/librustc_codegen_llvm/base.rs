@@ -76,12 +76,13 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_data_structures::sync::Lrc;
 
 use std::any::Any;
-use std::ffi::CString;
-use std::sync::Arc;
-use std::time::{Instant, Duration};
-use std::i32;
 use std::cmp;
+use std::ffi::CString;
+use std::i32;
+use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
 use std::sync::mpsc;
+use std::time::{Instant, Duration};
 use syntax_pos::Span;
 use syntax_pos::symbol::InternedString;
 use syntax::attr;
@@ -820,6 +821,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         metadata,
         rx,
         codegen_units.len());
+    let ongoing_codegen = AbortCodegenOnDrop(Some(ongoing_codegen));
 
     // Codegen an allocator shim, if necessary.
     //
@@ -949,7 +951,54 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ongoing_codegen.check_for_errors(tcx.sess);
 
     assert_and_save_dep_graph(tcx);
-    ongoing_codegen
+    ongoing_codegen.into_inner()
+}
+
+/// A curious wrapper structure whose only purpose is to call `codegen_aborted`
+/// when it's dropped abnormally.
+///
+/// In the process of working on rust-lang/rust#55238 a mysterious segfault was
+/// stumbled upon. The segfault was never reproduced locally, but it was
+/// suspected to be releated to the fact that codegen worker threads were
+/// sticking around by the time the main thread was exiting, causing issues.
+///
+/// This structure is an attempt to fix that issue where the `codegen_aborted`
+/// message will block until all workers have finished. This should ensure that
+/// even if the main codegen thread panics we'll wait for pending work to
+/// complete before returning from the main thread, hopefully avoiding
+/// segfaults.
+///
+/// If you see this comment in the code, then it means that this workaround
+/// worked! We may yet one day track down the mysterious cause of that
+/// segfault...
+struct AbortCodegenOnDrop(Option<OngoingCodegen>);
+
+impl AbortCodegenOnDrop {
+    fn into_inner(mut self) -> OngoingCodegen {
+        self.0.take().unwrap()
+    }
+}
+
+impl Deref for AbortCodegenOnDrop {
+    type Target = OngoingCodegen;
+
+    fn deref(&self) -> &OngoingCodegen {
+        self.0.as_ref().unwrap()
+    }
+}
+
+impl DerefMut for AbortCodegenOnDrop {
+    fn deref_mut(&mut self) -> &mut OngoingCodegen {
+        self.0.as_mut().unwrap()
+    }
+}
+
+impl Drop for AbortCodegenOnDrop {
+    fn drop(&mut self) {
+        if let Some(codegen) = self.0.take() {
+            codegen.codegen_aborted();
+        }
+    }
 }
 
 fn assert_and_save_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {

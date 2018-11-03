@@ -1508,6 +1508,7 @@ enum Message {
     },
     CodegenComplete,
     CodegenItem,
+    CodegenAborted,
 }
 
 struct Diagnostic {
@@ -1788,6 +1789,7 @@ fn start_executing_work(tcx: TyCtxt,
         let mut needs_lto = Vec::new();
         let mut lto_import_only_modules = Vec::new();
         let mut started_lto = false;
+        let mut codegen_aborted = false;
 
         // This flag tracks whether all items have gone through codegens
         let mut codegen_done = false;
@@ -1805,13 +1807,19 @@ fn start_executing_work(tcx: TyCtxt,
         let mut llvm_start_time = None;
 
         // Run the message loop while there's still anything that needs message
-        // processing:
+        // processing. Note that as soon as codegen is aborted we simply want to
+        // wait for all existing work to finish, so many of the conditions here
+        // only apply if codegen hasn't been aborted as they represent pending
+        // work to be done.
         while !codegen_done ||
-              work_items.len() > 0 ||
               running > 0 ||
-              needs_lto.len() > 0 ||
-              lto_import_only_modules.len() > 0 ||
-              main_thread_worker_state != MainThreadWorkerState::Idle {
+              (!codegen_aborted && (
+                  work_items.len() > 0 ||
+                  needs_lto.len() > 0 ||
+                  lto_import_only_modules.len() > 0 ||
+                  main_thread_worker_state != MainThreadWorkerState::Idle
+              ))
+        {
 
             // While there are still CGUs to be codegened, the coordinator has
             // to decide how to utilize the compiler processes implicit Token:
@@ -1840,6 +1848,9 @@ fn start_executing_work(tcx: TyCtxt,
                         spawn_work(cgcx, item);
                     }
                 }
+            } else if codegen_aborted {
+                // don't queue up any more work if codegen was aborted, we're
+                // just waiting for our existing children to finish
             } else {
                 // If we've finished everything related to normal codegen
                 // then it must be the case that we've got some LTO work to do.
@@ -1904,7 +1915,7 @@ fn start_executing_work(tcx: TyCtxt,
 
             // Spin up what work we can, only doing this while we've got available
             // parallelism slots and work left to spawn.
-            while work_items.len() > 0 && running < tokens.len() {
+            while !codegen_aborted && work_items.len() > 0 && running < tokens.len() {
                 let (item, _) = work_items.pop().unwrap();
 
                 maybe_start_llvm_timer(cgcx.config(item.module_kind()),
@@ -1969,6 +1980,7 @@ fn start_executing_work(tcx: TyCtxt,
                     if !cgcx.opts.debugging_opts.no_parallel_llvm {
                         helper.request_token();
                     }
+                    assert!(!codegen_aborted);
                     assert_eq!(main_thread_worker_state,
                                MainThreadWorkerState::Codegenning);
                     main_thread_worker_state = MainThreadWorkerState::Idle;
@@ -1976,9 +1988,24 @@ fn start_executing_work(tcx: TyCtxt,
 
                 Message::CodegenComplete => {
                     codegen_done = true;
+                    assert!(!codegen_aborted);
                     assert_eq!(main_thread_worker_state,
                                MainThreadWorkerState::Codegenning);
                     main_thread_worker_state = MainThreadWorkerState::Idle;
+                }
+
+                // If codegen is aborted that means translation was aborted due
+                // to some normal-ish compiler error. In this situation we want
+                // to exit as soon as possible, but we want to make sure all
+                // existing work has finished. Flag codegen as being done, and
+                // then conditions above will ensure no more work is spawned but
+                // we'll keep executing this loop until `running` hits 0.
+                Message::CodegenAborted => {
+                    assert!(!codegen_aborted);
+                    codegen_done = true;
+                    codegen_aborted = true;
+                    assert_eq!(main_thread_worker_state,
+                               MainThreadWorkerState::Codegenning);
                 }
 
                 // If a thread exits successfully then we drop a token associated
@@ -2446,6 +2473,19 @@ impl OngoingCodegen {
         drop(self.coordinator_send.send(Box::new(Message::CodegenComplete)));
     }
 
+    /// Consume this context indicating that codegen was entirely aborted, and
+    /// we need to exit as quickly as possible.
+    ///
+    /// This method blocks the current thread until all worker threads have
+    /// finished, and all worker threads should have exited or be real close to
+    /// exiting at this point.
+    pub fn codegen_aborted(self) {
+        // Signal to the coordinator it should spawn no more work and start
+        // shutdown.
+        drop(self.coordinator_send.send(Box::new(Message::CodegenAborted)));
+        drop(self.future.join());
+    }
+
     pub fn check_for_errors(&self, sess: &Session) {
         self.shared_emitter_main.check(sess, false);
     }
@@ -2463,6 +2503,11 @@ impl OngoingCodegen {
         }
     }
 }
+
+// impl Drop for OngoingCodegen {
+//     fn drop(&mut self) {
+//     }
+// }
 
 pub(crate) fn submit_codegened_module_to_llvm(tcx: TyCtxt,
                                               module: ModuleCodegen,

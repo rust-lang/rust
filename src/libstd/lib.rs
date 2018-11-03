@@ -313,14 +313,7 @@
 
 #![default_lib_allocator]
 
-// Always use alloc_system during stage0 since we don't know if the alloc_*
-// crate the stage0 compiler will pick by default is enabled (e.g.
-// if the user has disabled jemalloc in `./configure`).
-// `force_alloc_system` is *only* intended as a workaround for local rebuilds
-// with a rustc without jemalloc.
-// FIXME(#44236) shouldn't need MSVC logic
-#[cfg(all(not(target_env = "msvc"),
-          any(all(stage0, not(test)), feature = "force_alloc_system")))]
+#[cfg(stage0)]
 #[global_allocator]
 static ALLOC: alloc_system::System = alloc_system::System;
 
