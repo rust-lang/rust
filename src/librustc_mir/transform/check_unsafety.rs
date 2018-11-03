@@ -284,10 +284,10 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                            unsafe_blocks: &[(ast::NodeId, bool)]) {
         let safety = self.source_scope_local_data[self.source_info.scope].safety;
         let within_unsafe = match (safety, self.min_const_fn) {
-            // FIXME: erring on the safe side here and disallowing builtin unsafety in const fn
+            // Erring on the safe side, pun intended
             (Safety::BuiltinUnsafe, true) |
-            // `unsafe` blocks are required even in `const unsafe fn`
-            (Safety::FnUnsafe, true) |
+            // mir building encodes const fn bodies as safe, even for `const unsafe fn`
+            (Safety::FnUnsafe, true) => bug!("const unsafe fn body treated as inherently unsafe"),
             // `unsafe` blocks are required in safe code
             (Safety::Safe, _) => {
                 for violation in violations {
@@ -305,8 +305,10 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 }
                 false
             }
+            // regular `unsafe` function bodies allow unsafe without additional unsafe blocks
             (Safety::BuiltinUnsafe, false) | (Safety::FnUnsafe, false) => true,
             (Safety::ExplicitUnsafe(node_id), _) => {
+                // mark unsafe block as used if there are any unsafe operations inside
                 if !violations.is_empty() {
                     self.used_unsafe.insert(node_id);
                 }
@@ -316,6 +318,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                         match violation.kind {
                             // these are allowed
                             UnsafetyViolationKind::MinConstFn
+                                // if `#![feature(min_const_unsafe_fn)]` is active
                                 if self.tcx.sess.features_untracked().min_const_unsafe_fn => {},
                             _ => {
                                 let mut violation = violation.clone();
