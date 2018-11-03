@@ -10,6 +10,7 @@
 
 use std::fmt::Write;
 use std::hash::Hash;
+use std::ops::RangeInclusive;
 
 use syntax_pos::symbol::Symbol;
 use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf};
@@ -120,6 +121,34 @@ fn path_format(path: &Vec<PathElem>) -> String {
         }.unwrap()
     }
     out
+}
+
+// Test if a range that wraps at overflow contains `test`
+fn wrapping_range_contains(r: &RangeInclusive<u128>, test: u128) -> bool {
+    let (lo, hi) = r.clone().into_inner();
+    if lo > hi {
+        // Wrapped
+        (..=hi).contains(&test) || (lo..).contains(&test)
+    } else {
+        // Normal
+        r.contains(&test)
+    }
+}
+
+// Formats such that a sentence like "expected something {}" to mean
+// "expected something <in the given range>" makes sense.
+fn wrapping_range_format(r: &RangeInclusive<u128>, max_hi: u128) -> String {
+    let (lo, hi) = r.clone().into_inner();
+    debug_assert!(hi <= max_hi);
+    if lo > hi {
+        format!("less or equal to {}, or greater or equal to {}", hi, lo)
+    } else {
+        if hi == max_hi {
+            format!("greater or equal to {}", lo)
+        } else {
+            format!("in the range {:?}", r)
+        }
+    }
 }
 
 struct ValidityVisitor<'rt, 'a: 'rt, 'mir: 'rt, 'tcx: 'a+'rt+'mir, M: Machine<'a, 'mir, 'tcx>+'rt> {
@@ -428,8 +457,8 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                         "a pointer",
                         self.path,
                         format!(
-                            "something that cannot possibly be outside the (wrapping) range {:?}",
-                            layout.valid_range
+                            "something that cannot possibly fail to be {}",
+                            wrapping_range_format(&layout.valid_range, max_hi)
                         )
                     );
                 }
@@ -440,33 +469,14 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
             }
         };
         // Now compare. This is slightly subtle because this is a special "wrap-around" range.
-        use std::ops::RangeInclusive;
-        let in_range = |bound: RangeInclusive<u128>| bound.contains(&bits);
-        if lo > hi {
-            // wrapping around
-            if in_range(0..=hi) || in_range(lo..=max_hi) {
-                Ok(())
-            } else {
-                validation_failure!(
-                    bits,
-                    self.path,
-                    format!("something in the range {:?} or {:?}", 0..=hi, lo..=max_hi)
-                )
-            }
+        if wrapping_range_contains(&layout.valid_range, bits) {
+            Ok(())
         } else {
-            if in_range(layout.valid_range.clone()) {
-                Ok(())
-            } else {
-                validation_failure!(
-                    bits,
-                    self.path,
-                    if hi == max_hi {
-                        format!("something greater or equal to {}", lo)
-                    } else {
-                        format!("something in the range {:?}", layout.valid_range)
-                    }
-                )
-            }
+            validation_failure!(
+                bits,
+                self.path,
+                format!("something {}", wrapping_range_format(&layout.valid_range, max_hi))
+            )
         }
     }
 
