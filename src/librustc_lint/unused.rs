@@ -60,19 +60,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         }
 
         let t = cx.tables.expr_ty(&expr);
-        // FIXME(varkor): replace with `t.is_unit() || t.conservative_is_uninhabited()`.
-        let type_permits_no_use = match t.sty {
-            ty::Tuple(ref tys) if tys.is_empty() => true,
-            ty::Never => true,
-            ty::Adt(def, _) => {
-                if def.variants.is_empty() {
-                    true
-                } else {
-                    check_must_use(cx, def.did, s.span, "")
-                }
+        let type_permits_lack_of_use = if t.is_unit()
+            || cx.tcx.is_ty_uninhabited_from(cx.tcx.hir.get_module_parent(expr.id), t) {
+            true
+        } else {
+            match t.sty {
+                ty::Adt(def, _) => check_must_use(cx, def.did, s.span, ""),
+                _ => false,
             }
-            _ => false,
-        };
+        }
 
         let mut fn_warned = false;
         let mut op_warned = false;
@@ -99,7 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
         if let Some(def) = maybe_def {
             let def_id = def.def_id();
             fn_warned = check_must_use(cx, def_id, s.span, "return value of ");
-        } else if type_permits_no_use {
+        } else if type_permits_lack_of_use {
             // We don't warn about unused unit or uninhabited types.
             // (See https://github.com/rust-lang/rust/issues/43806 for details.)
             return;
@@ -148,7 +144,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             op_warned = true;
         }
 
-        if !(type_permits_no_use || fn_warned || op_warned) {
+        if !(type_permits_lack_of_use || fn_warned || op_warned) {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
 
