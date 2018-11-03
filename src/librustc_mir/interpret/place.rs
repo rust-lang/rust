@@ -128,7 +128,7 @@ impl<Tag> MemPlace<Tag> {
 
     /// Produces a Place that will error if attempted to be read from or written to
     #[inline(always)]
-    pub fn null(cx: impl HasDataLayout) -> Self {
+    pub fn null(cx: &impl HasDataLayout) -> Self {
         Self::from_scalar_ptr(Scalar::ptr_null(cx), Align::from_bytes(1, 1).unwrap())
     }
 
@@ -156,7 +156,7 @@ impl<Tag> MemPlace<Tag> {
 impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     /// Produces a MemPlace that works for ZST but nothing else
     #[inline]
-    pub fn dangling(layout: TyLayout<'tcx>, cx: impl HasDataLayout) -> Self {
+    pub fn dangling(layout: TyLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
         MPlaceTy {
             mplace: MemPlace::from_scalar_ptr(
                 Scalar::from_uint(layout.align.abi(), cx.pointer_size()),
@@ -172,7 +172,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     }
 
     #[inline]
-    pub(super) fn len(self, cx: impl HasDataLayout) -> EvalResult<'tcx, u64> {
+    pub(super) fn len(self, cx: &impl HasDataLayout) -> EvalResult<'tcx, u64> {
         if self.layout.is_unsized() {
             // We need to consult `meta` metadata
             match self.layout.ty.sty {
@@ -217,7 +217,7 @@ impl<'tcx, Tag: ::std::fmt::Debug> OpTy<'tcx, Tag> {
 impl<'tcx, Tag: ::std::fmt::Debug> Place<Tag> {
     /// Produces a Place that will error if attempted to be read from or written to
     #[inline(always)]
-    pub fn null(cx: impl HasDataLayout) -> Self {
+    pub fn null(cx: &impl HasDataLayout) -> Self {
         Place::Ptr(MemPlace::null(cx))
     }
 
@@ -510,7 +510,7 @@ where
             Place::Ptr(mplace) =>
                 self.mplace_downcast(MPlaceTy { mplace, layout: base.layout }, variant)?.into(),
             Place::Local { .. } => {
-                let layout = base.layout.for_variant(&self, variant);
+                let layout = base.layout.for_variant(self, variant);
                 PlaceTy { layout, ..base }
             }
         })
@@ -738,10 +738,10 @@ where
                     _ => bug!("write_immediate_to_mplace: invalid ScalarPair layout: {:#?}",
                               dest.layout)
                 };
-                let (a_size, b_size) = (a.size(&self), b.size(&self));
-                let (a_align, b_align) = (a.align(&self), b.align(&self));
+                let (a_size, b_size) = (a.size(self), b.size(self));
+                let (a_align, b_align) = (a.align(self), b.align(self));
                 let b_offset = a_size.abi_align(b_align);
-                let b_ptr = ptr.offset(b_offset, &self)?.into();
+                let b_ptr = ptr.offset(b_offset, self)?.into();
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
                 // but that does not work: We could be a newtype around a pair, then the
@@ -896,7 +896,7 @@ where
         if layout.is_unsized() {
             assert!(self.tcx.features().unsized_locals, "cannot alloc memory for unsized type");
             // FIXME: What should we do here? We should definitely also tag!
-            Ok(MPlaceTy::dangling(layout, &self))
+            Ok(MPlaceTy::dangling(layout, self))
         } else {
             let ptr = self.memory.allocate(layout.size, layout.align, kind)?;
             let ptr = M::tag_new_allocation(self, ptr, kind)?;
@@ -923,7 +923,7 @@ where
                 // raw discriminants for enums are isize or bigger during
                 // their computation, but the in-memory tag is the smallest possible
                 // representation
-                let size = tag.value.size(self.tcx.tcx);
+                let size = tag.value.size(self);
                 let shift = 128 - size.bits();
                 let discr_val = (discr_val << shift) >> shift;
 

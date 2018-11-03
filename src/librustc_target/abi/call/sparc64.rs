@@ -13,7 +13,7 @@
 use abi::call::{FnType, ArgType, Reg, RegKind, Uniform};
 use abi::{HasDataLayout, LayoutOf, TyLayout, TyLayoutMethods};
 
-fn is_homogeneous_aggregate<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>)
+fn is_homogeneous_aggregate<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
                                      -> Option<Uniform>
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
@@ -41,7 +41,7 @@ fn is_homogeneous_aggregate<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>)
     })
 }
 
-fn classify_ret_ty<'a, Ty, C>(cx: C, ret: &mut ArgType<'a, Ty>)
+fn classify_ret_ty<'a, Ty, C>(cx: &C, ret: &mut ArgType<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
@@ -69,7 +69,7 @@ fn classify_ret_ty<'a, Ty, C>(cx: C, ret: &mut ArgType<'a, Ty>)
     ret.make_indirect();
 }
 
-fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>)
+fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
@@ -95,7 +95,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: C, arg: &mut ArgType<'a, Ty>)
     });
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>)
+pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {

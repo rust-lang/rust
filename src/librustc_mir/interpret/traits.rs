@@ -60,9 +60,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         let drop = self.memory.create_fn_alloc(drop).with_default_tag();
         self.memory.write_ptr_sized(vtable, ptr_align, Scalar::Ptr(drop).into())?;
 
-        let size_ptr = vtable.offset(ptr_size, &self)?;
+        let size_ptr = vtable.offset(ptr_size, self)?;
         self.memory.write_ptr_sized(size_ptr, ptr_align, Scalar::from_uint(size, ptr_size).into())?;
-        let align_ptr = vtable.offset(ptr_size * 2, &self)?;
+        let align_ptr = vtable.offset(ptr_size * 2, self)?;
         self.memory.write_ptr_sized(align_ptr, ptr_align,
             Scalar::from_uint(align, ptr_size).into())?;
 
@@ -70,7 +70,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             if let Some((def_id, substs)) = *method {
                 let instance = self.resolve(def_id, substs)?;
                 let fn_ptr = self.memory.create_fn_alloc(instance).with_default_tag();
-                let method_ptr = vtable.offset(ptr_size * (3 + i as u64), &self)?;
+                let method_ptr = vtable.offset(ptr_size * (3 + i as u64), self)?;
                 self.memory.write_ptr_sized(method_ptr, ptr_align, Scalar::Ptr(fn_ptr).into())?;
             }
         }

@@ -377,13 +377,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
             let (t, actually) = match ty {
                 ty::Int(t) => {
                     let ity = attr::IntType::SignedInt(t);
-                    let bits = layout::Integer::from_attr(cx.tcx, ity).size().bits();
+                    let bits = layout::Integer::from_attr(&cx.tcx, ity).size().bits();
                     let actually = (val << (128 - bits)) as i128 >> (128 - bits);
                     (format!("{:?}", t), actually.to_string())
                 }
                 ty::Uint(t) => {
                     let ity = attr::IntType::UnsignedInt(t);
-                    let bits = layout::Integer::from_attr(cx.tcx, ity).size().bits();
+                    let bits = layout::Integer::from_attr(&cx.tcx, ity).size().bits();
                     let actually = (val << (128 - bits)) >> (128 - bits);
                     (format!("{:?}", t), actually.to_string())
                 }
@@ -829,7 +829,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                 Ok(layout) => {
                     let variants = &layout.variants;
                     if let layout::Variants::Tagged { ref variants, ref tag, .. } = variants {
-                        let discr_size = tag.value.size(cx.tcx).bytes();
+                        let discr_size = tag.value.size(&cx.tcx).bytes();
 
                         debug!("enum `{}` is {} bytes large with layout:\n{:#?}",
                                t, layout.size.bytes(), layout);

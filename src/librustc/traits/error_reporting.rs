@@ -428,7 +428,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 ));
                 let tcx = self.tcx;
                 if let Some(len) = len.val.try_to_scalar().and_then(|scalar| {
-                    scalar.to_usize(tcx).ok()
+                    scalar.to_usize(&tcx).ok()
                 }) {
                     flags.push((
                         "_Self".to_owned(),

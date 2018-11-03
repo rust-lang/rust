@@ -446,29 +446,29 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
     }
 }
 
-impl ty::layout::HasDataLayout for &'a CodegenCx<'ll, 'tcx> {
+impl ty::layout::HasDataLayout for CodegenCx<'ll, 'tcx> {
     fn data_layout(&self) -> &ty::layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl HasTargetSpec for &'a CodegenCx<'ll, 'tcx> {
+impl HasTargetSpec for CodegenCx<'ll, 'tcx> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target.target
     }
 }
 
-impl ty::layout::HasTyCtxt<'tcx> for &'a CodegenCx<'ll, 'tcx> {
-    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
+impl ty::layout::HasTyCtxt<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx
     }
 }
 
-impl LayoutOf for &'a CodegenCx<'ll, 'tcx> {
+impl LayoutOf for CodegenCx<'ll, 'tcx> {
     type Ty = Ty<'tcx>;
     type TyLayout = TyLayout<'tcx>;
 
-    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.tcx.layout_of(ty::ParamEnv::reveal_all().and(ty))
             .unwrap_or_else(|e| if let LayoutError::SizeOverflow(_) = e {
                 self.sess().fatal(&e.to_string())

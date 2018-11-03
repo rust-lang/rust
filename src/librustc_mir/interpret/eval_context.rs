@@ -139,8 +139,8 @@ impl<'tcx, Tag> LocalValue<Tag> {
     }
 }
 
-impl<'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
-    for &'b EvalContext<'a, 'mir, 'tcx, M>
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
+    for EvalContext<'a, 'mir, 'tcx, M>
 {
     #[inline]
     fn data_layout(&self) -> &layout::TargetDataLayout {
@@ -148,16 +148,7 @@ impl<'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
     }
 }
 
-impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
-    for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M>
-{
-    #[inline]
-    fn data_layout(&self) -> &layout::TargetDataLayout {
-        &self.tcx.data_layout
-    }
-}
-
-impl<'b, 'a, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for &'b EvalContext<'a, 'mir, 'tcx, M>
+impl<'a, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for EvalContext<'a, 'mir, 'tcx, M>
     where M: Machine<'a, 'mir, 'tcx>
 {
     #[inline]
@@ -166,37 +157,16 @@ impl<'b, 'a, 'mir, 'tcx, M> layout::HasTyCtxt<'tcx> for &'b EvalContext<'a, 'mir
     }
 }
 
-impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> layout::HasTyCtxt<'tcx>
-    for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M>
-{
-    #[inline]
-    fn tcx<'d>(&'d self) -> TyCtxt<'d, 'tcx, 'tcx> {
-        *self.tcx
-    }
-}
-
-impl<'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> LayoutOf
-    for &'b EvalContext<'a, 'mir, 'tcx, M>
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> LayoutOf
+    for EvalContext<'a, 'mir, 'tcx, M>
 {
     type Ty = Ty<'tcx>;
     type TyLayout = EvalResult<'tcx, TyLayout<'tcx>>;
 
     #[inline]
-    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.tcx.layout_of(self.param_env.and(ty))
             .map_err(|layout| EvalErrorKind::Layout(layout).into())
-    }
-}
-
-impl<'c, 'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> LayoutOf
-    for &'c &'b mut EvalContext<'a, 'mir, 'tcx, M>
-{
-    type Ty = Ty<'tcx>;
-    type TyLayout = EvalResult<'tcx, TyLayout<'tcx>>;
-
-    #[inline]
-    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
-        (&**self).layout_of(ty)
     }
 }
 
@@ -335,7 +305,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
 
     pub fn str_to_immediate(&mut self, s: &str) -> EvalResult<'tcx, Immediate<M::PointerTag>> {
         let ptr = self.memory.allocate_static_bytes(s.as_bytes()).with_default_tag();
-        Ok(Immediate::new_slice(Scalar::Ptr(ptr), s.len() as u64, self.tcx.tcx))
+        Ok(Immediate::new_slice(Scalar::Ptr(ptr), s.len() as u64, self))
     }
 
     /// Return the actual dynamic size and alignment of the place at the given type.

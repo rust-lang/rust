@@ -43,7 +43,7 @@ impl<'tcx> fmt::Display for Discr<'tcx> {
         match self.ty.sty {
             ty::Int(ity) => {
                 let bits = ty::tls::with(|tcx| {
-                    Integer::from_attr(tcx, SignedInt(ity)).size().bits()
+                    Integer::from_attr(&tcx, SignedInt(ity)).size().bits()
                 });
                 let x = self.val as i128;
                 // sign extend the raw representation to be an i128
@@ -62,8 +62,8 @@ impl<'tcx> Discr<'tcx> {
     }
     pub fn checked_add<'a, 'gcx>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>, n: u128) -> (Self, bool) {
         let (int, signed) = match self.ty.sty {
-            Int(ity) => (Integer::from_attr(tcx, SignedInt(ity)), true),
-            Uint(uty) => (Integer::from_attr(tcx, UnsignedInt(uty)), false),
+            Int(ity) => (Integer::from_attr(&tcx, SignedInt(ity)), true),
+            Uint(uty) => (Integer::from_attr(&tcx, UnsignedInt(uty)), false),
             _ => bug!("non integer discriminant"),
         };
 

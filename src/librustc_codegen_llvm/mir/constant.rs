@@ -87,8 +87,8 @@ pub fn scalar_to_llvm(
 
 pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll Value {
     let mut llvals = Vec::with_capacity(alloc.relocations.len() + 1);
-    let layout = cx.data_layout();
-    let pointer_size = layout.pointer_size.bytes() as usize;
+    let dl = cx.data_layout();
+    let pointer_size = dl.pointer_size.bytes() as usize;
 
     let mut next_offset = 0;
     for &(offset, ((), alloc_id)) in alloc.relocations.iter() {
@@ -99,7 +99,7 @@ pub fn const_alloc_to_llvm(cx: &CodegenCx<'ll, '_>, alloc: &Allocation) -> &'ll 
             llvals.push(C_bytes(cx, &alloc.bytes[next_offset..offset]));
         }
         let ptr_offset = read_target_uint(
-            layout.endian,
+            dl.endian,
             &alloc.bytes[offset..(offset + pointer_size)],
         ).expect("const_alloc_to_llvm: could not read relocation pointer") as u64;
         llvals.push(scalar_to_llvm(

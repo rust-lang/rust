@@ -331,7 +331,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let val = Immediate::new_slice(
                     ptr,
                     length.unwrap_usize(self.tcx.tcx),
-                    self.tcx.tcx,
+                    self,
                 );
                 self.write_immediate(val, dest)
             }
@@ -394,7 +394,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             src_field.into()
                         }
                         Err(..) => {
-                            let src_field_layout = src.layout.field(&self, i)?;
+                            let src_field_layout = src.layout.field(self, i)?;
                             // this must be a field covering the entire thing
                             assert_eq!(src.layout.fields.offset(i).bytes(), 0);
                             assert_eq!(src_field_layout.size, src.layout.size);

@@ -405,7 +405,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let ptr = self.ref_to_mplace(self.read_immediate(args[0])?)?;
                 let vtable = ptr.vtable()?;
                 let fn_ptr = self.memory.read_ptr_sized(
-                    vtable.offset(ptr_size * (idx as u64 + 3), &self)?,
+                    vtable.offset(ptr_size * (idx as u64 + 3), self)?,
                     ptr_align
                 )?.to_ptr()?;
                 let instance = self.memory.get_fn(fn_ptr)?;
@@ -416,7 +416,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let mut args = args.to_vec();
                 let pointee = args[0].layout.ty.builtin_deref(true).unwrap().ty;
                 let fake_fat_ptr_ty = self.tcx.mk_mut_ptr(pointee);
-                args[0].layout = self.layout_of(fake_fat_ptr_ty)?.field(&self, 0)?;
+                args[0].layout = self.layout_of(fake_fat_ptr_ty)?.field(self, 0)?;
                 args[0].op = Operand::Immediate(Immediate::Scalar(ptr.ptr.into())); // strip vtable
                 trace!("Patched self operand to {:#?}", args[0]);
                 // recurse with concrete function
@@ -455,7 +455,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         };
 
         let ty = self.tcx.mk_unit(); // return type is ()
-        let dest = MPlaceTy::dangling(self.layout_of(ty)?, &self);
+        let dest = MPlaceTy::dangling(self.layout_of(ty)?, self);
 
         self.eval_fn_call(
             instance,

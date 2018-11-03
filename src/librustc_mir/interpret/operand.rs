@@ -112,7 +112,7 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     }
 
     #[inline(always)]
-    pub fn to_usize(self, cx: impl HasDataLayout) -> EvalResult<'tcx, u64> {
+    pub fn to_usize(self, cx: &impl HasDataLayout) -> EvalResult<'tcx, u64> {
         self.not_undef()?.to_usize(cx)
     }
 
@@ -132,7 +132,7 @@ impl<'tcx, Tag> ScalarMaybeUndef<Tag> {
     }
 
     #[inline(always)]
-    pub fn to_isize(self, cx: impl HasDataLayout) -> EvalResult<'tcx, i64> {
+    pub fn to_isize(self, cx: &impl HasDataLayout) -> EvalResult<'tcx, i64> {
         self.not_undef()?.to_isize(cx)
     }
 }
@@ -178,7 +178,7 @@ impl<'tcx, Tag> Immediate<Tag> {
     pub fn new_slice(
         val: Scalar<Tag>,
         len: u64,
-        cx: impl HasDataLayout
+        cx: &impl HasDataLayout
     ) -> Self {
         Immediate::ScalarPair(
             val.into(),
@@ -743,7 +743,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         .ty_adt_def().expect("tagged layout corresponds to adt")
                         .repr
                         .discr_type();
-                    let discr_ty = layout::Integer::from_attr(self.tcx.tcx, discr_ty);
+                    let discr_ty = layout::Integer::from_attr(self, discr_ty);
                     let shift = 128 - discr_ty.size().bits();
                     let truncatee = sexted as u128;
                     (truncatee << shift) >> shift
