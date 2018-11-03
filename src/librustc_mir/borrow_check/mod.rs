@@ -1719,12 +1719,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
         }
 
-        fn check_parent_of_field<'cx, 'gcx, 'tcx>(this: &mut MirBorrowckCtxt<'cx, 'gcx, 'tcx>,
-                                                  context: Context,
-                                                  base: &Place<'tcx>,
-                                                  span: Span,
-                                                  flow_state: &Flows<'cx, 'gcx, 'tcx>)
-        {
+        fn check_parent_of_field<'cx, 'gcx, 'tcx>(
+            this: &mut MirBorrowckCtxt<'cx, 'gcx, 'tcx>,
+            context: Context,
+            base: &Place<'tcx>,
+            span: Span,
+            flow_state: &Flows<'cx, 'gcx, 'tcx>,
+        ) {
             // rust-lang/rust#21232: Until Rust allows reads from the
             // initialized parts of partially initialized structs, we
             // will, starting with the 2018 edition, reject attempts
@@ -1776,6 +1777,22 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
 
             if let Some((prefix, mpi)) = shortest_uninit_seen {
+                // Check for a reassignment into a uninitialized field of a union (for example,
+                // after a move out). In this case, do not report a error here. There is an
+                // exception, if this is the first assignment into the union (that is, there is
+                // no move out from an earlier location) then this is an attempt at initialization
+                // of the union - we should error in that case.
+                let tcx = this.infcx.tcx;
+                if let ty::TyKind::Adt(def, _) = base.ty(this.mir, tcx).to_ty(tcx).sty {
+                    let moved_before_this = this.move_data.path_map[mpi].iter().any(|moi| {
+                        this.move_data.moves[*moi].source < context.loc
+                    });
+
+                    if def.is_union() && moved_before_this {
+                        return;
+                    }
+                }
+
                 this.report_use_of_moved_or_uninitialized(
                     context,
                     InitializationRequiringAction::PartialAssignment,
