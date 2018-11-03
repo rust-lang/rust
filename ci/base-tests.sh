@@ -22,6 +22,7 @@ cargo build --features debugging
 cargo test --features debugging
 cd clippy_lints && cargo test && cd ..
 cd rustc_tools_util && cargo test && cd ..
+cd clippy_dev && cargo test && cd ..
 # check that the lint lists are up-to-date
 ./util/update_lints.py -c
 

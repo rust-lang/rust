@@ -381,12 +381,12 @@ fn test_gen_modules_list() {
     let lints = vec![
         Lint::new("should_assert_eq", "group1", "abc", None, "module_name"),
         Lint::new("should_assert_eq2", "group2", "abc", Some("abc"), "deprecated"),
-        Lint::new("incorrect_internal", "internal_style", "abc", None, "another_module"),
+        Lint::new("incorrect_stuff", "group3", "abc", None, "another_module"),
         Lint::new("incorrect_internal", "internal_style", "abc", None, "module_name"),
     ];
     let expected = vec![
-        "pub mod another_module;\n".to_string(),
-        "pub mod module_name;\n".to_string(),
+        "pub mod another_module;".to_string(),
+        "pub mod module_name;".to_string(),
     ];
     assert_eq!(expected, gen_modules_list(lints));
 }
