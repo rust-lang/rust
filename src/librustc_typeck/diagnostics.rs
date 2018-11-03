@@ -3084,6 +3084,66 @@ containing the unsized type is the last and only unsized type field in the
 struct.
 "##,
 
+E0378: r##"
+The `DispatchFromDyn` trait currently can only be implemented for
+builtin pointer types and structs that are newtype wrappers around them
+— that is, the struct must have only one field (except for`PhantomData`),
+and that field must itself implement `DispatchFromDyn`.
+
+Examples:
+
+```
+#![feature(dispatch_from_dyn, unsize)]
+use std::{
+    marker::Unsize,
+    ops::DispatchFromDyn,
+};
+
+struct Ptr<T: ?Sized>(*const T);
+
+impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Ptr<U>> for Ptr<T>
+where
+    T: Unsize<U>,
+{}
+```
+
+```
+#![feature(dispatch_from_dyn)]
+use std::{
+    ops::DispatchFromDyn,
+    marker::PhantomData,
+};
+
+struct Wrapper<T> {
+    ptr: T,
+    _phantom: PhantomData<()>,
+}
+
+impl<T, U> DispatchFromDyn<Wrapper<U>> for Wrapper<T>
+where
+    T: DispatchFromDyn<U>,
+{}
+```
+
+Example of illegal `DispatchFromDyn` implementation
+(illegal because of extra field)
+
+```compile-fail,E0378
+#![feature(dispatch_from_dyn)]
+use std::ops::DispatchFromDyn;
+
+struct WrapperExtraField<T> {
+    ptr: T,
+    extra_stuff: i32,
+}
+
+impl<T, U> DispatchFromDyn<WrapperExtraField<U>> for WrapperExtraField<T>
+where
+    T: DispatchFromDyn<U>,
+{}
+```
+"##,
+
 E0390: r##"
 You tried to implement methods for a primitive type. Erroneous code example:
 

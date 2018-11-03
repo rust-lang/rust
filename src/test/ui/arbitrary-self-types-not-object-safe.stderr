@@ -1,19 +1,19 @@
 error[E0038]: the trait `Foo` cannot be made into an object
-  --> $DIR/arbitrary-self-types-not-object-safe.rs:40:33
+  --> $DIR/arbitrary-self-types-not-object-safe.rs:40:32
    |
-LL |     let x = Box::new(5usize) as Box<Foo>;
-   |                                 ^^^^^^^^ the trait `Foo` cannot be made into an object
+LL |     let x = Rc::new(5usize) as Rc<Foo>;
+   |                                ^^^^^^^ the trait `Foo` cannot be made into an object
    |
-   = note: method `foo` has a non-standard `self` type
+   = note: method `foo`'s receiver cannot be dispatched on
 
 error[E0038]: the trait `Foo` cannot be made into an object
   --> $DIR/arbitrary-self-types-not-object-safe.rs:40:13
    |
-LL |     let x = Box::new(5usize) as Box<Foo>;
-   |             ^^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
+LL |     let x = Rc::new(5usize) as Rc<Foo>;
+   |             ^^^^^^^^^^^^^^^ the trait `Foo` cannot be made into an object
    |
-   = note: method `foo` has a non-standard `self` type
-   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::boxed::Box<dyn Foo>>` for `std::boxed::Box<usize>`
+   = note: method `foo`'s receiver cannot be dispatched on
+   = note: required because of the requirements on the impl of `std::ops::CoerceUnsized<std::rc::Rc<dyn Foo>>` for `std::rc::Rc<usize>`
 
 error: aborting due to 2 previous errors
 

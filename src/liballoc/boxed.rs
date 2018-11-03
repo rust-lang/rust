@@ -77,7 +77,7 @@ use core::iter::FusedIterator;
 use core::marker::{Unpin, Unsize};
 use core::mem;
 use core::pin::Pin;
-use core::ops::{CoerceUnsized, Deref, DerefMut, Generator, GeneratorState};
+use core::ops::{CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Generator, GeneratorState};
 use core::ptr::{self, NonNull, Unique};
 use core::task::{LocalWaker, Poll};
 
@@ -695,6 +695,9 @@ impl<'a, A, R> FnOnce<A> for Box<dyn FnBox<A, Output = R> + Send + 'a> {
 
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
+
+#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T> {}
 
 #[stable(feature = "box_slice_clone", since = "1.3.0")]
 impl<T: Clone> Clone for Box<[T]> {

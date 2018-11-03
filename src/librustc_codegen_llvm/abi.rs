@@ -19,7 +19,7 @@ use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
 use value::Value;
 
-use rustc_target::abi::{LayoutOf, Size, TyLayout};
+use rustc_target::abi::{LayoutOf, Size, TyLayout, Abi as LayoutAbi};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout;
 
@@ -302,21 +302,49 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         FnType::new_internal(cx, sig, extra_args, |ty, arg_idx| {
             let mut layout = cx.layout_of(ty);
             // Don't pass the vtable, it's not an argument of the virtual fn.
-            // Instead, pass just the (thin pointer) first field of `*dyn Trait`.
+            // Instead, pass just the data pointer, but give it the type `*const/mut dyn Trait`
+            // or `&/&mut dyn Trait` because this is special-cased elsewhere in codegen
             if arg_idx == Some(0) {
-                // FIXME(eddyb) `layout.field(cx, 0)` is not enough because e.g.
-                // `Box<dyn Trait>` has a few newtype wrappers around the raw
-                // pointer, so we'd have to "dig down" to find `*dyn Trait`.
-                let pointee = if layout.is_unsized() {
-                    layout.ty
+                let fat_pointer_ty = if layout.is_unsized() {
+                    // unsized `self` is passed as a pointer to `self`
+                    // FIXME (mikeyhew) change this to use &own if it is ever added to the language
+                    cx.tcx.mk_mut_ptr(layout.ty)
                 } else {
-                    layout.ty.builtin_deref(true)
-                        .unwrap_or_else(|| {
-                            bug!("FnType::new_vtable: non-pointer self {:?}", layout)
-                        }).ty
+                    match layout.abi {
+                        LayoutAbi::ScalarPair(..) => (),
+                        _ => bug!("receiver type has unsupported layout: {:?}", layout)
+                    }
+
+                    // In the case of Rc<Self>, we need to explicitly pass a *mut RcBox<Self>
+                    // with a Scalar (not ScalarPair) ABI. This is a hack that is understood
+                    // elsewhere in the compiler as a method on a `dyn Trait`.
+                    // To get the type `*mut RcBox<Self>`, we just keep unwrapping newtypes until we
+                    // get a built-in pointer type
+                    let mut fat_pointer_layout = layout;
+                    'descend_newtypes: while !fat_pointer_layout.ty.is_unsafe_ptr()
+                        && !fat_pointer_layout.ty.is_region_ptr()
+                    {
+                        'iter_fields: for i in 0..fat_pointer_layout.fields.count() {
+                            let field_layout = fat_pointer_layout.field(cx, i);
+
+                            if !field_layout.is_zst() {
+                                fat_pointer_layout = field_layout;
+                                continue 'descend_newtypes
+                            }
+                        }
+
+                        bug!("receiver has no non-zero-sized fields {:?}", fat_pointer_layout);
+                    }
+
+                    fat_pointer_layout.ty
                 };
-                let fat_ptr_ty = cx.tcx.mk_mut_ptr(pointee);
-                layout = cx.layout_of(fat_ptr_ty).field(cx, 0);
+
+                // we now have a type like `*mut RcBox<dyn Trait>`
+                // change its layout to that of `*mut ()`, a thin pointer, but keep the same type
+                // this is understood as a special case elsewhere in the compiler
+                let unit_pointer_ty = cx.tcx.mk_mut_ptr(cx.tcx.mk_unit());
+                layout = cx.layout_of(unit_pointer_ty);
+                layout.ty = fat_pointer_ty;
             }
             ArgType::new(layout)
         })

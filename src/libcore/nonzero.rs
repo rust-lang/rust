@@ -10,7 +10,7 @@
 
 //! Exposes the NonZero lang item which provides optimization hints.
 
-use ops::CoerceUnsized;
+use ops::{CoerceUnsized, DispatchFromDyn};
 
 /// A wrapper type for raw pointers and integers that will never be
 /// NULL or 0 that might allow certain optimizations.
@@ -20,3 +20,5 @@ use ops::CoerceUnsized;
 pub(crate) struct NonZero<T>(pub(crate) T);
 
 impl<T: CoerceUnsized<U>, U> CoerceUnsized<NonZero<U>> for NonZero<T> {}
+
+impl<T: DispatchFromDyn<U>, U> DispatchFromDyn<NonZero<U>> for NonZero<T> {}

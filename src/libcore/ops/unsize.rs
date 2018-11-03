@@ -43,7 +43,7 @@ use marker::Unsize;
 /// [nomicon-coerce]: ../../nomicon/coercions.html
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 #[lang = "coerce_unsized"]
-pub trait CoerceUnsized<T> {
+pub trait CoerceUnsized<T: ?Sized> {
     // Empty.
 }
 
@@ -77,3 +77,37 @@ impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *mut T {}
 // *const T -> *const U
 #[unstable(feature = "coerce_unsized", issue = "27732")]
 impl<T: ?Sized+Unsize<U>, U: ?Sized> CoerceUnsized<*const U> for *const T {}
+
+
+/// This is used for object safety, to check that a method's receiver type can be dispatched on.
+///
+/// example impl:
+///
+/// ```
+/// # #![feature(dispatch_from_dyn, unsize)]
+/// # use std::{ops::DispatchFromDyn, marker::Unsize};
+/// # struct Rc<T: ?Sized>(::std::rc::Rc<T>);
+/// impl<T: ?Sized, U: ?Sized> DispatchFromDyn<Rc<U>> for Rc<T>
+/// where
+///     T: Unsize<U>,
+/// {}
+/// ```
+#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+#[cfg_attr(not(stage0), lang = "dispatch_from_dyn")]
+pub trait DispatchFromDyn<T> {
+    // Empty.
+}
+
+// &T -> &U
+#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
+// &mut T -> &mut U
+#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+impl<'a, T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<&'a mut U> for &'a mut T {}
+// *const T -> *const U
+#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*const U> for *const T {}
+// *mut T -> *mut U
+#[unstable(feature = "dispatch_from_dyn", issue = "0")]
+impl<T: ?Sized+Unsize<U>, U: ?Sized> DispatchFromDyn<*mut U> for *mut T {}
+
