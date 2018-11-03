@@ -16,6 +16,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::fmt::Debug;
 use std::rc::Rc;
+use rustc_serialize::{Decodable, Decoder};
 
 /// Maps between a `Location` and a `PointIndex` (and vice versa).
 crate struct RegionValueElements {

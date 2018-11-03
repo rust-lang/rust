@@ -13,6 +13,7 @@ use rustc::ty::RegionVid;
 use rustc_data_structures::graph::scc::Sccs;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use borrow_check::nll::type_check::Locations;
+use rustc_serialize::{Decodable, Decoder};
 
 use std::fmt;
 use std::ops::Deref;

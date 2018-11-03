@@ -98,10 +98,16 @@ macro_rules! newtype_index {
      @max          [$max:expr]
      @vis          [$v:vis]
      @debug_format [$debug_format:tt]) => (
-        #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
+        #[derive(Copy, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
         #[rustc_layout_scalar_valid_range_end($max)]
         $v struct $type {
             private: u32
+        }
+
+        impl Clone for $type {
+            fn clone(&self) -> Self {
+                *self
+            }
         }
 
         impl $type {
@@ -145,7 +151,7 @@ macro_rules! newtype_index {
 
             #[inline]
             $v const unsafe fn from_u32_unchecked(value: u32) -> Self {
-                $type { private: value }
+                unsafe { $type { private: value } }
             }
 
             /// Extract value of this index as an integer.
@@ -328,12 +334,17 @@ macro_rules! newtype_index {
                    derive [$($derives:ident,)+]
                    $($tokens:tt)*) => (
         newtype_index!(
-            @derives      [$($derives,)+ RustcDecodable, RustcEncodable,]
+            @derives      [$($derives,)+ RustcEncodable,]
             @type         [$type]
             @max          [$max]
             @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
+        impl Decodable for $type {
+            fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+                d.read_u32().into()
+            }
+        }
     );
 
     // The case where no derives are added, but encodable is overridden. Don't
@@ -360,12 +371,17 @@ macro_rules! newtype_index {
      @debug_format [$debug_format:tt]
                    $($tokens:tt)*) => (
         newtype_index!(
-            @derives      [RustcDecodable, RustcEncodable,]
+            @derives      [RustcEncodable,]
             @type         [$type]
             @max          [$max]
             @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
+        impl Decodable for $type {
+            fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+                d.read_u32().map(Self::from)
+            }
+        }
     );
 
     // Rewrite final without comma to one that includes comma
