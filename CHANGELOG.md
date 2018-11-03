@@ -651,6 +651,7 @@ All notable changes to this project will be documented in this file.
 [`decimal_literal_representation`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#decimal_literal_representation
 [`declare_interior_mutable_const`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#declare_interior_mutable_const
 [`default_trait_access`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#default_trait_access
+[`deprecated_cfg_attr`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#deprecated_cfg_attr
 [`deprecated_semver`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#deprecated_semver
 [`deref_addrof`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#deref_addrof
 [`derive_hash_xor_eq`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#derive_hash_xor_eq

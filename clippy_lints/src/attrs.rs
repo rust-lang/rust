@@ -12,13 +12,13 @@
 
 use crate::reexport::*;
 use crate::utils::{
-    in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint,
+    in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_sugg,
     span_lint_and_then, without_block_comments,
 };
 use if_chain::if_chain;
 use crate::rustc::hir::*;
 use crate::rustc::lint::{
-    CheckLintNameResult, LateContext, LateLintPass, LintArray, LintContext, LintPass,
+    CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintContext, LintPass,
 };
 use crate::rustc::ty::{self, TyCtxt};
 use crate::rustc::{declare_tool_lint, lint_array};
@@ -167,6 +167,35 @@ declare_clippy_lint! {
     pub UNKNOWN_CLIPPY_LINTS,
     style,
     "unknown_lints for scoped Clippy lints"
+}
+
+/// **What it does:** Checks for `#[cfg_attr(rustfmt, rustfmt_skip)]` and suggests to replace it
+/// with `#[rustfmt::skip]`.
+///
+/// **Why is this bad?** Since tool_attributes ([rust-lang/rust#44690](https://github.com/rust-lang/rust/issues/44690))
+/// are stable now, they should be used instead of the old `cfg_attr(rustfmt)` attributes.
+///
+/// **Known problems:** This lint doesn't detect crate level inner attributes, because they get
+/// processed before the PreExpansionPass lints get executed. See
+/// [#3123](https://github.com/rust-lang-nursery/rust-clippy/pull/3123#issuecomment-422321765)
+///
+/// **Example:**
+///
+/// Bad:
+/// ```rust
+/// #[cfg_attr(rustfmt, rustfmt_skip)]
+/// fn main() { }
+/// ```
+///
+/// Good:
+/// ```rust
+/// #[rustfmt::skip]
+/// fn main() { }
+/// ```
+declare_clippy_lint! {
+    pub DEPRECATED_CFG_ATTR,
+    complexity,
+    "usage of `cfg_attr(rustfmt)` instead of `tool_attributes`"
 }
 
 #[derive(Copy, Clone)]
@@ -466,3 +495,46 @@ fn is_present_in_source(cx: &LateContext<'_, '_>, span: Span) -> bool {
     }
     true
 }
+
+#[derive(Copy, Clone)]
+pub struct CfgAttrPass;
+
+impl LintPass for CfgAttrPass {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(
+            DEPRECATED_CFG_ATTR,
+        )
+    }
+}
+
+impl EarlyLintPass for CfgAttrPass {
+    fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
+        if_chain! {
+            // check cfg_attr
+            if attr.name() == "cfg_attr";
+            if let Some(ref items) = attr.meta_item_list();
+            if items.len() == 2;
+            // check for `rustfmt`
+            if let Some(feature_item) = items[0].meta_item();
+            if feature_item.name() == "rustfmt";
+            // check for `rustfmt_skip` and `rustfmt::skip`
+            if let Some(skip_item) = &items[1].meta_item();
+            if skip_item.name() == "rustfmt_skip" || skip_item.name() == "skip";
+            then {
+                let attr_style = match attr.style {
+                    AttrStyle::Outer => "#[",
+                    AttrStyle::Inner => "#![",
+                };
+                span_lint_and_sugg(
+                    cx,
+                    DEPRECATED_CFG_ATTR,
+                    attr.span,
+                    "`cfg_attr` is deprecated for rustfmt and got replaced by tool_attributes",
+                    "use",
+                    format!("{}rustfmt::skip]", attr_style),
+                );
+            }
+        }
+    }
+}
+

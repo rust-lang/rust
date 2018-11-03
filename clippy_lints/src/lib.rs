@@ -220,6 +220,7 @@ pub fn register_pre_expansion_lints(session: &rustc::session::Session, store: &m
     store.register_pre_expansion_pass(Some(session), box non_expressive_names::NonExpressiveNames {
         single_char_binding_names_threshold: conf.single_char_binding_names_threshold,
     });
+    store.register_pre_expansion_pass(Some(session), box attrs::CfgAttrPass);
 }
 
 pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
@@ -532,6 +533,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         approx_const::APPROX_CONSTANT,
         assign_ops::ASSIGN_OP_PATTERN,
         assign_ops::MISREFACTORED_ASSIGN_OP,
+        attrs::DEPRECATED_CFG_ATTR,
         attrs::DEPRECATED_SEMVER,
         attrs::UNKNOWN_CLIPPY_LINTS,
         attrs::USELESS_ATTRIBUTE,
@@ -839,6 +841,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 
     reg.register_lint_group("clippy::complexity", Some("clippy_complexity"), vec![
         assign_ops::MISREFACTORED_ASSIGN_OP,
+        attrs::DEPRECATED_CFG_ATTR,
         booleans::NONMINIMAL_BOOL,
         cyclomatic_complexity::CYCLOMATIC_COMPLEXITY,
         double_comparison::DOUBLE_COMPARISONS,
