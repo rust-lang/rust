@@ -166,28 +166,28 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     place: &Place<'tcx>,
                     context: PlaceContext<'tcx>,
                     location: Location) {
-        if context.is_borrow() {
-            if util::is_disaligned(self.tcx, self.mir, self.param_env, place) {
-                let source_info = self.source_info;
-                let lint_root =
-                    self.source_scope_local_data[source_info.scope].lint_root;
-                self.register_violations(&[UnsafetyViolation {
-                    source_info,
-                    description: Symbol::intern("borrow of packed field").as_interned_str(),
-                    details:
-                        Symbol::intern("fields of packed structs might be misaligned: \
-                                        dereferencing a misaligned pointer or even just creating a \
-                                        misaligned reference is undefined behavior")
-                            .as_interned_str(),
-                    kind: UnsafetyViolationKind::BorrowPacked(lint_root)
-                }], &[]);
-            }
-        }
-
         match place {
             &Place::Projection(box Projection {
                 ref base, ref elem
             }) => {
+                if context.is_borrow() {
+                    if util::is_disaligned(self.tcx, self.mir, self.param_env, place) {
+                        let source_info = self.source_info;
+                        let lint_root =
+                            self.source_scope_local_data[source_info.scope].lint_root;
+                        self.register_violations(&[UnsafetyViolation {
+                            source_info,
+                            description: Symbol::intern("borrow of packed field").as_interned_str(),
+                            details:
+                                Symbol::intern("fields of packed structs might be misaligned: \
+                                                dereferencing a misaligned pointer or even just \
+                                                creating a misaligned reference is undefined \
+                                                behavior")
+                                    .as_interned_str(),
+                            kind: UnsafetyViolationKind::BorrowPacked(lint_root)
+                        }], &[]);
+                    }
+                }
                 let old_source_info = self.source_info;
                 if let &Place::Local(local) = base {
                     if self.mir.local_decls[local].internal {
