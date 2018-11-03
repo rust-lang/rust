@@ -1,5 +1,5 @@
 
-use std::fs::{copy, OpenOptions};
+use std::fs::{copy, read, OpenOptions};
 use std::io::{Seek, SeekFrom, Read, Write, Result};
 use std::path::PathBuf;
 extern crate tempfile;
@@ -80,7 +80,73 @@ mod test_linux {
         assert_eq!(slen, written);
         assert!(probably_sparse(&to).unwrap());
 
+        let from_data = read(&from).unwrap();
+        let to_data = read(&to).unwrap();
+        assert_eq!(from_data, to_data);
     }
 
+    #[test]
+    fn test_sparse_leading_gap() {
+        let dir = tempdir().unwrap();
+        let from = dir.path().join("sparse.bin");
+        let to = dir.path().join("target.bin");
+
+        let slen = create_sparse(&from, 1024, 0).unwrap();
+        assert_eq!(slen, from.metadata().unwrap().len());
+        assert!(probably_sparse(&from).unwrap());
+
+        let written = copy(&from, &to).unwrap();
+        assert_eq!(slen, written);
+        assert!(probably_sparse(&to).unwrap());
+
+        assert_eq!(quickstat(&from).unwrap(), quickstat(&to).unwrap());
+
+        let from_data = read(&from).unwrap();
+        let to_data = read(&to).unwrap();
+        assert_eq!(from_data, to_data);
+    }
+
+    #[test]
+    fn test_sparse_trailng_gap() {
+        let dir = tempdir().unwrap();
+        let from = dir.path().join("sparse.bin");
+        let to = dir.path().join("target.bin");
+
+        let slen = create_sparse(&from, 1024, 1024).unwrap();
+        assert_eq!(slen, from.metadata().unwrap().len());
+        assert!(probably_sparse(&from).unwrap());
+
+        let written = copy(&from, &to).unwrap();
+        assert_eq!(slen, written);
+        assert!(probably_sparse(&to).unwrap());
+        assert_eq!(quickstat(&from).unwrap(), quickstat(&to).unwrap());
+
+        let from_data = read(&from).unwrap();
+        let to_data = read(&to).unwrap();
+        assert_eq!(from_data, to_data);
+    }
+
+    #[test]
+    fn test_empty_sparse() {
+        let dir = tempdir().unwrap();
+        let from = dir.path().join("sparse.bin");
+        let to = dir.path().join("target.bin");
+
+        let out = Command::new("/usr/bin/truncate")
+            .args(&["-s", "1M", from.to_str().unwrap()])
+            .output().unwrap();
+        assert!(out.status.success());
+        assert_eq!(from.metadata().unwrap().len(), 1024*1024);
+
+        let written = copy(&from, &to).unwrap();
+        assert_eq!(to.metadata().unwrap().len(), 1024*1024);
+
+        assert!(probably_sparse(&to).unwrap());
+        assert_eq!(quickstat(&from).unwrap(), quickstat(&to).unwrap());
+
+        let from_data = read(&from).unwrap();
+        let to_data = read(&to).unwrap();
+        assert_eq!(from_data, to_data);
+    }
 
 }
