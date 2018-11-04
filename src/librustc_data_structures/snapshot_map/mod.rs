@@ -106,7 +106,7 @@ impl<K, V> SnapshotMap<K, V>
         self.assert_open_snapshot(snapshot);
         if snapshot.len == 0 {
             // The root snapshot.
-            self.undo_log.truncate(0);
+            self.undo_log.clear();
         } else {
             self.undo_log[snapshot.len] = UndoLog::CommittedSnapshot;
         }
