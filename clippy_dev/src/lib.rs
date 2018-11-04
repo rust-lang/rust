@@ -114,19 +114,22 @@ pub fn gen_changelog_lint_list(lints: Vec<Lint>) -> Vec<String> {
 
 /// Generates the `register_removed` code in `./clippy_lints/src/lib.rs`.
 pub fn gen_deprecated(lints: &[Lint]) -> Vec<String> {
-    lints.iter()
-        .filter_map(|l| {
-            l.clone().deprecation.and_then(|depr_text| {
-                Some(
-                    format!(
-                        "    store.register_removed(\n        \"{}\",\n        \"{}\",\n    );",
-                        l.name,
-                        depr_text
+    itertools::flatten(
+        lints
+            .iter()
+            .filter_map(|l| {
+                l.clone().deprecation.and_then(|depr_text| {
+                    Some(
+                        vec![
+                            "    store.register_removed(".to_string(),
+                            format!("        \"{}\",", l.name),
+                            format!("        \"{}\",", depr_text),
+                            "    );".to_string()
+                        ]
                     )
-                )
+                })
             })
-        })
-        .collect()
+    ).collect()
 }
 
 /// Gathers all files in `src/clippy_lints` and gathers all lints inside
@@ -258,6 +261,7 @@ pub fn replace_region_in_text<F>(text: &str, start: &str, end: &str, replace_sta
         // is incorrect.
         eprintln!("error: regex `{:?}` not found. You may have to update it.", start);
     }
+
     FileChange {
         changed: lines.ne(new_lines.clone()),
         new_lines: new_lines.join("\n")
@@ -305,38 +309,40 @@ declare_deprecated_lint! {
 
 #[test]
 fn test_replace_region() {
-    let text = r#"
-abc
-123
-789
-def
-ghi"#;
-    let expected = r#"
-abc
-hello world
-def
-ghi"#;
+    let text = "\nabc\n123\n789\ndef\nghi";
+    let expected = FileChange {
+        changed: true,
+        new_lines: "\nabc\nhello world\ndef\nghi".to_string()
+    };
     let result = replace_region_in_text(text, r#"^\s*abc$"#, r#"^\s*def"#, false, || {
         vec!["hello world".to_string()]
-    }).new_lines;
+    });
     assert_eq!(expected, result);
 }
 
 #[test]
 fn test_replace_region_with_start() {
-    let text = r#"
-abc
-123
-789
-def
-ghi"#;
-    let expected = r#"
-hello world
-def
-ghi"#;
+    let text = "\nabc\n123\n789\ndef\nghi";
+    let expected = FileChange {
+        changed: true,
+        new_lines: "\nhello world\ndef\nghi".to_string()
+    };
     let result = replace_region_in_text(text, r#"^\s*abc$"#, r#"^\s*def"#, true, || {
         vec!["hello world".to_string()]
-    }).new_lines;
+    });
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn test_replace_region_no_changes() {
+    let text = "123\n456\n789";
+    let expected = FileChange {
+        changed: false,
+        new_lines: "123\n456\n789".to_string()
+    };
+    let result = replace_region_in_text(text, r#"^\s*123$"#, r#"^\s*456"#, false, || {
+        vec![]
+    });
     assert_eq!(expected, result);
 }
 
@@ -390,14 +396,19 @@ fn test_gen_changelog_lint_list() {
 fn test_gen_deprecated() {
     let lints = vec![
         Lint::new("should_assert_eq", "group1", "abc", Some("has been superseeded by should_assert_eq2"), "module_name"),
+        Lint::new("another_deprecated", "group2", "abc", Some("will be removed"), "module_name"),
         Lint::new("should_assert_eq2", "group2", "abc", None, "module_name")
     ];
     let expected: Vec<String> = vec![
-        r#"    store.register_removed(
-        "should_assert_eq",
-        "has been superseeded by should_assert_eq2",
-    );"#.to_string()
-    ];
+        "    store.register_removed(",
+        "        \"should_assert_eq\",",
+        "        \"has been superseeded by should_assert_eq2\",",
+        "    );",
+        "    store.register_removed(",
+        "        \"another_deprecated\",",
+        "        \"will be removed\",",
+        "    );"
+    ].into_iter().map(String::from).collect();
     assert_eq!(expected, gen_deprecated(&lints));
 }
 
