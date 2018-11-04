@@ -1,6 +1,6 @@
 
 use std::fs::{copy, read, OpenOptions};
-use std::io::{Seek, SeekFrom, Read, Write, Result};
+use std::io::{SeekFrom, Result};
 use std::path::PathBuf;
 extern crate tempfile;
 use self::tempfile::tempdir;
@@ -8,7 +8,8 @@ use self::tempfile::tempdir;
 #[cfg(all(test, any(target_os = "linux", target_os = "android")))]
 mod test_linux {
     use super::*;
-    use std::process::{Command, Output};
+    use std::io::{Seek, Write};
+    use std::process::Command;
 
     fn create_sparse(file: &PathBuf, head: u64, tail: u64) -> Result<u64> {
         let data = "c00lc0d3";
@@ -138,7 +139,7 @@ mod test_linux {
         assert!(out.status.success());
         assert_eq!(from.metadata().unwrap().len(), 1024*1024);
 
-        let written = copy(&from, &to).unwrap();
+        let _written = copy(&from, &to).unwrap();
         assert_eq!(to.metadata().unwrap().len(), 1024*1024);
 
         assert!(probably_sparse(&to).unwrap());
