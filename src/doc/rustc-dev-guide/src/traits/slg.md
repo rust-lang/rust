@@ -269,48 +269,15 @@ Here you can see how the forest captures both the answers we have
 created thus far *and* the strands that will let us try to produce
 more answers later on.
 
-## Heritage and acroynms
+## See also
 
-This solver implements the SLG solving technique, though extended to
-accommodate hereditary harrop (HH) predicates, as well as the needs of
-lazy normalization. 
+- [chalk_solve README][readme], which contains links to papers used and
+  acronyms referenced in the code
+- This section is a lightly adapted version of the blog post [An on-demand
+  SLG solver for chalk][slg-blog]
+- [Negative Reasoning in Chalk][negative-reasoning-blog] explains the need
+  for negative reasoning, but not how the SLG solver does it
 
-Its design is kind of a fusion of [MiniKanren] and the following
-papers, which I will refer to as EWFS and NTFD respectively:
-
-> Efficient Top-Down Computation of Queries Under the Well-formed Semantics
-> (Chen, Swift, and Warren; Journal of Logic Programming '95)
-
-> A New Formulation of Tabled resolution With Delay
-> (Swift; EPIA '99)
-
-[MiniKanren]: http://minikanren.org/
-
-In addition, I incorporated extensions from the following papers,
-which I will refer to as SA and RR respectively, that describes how to
-do introduce approximation when processing subgoals and so forth:
-
-> Terminating Evaluation of Logic Programs with Finite Three-Valued Models
-> Riguzzi and Swift; ACM Transactions on Computational Logic 2013
-> (Introduces "subgoal abstraction", hence the name SA)
->
-> Radial Restraint
-> Grosof and Swift; 2013
-
-Another useful paper that gives a kind of high-level overview of
-concepts at play is the following:
-
-> XSB: Extending Prolog with Tabled Logic Programming
-> (Swift and Warren; Theory and Practice of Logic Programming '10)
-
-There are a places where I intentionally diverged from the semantics
-as described in the papers -- e.g. by more aggressively approximating
--- which I marked them with a comment DIVERGENCE. Those places may
-want to be evaluated in the future.
-
-A few other acronyms that I use:
-
-- WAM: Warren abstract machine, an efficient way to evaluate Prolog programs.
-  See <http://wambook.sourceforge.net/>.
-- HH: Hereditary harrop predicates. What Chalk deals in.
-  Popularized by Lambda Prolog.
+[readme]: https://github.com/rust-lang-nursery/chalk/blob/239e4ae4e69b2785b5f99e0f2b41fc16b0b4e65e/chalk-engine/src/README.md
+[slg-blog]: http://smallcultfollowing.com/babysteps/blog/2018/01/31/an-on-demand-slg-solver-for-chalk/
+[negative-reasoning-blog]: http://aturon.github.io/blog/2017/04/24/negative-chalk/
