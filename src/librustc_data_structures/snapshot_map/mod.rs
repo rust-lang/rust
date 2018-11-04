@@ -21,6 +21,7 @@ pub struct SnapshotMap<K, V>
 {
     map: FxHashMap<K, V>,
     undo_log: Vec<UndoLog<K, V>>,
+    num_open_snapshots: usize,
 }
 
 // HACK(eddyb) manual impl avoids `Default` bounds on `K` and `V`.
@@ -31,6 +32,7 @@ impl<K, V> Default for SnapshotMap<K, V>
         SnapshotMap {
             map: Default::default(),
             undo_log: Default::default(),
+            num_open_snapshots: 0,
         }
     }
 }
@@ -40,8 +42,6 @@ pub struct Snapshot {
 }
 
 enum UndoLog<K, V> {
-    OpenSnapshot,
-    CommittedSnapshot,
     Inserted(K),
     Overwrite(K, V),
     Purged,
@@ -53,10 +53,11 @@ impl<K, V> SnapshotMap<K, V>
     pub fn clear(&mut self) {
         self.map.clear();
         self.undo_log.clear();
+        self.num_open_snapshots = 0;
     }
 
     fn in_snapshot(&self) -> bool {
-        !self.undo_log.is_empty()
+        self.num_open_snapshots > 0
     }
 
     pub fn insert(&mut self, key: K, value: V) -> bool {
@@ -93,27 +94,27 @@ impl<K, V> SnapshotMap<K, V>
     }
 
     pub fn snapshot(&mut self) -> Snapshot {
-        self.undo_log.push(UndoLog::OpenSnapshot);
-        let len = self.undo_log.len() - 1;
+        let len = self.undo_log.len();
+        self.num_open_snapshots += 1;
         Snapshot { len }
     }
 
     fn assert_open_snapshot(&self, snapshot: &Snapshot) {
-        assert!(snapshot.len < self.undo_log.len());
-        assert!(match self.undo_log[snapshot.len] {
-            UndoLog::OpenSnapshot => true,
-            _ => false,
-        });
+        assert!(self.undo_log.len() >= snapshot.len);
+        assert!(self.num_open_snapshots > 0);
     }
 
     pub fn commit(&mut self, snapshot: Snapshot) {
         self.assert_open_snapshot(&snapshot);
-        if snapshot.len == 0 {
-            // The root snapshot.
+        if self.num_open_snapshots == 1 {
+            // The root snapshot. It's safe to clear the undo log because
+            // there's no snapshot further out that we might need to roll back
+            // to.
+            assert!(snapshot.len == 0);
             self.undo_log.clear();
-        } else {
-            self.undo_log[snapshot.len] = UndoLog::CommittedSnapshot;
         }
+
+        self.num_open_snapshots -= 1;
     }
 
     pub fn partial_rollback<F>(&mut self,
@@ -122,10 +123,8 @@ impl<K, V> SnapshotMap<K, V>
         where F: Fn(&K) -> bool
     {
         self.assert_open_snapshot(snapshot);
-        for i in (snapshot.len + 1..self.undo_log.len()).rev() {
+        for i in (snapshot.len .. self.undo_log.len()).rev() {
             let reverse = match self.undo_log[i] {
-                UndoLog::OpenSnapshot => false,
-                UndoLog::CommittedSnapshot => false,
                 UndoLog::Purged => false,
                 UndoLog::Inserted(ref k) => should_revert_key(k),
                 UndoLog::Overwrite(ref k, _) => should_revert_key(k),
@@ -140,27 +139,16 @@ impl<K, V> SnapshotMap<K, V>
 
     pub fn rollback_to(&mut self, snapshot: Snapshot) {
         self.assert_open_snapshot(&snapshot);
-        while self.undo_log.len() > snapshot.len + 1 {
+        while self.undo_log.len() > snapshot.len {
             let entry = self.undo_log.pop().unwrap();
             self.reverse(entry);
         }
 
-        let v = self.undo_log.pop().unwrap();
-        assert!(match v {
-            UndoLog::OpenSnapshot => true,
-            _ => false,
-        });
-        assert!(self.undo_log.len() == snapshot.len);
+        self.num_open_snapshots -= 1;
     }
 
     fn reverse(&mut self, entry: UndoLog<K, V>) {
         match entry {
-            UndoLog::OpenSnapshot => {
-                panic!("cannot rollback an uncommitted snapshot");
-            }
-
-            UndoLog::CommittedSnapshot => {}
-
             UndoLog::Inserted(key) => {
                 self.map.remove(&key);
             }

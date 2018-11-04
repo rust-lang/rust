@@ -17,8 +17,8 @@ fn basic() {
     let snapshot = map.snapshot();
     map.insert(22, "thirty-three");
     assert_eq!(map[&22], "thirty-three");
-    map.insert(44, "fourty-four");
-    assert_eq!(map[&44], "fourty-four");
+    map.insert(44, "forty-four");
+    assert_eq!(map[&44], "forty-four");
     assert_eq!(map.get(&33), None);
     map.rollback_to(snapshot);
     assert_eq!(map[&22], "twenty-two");
@@ -32,8 +32,11 @@ fn out_of_order() {
     let mut map = SnapshotMap::default();
     map.insert(22, "twenty-two");
     let snapshot1 = map.snapshot();
-    let _snapshot2 = map.snapshot();
-    map.rollback_to(snapshot1);
+    map.insert(33, "thirty-three");
+    let snapshot2 = map.snapshot();
+    map.insert(44, "forty-four");
+    map.rollback_to(snapshot1); // bogus, but accepted
+    map.rollback_to(snapshot2); // asserts
 }
 
 #[test]
