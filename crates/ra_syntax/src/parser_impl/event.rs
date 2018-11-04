@@ -13,6 +13,10 @@ use crate::{
     SmolStr,
     SyntaxKind::{self, *},
     TextRange, TextUnit,
+    yellow::syntax_error::{
+        ParseError,
+        SyntaxErrorKind,
+    },
 };
 use std::mem;
 
@@ -75,7 +79,7 @@ pub(crate) enum Event {
     },
 
     Error {
-        msg: String,
+        msg: ParseError,
     },
 }
 
@@ -157,7 +161,10 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                         .sum::<TextUnit>();
                     self.leaf(kind, len, n_raw_tokens);
                 }
-                Event::Error { msg } => self.sink.error(msg, self.text_pos),
+                Event::Error { msg } => self.sink.error(
+                    SyntaxErrorKind::ParseError(msg),
+                    TextRange::offset_len(self.text_pos, 1.into()),
+                ),
             }
         }
         self.sink

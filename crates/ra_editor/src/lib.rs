@@ -103,8 +103,8 @@ pub fn diagnostics(file: &File) -> Vec<Diagnostic> {
     file.errors()
         .into_iter()
         .map(|err| Diagnostic {
-            range: TextRange::offset_len(err.offset, 1.into()),
-            msg: "Syntax Error: ".to_string() + &err.msg,
+            range: err.range,
+            msg: format!("Syntax Error: {}", err.kind),
         })
         .collect()
 }
