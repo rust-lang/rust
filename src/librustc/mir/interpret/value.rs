@@ -65,7 +65,7 @@ impl<'tcx> ConstValue<'tcx> {
     pub fn new_slice(
         val: Scalar,
         len: u64,
-        cx: impl HasDataLayout
+        cx: &impl HasDataLayout
     ) -> Self {
         ConstValue::ScalarPair(val, Scalar::Bits {
             bits: len as u128,
@@ -121,7 +121,7 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
-    pub fn ptr_null(cx: impl HasDataLayout) -> Self {
+    pub fn ptr_null(cx: &impl HasDataLayout) -> Self {
         Scalar::Bits {
             bits: 0,
             size: cx.data_layout().pointer_size.bytes() as u8,
@@ -134,52 +134,52 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
-    pub fn ptr_signed_offset(self, i: i64, cx: impl HasDataLayout) -> EvalResult<'tcx, Self> {
-        let layout = cx.data_layout();
+    pub fn ptr_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
+        let dl = cx.data_layout();
         match self {
             Scalar::Bits { bits, size } => {
-                assert_eq!(size as u64, layout.pointer_size.bytes());
+                assert_eq!(size as u64, dl.pointer_size.bytes());
                 Ok(Scalar::Bits {
-                    bits: layout.signed_offset(bits as u64, i)? as u128,
+                    bits: dl.signed_offset(bits as u64, i)? as u128,
                     size,
                 })
             }
-            Scalar::Ptr(ptr) => ptr.signed_offset(i, layout).map(Scalar::Ptr),
+            Scalar::Ptr(ptr) => ptr.signed_offset(i, dl).map(Scalar::Ptr),
         }
     }
 
     #[inline]
-    pub fn ptr_offset(self, i: Size, cx: impl HasDataLayout) -> EvalResult<'tcx, Self> {
-        let layout = cx.data_layout();
+    pub fn ptr_offset(self, i: Size, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
+        let dl = cx.data_layout();
         match self {
             Scalar::Bits { bits, size } => {
-                assert_eq!(size as u64, layout.pointer_size.bytes());
+                assert_eq!(size as u64, dl.pointer_size.bytes());
                 Ok(Scalar::Bits {
-                    bits: layout.offset(bits as u64, i.bytes())? as u128,
+                    bits: dl.offset(bits as u64, i.bytes())? as u128,
                     size,
                 })
             }
-            Scalar::Ptr(ptr) => ptr.offset(i, layout).map(Scalar::Ptr),
+            Scalar::Ptr(ptr) => ptr.offset(i, dl).map(Scalar::Ptr),
         }
     }
 
     #[inline]
-    pub fn ptr_wrapping_signed_offset(self, i: i64, cx: impl HasDataLayout) -> Self {
-        let layout = cx.data_layout();
+    pub fn ptr_wrapping_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> Self {
+        let dl = cx.data_layout();
         match self {
             Scalar::Bits { bits, size } => {
-                assert_eq!(size as u64, layout.pointer_size.bytes());
+                assert_eq!(size as u64, dl.pointer_size.bytes());
                 Scalar::Bits {
-                    bits: layout.wrapping_signed_offset(bits as u64, i) as u128,
+                    bits: dl.wrapping_signed_offset(bits as u64, i) as u128,
                     size,
                 }
             }
-            Scalar::Ptr(ptr) => Scalar::Ptr(ptr.wrapping_signed_offset(i, layout)),
+            Scalar::Ptr(ptr) => Scalar::Ptr(ptr.wrapping_signed_offset(i, dl)),
         }
     }
 
     #[inline]
-    pub fn is_null_ptr(self, cx: impl HasDataLayout) -> bool {
+    pub fn is_null_ptr(self, cx: &impl HasDataLayout) -> bool {
         match self {
             Scalar::Bits { bits, size } => {
                 assert_eq!(size as u64, cx.data_layout().pointer_size.bytes());
@@ -301,7 +301,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         Ok(b as u64)
     }
 
-    pub fn to_usize(self, cx: impl HasDataLayout) -> EvalResult<'static, u64> {
+    pub fn to_usize(self, cx: &impl HasDataLayout) -> EvalResult<'static, u64> {
         let b = self.to_bits(cx.data_layout().pointer_size)?;
         assert_eq!(b as u64 as u128, b);
         Ok(b as u64)
@@ -331,7 +331,7 @@ impl<'tcx, Tag> Scalar<Tag> {
         Ok(b as i64)
     }
 
-    pub fn to_isize(self, cx: impl HasDataLayout) -> EvalResult<'static, i64> {
+    pub fn to_isize(self, cx: &impl HasDataLayout) -> EvalResult<'static, i64> {
         let b = self.to_bits(cx.data_layout().pointer_size)?;
         let b = sign_extend(b, cx.data_layout().pointer_size) as i128;
         assert_eq!(b as i64 as i128, b);

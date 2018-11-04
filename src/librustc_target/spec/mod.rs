@@ -444,11 +444,11 @@ pub struct Target {
     pub options: TargetOptions,
 }
 
-pub trait HasTargetSpec: Copy {
+pub trait HasTargetSpec {
     fn target_spec(&self) -> &Target;
 }
 
-impl<'a> HasTargetSpec for &'a Target {
+impl HasTargetSpec for Target {
     fn target_spec(&self) -> &Target {
         self
     }

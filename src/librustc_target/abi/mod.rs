@@ -203,11 +203,11 @@ impl TargetDataLayout {
     }
 }
 
-pub trait HasDataLayout: Copy {
+pub trait HasDataLayout {
     fn data_layout(&self) -> &TargetDataLayout;
 }
 
-impl<'a> HasDataLayout for &'a TargetDataLayout {
+impl HasDataLayout for TargetDataLayout {
     fn data_layout(&self) -> &TargetDataLayout {
         self
     }
@@ -267,7 +267,7 @@ impl Size {
     }
 
     #[inline]
-    pub fn checked_add<C: HasDataLayout>(self, offset: Size, cx: C) -> Option<Size> {
+    pub fn checked_add<C: HasDataLayout>(self, offset: Size, cx: &C) -> Option<Size> {
         let dl = cx.data_layout();
 
         let bytes = self.bytes().checked_add(offset.bytes())?;
@@ -280,7 +280,7 @@ impl Size {
     }
 
     #[inline]
-    pub fn checked_mul<C: HasDataLayout>(self, count: u64, cx: C) -> Option<Size> {
+    pub fn checked_mul<C: HasDataLayout>(self, count: u64, cx: &C) -> Option<Size> {
         let dl = cx.data_layout();
 
         let bytes = self.bytes().checked_mul(count)?;
@@ -457,7 +457,7 @@ impl Integer {
         }
     }
 
-    pub fn align<C: HasDataLayout>(self, cx: C) -> Align {
+    pub fn align<C: HasDataLayout>(self, cx: &C) -> Align {
         let dl = cx.data_layout();
 
         match self {
@@ -492,7 +492,7 @@ impl Integer {
     }
 
     /// Find the smallest integer with the given alignment.
-    pub fn for_abi_align<C: HasDataLayout>(cx: C, align: Align) -> Option<Integer> {
+    pub fn for_abi_align<C: HasDataLayout>(cx: &C, align: Align) -> Option<Integer> {
         let dl = cx.data_layout();
 
         let wanted = align.abi();
@@ -505,7 +505,7 @@ impl Integer {
     }
 
     /// Find the largest integer with the given alignment or less.
-    pub fn approximate_abi_align<C: HasDataLayout>(cx: C, align: Align) -> Integer {
+    pub fn approximate_abi_align<C: HasDataLayout>(cx: &C, align: Align) -> Integer {
         let dl = cx.data_layout();
 
         let wanted = align.abi();
@@ -571,7 +571,7 @@ pub enum Primitive {
 }
 
 impl<'a, 'tcx> Primitive {
-    pub fn size<C: HasDataLayout>(self, cx: C) -> Size {
+    pub fn size<C: HasDataLayout>(self, cx: &C) -> Size {
         let dl = cx.data_layout();
 
         match self {
@@ -582,7 +582,7 @@ impl<'a, 'tcx> Primitive {
         }
     }
 
-    pub fn align<C: HasDataLayout>(self, cx: C) -> Align {
+    pub fn align<C: HasDataLayout>(self, cx: &C) -> Align {
         let dl = cx.data_layout();
 
         match self {
@@ -642,7 +642,7 @@ impl Scalar {
     /// Returns the valid range as a `x..y` range.
     ///
     /// If `x` and `y` are equal, the range is full, not empty.
-    pub fn valid_range_exclusive<C: HasDataLayout>(&self, cx: C) -> Range<u128> {
+    pub fn valid_range_exclusive<C: HasDataLayout>(&self, cx: &C) -> Range<u128> {
         // For a (max) value of -1, max will be `-1 as usize`, which overflows.
         // However, that is fine here (it would still represent the full range),
         // i.e., if the range is everything.
@@ -854,7 +854,7 @@ pub struct LayoutDetails {
 }
 
 impl LayoutDetails {
-    pub fn scalar<C: HasDataLayout>(cx: C, scalar: Scalar) -> Self {
+    pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let size = scalar.value.size(cx);
         let align = scalar.value.align(cx);
         LayoutDetails {
@@ -891,20 +891,20 @@ pub trait LayoutOf {
     type Ty;
     type TyLayout;
 
-    fn layout_of(self, ty: Self::Ty) -> Self::TyLayout;
+    fn layout_of(&self, ty: Self::Ty) -> Self::TyLayout;
 }
 
 pub trait TyLayoutMethods<'a, C: LayoutOf<Ty = Self>>: Sized {
-    fn for_variant(this: TyLayout<'a, Self>, cx: C, variant_index: usize) -> TyLayout<'a, Self>;
-    fn field(this: TyLayout<'a, Self>, cx: C, i: usize) -> C::TyLayout;
+    fn for_variant(this: TyLayout<'a, Self>, cx: &C, variant_index: usize) -> TyLayout<'a, Self>;
+    fn field(this: TyLayout<'a, Self>, cx: &C, i: usize) -> C::TyLayout;
 }
 
 impl<'a, Ty> TyLayout<'a, Ty> {
-    pub fn for_variant<C>(self, cx: C, variant_index: usize) -> Self
+    pub fn for_variant<C>(self, cx: &C, variant_index: usize) -> Self
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
         Ty::for_variant(self, cx, variant_index)
     }
-    pub fn field<C>(self, cx: C, i: usize) -> C::TyLayout
+    pub fn field<C>(self, cx: &C, i: usize) -> C::TyLayout
     where Ty: TyLayoutMethods<'a, C>, C: LayoutOf<Ty = Ty> {
         Ty::field(self, cx, i)
     }

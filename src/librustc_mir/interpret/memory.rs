@@ -77,16 +77,8 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     pub(super) tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
 }
 
-impl<'b, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
-    for &'b Memory<'a, 'mir, 'tcx, M>
-{
-    #[inline]
-    fn data_layout(&self) -> &TargetDataLayout {
-        &self.tcx.data_layout
-    }
-}
-impl<'a, 'b, 'c, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
-    for &'b &'c mut Memory<'a, 'mir, 'tcx, M>
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
+    for Memory<'a, 'mir, 'tcx, M>
 {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {

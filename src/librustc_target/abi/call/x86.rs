@@ -18,7 +18,7 @@ pub enum Flavor {
     Fastcall
 }
 
-fn is_single_fp_element<'a, Ty, C>(cx: C, layout: TyLayout<'a, Ty>) -> bool
+fn is_single_fp_element<'a, Ty, C>(cx: &C, layout: TyLayout<'a, Ty>) -> bool
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
 {
@@ -35,7 +35,7 @@ fn is_single_fp_element<'a, Ty, C>(cx: C, layout: TyLayout<'a, Ty>) -> bool
     }
 }
 
-pub fn compute_abi_info<'a, Ty, C>(cx: C, fty: &mut FnType<'a, Ty>, flavor: Flavor)
+pub fn compute_abi_info<'a, Ty, C>(cx: &C, fty: &mut FnType<'a, Ty>, flavor: Flavor)
     where Ty: TyLayoutMethods<'a, C> + Copy,
           C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec
 {

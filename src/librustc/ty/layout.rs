@@ -30,7 +30,7 @@ pub use rustc_target::abi::*;
 
 pub trait IntegerExt {
     fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, signed: bool) -> Ty<'tcx>;
-    fn from_attr<C: HasDataLayout>(cx: C, ity: attr::IntType) -> Integer;
+    fn from_attr<C: HasDataLayout>(cx: &C, ity: attr::IntType) -> Integer;
     fn repr_discr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             ty: Ty<'tcx>,
                             repr: &ReprOptions,
@@ -56,7 +56,7 @@ impl IntegerExt for Integer {
     }
 
     /// Get the Integer type from an attr::IntType.
-    fn from_attr<C: HasDataLayout>(cx: C, ity: attr::IntType) -> Integer {
+    fn from_attr<C: HasDataLayout>(cx: &C, ity: attr::IntType) -> Integer {
         let dl = cx.data_layout();
 
         match ity {
@@ -92,7 +92,7 @@ impl IntegerExt for Integer {
         let min_default = I8;
 
         if let Some(ity) = repr.int {
-            let discr = Integer::from_attr(tcx, ity);
+            let discr = Integer::from_attr(&tcx, ity);
             let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
             if discr < fit {
                 bug!("Integer::repr_discr: `#[repr]` hint too small for \
@@ -202,14 +202,13 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
 }
 
-#[derive(Copy, Clone)]
 pub struct LayoutCx<'tcx, C> {
     pub tcx: C,
     pub param_env: ty::ParamEnv<'tcx>
 }
 
 impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
-    fn layout_raw_uncached(self, ty: Ty<'tcx>)
+    fn layout_raw_uncached(&self, ty: Ty<'tcx>)
                            -> Result<&'tcx LayoutDetails, LayoutError<'tcx>> {
         let tcx = self.tcx;
         let param_env = self.param_env;
@@ -899,7 +898,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
                 let (mut min, mut max) = (i128::max_value(), i128::min_value());
                 let discr_type = def.repr.discr_type();
-                let bits = Integer::from_attr(tcx, discr_type).size().bits();
+                let bits = Integer::from_attr(self, discr_type).size().bits();
                 for (i, discr) in def.discriminants(tcx).enumerate() {
                     if variants[i].iter().any(|f| f.abi.is_uninhabited()) {
                         continue;
@@ -1141,7 +1140,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     /// This is invoked by the `layout_raw` query to record the final
     /// layout of each type.
     #[inline]
-    fn record_layout_for_printing(self, layout: TyLayout<'tcx>) {
+    fn record_layout_for_printing(&self, layout: TyLayout<'tcx>) {
         // If we are running with `-Zprint-type-sizes`, record layouts for
         // dumping later. Ignore layouts that are done with non-empty
         // environments or non-monomorphic layouts, as the user only wants
@@ -1158,7 +1157,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
         self.record_layout_for_printing_outlined(layout)
     }
 
-    fn record_layout_for_printing_outlined(self, layout: TyLayout<'tcx>) {
+    fn record_layout_for_printing_outlined(&self, layout: TyLayout<'tcx>) {
         // (delay format until we actually need it)
         let record = |kind, packed, opt_discr_size, variants| {
             let type_desc = format!("{:?}", layout.ty);
@@ -1478,7 +1477,7 @@ impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
-    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
         let param_env = self.param_env.with_reveal_all();
         let ty = self.tcx.normalize_erasing_regions(param_env, ty);
         let details = self.tcx.layout_raw(param_env.and(ty))?;
@@ -1505,7 +1504,7 @@ impl<'a, 'tcx> LayoutOf for LayoutCx<'tcx, ty::query::TyCtxtAt<'a, 'tcx, 'tcx>> 
 
     /// Computes the layout of a type. Note that this implicitly
     /// executes in "reveal all" mode.
-    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
         let param_env = self.param_env.with_reveal_all();
         let ty = self.tcx.normalize_erasing_regions(param_env, ty);
         let details = self.tcx.layout_raw(param_env.and(ty))?;
@@ -1563,7 +1562,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
     where C: LayoutOf<Ty = Ty<'tcx>> + HasTyCtxt<'tcx>,
           C::TyLayout: MaybeResult<TyLayout<'tcx>>
 {
-    fn for_variant(this: TyLayout<'tcx>, cx: C, variant_index: usize) -> TyLayout<'tcx> {
+    fn for_variant(this: TyLayout<'tcx>, cx: &C, variant_index: usize) -> TyLayout<'tcx> {
         let details = match this.variants {
             Variants::Single { index } if index == variant_index => this.details,
 
@@ -1602,7 +1601,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
         }
     }
 
-    fn field(this: TyLayout<'tcx>, cx: C, i: usize) -> C::TyLayout {
+    fn field(this: TyLayout<'tcx>, cx: &C, i: usize) -> C::TyLayout {
         let tcx = cx.tcx();
         cx.layout_of(match this.ty.sty {
             ty::Bool |
@@ -1699,7 +1698,7 @@ impl<'a, 'tcx, C> TyLayoutMethods<'tcx, C> for Ty<'tcx>
                     Variants::Tagged { tag: ref discr, .. } |
                     Variants::NicheFilling { niche: ref discr, .. } => {
                         assert_eq!(i, 0);
-                        let layout = LayoutDetails::scalar(tcx, discr.clone());
+                        let layout = LayoutDetails::scalar(cx, discr.clone());
                         return MaybeResult::from_ok(TyLayout {
                             details: tcx.intern_layout(layout),
                             ty: discr.value.to_ty(tcx)
@@ -1725,7 +1724,7 @@ struct Niche {
 impl Niche {
     fn reserve<'a, 'tcx>(
         &self,
-        cx: LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>>,
+        cx: &LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>>,
         count: u128,
     ) -> Option<(u128, Scalar)> {
         if count > self.available {
@@ -1745,7 +1744,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
     /// Find the offset of a niche leaf field, starting from
     /// the given type and recursing through aggregates.
     // FIXME(eddyb) traverse already optimized enums.
-    fn find_niche(self, layout: TyLayout<'tcx>) -> Result<Option<Niche>, LayoutError<'tcx>> {
+    fn find_niche(&self, layout: TyLayout<'tcx>) -> Result<Option<Niche>, LayoutError<'tcx>> {
         let scalar_niche = |scalar: &Scalar, offset| {
             let Scalar { value, valid_range: ref v } = *scalar;
 

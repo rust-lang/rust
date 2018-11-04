@@ -87,23 +87,23 @@ struct ConstPropagator<'a, 'mir, 'tcx:'a+'mir> {
     param_env: ParamEnv<'tcx>,
 }
 
-impl<'a, 'b, 'tcx> LayoutOf for &'a ConstPropagator<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx> LayoutOf for ConstPropagator<'a, 'b, 'tcx> {
     type Ty = ty::Ty<'tcx>;
     type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
 
-    fn layout_of(self, ty: ty::Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: ty::Ty<'tcx>) -> Self::TyLayout {
         self.tcx.layout_of(self.param_env.and(ty))
     }
 }
 
-impl<'a, 'b, 'tcx> HasDataLayout for &'a ConstPropagator<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx> HasDataLayout for ConstPropagator<'a, 'b, 'tcx> {
     #[inline]
     fn data_layout(&self) -> &TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'a, 'b, 'tcx> HasTyCtxt<'tcx> for &'a ConstPropagator<'a, 'b, 'tcx> {
+impl<'a, 'b, 'tcx> HasTyCtxt<'tcx> for ConstPropagator<'a, 'b, 'tcx> {
     #[inline]
     fn tcx<'c>(&'c self) -> TyCtxt<'c, 'tcx, 'tcx> {
         self.tcx

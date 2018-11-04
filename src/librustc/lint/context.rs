@@ -783,11 +783,11 @@ impl<'a, 'tcx> LateContext<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> LayoutOf for &'a LateContext<'a, 'tcx> {
+impl<'a, 'tcx> LayoutOf for LateContext<'a, 'tcx> {
     type Ty = Ty<'tcx>;
     type TyLayout = Result<TyLayout<'tcx>, LayoutError<'tcx>>;
 
-    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+    fn layout_of(&self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.tcx.layout_of(self.param_env.and(ty))
     }
 }

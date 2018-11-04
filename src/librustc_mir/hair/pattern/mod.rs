@@ -1313,7 +1313,7 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
         LitKind::Str(ref s, _) => {
             let s = s.as_str();
             let id = tcx.allocate_bytes(s.as_bytes());
-            ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64, tcx)
+            ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64, &tcx)
         },
         LitKind::ByteStr(ref data) => {
             let id = tcx.allocate_bytes(data);

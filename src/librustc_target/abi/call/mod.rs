@@ -137,7 +137,7 @@ impl Reg {
 }
 
 impl Reg {
-    pub fn align<C: HasDataLayout>(&self, cx: C) -> Align {
+    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         let dl = cx.data_layout();
         match self.kind {
             RegKind::Integer => {
@@ -188,7 +188,7 @@ impl From<Reg> for Uniform {
 }
 
 impl Uniform {
-    pub fn align<C: HasDataLayout>(&self, cx: C) -> Align {
+    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         self.unit.align(cx)
     }
 }
@@ -225,12 +225,12 @@ impl CastTarget {
         }
     }
 
-    pub fn size<C: HasDataLayout>(&self, cx: C) -> Size {
+    pub fn size<C: HasDataLayout>(&self, cx: &C) -> Size {
         (self.prefix_chunk * self.prefix.iter().filter(|x| x.is_some()).count() as u64)
              .abi_align(self.rest.align(cx)) + self.rest.total
     }
 
-    pub fn align<C: HasDataLayout>(&self, cx: C) -> Align {
+    pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         self.prefix.iter()
             .filter_map(|x| x.map(|kind| Reg { kind, size: self.prefix_chunk }.align(cx)))
             .fold(cx.data_layout().aggregate_align.max(self.rest.align(cx)),
@@ -249,8 +249,8 @@ impl<'a, Ty> TyLayout<'a, Ty> {
         }
     }
 
-    fn homogeneous_aggregate<C>(&self, cx: C) -> Option<Reg>
-        where Ty: TyLayoutMethods<'a, C> + Copy, C: LayoutOf<Ty = Ty, TyLayout = Self> + Copy
+    fn homogeneous_aggregate<C>(&self, cx: &C) -> Option<Reg>
+        where Ty: TyLayoutMethods<'a, C> + Copy, C: LayoutOf<Ty = Ty, TyLayout = Self>
     {
         match self.abi {
             Abi::Uninhabited => None,
@@ -483,7 +483,7 @@ pub struct FnType<'a, Ty> {
 }
 
 impl<'a, Ty> FnType<'a, Ty> {
-    pub fn adjust_for_cabi<C>(&mut self, cx: C, abi: ::spec::abi::Abi) -> Result<(), String>
+    pub fn adjust_for_cabi<C>(&mut self, cx: &C, abi: ::spec::abi::Abi) -> Result<(), String>
         where Ty: TyLayoutMethods<'a, C> + Copy,
               C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout + HasTargetSpec
     {
