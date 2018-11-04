@@ -153,7 +153,7 @@ fn update_lints(update_mode: UpdateMode) {
     }
 
     if update_mode == UpdateMode::Check && file_change {
-      println!("Not all lints defined properly. Please run util/dev update_lints to make sure all lints are defined properly.");
+      println!("Not all lints defined properly. Please run `util/dev update_lints` to make sure all lints are defined properly.");
       std::process::exit(1);
     }
 }
