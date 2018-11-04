@@ -10,9 +10,10 @@
 
 //! The virtual memory representation of the MIR interpreter
 
+use super::{Pointer, EvalResult, AllocId};
+
 use ty::layout::{Size, Align};
 use syntax::ast::Mutability;
-use rustc_target::abi::HasDataLayout;
 use std::iter;
 use mir;
 use std::ops::{Deref, DerefMut};
@@ -40,7 +41,7 @@ pub struct Allocation<Tag=(),Extra=()> {
     pub extra: Extra,
 }
 
-trait AllocationExtra<Tag> {
+pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Default + Clone {
     /// Hook for performing extra checks on a memory read access.
     ///
     /// Takes read-only access to the allocation so we can keep all the memory read
@@ -49,7 +50,7 @@ trait AllocationExtra<Tag> {
     #[inline]
     fn memory_read(
         &self,
-        _ptr: Pointer<Self::PointerTag>,
+        _ptr: Pointer<Tag>,
         _size: Size,
     ) -> EvalResult<'tcx> {
         Ok(())
@@ -63,12 +64,14 @@ trait AllocationExtra<Tag> {
     #[inline]
     fn memory_written(
         &mut self,
-        _ptr: Pointer<Self::PointerTag>,
+        _ptr: Pointer<Tag>,
         _size: Size,
     ) -> EvalResult<'tcx> {
         Ok(())
     }
 }
+
+impl AllocationExtra<()> for () {}
 
 impl<Tag, Extra: Default> Allocation<Tag, Extra> {
     /// Creates a read-only allocation initialized by the given bytes

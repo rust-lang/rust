@@ -20,7 +20,7 @@ use rustc::mir;
 use rustc::ty::{self, layout::{Size, TyLayout}, query::TyCtxtAt};
 
 use super::{
-    Allocation, AllocId, EvalResult, Scalar,
+    Allocation, AllocId, EvalResult, Scalar, AllocationExtra,
     EvalContext, PlaceTy, MPlaceTy, OpTy, Pointer, MemoryKind,
 };
 
@@ -78,7 +78,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     type PointerTag: ::std::fmt::Debug + Default + Copy + Eq + Hash + 'static;
 
     /// Extra data stored in every allocation.
-    type AllocExtra: ::std::fmt::Debug + Default + Clone;
+    type AllocExtra: AllocationExtra<Self::PointerTag>;
 
     /// Memory's allocation map
     type MemoryMap:

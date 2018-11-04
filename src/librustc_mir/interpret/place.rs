@@ -24,7 +24,7 @@ use rustc::mir::interpret::{
     GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic
 };
 use super::{
-    EvalContext, Machine, AllocMap,
+    EvalContext, Machine, AllocMap, AllocationExtra,
     Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind
 };
 
@@ -264,6 +264,7 @@ where
     Tag: ::std::fmt::Debug+Default+Copy+Eq+Hash+'static,
     M: Machine<'a, 'mir, 'tcx, PointerTag=Tag>,
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
+    M::AllocExtra: AllocationExtra<Tag>,
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `create_ref`.
