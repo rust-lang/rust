@@ -7,13 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.1.4] - 2018-11-04
+
+### Fixed
+- Fixed a bug in the `erase_no_drop` implementation. (#26)
+
 ## [v0.1.3] - 2018-11-01
 
 ### Added
 - Serde support. (#14)
 
 ### Fixed
-- Make the compile inline function more aggressively. (#20)
+- Make the compiler inline functions more aggressively. (#20)
 
 ## [v0.1.2] - 2018-10-31
 
@@ -31,7 +36,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Initial release
 
-[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.1.4...HEAD
+[v0.1.4]: https://github.com/Amanieu/hashbrown/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/Amanieu/hashbrown/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/Amanieu/hashbrown/compare/v0.1.1...v0.1.2
 [v0.1.1]: https://github.com/Amanieu/hashbrown/compare/v0.1.0...v0.1.1
