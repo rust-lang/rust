@@ -1652,15 +1652,15 @@ impl<'tcx> ProjectionCache<'tcx> {
     }
 
     pub fn rollback_to(&mut self, snapshot: ProjectionCacheSnapshot) {
-        self.map.rollback_to(&snapshot.snapshot);
+        self.map.rollback_to(snapshot.snapshot);
     }
 
     pub fn rollback_placeholder(&mut self, snapshot: &ProjectionCacheSnapshot) {
         self.map.partial_rollback(&snapshot.snapshot, &|k| k.ty.has_re_skol());
     }
 
-    pub fn commit(&mut self, snapshot: &ProjectionCacheSnapshot) {
-        self.map.commit(&snapshot.snapshot);
+    pub fn commit(&mut self, snapshot: ProjectionCacheSnapshot) {
+        self.map.commit(snapshot.snapshot);
     }
 
     /// Try to start normalize `key`; returns an error if

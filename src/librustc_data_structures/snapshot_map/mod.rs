@@ -102,8 +102,8 @@ impl<K, V> SnapshotMap<K, V>
         });
     }
 
-    pub fn commit(&mut self, snapshot: &Snapshot) {
-        self.assert_open_snapshot(snapshot);
+    pub fn commit(&mut self, snapshot: Snapshot) {
+        self.assert_open_snapshot(&snapshot);
         if snapshot.len == 0 {
             // The root snapshot.
             self.undo_log.clear();
@@ -134,8 +134,8 @@ impl<K, V> SnapshotMap<K, V>
         }
     }
 
-    pub fn rollback_to(&mut self, snapshot: &Snapshot) {
-        self.assert_open_snapshot(snapshot);
+    pub fn rollback_to(&mut self, snapshot: Snapshot) {
+        self.assert_open_snapshot(&snapshot);
         while self.undo_log.len() > snapshot.len + 1 {
             let entry = self.undo_log.pop().unwrap();
             self.reverse(entry);
