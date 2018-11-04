@@ -391,14 +391,13 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             err
         }
         ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
-            let shadows_what = PathResolution::new(binding.def()).kind_name();
-            let mut err = struct_span_err!(resolver.session,
-                                           span,
-                                           E0530,
-                                           "{}s cannot shadow {}s", what_binding, shadows_what);
-            err.span_label(span, format!("cannot be named the same as a {}", shadows_what));
+            let (shadows_what, article) = (binding.descr(), binding.article());
+            let mut err = struct_span_err!(resolver.session, span, E0530, "{}s cannot shadow {}s",
+                                           what_binding, shadows_what);
+            err.span_label(span, format!("cannot be named the same as {} {}",
+                                         article, shadows_what));
             let participle = if binding.is_import() { "imported" } else { "defined" };
-            let msg = format!("a {} `{}` is {} here", shadows_what, name, participle);
+            let msg = format!("{} {} `{}` is {} here", article, shadows_what, name, participle);
             err.span_label(binding.span, msg);
             err
         }
@@ -1158,6 +1157,7 @@ enum NameBindingKind<'a> {
         used: Cell<bool>,
     },
     Ambiguity {
+        kind: AmbiguityKind,
         b1: &'a NameBinding<'a>,
         b2: &'a NameBinding<'a>,
     }
@@ -1175,10 +1175,61 @@ struct UseError<'a> {
     better: bool,
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum AmbiguityKind {
+    Import,
+    BuiltinAttr,
+    DeriveHelper,
+    LegacyHelperVsPrelude,
+    LegacyVsModern,
+    GlobVsOuter,
+    GlobVsGlob,
+    GlobVsExpanded,
+    MoreExpandedVsOuter,
+}
+
+impl AmbiguityKind {
+    fn descr(self) -> &'static str {
+        match self {
+            AmbiguityKind::Import =>
+                "name vs any other name during import resolution",
+            AmbiguityKind::BuiltinAttr =>
+                "built-in attribute vs any other name",
+            AmbiguityKind::DeriveHelper =>
+                "derive helper attribute vs any other name",
+            AmbiguityKind::LegacyHelperVsPrelude =>
+                "legacy plugin helper attribute vs name from prelude",
+            AmbiguityKind::LegacyVsModern =>
+                "`macro_rules` vs non-`macro_rules` from other module",
+            AmbiguityKind::GlobVsOuter =>
+                "glob import vs any other name from outer scope during import/macro resolution",
+            AmbiguityKind::GlobVsGlob =>
+                "glob import vs glob import in the same module",
+            AmbiguityKind::GlobVsExpanded =>
+                "glob import vs macro-expanded name in the same \
+                 module during import/macro resolution",
+            AmbiguityKind::MoreExpandedVsOuter =>
+                "macro-expanded name vs less macro-expanded name \
+                 from outer scope during import/macro resolution",
+        }
+    }
+}
+
+/// Miscellaneous bits of metadata for better ambiguity error reporting.
+#[derive(Clone, Copy, PartialEq)]
+enum AmbiguityErrorMisc {
+    SuggestSelf,
+    FromPrelude,
+    None,
+}
+
 struct AmbiguityError<'a> {
+    kind: AmbiguityKind,
     ident: Ident,
     b1: &'a NameBinding<'a>,
     b2: &'a NameBinding<'a>,
+    misc1: AmbiguityErrorMisc,
+    misc2: AmbiguityErrorMisc,
 }
 
 impl<'a> NameBinding<'a> {
@@ -1231,6 +1282,9 @@ impl<'a> NameBinding<'a> {
                     subclass: ImportDirectiveSubclass::ExternCrate { .. }, ..
                 }, ..
             } => true,
+            NameBindingKind::Module(
+                &ModuleData { kind: ModuleKind::Def(Def::Mod(def_id), _), .. }
+            ) => def_id.index == CRATE_DEF_INDEX,
             _ => false,
         }
     }
@@ -1274,6 +1328,10 @@ impl<'a> NameBinding<'a> {
 
     fn descr(&self) -> &'static str {
         if self.is_extern_crate() { "extern crate" } else { self.def().kind_name() }
+    }
+
+    fn article(&self) -> &'static str {
+        if self.is_extern_crate() { "an" } else { self.def().article() }
     }
 
     // Suppose that we resolved macro invocation with `invoc_parent_expansion` to binding `binding`
@@ -1826,8 +1884,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 self.record_use(ident, ns, binding)
             }
             NameBindingKind::Import { .. } => false,
-            NameBindingKind::Ambiguity { b1, b2 } => {
-                self.ambiguity_errors.push(AmbiguityError { ident, b1, b2 });
+            NameBindingKind::Ambiguity { kind, b1, b2 } => {
+                self.ambiguity_errors.push(AmbiguityError {
+                    kind, ident, b1, b2,
+                    misc1: AmbiguityErrorMisc::None,
+                    misc2: AmbiguityErrorMisc::None,
+                });
                 true
             }
             _ => false
@@ -1965,7 +2027,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             }
             if ns == TypeNS && is_known_tool(ident.name) {
                 let binding = (Def::ToolMod, ty::Visibility::Public,
-                               ident.span, Mark::root()).to_name_binding(self.arenas);
+                               DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
                 return Some(LexicalScopeBinding::Item(binding));
             }
             if let Some(prelude) = self.prelude {
@@ -4565,37 +4627,79 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
     }
 
-    fn report_ambiguity_error(&self, ident: Ident, b1: &NameBinding, b2: &NameBinding) {
-        let participle = |is_import: bool| if is_import { "imported" } else { "defined" };
-        let msg1 =
-            format!("`{}` could refer to the name {} here", ident, participle(b1.is_import()));
-        let msg2 =
-            format!("`{}` could also refer to the name {} here", ident, participle(b2.is_import()));
-        let note = if b1.expansion != Mark::root() {
-            Some(if let Def::Macro(..) = b1.def() {
-                format!("macro-expanded {} do not shadow",
-                        if b1.is_import() { "macro imports" } else { "macros" })
-            } else {
-                format!("macro-expanded {} do not shadow when used in a macro invocation path",
-                        if b1.is_import() { "imports" } else { "items" })
-            })
-        } else if b1.is_glob_import() {
-            Some(format!("consider adding an explicit import of `{}` to disambiguate", ident))
+    fn report_ambiguity_error(&self, ambiguity_error: &AmbiguityError) {
+        let AmbiguityError { kind, ident, b1, b2, misc1, misc2 } = *ambiguity_error;
+        let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
+            // We have to print the span-less alternative first, otherwise formatting looks bad.
+            (b2, b1, misc2, misc1, true)
         } else {
-            None
+            (b1, b2, misc1, misc2, false)
         };
 
-        let mut err = struct_span_err!(self.session, ident.span, E0659, "`{}` is ambiguous", ident);
+        let mut err = struct_span_err!(self.session, ident.span, E0659,
+                                       "`{ident}` is ambiguous ({why})",
+                                       ident = ident, why = kind.descr());
         err.span_label(ident.span, "ambiguous name");
-        err.span_note(b1.span, &msg1);
-        match b2.def() {
-            Def::Macro(..) if b2.span.is_dummy() =>
-                err.note(&format!("`{}` is also a builtin macro", ident)),
-            _ => err.span_note(b2.span, &msg2),
+
+        let mut could_refer_to = |b: &NameBinding, misc: AmbiguityErrorMisc, also: &str| {
+            let what = if b.span.is_dummy() {
+                let add_built_in = match b.def() {
+                    // These already contain the "built-in" prefix or look bad with it.
+                    Def::NonMacroAttr(..) | Def::PrimTy(..) | Def::ToolMod => false,
+                    _ => true,
+                };
+                let (built_in, from) = if misc == AmbiguityErrorMisc::FromPrelude {
+                    ("", " from prelude")
+                } else if b.is_extern_crate() && !b.is_import() &&
+                          self.session.opts.externs.get(&ident.as_str()).is_some() {
+                    ("", " passed with `--extern`")
+                } else if add_built_in {
+                    (" built-in", "")
+                } else {
+                    ("", "")
+                };
+
+                let article = if built_in.is_empty() { b.article() } else { "a" };
+                format!("{a}{built_in} {thing}{from}",
+                        a = article, thing = b.descr(), built_in = built_in, from = from)
+            } else {
+                let participle = if b.is_import() { "imported" } else { "defined" };
+                format!("the {thing} {introduced} here",
+                        thing = b.descr(), introduced = participle)
+            };
+            let note_msg = format!("`{ident}` could{also} refer to {what}",
+                                   ident = ident, also = also, what = what);
+
+            let mut help_msgs = Vec::new();
+            if b.is_glob_import() && (kind == AmbiguityKind::GlobVsGlob ||
+                                      kind == AmbiguityKind::GlobVsExpanded ||
+                                      kind == AmbiguityKind::GlobVsOuter &&
+                                      swapped != also.is_empty()) {
+                help_msgs.push(format!("consider adding an explicit import of \
+                                        `{ident}` to disambiguate", ident = ident))
+            }
+            if b.is_extern_crate() && self.session.rust_2018() {
+                help_msgs.push(format!("use `::{ident}` to refer to the {thing} unambiguously",
+                                       ident = ident, thing = b.descr()))
+            }
+            if misc == AmbiguityErrorMisc::SuggestSelf {
+                help_msgs.push(format!("use `self::{ident}` to refer to the {thing} unambiguously",
+                                       ident = ident, thing = b.descr()))
+            }
+
+            if b.span.is_dummy() {
+                err.note(&note_msg);
+            } else {
+                err.span_note(b.span, &note_msg);
+            }
+            for (i, help_msg) in help_msgs.iter().enumerate() {
+                let or = if i == 0 { "" } else { "or " };
+                err.help(&format!("{}{}", or, help_msg));
+            }
         };
-        if let Some(note) = note {
-            err.note(&note);
-        }
+
+        could_refer_to(b1, misc1, "");
+        could_refer_to(b2, misc2, " also");
         err.emit();
     }
 
@@ -4614,9 +4718,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             );
         }
 
-        for &AmbiguityError { ident, b1, b2 } in &self.ambiguity_errors {
-            if reported_spans.insert(ident.span) {
-                self.report_ambiguity_error(ident, b1, b2);
+        for ambiguity_error in &self.ambiguity_errors {
+            if reported_spans.insert(ambiguity_error.ident.span) {
+                self.report_ambiguity_error(ambiguity_error);
             }
         }
 
@@ -4794,7 +4898,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 };
                 let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 self.populate_module_if_necessary(&crate_root);
-                Some((crate_root, ty::Visibility::Public, ident.span, Mark::root())
+                Some((crate_root, ty::Visibility::Public, DUMMY_SP, Mark::root())
                     .to_name_binding(self.arenas))
             }
         })

@@ -10,7 +10,8 @@
 
 use self::ImportDirectiveSubclass::*;
 
-use {AmbiguityError, CrateLint, Module, ModuleOrUniformRoot, PerNS};
+use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
+use {CrateLint, Module, ModuleOrUniformRoot, PerNS};
 use Namespace::{self, TypeNS, MacroNS};
 use {NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use Resolver;
@@ -219,7 +220,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 };
                 self.populate_module_if_necessary(crate_root);
                 let binding = (crate_root, ty::Visibility::Public,
-                               ident.span, Mark::root()).to_name_binding(self.arenas);
+                               crate_root.span, Mark::root()).to_name_binding(self.arenas);
                 return Ok(binding);
             }
         };
@@ -244,12 +245,14 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     // Forbid expanded shadowing to avoid time travel.
                     if restricted_shadowing &&
                        binding.expansion != Mark::root() &&
-                       ns != MacroNS && // In MacroNS, `try_define` always forbids this shadowing
                        binding.def() != shadowed_glob.def() {
                         self.ambiguity_errors.push(AmbiguityError {
+                            kind: AmbiguityKind::GlobVsExpanded,
                             ident,
                             b1: binding,
                             b2: shadowed_glob,
+                            misc1: AmbiguityErrorMisc::None,
+                            misc2: AmbiguityErrorMisc::None,
                         });
                     }
                 }
@@ -471,38 +474,48 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         self.set_binding_parent_module(binding, module);
         self.update_resolution(module, ident, ns, |this, resolution| {
             if let Some(old_binding) = resolution.binding {
-                if binding.is_glob_import() {
-                    if !old_binding.is_glob_import() &&
-                       !(ns == MacroNS && old_binding.expansion != Mark::root()) {
-                        resolution.shadowed_glob = Some(binding);
-                    } else if binding.def() != old_binding.def() {
-                        resolution.binding = Some(this.ambiguity(old_binding, binding));
-                    } else if !old_binding.vis.is_at_least(binding.vis, &*this) {
-                        // We are glob-importing the same item but with greater visibility.
-                        resolution.binding = Some(binding);
+                match (old_binding.is_glob_import(), binding.is_glob_import()) {
+                    (true, true) => {
+                        if binding.def() != old_binding.def() {
+                            resolution.binding = Some(this.ambiguity(AmbiguityKind::GlobVsGlob,
+                                                                     old_binding, binding));
+                        } else if !old_binding.vis.is_at_least(binding.vis, &*this) {
+                            // We are glob-importing the same item but with greater visibility.
+                            resolution.binding = Some(binding);
+                        }
                     }
-                } else if old_binding.is_glob_import() {
-                    if ns == MacroNS && binding.expansion != Mark::root() &&
-                       binding.def() != old_binding.def() {
-                        resolution.binding = Some(this.ambiguity(binding, old_binding));
-                    } else {
-                        resolution.binding = Some(binding);
-                        resolution.shadowed_glob = Some(old_binding);
+                    (old_glob @ true, false) | (old_glob @ false, true) => {
+                        let (glob_binding, nonglob_binding) = if old_glob {
+                            (old_binding, binding)
+                        } else {
+                            (binding, old_binding)
+                        };
+                        if glob_binding.def() != nonglob_binding.def() &&
+                           ns == MacroNS && nonglob_binding.expansion != Mark::root() {
+                            resolution.binding = Some(this.ambiguity(AmbiguityKind::GlobVsExpanded,
+                                                                    nonglob_binding, glob_binding));
+                        } else {
+                            resolution.binding = Some(nonglob_binding);
+                            resolution.shadowed_glob = Some(glob_binding);
+                        }
                     }
-                } else if let (&NameBindingKind::Def(_, true), &NameBindingKind::Def(_, true)) =
-                        (&old_binding.kind, &binding.kind) {
+                    (false, false) => {
+                        if let (&NameBindingKind::Def(_, true), &NameBindingKind::Def(_, true)) =
+                               (&old_binding.kind, &binding.kind) {
 
-                    this.session.buffer_lint_with_diagnostic(
-                        DUPLICATE_MACRO_EXPORTS,
-                        CRATE_NODE_ID,
-                        binding.span,
-                        &format!("a macro named `{}` has already been exported", ident),
-                        BuiltinLintDiagnostics::DuplicatedMacroExports(
-                            ident, old_binding.span, binding.span));
+                            this.session.buffer_lint_with_diagnostic(
+                                DUPLICATE_MACRO_EXPORTS,
+                                CRATE_NODE_ID,
+                                binding.span,
+                                &format!("a macro named `{}` has already been exported", ident),
+                                BuiltinLintDiagnostics::DuplicatedMacroExports(
+                                    ident, old_binding.span, binding.span));
 
-                    resolution.binding = Some(binding);
-                } else {
-                    return Err(old_binding);
+                            resolution.binding = Some(binding);
+                        } else {
+                            return Err(old_binding);
+                        }
+                    }
                 }
             } else {
                 resolution.binding = Some(binding);
@@ -512,10 +525,10 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         })
     }
 
-    pub fn ambiguity(&self, b1: &'a NameBinding<'a>, b2: &'a NameBinding<'a>)
+    fn ambiguity(&self, kind: AmbiguityKind, b1: &'a NameBinding<'a>, b2: &'a NameBinding<'a>)
                      -> &'a NameBinding<'a> {
         self.arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Ambiguity { b1, b2 },
+            kind: NameBindingKind::Ambiguity { kind, b1, b2 },
             vis: if b1.vis.is_at_least(b2.vis, self) { b1.vis } else { b2.vis },
             span: b1.span,
             expansion: Mark::root(),

@@ -13,7 +13,7 @@
 #![feature(uniform_paths)]
 
 use std::io;
-//~^ ERROR `std` import is ambiguous
+//~^ ERROR `std` is ambiguous
 
 mod std {
     pub struct io;

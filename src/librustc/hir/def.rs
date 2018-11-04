@@ -128,14 +128,6 @@ impl PathResolution {
     pub fn unresolved_segments(&self) -> usize {
         self.unresolved_segments
     }
-
-    pub fn kind_name(&self) -> &'static str {
-        if self.unresolved_segments != 0 {
-            "associated item"
-        } else {
-            self.base_def.kind_name()
-        }
-    }
 }
 
 /// Different kinds of symbols don't influence each other.
@@ -331,6 +323,14 @@ impl Def {
             Def::ToolMod => "tool module",
             Def::NonMacroAttr(attr_kind) => attr_kind.descr(),
             Def::Err => "unresolved item",
+        }
+    }
+
+    pub fn article(&self) -> &'static str {
+        match *self {
+            Def::AssociatedTy(..) | Def::AssociatedConst(..) | Def::AssociatedExistential(..) |
+            Def::Enum(..) | Def::Existential(..) | Def::Err => "an",
+            _ => "a",
         }
     }
 }

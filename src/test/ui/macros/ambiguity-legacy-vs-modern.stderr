@@ -1,32 +1,32 @@
-error[E0659]: `m` is ambiguous
+error[E0659]: `m` is ambiguous (`macro_rules` vs non-`macro_rules` from other module)
   --> $DIR/ambiguity-legacy-vs-modern.rs:31:9
    |
 LL |         m!() //~ ERROR `m` is ambiguous
    |         ^ ambiguous name
    |
-note: `m` could refer to the name defined here
+note: `m` could refer to the macro defined here
   --> $DIR/ambiguity-legacy-vs-modern.rs:26:5
    |
 LL |     macro_rules! m { () => (()) }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: `m` could also refer to the name defined here
+note: `m` could also refer to the macro defined here
   --> $DIR/ambiguity-legacy-vs-modern.rs:29:9
    |
 LL |         macro m() { 0 }
    |         ^^^^^^^^^^^^^^^
 
-error[E0659]: `m` is ambiguous
+error[E0659]: `m` is ambiguous (`macro_rules` vs non-`macro_rules` from other module)
   --> $DIR/ambiguity-legacy-vs-modern.rs:43:5
    |
 LL |     m!() //~ ERROR `m` is ambiguous
    |     ^ ambiguous name
    |
-note: `m` could refer to the name defined here
+note: `m` could refer to the macro defined here
   --> $DIR/ambiguity-legacy-vs-modern.rs:40:9
    |
 LL |         macro_rules! m { () => (()) }
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: `m` could also refer to the name defined here
+note: `m` could also refer to the macro defined here
   --> $DIR/ambiguity-legacy-vs-modern.rs:36:5
    |
 LL |     macro m() { 0 }
