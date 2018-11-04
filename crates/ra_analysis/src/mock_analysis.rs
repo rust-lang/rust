@@ -82,7 +82,7 @@ impl MockAnalysis {
         FileId(idx as u32 + 1)
     }
     pub fn analysis_host(self) -> AnalysisHost {
-        let mut host = AnalysisHost::new();
+        let mut host = AnalysisHost::default();
         let mut file_map = Vec::new();
         let mut change = AnalysisChange::new();
         for (id, (path, contents)) in self.files.into_iter().enumerate() {

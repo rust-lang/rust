@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ra_editor::LineIndex;
 use ra_syntax::{File, SyntaxNode};
-use salsa;
+use salsa::{self, Database};
 
 use crate::{
     db,
@@ -15,7 +15,7 @@ use crate::{
     Cancelable, Canceled, FileId,
 };
 
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub(crate) struct RootDatabase {
     runtime: salsa::Runtime<RootDatabase>,
 }
@@ -23,6 +23,21 @@ pub(crate) struct RootDatabase {
 impl salsa::Database for RootDatabase {
     fn salsa_runtime(&self) -> &salsa::Runtime<RootDatabase> {
         &self.runtime
+    }
+}
+
+impl Default for RootDatabase {
+    fn default() -> RootDatabase {
+        let mut db = RootDatabase {
+            runtime: Default::default(),
+        };
+        db.query_mut(crate::input::SourceRootQuery)
+            .set(crate::input::WORKSPACE, Default::default());
+        db.query_mut(crate::input::CrateGraphQuery)
+            .set((), Default::default());
+        db.query_mut(crate::input::LibrariesQuery)
+            .set((), Default::default());
+        db
     }
 }
 

@@ -17,7 +17,7 @@ use crate::{
     Result,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ServerWorldState {
     pub workspaces: Arc<Vec<CargoWorkspace>>,
     pub analysis_host: AnalysisHost,
@@ -32,14 +32,6 @@ pub struct ServerWorld {
 }
 
 impl ServerWorldState {
-    pub fn new() -> ServerWorldState {
-        ServerWorldState {
-            workspaces: Arc::new(Vec::new()),
-            analysis_host: AnalysisHost::new(),
-            path_map: PathMap::new(),
-            mem_map: FxHashMap::default(),
-        }
-    }
     pub fn apply_fs_changes(&mut self, events: Vec<FileEvent>) {
         let mut change = AnalysisChange::new();
         let mut inserted = false;
