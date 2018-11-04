@@ -337,7 +337,7 @@ impl<T> RawTable<T> {
         // cells then a probe window may have seen a full block when trying to
         // insert. We therefore need to keep that block non-empty so that
         // lookups will continue searching to the next probe window.
-        let ctrl = if empty_before.trailing_zeros() + empty_after.leading_zeros() >= Group::WIDTH {
+        let ctrl = if empty_before.leading_zeros() + empty_after.trailing_zeros() >= Group::WIDTH {
             DELETED
         } else {
             self.growth_left += 1;
