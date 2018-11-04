@@ -53,6 +53,7 @@ impl<'a> ParserAnyMacro<'a> {
         let fragment = panictry!(parser.parse_ast_fragment(kind, true).map_err(|mut e| {
             if e.span.is_dummy() {  // Get around lack of span in error (#30128)
                 e.set_span(site_span);
+                e.span_label(site_span, "in this macro expansion");
             } else if parser.token == token::Eof {  // (#52866)
                 e.set_span(parser.sess.source_map().next_point(parser.span));
             }
