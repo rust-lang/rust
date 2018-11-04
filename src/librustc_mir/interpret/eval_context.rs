@@ -32,7 +32,7 @@ use rustc::mir::interpret::{
 use rustc_data_structures::fx::FxHashMap;
 
 use super::{
-    Value, Operand, MemPlace, MPlaceTy, Place, PlaceTy, ScalarMaybeUndef,
+    Immediate, Operand, MemPlace, MPlaceTy, Place, PlaceTy, ScalarMaybeUndef,
     Memory, Machine
 };
 
@@ -333,9 +333,9 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         self.layout_of(local_ty)
     }
 
-    pub fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value<M::PointerTag>> {
+    pub fn str_to_immediate(&mut self, s: &str) -> EvalResult<'tcx, Immediate<M::PointerTag>> {
         let ptr = self.memory.allocate_static_bytes(s.as_bytes()).with_default_tag();
-        Ok(Value::new_slice(Scalar::Ptr(ptr), s.len() as u64, self.tcx.tcx))
+        Ok(Immediate::new_slice(Scalar::Ptr(ptr), s.len() as u64, self.tcx.tcx))
     }
 
     /// Return the actual dynamic size and alignment of the place at the given type.
@@ -457,11 +457,11 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
 
         // don't allocate at all for trivial constants
         if mir.local_decls.len() > 1 {
-            // We put some marker value into the locals that we later want to initialize.
+            // We put some marker immediate into the locals that we later want to initialize.
             // This can be anything except for LocalValue::Dead -- because *that* is the
             // value we use for things that we know are initially dead.
             let dummy =
-                LocalValue::Live(Operand::Immediate(Value::Scalar(ScalarMaybeUndef::Undef)));
+                LocalValue::Live(Operand::Immediate(Immediate::Scalar(ScalarMaybeUndef::Undef)));
             let mut locals = IndexVec::from_elem(dummy, &mir.local_decls);
             // Return place is handled specially by the `eval_place` functions, and the
             // entry in `locals` should never be used. Make it dead, to be sure.
@@ -652,13 +652,13 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                             ptr => write!(msg, " by integral ref: {:?}", ptr).unwrap(),
                         }
                     }
-                    Ok(Operand::Immediate(Value::Scalar(val))) => {
+                    Ok(Operand::Immediate(Immediate::Scalar(val))) => {
                         write!(msg, " {:?}", val).unwrap();
                         if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val {
                             allocs.push(ptr.alloc_id);
                         }
                     }
-                    Ok(Operand::Immediate(Value::ScalarPair(val1, val2))) => {
+                    Ok(Operand::Immediate(Immediate::ScalarPair(val1, val2))) => {
                         write!(msg, " ({:?}, {:?})", val1, val2).unwrap();
                         if let ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) = val1 {
                             allocs.push(ptr.alloc_id);

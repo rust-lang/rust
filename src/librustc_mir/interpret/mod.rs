@@ -36,6 +36,6 @@ pub use self::memory::{Memory, MemoryKind};
 
 pub use self::machine::{Machine, AllocMap, MayLeak};
 
-pub use self::operand::{ScalarMaybeUndef, Value, ValTy, Operand, OpTy};
+pub use self::operand::{ScalarMaybeUndef, Immediate, ImmTy, Operand, OpTy};
 
 pub use self::validity::RefTracking;

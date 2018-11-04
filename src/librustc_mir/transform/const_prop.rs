@@ -28,7 +28,7 @@ use rustc::ty::layout::{
     HasTyCtxt, TargetDataLayout, HasDataLayout,
 };
 
-use interpret::{self, EvalContext, ScalarMaybeUndef, Value, OpTy, MemoryKind};
+use interpret::{self, EvalContext, ScalarMaybeUndef, Immediate, OpTy, MemoryKind};
 use const_eval::{CompileTimeInterpreter, error_to_const_error, eval_promoted, mk_borrowck_eval_cx};
 use transform::{MirPass, MirSource};
 
@@ -354,7 +354,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                 type_size_of(self.tcx, self.param_env, ty).and_then(|n| Some((
                     OpTy {
-                        op: interpret::Operand::Immediate(Value::Scalar(
+                        op: interpret::Operand::Immediate(Immediate::Scalar(
                             Scalar::Bits {
                                 bits: n as u128,
                                 size: self.tcx.data_layout.pointer_size.bytes() as u8,
@@ -397,7 +397,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     this.ecx.unary_op(op, prim, arg.layout)
                 })?;
                 let res = OpTy {
-                    op: interpret::Operand::Immediate(Value::Scalar(val.into())),
+                    op: interpret::Operand::Immediate(Immediate::Scalar(val.into())),
                     layout: place_layout,
                 };
                 Some((res, span))
@@ -418,7 +418,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 }
 
                 let r = self.use_ecx(source_info, |this| {
-                    this.ecx.read_value(right.0)
+                    this.ecx.read_immediate(right.0)
                 })?;
                 if op == BinOp::Shr || op == BinOp::Shl {
                     let left_ty = left.ty(self.mir, self.tcx);
@@ -451,14 +451,14 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 }
                 let left = self.eval_operand(left, source_info)?;
                 let l = self.use_ecx(source_info, |this| {
-                    this.ecx.read_value(left.0)
+                    this.ecx.read_immediate(left.0)
                 })?;
                 trace!("const evaluating {:?} for {:?} and {:?}", op, left, right);
                 let (val, overflow) = self.use_ecx(source_info, |this| {
                     this.ecx.binary_op_val(op, l, r)
                 })?;
                 let val = if let Rvalue::CheckedBinaryOp(..) = *rvalue {
-                    Value::ScalarPair(
+                    Immediate::ScalarPair(
                         val.into(),
                         Scalar::from_bool(overflow).into(),
                     )
@@ -468,7 +468,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                         let _: Option<()> = self.use_ecx(source_info, |_| Err(err));
                         return None;
                     }
-                    Value::Scalar(val.into())
+                    Immediate::Scalar(val.into())
                 };
                 let res = OpTy {
                     op: interpret::Operand::Immediate(val),
@@ -591,7 +591,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
         if let TerminatorKind::Assert { expected, msg, cond, .. } = kind {
             if let Some(value) = self.eval_operand(cond, source_info) {
                 trace!("assertion on {:?} should be {:?}", value, expected);
-                let expected = Value::Scalar(Scalar::from_bool(*expected).into());
+                let expected = Immediate::Scalar(Scalar::from_bool(*expected).into());
                 if expected != value.0.to_immediate() {
                     // poison all places this operand references so that further code
                     // doesn't use the invalid value
@@ -629,7 +629,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                                 .eval_operand(len, source_info)
                                 .expect("len must be const");
                             let len = match len.0.to_immediate() {
-                                Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits {
+                                Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits {
                                     bits, ..
                                 })) => bits,
                                 _ => bug!("const len not primitive: {:?}", len),
@@ -638,7 +638,7 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                                 .eval_operand(index, source_info)
                                 .expect("index must be const");
                             let index = match index.0.to_immediate() {
-                                Value::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits {
+                                Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits {
                                     bits, ..
                                 })) => bits,
                                 _ => bug!("const index not primitive: {:?}", index),

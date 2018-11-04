@@ -15,7 +15,7 @@ use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc::mir::interpret::{EvalResult, Scalar};
 
-use super::{EvalContext, PlaceTy, Value, Machine, ValTy};
+use super::{EvalContext, PlaceTy, Immediate, Machine, ImmTy};
 
 
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> {
@@ -24,13 +24,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn binop_with_overflow(
         &mut self,
         op: mir::BinOp,
-        left: ValTy<'tcx, M::PointerTag>,
-        right: ValTy<'tcx, M::PointerTag>,
+        left: ImmTy<'tcx, M::PointerTag>,
+        right: ImmTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
         let (val, overflowed) = self.binary_op_val(op, left, right)?;
-        let val = Value::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
-        self.write_value(val, dest)
+        let val = Immediate::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
+        self.write_immediate(val, dest)
     }
 
     /// Applies the binary operation `op` to the arguments and writes the result to the
@@ -38,8 +38,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn binop_ignore_overflow(
         &mut self,
         op: mir::BinOp,
-        left: ValTy<'tcx, M::PointerTag>,
-        right: ValTy<'tcx, M::PointerTag>,
+        left: ImmTy<'tcx, M::PointerTag>,
+        right: ImmTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
         let (val, _overflowed) = self.binary_op_val(op, left, right)?;
@@ -288,8 +288,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     pub fn binary_op_val(
         &self,
         bin_op: mir::BinOp,
-        left: ValTy<'tcx, M::PointerTag>,
-        right: ValTy<'tcx, M::PointerTag>,
+        left: ImmTy<'tcx, M::PointerTag>,
+        right: ImmTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, (Scalar<M::PointerTag>, bool)> {
         self.binary_op(
             bin_op,

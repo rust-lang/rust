@@ -24,7 +24,7 @@ use syntax::ast::Mutability;
 use syntax::source_map::Span;
 
 use super::eval_context::{LocalValue, StackPopCleanup};
-use super::{Frame, Memory, Operand, MemPlace, Place, Value, ScalarMaybeUndef};
+use super::{Frame, Memory, Operand, MemPlace, Place, Immediate, ScalarMaybeUndef};
 use const_eval::CompileTimeInterpreter;
 
 #[derive(Default)]
@@ -237,11 +237,11 @@ impl<'a, Ctx> Snapshot<'a, Ctx> for Place
     }
 }
 
-impl_stable_hash_for!(enum ::interpret::Value {
+impl_stable_hash_for!(enum ::interpret::Immediate {
     Scalar(x),
     ScalarPair(x, y),
 });
-impl_snapshot_for!(enum Value {
+impl_snapshot_for!(enum Immediate {
     Scalar(s),
     ScalarPair(s, t),
 });

@@ -115,8 +115,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             | "add_with_overflow"
             | "sub_with_overflow"
             | "mul_with_overflow" => {
-                let lhs = self.read_value(args[0])?;
-                let rhs = self.read_value(args[1])?;
+                let lhs = self.read_immediate(args[0])?;
+                let rhs = self.read_immediate(args[1])?;
                 let (bin_op, ignore_overflow) = match intrinsic_name {
                     "overflowing_add" => (BinOp::Add, true),
                     "overflowing_sub" => (BinOp::Sub, true),
@@ -133,8 +133,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 }
             }
             "unchecked_shl" | "unchecked_shr" => {
-                let l = self.read_value(args[0])?;
-                let r = self.read_value(args[1])?;
+                let l = self.read_immediate(args[0])?;
+                let r = self.read_immediate(args[1])?;
                 let bin_op = match intrinsic_name {
                     "unchecked_shl" => BinOp::Shl,
                     "unchecked_shr" => BinOp::Shr,
@@ -172,8 +172,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         // Some fn calls are actually BinOp intrinsics
         if let Some((op, oflo)) = self.tcx.is_binop_lang_item(def_id) {
             let dest = dest.expect("128 lowerings can't diverge");
-            let l = self.read_value(args[0])?;
-            let r = self.read_value(args[1])?;
+            let l = self.read_immediate(args[0])?;
+            let r = self.read_immediate(args[1])?;
             if oflo {
                 self.binop_with_overflow(op, l, r, dest)?;
             } else {
@@ -183,7 +183,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         } else if Some(def_id) == self.tcx.lang_items().panic_fn() {
             assert!(args.len() == 1);
             // &(&'static str, &'static str, u32, u32)
-            let ptr = self.read_value(args[0])?;
+            let ptr = self.read_immediate(args[0])?;
             let place = self.ref_to_mplace(ptr)?;
             let (msg, file, line, col) = (
                 self.mplace_field(place, 0)?,
@@ -192,9 +192,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.mplace_field(place, 3)?,
             );
 
-            let msg_place = self.ref_to_mplace(self.read_value(msg.into())?)?;
+            let msg_place = self.ref_to_mplace(self.read_immediate(msg.into())?)?;
             let msg = Symbol::intern(self.read_str(msg_place)?);
-            let file_place = self.ref_to_mplace(self.read_value(file.into())?)?;
+            let file_place = self.ref_to_mplace(self.read_immediate(file.into())?)?;
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;
@@ -203,7 +203,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             assert!(args.len() == 2);
             // &'static str, &(&'static str, u32, u32)
             let msg = args[0];
-            let ptr = self.read_value(args[1])?;
+            let ptr = self.read_immediate(args[1])?;
             let place = self.ref_to_mplace(ptr)?;
             let (file, line, col) = (
                 self.mplace_field(place, 0)?,
@@ -211,9 +211,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.mplace_field(place, 2)?,
             );
 
-            let msg_place = self.ref_to_mplace(self.read_value(msg.into())?)?;
+            let msg_place = self.ref_to_mplace(self.read_immediate(msg.into())?)?;
             let msg = Symbol::intern(self.read_str(msg_place)?);
-            let file_place = self.ref_to_mplace(self.read_value(file.into())?)?;
+            let file_place = self.ref_to_mplace(self.read_immediate(file.into())?)?;
             let file = Symbol::intern(self.read_str(file_place)?);
             let line = self.read_scalar(line.into())?.to_u32()?;
             let col = self.read_scalar(col.into())?.to_u32()?;

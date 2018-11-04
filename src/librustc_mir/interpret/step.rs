@@ -159,9 +159,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
             BinaryOp(bin_op, ref left, ref right) => {
                 let layout = if binop_left_homogeneous(bin_op) { Some(dest.layout) } else { None };
-                let left = self.read_value(self.eval_operand(left, layout)?)?;
+                let left = self.read_immediate(self.eval_operand(left, layout)?)?;
                 let layout = if binop_right_homogeneous(bin_op) { Some(left.layout) } else { None };
-                let right = self.read_value(self.eval_operand(right, layout)?)?;
+                let right = self.read_immediate(self.eval_operand(right, layout)?)?;
                 self.binop_ignore_overflow(
                     bin_op,
                     left,
@@ -172,9 +172,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
             CheckedBinaryOp(bin_op, ref left, ref right) => {
                 // Due to the extra boolean in the result, we can never reuse the `dest.layout`.
-                let left = self.read_value(self.eval_operand(left, None)?)?;
+                let left = self.read_immediate(self.eval_operand(left, None)?)?;
                 let layout = if binop_right_homogeneous(bin_op) { Some(left.layout) } else { None };
-                let right = self.read_value(self.eval_operand(right, layout)?)?;
+                let right = self.read_immediate(self.eval_operand(right, layout)?)?;
                 self.binop_with_overflow(
                     bin_op,
                     left,
@@ -185,7 +185,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
             UnaryOp(un_op, ref operand) => {
                 // The operand always has the same type as the result.
-                let val = self.read_value(self.eval_operand(operand, Some(dest.layout))?)?;
+                let val = self.read_immediate(self.eval_operand(operand, Some(dest.layout))?)?;
                 let val = self.unary_op(un_op, val.to_scalar()?, dest.layout)?;
                 self.write_scalar(val, dest)?;
             }
@@ -259,7 +259,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         hir::MutImmutable,
                 };
                 let val = self.create_ref(val, Some(mutbl))?;
-                self.write_value(val, dest)?;
+                self.write_immediate(val, dest)?;
             }
 
             NullaryOp(mir::NullOp::Box, _) => {
