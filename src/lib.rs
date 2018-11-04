@@ -89,7 +89,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
     if libstd_has_mir {
         let start_id = tcx.lang_items().start_fn().unwrap();
         let main_ret_ty = tcx.fn_sig(main_id).output();
-        let main_ret_ty = main_ret_ty.no_late_bound_regions().unwrap();
+        let main_ret_ty = main_ret_ty.no_bound_vars().unwrap();
         let start_instance = ty::Instance::resolve(
             ecx.tcx.tcx,
             ty::ParamEnv::reveal_all(),
