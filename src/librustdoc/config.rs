@@ -525,9 +525,9 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) 
 /// Extracts `--extern-html-root-url` arguments from `matches` and returns a map of crate names to
 /// the given URLs. If an `--extern-html-root-url` argument was ill-formed, returns an error
 /// describing the issue.
-fn parse_extern_html_roots(matches: &getopts::Matches)
-    -> Result<BTreeMap<String, String>, &'static str>
-{
+fn parse_extern_html_roots(
+    matches: &getopts::Matches,
+) -> Result<BTreeMap<String, String>, &'static str> {
     let mut externs = BTreeMap::new();
     for arg in &matches.opt_strs("extern-html-root-url") {
         let mut parts = arg.splitn(2, '=');
