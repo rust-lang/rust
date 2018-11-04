@@ -143,21 +143,6 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
-    pub fn ptr_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
-        let dl = cx.data_layout();
-        match self {
-            Scalar::Bits { bits, size } => {
-                assert_eq!(size as u64, dl.pointer_size.bytes());
-                Ok(Scalar::Bits {
-                    bits: dl.signed_offset(bits as u64, i)? as u128,
-                    size,
-                })
-            }
-            Scalar::Ptr(ptr) => ptr.signed_offset(i, dl).map(Scalar::Ptr),
-        }
-    }
-
-    #[inline]
     pub fn ptr_offset(self, i: Size, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
         let dl = cx.data_layout();
         match self {
@@ -173,13 +158,43 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
+    pub fn ptr_wrapping_offset(self, i: Size, cx: &impl HasDataLayout) -> Self {
+        let dl = cx.data_layout();
+        match self {
+            Scalar::Bits { bits, size } => {
+                assert_eq!(size as u64, dl.pointer_size.bytes());
+                Scalar::Bits {
+                    bits: dl.overflowing_offset(bits as u64, i.bytes()).0 as u128,
+                    size,
+                }
+            }
+            Scalar::Ptr(ptr) => Scalar::Ptr(ptr.wrapping_offset(i, dl)),
+        }
+    }
+
+    #[inline]
+    pub fn ptr_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
+        let dl = cx.data_layout();
+        match self {
+            Scalar::Bits { bits, size } => {
+                assert_eq!(size as u64, dl.pointer_size().bytes());
+                Ok(Scalar::Bits {
+                    bits: dl.signed_offset(bits as u64, i)? as u128,
+                    size,
+                })
+            }
+            Scalar::Ptr(ptr) => ptr.signed_offset(i, dl).map(Scalar::Ptr),
+        }
+    }
+
+    #[inline]
     pub fn ptr_wrapping_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> Self {
         let dl = cx.data_layout();
         match self {
             Scalar::Bits { bits, size } => {
                 assert_eq!(size as u64, dl.pointer_size.bytes());
                 Scalar::Bits {
-                    bits: dl.wrapping_signed_offset(bits as u64, i) as u128,
+                    bits: dl.overflowing_signed_offset(bits as u64, i128::from(i)).0 as u128,
                     size,
                 }
             }
