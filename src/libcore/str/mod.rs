@@ -2199,7 +2199,7 @@ impl str {
     /// Converts a string slice to a byte slice. To convert the byte slice back
     /// into a string slice, use the [`str::from_utf8`] function.
     ///
-    /// [`str::from_utf8`]: ./str/fn.from_utf8.html
+    /// [`str::from_utf8`]: ../../std/str/fn.from_utf8.html
     ///
     /// # Examples
     ///
@@ -2224,7 +2224,7 @@ impl str {
     /// mutable byte slice back into a mutable string slice, use the
     /// [`str::from_utf8_mut`] function.
     ///
-    /// [`str::from_utf8_mut`]: ./str/fn.from_utf8_mut.html
+    /// [`str::from_utf8_mut`]: ../../std/str/fn.from_utf8_mut.html
     ///
     /// # Examples
     ///
