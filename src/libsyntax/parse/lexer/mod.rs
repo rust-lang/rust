@@ -11,7 +11,7 @@
 use ast::{self, Ident};
 use syntax_pos::{self, BytePos, CharPos, Pos, Span, NO_EXPANSION};
 use source_map::{SourceMap, FilePathMapping};
-use errors::{Applicability, FatalError, DiagnosticBuilder};
+use errors::{Applicability, FatalError, Diagnostic, DiagnosticBuilder};
 use parse::{token, ParseSess};
 use str::char_at;
 use symbol::{Symbol, keywords};
@@ -175,6 +175,16 @@ impl<'a> StringReader<'a> {
         self.fatal_errs.clear();
     }
 
+    pub fn buffer_fatal_errors(&mut self) -> Vec<Diagnostic> {
+        let mut buffer = Vec::new();
+
+        for err in self.fatal_errs.drain(..) {
+            err.buffer(&mut buffer);
+        }
+
+        buffer
+    }
+
     pub fn peek(&self) -> TokenAndSpan {
         // FIXME(pcwalton): Bad copy!
         TokenAndSpan {
@@ -249,6 +259,17 @@ impl<'a> StringReader<'a> {
             return Err(());
         }
         Ok(sr)
+    }
+
+    pub fn new_or_buffered_errs(sess: &'a ParseSess,
+                                source_file: Lrc<syntax_pos::SourceFile>,
+                                override_span: Option<Span>) -> Result<Self, Vec<Diagnostic>> {
+        let mut sr = StringReader::new_raw(sess, source_file, override_span);
+        if sr.advance_token().is_err() {
+            Err(sr.buffer_fatal_errors())
+        } else {
+            Ok(sr)
+        }
     }
 
     pub fn retokenize(sess: &'a ParseSess, mut span: Span) -> Self {

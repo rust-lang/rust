@@ -378,7 +378,7 @@ pub fn make_test(s: &str,
                  dont_insert_main: bool,
                  opts: &TestOptions)
                  -> (String, usize) {
-    let (crate_attrs, everything_else) = partition_source(s);
+    let (crate_attrs, everything_else, crates) = partition_source(s);
     let everything_else = everything_else.trim();
     let mut line_offset = 0;
     let mut prog = String::new();
@@ -402,29 +402,90 @@ pub fn make_test(s: &str,
     // are intended to be crate attributes.
     prog.push_str(&crate_attrs);
 
+    // Uses libsyntax to parse the doctest and find if there's a main fn and the extern
+    // crate already is included.
+    let (already_has_main, already_has_extern_crate) = crate::syntax::with_globals(|| {
+        use crate::syntax::{ast, parse::{self, ParseSess}, source_map::FilePathMapping};
+        use crate::syntax_pos::FileName;
+        use errors::emitter::EmitterWriter;
+        use errors::Handler;
+
+        let filename = FileName::Anon;
+        let source = crates + &everything_else;
+
+        // any errors in parsing should also appear when the doctest is compiled for real, so just
+        // send all the errors that libsyntax emits directly into a Sink instead of stderr
+        let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
+        let emitter = EmitterWriter::new(box io::sink(), None, false, false);
+        let handler = Handler::with_emitter(false, false, box emitter);
+        let sess = ParseSess::with_span_handler(handler, cm);
+
+        debug!("about to parse: \n{}", source);
+
+        let mut found_main = false;
+        let mut found_extern_crate = cratename.is_none();
+
+        let mut parser = match parse::maybe_new_parser_from_source_str(&sess, filename, source) {
+            Ok(p) => p,
+            Err(errs) => {
+                for mut err in errs {
+                    err.cancel();
+                }
+
+                return (found_main, found_extern_crate);
+            }
+        };
+
+        loop {
+            match parser.parse_item() {
+                Ok(Some(item)) => {
+                    if !found_main {
+                        if let ast::ItemKind::Fn(..) = item.node {
+                            if item.ident.as_str() == "main" {
+                                found_main = true;
+                            }
+                        }
+                    }
+
+                    if !found_extern_crate {
+                        if let ast::ItemKind::ExternCrate(original) = item.node {
+                            // This code will never be reached if `cratename` is none because
+                            // `found_extern_crate` is initialized to `true` if it is none.
+                            let cratename = cratename.unwrap();
+
+                            match original {
+                                Some(name) => found_extern_crate = name.as_str() == cratename,
+                                None => found_extern_crate = item.ident.as_str() == cratename,
+                            }
+                        }
+                    }
+
+                    if found_main && found_extern_crate {
+                        break;
+                    }
+                }
+                Ok(None) => break,
+                Err(mut e) => {
+                    e.cancel();
+                    break;
+                }
+            }
+        }
+
+        (found_main, found_extern_crate)
+    });
+
     // Don't inject `extern crate std` because it's already injected by the
     // compiler.
-    if !s.contains("extern crate") && !opts.no_crate_inject && cratename != Some("std") {
+    if !already_has_extern_crate && !opts.no_crate_inject && cratename != Some("std") {
         if let Some(cratename) = cratename {
+            // Make sure its actually used if not included.
             if s.contains(cratename) {
                 prog.push_str(&format!("extern crate {};\n", cratename));
                 line_offset += 1;
             }
         }
     }
-
-    // FIXME (#21299): prefer libsyntax or some other actual parser over this
-    // best-effort ad hoc approach
-    let already_has_main = s.lines()
-        .map(|line| {
-            let comment = line.find("//");
-            if let Some(comment_begins) = comment {
-                &line[0..comment_begins]
-            } else {
-                line
-            }
-        })
-        .any(|code| code.contains("fn main"));
 
     if dont_insert_main || already_has_main {
         prog.push_str(everything_else);
@@ -441,9 +502,10 @@ pub fn make_test(s: &str,
 }
 
 // FIXME(aburka): use a real parser to deal with multiline attributes
-fn partition_source(s: &str) -> (String, String) {
+fn partition_source(s: &str) -> (String, String, String) {
     let mut after_header = false;
     let mut before = String::new();
+    let mut crates = String::new();
     let mut after = String::new();
 
     for line in s.lines() {
@@ -457,12 +519,17 @@ fn partition_source(s: &str) -> (String, String) {
             after.push_str(line);
             after.push_str("\n");
         } else {
+            if trimline.starts_with("#[macro_use] extern crate")
+                || trimline.starts_with("extern crate") {
+                crates.push_str(line);
+                crates.push_str("\n");
+            }
             before.push_str(line);
             before.push_str("\n");
         }
     }
 
-    (before, after)
+    (before, after, crates)
 }
 
 pub trait Tester {
@@ -1013,5 +1080,39 @@ assert_eq!(2+2, 4);
 }".to_string();
         let output = make_test(input, None, false, &opts);
         assert_eq!(output, (expected, 1));
+    }
+
+    #[test]
+    fn make_test_issues_21299_33731() {
+        let opts = TestOptions::default();
+
+        let input =
+"// fn main
+assert_eq!(2+2, 4);";
+
+        let expected =
+"#![allow(unused)]
+fn main() {
+// fn main
+assert_eq!(2+2, 4);
+}".to_string();
+
+        let output = make_test(input, None, false, &opts);
+        assert_eq!(output, (expected, 2));
+
+        let input =
+"extern crate hella_qwop;
+assert_eq!(asdf::foo, 4);";
+
+        let expected =
+"#![allow(unused)]
+extern crate hella_qwop;
+extern crate asdf;
+fn main() {
+assert_eq!(asdf::foo, 4);
+}".to_string();
+
+        let output = make_test(input, Some("asdf"), false, &opts);
+        assert_eq!(output, (expected, 3));
     }
 }
