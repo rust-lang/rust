@@ -409,6 +409,40 @@ impl<'a> AstNode<'a> for CastExpr<'a> {
 
 impl<'a> CastExpr<'a> {}
 
+// Char
+
+#[derive(Debug, Clone)]
+pub struct CharNode(SyntaxNode);
+
+impl CharNode {
+    pub fn ast(&self) -> Char {
+        Char::cast(self.0.borrowed()).unwrap()
+    }
+}
+
+impl<'a> From<Char<'a>> for CharNode {
+    fn from(ast: Char<'a>) -> CharNode {
+        let syntax = ast.syntax().owned();
+        CharNode(syntax)
+    }
+}
+#[derive(Debug, Clone, Copy)]
+pub struct Char<'a> {
+    syntax: SyntaxNodeRef<'a>,
+}
+
+impl<'a> AstNode<'a> for Char<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            CHAR => Some(Char { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<'a> Char<'a> {}
+
 // Comment
 
 #[derive(Debug, Clone)]
