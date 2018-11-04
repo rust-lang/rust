@@ -1016,7 +1016,7 @@ pub fn get_arg_name(pat: &Pat) -> Option<ast::Name> {
 }
 
 pub fn int_bits(tcx: TyCtxt<'_, '_, '_>, ity: ast::IntTy) -> u64 {
-    layout::Integer::from_attr(tcx, attr::IntType::SignedInt(ity)).size().bits()
+    layout::Integer::from_attr(&tcx, attr::IntType::SignedInt(ity)).size().bits()
 }
 
 #[allow(clippy::cast_possible_wrap)]
@@ -1035,7 +1035,7 @@ pub fn unsext(tcx: TyCtxt<'_, '_, '_>, u: i128, ity: ast::IntTy) -> u128 {
 
 /// clip unused bytes
 pub fn clip(tcx: TyCtxt<'_, '_, '_>, u: u128, ity: ast::UintTy) -> u128 {
-    let bits = layout::Integer::from_attr(tcx, attr::IntType::UnsignedInt(ity)).size().bits();
+    let bits = layout::Integer::from_attr(&tcx, attr::IntType::UnsignedInt(ity)).size().bits();
     let amt = 128 - bits;
     (u << amt) >> amt
 }
