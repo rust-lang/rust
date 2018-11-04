@@ -34,12 +34,8 @@ impl ModuleTree {
             .collect()
     }
 
-    pub(crate) fn modules_for_file(&self, file_id: FileId) -> Vec<ModuleId> {
-        self.modules_for_source(ModuleSource::File(file_id))
-    }
-
-    pub(crate) fn any_module_for_file(&self, file_id: FileId) -> Option<ModuleId> {
-        self.modules_for_file(file_id).pop()
+    pub(crate) fn any_module_for_source(&self, source: ModuleSource) -> Option<ModuleId> {
+        self.modules_for_source(source).pop()
     }
 }
 

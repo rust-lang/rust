@@ -11,7 +11,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use crate::{
     db::{self, SyntaxDatabase},
     descriptors::function::FnScopes,
-    descriptors::module::{ModuleId, ModuleScope, ModuleTree},
+    descriptors::module::{ModuleId, ModuleScope, ModuleTree, ModuleSource},
     descriptors::DescriptorDatabase,
     input::FilesDatabase,
     Cancelable, FileId,
@@ -35,7 +35,7 @@ pub(crate) fn resolve_based_completion(
     let source_root_id = db.file_source_root(file_id);
     let file = db.file_syntax(file_id);
     let module_tree = db.module_tree(source_root_id)?;
-    let module_id = match module_tree.any_module_for_file(file_id) {
+    let module_id = match module_tree.any_module_for_source(ModuleSource::File(file_id)) {
         None => return Ok(None),
         Some(it) => it,
     };
