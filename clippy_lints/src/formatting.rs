@@ -186,21 +186,19 @@ fn check_array(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     if let ast::ExprKind::Array(ref array) = expr.node {
         for element in array {
             if let ast::ExprKind::Binary(ref op, ref lhs, _) = element.node {
-                if has_unary_equivalent(op.node) {
-                    if !differing_macro_contexts(lhs.span, op.span) {
-                        let space_span = lhs.span.between(op.span);
-                        if let Some(space_snippet) = snippet_opt(cx, space_span) {
-                            let lint_span = lhs.span.with_lo(lhs.span.hi());
-                            if space_snippet.contains('\n') {
-                                span_note_and_lint(
-                                    cx,
-                                    POSSIBLE_MISSING_COMMA,
-                                    lint_span,
-                                    "possibly missing a comma here",
-                                    lint_span,
-                                    "to remove this lint, add a comma or write the expr in a single line",
-                                );
-                            }
+                if has_unary_equivalent(op.node) && !differing_macro_contexts(lhs.span, op.span) {
+                    let space_span = lhs.span.between(op.span);
+                    if let Some(space_snippet) = snippet_opt(cx, space_span) {
+                        let lint_span = lhs.span.with_lo(lhs.span.hi());
+                        if space_snippet.contains('\n') {
+                            span_note_and_lint(
+                                cx,
+                                POSSIBLE_MISSING_COMMA,
+                                lint_span,
+                                "possibly missing a comma here",
+                                lint_span,
+                                "to remove this lint, add a comma or write the expr in a single line",
+                            );
                         }
                     }
                 }
