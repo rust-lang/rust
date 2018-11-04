@@ -25,13 +25,17 @@ pub(crate) struct ModuleTree {
 }
 
 impl ModuleTree {
-    pub(crate) fn modules_for_file(&self, file_id: FileId) -> Vec<ModuleId> {
+    pub(crate) fn modules_for_source(&self, source: ModuleSource) -> Vec<ModuleId> {
         self.mods
             .iter()
             .enumerate()
-            .filter(|(_idx, it)| it.source.is_file(file_id))
+            .filter(|(_idx, it)| it.source == source)
             .map(|(idx, _)| ModuleId(idx as u32))
             .collect()
+    }
+
+    pub(crate) fn modules_for_file(&self, file_id: FileId) -> Vec<ModuleId> {
+        self.modules_for_source(ModuleSource::File(file_id))
     }
 
     pub(crate) fn any_module_for_file(&self, file_id: FileId) -> Option<ModuleId> {
@@ -177,10 +181,6 @@ impl ModuleSource {
                 ModuleSourceNode::Inline(module.into())
             }
         }
-    }
-
-    fn is_file(self, file_id: FileId) -> bool {
-        self.as_file() == Some(file_id)
     }
 }
 
