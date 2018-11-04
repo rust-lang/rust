@@ -627,6 +627,7 @@ unsafe impl<T: ?Sized> Freeze for &mut T {}
 /// [`Pin`]: ../pin/struct.Pin.html
 /// [`pin module`]: ../../std/pin/index.html
 #[stable(feature = "pin", since = "1.33.0")]
+#[cfg_attr(not(stage0), lang = "unpin")]
 pub auto trait Unpin {}
 
 /// A marker type which does not implement `Unpin`.
