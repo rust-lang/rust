@@ -684,7 +684,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         let binding = (Def::NonMacroAttr(NonMacroAttrKind::Builtin),
                                        ty::Visibility::Public, ident.span, Mark::root())
                                        .to_name_binding(self.arenas);
-                        Ok((binding, Flags::PRELUDE, Flags::empty()))
+                        Ok((binding, Flags::PRELUDE, Flags::all()))
                     } else {
                         Err(Determinacy::Determined)
                     }
@@ -917,18 +917,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         let builtin_attrs = mem::replace(&mut *module.builtin_attrs.borrow_mut(), Vec::new());
         for (ident, parent_scope) in builtin_attrs {
-            let binding = self.early_resolve_ident_in_lexical_scope(
+            let _ = self.early_resolve_ident_in_lexical_scope(
                 ident, MacroNS, Some(MacroKind::Attr), false, &parent_scope, true, true, ident.span
             );
-            if let Ok(binding) = binding {
-                if binding.def_ignoring_ambiguity() !=
-                        Def::NonMacroAttr(NonMacroAttrKind::Builtin) {
-                    let builtin_binding = (Def::NonMacroAttr(NonMacroAttrKind::Builtin),
-                                           ty::Visibility::Public, ident.span, Mark::root())
-                                           .to_name_binding(self.arenas);
-                    self.report_ambiguity_error(ident, binding, builtin_binding);
-                }
-            }
         }
     }
 

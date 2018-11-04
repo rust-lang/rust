@@ -1,3 +1,9 @@
+error[E0425]: cannot find value `NonExistent` in this scope
+  --> $DIR/ambiguous-builtin-attrs.rs:30:5
+   |
+LL |     NonExistent; //~ ERROR cannot find value `NonExistent` in this scope
+   |     ^^^^^^^^^^^ not found in this scope
+
 error[E0659]: `repr` is ambiguous
   --> $DIR/ambiguous-builtin-attrs.rs:9:3
    |
@@ -87,12 +93,6 @@ note: `feature` could also refer to the name defined here
 LL | #![feature(decl_macro)] //~ ERROR `feature` is ambiguous
    |    ^^^^^^^
    = note: consider adding an explicit import of `feature` to disambiguate
-
-error[E0425]: cannot find value `NonExistent` in this scope
-  --> $DIR/ambiguous-builtin-attrs.rs:30:5
-   |
-LL |     NonExistent; //~ ERROR cannot find value `NonExistent` in this scope
-   |     ^^^^^^^^^^^ not found in this scope
 
 error: aborting due to 6 previous errors
 
