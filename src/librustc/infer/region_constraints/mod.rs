@@ -11,7 +11,7 @@
 //! See README.md
 
 use self::CombineMapType::*;
-use self::UndoLogEntry::*;
+use self::UndoLog::*;
 
 use super::unify_key;
 use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
@@ -59,7 +59,7 @@ pub struct RegionConstraintCollector<'tcx> {
     /// otherwise we end up adding entries for things like the lower
     /// bound on a variable and so forth, which can never be rolled
     /// back.
-    undo_log: Vec<UndoLogEntry<'tcx>>,
+    undo_log: Vec<UndoLog<'tcx>>,
 
     /// When we add a R1 == R2 constriant, we currently add (a) edges
     /// R1 <= R2 and R2 <= R1 and (b) we unify the two regions in this
@@ -254,7 +254,7 @@ struct TwoRegions<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-enum UndoLogEntry<'tcx> {
+enum UndoLog<'tcx> {
     /// Pushed when we start a snapshot.
     OpenSnapshot,
 
@@ -456,7 +456,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         self.any_unifications = snapshot.any_unifications;
     }
 
-    fn rollback_undo_entry(&mut self, undo_entry: UndoLogEntry<'tcx>) {
+    fn rollback_undo_entry(&mut self, undo_entry: UndoLog<'tcx>) {
         match undo_entry {
             OpenSnapshot => {
                 panic!("Failure to observe stack discipline");
@@ -548,7 +548,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
         fn kill_constraint<'tcx>(
             placeholders: &FxHashSet<ty::Region<'tcx>>,
-            undo_entry: &UndoLogEntry<'tcx>,
+            undo_entry: &UndoLog<'tcx>,
         ) -> bool {
             match undo_entry {
                 &AddConstraint(Constraint::VarSubVar(..)) => false,
