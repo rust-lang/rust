@@ -11,7 +11,7 @@ LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
 LL |     foo!(a?); //~ ERROR no rules expected the token `?`
-   |           ^ no rules expected the token `?`
+   |           ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
   --> $DIR/macro-at-most-once-rep-2018.rs:37:11
@@ -20,7 +20,7 @@ LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
 LL |     foo!(a?a); //~ ERROR no rules expected the token `?`
-   |           ^ no rules expected the token `?`
+   |           ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
   --> $DIR/macro-at-most-once-rep-2018.rs:38:11
@@ -29,7 +29,7 @@ LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
 LL |     foo!(a?a?a); //~ ERROR no rules expected the token `?`
-   |           ^ no rules expected the token `?`
+   |           ^ no rules expected this token in macro call
 
 error: unexpected end of macro invocation
   --> $DIR/macro-at-most-once-rep-2018.rs:40:5
@@ -38,7 +38,7 @@ LL | macro_rules! barplus {
    | -------------------- when calling this macro
 ...
 LL |     barplus!(); //~ERROR unexpected end of macro invocation
-   |     ^^^^^^^^^^^ unexpected end of macro invocation
+   |     ^^^^^^^^^^^ missing tokens in macro arguments
 
 error: unexpected end of macro invocation
   --> $DIR/macro-at-most-once-rep-2018.rs:41:15
@@ -47,7 +47,7 @@ LL | macro_rules! barplus {
    | -------------------- when calling this macro
 ...
 LL |     barplus!(a); //~ERROR unexpected end of macro invocation
-   |               ^ unexpected end of macro invocation
+   |               ^ missing tokens in macro arguments
 
 error: no rules expected the token `?`
   --> $DIR/macro-at-most-once-rep-2018.rs:42:15
@@ -56,7 +56,7 @@ LL | macro_rules! barplus {
    | -------------------- when calling this macro
 ...
 LL |     barplus!(a?); //~ ERROR no rules expected the token `?`
-   |               ^ no rules expected the token `?`
+   |               ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
   --> $DIR/macro-at-most-once-rep-2018.rs:43:15
@@ -65,7 +65,7 @@ LL | macro_rules! barplus {
    | -------------------- when calling this macro
 ...
 LL |     barplus!(a?a); //~ ERROR no rules expected the token `?`
-   |               ^ no rules expected the token `?`
+   |               ^ no rules expected this token in macro call
 
 error: unexpected end of macro invocation
   --> $DIR/macro-at-most-once-rep-2018.rs:47:5
@@ -74,7 +74,7 @@ LL | macro_rules! barstar {
    | -------------------- when calling this macro
 ...
 LL |     barstar!(); //~ERROR unexpected end of macro invocation
-   |     ^^^^^^^^^^^ unexpected end of macro invocation
+   |     ^^^^^^^^^^^ missing tokens in macro arguments
 
 error: unexpected end of macro invocation
   --> $DIR/macro-at-most-once-rep-2018.rs:48:15
@@ -83,7 +83,7 @@ LL | macro_rules! barstar {
    | -------------------- when calling this macro
 ...
 LL |     barstar!(a); //~ERROR unexpected end of macro invocation
-   |               ^ unexpected end of macro invocation
+   |               ^ missing tokens in macro arguments
 
 error: no rules expected the token `?`
   --> $DIR/macro-at-most-once-rep-2018.rs:49:15
@@ -92,7 +92,7 @@ LL | macro_rules! barstar {
    | -------------------- when calling this macro
 ...
 LL |     barstar!(a?); //~ ERROR no rules expected the token `?`
-   |               ^ no rules expected the token `?`
+   |               ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
   --> $DIR/macro-at-most-once-rep-2018.rs:50:15
@@ -101,7 +101,7 @@ LL | macro_rules! barstar {
    | -------------------- when calling this macro
 ...
 LL |     barstar!(a?a); //~ ERROR no rules expected the token `?`
-   |               ^ no rules expected the token `?`
+   |               ^ no rules expected this token in macro call
 
 error: aborting due to 12 previous errors
 

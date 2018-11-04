@@ -14,13 +14,13 @@ error: no rules expected the token `r#async`
   --> $DIR/edition-keywords-2018-2018-parsing.rs:22:31
    |
 LL |     r#async = consumes_async!(r#async); //~ ERROR no rules expected the token `r#async`
-   |                               ^^^^^^^ no rules expected the token `r#async`
+   |                               ^^^^^^^ no rules expected this token in macro call
 
 error: no rules expected the token `async`
   --> $DIR/edition-keywords-2018-2018-parsing.rs:23:35
    |
 LL |     r#async = consumes_async_raw!(async); //~ ERROR no rules expected the token `async`
-   |                                   ^^^^^ no rules expected the token `async`
+   |                                   ^^^^^ no rules expected this token in macro call
 
 error: expected one of `move`, `|`, or `||`, found the end of the macro arm
   --> <::edition_kw_macro_2018::passes_ident macros>:1:25

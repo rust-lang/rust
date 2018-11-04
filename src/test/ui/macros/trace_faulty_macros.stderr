@@ -5,7 +5,7 @@ LL | macro_rules! my_faulty_macro {
    | ---------------------------- when calling this macro
 LL |     () => {
 LL |         my_faulty_macro!(bcd); //~ ERROR no rules
-   |                          ^^^ no rules expected the token `bcd`
+   |                          ^^^ no rules expected this token in macro call
 ...
 LL |     my_faulty_macro!();
    |     ------------------- in this macro invocation

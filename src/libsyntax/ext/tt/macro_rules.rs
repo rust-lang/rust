@@ -11,6 +11,7 @@
 use {ast, attr};
 use syntax_pos::{Span, DUMMY_SP};
 use edition::Edition;
+use errors::FatalError;
 use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::expand::{AstFragment, AstFragmentKind};
@@ -130,6 +131,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
     // Which arm's failure should we report? (the one furthest along)
     let mut best_fail_spot = DUMMY_SP;
     let mut best_fail_tok = None;
+    let mut best_fail_text = None;
 
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         let lhs_tt = match *lhs {
@@ -185,9 +187,10 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                     macro_ident: name
                 })
             }
-            Failure(sp, tok) => if sp.lo() >= best_fail_spot.lo() {
+            Failure(sp, tok, t) => if sp.lo() >= best_fail_spot.lo() {
                 best_fail_spot = sp;
                 best_fail_tok = Some(tok);
+                best_fail_text = Some(t);
             },
             Error(err_sp, ref msg) => {
                 cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..])
@@ -198,7 +201,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
     let best_fail_msg = parse_failure_msg(best_fail_tok.expect("ran no matchers"));
     let span = best_fail_spot.substitute_dummy(sp);
     let mut err = cx.struct_span_err(span, &best_fail_msg);
-    err.span_label(span, best_fail_msg);
+    err.span_label(span, best_fail_text.unwrap_or(best_fail_msg));
     if let Some(sp) = def_span {
         if cx.source_map().span_to_filename(sp).is_real() && !sp.is_dummy() {
             err.span_label(cx.source_map().def_span(sp), "when calling this macro");
@@ -278,9 +281,13 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
 
     let argument_map = match parse(sess, body.stream(), &argument_gram, None, true) {
         Success(m) => m,
-        Failure(sp, tok) => {
+        Failure(sp, tok, t) => {
             let s = parse_failure_msg(tok);
-            sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s).raise();
+            let sp = sp.substitute_dummy(def.span);
+            let mut err = sess.span_diagnostic.struct_span_fatal(sp, &s);
+            err.span_label(sp, t);
+            err.emit();
+            FatalError.raise();
         }
         Error(sp, s) => {
             sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s).raise();
