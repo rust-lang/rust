@@ -1,5 +1,43 @@
 # The On-Demand SLG solver
 
+Given a set of program clauses (provided by our [lowering rules][lowering])
+and a query, we need to return the result of the query and the value of any
+type variables we can determine. This is the job of the solver.
+
+For example, `exists<T> { Vec<T>: FromIterator<u32> }` has one solution, so
+its result is `Unique; substitution [?T := u32]`. A solution also comes with
+a set of region constraints, which we'll ignore in this introduction.
+
+[lowering]: ./lowering-rules.html
+
+## Goals of the Solver
+
+### On demand
+
+There are often many, or even infinitely many, solutions to a query. For
+example, say we want to prove that `exists<T> { Vec<T>: Debug }` for _some_
+type `?T`. Our solver should be capable of iterating over each answer one at
+a time, say `?T = u32`, then `?T = i32`, and so on, rather than iterating
+over every type in the type system. If we need more answers, we can request
+more until we are done. This is similar to how Prolog works.
+
+*See also: [The traditional, interactive Prolog query][pq]*
+
+[pq]: ./canonical-queries.html#the-traditional-interactive-prolog-query
+
+### Breadth-first
+
+`Vec<?T>: Debug` is true if `?T: Debug`. This leads to a cycle: `[Vec<u32> ,
+Vec<Vec<u32>>, Vec<Vec<Vec<u32>>>]`, and so on all implement `Debug`. Our
+solver ought to be breadth first and consider answers like `[Vec<u32>: Debug,
+Vec<i32>: Debug, ...]` before it recurses, or we may never find the answer
+we're looking for.
+
+### Cache friendly
+
+To speed up compilation, we need to cache results, including partial results
+left over from past solver queries.
+
 ## Description of how it works
 
 The basis of the solver is the `Forest` type. A *forest* stores a
