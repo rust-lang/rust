@@ -371,8 +371,19 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 // the last field).  Can't have foreign types here, how would we
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1)?;
-                let (unsized_size, unsized_align) = self.size_and_align_of(metadata, field)?
-                    .expect("Fields cannot be extern types");
+                let (unsized_size, unsized_align) = match self.size_and_align_of(metadata, field)? {
+                    Some(size_and_align) => size_and_align,
+                    None => {
+                        // A field with extern type.  If this is the only field,
+                        // we treat this struct just the same.  Else, this is an error
+                        // (for now).
+                        if layout.fields.count() == 1 {
+                            return Ok(None)
+                        } else {
+                            bug!("Fields cannot be extern types, unless they are the only field")
+                        }
+                    }
+                };
 
                 // FIXME (#26403, #27023): We should be adding padding
                 // to `sized_size` (to accommodate the `unsized_align`

@@ -354,7 +354,8 @@ where
         let (meta, offset) = if field_layout.is_unsized() {
             // re-use parent metadata to determine dynamic field layout
             let (_, align) = self.size_and_align_of(base.meta, field_layout)?
-                .expect("Fields cannot be extern types");
+                // If this is an extern type, we fall back to its static size and alignment.
+                .unwrap_or_else(|| base.layout.size_and_align());
             (base.meta, offset.abi_align(align))
         } else {
             // base.meta could be present; we might be accessing a sized field of an unsized
