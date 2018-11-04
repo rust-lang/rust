@@ -1,7 +1,8 @@
-#![feature(rustc_attrs, rustc_private, step_trait)]
+#![feature(rustc_attrs, rustc_private, step_trait, min_const_unsafe_fn)]
 
 #[macro_use] extern crate rustc_data_structures;
 extern crate rustc_serialize;
+use rustc_serialize::{Decodable, Decoder};
 
 use rustc_data_structures::indexed_vec::Idx;
 
