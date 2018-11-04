@@ -16,3 +16,4 @@ fn main() {
     }
 }
 //~^ ERROR expected `{`, found `}`
+//~| NOTE expected `{`

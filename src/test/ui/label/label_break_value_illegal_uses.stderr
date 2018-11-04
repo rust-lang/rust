@@ -10,6 +10,7 @@ error: expected `{`, found `'b`
 LL |     if true 'b: {} //~ ERROR expected `{`, found `'b`
    |     --      ^^----
    |     |       |
+   |     |       expected `{`
    |     |       help: try placing this code inside a block: `{ 'b: { } }`
    |     this `if` statement has a condition, but no block
 
@@ -19,6 +20,7 @@ error: expected `{`, found `'b`
 LL |     if true {} else 'b: {} //~ ERROR expected `{`, found `'b`
    |                     ^^----
    |                     |
+   |                     expected `{`
    |                     help: try placing this code inside a block: `{ 'b: { } }`
 
 error: expected one of `.`, `?`, `{`, or an operator, found `'b`

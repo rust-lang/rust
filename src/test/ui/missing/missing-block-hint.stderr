@@ -2,7 +2,7 @@ error: expected `{`, found `=>`
   --> $DIR/missing-block-hint.rs:13:18
    |
 LL |         if (foo) => {} //~ ERROR expected `{`, found `=>`
-   |         --       ^^
+   |         --       ^^ expected `{`
    |         |
    |         this `if` statement has a condition, but no block
 
@@ -14,6 +14,7 @@ LL |         if (foo)
 LL |             bar; //~ ERROR expected `{`, found `bar`
    |             ^^^-
    |             |
+   |             expected `{`
    |             help: try placing this code inside a block: `{ bar; }`
 
 error: aborting due to 2 previous errors

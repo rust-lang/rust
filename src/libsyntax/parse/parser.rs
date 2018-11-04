@@ -611,6 +611,7 @@ impl<'a> Parser<'a> {
             t if t.is_special_ident() => "reserved identifier",
             t if t.is_used_keyword() => "keyword",
             t if t.is_unused_keyword() => "reserved keyword",
+            token::DocComment(..) => "doc comment",
             _ => return None,
         })
     }
@@ -644,8 +645,8 @@ impl<'a> Parser<'a> {
                 Ok(())
             } else {
                 let token_str = pprust::token_to_string(t);
-                let this_token_str = self.this_token_to_string();
-                let mut err = self.fatal(&format!("expected `{}`, found `{}`",
+                let this_token_str = self.this_token_descr();
+                let mut err = self.fatal(&format!("expected `{}`, found {}",
                                                   token_str,
                                                   this_token_str));
 
@@ -1444,8 +1445,8 @@ impl<'a> Parser<'a> {
                             Some(body)
                         }
                         _ => {
-                            let token_str = self.this_token_to_string();
-                            let mut err = self.fatal(&format!("expected `;` or `{{`, found `{}`",
+                            let token_str = self.this_token_descr();
+                            let mut err = self.fatal(&format!("expected `;` or `{{`, found {}",
                                                               token_str));
                             err.span_label(self.span, "expected `;` or `{`");
                             return Err(err);
@@ -1453,8 +1454,8 @@ impl<'a> Parser<'a> {
                     }
                 }
                 _ => {
-                    let token_str = self.this_token_to_string();
-                    let mut err = self.fatal(&format!("expected `;` or `{{`, found `{}`",
+                    let token_str = self.this_token_descr();
+                    let mut err = self.fatal(&format!("expected `;` or `{{`, found {}",
                                                       token_str));
                     err.span_label(self.span, "expected `;` or `{`");
                     return Err(err);
@@ -3917,8 +3918,8 @@ impl<'a> Parser<'a> {
                     etc_span = Some(etc_sp);
                     break;
                 }
-                let token_str = self.this_token_to_string();
-                let mut err = self.fatal(&format!("expected `}}`, found `{}`", token_str));
+                let token_str = self.this_token_descr();
+                let mut err = self.fatal(&format!("expected `}}`, found {}", token_str));
 
                 err.span_label(self.span, "expected `}`");
                 let mut comma_sp = None;
@@ -4680,8 +4681,8 @@ impl<'a> Parser<'a> {
                     } else {
                         ""
                     };
-                    let tok_str = self.this_token_to_string();
-                    let mut err = self.fatal(&format!("expected {}`(` or `{{`, found `{}`",
+                    let tok_str = self.this_token_descr();
+                    let mut err = self.fatal(&format!("expected {}`(` or `{{`, found {}",
                                                       ident_str,
                                                       tok_str));
                     err.span_label(self.span, format!("expected {}`(` or `{{`", ident_str));
@@ -4817,8 +4818,8 @@ impl<'a> Parser<'a> {
 
         if !self.eat(&token::OpenDelim(token::Brace)) {
             let sp = self.span;
-            let tok = self.this_token_to_string();
-            let mut e = self.span_fatal(sp, &format!("expected `{{`, found `{}`", tok));
+            let tok = self.this_token_descr();
+            let mut e = self.span_fatal(sp, &format!("expected `{{`, found {}", tok));
             let do_not_suggest_help =
                 self.token.is_keyword(keywords::In) || self.token == token::Colon;
 
@@ -4880,6 +4881,7 @@ impl<'a> Parser<'a> {
                 }
                 _ => ()
             }
+            e.span_label(sp, "expected `{`");
             return Err(e);
         }
 
@@ -4975,7 +4977,7 @@ impl<'a> Parser<'a> {
 
     fn warn_missing_semicolon(&self) {
         self.diagnostic().struct_span_warn(self.span, {
-            &format!("expected `;`, found `{}`", self.this_token_to_string())
+            &format!("expected `;`, found {}", self.this_token_descr())
         }).note({
             "This was erroneously allowed and will become a hard error in a future release"
         }).emit();
@@ -6014,9 +6016,9 @@ impl<'a> Parser<'a> {
             self.expect(&token::Semi)?;
             body
         } else {
-            let token_str = self.this_token_to_string();
+            let token_str = self.this_token_descr();
             let mut err = self.fatal(&format!(
-                "expected `where`, `{{`, `(`, or `;` after struct name, found `{}`",
+                "expected `where`, `{{`, `(`, or `;` after struct name, found {}",
                 token_str
             ));
             err.span_label(self.span, "expected `where`, `{`, `(`, or `;` after struct name");
@@ -6038,9 +6040,9 @@ impl<'a> Parser<'a> {
         } else if self.token == token::OpenDelim(token::Brace) {
             VariantData::Struct(self.parse_record_struct_body()?, ast::DUMMY_NODE_ID)
         } else {
-            let token_str = self.this_token_to_string();
+            let token_str = self.this_token_descr();
             let mut err = self.fatal(&format!(
-                "expected `where` or `{{` after union name, found `{}`", token_str));
+                "expected `where` or `{{` after union name, found {}", token_str));
             err.span_label(self.span, "expected `where` or `{` after union name");
             return Err(err);
         };
@@ -6088,9 +6090,9 @@ impl<'a> Parser<'a> {
             }
             self.eat(&token::CloseDelim(token::Brace));
         } else {
-            let token_str = self.this_token_to_string();
+            let token_str = self.this_token_descr();
             let mut err = self.fatal(&format!(
-                    "expected `where`, or `{{` after struct name, found `{}`", token_str));
+                    "expected `where`, or `{{` after struct name, found {}", token_str));
             err.span_label(self.span, "expected `where`, or `{` after struct name");
             return Err(err);
         }
@@ -6166,8 +6168,8 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 let sp = self.sess.source_map().next_point(self.prev_span);
-                let mut err = self.struct_span_err(sp, &format!("expected `,`, or `}}`, found `{}`",
-                                                                self.this_token_to_string()));
+                let mut err = self.struct_span_err(sp, &format!("expected `,`, or `}}`, found {}",
+                                                                self.this_token_descr()));
                 if self.token.is_ident() {
                     // This is likely another field; emit the diagnostic and keep going
                     err.span_suggestion_with_applicability(
@@ -6303,9 +6305,9 @@ impl<'a> Parser<'a> {
         }
 
         if !self.eat(term) {
-            let token_str = self.this_token_to_string();
-            let mut err = self.fatal(&format!("expected item, found `{}`", token_str));
-            if token_str == ";" {
+            let token_str = self.this_token_descr();
+            let mut err = self.fatal(&format!("expected item, found {}", token_str));
+            if self.token == token::Semi {
                 let msg = "consider removing this semicolon";
                 err.span_suggestion_short_with_applicability(
                     self.span, msg, String::new(), Applicability::MachineApplicable
