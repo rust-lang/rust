@@ -1565,7 +1565,7 @@ fn rewrite_struct_lit<'a>(
         rewrite_with_alignment(
             fields,
             context,
-            shape,
+            v_shape,
             mk_sp(body_lo, span.hi()),
             one_line_width,
         )?
