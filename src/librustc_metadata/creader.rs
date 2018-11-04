@@ -30,8 +30,6 @@ use rustc::util::common::record_time;
 use rustc::util::nodemap::FxHashSet;
 use rustc::hir::map::Definitions;
 
-use rustc_metadata_utils::validate_crate_name;
-
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::{cmp, fs};
@@ -1106,7 +1104,7 @@ impl<'a> CrateLoader<'a> {
                        item.ident, orig_name);
                 let orig_name = match orig_name {
                     Some(orig_name) => {
-                        validate_crate_name(Some(self.sess), &orig_name.as_str(),
+                        ::validate_crate_name(Some(self.sess), &orig_name.as_str(),
                                             Some(item.span));
                         orig_name
                     }

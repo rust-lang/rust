@@ -102,21 +102,27 @@
 //! source-level module, functions from the same module will be available for
 //! inlining, even when they are not marked #[inline].
 
-use monomorphize::collector::InliningMap;
+use std::collections::hash_map::Entry;
+use std::cmp;
+use std::sync::Arc;
+
+use syntax::ast::NodeId;
+use syntax::symbol::InternedString;
 use rustc::dep_graph::{WorkProductId, WorkProduct, DepNode, DepConstructor};
 use rustc::hir::CodegenFnAttrFlags;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::DefPathData;
 use rustc::mir::mono::{Linkage, Visibility, CodegenUnitNameBuilder};
 use rustc::middle::exported_symbols::SymbolExportLevel;
 use rustc::ty::{self, TyCtxt, InstanceDef};
 use rustc::ty::item_path::characteristic_def_id_of_type;
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use std::collections::hash_map::Entry;
-use std::cmp;
-use syntax::ast::NodeId;
-use syntax::symbol::InternedString;
+use rustc::ty::query::Providers;
+use rustc::util::common::time;
+use rustc::util::nodemap::{DefIdSet, FxHashMap, FxHashSet};
 use rustc::mir::mono::MonoItem;
+
+use monomorphize::collector::InliningMap;
+use monomorphize::collector::{self, MonoItemCollectionMode};
 use monomorphize::item::{MonoItemExt, InstantiationMode};
 
 pub use rustc::mir::mono::CodegenUnit;
@@ -891,4 +897,147 @@ fn debug_dump<'a, 'b, 'tcx, I>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             debug!("");
         }
     }
+}
+
+fn collect_and_partition_mono_items<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    cnum: CrateNum,
+) -> (Arc<DefIdSet>, Arc<Vec<Arc<CodegenUnit<'tcx>>>>)
+{
+    assert_eq!(cnum, LOCAL_CRATE);
+
+    let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {
+        Some(ref s) => {
+            let mode_string = s.to_lowercase();
+            let mode_string = mode_string.trim();
+            if mode_string == "eager" {
+                MonoItemCollectionMode::Eager
+            } else {
+                if mode_string != "lazy" {
+                    let message = format!("Unknown codegen-item collection mode '{}'. \
+                                           Falling back to 'lazy' mode.",
+                                          mode_string);
+                    tcx.sess.warn(&message);
+                }
+
+                MonoItemCollectionMode::Lazy
+            }
+        }
+        None => {
+            if tcx.sess.opts.cg.link_dead_code {
+                MonoItemCollectionMode::Eager
+            } else {
+                MonoItemCollectionMode::Lazy
+            }
+        }
+    };
+
+    let (items, inlining_map) =
+        time(tcx.sess, "monomorphization collection", || {
+            collector::collect_crate_mono_items(tcx, collection_mode)
+    });
+
+    tcx.sess.abort_if_errors();
+
+    ::monomorphize::assert_symbols_are_distinct(tcx, items.iter());
+
+    let strategy = if tcx.sess.opts.incremental.is_some() {
+        PartitioningStrategy::PerModule
+    } else {
+        PartitioningStrategy::FixedUnitCount(tcx.sess.codegen_units())
+    };
+
+    let codegen_units = time(tcx.sess, "codegen unit partitioning", || {
+        partition(
+            tcx,
+            items.iter().cloned(),
+            strategy,
+            &inlining_map
+        )
+            .into_iter()
+            .map(Arc::new)
+            .collect::<Vec<_>>()
+    });
+
+    let mono_items: DefIdSet = items.iter().filter_map(|mono_item| {
+        match *mono_item {
+            MonoItem::Fn(ref instance) => Some(instance.def_id()),
+            MonoItem::Static(def_id) => Some(def_id),
+            _ => None,
+        }
+    }).collect();
+
+    if tcx.sess.opts.debugging_opts.print_mono_items.is_some() {
+        let mut item_to_cgus: FxHashMap<_, Vec<_>> = Default::default();
+
+        for cgu in &codegen_units {
+            for (&mono_item, &linkage) in cgu.items() {
+                item_to_cgus.entry(mono_item)
+                            .or_default()
+                            .push((cgu.name().clone(), linkage));
+            }
+        }
+
+        let mut item_keys: Vec<_> = items
+            .iter()
+            .map(|i| {
+                let mut output = i.to_string(tcx);
+                output.push_str(" @@");
+                let mut empty = Vec::new();
+                let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
+                cgus.as_mut_slice().sort_by_key(|&(ref name, _)| name.clone());
+                cgus.dedup();
+                for &(ref cgu_name, (linkage, _)) in cgus.iter() {
+                    output.push_str(" ");
+                    output.push_str(&cgu_name.as_str());
+
+                    let linkage_abbrev = match linkage {
+                        Linkage::External => "External",
+                        Linkage::AvailableExternally => "Available",
+                        Linkage::LinkOnceAny => "OnceAny",
+                        Linkage::LinkOnceODR => "OnceODR",
+                        Linkage::WeakAny => "WeakAny",
+                        Linkage::WeakODR => "WeakODR",
+                        Linkage::Appending => "Appending",
+                        Linkage::Internal => "Internal",
+                        Linkage::Private => "Private",
+                        Linkage::ExternalWeak => "ExternalWeak",
+                        Linkage::Common => "Common",
+                    };
+
+                    output.push_str("[");
+                    output.push_str(linkage_abbrev);
+                    output.push_str("]");
+                }
+                output
+            })
+            .collect();
+
+        item_keys.sort();
+
+        for item in item_keys {
+            println!("MONO_ITEM {}", item);
+        }
+    }
+
+    (Arc::new(mono_items), Arc::new(codegen_units))
+}
+
+pub fn provide(providers: &mut Providers) {
+    providers.collect_and_partition_mono_items =
+        collect_and_partition_mono_items;
+
+    providers.is_codegened_item = |tcx, def_id| {
+        let (all_mono_items, _) =
+            tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+        all_mono_items.contains(&def_id)
+    };
+
+    providers.codegen_unit = |tcx, name| {
+        let (_, all) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+        all.iter()
+            .find(|cgu| *cgu.name() == name)
+            .cloned()
+            .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))
+    };
 }

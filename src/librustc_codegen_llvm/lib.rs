@@ -71,7 +71,6 @@ use back::bytecode::RLIB_BYTECODE_EXTENSION;
 
 pub use llvm_util::target_features;
 use std::any::Any;
-use std::path::{PathBuf};
 use std::sync::mpsc;
 use rustc_data_structures::sync::Lrc;
 
@@ -87,20 +86,17 @@ use rustc::util::time_graph;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::util::profiling::ProfileCategory;
 use rustc_mir::monomorphize;
+use rustc_codegen_utils::{CompiledModule, ModuleKind};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_data_structures::svh::Svh;
 
 mod diagnostics;
 
 mod back {
-    pub use rustc_codegen_utils::symbol_names;
     mod archive;
     pub mod bytecode;
-    mod command;
-    pub mod linker;
     pub mod link;
     pub mod lto;
-    pub mod symbol_export;
     pub mod write;
     mod rpath;
     pub mod wasm;
@@ -194,15 +190,15 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn provide(&self, providers: &mut ty::query::Providers) {
-        back::symbol_names::provide(providers);
-        back::symbol_export::provide(providers);
-        base::provide(providers);
+        rustc_codegen_utils::symbol_export::provide(providers);
+        rustc_codegen_utils::symbol_names::provide(providers);
+        base::provide_both(providers);
         attributes::provide(providers);
     }
 
     fn provide_extern(&self, providers: &mut ty::query::Providers) {
-        back::symbol_export::provide_extern(providers);
-        base::provide_extern(providers);
+        rustc_codegen_utils::symbol_export::provide_extern(providers);
+        base::provide_both(providers);
         attributes::provide_extern(providers);
     }
 
@@ -281,13 +277,6 @@ struct CachedModuleCodegen {
     source: WorkProduct,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-enum ModuleKind {
-    Regular,
-    Metadata,
-    Allocator,
-}
-
 impl ModuleCodegen {
     fn into_compiled_module(self,
                             emit_obj: bool,
@@ -319,15 +308,6 @@ impl ModuleCodegen {
             bytecode_compressed,
         }
     }
-}
-
-#[derive(Debug)]
-struct CompiledModule {
-    name: String,
-    kind: ModuleKind,
-    object: Option<PathBuf>,
-    bytecode: Option<PathBuf>,
-    bytecode_compressed: Option<PathBuf>,
 }
 
 struct ModuleLlvm {
@@ -377,7 +357,7 @@ struct CodegenResults {
     crate_hash: Svh,
     metadata: rustc::middle::cstore::EncodedMetadata,
     windows_subsystem: Option<String>,
-    linker_info: back::linker::LinkerInfo,
+    linker_info: rustc_codegen_utils::linker::LinkerInfo,
     crate_info: CrateInfo,
 }
 

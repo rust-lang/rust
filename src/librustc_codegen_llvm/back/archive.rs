@@ -52,28 +52,6 @@ enum Addition {
     },
 }
 
-pub fn find_library(name: &str, search_paths: &[PathBuf], sess: &Session)
-                    -> PathBuf {
-    // On Windows, static libraries sometimes show up as libfoo.a and other
-    // times show up as foo.lib
-    let oslibname = format!("{}{}{}",
-                            sess.target.target.options.staticlib_prefix,
-                            name,
-                            sess.target.target.options.staticlib_suffix);
-    let unixlibname = format!("lib{}.a", name);
-
-    for path in search_paths {
-        debug!("looking for {} inside {:?}", name, path);
-        let test = path.join(&oslibname);
-        if test.exists() { return test }
-        if oslibname != unixlibname {
-            let test = path.join(&unixlibname);
-            if test.exists() { return test }
-        }
-    }
-    sess.fatal(&format!("could not find native static library `{}`, \
-                         perhaps an -L flag is missing?", name));
-}
 
 fn is_relevant_child(c: &Child) -> bool {
     match c.name() {
@@ -128,7 +106,7 @@ impl<'a> ArchiveBuilder<'a> {
     /// Adds all of the contents of a native library to this archive. This will
     /// search in the relevant locations for a library named `name`.
     pub fn add_native_library(&mut self, name: &str) {
-        let location = find_library(name, &self.config.lib_search_paths,
+        let location = ::rustc_codegen_utils::find_library(name, &self.config.lib_search_paths,
                                     self.config.sess);
         self.add_archive(&location, |_| false).unwrap_or_else(|e| {
             self.config.sess.fatal(&format!("failed to add native library {}: {}",
