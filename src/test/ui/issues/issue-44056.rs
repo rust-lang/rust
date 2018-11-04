@@ -10,6 +10,7 @@
 
 // compile-pass
 // only-x86_64
+// gate-test-avx512_target_feature
 // no-prefer-dynamic
 // compile-flags: -Ctarget-feature=+avx -Clto
 
