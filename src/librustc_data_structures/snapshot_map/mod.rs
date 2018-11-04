@@ -55,16 +55,20 @@ impl<K, V> SnapshotMap<K, V>
         self.undo_log.clear();
     }
 
+    fn in_snapshot(&self) -> bool {
+        !self.undo_log.is_empty()
+    }
+
     pub fn insert(&mut self, key: K, value: V) -> bool {
         match self.map.insert(key.clone(), value) {
             None => {
-                if !self.undo_log.is_empty() {
+                if self.in_snapshot() {
                     self.undo_log.push(UndoLog::Inserted(key));
                 }
                 true
             }
             Some(old_value) => {
-                if !self.undo_log.is_empty() {
+                if self.in_snapshot() {
                     self.undo_log.push(UndoLog::Overwrite(key, old_value));
                 }
                 false
@@ -75,7 +79,7 @@ impl<K, V> SnapshotMap<K, V>
     pub fn remove(&mut self, key: K) -> bool {
         match self.map.remove(&key) {
             Some(old_value) => {
-                if !self.undo_log.is_empty() {
+                if self.in_snapshot() {
                     self.undo_log.push(UndoLog::Overwrite(key, old_value));
                 }
                 true

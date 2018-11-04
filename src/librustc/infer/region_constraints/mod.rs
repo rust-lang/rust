@@ -429,10 +429,14 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
-    pub fn commit(&mut self, snapshot: RegionSnapshot) {
-        debug!("RegionConstraintCollector: commit({})", snapshot.length);
+    fn assert_open_snapshot(&self, snapshot: &RegionSnapshot) {
         assert!(self.undo_log.len() > snapshot.length);
         assert!(self.undo_log[snapshot.length] == OpenSnapshot);
+    }
+
+    pub fn commit(&mut self, snapshot: RegionSnapshot) {
+        debug!("RegionConstraintCollector: commit({})", snapshot.length);
+        self.assert_open_snapshot(&snapshot);
 
         if snapshot.length == 0 {
             self.undo_log.clear();
@@ -444,8 +448,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
     pub fn rollback_to(&mut self, snapshot: RegionSnapshot) {
         debug!("RegionConstraintCollector: rollback_to({:?})", snapshot);
-        assert!(self.undo_log.len() > snapshot.length);
-        assert!(self.undo_log[snapshot.length] == OpenSnapshot);
+        self.assert_open_snapshot(&snapshot);
         while self.undo_log.len() > snapshot.length + 1 {
             let undo_entry = self.undo_log.pop().unwrap();
             self.rollback_undo_entry(undo_entry);
