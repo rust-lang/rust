@@ -831,7 +831,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
 
         if !speculative {
-            // Given something like `U : SomeTrait<T=X>`, we want to produce a
+            // Given something like `U: SomeTrait<T = X>`, we want to produce a
             // predicate like `<U as SomeTrait>::T = X`. This is somewhat
             // subtle in the event that `T` is defined in a supertrait of
             // `SomeTrait`, because in that case we need to upcast.
@@ -839,7 +839,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             // That is, consider this case:
             //
             // ```
-            // trait SubTrait : SuperTrait<int> { }
+            // trait SubTrait: SuperTrait<int> { }
             // trait SuperTrait<A> { type T; }
             //
             // ... B : SubTrait<T=foo> ...
@@ -879,6 +879,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             }
         }
 
+        let supertraits = traits::supertraits(tcx, trait_ref);
         let candidate = if self.trait_defines_associated_type_named(trait_ref.def_id(),
                                                                     binding.item_name) {
             // Simple case: X is defined in the current trait.
@@ -886,10 +887,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         } else {
             // Otherwise, we have to walk through the supertraits to find
             // those that do.
-            let candidates = traits::supertraits(tcx, trait_ref).filter(|r| {
+            let candidates = supertraits.filter(|r| {
                 self.trait_defines_associated_type_named(r.def_id(), binding.item_name)
             });
-            self.one_bound_for_assoc_type(candidates, &trait_ref.to_string(),
+            let candidates = candidates.collect::<Vec<_>>();
+            debug!("foo: candidates: {:?}", candidates);
+            self.one_bound_for_assoc_type(candidates.into_iter(), &trait_ref.to_string(),
                                           binding.item_name, binding.span)
         }?;
 
@@ -905,6 +908,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         }
         tcx.check_stability(assoc_ty.def_id, Some(ref_id), binding.span);
 
+        debug!("foo: info: {:?} {:?} {:?} {:?} {:?}", trait_ref, binding.item_name, speculative, assoc_ty.def_id, dup_bindings);
         if !speculative {
             dup_bindings.entry(assoc_ty.def_id)
                 .and_modify(|prev_span| {
@@ -921,6 +925,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 })
                 .or_insert(binding.span);
         }
+        static mut ABC: u32 = 0;
+        unsafe {
+            ABC += 1;
+            if ABC == 3 {
+                assert!(false);
+            }
+        };
 
         Ok(candidate.map_bound(|trait_ref| {
             ty::ProjectionPredicate {
@@ -1017,8 +1028,25 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 }));
         }
 
-        for (projection_bound, _) in &projection_bounds {
-            associated_types.remove(&projection_bound.projection_def_id());
+        let mut seen_projection_bounds = FxHashMap::default();
+        for (projection_bound, span) in projection_bounds.iter().rev() {
+            let bound_def_id = projection_bound.projection_def_id();
+            seen_projection_bounds.entry(bound_def_id)
+                .and_modify(|prev_span| {
+                    let assoc_item = tcx.associated_item(bound_def_id);
+                    let trait_def_id = assoc_item.container.id();
+                    struct_span_err!(tcx.sess, *span, E0719,
+                                     "the value of the associated type `{}` (from the trait `{}`) \
+                                      is already specified",
+                                     assoc_item.ident,
+                                     tcx.item_path_str(trait_def_id))
+                        .span_label(*span, "re-bound here")
+                        .span_label(*prev_span, format!("binding for `{}`", assoc_item.ident))
+                        .emit();
+                })
+                .or_insert(*span);
+
+            associated_types.remove(&bound_def_id);
         }
 
         for item_def_id in associated_types {
@@ -1132,7 +1160,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                                       span)
     }
 
-    // Checks that bounds contains exactly one element and reports appropriate
+    // Checks that `bounds` contains exactly one element and reports appropriate
     // errors otherwise.
     fn one_bound_for_assoc_type<I>(&self,
                                    mut bounds: I,

@@ -4909,4 +4909,5 @@ register_diagnostics! {
     E0641, // cannot cast to/from a pointer with an unknown kind
     E0645, // trait aliases not finished
     E0698, // type inside generator must be known in this context
+    E0719, // duplicate values for associated type binding
 }

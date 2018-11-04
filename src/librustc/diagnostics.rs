@@ -2134,7 +2134,7 @@ static X: u32 = 42;
 
 
 register_diagnostics! {
-//  E0006 // merged with E0005
+//  E0006, // merged with E0005
 //  E0101, // replaced with E0282
 //  E0102, // replaced with E0282
 //  E0134,
@@ -2183,9 +2183,7 @@ register_diagnostics! {
     E0657, // `impl Trait` can only capture lifetimes bound at the fn level
     E0687, // in-band lifetimes cannot be used in `fn`/`Fn` syntax
     E0688, // in-band lifetimes cannot be mixed with explicit lifetime binders
-
     E0697, // closures cannot be static
-
     E0707, // multiple elided lifetimes used in arguments of `async fn`
     E0708, // `async` non-`move` closures with arguments are not currently supported
     E0709, // multiple different lifetimes used in arguments of `async fn`

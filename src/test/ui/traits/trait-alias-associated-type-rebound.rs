@@ -10,18 +10,8 @@
 
 #![feature(trait_alias)]
 
-trait Foo = PartialEq<i32> + Send;
-trait Bar = Foo + Sync;
-
 trait I32Iterator = Iterator<Item = i32>;
+trait I32Iterator2 = I32Iterator<Item = i32>;
+trait U32Iterator = I32Iterator2<Item = i32>;
 
-pub fn main() {
-    let a: &dyn Bar = &123;
-    assert!(*a == 123);
-    let b = Box::new(456) as Box<dyn Foo>;
-    assert!(*b == 456);
-
-    // FIXME(alexreg): associated type should be gotten from trait alias definition
-    // let c: &dyn I32Iterator = &vec![123].into_iter();
-    // assert_eq!(c.next(), Some(123));
-}
+pub fn main() {}

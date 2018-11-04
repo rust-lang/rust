@@ -28,9 +28,9 @@ use errors::{DiagnosticBuilder, DiagnosticId};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir;
 
-/// Helper type of a temporary returned by .for_item(...).
+/// Helper type of a temporary returned by `.for_item(...)`.
 /// Necessary because we can't write the following bound:
-/// F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(FnCtxt<'b, 'gcx, 'tcx>).
+/// `F: for<'b, 'tcx> where 'gcx: 'tcx FnOnce(FnCtxt<'b, 'gcx, 'tcx>)`.
 struct CheckWfFcxBuilder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     inherited: super::InheritedBuilder<'a, 'gcx, 'tcx>,
     id: ast::NodeId,
