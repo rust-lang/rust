@@ -4,7 +4,7 @@ error[E0133]: initializing type with `rustc_layout_scalar_valid_range` attr is u
 LL |     let _x = NonZero(0); //~ ERROR initializing type with `rustc_layout_scalar_valid_range` attr
    |              ^^^^^^^^^^ initializing type with `rustc_layout_scalar_valid_range` attr
    |
-   = note: initializing `NonZero` with a `0` violates layout constraints and is undefined behavior
+   = note: initializing a layout restricted type's field with a value outside the valid range is undefined behavior
 
 error: aborting due to previous error
 

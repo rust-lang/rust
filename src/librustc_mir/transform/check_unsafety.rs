@@ -144,8 +144,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                         (Bound::Unbounded, Bound::Unbounded) => {},
                         _ => self.require_unsafe(
                             "initializing type with `rustc_layout_scalar_valid_range` attr",
-                            "initializing `NonZero` with a `0` violates layout constraints \
-                            and is undefined behavior",
+                            "initializing a layout restricted type's field with a value outside \
+                            the valid range is undefined behavior",
                             UnsafetyViolationKind::MinConstFn,
                         ),
                     }
