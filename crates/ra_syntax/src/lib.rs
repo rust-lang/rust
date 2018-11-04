@@ -39,11 +39,12 @@ mod grammar;
 mod parser_api;
 mod parser_impl;
 mod reparsing;
-
+mod string_lexing;
 mod syntax_kinds;
 pub mod text_utils;
 /// Utilities for simple uses of the parser.
 pub mod utils;
+mod validation;
 mod yellow;
 
 pub use crate::{
@@ -98,6 +99,8 @@ impl File {
         self.root.borrowed()
     }
     pub fn errors(&self) -> Vec<SyntaxError> {
-        self.root.root_data().clone()
+        let mut errors = self.root.root_data().clone();
+        errors.extend(validation::validate(self));
+        errors
     }
 }

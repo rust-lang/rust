@@ -123,6 +123,12 @@ impl<'a> Lifetime<'a> {
     }
 }
 
+impl<'a> Char<'a> {
+    pub fn text(&self) -> &SmolStr {
+        &self.syntax().leaf_text().unwrap()
+    }
+}
+
 impl<'a> Comment<'a> {
     pub fn text(&self) -> &SmolStr {
         self.syntax().leaf_text().unwrap()
