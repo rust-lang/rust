@@ -879,6 +879,12 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         )
     }
 
+    fn is_sparse(fd: &File) -> io::Result<bool> {
+        let mut stat: libc::stat = unsafe { mem::uninitialized() };
+        cvt(unsafe { libc::fstat(fd.as_raw_fd(), &mut stat) })?;
+        Ok(stat.st_blocks < stat.st_size / stat.st_blksize)
+    }
+
     if !from.is_file() {
         return Err(Error::new(ErrorKind::InvalidInput,
                               "the source path is not an existing regular file"))
@@ -890,6 +896,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         let metadata = reader.metadata()?;
         (metadata.permissions(), metadata.size())
     };
+    let _sparse = is_sparse(&reader)?;
 
     let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
     let mut written = 0u64;
