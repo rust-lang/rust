@@ -61,7 +61,7 @@ pub fn main_loop(
     let (ws_worker, ws_watcher) = workspace_loader();
 
     info!("server initialized, serving requests");
-    let mut state = ServerWorldState::new();
+    let mut state = ServerWorldState::default();
 
     let mut pending_requests = FxHashSet::default();
     let mut subs = Subscriptions::new();

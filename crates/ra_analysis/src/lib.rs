@@ -99,17 +99,12 @@ impl AnalysisChange {
 }
 
 /// `AnalysisHost` stores the current state of the world.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AnalysisHost {
     imp: AnalysisHostImpl,
 }
 
 impl AnalysisHost {
-    pub fn new() -> AnalysisHost {
-        AnalysisHost {
-            imp: AnalysisHostImpl::new(),
-        }
-    }
     /// Returns a snapshot of the current state, which you can query for
     /// semantic information.
     pub fn analysis(&self) -> Analysis {
