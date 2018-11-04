@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 use std::path::PathBuf;
 
 use errors;
@@ -99,8 +100,47 @@ pub struct Options {
     pub render_options: RenderOptions,
 }
 
+impl fmt::Debug for Options {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        struct FmtExterns<'a>(&'a Externs);
+
+        impl<'a> fmt::Debug for FmtExterns<'a> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.debug_map()
+                    .entries(self.0.iter())
+                    .finish()
+            }
+        }
+
+        f.debug_struct("Options")
+            .field("input", &self.input)
+            .field("crate_name", &self.crate_name)
+            .field("error_format", &self.error_format)
+            .field("libs", &self.libs)
+            .field("externs", &FmtExterns(&self.externs))
+            .field("cfgs", &self.cfgs)
+            .field("codegen_options", &"...")
+            .field("debugging_options", &"...")
+            .field("target", &self.target)
+            .field("edition", &self.edition)
+            .field("maybe_sysroot", &self.maybe_sysroot)
+            .field("linker", &self.linker)
+            .field("lint_opts", &self.lint_opts)
+            .field("describe_lints", &self.describe_lints)
+            .field("lint_cap", &self.lint_cap)
+            .field("should_test", &self.should_test)
+            .field("test_args", &self.test_args)
+            .field("default_passes", &self.default_passes)
+            .field("manual_passes", &self.manual_passes)
+            .field("display_warnings", &self.display_warnings)
+            .field("crate_version", &self.crate_version)
+            .field("render_options", &self.render_options)
+            .finish()
+    }
+}
+
 /// Configuration options for the HTML page-creation process.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RenderOptions {
     /// Output directory to generate docs into. Defaults to `doc`.
     pub output: PathBuf,
