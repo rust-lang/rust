@@ -563,7 +563,7 @@ define_queries! { <'tcx>
         /// A vector of every trait accessible in the whole crate
         /// (i.e., including those from subcrates). This is used only for
         /// error reporting.
-        [] fn all_traits: all_traits_node(CrateNum) -> Lrc<Vec<DefId>>,
+        [] fn all_suggestible_traits: all_suggestible_traits_node(CrateNum) -> Lrc<Vec<DefId>>,
     },
 
     Linking {
@@ -899,8 +899,8 @@ fn all_crate_nums_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
     DepConstructor::AllCrateNums
 }
 
-fn all_traits_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
-    DepConstructor::AllTraits
+fn all_suggestible_traits_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {
+    DepConstructor::AllSuggestibleTraits
 }
 
 fn collect_and_partition_mono_items_node<'tcx>(_: CrateNum) -> DepConstructor<'tcx> {

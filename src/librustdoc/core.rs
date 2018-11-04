@@ -532,7 +532,7 @@ pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOpt
                 fake_def_ids: Default::default(),
                 all_fake_def_ids: Default::default(),
                 generated_synthetics: Default::default(),
-                all_traits: tcx.all_traits(LOCAL_CRATE).to_vec(),
+                all_traits: tcx.all_suggestible_traits(LOCAL_CRATE).to_vec(),
             };
             debug!("crate: {:?}", tcx.hir().krate());
 

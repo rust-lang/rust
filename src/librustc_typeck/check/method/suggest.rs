@@ -207,7 +207,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     // Suggest clamping down the type if the method that is being attempted to
                     // be used exists at all, and the type is an ambiuous numeric type
                     // ({integer}/{float}).
-                    let mut candidates = all_traits(self.tcx)
+                    let mut candidates = all_suggestible_traits(self.tcx)
                         .into_iter()
                         .filter_map(|info|
                             self.associated_item(info.def_id, item_name, Namespace::Value)
@@ -593,7 +593,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // There are no traits implemented, so lets suggest some traits to
         // implement, by finding ones that have the item name, and are
         // legal to implement.
-        let mut candidates = all_traits(self.tcx)
+        let mut candidates = all_suggestible_traits(self.tcx)
             .into_iter()
             .filter(|info| {
                 // We approximate the coherence rules to only suggest
@@ -716,8 +716,8 @@ impl Ord for TraitInfo {
 }
 
 /// Retrieves all traits in this crate and any dependent crates.
-pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<TraitInfo> {
-    tcx.all_traits(LOCAL_CRATE).iter().map(|&def_id| TraitInfo { def_id }).collect()
+pub fn all_suggestible_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<TraitInfo> {
+    tcx.all_suggestible_traits(LOCAL_CRATE).iter().map(|&def_id| TraitInfo { def_id }).collect()
 }
 
 /// Computes all traits in this crate and any dependent crates.
@@ -807,7 +807,7 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
 }
 
 pub fn provide(providers: &mut ty::query::Providers) {
-    providers.all_traits = |tcx, cnum| {
+    providers.all_suggestible_traits = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
         Lrc::new(compute_all_traits(tcx))
     }

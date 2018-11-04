@@ -853,7 +853,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn assemble_extension_candidates_for_all_traits(&mut self) -> Result<(), MethodError<'tcx>> {
         debug!("assemble_extension_candidates_for_all_traits");
         let mut duplicates = FxHashSet::default();
-        for trait_info in suggest::all_traits(self.tcx) {
+        for trait_info in suggest::all_suggestible_traits(self.tcx) {
             if duplicates.insert(trait_info.def_id) {
                 self.assemble_extension_candidates_for_trait(None, trait_info.def_id)?;
             }
