@@ -310,10 +310,10 @@ trait IteratorExt: Iterator + Sized {
     where Self::Item: std::fmt::Display {
         let mut s = String::new();
         if let Some(e) = self.next() {
-            write!(s, "{}", e);
+            write!(s, "{}", e).unwrap();
             for e in self {
                 s.push_str(sep);
-                write!(s, "{}", e);
+                write!(s, "{}", e).unwrap();
             }
         }
         s
@@ -537,7 +537,7 @@ fn format_weeks(it: impl Iterator<Item = impl DateIterator>) -> impl Iterator<It
                 first = false;
             }
 
-            write!(buf, " {:>2}", d.day());
+            write!(buf, " {:>2}", d.day()).unwrap();
         }
 
         // Insert more filler at the end to fill up the remainder of the week,
