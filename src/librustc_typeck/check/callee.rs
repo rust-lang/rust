@@ -8,6 +8,7 @@ use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::{infer, traits};
+use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc_target::spec::abi;
 use syntax::ast::Ident;
 use syntax_pos::Span;
@@ -46,7 +47,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut autoderef = self.autoderef(callee_expr.span, expr_ty);
         let mut result = None;
         while result.is_none() && autoderef.next().is_some() {
-            result = self.try_overloaded_call_step(call_expr, callee_expr, &autoderef);
+            result = self.try_overloaded_call_step(call_expr, callee_expr, arg_exprs, &autoderef);
         }
         autoderef.finalize(self);
 
@@ -79,6 +80,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         &self,
         call_expr: &'gcx hir::Expr,
         callee_expr: &'gcx hir::Expr,
+        arg_exprs: &'gcx [hir::Expr],
         autoderef: &Autoderef<'a, 'gcx, 'tcx>,
     ) -> Option<CallStep<'tcx>> {
         let adjusted_ty = autoderef.unambiguous_final_ty(self);
@@ -142,7 +144,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => {}
         }
 
-        self.try_overloaded_call_traits(call_expr, adjusted_ty)
+        self.try_overloaded_call_traits(call_expr, adjusted_ty, Some(arg_exprs))
             .map(|(autoref, method)| {
                 let mut adjustments = autoderef.adjust_steps(self, Needs::None);
                 adjustments.extend(autoref);
@@ -155,6 +157,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         &self,
         call_expr: &hir::Expr,
         adjusted_ty: Ty<'tcx>,
+        opt_arg_exprs: Option<&'gcx [hir::Expr]>,
     ) -> Option<(Option<Adjustment<'tcx>>, MethodCallee<'tcx>)> {
         // Try the options that are least restrictive on the caller first.
         for &(opt_trait_def_id, method_name, borrow) in &[
@@ -179,12 +182,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 None => continue,
             };
 
+            let opt_input_types = opt_arg_exprs.map(|arg_exprs| [self.tcx.mk_tup(
+                arg_exprs
+                .iter()
+                .map(|e| self.next_ty_var(
+                    TypeVariableOrigin::TypeInference(e.span)
+                ))
+            )]);
+            let opt_input_types = opt_input_types.as_ref().map(AsRef::as_ref);
+
             if let Some(ok) = self.lookup_method_in_trait(
                 call_expr.span,
                 method_name,
                 trait_def_id,
                 adjusted_ty,
-                None,
+                opt_input_types,
             ) {
                 let method = self.register_infer_ok_obligations(ok);
                 let mut autoref = None;
@@ -445,7 +457,7 @@ impl<'a, 'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> {
             .is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.
-        match fcx.try_overloaded_call_traits(self.call_expr, self.adjusted_ty) {
+        match fcx.try_overloaded_call_traits(self.call_expr, self.adjusted_ty, None) {
             Some((autoref, method_callee)) => {
                 // One problem is that when we get here, we are going
                 // to have a newly instantiated function signature
