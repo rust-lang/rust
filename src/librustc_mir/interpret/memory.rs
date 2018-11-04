@@ -637,7 +637,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
 
         let alloc = self.get(ptr.alloc_id)?;
-        AllocationExtra::memory_read(&alloc.extra, ptr, size)?;
+        AllocationExtra::memory_read(alloc, ptr, size)?;
 
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
@@ -683,7 +683,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.clear_relocations(ptr, size)?;
 
         let alloc = self.get_mut(ptr.alloc_id)?;
-        AllocationExtra::memory_written(&mut alloc.extra, ptr, size)?;
+        AllocationExtra::memory_written(alloc, ptr, size)?;
 
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());

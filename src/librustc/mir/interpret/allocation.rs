@@ -49,7 +49,7 @@ pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Default + Clone {
     /// need to mutate.
     #[inline]
     fn memory_read(
-        &self,
+        _alloc: &Allocation<Tag, Self>,
         _ptr: Pointer<Tag>,
         _size: Size,
     ) -> EvalResult<'tcx> {
@@ -57,13 +57,9 @@ pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Default + Clone {
     }
 
     /// Hook for performing extra checks on a memory write access.
-    ///
-    /// Takes read-only access to the allocation so we can keep all the memory read
-    /// operations take `&self`.  Use a `RefCell` in `AllocExtra` if you
-    /// need to mutate.
     #[inline]
     fn memory_written(
-        &mut self,
+        _alloc: &mut Allocation<Tag, Self>,
         _ptr: Pointer<Tag>,
         _size: Size,
     ) -> EvalResult<'tcx> {
