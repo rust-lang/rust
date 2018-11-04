@@ -19,14 +19,25 @@ use super::{
     ModuleTree, Problem,
 };
 
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+pub(crate) struct Submodule {
+    name: SmolStr
+}
+
 pub(crate) fn submodules(
     db: &impl DescriptorDatabase,
-    file_id: FileId,
-) -> Cancelable<Arc<Vec<SmolStr>>> {
+    source: ModuleSource,
+) -> Cancelable<Arc<Vec<Submodule>>> {
     db::check_canceled(db)?;
+    let file_id = match source {
+        ModuleSource::File(it) => it,
+        _ => unimplemented!(),
+    };
     let file = db.file_syntax(file_id);
     let root = file.ast();
-    let submodules = modules(root).map(|(name, _)| name).collect();
+    let submodules = modules(root)
+        .map(|(name, _)| Submodule { name })
+        .collect();
     Ok(Arc::new(submodules))
 }
 
@@ -64,11 +75,6 @@ pub(crate) fn module_tree(
     db::check_canceled(db)?;
     let res = create_module_tree(db, source_root)?;
     Ok(Arc::new(res))
-}
-
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub struct Submodule {
-    pub name: SmolStr,
 }
 
 fn create_module_tree<'a>(
@@ -118,10 +124,11 @@ fn build_subtree(
         parent,
         children: Vec::new(),
     });
-    for name in db.submodules(file_id)?.iter() {
-        let (points_to, problem) = resolve_submodule(file_id, name, &source_root.file_resolver);
+    for sub in db.submodules(ModuleSource::File(file_id))?.iter() {
+        let name = sub.name.clone();
+        let (points_to, problem) = resolve_submodule(file_id, &name, &source_root.file_resolver);
         let link = tree.push_link(LinkData {
-            name: name.clone(),
+            name,
             owner: id,
             points_to: Vec::new(),
             problem: None,
