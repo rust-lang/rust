@@ -2,7 +2,7 @@ error: lifetime parameter `'a` never used
   --> $DIR/zero-uses-in-impl.rs:8:6
    |
 LL | impl<'a> Foo {} //~ ERROR `'a` never used
-   |     -^^- help: remove it
+   |     -^^- help: elide the unused lifetime
    |
 note: lint level defined here
   --> $DIR/zero-uses-in-impl.rs:3:9

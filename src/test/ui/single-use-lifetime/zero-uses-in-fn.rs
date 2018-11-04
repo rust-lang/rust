@@ -7,17 +7,17 @@
 
 fn september<'a>() {}
 //~^ ERROR lifetime parameter `'a` never used
-//~| HELP remove it
+//~| HELP elide the unused lifetime
 
 fn october<'a, 'b, T>(s: &'b T) -> &'b T {
     //~^ ERROR lifetime parameter `'a` never used
-    //~| HELP remove it
+    //~| HELP elide the unused lifetime
     s
 }
 
 fn november<'a, 'b>(s: &'a str) -> (&'a str) {
     //~^ ERROR lifetime parameter `'b` never used
-    //~| HELP remove it
+    //~| HELP elide the unused lifetime
     s
 }
 

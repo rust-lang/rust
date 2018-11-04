@@ -11,6 +11,10 @@ note: lint level defined here
    |
 LL | #![deny(single_use_lifetimes)]
    |         ^^^^^^^^^^^^^^^^^^^^
+help: elide the single-use lifetime
+   |
+LL |     fn inherent_a(&self, data: &u32) { //~ ERROR `'a` only used once
+   |                 --             --
 
 error: lifetime parameter `'f` only used once
   --> $DIR/one-use-in-inherent-method-argument.rs:21:6
