@@ -44,7 +44,7 @@ enum UndoLog<K, V> {
     CommittedSnapshot,
     Inserted(K),
     Overwrite(K, V),
-    Noop,
+    Purged,
 }
 
 impl<K, V> SnapshotMap<K, V>
@@ -69,12 +69,6 @@ impl<K, V> SnapshotMap<K, V>
                 }
                 false
             }
-        }
-    }
-
-    pub fn insert_noop(&mut self) {
-        if !self.undo_log.is_empty() {
-            self.undo_log.push(UndoLog::Noop);
         }
     }
 
@@ -128,13 +122,13 @@ impl<K, V> SnapshotMap<K, V>
             let reverse = match self.undo_log[i] {
                 UndoLog::OpenSnapshot => false,
                 UndoLog::CommittedSnapshot => false,
-                UndoLog::Noop => false,
+                UndoLog::Purged => false,
                 UndoLog::Inserted(ref k) => should_revert_key(k),
                 UndoLog::Overwrite(ref k, _) => should_revert_key(k),
             };
 
             if reverse {
-                let entry = mem::replace(&mut self.undo_log[i], UndoLog::Noop);
+                let entry = mem::replace(&mut self.undo_log[i], UndoLog::Purged);
                 self.reverse(entry);
             }
         }
@@ -171,7 +165,7 @@ impl<K, V> SnapshotMap<K, V>
                 self.map.insert(key, old_value);
             }
 
-            UndoLog::Noop => {}
+            UndoLog::Purged => {}
         }
     }
 }
