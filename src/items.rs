@@ -1265,7 +1265,7 @@ pub fn format_struct_struct(
     let items_str = rewrite_with_alignment(
         fields,
         context,
-        Shape::indented(offset, context.config).sub_width(1)?,
+        Shape::indented(offset.block_indent(context.config), context.config).sub_width(1)?,
         mk_sp(body_lo, span.hi()),
         one_line_budget,
     )?;

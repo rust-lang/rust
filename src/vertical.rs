@@ -172,16 +172,13 @@ pub fn rewrite_with_alignment<T: AlignedItem>(
     } else {
         let rest_span = mk_sp(init_last_pos, span.hi());
         let rest_str = rewrite_with_alignment(rest, context, shape, rest_span, one_line_width)?;
-        Some(
-            result
-                + spaces
-                + "\n"
-                + &shape
-                    .indent
-                    .block_indent(context.config)
-                    .to_string(context.config)
-                + &rest_str,
-        )
+        Some(format!(
+            "{}{}\n{}{}",
+            result,
+            spaces,
+            &shape.indent.to_string(context.config),
+            &rest_str
+        ))
     }
 }
 
@@ -217,9 +214,8 @@ fn rewrite_aligned_items_inner<T: AlignedItem>(
     offset: Indent,
     one_line_width: usize,
 ) -> Option<String> {
-    let item_indent = offset.block_indent(context.config);
     // 1 = ","
-    let item_shape = Shape::indented(item_indent, context.config).sub_width(1)?;
+    let item_shape = Shape::indented(offset, context.config).sub_width(1)?;
     let (mut field_prefix_max_width, field_prefix_min_width) =
         struct_field_prefix_max_min_width(context, fields, item_shape);
     let max_diff = field_prefix_max_width.saturating_sub(field_prefix_min_width);
