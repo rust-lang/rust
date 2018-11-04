@@ -187,7 +187,11 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                             kind: UnsafetyViolationKind::BorrowPacked(lint_root)
                         }], &[]);
                     }
-                    if context.is_mutating_use() {
+                    let is_freeze = base
+                        .ty(self.mir, self.tcx)
+                        .to_ty(self.tcx)
+                        .is_freeze(self.tcx, self.param_env, self.source_info.span);
+                    if context.is_mutating_use() || !is_freeze {
                         self.check_mut_borrowing_layout_constrained_field(place);
                     }
                 }
