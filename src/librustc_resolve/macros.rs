@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use {AmbiguityError, CrateLint, Resolver, ResolutionError, is_known_tool, resolve_error};
-use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
+use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
+use {CrateLint, Resolver, ResolutionError, is_known_tool, resolve_error};
+use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, ToNameBinding};
 use ModuleOrUniformRoot;
 use Namespace::{self, *};
 use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
@@ -597,10 +598,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         bitflags! {
             struct Flags: u8 {
-                const DERIVE_HELPERS = 1 << 0;
-                const MACRO_RULES    = 1 << 1;
-                const MODULE         = 1 << 2;
-                const PRELUDE        = 1 << 3;
+                const MACRO_RULES       = 1 << 0;
+                const MODULE            = 1 << 1;
+                const PRELUDE           = 1 << 2;
+                const MISC_SUGGEST_SELF = 1 << 3;
+                const MISC_FROM_PRELUDE = 1 << 4;
             }
         }
 
@@ -619,7 +621,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // }
         // So we have to save the innermost solution and continue searching in outer scopes
         // to detect potential ambiguities.
-        let mut innermost_result: Option<(&NameBinding, Flags, /* conflicts with */ Flags)> = None;
+        let mut innermost_result: Option<(&NameBinding, Flags)> = None;
 
         // Go through all the scopes and try to resolve the name.
         let mut where_to_resolve = WhereToResolve::DeriveHelpers;
@@ -638,7 +640,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                         (Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper),
                                         ty::Visibility::Public, derive.span, Mark::root())
                                         .to_name_binding(self.arenas);
-                                    result = Ok((binding, Flags::DERIVE_HELPERS, Flags::all()));
+                                    result = Ok((binding, Flags::empty()));
                                     break;
                                 }
                             }
@@ -648,7 +650,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
                 WhereToResolve::MacroRules(legacy_scope) => match legacy_scope {
                     LegacyScope::Binding(legacy_binding) if ident == legacy_binding.ident =>
-                        Ok((legacy_binding.binding, Flags::MACRO_RULES, Flags::empty())),
+                        Ok((legacy_binding.binding, Flags::MACRO_RULES)),
                     _ => Err(Determinacy::Determined),
                 }
                 WhereToResolve::Module(module) => {
@@ -662,29 +664,34 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         path_span,
                     );
                     self.current_module = orig_current_module;
-                    binding.map(|binding| (binding, Flags::MODULE, Flags::empty()))
+                    let misc_flags = if module.is_normal() {
+                        Flags::MISC_SUGGEST_SELF
+                    } else {
+                        Flags::empty()
+                    };
+                    binding.map(|binding| (binding, Flags::MODULE | misc_flags))
                 }
                 WhereToResolve::MacroUsePrelude => {
                     let mut result = Err(Determinacy::Determined);
                     if use_prelude || self.session.rust_2015() {
                         if let Some(binding) = self.macro_use_prelude.get(&ident.name).cloned() {
-                            result = Ok((binding, Flags::PRELUDE, Flags::empty()));
+                            result = Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE));
                         }
                     }
                     result
                 }
                 WhereToResolve::BuiltinMacros => {
                     match self.builtin_macros.get(&ident.name).cloned() {
-                        Some(binding) => Ok((binding, Flags::PRELUDE, Flags::empty())),
+                        Some(binding) => Ok((binding, Flags::PRELUDE)),
                         None => Err(Determinacy::Determined),
                     }
                 }
                 WhereToResolve::BuiltinAttrs => {
                     if is_builtin_attr_name(ident.name) {
                         let binding = (Def::NonMacroAttr(NonMacroAttrKind::Builtin),
-                                       ty::Visibility::Public, ident.span, Mark::root())
+                                       ty::Visibility::Public, DUMMY_SP, Mark::root())
                                        .to_name_binding(self.arenas);
-                        Ok((binding, Flags::PRELUDE, Flags::all()))
+                        Ok((binding, Flags::PRELUDE))
                     } else {
                         Err(Determinacy::Determined)
                     }
@@ -694,9 +701,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                        self.session.plugin_attributes.borrow().iter()
                                                      .any(|(name, _)| ident.name == &**name) {
                         let binding = (Def::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
-                                       ty::Visibility::Public, ident.span, Mark::root())
+                                       ty::Visibility::Public, DUMMY_SP, Mark::root())
                                        .to_name_binding(self.arenas);
-                        Ok((binding, Flags::PRELUDE, Flags::PRELUDE))
+                        Ok((binding, Flags::PRELUDE))
                     } else {
                         Err(Determinacy::Determined)
                     }
@@ -706,7 +713,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     if use_prelude {
                         if let Some(binding) = self.extern_prelude_get(ident, !record_used,
                                                                        innermost_result.is_some()) {
-                            result = Ok((binding, Flags::PRELUDE, Flags::empty()));
+                            result = Ok((binding, Flags::PRELUDE));
                         }
                     }
                     result
@@ -714,8 +721,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 WhereToResolve::ToolPrelude => {
                     if use_prelude && is_known_tool(ident.name) {
                         let binding = (Def::ToolMod, ty::Visibility::Public,
-                                       ident.span, Mark::root()).to_name_binding(self.arenas);
-                        Ok((binding, Flags::PRELUDE, Flags::empty()))
+                                       DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
+                        Ok((binding, Flags::PRELUDE))
                     } else {
                         Err(Determinacy::Determined)
                     }
@@ -732,7 +739,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                 false,
                                 path_span,
                             ) {
-                                result = Ok((binding, Flags::PRELUDE, Flags::empty()));
+                                result = Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE));
                             }
                         }
                     }
@@ -742,8 +749,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     match self.primitive_type_table.primitive_types.get(&ident.name).cloned() {
                         Some(prim_ty) => {
                             let binding = (Def::PrimTy(prim_ty), ty::Visibility::Public,
-                                           ident.span, Mark::root()).to_name_binding(self.arenas);
-                            Ok((binding, Flags::PRELUDE, Flags::empty()))
+                                           DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
+                            Ok((binding, Flags::PRELUDE))
                         }
                         None => Err(Determinacy::Determined)
                     }
@@ -793,7 +800,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             }}
 
             match result {
-                Ok((binding, flags, ambig_flags)) => {
+                Ok((binding, flags)) => {
                     if sub_namespace_mismatch(macro_kind, binding.macro_kind()) {
                         continue_search!();
                     }
@@ -802,28 +809,61 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         return Ok(binding);
                     }
 
-                    if let Some((innermost_binding, innermost_flags, innermost_ambig_flags))
-                            = innermost_result {
+                    if let Some((innermost_binding, innermost_flags)) = innermost_result {
                         // Found another solution, if the first one was "weak", report an error.
-                        if binding.def() != innermost_binding.def() &&
-                           (is_import ||
-                            innermost_binding.is_glob_import() ||
-                            innermost_binding.may_appear_after(parent_scope.expansion, binding) ||
-                            innermost_flags.intersects(ambig_flags) ||
-                            flags.intersects(innermost_ambig_flags) ||
-                            (innermost_flags.contains(Flags::MACRO_RULES) &&
-                             flags.contains(Flags::MODULE) &&
-                             !self.disambiguate_legacy_vs_modern(innermost_binding, binding))) {
-                            self.ambiguity_errors.push(AmbiguityError {
-                                ident,
-                                b1: innermost_binding,
-                                b2: binding,
-                            });
-                            return Ok(innermost_binding);
+                        let (def, innermost_def) = (binding.def(), innermost_binding.def());
+                        if def != innermost_def {
+                            let builtin = Def::NonMacroAttr(NonMacroAttrKind::Builtin);
+                            let derive_helper = Def::NonMacroAttr(NonMacroAttrKind::DeriveHelper);
+                            let legacy_helper =
+                                Def::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper);
+
+                            let ambiguity_error_kind = if is_import {
+                                Some(AmbiguityKind::Import)
+                            } else if innermost_def == builtin || def == builtin {
+                                Some(AmbiguityKind::BuiltinAttr)
+                            } else if innermost_def == derive_helper || def == derive_helper {
+                                Some(AmbiguityKind::DeriveHelper)
+                            } else if innermost_def == legacy_helper &&
+                                      flags.contains(Flags::PRELUDE) ||
+                                      def == legacy_helper &&
+                                      innermost_flags.contains(Flags::PRELUDE) {
+                                Some(AmbiguityKind::LegacyHelperVsPrelude)
+                            } else if innermost_flags.contains(Flags::MACRO_RULES) &&
+                                      flags.contains(Flags::MODULE) &&
+                                      !self.disambiguate_legacy_vs_modern(innermost_binding,
+                                                                          binding) {
+                                Some(AmbiguityKind::LegacyVsModern)
+                            } else if innermost_binding.is_glob_import() {
+                                Some(AmbiguityKind::GlobVsOuter)
+                            } else if innermost_binding.may_appear_after(parent_scope.expansion,
+                                                                         binding) {
+                                Some(AmbiguityKind::MoreExpandedVsOuter)
+                            } else {
+                                None
+                            };
+                            if let Some(kind) = ambiguity_error_kind {
+                                let misc = |f: Flags| if f.contains(Flags::MISC_SUGGEST_SELF) {
+                                    AmbiguityErrorMisc::SuggestSelf
+                                } else if f.contains(Flags::MISC_FROM_PRELUDE) {
+                                    AmbiguityErrorMisc::FromPrelude
+                                } else {
+                                    AmbiguityErrorMisc::None
+                                };
+                                self.ambiguity_errors.push(AmbiguityError {
+                                    kind,
+                                    ident,
+                                    b1: innermost_binding,
+                                    b2: binding,
+                                    misc1: misc(innermost_flags),
+                                    misc2: misc(flags),
+                                });
+                                return Ok(innermost_binding);
+                            }
                         }
                     } else {
                         // Found the first solution.
-                        innermost_result = Some((binding, flags, ambig_flags));
+                        innermost_result = Some((binding, flags));
                     }
 
                     continue_search!();

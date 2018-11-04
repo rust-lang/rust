@@ -1,20 +1,21 @@
-error[E0659]: `Foo` is ambiguous
+error[E0659]: `Foo` is ambiguous (glob import vs glob import in the same module)
   --> $DIR/rfc-1560-warning-cycle.rs:19:17
    |
 LL |         fn f(_: Foo) {} //~ ERROR `Foo` is ambiguous
    |                 ^^^ ambiguous name
    |
-note: `Foo` could refer to the name imported here
+note: `Foo` could refer to the struct imported here
   --> $DIR/rfc-1560-warning-cycle.rs:17:13
    |
 LL |         use *;
    |             ^
-note: `Foo` could also refer to the name imported here
+   = help: consider adding an explicit import of `Foo` to disambiguate
+note: `Foo` could also refer to the struct imported here
   --> $DIR/rfc-1560-warning-cycle.rs:18:13
    |
 LL |         use bar::*;
    |             ^^^^^^
-   = note: consider adding an explicit import of `Foo` to disambiguate
+   = help: consider adding an explicit import of `Foo` to disambiguate
 
 error: aborting due to previous error
 
