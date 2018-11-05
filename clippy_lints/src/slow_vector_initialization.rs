@@ -107,7 +107,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let Some(variable_name) = path.segments.get(0);
 
             // Extract len argument
-            if let Some(ref len_arg) = Pass::is_vec_with_capacity(right);
+            if let Some(ref len_arg) = Self::is_vec_with_capacity(right);
 
             then {
                 let vi = VecAllocation {
@@ -116,7 +116,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     len_expr: len_arg,
                 };
 
-                Pass::search_initialization(cx, vi, expr.id);
+                Self::search_initialization(cx, vi, expr.id);
             }
         }
     }
@@ -128,7 +128,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if let DeclKind::Local(ref local) = decl.node;
             if let PatKind::Binding(BindingAnnotation::Mutable, _, variable_name, None) = local.pat.node;
             if let Some(ref init) = local.init;
-            if let Some(ref len_arg) = Pass::is_vec_with_capacity(init);
+            if let Some(ref len_arg) = Self::is_vec_with_capacity(init);
 
             then {
                 let vi = VecAllocation {
@@ -137,7 +137,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     len_expr: len_arg,
                 };
 
-                Pass::search_initialization(cx, vi, stmt.node.id());
+                Self::search_initialization(cx, vi, stmt.node.id());
             }
         }
     }
@@ -183,14 +183,14 @@ impl Pass {
         v.visit_block(enclosing_body.unwrap());
 
         if let Some(ref allocation_expr) = v.slow_expression {
-            Pass::lint_initialization(cx, allocation_expr, &v.vec_alloc);
+            Self::lint_initialization(cx, allocation_expr, &v.vec_alloc);
         }
     }
 
     fn lint_initialization<'tcx>(cx: &LateContext<'_, 'tcx>, initialization: &InitializationType<'tcx>, vec_alloc: &VecAllocation<'_>) {
         match initialization {
             InitializationType::UnsafeSetLen(e) =>
-                Pass::emit_lint(
+                Self::emit_lint(
                     cx,
                     e,
                     vec_alloc,
@@ -200,7 +200,7 @@ impl Pass {
 
             InitializationType::Extend(e) |
             InitializationType::Resize(e) =>
-                Pass::emit_lint(
+                Self::emit_lint(
                     cx,
                     e,
                     vec_alloc,
