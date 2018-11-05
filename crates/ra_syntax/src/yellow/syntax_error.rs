@@ -28,7 +28,10 @@ impl Into<Location> for TextRange {
 
 impl SyntaxError {
     pub fn new<L: Into<Location>>(kind: SyntaxErrorKind, loc: L) -> SyntaxError {
-        SyntaxError { kind, location: loc.into() }
+        SyntaxError {
+            kind,
+            location: loc.into(),
+        }
     }
 
     pub fn location(&self) -> Location {
@@ -45,7 +48,7 @@ impl SyntaxError {
     pub fn add_offset(mut self, plus_offset: TextUnit) -> SyntaxError {
         self.location = match self.location {
             Location::Range(range) => Location::Range(range + plus_offset),
-            Location::Offset(offset) => Location::Offset(offset + plus_offset)
+            Location::Offset(offset) => Location::Offset(offset + plus_offset),
         };
 
         self

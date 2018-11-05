@@ -162,9 +162,10 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                         .sum::<TextUnit>();
                     self.leaf(kind, len, n_raw_tokens);
                 }
-                Event::Error { msg } => self.sink.error(
-                    SyntaxError::new(SyntaxErrorKind::ParseError(msg), self.text_pos),
-                ),
+                Event::Error { msg } => self.sink.error(SyntaxError::new(
+                    SyntaxErrorKind::ParseError(msg),
+                    self.text_pos,
+                )),
             }
         }
         self.sink
