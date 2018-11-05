@@ -71,4 +71,8 @@ fn main() {
     let _j = &i;
     println!("{}", s[i]); // no error, i is copy
     println!("{}", s[i]);
+
+    use_mut(rs);
 }
+
+fn use_mut<T>(_: &mut T) { }
