@@ -981,8 +981,8 @@ pub unsafe fn _mm_setzero_ps() -> __m128 {
 #[inline]
 #[allow(non_snake_case)]
 #[unstable(feature = "stdsimd", issue = "27731")]
-pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> u32 {
-    (z << 6) | (y << 4) | (x << 2) | w
+pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> i32 {
+    ((z << 6) | (y << 4) | (x << 2) | w) as i32
 }
 
 /// Shuffle packed single-precision (32-bit) floating-point elements in `a` and
