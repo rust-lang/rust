@@ -21,6 +21,11 @@
 //! After adding a new inline-test, run `cargo collect-tests` to extract
 //! it as a standalone text-fixture into `tests/data/parser/inline`, and
 //! run `cargo test` once to create the "gold" value.
+//!
+//! Coding convention: rules like `where_clause` always produce either a
+//! node or an error, rules like `opt_where_clause` may produce nothing.
+//! Non-opt rules typically start with `assert!(p.at(FIRST_TOKEN))`, the
+//! caller is responsible for branching on the first token.
 mod attributes;
 mod expressions;
 mod items;
