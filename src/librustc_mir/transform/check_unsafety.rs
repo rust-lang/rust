@@ -187,13 +187,15 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                             kind: UnsafetyViolationKind::BorrowPacked(lint_root)
                         }], &[]);
                     }
-                    let is_freeze = base
-                        .ty(self.mir, self.tcx)
-                        .to_ty(self.tcx)
-                        .is_freeze(self.tcx, self.param_env, self.source_info.span);
-                    if context.is_mutating_use() || !is_freeze {
-                        self.check_mut_borrowing_layout_constrained_field(place);
-                    }
+                }
+                let is_borrow_of_interior_mut = context.is_borrow() && !base
+                    .ty(self.mir, self.tcx)
+                    .to_ty(self.tcx)
+                    .is_freeze(self.tcx, self.param_env, self.source_info.span);
+                if context.is_mutating_use() || is_borrow_of_interior_mut {
+                    self.check_mut_borrowing_layout_constrained_field(
+                        place, context.is_mutating_use(),
+                    );
                 }
                 let old_source_info = self.source_info;
                 if let &Place::Local(local) = base {
@@ -360,6 +362,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
     fn check_mut_borrowing_layout_constrained_field(
         &mut self,
         mut place: &Place<'tcx>,
+        is_mut_use: bool,
     ) {
         while let &Place::Projection(box Projection {
             ref base, ref elem
@@ -371,17 +374,26 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                         ty::Adt(def, _) => match self.tcx.layout_scalar_valid_range(def.did) {
                             (Bound::Unbounded, Bound::Unbounded) => {},
                             _ => {
+                                let (description, details) = if is_mut_use {
+                                    (
+                                        "mutation of layout constrained field",
+                                        "mutating layout constrained fields cannot statically be \
+                                        checked for valid values",
+                                    )
+                                } else {
+                                    (
+                                        "borrow of layout constrained field with interior \
+                                        mutability",
+                                        "references to fields of layout constrained fields \
+                                        lose the constraints. Coupled with interior mutability, \
+                                        the field can be changed to invalid values",
+                                    )
+                                };
                                 let source_info = self.source_info;
                                 self.register_violations(&[UnsafetyViolation {
                                     source_info,
-                                    description: Symbol::intern(
-                                        "borrow of layout constrained field",
-                                    ).as_interned_str(),
-                                    details:
-                                        Symbol::intern(
-                                            "references to fields of layout constrained fields \
-                                            lose the constraints",
-                                        ).as_interned_str(),
+                                    description: Symbol::intern(description).as_interned_str(),
+                                    details: Symbol::intern(details).as_interned_str(),
                                     kind: UnsafetyViolationKind::MinConstFn,
                                 }], &[]);
                             }

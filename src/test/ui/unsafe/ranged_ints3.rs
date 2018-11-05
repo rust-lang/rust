@@ -7,5 +7,5 @@ use std::cell::Cell;
 pub(crate) struct NonZero<T>(pub(crate) T);
 fn main() {
     let mut x = unsafe { NonZero(Cell::new(1)) };
-    let y = &x.0; //~ ERROR borrow of layout constrained field is unsafe
+    let y = &x.0; //~ ERROR borrow of layout constrained field with interior mutability
 }
