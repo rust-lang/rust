@@ -1,4 +1,4 @@
-#![feature(rustc_private)]
+#![feature(rustc_private, extern_crate_item_prelude)]
 
 #![cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
 
@@ -253,7 +253,7 @@ impl Into<MemoryKind<MiriMemoryKind>> for MiriMemoryKind {
 impl MayLeak for MiriMemoryKind {
     #[inline(always)]
     fn may_leak(self) -> bool {
-        use MiriMemoryKind::*;
+        use self::MiriMemoryKind::*;
         match self {
             Rust | C => false,
             Env | MutStatic => true,
