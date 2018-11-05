@@ -220,27 +220,32 @@ impl AnalysisImpl {
         let source_root = self.db.file_source_root(file_id);
         self.db.module_tree(source_root)
     }
-    pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+    pub fn parent_module(
+        &self,
+        file_id: FileId,
+        offset: TextUnit,
+    ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let module_tree = self.module_tree(file_id)?;
+        let file = self.db.file_syntax(file_id);
+        let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), offset) {
+            Some(m) if !m.has_semi() => ModuleSource::new_inline(file_id, m),
+            _ => ModuleSource::File(file_id),
+        };
 
         let res = module_tree
-            .modules_for_source(ModuleSource::File(file_id))
+            .modules_for_source(module_source)
             .into_iter()
             .filter_map(|module_id| {
                 let link = module_id.parent_link(&module_tree)?;
-                let file_id = match link.owner(&module_tree).source(&module_tree) {
-                    ModuleSource::File(file_id) => file_id,
-                    ModuleSource::Inline(..) => {
-                        //TODO: https://github.com/rust-analyzer/rust-analyzer/issues/181
-                        return None;
-                    }
-                };
+                let file_id = link.owner(&module_tree).source(&module_tree).file_id();
                 let decl = link.bind_source(&module_tree, &*self.db);
                 let decl = decl.ast();
 
+                let decl_name = decl.name().unwrap();
+
                 let sym = FileSymbol {
-                    name: decl.name().unwrap().text(),
-                    node_range: decl.syntax().range(),
+                    name: decl_name.text(),
+                    node_range: decl_name.syntax().range(),
                     kind: MODULE,
                 };
                 Some((file_id, sym))

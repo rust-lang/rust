@@ -92,9 +92,28 @@ fn test_resolve_parent_module() {
         <|>// empty
     ",
     );
-    let symbols = analysis.parent_module(pos.file_id).unwrap();
+    let symbols = analysis.parent_module(pos.file_id, pos.offset).unwrap();
     assert_eq_dbg(
-        r#"[(FileId(1), FileSymbol { name: "foo", node_range: [0; 8), kind: MODULE })]"#,
+        r#"[(FileId(1), FileSymbol { name: "foo", node_range: [4; 7), kind: MODULE })]"#,
+        &symbols,
+    );
+}
+
+#[test]
+fn test_resolve_parent_module_for_inline() {
+    let (analysis, pos) = analysis_and_position(
+        "
+        //- /lib.rs
+        mod foo {
+            mod bar {
+                mod baz { <|> }
+            }
+        }
+    ",
+    );
+    let symbols = analysis.parent_module(pos.file_id, pos.offset).unwrap();
+    assert_eq_dbg(
+        r#"[(FileId(1), FileSymbol { name: "bar", node_range: [18; 21), kind: MODULE })]"#,
         &symbols,
     );
 }

@@ -6,10 +6,6 @@ import {
     SourceChange
 } from './apply_source_change';
 
-interface OnEnterParams {
-    textDocument: lc.TextDocumentIdentifier;
-    position: lc.Position;
-}
 
 export async function handle(event: { text: string }): Promise<boolean> {
     const editor = vscode.window.activeTextEditor;
@@ -20,7 +16,7 @@ export async function handle(event: { text: string }): Promise<boolean> {
     ) {
         return false;
     }
-    const request: OnEnterParams = {
+    const request: lc.TextDocumentPositionParams = {
         textDocument: { uri: editor.document.uri.toString() },
         position: Server.client.code2ProtocolConverter.asPosition(
             editor.selection.active

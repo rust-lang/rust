@@ -142,9 +142,7 @@ impl LinkId {
                     .1;
                 ast.into()
             }
-            ModuleSourceNode::Inline(..) => {
-                unimplemented!("https://github.com/rust-analyzer/rust-analyzer/issues/181")
-            }
+            ModuleSourceNode::Inline(it) => it,
         }
     }
 }
@@ -157,6 +155,12 @@ struct ModuleData {
 }
 
 impl ModuleSource {
+    pub(crate) fn new_inline(file_id: FileId, module: ast::Module) -> ModuleSource {
+        assert!(!module.has_semi());
+        let ptr = SyntaxPtr::new(file_id, module.syntax());
+        ModuleSource::Inline(ptr)
+    }
+
     pub(crate) fn as_file(self) -> Option<FileId> {
         match self {
             ModuleSource::File(f) => Some(f),
@@ -164,7 +168,7 @@ impl ModuleSource {
         }
     }
 
-    fn file_id(self) -> FileId {
+    pub(crate) fn file_id(self) -> FileId {
         match self {
             ModuleSource::File(f) => f,
             ModuleSource::Inline(ptr) => ptr.file_id(),

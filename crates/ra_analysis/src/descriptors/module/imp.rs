@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ra_syntax::{
-    ast::{self, ModuleItemOwner, NameOwner, AstNode},
+    ast::{self, ModuleItemOwner, NameOwner},
     SmolStr,
 };
 use relative_path::RelativePathBuf;
@@ -12,7 +12,6 @@ use crate::{
     descriptors::DescriptorDatabase,
     input::{SourceRoot, SourceRootId},
     Cancelable, FileId, FileResolverImp,
-    syntax_ptr::SyntaxPtr,
 };
 
 use super::{
@@ -23,7 +22,7 @@ use super::{
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) enum Submodule {
     Declaration(SmolStr),
-    Definition(SmolStr, SyntaxPtr),
+    Definition(SmolStr, ModuleSource),
 }
 
 impl Submodule {
@@ -60,7 +59,8 @@ pub(crate) fn submodules(
                 if m.has_semi() {
                     Submodule::Declaration(name)
                 } else {
-                    Submodule::Definition(name, SyntaxPtr::new(file_id, m.syntax()))
+                    let src = ModuleSource::new_inline(file_id, m);
+                    Submodule::Definition(name, src)
                 }
             })
             .collect()
@@ -121,7 +121,8 @@ fn create_module_tree<'a>(
 
     let source_root = db.source_root(source_root);
     for &file_id in source_root.files.iter() {
-        if visited.contains(&file_id) {
+        let source = ModuleSource::File(file_id);
+        if visited.contains(&source) {
             continue; // TODO: use explicit crate_roots here
         }
         assert!(!roots.contains_key(&file_id));
@@ -132,7 +133,7 @@ fn create_module_tree<'a>(
             &mut visited,
             &mut roots,
             None,
-            file_id,
+            source,
         )?;
         roots.insert(file_id, module_id);
     }
@@ -143,18 +144,18 @@ fn build_subtree(
     db: &impl DescriptorDatabase,
     source_root: &SourceRoot,
     tree: &mut ModuleTree,
-    visited: &mut FxHashSet<FileId>,
+    visited: &mut FxHashSet<ModuleSource>,
     roots: &mut FxHashMap<FileId, ModuleId>,
     parent: Option<LinkId>,
-    file_id: FileId,
+    source: ModuleSource,
 ) -> Cancelable<ModuleId> {
-    visited.insert(file_id);
+    visited.insert(source);
     let id = tree.push_mod(ModuleData {
-        source: ModuleSource::File(file_id),
+        source,
         parent,
         children: Vec::new(),
     });
-    for sub in db.submodules(ModuleSource::File(file_id))?.iter() {
+    for sub in db.submodules(source)?.iter() {
         let link = tree.push_link(LinkData {
             name: sub.name().clone(),
             owner: id,
@@ -165,7 +166,7 @@ fn build_subtree(
         let (points_to, problem) = match sub {
             Submodule::Declaration(name) => {
                 let (points_to, problem) =
-                    resolve_submodule(file_id, &name, &source_root.file_resolver);
+                    resolve_submodule(source, &name, &source_root.file_resolver);
                 let points_to = points_to
                     .into_iter()
                     .map(|file_id| match roots.remove(&file_id) {
@@ -180,13 +181,24 @@ fn build_subtree(
                             visited,
                             roots,
                             Some(link),
-                            file_id,
+                            ModuleSource::File(file_id),
                         ),
                     })
                     .collect::<Cancelable<Vec<_>>>()?;
                 (points_to, problem)
             }
-            Submodule::Definition(..) => continue,
+            Submodule::Definition(_name, submodule_source) => {
+                let points_to = build_subtree(
+                    db,
+                    source_root,
+                    tree,
+                    visited,
+                    roots,
+                    Some(link),
+                    *submodule_source,
+                )?;
+                (vec![points_to], None)
+            }
         };
 
         tree.link_mut(link).points_to = points_to;
@@ -196,10 +208,17 @@ fn build_subtree(
 }
 
 fn resolve_submodule(
-    file_id: FileId,
+    source: ModuleSource,
     name: &SmolStr,
     file_resolver: &FileResolverImp,
 ) -> (Vec<FileId>, Option<Problem>) {
+    let file_id = match source {
+        ModuleSource::File(it) => it,
+        ModuleSource::Inline(..) => {
+            // TODO
+            return (Vec::new(), None);
+        }
+    };
     let mod_name = file_resolver.file_stem(file_id);
     let is_dir_owner = mod_name == "mod" || mod_name == "lib" || mod_name == "main";
 
