@@ -376,11 +376,21 @@ impl<'a> PoolDispatcher<'a> {
                             Ok(lsp_error) => {
                                 RawResponse::err(id, lsp_error.code, lsp_error.message)
                             }
-                            Err(e) => RawResponse::err(
-                                id,
-                                ErrorCode::InternalError as i32,
-                                format!("{}\n{}", e, e.backtrace()),
-                            ),
+                            Err(e) => {
+                                if is_canceled(&e) {
+                                    RawResponse::err(
+                                        id,
+                                        ErrorCode::RequestCancelled as i32,
+                                        e.to_string(),
+                                    )
+                                } else {
+                                    RawResponse::err(
+                                        id,
+                                        ErrorCode::InternalError as i32,
+                                        format!("{}\n{}", e, e.backtrace()),
+                                    )
+                                }
+                            }
                         },
                     };
                     let task = Task::Respond(resp);
