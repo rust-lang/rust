@@ -103,35 +103,52 @@ pub fn introduce_variable<'a>(
 ) -> Option<impl FnOnce() -> LocalEdit + 'a> {
     let node = find_covering_node(file.syntax(), range);
     let expr = node.ancestors().filter_map(ast::Expr::cast).next()?;
-    let anchor_stmt = expr
-        .syntax()
-        .ancestors()
-        .filter_map(ast::Stmt::cast)
-        .next()?;
-    let indent = anchor_stmt.syntax().prev_sibling()?;
+
+    let anchor_stmt = ahchor_stmt(expr)?;
+    let indent = anchor_stmt.prev_sibling()?;
     if indent.kind() != WHITESPACE {
         return None;
     }
-    Some(move || {
+    return Some(move || {
         let mut buf = String::new();
         let mut edit = EditBuilder::new();
 
         buf.push_str("let var_name = ");
         expr.syntax().text().push_to(&mut buf);
-        if expr.syntax().range().start() == anchor_stmt.syntax().range().start() {
+        if expr.syntax().range().start() == anchor_stmt.range().start() {
             edit.replace(expr.syntax().range(), buf);
         } else {
             buf.push_str(";");
             indent.text().push_to(&mut buf);
             edit.replace(expr.syntax().range(), "var_name".to_string());
-            edit.insert(anchor_stmt.syntax().range().start(), buf);
+            edit.insert(anchor_stmt.range().start(), buf);
         }
-        let cursor_position = anchor_stmt.syntax().range().start() + TextUnit::of_str("let ");
+        let cursor_position = anchor_stmt.range().start() + TextUnit::of_str("let ");
         LocalEdit {
             edit: edit.finish(),
             cursor_position: Some(cursor_position),
         }
-    })
+    });
+
+    /// Statement or last in the block expression, which will follow
+    /// the freshly introduced var.
+    fn ahchor_stmt(expr: ast::Expr) -> Option<SyntaxNodeRef> {
+        expr.syntax().ancestors().find(|&node| {
+            if ast::Stmt::cast(node).is_some() {
+                return true;
+            }
+            if let Some(expr) = node
+                .parent()
+                .and_then(ast::Block::cast)
+                .and_then(|it| it.expr())
+            {
+                if expr.syntax() == node {
+                    return true;
+                }
+            }
+            false
+        })
+    }
 }
 
 fn non_trivia_sibling(node: SyntaxNodeRef, direction: Direction) -> Option<SyntaxNodeRef> {
@@ -207,6 +224,7 @@ fn foo() {
             |file, range| introduce_variable(file, range).map(|f| f()),
         );
     }
+
     #[test]
     fn test_intrdoduce_var_expr_stmt() {
         check_action_range(
@@ -217,6 +235,22 @@ fn foo() {
             "
 fn foo() {
     let <|>var_name = 1 + 1;
+}",
+            |file, range| introduce_variable(file, range).map(|f| f()),
+        );
+    }
+
+    #[test]
+    fn test_intrdoduce_var_last_expr() {
+        check_action_range(
+            "
+fn foo() {
+    bar(<|>1 + 1<|>)
+}",
+            "
+fn foo() {
+    let <|>var_name = 1 + 1;
+    bar(var_name)
 }",
             |file, range| introduce_variable(file, range).map(|f| f()),
         );
