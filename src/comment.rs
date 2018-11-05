@@ -398,7 +398,7 @@ impl CodeBlockAttribute {
 /// Block that is formatted as an item.
 ///
 /// An item starts with either a star `*` or a dash `-`. Different level of indentation are
-/// handled.
+/// handled by shrinking the shape accordingly.
 struct ItemizedBlock {
     /// the number of whitespaces up to the item sigil
     indent: usize,
@@ -585,7 +585,7 @@ impl<'a> CommentRewrite<'a> {
 
         if let Some(ref ib) = self.item_block {
             if ib.in_block(&line) {
-                self.item_block_buffer.push_str(&line);
+                self.item_block_buffer.push_str(line.trim_start());
                 self.item_block_buffer.push('\n');
                 return false;
             }
