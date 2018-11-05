@@ -5,6 +5,7 @@ LL |     let g = &mut f;
    |                  - mutable borrow occurs here
 LL |     f(1, 2);    //~ ERROR cannot borrow `f` as immutable
    |     ^ immutable borrow occurs here
+LL |     use_mut(g);
 LL | }
    | - mutable borrow ends here
 
