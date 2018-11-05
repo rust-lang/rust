@@ -905,7 +905,7 @@ pub fn markdown_links(md: &str) -> Vec<(String, Option<Range<usize>>)> {
     links
 }
 
-#[derive(Default)]
+#[derive(Clone, Default, Debug)]
 pub struct IdMap {
     map: FxHashMap<String, usize>,
 }

@@ -52,11 +52,7 @@ use std::str;
 use std::sync::Arc;
 use std::rc::Rc;
 
-use externalfiles::ExternalHtml;
-
 use errors;
-use getopts;
-
 use serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
 use syntax::ext::base::MacroKind;
@@ -70,6 +66,7 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::flock;
 
 use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability};
+use config::RenderOptions;
 use doctree;
 use fold::DocFolder;
 use html::escape::Escape;
@@ -109,8 +106,6 @@ struct Context {
     /// The map used to ensure all generated 'id=' attributes are unique.
     id_map: Rc<RefCell<IdMap>>,
     pub shared: Arc<SharedContext>,
-    pub enable_index_page: bool,
-    pub index_page: Option<PathBuf>,
 }
 
 struct SharedContext {
@@ -495,23 +490,25 @@ pub fn initial_ids() -> Vec<String> {
 
 /// Generates the documentation for `crate` into the directory `dst`
 pub fn run(mut krate: clean::Crate,
-           extern_urls: BTreeMap<String, String>,
-           external_html: &ExternalHtml,
-           playground_url: Option<String>,
-           dst: PathBuf,
-           resource_suffix: String,
+           options: RenderOptions,
            passes: FxHashSet<String>,
-           css_file_extension: Option<PathBuf>,
            renderinfo: RenderInfo,
-           sort_modules_alphabetically: bool,
-           themes: Vec<PathBuf>,
-           enable_minification: bool,
-           id_map: IdMap,
-           enable_index_page: bool,
-           index_page: Option<PathBuf>,
-           matches: &getopts::Matches,
-           diag: &errors::Handler,
-) -> Result<(), Error> {
+           diag: &errors::Handler) -> Result<(), Error> {
+    // need to save a copy of the options for rendering the index page
+    let md_opts = options.clone();
+    let RenderOptions {
+        output,
+        external_html,
+        id_map,
+        playground_url,
+        sort_modules_alphabetically,
+        themes,
+        extension_css,
+        extern_html_root_urls,
+        resource_suffix,
+        ..
+    } = options;
+
     let src_root = match krate.src {
         FileName::Real(ref p) => match p.parent() {
             Some(p) => p.to_path_buf(),
@@ -528,10 +525,10 @@ pub fn run(mut krate: clean::Crate,
         layout: layout::Layout {
             logo: String::new(),
             favicon: String::new(),
-            external_html: external_html.clone(),
+            external_html,
             krate: krate.name.clone(),
         },
-        css_file_extension,
+        css_file_extension: extension_css,
         created_dirs: Default::default(),
         sort_modules_alphabetically,
         themes,
@@ -573,6 +570,7 @@ pub fn run(mut krate: clean::Crate,
             }
         }
     }
+    let dst = output;
     try_err!(fs::create_dir_all(&dst), &dst);
     krate = render_sources(&dst, &mut scx, krate)?;
     let cx = Context {
@@ -582,8 +580,6 @@ pub fn run(mut krate: clean::Crate,
         codes: ErrorCodes::from(UnstableFeatures::from_environment().is_nightly_build()),
         id_map: Rc::new(RefCell::new(id_map)),
         shared: Arc::new(scx),
-        enable_index_page,
-        index_page,
     };
 
     // Crawl the crate to build various caches used for the output
@@ -637,7 +633,7 @@ pub fn run(mut krate: clean::Crate,
             },
             _ => PathBuf::new(),
         };
-        let extern_url = extern_urls.get(&e.name).map(|u| &**u);
+        let extern_url = extern_html_root_urls.get(&e.name).map(|u| &**u);
         cache.extern_locations.insert(n, (e.name.clone(), src_root,
                                           extern_location(e, extern_url, &cx.dst)));
 
@@ -678,7 +674,7 @@ pub fn run(mut krate: clean::Crate,
     CACHE_KEY.with(|v| *v.borrow_mut() = cache.clone());
     CURRENT_LOCATION_KEY.with(|s| s.borrow_mut().clear());
 
-    write_shared(&cx, &krate, &*cache, index, enable_minification, matches, diag)?;
+    write_shared(&cx, &krate, &*cache, index, &md_opts, diag)?;
 
     // And finally render the whole crate's documentation
     cx.krate(krate)
@@ -759,8 +755,7 @@ fn write_shared(
     krate: &clean::Crate,
     cache: &Cache,
     search_index: String,
-    enable_minification: bool,
-    matches: &getopts::Matches,
+    options: &RenderOptions,
     diag: &errors::Handler,
 ) -> Result<(), Error> {
     // Write out the shared files. Note that these are shared among all rustdoc
@@ -773,10 +768,10 @@ fn write_shared(
 
     write_minify(cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
                  include_str!("static/rustdoc.css"),
-                 enable_minification)?;
+                 options.enable_minification)?;
     write_minify(cx.dst.join(&format!("settings{}.css", cx.shared.resource_suffix)),
                  include_str!("static/settings.css"),
-                 enable_minification)?;
+                 options.enable_minification)?;
 
     // To avoid "light.css" to be overwritten, we'll first run over the received themes and only
     // then we'll run over the "official" styles.
@@ -800,11 +795,11 @@ fn write_shared(
           include_bytes!("static/wheel.svg"))?;
     write_minify(cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
                  include_str!("static/themes/light.css"),
-                 enable_minification)?;
+                 options.enable_minification)?;
     themes.insert("light".to_owned());
     write_minify(cx.dst.join(&format!("dark{}.css", cx.shared.resource_suffix)),
                  include_str!("static/themes/dark.css"),
-                 enable_minification)?;
+                 options.enable_minification)?;
     themes.insert("dark".to_owned());
 
     let mut themes: Vec<&String> = themes.iter().collect();
@@ -860,10 +855,10 @@ themePicker.onblur = handleThemeButtonsBlur;
 
     write_minify(cx.dst.join(&format!("main{}.js", cx.shared.resource_suffix)),
                  include_str!("static/main.js"),
-                 enable_minification)?;
+                 options.enable_minification)?;
     write_minify(cx.dst.join(&format!("settings{}.js", cx.shared.resource_suffix)),
                  include_str!("static/settings.js"),
-                 enable_minification)?;
+                 options.enable_minification)?;
 
     {
         let mut data = format!("var resourcesSuffix = \"{}\";\n",
@@ -871,24 +866,24 @@ themePicker.onblur = handleThemeButtonsBlur;
         data.push_str(include_str!("static/storage.js"));
         write_minify(cx.dst.join(&format!("storage{}.js", cx.shared.resource_suffix)),
                      &data,
-                     enable_minification)?;
+                     options.enable_minification)?;
     }
 
     if let Some(ref css) = cx.shared.css_file_extension {
         let out = cx.dst.join(&format!("theme{}.css", cx.shared.resource_suffix));
-        if !enable_minification {
+        if !options.enable_minification {
             try_err!(fs::copy(css, out), css);
         } else {
             let mut f = try_err!(File::open(css), css);
             let mut buffer = String::with_capacity(1000);
 
             try_err!(f.read_to_string(&mut buffer), css);
-            write_minify(out, &buffer, enable_minification)?;
+            write_minify(out, &buffer, options.enable_minification)?;
         }
     }
     write_minify(cx.dst.join(&format!("normalize{}.css", cx.shared.resource_suffix)),
                  include_str!("static/normalize.css"),
-                 enable_minification)?;
+                 options.enable_minification)?;
     write(cx.dst.join("FiraSans-Regular.woff"),
           include_bytes!("static/FiraSans-Regular.woff"))?;
     write(cx.dst.join("FiraSans-Medium.woff"),
@@ -984,19 +979,19 @@ themePicker.onblur = handleThemeButtonsBlur;
     let mut w = try_err!(File::create(&dst), &dst);
     try_err!(writeln!(&mut w, "var N = null;var searchIndex = {{}};"), &dst);
     for index in &all_indexes {
-        try_err!(write_minify_replacer(&mut w, &*index, enable_minification,
+        try_err!(write_minify_replacer(&mut w, &*index, options.enable_minification,
                                        &[(minifier::js::Keyword::Null, "N")]),
                  &dst);
     }
     try_err!(writeln!(&mut w, "initSearch(searchIndex);"), &dst);
 
-    if cx.enable_index_page == true {
-        if let Some(ref index_page) = cx.index_page {
-            ::markdown::render(index_page,
-                               cx.dst.clone(),
-                               &matches, &(*cx.shared).layout.external_html,
-                               !matches.opt_present("markdown-no-toc"),
-                               diag);
+    if options.enable_index_page {
+        if let Some(index_page) = options.index_page.clone() {
+            let mut md_opts = options.clone();
+            md_opts.output = cx.dst.clone();
+            md_opts.external_html = (*cx.shared).layout.external_html.clone();
+
+            ::markdown::render(index_page, md_opts, diag);
         } else {
             let dst = cx.dst.join("index.html");
             let mut w = BufWriter::new(try_err!(File::create(&dst), &dst));

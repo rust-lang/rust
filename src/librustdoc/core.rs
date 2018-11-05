@@ -28,7 +28,6 @@ use rustc_target::spec::TargetTriple;
 
 use syntax::ast::{self, Ident, NodeId};
 use syntax::source_map;
-use syntax::edition::Edition;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::json::JsonEmitter;
 use syntax::ptr::P;
@@ -43,9 +42,9 @@ use std::mem;
 use rustc_data_structures::sync::{self, Lrc};
 use std::rc::Rc;
 use std::sync::Arc;
-use std::path::PathBuf;
 
 use visit_ast::RustdocVisitor;
+use config::{Options as RustdocOptions, RenderOptions};
 use clean;
 use clean::{get_path_for_type, Clean, MAX_DEF_ID, AttributesExt};
 use html::render::RenderInfo;
@@ -320,32 +319,33 @@ pub fn new_handler(error_format: ErrorOutputType,
     )
 }
 
-pub fn run_core(search_paths: SearchPaths,
-                cfgs: Vec<String>,
-                externs: config::Externs,
-                input: Input,
-                triple: Option<TargetTriple>,
-                maybe_sysroot: Option<PathBuf>,
-                allow_warnings: bool,
-                crate_name: Option<String>,
-                force_unstable_if_unmarked: bool,
-                edition: Edition,
-                cg: CodegenOptions,
-                error_format: ErrorOutputType,
-                cmd_lints: Vec<(String, lint::Level)>,
-                lint_cap: Option<lint::Level>,
-                describe_lints: bool,
-                mut manual_passes: Vec<String>,
-                mut default_passes: passes::DefaultPassOption,
-                treat_err_as_bug: bool,
-                ui_testing: bool,
-) -> (clean::Crate, RenderInfo, Vec<String>) {
+pub fn run_core(options: RustdocOptions) -> (clean::Crate, RenderInfo, RenderOptions, Vec<String>) {
     // Parse, resolve, and typecheck the given crate.
 
-    let cpath = match input {
-        Input::File(ref p) => Some(p.clone()),
-        _ => None
-    };
+    let RustdocOptions {
+        input,
+        crate_name,
+        error_format,
+        libs,
+        externs,
+        cfgs,
+        codegen_options,
+        debugging_options,
+        target,
+        edition,
+        maybe_sysroot,
+        lint_opts,
+        describe_lints,
+        lint_cap,
+        mut default_passes,
+        mut manual_passes,
+        display_warnings,
+        render_options,
+        ..
+    } = options;
+
+    let cpath = Some(input.clone());
+    let input = Input::File(input);
 
     let intra_link_resolution_failure_name = lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE.name;
     let warnings_lint_name = lint::builtin::WARNINGS.name;
@@ -359,7 +359,7 @@ pub fn run_core(search_paths: SearchPaths,
                                      missing_docs.to_owned(),
                                      missing_doc_example.to_owned()];
 
-    whitelisted_lints.extend(cmd_lints.iter().map(|(lint, _)| lint).cloned());
+    whitelisted_lints.extend(lint_opts.iter().map(|(lint, _)| lint).cloned());
 
     let lints = lint::builtin::HardwiredLints.get_lints()
                     .into_iter()
@@ -372,33 +372,28 @@ pub fn run_core(search_paths: SearchPaths,
                             Some((lint.name_lower(), lint::Allow))
                         }
                     })
-                    .chain(cmd_lints.into_iter())
+                    .chain(lint_opts.into_iter())
                     .collect::<Vec<_>>();
 
     let host_triple = TargetTriple::from_triple(config::host_triple());
     // plays with error output here!
     let sessopts = config::Options {
         maybe_sysroot,
-        search_paths,
+        search_paths: libs,
         crate_types: vec![config::CrateType::Rlib],
-        lint_opts: if !allow_warnings {
+        lint_opts: if !display_warnings {
             lints
         } else {
             vec![]
         },
         lint_cap: Some(lint_cap.unwrap_or_else(|| lint::Forbid)),
-        cg,
+        cg: codegen_options,
         externs,
-        target_triple: triple.unwrap_or(host_triple),
+        target_triple: target.unwrap_or(host_triple),
         // Ensure that rustdoc works even if rustc is feature-staged
         unstable_features: UnstableFeatures::Allow,
         actually_rustdoc: true,
-        debugging_opts: config::DebuggingOptions {
-            force_unstable_if_unmarked,
-            treat_err_as_bug,
-            ui_testing,
-            ..config::basic_debugging_options()
-        },
+        debugging_opts: debugging_options.clone(),
         error_format,
         edition,
         describe_lints,
@@ -408,8 +403,8 @@ pub fn run_core(search_paths: SearchPaths,
         let source_map = Lrc::new(source_map::SourceMap::new(sessopts.file_path_mapping()));
         let diagnostic_handler = new_handler(error_format,
                                              Some(source_map.clone()),
-                                             treat_err_as_bug,
-                                             ui_testing);
+                                             debugging_options.treat_err_as_bug,
+                                             debugging_options.ui_testing);
 
         let mut sess = session::build_session_(
             sessopts, cpath, diagnostic_handler, source_map,
@@ -621,7 +616,7 @@ pub fn run_core(search_paths: SearchPaths,
 
             ctxt.sess().abort_if_errors();
 
-            (krate, ctxt.renderinfo.into_inner(), passes)
+            (krate, ctxt.renderinfo.into_inner(), render_options, passes)
         }), &sess)
     })
 }

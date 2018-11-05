@@ -16,7 +16,7 @@ use syntax::feature_gate::UnstableFeatures;
 use html::markdown::{IdMap, ErrorCodes, Markdown};
 use std::cell::RefCell;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ExternalHtml {
     /// Content that will be included inline in the <head> section of a
     /// rendered Markdown file or generated documentation
