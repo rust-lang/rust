@@ -21,6 +21,7 @@ LL |     let _x = &mut x.x;
    |                   - first mutable borrow occurs here
 LL |     let _y = &mut x.y; //~ ERROR cannot borrow
    |                   ^ second mutable borrow occurs here
+LL |     use_mut(_x);
 LL | }
    | - first borrow ends here
 
@@ -47,6 +48,7 @@ LL |     let _p: &mut Point = &mut **x;
    |                                -- first mutable borrow occurs here
 LL |     x.y = 3; //~ ERROR cannot borrow
    |     ^ second mutable borrow occurs here
+LL |     use_mut(_p);
 LL | }
    | - first borrow ends here
 

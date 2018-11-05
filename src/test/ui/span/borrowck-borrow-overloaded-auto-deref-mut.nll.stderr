@@ -14,6 +14,16 @@ LL | fn deref_extend_mut_field1(x: &Own<Point>) -> &mut isize {
 LL |     &mut x.y //~ ERROR cannot borrow
    |          ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
+error[E0499]: cannot borrow `*x` as mutable more than once at a time
+  --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:88:19
+   |
+LL |     let _x = &mut x.x;
+   |                   - first mutable borrow occurs here
+LL |     let _y = &mut x.y; //~ ERROR cannot borrow
+   |                   ^ second mutable borrow occurs here
+LL |     use_mut(_x);
+   |             -- first borrow later used here
+
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:98:5
    |
@@ -29,6 +39,16 @@ LL | fn assign_field2<'a>(x: &'a Own<Point>) {
    |                         -------------- help: consider changing this to be a mutable reference: `&'a mut Own<Point>`
 LL |     x.y = 3; //~ ERROR cannot borrow
    |     ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+
+error[E0499]: cannot borrow `*x` as mutable more than once at a time
+  --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:111:5
+   |
+LL |     let _p: &mut Point = &mut **x;
+   |                                -- first mutable borrow occurs here
+LL |     x.y = 3; //~ ERROR cannot borrow
+   |     ^ second mutable borrow occurs here
+LL |     use_mut(_p);
+   |             -- first borrow later used here
 
 error[E0596]: cannot borrow `x` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-borrow-overloaded-auto-deref-mut.rs:119:5
@@ -62,6 +82,7 @@ LL | fn assign_method2<'a>(x: &'a Own<Point>) {
 LL |     *x.y_mut() = 3; //~ ERROR cannot borrow
    |      ^ `x` is a `&` reference, so the data it refers to cannot be borrowed as mutable
 
-error: aborting due to 8 previous errors
+error: aborting due to 10 previous errors
 
-For more information about this error, try `rustc --explain E0596`.
+Some errors occurred: E0499, E0596.
+For more information about an error, try `rustc --explain E0499`.
