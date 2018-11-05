@@ -11,16 +11,22 @@ list of items:
     * Drop code (the `Drop::drop` function is not called directly)
     * Drop implementations of types without an explicit `Drop` implementation
 
-The lowering is triggered by calling the `mir_built` query. The entire lowering
-code lives in `src/librustc_mir/build`. There is an intermediate representation
-between [HIR] and [MIR] called the `HAIR` that is only used during the lowering.
-The `HAIR` has datatypes that mirror the [HIR] datatypes, but instead of e.g. `-x`
-being a `hair::ExprKind::Neg(hair::Expr)` it is a `hair::ExprKind::Neg(hir::Expr)`.
+The lowering is triggered by calling the [`mir_built`] query.
+There is an intermediate representation
+between [HIR] and [MIR] called the [HAIR] that is only used during the lowering.
+The [HAIR]'s most important feature is that the various adjustments that happen
+without explicit syntax (coercion, autoderef, autoref, ...) have become explicit
+casts, deref operations or reference expressions.
 
+The [HAIR] has datatypes that mirror the [HIR] datatypes, but instead of e.g. `-x`
+being a `hair::ExprKind::Neg(hair::Expr)` it is a `hair::ExprKind::Neg(hir::Expr)`.
 This shallowness enables the `HAIR` to represent all datatypes that [HIR] has, but
-without having to create an in-memory copy of the entire [HIR]. The `HAIR` also
+without having to create an in-memory copy of the entire [HIR]. The [HAIR] also
 does a few simplifications, e.g. method calls and function calls have been merged
-into a single variant.
+into a single variant. [MIR] lowering will first convert the topmost expression from
+[HIR] to [HAIR] (in
+[https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/hair/cx/expr/index.html])
+and then process the [HAIR] expressions recursively.
 
 The lowering creates local variables for every argument as specified in the signature.
 Next it creates local variables for every binding specified (e.g. `(a, b): (i32, String)`)
@@ -35,7 +41,7 @@ writes the result into the `RETURN_PLACE`.
 ## `unpack!` all the things
 
 One important thing of note is the `unpack!` macro, which accompanies all recursive
-calls. The macro ensures, that you get the result of the recursive call while updating
+calls. The macro ensures that you get the result of the recursive call while updating
 the basic block that you are now in. As an example: lowering `a + b` will need to do
 three somewhat independent things:
 
@@ -109,3 +115,5 @@ case of `enum`s.
 
 [MIR]: ./index.html
 [HIR]: ../hir.html
+[HAIR]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/hair/index.html
+[`mir_built`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/transform/fn.mir_built.html
