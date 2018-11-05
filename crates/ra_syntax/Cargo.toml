@@ -16,5 +16,5 @@ rowan = "0.1.1"
 text_unit = "0.1.5"
 
 [dev-dependencies]
-# test_utils = { path = "../test_utils" }
+test_utils = { path = "../test_utils" }
 walkdir = "2.2.0"
