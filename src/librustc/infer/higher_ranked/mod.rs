@@ -543,11 +543,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) {
         debug!("pop_placeholders({:?})", placeholder_map);
         let placeholder_regions: FxHashSet<_> = placeholder_map.values().cloned().collect();
-        self.borrow_region_constraints()
-            .pop_placeholders(
-                &placeholder_regions,
-                &snapshot.region_constraints_snapshot,
-            );
+        self.borrow_region_constraints().pop_placeholders(&placeholder_regions);
         self.universe.set(snapshot.universe);
         if !placeholder_map.is_empty() {
             self.projection_cache.borrow_mut().rollback_placeholder(

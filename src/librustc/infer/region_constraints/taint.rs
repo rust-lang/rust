@@ -65,8 +65,7 @@ impl<'tcx> TaintSet<'tcx> {
                             "we never add verifications while doing higher-ranked things",
                         )
                     }
-                    &Purged | &AddCombination(..) | &AddVar(..) | &OpenSnapshot
-                    | &CommitedSnapshot => {}
+                    &Purged | &AddCombination(..) | &AddVar(..) => {}
                 }
             }
         }
