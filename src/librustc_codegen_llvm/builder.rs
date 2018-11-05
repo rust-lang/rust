@@ -482,14 +482,12 @@ impl Builder<'a, 'll, 'tcx> {
         }
     }
 
-    pub fn atomic_load(&self, ptr: &'ll Value, order: AtomicOrdering, align: Align) -> &'ll Value {
+    pub fn atomic_load(&self, ptr: &'ll Value, order: AtomicOrdering, size: Size) -> &'ll Value {
         self.count_insn("load.atomic");
         unsafe {
             let load = llvm::LLVMRustBuildAtomicLoad(self.llbuilder, ptr, noname(), order);
-            // FIXME(eddyb) Isn't it UB to use `pref` instead of `abi` here?
-            // However, 64-bit atomic loads on `i686-apple-darwin` appear to
-            // require `___atomic_load` with ABI-alignment, so it's staying.
-            llvm::LLVMSetAlignment(load, align.pref() as c_uint);
+            // LLVM requires the alignment of atomic loads to be at least the size of the type.
+            llvm::LLVMSetAlignment(load, size.bytes() as c_uint);
             load
         }
     }
@@ -564,15 +562,14 @@ impl Builder<'a, 'll, 'tcx> {
     }
 
     pub fn atomic_store(&self, val: &'ll Value, ptr: &'ll Value,
-                        order: AtomicOrdering, align: Align) {
+                        order: AtomicOrdering, size: Size) {
         debug!("Store {:?} -> {:?}", val, ptr);
         self.count_insn("store.atomic");
         let ptr = self.check_store(val, ptr);
         unsafe {
             let store = llvm::LLVMRustBuildAtomicStore(self.llbuilder, val, ptr, order);
-            // FIXME(eddyb) Isn't it UB to use `pref` instead of `abi` here?
-            // Also see `atomic_load` for more context.
-            llvm::LLVMSetAlignment(store, align.pref() as c_uint);
+            // LLVM requires the alignment of atomic stores to be at least the size of the type.
+            llvm::LLVMSetAlignment(store, size.bytes() as c_uint);
         }
     }
 
