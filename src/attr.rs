@@ -326,7 +326,11 @@ impl Rewrite for ast::Attribute {
                             ast::AttrStyle::Outer => CommentStyle::TripleSlash,
                         };
 
-                        let doc_comment = format!("{}{}", comment_style.opener(), literal);
+                        // Remove possible whitespace from the `CommentStyle::opener()` so that
+                        // the literal itself has control over the comment's leading spaces.
+                        let opener = comment_style.opener().trim_end();
+
+                        let doc_comment = format!("{}{}", opener, literal);
                         return rewrite_doc_comment(
                             &doc_comment,
                             shape.comment(context.config),

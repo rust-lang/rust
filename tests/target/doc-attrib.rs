@@ -3,6 +3,7 @@
 
 // Only doc = "" attributes should be normalized
 //! Example doc attribute comment
+//!          Example doc attribute comment with 10 leading spaces
 #![doc(
     html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
     html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
@@ -103,3 +104,30 @@ mod issue_2620 {
     )
 )))]
 type Os = NoSource;
+
+// use cases from bindgen needing precise control over leading spaces
+/// <div rustbindgen accessor></div>
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone)]
+pub struct ContradictAccessors {
+    ///<foo>no leading spaces here</foo>
+    pub mBothAccessors: ::std::os::raw::c_int,
+    /// <div rustbindgen accessor="false"></div>
+    pub mNoAccessors: ::std::os::raw::c_int,
+    /// <div rustbindgen accessor="unsafe"></div>
+    pub mUnsafeAccessors: ::std::os::raw::c_int,
+    /// <div rustbindgen accessor="immutable"></div>
+    pub mImmutableAccessor: ::std::os::raw::c_int,
+}
+
+/// \brief          MPI structure
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct mbedtls_mpi {
+    ///<  integer sign
+    pub s: ::std::os::raw::c_int,
+    ///<  total # of limbs
+    pub n: ::std::os::raw::c_ulong,
+    ///<  pointer to limbs
+    pub p: *mut mbedtls_mpi_uint,
+}

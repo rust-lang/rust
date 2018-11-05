@@ -2,7 +2,8 @@
 // rustfmt-normalize_doc_attributes: true
 
 // Only doc = "" attributes should be normalized
-#![doc = "Example doc attribute comment"]
+#![doc = " Example doc attribute comment"]
+#![doc = "          Example doc attribute comment with 10 leading spaces"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "https://doc.rust-lang.org/favicon.ico",
        html_root_url = "https://doc.rust-lang.org/nightly/",
@@ -10,20 +11,20 @@
 
 
 // Long `#[doc = "..."]`
-struct A { #[doc = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"] b: i32 }
+struct A { #[doc = " xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"] b: i32 }
 
 
-#[doc = "The `nodes` and `edges` method each return instantiations of `Cow<[T]>` to leave implementers the freedom to create entirely new vectors or to pass back slices into internally owned vectors."]
+#[doc = " The `nodes` and `edges` method each return instantiations of `Cow<[T]>` to leave implementers the freedom to create entirely new vectors or to pass back slices into internally owned vectors."]
 struct B { b: i32 }
 
 
-#[doc = "Level 1 comment"]
+#[doc = " Level 1 comment"]
 mod tests {
-    #[doc = "Level 2 comment"]
+    #[doc = " Level 2 comment"]
     impl A {
-        #[doc = "Level 3 comment"]
+        #[doc = " Level 3 comment"]
         fn f() {
-            #[doc = "Level 4 comment"]
+            #[doc = " Level 4 comment"]
             fn g() {
             }
         }
@@ -31,12 +32,12 @@ mod tests {
 }
 
 struct C {
-    #[doc = "item doc attrib comment"]
+    #[doc = " item doc attrib comment"]
     // regular item comment
     b: i32,
 
     // regular item comment
-    #[doc = "item doc attrib comment"]
+    #[doc = " item doc attrib comment"]
     c: i32,
 }
 
@@ -89,3 +90,30 @@ pub struct Params {
                   all(target_arch = "wasm32", feature = "wasm-bindgen"),
               ))))]
 type Os = NoSource;
+
+// use cases from bindgen needing precise control over leading spaces
+#[doc = " <div rustbindgen accessor></div>"]
+#[repr(C)]
+#[derive(Debug, Default, Copy, Clone)]
+pub struct ContradictAccessors {
+    #[doc = "<foo>no leading spaces here</foo>"]
+    pub mBothAccessors: ::std::os::raw::c_int,
+    #[doc = " <div rustbindgen accessor=\"false\"></div>"]
+    pub mNoAccessors: ::std::os::raw::c_int,
+    #[doc = " <div rustbindgen accessor=\"unsafe\"></div>"]
+    pub mUnsafeAccessors: ::std::os::raw::c_int,
+    #[doc = " <div rustbindgen accessor=\"immutable\"></div>"]
+    pub mImmutableAccessor: ::std::os::raw::c_int,
+}
+
+#[doc = " \\brief          MPI structure"]
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct mbedtls_mpi {
+    #[doc = "<  integer sign"]
+    pub s: ::std::os::raw::c_int,
+    #[doc = "<  total # of limbs"]
+    pub n: ::std::os::raw::c_ulong,
+    #[doc = "<  pointer to limbs"]
+    pub p: *mut mbedtls_mpi_uint,
+}
