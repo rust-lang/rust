@@ -45,16 +45,18 @@ pub struct ParserAnyMacro<'a> {
     /// Span of the expansion site of the macro this parser is for
     site_span: Span,
     /// The ident of the macro we're parsing
-    macro_ident: ast::Ident
+    macro_ident: ast::Ident,
+    arm_span: Span,
 }
 
 impl<'a> ParserAnyMacro<'a> {
     pub fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
-        let ParserAnyMacro { site_span, macro_ident, ref mut parser } = *self;
+        let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
         let fragment = panictry!(parser.parse_ast_fragment(kind, true).map_err(|mut e| {
             if e.span.is_dummy() {  // Get around lack of span in error (#30128)
                 e.set_span(site_span);
                 e.span_label(site_span, "in this macro expansion");
+                e.span_label(arm_span, "in this macro arm");
             } else if parser.token == token::Eof {  // (#52866)
                 e.set_span(parser.sess.source_map().next_point(parser.span));
             }
@@ -146,6 +148,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                     quoted::TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
                     _ => cx.span_bug(sp, "malformed macro rhs"),
                 };
+                let arm_span = rhses[i].span();
 
                 let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
                 // rhs has holes ( `$id` and `$(...)` that need filled)
@@ -184,7 +187,8 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                     // so we can print a useful error message if the parse of the expanded
                     // macro leaves unparsed tokens.
                     site_span: sp,
-                    macro_ident: name
+                    macro_ident: name,
+                    arm_span,
                 })
             }
             Failure(sp, tok, t) => if sp.lo() >= best_fail_spot.lo() {

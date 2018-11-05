@@ -1,6 +1,9 @@
 error: expected expression, found the end of the macro arm
   --> $DIR/macro-in-expression-context-2.rs:5:16
    |
+LL | macro_rules! empty { () => () }
+   |                            -- in this macro arm
+...
 LL |         _ => { empty!() }
    |                ^^^^^^^^ in this macro expansion
 
