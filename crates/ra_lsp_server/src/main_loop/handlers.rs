@@ -6,9 +6,9 @@ use languageserver_types::{
     DiagnosticSeverity, DocumentSymbol, Documentation, FoldingRange, FoldingRangeKind,
     FoldingRangeParams, InsertTextFormat, Location, MarkupContent, MarkupKind, Position,
     PrepareRenameResponse, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit,
-    WorkspaceEdit,
+    WorkspaceEdit, ParameterInformation, SignatureInformation,
 };
-use ra_analysis::{FileId, FoldKind, Query, RunnableKind};
+use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FilePosition};
 use ra_syntax::text_utils::contains_offset_nonstrict;
 use rustc_hash::FxHashMap;
 use serde_json::to_value;
@@ -83,10 +83,8 @@ pub fn handle_on_enter(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::SourceChange>> {
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
-    let offset = params.position.conv_with(&line_index);
-    match world.analysis().on_enter(file_id, offset) {
+    let position = params.try_conv_with(&world)?;
+    match world.analysis().on_enter(position) {
         None => Ok(None),
         Some(edit) => Ok(Some(edit.try_conv_with(&world)?)),
     }
@@ -102,8 +100,11 @@ pub fn handle_on_type_formatting(
 
     let file_id = params.text_document.try_conv_with(&world)?;
     let line_index = world.analysis().file_line_index(file_id);
-    let offset = params.position.conv_with(&line_index);
-    let edits = match world.analysis().on_eq_typed(file_id, offset) {
+    let position = FilePosition {
+        file_id,
+        offset: params.position.conv_with(&line_index),
+    };
+    let edits = match world.analysis().on_eq_typed(position) {
         None => return Ok(None),
         Some(mut action) => action.source_file_edits.pop().unwrap().edits,
     };
@@ -201,14 +202,9 @@ pub fn handle_goto_definition(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::GotoDefinitionResponse>> {
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
-    let offset = params.position.conv_with(&line_index);
+    let position = params.try_conv_with(&world)?;
     let mut res = Vec::new();
-    for (file_id, symbol) in world
-        .analysis()
-        .approximately_resolve_symbol(file_id, offset)?
-    {
+    for (file_id, symbol) in world.analysis().approximately_resolve_symbol(position)? {
         let line_index = world.analysis().file_line_index(file_id);
         let location = to_location(file_id, symbol.node_range, &world, &line_index)?;
         res.push(location)
@@ -220,11 +216,9 @@ pub fn handle_parent_module(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,
 ) -> Result<Vec<Location>> {
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
-    let offset = params.position.conv_with(&line_index);
+    let position = params.try_conv_with(&world)?;
     let mut res = Vec::new();
-    for (file_id, symbol) in world.analysis().parent_module(file_id, offset)? {
+    for (file_id, symbol) in world.analysis().parent_module(position)? {
         let line_index = world.analysis().file_line_index(file_id);
         let location = to_location(file_id, symbol.node_range, &world, &line_index)?;
         res.push(location);
@@ -381,10 +375,13 @@ pub fn handle_completion(
     world: ServerWorld,
     params: req::CompletionParams,
 ) -> Result<Option<req::CompletionResponse>> {
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
-    let offset = params.position.conv_with(&line_index);
-    let items = match world.analysis().completions(file_id, offset)? {
+    let position = {
+        let file_id = params.text_document.try_conv_with(&world)?;
+        let line_index = world.analysis().file_line_index(file_id);
+        let offset = params.position.conv_with(&line_index);
+        FilePosition { file_id, offset }
+    };
+    let items = match world.analysis().completions(position)? {
         None => return Ok(None),
         Some(items) => items,
     };
@@ -444,13 +441,9 @@ pub fn handle_signature_help(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<req::SignatureHelp>> {
-    use languageserver_types::{ParameterInformation, SignatureInformation};
+    let position = params.try_conv_with(&world)?;
 
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
-    let offset = params.position.conv_with(&line_index);
-
-    if let Some((descriptor, active_param)) = world.analysis().resolve_callable(file_id, offset)? {
+    if let Some((descriptor, active_param)) = world.analysis().resolve_callable(position)? {
         let parameters: Vec<ParameterInformation> = descriptor
             .params
             .iter()
@@ -489,18 +482,17 @@ pub fn handle_prepare_rename(
     world: ServerWorld,
     params: req::TextDocumentPositionParams,
 ) -> Result<Option<PrepareRenameResponse>> {
-    let file_id = params.text_document.try_conv_with(&world)?;
-    let line_index = world.analysis().file_line_index(file_id);
-    let offset = params.position.conv_with(&line_index);
+    let position = params.try_conv_with(&world)?;
 
     // We support renaming references like handle_rename does.
     // In the future we may want to reject the renaming of things like keywords here too.
-    let refs = world.analysis().find_all_refs(file_id, offset)?;
-    if refs.is_empty() {
-        return Ok(None);
-    }
-
-    let r = refs.first().unwrap();
+    let refs = world.analysis().find_all_refs(position)?;
+    let r = match refs.first() {
+        Some(r) => r,
+        None => return Ok(None),
+    };
+    let file_id = params.text_document.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(file_id);
     let loc = to_location(r.0, r.1, &world, &line_index)?;
 
     Ok(Some(PrepareRenameResponse::Range(loc.range)))
@@ -519,7 +511,9 @@ pub fn handle_rename(world: ServerWorld, params: RenameParams) -> Result<Option<
         .into());
     }
 
-    let refs = world.analysis().find_all_refs(file_id, offset)?;
+    let refs = world
+        .analysis()
+        .find_all_refs(FilePosition { file_id, offset })?;
     if refs.is_empty() {
         return Ok(None);
     }
@@ -550,7 +544,9 @@ pub fn handle_references(
     let line_index = world.analysis().file_line_index(file_id);
     let offset = params.position.conv_with(&line_index);
 
-    let refs = world.analysis().find_all_refs(file_id, offset)?;
+    let refs = world
+        .analysis()
+        .find_all_refs(FilePosition { file_id, offset })?;
 
     Ok(Some(
         refs.into_iter()

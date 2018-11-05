@@ -220,16 +220,13 @@ impl AnalysisImpl {
         let source_root = self.db.file_source_root(file_id);
         self.db.module_tree(source_root)
     }
-    pub fn parent_module(
-        &self,
-        file_id: FileId,
-        offset: TextUnit,
-    ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        let module_tree = self.module_tree(file_id)?;
-        let file = self.db.file_syntax(file_id);
-        let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), offset) {
-            Some(m) if !m.has_semi() => ModuleSource::new_inline(file_id, m),
-            _ => ModuleSource::File(file_id),
+    pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+        let module_tree = self.module_tree(position.file_id)?;
+        let file = self.db.file_syntax(position.file_id);
+        let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset)
+        {
+            Some(m) if !m.has_semi() => ModuleSource::new_inline(position.file_id, m),
+            _ => ModuleSource::File(position.file_id),
         };
 
         let res = module_tree
@@ -269,18 +266,14 @@ impl AnalysisImpl {
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
         self.db.crate_graph().crate_roots[&crate_id]
     }
-    pub fn completions(
-        &self,
-        file_id: FileId,
-        offset: TextUnit,
-    ) -> Cancelable<Option<Vec<CompletionItem>>> {
+    pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
         let mut res = Vec::new();
         let mut has_completions = false;
-        if let Some(scope_based) = scope_completion(&self.db, file_id, offset) {
+        if let Some(scope_based) = scope_completion(&self.db, position) {
             res.extend(scope_based);
             has_completions = true;
         }
-        if let Some(scope_based) = resolve_based_completion(&self.db, file_id, offset)? {
+        if let Some(scope_based) = resolve_based_completion(&self.db, position)? {
             res.extend(scope_based);
             has_completions = true;
         }
@@ -289,18 +282,19 @@ impl AnalysisImpl {
     }
     pub fn approximately_resolve_symbol(
         &self,
-        file_id: FileId,
-        offset: TextUnit,
+        position: FilePosition,
     ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        let module_tree = self.module_tree(file_id)?;
-        let file = self.db.file_syntax(file_id);
+        let module_tree = self.module_tree(position.file_id)?;
+        let file = self.db.file_syntax(position.file_id);
         let syntax = file.syntax();
-        if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, offset) {
+        if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
             // First try to resolve the symbol locally
-            return if let Some((name, range)) = resolve_local_name(&self.db, file_id, name_ref) {
+            return if let Some((name, range)) =
+                resolve_local_name(&self.db, position.file_id, name_ref)
+            {
                 let mut vec = vec![];
                 vec.push((
-                    file_id,
+                    position.file_id,
                     FileSymbol {
                         name,
                         node_range: range,
@@ -313,10 +307,10 @@ impl AnalysisImpl {
                 self.index_resolve(name_ref)
             };
         }
-        if let Some(name) = find_node_at_offset::<ast::Name>(syntax, offset) {
+        if let Some(name) = find_node_at_offset::<ast::Name>(syntax, position.offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
-                    let file_ids = self.resolve_module(&*module_tree, file_id, module);
+                    let file_ids = self.resolve_module(&*module_tree, position.file_id, module);
 
                     let res = file_ids
                         .into_iter()
@@ -341,16 +335,17 @@ impl AnalysisImpl {
         Ok(vec![])
     }
 
-    pub fn find_all_refs(&self, file_id: FileId, offset: TextUnit) -> Vec<(FileId, TextRange)> {
-        let file = self.db.file_syntax(file_id);
+    pub fn find_all_refs(&self, position: FilePosition) -> Vec<(FileId, TextRange)> {
+        let file = self.db.file_syntax(position.file_id);
         let syntax = file.syntax();
 
         // Find the binding associated with the offset
-        let maybe_binding = find_node_at_offset::<ast::BindPat>(syntax, offset).or_else(|| {
-            let name_ref = find_node_at_offset::<ast::NameRef>(syntax, offset)?;
-            let resolved = resolve_local_name(&self.db, file_id, name_ref)?;
-            find_node_at_offset::<ast::BindPat>(syntax, resolved.1.end())
-        });
+        let maybe_binding =
+            find_node_at_offset::<ast::BindPat>(syntax, position.offset).or_else(|| {
+                let name_ref = find_node_at_offset::<ast::NameRef>(syntax, position.offset)?;
+                let resolved = resolve_local_name(&self.db, position.file_id, name_ref)?;
+                find_node_at_offset::<ast::BindPat>(syntax, resolved.1.end())
+            });
 
         let binding = match maybe_binding {
             None => return Vec::new(),
@@ -359,11 +354,11 @@ impl AnalysisImpl {
 
         let decl = DeclarationDescriptor::new(binding);
 
-        let mut ret = vec![(file_id, decl.range)];
+        let mut ret = vec![(position.file_id, decl.range)];
         ret.extend(
             decl.find_all_refs()
                 .into_iter()
-                .map(|ref_desc| (file_id, ref_desc.range)),
+                .map(|ref_desc| (position.file_id, ref_desc.range)),
         );
 
         ret
@@ -457,14 +452,13 @@ impl AnalysisImpl {
 
     pub fn resolve_callable(
         &self,
-        file_id: FileId,
-        offset: TextUnit,
+        position: FilePosition,
     ) -> Cancelable<Option<(FnDescriptor, Option<usize>)>> {
-        let file = self.db.file_syntax(file_id);
+        let file = self.db.file_syntax(position.file_id);
         let syntax = file.syntax();
 
         // Find the calling expression and it's NameRef
-        let calling_node = match FnCallNode::with_node(syntax, offset) {
+        let calling_node = match FnCallNode::with_node(syntax, position.offset) {
             Some(node) => node,
             None => return Ok(None),
         };
@@ -499,7 +493,7 @@ impl AnalysisImpl {
                             if let Some(ref arg_list) = calling_node.arg_list() {
                                 let start = arg_list.syntax().range().start();
 
-                                let range_search = TextRange::from_to(start, offset);
+                                let range_search = TextRange::from_to(start, position.offset);
                                 let mut commas: usize = arg_list
                                     .syntax()
                                     .text()

@@ -14,7 +14,7 @@ use crate::{
     descriptors::module::{ModuleId, ModuleScope, ModuleTree, ModuleSource},
     descriptors::DescriptorDatabase,
     input::FilesDatabase,
-    Cancelable, FileId,
+    Cancelable, FilePosition,
 };
 
 #[derive(Debug)]
@@ -29,21 +29,21 @@ pub struct CompletionItem {
 
 pub(crate) fn resolve_based_completion(
     db: &db::RootDatabase,
-    file_id: FileId,
-    offset: TextUnit,
+    position: FilePosition,
 ) -> Cancelable<Option<Vec<CompletionItem>>> {
-    let source_root_id = db.file_source_root(file_id);
-    let file = db.file_syntax(file_id);
+    let source_root_id = db.file_source_root(position.file_id);
+    let file = db.file_syntax(position.file_id);
     let module_tree = db.module_tree(source_root_id)?;
-    let module_id = match module_tree.any_module_for_source(ModuleSource::File(file_id)) {
+    let module_id = match module_tree.any_module_for_source(ModuleSource::File(position.file_id)) {
         None => return Ok(None),
         Some(it) => it,
     };
     let file = {
-        let edit = AtomEdit::insert(offset, "intellijRulezz".to_string());
+        let edit = AtomEdit::insert(position.offset, "intellijRulezz".to_string());
         file.reparse(&edit)
     };
-    let target_module_id = match find_target_module(&module_tree, module_id, &file, offset) {
+    let target_module_id = match find_target_module(&module_tree, module_id, &file, position.offset)
+    {
         None => return Ok(None),
         Some(it) => it,
     };
@@ -99,18 +99,17 @@ fn crate_path(name_ref: ast::NameRef) -> Option<Vec<ast::NameRef>> {
 
 pub(crate) fn scope_completion(
     db: &db::RootDatabase,
-    file_id: FileId,
-    offset: TextUnit,
+    position: FilePosition,
 ) -> Option<Vec<CompletionItem>> {
-    let original_file = db.file_syntax(file_id);
+    let original_file = db.file_syntax(position.file_id);
     // Insert a fake ident to get a valid parse tree
     let file = {
-        let edit = AtomEdit::insert(offset, "intellijRulezz".to_string());
+        let edit = AtomEdit::insert(position.offset, "intellijRulezz".to_string());
         original_file.reparse(&edit)
     };
     let mut has_completions = false;
     let mut res = Vec::new();
-    if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), offset) {
+    if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
         has_completions = true;
         complete_name_ref(&file, name_ref, &mut res);
         // special case, `trait T { fn foo(i_am_a_name_ref) {} }`
@@ -129,7 +128,7 @@ pub(crate) fn scope_completion(
             _ => (),
         }
     }
-    if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), offset) {
+    if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
         if is_node::<ast::Param>(name.syntax()) {
             has_completions = true;
             param_completions(name.syntax(), &mut res);
@@ -383,7 +382,7 @@ mod tests {
 
     fn check_scope_completion(code: &str, expected_completions: &str) {
         let (analysis, position) = single_file_with_position(code);
-        let completions = scope_completion(&analysis.imp.db, position.file_id, position.offset)
+        let completions = scope_completion(&analysis.imp.db, position)
             .unwrap()
             .into_iter()
             .filter(|c| c.snippet.is_none())
@@ -393,7 +392,7 @@ mod tests {
 
     fn check_snippet_completion(code: &str, expected_completions: &str) {
         let (analysis, position) = single_file_with_position(code);
-        let completions = scope_completion(&analysis.imp.db, position.file_id, position.offset)
+        let completions = scope_completion(&analysis.imp.db, position)
             .unwrap()
             .into_iter()
             .filter(|c| c.snippet.is_some())

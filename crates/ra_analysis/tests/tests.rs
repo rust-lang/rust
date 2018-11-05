@@ -15,10 +15,7 @@ use ra_analysis::{
 
 fn get_signature(text: &str) -> (FnDescriptor, Option<usize>) {
     let (analysis, position) = single_file_with_position(text);
-    analysis
-        .resolve_callable(position.file_id, position.offset)
-        .unwrap()
-        .unwrap()
+    analysis.resolve_callable(position).unwrap().unwrap()
 }
 
 #[test]
@@ -32,9 +29,7 @@ fn test_resolve_module() {
     ",
     );
 
-    let symbols = analysis
-        .approximately_resolve_symbol(pos.file_id, pos.offset)
-        .unwrap();
+    let symbols = analysis.approximately_resolve_symbol(pos).unwrap();
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
         &symbols,
@@ -49,9 +44,7 @@ fn test_resolve_module() {
     ",
     );
 
-    let symbols = analysis
-        .approximately_resolve_symbol(pos.file_id, pos.offset)
-        .unwrap();
+    let symbols = analysis.approximately_resolve_symbol(pos).unwrap();
     assert_eq_dbg(
         r#"[(FileId(2), FileSymbol { name: "foo", node_range: [0; 0), kind: MODULE })]"#,
         &symbols,
@@ -92,7 +85,7 @@ fn test_resolve_parent_module() {
         <|>// empty
     ",
     );
-    let symbols = analysis.parent_module(pos.file_id, pos.offset).unwrap();
+    let symbols = analysis.parent_module(pos).unwrap();
     assert_eq_dbg(
         r#"[(FileId(1), FileSymbol { name: "foo", node_range: [4; 7), kind: MODULE })]"#,
         &symbols,
@@ -111,7 +104,7 @@ fn test_resolve_parent_module_for_inline() {
         }
     ",
     );
-    let symbols = analysis.parent_module(pos.file_id, pos.offset).unwrap();
+    let symbols = analysis.parent_module(pos).unwrap();
     assert_eq_dbg(
         r#"[(FileId(1), FileSymbol { name: "bar", node_range: [18; 21), kind: MODULE })]"#,
         &symbols,
@@ -397,9 +390,7 @@ By default this method stops actor's `Context`."#
 
 fn get_all_refs(text: &str) -> Vec<(FileId, TextRange)> {
     let (analysis, position) = single_file_with_position(text);
-    analysis
-        .find_all_refs(position.file_id, position.offset)
-        .unwrap()
+    analysis.find_all_refs(position).unwrap()
 }
 
 #[test]
@@ -454,10 +445,7 @@ fn test_complete_crate_path() {
         use crate::Sp<|>
     ",
     );
-    let completions = analysis
-        .completions(position.file_id, position.offset)
-        .unwrap()
-        .unwrap();
+    let completions = analysis.completions(position).unwrap().unwrap();
     assert_eq_dbg(
         r#"[CompletionItem { label: "foo", lookup: None, snippet: None },
             CompletionItem { label: "Spam", lookup: None, snippet: None }]"#,
