@@ -4,6 +4,8 @@ name = "ra_syntax"
 version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 license = "MIT OR Apache-2.0"
+description = "Comment and whitespace preserving parser for the Rust langauge"
+repository = "https://github.com/rust-analyzer/rust-analyzer"
 
 [dependencies]
 unicode-xid = "0.1.0"
@@ -14,5 +16,5 @@ rowan = "0.1.1"
 text_unit = "0.1.5"
 
 [dev-dependencies]
-test_utils = { path = "../test_utils" }
+# test_utils = { path = "../test_utils" }
 walkdir = "2.2.0"
