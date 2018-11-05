@@ -210,6 +210,7 @@ macro_rules! make_value_visitor {
             }
             fn walk_value(&mut self, v: Self::V) -> EvalResult<'tcx>
             {
+                trace!("walk_value: type: {}", v.layout().ty);
                 // If this is a multi-variant layout, we have find the right one and proceed with
                 // that.
                 match v.layout().variants {
