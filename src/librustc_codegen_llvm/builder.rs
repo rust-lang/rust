@@ -859,8 +859,7 @@ impl Builder<'a, 'll, 'tcx> {
             // FIXME: add a non-fast math version once
             // https://bugs.llvm.org/show_bug.cgi?id=36732
             // is fixed.
-            let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src)
-                .expect("LLVMRustBuildVectorReduceFAdd is not available in LLVM version < 5.0");
+            let instr = llvm::LLVMRustBuildVectorReduceFAdd(self.llbuilder, acc, src);
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
             instr
         }
@@ -871,66 +870,43 @@ impl Builder<'a, 'll, 'tcx> {
             // FIXME: add a non-fast math version once
             // https://bugs.llvm.org/show_bug.cgi?id=36732
             // is fixed.
-            let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src)
-                .expect("LLVMRustBuildVectorReduceFMul is not available in LLVM version < 5.0");
+            let instr = llvm::LLVMRustBuildVectorReduceFMul(self.llbuilder, acc, src);
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
             instr
         }
     }
     pub fn vector_reduce_add(&self, src: &'ll Value) -> &'ll Value {
         self.count_insn("vector.reduce.add");
-        unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceAdd(self.llbuilder, src);
-            instr.expect("LLVMRustBuildVectorReduceAdd is not available in LLVM version < 5.0")
-        }
+        unsafe { llvm::LLVMRustBuildVectorReduceAdd(self.llbuilder, src) }
     }
     pub fn vector_reduce_mul(&self, src: &'ll Value) -> &'ll Value {
         self.count_insn("vector.reduce.mul");
-        unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceMul(self.llbuilder, src);
-            instr.expect("LLVMRustBuildVectorReduceMul is not available in LLVM version < 5.0")
-        }
+        unsafe { llvm::LLVMRustBuildVectorReduceMul(self.llbuilder, src) }
     }
     pub fn vector_reduce_and(&self, src: &'ll Value) -> &'ll Value {
         self.count_insn("vector.reduce.and");
-        unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceAnd(self.llbuilder, src);
-            instr.expect("LLVMRustBuildVectorReduceAnd is not available in LLVM version < 5.0")
-        }
+        unsafe { llvm::LLVMRustBuildVectorReduceAnd(self.llbuilder, src) }
     }
     pub fn vector_reduce_or(&self, src: &'ll Value) -> &'ll Value {
         self.count_insn("vector.reduce.or");
-        unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceOr(self.llbuilder, src);
-            instr.expect("LLVMRustBuildVectorReduceOr is not available in LLVM version < 5.0")
-        }
+        unsafe { llvm::LLVMRustBuildVectorReduceOr(self.llbuilder, src) }
     }
     pub fn vector_reduce_xor(&self, src: &'ll Value) -> &'ll Value {
         self.count_insn("vector.reduce.xor");
-        unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceXor(self.llbuilder, src);
-            instr.expect("LLVMRustBuildVectorReduceXor is not available in LLVM version < 5.0")
-        }
+        unsafe { llvm::LLVMRustBuildVectorReduceXor(self.llbuilder, src) }
     }
     pub fn vector_reduce_fmin(&self, src: &'ll Value) -> &'ll Value {
         self.count_insn("vector.reduce.fmin");
-        unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ false);
-            instr.expect("LLVMRustBuildVectorReduceFMin is not available in LLVM version < 5.0")
-        }
+        unsafe { llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ false) }
     }
     pub fn vector_reduce_fmax(&self, src: &'ll Value) -> &'ll Value {
         self.count_insn("vector.reduce.fmax");
-        unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ false);
-            instr.expect("LLVMRustBuildVectorReduceFMax is not available in LLVM version < 5.0")
-        }
+        unsafe { llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ false) }
     }
     pub fn vector_reduce_fmin_fast(&self, src: &'ll Value) -> &'ll Value {
         self.count_insn("vector.reduce.fmin_fast");
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ true)
-                .expect("LLVMRustBuildVectorReduceFMin is not available in LLVM version < 5.0");
+            let instr = llvm::LLVMRustBuildVectorReduceFMin(self.llbuilder, src, /*NoNaNs:*/ true);
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
             instr
         }
@@ -938,25 +914,18 @@ impl Builder<'a, 'll, 'tcx> {
     pub fn vector_reduce_fmax_fast(&self, src: &'ll Value) -> &'ll Value {
         self.count_insn("vector.reduce.fmax_fast");
         unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ true)
-                .expect("LLVMRustBuildVectorReduceFMax is not available in LLVM version < 5.0");
+            let instr = llvm::LLVMRustBuildVectorReduceFMax(self.llbuilder, src, /*NoNaNs:*/ true);
             llvm::LLVMRustSetHasUnsafeAlgebra(instr);
             instr
         }
     }
     pub fn vector_reduce_min(&self, src: &'ll Value, is_signed: bool) -> &'ll Value {
         self.count_insn("vector.reduce.min");
-        unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceMin(self.llbuilder, src, is_signed);
-            instr.expect("LLVMRustBuildVectorReduceMin is not available in LLVM version < 5.0")
-        }
+        unsafe { llvm::LLVMRustBuildVectorReduceMin(self.llbuilder, src, is_signed) }
     }
     pub fn vector_reduce_max(&self, src: &'ll Value, is_signed: bool) -> &'ll Value {
         self.count_insn("vector.reduce.max");
-        unsafe {
-            let instr = llvm::LLVMRustBuildVectorReduceMax(self.llbuilder, src, is_signed);
-            instr.expect("LLVMRustBuildVectorReduceMax is not available in LLVM version < 5.0")
-        }
+        unsafe { llvm::LLVMRustBuildVectorReduceMax(self.llbuilder, src, is_signed) }
     }
 
     pub fn extract_value(&self, agg_val: &'ll Value, idx: u64) -> &'ll Value {

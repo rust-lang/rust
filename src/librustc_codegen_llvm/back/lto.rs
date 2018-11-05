@@ -595,9 +595,7 @@ fn run_pass_manager(cgcx: &CodegenContext,
         };
         with_llvm_pmb(llmod, config, opt_level, false, &mut |b| {
             if thin {
-                if !llvm::LLVMRustPassManagerBuilderPopulateThinLTOPassManager(b, pm) {
-                    panic!("this version of LLVM does not support ThinLTO");
-                }
+                llvm::LLVMRustPassManagerBuilderPopulateThinLTOPassManager(b, pm);
             } else {
                 llvm::LLVMPassManagerBuilderPopulateLTOPassManager(b, pm,
                     /* Internalize = */ False,

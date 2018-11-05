@@ -1041,42 +1041,42 @@ extern "C" {
     pub fn LLVMRustBuildVectorReduceFAdd(B: &Builder<'a>,
                                          Acc: &'a Value,
                                          Src: &'a Value)
-                                         -> Option<&'a Value>;
+                                         -> &'a Value;
     pub fn LLVMRustBuildVectorReduceFMul(B: &Builder<'a>,
                                          Acc: &'a Value,
                                          Src: &'a Value)
-                                         -> Option<&'a Value>;
+                                         -> &'a Value;
     pub fn LLVMRustBuildVectorReduceAdd(B: &Builder<'a>,
                                         Src: &'a Value)
-                                        -> Option<&'a Value>;
+                                        -> &'a Value;
     pub fn LLVMRustBuildVectorReduceMul(B: &Builder<'a>,
                                         Src: &'a Value)
-                                        -> Option<&'a Value>;
+                                        -> &'a Value;
     pub fn LLVMRustBuildVectorReduceAnd(B: &Builder<'a>,
                                         Src: &'a Value)
-                                        -> Option<&'a Value>;
+                                        -> &'a Value;
     pub fn LLVMRustBuildVectorReduceOr(B: &Builder<'a>,
                                        Src: &'a Value)
-                                       -> Option<&'a Value>;
+                                       -> &'a Value;
     pub fn LLVMRustBuildVectorReduceXor(B: &Builder<'a>,
                                         Src: &'a Value)
-                                        -> Option<&'a Value>;
+                                        -> &'a Value;
     pub fn LLVMRustBuildVectorReduceMin(B: &Builder<'a>,
                                         Src: &'a Value,
                                         IsSigned: bool)
-                                        -> Option<&'a Value>;
+                                        -> &'a Value;
     pub fn LLVMRustBuildVectorReduceMax(B: &Builder<'a>,
                                         Src: &'a Value,
                                         IsSigned: bool)
-                                        -> Option<&'a Value>;
+                                        -> &'a Value;
     pub fn LLVMRustBuildVectorReduceFMin(B: &Builder<'a>,
                                          Src: &'a Value,
                                          IsNaN: bool)
-                                         -> Option<&'a Value>;
+                                         -> &'a Value;
     pub fn LLVMRustBuildVectorReduceFMax(B: &Builder<'a>,
                                          Src: &'a Value,
                                          IsNaN: bool)
-                                         -> Option<&'a Value>;
+                                         -> &'a Value;
 
     pub fn LLVMRustBuildMinNum(
         B: &Builder<'a>,
@@ -1157,7 +1157,7 @@ extern "C" {
                                                         RunInliner: Bool);
     pub fn LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
         PMB: &PassManagerBuilder,
-        PM: &PassManager) -> bool;
+        PM: &PassManager);
 
     // Stuff that's in rustllvm/ because it's not upstream yet.
 
