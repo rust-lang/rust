@@ -487,7 +487,6 @@ pub fn handle_hover(
 
     for (file_id, symbol) in world.analysis().approximately_resolve_symbol(position)? {
         let range = symbol.node_range.conv_with(&line_index);
-        let name = symbol.name.to_string();
         let comment = world.analysis.doc_comment_for(file_id, symbol)?;
 
         if comment.is_some() {
