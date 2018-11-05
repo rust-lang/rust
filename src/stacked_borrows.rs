@@ -139,13 +139,13 @@ pub struct Stacks {
 /// Core operations
 impl<'tcx> Stack {
     /// Check if `bor` could be activated by unfreezing and popping.
-    /// `usage` indicates whether this is being used to read/write (or, equivalently, to
-    /// borrow as &/&mut), or to borrow as raw.
+    /// `is_write` indicates whether this is being used to write (or, equivalently, to
+    /// borrow as &mut).
     /// Returns `Err` if the answer is "no"; otherwise the return value indicates what to
     /// do: With `Some(n)` you need to unfreeze, and then additionally pop `n` items.
-    fn reactivatable(&self, bor: Borrow, usage: UsageKind) -> Result<Option<usize>, String> {
+    fn reactivatable(&self, bor: Borrow, is_write: bool) -> Result<Option<usize>, String> {
         // Check if we can match the frozen "item".  Not possible on writes!
-        if usage != UsageKind::Write {
+        if !is_write {
             // For now, we do NOT check the timestamp.  That might be surprising, but
             // we cannot even notice when a location should be frozen but is not!
             // Those checks are both done in `tag_dereference`, where we have type information.
@@ -168,11 +168,11 @@ impl<'tcx> Stack {
                 }
                 (BorStackItem::Uniq(itm_t), Borrow::Uniq(bor_t)) if itm_t == bor_t => {
                     // Found matching unique item.
-                    if usage == UsageKind::Read {
+                    if !is_write {
                         // As a special case, if we are reading and since we *did* find the `Uniq`,
                         // we try to pop less: We are happy with making a `Shr` or `Frz` active;
                         // that one will not mind concurrent reads.
-                        match self.reactivatable(Borrow::default(), usage) {
+                        match self.reactivatable(Borrow::default(), is_write) {
                             // If we got something better that `idx`, use that
                             Ok(None) => return Ok(None),
                             Ok(Some(shr_idx)) if shr_idx <= idx => return Ok(Some(shr_idx)),
@@ -194,10 +194,10 @@ impl<'tcx> Stack {
         Err(format!("Borrow-to-reactivate {:?} does not exist on the stack", bor))
     }
 
-    /// Reactive `bor` for this stack.  `usage` indicates whether this is being
-    /// used to read/write (or, equivalently, to borrow as &/&mut), or to borrow as raw.
-    fn reactivate(&mut self, bor: Borrow, usage: UsageKind) -> EvalResult<'tcx> {
-        let mut pop = match self.reactivatable(bor, usage) {
+    /// Reactive `bor` for this stack.  `is_write` indicates whether this is being
+    /// used to write (or, equivalently, to borrow as &mut).
+    fn reactivate(&mut self, bor: Borrow, is_write: bool) -> EvalResult<'tcx> {
+        let mut pop = match self.reactivatable(bor, is_write) {
             Ok(None) => return Ok(()),
             Ok(Some(pop)) => pop,
             Err(err) => return err!(MachineError(err)),
@@ -272,7 +272,7 @@ impl State {
 
 /// Higher-level operations
 impl<'tcx> Stacks {
-    /// The single most important operation: Make sure that using `ptr` as `usage` is okay,
+    /// The single most important operation: Make sure that using `ptr` is okay,
     /// and if `new_bor` is present then make that the new current borrow.
     fn use_and_maybe_re_borrow(
         &self,
@@ -285,7 +285,7 @@ impl<'tcx> Stacks {
             ptr.tag, usage, new_bor, ptr, size.bytes());
         let mut stacks = self.stacks.borrow_mut();
         for stack in stacks.iter_mut(ptr.offset, size) {
-            stack.reactivate(ptr.tag, usage)?;
+            stack.reactivate(ptr.tag, usage == UsageKind::Write)?;
             if let Some(new_bor) = new_bor {
                 stack.initiate(new_bor);
             }
@@ -317,7 +317,7 @@ impl<'tcx> Stacks {
         // We need `iter_mut` because `iter` would skip gaps!
         for stack in stacks.iter_mut(ptr.offset, size) {
             // Conservatively assume we will just read
-            if let Err(err) = stack.reactivatable(ptr.tag, UsageKind::Read) {
+            if let Err(err) = stack.reactivatable(ptr.tag, /*is_write*/false) {
                 return err!(MachineError(format!(
                     "Encountered reference with non-reactivatable tag: {}",
                     err
