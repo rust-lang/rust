@@ -2,7 +2,7 @@ use languageserver_types::{
     Location, Position, Range, SymbolKind, TextDocumentEdit, TextDocumentIdentifier,
     TextDocumentItem, TextDocumentPositionParams, TextEdit, Url, VersionedTextDocumentIdentifier,
 };
-use ra_analysis::{FileId, FileSystemEdit, SourceChange, SourceFileEdit};
+use ra_analysis::{FileId, FileSystemEdit, SourceChange, SourceFileEdit, FilePosition};
 use ra_editor::{AtomEdit, Edit, LineCol, LineIndex};
 use ra_syntax::{SyntaxKind, TextRange, TextUnit};
 
@@ -162,6 +162,17 @@ impl<'a> TryConvWith for &'a TextDocumentIdentifier {
     type Output = FileId;
     fn try_conv_with(self, world: &ServerWorld) -> Result<FileId> {
         world.uri_to_file_id(&self.uri)
+    }
+}
+
+impl<'a> TryConvWith for &'a TextDocumentPositionParams {
+    type Ctx = ServerWorld;
+    type Output = FilePosition;
+    fn try_conv_with(self, world: &ServerWorld) -> Result<FilePosition> {
+        let file_id = self.text_document.try_conv_with(world)?;
+        let line_index = world.analysis().file_line_index(file_id);
+        let offset = self.position.conv_with(&line_index);
+        Ok(FilePosition { file_id, offset })
     }
 }
 

@@ -119,18 +119,18 @@ impl AnalysisHost {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct FilePosition {
+    pub file_id: FileId,
+    pub offset: TextUnit,
+}
+
 #[derive(Debug)]
 pub struct SourceChange {
     pub label: String,
     pub source_file_edits: Vec<SourceFileEdit>,
     pub file_system_edits: Vec<FileSystemEdit>,
-    pub cursor_position: Option<Position>,
-}
-
-#[derive(Debug)]
-pub struct Position {
-    pub file_id: FileId,
-    pub offset: TextUnit,
+    pub cursor_position: Option<FilePosition>,
 }
 
 #[derive(Debug)]
@@ -224,18 +224,18 @@ impl Analysis {
         let file = self.imp.file_syntax(file_id);
         SourceChange::from_local_edit(file_id, "join lines", ra_editor::join_lines(&file, range))
     }
-    pub fn on_enter(&self, file_id: FileId, offset: TextUnit) -> Option<SourceChange> {
-        let file = self.imp.file_syntax(file_id);
-        let edit = ra_editor::on_enter(&file, offset)?;
-        let res = SourceChange::from_local_edit(file_id, "on enter", edit);
+    pub fn on_enter(&self, position: FilePosition) -> Option<SourceChange> {
+        let file = self.imp.file_syntax(position.file_id);
+        let edit = ra_editor::on_enter(&file, position.offset)?;
+        let res = SourceChange::from_local_edit(position.file_id, "on enter", edit);
         Some(res)
     }
-    pub fn on_eq_typed(&self, file_id: FileId, offset: TextUnit) -> Option<SourceChange> {
-        let file = self.imp.file_syntax(file_id);
+    pub fn on_eq_typed(&self, position: FilePosition) -> Option<SourceChange> {
+        let file = self.imp.file_syntax(position.file_id);
         Some(SourceChange::from_local_edit(
-            file_id,
+            position.file_id,
             "add semicolon",
-            ra_editor::on_eq_typed(&file, offset)?,
+            ra_editor::on_eq_typed(&file, position.offset)?,
         ))
     }
     pub fn file_structure(&self, file_id: FileId) -> Vec<StructureNode> {
@@ -251,24 +251,15 @@ impl Analysis {
     }
     pub fn approximately_resolve_symbol(
         &self,
-        file_id: FileId,
-        offset: TextUnit,
+        position: FilePosition,
     ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        self.imp.approximately_resolve_symbol(file_id, offset)
+        self.imp.approximately_resolve_symbol(position)
     }
-    pub fn find_all_refs(
-        &self,
-        file_id: FileId,
-        offset: TextUnit,
-    ) -> Cancelable<Vec<(FileId, TextRange)>> {
-        Ok(self.imp.find_all_refs(file_id, offset))
+    pub fn find_all_refs(&self, position: FilePosition) -> Cancelable<Vec<(FileId, TextRange)>> {
+        Ok(self.imp.find_all_refs(position))
     }
-    pub fn parent_module(
-        &self,
-        file_id: FileId,
-        offset: TextUnit,
-    ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        self.imp.parent_module(file_id, offset)
+    pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+        self.imp.parent_module(position)
     }
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
         self.imp.crate_for(file_id)
@@ -284,12 +275,8 @@ impl Analysis {
         let file = self.imp.file_syntax(file_id);
         Ok(ra_editor::highlight(&file))
     }
-    pub fn completions(
-        &self,
-        file_id: FileId,
-        offset: TextUnit,
-    ) -> Cancelable<Option<Vec<CompletionItem>>> {
-        self.imp.completions(file_id, offset)
+    pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
+        self.imp.completions(position)
     }
     pub fn assists(&self, file_id: FileId, range: TextRange) -> Cancelable<Vec<SourceChange>> {
         Ok(self.imp.assists(file_id, range))
@@ -299,10 +286,9 @@ impl Analysis {
     }
     pub fn resolve_callable(
         &self,
-        file_id: FileId,
-        offset: TextUnit,
+        position: FilePosition,
     ) -> Cancelable<Option<(FnDescriptor, Option<usize>)>> {
-        self.imp.resolve_callable(file_id, offset)
+        self.imp.resolve_callable(position)
     }
 }
 

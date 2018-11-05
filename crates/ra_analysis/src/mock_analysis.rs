@@ -1,16 +1,9 @@
 use std::sync::Arc;
 
-use ra_syntax::TextUnit;
 use relative_path::{RelativePath, RelativePathBuf};
 use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
 
-use crate::{Analysis, AnalysisChange, AnalysisHost, FileId, FileResolver};
-
-#[derive(Debug)]
-pub struct FilePosition {
-    pub file_id: FileId,
-    pub offset: TextUnit,
-}
+use crate::{Analysis, AnalysisChange, AnalysisHost, FileId, FileResolver, FilePosition};
 
 /// Mock analysis is used in test to bootstrap an AnalysisHost/Analysis
 /// from a set of in-memory files.
