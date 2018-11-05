@@ -4772,7 +4772,8 @@ pub struct ParseIntError {
 }
 
 #[unstable(feature = "int_error_matching",
-           reason = "it can be useful to match errors when making error messages for integer parsing")]
+           reason = "it can be useful to match errors when making error messages \
+                     for integer parsing")]
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum IntErrorKind {
