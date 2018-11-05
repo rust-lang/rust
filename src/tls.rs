@@ -42,7 +42,7 @@ impl<'tcx> TlsData<'tcx> {
     pub fn create_tls_key(
         &mut self,
         dtor: Option<ty::Instance<'tcx>>,
-        cx: impl HasDataLayout,
+        cx: &impl HasDataLayout,
     ) -> TlsKey {
         let new_key = self.next_key;
         self.next_key += 1;
@@ -109,7 +109,7 @@ impl<'tcx> TlsData<'tcx> {
     fn fetch_tls_dtor(
         &mut self,
         key: Option<TlsKey>,
-        cx: impl HasDataLayout,
+        cx: &impl HasDataLayout,
     ) -> Option<(ty::Instance<'tcx>, Scalar<Borrow>, TlsKey)> {
         use std::collections::Bound::*;
 
@@ -135,14 +135,14 @@ impl<'tcx> TlsData<'tcx> {
 
 impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
     fn run_tls_dtors(&mut self) -> EvalResult<'tcx> {
-        let mut dtor = self.machine.tls.fetch_tls_dtor(None, *self.tcx);
+        let mut dtor = self.machine.tls.fetch_tls_dtor(None, &*self.tcx);
         // FIXME: replace loop by some structure that works with stepping
         while let Some((instance, ptr, key)) = dtor {
             trace!("Running TLS dtor {:?} on {:?}", instance, ptr);
             // TODO: Potentially, this has to support all the other possible instances?
             // See eval_fn_call in interpret/terminator/mod.rs
             let mir = self.load_mir(instance.def)?;
-            let ret_place = MPlaceTy::dangling(self.layout_of(self.tcx.mk_unit())?, &self).into();
+            let ret_place = MPlaceTy::dangling(self.layout_of(self.tcx.mk_unit())?, self).into();
             self.push_stack_frame(
                 instance,
                 mir.span,
@@ -159,9 +159,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for super::MiriEvalContext<
             // step until out of stackframes
             self.run()?;
 
-            dtor = match self.machine.tls.fetch_tls_dtor(Some(key), *self.tcx) {
+            dtor = match self.machine.tls.fetch_tls_dtor(Some(key), &*self.tcx) {
                 dtor @ Some(_) => dtor,
-                None => self.machine.tls.fetch_tls_dtor(None, *self.tcx),
+                None => self.machine.tls.fetch_tls_dtor(None, &*self.tcx),
             };
         }
         // FIXME: On a windows target, call `unsafe extern "system" fn on_tls_callback`.
