@@ -1784,12 +1784,14 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 // of the union - we should error in that case.
                 let tcx = this.infcx.tcx;
                 if let ty::TyKind::Adt(def, _) = base.ty(this.mir, tcx).to_ty(tcx).sty {
-                    let moved_before_this = this.move_data.path_map[mpi].iter().any(|moi| {
-                        this.move_data.moves[*moi].source < context.loc
-                    });
-
-                    if def.is_union() && moved_before_this {
-                        return;
+                    if def.is_union() {
+                        if this.move_data.path_map[mpi].iter().any(|moi| {
+                            this.move_data.moves[*moi].source.is_predecessor_of(
+                                context.loc, this.mir,
+                            )
+                        }) {
+                            return;
+                        }
                     }
                 }
 
