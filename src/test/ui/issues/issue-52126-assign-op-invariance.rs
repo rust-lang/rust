@@ -43,7 +43,7 @@ pub fn panics() {
     for line in vec!["123456789".to_string(), "12345678".to_string()] {
         let v: Vec<&str> = line.split_whitespace().collect();
         //~^ ERROR `line` does not live long enough
-        println!("accumulator before add_assign {:?}", acc.map);
+        // println!("accumulator before add_assign {:?}", acc.map);
         let mut map = HashMap::new();
         for str_ref in v {
             let e = map.entry(str_ref);
@@ -53,7 +53,7 @@ pub fn panics() {
         }
         let cnt2 = Counter{map};
         acc += cnt2;
-        println!("accumulator after add_assign {:?}", acc.map);
+        // println!("accumulator after add_assign {:?}", acc.map);
         // line gets dropped here but references are kept in acc.map
     }
 }
