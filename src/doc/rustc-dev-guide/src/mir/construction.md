@@ -64,8 +64,8 @@ There are essentially four kinds of representations one might want of a value:
 * `Operand` is an argument to e.g. a `+` operation or a function call
 * a temporary variable containing a copy of the value
 
-Since we start out with lowering the function body to an `Rvalue` so we can create an
-assignment to `RETURN_PLACE`, that `Rvalue` lowering will in turn trigger lowering to
+We start out with lowering the function body to an `Rvalue` so we can create an
+assignment to `RETURN_PLACE`, This `Rvalue` lowering will in turn trigger lowering to
 `Operand` for its arguments (if any). `Operand` lowering either produces a `const`
 operand, or moves/copies out of a `Place`, thus triggering a `Place` lowering. An
 expression being lowered to a `Place` can in turn trigger a temporary to be created
