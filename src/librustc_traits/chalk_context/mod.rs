@@ -256,7 +256,10 @@ impl context::InferenceTable<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
 
     fn into_hh_goal(&mut self, goal: Goal<'tcx>) -> ChalkHhGoal<'tcx> {
         match *goal {
-            GoalKind::Implies(..) => panic!("FIXME rust-lang-nursery/chalk#94"),
+            GoalKind::Implies(hypotheses, goal) => HhGoal::Implies(
+                hypotheses.iter().cloned().collect(),
+                goal
+            ),
             GoalKind::And(left, right) => HhGoal::And(left, right),
             GoalKind::Not(subgoal) => HhGoal::Not(subgoal),
             GoalKind::DomainGoal(d) => HhGoal::DomainGoal(d),
