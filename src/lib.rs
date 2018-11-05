@@ -178,9 +178,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
             .unwrap()
             .finish(flags);
 
-        let mono_items =
-            collector::collect_crate_mono_items(tcx, collector::MonoItemCollectionMode::Lazy).0;
-
         // TODO: move to the end of this function when compiling libcore doesn't have unimplemented stuff anymore
         save_incremental(tcx);
         tcx.sess.warn("Saved incremental data");
@@ -189,7 +186,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             let mut jit_module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
             assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
 
-            codegen_mono_items(tcx, &mut jit_module, mono_items);
+            codegen_mono_items(tcx, &mut jit_module);
 
             tcx.sess.abort_if_errors();
             println!("Compiled everything");
@@ -230,7 +227,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             );
             assert_eq!(pointer_ty(tcx), faerie_module.target_config().pointer_type());
 
-            codegen_mono_items(tcx, &mut faerie_module, mono_items);
+            codegen_mono_items(tcx, &mut faerie_module);
 
             tcx.sess.abort_if_errors();
 
@@ -334,7 +331,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
 fn codegen_mono_items<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     module: &mut Module<impl Backend + 'static>,
-    mono_items: FxHashSet<MonoItem<'tcx>>,
 ) {
     use std::io::Write;
 
@@ -350,10 +346,15 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
         None
     };
 
+    let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
+    let mono_items = cgus.iter().map(|cgu| {
+        cgu.items().iter()
+    }).flatten().collect::<FxHashSet<(_, _)>>();
+
     let before = ::std::time::Instant::now();
     println!("[codegen mono items] start");
 
-    for mono_item in mono_items {
+    for (&mono_item, &(_linkage, _vis)) in mono_items {
         let res = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
             base::trans_mono_item(tcx, module, &mut caches, &mut ccx, mono_item);
         }));
