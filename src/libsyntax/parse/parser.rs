@@ -1790,6 +1790,35 @@ impl<'a> Parser<'a> {
         self.look_ahead(offset + 1, |t| t == &token::Colon)
     }
 
+    /// Skip unexpected attributes and doc comments in this position and emit an appropriate error.
+    fn eat_incorrect_doc_comment(&mut self, applied_to: &str) {
+        if let token::DocComment(_) = self.token {
+            let mut err = self.diagnostic().struct_span_err(
+                self.span,
+                &format!("documentation comments cannot be applied to {}", applied_to),
+            );
+            err.span_label(self.span, "doc comments are not allowed here");
+            err.emit();
+            self.bump();
+        } else if self.token == token::Pound && self.look_ahead(1, |t| {
+            *t == token::OpenDelim(token::Bracket)
+        }) {
+            let lo = self.span;
+            // Skip every token until next possible arg.
+            while self.token != token::CloseDelim(token::Bracket) {
+                self.bump();
+            }
+            let sp = lo.to(self.span);
+            self.bump();
+            let mut err = self.diagnostic().struct_span_err(
+                sp,
+                &format!("attributes cannot be applied to {}", applied_to),
+            );
+            err.span_label(sp, "attributes are not allowed here");
+            err.emit();
+        }
+    }
+
     /// This version of parse arg doesn't necessarily require
     /// identifier names.
     fn parse_arg_general(&mut self, require_name: bool) -> PResult<'a, Arg> {
@@ -1798,7 +1827,8 @@ impl<'a> Parser<'a> {
         let (pat, ty) = if require_name || self.is_named_argument() {
             debug!("parse_arg_general parse_pat (require_name:{})",
                    require_name);
-            let pat = self.parse_pat()?;
+            self.eat_incorrect_doc_comment("method arguments");
+            let pat = self.parse_pat(Some("argument name"))?;
 
             if let Err(mut err) = self.expect(&token::Colon) {
                 // If we find a pattern followed by an identifier, it could be an (incorrect)
@@ -1820,10 +1850,12 @@ impl<'a> Parser<'a> {
                 return Err(err);
             }
 
+            self.eat_incorrect_doc_comment("a method argument's type");
             (pat, self.parse_ty()?)
         } else {
             debug!("parse_arg_general ident_to_pat");
             let parser_snapshot_before_ty = self.clone();
+            self.eat_incorrect_doc_comment("a method argument's type");
             let mut ty = self.parse_ty();
             if ty.is_ok() && self.token == token::Colon {
                 // This wasn't actually a type, but a pattern looking like a type,
@@ -1845,7 +1877,7 @@ impl<'a> Parser<'a> {
                     // Recover from attempting to parse the argument as a type without pattern.
                     err.cancel();
                     mem::replace(self, parser_snapshot_before_ty);
-                    let pat = self.parse_pat()?;
+                    let pat = self.parse_pat(Some("argument name"))?;
                     self.expect(&token::Colon)?;
                     let ty = self.parse_ty()?;
 
@@ -1883,7 +1915,7 @@ impl<'a> Parser<'a> {
 
     /// Parse an argument in a lambda header e.g. |arg, arg|
     fn parse_fn_block_arg(&mut self) -> PResult<'a, Arg> {
-        let pat = self.parse_pat()?;
+        let pat = self.parse_pat(Some("argument name"))?;
         let t = if self.eat(&token::Colon) {
             self.parse_ty()?
         } else {
@@ -2440,7 +2472,11 @@ impl<'a> Parser<'a> {
                     return Ok(self.mk_expr(lo.to(hi), ex, attrs));
                 }
                 if self.eat_keyword(keywords::Match) {
-                    return self.parse_match_expr(attrs);
+                    let match_sp = self.prev_span;
+                    return self.parse_match_expr(attrs).map_err(|mut err| {
+                        err.span_label(match_sp, "while parsing this match expression");
+                        err
+                    });
                 }
                 if self.eat_keyword(keywords::Unsafe) {
                     return self.parse_block_expr(
@@ -3746,7 +3782,7 @@ impl<'a> Parser<'a> {
                                   "`..` can only be used once per tuple or tuple struct pattern");
                 }
             } else if !self.check(&token::CloseDelim(token::Paren)) {
-                fields.push(self.parse_pat()?);
+                fields.push(self.parse_pat(None)?);
             } else {
                 break
             }
@@ -3802,7 +3838,7 @@ impl<'a> Parser<'a> {
                 }
             }
 
-            let subpat = self.parse_pat()?;
+            let subpat = self.parse_pat(None)?;
             if before_slice && self.eat(&token::DotDot) {
                 slice = Some(subpat);
                 before_slice = false;
@@ -3827,7 +3863,7 @@ impl<'a> Parser<'a> {
             // Parsing a pattern of the form "fieldname: pat"
             let fieldname = self.parse_field_name()?;
             self.bump();
-            let pat = self.parse_pat()?;
+            let pat = self.parse_pat(None)?;
             hi = pat.span;
             (pat, fieldname, false)
         } else {
@@ -4029,7 +4065,7 @@ impl<'a> Parser<'a> {
     /// "top-level" patterns in a match arm, `for` loop, `let`, &c. (in contrast
     /// to subpatterns within such).
     fn parse_top_level_pat(&mut self) -> PResult<'a, P<Pat>> {
-        let pat = self.parse_pat()?;
+        let pat = self.parse_pat(None)?;
         if self.token == token::Comma {
             // An unexpected comma after a top-level pattern is a clue that the
             // user (perhaps more accustomed to some other language) forgot the
@@ -4061,13 +4097,17 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a pattern.
-    pub fn parse_pat(&mut self) -> PResult<'a, P<Pat>> {
-        self.parse_pat_with_range_pat(true)
+    pub fn parse_pat(&mut self, expected: Option<&'static str>) -> PResult<'a, P<Pat>> {
+        self.parse_pat_with_range_pat(true, expected)
     }
 
     /// Parse a pattern, with a setting whether modern range patterns e.g. `a..=b`, `a..b` are
     /// allowed.
-    fn parse_pat_with_range_pat(&mut self, allow_range_pat: bool) -> PResult<'a, P<Pat>> {
+    fn parse_pat_with_range_pat(
+        &mut self,
+        allow_range_pat: bool,
+        expected: Option<&'static str>,
+    ) -> PResult<'a, P<Pat>> {
         maybe_whole!(self, NtPat, |x| x);
 
         let lo = self.span;
@@ -4083,7 +4123,7 @@ impl<'a> Parser<'a> {
                     err.span_label(self.span, "unexpected lifetime");
                     return Err(err);
                 }
-                let subpat = self.parse_pat_with_range_pat(false)?;
+                let subpat = self.parse_pat_with_range_pat(false, expected)?;
                 pat = PatKind::Ref(subpat, mutbl);
             }
             token::OpenDelim(token::Paren) => {
@@ -4129,7 +4169,7 @@ impl<'a> Parser<'a> {
                 pat = self.parse_pat_ident(BindingMode::ByRef(mutbl))?;
             } else if self.eat_keyword(keywords::Box) {
                 // Parse box pat
-                let subpat = self.parse_pat_with_range_pat(false)?;
+                let subpat = self.parse_pat_with_range_pat(false, None)?;
                 pat = PatKind::Box(subpat);
             } else if self.token.is_ident() && !self.token.is_reserved_ident() &&
                       self.parse_as_ident() {
@@ -4229,9 +4269,14 @@ impl<'a> Parser<'a> {
                     }
                     Err(mut err) => {
                         self.cancel(&mut err);
-                        let msg = format!("expected pattern, found {}", self.this_token_descr());
+                        let expected = expected.unwrap_or("pattern");
+                        let msg = format!(
+                            "expected {}, found {}",
+                            expected,
+                            self.this_token_descr(),
+                        );
                         let mut err = self.fatal(&msg);
-                        err.span_label(self.span, "expected pattern");
+                        err.span_label(self.span, format!("expected {}", expected));
                         return Err(err);
                     }
                 }
@@ -4275,7 +4320,7 @@ impl<'a> Parser<'a> {
                        -> PResult<'a, PatKind> {
         let ident = self.parse_ident()?;
         let sub = if self.eat(&token::At) {
-            Some(self.parse_pat()?)
+            Some(self.parse_pat(Some("binding pattern"))?)
         } else {
             None
         };

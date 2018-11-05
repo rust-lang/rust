@@ -1,8 +1,8 @@
-error: expected pattern, found `+`
+error: expected argument name, found `+`
   --> $DIR/removed-syntax-mode.rs:13:6
    |
-LL | fn f(+x: isize) {} //~ ERROR expected pattern, found `+`
-   |      ^ expected pattern
+LL | fn f(+x: isize) {}
+   |      ^ expected argument name
 
 error: aborting due to previous error
 

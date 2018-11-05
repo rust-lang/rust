@@ -68,7 +68,7 @@ pub fn string_to_item (source_str : String) -> Option<P<ast::Item>> {
 pub fn string_to_pat(source_str: String) -> P<ast::Pat> {
     let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| {
-        p.parse_pat()
+        p.parse_pat(None)
     })
 }
 

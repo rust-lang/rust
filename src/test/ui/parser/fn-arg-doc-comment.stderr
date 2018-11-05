@@ -1,0 +1,63 @@
+error: documentation comments cannot be applied to method arguments
+  --> $DIR/fn-arg-doc-comment.rs:2:5
+   |
+LL |     /// Comment
+   |     ^^^^^^^^^^^ doc comments are not allowed here
+
+error: documentation comments cannot be applied to method arguments
+  --> $DIR/fn-arg-doc-comment.rs:6:5
+   |
+LL |     /// Other
+   |     ^^^^^^^^^ doc comments are not allowed here
+
+error: attributes cannot be applied to method arguments
+  --> $DIR/fn-arg-doc-comment.rs:12:8
+   |
+LL | fn foo(#[allow(dead_code)] id: i32) {}
+   |        ^^^^^^^^^^^^^^^^^^^ attributes are not allowed here
+
+error: attributes cannot be applied to a method argument's type
+  --> $DIR/fn-arg-doc-comment.rs:16:12
+   |
+LL | fn bar(id: #[allow(dead_code)] i32) {}
+   |            ^^^^^^^^^^^^^^^^^^^ attributes are not allowed here
+
+error[E0308]: mismatched types
+  --> $DIR/fn-arg-doc-comment.rs:22:7
+   |
+LL |     f("", "");
+   |       ^^ expected u8, found reference
+   |
+   = note: expected type `u8`
+              found type `&'static str`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-arg-doc-comment.rs:22:11
+   |
+LL |     f("", "");
+   |           ^^ expected u8, found reference
+   |
+   = note: expected type `u8`
+              found type `&'static str`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-arg-doc-comment.rs:29:9
+   |
+LL |     foo("");
+   |         ^^ expected i32, found reference
+   |
+   = note: expected type `i32`
+              found type `&'static str`
+
+error[E0308]: mismatched types
+  --> $DIR/fn-arg-doc-comment.rs:33:9
+   |
+LL |     bar("");
+   |         ^^ expected i32, found reference
+   |
+   = note: expected type `i32`
+              found type `&'static str`
+
+error: aborting due to 8 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
