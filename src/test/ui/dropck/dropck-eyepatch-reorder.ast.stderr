@@ -32,7 +32,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c_shortest` does not live long enough
-  --> $DIR/dropck-eyepatch-reorder.rs:66:20
+  --> $DIR/dropck-eyepatch-reorder.rs:67:20
    |
 LL |     dr = Dr("dr", &c_shortest);
    |                    ^^^^^^^^^^ borrowed value does not live long enough

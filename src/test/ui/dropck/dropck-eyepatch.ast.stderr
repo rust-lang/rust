@@ -1,5 +1,5 @@
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:41:20
+  --> $DIR/dropck-eyepatch.rs:81:20
    |
 LL |     dt = Dt("dt", &c);
    |                    ^ borrowed value does not live long enough
@@ -10,7 +10,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:43:20
+  --> $DIR/dropck-eyepatch.rs:83:20
    |
 LL |     dr = Dr("dr", &c);
    |                    ^ borrowed value does not live long enough
@@ -21,7 +21,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c_shortest` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:47:20
+  --> $DIR/dropck-eyepatch.rs:87:20
    |
 LL |     dt = Dt("dt", &c_shortest);
    |                    ^^^^^^^^^^ borrowed value does not live long enough
@@ -32,7 +32,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c_shortest` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:49:20
+  --> $DIR/dropck-eyepatch.rs:90:20
    |
 LL |     dr = Dr("dr", &c_shortest);
    |                    ^^^^^^^^^^ borrowed value does not live long enough
@@ -43,7 +43,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c_shortest` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:57:29
+  --> $DIR/dropck-eyepatch.rs:98:29
    |
 LL |     pt = Pt("pt", &c_long, &c_shortest);
    |                             ^^^^^^^^^^ borrowed value does not live long enough
@@ -54,7 +54,7 @@ LL | }
    = note: values in a scope are dropped in the opposite order they are created
 
 error[E0597]: `c_shortest` does not live long enough
-  --> $DIR/dropck-eyepatch-extern-crate.rs:59:29
+  --> $DIR/dropck-eyepatch.rs:100:29
    |
 LL |     pr = Pr("pr", &c_long, &c_shortest);
    |                             ^^^^^^^^^^ borrowed value does not live long enough
