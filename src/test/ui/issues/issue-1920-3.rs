@@ -10,7 +10,7 @@
 
 //! Test that when a crate is linked multiple times that the shortest absolute path name is used
 
-// aux-build:issue_1920.rs
+// aux-build:issue-1920.rs
 
 mod foo {
     pub extern crate issue_1920;
