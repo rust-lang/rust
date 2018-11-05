@@ -366,7 +366,7 @@ impl<'a, 'gcx, 'tcx> Node {
     pub fn items(
         &self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    ) -> impl Iterator<Item = ty::AssociatedItem> + 'a {
+    ) -> ty::AssociatedItemsIterator<'a, 'gcx, 'tcx> {
         tcx.associated_items(self.def_id())
     }
 
