@@ -20,7 +20,7 @@ pub fn pointer_ty(tcx: TyCtxt) -> types::Type {
 }
 
 fn scalar_to_cton_type(tcx: TyCtxt, scalar: &Scalar) -> Type {
-    match scalar.value.size(tcx).bits() {
+    match scalar.value.size(&tcx).bits() {
         8 => types::I8,
         16 => types::I16,
         32 => types::I32,
@@ -530,7 +530,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                         scalar_to_cton_type(fx.tcx, b),
                         MemFlags::new(),
                         addr,
-                        a.value.size(fx.tcx).bytes() as u32 as i32,
+                        a.value.size(&fx.tcx).bytes() as u32 as i32,
                     );
                     CPlace::Addr(ptr, Some(extra), inner_layout)
                 }
@@ -558,7 +558,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                             MemFlags::new(),
                             extra.expect("unsized type without metadata"),
                             dest.expect_addr(),
-                            a.value.size(fx.tcx).bytes() as u32 as i32,
+                            a.value.size(&fx.tcx).bytes() as u32 as i32,
                         );
                     }
                     _ => bug!(
@@ -643,29 +643,29 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> fmt::Debug for FunctionCx<'a, 'tcx, B> {
     }
 }
 
-impl<'a, 'tcx: 'a, B: Backend> LayoutOf for &'a FunctionCx<'a, 'tcx, B> {
+impl<'a, 'tcx: 'a, B: Backend> LayoutOf for FunctionCx<'a, 'tcx, B> {
     type Ty = Ty<'tcx>;
     type TyLayout = TyLayout<'tcx>;
 
-    fn layout_of(self, ty: Ty<'tcx>) -> TyLayout<'tcx> {
+    fn layout_of(&self, ty: Ty<'tcx>) -> TyLayout<'tcx> {
         let ty = self.monomorphize(&ty);
         self.tcx.layout_of(ParamEnv::reveal_all().and(&ty)).unwrap()
     }
 }
 
-impl<'a, 'tcx, B: Backend + 'a> layout::HasTyCtxt<'tcx> for &'a FunctionCx<'a, 'tcx, B> {
+impl<'a, 'tcx, B: Backend + 'a> layout::HasTyCtxt<'tcx> for FunctionCx<'a, 'tcx, B> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
         self.tcx
     }
 }
 
-impl<'a, 'tcx, B: Backend + 'a> layout::HasDataLayout for &'a FunctionCx<'a, 'tcx, B> {
+impl<'a, 'tcx, B: Backend + 'a> layout::HasDataLayout for FunctionCx<'a, 'tcx, B> {
     fn data_layout(&self) -> &layout::TargetDataLayout {
         &self.tcx.data_layout
     }
 }
 
-impl<'a, 'tcx, B: Backend + 'a> HasTargetSpec for &'a FunctionCx<'a, 'tcx, B> {
+impl<'a, 'tcx, B: Backend + 'a> HasTargetSpec for FunctionCx<'a, 'tcx, B> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target.target
     }

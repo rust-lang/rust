@@ -402,7 +402,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     place.write_place_ref(fx, lval);
                 }
                 Rvalue::BinaryOp(bin_op, lhs, rhs) => {
-                    let ty = fx.monomorphize(&lhs.ty(&fx.mir.local_decls, fx.tcx));
+                    let ty = fx.monomorphize(&lhs.ty(fx.mir, fx.tcx));
                     let lhs = trans_operand(fx, lhs);
                     let rhs = trans_operand(fx, rhs);
 
@@ -422,7 +422,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     lval.write_cvalue(fx, res);
                 }
                 Rvalue::CheckedBinaryOp(bin_op, lhs, rhs) => {
-                    let ty = fx.monomorphize(&lhs.ty(&fx.mir.local_decls, fx.tcx));
+                    let ty = fx.monomorphize(&lhs.ty(fx.mir, fx.tcx));
                     let lhs = trans_operand(fx, lhs);
                     let rhs = trans_operand(fx, rhs);
 

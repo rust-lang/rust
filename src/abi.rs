@@ -456,7 +456,7 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
     args: &[Operand<'tcx>],
     destination: &Option<(Place<'tcx>, BasicBlock)>,
 ) {
-    let fn_ty = fx.monomorphize(&func.ty(&fx.mir.local_decls, fx.tcx));
+    let fn_ty = fx.monomorphize(&func.ty(fx.mir, fx.tcx));
     let sig = ty_fn_sig(fx.tcx, fn_ty);
 
     // Unpack arguments tuple for closures
