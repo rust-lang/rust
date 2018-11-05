@@ -14,16 +14,16 @@ list of items:
 The lowering is triggered by calling the [`mir_built`] query.
 There is an intermediate representation
 between [HIR] and [MIR] called the [HAIR] that is only used during the lowering.
-The [HAIR]'s most important feature is that the various adjustments that happen
-without explicit syntax (coercion, autoderef, autoref, ...) have become explicit
-casts, deref operations or reference expressions.
+The [HAIR]'s most important feature is that the various adjustments (which happen
+without explicit syntax) like coercions, autoderef, autoref and overloaded method
+calls have become explicit casts, deref operations, reference expressions or
+concrete function calls.
 
 The [HAIR] has datatypes that mirror the [HIR] datatypes, but instead of e.g. `-x`
 being a `hair::ExprKind::Neg(hair::Expr)` it is a `hair::ExprKind::Neg(hir::Expr)`.
 This shallowness enables the `HAIR` to represent all datatypes that [HIR] has, but
-without having to create an in-memory copy of the entire [HIR]. The [HAIR] also
-does a few simplifications, e.g. method calls and function calls have been merged
-into a single variant. [MIR] lowering will first convert the topmost expression from
+without having to create an in-memory copy of the entire [HIR].
+[MIR] lowering will first convert the topmost expression from
 [HIR] to [HAIR] (in
 [https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/hair/cx/expr/index.html])
 and then process the [HAIR] expressions recursively.
@@ -85,7 +85,7 @@ basic block onto which the statements should be appended.
 
 ## Lowering expressions into the desired MIR
 
-There are essentially four kinds of representations one might want of a value:
+There are essentially four kinds of representations one might want of an expression:
 
 * `Place` refers to a (or a part of) preexisting memory location (local, static, promoted)
 * `Rvalue` is something that can be assigned to a `Place`
