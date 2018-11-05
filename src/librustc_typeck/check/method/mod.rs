@@ -290,7 +290,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // type parameters or early-bound regions.
         let tcx = self.tcx;
         let method_item =
-            self.associated_item(trait_def_id, m_name, Namespace::Value).unwrap();
+            self.associated_item(trait_def_id, m_name, Namespace::Value)?;
         let def_id = method_item.def_id;
         let generics = tcx.generics_of(def_id);
         assert_eq!(generics.params.len(), 0);
