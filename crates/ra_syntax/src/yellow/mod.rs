@@ -1,8 +1,9 @@
 mod builder;
+pub mod syntax_error;
 mod syntax_text;
 
 use self::syntax_text::SyntaxText;
-use crate::{SmolStr, SyntaxKind, TextRange, TextUnit};
+use crate::{SmolStr, SyntaxKind, TextRange};
 use rowan::Types;
 use std::{
     fmt,
@@ -10,6 +11,7 @@ use std::{
 };
 
 pub(crate) use self::builder::GreenBuilder;
+pub use self::syntax_error::{SyntaxError, SyntaxErrorKind, Location};
 pub use rowan::{TreeRoot, WalkEvent};
 
 #[derive(Debug, Clone, Copy)]
@@ -23,12 +25,6 @@ pub type OwnedRoot = ::rowan::OwnedRoot<RaTypes>;
 pub type RefRoot<'a> = ::rowan::RefRoot<'a, RaTypes>;
 
 pub type GreenNode = ::rowan::GreenNode<RaTypes>;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
-pub struct SyntaxError {
-    pub msg: String,
-    pub offset: TextUnit,
-}
 
 #[derive(Clone, Copy)]
 pub struct SyntaxNode<R: TreeRoot<RaTypes> = OwnedRoot>(::rowan::SyntaxNode<RaTypes, R>);

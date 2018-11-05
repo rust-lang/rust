@@ -100,10 +100,6 @@ impl<'a> Parser<'a> {
     // Char parsing methods
 
     fn parse_unicode_escape(&mut self, start: TextUnit) -> CharComponent {
-        // Note: validation of UnicodeEscape will be done elsewhere:
-        // * Only hex digits or underscores allowed
-        // * Max 6 chars
-        // * Within allowed range (must be at most 10FFFF)
         match self.peek() {
             Some('{') => {
                 self.advance();
@@ -127,9 +123,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ascii_code_escape(&mut self, start: TextUnit) -> CharComponent {
-        // Note: validation of AsciiCodeEscape will be done elsewhere:
-        // * First digit is octal
-        // * Second digit is hex
         let code_start = self.get_pos();
         while let Some(next) = self.peek() {
             if next == '\'' || (self.get_pos() - code_start == 2.into()) {
@@ -144,9 +137,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_escape(&mut self, start: TextUnit) -> CharComponent {
-        // Note: validation of AsciiEscape will be done elsewhere:
-        // * The escape sequence is non-empty
-        // * The escape sequence is valid
         if self.peek().is_none() {
             return CharComponent::new(TextRange::from_to(start, start), AsciiEscape);
         }

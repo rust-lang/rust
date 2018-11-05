@@ -165,20 +165,14 @@ fn merge_errors(
 ) -> Vec<SyntaxError> {
     let mut res = Vec::new();
     for e in old_errors {
-        if e.offset <= old_node.range().start() {
+        if e.offset() <= old_node.range().start() {
             res.push(e)
-        } else if e.offset >= old_node.range().end() {
-            res.push(SyntaxError {
-                msg: e.msg,
-                offset: e.offset + TextUnit::of_str(&edit.insert) - edit.delete.len(),
-            })
+        } else if e.offset() >= old_node.range().end() {
+            res.push(e.add_offset(TextUnit::of_str(&edit.insert) - edit.delete.len()));
         }
     }
     for e in new_errors {
-        res.push(SyntaxError {
-            msg: e.msg,
-            offset: e.offset + old_node.range().start(),
-        })
+        res.push(e.add_offset(old_node.range().start()));
     }
     res
 }
