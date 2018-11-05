@@ -16,7 +16,7 @@ LL |     let (c, d) = (&mut foo.a, &foo.b);
    |                        -----   ^^^^^ immutable borrow occurs here (via `foo.b`)
    |                        |
    |                        mutable borrow occurs here (via `foo.a`)
-LL |     //~^ ERROR cannot borrow `foo` (via `foo.b`) as immutable
+...
 LL | }
    | - mutable borrow ends here
 
