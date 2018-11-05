@@ -64,7 +64,10 @@ fn generate_more_mir(&mut self, block: BasicBlock) -> BlockAnd<ResultType> {
 }
 ```
 
-When you invoke these functions, it is common to have a local variable `block` that is effectively a "cursor". It represents the point at which we are adding new MIR. When you invoke `generate_more_mir`, you want to update this cursor. You can do this manually, but it's tedious:
+When you invoke these functions, it is common to have a local variable `block`
+that is effectively a "cursor". It represents the point at which we are adding new MIR.
+When you invoke `generate_more_mir`, you want to update this cursor.
+You can do this manually, but it's tedious:
 
 ```rust
 let mut block;
