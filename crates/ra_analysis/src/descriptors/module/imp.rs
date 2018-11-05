@@ -21,7 +21,7 @@ use super::{
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub(crate) struct Submodule {
-    name: SmolStr
+    name: SmolStr,
 }
 
 pub(crate) fn submodules(
@@ -29,26 +29,36 @@ pub(crate) fn submodules(
     source: ModuleSource,
 ) -> Cancelable<Arc<Vec<Submodule>>> {
     db::check_canceled(db)?;
-    let file_id = match source {
-        ModuleSource::File(it) => it,
-        _ => unimplemented!(),
+    let submodules = match source.resolve(db) {
+        ModuleSourceNode::Root(it) => collect_submodules(it.ast()),
+        ModuleSourceNode::Inline(it) => it
+            .ast()
+            .item_list()
+            .map(collect_submodules)
+            .unwrap_or_else(Vec::new),
     };
-    let file = db.file_syntax(file_id);
-    let root = file.ast();
-    let submodules = modules(root)
-        .map(|(name, _)| Submodule { name })
-        .collect();
-    Ok(Arc::new(submodules))
+    return Ok(Arc::new(submodules));
+
+    fn collect_submodules<'a>(root: impl ast::ModuleItemOwner<'a>) -> Vec<Submodule> {
+        modules(root)
+            .filter(|(_, m)| m.has_semi())
+            .map(|(name, _)| Submodule { name })
+            .collect()
+    }
 }
 
-pub(crate) fn modules(root: ast::Root<'_>) -> impl Iterator<Item = (SmolStr, ast::Module<'_>)> {
-    root.modules().filter_map(|module| {
-        let name = module.name()?.text();
-        if !module.has_semi() {
-            return None;
-        }
-        Some((name, module))
-    })
+pub(crate) fn modules<'a>(
+    root: impl ast::ModuleItemOwner<'a>,
+) -> impl Iterator<Item = (SmolStr, ast::Module<'a>)> {
+    root.items()
+        .filter_map(|item| match item {
+            ast::ModuleItem::Module(m) => Some(m),
+            _ => None,
+        })
+        .filter_map(|module| {
+            let name = module.name()?.text();
+            Some((name, module))
+        })
 }
 
 pub(crate) fn module_scope(

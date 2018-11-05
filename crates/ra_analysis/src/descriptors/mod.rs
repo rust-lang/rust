@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use ra_syntax::{
     ast::{self, AstNode, FnDefNode},
-    SmolStr, TextRange,
+    TextRange,
 };
 
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
     descriptors::module::{ModuleId, ModuleScope, ModuleTree, ModuleSource},
     input::SourceRootId,
     syntax_ptr::LocalSyntaxPtr,
-    Cancelable, FileId,
+    Cancelable,
 };
 
 salsa::query_group! {
