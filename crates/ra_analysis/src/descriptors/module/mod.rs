@@ -164,6 +164,13 @@ impl ModuleSource {
         }
     }
 
+    fn file_id(self) -> FileId {
+        match self {
+            ModuleSource::File(f) => f,
+            ModuleSource::Inline(ptr) => ptr.file_id(),
+        }
+    }
+
     fn resolve(self, db: &impl SyntaxDatabase) -> ModuleSourceNode {
         match self {
             ModuleSource::File(file_id) => {
