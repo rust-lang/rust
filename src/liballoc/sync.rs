@@ -571,15 +571,17 @@ impl<T: ?Sized> Arc<T> {
 impl<T: ?Sized> Arc<T> {
     // Allocates an `ArcInner<T>` with sufficient space for an unsized value
     unsafe fn allocate_for_ptr(ptr: *const T) -> *mut ArcInner<T> {
-        // Create a fake ArcInner to find allocation size and alignment
-        let fake_ptr = ptr as *mut ArcInner<T>;
-
-        let layout = Layout::for_value(&*fake_ptr);
+        // Calculate layout using the given value.
+        // Previously, layout was calculated on the expression
+        // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
+        // reference (see #54908).
+        let (layout, _) = Layout::new::<ArcInner<()>>()
+            .extend(Layout::for_value(&*ptr)).unwrap();
 
         let mem = Global.alloc(layout)
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
-        // Initialize the real ArcInner
+        // Initialize the ArcInner
         let inner = set_data_ptr(ptr as *mut T, mem.as_ptr() as *mut u8) as *mut ArcInner<T>;
 
         ptr::write(&mut (*inner).strong, atomic::AtomicUsize::new(1));
