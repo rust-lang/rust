@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME: Still investigating whether there is UB here
-// compile-flags: -Zmiri-disable-validation
-
 fn b<T>(t: T) -> T { t }
 
 fn main() {

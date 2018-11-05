@@ -3,7 +3,7 @@ fn foo(x: &mut (i32, i32)) -> &mut i32 {
     let xraw = x as *mut (i32, i32);
     let ret = unsafe { &mut (*xraw).1 };
     let _val = *x; // invalidate xraw and its children
-    ret //~ ERROR mutable reference with non-reactivatable tag
+    ret //~ ERROR does not exist on the stack
 }
 
 fn main() {

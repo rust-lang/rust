@@ -1,6 +1,3 @@
-// FIXME: Still investigating whether there is UB here
-// compile-flags: -Zmiri-disable-validation
-
 use std::slice;
 
 fn slice_of_zst() {

@@ -133,7 +133,7 @@ impl<'tcx> TlsData<'tcx> {
     }
 }
 
-impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
+impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, 'tcx> {
     fn run_tls_dtors(&mut self) -> EvalResult<'tcx> {
         let mut dtor = self.machine.tls.fetch_tls_dtor(None, &*self.tcx);
         // FIXME: replace loop by some structure that works with stepping

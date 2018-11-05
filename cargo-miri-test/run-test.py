@@ -10,9 +10,8 @@ import sys, subprocess
 def test_cargo_miri():
     print("==> Testing `cargo miri` <==")
     ## Call `cargo miri`, capture all output
-    # FIXME: Disabling validation, still investigating whether there is UB here
     p = subprocess.Popen(
-        ["cargo", "miri", "-q", "--", "-Zmiri-disable-validation"],
+        ["cargo", "miri", "-q"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )

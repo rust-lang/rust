@@ -17,7 +17,7 @@ use std::collections::HashMap;
 use std::borrow::Cow;
 use std::env;
 
-use rustc::ty::{self, Ty, TyCtxt, query::TyCtxtAt};
+use rustc::ty::{self, TyCtxt, query::TyCtxtAt};
 use rustc::ty::layout::{TyLayout, LayoutOf, Size};
 use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
@@ -48,7 +48,7 @@ use crate::mono_hash_map::MonoHashMap;
 use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
 
 // Used by priroda
-pub use crate::stacked_borrows::{Borrow, Stack, Stacks, Mut as MutBorrow, BorStackItem};
+pub use crate::stacked_borrows::{Borrow, Stack, Stacks, BorStackItem};
 
 /// Insert rustc arguments at the beginning of the argument list that miri wants to be
 /// set per default, for maximal validation power.
@@ -476,38 +476,38 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     #[inline(always)]
     fn tag_reference(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        place: MemPlace<Borrow>,
-        ty: Ty<'tcx>,
-        size: Size,
+        place: MPlaceTy<'tcx, Borrow>,
         mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, MemPlace<Borrow>> {
+    ) -> EvalResult<'tcx, Scalar<Borrow>> {
+        let (size, _) = ecx.size_and_align_of_mplace(place)?
+            // for extern types, just cover what we can
+            .unwrap_or_else(|| place.layout.size_and_align());
         if !ecx.machine.validate || size == Size::ZERO {
             // No tracking
-            Ok(place)
+            Ok(place.ptr)
         } else {
             let ptr = place.ptr.to_ptr()?;
-            let tag = ecx.tag_reference(ptr, ty, size, mutability.into())?;
-            let ptr = Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag));
-            Ok(MemPlace { ptr, ..place })
+            let tag = ecx.tag_reference(place, size, mutability.into())?;
+            Ok(Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag)))
         }
     }
 
     #[inline(always)]
     fn tag_dereference(
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
-        place: MemPlace<Borrow>,
-        ty: Ty<'tcx>,
-        size: Size,
+        place: MPlaceTy<'tcx, Borrow>,
         mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, MemPlace<Borrow>> {
+    ) -> EvalResult<'tcx, Scalar<Borrow>> {
+        let (size, _) = ecx.size_and_align_of_mplace(place)?
+            // for extern types, just cover what we can
+            .unwrap_or_else(|| place.layout.size_and_align());
         if !ecx.machine.validate || size == Size::ZERO {
             // No tracking
-            Ok(place)
+            Ok(place.ptr)
         } else {
             let ptr = place.ptr.to_ptr()?;
-            let tag = ecx.tag_dereference(ptr, ty, size, mutability.into())?;
-            let ptr = Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag));
-            Ok(MemPlace { ptr, ..place })
+            let tag = ecx.tag_dereference(place, size, mutability.into())?;
+            Ok(Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag)))
         }
     }
 

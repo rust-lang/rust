@@ -6,5 +6,5 @@ fn main() {
     let xraw = &*x as *const _;
     let xref = unsafe { &*xraw };
     *x = 42; // invalidate xraw
-    foo(xref); //~ ERROR shared reference with non-reactivatable tag: Location should be frozen
+    foo(xref); //~ ERROR does not exist on the stack
 }
