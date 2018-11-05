@@ -40,20 +40,48 @@ writes the result into the `RETURN_PLACE`.
 
 ## `unpack!` all the things
 
-One important thing of note is the `unpack!` macro, which accompanies all recursive
-calls. The macro ensures that you get the result of the recursive call while updating
-the basic block that you are now in. As an example: lowering `a + b` will need to do
-three somewhat independent things:
+Functions that generate MIR tend to fall into one of two patterns.
+First, if the function generates only statements, then it will take a
+basic block as argument onto which those statements should be appended.
+It can then return a result as normal:
 
-* give you an `Rvalue` referring to the result of the operation
-* insert an assertion ensuring that the operation does not overflow
-* tell you in which basic block you should write further operations into, because
-  the basic block has changed due to the inserted assertion (assertions terminate
-  blocks and jump either to a panic block or a newly created block, the latter being
-  the one you get back).
+```rust
+fn generate_some_mir(&mut self, block: BasicBlock) -> ResultType {
+   ...
+}
+```
 
-The `unpack!` macro will call the recursive function you pass it, return the `Rvalue`
-and update the basic block by mutating the basic block variable you pass to it.
+But there are other functions that may generate new basic blocks as well.
+For example, lowering an expression like `if foo { 22 } else { 44 }`
+requires generating a small "diamond-shaped graph".
+In this case, the functions take a basic block where their code starts
+and return a (potentially) new basic block where the code generation ends.
+The `BlockAnd` type is used to represent this:
+
+```rust
+fn generate_more_mir(&mut self, block: BasicBlock) -> BlockAnd<ResultType> {
+    ...
+}
+```
+
+When you invoke these functions, it is common to have a local variable `block` that is effectively a "cursor". It represents the point at which we are adding new MIR. When you invoke `generate_more_mir`, you want to update this cursor. You can do this manually, but it's tedious:
+
+```rust
+let mut block;
+let v = match self.generate_more_mir(..) {
+    BlockAnd { block: new_block, value: v } => {
+        block = new_block;
+        v
+    }
+};
+```
+
+For this reason, we offer a macro that lets you write
+`let v = unpack!(block = self.generate_more_mir(...))`.
+It simply extracts the new block and overwrites the
+variable `block` that you named in the `unpack!`.
+MIR functions that generate statements always take as argument a
+basic block onto which the statements should be appended.
 
 ## Lowering expressions into the desired MIR
 
