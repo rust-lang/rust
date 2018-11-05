@@ -11,7 +11,7 @@
 #![feature(trait_alias)]
 
 trait I32Iterator = Iterator<Item = i32>;
-trait I32Iterator2 = I32Iterator<Item = i32>;
-trait U32Iterator = I32Iterator2<Item = i32>;
 
-pub fn main() {}
+fn main() {
+    let _: &I32Iterator<Item = u32>; //~ ERROR E0719
+}

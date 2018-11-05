@@ -544,14 +544,14 @@ impl<'tcx> TyS<'tcx> {
     pub fn is_primitive_ty(&self) -> bool {
         match self.sty {
             TyKind::Bool |
-                TyKind::Char |
-                TyKind::Int(_) |
-                TyKind::Uint(_) |
-                TyKind::Float(_) |
-                TyKind::Infer(InferTy::IntVar(_)) |
-                TyKind::Infer(InferTy::FloatVar(_)) |
-                TyKind::Infer(InferTy::FreshIntTy(_)) |
-                TyKind::Infer(InferTy::FreshFloatTy(_)) => true,
+            TyKind::Char |
+            TyKind::Int(_) |
+            TyKind::Uint(_) |
+            TyKind::Float(_) |
+            TyKind::Infer(InferTy::IntVar(_)) |
+            TyKind::Infer(InferTy::FloatVar(_)) |
+            TyKind::Infer(InferTy::FreshIntTy(_)) |
+            TyKind::Infer(InferTy::FreshFloatTy(_)) => true,
             TyKind::Ref(_, x, _) => x.is_primitive_ty(),
             _ => false,
         }
@@ -1042,15 +1042,15 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub enum Predicate<'tcx> {
-    /// Corresponds to `where Foo : Bar<A,B,C>`. `Foo` here would be
+    /// Corresponds to `where Foo: Bar<A,B,C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
     /// would be the type parameters.
     Trait(PolyTraitPredicate<'tcx>),
 
-    /// where `'a : 'b`
+    /// where `'a: 'b`
     RegionOutlives(PolyRegionOutlivesPredicate<'tcx>),
 
-    /// where `T : 'a`
+    /// where `T: 'a`
     TypeOutlives(PolyTypeOutlivesPredicate<'tcx>),
 
     /// where `<T as TraitRef>::Name == X`, approximately.
@@ -1063,7 +1063,7 @@ pub enum Predicate<'tcx> {
     /// trait must be object-safe
     ObjectSafe(DefId),
 
-    /// No direct syntax. May be thought of as `where T : FnFoo<...>`
+    /// No direct syntax. May be thought of as `where T: FnFoo<...>`
     /// for some substitutions `...` and `T` being a closure type.
     /// Satisfied (or refuted) once we know the closure's kind.
     ClosureKind(DefId, ClosureSubsts<'tcx>, ClosureKind),
@@ -1112,11 +1112,11 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
         //
         // Let's start with an easy case. Consider two traits:
         //
-        //     trait Foo<'a> : Bar<'a,'a> { }
+        //     trait Foo<'a>: Bar<'a,'a> { }
         //     trait Bar<'b,'c> { }
         //
-        // Now, if we have a trait reference `for<'x> T : Foo<'x>`, then
-        // we can deduce that `for<'x> T : Bar<'x,'x>`. Basically, if we
+        // Now, if we have a trait reference `for<'x> T: Foo<'x>`, then
+        // we can deduce that `for<'x> T: Bar<'x,'x>`. Basically, if we
         // knew that `Foo<'x>` (for any 'x) then we also know that
         // `Bar<'x,'x>` (for any 'x). This more-or-less falls out from
         // normal substitution.
@@ -1129,21 +1129,21 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
         //
         // Another example to be careful of is this:
         //
-        //     trait Foo1<'a> : for<'b> Bar1<'a,'b> { }
+        //     trait Foo1<'a>: for<'b> Bar1<'a,'b> { }
         //     trait Bar1<'b,'c> { }
         //
-        // Here, if we have `for<'x> T : Foo1<'x>`, then what do we know?
-        // The answer is that we know `for<'x,'b> T : Bar1<'x,'b>`. The
+        // Here, if we have `for<'x> T: Foo1<'x>`, then what do we know?
+        // The answer is that we know `for<'x,'b> T: Bar1<'x,'b>`. The
         // reason is similar to the previous example: any impl of
-        // `T:Foo1<'x>` must show that `for<'b> T : Bar1<'x, 'b>`.  So
+        // `T:Foo1<'x>` must show that `for<'b> T: Bar1<'x, 'b>`.  So
         // basically we would want to collapse the bound lifetimes from
         // the input (`trait_ref`) and the supertraits.
         //
         // To achieve this in practice is fairly straightforward. Let's
         // consider the more complicated scenario:
         //
-        // - We start out with `for<'x> T : Foo1<'x>`. In this case, `'x`
-        //   has a De Bruijn index of 1. We want to produce `for<'x,'b> T : Bar1<'x,'b>`,
+        // - We start out with `for<'x> T: Foo1<'x>`. In this case, `'x`
+        //   has a De Bruijn index of 1. We want to produce `for<'x,'b> T: Bar1<'x,'b>`,
         //   where both `'x` and `'b` would have a DB index of 1.
         //   The substitution from the input trait-ref is therefore going to be
         //   `'a => 'x` (where `'x` has a DB index of 1).
@@ -1219,7 +1219,7 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A : B`
+pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A: B`
 pub type PolyOutlivesPredicate<A,B> = ty::Binder<OutlivesPredicate<A,B>>;
 pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>,
                                                            ty::Region<'tcx>>;
@@ -2476,7 +2476,7 @@ impl<'tcx> TyS<'tcx> {
     ///
     /// Note: prefer `ty.walk()` where possible.
     pub fn maybe_walk<F>(&'tcx self, mut f: F)
-        where F : FnMut(Ty<'tcx>) -> bool
+        where F: FnMut(Ty<'tcx>) -> bool
     {
         let mut walker = self.walk();
         while let Some(ty) = walker.next() {

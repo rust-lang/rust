@@ -1,0 +1,11 @@
+error[E0719]: the value of the associated type `Item` (from the trait `std::iter::Iterator`) is already specified
+  --> $DIR/E0719.rs:12:22
+   |
+LL |     let _: &Iterator<Item = i32, Item = i32>; //~ ERROR E0719
+   |                      ^^^^^^^^^^  ---------- `Item` bound here first
+   |                      |
+   |                      re-bound here
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0719`.

@@ -37,7 +37,7 @@ use std::iter;
 use syntax::ast;
 use syntax::ptr::P;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
-use syntax_pos::{Span, MultiSpan};
+use syntax_pos::{DUMMY_SP, Span, MultiSpan};
 
 pub trait AstConv<'gcx, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'a, 'gcx, 'tcx>;
@@ -719,6 +719,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         speculative: bool)
         -> ty::PolyTraitRef<'tcx>
     {
+        let tcx = self.tcx();
+
         let trait_def_id = self.trait_def_id(trait_ref);
 
         debug!("instantiate_poly_trait_ref({:?}, def_id={:?})", trait_ref, trait_def_id);
@@ -732,15 +734,73 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                                                  trait_ref.path.segments.last().unwrap());
         let poly_trait_ref = ty::Binder::bind(ty::TraitRef::new(trait_def_id, substs));
 
-        let mut dup_bindings = FxHashMap::default();
         poly_projections.extend(assoc_bindings.iter().filter_map(|binding| {
             // specify type to assert that error was already reported in Err case:
             let predicate: Result<_, ErrorReported> =
                 self.ast_type_binding_to_poly_projection_predicate(
-                    trait_ref.ref_id, poly_trait_ref, binding, speculative, &mut dup_bindings);
+                    trait_ref.ref_id, poly_trait_ref, binding, speculative);
             // okay to ignore Err because of ErrorReported (see above)
             Some((predicate.ok()?, binding.span))
         }));
+
+        // make flat_map:
+        // for tr in traits::supertraits(tcx, poly_trait_ref) {
+        //     let sup_trait_ref = tr.skip_binder();
+        //     poly_projections.extend(sup_trait_ref.substs.types().filter_map(|t| {
+        //         if let TyKind::Projection(proj) = t.sty {
+        //             Some((proj, span))
+        //         } else {
+        //             None
+        //         }
+        //     });
+        // }
+
+        // Include all projections from associated type bindings of supertraits.
+        poly_projections.extend(traits::elaborate_trait_ref(tcx, poly_trait_ref)
+            .into_iter()
+            .filter_map(|pred| {
+                if let ty::Predicate::Projection(proj) = pred {
+                    Some(proj)
+                } else {
+                    None
+                }
+            })
+            .map(|proj| (proj, DUMMY_SP))
+        );
+
+        // // Include associated type bindings from supertraits.
+        // let mut foo = poly_projections.clone();
+        // foo.extend(tcx.predicates_of(trait_def_id)
+        //     .predicates.into_iter()
+        //     .filter_map(|(pred, span)| {
+        //         debug!("pred: {:?}", pred);
+        //         if let ty::Predicate::Projection(proj) = pred {
+        //             Some((proj, span))
+        //         } else {
+        //             None
+        //         }
+        //     }));
+
+        // Check for multiple bindings of associated types.
+        let mut seen_projection_bounds = FxHashMap::default();
+        for (projection_bound, span) in poly_projections.iter().rev() {
+            let bound_def_id = projection_bound.projection_def_id();
+            let assoc_item = tcx.associated_item(bound_def_id);
+            let trait_def_id = assoc_item.container.id();
+            // let trait_ref = tcx.associated_item(proj.projection_type.item_def_id).container;
+            seen_projection_bounds.entry((assoc_item.def_id, bound_def_id))
+                .and_modify(|prev_span| {
+                    struct_span_err!(tcx.sess, *span, E0719,
+                                     "the value of the associated type `{}` (from the trait `{}`) \
+                                      is already specified",
+                                     assoc_item.ident,
+                                     tcx.item_path_str(trait_def_id))
+                        .span_label(*span, "re-bound here")
+                        .span_label(*prev_span, format!("`{}` bound here first", assoc_item.ident))
+                        .emit();
+                })
+                .or_insert(*span);
+        }
 
         debug!("instantiate_poly_trait_ref({:?}, projections={:?}) -> {:?}",
                trait_ref, poly_projections, poly_trait_ref);
@@ -824,8 +884,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         ref_id: ast::NodeId,
         trait_ref: ty::PolyTraitRef<'tcx>,
         binding: &ConvertedBinding<'tcx>,
-        speculative: bool,
-        dup_bindings: &mut FxHashMap<DefId, Span>)
+        speculative: bool)
         -> Result<ty::PolyProjectionPredicate<'tcx>, ErrorReported>
     {
         let tcx = self.tcx();
@@ -879,7 +938,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             }
         }
 
-        let supertraits = traits::supertraits(tcx, trait_ref);
         let candidate = if self.trait_defines_associated_type_named(trait_ref.def_id(),
                                                                     binding.item_name) {
             // Simple case: X is defined in the current trait.
@@ -887,11 +945,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         } else {
             // Otherwise, we have to walk through the supertraits to find
             // those that do.
-            let candidates = supertraits.filter(|r| {
+            let candidates = traits::supertraits(tcx, trait_ref).filter(|r| {
                 self.trait_defines_associated_type_named(r.def_id(), binding.item_name)
             });
-            let candidates = candidates.collect::<Vec<_>>();
-            debug!("foo: candidates: {:?}", candidates);
             self.one_bound_for_assoc_type(candidates.into_iter(), &trait_ref.to_string(),
                                           binding.item_name, binding.span)
         }?;
@@ -907,31 +963,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             tcx.sess.span_err(binding.span, &msg);
         }
         tcx.check_stability(assoc_ty.def_id, Some(ref_id), binding.span);
-
-        debug!("foo: info: {:?} {:?} {:?} {:?} {:?}", trait_ref, binding.item_name, speculative, assoc_ty.def_id, dup_bindings);
-        if !speculative {
-            dup_bindings.entry(assoc_ty.def_id)
-                .and_modify(|prev_span| {
-                    let mut err = self.tcx().struct_span_lint_node(
-                        ::rustc::lint::builtin::DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
-                        ref_id,
-                        binding.span,
-                        &format!("associated type binding `{}` specified more than once",
-                                 binding.item_name)
-                    );
-                    err.span_label(binding.span, "used more than once");
-                    err.span_label(*prev_span, format!("first use of `{}`", binding.item_name));
-                    err.emit();
-                })
-                .or_insert(binding.span);
-        }
-        static mut ABC: u32 = 0;
-        unsafe {
-            ABC += 1;
-            if ABC == 3 {
-                assert!(false);
-            }
-        };
 
         Ok(candidate.map_bound(|trait_ref| {
             ty::ProjectionPredicate {
@@ -1016,37 +1047,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             associated_types.extend(tcx.associated_items(tr.def_id())
                 .filter(|item| item.kind == ty::AssociatedKind::Type)
                 .map(|item| item.def_id));
-
-            projection_bounds.extend(tcx.predicates_of(tr.def_id())
-                .predicates.into_iter()
-                .filter_map(|(pred, span)| {
-                    if let ty::Predicate::Projection(proj) = pred {
-                        Some((proj, span))
-                    } else {
-                        None
-                    }
-                }));
         }
 
-        let mut seen_projection_bounds = FxHashMap::default();
-        for (projection_bound, span) in projection_bounds.iter().rev() {
-            let bound_def_id = projection_bound.projection_def_id();
-            seen_projection_bounds.entry(bound_def_id)
-                .and_modify(|prev_span| {
-                    let assoc_item = tcx.associated_item(bound_def_id);
-                    let trait_def_id = assoc_item.container.id();
-                    struct_span_err!(tcx.sess, *span, E0719,
-                                     "the value of the associated type `{}` (from the trait `{}`) \
-                                      is already specified",
-                                     assoc_item.ident,
-                                     tcx.item_path_str(trait_def_id))
-                        .span_label(*span, "re-bound here")
-                        .span_label(*prev_span, format!("binding for `{}`", assoc_item.ident))
-                        .emit();
-                })
-                .or_insert(*span);
-
-            associated_types.remove(&bound_def_id);
+        for (projection_bound, _) in projection_bounds.iter().rev() {
+            associated_types.remove(&projection_bound.projection_def_id());
         }
 
         for item_def_id in associated_types {
