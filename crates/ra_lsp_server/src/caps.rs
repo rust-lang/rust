@@ -16,7 +16,7 @@ pub fn server_capabilities() -> ServerCapabilities {
                 save: None,
             },
         )),
-        hover_provider: None,
+        hover_provider: Some(true),
         completion_provider: Some(CompletionOptions {
             resolve_provider: None,
             trigger_characters: None,

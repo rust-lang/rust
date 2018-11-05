@@ -364,6 +364,16 @@ impl AnalysisImpl {
         ret
     }
 
+    pub fn doc_comment_for(
+        &self,
+        file_id: FileId,
+        symbol: FileSymbol,
+    ) -> Cancelable<Option<String>> {
+        let file = self.db.file_syntax(file_id);
+
+        Ok(symbol.docs(&file))
+    }
+
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
         let module_tree = self.module_tree(file_id)?;
         let syntax = self.db.file_syntax(file_id);

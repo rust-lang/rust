@@ -4,9 +4,9 @@ use gen_lsp_server::ErrorCode;
 use languageserver_types::{
     CodeActionResponse, Command, CompletionItem, CompletionItemKind, Diagnostic,
     DiagnosticSeverity, DocumentSymbol, Documentation, FoldingRange, FoldingRangeKind,
-    FoldingRangeParams, InsertTextFormat, Location, MarkupContent, MarkupKind, Position,
+    FoldingRangeParams, InsertTextFormat, Location, MarkupContent, MarkupKind, MarkedString, Position,
     PrepareRenameResponse, RenameParams, SymbolInformation, TextDocumentIdentifier, TextEdit,
-    WorkspaceEdit, ParameterInformation, SignatureInformation,
+    WorkspaceEdit, ParameterInformation, SignatureInformation, Hover, HoverContents,
 };
 use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FilePosition};
 use ra_syntax::text_utils::contains_offset_nonstrict;
@@ -476,6 +476,31 @@ pub fn handle_signature_help(
     } else {
         Ok(None)
     }
+}
+
+pub fn handle_hover(
+    world: ServerWorld,
+    params: req::TextDocumentPositionParams,
+) -> Result<Option<Hover>> {
+    let position = params.try_conv_with(&world)?;
+    let line_index = world.analysis().file_line_index(position.file_id);
+
+    for (file_id, symbol) in world.analysis().approximately_resolve_symbol(position)? {
+        let range = symbol.node_range.conv_with(&line_index);
+        let name = symbol.name.to_string();
+        let comment = world.analysis.doc_comment_for(file_id, symbol)?;
+
+        if comment.is_some() {
+            let contents = HoverContents::Scalar(MarkedString::String(comment.unwrap()));
+
+            return Ok(Some(Hover {
+                contents,
+                range: Some(range)
+            }))
+        }
+    }
+
+    Ok(None)
 }
 
 pub fn handle_prepare_rename(

@@ -2,7 +2,7 @@ use crate::TextRange;
 
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
-    ast::{self, NameOwner},
+    ast::{self, DocCommentsOwner, NameOwner},
     AstNode, File, SmolStr, SyntaxKind, SyntaxNodeRef, WalkEvent,
 };
 
@@ -20,6 +20,30 @@ pub struct FileSymbol {
     pub name: SmolStr,
     pub node_range: TextRange,
     pub kind: SyntaxKind,
+}
+
+impl FileSymbol {
+    pub fn docs(&self, file: &File) -> Option<String> {
+        file.syntax().descendants()
+            .filter(|node| node.kind() == self.kind && node.range() == self.node_range)
+            .filter_map(|node: SyntaxNodeRef| {
+                fn doc_comments<'a, N: DocCommentsOwner<'a>>(node: N) -> Option<String> {
+                    let comments = node.doc_comment_text();
+                    if comments.is_empty() { None } else { Some(comments) }
+                }
+
+                visitor()
+                    .visit(doc_comments::<ast::FnDef>)
+                    .visit(doc_comments::<ast::StructDef>)
+                    .visit(doc_comments::<ast::EnumDef>)
+                    .visit(doc_comments::<ast::TraitDef>)
+                    .visit(doc_comments::<ast::Module>)
+                    .visit(doc_comments::<ast::TypeDef>)
+                    .visit(doc_comments::<ast::ConstDef>)
+                    .visit(doc_comments::<ast::StaticDef>)
+                    .accept(node)?
+            }).nth(0)
+    }
 }
 
 pub fn file_symbols(file: &File) -> Vec<FileSymbol> {
