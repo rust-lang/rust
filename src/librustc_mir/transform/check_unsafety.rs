@@ -23,6 +23,7 @@ use rustc::mir::visit::{PlaceContext, Visitor, MutatingUseContext};
 
 use syntax::ast;
 use syntax::symbol::Symbol;
+use syntax::feature_gate::{emit_feature_err, GateIssue};
 
 use std::ops::Bound;
 
@@ -96,7 +97,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                 if let hir::Unsafety::Unsafe = sig.unsafety() {
                     self.require_unsafe("call to unsafe function",
                         "consult the function's documentation for information on how to avoid \
-                         undefined behavior", UnsafetyViolationKind::MinConstFn)
+                         undefined behavior", UnsafetyViolationKind::GatedConstFnCall)
                 }
             }
         }
@@ -146,7 +147,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                             "initializing type with `rustc_layout_scalar_valid_range` attr",
                             "initializing a layout restricted type's field with a value outside \
                             the valid range is undefined behavior",
-                            UnsafetyViolationKind::MinConstFn,
+                            UnsafetyViolationKind::GeneralAndConstFn,
                         ),
                     }
                 }
@@ -319,12 +320,21 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
             (Safety::Safe, _) => {
                 for violation in violations {
                     let mut violation = violation.clone();
-                    if self.min_const_fn {
-                        // overwrite unsafety violation in const fn with a single hard error kind
-                        violation.kind = UnsafetyViolationKind::MinConstFn;
-                    } else if let UnsafetyViolationKind::MinConstFn = violation.kind {
-                        // outside of const fns we treat `MinConstFn` and `General` the same
-                        violation.kind = UnsafetyViolationKind::General;
+                    match violation.kind {
+                        UnsafetyViolationKind::GeneralAndConstFn |
+                        UnsafetyViolationKind::General => {},
+                        UnsafetyViolationKind::BorrowPacked(_) |
+                        UnsafetyViolationKind::ExternStatic(_) => if self.min_const_fn {
+                            // const fns don't need to be backwards compatible and can
+                            // emit these violations as a hard error instead of a backwards
+                            // compat lint
+                            violation.kind = UnsafetyViolationKind::General;
+                        },
+                        UnsafetyViolationKind::GatedConstFnCall => {
+                            // safe code can't call unsafe const fns, this `UnsafetyViolationKind`
+                            // is only relevant for `Safety::ExplicitUnsafe` in `unsafe const fn`s
+                            violation.kind = UnsafetyViolationKind::General;
+                        }
                     }
                     if !self.violations.contains(&violation) {
                         self.violations.push(violation)
@@ -344,13 +354,24 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                     for violation in violations {
                         match violation.kind {
                             // these are allowed
-                            UnsafetyViolationKind::MinConstFn
+                            UnsafetyViolationKind::GatedConstFnCall => {
                                 // if `#![feature(min_const_unsafe_fn)]` is active
-                                if self.tcx.sess.features_untracked().min_const_unsafe_fn => {},
-                            _ => {
+                                if !self.tcx.sess.features_untracked().min_const_unsafe_fn {
+                                    if !self.violations.contains(&violation) {
+                                        self.violations.push(violation.clone())
+                                    }
+                                }
+                            }
+                            // these unsafe things are stable in const fn
+                            UnsafetyViolationKind::GeneralAndConstFn => {},
+                            UnsafetyViolationKind::General |
+                            UnsafetyViolationKind::BorrowPacked(_) |
+                            UnsafetyViolationKind::ExternStatic(_) => {
                                 let mut violation = violation.clone();
-                                // overwrite unsafety violation in const fn with a hard error
-                                violation.kind = UnsafetyViolationKind::MinConstFn;
+                                // const fns don't need to be backwards compatible and can
+                                // emit these violations as a hard error instead of a backwards
+                                // compat lint
+                                violation.kind = UnsafetyViolationKind::General;
                                 if !self.violations.contains(&violation) {
                                     self.violations.push(violation)
                                 }
@@ -400,7 +421,7 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                                     source_info,
                                     description: Symbol::intern(description).as_interned_str(),
                                     details: Symbol::intern(details).as_interned_str(),
-                                    kind: UnsafetyViolationKind::MinConstFn,
+                                    kind: UnsafetyViolationKind::GeneralAndConstFn,
                                 }], &[]);
                             }
                         },
@@ -592,6 +613,16 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
     } in violations.iter() {
         // Report an error.
         match kind {
+            UnsafetyViolationKind::General if tcx.is_min_const_fn(def_id) => {
+                tcx.sess.struct_span_err(
+                    source_info.span,
+                    &format!("{} is unsafe and unsafe operations \
+                            are not allowed in const fn", description))
+                    .span_label(source_info.span, &description.as_str()[..])
+                    .note(&details.as_str()[..])
+                    .emit();
+            }
+            UnsafetyViolationKind::GeneralAndConstFn |
             UnsafetyViolationKind::General => {
                 struct_span_err!(
                     tcx.sess, source_info.span, E0133,
@@ -600,14 +631,15 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
                     .note(&details.as_str()[..])
                     .emit();
             }
-            UnsafetyViolationKind::MinConstFn => {
-                tcx.sess.struct_span_err(
+            UnsafetyViolationKind::GatedConstFnCall => {
+                emit_feature_err(
+                    &tcx.sess.parse_sess,
+                    "min_const_unsafe_fn",
                     source_info.span,
-                    &format!("{} is unsafe and unsafe operations \
-                            are not allowed in const fn", description))
-                    .span_label(source_info.span, &description.as_str()[..])
-                    .note(&details.as_str()[..])
-                    .emit();
+                    GateIssue::Language,
+                    "calls to `const unsafe fn` in const fns are unstable",
+                );
+
             }
             UnsafetyViolationKind::ExternStatic(lint_node_id) => {
                 tcx.lint_node_note(SAFE_EXTERN_STATICS,

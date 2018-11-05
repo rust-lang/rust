@@ -18,13 +18,13 @@ const fn no_unsafe() { unsafe {} }
 
 // not ok
 const fn foo8() -> i32 {
-    unsafe { foo4() } //~ ERROR unsafe operations are not allowed in const fn
+    unsafe { foo4() } //~ ERROR calls to `const unsafe fn` in const fns are unstable
 }
 const fn foo9() -> *const String {
-    unsafe { foo5::<String>() } //~ ERROR unsafe operations are not allowed in const fn
+    unsafe { foo5::<String>() } //~ ERROR calls to `const unsafe fn` in const fns are unstable
 }
 const fn foo10() -> *const Vec<std::cell::Cell<u32>> {
-    unsafe { foo6::<Vec<std::cell::Cell<u32>>>() } //~ ERROR not allowed in const fn
+    unsafe { foo6::<Vec<std::cell::Cell<u32>>>() } //~ ERROR calls to `const unsafe fn` in const fns
 }
 const unsafe fn foo30_3(x: *mut usize) -> usize { *x } //~ ERROR not allowed in const fn
 //~^ dereferencing raw pointers in constant functions

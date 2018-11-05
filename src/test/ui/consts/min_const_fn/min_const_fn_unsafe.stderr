@@ -14,29 +14,29 @@ LL |     Foo { x: () }.y //~ ERROR not allowed in const fn
    |
    = help: add #![feature(const_fn_union)] to the crate attributes to enable
 
-error: call to unsafe function is unsafe and unsafe operations are not allowed in const fn
+error[E0658]: calls to `const unsafe fn` in const fns are unstable (see issue #55607)
   --> $DIR/min_const_fn_unsafe.rs:21:14
    |
-LL |     unsafe { foo4() } //~ ERROR unsafe operations are not allowed in const fn
-   |              ^^^^^^ call to unsafe function
+LL |     unsafe { foo4() } //~ ERROR calls to `const unsafe fn` in const fns are unstable
+   |              ^^^^^^
    |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = help: add #![feature(min_const_unsafe_fn)] to the crate attributes to enable
 
-error: call to unsafe function is unsafe and unsafe operations are not allowed in const fn
+error[E0658]: calls to `const unsafe fn` in const fns are unstable (see issue #55607)
   --> $DIR/min_const_fn_unsafe.rs:24:14
    |
-LL |     unsafe { foo5::<String>() } //~ ERROR unsafe operations are not allowed in const fn
-   |              ^^^^^^^^^^^^^^^^ call to unsafe function
+LL |     unsafe { foo5::<String>() } //~ ERROR calls to `const unsafe fn` in const fns are unstable
+   |              ^^^^^^^^^^^^^^^^
    |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = help: add #![feature(min_const_unsafe_fn)] to the crate attributes to enable
 
-error: call to unsafe function is unsafe and unsafe operations are not allowed in const fn
+error[E0658]: calls to `const unsafe fn` in const fns are unstable (see issue #55607)
   --> $DIR/min_const_fn_unsafe.rs:27:14
    |
-LL |     unsafe { foo6::<Vec<std::cell::Cell<u32>>>() } //~ ERROR not allowed in const fn
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ call to unsafe function
+LL |     unsafe { foo6::<Vec<std::cell::Cell<u32>>>() } //~ ERROR calls to `const unsafe fn` in const fns
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: consult the function's documentation for information on how to avoid undefined behavior
+   = help: add #![feature(min_const_unsafe_fn)] to the crate attributes to enable
 
 error: dereference of raw pointer is unsafe and unsafe operations are not allowed in const fn
   --> $DIR/min_const_fn_unsafe.rs:29:51
