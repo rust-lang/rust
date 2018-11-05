@@ -1279,7 +1279,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                 niche_start,
                 ref variants,
                 dataful_variant,
-                ..
+                ref niche,
             } => {
                 if fallback {
                     let variant = self.layout.for_variant(cx, dataful_variant);
@@ -1361,11 +1361,11 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         let niche_value = if i == dataful_variant {
                             None
                         } else {
-                            let niche = (i as u128)
+                            let value = (i as u128)
                                 .wrapping_sub(*niche_variants.start() as u128)
                                 .wrapping_add(niche_start);
-                            assert_eq!(niche as u64 as u128, niche);
-                            Some(niche as u64)
+                            let value = value & ((1u128 << niche.value.size(cx).bits()) - 1);
+                            Some(value as u64)
                         };
 
                         MemberDescription {
