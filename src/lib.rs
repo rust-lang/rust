@@ -5,6 +5,7 @@ extern crate byteorder;
 extern crate syntax;
 #[macro_use]
 extern crate rustc;
+extern crate rustc_allocator;
 extern crate rustc_codegen_utils;
 extern crate rustc_incremental;
 extern crate rustc_mir;
@@ -47,6 +48,7 @@ macro_rules! unimpl {
 }
 
 mod abi;
+mod allocator;
 mod analyze;
 mod base;
 mod common;
@@ -373,6 +375,17 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
     }
 
     crate::main_shim::maybe_create_entry_wrapper(tcx, module);
+
+    let any_dynamic_crate = tcx.sess.dependency_formats.borrow()
+        .iter()
+        .any(|(_, list)| {
+            use crate::rustc::middle::dependency_format::Linkage;
+            list.iter().any(|&linkage| linkage == Linkage::Dynamic)
+        });
+    if any_dynamic_crate {
+    } else if let Some(kind) = *tcx.sess.allocator_kind.get() {
+        allocator::codegen(tcx, module, kind);
+    }
 
     ccx.finalize(tcx, module);
 
