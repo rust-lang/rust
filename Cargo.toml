@@ -9,6 +9,7 @@ repository = "https://github.com/solson/miri"
 version = "0.1.0"
 build = "build.rs"
 default-run = "miri"
+edition = "2018"
 
 [lib]
 test = true # we have unit tests

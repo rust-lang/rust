@@ -539,12 +539,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         // above.  First deref, which will call `tag_dereference`.
         // (This is somewhat redundant because validation already did the same thing,
         // but what can you do.)
-        let val = self.read_value(self.place_to_op(place)?)?;
+        let val = self.read_immediate(self.place_to_op(place)?)?;
         let dest = self.ref_to_mplace(val)?;
         // Now put a new ref into the old place, which will call `tag_reference`.
         // FIXME: Honor `fn_entry`!
         let val = self.create_ref(dest, Some(mutbl))?;
-        self.write_value(val, place)?;
+        self.write_immediate(val, place)?;
         Ok(())
     }
 }
