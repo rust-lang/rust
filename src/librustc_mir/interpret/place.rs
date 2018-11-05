@@ -356,6 +356,9 @@ where
             let align = self.size_and_align_of(base.meta, field_layout)?
                 .map(|(_, align)| align)
                 // If this is an extern type, we fall back to its static alignment.
+                // FIXME: Once we have made decisions for how to handle size and alignment
+                // of `extern type`, this should be adapted.  It is just a temporary hack
+                // to get some code to work that probably ought to work.
                 .unwrap_or_else(|| base.layout.align);
             (base.meta, offset.abi_align(align))
         } else {
