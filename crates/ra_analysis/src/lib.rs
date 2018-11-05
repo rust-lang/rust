@@ -120,17 +120,17 @@ impl AnalysisHost {
 }
 
 #[derive(Debug)]
+pub struct FilePosition {
+    pub file_id: FileId,
+    pub offset: TextUnit,
+}
+
+#[derive(Debug)]
 pub struct SourceChange {
     pub label: String,
     pub source_file_edits: Vec<SourceFileEdit>,
     pub file_system_edits: Vec<FileSystemEdit>,
-    pub cursor_position: Option<Position>,
-}
-
-#[derive(Debug)]
-pub struct Position {
-    pub file_id: FileId,
-    pub offset: TextUnit,
+    pub cursor_position: Option<FilePosition>,
 }
 
 #[derive(Debug)]

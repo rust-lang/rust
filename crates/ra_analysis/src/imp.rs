@@ -27,7 +27,7 @@ use crate::{
     input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
     symbol_index::SymbolIndex,
     AnalysisChange, Cancelable, CrateGraph, CrateId, Diagnostic, FileId, FileResolver,
-    FileSystemEdit, Position, Query, SourceChange, SourceFileEdit,
+    FileSystemEdit, FilePosition, Query, SourceChange, SourceFileEdit,
 };
 
 #[derive(Clone, Debug)]
@@ -568,7 +568,7 @@ impl SourceChange {
             file_system_edits: vec![],
             cursor_position: edit
                 .cursor_position
-                .map(|offset| Position { offset, file_id }),
+                .map(|offset| FilePosition { offset, file_id }),
         }
     }
 }
