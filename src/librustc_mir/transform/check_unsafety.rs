@@ -192,6 +192,12 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
                     .ty(self.mir, self.tcx)
                     .to_ty(self.tcx)
                     .is_freeze(self.tcx, self.param_env, self.source_info.span);
+                // prevent
+                // * `&mut x.field`
+                // * `x.field = y;`
+                // * `&x.field` if `field`'s type has interior mutability
+                // because either of these would allow modifying the layout constrained field and
+                // insert values that violate the layout constraints.
                 if context.is_mutating_use() || is_borrow_of_interior_mut {
                     self.check_mut_borrowing_layout_constrained_field(
                         place, context.is_mutating_use(),
