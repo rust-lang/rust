@@ -5,16 +5,16 @@ use std::sync::Arc;
 
 use ra_syntax::{
     ast::{self, AstNode, FnDefNode},
-    SmolStr, TextRange,
+    TextRange,
 };
 
 use crate::{
     db::SyntaxDatabase,
     descriptors::function::{resolve_local_name, FnId, FnScopes},
-    descriptors::module::{ModuleId, ModuleScope, ModuleTree},
+    descriptors::module::{ModuleId, ModuleScope, ModuleTree, ModuleSource},
     input::SourceRootId,
     syntax_ptr::LocalSyntaxPtr,
-    Cancelable, FileId,
+    Cancelable,
 };
 
 salsa::query_group! {
@@ -23,7 +23,7 @@ salsa::query_group! {
             type ModuleTreeQuery;
             use fn module::imp::module_tree;
         }
-        fn submodules(file_id: FileId) -> Cancelable<Arc<Vec<SmolStr>>> {
+        fn submodules(source: ModuleSource) -> Cancelable<Arc<Vec<module::imp::Submodule>>> {
             type SubmodulesQuery;
             use fn module::imp::submodules;
         }

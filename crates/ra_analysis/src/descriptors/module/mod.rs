@@ -25,17 +25,17 @@ pub(crate) struct ModuleTree {
 }
 
 impl ModuleTree {
-    pub(crate) fn modules_for_file(&self, file_id: FileId) -> Vec<ModuleId> {
+    pub(crate) fn modules_for_source(&self, source: ModuleSource) -> Vec<ModuleId> {
         self.mods
             .iter()
             .enumerate()
-            .filter(|(_idx, it)| it.source.is_file(file_id))
+            .filter(|(_idx, it)| it.source == source)
             .map(|(idx, _)| ModuleId(idx as u32))
             .collect()
     }
 
-    pub(crate) fn any_module_for_file(&self, file_id: FileId) -> Option<ModuleId> {
-        self.modules_for_file(file_id).pop()
+    pub(crate) fn any_module_for_source(&self, source: ModuleSource) -> Option<ModuleId> {
+        self.modules_for_source(source).pop()
     }
 }
 
@@ -142,9 +142,7 @@ impl LinkId {
                     .1;
                 ast.into()
             }
-            ModuleSourceNode::Inline(..) => {
-                unimplemented!("https://github.com/rust-analyzer/rust-analyzer/issues/181")
-            }
+            ModuleSourceNode::Inline(it) => it,
         }
     }
 }
@@ -157,10 +155,23 @@ struct ModuleData {
 }
 
 impl ModuleSource {
+    pub(crate) fn new_inline(file_id: FileId, module: ast::Module) -> ModuleSource {
+        assert!(!module.has_semi());
+        let ptr = SyntaxPtr::new(file_id, module.syntax());
+        ModuleSource::Inline(ptr)
+    }
+
     pub(crate) fn as_file(self) -> Option<FileId> {
         match self {
             ModuleSource::File(f) => Some(f),
             ModuleSource::Inline(..) => None,
+        }
+    }
+
+    pub(crate) fn file_id(self) -> FileId {
+        match self {
+            ModuleSource::File(f) => f,
+            ModuleSource::Inline(ptr) => ptr.file_id(),
         }
     }
 
@@ -177,10 +188,6 @@ impl ModuleSource {
                 ModuleSourceNode::Inline(module.into())
             }
         }
-    }
-
-    fn is_file(self, file_id: FileId) -> bool {
-        self.as_file() == Some(file_id)
     }
 }
 

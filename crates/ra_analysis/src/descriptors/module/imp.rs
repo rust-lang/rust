@@ -19,25 +19,66 @@ use super::{
     ModuleTree, Problem,
 };
 
-pub(crate) fn submodules(
-    db: &impl DescriptorDatabase,
-    file_id: FileId,
-) -> Cancelable<Arc<Vec<SmolStr>>> {
-    db::check_canceled(db)?;
-    let file = db.file_syntax(file_id);
-    let root = file.ast();
-    let submodules = modules(root).map(|(name, _)| name).collect();
-    Ok(Arc::new(submodules))
+#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+pub(crate) enum Submodule {
+    Declaration(SmolStr),
+    Definition(SmolStr, ModuleSource),
 }
 
-pub(crate) fn modules(root: ast::Root<'_>) -> impl Iterator<Item = (SmolStr, ast::Module<'_>)> {
-    root.modules().filter_map(|module| {
-        let name = module.name()?.text();
-        if !module.has_semi() {
-            return None;
+impl Submodule {
+    fn name(&self) -> &SmolStr {
+        match self {
+            Submodule::Declaration(name) => name,
+            Submodule::Definition(name, _) => name,
         }
-        Some((name, module))
-    })
+    }
+}
+
+pub(crate) fn submodules(
+    db: &impl DescriptorDatabase,
+    source: ModuleSource,
+) -> Cancelable<Arc<Vec<Submodule>>> {
+    db::check_canceled(db)?;
+    let file_id = source.file_id();
+    let submodules = match source.resolve(db) {
+        ModuleSourceNode::Root(it) => collect_submodules(file_id, it.ast()),
+        ModuleSourceNode::Inline(it) => it
+            .ast()
+            .item_list()
+            .map(|it| collect_submodules(file_id, it))
+            .unwrap_or_else(Vec::new),
+    };
+    return Ok(Arc::new(submodules));
+
+    fn collect_submodules<'a>(
+        file_id: FileId,
+        root: impl ast::ModuleItemOwner<'a>,
+    ) -> Vec<Submodule> {
+        modules(root)
+            .map(|(name, m)| {
+                if m.has_semi() {
+                    Submodule::Declaration(name)
+                } else {
+                    let src = ModuleSource::new_inline(file_id, m);
+                    Submodule::Definition(name, src)
+                }
+            })
+            .collect()
+    }
+}
+
+pub(crate) fn modules<'a>(
+    root: impl ast::ModuleItemOwner<'a>,
+) -> impl Iterator<Item = (SmolStr, ast::Module<'a>)> {
+    root.items()
+        .filter_map(|item| match item {
+            ast::ModuleItem::Module(m) => Some(m),
+            _ => None,
+        })
+        .filter_map(|module| {
+            let name = module.name()?.text();
+            Some((name, module))
+        })
 }
 
 pub(crate) fn module_scope(
@@ -66,11 +107,6 @@ pub(crate) fn module_tree(
     Ok(Arc::new(res))
 }
 
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub struct Submodule {
-    pub name: SmolStr,
-}
-
 fn create_module_tree<'a>(
     db: &impl DescriptorDatabase,
     source_root: SourceRootId,
@@ -85,7 +121,8 @@ fn create_module_tree<'a>(
 
     let source_root = db.source_root(source_root);
     for &file_id in source_root.files.iter() {
-        if visited.contains(&file_id) {
+        let source = ModuleSource::File(file_id);
+        if visited.contains(&source) {
             continue; // TODO: use explicit crate_roots here
         }
         assert!(!roots.contains_key(&file_id));
@@ -96,7 +133,7 @@ fn create_module_tree<'a>(
             &mut visited,
             &mut roots,
             None,
-            file_id,
+            source,
         )?;
         roots.insert(file_id, module_id);
     }
@@ -107,36 +144,63 @@ fn build_subtree(
     db: &impl DescriptorDatabase,
     source_root: &SourceRoot,
     tree: &mut ModuleTree,
-    visited: &mut FxHashSet<FileId>,
+    visited: &mut FxHashSet<ModuleSource>,
     roots: &mut FxHashMap<FileId, ModuleId>,
     parent: Option<LinkId>,
-    file_id: FileId,
+    source: ModuleSource,
 ) -> Cancelable<ModuleId> {
-    visited.insert(file_id);
+    visited.insert(source);
     let id = tree.push_mod(ModuleData {
-        source: ModuleSource::File(file_id),
+        source,
         parent,
         children: Vec::new(),
     });
-    for name in db.submodules(file_id)?.iter() {
-        let (points_to, problem) = resolve_submodule(file_id, name, &source_root.file_resolver);
+    for sub in db.submodules(source)?.iter() {
         let link = tree.push_link(LinkData {
-            name: name.clone(),
+            name: sub.name().clone(),
             owner: id,
             points_to: Vec::new(),
             problem: None,
         });
 
-        let points_to = points_to
-            .into_iter()
-            .map(|file_id| match roots.remove(&file_id) {
-                Some(module_id) => {
-                    tree.module_mut(module_id).parent = Some(link);
-                    Ok(module_id)
-                }
-                None => build_subtree(db, source_root, tree, visited, roots, Some(link), file_id),
-            })
-            .collect::<Cancelable<Vec<_>>>()?;
+        let (points_to, problem) = match sub {
+            Submodule::Declaration(name) => {
+                let (points_to, problem) =
+                    resolve_submodule(source, &name, &source_root.file_resolver);
+                let points_to = points_to
+                    .into_iter()
+                    .map(|file_id| match roots.remove(&file_id) {
+                        Some(module_id) => {
+                            tree.module_mut(module_id).parent = Some(link);
+                            Ok(module_id)
+                        }
+                        None => build_subtree(
+                            db,
+                            source_root,
+                            tree,
+                            visited,
+                            roots,
+                            Some(link),
+                            ModuleSource::File(file_id),
+                        ),
+                    })
+                    .collect::<Cancelable<Vec<_>>>()?;
+                (points_to, problem)
+            }
+            Submodule::Definition(_name, submodule_source) => {
+                let points_to = build_subtree(
+                    db,
+                    source_root,
+                    tree,
+                    visited,
+                    roots,
+                    Some(link),
+                    *submodule_source,
+                )?;
+                (vec![points_to], None)
+            }
+        };
+
         tree.link_mut(link).points_to = points_to;
         tree.link_mut(link).problem = problem;
     }
@@ -144,10 +208,17 @@ fn build_subtree(
 }
 
 fn resolve_submodule(
-    file_id: FileId,
+    source: ModuleSource,
     name: &SmolStr,
     file_resolver: &FileResolverImp,
 ) -> (Vec<FileId>, Option<Problem>) {
+    let file_id = match source {
+        ModuleSource::File(it) => it,
+        ModuleSource::Inline(..) => {
+            // TODO
+            return (Vec::new(), None);
+        }
+    };
     let mod_name = file_resolver.file_stem(file_id);
     let is_dir_owner = mod_name == "mod" || mod_name == "lib" || mod_name == "main";
 

@@ -263,8 +263,12 @@ impl Analysis {
     ) -> Cancelable<Vec<(FileId, TextRange)>> {
         Ok(self.imp.find_all_refs(file_id, offset))
     }
-    pub fn parent_module(&self, file_id: FileId) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        self.imp.parent_module(file_id)
+    pub fn parent_module(
+        &self,
+        file_id: FileId,
+        offset: TextUnit,
+    ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
+        self.imp.parent_module(file_id, offset)
     }
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
         self.imp.crate_for(file_id)

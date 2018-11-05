@@ -93,7 +93,7 @@ pub struct Decoration {
 pub enum ParentModule {}
 
 impl Request for ParentModule {
-    type Params = TextDocumentIdentifier;
+    type Params = TextDocumentPositionParams;
     type Result = Vec<Location>;
     const METHOD: &'static str = "m/parentModule";
 }

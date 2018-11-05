@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { Location, TextDocumentIdentifier } from 'vscode-languageclient';
+import * as lc from 'vscode-languageclient';
 import { Server } from '../server';
 
 export async function handle() {
@@ -8,10 +8,13 @@ export async function handle() {
     if (editor == null || editor.document.languageId !== 'rust') {
         return;
     }
-    const request: TextDocumentIdentifier = {
-        uri: editor.document.uri.toString()
+    const request: lc.TextDocumentPositionParams = {
+        textDocument: { uri: editor.document.uri.toString() },
+        position: Server.client.code2ProtocolConverter.asPosition(
+            editor.selection.active
+        )
     };
-    const response = await Server.client.sendRequest<Location[]>(
+    const response = await Server.client.sendRequest<lc.Location[]>(
         'm/parentModule',
         request
     );
