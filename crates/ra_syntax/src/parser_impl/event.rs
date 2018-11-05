@@ -15,6 +15,7 @@ use crate::{
     TextRange, TextUnit,
     yellow::syntax_error::{
         ParseError,
+        SyntaxError,
         SyntaxErrorKind,
     },
 };
@@ -162,8 +163,7 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
                     self.leaf(kind, len, n_raw_tokens);
                 }
                 Event::Error { msg } => self.sink.error(
-                    SyntaxErrorKind::ParseError(msg),
-                    TextRange::offset_len(self.text_pos, 1.into()),
+                    SyntaxError::new(SyntaxErrorKind::ParseError(msg), self.text_pos),
                 ),
             }
         }

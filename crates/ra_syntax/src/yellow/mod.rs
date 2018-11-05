@@ -11,7 +11,7 @@ use std::{
 };
 
 pub(crate) use self::builder::GreenBuilder;
-pub use self::syntax_error::{SyntaxError, SyntaxErrorKind};
+pub use self::syntax_error::{SyntaxError, SyntaxErrorKind, Location};
 pub use rowan::{TreeRoot, WalkEvent};
 
 #[derive(Debug, Clone, Copy)]

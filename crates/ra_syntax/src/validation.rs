@@ -33,17 +33,11 @@ fn validate_char(node: ast::Char, errors: &mut Vec<SyntaxError>) {
             AsciiEscape => {
                 if text.len() == 1 {
                     // Escape sequence consists only of leading `\`
-                    errors.push(SyntaxError {
-                        kind: EmptyAsciiEscape,
-                        range: range,
-                    });
+                    errors.push(SyntaxError::new(EmptyAsciiEscape, range));
                 } else {
                     let escape_code = text.chars().skip(1).next().unwrap();
                     if !is_ascii_escape(escape_code) {
-                        errors.push(SyntaxError {
-                            kind: InvalidAsciiEscape,
-                            range: range,
-                        });
+                        errors.push(SyntaxError::new(InvalidAsciiEscape, range));
                     }
                 }
             }
@@ -64,24 +58,15 @@ fn validate_char(node: ast::Char, errors: &mut Vec<SyntaxError>) {
     }
 
     if !components.has_closing_quote {
-        errors.push(SyntaxError {
-            kind: UnclosedChar,
-            range: node.syntax().range(),
-        });
+        errors.push(SyntaxError::new(UnclosedChar, node.syntax().range()));
     }
 
     if len == 0 {
-        errors.push(SyntaxError {
-            kind: EmptyChar,
-            range: node.syntax().range(),
-        });
+        errors.push(SyntaxError::new(EmptyChar, node.syntax().range()));
     }
 
     if len > 1 {
-        errors.push(SyntaxError {
-            kind: LongChar,
-            range: node.syntax().range(),
-        });
+        errors.push(SyntaxError::new(LongChar, node.syntax().range()));
     }
 }
 

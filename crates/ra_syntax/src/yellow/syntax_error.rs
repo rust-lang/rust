@@ -1,16 +1,60 @@
 use std::fmt;
 
-use crate::TextRange;
+use crate::{TextRange, TextUnit};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SyntaxError {
-    pub kind: SyntaxErrorKind,
-    pub range: TextRange,
+    kind: SyntaxErrorKind,
+    location: Location,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Location {
+    Offset(TextUnit),
+    Range(TextRange),
+}
+
+impl Into<Location> for TextUnit {
+    fn into(self) -> Location {
+        Location::Offset(self)
+    }
+}
+
+impl Into<Location> for TextRange {
+    fn into(self) -> Location {
+        Location::Range(self)
+    }
 }
 
 impl SyntaxError {
-    pub fn new(kind: SyntaxErrorKind, range: TextRange) -> SyntaxError {
-        SyntaxError { kind, range }
+    pub fn new<L: Into<Location>>(kind: SyntaxErrorKind, loc: L) -> SyntaxError {
+        SyntaxError { kind, location: loc.into() }
+    }
+
+    pub fn location(&self) -> Location {
+        self.location.clone()
+    }
+
+    pub fn offset(&self) -> TextUnit {
+        match self.location {
+            Location::Offset(offset) => offset,
+            Location::Range(range) => range.start(),
+        }
+    }
+
+    pub fn add_offset(mut self, plus_offset: TextUnit) -> SyntaxError {
+        self.location = match self.location {
+            Location::Range(range) => Location::Range(range + plus_offset),
+            Location::Offset(offset) => Location::Offset(offset + plus_offset)
+        };
+
+        self
+    }
+}
+
+impl fmt::Display for SyntaxError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.kind.fmt(f)
     }
 }
 

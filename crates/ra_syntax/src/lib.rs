@@ -54,7 +54,7 @@ pub use crate::{
     rowan::{SmolStr, TextRange, TextUnit},
     syntax_kinds::SyntaxKind,
     yellow::{
-        Direction, OwnedRoot, RefRoot, SyntaxError, SyntaxNode, SyntaxNodeRef, TreeRoot, WalkEvent,
+        Direction, OwnedRoot, RefRoot, SyntaxError, SyntaxNode, SyntaxNodeRef, TreeRoot, WalkEvent, Location,
     },
 };
 

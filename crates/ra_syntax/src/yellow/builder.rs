@@ -1,7 +1,7 @@
 use crate::{
     parser_impl::Sink,
-    yellow::{GreenNode, RaTypes, SyntaxError, SyntaxErrorKind},
-    SmolStr, SyntaxKind, TextRange,
+    yellow::{GreenNode, RaTypes, SyntaxError},
+    SmolStr, SyntaxKind,
 };
 use rowan::GreenNodeBuilder;
 
@@ -34,8 +34,7 @@ impl Sink for GreenBuilder {
         self.inner.finish_internal();
     }
 
-    fn error(&mut self, kind: SyntaxErrorKind, range: TextRange) {
-        let error = SyntaxError { kind, range };
+    fn error(&mut self, error: SyntaxError) {
         self.errors.push(error)
     }
 

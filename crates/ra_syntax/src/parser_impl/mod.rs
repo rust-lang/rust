@@ -10,10 +10,10 @@ use crate::{
         event::{Event, EventProcessor},
         input::{InputPosition, ParserInput},
     },
-    SmolStr, TextRange,
+    SmolStr,
     yellow::syntax_error::{
         ParseError,
-        SyntaxErrorKind,
+        SyntaxError,
     },
 };
 
@@ -25,7 +25,7 @@ pub(crate) trait Sink {
     fn leaf(&mut self, kind: SyntaxKind, text: SmolStr);
     fn start_internal(&mut self, kind: SyntaxKind);
     fn finish_internal(&mut self);
-    fn error(&mut self, kind: SyntaxErrorKind, offset: TextRange);
+    fn error(&mut self, error: SyntaxError);
     fn finish(self) -> Self::Tree;
 }
 

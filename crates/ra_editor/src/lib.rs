@@ -31,6 +31,7 @@ use ra_syntax::{
     algo::find_leaf_at_offset,
     ast::{self, AstNode, NameOwner},
     File,
+    Location,
     SyntaxKind::{self, *},
     SyntaxNodeRef, TextRange, TextUnit,
 };
@@ -100,11 +101,18 @@ pub fn highlight(file: &File) -> Vec<HighlightedRange> {
 }
 
 pub fn diagnostics(file: &File) -> Vec<Diagnostic> {
+    fn location_to_range(location: Location) -> TextRange {
+        match location {
+            Location::Offset(offset) => TextRange::offset_len(offset, 1.into()),
+            Location::Range(range) => range,
+        }
+    }
+
     file.errors()
         .into_iter()
         .map(|err| Diagnostic {
-            range: err.range,
-            msg: format!("Syntax Error: {}", err.kind),
+            range: location_to_range(err.location()),
+            msg: format!("Syntax Error: {}", err),
         })
         .collect()
 }
