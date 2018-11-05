@@ -147,20 +147,12 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
     fn provide(&self, providers: &mut Providers) {
         rustc_codegen_utils::symbol_names::provide(providers);
+        rustc_codegen_utils::symbol_export::provide(providers);
 
         providers.target_features_whitelist = |_tcx, _cnum| Lrc::new(Default::default());
-        providers.is_reachable_non_generic = |_tcx, _defid| true;
-        providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());
-        providers.upstream_monomorphizations = |_tcx, _cnum| Lrc::new(FxHashMap::default());
-        providers.upstream_monomorphizations_for = |tcx, def_id| {
-            debug_assert!(!def_id.is_local());
-            tcx.upstream_monomorphizations(LOCAL_CRATE)
-                .get(&def_id)
-                .cloned()
-        };
     }
     fn provide_extern(&self, providers: &mut Providers) {
-        providers.is_reachable_non_generic = |_tcx, _defid| true;
+        rustc_codegen_utils::symbol_export::provide_extern(providers);
     }
 
     fn codegen_crate<'a, 'tcx>(
