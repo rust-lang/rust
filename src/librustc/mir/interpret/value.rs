@@ -202,6 +202,19 @@ impl<'tcx, Tag> Scalar<Tag> {
         }
     }
 
+    /// Returns this pointers offset from the allocation base, or from NULL (for
+    /// integer pointers).
+    #[inline]
+    pub fn get_ptr_offset(self, cx: &impl HasDataLayout) -> Size {
+        match self {
+            Scalar::Bits { bits, size } => {
+                assert_eq!(size as u64, cx.pointer_size().bytes());
+                Size::from_bytes(bits as u64)
+            }
+            Scalar::Ptr(ptr) => ptr.offset,
+        }
+    }
+
     #[inline]
     pub fn is_null_ptr(self, cx: &impl HasDataLayout) -> bool {
         match self {
