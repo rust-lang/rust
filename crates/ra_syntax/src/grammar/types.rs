@@ -188,13 +188,22 @@ fn fn_pointer_type(p: &mut Parser) {
     m.complete(p, FN_POINTER_TYPE);
 }
 
+pub(super) fn for_binder(p: &mut Parser) {
+    assert!(p.at(FOR_KW));
+    p.bump();
+    if p.at(L_ANGLE) {
+        type_params::opt_type_param_list(p);
+    } else {
+        p.error("expected `<`");
+    }
+}
+
 // test for_type
 // type A = for<'a> fn() -> ();
 pub(super) fn for_type(p: &mut Parser) {
     assert!(p.at(FOR_KW));
     let m = p.start();
-    p.bump();
-    type_params::opt_type_param_list(p);
+    for_binder(p);
     match p.current() {
         FN_KW | UNSAFE_KW | EXTERN_KW => fn_pointer_type(p),
         _ if paths::is_path_start(p) => path_type_(p, false),

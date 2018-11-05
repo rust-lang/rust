@@ -126,26 +126,15 @@ fn where_predicate(p: &mut Parser) {
                 p.error("expected colon");
             }
         }
-        // test where_pred_for
-        // fn test<F>()
-        // where
-        //    for<'a> F: Fn(&'a str)
-        // { }
-        FOR_KW => {
-            p.bump();
-            if p.at(L_ANGLE) {
-                type_param_list(p);
-                types::path_type(p);
-                if p.at(COLON) {
-                    bounds(p);
-                } else {
-                    p.error("expected colon");
-                }
-            } else {
-                p.error("expected `<`");
-            }
-        }
         _ => {
+            // test where_pred_for
+            // fn test<F>()
+            // where
+            //    for<'a> F: Fn(&'a str)
+            // { }
+            if p.at(FOR_KW) {
+                types::for_binder(p);
+            }
             types::path_type(p);
             if p.at(COLON) {
                 bounds(p);
