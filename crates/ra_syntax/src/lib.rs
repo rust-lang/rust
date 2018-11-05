@@ -60,6 +60,7 @@ pub use crate::{
 
 use crate::yellow::GreenNode;
 
+/// File represents a parse tree for a single Rust file.
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct File {
     root: SyntaxNode,
@@ -92,9 +93,11 @@ impl File {
             text_utils::replace_range(self.syntax().text().to_string(), edit.delete, &edit.insert);
         File::parse(&text)
     }
+    /// Typed AST representation of the parse tree.
     pub fn ast(&self) -> ast::Root {
         ast::Root::cast(self.syntax()).unwrap()
     }
+    /// Untyped homogeneous representation of the parse tree.
     pub fn syntax(&self) -> SyntaxNodeRef {
         self.root.borrowed()
     }

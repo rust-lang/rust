@@ -1,5 +1,5 @@
 [package]
-edition = "2018"
+edition = "2015"
 name = "ra_syntax"
 version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
