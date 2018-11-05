@@ -10,7 +10,7 @@
 
 use attributes;
 use back::bytecode::{self, RLIB_BYTECODE_EXTENSION};
-use back::lto::{self, ModuleBuffer, ThinBuffer, SerializedModule};
+use back::lto::{self, ThinBuffer, SerializedModule};
 use back::link::{self, get_linker, remove};
 use base;
 use consts;
@@ -564,8 +564,8 @@ unsafe fn optimize(cgcx: &CodegenContext,
             // Some options cause LLVM bitcode to be emitted, which uses ThinLTOBuffers, so we need
             // to make sure we run LLVM's NameAnonGlobals pass when emitting bitcode; otherwise
             // we'll get errors in LLVM.
-            let using_thin_buffers = llvm::LLVMRustThinLTOAvailable() && (config.emit_bc
-                || config.obj_is_bitcode || config.emit_bc_compressed || config.embed_bitcode);
+            let using_thin_buffers = config.emit_bc || config.obj_is_bitcode
+                || config.emit_bc_compressed || config.embed_bitcode;
             let mut have_name_anon_globals_pass = false;
             if !config.no_prepopulate_passes {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
@@ -729,15 +729,8 @@ unsafe fn codegen(cgcx: &CodegenContext,
 
 
         if write_bc || config.emit_bc_compressed || config.embed_bitcode {
-            let thin;
-            let old;
-            let data = if llvm::LLVMRustThinLTOAvailable() {
-                thin = ThinBuffer::new(llmod);
-                thin.data()
-            } else {
-                old = ModuleBuffer::new(llmod);
-                old.data()
-            };
+            let thin = ThinBuffer::new(llmod);
+            let data = thin.data();
             timeline.record("make-bc");
 
             if write_bc {
@@ -1385,12 +1378,8 @@ fn execute_optimize_work_item(cgcx: &CodegenContext,
         // builds we don't actually want to LTO the allocator modules if
         // it shows up. This is due to various linker shenanigans that
         // we'll encounter later.
-        //
-        // Additionally here's where we also factor in the current LLVM
-        // version. If it doesn't support ThinLTO we skip this.
         Lto::ThinLocal => {
-            module.kind != ModuleKind::Allocator &&
-                unsafe { llvm::LLVMRustThinLTOAvailable() }
+            module.kind != ModuleKind::Allocator
         }
     };
 

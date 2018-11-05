@@ -907,10 +907,8 @@ LLVMRustDIBuilderCreateNameSpace(LLVMRustDIBuilderRef Builder,
       ,
       unwrapDI<DIFile>(File), LineNo
 #endif
-#if LLVM_VERSION_GE(4, 0)
       ,
       false // ExportSymbols (only relevant for C++ anonymous namespaces)
-#endif
       ));
 }
 
@@ -1544,14 +1542,6 @@ LLVMRustBuildVectorReduceFMin(LLVMBuilderRef, LLVMValueRef, bool) {
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFMax(LLVMBuilderRef, LLVMValueRef, bool) {
   return nullptr;
-}
-#endif
-
-#if LLVM_VERSION_LT(4, 0)
-extern "C" LLVMValueRef
-LLVMBuildExactUDiv(LLVMBuilderRef B, LLVMValueRef LHS,
-                   LLVMValueRef RHS, const char *Name) {
-  return wrap(unwrap(B)->CreateExactUDiv(unwrap(LHS), unwrap(RHS), Name));
 }
 #endif
 

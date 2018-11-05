@@ -737,19 +737,6 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 {
     check_for_rustc_errors_attr(tcx);
 
-    if let Some(true) = tcx.sess.opts.debugging_opts.thinlto {
-        if unsafe { !llvm::LLVMRustThinLTOAvailable() } {
-            tcx.sess.fatal("this compiler's LLVM does not support ThinLTO");
-        }
-    }
-
-    if (tcx.sess.opts.debugging_opts.pgo_gen.is_some() ||
-        !tcx.sess.opts.debugging_opts.pgo_use.is_empty()) &&
-        unsafe { !llvm::LLVMRustPGOAvailable() }
-    {
-        tcx.sess.fatal("this compiler's LLVM does not support PGO");
-    }
-
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);
 
     // Codegen the metadata.
