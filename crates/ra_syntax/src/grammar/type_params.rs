@@ -4,6 +4,11 @@ pub(super) fn opt_type_param_list(p: &mut Parser) {
     if !p.at(L_ANGLE) {
         return;
     }
+    type_param_list(p);
+}
+
+fn type_param_list(p: &mut Parser) {
+    assert!(p.at(L_ANGLE));
     let m = p.start();
     p.bump();
 
@@ -19,32 +24,32 @@ pub(super) fn opt_type_param_list(p: &mut Parser) {
     }
     p.expect(R_ANGLE);
     m.complete(p, TYPE_PARAM_LIST);
+}
 
-    fn lifetime_param(p: &mut Parser) {
-        assert!(p.at(LIFETIME));
-        let m = p.start();
+fn lifetime_param(p: &mut Parser) {
+    assert!(p.at(LIFETIME));
+    let m = p.start();
+    p.bump();
+    if p.at(COLON) {
+        lifetime_bounds(p);
+    }
+    m.complete(p, LIFETIME_PARAM);
+}
+
+fn type_param(p: &mut Parser) {
+    assert!(p.at(IDENT));
+    let m = p.start();
+    name(p);
+    if p.at(COLON) {
+        bounds(p);
+    }
+    // test type_param_default
+    // struct S<T = i32>;
+    if p.at(EQ) {
         p.bump();
-        if p.at(COLON) {
-            lifetime_bounds(p);
-        }
-        m.complete(p, LIFETIME_PARAM);
+        types::type_(p)
     }
-
-    fn type_param(p: &mut Parser) {
-        assert!(p.at(IDENT));
-        let m = p.start();
-        name(p);
-        if p.at(COLON) {
-            bounds(p);
-        }
-        // test type_param_default
-        // struct S<T = i32>;
-        if p.at(EQ) {
-            p.bump();
-            types::type_(p)
-        }
-        m.complete(p, TYPE_PARAM);
-    }
+    m.complete(p, TYPE_PARAM);
 }
 
 // test type_param_bounds
@@ -99,7 +104,7 @@ pub(super) fn opt_where_clause(p: &mut Parser) {
     let m = p.start();
     p.bump();
     loop {
-        if !(paths::is_path_start(p) || p.current() == LIFETIME) {
+        if !(paths::is_path_start(p) || p.current() == LIFETIME || p.current() == FOR_KW) {
             break;
         }
         where_predicate(p);
@@ -112,19 +117,41 @@ pub(super) fn opt_where_clause(p: &mut Parser) {
 
 fn where_predicate(p: &mut Parser) {
     let m = p.start();
-    if p.at(LIFETIME) {
-        p.eat(LIFETIME);
-        if p.at(COLON) {
-            lifetime_bounds(p)
-        } else {
-            p.error("expected colon")
+    match p.current() {
+        LIFETIME => {
+            p.bump();
+            if p.at(COLON) {
+                lifetime_bounds(p);
+            } else {
+                p.error("expected colon");
+            }
         }
-    } else {
-        types::path_type(p);
-        if p.at(COLON) {
-            bounds(p);
-        } else {
-            p.error("expected colon")
+        // test where_pred_for
+        // fn test<F>()
+        // where
+        //    for<'a> F: Fn(&'a str)
+        // { }
+        FOR_KW => {
+            p.bump();
+            if p.at(L_ANGLE) {
+                type_param_list(p);
+                types::path_type(p);
+                if p.at(COLON) {
+                    bounds(p);
+                } else {
+                    p.error("expected colon");
+                }
+            } else {
+                p.error("expected `<`");
+            }
+        }
+        _ => {
+            types::path_type(p);
+            if p.at(COLON) {
+                bounds(p);
+            } else {
+                p.error("expected colon");
+            }
         }
     }
     m.complete(p, WHERE_PRED);
