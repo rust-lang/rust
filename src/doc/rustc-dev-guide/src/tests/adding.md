@@ -167,6 +167,11 @@ source.
   required for this test; the test is ignored if the system llvm is in
   use and it doesn't meet the minimum version.  This is useful when an
   llvm feature has been backported to rust-llvm
+* `ignore-llvm-version` can be used to skip the test when certain LLVM
+  versions are used.  This takes one or two arguments; the first
+  argument is the first version to ignore.  If no second argument is
+  given, all subsequent versions are ignored; otherwise, the second
+  argument is the last version to ignore.
 * `compile-pass` for UI tests, indicates that the test is
   supposed to compile, as opposed to the default where the test is
   supposed to error out.
