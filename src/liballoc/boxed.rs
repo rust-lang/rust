@@ -882,6 +882,16 @@ impl<G: ?Sized + Generator + Unpin> Generator for Box<G> {
     }
 }
 
+#[unstable(feature = "generator_trait", issue = "43122")]
+impl<G: ?Sized + Generator> Generator for Pin<Box<G>> {
+    type Yield = G::Yield;
+    type Return = G::Return;
+
+    fn resume(mut self: Pin<&mut Self>) -> GeneratorState<Self::Yield, Self::Return> {
+        G::resume((*self).as_mut())
+    }
+}
+
 #[unstable(feature = "futures_api", issue = "50547")]
 impl<F: ?Sized + Future + Unpin> Future for Box<F> {
     type Output = F::Output;
