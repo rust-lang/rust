@@ -13,5 +13,5 @@
 trait I32Iterator = Iterator<Item = i32>;
 
 fn main() {
-    let _: &I32Iterator<Item = u32>; //~ ERROR E0719
+    let _: &I32Iterator<Item = u32> = &vec![42].into_iter();
 }

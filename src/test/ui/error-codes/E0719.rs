@@ -8,6 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+trait Foo: Iterator<Item = i32, Item = i32> {}
+
+type Unit = ();
+
+fn test() -> Box<Iterator<Item = (), Item = Unit>> {
+    Box::new(None.into_iter())
+}
+
 fn main() {
-    let _: &Iterator<Item = i32, Item = i32>; //~ ERROR E0719
+    let _: &Iterator<Item = i32, Item = i32>;
+    test();
 }

@@ -10,9 +10,12 @@
 
 #![feature(trait_alias)]
 
-trait I32Iterator = Iterator<Item = i32>;
-trait I32Iterator2 = I32Iterator<Item = i32>; //~ ERROR E0719
-trait U32Iterator = I32Iterator2<Item = i32>; //~ ERROR E0719
-trait U32Iterator2 = U32Iterator<Item = u32>; //~ ERROR E0719
+trait Foo: Iterator<Item = i32> {}
+trait Bar: Foo<Item = u32> {}
 
-fn main() {}
+trait I32Iterator = Iterator<Item = i32>;
+trait U32Iterator = I32Iterator<Item = u32>;
+
+fn main() {
+    let _: &I32Iterator<Item = u32>;
+}

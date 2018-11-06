@@ -8,16 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
-
-use std::iter::Iterator;
-
-type Unit = ();
-
-fn test() ->  Box<Iterator<Item = (), Item = Unit>> {
-    Box::new(None.into_iter())
-}
+trait Foo: Iterator<Item = i32> {}
+trait Bar: Foo {}
 
 fn main() {
-    test();
+    let _: &dyn Bar;
 }
