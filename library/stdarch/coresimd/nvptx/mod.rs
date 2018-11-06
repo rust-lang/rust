@@ -13,7 +13,7 @@
 
 #[allow(improper_ctypes)]
 extern "C" {
-    #[link_name = "llvm.cuda.syncthreads"]
+    #[link_name = "llvm.nvvm.barrier0"]
     fn syncthreads() -> ();
     #[link_name = "llvm.nvvm.read.ptx.sreg.ntid.x"]
     fn block_dim_x() -> i32;
