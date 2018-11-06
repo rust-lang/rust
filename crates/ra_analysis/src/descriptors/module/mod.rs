@@ -117,7 +117,7 @@ impl ModuleId {
             .filter_map(|&it| {
                 let p = tree.link(it).problem.clone()?;
                 let s = it.bind_source(tree, db);
-                let s = s.ast().name().unwrap().syntax().owned();
+                let s = s.borrowed().name().unwrap().syntax().owned();
                 Some((s, p))
             })
             .collect()
@@ -136,11 +136,11 @@ impl LinkId {
         let owner = self.owner(tree);
         match owner.source(tree).resolve(db) {
             ModuleSourceNode::Root(root) => {
-                let ast = imp::modules(root.ast())
+                let ast = imp::modules(root.borrowed())
                     .find(|(name, _)| name == &tree.link(self).name)
                     .unwrap()
                     .1;
-                ast.into()
+                ast.owned()
             }
             ModuleSourceNode::Inline(it) => it,
         }
@@ -179,13 +179,13 @@ impl ModuleSource {
         match self {
             ModuleSource::File(file_id) => {
                 let syntax = db.file_syntax(file_id);
-                ModuleSourceNode::Root(syntax.ast().into())
+                ModuleSourceNode::Root(syntax.ast().owned())
             }
             ModuleSource::Inline(ptr) => {
                 let syntax = db.resolve_syntax_ptr(ptr);
                 let syntax = syntax.borrowed();
                 let module = ast::Module::cast(syntax).unwrap();
-                ModuleSourceNode::Inline(module.into())
+                ModuleSourceNode::Inline(module.owned())
             }
         }
     }
