@@ -12,8 +12,6 @@ use back::wasm;
 use cc::windows_registry;
 use super::archive::{ArchiveBuilder, ArchiveConfig};
 use super::bytecode::RLIB_BYTECODE_EXTENSION;
-use super::rpath::RPathConfig;
-use super::rpath;
 use metadata::METADATA_FILENAME;
 use rustc::session::config::{self, DebugInfo, OutputFilenames, OutputType, PrintRequest};
 use rustc::session::config::{RUST_CGU_EXT, Lto};
@@ -31,6 +29,7 @@ use rustc_target::spec::{PanicStrategy, RelroLevel, LinkerFlavor};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_codegen_utils::linker::Linker;
 use rustc_codegen_utils::command::Command;
+use rustc_codegen_utils::rpath::{self, RPathConfig};
 use context::get_reloc_model;
 use llvm;
 

@@ -47,10 +47,11 @@ use std::path::PathBuf;
 use rustc::session::Session;
 use rustc::ty::TyCtxt;
 
+pub mod codegen_backend;
 pub mod command;
 pub mod link;
 pub mod linker;
-pub mod codegen_backend;
+pub mod rpath;
 pub mod symbol_export;
 pub mod symbol_names;
 pub mod symbol_names_test;
