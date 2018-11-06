@@ -289,8 +289,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Trait must have a method named `m_name` and it should not have
         // type parameters or early-bound regions.
         let tcx = self.tcx;
-        let method_item =
-            self.associated_item(trait_def_id, m_name, Namespace::Value).unwrap();
+        let method_item = match self.associated_item(trait_def_id, m_name, Namespace::Value) {
+            Some(method_item) => method_item,
+            None => {
+                tcx.sess.delay_span_bug(span,
+                    "operator trait does not have corresponding operator method");
+                return None;
+            }
+        };
         let def_id = method_item.def_id;
         let generics = tcx.generics_of(def_id);
         assert_eq!(generics.params.len(), 0);
