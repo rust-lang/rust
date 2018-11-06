@@ -48,6 +48,8 @@ pub mod ext;
 pub mod fast_thread_local;
 pub mod fd;
 pub mod fs;
+#[cfg(any(target_os = "linux", target_os = "android"))]
+pub mod fs_linux;
 pub mod memchr;
 pub mod mutex;
 #[cfg(not(target_os = "l4re"))]
