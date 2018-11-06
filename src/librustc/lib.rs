@@ -69,7 +69,6 @@
 #![feature(in_band_lifetimes)]
 #![feature(crate_visibility_modifier)]
 #![feature(transpose_result)]
-#![cfg_attr(not(stage0), feature(min_const_unsafe_fn))]
 
 #![recursion_limit="512"]
 
