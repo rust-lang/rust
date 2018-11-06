@@ -1345,7 +1345,13 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                     return noop_fold_item(item, self);
                 }
 
+                // If the directory ownership is replaced, this var
+                // holds the original so that it can be swapped back in.
                 let mut orig_directory_ownership = None;
+                // If the directory ownership `relative` field was appended to,
+                // this bool is `true` so that it can be popped at the end.
+                let mut directory_ownership_needs_pop = false;
+
                 let mut module = (*self.cx.current_expansion.module).clone();
                 module.mod_path.push(item.ident);
 
@@ -1356,9 +1362,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                 if inline_module {
                     if let DirectoryOwnership::Owned { relative } =
-                        &mut self.directory.ownership
+                        &mut self.cx.current_expansion.directory_ownership
                     {
                         relative.push(item.ident);
+                        directory_ownership_needs_pop = true;
                     }
                 } else {
                     let path = self.cx.parse_sess.source_map().span_to_unmapped_path(inner);
@@ -1383,10 +1390,20 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                 let orig_module =
                     mem::replace(&mut self.cx.current_expansion.module, Rc::new(module));
+
                 let result = noop_fold_item(item, self);
+
+                // Clean up, restoring all replaced or mutated expansion state.
                 self.cx.current_expansion.module = orig_module;
                 if let Some(orig_directory_ownership) = orig_directory_ownership {
                     self.cx.current_expansion.directory_ownership = orig_directory_ownership;
+                }
+                if directory_ownership_needs_pop {
+                    if let DirectoryOwnership::Owned { relative } =
+                        &mut self.cx.current_expansion.directory_ownership
+                    {
+                        relative.pop();
+                    }
                 }
                 result
             }
