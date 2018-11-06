@@ -511,7 +511,7 @@ fn mono_item_visibility(
         //
         // * First is weak lang items. These are basically mechanisms for
         //   libcore to forward-reference symbols defined later in crates like
-        //   the standard library or `#[panic_implementation]` definitions. The
+        //   the standard library or `#[panic_handler]` definitions. The
         //   definition of these weak lang items needs to be referenceable by
         //   libcore, so we're no longer a candidate for internalization.
         //   Removal of these functions can't be done by LLVM but rather must be

@@ -204,9 +204,7 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
             if let Some(value) = attribute.value_str() {
                 return Some((value, attribute.span));
             }
-        } else if attribute.check_name("panic_implementation") ||
-            attribute.check_name("panic_handler")
-        {
+        } else if attribute.check_name("panic_handler") {
             return Some((Symbol::intern("panic_impl"), attribute.span))
         } else if attribute.check_name("alloc_error_handler") {
             return Some((Symbol::intern("oom"), attribute.span))

@@ -25,8 +25,8 @@ fn move_borrowed<T: Not<Output=T>>(x: T, mut y: T) {
     !x;  //~ ERROR: cannot move out of `x` because it is borrowed
 
     !y;  //~ ERROR: cannot move out of `y` because it is borrowed
+    use_mut(n); use_imm(m);
 }
-
 fn illegal_dereference<T: Not<Output=T>>(mut x: T, y: T) {
     let m = &mut x;
     let n = &y;
@@ -34,6 +34,9 @@ fn illegal_dereference<T: Not<Output=T>>(mut x: T, y: T) {
     !*m;  //~ ERROR: cannot move out of borrowed content
 
     !*n;  //~ ERROR: cannot move out of borrowed content
+    use_imm(n); use_mut(m);
 }
-
 fn main() {}
+
+fn use_mut<T>(_: &mut T) { }
+fn use_imm<T>(_: &T) { }

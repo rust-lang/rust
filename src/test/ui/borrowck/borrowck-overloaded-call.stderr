@@ -5,6 +5,7 @@ LL |     let sp = &mut s;
    |                   - mutable borrow occurs here
 LL |     s(3);   //~ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
    |     ^ immutable borrow occurs here
+LL |     use_mut(sp);
 LL | }
    | - mutable borrow ends here
 

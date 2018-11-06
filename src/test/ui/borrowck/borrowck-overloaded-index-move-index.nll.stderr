@@ -1,3 +1,27 @@
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/borrowck-overloaded-index-move-index.rs:60:22
+   |
+LL |     let rs = &mut s;
+   |              ------ borrow of `s` occurs here
+LL | 
+LL |     println!("{}", f[s]);
+   |                      ^ move out of `s` occurs here
+...
+LL |     use_mut(rs);
+   |             -- borrow later used here
+
+error[E0505]: cannot move out of `s` because it is borrowed
+  --> $DIR/borrowck-overloaded-index-move-index.rs:63:7
+   |
+LL |     let rs = &mut s;
+   |              ------ borrow of `s` occurs here
+...
+LL |     f[s] = 10;
+   |       ^ move out of `s` occurs here
+...
+LL |     use_mut(rs);
+   |             -- borrow later used here
+
 error[E0382]: use of moved value: `s`
   --> $DIR/borrowck-overloaded-index-move-index.rs:63:7
    |
@@ -9,6 +33,7 @@ LL |     f[s] = 10;
    |
    = note: move occurs because `s` has type `std::string::String`, which does not implement the `Copy` trait
 
-error: aborting due to previous error
+error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0382`.
+Some errors occurred: E0382, E0505.
+For more information about an error, try `rustc --explain E0382`.

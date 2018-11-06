@@ -1,4 +1,4 @@
-error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #54658)
+error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #55599)
   --> $DIR/feature-gate-extern_crate_item_prelude.rs:26:9
    |
 LL |     use alloc;
@@ -6,7 +6,7 @@ LL |     use alloc;
    |
    = help: add #![feature(extern_crate_item_prelude)] to the crate attributes to enable
 
-error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #54658)
+error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #55599)
   --> $DIR/feature-gate-extern_crate_item_prelude.rs:28:9
    |
 LL |     use alloc::boxed;
@@ -14,7 +14,7 @@ LL |     use alloc::boxed;
    |
    = help: add #![feature(extern_crate_item_prelude)] to the crate attributes to enable
 
-error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #54658)
+error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #55599)
   --> $DIR/feature-gate-extern_crate_item_prelude.rs:33:11
    |
 LL |     use ::alloc;
@@ -22,7 +22,7 @@ LL |     use ::alloc;
    |
    = help: add #![feature(extern_crate_item_prelude)] to the crate attributes to enable
 
-error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #54658)
+error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #55599)
   --> $DIR/feature-gate-extern_crate_item_prelude.rs:35:11
    |
 LL |     use ::alloc::boxed;
@@ -30,7 +30,7 @@ LL |     use ::alloc::boxed;
    |
    = help: add #![feature(extern_crate_item_prelude)] to the crate attributes to enable
 
-error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #54658)
+error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #55599)
   --> $DIR/feature-gate-extern_crate_item_prelude.rs:9:17
    |
 LL |         let v = alloc::vec![0];
@@ -38,7 +38,7 @@ LL |         let v = alloc::vec![0];
    |
    = help: add #![feature(extern_crate_item_prelude)] to the crate attributes to enable
 
-error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #54658)
+error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #55599)
   --> $DIR/feature-gate-extern_crate_item_prelude.rs:11:18
    |
 LL |         type A = alloc::boxed::Box<u8>;
@@ -46,7 +46,7 @@ LL |         type A = alloc::boxed::Box<u8>;
    |
    = help: add #![feature(extern_crate_item_prelude)] to the crate attributes to enable
 
-error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #54658)
+error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #55599)
   --> $DIR/feature-gate-extern_crate_item_prelude.rs:18:19
    |
 LL |         let v = ::alloc::vec![0];
@@ -54,7 +54,7 @@ LL |         let v = ::alloc::vec![0];
    |
    = help: add #![feature(extern_crate_item_prelude)] to the crate attributes to enable
 
-error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #54658)
+error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #55599)
   --> $DIR/feature-gate-extern_crate_item_prelude.rs:20:20
    |
 LL |         type A = ::alloc::boxed::Box<u8>;
@@ -62,7 +62,7 @@ LL |         type A = ::alloc::boxed::Box<u8>;
    |
    = help: add #![feature(extern_crate_item_prelude)] to the crate attributes to enable
 
-error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #54658)
+error[E0658]: use of extern prelude names introduced with `extern crate` items is unstable (see issue #55599)
   --> $DIR/feature-gate-extern_crate_item_prelude.rs:42:14
    |
 LL |     type A = core::boxed::Box<u8>;

@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Debug)]
-struct Foo { }
+#![no_std]
 
-struct S {f:String}
-impl Drop for S {
-    fn drop(&mut self) { println!("{}", self.f); }
-}
+extern crate std;
+
+std::thread_local!(static A: usize = 30);
 
 fn main() {
-    match (S {f:"foo".to_string()}) {
-        S {f:_s} => {} //~ ERROR cannot move out
-    }
 }

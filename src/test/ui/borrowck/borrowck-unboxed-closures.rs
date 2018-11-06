@@ -11,8 +11,8 @@
 fn a<F:Fn(isize, isize) -> isize>(mut f: F) {
     let g = &mut f;
     f(1, 2);    //~ ERROR cannot borrow `f` as immutable
+    use_mut(g);
 }
-
 fn b<F:FnMut(isize, isize) -> isize>(f: F) {
     f(1, 2);    //~ ERROR cannot borrow immutable argument
 }
@@ -23,3 +23,5 @@ fn c<F:FnOnce(isize, isize) -> isize>(f: F) {
 }
 
 fn main() {}
+
+fn use_mut<T>(_: &mut T) { }

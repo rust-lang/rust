@@ -1,12 +1,12 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// The behavior of AST-borrowck and NLL explcitly differ here due to
+// NLL's increased precision; so we use revisions and do not worry
+// about the --compare-mode=nll on this test.
+
+// revisions: ast nll
+//[ast]compile-flags: -Z borrowck=ast
+//[nll]compile-flags: -Z borrowck=migrate -Z two-phase-borrows
+
+// ignore-compare-mode-nll
 
 #![feature(dropck_eyepatch, rustc_attrs)]
 
@@ -56,29 +56,32 @@ fn main() { #![rustc_error] // rust-lang/rust#49855
 
     // Error: destructor order imprecisely modelled
     dt = Dt("dt", &c);
-    //~^ ERROR `c` does not live long enough
+    //[ast]~^ ERROR `c` does not live long enough
     dr = Dr("dr", &c);
-    //~^ ERROR `c` does not live long enough
+    //[ast]~^ ERROR `c` does not live long enough
 
     // Error: `c_shortest` dies too soon for the references in dtors to be valid.
     dt = Dt("dt", &c_shortest);
-    //~^ ERROR `c_shortest` does not live long enough
+    //[ast]~^ ERROR `c_shortest` does not live long enough
+    //[nll]~^^ ERROR `c_shortest` does not live long enough
     dr = Dr("dr", &c_shortest);
-    //~^ ERROR `c_shortest` does not live long enough
-
+    //[ast]~^ ERROR `c_shortest` does not live long enough
     // No error: Drop impl asserts .1 (A and &'a _) are not accessed
     pt = Pt("pt", &c_shortest, &c_long);
     pr = Pr("pr", &c_shortest, &c_long);
 
     // Error: Drop impl's assertion does not apply to `B` nor `&'b _`
     pt = Pt("pt", &c_long, &c_shortest);
-    //~^ ERROR `c_shortest` does not live long enough
+    //[ast]~^ ERROR `c_shortest` does not live long enough
     pr = Pr("pr", &c_long, &c_shortest);
-    //~^ ERROR `c_shortest` does not live long enough
+    //[ast]~^ ERROR `c_shortest` does not live long enough
 
     // No error: St and Sr have no destructor.
     st = St("st", &c_shortest);
     sr = Sr("sr", &c_shortest);
 
     println!("{:?}", (dt.0, dr.0, pt.0, pr.0, st.0, sr.0));
+    use_imm(sr.1); use_imm(st.1); use_imm(pr.1); use_imm(pt.1); use_imm(dr.1); use_imm(dt.1);
 }
+
+fn use_imm<T>(_: &T) { }

@@ -28,7 +28,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         right: ImmTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
-        let (val, overflowed) = self.binary_op_val(op, left, right)?;
+        let (val, overflowed) = self.binary_op_imm(op, left, right)?;
         let val = Immediate::ScalarPair(val.into(), Scalar::from_bool(overflowed).into());
         self.write_immediate(val, dest)
     }
@@ -42,7 +42,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         right: ImmTy<'tcx, M::PointerTag>,
         dest: PlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx> {
-        let (val, _overflowed) = self.binary_op_val(op, left, right)?;
+        let (val, _overflowed) = self.binary_op_imm(op, left, right)?;
         self.write_scalar(val, dest)
     }
 }
@@ -283,9 +283,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     }
 
     /// Convenience wrapper that's useful when keeping the layout together with the
-    /// value.
+    /// immediate value.
     #[inline]
-    pub fn binary_op_val(
+    pub fn binary_op_imm(
         &self,
         bin_op: mir::BinOp,
         left: ImmTy<'tcx, M::PointerTag>,

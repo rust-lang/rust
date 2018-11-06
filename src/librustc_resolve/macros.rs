@@ -449,6 +449,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     return Err(Determinacy::Determined);
                 }
             }
+            Def::Err => {
+                return Err(Determinacy::Determined);
+            }
             _ => panic!("expected `Def::Macro` or `Def::NonMacroAttr`"),
         }
 
