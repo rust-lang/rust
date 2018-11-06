@@ -27,7 +27,7 @@ pub type RefRoot<'a> = ::rowan::RefRoot<'a, RaTypes>;
 pub type GreenNode = ::rowan::GreenNode<RaTypes>;
 
 #[derive(Clone, Copy)]
-pub struct SyntaxNode<R: TreeRoot<RaTypes> = OwnedRoot>(::rowan::SyntaxNode<RaTypes, R>);
+pub struct SyntaxNode<R: TreeRoot<RaTypes> = OwnedRoot>(pub(crate) ::rowan::SyntaxNode<RaTypes, R>);
 pub type SyntaxNodeRef<'a> = SyntaxNode<RefRoot<'a>>;
 
 impl<R1, R2> PartialEq<SyntaxNode<R1>> for SyntaxNode<R2>
