@@ -99,8 +99,7 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
     eval_body_using_ecx(&mut ecx, cid, Some(mir), param_env)
 }
 
-// FIXME: This thing is a bad hack. We should get rid of it.  Ideally constants are always
-// in an allocation.
+// FIXME: These two conversion functions are bad hacks.  We should just always use allocations.
 pub fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     op: OpTy<'tcx>,
@@ -145,6 +144,13 @@ pub fn op_to_const<'tcx>(
             ConstValue::ScalarPair(a.not_undef()?, b.not_undef()?),
     };
     Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, op.layout.ty))
+}
+pub fn const_to_op<'tcx>(
+    ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
+    cnst: &ty::Const<'tcx>,
+) -> EvalResult<'tcx, OpTy<'tcx>> {
+    let op = ecx.const_value_to_op(cnst.val)?;
+    Ok(OpTy { op, layout: ecx.layout_of(cnst.ty)? })
 }
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
@@ -496,7 +502,7 @@ pub fn const_field<'a, 'tcx>(
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let result = (|| {
         // get the operand again
-        let op = ecx.const_to_op(value)?;
+        let op = const_to_op(&ecx, value)?;
         // downcast
         let down = match variant {
             None => op,
@@ -523,7 +529,7 @@ pub fn const_variant_index<'a, 'tcx>(
 ) -> EvalResult<'tcx, VariantIdx> {
     trace!("const_variant_index: {:?}, {:?}", instance, val);
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
-    let op = ecx.const_to_op(val)?;
+    let op = const_to_op(&ecx, val)?;
     Ok(ecx.read_discriminant(op)?.1)
 }
 

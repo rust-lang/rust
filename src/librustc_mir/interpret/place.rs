@@ -553,16 +553,10 @@ where
         Ok(match *mir_place {
             Promoted(ref promoted) => {
                 let instance = self.frame().instance;
-                let op = self.global_to_op(GlobalId {
+                self.const_eval_raw(GlobalId {
                     instance,
                     promoted: Some(promoted.0),
-                })?;
-                let mplace = op.to_mem_place(); // these are always in memory
-                let ty = self.monomorphize(promoted.1, self.substs());
-                MPlaceTy {
-                    mplace,
-                    layout: self.layout_of(ty)?,
-                }
+                })?
             }
 
             Static(ref static_) => {

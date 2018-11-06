@@ -13,7 +13,7 @@
 
 use std::convert::TryInto;
 
-use rustc::{mir, ty};
+use rustc::mir;
 use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx};
 
 use rustc::mir::interpret::{
@@ -535,9 +535,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             .collect()
     }
 
-    // Also used e.g. when miri runs into a constant.
-    // FIXME: Can we avoid converting with ConstValue and Const?  We should be using RawConst.
-    fn const_value_to_op(
+    // Used when miri runs into a constant, and by CTFE.
+    // FIXME: CTFE should use allocations, then we can make this private (embed it into
+    // `eval_operand`, ideally).
+    pub(crate) fn const_value_to_op(
         &self,
         val: ConstValue<'tcx>,
     ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
@@ -545,10 +546,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         match val {
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
-                self.global_to_op(GlobalId {
+                Ok(*OpTy::from(self.const_eval_raw(GlobalId {
                     instance,
                     promoted: None,
-                })
+                })?))
             }
             ConstValue::ByRef(id, alloc, offset) => {
                 // We rely on mutability being set correctly in that allocation to prevent writes
@@ -565,21 +566,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             ConstValue::Scalar(x) =>
                 Ok(Operand::Immediate(Immediate::Scalar(x.into())).with_default_tag()),
         }
-    }
-    pub fn const_to_op(
-        &self,
-        cnst: &ty::Const<'tcx>,
-    ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
-        let op = self.const_value_to_op(cnst.val)?;
-        Ok(OpTy { op, layout: self.layout_of(cnst.ty)? })
-    }
-
-    pub(super) fn global_to_op(
-        &self,
-        gid: GlobalId<'tcx>
-    ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
-        let cv = self.const_eval(gid)?;
-        self.const_value_to_op(cv.val)
     }
 
     /// Read discriminant, return the runtime value as well as the variant index.
