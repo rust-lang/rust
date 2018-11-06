@@ -38,17 +38,19 @@ fn is_stable<'tcx>(
         // Recurse for projections
         Projection(ref proj) => {
             match proj.elem {
-                ProjectionElem::Deref |
-                ProjectionElem::Index(_) =>
-                    // Which place these point to depends on external circumstances
-                    // (a local storing the array index, the current value of
-                    // the projection base), so we stop tracking here.
+                // Which place this evaluates to can change with any memory write,
+                // so cannot assume this to be stable.
+                ProjectionElem::Deref =>
                     false,
+                // Array indices are intersting, but MIR building generates a *fresh*
+                // temporary for every array access, so the index cannot be changed as
+                // a side-effect.
+                ProjectionElem::Index { .. } |
+                // The rest is completely boring, they just offset by a constant.
                 ProjectionElem::Field { .. } |
                 ProjectionElem::ConstantIndex { .. } |
                 ProjectionElem::Subslice { .. } |
                 ProjectionElem::Downcast { .. } =>
-                    // These just offset by a constant, entirely independent of everything else.
                     is_stable(&proj.base),
             }
         }

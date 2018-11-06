@@ -86,6 +86,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // region_scope=None so place indexes live forever. They are scalars so they
                 // do not need storage annotations, and they are often copied between
                 // places.
+                // Making this a *fresh* temporary also means we do not have to worry about
+                // the index changing later: Nothing will ever change this temporary.
+                // The "retagging" transformation (for Stacked Borrows) relies on this.
                 let idx = unpack!(block = this.as_temp(block, None, index, Mutability::Mut));
 
                 // bounds check:
