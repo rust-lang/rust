@@ -6,14 +6,23 @@ before_cache:
 env:
   - CARGO_INCREMENTAL=0
 
+build: &rust_build
+  language: rust
+  rust: beta
+  script:
+    - cargo gen-tests --verify
+    - cargo gen-syntax --verify
+    - cargo test
+
 matrix:
   include:
-    - language: rust
-      rust: beta
-      script:
-        - cargo gen-syntax --verify
-        - cargo gen-tests --verify
-        - cargo test
+    - os: windows
+      before_script:
+        - dos2unix ./crates/ra_syntax/tests/data/parser/**/*.txt
+        - dos2unix ./crates/ra_syntax/tests/data/parser/**/*.rs
+      <<: *rust_build
+    - os: linux
+      <<: *rust_build
     # - language: rust
     #   rust: nightly
     #   before_script:
