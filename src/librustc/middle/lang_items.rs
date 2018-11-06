@@ -300,6 +300,7 @@ language_item_table! {
     GeneratorStateLangItem,      "generator_state",    gen_state,               Target::Enum;
     GeneratorTraitLangItem,      "generator",          gen_trait,               Target::Trait;
     UnpinTraitLangItem,          "unpin",              unpin_trait,             Target::Trait;
+    PinTypeLangItem,             "pin",                pin_type,                Target::Struct;
 
     EqTraitLangItem,             "eq",                 eq_trait,                Target::Trait;
     PartialOrdTraitLangItem,     "partial_ord",        partial_ord_trait,       Target::Trait;

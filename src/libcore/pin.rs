@@ -117,6 +117,7 @@ use ops::{Deref, DerefMut, Receiver, CoerceUnsized, DispatchFromDyn};
 // implementations, are allowed because they all only use `&P`, so they cannot move
 // the value behind `pointer`.
 #[stable(feature = "pin", since = "1.33.0")]
+#[cfg_attr(not(stage0), lang = "pin")]
 #[fundamental]
 #[repr(transparent)]
 #[derive(Copy, Clone, Hash, Eq, Ord)]

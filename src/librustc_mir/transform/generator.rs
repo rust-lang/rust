@@ -113,6 +113,33 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor {
     }
 }
 
+struct PinArgVisitor<'tcx> {
+    ref_gen_ty: Ty<'tcx>,
+}
+
+impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
+    fn visit_local(&mut self,
+                   local: &mut Local,
+                   _: PlaceContext<'tcx>,
+                   _: Location) {
+        assert_ne!(*local, self_arg());
+    }
+
+    fn visit_place(&mut self,
+                    place: &mut Place<'tcx>,
+                    context: PlaceContext<'tcx>,
+                    location: Location) {
+        if *place == Place::Local(self_arg()) {
+            *place = Place::Projection(Box::new(Projection {
+                base: place.clone(),
+                elem: ProjectionElem::Field(Field::new(0), self.ref_gen_ty),
+            }));
+        } else {
+            self.super_place(place, context, location);
+        }
+    }
+}
+
 fn self_arg() -> Local {
     Local::new(1)
 }
@@ -284,6 +311,23 @@ fn make_generator_state_argument_indirect<'a, 'tcx>(
 
     // Add a deref to accesses of the generator state
     DerefArgVisitor.visit_mir(mir);
+}
+
+fn make_generator_state_argument_pinned<'a, 'tcx>(
+                tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                mir: &mut Mir<'tcx>) {
+    let ref_gen_ty = mir.local_decls.raw[1].ty;
+
+    let pin_did = tcx.lang_items().pin_type().unwrap();
+    let pin_adt_ref = tcx.adt_def(pin_did);
+    let substs = tcx.intern_substs(&[ref_gen_ty.into()]);
+    let pin_ref_gen_ty = tcx.mk_adt(pin_adt_ref, substs);
+
+    // Replace the by ref generator argument
+    mir.local_decls.raw[1].ty = pin_ref_gen_ty;
+
+    // Add the Pin field access to accesses of the generator state
+    PinArgVisitor { ref_gen_ty }.visit_mir(mir);
 }
 
 fn replace_result_variable<'tcx>(
@@ -741,6 +785,7 @@ fn create_generator_resume_function<'a, 'tcx>(
     insert_switch(tcx, mir, cases, &transform, TerminatorKind::Unreachable);
 
     make_generator_state_argument_indirect(tcx, def_id, mir);
+    make_generator_state_argument_pinned(tcx, mir);
 
     no_landing_pads(tcx, mir);
 
