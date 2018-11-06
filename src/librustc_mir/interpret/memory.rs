@@ -730,6 +730,11 @@ where
             if self.alloc_map.contains_key(&alloc) {
                 // Not yet interned, so proceed recursively
                 self.intern_static(alloc, mutability)?;
+            } else if self.dead_alloc_map.contains_key(&alloc) {
+                // dangling pointer
+                return err!(ValidationFailure(
+                    "encountered dangling pointer in final constant".into(),
+                ))
             }
         }
         Ok(())
