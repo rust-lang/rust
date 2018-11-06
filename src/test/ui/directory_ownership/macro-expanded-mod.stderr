@@ -1,8 +1,8 @@
 error: Cannot declare a non-inline module inside a block unless it has a path attribute
-  --> $DIR/macro-expanded-mod.rs:14:28
+  --> $DIR/macro-expanded-mod.rs:22:15
    |
-LL |     ($i:ident) => { mod $i; }
-   |                            ^
+LL |     mod_decl!(foo);
+   |               ^^^
 
 error: aborting due to previous error
 

@@ -26,7 +26,12 @@ error: expected one of `move`, `|`, or `||`, found the end of the macro arm
   --> <::edition_kw_macro_2015::passes_ident macros>:1:25
    |
 LL | ( $ i : ident ) => ( $ i )
-   |                         ^
+   |                         ^ expected one of `move`, `|`, or `||` here
+   | 
+  ::: $DIR/edition-keywords-2018-2015-parsing.rs:26:8
+   |
+LL |     if passes_ident!(async) == 1 {}
+   |        -------------------- in this macro invocation
 
 error: aborting due to 5 previous errors
 

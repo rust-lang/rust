@@ -53,19 +53,23 @@ impl<'a> ParserAnyMacro<'a> {
     pub fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
         let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
         let fragment = panictry!(parser.parse_ast_fragment(kind, true).map_err(|mut e| {
-            if e.span.is_dummy() {  // Get around lack of span in error (#30128)
-                e.set_span(site_span);
-                e.span_label(site_span, "in this macro expansion");
-                e.span_label(arm_span, "in this macro arm");
-            } else if parser.token == token::Eof {  // (#52866)
-                e.set_span(parser.sess.source_map().next_point(parser.span));
-            }
-            if parser.token == token::Eof {
+            if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
+                if !e.span.is_dummy() {  // early end of macro arm (#52866)
+                    e.replace_span_with(parser.sess.source_map().next_point(parser.span));
+                }
                 let msg = &e.message[0];
                 e.message[0] = (
                     msg.0.replace(", found `<eof>`", ", found the end of the macro arm"),
                     msg.1,
                 );
+            }
+            if e.span.is_dummy() {  // Get around lack of span in error (#30128)
+                e.replace_span_with(site_span);
+                if parser.sess.source_map().span_to_filename(arm_span).is_real() {
+                    e.span_label(arm_span, "in this macro arm");
+                }
+            } else if !parser.sess.source_map().span_to_filename(parser.span).is_real() {
+                e.span_label(site_span, "in this macro invocation");
             }
             e
         }));

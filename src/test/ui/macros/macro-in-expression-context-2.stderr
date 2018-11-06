@@ -5,7 +5,7 @@ LL | macro_rules! empty { () => () }
    |                            -- in this macro arm
 ...
 LL |         _ => { empty!() }
-   |                ^^^^^^^^ in this macro expansion
+   |                ^^^^^^^^ expected expression
 
 error: aborting due to previous error
 
