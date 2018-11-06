@@ -82,7 +82,7 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     }
 
     fn has_type_flags(&self, flags: TypeFlags) -> bool {
-        self.visit_with(&mut HasTypeFlagsVisitor { flags: flags })
+        self.visit_with(&mut HasTypeFlagsVisitor { flags })
     }
     fn has_projections(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_PROJECTION)

@@ -190,7 +190,7 @@ impl ObjectFile {
     pub fn new(llmb: &'static mut MemoryBuffer) -> Option<ObjectFile> {
         unsafe {
             let llof = LLVMCreateObjectFile(llmb)?;
-            Some(ObjectFile { llof: llof })
+            Some(ObjectFile { llof })
         }
     }
 }

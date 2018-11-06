@@ -241,7 +241,7 @@ impl<'a> DropGuard<'a> {
     fn new(lock: &'a Mutex) -> DropGuard<'a> {
         unsafe {
             lock.lock();
-            DropGuard { lock: lock }
+            DropGuard { lock }
         }
     }
 }

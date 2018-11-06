@@ -17,7 +17,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
 
 pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut orphan = OrphanChecker { tcx: tcx };
+    let mut orphan = OrphanChecker { tcx };
     tcx.hir.krate().visit_all_item_likes(&mut orphan);
 }
 

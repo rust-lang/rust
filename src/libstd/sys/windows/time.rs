@@ -170,7 +170,7 @@ impl fmt::Debug for SystemTime {
 
 impl From<c::FILETIME> for SystemTime {
     fn from(t: c::FILETIME) -> SystemTime {
-        SystemTime { t: t }
+        SystemTime { t }
     }
 }
 

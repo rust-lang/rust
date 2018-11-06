@@ -328,7 +328,7 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock
                        funclet, succ, kind);
                 match kind {
                     CleanupKind::NotCleanup => {
-                        result[succ] = CleanupKind::Internal { funclet: funclet };
+                        result[succ] = CleanupKind::Internal { funclet };
                     }
                     CleanupKind::Funclet => {
                         if funclet != succ {

@@ -2959,7 +2959,7 @@ impl<'tcx> Clean<Item> for ty::VariantDef {
             source: cx.tcx.def_span(self.did).clean(cx),
             visibility: Some(Inherited),
             def_id: self.did,
-            inner: VariantItem(Variant { kind: kind }),
+            inner: VariantItem(Variant { kind }),
             stability: get_stability(cx, self.did),
             deprecation: get_deprecation(cx, self.did),
         }

@@ -453,7 +453,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
         let scope = &self.scopes[len - scope_count];
         self.cfg.terminate(block, scope.source_info(span),
-                           TerminatorKind::Goto { target: target });
+                           TerminatorKind::Goto { target });
     }
 
     /// Creates a path that performs all required cleanup for dropping a generator.
@@ -1019,7 +1019,7 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         } else {
             let block = cfg.start_new_cleanup_block();
             cfg.push_end_region(tcx, block, source_info(span), scope.region_scope);
-            cfg.terminate(block, source_info(span), TerminatorKind::Goto { target: target });
+            cfg.terminate(block, source_info(span), TerminatorKind::Goto { target });
             *cached_block = Some(block);
             block
         }

@@ -62,7 +62,7 @@ use std::iter;
 // Main entry point
 
 pub fn collect_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut visitor = CollectItemTypesVisitor { tcx: tcx };
+    let mut visitor = CollectItemTypesVisitor { tcx };
     tcx.hir
        .krate()
        .visit_all_item_likes(&mut visitor.as_deep_visitor());

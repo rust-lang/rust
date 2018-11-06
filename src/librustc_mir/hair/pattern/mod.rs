@@ -459,7 +459,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                                        })
                                        .collect();
 
-                        PatternKind::Leaf { subpatterns: subpatterns }
+                        PatternKind::Leaf { subpatterns }
                     }
                     ty::Error => { // Avoid ICE (#50577)
                         return Pattern { span: pat.span, ty, kind: Box::new(PatternKind::Wild) };
@@ -666,13 +666,13 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         subpatterns,
                     }
                 } else {
-                    PatternKind::Leaf { subpatterns: subpatterns }
+                    PatternKind::Leaf { subpatterns }
                 }
             }
 
             Def::Struct(..) | Def::StructCtor(..) | Def::Union(..) |
             Def::TyAlias(..) | Def::AssociatedTy(..) | Def::SelfTy(..) | Def::SelfCtor(..) => {
-                PatternKind::Leaf { subpatterns: subpatterns }
+                PatternKind::Leaf { subpatterns }
             }
 
             _ => {

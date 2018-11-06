@@ -495,7 +495,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         let target = self.patch.new_block(BasicBlockData {
             statements: vec![assign],
             terminator: Some(Terminator {
-                kind: TerminatorKind::Goto { target: target },
+                kind: TerminatorKind::Goto { target },
                 ..*terminator
             }),
             is_cleanup: false,

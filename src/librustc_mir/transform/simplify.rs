@@ -302,7 +302,7 @@ impl MirPass for SimplifyLocals {
 
         let map = make_local_map(&mut mir.local_decls, marker.locals);
         // Update references to all vars and tmps now
-        LocalUpdater { map: map }.visit_mir(mir);
+        LocalUpdater { map }.visit_mir(mir);
         mir.local_decls.shrink_to_fit();
     }
 }

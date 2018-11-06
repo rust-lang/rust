@@ -43,7 +43,7 @@ impl UnifyValue for RegionVidKey {
             value2.min_vid
         };
 
-        Ok(RegionVidKey { min_vid: min_vid })
+        Ok(RegionVidKey { min_vid })
     }
 }
 

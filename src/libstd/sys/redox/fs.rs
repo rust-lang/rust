@@ -264,7 +264,7 @@ impl File {
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         let mut stat = syscall::Stat::default();
         cvt(syscall::fstat(self.0.raw(), &mut stat))?;
-        Ok(FileAttr { stat: stat })
+        Ok(FileAttr { stat })
     }
 
     pub fn fsync(&self) -> io::Result<()> {

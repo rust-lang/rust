@@ -174,7 +174,7 @@ impl<T> PoisonError<T> {
     /// [`RwLock::read`]: ../../std/sync/struct.RwLock.html#method.read
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn new(guard: T) -> PoisonError<T> {
-        PoisonError { guard: guard }
+        PoisonError { guard }
     }
 
     /// Consumes this error indicating that a lock is poisoned, returning the

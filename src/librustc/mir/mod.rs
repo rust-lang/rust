@@ -2871,7 +2871,7 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
         use mir::TerminatorKind::*;
 
         let kind = match self.kind {
-            Goto { target } => Goto { target: target },
+            Goto { target } => Goto { target },
             SwitchInt {
                 ref discr,
                 switch_ty,

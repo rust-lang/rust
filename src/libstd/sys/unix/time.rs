@@ -217,7 +217,7 @@ mod inner {
 
     impl From<libc::timespec> for SystemTime {
         fn from(t: libc::timespec) -> SystemTime {
-            SystemTime { t: Timespec { t: t } }
+            SystemTime { t: Timespec { t } }
         }
     }
 
@@ -332,7 +332,7 @@ mod inner {
 
     impl From<libc::timespec> for SystemTime {
         fn from(t: libc::timespec) -> SystemTime {
-            SystemTime { t: Timespec { t: t } }
+            SystemTime { t: Timespec { t } }
         }
     }
 

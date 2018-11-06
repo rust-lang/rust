@@ -469,7 +469,7 @@ impl<'a, 'tcx> Index<'tcx> {
 /// Cross-references the feature names of unstable APIs with enabled
 /// features and possibly prints errors.
 pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut checker = Checker { tcx: tcx };
+    let mut checker = Checker { tcx };
     tcx.hir.krate().visit_all_item_likes(&mut checker.as_deep_visitor());
 }
 

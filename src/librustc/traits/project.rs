@@ -269,7 +269,7 @@ fn project_and_unify_type<'cx, 'gcx, 'tcx>(
         },
         Err(err) => {
             debug!("project_and_unify_type: equating types encountered error {:?}", err);
-            Err(MismatchedProjectionTypes { err: err })
+            Err(MismatchedProjectionTypes { err })
         }
     }
 }
