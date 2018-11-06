@@ -4780,9 +4780,11 @@ pub struct ParseIntError {
 #[non_exhaustive]
 pub enum IntErrorKind {
     /// Value being parsed is empty.
+    ///
     /// Among other causes, this variant will be constructed when parsing an empty string.
     Empty,
     /// Contains an invalid digit.
+    ///
     /// Among other causes, this variant will be constructed when parsing a string that
     /// contains a letter.
     InvalidDigit,
