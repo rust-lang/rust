@@ -11,7 +11,7 @@ use crate::{
 
 pub(crate) fn validate(file: &File) -> Vec<SyntaxError> {
     let mut errors = Vec::new();
-    for node in file.root.borrowed().descendants() {
+    for node in file.syntax().descendants() {
         let _ = visitor_ctx(&mut errors)
             .visit::<ast::Char, _>(validate_char)
             .accept(node);

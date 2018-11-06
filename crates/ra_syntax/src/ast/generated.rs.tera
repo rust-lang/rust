@@ -11,6 +11,8 @@ the below applies to the result of this template
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 
+use std::hash::{Hash, Hasher};
+
 use crate::{
     ast,
     SyntaxNode, SyntaxNodeRef, AstNode,
@@ -21,7 +23,7 @@ use crate::{
 // {{ node }}
 
 {%- if methods.enum %}
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum {{ node }}<'a> {
 {%- for kind in methods.enum %}
     {{ kind }}({{ kind }}<'a>),
@@ -46,11 +48,19 @@ impl<'a> AstNode<'a> for {{ node }}<'a> {
     }
 }
 {% else %}
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct {{ node }}Node<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type {{ node }}<'a> = {{ node }}Node<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<{{node}}Node<R1>> for {{node}}Node<R2> {
+    fn eq(&self, other: &{{node}}Node<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for {{node}}Node<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for {{node}}Node<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for {{ node }}<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {

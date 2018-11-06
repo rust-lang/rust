@@ -60,11 +60,9 @@ pub use crate::{
 
 use crate::yellow::GreenNode;
 
+// TODO: pick a single name for everything. SourceFile maybe?
 /// File represents a parse tree for a single Rust file.
-#[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct File {
-    root: SyntaxNode,
-}
+pub type File = ast::RootNode;
 
 impl File {
     fn new(green: GreenNode, errors: Vec<SyntaxError>) -> File {
@@ -72,7 +70,8 @@ impl File {
         if cfg!(debug_assertions) {
             utils::validate_block_structure(root.borrowed());
         }
-        File { root }
+        assert_eq!(root.kind(), SyntaxKind::ROOT);
+        ast::RootNode { syntax: root }
     }
     pub fn parse(text: &str) -> File {
         let tokens = tokenize(&text);
@@ -95,14 +94,14 @@ impl File {
     }
     /// Typed AST representation of the parse tree.
     pub fn ast(&self) -> ast::Root {
-        ast::Root::cast(self.syntax()).unwrap()
+        self.borrowed()
     }
     /// Untyped homogeneous representation of the parse tree.
     pub fn syntax(&self) -> SyntaxNodeRef {
-        self.root.borrowed()
+        self.syntax.borrowed()
     }
     pub fn errors(&self) -> Vec<SyntaxError> {
-        let mut errors = self.root.root_data().clone();
+        let mut errors = self.syntax.root_data().clone();
         errors.extend(validation::validate(self));
         errors
     }
