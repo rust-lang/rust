@@ -7,16 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Lints concerned with the grouping of digits with underscores in integral or
 //! floating-point literal expressions.
 
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use crate::rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
 use crate::syntax::ast::*;
 use crate::syntax_pos;
 use crate::utils::{snippet_opt, span_lint_and_sugg};
+use if_chain::if_chain;
 
 /// **What it does:** Warns if a long integral or floating-point constant does
 /// not contain underscores.
@@ -41,9 +40,9 @@ declare_clippy_lint! {
 /// **Why is this bad?** This is most probably a typo
 ///
 /// **Known problems:**
-///		- Recommends a signed suffix, even though the number might be too big and an unsigned
+/// 		- Recommends a signed suffix, even though the number might be too big and an unsigned
 ///		suffix is required
-///		- Does not match on `_128` since that is a valid grouping for decimal and octal numbers
+/// 		- Does not match on `_128` since that is a valid grouping for decimal and octal numbers
 ///
 /// **Example:**
 ///
@@ -168,21 +167,21 @@ impl<'a> DigitInfo<'a> {
         let len = sans_prefix.len();
         let mut last_d = '\0';
         for (d_idx, d) in sans_prefix.char_indices() {
-            let suffix_start = if last_d == '_' {
-                d_idx - 1
-            } else {
-                d_idx
-            };
-            if float && (d == 'f' || d == 'e' || d == 'E') ||
-                !float && (d == 'i' || d == 'u' || is_possible_suffix_index(&sans_prefix, suffix_start, len)) {
-                    let (digits, suffix) = sans_prefix.split_at(suffix_start);
-                    return Self {
-                        digits,
-                        radix,
-                        prefix,
-                        suffix: Some(suffix),
-                        float,
-                    };
+            let suffix_start = if last_d == '_' { d_idx - 1 } else { d_idx };
+            if float
+                && (d == 'f'
+                    || is_possible_float_suffix_index(&sans_prefix, suffix_start, len)
+                    || ((d == 'E' || d == 'e') && !has_possible_float_suffix(&sans_prefix)))
+                || !float && (d == 'i' || d == 'u' || is_possible_suffix_index(&sans_prefix, suffix_start, len))
+            {
+                let (digits, suffix) = sans_prefix.split_at(suffix_start);
+                return Self {
+                    digits,
+                    radix,
+                    prefix,
+                    suffix: Some(suffix),
+                    float,
+                };
             }
             last_d = d
         }
@@ -224,18 +223,44 @@ impl<'a> DigitInfo<'a> {
                 .map(|chunk| chunk.iter().collect())
                 .collect::<Vec<String>>()
                 .join("_");
+            let suffix_hint = match self.suffix {
+                Some(suffix) if is_mistyped_float_suffix(suffix) => format!("_f{}", &suffix[1..]),
+                Some(suffix) => suffix.to_string(),
+                None => String::new(),
+            };
+            format!("{}.{}{}", int_part_hint, frac_part_hint, suffix_hint)
+        } else if self.float && (self.digits.contains('E') || self.digits.contains('e')) {
+            let which_e = if self.digits.contains('E') { 'E' } else { 'e' };
+            let parts: Vec<&str> = self.digits.split(which_e).collect();
+            let filtered_digits_vec_0 = parts[0].chars().filter(|&c| c != '_').rev().collect::<Vec<_>>();
+            let filtered_digits_vec_1 = parts[1].chars().filter(|&c| c != '_').rev().collect::<Vec<_>>();
+            let before_e_hint = filtered_digits_vec_0
+                .chunks(group_size)
+                .map(|chunk| chunk.iter().rev().collect())
+                .rev()
+                .collect::<Vec<String>>()
+                .join("_");
+            let after_e_hint = filtered_digits_vec_1
+                .chunks(group_size)
+                .map(|chunk| chunk.iter().rev().collect())
+                .rev()
+                .collect::<Vec<String>>()
+                .join("_");
+            let suffix_hint = match self.suffix {
+                Some(suffix) if is_mistyped_float_suffix(suffix) => format!("_f{}", &suffix[1..]),
+                Some(suffix) => suffix.to_string(),
+                None => String::new(),
+            };
             format!(
-                "{}.{}{}",
-                int_part_hint,
-                frac_part_hint,
-                self.suffix.unwrap_or("")
+                "{}{}{}{}{}",
+                self.prefix.unwrap_or(""),
+                before_e_hint,
+                which_e,
+                after_e_hint,
+                suffix_hint
             )
         } else {
-            let filtered_digits_vec = self.digits
-                .chars()
-                .filter(|&c| c != '_')
-                .rev()
-                .collect::<Vec<_>>();
+            let filtered_digits_vec = self.digits.chars().filter(|&c| c != '_').rev().collect::<Vec<_>>();
             let mut hint = filtered_digits_vec
                 .chunks(group_size)
                 .map(|chunk| chunk.iter().rev().collect())
@@ -248,18 +273,11 @@ impl<'a> DigitInfo<'a> {
                 hint = format!("{:0>4}{}", &hint[..nb_digits_to_fill], &hint[nb_digits_to_fill..]);
             }
             let suffix_hint = match self.suffix {
-                Some(suffix) if is_mistyped_suffix(suffix) => {
-                    format!("_i{}", &suffix[1..])
-                },
+                Some(suffix) if is_mistyped_suffix(suffix) => format!("_i{}", &suffix[1..]),
                 Some(suffix) => suffix.to_string(),
-                None => String::new()
+                None => String::new(),
             };
-            format!(
-                "{}{}{}",
-                self.prefix.unwrap_or(""),
-                hint,
-                suffix_hint
-            )
+            format!("{}{}{}", self.prefix.unwrap_or(""), hint, suffix_hint)
         }
     }
 }
@@ -269,22 +287,20 @@ enum WarningType {
     InconsistentDigitGrouping,
     LargeDigitGroups,
     DecimalRepresentation,
-    MistypedLiteralSuffix
+    MistypedLiteralSuffix,
 }
 
 impl WarningType {
     crate fn display(&self, grouping_hint: &str, cx: &EarlyContext<'_>, span: syntax_pos::Span) {
         match self {
-            WarningType::MistypedLiteralSuffix => {
-                span_lint_and_sugg(
-                    cx,
-                    MISTYPED_LITERAL_SUFFIXES,
-                    span,
-                    "mistyped literal suffix",
-                    "did you mean to write",
-                    grouping_hint.to_string()
-                )
-            },
+            WarningType::MistypedLiteralSuffix => span_lint_and_sugg(
+                cx,
+                MISTYPED_LITERAL_SUFFIXES,
+                span,
+                "mistyped literal suffix",
+                "did you mean to write",
+                grouping_hint.to_string(),
+            ),
             WarningType::UnreadableLiteral => span_lint_and_sugg(
                 cx,
                 UNREADABLE_LITERAL,
@@ -380,7 +396,7 @@ impl LiteralDigitGrouping {
 
                         // Lint integral and fractional parts separately, and then check consistency of digit
                         // groups if both pass.
-                        let _ = Self::do_lint(parts[0], None)
+                        let _ = Self::do_lint(parts[0], digit_info.suffix)
                             .map(|integral_group_size| {
                                 if parts.len() > 1 {
                                     // Lint the fractional part of literal just like integral part, but reversed.
@@ -391,11 +407,11 @@ impl LiteralDigitGrouping {
                                                                                     fractional_group_size,
                                                                                     parts[0].len(),
                                                                                     parts[1].len());
-                                            if !consistent {
-                                                WarningType::InconsistentDigitGrouping.display(&digit_info.grouping_hint(),
-                                                cx,
-                                                lit.span);
-                                            }
+                                                if !consistent {
+                                                    WarningType::InconsistentDigitGrouping.display(&digit_info.grouping_hint(),
+                                                    cx,
+                                                    lit.span);
+                                                }
                                         })
                                     .map_err(|warning_type| warning_type.display(&digit_info.grouping_hint(),
                                     cx,
@@ -494,9 +510,7 @@ impl EarlyLintPass for LiteralRepresentation {
 
 impl LiteralRepresentation {
     pub fn new(threshold: u64) -> Self {
-        Self {
-            threshold,
-        }
+        Self { threshold }
     }
     fn check_lit(self, cx: &EarlyContext<'_>, lit: &Lit) {
         // Lint integral literals.
@@ -529,7 +543,12 @@ impl LiteralRepresentation {
     fn do_lint(digits: &str) -> Result<(), WarningType> {
         if digits.len() == 1 {
             // Lint for 1 digit literals, if someone really sets the threshold that low
-            if digits == "1" || digits == "2" || digits == "4" || digits == "8" || digits == "3" || digits == "7"
+            if digits == "1"
+                || digits == "2"
+                || digits == "4"
+                || digits == "8"
+                || digits == "3"
+                || digits == "7"
                 || digits == "F"
             {
                 return Err(WarningType::DecimalRepresentation);
@@ -538,6 +557,7 @@ impl LiteralRepresentation {
             // Lint for Literals with a hex-representation of 2 or 3 digits
             let f = &digits[0..1]; // first digit
             let s = &digits[1..]; // suffix
+
             // Powers of 2
             if ((f.eq("1") || f.eq("2") || f.eq("4") || f.eq("8")) && s.chars().all(|c| c == '0'))
                 // Powers of 2 minus 1
@@ -550,6 +570,7 @@ impl LiteralRepresentation {
             let f = &digits[0..1]; // first digit
             let m = &digits[1..digits.len() - 1]; // middle digits, except last
             let s = &digits[1..]; // suffix
+
             // Powers of 2 with a margin of +15/-16
             if ((f.eq("1") || f.eq("2") || f.eq("4") || f.eq("8")) && m.chars().all(|c| c == '0'))
                 || ((f.eq("1") || f.eq("3") || f.eq("7") || f.eq("F")) && m.chars().all(|c| c == 'F'))
@@ -570,6 +591,17 @@ fn is_mistyped_suffix(suffix: &str) -> bool {
 }
 
 fn is_possible_suffix_index(lit: &str, idx: usize, len: usize) -> bool {
-    ((len > 3 && idx == len - 3) || (len > 2 && idx == len - 2)) &&
-        is_mistyped_suffix(lit.split_at(idx).1)
+    ((len > 3 && idx == len - 3) || (len > 2 && idx == len - 2)) && is_mistyped_suffix(lit.split_at(idx).1)
+}
+
+fn is_mistyped_float_suffix(suffix: &str) -> bool {
+    ["_32", "_64"].contains(&suffix)
+}
+
+fn is_possible_float_suffix_index(lit: &str, idx: usize, len: usize) -> bool {
+    (len > 3 && idx == len - 3) && is_mistyped_float_suffix(lit.split_at(idx).1)
+}
+
+fn has_possible_float_suffix(lit: &str) -> bool {
+    lit.ends_with("_32") || lit.ends_with("_64")
 }

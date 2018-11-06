@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 #![warn(clippy::mixed_case_hex_literals)]
 #![warn(clippy::unseparated_literal_suffix)]
 #![warn(clippy::zero_prefixed_literal)]
@@ -64,4 +61,11 @@ fn main() {
     let fail21 = 4___16;
     let fail22 = 3__4___23;
     let fail23 = 3__16___23;
+
+    let fail24 = 12.34_64;
+    let fail25 = 1E2_32;
+    let fail26 = 43E7_64;
+    let fail27 = 243E17_32;
+    let fail28 = 241251235E723_64;
+    let fail29 = 42279.911_32;
 }

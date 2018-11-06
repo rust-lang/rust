@@ -23,8 +23,9 @@ cargo test --features debugging
 cd clippy_lints && cargo test && cd ..
 cd rustc_tools_util && cargo test && cd ..
 cd clippy_dev && cargo test && cd ..
-# check that the lint lists are up-to-date
-./util/update_lints.py -c
+
+# Perform various checks for lint registration
+./util/dev update_lints --check
 
 CLIPPY="`pwd`/target/debug/cargo-clippy clippy"
 # run clippy on its own codebase...
