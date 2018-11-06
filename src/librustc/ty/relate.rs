@@ -371,6 +371,10 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             bug!("var types encountered in super_relate_tys")
         }
 
+        (ty::Bound(..), _) | (_, ty::Bound(..)) => {
+            bug!("bound types encountered in super_relate_tys")
+        }
+
         (&ty::Error, _) | (_, &ty::Error) =>
         {
             Ok(tcx.types.err)
@@ -391,6 +395,10 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
         (&ty::Param(ref a_p), &ty::Param(ref b_p))
             if a_p.idx == b_p.idx =>
         {
+            Ok(a)
+        }
+
+        (ty::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => {
             Ok(a)
         }
 
@@ -556,8 +564,13 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_fn_ptr(fty))
         }
 
-        (&ty::Projection(ref a_data), &ty::Projection(ref b_data)) =>
-        {
+        (ty::UnnormalizedProjection(a_data), ty::UnnormalizedProjection(b_data)) => {
+            let projection_ty = relation.relate(a_data, b_data)?;
+            Ok(tcx.mk_ty(ty::UnnormalizedProjection(projection_ty)))
+        }
+
+        // these two are already handled downstream in case of lazy normalization
+        (ty::Projection(a_data), ty::Projection(b_data)) => {
             let projection_ty = relation.relate(a_data, b_data)?;
             Ok(tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs))
         }

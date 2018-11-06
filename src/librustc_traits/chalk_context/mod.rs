@@ -9,13 +9,14 @@
 // except according to those terms.
 
 mod program_clauses;
+mod unify;
 
-use chalk_engine::fallible::Fallible as ChalkEngineFallible;
+use chalk_engine::fallible::{Fallible, NoSolution};
 use chalk_engine::{context, hh::HhGoal, DelayedLiteral, Literal, ExClause};
 use rustc::infer::canonical::{
-    Canonical, CanonicalVarValues, OriginalQueryValues, QueryRegionConstraint, QueryResponse,
+    Canonical, CanonicalVarValues, OriginalQueryValues, QueryResponse,
 };
-use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
+use rustc::infer::{InferCtxt, LateBoundRegionConversionTime};
 use rustc::traits::{
     DomainGoal,
     ExClauseFold,
@@ -30,11 +31,12 @@ use rustc::traits::{
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::subst::{Kind, UnpackedKind};
 use rustc::ty::{self, TyCtxt};
+use syntax_pos::DUMMY_SP;
 
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
 
-use syntax_pos::DUMMY_SP;
+use self::unify::*;
 
 #[derive(Copy, Clone, Debug)]
 crate struct ChalkArenas<'gcx> {
@@ -55,10 +57,12 @@ crate struct ChalkInferenceContext<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
 #[derive(Copy, Clone, Debug)]
 crate struct UniverseMap;
 
+crate type RegionConstraint<'tcx> = ty::OutlivesPredicate<Kind<'tcx>, ty::Region<'tcx>>;
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 crate struct ConstrainedSubst<'tcx> {
     subst: CanonicalVarValues<'tcx>,
-    constraints: Vec<QueryRegionConstraint<'tcx>>,
+    constraints: Vec<RegionConstraint<'tcx>>,
 }
 
 BraceStructTypeFoldableImpl! {
@@ -86,7 +90,7 @@ impl context::Context for ChalkArenas<'tcx> {
 
     type GoalInEnvironment = InEnvironment<'tcx, Goal<'tcx>>;
 
-    type RegionConstraint = QueryRegionConstraint<'tcx>;
+    type RegionConstraint = RegionConstraint<'tcx>;
 
     type Substitution = CanonicalVarValues<'tcx>;
 
@@ -104,7 +108,7 @@ impl context::Context for ChalkArenas<'tcx> {
 
     type ProgramClauses = Vec<Clause<'tcx>>;
 
-    type UnificationResult = InferOk<'tcx, ()>;
+    type UnificationResult = UnificationResult<'tcx>;
 
     fn goal_in_environment(
         env: &Environment<'tcx>,
@@ -291,7 +295,7 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         _goal: &DomainGoal<'tcx>,
         _subst: &CanonicalVarValues<'tcx>,
         _clause: &Clause<'tcx>,
-    ) -> chalk_engine::fallible::Fallible<Canonical<'gcx, ChalkExClause<'gcx>>> {
+    ) -> Fallible<Canonical<'gcx, ChalkExClause<'gcx>>> {
         panic!()
     }
 
@@ -301,7 +305,7 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         _selected_goal: &InEnvironment<'tcx, Goal<'tcx>>,
         _answer_table_goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
         _canonical_answer_subst: &Canonical<'gcx, ConstrainedSubst<'gcx>>,
-    ) -> chalk_engine::fallible::Fallible<ChalkExClause<'tcx>> {
+    ) -> Fallible<ChalkExClause<'tcx>> {
         panic!()
     }
 }
@@ -376,7 +380,7 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     fn canonicalize_constrained_subst(
         &mut self,
         subst: CanonicalVarValues<'tcx>,
-        constraints: Vec<QueryRegionConstraint<'tcx>>,
+        constraints: Vec<RegionConstraint<'tcx>>,
     ) -> Canonical<'gcx, ConstrainedSubst<'gcx>> {
         self.infcx.canonicalize_response(&ConstrainedSubst { subst, constraints })
     }
@@ -400,11 +404,13 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
 
     fn unify_parameters(
         &mut self,
-        _environment: &Environment<'tcx>,
-        _a: &Kind<'tcx>,
-        _b: &Kind<'tcx>,
-    ) -> ChalkEngineFallible<InferOk<'tcx, ()>> {
-        panic!()
+        environment: &Environment<'tcx>,
+        a: &Kind<'tcx>,
+        b: &Kind<'tcx>,
+    ) -> Fallible<UnificationResult<'tcx>> {
+        self.infcx.commit_if_ok(|_| {
+            unify(self.infcx, *environment, a, b).map_err(|_| NoSolution)
+        })
     }
 
     fn sink_answer_subset(
@@ -421,9 +427,20 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         panic!("lift")
     }
 
-    fn into_ex_clause(&mut self, _result: InferOk<'tcx, ()>, _ex_clause: &mut ChalkExClause<'tcx>) {
-        panic!("TBD")
+    fn into_ex_clause(
+        &mut self,
+        result: UnificationResult<'tcx>,
+        ex_clause: &mut ChalkExClause<'tcx>
+    ) {
+        into_ex_clause(result, ex_clause);
     }
+}
+
+crate fn into_ex_clause(result: UnificationResult<'tcx>, ex_clause: &mut ChalkExClause<'tcx>) {
+    ex_clause.subgoals.extend(
+        result.goals.into_iter().map(Literal::Positive)
+    );
+    ex_clause.constraints.extend(result.constraints);
 }
 
 type ChalkHhGoal<'tcx> = HhGoal<ChalkArenas<'tcx>>;
