@@ -879,6 +879,37 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         )
     }
 
+    // Version of copy_file_range(2) that copies the give range to the
+    // same place in the target file. If off is None then use nul to
+    // tell copy_file_range() track the file offset. See the manpage
+    // for details.
+    fn copy_file_chunk(reader: &File, writer: &File, off: Option<i64>, bytes_to_copy: usize) -> io::Result<libc::c_long> {
+        let mut off_val = off.unwrap_or(0);
+        let copy_result = unsafe {
+            let off_ptr = if off.is_some() {
+                &mut off_val as *mut i64
+            } else {
+                ptr::null_mut()
+            };
+            cvt(copy_file_range(reader.as_raw_fd(),
+                                off_ptr,
+                                writer.as_raw_fd(),
+                                off_ptr,
+                                bytes_to_copy,
+                                0)
+            )
+        };
+        if let Err(ref copy_err) = copy_result {
+            match copy_err.raw_os_error() {
+                Some(libc::ENOSYS) | Some(libc::EPERM) => {
+                    HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
+                }
+                _ => {}
+            }
+        }
+        copy_result
+    }
+
     fn is_sparse(fd: &File) -> io::Result<bool> {
         let mut stat: libc::stat = unsafe { mem::uninitialized() };
         cvt(unsafe { libc::fstat(fd.as_raw_fd(), &mut stat) })?;
@@ -903,26 +934,8 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     while written < len {
         let copy_result = if has_copy_file_range {
             let bytes_to_copy = cmp::min(len - written, usize::max_value() as u64) as usize;
-            let copy_result = unsafe {
-                // We actually don't have to adjust the offsets,
-                // because copy_file_range adjusts the file offset automatically
-                cvt(copy_file_range(reader.as_raw_fd(),
-                                    ptr::null_mut(),
-                                    writer.as_raw_fd(),
-                                    ptr::null_mut(),
-                                    bytes_to_copy,
-                                    0)
-                    )
-            };
-            if let Err(ref copy_err) = copy_result {
-                match copy_err.raw_os_error() {
-                    Some(libc::ENOSYS) | Some(libc::EPERM) => {
-                        HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
-                    }
-                    _ => {}
-                }
-            }
-            copy_result
+            copy_file_chunk(&reader, &writer, None, bytes_to_copy)
+
         } else {
             Err(io::Error::from_raw_os_error(libc::ENOSYS))
         };
