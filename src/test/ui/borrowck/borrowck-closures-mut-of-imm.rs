@@ -20,11 +20,12 @@ fn set(x: &mut isize) {
 }
 
 fn a(x: &isize) {
-    let c1 = || set(&mut *x);
+    let mut c1 = || set(&mut *x);
     //~^ ERROR cannot borrow
-    let c2 = || set(&mut *x);
+    let mut c2 = || set(&mut *x);
     //~^ ERROR cannot borrow
     //~| ERROR two closures require unique access to `x` at the same time
+    c2(); c1();
 }
 
 fn main() {

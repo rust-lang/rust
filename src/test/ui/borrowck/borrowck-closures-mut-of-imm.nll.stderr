@@ -1,15 +1,32 @@
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
-  --> $DIR/borrowck-closures-mut-of-imm.rs:23:21
+  --> $DIR/borrowck-closures-mut-of-imm.rs:23:25
    |
-LL |     let c1 = || set(&mut *x);
-   |                     ^^^^^^^ cannot borrow as mutable
+LL |     let mut c1 = || set(&mut *x);
+   |                         ^^^^^^^ cannot borrow as mutable
 
 error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
-  --> $DIR/borrowck-closures-mut-of-imm.rs:25:21
+  --> $DIR/borrowck-closures-mut-of-imm.rs:25:25
    |
-LL |     let c2 = || set(&mut *x);
-   |                     ^^^^^^^ cannot borrow as mutable
+LL |     let mut c2 = || set(&mut *x);
+   |                         ^^^^^^^ cannot borrow as mutable
 
-error: aborting due to 2 previous errors
+error[E0524]: two closures require unique access to `x` at the same time
+  --> $DIR/borrowck-closures-mut-of-imm.rs:25:18
+   |
+LL |     let mut c1 = || set(&mut *x);
+   |                  --           - first borrow occurs due to use of `x` in closure
+   |                  |
+   |                  first closure is constructed here
+LL |     //~^ ERROR cannot borrow
+LL |     let mut c2 = || set(&mut *x);
+   |                  ^^           - second borrow occurs due to use of `x` in closure
+   |                  |
+   |                  second closure is constructed here
+...
+LL |     c2(); c1();
+   |           -- first borrow later used here
 
-For more information about this error, try `rustc --explain E0596`.
+error: aborting due to 3 previous errors
+
+Some errors occurred: E0524, E0596.
+For more information about an error, try `rustc --explain E0524`.

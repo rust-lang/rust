@@ -1,3 +1,13 @@
+error[E0502]: cannot borrow `s` as immutable because it is also borrowed as mutable
+  --> $DIR/borrowck-overloaded-call.rs:69:5
+   |
+LL |     let sp = &mut s;
+   |              ------ mutable borrow occurs here
+LL |     s(3);   //~ ERROR cannot borrow `s` as immutable because it is also borrowed as mutable
+   |     ^ immutable borrow occurs here
+LL |     use_mut(sp);
+   |             -- mutable borrow later used here
+
 error[E0596]: cannot borrow `s` as mutable, as it is not declared as mutable
   --> $DIR/borrowck-overloaded-call.rs:77:5
    |
@@ -17,7 +27,7 @@ LL |     s(" world".to_string());    //~ ERROR use of moved value: `s`
    |
    = note: move occurs because `s` has type `SFnOnce`, which does not implement the `Copy` trait
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
-Some errors occurred: E0382, E0596.
+Some errors occurred: E0382, E0502, E0596.
 For more information about an error, try `rustc --explain E0382`.
