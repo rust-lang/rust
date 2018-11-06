@@ -1,7 +1,7 @@
 cache: cargo
 before_cache:
   - find ./target/debug -type f -maxdepth 1 -delete
-  - rm -f ./target/debug/deps/*ra_*
+  - rm -fr ./target/debug/{deps,.fingerprint}/{*ra_*,*test*}
 
 env:
   - CARGO_INCREMENTAL=0
