@@ -9,6 +9,8 @@
 
 #![cfg_attr(rustfmt, rustfmt_skip)]
 
+use std::hash::{Hash, Hasher};
+
 use crate::{
     ast,
     SyntaxNode, SyntaxNodeRef, AstNode,
@@ -17,11 +19,19 @@ use crate::{
 };
 
 // ArgList
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ArgListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ArgList<'a> = ArgListNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ArgListNode<R1>> for ArgListNode<R2> {
+    fn eq(&self, other: &ArgListNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ArgListNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ArgListNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ArgList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -50,11 +60,19 @@ impl<'a> ArgList<'a> {
 }
 
 // ArrayExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ArrayExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ArrayExpr<'a> = ArrayExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ArrayExprNode<R1>> for ArrayExprNode<R2> {
+    fn eq(&self, other: &ArrayExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ArrayExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ArrayExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ArrayExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -79,11 +97,19 @@ impl<R: TreeRoot<RaTypes>> ArrayExprNode<R> {
 impl<'a> ArrayExpr<'a> {}
 
 // ArrayType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ArrayTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ArrayType<'a> = ArrayTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ArrayTypeNode<R1>> for ArrayTypeNode<R2> {
+    fn eq(&self, other: &ArrayTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ArrayTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ArrayTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ArrayType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -108,11 +134,19 @@ impl<R: TreeRoot<RaTypes>> ArrayTypeNode<R> {
 impl<'a> ArrayType<'a> {}
 
 // Attr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct AttrNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Attr<'a> = AttrNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<AttrNode<R1>> for AttrNode<R2> {
+    fn eq(&self, other: &AttrNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for AttrNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for AttrNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Attr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -141,11 +175,19 @@ impl<'a> Attr<'a> {
 }
 
 // BinExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct BinExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type BinExpr<'a> = BinExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<BinExprNode<R1>> for BinExprNode<R2> {
+    fn eq(&self, other: &BinExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for BinExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for BinExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for BinExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -170,11 +212,19 @@ impl<R: TreeRoot<RaTypes>> BinExprNode<R> {
 impl<'a> BinExpr<'a> {}
 
 // BindPat
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct BindPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type BindPat<'a> = BindPatNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<BindPatNode<R1>> for BindPatNode<R2> {
+    fn eq(&self, other: &BindPatNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for BindPatNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for BindPatNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for BindPat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -200,11 +250,19 @@ impl<'a> ast::NameOwner<'a> for BindPat<'a> {}
 impl<'a> BindPat<'a> {}
 
 // Block
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct BlockNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Block<'a> = BlockNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<BlockNode<R1>> for BlockNode<R2> {
+    fn eq(&self, other: &BlockNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for BlockNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for BlockNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Block<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -237,11 +295,19 @@ impl<'a> Block<'a> {
 }
 
 // BlockExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct BlockExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type BlockExpr<'a> = BlockExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<BlockExprNode<R1>> for BlockExprNode<R2> {
+    fn eq(&self, other: &BlockExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for BlockExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for BlockExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for BlockExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -270,11 +336,19 @@ impl<'a> BlockExpr<'a> {
 }
 
 // BreakExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct BreakExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type BreakExpr<'a> = BreakExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<BreakExprNode<R1>> for BreakExprNode<R2> {
+    fn eq(&self, other: &BreakExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for BreakExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for BreakExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for BreakExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -299,11 +373,19 @@ impl<R: TreeRoot<RaTypes>> BreakExprNode<R> {
 impl<'a> BreakExpr<'a> {}
 
 // CallExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct CallExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type CallExpr<'a> = CallExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<CallExprNode<R1>> for CallExprNode<R2> {
+    fn eq(&self, other: &CallExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for CallExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for CallExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for CallExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -333,11 +415,19 @@ impl<'a> CallExpr<'a> {
 }
 
 // CastExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct CastExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type CastExpr<'a> = CastExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<CastExprNode<R1>> for CastExprNode<R2> {
+    fn eq(&self, other: &CastExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for CastExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for CastExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for CastExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -362,11 +452,19 @@ impl<R: TreeRoot<RaTypes>> CastExprNode<R> {
 impl<'a> CastExpr<'a> {}
 
 // Char
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct CharNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Char<'a> = CharNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<CharNode<R1>> for CharNode<R2> {
+    fn eq(&self, other: &CharNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for CharNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for CharNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Char<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -391,11 +489,19 @@ impl<R: TreeRoot<RaTypes>> CharNode<R> {
 impl<'a> Char<'a> {}
 
 // Comment
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct CommentNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Comment<'a> = CommentNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<CommentNode<R1>> for CommentNode<R2> {
+    fn eq(&self, other: &CommentNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for CommentNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for CommentNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Comment<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -420,11 +526,19 @@ impl<R: TreeRoot<RaTypes>> CommentNode<R> {
 impl<'a> Comment<'a> {}
 
 // Condition
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ConditionNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Condition<'a> = ConditionNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ConditionNode<R1>> for ConditionNode<R2> {
+    fn eq(&self, other: &ConditionNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ConditionNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ConditionNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Condition<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -457,11 +571,19 @@ impl<'a> Condition<'a> {
 }
 
 // ConstDef
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ConstDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ConstDef<'a> = ConstDefNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ConstDefNode<R1>> for ConstDefNode<R2> {
+    fn eq(&self, other: &ConstDefNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ConstDefNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ConstDefNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ConstDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -489,11 +611,19 @@ impl<'a> ast::AttrsOwner<'a> for ConstDef<'a> {}
 impl<'a> ConstDef<'a> {}
 
 // ContinueExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ContinueExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ContinueExpr<'a> = ContinueExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ContinueExprNode<R1>> for ContinueExprNode<R2> {
+    fn eq(&self, other: &ContinueExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ContinueExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ContinueExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ContinueExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -518,11 +648,19 @@ impl<R: TreeRoot<RaTypes>> ContinueExprNode<R> {
 impl<'a> ContinueExpr<'a> {}
 
 // DynTraitType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct DynTraitTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type DynTraitType<'a> = DynTraitTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<DynTraitTypeNode<R1>> for DynTraitTypeNode<R2> {
+    fn eq(&self, other: &DynTraitTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for DynTraitTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for DynTraitTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for DynTraitType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -547,11 +685,19 @@ impl<R: TreeRoot<RaTypes>> DynTraitTypeNode<R> {
 impl<'a> DynTraitType<'a> {}
 
 // EnumDef
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct EnumDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type EnumDef<'a> = EnumDefNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<EnumDefNode<R1>> for EnumDefNode<R2> {
+    fn eq(&self, other: &EnumDefNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for EnumDefNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for EnumDefNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for EnumDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -579,7 +725,7 @@ impl<'a> ast::AttrsOwner<'a> for EnumDef<'a> {}
 impl<'a> EnumDef<'a> {}
 
 // Expr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Expr<'a> {
     TupleExpr(TupleExpr<'a>),
     ArrayExpr(ArrayExpr<'a>),
@@ -694,11 +840,19 @@ impl<'a> AstNode<'a> for Expr<'a> {
 impl<'a> Expr<'a> {}
 
 // ExprStmt
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ExprStmtNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ExprStmt<'a> = ExprStmtNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ExprStmtNode<R1>> for ExprStmtNode<R2> {
+    fn eq(&self, other: &ExprStmtNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ExprStmtNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ExprStmtNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ExprStmt<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -727,11 +881,19 @@ impl<'a> ExprStmt<'a> {
 }
 
 // ExternCrateItem
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ExternCrateItemNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ExternCrateItem<'a> = ExternCrateItemNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ExternCrateItemNode<R1>> for ExternCrateItemNode<R2> {
+    fn eq(&self, other: &ExternCrateItemNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ExternCrateItemNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ExternCrateItemNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ExternCrateItem<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -756,11 +918,19 @@ impl<R: TreeRoot<RaTypes>> ExternCrateItemNode<R> {
 impl<'a> ExternCrateItem<'a> {}
 
 // FieldExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct FieldExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type FieldExpr<'a> = FieldExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<FieldExprNode<R1>> for FieldExprNode<R2> {
+    fn eq(&self, other: &FieldExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for FieldExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for FieldExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for FieldExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -785,11 +955,19 @@ impl<R: TreeRoot<RaTypes>> FieldExprNode<R> {
 impl<'a> FieldExpr<'a> {}
 
 // FieldPatList
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct FieldPatListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type FieldPatList<'a> = FieldPatListNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<FieldPatListNode<R1>> for FieldPatListNode<R2> {
+    fn eq(&self, other: &FieldPatListNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for FieldPatListNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for FieldPatListNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for FieldPatList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -814,11 +992,19 @@ impl<R: TreeRoot<RaTypes>> FieldPatListNode<R> {
 impl<'a> FieldPatList<'a> {}
 
 // FnDef
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct FnDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type FnDef<'a> = FnDefNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<FnDefNode<R1>> for FnDefNode<R2> {
+    fn eq(&self, other: &FnDefNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for FnDefNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for FnDefNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for FnDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -859,11 +1045,19 @@ impl<'a> FnDef<'a> {
 }
 
 // FnPointerType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct FnPointerTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type FnPointerType<'a> = FnPointerTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<FnPointerTypeNode<R1>> for FnPointerTypeNode<R2> {
+    fn eq(&self, other: &FnPointerTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for FnPointerTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for FnPointerTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for FnPointerType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -888,11 +1082,19 @@ impl<R: TreeRoot<RaTypes>> FnPointerTypeNode<R> {
 impl<'a> FnPointerType<'a> {}
 
 // ForExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ForExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ForExpr<'a> = ForExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ForExprNode<R1>> for ForExprNode<R2> {
+    fn eq(&self, other: &ForExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ForExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ForExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ForExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -926,11 +1128,19 @@ impl<'a> ForExpr<'a> {
 }
 
 // ForType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ForTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ForType<'a> = ForTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ForTypeNode<R1>> for ForTypeNode<R2> {
+    fn eq(&self, other: &ForTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ForTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ForTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ForType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -955,11 +1165,19 @@ impl<R: TreeRoot<RaTypes>> ForTypeNode<R> {
 impl<'a> ForType<'a> {}
 
 // IfExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct IfExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type IfExpr<'a> = IfExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<IfExprNode<R1>> for IfExprNode<R2> {
+    fn eq(&self, other: &IfExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for IfExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for IfExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for IfExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -988,11 +1206,19 @@ impl<'a> IfExpr<'a> {
 }
 
 // ImplItem
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ImplItemNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ImplItem<'a> = ImplItemNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ImplItemNode<R1>> for ImplItemNode<R2> {
+    fn eq(&self, other: &ImplItemNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ImplItemNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ImplItemNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ImplItem<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1017,11 +1243,19 @@ impl<R: TreeRoot<RaTypes>> ImplItemNode<R> {
 impl<'a> ImplItem<'a> {}
 
 // ImplTraitType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ImplTraitTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ImplTraitType<'a> = ImplTraitTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ImplTraitTypeNode<R1>> for ImplTraitTypeNode<R2> {
+    fn eq(&self, other: &ImplTraitTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ImplTraitTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ImplTraitTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ImplTraitType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1046,11 +1280,19 @@ impl<R: TreeRoot<RaTypes>> ImplTraitTypeNode<R> {
 impl<'a> ImplTraitType<'a> {}
 
 // IndexExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct IndexExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type IndexExpr<'a> = IndexExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<IndexExprNode<R1>> for IndexExprNode<R2> {
+    fn eq(&self, other: &IndexExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for IndexExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for IndexExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for IndexExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1075,11 +1317,19 @@ impl<R: TreeRoot<RaTypes>> IndexExprNode<R> {
 impl<'a> IndexExpr<'a> {}
 
 // ItemList
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ItemListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ItemList<'a> = ItemListNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ItemListNode<R1>> for ItemListNode<R2> {
+    fn eq(&self, other: &ItemListNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ItemListNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ItemListNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ItemList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1106,11 +1356,19 @@ impl<'a> ast::ModuleItemOwner<'a> for ItemList<'a> {}
 impl<'a> ItemList<'a> {}
 
 // Label
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct LabelNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Label<'a> = LabelNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LabelNode<R1>> for LabelNode<R2> {
+    fn eq(&self, other: &LabelNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for LabelNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for LabelNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Label<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1135,11 +1393,19 @@ impl<R: TreeRoot<RaTypes>> LabelNode<R> {
 impl<'a> Label<'a> {}
 
 // LambdaExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct LambdaExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type LambdaExpr<'a> = LambdaExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LambdaExprNode<R1>> for LambdaExprNode<R2> {
+    fn eq(&self, other: &LambdaExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for LambdaExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for LambdaExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for LambdaExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1172,11 +1438,19 @@ impl<'a> LambdaExpr<'a> {
 }
 
 // LetStmt
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct LetStmtNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type LetStmt<'a> = LetStmtNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LetStmtNode<R1>> for LetStmtNode<R2> {
+    fn eq(&self, other: &LetStmtNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for LetStmtNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for LetStmtNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for LetStmt<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1209,11 +1483,19 @@ impl<'a> LetStmt<'a> {
 }
 
 // Lifetime
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct LifetimeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Lifetime<'a> = LifetimeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LifetimeNode<R1>> for LifetimeNode<R2> {
+    fn eq(&self, other: &LifetimeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for LifetimeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for LifetimeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Lifetime<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1238,11 +1520,19 @@ impl<R: TreeRoot<RaTypes>> LifetimeNode<R> {
 impl<'a> Lifetime<'a> {}
 
 // LifetimeParam
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct LifetimeParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type LifetimeParam<'a> = LifetimeParamNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LifetimeParamNode<R1>> for LifetimeParamNode<R2> {
+    fn eq(&self, other: &LifetimeParamNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for LifetimeParamNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for LifetimeParamNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for LifetimeParam<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1271,11 +1561,19 @@ impl<'a> LifetimeParam<'a> {
 }
 
 // Literal
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct LiteralNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Literal<'a> = LiteralNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LiteralNode<R1>> for LiteralNode<R2> {
+    fn eq(&self, other: &LiteralNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for LiteralNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for LiteralNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Literal<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1300,11 +1598,19 @@ impl<R: TreeRoot<RaTypes>> LiteralNode<R> {
 impl<'a> Literal<'a> {}
 
 // LoopExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct LoopExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type LoopExpr<'a> = LoopExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<LoopExprNode<R1>> for LoopExprNode<R2> {
+    fn eq(&self, other: &LoopExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for LoopExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for LoopExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for LoopExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1330,11 +1636,19 @@ impl<'a> ast::LoopBodyOwner<'a> for LoopExpr<'a> {}
 impl<'a> LoopExpr<'a> {}
 
 // MatchArm
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct MatchArmNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type MatchArm<'a> = MatchArmNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<MatchArmNode<R1>> for MatchArmNode<R2> {
+    fn eq(&self, other: &MatchArmNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for MatchArmNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for MatchArmNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for MatchArm<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1371,11 +1685,19 @@ impl<'a> MatchArm<'a> {
 }
 
 // MatchArmList
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct MatchArmListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type MatchArmList<'a> = MatchArmListNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<MatchArmListNode<R1>> for MatchArmListNode<R2> {
+    fn eq(&self, other: &MatchArmListNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for MatchArmListNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for MatchArmListNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for MatchArmList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1404,11 +1726,19 @@ impl<'a> MatchArmList<'a> {
 }
 
 // MatchExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct MatchExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type MatchExpr<'a> = MatchExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<MatchExprNode<R1>> for MatchExprNode<R2> {
+    fn eq(&self, other: &MatchExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for MatchExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for MatchExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for MatchExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1441,11 +1771,19 @@ impl<'a> MatchExpr<'a> {
 }
 
 // MatchGuard
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct MatchGuardNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type MatchGuard<'a> = MatchGuardNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<MatchGuardNode<R1>> for MatchGuardNode<R2> {
+    fn eq(&self, other: &MatchGuardNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for MatchGuardNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for MatchGuardNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for MatchGuard<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1470,11 +1808,19 @@ impl<R: TreeRoot<RaTypes>> MatchGuardNode<R> {
 impl<'a> MatchGuard<'a> {}
 
 // MethodCallExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct MethodCallExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type MethodCallExpr<'a> = MethodCallExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<MethodCallExprNode<R1>> for MethodCallExprNode<R2> {
+    fn eq(&self, other: &MethodCallExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for MethodCallExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for MethodCallExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for MethodCallExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1504,11 +1850,19 @@ impl<'a> MethodCallExpr<'a> {
 }
 
 // Module
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ModuleNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Module<'a> = ModuleNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ModuleNode<R1>> for ModuleNode<R2> {
+    fn eq(&self, other: &ModuleNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ModuleNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ModuleNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Module<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1539,7 +1893,7 @@ impl<'a> Module<'a> {
 }
 
 // ModuleItem
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModuleItem<'a> {
     StructDef(StructDef<'a>),
     EnumDef(EnumDef<'a>),
@@ -1591,11 +1945,19 @@ impl<'a> AstNode<'a> for ModuleItem<'a> {
 impl<'a> ModuleItem<'a> {}
 
 // Name
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct NameNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Name<'a> = NameNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NameNode<R1>> for NameNode<R2> {
+    fn eq(&self, other: &NameNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for NameNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for NameNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Name<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1620,11 +1982,19 @@ impl<R: TreeRoot<RaTypes>> NameNode<R> {
 impl<'a> Name<'a> {}
 
 // NameRef
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct NameRefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type NameRef<'a> = NameRefNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NameRefNode<R1>> for NameRefNode<R2> {
+    fn eq(&self, other: &NameRefNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for NameRefNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for NameRefNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for NameRef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1649,11 +2019,19 @@ impl<R: TreeRoot<RaTypes>> NameRefNode<R> {
 impl<'a> NameRef<'a> {}
 
 // NamedField
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct NamedFieldNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type NamedField<'a> = NamedFieldNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NamedFieldNode<R1>> for NamedFieldNode<R2> {
+    fn eq(&self, other: &NamedFieldNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for NamedFieldNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for NamedFieldNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for NamedField<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1678,11 +2056,19 @@ impl<R: TreeRoot<RaTypes>> NamedFieldNode<R> {
 impl<'a> NamedField<'a> {}
 
 // NamedFieldDef
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct NamedFieldDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type NamedFieldDef<'a> = NamedFieldDefNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NamedFieldDefNode<R1>> for NamedFieldDefNode<R2> {
+    fn eq(&self, other: &NamedFieldDefNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for NamedFieldDefNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for NamedFieldDefNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for NamedFieldDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1709,11 +2095,19 @@ impl<'a> ast::AttrsOwner<'a> for NamedFieldDef<'a> {}
 impl<'a> NamedFieldDef<'a> {}
 
 // NamedFieldList
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct NamedFieldListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type NamedFieldList<'a> = NamedFieldListNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NamedFieldListNode<R1>> for NamedFieldListNode<R2> {
+    fn eq(&self, other: &NamedFieldListNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for NamedFieldListNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for NamedFieldListNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for NamedFieldList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1738,11 +2132,19 @@ impl<R: TreeRoot<RaTypes>> NamedFieldListNode<R> {
 impl<'a> NamedFieldList<'a> {}
 
 // NeverType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct NeverTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type NeverType<'a> = NeverTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<NeverTypeNode<R1>> for NeverTypeNode<R2> {
+    fn eq(&self, other: &NeverTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for NeverTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for NeverTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for NeverType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1767,7 +2169,7 @@ impl<R: TreeRoot<RaTypes>> NeverTypeNode<R> {
 impl<'a> NeverType<'a> {}
 
 // NominalDef
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NominalDef<'a> {
     StructDef(StructDef<'a>),
     EnumDef(EnumDef<'a>),
@@ -1795,11 +2197,19 @@ impl<'a> ast::AttrsOwner<'a> for NominalDef<'a> {}
 impl<'a> NominalDef<'a> {}
 
 // Param
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Param<'a> = ParamNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ParamNode<R1>> for ParamNode<R2> {
+    fn eq(&self, other: &ParamNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ParamNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ParamNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Param<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1828,11 +2238,19 @@ impl<'a> Param<'a> {
 }
 
 // ParamList
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ParamListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ParamList<'a> = ParamListNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ParamListNode<R1>> for ParamListNode<R2> {
+    fn eq(&self, other: &ParamListNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ParamListNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ParamListNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ParamList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1865,11 +2283,19 @@ impl<'a> ParamList<'a> {
 }
 
 // ParenExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ParenExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ParenExpr<'a> = ParenExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ParenExprNode<R1>> for ParenExprNode<R2> {
+    fn eq(&self, other: &ParenExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ParenExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ParenExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ParenExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1894,11 +2320,19 @@ impl<R: TreeRoot<RaTypes>> ParenExprNode<R> {
 impl<'a> ParenExpr<'a> {}
 
 // ParenType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ParenTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ParenType<'a> = ParenTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ParenTypeNode<R1>> for ParenTypeNode<R2> {
+    fn eq(&self, other: &ParenTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ParenTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ParenTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ParenType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1923,7 +2357,7 @@ impl<R: TreeRoot<RaTypes>> ParenTypeNode<R> {
 impl<'a> ParenType<'a> {}
 
 // Pat
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Pat<'a> {
     RefPat(RefPat<'a>),
     BindPat(BindPat<'a>),
@@ -1972,11 +2406,19 @@ impl<'a> AstNode<'a> for Pat<'a> {
 impl<'a> Pat<'a> {}
 
 // Path
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct PathNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Path<'a> = PathNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PathNode<R1>> for PathNode<R2> {
+    fn eq(&self, other: &PathNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for PathNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for PathNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Path<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2009,11 +2451,19 @@ impl<'a> Path<'a> {
 }
 
 // PathExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct PathExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type PathExpr<'a> = PathExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PathExprNode<R1>> for PathExprNode<R2> {
+    fn eq(&self, other: &PathExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for PathExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for PathExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for PathExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2042,11 +2492,19 @@ impl<'a> PathExpr<'a> {
 }
 
 // PathPat
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct PathPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type PathPat<'a> = PathPatNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PathPatNode<R1>> for PathPatNode<R2> {
+    fn eq(&self, other: &PathPatNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for PathPatNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for PathPatNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for PathPat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2071,11 +2529,19 @@ impl<R: TreeRoot<RaTypes>> PathPatNode<R> {
 impl<'a> PathPat<'a> {}
 
 // PathSegment
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct PathSegmentNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type PathSegment<'a> = PathSegmentNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PathSegmentNode<R1>> for PathSegmentNode<R2> {
+    fn eq(&self, other: &PathSegmentNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for PathSegmentNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for PathSegmentNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for PathSegment<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2104,11 +2570,19 @@ impl<'a> PathSegment<'a> {
 }
 
 // PathType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct PathTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type PathType<'a> = PathTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PathTypeNode<R1>> for PathTypeNode<R2> {
+    fn eq(&self, other: &PathTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for PathTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for PathTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for PathType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2133,11 +2607,19 @@ impl<R: TreeRoot<RaTypes>> PathTypeNode<R> {
 impl<'a> PathType<'a> {}
 
 // PlaceholderPat
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct PlaceholderPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type PlaceholderPat<'a> = PlaceholderPatNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PlaceholderPatNode<R1>> for PlaceholderPatNode<R2> {
+    fn eq(&self, other: &PlaceholderPatNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for PlaceholderPatNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for PlaceholderPatNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for PlaceholderPat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2162,11 +2644,19 @@ impl<R: TreeRoot<RaTypes>> PlaceholderPatNode<R> {
 impl<'a> PlaceholderPat<'a> {}
 
 // PlaceholderType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct PlaceholderTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type PlaceholderType<'a> = PlaceholderTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PlaceholderTypeNode<R1>> for PlaceholderTypeNode<R2> {
+    fn eq(&self, other: &PlaceholderTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for PlaceholderTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for PlaceholderTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for PlaceholderType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2191,11 +2681,19 @@ impl<R: TreeRoot<RaTypes>> PlaceholderTypeNode<R> {
 impl<'a> PlaceholderType<'a> {}
 
 // PointerType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct PointerTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type PointerType<'a> = PointerTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PointerTypeNode<R1>> for PointerTypeNode<R2> {
+    fn eq(&self, other: &PointerTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for PointerTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for PointerTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for PointerType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2220,11 +2718,19 @@ impl<R: TreeRoot<RaTypes>> PointerTypeNode<R> {
 impl<'a> PointerType<'a> {}
 
 // PrefixExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct PrefixExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type PrefixExpr<'a> = PrefixExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<PrefixExprNode<R1>> for PrefixExprNode<R2> {
+    fn eq(&self, other: &PrefixExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for PrefixExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for PrefixExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for PrefixExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2249,11 +2755,19 @@ impl<R: TreeRoot<RaTypes>> PrefixExprNode<R> {
 impl<'a> PrefixExpr<'a> {}
 
 // RangeExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct RangeExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type RangeExpr<'a> = RangeExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<RangeExprNode<R1>> for RangeExprNode<R2> {
+    fn eq(&self, other: &RangeExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for RangeExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for RangeExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for RangeExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2278,11 +2792,19 @@ impl<R: TreeRoot<RaTypes>> RangeExprNode<R> {
 impl<'a> RangeExpr<'a> {}
 
 // RangePat
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct RangePatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type RangePat<'a> = RangePatNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<RangePatNode<R1>> for RangePatNode<R2> {
+    fn eq(&self, other: &RangePatNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for RangePatNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for RangePatNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for RangePat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2307,11 +2829,19 @@ impl<R: TreeRoot<RaTypes>> RangePatNode<R> {
 impl<'a> RangePat<'a> {}
 
 // RefExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct RefExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type RefExpr<'a> = RefExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<RefExprNode<R1>> for RefExprNode<R2> {
+    fn eq(&self, other: &RefExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for RefExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for RefExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for RefExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2336,11 +2866,19 @@ impl<R: TreeRoot<RaTypes>> RefExprNode<R> {
 impl<'a> RefExpr<'a> {}
 
 // RefPat
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct RefPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type RefPat<'a> = RefPatNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<RefPatNode<R1>> for RefPatNode<R2> {
+    fn eq(&self, other: &RefPatNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for RefPatNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for RefPatNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for RefPat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2365,11 +2903,19 @@ impl<R: TreeRoot<RaTypes>> RefPatNode<R> {
 impl<'a> RefPat<'a> {}
 
 // ReferenceType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ReferenceTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ReferenceType<'a> = ReferenceTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ReferenceTypeNode<R1>> for ReferenceTypeNode<R2> {
+    fn eq(&self, other: &ReferenceTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ReferenceTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ReferenceTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ReferenceType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2394,11 +2940,19 @@ impl<R: TreeRoot<RaTypes>> ReferenceTypeNode<R> {
 impl<'a> ReferenceType<'a> {}
 
 // RetType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct RetTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type RetType<'a> = RetTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<RetTypeNode<R1>> for RetTypeNode<R2> {
+    fn eq(&self, other: &RetTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for RetTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for RetTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for RetType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2423,11 +2977,19 @@ impl<R: TreeRoot<RaTypes>> RetTypeNode<R> {
 impl<'a> RetType<'a> {}
 
 // ReturnExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct ReturnExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type ReturnExpr<'a> = ReturnExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ReturnExprNode<R1>> for ReturnExprNode<R2> {
+    fn eq(&self, other: &ReturnExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ReturnExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ReturnExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for ReturnExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2452,11 +3014,19 @@ impl<R: TreeRoot<RaTypes>> ReturnExprNode<R> {
 impl<'a> ReturnExpr<'a> {}
 
 // Root
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct RootNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Root<'a> = RootNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<RootNode<R1>> for RootNode<R2> {
+    fn eq(&self, other: &RootNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for RootNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for RootNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Root<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2487,11 +3057,19 @@ impl<'a> Root<'a> {
 }
 
 // SelfParam
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct SelfParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type SelfParam<'a> = SelfParamNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<SelfParamNode<R1>> for SelfParamNode<R2> {
+    fn eq(&self, other: &SelfParamNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for SelfParamNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for SelfParamNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for SelfParam<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2516,11 +3094,19 @@ impl<R: TreeRoot<RaTypes>> SelfParamNode<R> {
 impl<'a> SelfParam<'a> {}
 
 // SlicePat
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct SlicePatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type SlicePat<'a> = SlicePatNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<SlicePatNode<R1>> for SlicePatNode<R2> {
+    fn eq(&self, other: &SlicePatNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for SlicePatNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for SlicePatNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for SlicePat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2545,11 +3131,19 @@ impl<R: TreeRoot<RaTypes>> SlicePatNode<R> {
 impl<'a> SlicePat<'a> {}
 
 // SliceType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct SliceTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type SliceType<'a> = SliceTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<SliceTypeNode<R1>> for SliceTypeNode<R2> {
+    fn eq(&self, other: &SliceTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for SliceTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for SliceTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for SliceType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2574,11 +3168,19 @@ impl<R: TreeRoot<RaTypes>> SliceTypeNode<R> {
 impl<'a> SliceType<'a> {}
 
 // StaticDef
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct StaticDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type StaticDef<'a> = StaticDefNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<StaticDefNode<R1>> for StaticDefNode<R2> {
+    fn eq(&self, other: &StaticDefNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for StaticDefNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for StaticDefNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for StaticDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2606,7 +3208,7 @@ impl<'a> ast::AttrsOwner<'a> for StaticDef<'a> {}
 impl<'a> StaticDef<'a> {}
 
 // Stmt
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Stmt<'a> {
     ExprStmt(ExprStmt<'a>),
     LetStmt(LetStmt<'a>),
@@ -2631,11 +3233,19 @@ impl<'a> AstNode<'a> for Stmt<'a> {
 impl<'a> Stmt<'a> {}
 
 // StructDef
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct StructDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type StructDef<'a> = StructDefNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<StructDefNode<R1>> for StructDefNode<R2> {
+    fn eq(&self, other: &StructDefNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for StructDefNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for StructDefNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for StructDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2667,11 +3277,19 @@ impl<'a> StructDef<'a> {
 }
 
 // StructLit
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct StructLitNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type StructLit<'a> = StructLitNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<StructLitNode<R1>> for StructLitNode<R2> {
+    fn eq(&self, other: &StructLitNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for StructLitNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for StructLitNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for StructLit<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2696,11 +3314,19 @@ impl<R: TreeRoot<RaTypes>> StructLitNode<R> {
 impl<'a> StructLit<'a> {}
 
 // StructPat
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct StructPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type StructPat<'a> = StructPatNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<StructPatNode<R1>> for StructPatNode<R2> {
+    fn eq(&self, other: &StructPatNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for StructPatNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for StructPatNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for StructPat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2725,11 +3351,19 @@ impl<R: TreeRoot<RaTypes>> StructPatNode<R> {
 impl<'a> StructPat<'a> {}
 
 // TokenTree
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct TokenTreeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type TokenTree<'a> = TokenTreeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TokenTreeNode<R1>> for TokenTreeNode<R2> {
+    fn eq(&self, other: &TokenTreeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for TokenTreeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for TokenTreeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for TokenTree<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2754,11 +3388,19 @@ impl<R: TreeRoot<RaTypes>> TokenTreeNode<R> {
 impl<'a> TokenTree<'a> {}
 
 // TraitDef
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct TraitDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type TraitDef<'a> = TraitDefNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TraitDefNode<R1>> for TraitDefNode<R2> {
+    fn eq(&self, other: &TraitDefNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for TraitDefNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for TraitDefNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for TraitDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2785,11 +3427,19 @@ impl<'a> ast::AttrsOwner<'a> for TraitDef<'a> {}
 impl<'a> TraitDef<'a> {}
 
 // TryExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct TryExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type TryExpr<'a> = TryExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TryExprNode<R1>> for TryExprNode<R2> {
+    fn eq(&self, other: &TryExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for TryExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for TryExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for TryExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2814,11 +3464,19 @@ impl<R: TreeRoot<RaTypes>> TryExprNode<R> {
 impl<'a> TryExpr<'a> {}
 
 // TupleExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct TupleExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type TupleExpr<'a> = TupleExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TupleExprNode<R1>> for TupleExprNode<R2> {
+    fn eq(&self, other: &TupleExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for TupleExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for TupleExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for TupleExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2843,11 +3501,19 @@ impl<R: TreeRoot<RaTypes>> TupleExprNode<R> {
 impl<'a> TupleExpr<'a> {}
 
 // TuplePat
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct TuplePatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type TuplePat<'a> = TuplePatNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TuplePatNode<R1>> for TuplePatNode<R2> {
+    fn eq(&self, other: &TuplePatNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for TuplePatNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for TuplePatNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for TuplePat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2872,11 +3538,19 @@ impl<R: TreeRoot<RaTypes>> TuplePatNode<R> {
 impl<'a> TuplePat<'a> {}
 
 // TupleStructPat
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct TupleStructPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type TupleStructPat<'a> = TupleStructPatNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TupleStructPatNode<R1>> for TupleStructPatNode<R2> {
+    fn eq(&self, other: &TupleStructPatNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for TupleStructPatNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for TupleStructPatNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for TupleStructPat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2901,11 +3575,19 @@ impl<R: TreeRoot<RaTypes>> TupleStructPatNode<R> {
 impl<'a> TupleStructPat<'a> {}
 
 // TupleType
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct TupleTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type TupleType<'a> = TupleTypeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TupleTypeNode<R1>> for TupleTypeNode<R2> {
+    fn eq(&self, other: &TupleTypeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for TupleTypeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for TupleTypeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for TupleType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2930,11 +3612,19 @@ impl<R: TreeRoot<RaTypes>> TupleTypeNode<R> {
 impl<'a> TupleType<'a> {}
 
 // TypeDef
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct TypeDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type TypeDef<'a> = TypeDefNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TypeDefNode<R1>> for TypeDefNode<R2> {
+    fn eq(&self, other: &TypeDefNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for TypeDefNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for TypeDefNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for TypeDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2962,11 +3652,19 @@ impl<'a> ast::AttrsOwner<'a> for TypeDef<'a> {}
 impl<'a> TypeDef<'a> {}
 
 // TypeParam
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct TypeParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type TypeParam<'a> = TypeParamNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TypeParamNode<R1>> for TypeParamNode<R2> {
+    fn eq(&self, other: &TypeParamNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for TypeParamNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for TypeParamNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for TypeParam<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2992,11 +3690,19 @@ impl<'a> ast::NameOwner<'a> for TypeParam<'a> {}
 impl<'a> TypeParam<'a> {}
 
 // TypeParamList
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct TypeParamListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type TypeParamList<'a> = TypeParamListNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<TypeParamListNode<R1>> for TypeParamListNode<R2> {
+    fn eq(&self, other: &TypeParamListNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for TypeParamListNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for TypeParamListNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for TypeParamList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3029,7 +3735,7 @@ impl<'a> TypeParamList<'a> {
 }
 
 // TypeRef
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TypeRef<'a> {
     ParenType(ParenType<'a>),
     TupleType(TupleType<'a>),
@@ -3087,11 +3793,19 @@ impl<'a> AstNode<'a> for TypeRef<'a> {
 impl<'a> TypeRef<'a> {}
 
 // UseItem
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct UseItemNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type UseItem<'a> = UseItemNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<UseItemNode<R1>> for UseItemNode<R2> {
+    fn eq(&self, other: &UseItemNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for UseItemNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for UseItemNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for UseItem<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3120,11 +3834,19 @@ impl<'a> UseItem<'a> {
 }
 
 // UseTree
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct UseTreeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type UseTree<'a> = UseTreeNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<UseTreeNode<R1>> for UseTreeNode<R2> {
+    fn eq(&self, other: &UseTreeNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for UseTreeNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for UseTreeNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for UseTree<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3157,11 +3879,19 @@ impl<'a> UseTree<'a> {
 }
 
 // UseTreeList
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct UseTreeListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type UseTreeList<'a> = UseTreeListNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<UseTreeListNode<R1>> for UseTreeListNode<R2> {
+    fn eq(&self, other: &UseTreeListNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for UseTreeListNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for UseTreeListNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for UseTreeList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3190,11 +3920,19 @@ impl<'a> UseTreeList<'a> {
 }
 
 // WhereClause
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct WhereClauseNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type WhereClause<'a> = WhereClauseNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<WhereClauseNode<R1>> for WhereClauseNode<R2> {
+    fn eq(&self, other: &WhereClauseNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for WhereClauseNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for WhereClauseNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for WhereClause<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3219,11 +3957,19 @@ impl<R: TreeRoot<RaTypes>> WhereClauseNode<R> {
 impl<'a> WhereClause<'a> {}
 
 // WhileExpr
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct WhileExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type WhileExpr<'a> = WhileExprNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<WhileExprNode<R1>> for WhileExprNode<R2> {
+    fn eq(&self, other: &WhileExprNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for WhileExprNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for WhileExprNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for WhileExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3253,11 +3999,19 @@ impl<'a> WhileExpr<'a> {
 }
 
 // Whitespace
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy,)]
 pub struct WhitespaceNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    syntax: SyntaxNode<R>,
+    pub(crate) syntax: SyntaxNode<R>,
 }
 pub type Whitespace<'a> = WhitespaceNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<WhitespaceNode<R1>> for WhitespaceNode<R2> {
+    fn eq(&self, other: &WhitespaceNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for WhitespaceNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for WhitespaceNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
 
 impl<'a> AstNode<'a> for Whitespace<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
