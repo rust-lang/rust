@@ -405,6 +405,7 @@ mod platform {
 
     #[cfg(not(target_feature = "atomics"))]
     mod lock {
+        #[inline]
         pub fn lock() {} // no atomics, no threads, that's easy!
     }
 }
