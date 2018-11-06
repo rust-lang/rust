@@ -33,7 +33,7 @@ pub struct Page<'a> {
 
 pub fn render<T: fmt::Display, S: fmt::Display>(
     dst: &mut dyn io::Write, layout: &Layout, page: &Page, sidebar: &S, t: &T,
-    css_file_extension: bool, themes: &[PathBuf])
+    css_file_extension: bool, themes: &[PathBuf], extra_scripts: &[&str])
     -> io::Result<()>
 {
     write!(dst,
@@ -149,6 +149,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     </script>\
     <script src=\"{root_path}aliases.js\"></script>\
     <script src=\"{root_path}main{suffix}.js\"></script>\
+    {extra_scripts}\
     <script defer src=\"{root_path}search-index.js\"></script>\
 </body>\
 </html>",
@@ -192,6 +193,11 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
                                     page.resource_suffix))
                    .collect::<String>(),
     suffix=page.resource_suffix,
+    extra_scripts=extra_scripts.iter().map(|e| {
+        format!("<script src=\"{root_path}{extra_script}\"></script>",
+                root_path=page.root_path,
+                extra_script=e)
+    }).collect::<String>(),
     )
 }
 

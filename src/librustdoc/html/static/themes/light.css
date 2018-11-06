@@ -410,3 +410,22 @@ kbd {
 .impl-items code {
 	background-color: rgba(0, 0, 0, 0);
 }
+
+#sidebar-toggle {
+	background-color: #F1F1F1;
+}
+#sidebar-toggle:hover {
+	background-color: #E0E0E0;
+}
+#source-sidebar {
+	background-color: #F1F1F1;
+}
+#source-sidebar > .title {
+	border-bottom-color: #ccc;
+}
+div.files > a:hover, div.name:hover {
+	background-color: #E0E0E0;
+}
+div.files > .selected {
+	background-color: #fff;
+}
