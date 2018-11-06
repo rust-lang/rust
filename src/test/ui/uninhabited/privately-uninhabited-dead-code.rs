@@ -1,6 +1,6 @@
 // compile-pass
 
-#![deny(unreachable_code)]
+#![deny(unused_variables)]
 
 mod foo {
     enum Bar {}
@@ -14,6 +14,7 @@ mod foo {
 }
 
 fn main() {
+    let a = 42;
     foo::give_foo();
-    println!("Hello, world!"); // ok: we can't tell that this code is dead
+    println!("Hello, {}", a); // ok: we can't tell that this code is dead
 }
