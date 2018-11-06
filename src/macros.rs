@@ -256,7 +256,19 @@ pub fn rewrite_macro_inner(
             }
             DelimToken::Paren => Some(format!("{}()", macro_name)),
             DelimToken::Bracket => Some(format!("{}[]", macro_name)),
-            DelimToken::Brace => Some(format!("{}{{}}", macro_name)),
+            DelimToken::Brace => {
+                // Preserve at most one space before the braces.
+                let char_after_bang = context
+                    .snippet(mac.span)
+                    .split('!')
+                    .nth(1)
+                    .and_then(|x| x.chars().next());
+                if let Some(' ') = char_after_bang {
+                    Some(format!("{} {{}}", macro_name))
+                } else {
+                    Some(format!("{}{{}}", macro_name))
+                }
+            }
             _ => unreachable!(),
         };
     }

@@ -132,6 +132,9 @@ fn main() {
 
 impl X {
     empty_invoc!{}
+
+    // Don't format empty either!
+    empty_invoc! {}
 }
 
 fn issue_1279() {
