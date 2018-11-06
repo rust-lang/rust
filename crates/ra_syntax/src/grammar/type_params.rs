@@ -135,7 +135,11 @@ fn where_predicate(p: &mut Parser) {
             if p.at(FOR_KW) {
                 types::for_binder(p);
             }
-            types::path_type(p);
+            if paths::is_path_start(p) || p.at(L_ANGLE) {
+                types::path_type_(p, false);
+            } else {
+                p.error("expected a type");
+            }
             if p.at(COLON) {
                 bounds(p);
             } else {
