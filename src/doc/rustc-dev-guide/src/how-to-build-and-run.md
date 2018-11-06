@@ -41,10 +41,6 @@ debuginfo = true
 
 # Gives you line numbers for backtraces.
 debuginfo-lines = true
-
-# Link the compiler against `jemalloc`, where on Linux and OSX it should
-# override the default allocator for rustc and LLVM.
-jemalloc = false
 ```
 
 ### What is x.py?
