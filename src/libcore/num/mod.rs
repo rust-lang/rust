@@ -4771,6 +4771,7 @@ pub struct ParseIntError {
     pub kind: IntErrorKind,
 }
 
+/// Enum to store the various types of errors that can cause parsing an integer to fail.
 #[unstable(feature = "int_error_matching",
            reason = "it can be useful to match errors when making error messages \
                      for integer parsing",
@@ -4778,9 +4779,16 @@ pub struct ParseIntError {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum IntErrorKind {
+    /// Value being parsed is empty.
+    /// Among other causes, this variant will be constructed when parsing an empty string.
     Empty,
+    /// Contains an invalid digit.
+    /// Among other causes, this variant will be constructed when parsing a string that
+    /// contains a letter.
     InvalidDigit,
+    /// Integer is too small to store in target integer type.
     Overflow,
+    /// Integer is too large to store in target integer type.
     Underflow,
 }
 
