@@ -12,6 +12,10 @@ use crate::{
     SyntaxNodeRef,
 };
 
+/// The main trait to go from untyped `SyntaxNode`  to a typed ast. The
+/// conversion itself has zero runtime cost: ast and syntax nodes have exactly
+/// the same representation: a pointer to the tree root and a pointer to the
+/// node itself.
 pub trait AstNode<'a>: Clone + Copy + 'a {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self>
     where
