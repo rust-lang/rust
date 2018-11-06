@@ -1,6 +1,6 @@
 use std::mem;
 
-use rustc::ty;
+use rustc::ty::{self, layout};
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 
 use crate::*;
@@ -124,8 +124,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                     let (unsafe_cell_size, _) = self.size_and_align_of_mplace(place)?
                         // for extern types, just cover what we can
                         .unwrap_or_else(|| place.layout.size_and_align());
-                    // Now handle this `UnsafeCell`.
-                    unsafe_cell_action(place.ptr.get_ptr_offset(self), unsafe_cell_size)
+                    // Now handle this `UnsafeCell`, unless it is empty.
+                    if unsafe_cell_size != Size::ZERO {
+                        unsafe_cell_action(place.ptr.get_ptr_offset(self), unsafe_cell_size)
+                    } else {
+                        Ok(())
+                    }
                 },
             };
             visitor.visit_value(place)?;
@@ -152,8 +156,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         {
             type V = MPlaceTy<'tcx, Borrow>;
 
-            const WANT_FIELDS_SORTED: bool = true; // sorted? yes please!
-
             #[inline(always)]
             fn ecx(&self) -> &MiriEvalContext<'a, 'mir, 'tcx> {
                 &self.ecx
@@ -176,6 +178,31 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 } else {
                     // Proceed further
                     self.walk_value(v)
+                }
+            }
+
+            // Make sure we visit aggregrates in increasing offset order
+            fn visit_aggregate(
+                &mut self,
+                place: MPlaceTy<'tcx, Borrow>,
+                fields: impl Iterator<Item=EvalResult<'tcx, MPlaceTy<'tcx, Borrow>>>,
+            ) -> EvalResult<'tcx> {
+                match place.layout.fields {
+                    layout::FieldPlacement::Array { .. } => {
+                        // For the array layout, we know the iterator will yield sorted elements so
+                        // we can avoid the allocation.
+                        self.walk_aggregate(place, fields)
+                    }
+                    layout::FieldPlacement::Arbitrary { .. } => {
+                        // Gather the subplaces and sort them before visiting.
+                        let mut places = fields.collect::<EvalResult<'tcx, Vec<MPlaceTy<'tcx, Borrow>>>>()?;
+                        places[..].sort_by_key(|place| place.ptr.get_ptr_offset(self.ecx()));
+                        self.walk_aggregate(place, places.into_iter().map(Ok))
+                    }
+                    layout::FieldPlacement::Union { .. } => {
+                        // Uh, what?
+                        bug!("A union is not an aggregate we should ever visit")
+                    }
                 }
             }
 
