@@ -837,7 +837,8 @@ impl Build {
         } else if target != self.config.build &&
                   !target.contains("msvc") &&
                   !target.contains("emscripten") &&
-                  !target.contains("wasm32") {
+                  !target.contains("wasm32") &&
+                  !target.contains("fuchsia") {
             Some(self.cc(target))
         } else {
             None
