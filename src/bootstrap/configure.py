@@ -40,7 +40,7 @@ def v(*args):
     options.append(Option(*args, value=True))
 
 
-o("debug", "rust.debug", "debug mode; disables optimization unless `--enable-optimize` given")
+o("debug", "rust.debug", "enables debugging environment; does not affect optimization of bootstrapped code (use `--disable-optimize` for that)")
 o("docs", "build.docs", "build standard library documentation")
 o("compiler-docs", "build.compiler-docs", "build compiler documentation")
 o("optimize-tests", "rust.optimize-tests", "build tests with optimizations")
