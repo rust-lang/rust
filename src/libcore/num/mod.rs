@@ -330,6 +330,27 @@ $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Returns the number of leading ones in the binary representation of `self`.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "let n = 0b10110011", stringify!($SelfT), ";
+
+assert_eq!(n.leading_ones(), 1);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "leading_ones_trailing_ones", issue = "0")]
+            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[inline]
+            pub const fn leading_ones(self) -> u32 {
+                (!self as $UnsignedT).leading_zeros()
+            }
+        }
+
+        doc_comment! {
             concat!("Returns the number of trailing zeros in the binary representation of `self`.
 
 # Examples
@@ -347,6 +368,27 @@ $EndFeature, "
             #[inline]
             pub const fn trailing_zeros(self) -> u32 {
                 (self as $UnsignedT).trailing_zeros()
+            }
+        }
+
+        doc_comment! {
+            concat!("Returns the number of trailing ones in the binary representation of `self`.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "let n = 0b10110011", stringify!($SelfT), ";
+
+assert_eq!(n.trailing_ones(), 2);",
+$EndFeature, "
+```"),
+            #[unstable(feature = "leading_ones_trailing_ones", issue = "0")]
+            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[inline]
+            pub const fn trailing_ones(self) -> u32 {
+                (!self as $UnsignedT).trailing_zeros()
             }
         }
 
@@ -2261,6 +2303,26 @@ assert_eq!(n.leading_zeros(), 2);", $EndFeature, "
         }
 
         doc_comment! {
+            concat!("Returns the number of leading ones in the binary representation of `self`.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "let n = 0b11001100", stringify!($SelfT), ";
+
+assert_eq!(n.leading_ones(), 2);", $EndFeature, "
+```"),
+            #[unstable(feature = "leading_ones_trailing_ones", issue = "0")]
+            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[inline]
+            pub const fn leading_ones(self) -> u32 {
+                (!self).leading_zeros()
+            }
+        }
+
+        doc_comment! {
             concat!("Returns the number of trailing zeros in the binary representation
 of `self`.
 
@@ -2278,6 +2340,27 @@ assert_eq!(n.trailing_zeros(), 3);", $EndFeature, "
             #[inline]
             pub const fn trailing_zeros(self) -> u32 {
                 unsafe { uint_cttz_call!(self, $BITS) as u32 }
+            }
+        }
+
+        doc_comment! {
+            concat!("Returns the number of trailing ones in the binary representation
+of `self`.
+
+# Examples
+
+Basic usage:
+
+```
+", $Feature, "let n = 0b0101011", stringify!($SelfT), ";
+
+assert_eq!(n.trailing_ones(), 2);", $EndFeature, "
+```"),
+            #[unstable(feature = "leading_ones_trailing_ones", issue = "0")]
+            #[rustc_const_unstable(feature = "const_int_ops")]
+            #[inline]
+            pub const fn trailing_ones(self) -> u32 {
+                (!self).trailing_zeros()
             }
         }
 
