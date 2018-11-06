@@ -1290,11 +1290,12 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             StatementKind::FakeRead(..)
-            | StatementKind::StorageLive(_)
-            | StatementKind::StorageDead(_)
+            | StatementKind::StorageLive(..)
+            | StatementKind::StorageDead(..)
             | StatementKind::InlineAsm { .. }
             | StatementKind::EndRegion(_)
             | StatementKind::Retag { .. }
+            | StatementKind::EscapeToRaw { .. }
             | StatementKind::Nop => {}
         }
     }

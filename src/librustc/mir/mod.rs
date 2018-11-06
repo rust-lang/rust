@@ -1766,6 +1766,13 @@ pub enum StatementKind<'tcx> {
         place: Place<'tcx>,
     },
 
+    /// Escape the given reference to a raw pointer, so that it can be accessed
+    /// without precise provenance tracking. These statements are currently only interpreted
+    /// by miri and only generated when "-Z mir-emit-retag" is passed.
+    /// See <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/>
+    /// for more details.
+    EscapeToRaw(Operand<'tcx>),
+
     /// Mark one terminating point of a region scope (i.e. static region).
     /// (The starting point(s) arise implicitly from borrows.)
     EndRegion(region::Scope),
@@ -1827,6 +1834,7 @@ impl<'tcx> Debug for Statement<'tcx> {
             EndRegion(ref ce) => write!(fmt, "EndRegion({})", ty::ReScope(*ce)),
             Retag { fn_entry, ref place } =>
                 write!(fmt, "Retag({}{:?})", if fn_entry { "[fn entry] " } else { "" }, place),
+            EscapeToRaw(ref place) => write!(fmt, "EscapeToRaw({:?})", place),
             StorageLive(ref place) => write!(fmt, "StorageLive({:?})", place),
             StorageDead(ref place) => write!(fmt, "StorageDead({:?})", place),
             SetDiscriminant {
@@ -2968,6 +2976,7 @@ EnumTypeFoldableImpl! {
         (StatementKind::StorageDead)(a),
         (StatementKind::InlineAsm) { asm, outputs, inputs },
         (StatementKind::Retag) { fn_entry, place },
+        (StatementKind::EscapeToRaw)(place),
         (StatementKind::EndRegion)(a),
         (StatementKind::AscribeUserType)(a, v, b),
         (StatementKind::Nop),

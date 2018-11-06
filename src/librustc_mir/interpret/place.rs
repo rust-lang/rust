@@ -151,6 +151,16 @@ impl<Tag> MemPlace<Tag> {
         // it now must be aligned.
         self.to_scalar_ptr_align().0.to_ptr()
     }
+
+    /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
+    /// This is the inverse of `ref_to_mplace`.
+    #[inline(always)]
+    pub fn to_ref(self) -> Immediate<Tag> {
+        match self.meta {
+            None => Immediate::Scalar(self.ptr.into()),
+            Some(meta) => Immediate::ScalarPair(self.ptr.into(), meta.into()),
+        }
+    }
 }
 
 impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
@@ -266,7 +276,7 @@ where
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
-    /// Alignment is just based on the type.  This is the inverse of `create_ref`.
+    /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
     pub fn ref_to_mplace(
         &self,
         val: ImmTy<'tcx, M::PointerTag>,
@@ -292,24 +302,6 @@ where
         }
         // Done
         Ok(mplace)
-    }
-
-    /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
-    /// This is the inverse of `ref_to_mplace`.
-    /// `mutbl` indicates whether we are create a shared or mutable ref, or a raw pointer (`None`).
-    pub fn create_ref(
-        &mut self,
-        mut place: MPlaceTy<'tcx, M::PointerTag>,
-        mutbl: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, Immediate<M::PointerTag>> {
-        // Pointer tag tracking might want to adjust the tag
-        if M::ENABLE_PTR_TRACKING_HOOKS {
-            place.mplace.ptr = M::tag_reference(self, place, mutbl)?
-        }
-        Ok(match place.meta {
-            None => Immediate::Scalar(place.ptr.into()),
-            Some(meta) => Immediate::ScalarPair(place.ptr.into(), meta.into()),
-        })
     }
 
     /// Offset a pointer to project to a field. Unlike place_field, this is always

@@ -44,28 +44,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
 
             Misc => {
-                let src_layout = src.layout;
                 let src = self.read_immediate(src)?;
 
-                let src = if M::ENABLE_PTR_TRACKING_HOOKS && src_layout.ty.is_region_ptr() {
-                    // The only `Misc` casts on references are those creating raw pointers.
-                    assert!(dest.layout.ty.is_unsafe_ptr());
-                    // For the purpose of the "ptr tag hooks", treat this as creating
-                    // a new, raw reference.
-                    let place = self.ref_to_mplace(src)?;
-                    self.create_ref(place, None)?
-                } else {
-                    *src
-                };
-
-                if self.type_is_fat_ptr(src_layout.ty) {
-                    match (src, self.type_is_fat_ptr(dest.layout.ty)) {
+                if self.type_is_fat_ptr(src.layout.ty) {
+                    match (*src, self.type_is_fat_ptr(dest.layout.ty)) {
                         // pointers to extern types
                         (Immediate::Scalar(_),_) |
                         // slices and trait objects to other slices/trait objects
                         (Immediate::ScalarPair(..), true) => {
                             // No change to immediate
-                            self.write_immediate(src, dest)?;
+                            self.write_immediate(*src, dest)?;
                         }
                         // slices and trait objects to thin pointers (dropping the metadata)
                         (Immediate::ScalarPair(data, _), false) => {
@@ -73,11 +61,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         }
                     }
                 } else {
-                    match src_layout.variants {
+                    match src.layout.variants {
                         layout::Variants::Single { index } => {
-                            if let Some(def) = src_layout.ty.ty_adt_def() {
+                            if let Some(def) = src.layout.ty.ty_adt_def() {
                                 // Cast from a univariant enum
-                                assert!(src_layout.is_zst());
+                                assert!(src.layout.is_zst());
                                 let discr_val = def
                                     .discriminant_for_variant(*self.tcx, index)
                                     .val;
@@ -90,8 +78,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                         layout::Variants::NicheFilling { .. } => {},
                     }
 
-                    let src = src.to_scalar()?;
-                    let dest_val = self.cast_scalar(src, src_layout, dest.layout)?;
+                    let dest_val = self.cast_scalar(src.to_scalar()?, src.layout, dest.layout)?;
                     self.write_scalar(dest_val, dest)?;
                 }
             }

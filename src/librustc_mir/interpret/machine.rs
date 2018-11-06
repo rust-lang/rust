@@ -211,18 +211,6 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         kind: MemoryKind<Self::MemoryKinds>,
     ) -> EvalResult<'tcx, Pointer<Self::PointerTag>>;
 
-    /// Executed when evaluating the `&` operator: Creating a new reference.
-    /// This has the chance to adjust the tag.  It should not change anything else!
-    /// `mutability` can be `None` in case a raw ptr is being created.
-    #[inline]
-    fn tag_reference(
-        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        place: MPlaceTy<'tcx, Self::PointerTag>,
-        _mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, Scalar<Self::PointerTag>> {
-        Ok(place.ptr)
-    }
-
     /// Executed when evaluating the `*` operator: Following a reference.
     /// This has the chance to adjust the tag.  It should not change anything else!
     /// `mutability` can be `None` in case a raw ptr is being dereferenced.
@@ -235,12 +223,21 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         Ok(place.ptr)
     }
 
-    /// Execute a validation operation
+    /// Execute a retagging operation
     #[inline]
     fn retag(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _fn_entry: bool,
         _place: PlaceTy<'tcx, Self::PointerTag>,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
+
+    /// Execute an escape-to-raw operation
+    #[inline]
+    fn escape_to_raw(
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _ptr: OpTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx> {
         Ok(())
     }

@@ -385,6 +385,9 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
+                    StatementKind::EscapeToRaw(ref $($mutability)* op) => {
+                        self.visit_operand(op, location);
+                    }
                     StatementKind::StorageLive(ref $($mutability)* local) => {
                         self.visit_local(
                             local,
@@ -1022,7 +1025,7 @@ pub enum MutatingUseContext<'tcx> {
     ///     f(&mut x.y);
     ///
     Projection,
-    /// Retagging (updating the "Stacked Borrows" tag)
+    /// Retagging, a "Stacked Borrows" shadow state operation
     Retag,
 }
 
