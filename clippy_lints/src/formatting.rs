@@ -174,9 +174,8 @@ fn check_else_if(cx: &EarlyContext<'_>, expr: &ast::Expr) {
 }
 
 fn has_unary_equivalent(bin_op: ast::BinOpKind) -> bool {
-    //+, &, *, -
-    bin_op == ast::BinOpKind::Add
-    || bin_op == ast::BinOpKind::And
+    // &, *, -
+    bin_op == ast::BinOpKind::And
     || bin_op == ast::BinOpKind::Mul
     || bin_op == ast::BinOpKind::Sub
 }
