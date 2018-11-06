@@ -27,7 +27,7 @@ use middle::stability::{self, DeprecationEntry};
 use middle::lib_features::LibFeatures;
 use middle::lang_items::{LanguageItems, LangItem};
 use middle::exported_symbols::{SymbolExportLevel, ExportedSymbol};
-use mir::interpret::ConstEvalResult;
+use mir::interpret::{ConstEvalRawResult, ConstEvalResult};
 use mir::mono::CodegenUnit;
 use mir;
 use mir::interpret::GlobalId;
@@ -309,7 +309,7 @@ define_queries! { <'tcx>
         /// validation. Please add a comment to every use site explaining why using `const_eval`
         /// isn't sufficient
         [] fn const_eval_raw: const_eval_raw_dep_node(ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>)
-            -> ConstEvalResult<'tcx>,
+            -> ConstEvalRawResult<'tcx>,
 
         /// Results of evaluating const items or constants embedded in
         /// other items (such as enum variant explicit discriminants).

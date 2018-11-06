@@ -309,7 +309,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     eval_promoted(this.tcx, cid, this.mir, this.param_env)
                 })?;
                 trace!("evaluated promoted {:?} to {:?}", promoted, res);
-                Some((res, source_info.span))
+                Some((res.into(), source_info.span))
             },
             _ => None,
         }

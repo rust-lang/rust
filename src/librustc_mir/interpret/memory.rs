@@ -28,7 +28,7 @@ use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use syntax::ast::Mutability;
 
 use super::{
-    Pointer, AllocId, Allocation, ConstValue, GlobalId, AllocationExtra, InboundsCheck,
+    Pointer, AllocId, Allocation, GlobalId, AllocationExtra, InboundsCheck,
     EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
     Machine, AllocMap, MayLeak, ScalarMaybeUndef, ErrorHandled,
 };
@@ -374,14 +374,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 ErrorHandled::Reported => EvalErrorKind::ReferencedConstant.into(),
                 ErrorHandled::TooGeneric => EvalErrorKind::TooGeneric.into(),
             }
-        }).map(|const_val| {
-            if let ConstValue::ByRef(_, allocation, _) = const_val.val {
-                // We got tcx memory. Let the machine figure out whether and how to
-                // turn that into memory with the right pointer tag.
-                M::adjust_static_allocation(allocation)
-            } else {
-                bug!("Matching on non-ByRef static")
-            }
+        }).map(|raw_const| {
+            let allocation = tcx.alloc_map.lock().unwrap_memory(raw_const.alloc_id);
+            // We got tcx memory. Let the machine figure out whether and how to
+            // turn that into memory with the right pointer tag.
+            M::adjust_static_allocation(allocation)
         })
     }
 

@@ -536,7 +536,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     }
 
     // Also used e.g. when miri runs into a constant.
-    pub(super) fn const_value_to_op(
+    // FIXME: Can we avoid converting with ConstValue and Const?  We should be using RawConst.
+    fn const_value_to_op(
         &self,
         val: ConstValue<'tcx>,
     ) -> EvalResult<'tcx, Operand<M::PointerTag>> {

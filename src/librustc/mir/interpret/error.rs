@@ -16,7 +16,7 @@ use ty::{self, Ty, layout};
 use ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
 
-use super::{Pointer, InboundsCheck, ScalarMaybeUndef};
+use super::{RawConst, Pointer, InboundsCheck, ScalarMaybeUndef};
 
 use backtrace::Backtrace;
 
@@ -46,6 +46,7 @@ impl ErrorHandled {
     }
 }
 
+pub type ConstEvalRawResult<'tcx> = Result<RawConst<'tcx>, ErrorHandled>;
 pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
