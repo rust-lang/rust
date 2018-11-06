@@ -42,9 +42,9 @@ debuginfo = true
 # Gives you line numbers for backtraces.
 debuginfo-lines = true
 
-# Using the system allocator (instead of jemalloc) means that tools
-# like valgrind and memcache work better.
-use-jemalloc = false
+# Link the compiler against `jemalloc`, where on Linux and OSX it should
+# override the default allocator for rustc and LLVM.
+jemalloc = false
 ```
 
 ### What is x.py?
