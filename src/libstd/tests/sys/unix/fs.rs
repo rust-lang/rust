@@ -1,5 +1,5 @@
 
-use std::fs::{copy, read, OpenOptions};
+use std::fs::{copy, read, File, OpenOptions};
 use std::io::{SeekFrom, Result};
 use std::path::PathBuf;
 extern crate tempfile;
@@ -27,13 +27,13 @@ mod test_linux {
             .open(&file)?;
 
         fd.seek(SeekFrom::Start(head))?;
-        write!(fd, "{}", data);
+        write!(fd, "{}", data).unwrap();
 
         fd.seek(SeekFrom::Start(1024*4096))?;
-        write!(fd, "{}", data);
+        write!(fd, "{}", data).unwrap();
 
         fd.seek(SeekFrom::Start(4096*4096))?;
-        write!(fd, "{}", data);
+        write!(fd, "{}", data).unwrap();
 
         Ok(len as u64)
     }
@@ -64,7 +64,22 @@ mod test_linux {
 
     #[test]
     fn test_tests() {
-        assert!(true);
+        let dir = tempdir().unwrap();
+        let from = dir.path().join("source.txt");
+        let to = dir.path().join("dest.txt");
+        let text = "This is a test file.";
+
+        {
+            let file = File::create(&from).unwrap();
+            write!(&file, "{}", text).unwrap();
+        }
+
+        let written = copy(&from, &to).unwrap();
+        assert_eq!(text.len() as u64, written);
+
+        let from_data = read(&from).unwrap();
+        let to_data = read(&to).unwrap();
+        assert_eq!(from_data, to_data);
     }
 
     #[test]
