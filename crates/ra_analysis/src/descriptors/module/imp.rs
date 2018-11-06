@@ -41,9 +41,9 @@ pub(crate) fn submodules(
     db::check_canceled(db)?;
     let file_id = source.file_id();
     let submodules = match source.resolve(db) {
-        ModuleSourceNode::Root(it) => collect_submodules(file_id, it.ast()),
+        ModuleSourceNode::Root(it) => collect_submodules(file_id, it.borrowed()),
         ModuleSourceNode::Inline(it) => it
-            .ast()
+            .borrowed()
             .item_list()
             .map(|it| collect_submodules(file_id, it))
             .unwrap_or_else(Vec::new),
@@ -89,8 +89,8 @@ pub(crate) fn module_scope(
     let tree = db.module_tree(source_root_id)?;
     let source = module_id.source(&tree).resolve(db);
     let res = match source {
-        ModuleSourceNode::Root(root) => ModuleScope::new(root.ast().items()),
-        ModuleSourceNode::Inline(inline) => match inline.ast().item_list() {
+        ModuleSourceNode::Root(root) => ModuleScope::new(root.borrowed().items()),
+        ModuleSourceNode::Inline(inline) => match inline.borrowed().item_list() {
             Some(items) => ModuleScope::new(items.items()),
             None => ModuleScope::new(std::iter::empty()),
         },

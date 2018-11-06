@@ -236,7 +236,7 @@ impl AnalysisImpl {
                 let link = module_id.parent_link(&module_tree)?;
                 let file_id = link.owner(&module_tree).source(&module_tree).file_id();
                 let decl = link.bind_source(&module_tree, &*self.db);
-                let decl = decl.ast();
+                let decl = decl.borrowed();
 
                 let decl_name = decl.name().unwrap();
 

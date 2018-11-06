@@ -6,30 +6,16 @@
 use crate::{
     ast,
     SyntaxNode, SyntaxNodeRef, AstNode,
+    yellow::{TreeRoot, RaTypes, OwnedRoot, RefRoot},
     SyntaxKind::*,
 };
 
 // ArgList
-
-#[derive(Debug, Clone)]
-pub struct ArgListNode(SyntaxNode);
-
-impl ArgListNode {
-    pub fn ast(&self) -> ArgList {
-        ArgList::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ArgList<'a>> for ArgListNode {
-    fn from(ast: ArgList<'a>) -> ArgListNode {
-        let syntax = ast.syntax().owned();
-        ArgListNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ArgList<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ArgListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ArgList<'a> = ArgListNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ArgList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -41,6 +27,16 @@ impl<'a> AstNode<'a> for ArgList<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ArgListNode<R> {
+    pub fn borrowed(&self) -> ArgList {
+        ArgListNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ArgListNode {
+        ArgListNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ArgList<'a> {
     pub fn args(self) -> impl Iterator<Item = Expr<'a>> + 'a {
         super::children(self)
@@ -48,26 +44,11 @@ impl<'a> ArgList<'a> {
 }
 
 // ArrayExpr
-
-#[derive(Debug, Clone)]
-pub struct ArrayExprNode(SyntaxNode);
-
-impl ArrayExprNode {
-    pub fn ast(&self) -> ArrayExpr {
-        ArrayExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ArrayExpr<'a>> for ArrayExprNode {
-    fn from(ast: ArrayExpr<'a>) -> ArrayExprNode {
-        let syntax = ast.syntax().owned();
-        ArrayExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ArrayExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ArrayExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ArrayExpr<'a> = ArrayExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ArrayExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -79,29 +60,24 @@ impl<'a> AstNode<'a> for ArrayExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ArrayExprNode<R> {
+    pub fn borrowed(&self) -> ArrayExpr {
+        ArrayExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ArrayExprNode {
+        ArrayExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ArrayExpr<'a> {}
 
 // ArrayType
-
-#[derive(Debug, Clone)]
-pub struct ArrayTypeNode(SyntaxNode);
-
-impl ArrayTypeNode {
-    pub fn ast(&self) -> ArrayType {
-        ArrayType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ArrayType<'a>> for ArrayTypeNode {
-    fn from(ast: ArrayType<'a>) -> ArrayTypeNode {
-        let syntax = ast.syntax().owned();
-        ArrayTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ArrayType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ArrayTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ArrayType<'a> = ArrayTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ArrayType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -113,29 +89,24 @@ impl<'a> AstNode<'a> for ArrayType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ArrayTypeNode<R> {
+    pub fn borrowed(&self) -> ArrayType {
+        ArrayTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ArrayTypeNode {
+        ArrayTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ArrayType<'a> {}
 
 // Attr
-
-#[derive(Debug, Clone)]
-pub struct AttrNode(SyntaxNode);
-
-impl AttrNode {
-    pub fn ast(&self) -> Attr {
-        Attr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Attr<'a>> for AttrNode {
-    fn from(ast: Attr<'a>) -> AttrNode {
-        let syntax = ast.syntax().owned();
-        AttrNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Attr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct AttrNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Attr<'a> = AttrNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Attr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -147,6 +118,16 @@ impl<'a> AstNode<'a> for Attr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> AttrNode<R> {
+    pub fn borrowed(&self) -> Attr {
+        AttrNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> AttrNode {
+        AttrNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> Attr<'a> {
     pub fn value(self) -> Option<TokenTree<'a>> {
         super::child_opt(self)
@@ -154,26 +135,11 @@ impl<'a> Attr<'a> {
 }
 
 // BinExpr
-
-#[derive(Debug, Clone)]
-pub struct BinExprNode(SyntaxNode);
-
-impl BinExprNode {
-    pub fn ast(&self) -> BinExpr {
-        BinExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<BinExpr<'a>> for BinExprNode {
-    fn from(ast: BinExpr<'a>) -> BinExprNode {
-        let syntax = ast.syntax().owned();
-        BinExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct BinExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct BinExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type BinExpr<'a> = BinExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for BinExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -185,29 +151,24 @@ impl<'a> AstNode<'a> for BinExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> BinExprNode<R> {
+    pub fn borrowed(&self) -> BinExpr {
+        BinExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> BinExprNode {
+        BinExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> BinExpr<'a> {}
 
 // BindPat
-
-#[derive(Debug, Clone)]
-pub struct BindPatNode(SyntaxNode);
-
-impl BindPatNode {
-    pub fn ast(&self) -> BindPat {
-        BindPat::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<BindPat<'a>> for BindPatNode {
-    fn from(ast: BindPat<'a>) -> BindPatNode {
-        let syntax = ast.syntax().owned();
-        BindPatNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct BindPat<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct BindPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type BindPat<'a> = BindPatNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for BindPat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -219,30 +180,25 @@ impl<'a> AstNode<'a> for BindPat<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> BindPatNode<R> {
+    pub fn borrowed(&self) -> BindPat {
+        BindPatNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> BindPatNode {
+        BindPatNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::NameOwner<'a> for BindPat<'a> {}
 impl<'a> BindPat<'a> {}
 
 // Block
-
-#[derive(Debug, Clone)]
-pub struct BlockNode(SyntaxNode);
-
-impl BlockNode {
-    pub fn ast(&self) -> Block {
-        Block::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Block<'a>> for BlockNode {
-    fn from(ast: Block<'a>) -> BlockNode {
-        let syntax = ast.syntax().owned();
-        BlockNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Block<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct BlockNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Block<'a> = BlockNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Block<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -253,6 +209,16 @@ impl<'a> AstNode<'a> for Block<'a> {
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
+
+impl<R: TreeRoot<RaTypes>> BlockNode<R> {
+    pub fn borrowed(&self) -> Block {
+        BlockNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> BlockNode {
+        BlockNode { syntax: self.syntax.owned() }
+    }
+}
+
 
 impl<'a> Block<'a> {
     pub fn statements(self) -> impl Iterator<Item = Stmt<'a>> + 'a {
@@ -265,26 +231,11 @@ impl<'a> Block<'a> {
 }
 
 // BlockExpr
-
-#[derive(Debug, Clone)]
-pub struct BlockExprNode(SyntaxNode);
-
-impl BlockExprNode {
-    pub fn ast(&self) -> BlockExpr {
-        BlockExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<BlockExpr<'a>> for BlockExprNode {
-    fn from(ast: BlockExpr<'a>) -> BlockExprNode {
-        let syntax = ast.syntax().owned();
-        BlockExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct BlockExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct BlockExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type BlockExpr<'a> = BlockExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for BlockExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -296,6 +247,16 @@ impl<'a> AstNode<'a> for BlockExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> BlockExprNode<R> {
+    pub fn borrowed(&self) -> BlockExpr {
+        BlockExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> BlockExprNode {
+        BlockExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> BlockExpr<'a> {
     pub fn block(self) -> Option<Block<'a>> {
         super::child_opt(self)
@@ -303,26 +264,11 @@ impl<'a> BlockExpr<'a> {
 }
 
 // BreakExpr
-
-#[derive(Debug, Clone)]
-pub struct BreakExprNode(SyntaxNode);
-
-impl BreakExprNode {
-    pub fn ast(&self) -> BreakExpr {
-        BreakExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<BreakExpr<'a>> for BreakExprNode {
-    fn from(ast: BreakExpr<'a>) -> BreakExprNode {
-        let syntax = ast.syntax().owned();
-        BreakExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct BreakExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct BreakExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type BreakExpr<'a> = BreakExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for BreakExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -334,29 +280,24 @@ impl<'a> AstNode<'a> for BreakExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> BreakExprNode<R> {
+    pub fn borrowed(&self) -> BreakExpr {
+        BreakExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> BreakExprNode {
+        BreakExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> BreakExpr<'a> {}
 
 // CallExpr
-
-#[derive(Debug, Clone)]
-pub struct CallExprNode(SyntaxNode);
-
-impl CallExprNode {
-    pub fn ast(&self) -> CallExpr {
-        CallExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<CallExpr<'a>> for CallExprNode {
-    fn from(ast: CallExpr<'a>) -> CallExprNode {
-        let syntax = ast.syntax().owned();
-        CallExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct CallExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct CallExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type CallExpr<'a> = CallExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for CallExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -368,6 +309,16 @@ impl<'a> AstNode<'a> for CallExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> CallExprNode<R> {
+    pub fn borrowed(&self) -> CallExpr {
+        CallExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> CallExprNode {
+        CallExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::ArgListOwner<'a> for CallExpr<'a> {}
 impl<'a> CallExpr<'a> {
     pub fn expr(self) -> Option<Expr<'a>> {
@@ -376,26 +327,11 @@ impl<'a> CallExpr<'a> {
 }
 
 // CastExpr
-
-#[derive(Debug, Clone)]
-pub struct CastExprNode(SyntaxNode);
-
-impl CastExprNode {
-    pub fn ast(&self) -> CastExpr {
-        CastExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<CastExpr<'a>> for CastExprNode {
-    fn from(ast: CastExpr<'a>) -> CastExprNode {
-        let syntax = ast.syntax().owned();
-        CastExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct CastExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct CastExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type CastExpr<'a> = CastExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for CastExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -407,29 +343,24 @@ impl<'a> AstNode<'a> for CastExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> CastExprNode<R> {
+    pub fn borrowed(&self) -> CastExpr {
+        CastExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> CastExprNode {
+        CastExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> CastExpr<'a> {}
 
 // Char
-
-#[derive(Debug, Clone)]
-pub struct CharNode(SyntaxNode);
-
-impl CharNode {
-    pub fn ast(&self) -> Char {
-        Char::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Char<'a>> for CharNode {
-    fn from(ast: Char<'a>) -> CharNode {
-        let syntax = ast.syntax().owned();
-        CharNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Char<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct CharNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Char<'a> = CharNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Char<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -441,29 +372,24 @@ impl<'a> AstNode<'a> for Char<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> CharNode<R> {
+    pub fn borrowed(&self) -> Char {
+        CharNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> CharNode {
+        CharNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> Char<'a> {}
 
 // Comment
-
-#[derive(Debug, Clone)]
-pub struct CommentNode(SyntaxNode);
-
-impl CommentNode {
-    pub fn ast(&self) -> Comment {
-        Comment::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Comment<'a>> for CommentNode {
-    fn from(ast: Comment<'a>) -> CommentNode {
-        let syntax = ast.syntax().owned();
-        CommentNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Comment<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct CommentNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Comment<'a> = CommentNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Comment<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -475,29 +401,24 @@ impl<'a> AstNode<'a> for Comment<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> CommentNode<R> {
+    pub fn borrowed(&self) -> Comment {
+        CommentNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> CommentNode {
+        CommentNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> Comment<'a> {}
 
 // Condition
-
-#[derive(Debug, Clone)]
-pub struct ConditionNode(SyntaxNode);
-
-impl ConditionNode {
-    pub fn ast(&self) -> Condition {
-        Condition::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Condition<'a>> for ConditionNode {
-    fn from(ast: Condition<'a>) -> ConditionNode {
-        let syntax = ast.syntax().owned();
-        ConditionNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Condition<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ConditionNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Condition<'a> = ConditionNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Condition<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -508,6 +429,16 @@ impl<'a> AstNode<'a> for Condition<'a> {
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
+
+impl<R: TreeRoot<RaTypes>> ConditionNode<R> {
+    pub fn borrowed(&self) -> Condition {
+        ConditionNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ConditionNode {
+        ConditionNode { syntax: self.syntax.owned() }
+    }
+}
+
 
 impl<'a> Condition<'a> {
     pub fn pat(self) -> Option<Pat<'a>> {
@@ -520,26 +451,11 @@ impl<'a> Condition<'a> {
 }
 
 // ConstDef
-
-#[derive(Debug, Clone)]
-pub struct ConstDefNode(SyntaxNode);
-
-impl ConstDefNode {
-    pub fn ast(&self) -> ConstDef {
-        ConstDef::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ConstDef<'a>> for ConstDefNode {
-    fn from(ast: ConstDef<'a>) -> ConstDefNode {
-        let syntax = ast.syntax().owned();
-        ConstDefNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ConstDef<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ConstDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ConstDef<'a> = ConstDefNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ConstDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -551,32 +467,27 @@ impl<'a> AstNode<'a> for ConstDef<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ConstDefNode<R> {
+    pub fn borrowed(&self) -> ConstDef {
+        ConstDefNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ConstDefNode {
+        ConstDefNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::NameOwner<'a> for ConstDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for ConstDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for ConstDef<'a> {}
 impl<'a> ConstDef<'a> {}
 
 // ContinueExpr
-
-#[derive(Debug, Clone)]
-pub struct ContinueExprNode(SyntaxNode);
-
-impl ContinueExprNode {
-    pub fn ast(&self) -> ContinueExpr {
-        ContinueExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ContinueExpr<'a>> for ContinueExprNode {
-    fn from(ast: ContinueExpr<'a>) -> ContinueExprNode {
-        let syntax = ast.syntax().owned();
-        ContinueExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ContinueExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ContinueExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ContinueExpr<'a> = ContinueExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ContinueExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -588,29 +499,24 @@ impl<'a> AstNode<'a> for ContinueExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ContinueExprNode<R> {
+    pub fn borrowed(&self) -> ContinueExpr {
+        ContinueExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ContinueExprNode {
+        ContinueExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ContinueExpr<'a> {}
 
 // DynTraitType
-
-#[derive(Debug, Clone)]
-pub struct DynTraitTypeNode(SyntaxNode);
-
-impl DynTraitTypeNode {
-    pub fn ast(&self) -> DynTraitType {
-        DynTraitType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<DynTraitType<'a>> for DynTraitTypeNode {
-    fn from(ast: DynTraitType<'a>) -> DynTraitTypeNode {
-        let syntax = ast.syntax().owned();
-        DynTraitTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct DynTraitType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct DynTraitTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type DynTraitType<'a> = DynTraitTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for DynTraitType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -622,29 +528,24 @@ impl<'a> AstNode<'a> for DynTraitType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> DynTraitTypeNode<R> {
+    pub fn borrowed(&self) -> DynTraitType {
+        DynTraitTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> DynTraitTypeNode {
+        DynTraitTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> DynTraitType<'a> {}
 
 // EnumDef
-
-#[derive(Debug, Clone)]
-pub struct EnumDefNode(SyntaxNode);
-
-impl EnumDefNode {
-    pub fn ast(&self) -> EnumDef {
-        EnumDef::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<EnumDef<'a>> for EnumDefNode {
-    fn from(ast: EnumDef<'a>) -> EnumDefNode {
-        let syntax = ast.syntax().owned();
-        EnumDefNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct EnumDef<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct EnumDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type EnumDef<'a> = EnumDefNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for EnumDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -656,28 +557,22 @@ impl<'a> AstNode<'a> for EnumDef<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> EnumDefNode<R> {
+    pub fn borrowed(&self) -> EnumDef {
+        EnumDefNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> EnumDefNode {
+        EnumDefNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::NameOwner<'a> for EnumDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for EnumDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for EnumDef<'a> {}
 impl<'a> EnumDef<'a> {}
 
 // Expr
-
-#[derive(Debug, Clone)]
-pub struct ExprNode(SyntaxNode);
-
-impl ExprNode {
-    pub fn ast(&self) -> Expr {
-        Expr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Expr<'a>> for ExprNode {
-    fn from(ast: Expr<'a>) -> ExprNode {
-        let syntax = ast.syntax().owned();
-        ExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
 pub enum Expr<'a> {
     TupleExpr(TupleExpr<'a>),
@@ -793,26 +688,11 @@ impl<'a> AstNode<'a> for Expr<'a> {
 impl<'a> Expr<'a> {}
 
 // ExprStmt
-
-#[derive(Debug, Clone)]
-pub struct ExprStmtNode(SyntaxNode);
-
-impl ExprStmtNode {
-    pub fn ast(&self) -> ExprStmt {
-        ExprStmt::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ExprStmt<'a>> for ExprStmtNode {
-    fn from(ast: ExprStmt<'a>) -> ExprStmtNode {
-        let syntax = ast.syntax().owned();
-        ExprStmtNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ExprStmt<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ExprStmtNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ExprStmt<'a> = ExprStmtNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ExprStmt<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -824,6 +704,16 @@ impl<'a> AstNode<'a> for ExprStmt<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ExprStmtNode<R> {
+    pub fn borrowed(&self) -> ExprStmt {
+        ExprStmtNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ExprStmtNode {
+        ExprStmtNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ExprStmt<'a> {
     pub fn expr(self) -> Option<Expr<'a>> {
         super::child_opt(self)
@@ -831,26 +721,11 @@ impl<'a> ExprStmt<'a> {
 }
 
 // ExternCrateItem
-
-#[derive(Debug, Clone)]
-pub struct ExternCrateItemNode(SyntaxNode);
-
-impl ExternCrateItemNode {
-    pub fn ast(&self) -> ExternCrateItem {
-        ExternCrateItem::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ExternCrateItem<'a>> for ExternCrateItemNode {
-    fn from(ast: ExternCrateItem<'a>) -> ExternCrateItemNode {
-        let syntax = ast.syntax().owned();
-        ExternCrateItemNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ExternCrateItem<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ExternCrateItemNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ExternCrateItem<'a> = ExternCrateItemNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ExternCrateItem<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -862,29 +737,24 @@ impl<'a> AstNode<'a> for ExternCrateItem<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ExternCrateItemNode<R> {
+    pub fn borrowed(&self) -> ExternCrateItem {
+        ExternCrateItemNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ExternCrateItemNode {
+        ExternCrateItemNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ExternCrateItem<'a> {}
 
 // FieldExpr
-
-#[derive(Debug, Clone)]
-pub struct FieldExprNode(SyntaxNode);
-
-impl FieldExprNode {
-    pub fn ast(&self) -> FieldExpr {
-        FieldExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<FieldExpr<'a>> for FieldExprNode {
-    fn from(ast: FieldExpr<'a>) -> FieldExprNode {
-        let syntax = ast.syntax().owned();
-        FieldExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct FieldExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct FieldExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type FieldExpr<'a> = FieldExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for FieldExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -896,29 +766,24 @@ impl<'a> AstNode<'a> for FieldExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> FieldExprNode<R> {
+    pub fn borrowed(&self) -> FieldExpr {
+        FieldExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> FieldExprNode {
+        FieldExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> FieldExpr<'a> {}
 
 // FieldPatList
-
-#[derive(Debug, Clone)]
-pub struct FieldPatListNode(SyntaxNode);
-
-impl FieldPatListNode {
-    pub fn ast(&self) -> FieldPatList {
-        FieldPatList::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<FieldPatList<'a>> for FieldPatListNode {
-    fn from(ast: FieldPatList<'a>) -> FieldPatListNode {
-        let syntax = ast.syntax().owned();
-        FieldPatListNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct FieldPatList<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct FieldPatListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type FieldPatList<'a> = FieldPatListNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for FieldPatList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -930,29 +795,24 @@ impl<'a> AstNode<'a> for FieldPatList<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> FieldPatListNode<R> {
+    pub fn borrowed(&self) -> FieldPatList {
+        FieldPatListNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> FieldPatListNode {
+        FieldPatListNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> FieldPatList<'a> {}
 
 // FnDef
-
-#[derive(Debug, Clone)]
-pub struct FnDefNode(SyntaxNode);
-
-impl FnDefNode {
-    pub fn ast(&self) -> FnDef {
-        FnDef::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<FnDef<'a>> for FnDefNode {
-    fn from(ast: FnDef<'a>) -> FnDefNode {
-        let syntax = ast.syntax().owned();
-        FnDefNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct FnDef<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct FnDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type FnDef<'a> = FnDefNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for FnDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -963,6 +823,16 @@ impl<'a> AstNode<'a> for FnDef<'a> {
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
+
+impl<R: TreeRoot<RaTypes>> FnDefNode<R> {
+    pub fn borrowed(&self) -> FnDef {
+        FnDefNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> FnDefNode {
+        FnDefNode { syntax: self.syntax.owned() }
+    }
+}
+
 
 impl<'a> ast::NameOwner<'a> for FnDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for FnDef<'a> {}
@@ -983,26 +853,11 @@ impl<'a> FnDef<'a> {
 }
 
 // FnPointerType
-
-#[derive(Debug, Clone)]
-pub struct FnPointerTypeNode(SyntaxNode);
-
-impl FnPointerTypeNode {
-    pub fn ast(&self) -> FnPointerType {
-        FnPointerType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<FnPointerType<'a>> for FnPointerTypeNode {
-    fn from(ast: FnPointerType<'a>) -> FnPointerTypeNode {
-        let syntax = ast.syntax().owned();
-        FnPointerTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct FnPointerType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct FnPointerTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type FnPointerType<'a> = FnPointerTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for FnPointerType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1014,29 +869,24 @@ impl<'a> AstNode<'a> for FnPointerType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> FnPointerTypeNode<R> {
+    pub fn borrowed(&self) -> FnPointerType {
+        FnPointerTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> FnPointerTypeNode {
+        FnPointerTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> FnPointerType<'a> {}
 
 // ForExpr
-
-#[derive(Debug, Clone)]
-pub struct ForExprNode(SyntaxNode);
-
-impl ForExprNode {
-    pub fn ast(&self) -> ForExpr {
-        ForExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ForExpr<'a>> for ForExprNode {
-    fn from(ast: ForExpr<'a>) -> ForExprNode {
-        let syntax = ast.syntax().owned();
-        ForExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ForExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ForExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ForExpr<'a> = ForExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ForExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1047,6 +897,16 @@ impl<'a> AstNode<'a> for ForExpr<'a> {
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
+
+impl<R: TreeRoot<RaTypes>> ForExprNode<R> {
+    pub fn borrowed(&self) -> ForExpr {
+        ForExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ForExprNode {
+        ForExprNode { syntax: self.syntax.owned() }
+    }
+}
+
 
 impl<'a> ast::LoopBodyOwner<'a> for ForExpr<'a> {}
 impl<'a> ForExpr<'a> {
@@ -1060,26 +920,11 @@ impl<'a> ForExpr<'a> {
 }
 
 // ForType
-
-#[derive(Debug, Clone)]
-pub struct ForTypeNode(SyntaxNode);
-
-impl ForTypeNode {
-    pub fn ast(&self) -> ForType {
-        ForType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ForType<'a>> for ForTypeNode {
-    fn from(ast: ForType<'a>) -> ForTypeNode {
-        let syntax = ast.syntax().owned();
-        ForTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ForType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ForTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ForType<'a> = ForTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ForType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1091,29 +936,24 @@ impl<'a> AstNode<'a> for ForType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ForTypeNode<R> {
+    pub fn borrowed(&self) -> ForType {
+        ForTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ForTypeNode {
+        ForTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ForType<'a> {}
 
 // IfExpr
-
-#[derive(Debug, Clone)]
-pub struct IfExprNode(SyntaxNode);
-
-impl IfExprNode {
-    pub fn ast(&self) -> IfExpr {
-        IfExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<IfExpr<'a>> for IfExprNode {
-    fn from(ast: IfExpr<'a>) -> IfExprNode {
-        let syntax = ast.syntax().owned();
-        IfExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct IfExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct IfExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type IfExpr<'a> = IfExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for IfExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1125,6 +965,16 @@ impl<'a> AstNode<'a> for IfExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> IfExprNode<R> {
+    pub fn borrowed(&self) -> IfExpr {
+        IfExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> IfExprNode {
+        IfExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> IfExpr<'a> {
     pub fn condition(self) -> Option<Condition<'a>> {
         super::child_opt(self)
@@ -1132,26 +982,11 @@ impl<'a> IfExpr<'a> {
 }
 
 // ImplItem
-
-#[derive(Debug, Clone)]
-pub struct ImplItemNode(SyntaxNode);
-
-impl ImplItemNode {
-    pub fn ast(&self) -> ImplItem {
-        ImplItem::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ImplItem<'a>> for ImplItemNode {
-    fn from(ast: ImplItem<'a>) -> ImplItemNode {
-        let syntax = ast.syntax().owned();
-        ImplItemNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ImplItem<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ImplItemNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ImplItem<'a> = ImplItemNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ImplItem<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1163,29 +998,24 @@ impl<'a> AstNode<'a> for ImplItem<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ImplItemNode<R> {
+    pub fn borrowed(&self) -> ImplItem {
+        ImplItemNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ImplItemNode {
+        ImplItemNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ImplItem<'a> {}
 
 // ImplTraitType
-
-#[derive(Debug, Clone)]
-pub struct ImplTraitTypeNode(SyntaxNode);
-
-impl ImplTraitTypeNode {
-    pub fn ast(&self) -> ImplTraitType {
-        ImplTraitType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ImplTraitType<'a>> for ImplTraitTypeNode {
-    fn from(ast: ImplTraitType<'a>) -> ImplTraitTypeNode {
-        let syntax = ast.syntax().owned();
-        ImplTraitTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ImplTraitType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ImplTraitTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ImplTraitType<'a> = ImplTraitTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ImplTraitType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1197,29 +1027,24 @@ impl<'a> AstNode<'a> for ImplTraitType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ImplTraitTypeNode<R> {
+    pub fn borrowed(&self) -> ImplTraitType {
+        ImplTraitTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ImplTraitTypeNode {
+        ImplTraitTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ImplTraitType<'a> {}
 
 // IndexExpr
-
-#[derive(Debug, Clone)]
-pub struct IndexExprNode(SyntaxNode);
-
-impl IndexExprNode {
-    pub fn ast(&self) -> IndexExpr {
-        IndexExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<IndexExpr<'a>> for IndexExprNode {
-    fn from(ast: IndexExpr<'a>) -> IndexExprNode {
-        let syntax = ast.syntax().owned();
-        IndexExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct IndexExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct IndexExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type IndexExpr<'a> = IndexExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for IndexExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1231,29 +1056,24 @@ impl<'a> AstNode<'a> for IndexExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> IndexExprNode<R> {
+    pub fn borrowed(&self) -> IndexExpr {
+        IndexExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> IndexExprNode {
+        IndexExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> IndexExpr<'a> {}
 
 // ItemList
-
-#[derive(Debug, Clone)]
-pub struct ItemListNode(SyntaxNode);
-
-impl ItemListNode {
-    pub fn ast(&self) -> ItemList {
-        ItemList::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ItemList<'a>> for ItemListNode {
-    fn from(ast: ItemList<'a>) -> ItemListNode {
-        let syntax = ast.syntax().owned();
-        ItemListNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ItemList<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ItemListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ItemList<'a> = ItemListNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ItemList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1265,31 +1085,26 @@ impl<'a> AstNode<'a> for ItemList<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ItemListNode<R> {
+    pub fn borrowed(&self) -> ItemList {
+        ItemListNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ItemListNode {
+        ItemListNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::FnDefOwner<'a> for ItemList<'a> {}
 impl<'a> ast::ModuleItemOwner<'a> for ItemList<'a> {}
 impl<'a> ItemList<'a> {}
 
 // Label
-
-#[derive(Debug, Clone)]
-pub struct LabelNode(SyntaxNode);
-
-impl LabelNode {
-    pub fn ast(&self) -> Label {
-        Label::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Label<'a>> for LabelNode {
-    fn from(ast: Label<'a>) -> LabelNode {
-        let syntax = ast.syntax().owned();
-        LabelNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Label<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct LabelNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Label<'a> = LabelNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Label<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1301,29 +1116,24 @@ impl<'a> AstNode<'a> for Label<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> LabelNode<R> {
+    pub fn borrowed(&self) -> Label {
+        LabelNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> LabelNode {
+        LabelNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> Label<'a> {}
 
 // LambdaExpr
-
-#[derive(Debug, Clone)]
-pub struct LambdaExprNode(SyntaxNode);
-
-impl LambdaExprNode {
-    pub fn ast(&self) -> LambdaExpr {
-        LambdaExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<LambdaExpr<'a>> for LambdaExprNode {
-    fn from(ast: LambdaExpr<'a>) -> LambdaExprNode {
-        let syntax = ast.syntax().owned();
-        LambdaExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct LambdaExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct LambdaExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type LambdaExpr<'a> = LambdaExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for LambdaExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1334,6 +1144,16 @@ impl<'a> AstNode<'a> for LambdaExpr<'a> {
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
+
+impl<R: TreeRoot<RaTypes>> LambdaExprNode<R> {
+    pub fn borrowed(&self) -> LambdaExpr {
+        LambdaExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> LambdaExprNode {
+        LambdaExprNode { syntax: self.syntax.owned() }
+    }
+}
+
 
 impl<'a> LambdaExpr<'a> {
     pub fn param_list(self) -> Option<ParamList<'a>> {
@@ -1346,26 +1166,11 @@ impl<'a> LambdaExpr<'a> {
 }
 
 // LetStmt
-
-#[derive(Debug, Clone)]
-pub struct LetStmtNode(SyntaxNode);
-
-impl LetStmtNode {
-    pub fn ast(&self) -> LetStmt {
-        LetStmt::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<LetStmt<'a>> for LetStmtNode {
-    fn from(ast: LetStmt<'a>) -> LetStmtNode {
-        let syntax = ast.syntax().owned();
-        LetStmtNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct LetStmt<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct LetStmtNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type LetStmt<'a> = LetStmtNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for LetStmt<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1376,6 +1181,16 @@ impl<'a> AstNode<'a> for LetStmt<'a> {
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
+
+impl<R: TreeRoot<RaTypes>> LetStmtNode<R> {
+    pub fn borrowed(&self) -> LetStmt {
+        LetStmtNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> LetStmtNode {
+        LetStmtNode { syntax: self.syntax.owned() }
+    }
+}
+
 
 impl<'a> LetStmt<'a> {
     pub fn pat(self) -> Option<Pat<'a>> {
@@ -1388,26 +1203,11 @@ impl<'a> LetStmt<'a> {
 }
 
 // Lifetime
-
-#[derive(Debug, Clone)]
-pub struct LifetimeNode(SyntaxNode);
-
-impl LifetimeNode {
-    pub fn ast(&self) -> Lifetime {
-        Lifetime::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Lifetime<'a>> for LifetimeNode {
-    fn from(ast: Lifetime<'a>) -> LifetimeNode {
-        let syntax = ast.syntax().owned();
-        LifetimeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Lifetime<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct LifetimeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Lifetime<'a> = LifetimeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Lifetime<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1419,29 +1219,24 @@ impl<'a> AstNode<'a> for Lifetime<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> LifetimeNode<R> {
+    pub fn borrowed(&self) -> Lifetime {
+        LifetimeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> LifetimeNode {
+        LifetimeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> Lifetime<'a> {}
 
 // LifetimeParam
-
-#[derive(Debug, Clone)]
-pub struct LifetimeParamNode(SyntaxNode);
-
-impl LifetimeParamNode {
-    pub fn ast(&self) -> LifetimeParam {
-        LifetimeParam::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<LifetimeParam<'a>> for LifetimeParamNode {
-    fn from(ast: LifetimeParam<'a>) -> LifetimeParamNode {
-        let syntax = ast.syntax().owned();
-        LifetimeParamNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct LifetimeParam<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct LifetimeParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type LifetimeParam<'a> = LifetimeParamNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for LifetimeParam<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1453,6 +1248,16 @@ impl<'a> AstNode<'a> for LifetimeParam<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> LifetimeParamNode<R> {
+    pub fn borrowed(&self) -> LifetimeParam {
+        LifetimeParamNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> LifetimeParamNode {
+        LifetimeParamNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> LifetimeParam<'a> {
     pub fn lifetime(self) -> Option<Lifetime<'a>> {
         super::child_opt(self)
@@ -1460,26 +1265,11 @@ impl<'a> LifetimeParam<'a> {
 }
 
 // Literal
-
-#[derive(Debug, Clone)]
-pub struct LiteralNode(SyntaxNode);
-
-impl LiteralNode {
-    pub fn ast(&self) -> Literal {
-        Literal::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Literal<'a>> for LiteralNode {
-    fn from(ast: Literal<'a>) -> LiteralNode {
-        let syntax = ast.syntax().owned();
-        LiteralNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Literal<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct LiteralNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Literal<'a> = LiteralNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Literal<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1491,29 +1281,24 @@ impl<'a> AstNode<'a> for Literal<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> LiteralNode<R> {
+    pub fn borrowed(&self) -> Literal {
+        LiteralNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> LiteralNode {
+        LiteralNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> Literal<'a> {}
 
 // LoopExpr
-
-#[derive(Debug, Clone)]
-pub struct LoopExprNode(SyntaxNode);
-
-impl LoopExprNode {
-    pub fn ast(&self) -> LoopExpr {
-        LoopExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<LoopExpr<'a>> for LoopExprNode {
-    fn from(ast: LoopExpr<'a>) -> LoopExprNode {
-        let syntax = ast.syntax().owned();
-        LoopExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct LoopExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct LoopExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type LoopExpr<'a> = LoopExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for LoopExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1525,30 +1310,25 @@ impl<'a> AstNode<'a> for LoopExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> LoopExprNode<R> {
+    pub fn borrowed(&self) -> LoopExpr {
+        LoopExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> LoopExprNode {
+        LoopExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::LoopBodyOwner<'a> for LoopExpr<'a> {}
 impl<'a> LoopExpr<'a> {}
 
 // MatchArm
-
-#[derive(Debug, Clone)]
-pub struct MatchArmNode(SyntaxNode);
-
-impl MatchArmNode {
-    pub fn ast(&self) -> MatchArm {
-        MatchArm::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<MatchArm<'a>> for MatchArmNode {
-    fn from(ast: MatchArm<'a>) -> MatchArmNode {
-        let syntax = ast.syntax().owned();
-        MatchArmNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct MatchArm<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct MatchArmNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type MatchArm<'a> = MatchArmNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for MatchArm<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1559,6 +1339,16 @@ impl<'a> AstNode<'a> for MatchArm<'a> {
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
+
+impl<R: TreeRoot<RaTypes>> MatchArmNode<R> {
+    pub fn borrowed(&self) -> MatchArm {
+        MatchArmNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> MatchArmNode {
+        MatchArmNode { syntax: self.syntax.owned() }
+    }
+}
+
 
 impl<'a> MatchArm<'a> {
     pub fn pats(self) -> impl Iterator<Item = Pat<'a>> + 'a {
@@ -1575,26 +1365,11 @@ impl<'a> MatchArm<'a> {
 }
 
 // MatchArmList
-
-#[derive(Debug, Clone)]
-pub struct MatchArmListNode(SyntaxNode);
-
-impl MatchArmListNode {
-    pub fn ast(&self) -> MatchArmList {
-        MatchArmList::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<MatchArmList<'a>> for MatchArmListNode {
-    fn from(ast: MatchArmList<'a>) -> MatchArmListNode {
-        let syntax = ast.syntax().owned();
-        MatchArmListNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct MatchArmList<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct MatchArmListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type MatchArmList<'a> = MatchArmListNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for MatchArmList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1606,6 +1381,16 @@ impl<'a> AstNode<'a> for MatchArmList<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> MatchArmListNode<R> {
+    pub fn borrowed(&self) -> MatchArmList {
+        MatchArmListNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> MatchArmListNode {
+        MatchArmListNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> MatchArmList<'a> {
     pub fn arms(self) -> impl Iterator<Item = MatchArm<'a>> + 'a {
         super::children(self)
@@ -1613,26 +1398,11 @@ impl<'a> MatchArmList<'a> {
 }
 
 // MatchExpr
-
-#[derive(Debug, Clone)]
-pub struct MatchExprNode(SyntaxNode);
-
-impl MatchExprNode {
-    pub fn ast(&self) -> MatchExpr {
-        MatchExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<MatchExpr<'a>> for MatchExprNode {
-    fn from(ast: MatchExpr<'a>) -> MatchExprNode {
-        let syntax = ast.syntax().owned();
-        MatchExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct MatchExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct MatchExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type MatchExpr<'a> = MatchExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for MatchExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1643,6 +1413,16 @@ impl<'a> AstNode<'a> for MatchExpr<'a> {
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
+
+impl<R: TreeRoot<RaTypes>> MatchExprNode<R> {
+    pub fn borrowed(&self) -> MatchExpr {
+        MatchExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> MatchExprNode {
+        MatchExprNode { syntax: self.syntax.owned() }
+    }
+}
+
 
 impl<'a> MatchExpr<'a> {
     pub fn expr(self) -> Option<Expr<'a>> {
@@ -1655,26 +1435,11 @@ impl<'a> MatchExpr<'a> {
 }
 
 // MatchGuard
-
-#[derive(Debug, Clone)]
-pub struct MatchGuardNode(SyntaxNode);
-
-impl MatchGuardNode {
-    pub fn ast(&self) -> MatchGuard {
-        MatchGuard::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<MatchGuard<'a>> for MatchGuardNode {
-    fn from(ast: MatchGuard<'a>) -> MatchGuardNode {
-        let syntax = ast.syntax().owned();
-        MatchGuardNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct MatchGuard<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct MatchGuardNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type MatchGuard<'a> = MatchGuardNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for MatchGuard<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1686,29 +1451,24 @@ impl<'a> AstNode<'a> for MatchGuard<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> MatchGuardNode<R> {
+    pub fn borrowed(&self) -> MatchGuard {
+        MatchGuardNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> MatchGuardNode {
+        MatchGuardNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> MatchGuard<'a> {}
 
 // MethodCallExpr
-
-#[derive(Debug, Clone)]
-pub struct MethodCallExprNode(SyntaxNode);
-
-impl MethodCallExprNode {
-    pub fn ast(&self) -> MethodCallExpr {
-        MethodCallExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<MethodCallExpr<'a>> for MethodCallExprNode {
-    fn from(ast: MethodCallExpr<'a>) -> MethodCallExprNode {
-        let syntax = ast.syntax().owned();
-        MethodCallExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct MethodCallExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct MethodCallExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type MethodCallExpr<'a> = MethodCallExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for MethodCallExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1720,6 +1480,16 @@ impl<'a> AstNode<'a> for MethodCallExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> MethodCallExprNode<R> {
+    pub fn borrowed(&self) -> MethodCallExpr {
+        MethodCallExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> MethodCallExprNode {
+        MethodCallExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::ArgListOwner<'a> for MethodCallExpr<'a> {}
 impl<'a> MethodCallExpr<'a> {
     pub fn expr(self) -> Option<Expr<'a>> {
@@ -1728,26 +1498,11 @@ impl<'a> MethodCallExpr<'a> {
 }
 
 // Module
-
-#[derive(Debug, Clone)]
-pub struct ModuleNode(SyntaxNode);
-
-impl ModuleNode {
-    pub fn ast(&self) -> Module {
-        Module::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Module<'a>> for ModuleNode {
-    fn from(ast: Module<'a>) -> ModuleNode {
-        let syntax = ast.syntax().owned();
-        ModuleNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Module<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ModuleNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Module<'a> = ModuleNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Module<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1759,6 +1514,16 @@ impl<'a> AstNode<'a> for Module<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ModuleNode<R> {
+    pub fn borrowed(&self) -> Module {
+        ModuleNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ModuleNode {
+        ModuleNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::NameOwner<'a> for Module<'a> {}
 impl<'a> ast::AttrsOwner<'a> for Module<'a> {}
 impl<'a> Module<'a> {
@@ -1768,22 +1533,6 @@ impl<'a> Module<'a> {
 }
 
 // ModuleItem
-
-#[derive(Debug, Clone)]
-pub struct ModuleItemNode(SyntaxNode);
-
-impl ModuleItemNode {
-    pub fn ast(&self) -> ModuleItem {
-        ModuleItem::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ModuleItem<'a>> for ModuleItemNode {
-    fn from(ast: ModuleItem<'a>) -> ModuleItemNode {
-        let syntax = ast.syntax().owned();
-        ModuleItemNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
 pub enum ModuleItem<'a> {
     StructDef(StructDef<'a>),
@@ -1836,26 +1585,11 @@ impl<'a> AstNode<'a> for ModuleItem<'a> {
 impl<'a> ModuleItem<'a> {}
 
 // Name
-
-#[derive(Debug, Clone)]
-pub struct NameNode(SyntaxNode);
-
-impl NameNode {
-    pub fn ast(&self) -> Name {
-        Name::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Name<'a>> for NameNode {
-    fn from(ast: Name<'a>) -> NameNode {
-        let syntax = ast.syntax().owned();
-        NameNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Name<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct NameNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Name<'a> = NameNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Name<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1867,29 +1601,24 @@ impl<'a> AstNode<'a> for Name<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> NameNode<R> {
+    pub fn borrowed(&self) -> Name {
+        NameNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> NameNode {
+        NameNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> Name<'a> {}
 
 // NameRef
-
-#[derive(Debug, Clone)]
-pub struct NameRefNode(SyntaxNode);
-
-impl NameRefNode {
-    pub fn ast(&self) -> NameRef {
-        NameRef::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<NameRef<'a>> for NameRefNode {
-    fn from(ast: NameRef<'a>) -> NameRefNode {
-        let syntax = ast.syntax().owned();
-        NameRefNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct NameRef<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct NameRefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type NameRef<'a> = NameRefNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for NameRef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1901,29 +1630,24 @@ impl<'a> AstNode<'a> for NameRef<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> NameRefNode<R> {
+    pub fn borrowed(&self) -> NameRef {
+        NameRefNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> NameRefNode {
+        NameRefNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> NameRef<'a> {}
 
 // NamedField
-
-#[derive(Debug, Clone)]
-pub struct NamedFieldNode(SyntaxNode);
-
-impl NamedFieldNode {
-    pub fn ast(&self) -> NamedField {
-        NamedField::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<NamedField<'a>> for NamedFieldNode {
-    fn from(ast: NamedField<'a>) -> NamedFieldNode {
-        let syntax = ast.syntax().owned();
-        NamedFieldNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct NamedField<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct NamedFieldNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type NamedField<'a> = NamedFieldNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for NamedField<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1935,29 +1659,24 @@ impl<'a> AstNode<'a> for NamedField<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> NamedFieldNode<R> {
+    pub fn borrowed(&self) -> NamedField {
+        NamedFieldNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> NamedFieldNode {
+        NamedFieldNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> NamedField<'a> {}
 
 // NamedFieldDef
-
-#[derive(Debug, Clone)]
-pub struct NamedFieldDefNode(SyntaxNode);
-
-impl NamedFieldDefNode {
-    pub fn ast(&self) -> NamedFieldDef {
-        NamedFieldDef::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<NamedFieldDef<'a>> for NamedFieldDefNode {
-    fn from(ast: NamedFieldDef<'a>) -> NamedFieldDefNode {
-        let syntax = ast.syntax().owned();
-        NamedFieldDefNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct NamedFieldDef<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct NamedFieldDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type NamedFieldDef<'a> = NamedFieldDefNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for NamedFieldDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -1969,31 +1688,26 @@ impl<'a> AstNode<'a> for NamedFieldDef<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> NamedFieldDefNode<R> {
+    pub fn borrowed(&self) -> NamedFieldDef {
+        NamedFieldDefNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> NamedFieldDefNode {
+        NamedFieldDefNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::NameOwner<'a> for NamedFieldDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for NamedFieldDef<'a> {}
 impl<'a> NamedFieldDef<'a> {}
 
 // NamedFieldList
-
-#[derive(Debug, Clone)]
-pub struct NamedFieldListNode(SyntaxNode);
-
-impl NamedFieldListNode {
-    pub fn ast(&self) -> NamedFieldList {
-        NamedFieldList::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<NamedFieldList<'a>> for NamedFieldListNode {
-    fn from(ast: NamedFieldList<'a>) -> NamedFieldListNode {
-        let syntax = ast.syntax().owned();
-        NamedFieldListNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct NamedFieldList<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct NamedFieldListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type NamedFieldList<'a> = NamedFieldListNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for NamedFieldList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2005,29 +1719,24 @@ impl<'a> AstNode<'a> for NamedFieldList<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> NamedFieldListNode<R> {
+    pub fn borrowed(&self) -> NamedFieldList {
+        NamedFieldListNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> NamedFieldListNode {
+        NamedFieldListNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> NamedFieldList<'a> {}
 
 // NeverType
-
-#[derive(Debug, Clone)]
-pub struct NeverTypeNode(SyntaxNode);
-
-impl NeverTypeNode {
-    pub fn ast(&self) -> NeverType {
-        NeverType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<NeverType<'a>> for NeverTypeNode {
-    fn from(ast: NeverType<'a>) -> NeverTypeNode {
-        let syntax = ast.syntax().owned();
-        NeverTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct NeverType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct NeverTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type NeverType<'a> = NeverTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for NeverType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2039,25 +1748,19 @@ impl<'a> AstNode<'a> for NeverType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> NeverTypeNode<R> {
+    pub fn borrowed(&self) -> NeverType {
+        NeverTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> NeverTypeNode {
+        NeverTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> NeverType<'a> {}
 
 // NominalDef
-
-#[derive(Debug, Clone)]
-pub struct NominalDefNode(SyntaxNode);
-
-impl NominalDefNode {
-    pub fn ast(&self) -> NominalDef {
-        NominalDef::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<NominalDef<'a>> for NominalDefNode {
-    fn from(ast: NominalDef<'a>) -> NominalDefNode {
-        let syntax = ast.syntax().owned();
-        NominalDefNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
 pub enum NominalDef<'a> {
     StructDef(StructDef<'a>),
@@ -2086,26 +1789,11 @@ impl<'a> ast::AttrsOwner<'a> for NominalDef<'a> {}
 impl<'a> NominalDef<'a> {}
 
 // Param
-
-#[derive(Debug, Clone)]
-pub struct ParamNode(SyntaxNode);
-
-impl ParamNode {
-    pub fn ast(&self) -> Param {
-        Param::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Param<'a>> for ParamNode {
-    fn from(ast: Param<'a>) -> ParamNode {
-        let syntax = ast.syntax().owned();
-        ParamNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Param<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Param<'a> = ParamNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Param<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2117,6 +1805,16 @@ impl<'a> AstNode<'a> for Param<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ParamNode<R> {
+    pub fn borrowed(&self) -> Param {
+        ParamNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ParamNode {
+        ParamNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> Param<'a> {
     pub fn pat(self) -> Option<Pat<'a>> {
         super::child_opt(self)
@@ -2124,26 +1822,11 @@ impl<'a> Param<'a> {
 }
 
 // ParamList
-
-#[derive(Debug, Clone)]
-pub struct ParamListNode(SyntaxNode);
-
-impl ParamListNode {
-    pub fn ast(&self) -> ParamList {
-        ParamList::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ParamList<'a>> for ParamListNode {
-    fn from(ast: ParamList<'a>) -> ParamListNode {
-        let syntax = ast.syntax().owned();
-        ParamListNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ParamList<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ParamListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ParamList<'a> = ParamListNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ParamList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2154,6 +1837,16 @@ impl<'a> AstNode<'a> for ParamList<'a> {
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
+
+impl<R: TreeRoot<RaTypes>> ParamListNode<R> {
+    pub fn borrowed(&self) -> ParamList {
+        ParamListNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ParamListNode {
+        ParamListNode { syntax: self.syntax.owned() }
+    }
+}
+
 
 impl<'a> ParamList<'a> {
     pub fn params(self) -> impl Iterator<Item = Param<'a>> + 'a {
@@ -2166,26 +1859,11 @@ impl<'a> ParamList<'a> {
 }
 
 // ParenExpr
-
-#[derive(Debug, Clone)]
-pub struct ParenExprNode(SyntaxNode);
-
-impl ParenExprNode {
-    pub fn ast(&self) -> ParenExpr {
-        ParenExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ParenExpr<'a>> for ParenExprNode {
-    fn from(ast: ParenExpr<'a>) -> ParenExprNode {
-        let syntax = ast.syntax().owned();
-        ParenExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ParenExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ParenExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ParenExpr<'a> = ParenExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ParenExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2197,29 +1875,24 @@ impl<'a> AstNode<'a> for ParenExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ParenExprNode<R> {
+    pub fn borrowed(&self) -> ParenExpr {
+        ParenExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ParenExprNode {
+        ParenExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ParenExpr<'a> {}
 
 // ParenType
-
-#[derive(Debug, Clone)]
-pub struct ParenTypeNode(SyntaxNode);
-
-impl ParenTypeNode {
-    pub fn ast(&self) -> ParenType {
-        ParenType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ParenType<'a>> for ParenTypeNode {
-    fn from(ast: ParenType<'a>) -> ParenTypeNode {
-        let syntax = ast.syntax().owned();
-        ParenTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ParenType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ParenTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ParenType<'a> = ParenTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ParenType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2231,25 +1904,19 @@ impl<'a> AstNode<'a> for ParenType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ParenTypeNode<R> {
+    pub fn borrowed(&self) -> ParenType {
+        ParenTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ParenTypeNode {
+        ParenTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ParenType<'a> {}
 
 // Pat
-
-#[derive(Debug, Clone)]
-pub struct PatNode(SyntaxNode);
-
-impl PatNode {
-    pub fn ast(&self) -> Pat {
-        Pat::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Pat<'a>> for PatNode {
-    fn from(ast: Pat<'a>) -> PatNode {
-        let syntax = ast.syntax().owned();
-        PatNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
 pub enum Pat<'a> {
     RefPat(RefPat<'a>),
@@ -2299,26 +1966,11 @@ impl<'a> AstNode<'a> for Pat<'a> {
 impl<'a> Pat<'a> {}
 
 // Path
-
-#[derive(Debug, Clone)]
-pub struct PathNode(SyntaxNode);
-
-impl PathNode {
-    pub fn ast(&self) -> Path {
-        Path::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Path<'a>> for PathNode {
-    fn from(ast: Path<'a>) -> PathNode {
-        let syntax = ast.syntax().owned();
-        PathNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Path<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct PathNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Path<'a> = PathNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Path<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2329,6 +1981,16 @@ impl<'a> AstNode<'a> for Path<'a> {
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
+
+impl<R: TreeRoot<RaTypes>> PathNode<R> {
+    pub fn borrowed(&self) -> Path {
+        PathNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> PathNode {
+        PathNode { syntax: self.syntax.owned() }
+    }
+}
+
 
 impl<'a> Path<'a> {
     pub fn segment(self) -> Option<PathSegment<'a>> {
@@ -2341,26 +2003,11 @@ impl<'a> Path<'a> {
 }
 
 // PathExpr
-
-#[derive(Debug, Clone)]
-pub struct PathExprNode(SyntaxNode);
-
-impl PathExprNode {
-    pub fn ast(&self) -> PathExpr {
-        PathExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<PathExpr<'a>> for PathExprNode {
-    fn from(ast: PathExpr<'a>) -> PathExprNode {
-        let syntax = ast.syntax().owned();
-        PathExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct PathExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct PathExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type PathExpr<'a> = PathExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for PathExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2372,6 +2019,16 @@ impl<'a> AstNode<'a> for PathExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> PathExprNode<R> {
+    pub fn borrowed(&self) -> PathExpr {
+        PathExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> PathExprNode {
+        PathExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> PathExpr<'a> {
     pub fn path(self) -> Option<Path<'a>> {
         super::child_opt(self)
@@ -2379,26 +2036,11 @@ impl<'a> PathExpr<'a> {
 }
 
 // PathPat
-
-#[derive(Debug, Clone)]
-pub struct PathPatNode(SyntaxNode);
-
-impl PathPatNode {
-    pub fn ast(&self) -> PathPat {
-        PathPat::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<PathPat<'a>> for PathPatNode {
-    fn from(ast: PathPat<'a>) -> PathPatNode {
-        let syntax = ast.syntax().owned();
-        PathPatNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct PathPat<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct PathPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type PathPat<'a> = PathPatNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for PathPat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2410,29 +2052,24 @@ impl<'a> AstNode<'a> for PathPat<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> PathPatNode<R> {
+    pub fn borrowed(&self) -> PathPat {
+        PathPatNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> PathPatNode {
+        PathPatNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> PathPat<'a> {}
 
 // PathSegment
-
-#[derive(Debug, Clone)]
-pub struct PathSegmentNode(SyntaxNode);
-
-impl PathSegmentNode {
-    pub fn ast(&self) -> PathSegment {
-        PathSegment::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<PathSegment<'a>> for PathSegmentNode {
-    fn from(ast: PathSegment<'a>) -> PathSegmentNode {
-        let syntax = ast.syntax().owned();
-        PathSegmentNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct PathSegment<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct PathSegmentNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type PathSegment<'a> = PathSegmentNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for PathSegment<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2444,6 +2081,16 @@ impl<'a> AstNode<'a> for PathSegment<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> PathSegmentNode<R> {
+    pub fn borrowed(&self) -> PathSegment {
+        PathSegmentNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> PathSegmentNode {
+        PathSegmentNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> PathSegment<'a> {
     pub fn name_ref(self) -> Option<NameRef<'a>> {
         super::child_opt(self)
@@ -2451,26 +2098,11 @@ impl<'a> PathSegment<'a> {
 }
 
 // PathType
-
-#[derive(Debug, Clone)]
-pub struct PathTypeNode(SyntaxNode);
-
-impl PathTypeNode {
-    pub fn ast(&self) -> PathType {
-        PathType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<PathType<'a>> for PathTypeNode {
-    fn from(ast: PathType<'a>) -> PathTypeNode {
-        let syntax = ast.syntax().owned();
-        PathTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct PathType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct PathTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type PathType<'a> = PathTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for PathType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2482,29 +2114,24 @@ impl<'a> AstNode<'a> for PathType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> PathTypeNode<R> {
+    pub fn borrowed(&self) -> PathType {
+        PathTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> PathTypeNode {
+        PathTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> PathType<'a> {}
 
 // PlaceholderPat
-
-#[derive(Debug, Clone)]
-pub struct PlaceholderPatNode(SyntaxNode);
-
-impl PlaceholderPatNode {
-    pub fn ast(&self) -> PlaceholderPat {
-        PlaceholderPat::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<PlaceholderPat<'a>> for PlaceholderPatNode {
-    fn from(ast: PlaceholderPat<'a>) -> PlaceholderPatNode {
-        let syntax = ast.syntax().owned();
-        PlaceholderPatNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct PlaceholderPat<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct PlaceholderPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type PlaceholderPat<'a> = PlaceholderPatNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for PlaceholderPat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2516,29 +2143,24 @@ impl<'a> AstNode<'a> for PlaceholderPat<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> PlaceholderPatNode<R> {
+    pub fn borrowed(&self) -> PlaceholderPat {
+        PlaceholderPatNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> PlaceholderPatNode {
+        PlaceholderPatNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> PlaceholderPat<'a> {}
 
 // PlaceholderType
-
-#[derive(Debug, Clone)]
-pub struct PlaceholderTypeNode(SyntaxNode);
-
-impl PlaceholderTypeNode {
-    pub fn ast(&self) -> PlaceholderType {
-        PlaceholderType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<PlaceholderType<'a>> for PlaceholderTypeNode {
-    fn from(ast: PlaceholderType<'a>) -> PlaceholderTypeNode {
-        let syntax = ast.syntax().owned();
-        PlaceholderTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct PlaceholderType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct PlaceholderTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type PlaceholderType<'a> = PlaceholderTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for PlaceholderType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2550,29 +2172,24 @@ impl<'a> AstNode<'a> for PlaceholderType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> PlaceholderTypeNode<R> {
+    pub fn borrowed(&self) -> PlaceholderType {
+        PlaceholderTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> PlaceholderTypeNode {
+        PlaceholderTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> PlaceholderType<'a> {}
 
 // PointerType
-
-#[derive(Debug, Clone)]
-pub struct PointerTypeNode(SyntaxNode);
-
-impl PointerTypeNode {
-    pub fn ast(&self) -> PointerType {
-        PointerType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<PointerType<'a>> for PointerTypeNode {
-    fn from(ast: PointerType<'a>) -> PointerTypeNode {
-        let syntax = ast.syntax().owned();
-        PointerTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct PointerType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct PointerTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type PointerType<'a> = PointerTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for PointerType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2584,29 +2201,24 @@ impl<'a> AstNode<'a> for PointerType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> PointerTypeNode<R> {
+    pub fn borrowed(&self) -> PointerType {
+        PointerTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> PointerTypeNode {
+        PointerTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> PointerType<'a> {}
 
 // PrefixExpr
-
-#[derive(Debug, Clone)]
-pub struct PrefixExprNode(SyntaxNode);
-
-impl PrefixExprNode {
-    pub fn ast(&self) -> PrefixExpr {
-        PrefixExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<PrefixExpr<'a>> for PrefixExprNode {
-    fn from(ast: PrefixExpr<'a>) -> PrefixExprNode {
-        let syntax = ast.syntax().owned();
-        PrefixExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct PrefixExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct PrefixExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type PrefixExpr<'a> = PrefixExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for PrefixExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2618,29 +2230,24 @@ impl<'a> AstNode<'a> for PrefixExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> PrefixExprNode<R> {
+    pub fn borrowed(&self) -> PrefixExpr {
+        PrefixExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> PrefixExprNode {
+        PrefixExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> PrefixExpr<'a> {}
 
 // RangeExpr
-
-#[derive(Debug, Clone)]
-pub struct RangeExprNode(SyntaxNode);
-
-impl RangeExprNode {
-    pub fn ast(&self) -> RangeExpr {
-        RangeExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<RangeExpr<'a>> for RangeExprNode {
-    fn from(ast: RangeExpr<'a>) -> RangeExprNode {
-        let syntax = ast.syntax().owned();
-        RangeExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct RangeExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct RangeExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type RangeExpr<'a> = RangeExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for RangeExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2652,29 +2259,24 @@ impl<'a> AstNode<'a> for RangeExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> RangeExprNode<R> {
+    pub fn borrowed(&self) -> RangeExpr {
+        RangeExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> RangeExprNode {
+        RangeExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> RangeExpr<'a> {}
 
 // RangePat
-
-#[derive(Debug, Clone)]
-pub struct RangePatNode(SyntaxNode);
-
-impl RangePatNode {
-    pub fn ast(&self) -> RangePat {
-        RangePat::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<RangePat<'a>> for RangePatNode {
-    fn from(ast: RangePat<'a>) -> RangePatNode {
-        let syntax = ast.syntax().owned();
-        RangePatNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct RangePat<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct RangePatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type RangePat<'a> = RangePatNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for RangePat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2686,29 +2288,24 @@ impl<'a> AstNode<'a> for RangePat<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> RangePatNode<R> {
+    pub fn borrowed(&self) -> RangePat {
+        RangePatNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> RangePatNode {
+        RangePatNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> RangePat<'a> {}
 
 // RefExpr
-
-#[derive(Debug, Clone)]
-pub struct RefExprNode(SyntaxNode);
-
-impl RefExprNode {
-    pub fn ast(&self) -> RefExpr {
-        RefExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<RefExpr<'a>> for RefExprNode {
-    fn from(ast: RefExpr<'a>) -> RefExprNode {
-        let syntax = ast.syntax().owned();
-        RefExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct RefExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct RefExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type RefExpr<'a> = RefExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for RefExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2720,29 +2317,24 @@ impl<'a> AstNode<'a> for RefExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> RefExprNode<R> {
+    pub fn borrowed(&self) -> RefExpr {
+        RefExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> RefExprNode {
+        RefExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> RefExpr<'a> {}
 
 // RefPat
-
-#[derive(Debug, Clone)]
-pub struct RefPatNode(SyntaxNode);
-
-impl RefPatNode {
-    pub fn ast(&self) -> RefPat {
-        RefPat::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<RefPat<'a>> for RefPatNode {
-    fn from(ast: RefPat<'a>) -> RefPatNode {
-        let syntax = ast.syntax().owned();
-        RefPatNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct RefPat<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct RefPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type RefPat<'a> = RefPatNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for RefPat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2754,29 +2346,24 @@ impl<'a> AstNode<'a> for RefPat<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> RefPatNode<R> {
+    pub fn borrowed(&self) -> RefPat {
+        RefPatNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> RefPatNode {
+        RefPatNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> RefPat<'a> {}
 
 // ReferenceType
-
-#[derive(Debug, Clone)]
-pub struct ReferenceTypeNode(SyntaxNode);
-
-impl ReferenceTypeNode {
-    pub fn ast(&self) -> ReferenceType {
-        ReferenceType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ReferenceType<'a>> for ReferenceTypeNode {
-    fn from(ast: ReferenceType<'a>) -> ReferenceTypeNode {
-        let syntax = ast.syntax().owned();
-        ReferenceTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ReferenceType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ReferenceTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ReferenceType<'a> = ReferenceTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ReferenceType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2788,29 +2375,24 @@ impl<'a> AstNode<'a> for ReferenceType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ReferenceTypeNode<R> {
+    pub fn borrowed(&self) -> ReferenceType {
+        ReferenceTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ReferenceTypeNode {
+        ReferenceTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ReferenceType<'a> {}
 
 // RetType
-
-#[derive(Debug, Clone)]
-pub struct RetTypeNode(SyntaxNode);
-
-impl RetTypeNode {
-    pub fn ast(&self) -> RetType {
-        RetType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<RetType<'a>> for RetTypeNode {
-    fn from(ast: RetType<'a>) -> RetTypeNode {
-        let syntax = ast.syntax().owned();
-        RetTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct RetType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct RetTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type RetType<'a> = RetTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for RetType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2822,29 +2404,24 @@ impl<'a> AstNode<'a> for RetType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> RetTypeNode<R> {
+    pub fn borrowed(&self) -> RetType {
+        RetTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> RetTypeNode {
+        RetTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> RetType<'a> {}
 
 // ReturnExpr
-
-#[derive(Debug, Clone)]
-pub struct ReturnExprNode(SyntaxNode);
-
-impl ReturnExprNode {
-    pub fn ast(&self) -> ReturnExpr {
-        ReturnExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<ReturnExpr<'a>> for ReturnExprNode {
-    fn from(ast: ReturnExpr<'a>) -> ReturnExprNode {
-        let syntax = ast.syntax().owned();
-        ReturnExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct ReturnExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct ReturnExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type ReturnExpr<'a> = ReturnExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for ReturnExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2856,29 +2433,24 @@ impl<'a> AstNode<'a> for ReturnExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> ReturnExprNode<R> {
+    pub fn borrowed(&self) -> ReturnExpr {
+        ReturnExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ReturnExprNode {
+        ReturnExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ReturnExpr<'a> {}
 
 // Root
-
-#[derive(Debug, Clone)]
-pub struct RootNode(SyntaxNode);
-
-impl RootNode {
-    pub fn ast(&self) -> Root {
-        Root::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Root<'a>> for RootNode {
-    fn from(ast: Root<'a>) -> RootNode {
-        let syntax = ast.syntax().owned();
-        RootNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Root<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct RootNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Root<'a> = RootNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Root<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2890,6 +2462,16 @@ impl<'a> AstNode<'a> for Root<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> RootNode<R> {
+    pub fn borrowed(&self) -> Root {
+        RootNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> RootNode {
+        RootNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::ModuleItemOwner<'a> for Root<'a> {}
 impl<'a> ast::FnDefOwner<'a> for Root<'a> {}
 impl<'a> Root<'a> {
@@ -2899,26 +2481,11 @@ impl<'a> Root<'a> {
 }
 
 // SelfParam
-
-#[derive(Debug, Clone)]
-pub struct SelfParamNode(SyntaxNode);
-
-impl SelfParamNode {
-    pub fn ast(&self) -> SelfParam {
-        SelfParam::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<SelfParam<'a>> for SelfParamNode {
-    fn from(ast: SelfParam<'a>) -> SelfParamNode {
-        let syntax = ast.syntax().owned();
-        SelfParamNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct SelfParam<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct SelfParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type SelfParam<'a> = SelfParamNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for SelfParam<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2930,29 +2497,24 @@ impl<'a> AstNode<'a> for SelfParam<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> SelfParamNode<R> {
+    pub fn borrowed(&self) -> SelfParam {
+        SelfParamNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> SelfParamNode {
+        SelfParamNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> SelfParam<'a> {}
 
 // SlicePat
-
-#[derive(Debug, Clone)]
-pub struct SlicePatNode(SyntaxNode);
-
-impl SlicePatNode {
-    pub fn ast(&self) -> SlicePat {
-        SlicePat::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<SlicePat<'a>> for SlicePatNode {
-    fn from(ast: SlicePat<'a>) -> SlicePatNode {
-        let syntax = ast.syntax().owned();
-        SlicePatNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct SlicePat<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct SlicePatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type SlicePat<'a> = SlicePatNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for SlicePat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2964,29 +2526,24 @@ impl<'a> AstNode<'a> for SlicePat<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> SlicePatNode<R> {
+    pub fn borrowed(&self) -> SlicePat {
+        SlicePatNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> SlicePatNode {
+        SlicePatNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> SlicePat<'a> {}
 
 // SliceType
-
-#[derive(Debug, Clone)]
-pub struct SliceTypeNode(SyntaxNode);
-
-impl SliceTypeNode {
-    pub fn ast(&self) -> SliceType {
-        SliceType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<SliceType<'a>> for SliceTypeNode {
-    fn from(ast: SliceType<'a>) -> SliceTypeNode {
-        let syntax = ast.syntax().owned();
-        SliceTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct SliceType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct SliceTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type SliceType<'a> = SliceTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for SliceType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -2998,29 +2555,24 @@ impl<'a> AstNode<'a> for SliceType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> SliceTypeNode<R> {
+    pub fn borrowed(&self) -> SliceType {
+        SliceTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> SliceTypeNode {
+        SliceTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> SliceType<'a> {}
 
 // StaticDef
-
-#[derive(Debug, Clone)]
-pub struct StaticDefNode(SyntaxNode);
-
-impl StaticDefNode {
-    pub fn ast(&self) -> StaticDef {
-        StaticDef::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<StaticDef<'a>> for StaticDefNode {
-    fn from(ast: StaticDef<'a>) -> StaticDefNode {
-        let syntax = ast.syntax().owned();
-        StaticDefNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct StaticDef<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct StaticDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type StaticDef<'a> = StaticDefNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for StaticDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3032,28 +2584,22 @@ impl<'a> AstNode<'a> for StaticDef<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> StaticDefNode<R> {
+    pub fn borrowed(&self) -> StaticDef {
+        StaticDefNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> StaticDefNode {
+        StaticDefNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::NameOwner<'a> for StaticDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for StaticDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for StaticDef<'a> {}
 impl<'a> StaticDef<'a> {}
 
 // Stmt
-
-#[derive(Debug, Clone)]
-pub struct StmtNode(SyntaxNode);
-
-impl StmtNode {
-    pub fn ast(&self) -> Stmt {
-        Stmt::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Stmt<'a>> for StmtNode {
-    fn from(ast: Stmt<'a>) -> StmtNode {
-        let syntax = ast.syntax().owned();
-        StmtNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
 pub enum Stmt<'a> {
     ExprStmt(ExprStmt<'a>),
@@ -3079,26 +2625,11 @@ impl<'a> AstNode<'a> for Stmt<'a> {
 impl<'a> Stmt<'a> {}
 
 // StructDef
-
-#[derive(Debug, Clone)]
-pub struct StructDefNode(SyntaxNode);
-
-impl StructDefNode {
-    pub fn ast(&self) -> StructDef {
-        StructDef::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<StructDef<'a>> for StructDefNode {
-    fn from(ast: StructDef<'a>) -> StructDefNode {
-        let syntax = ast.syntax().owned();
-        StructDefNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct StructDef<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct StructDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type StructDef<'a> = StructDefNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for StructDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3110,6 +2641,16 @@ impl<'a> AstNode<'a> for StructDef<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> StructDefNode<R> {
+    pub fn borrowed(&self) -> StructDef {
+        StructDefNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> StructDefNode {
+        StructDefNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::NameOwner<'a> for StructDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for StructDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for StructDef<'a> {}
@@ -3120,26 +2661,11 @@ impl<'a> StructDef<'a> {
 }
 
 // StructLit
-
-#[derive(Debug, Clone)]
-pub struct StructLitNode(SyntaxNode);
-
-impl StructLitNode {
-    pub fn ast(&self) -> StructLit {
-        StructLit::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<StructLit<'a>> for StructLitNode {
-    fn from(ast: StructLit<'a>) -> StructLitNode {
-        let syntax = ast.syntax().owned();
-        StructLitNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct StructLit<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct StructLitNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type StructLit<'a> = StructLitNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for StructLit<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3151,29 +2677,24 @@ impl<'a> AstNode<'a> for StructLit<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> StructLitNode<R> {
+    pub fn borrowed(&self) -> StructLit {
+        StructLitNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> StructLitNode {
+        StructLitNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> StructLit<'a> {}
 
 // StructPat
-
-#[derive(Debug, Clone)]
-pub struct StructPatNode(SyntaxNode);
-
-impl StructPatNode {
-    pub fn ast(&self) -> StructPat {
-        StructPat::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<StructPat<'a>> for StructPatNode {
-    fn from(ast: StructPat<'a>) -> StructPatNode {
-        let syntax = ast.syntax().owned();
-        StructPatNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct StructPat<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct StructPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type StructPat<'a> = StructPatNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for StructPat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3185,29 +2706,24 @@ impl<'a> AstNode<'a> for StructPat<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> StructPatNode<R> {
+    pub fn borrowed(&self) -> StructPat {
+        StructPatNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> StructPatNode {
+        StructPatNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> StructPat<'a> {}
 
 // TokenTree
-
-#[derive(Debug, Clone)]
-pub struct TokenTreeNode(SyntaxNode);
-
-impl TokenTreeNode {
-    pub fn ast(&self) -> TokenTree {
-        TokenTree::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<TokenTree<'a>> for TokenTreeNode {
-    fn from(ast: TokenTree<'a>) -> TokenTreeNode {
-        let syntax = ast.syntax().owned();
-        TokenTreeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct TokenTree<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct TokenTreeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type TokenTree<'a> = TokenTreeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for TokenTree<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3219,29 +2735,24 @@ impl<'a> AstNode<'a> for TokenTree<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> TokenTreeNode<R> {
+    pub fn borrowed(&self) -> TokenTree {
+        TokenTreeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> TokenTreeNode {
+        TokenTreeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> TokenTree<'a> {}
 
 // TraitDef
-
-#[derive(Debug, Clone)]
-pub struct TraitDefNode(SyntaxNode);
-
-impl TraitDefNode {
-    pub fn ast(&self) -> TraitDef {
-        TraitDef::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<TraitDef<'a>> for TraitDefNode {
-    fn from(ast: TraitDef<'a>) -> TraitDefNode {
-        let syntax = ast.syntax().owned();
-        TraitDefNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct TraitDef<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct TraitDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type TraitDef<'a> = TraitDefNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for TraitDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3253,31 +2764,26 @@ impl<'a> AstNode<'a> for TraitDef<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> TraitDefNode<R> {
+    pub fn borrowed(&self) -> TraitDef {
+        TraitDefNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> TraitDefNode {
+        TraitDefNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::NameOwner<'a> for TraitDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for TraitDef<'a> {}
 impl<'a> TraitDef<'a> {}
 
 // TryExpr
-
-#[derive(Debug, Clone)]
-pub struct TryExprNode(SyntaxNode);
-
-impl TryExprNode {
-    pub fn ast(&self) -> TryExpr {
-        TryExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<TryExpr<'a>> for TryExprNode {
-    fn from(ast: TryExpr<'a>) -> TryExprNode {
-        let syntax = ast.syntax().owned();
-        TryExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct TryExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct TryExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type TryExpr<'a> = TryExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for TryExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3289,29 +2795,24 @@ impl<'a> AstNode<'a> for TryExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> TryExprNode<R> {
+    pub fn borrowed(&self) -> TryExpr {
+        TryExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> TryExprNode {
+        TryExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> TryExpr<'a> {}
 
 // TupleExpr
-
-#[derive(Debug, Clone)]
-pub struct TupleExprNode(SyntaxNode);
-
-impl TupleExprNode {
-    pub fn ast(&self) -> TupleExpr {
-        TupleExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<TupleExpr<'a>> for TupleExprNode {
-    fn from(ast: TupleExpr<'a>) -> TupleExprNode {
-        let syntax = ast.syntax().owned();
-        TupleExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct TupleExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct TupleExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type TupleExpr<'a> = TupleExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for TupleExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3323,29 +2824,24 @@ impl<'a> AstNode<'a> for TupleExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> TupleExprNode<R> {
+    pub fn borrowed(&self) -> TupleExpr {
+        TupleExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> TupleExprNode {
+        TupleExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> TupleExpr<'a> {}
 
 // TuplePat
-
-#[derive(Debug, Clone)]
-pub struct TuplePatNode(SyntaxNode);
-
-impl TuplePatNode {
-    pub fn ast(&self) -> TuplePat {
-        TuplePat::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<TuplePat<'a>> for TuplePatNode {
-    fn from(ast: TuplePat<'a>) -> TuplePatNode {
-        let syntax = ast.syntax().owned();
-        TuplePatNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct TuplePat<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct TuplePatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type TuplePat<'a> = TuplePatNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for TuplePat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3357,29 +2853,24 @@ impl<'a> AstNode<'a> for TuplePat<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> TuplePatNode<R> {
+    pub fn borrowed(&self) -> TuplePat {
+        TuplePatNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> TuplePatNode {
+        TuplePatNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> TuplePat<'a> {}
 
 // TupleStructPat
-
-#[derive(Debug, Clone)]
-pub struct TupleStructPatNode(SyntaxNode);
-
-impl TupleStructPatNode {
-    pub fn ast(&self) -> TupleStructPat {
-        TupleStructPat::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<TupleStructPat<'a>> for TupleStructPatNode {
-    fn from(ast: TupleStructPat<'a>) -> TupleStructPatNode {
-        let syntax = ast.syntax().owned();
-        TupleStructPatNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct TupleStructPat<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct TupleStructPatNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type TupleStructPat<'a> = TupleStructPatNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for TupleStructPat<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3391,29 +2882,24 @@ impl<'a> AstNode<'a> for TupleStructPat<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> TupleStructPatNode<R> {
+    pub fn borrowed(&self) -> TupleStructPat {
+        TupleStructPatNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> TupleStructPatNode {
+        TupleStructPatNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> TupleStructPat<'a> {}
 
 // TupleType
-
-#[derive(Debug, Clone)]
-pub struct TupleTypeNode(SyntaxNode);
-
-impl TupleTypeNode {
-    pub fn ast(&self) -> TupleType {
-        TupleType::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<TupleType<'a>> for TupleTypeNode {
-    fn from(ast: TupleType<'a>) -> TupleTypeNode {
-        let syntax = ast.syntax().owned();
-        TupleTypeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct TupleType<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct TupleTypeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type TupleType<'a> = TupleTypeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for TupleType<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3425,29 +2911,24 @@ impl<'a> AstNode<'a> for TupleType<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> TupleTypeNode<R> {
+    pub fn borrowed(&self) -> TupleType {
+        TupleTypeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> TupleTypeNode {
+        TupleTypeNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> TupleType<'a> {}
 
 // TypeDef
-
-#[derive(Debug, Clone)]
-pub struct TypeDefNode(SyntaxNode);
-
-impl TypeDefNode {
-    pub fn ast(&self) -> TypeDef {
-        TypeDef::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<TypeDef<'a>> for TypeDefNode {
-    fn from(ast: TypeDef<'a>) -> TypeDefNode {
-        let syntax = ast.syntax().owned();
-        TypeDefNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct TypeDef<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct TypeDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type TypeDef<'a> = TypeDefNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for TypeDef<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3459,32 +2940,27 @@ impl<'a> AstNode<'a> for TypeDef<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> TypeDefNode<R> {
+    pub fn borrowed(&self) -> TypeDef {
+        TypeDefNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> TypeDefNode {
+        TypeDefNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::NameOwner<'a> for TypeDef<'a> {}
 impl<'a> ast::TypeParamsOwner<'a> for TypeDef<'a> {}
 impl<'a> ast::AttrsOwner<'a> for TypeDef<'a> {}
 impl<'a> TypeDef<'a> {}
 
 // TypeParam
-
-#[derive(Debug, Clone)]
-pub struct TypeParamNode(SyntaxNode);
-
-impl TypeParamNode {
-    pub fn ast(&self) -> TypeParam {
-        TypeParam::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<TypeParam<'a>> for TypeParamNode {
-    fn from(ast: TypeParam<'a>) -> TypeParamNode {
-        let syntax = ast.syntax().owned();
-        TypeParamNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct TypeParam<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct TypeParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type TypeParam<'a> = TypeParamNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for TypeParam<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3496,30 +2972,25 @@ impl<'a> AstNode<'a> for TypeParam<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> TypeParamNode<R> {
+    pub fn borrowed(&self) -> TypeParam {
+        TypeParamNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> TypeParamNode {
+        TypeParamNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::NameOwner<'a> for TypeParam<'a> {}
 impl<'a> TypeParam<'a> {}
 
 // TypeParamList
-
-#[derive(Debug, Clone)]
-pub struct TypeParamListNode(SyntaxNode);
-
-impl TypeParamListNode {
-    pub fn ast(&self) -> TypeParamList {
-        TypeParamList::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<TypeParamList<'a>> for TypeParamListNode {
-    fn from(ast: TypeParamList<'a>) -> TypeParamListNode {
-        let syntax = ast.syntax().owned();
-        TypeParamListNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct TypeParamList<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct TypeParamListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type TypeParamList<'a> = TypeParamListNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for TypeParamList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3530,6 +3001,16 @@ impl<'a> AstNode<'a> for TypeParamList<'a> {
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
+
+impl<R: TreeRoot<RaTypes>> TypeParamListNode<R> {
+    pub fn borrowed(&self) -> TypeParamList {
+        TypeParamListNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> TypeParamListNode {
+        TypeParamListNode { syntax: self.syntax.owned() }
+    }
+}
+
 
 impl<'a> TypeParamList<'a> {
     pub fn type_params(self) -> impl Iterator<Item = TypeParam<'a>> + 'a {
@@ -3542,22 +3023,6 @@ impl<'a> TypeParamList<'a> {
 }
 
 // TypeRef
-
-#[derive(Debug, Clone)]
-pub struct TypeRefNode(SyntaxNode);
-
-impl TypeRefNode {
-    pub fn ast(&self) -> TypeRef {
-        TypeRef::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<TypeRef<'a>> for TypeRefNode {
-    fn from(ast: TypeRef<'a>) -> TypeRefNode {
-        let syntax = ast.syntax().owned();
-        TypeRefNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
 pub enum TypeRef<'a> {
     ParenType(ParenType<'a>),
@@ -3616,26 +3081,11 @@ impl<'a> AstNode<'a> for TypeRef<'a> {
 impl<'a> TypeRef<'a> {}
 
 // UseItem
-
-#[derive(Debug, Clone)]
-pub struct UseItemNode(SyntaxNode);
-
-impl UseItemNode {
-    pub fn ast(&self) -> UseItem {
-        UseItem::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<UseItem<'a>> for UseItemNode {
-    fn from(ast: UseItem<'a>) -> UseItemNode {
-        let syntax = ast.syntax().owned();
-        UseItemNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct UseItem<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct UseItemNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type UseItem<'a> = UseItemNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for UseItem<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3647,6 +3097,16 @@ impl<'a> AstNode<'a> for UseItem<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> UseItemNode<R> {
+    pub fn borrowed(&self) -> UseItem {
+        UseItemNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> UseItemNode {
+        UseItemNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> UseItem<'a> {
     pub fn use_tree(self) -> Option<UseTree<'a>> {
         super::child_opt(self)
@@ -3654,26 +3114,11 @@ impl<'a> UseItem<'a> {
 }
 
 // UseTree
-
-#[derive(Debug, Clone)]
-pub struct UseTreeNode(SyntaxNode);
-
-impl UseTreeNode {
-    pub fn ast(&self) -> UseTree {
-        UseTree::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<UseTree<'a>> for UseTreeNode {
-    fn from(ast: UseTree<'a>) -> UseTreeNode {
-        let syntax = ast.syntax().owned();
-        UseTreeNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct UseTree<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct UseTreeNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type UseTree<'a> = UseTreeNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for UseTree<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3684,6 +3129,16 @@ impl<'a> AstNode<'a> for UseTree<'a> {
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
+
+impl<R: TreeRoot<RaTypes>> UseTreeNode<R> {
+    pub fn borrowed(&self) -> UseTree {
+        UseTreeNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> UseTreeNode {
+        UseTreeNode { syntax: self.syntax.owned() }
+    }
+}
+
 
 impl<'a> UseTree<'a> {
     pub fn path(self) -> Option<Path<'a>> {
@@ -3696,26 +3151,11 @@ impl<'a> UseTree<'a> {
 }
 
 // UseTreeList
-
-#[derive(Debug, Clone)]
-pub struct UseTreeListNode(SyntaxNode);
-
-impl UseTreeListNode {
-    pub fn ast(&self) -> UseTreeList {
-        UseTreeList::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<UseTreeList<'a>> for UseTreeListNode {
-    fn from(ast: UseTreeList<'a>) -> UseTreeListNode {
-        let syntax = ast.syntax().owned();
-        UseTreeListNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct UseTreeList<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct UseTreeListNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type UseTreeList<'a> = UseTreeListNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for UseTreeList<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3727,6 +3167,16 @@ impl<'a> AstNode<'a> for UseTreeList<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> UseTreeListNode<R> {
+    pub fn borrowed(&self) -> UseTreeList {
+        UseTreeListNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> UseTreeListNode {
+        UseTreeListNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> UseTreeList<'a> {
     pub fn use_trees(self) -> impl Iterator<Item = UseTree<'a>> + 'a {
         super::children(self)
@@ -3734,26 +3184,11 @@ impl<'a> UseTreeList<'a> {
 }
 
 // WhereClause
-
-#[derive(Debug, Clone)]
-pub struct WhereClauseNode(SyntaxNode);
-
-impl WhereClauseNode {
-    pub fn ast(&self) -> WhereClause {
-        WhereClause::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<WhereClause<'a>> for WhereClauseNode {
-    fn from(ast: WhereClause<'a>) -> WhereClauseNode {
-        let syntax = ast.syntax().owned();
-        WhereClauseNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct WhereClause<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct WhereClauseNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type WhereClause<'a> = WhereClauseNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for WhereClause<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3765,29 +3200,24 @@ impl<'a> AstNode<'a> for WhereClause<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> WhereClauseNode<R> {
+    pub fn borrowed(&self) -> WhereClause {
+        WhereClauseNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> WhereClauseNode {
+        WhereClauseNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> WhereClause<'a> {}
 
 // WhileExpr
-
-#[derive(Debug, Clone)]
-pub struct WhileExprNode(SyntaxNode);
-
-impl WhileExprNode {
-    pub fn ast(&self) -> WhileExpr {
-        WhileExpr::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<WhileExpr<'a>> for WhileExprNode {
-    fn from(ast: WhileExpr<'a>) -> WhileExprNode {
-        let syntax = ast.syntax().owned();
-        WhileExprNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct WhileExpr<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct WhileExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type WhileExpr<'a> = WhileExprNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for WhileExpr<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3799,6 +3229,16 @@ impl<'a> AstNode<'a> for WhileExpr<'a> {
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
 
+impl<R: TreeRoot<RaTypes>> WhileExprNode<R> {
+    pub fn borrowed(&self) -> WhileExpr {
+        WhileExprNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> WhileExprNode {
+        WhileExprNode { syntax: self.syntax.owned() }
+    }
+}
+
+
 impl<'a> ast::LoopBodyOwner<'a> for WhileExpr<'a> {}
 impl<'a> WhileExpr<'a> {
     pub fn condition(self) -> Option<Condition<'a>> {
@@ -3807,26 +3247,11 @@ impl<'a> WhileExpr<'a> {
 }
 
 // Whitespace
-
-#[derive(Debug, Clone)]
-pub struct WhitespaceNode(SyntaxNode);
-
-impl WhitespaceNode {
-    pub fn ast(&self) -> Whitespace {
-        Whitespace::cast(self.0.borrowed()).unwrap()
-    }
-}
-
-impl<'a> From<Whitespace<'a>> for WhitespaceNode {
-    fn from(ast: Whitespace<'a>) -> WhitespaceNode {
-        let syntax = ast.syntax().owned();
-        WhitespaceNode(syntax)
-    }
-}
 #[derive(Debug, Clone, Copy)]
-pub struct Whitespace<'a> {
-    syntax: SyntaxNodeRef<'a>,
+pub struct WhitespaceNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    syntax: SyntaxNode<R>,
 }
+pub type Whitespace<'a> = WhitespaceNode<RefRoot<'a>>;
 
 impl<'a> AstNode<'a> for Whitespace<'a> {
     fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
@@ -3837,6 +3262,16 @@ impl<'a> AstNode<'a> for Whitespace<'a> {
     }
     fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
 }
+
+impl<R: TreeRoot<RaTypes>> WhitespaceNode<R> {
+    pub fn borrowed(&self) -> Whitespace {
+        WhitespaceNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> WhitespaceNode {
+        WhitespaceNode { syntax: self.syntax.owned() }
+    }
+}
+
 
 impl<'a> Whitespace<'a> {}
 
