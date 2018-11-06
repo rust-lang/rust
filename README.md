@@ -83,10 +83,8 @@ existing rustc.
 
 ## Getting in touch
 
-@matklad can be found at Rust
-[discord](https://discordapp.com/invite/rust-lang), in
-#ides-and-editors.
-
+We have a Discord server dedicated to compilers and language servers
+implemented in Rust: [https://discord.gg/sx3RQZB](https://discord.gg/sx3RQZB).
 
 ## Contributing
 
