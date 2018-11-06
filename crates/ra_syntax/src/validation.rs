@@ -1,3 +1,5 @@
+use std::u32;
+
 use crate::{
     algo::visit::{visitor_ctx, VisitorCtx},
     ast::{self, AstNode},
@@ -42,15 +44,82 @@ fn validate_char(node: ast::Char, errors: &mut Vec<SyntaxError>) {
                 }
             }
             AsciiCodeEscape => {
-                // TODO:
-                // * First digit is octal
-                // * Second digit is hex
+                // An AsciiCodeEscape has 4 chars, example: `\xDD`
+                if text.len() < 4 {
+                    errors.push(SyntaxError::new(TooShortAsciiCodeEscape, range));
+                } else {
+                    assert!(text.chars().count() == 4, "AsciiCodeEscape cannot be longer than 4 chars");
+
+                    match u8::from_str_radix(&text[2..], 16) {
+                        Ok(code) if code < 128 => { /* Escape code is valid */ },
+                        Ok(_) => errors.push(SyntaxError::new(AsciiCodeEscapeOutOfRange, range)),
+                        Err(_) => errors.push(SyntaxError::new(MalformedAsciiCodeEscape, range)),
+                    }
+
+                }
             }
             UnicodeEscape => {
-                // TODO:
-                // * Only hex digits or underscores allowed
-                // * Max 6 chars
-                // * Within allowed range (must be at most 10FFFF)
+                assert!(&text[..2] == "\\u", "UnicodeEscape always starts with \\u");
+
+                if text.len() == 2 {
+                    // No starting `{`
+                    errors.push(SyntaxError::new(MalformedUnicodeEscape, range));
+                    return;
+                }
+
+                if text.len() == 3 {
+                    // Only starting `{`
+                    errors.push(SyntaxError::new(UnclosedUnicodeEscape, range));
+                    return;
+                }
+
+                let mut code = String::new();
+                let mut closed = false;
+                for c in text[3..].chars() {
+                    assert!(!closed, "no characters after escape is closed");
+
+                    if c.is_digit(16) {
+                        code.push(c);
+                    } else if c == '_' {
+                        // Reject leading _
+                        if code.len() == 0 {
+                            errors.push(SyntaxError::new(MalformedUnicodeEscape, range));
+                            return;
+                        }
+                    } else if c == '}' {
+                        closed = true;
+                    } else {
+                        errors.push(SyntaxError::new(MalformedUnicodeEscape, range));
+                        return;
+                    }
+                }
+
+                if !closed {
+                    errors.push(SyntaxError::new(UnclosedUnicodeEscape, range))
+                }
+
+                if code.len() == 0 {
+                    errors.push(SyntaxError::new(EmptyUnicodeEcape, range));
+                    return;
+                }
+
+                if code.len() > 6 {
+                    errors.push(SyntaxError::new(OverlongUnicodeEscape, range));
+                }
+
+                match u32::from_str_radix(&code, 16) {
+                    Ok(code_u32) if code_u32 > 0x10FFFF => {
+                        errors.push(SyntaxError::new(UnicodeEscapeOutOfRange, range));
+                    }
+                    Ok(_) => {
+                        // Valid escape code
+                    }
+                    Err(_) => {
+                        errors.push(SyntaxError::new(MalformedUnicodeEscape, range));
+                    }
+                }
+
+                // FIXME: we really need tests for this
             }
             // Code points are always valid
             CodePoint => (),
