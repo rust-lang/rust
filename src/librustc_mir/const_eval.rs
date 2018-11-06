@@ -351,7 +351,6 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
 
     const STATIC_KIND: Option<!> = None; // no copying of statics allowed
-    const ENABLE_PTR_TRACKING_HOOKS: bool = false; // we don't have no provenance
 
     #[inline(always)]
     fn enforce_validity(_ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool {

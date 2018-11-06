@@ -290,16 +290,14 @@ where
         let mplace = MemPlace { ptr, align, meta };
         let mut mplace = MPlaceTy { mplace, layout };
         // Pointer tag tracking might want to adjust the tag.
-        if M::ENABLE_PTR_TRACKING_HOOKS {
-            let mutbl = match val.layout.ty.sty {
-                // `builtin_deref` considers boxes immutable, that's useless for our purposes
-                ty::Ref(_, _, mutbl) => Some(mutbl),
-                ty::Adt(def, _) if def.is_box() => Some(hir::MutMutable),
-                ty::RawPtr(_) => None,
-                _ => bug!("Unexpected pointer type {}", val.layout.ty.sty),
-            };
-            mplace.mplace.ptr = M::tag_dereference(self, mplace, mutbl)?;
-        }
+        let mutbl = match val.layout.ty.sty {
+            // `builtin_deref` considers boxes immutable, that's useless for our purposes
+            ty::Ref(_, _, mutbl) => Some(mutbl),
+            ty::Adt(def, _) if def.is_box() => Some(hir::MutMutable),
+            ty::RawPtr(_) => None,
+            _ => bug!("Unexpected pointer type {}", val.layout.ty.sty),
+        };
+        mplace.mplace.ptr = M::tag_dereference(self, mplace, mutbl)?;
         // Done
         Ok(mplace)
     }

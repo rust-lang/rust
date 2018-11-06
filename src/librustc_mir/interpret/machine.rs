@@ -95,11 +95,6 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// that is added to the memory so that the work is not done twice.
     const STATIC_KIND: Option<Self::MemoryKinds>;
 
-    /// As an optimization, you can prevent the pointer tracking hooks from ever being
-    /// called.  You should only do this if you do not care about provenance tracking.
-    /// This controls the `tag_reference` and `tag_dereference` hooks.
-    const ENABLE_PTR_TRACKING_HOOKS: bool;
-
     /// Whether to enforce the validity invariant
     fn enforce_validity(ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool;
 
