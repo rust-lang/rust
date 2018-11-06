@@ -4768,6 +4768,7 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseIntError {
+    /// Stores the cause of parsing an integer failing
     pub kind: IntErrorKind,
 }
 
