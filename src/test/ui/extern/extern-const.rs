@@ -1,11 +1,11 @@
-// This test is checking that extern items cannot be const.  It also
-// checks that `rustfix` suggests the alternative of using an extern
-// static.
+// Check extern items cannot be const + `rustfix` suggests using
+// extern static.
 //
 // #54388: an unused reference to an undefined static may or may not
 // compile. To sidestep this by using one that *is* defined.
 
 // run-rustfix
+// ignore-wasm32 no external library to link to.
 // compile-flags: -g -Z continue-parse-after-error
 #![feature(libc)]
 extern crate libc;
