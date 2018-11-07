@@ -22,13 +22,15 @@ LL |     s[1..2] = bot();
    = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
    = note: the left-hand-side of an assignment must have a statically known size
 
-error[E0277]: the type `str` cannot be mutably indexed by `usize`
+error[E0277]: the trait bound `usize: std::slice::SliceIndex<str>` is not satisfied
   --> $DIR/str-mut-idx.rs:17:5
    |
 LL |     s[1usize] = bot();
-   |     ^^^^^^^^^ `str` cannot be mutably indexed by `usize`
+   |     ^^^^^^^^^ the trait `std::slice::SliceIndex<str>` is not implemented for `usize`
    |
-   = help: the trait `std::ops::IndexMut<usize>` is not implemented for `str`
+   = help: the following implementations were found:
+             <usize as std::slice::SliceIndex<[T]>>
+   = note: required because of the requirements on the impl of `std::ops::Index<usize>` for `str`
 
 error: aborting due to 3 previous errors
 

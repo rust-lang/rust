@@ -15,7 +15,7 @@ fn mutate(s: &mut str) {
     //~^ ERROR the size for values of type
     //~| ERROR the size for values of type
     s[1usize] = bot();
-    //~^ ERROR the type `str` cannot be mutably indexed by `usize`
+    //~^ ERROR the trait bound `usize: std::slice::SliceIndex<str>` is not satisfied
 }
 
 pub fn main() {}

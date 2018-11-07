@@ -2,9 +2,8 @@ error[E0277]: the trait bound `u8: std::slice::SliceIndex<[{integer}]>` is not s
   --> $DIR/indexing-requires-a-uint.rs:16:5
    |
 LL |     [0][0u8]; //~ ERROR: the trait bound `u8: std::slice::SliceIndex<[{integer}]>` is not satisfied
-   |     ^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
+   |     ^^^^^^^^ the trait `std::slice::SliceIndex<[{integer}]>` is not implemented for `u8`
    |
-   = help: the trait `std::slice::SliceIndex<[{integer}]>` is not implemented for `u8`
    = note: required because of the requirements on the impl of `std::ops::Index<u8>` for `[{integer}]`
 
 error[E0308]: mismatched types

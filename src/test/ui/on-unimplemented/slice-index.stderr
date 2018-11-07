@@ -2,18 +2,19 @@ error[E0277]: the trait bound `i32: std::slice::SliceIndex<[i32]>` is not satisf
   --> $DIR/slice-index.rs:21:5
    |
 LL |     x[1i32]; //~ ERROR E0277
-   |     ^^^^^^^ slice indices are of type `usize` or ranges of `usize`
+   |     ^^^^^^^ the trait `std::slice::SliceIndex<[i32]>` is not implemented for `i32`
    |
-   = help: the trait `std::slice::SliceIndex<[i32]>` is not implemented for `i32`
    = note: required because of the requirements on the impl of `std::ops::Index<i32>` for `[i32]`
 
 error[E0277]: the trait bound `std::ops::RangeTo<i32>: std::slice::SliceIndex<[i32]>` is not satisfied
   --> $DIR/slice-index.rs:22:5
    |
 LL |     x[..1i32]; //~ ERROR E0277
-   |     ^^^^^^^^^ slice indices are of type `usize` or ranges of `usize`
+   |     ^^^^^^^^^ the trait `std::slice::SliceIndex<[i32]>` is not implemented for `std::ops::RangeTo<i32>`
    |
-   = help: the trait `std::slice::SliceIndex<[i32]>` is not implemented for `std::ops::RangeTo<i32>`
+   = help: the following implementations were found:
+             <std::ops::RangeTo<usize> as std::slice::SliceIndex<[T]>>
+             <std::ops::RangeTo<usize> as std::slice::SliceIndex<str>>
    = note: required because of the requirements on the impl of `std::ops::Index<std::ops::RangeTo<i32>>` for `[i32]`
 
 error: aborting due to 2 previous errors

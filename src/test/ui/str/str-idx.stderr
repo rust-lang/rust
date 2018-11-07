@@ -1,10 +1,16 @@
-error[E0277]: the type `str` cannot be indexed by `{integer}`
+error[E0277]: the trait bound `{integer}: std::slice::SliceIndex<str>` is not satisfied
   --> $DIR/str-idx.rs:13:17
    |
-LL |     let c: u8 = s[4]; //~ ERROR the type `str` cannot be indexed by `{integer}`
-   |                 ^^^^ `str` cannot be indexed by `{integer}`
+LL |     let c: u8 = s[4]; //~ ERROR the trait bound `{integer}: std::slice::SliceIndex<str>` is not satisfied
+   |                 ^^^^ the trait `std::slice::SliceIndex<str>` is not implemented for `{integer}`
    |
-   = help: the trait `std::ops::Index<{integer}>` is not implemented for `str`
+   = help: the following implementations were found:
+             <std::ops::RangeFrom<usize> as std::slice::SliceIndex<[T]>>
+             <std::ops::RangeFrom<usize> as std::slice::SliceIndex<str>>
+             <std::ops::RangeTo<usize> as std::slice::SliceIndex<[T]>>
+             <std::ops::RangeTo<usize> as std::slice::SliceIndex<str>>
+           and 9 others
+   = note: required because of the requirements on the impl of `std::ops::Index<{integer}>` for `str`
 
 error: aborting due to previous error
 
