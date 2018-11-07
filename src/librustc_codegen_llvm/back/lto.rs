@@ -605,6 +605,13 @@ fn run_pass_manager(cgcx: &CodegenContext,
             }
         });
 
+        // We always generate bitcode through ThinLTOBuffers,
+        // which do not support anonymous globals
+        if config.bitcode_needed() {
+            let pass = llvm::LLVMRustFindAndCreatePass("name-anon-globals\0".as_ptr() as *const _);
+            llvm::LLVMRustAddPass(pm, pass.unwrap());
+        }
+
         if config.verify_llvm_ir {
             let pass = llvm::LLVMRustFindAndCreatePass("verify\0".as_ptr() as *const _);
             llvm::LLVMRustAddPass(pm, pass.unwrap());

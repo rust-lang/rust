@@ -337,6 +337,11 @@ impl ModuleConfig {
         self.merge_functions = sess.opts.optimize == config::OptLevel::Default ||
                                sess.opts.optimize == config::OptLevel::Aggressive;
     }
+
+    pub fn bitcode_needed(&self) -> bool {
+        self.emit_bc || self.obj_is_bitcode
+            || self.emit_bc_compressed || self.embed_bitcode
+    }
 }
 
 /// Assembler name and command used by codegen when no_integrated_as is enabled
@@ -564,8 +569,7 @@ unsafe fn optimize(cgcx: &CodegenContext,
             // Some options cause LLVM bitcode to be emitted, which uses ThinLTOBuffers, so we need
             // to make sure we run LLVM's NameAnonGlobals pass when emitting bitcode; otherwise
             // we'll get errors in LLVM.
-            let using_thin_buffers = config.emit_bc || config.obj_is_bitcode
-                || config.emit_bc_compressed || config.embed_bitcode;
+            let using_thin_buffers = config.bitcode_needed();
             let mut have_name_anon_globals_pass = false;
             if !config.no_prepopulate_passes {
                 llvm::LLVMRustAddAnalysisPasses(tm, fpm, llmod);
