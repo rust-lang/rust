@@ -339,52 +339,52 @@ impl IntrinsicDeclarationMethods for CodegenCx<'b, 'tcx> {
         macro_rules! ifn {
             ($name:expr, fn() -> $ret:expr) => (
                 if key == $name {
-                    let f = declare::declare_cfn(&self, $name, &self.type_func(&[], $ret));
+                    let f = declare::declare_cfn(&self, $name, self.type_func(&[], $ret));
                     llvm::SetUnnamedAddr(f, false);
-                    &self.intrinsics.borrow_mut().insert($name, f.clone());
+                    self.intrinsics.borrow_mut().insert($name, f.clone());
                     return Some(f);
                 }
             );
             ($name:expr, fn(...) -> $ret:expr) => (
                 if key == $name {
-                    let f = declare::declare_cfn(&self, $name, &self.type_variadic_func(&[], $ret));
+                    let f = declare::declare_cfn(&self, $name, self.type_variadic_func(&[], $ret));
                     llvm::SetUnnamedAddr(f, false);
-                    &self.intrinsics.borrow_mut().insert($name, f.clone());
+                    self.intrinsics.borrow_mut().insert($name, f.clone());
                     return Some(f);
                 }
             );
             ($name:expr, fn($($arg:expr),*) -> $ret:expr) => (
                 if key == $name {
-                    let f = declare::declare_cfn(&self, $name, &self.type_func(&[$($arg),*], $ret));
+                    let f = declare::declare_cfn(&self, $name, self.type_func(&[$($arg),*], $ret));
                     llvm::SetUnnamedAddr(f, false);
-                    &self.intrinsics.borrow_mut().insert($name, f.clone());
+                    self.intrinsics.borrow_mut().insert($name, f.clone());
                     return Some(f);
                 }
             );
         }
         macro_rules! mk_struct {
-            ($($field_ty:expr),*) => (&self.type_struct( &[$($field_ty),*], false))
+            ($($field_ty:expr),*) => (self.type_struct( &[$($field_ty),*], false))
         }
 
-        let i8p = &self.type_i8p();
-        let void = &self.type_void();
-        let i1 = &self.type_i1();
-        let t_i8 = &self.type_i8();
-        let t_i16 = &self.type_i16();
-        let t_i32 = &self.type_i32();
-        let t_i64 = &self.type_i64();
-        let t_i128 = &self.type_i128();
-        let t_f32 = &self.type_f32();
-        let t_f64 = &self.type_f64();
+        let i8p = self.type_i8p();
+        let void = self.type_void();
+        let i1 = self.type_i1();
+        let t_i8 = self.type_i8();
+        let t_i16 = self.type_i16();
+        let t_i32 = self.type_i32();
+        let t_i64 = self.type_i64();
+        let t_i128 = self.type_i128();
+        let t_f32 = self.type_f32();
+        let t_f64 = self.type_f64();
 
-        let t_v2f32 = &self.type_vector(t_f32, 2);
-        let t_v4f32 = &self.type_vector(t_f32, 4);
-        let t_v8f32 = &self.type_vector(t_f32, 8);
-        let t_v16f32 = &self.type_vector(t_f32, 16);
+        let t_v2f32 = self.type_vector(t_f32, 2);
+        let t_v4f32 = self.type_vector(t_f32, 4);
+        let t_v8f32 = self.type_vector(t_f32, 8);
+        let t_v16f32 = self.type_vector(t_f32, 16);
 
-        let t_v2f64 = &self.type_vector(t_f64, 2);
-        let t_v4f64 = &self.type_vector(t_f64, 4);
-        let t_v8f64 = &self.type_vector(t_f64, 8);
+        let t_v2f64 = self.type_vector(t_f64, 2);
+        let t_v4f64 = self.type_vector(t_f64, 4);
+        let t_v8f64 = self.type_vector(t_f64, 8);
 
         ifn!("llvm.memset.p0i8.i16", fn(i8p, t_i8, t_i16, t_i32, i1) -> void);
         ifn!("llvm.memset.p0i8.i32", fn(i8p, t_i8, t_i32, t_i32, i1) -> void);
@@ -637,8 +637,8 @@ impl IntrinsicDeclarationMethods for CodegenCx<'b, 'tcx> {
         ifn!("llvm.prefetch", fn(i8p, t_i32, t_i32, t_i32) -> void);
 
         if self.sess().opts.debuginfo != DebugInfo::None {
-            ifn!("llvm.dbg.declare", fn(&self.type_metadata(), &self.type_metadata()) -> void);
-            ifn!("llvm.dbg.value", fn(&self.type_metadata(), t_i64, &self.type_metadata()) -> void);
+            ifn!("llvm.dbg.declare", fn(self.type_metadata(), self.type_metadata()) -> void);
+            ifn!("llvm.dbg.value", fn(self.type_metadata(), t_i64, self.type_metadata()) -> void);
         }
         return None;
     }
@@ -694,7 +694,7 @@ impl<'b, 'tcx> CodegenCx<'b, 'tcx> {
                 } else {
                     "rust_eh_personality"
                 };
-                let fty = &self.type_variadic_func(&[], &self.type_i32());
+                let fty = self.type_variadic_func(&[], self.type_i32());
                 declare::declare_cfn(self, name, fty)
             }
         };

@@ -761,7 +761,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }).collect::<Vec<_>>();
 
         debug!("Asm Output Type: {:?}", output);
-        let fty = &self.cx().type_func(&argtys[..], output);
+        let fty = self.cx().type_func(&argtys[..], output);
         unsafe {
             // Ask LLVM to verify that the constraints are well-formed.
             let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons);
@@ -896,9 +896,9 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn vector_splat(&self, num_elts: usize, elt: &'ll Value) -> &'ll Value {
         unsafe {
             let elt_ty = self.cx.val_ty(elt);
-            let undef = llvm::LLVMGetUndef(&self.cx().type_vector(elt_ty, num_elts as u64));
+            let undef = llvm::LLVMGetUndef(self.cx().type_vector(elt_ty, num_elts as u64));
             let vec = self.insert_element(undef, elt, self.cx.const_i32(0));
-            let vec_i32_ty = &self.cx().type_vector(&self.cx().type_i32(), num_elts as u64);
+            let vec_i32_ty = self.cx().type_vector(self.cx().type_i32(), num_elts as u64);
             self.shuffle_vector(vec, undef, self.cx().const_null(vec_i32_ty))
         }
     }
@@ -1305,6 +1305,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn cx(&self) -> &'a CodegenCx<'ll, 'tcx> {
-        &self.cx
+        self.cx
     }
 }

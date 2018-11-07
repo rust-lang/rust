@@ -137,16 +137,16 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     ) -> &'ll Value {
         unsafe {
             let gv = match kind {
-                Some(kind) if !&self.tcx.sess.fewer_names() => {
-                    let name = &self.generate_local_symbol_name(kind);
+                Some(kind) if !self.tcx.sess.fewer_names() => {
+                    let name = self.generate_local_symbol_name(kind);
                     let gv = declare::define_global(&self, &name[..],
-                        &self.val_ty(cv)).unwrap_or_else(||{
+                        self.val_ty(cv)).unwrap_or_else(||{
                             bug!("symbol `{}` is already defined", name);
                     });
                     llvm::LLVMRustSetLinkage(gv, llvm::Linkage::PrivateLinkage);
                     gv
                 },
-                _ => declare::define_private_global(&self, &self.val_ty(cv)),
+                _ => declare::define_private_global(&self, self.val_ty(cv)),
             };
             llvm::LLVMSetInitializer(gv, cv);
             set_global_alignment(&self, gv, align);
@@ -161,7 +161,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         align: Align,
         kind: Option<&str>,
     ) -> &'ll Value {
-        if let Some(&gv) = &self.const_globals.borrow().get(&cv) {
+        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
             unsafe {
                 // Upgrade the alignment in cases where the same constant is used with different
                 // alignment requirements
@@ -172,21 +172,21 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             }
             return gv;
         }
-        let gv = &self.static_addr_of_mut(cv, align, kind);
+        let gv = self.static_addr_of_mut(cv, align, kind);
         unsafe {
             llvm::LLVMSetGlobalConstant(gv, True);
         }
-        &self.const_globals.borrow_mut().insert(cv, gv);
+        self.const_globals.borrow_mut().insert(cv, gv);
         gv
     }
 
     fn get_static(&self, def_id: DefId) -> &'ll Value {
         let instance = Instance::mono(self.tcx, def_id);
-        if let Some(&g) = &self.instances.borrow().get(&instance) {
+        if let Some(&g) = self.instances.borrow().get(&instance) {
             return g;
         }
 
-        let defined_in_current_codegen_unit = &self.codegen_unit
+        let defined_in_current_codegen_unit = self.codegen_unit
                                                 .items()
                                                 .contains_key(&MonoItem::Static(def_id));
         assert!(!defined_in_current_codegen_unit,
@@ -201,8 +201,8 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         let g = if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
 
-            let llty = &self.layout_of(ty).llvm_type(&self);
-            let (g, attrs) = match &self.tcx.hir.get(id) {
+            let llty = self.layout_of(ty).llvm_type(&self);
+            let (g, attrs) = match self.tcx.hir.get(id) {
                 Node::Item(&hir::Item {
                     ref attrs, span, node: hir::ItemKind::Static(..), ..
                 }) => {
@@ -212,7 +212,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
                     let g = declare::define_global(&self, &sym[..], llty).unwrap();
 
-                    if !&self.tcx.is_reachable_non_generic(def_id) {
+                    if !self.tcx.is_reachable_non_generic(def_id) {
                         unsafe {
                             llvm::LLVMRustSetVisibility(g, llvm::Visibility::Hidden);
                         }
@@ -224,7 +224,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 Node::ForeignItem(&hir::ForeignItem {
                     ref attrs, span, node: hir::ForeignItemKind::Static(..), ..
                 }) => {
-                    let fn_attrs = &self.tcx.codegen_fn_attrs(def_id);
+                    let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
                     (check_and_apply_linkage(&self, &fn_attrs, ty, sym, Some(span)), attrs)
                 }
 
@@ -242,9 +242,9 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             g
         } else {
             // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
-            debug!("get_static: sym={} item_attr={:?}", sym, &self.tcx.item_attrs(def_id));
+            debug!("get_static: sym={} item_attr={:?}", sym, self.tcx.item_attrs(def_id));
 
-            let attrs = &self.tcx.codegen_fn_attrs(def_id);
+            let attrs = self.tcx.codegen_fn_attrs(def_id);
             let g = check_and_apply_linkage(&self, &attrs, ty, sym, None);
 
             // Thread-local statics in some other crate need to *always* be linked
@@ -258,11 +258,11 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             }
 
             let needs_dll_storage_attr =
-                self.use_dll_storage_attrs && !&self.tcx.is_foreign_item(def_id) &&
+                self.use_dll_storage_attrs && !self.tcx.is_foreign_item(def_id) &&
                 // ThinLTO can't handle this workaround in all cases, so we don't
                 // emit the attrs. Instead we make them unnecessary by disallowing
                 // dynamic linking when cross-language LTO is enabled.
-                !&self.tcx.sess.opts.debugging_opts.cross_lang_lto.enabled();
+                !self.tcx.sess.opts.debugging_opts.cross_lang_lto.enabled();
 
             // If this assertion triggers, there's something wrong with commandline
             // argument validation.
@@ -281,7 +281,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 // crates, so there are cases where a static with an upstream DefId
                 // is actually present in the current crate. We can find out via the
                 // is_codegened_item query.
-                if !&self.tcx.is_codegened_item(def_id) {
+                if !self.tcx.is_codegened_item(def_id) {
                     unsafe {
                         llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
                     }
@@ -297,7 +297,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             }
         }
 
-        &self.instances.borrow_mut().insert(instance, g);
+        self.instances.borrow_mut().insert(instance, g);
         g
     }
 
@@ -307,7 +307,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         is_mutable: bool,
     ) {
         unsafe {
-            let attrs = &self.tcx.codegen_fn_attrs(def_id);
+            let attrs = self.tcx.codegen_fn_attrs(def_id);
 
             let (v, alloc) = match ::mir::codegen_static_initializer(&self, def_id) {
                 Ok(v) => v,
@@ -315,7 +315,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 Err(_) => return,
             };
 
-            let g = &self.get_static(def_id);
+            let g = self.get_static(def_id);
 
             // boolean SSA values are i1, but they have to be stored in i8 slots,
             // otherwise some LLVM optimization passes don't work as expected
@@ -344,7 +344,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 let visibility = llvm::LLVMRustGetVisibility(g);
 
                 let new_g = llvm::LLVMRustGetOrInsertGlobal(
-                    &self.llmod, name_string.as_ptr(), val_llty);
+                    self.llmod, name_string.as_ptr(), val_llty);
 
                 llvm::LLVMRustSetLinkage(new_g, linkage);
                 llvm::LLVMRustSetVisibility(new_g, visibility);
@@ -352,7 +352,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 // To avoid breaking any invariants, we leave around the old
                 // global for the moment; we'll replace all references to it
                 // with the new global later. (See base::codegen_backend.)
-                &self.statics_to_rauw.borrow_mut().push((g, new_g));
+                self.statics_to_rauw.borrow_mut().push((g, new_g));
                 new_g
             };
             set_global_alignment(&self, g, self.align_of(ty));
@@ -416,19 +416,19 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             if self.tcx.sess.opts.target_triple.triple().starts_with("wasm32") {
                 if let Some(section) = attrs.link_section {
                     let section = llvm::LLVMMDStringInContext(
-                        &self.llcx,
+                        self.llcx,
                         section.as_str().as_ptr() as *const _,
                         section.as_str().len() as c_uint,
                     );
                     let alloc = llvm::LLVMMDStringInContext(
-                        &self.llcx,
+                        self.llcx,
                         alloc.bytes.as_ptr() as *const _,
                         alloc.bytes.len() as c_uint,
                     );
                     let data = [section, alloc];
-                    let meta = llvm::LLVMMDNodeInContext(&self.llcx, data.as_ptr(), 2);
+                    let meta = llvm::LLVMMDNodeInContext(self.llcx, data.as_ptr(), 2);
                     llvm::LLVMAddNamedMetadataOperand(
-                        &self.llmod,
+                        self.llmod,
                         "wasm.custom_sections\0".as_ptr() as *const _,
                         meta,
                     );
@@ -439,8 +439,8 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
             if attrs.flags.contains(CodegenFnAttrFlags::USED) {
                 // This static will be stored in the llvm.used variable which is an array of i8*
-                let cast = llvm::LLVMConstPointerCast(g, &self.type_i8p());
-                &self.used_statics.borrow_mut().push(cast);
+                let cast = llvm::LLVMConstPointerCast(g, self.type_i8p());
+                self.used_statics.borrow_mut().push(cast);
             }
         }
     }

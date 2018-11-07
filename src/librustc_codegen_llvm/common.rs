@@ -255,19 +255,19 @@ impl<'ll, 'tcx: 'll> ConstMethods for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_bool(&self, val: bool) -> &'ll Value {
-        &self.const_uint(&self.type_i1(), val as u64)
+        self.const_uint(self.type_i1(), val as u64)
     }
 
     fn const_i32(&self, i: i32) -> &'ll Value {
-        &self.const_int(&self.type_i32(), i as i64)
+        self.const_int(self.type_i32(), i as i64)
     }
 
     fn const_u32(&self, i: u32) -> &'ll Value {
-        &self.const_uint(&self.type_i32(), i as u64)
+        self.const_uint(self.type_i32(), i as u64)
     }
 
     fn const_u64(&self, i: u64) -> &'ll Value {
-        &self.const_uint(&self.type_i64(), i)
+        self.const_uint(self.type_i64(), i)
     }
 
     fn const_usize(&self, i: u64) -> &'ll Value {
@@ -277,11 +277,11 @@ impl<'ll, 'tcx: 'll> ConstMethods for CodegenCx<'ll, 'tcx> {
             assert!(i < (1<<bit_size));
         }
 
-        &self.const_uint(&self.isize_ty, i)
+        self.const_uint(self.isize_ty, i)
     }
 
     fn const_u8(&self, i: u8) -> &'ll Value {
-        &self.const_uint(&self.type_i8(), i as u64)
+        self.const_uint(self.type_i8(), i as u64)
     }
 
 
@@ -293,23 +293,23 @@ impl<'ll, 'tcx: 'll> ConstMethods for CodegenCx<'ll, 'tcx> {
         null_terminated: bool,
     ) -> &'ll Value {
         unsafe {
-            if let Some(&llval) = &self.const_cstr_cache.borrow().get(&s) {
+            if let Some(&llval) = self.const_cstr_cache.borrow().get(&s) {
                 return llval;
             }
 
-            let sc = llvm::LLVMConstStringInContext(&self.llcx,
+            let sc = llvm::LLVMConstStringInContext(self.llcx,
                                                     s.as_ptr() as *const c_char,
                                                     s.len() as c_uint,
                                                     !null_terminated as Bool);
-            let sym = &self.generate_local_symbol_name("str");
-            let g = declare::define_global(&self, &sym[..], &self.val_ty(sc)).unwrap_or_else(||{
+            let sym = self.generate_local_symbol_name("str");
+            let g = declare::define_global(&self, &sym[..], self.val_ty(sc)).unwrap_or_else(||{
                 bug!("symbol `{}` is already defined", sym);
             });
             llvm::LLVMSetInitializer(g, sc);
             llvm::LLVMSetGlobalConstant(g, True);
             llvm::LLVMRustSetLinkage(g, llvm::Linkage::InternalLinkage);
 
-            &self.const_cstr_cache.borrow_mut().insert(s, g);
+            self.const_cstr_cache.borrow_mut().insert(s, g);
             g
         }
     }
@@ -318,9 +318,9 @@ impl<'ll, 'tcx: 'll> ConstMethods for CodegenCx<'ll, 'tcx> {
     // you will be kicked off fast isel. See issue #4352 for an example of this.
     fn const_str_slice(&self, s: LocalInternedString) -> &'ll Value {
         let len = s.len();
-        let cs = consts::ptrcast(&self.const_cstr(s, false),
-            &self.type_ptr_to(&self.layout_of(&self.tcx.mk_str()).llvm_type(&self)));
-        &self.const_fat_ptr(cs, &self.const_usize(len as u64))
+        let cs = consts::ptrcast(self.const_cstr(s, false),
+            self.type_ptr_to(self.layout_of(self.tcx.mk_str()).llvm_type(&self)));
+        self.const_fat_ptr(cs, self.const_usize(len as u64))
     }
 
     fn const_fat_ptr(
@@ -330,7 +330,7 @@ impl<'ll, 'tcx: 'll> ConstMethods for CodegenCx<'ll, 'tcx> {
     ) -> &'ll Value {
         assert_eq!(abi::FAT_PTR_ADDR, 0);
         assert_eq!(abi::FAT_PTR_EXTRA, 1);
-        &self.const_struct(&[ptr, meta], false)
+        self.const_struct(&[ptr, meta], false)
     }
 
     fn const_struct(
@@ -338,7 +338,7 @@ impl<'ll, 'tcx: 'll> ConstMethods for CodegenCx<'ll, 'tcx> {
         elts: &[&'ll Value],
         packed: bool
     ) -> &'ll Value {
-        struct_in_context(&self.llcx, elts, packed)
+        struct_in_context(self.llcx, elts, packed)
     }
 
     fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
@@ -354,7 +354,7 @@ impl<'ll, 'tcx: 'll> ConstMethods for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
-        bytes_in_context(&self.llcx, bytes)
+        bytes_in_context(self.llcx, bytes)
     }
 
     fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {
