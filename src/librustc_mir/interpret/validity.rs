@@ -13,7 +13,7 @@ use std::hash::Hash;
 use std::ops::RangeInclusive;
 
 use syntax_pos::symbol::Symbol;
-use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf};
+use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
@@ -74,6 +74,7 @@ macro_rules! try_validation {
 #[derive(Copy, Clone, Debug)]
 pub enum PathElem {
     Field(Symbol),
+    Variant(Symbol),
     ClosureVar(Symbol),
     ArrayElem(usize),
     TupleElem(usize),
@@ -107,6 +108,7 @@ fn path_format(path: &Vec<PathElem>) -> String {
     for elem in path.iter() {
         match elem {
             Field(name) => write!(out, ".{}", name),
+            Variant(name) => write!(out, ".<downcast-variant({})>", name),
             ClosureVar(name) => write!(out, ".<closure-var({})>", name),
             TupleElem(idx) => write!(out, ".{}", idx),
             ArrayElem(idx) => write!(out, "[{}]", idx),
@@ -192,9 +194,11 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, '
                     layout::Variants::Single { index } =>
                         // Inside a variant
                         PathElem::Field(def.variants[index].fields[field].ident.name),
-                    _ =>
-                        // To a variant
-                        PathElem::Field(def.variants[field].name)
+                    _ => {
+                        // Enums have no fields other than their tag
+                        assert_eq!(field, 0);
+                        PathElem::Tag
+                    }
                 }
             }
 
@@ -235,6 +239,24 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         let path_len = self.path.len();
         // Perform operation
         self.push_aggregate_field_path_elem(old_op.layout, field);
+        self.visit_value(new_op)?;
+        // Undo changes
+        self.path.truncate(path_len);
+        Ok(())
+    }
+
+    #[inline]
+    fn visit_variant(
+        &mut self,
+        old_op: OpTy<'tcx, M::PointerTag>,
+        variant_id: VariantIdx,
+        new_op: OpTy<'tcx, M::PointerTag>
+    ) -> EvalResult<'tcx> {
+        // Remember the old state
+        let path_len = self.path.len();
+        // Perform operation
+        let name = old_op.layout.ty.ty_adt_def().unwrap().variants[variant_id].name;
+        self.path.push(PathElem::Variant(name));
         self.visit_value(new_op)?;
         // Undo changes
         self.path.truncate(path_len);

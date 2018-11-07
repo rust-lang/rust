@@ -1,7 +1,7 @@
 //! Visitor for a run-time value with a given layout: Traverse enums, structs and other compound
 //! types until we arrive at the leaves, with custom handling for primitive types.
 
-use rustc::ty::layout::{self, TyLayout};
+use rustc::ty::layout::{self, TyLayout, VariantIdx};
 use rustc::ty;
 use rustc::mir::interpret::{
     EvalResult,
@@ -32,7 +32,7 @@ pub trait Value<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>: Copy
     fn project_downcast(
         self,
         ecx: &EvalContext<'a, 'mir, 'tcx, M>,
-        variant: usize,
+        variant: VariantIdx,
     ) -> EvalResult<'tcx, Self>;
 
     /// Project to the n-th field.
@@ -70,7 +70,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     fn project_downcast(
         self,
         ecx: &EvalContext<'a, 'mir, 'tcx, M>,
-        variant: usize,
+        variant: VariantIdx,
     ) -> EvalResult<'tcx, Self> {
         ecx.operand_downcast(self, variant)
     }
@@ -109,7 +109,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Value<'a, 'mir, 'tcx, M>
     fn project_downcast(
         self,
         ecx: &EvalContext<'a, 'mir, 'tcx, M>,
-        variant: usize,
+        variant: VariantIdx,
     ) -> EvalResult<'tcx, Self> {
         ecx.mplace_downcast(self, variant)
     }
@@ -171,6 +171,16 @@ macro_rules! make_value_visitor {
                 self.visit_value(new_val)
             }
 
+            #[inline(always)]
+            fn visit_variant(
+                &mut self,
+                _old_val: Self::V,
+                _variant: VariantIdx,
+                new_val: Self::V,
+            ) -> EvalResult<'tcx> {
+                self.visit_value(new_val)
+            }
+
             /// Called whenever we reach a value with uninhabited layout.
             /// Recursing to fields will *always* continue after this!  This is not meant to control
             /// whether and how we descend recursively/ into the scalar's fields if there are any,
@@ -221,7 +231,7 @@ macro_rules! make_value_visitor {
                         let inner = v.project_downcast(self.ecx(), idx)?;
                         trace!("walk_value: variant layout: {:#?}", inner.layout());
                         // recurse with the inner type
-                        return self.visit_field(v, idx, inner);
+                        return self.visit_variant(v, idx, inner);
                     }
                     layout::Variants::Single { .. } => {}
                 }
