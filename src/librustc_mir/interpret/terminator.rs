@@ -402,7 +402,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.pointer_size();
                 let ptr_align = self.tcx.data_layout.pointer_align;
-                let ptr = self.ref_to_mplace(self.read_immediate(args[0])?)?;
+                let ptr = self.deref_operand(args[0])?;
                 let vtable = ptr.vtable()?;
                 let fn_ptr = self.memory.read_ptr_sized(
                     vtable.offset(ptr_size * (idx as u64 + 3), self)?,

@@ -277,6 +277,8 @@ where
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.
+    /// This does NOT call the "deref" machine hook, so it does NOT count as a
+    /// deref as far as Stacked Borrows is concerned.  Use `deref_operand` for that!
     pub fn ref_to_mplace(
         &self,
         val: ImmTy<'tcx, M::PointerTag>,
@@ -284,11 +286,25 @@ where
         let pointee_type = val.layout.ty.builtin_deref(true).unwrap().ty;
         let layout = self.layout_of(pointee_type)?;
 
-        let align = layout.align;
-        let meta = val.to_meta()?;
-        let ptr = val.to_scalar_ptr()?;
-        let mplace = MemPlace { ptr, align, meta };
-        let mut mplace = MPlaceTy { mplace, layout };
+        let mplace = MemPlace {
+            ptr: val.to_scalar_ptr()?,
+            align: layout.align,
+            meta: val.to_meta()?,
+        };
+        Ok(MPlaceTy { mplace, layout })
+    }
+
+    // Take an operand, representing a pointer, and dereference it to a place -- that
+    // will always be a MemPlace.  Lives in `place.rs` because it creates a place.
+    // This calls the "deref" machine hook, and counts as a deref as far as
+    // Stacked Borrows is concerned.
+    pub fn deref_operand(
+        &self,
+        src: OpTy<'tcx, M::PointerTag>,
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        let val = self.read_immediate(src)?;
+        trace!("deref to {} on {:?}", val.layout.ty, *val);
+        let mut place = self.ref_to_mplace(val)?;
         // Pointer tag tracking might want to adjust the tag.
         let mutbl = match val.layout.ty.sty {
             // `builtin_deref` considers boxes immutable, that's useless for our purposes
@@ -297,9 +313,8 @@ where
             ty::RawPtr(_) => None,
             _ => bug!("Unexpected pointer type {}", val.layout.ty.sty),
         };
-        mplace.mplace.ptr = M::tag_dereference(self, mplace, mutbl)?;
-        // Done
-        Ok(mplace)
+        place.mplace.ptr = M::tag_dereference(self, place, mutbl)?;
+        Ok(place)
     }
 
     /// Offset a pointer to project to a field. Unlike place_field, this is always
