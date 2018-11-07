@@ -452,3 +452,44 @@ fn test_complete_crate_path() {
         &completions,
     );
 }
+
+#[test]
+fn test_complete_crate_path_with_braces() {
+    let (analysis, position) = analysis_and_position(
+        "
+        //- /lib.rs
+        mod foo;
+        struct Spam;
+        //- /foo.rs
+        use crate::{Sp<|>};
+    ",
+    );
+    let completions = analysis.completions(position).unwrap().unwrap();
+    assert_eq_dbg(
+        r#"[CompletionItem { label: "foo", lookup: None, snippet: None },
+            CompletionItem { label: "Spam", lookup: None, snippet: None }]"#,
+        &completions,
+    );
+}
+
+#[test]
+fn test_complete_crate_path_in_nested_tree() {
+    let (analysis, position) = analysis_and_position(
+        "
+        //- /lib.rs
+        mod foo;
+        pub mod bar {
+            pub mod baz {
+                pub struct Spam;
+            }
+        }
+        //- /foo.rs
+        use crate::{bar::{baz::Sp<|>}};
+    ",
+    );
+    let completions = analysis.completions(position).unwrap().unwrap();
+    assert_eq_dbg(
+        r#"[CompletionItem { label: "Spam", lookup: None, snippet: None }]"#,
+        &completions,
+    );
+}

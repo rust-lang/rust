@@ -296,6 +296,15 @@ impl<'a> PathSegment<'a> {
     }
 }
 
+impl<'a> UseTreeList<'a> {
+    pub fn parent_use_tree(self) -> UseTree<'a> {
+        self.syntax()
+            .parent()
+            .and_then(UseTree::cast)
+            .expect("UseTreeLists are always nested in UseTrees")
+    }
+}
+
 fn child_opt<'a, P: AstNode<'a>, C: AstNode<'a>>(parent: P) -> Option<C> {
     children(parent).next()
 }
