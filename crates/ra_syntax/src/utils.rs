@@ -1,6 +1,5 @@
 use crate::{File, SyntaxKind, SyntaxNodeRef, WalkEvent};
 use std::fmt::Write;
-use std::ops::Deref;
 use std::str;
 
 /// Parse a file and create a string representation of the resulting parse tree.
@@ -78,40 +77,5 @@ pub(crate) fn validate_block_structure(root: SyntaxNodeRef) {
             }
             _ => (),
         }
-    }
-}
-
-#[derive(Debug)]
-pub struct MutAsciiString<'a> {
-    buf: &'a mut [u8],
-    len: usize,
-}
-
-impl<'a> MutAsciiString<'a> {
-    pub fn new(buf: &'a mut [u8]) -> MutAsciiString<'a> {
-        MutAsciiString { buf, len: 0 }
-    }
-
-    pub fn as_str(&self) -> &str {
-        str::from_utf8(&self.buf[..self.len]).unwrap()
-    }
-
-    pub fn len(&self) -> usize {
-        self.len
-    }
-
-    pub fn push(&mut self, c: char) {
-        assert!(self.len() < self.buf.len());
-        assert!(c.is_ascii());
-
-        self.buf[self.len] = c as u8;
-        self.len += 1;
-    }
-}
-
-impl<'a> Deref for MutAsciiString<'a> {
-    type Target = str;
-    fn deref(&self) -> &str {
-        self.as_str()
     }
 }
