@@ -41,8 +41,8 @@ pub(crate) fn submodules(
     db::check_canceled(db)?;
     let file_id = source.file_id();
     let submodules = match source.resolve(db) {
-        ModuleSourceNode::Root(it) => collect_submodules(file_id, it.borrowed()),
-        ModuleSourceNode::Inline(it) => it
+        ModuleSourceNode::SourceFile(it) => collect_submodules(file_id, it.borrowed()),
+        ModuleSourceNode::Module(it) => it
             .borrowed()
             .item_list()
             .map(|it| collect_submodules(file_id, it))
@@ -89,8 +89,8 @@ pub(crate) fn module_scope(
     let tree = db.module_tree(source_root_id)?;
     let source = module_id.source(&tree).resolve(db);
     let res = match source {
-        ModuleSourceNode::Root(root) => ModuleScope::new(root.borrowed().items()),
-        ModuleSourceNode::Inline(inline) => match inline.borrowed().item_list() {
+        ModuleSourceNode::SourceFile(it) => ModuleScope::new(it.borrowed().items()),
+        ModuleSourceNode::Module(it) => match it.borrowed().item_list() {
             Some(items) => ModuleScope::new(items.items()),
             None => ModuleScope::new(std::iter::empty()),
         },
@@ -121,7 +121,7 @@ fn create_module_tree<'a>(
 
     let source_root = db.source_root(source_root);
     for &file_id in source_root.files.iter() {
-        let source = ModuleSource::File(file_id);
+        let source = ModuleSource::SourceFile(file_id);
         if visited.contains(&source) {
             continue; // TODO: use explicit crate_roots here
         }
@@ -181,7 +181,7 @@ fn build_subtree(
                             visited,
                             roots,
                             Some(link),
-                            ModuleSource::File(file_id),
+                            ModuleSource::SourceFile(file_id),
                         ),
                     })
                     .collect::<Cancelable<Vec<_>>>()?;
@@ -213,8 +213,8 @@ fn resolve_submodule(
     file_resolver: &FileResolverImp,
 ) -> (Vec<FileId>, Option<Problem>) {
     let file_id = match source {
-        ModuleSource::File(it) => it,
-        ModuleSource::Inline(..) => {
+        ModuleSource::SourceFile(it) => it,
+        ModuleSource::Module(..) => {
             // TODO
             return (Vec::new(), None);
         }

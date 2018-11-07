@@ -41,19 +41,18 @@ impl ModuleTree {
 
 /// `ModuleSource` is the syntax tree element that produced this module:
 /// either a file, or an inlinde module.
-/// TODO: we don't produce Inline modules yet
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum ModuleSource {
-    File(FileId),
+    SourceFile(FileId),
     #[allow(dead_code)]
-    Inline(SyntaxPtr),
+    Module(SyntaxPtr),
 }
 
 /// An owned syntax node for a module. Unlike `ModuleSource`,
 /// this holds onto the AST for the whole file.
 enum ModuleSourceNode {
-    Root(ast::SourceFileNode),
-    Inline(ast::ModuleNode),
+    SourceFile(ast::SourceFileNode),
+    Module(ast::ModuleNode),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
@@ -135,14 +134,14 @@ impl LinkId {
     ) -> ast::ModuleNode {
         let owner = self.owner(tree);
         match owner.source(tree).resolve(db) {
-            ModuleSourceNode::Root(root) => {
+            ModuleSourceNode::SourceFile(root) => {
                 let ast = imp::modules(root.borrowed())
                     .find(|(name, _)| name == &tree.link(self).name)
                     .unwrap()
                     .1;
                 ast.owned()
             }
-            ModuleSourceNode::Inline(it) => it,
+            ModuleSourceNode::Module(it) => it,
         }
     }
 }
@@ -158,34 +157,34 @@ impl ModuleSource {
     pub(crate) fn new_inline(file_id: FileId, module: ast::Module) -> ModuleSource {
         assert!(!module.has_semi());
         let ptr = SyntaxPtr::new(file_id, module.syntax());
-        ModuleSource::Inline(ptr)
+        ModuleSource::Module(ptr)
     }
 
     pub(crate) fn as_file(self) -> Option<FileId> {
         match self {
-            ModuleSource::File(f) => Some(f),
-            ModuleSource::Inline(..) => None,
+            ModuleSource::SourceFile(f) => Some(f),
+            ModuleSource::Module(..) => None,
         }
     }
 
     pub(crate) fn file_id(self) -> FileId {
         match self {
-            ModuleSource::File(f) => f,
-            ModuleSource::Inline(ptr) => ptr.file_id(),
+            ModuleSource::SourceFile(f) => f,
+            ModuleSource::Module(ptr) => ptr.file_id(),
         }
     }
 
     fn resolve(self, db: &impl SyntaxDatabase) -> ModuleSourceNode {
         match self {
-            ModuleSource::File(file_id) => {
+            ModuleSource::SourceFile(file_id) => {
                 let syntax = db.file_syntax(file_id);
-                ModuleSourceNode::Root(syntax.ast().owned())
+                ModuleSourceNode::SourceFile(syntax.ast().owned())
             }
-            ModuleSource::Inline(ptr) => {
+            ModuleSource::Module(ptr) => {
                 let syntax = db.resolve_syntax_ptr(ptr);
                 let syntax = syntax.borrowed();
                 let module = ast::Module::cast(syntax).unwrap();
-                ModuleSourceNode::Inline(module.owned())
+                ModuleSourceNode::Module(module.owned())
             }
         }
     }

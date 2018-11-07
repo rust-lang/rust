@@ -34,10 +34,11 @@ pub(crate) fn resolve_based_completion(
     let source_root_id = db.file_source_root(position.file_id);
     let file = db.file_syntax(position.file_id);
     let module_tree = db.module_tree(source_root_id)?;
-    let module_id = match module_tree.any_module_for_source(ModuleSource::File(position.file_id)) {
-        None => return Ok(None),
-        Some(it) => it,
-    };
+    let module_id =
+        match module_tree.any_module_for_source(ModuleSource::SourceFile(position.file_id)) {
+            None => return Ok(None),
+            Some(it) => it,
+        };
     let file = {
         let edit = AtomEdit::insert(position.offset, "intellijRulezz".to_string());
         file.reparse(&edit)

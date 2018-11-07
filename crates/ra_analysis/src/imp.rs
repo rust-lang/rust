@@ -226,7 +226,7 @@ impl AnalysisImpl {
         let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset)
         {
             Some(m) if !m.has_semi() => ModuleSource::new_inline(position.file_id, m),
-            _ => ModuleSource::File(position.file_id),
+            _ => ModuleSource::SourceFile(position.file_id),
         };
 
         let res = module_tree
@@ -254,7 +254,7 @@ impl AnalysisImpl {
         let module_tree = self.module_tree(file_id)?;
         let crate_graph = self.db.crate_graph();
         let res = module_tree
-            .modules_for_source(ModuleSource::File(file_id))
+            .modules_for_source(ModuleSource::SourceFile(file_id))
             .into_iter()
             .map(|it| it.root(&module_tree))
             .filter_map(|it| it.source(&module_tree).as_file())
@@ -386,7 +386,7 @@ impl AnalysisImpl {
                 fix: None,
             })
             .collect::<Vec<_>>();
-        if let Some(m) = module_tree.any_module_for_source(ModuleSource::File(file_id)) {
+        if let Some(m) = module_tree.any_module_for_source(ModuleSource::SourceFile(file_id)) {
             for (name_node, problem) in m.problems(&module_tree, &*self.db) {
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
@@ -548,7 +548,7 @@ impl AnalysisImpl {
             Some(name) => name.text(),
             None => return Vec::new(),
         };
-        let module_id = match module_tree.any_module_for_source(ModuleSource::File(file_id)) {
+        let module_id = match module_tree.any_module_for_source(ModuleSource::SourceFile(file_id)) {
             Some(id) => id,
             None => return Vec::new(),
         };
