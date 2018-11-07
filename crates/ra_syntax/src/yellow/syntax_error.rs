@@ -34,6 +34,10 @@ impl SyntaxError {
         }
     }
 
+    pub fn kind(&self) -> SyntaxErrorKind {
+        self.kind.clone()
+    }
+
     pub fn location(&self) -> Location {
         self.location.clone()
     }
@@ -64,6 +68,7 @@ impl fmt::Display for SyntaxError {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SyntaxErrorKind {
     ParseError(ParseError),
+    UnescapedCodepoint,
     EmptyChar,
     UnclosedChar,
     LongChar,
@@ -86,6 +91,7 @@ impl fmt::Display for SyntaxErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::SyntaxErrorKind::*;
         match self {
+            UnescapedCodepoint => write!(f, "This codepoint should always be escaped"),
             EmptyAsciiEscape => write!(f, "Empty escape sequence"),
             InvalidAsciiEscape => write!(f, "Invalid escape sequence"),
             EmptyChar => write!(f, "Empty char literal"),
