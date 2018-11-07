@@ -219,7 +219,7 @@ mod tests {
 
     #[test]
     fn test_unicode_escapes() {
-        let unicode_escapes = &[r"{DEAD}", "{BEEF}", "{FF}", ""];
+        let unicode_escapes = &[r"{DEAD}", "{BEEF}", "{FF}", "{}", ""];
         for escape in unicode_escapes {
             let escape_sequence = format!(r"'\u{}'", escape);
             let component = closed_char_component(&escape_sequence);

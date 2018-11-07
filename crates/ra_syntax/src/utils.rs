@@ -1,5 +1,6 @@
 use crate::{File, SyntaxKind, SyntaxNodeRef, WalkEvent};
 use std::fmt::Write;
+use std::str;
 
 /// Parse a file and create a string representation of the resulting parse tree.
 pub fn dump_tree(syntax: SyntaxNodeRef) -> String {

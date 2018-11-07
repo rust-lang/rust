@@ -20,6 +20,7 @@
 #![allow(missing_docs)]
 //#![warn(unreachable_pub)] // rust-lang/rust#47816
 
+extern crate arrayvec;
 extern crate drop_bomb;
 extern crate itertools;
 extern crate parking_lot;
