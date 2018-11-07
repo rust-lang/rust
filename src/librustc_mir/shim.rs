@@ -222,6 +222,14 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     );
 
     if let Some(..) = ty {
+        let dropee_ptr = Place::Local(Local::new(1+0));
+        if tcx.sess.opts.debugging_opts.mir_emit_retag {
+            // We use raw ptr operations, better prepare the alias tracking for that
+            mir.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
+                source_info,
+                kind: StatementKind::EscapeToRaw(Operand::Copy(dropee_ptr.clone())),
+            })
+        }
         let patch = {
             let param_env = tcx.param_env(def_id).with_reveal_all();
             let mut elaborator = DropShimElaborator {
@@ -230,7 +238,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 tcx,
                 param_env
             };
-            let dropee = Place::Local(Local::new(1+0)).deref();
+            let dropee = dropee_ptr.deref();
             let resume_block = elaborator.patch.resume_block();
             elaborate_drops::elaborate_drop(
                 &mut elaborator,
