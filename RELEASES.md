@@ -1,3 +1,12 @@
+Version 1.30.1 (2018-11-08)
+===========================
+
+- [Fixed overflow ICE in rustdoc][54199]
+- [Cap Cargo progress bar width at 60 in MSYS terminals][cargo/6122]
+
+[54199]: https://github.com/rust-lang/rust/pull/54199
+[cargo/6122]: https://github.com/rust-lang/cargo/pull/6122
+
 Version 1.30.0 (2018-10-25)
 ==========================
 
@@ -64,9 +73,6 @@ Cargo
 - [`cargo run` doesn't require specifying a package in workspaces.][cargo/5877]
 - [`cargo doc` now supports `--message-format=json`.][cargo/5878] This is
   equivalent to calling `rustdoc --error-format=json`.
-- [You can specify which edition to create a project in cargo
-  with `cargo new --edition`.][cargo/5984] Currently only `2015` is a
-  valid option.
 - [Cargo will now provide a progress bar for builds.][cargo/5995]
 
 Misc
@@ -100,9 +106,8 @@ Misc
 [54404]: https://github.com/rust-lang/rust/pull/54404/
 [cargo/5877]: https://github.com/rust-lang/cargo/pull/5877/
 [cargo/5878]: https://github.com/rust-lang/cargo/pull/5878/
-[cargo/5984]: https://github.com/rust-lang/cargo/pull/5984/
 [cargo/5995]: https://github.com/rust-lang/cargo/pull/5995/
-[proc-macros]: https://doc.rust-lang.org/book/2018-edition/ch19-06-macros.html
+[proc-macros]: https://doc.rust-lang.org/nightly/book/2018-edition/ch19-06-macros.html
 
 [`Ipv4Addr::BROADCAST`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#associatedconstant.BROADCAST
 [`Ipv4Addr::LOCALHOST`]: https://doc.rust-lang.org/nightly/std/net/struct.Ipv4Addr.html#associatedconstant.LOCALHOST
