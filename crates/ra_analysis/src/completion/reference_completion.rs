@@ -11,7 +11,7 @@ use crate::{
     db::RootDatabase,
     input::{SourceRootId},
     completion::CompletionItem,
-    descriptors::module::{ModuleId, ModuleScope, ModuleTree},
+    descriptors::module::{ModuleId, ModuleTree},
     descriptors::function::FnScopes,
     descriptors::DescriptorDatabase,
     Cancelable
@@ -32,12 +32,29 @@ pub(super) fn completions(
     };
 
     match kind {
-        NameRefKind::LocalRef => {
-            let module_scope = db.module_scope(source_root_id, module_id)?;
-            if let Some(fn_def) = complete_local_name(acc, &module_scope, name_ref) {
+        NameRefKind::LocalRef { enclosing_fn } => {
+            if let Some(fn_def) = enclosing_fn {
+                let scopes = FnScopes::new(fn_def);
+                complete_fn(name_ref, &scopes, acc);
                 complete_expr_keywords(&file, fn_def, name_ref, acc);
                 complete_expr_snippets(acc);
             }
+
+            let module_scope = db.module_scope(source_root_id, module_id)?;
+            acc.extend(
+                module_scope
+                    .entries()
+                    .iter()
+                    .filter(|entry| {
+                        // Don't expose this item
+                        !entry.ptr().range().is_subrange(&name_ref.syntax().range())
+                    })
+                    .map(|entry| CompletionItem {
+                        label: entry.name().to_string(),
+                        lookup: None,
+                        snippet: None,
+                    }),
+            );
         }
         NameRefKind::CratePath(path) => {
             complete_path(acc, db, source_root_id, module_tree, module_id, path)?
@@ -62,7 +79,9 @@ pub(super) fn completions(
 enum NameRefKind<'a> {
     /// NameRef is a part of single-segment path, for example, a refernece to a
     /// local variable.
-    LocalRef,
+    LocalRef {
+        enclosing_fn: Option<ast::FnDef<'a>>,
+    },
     /// NameRef is the last segment in crate:: path
     CratePath(Vec<ast::NameRef<'a>>),
     /// NameRef is bare identifier at the module's root.
@@ -87,7 +106,12 @@ fn classify_name_ref(name_ref: ast::NameRef) -> Option<NameRefKind> {
     if let Some(segment) = ast::PathSegment::cast(parent) {
         let path = segment.parent_path();
         if path.qualifier().is_none() {
-            return Some(NameRefKind::LocalRef);
+            let enclosing_fn = name_ref
+                .syntax()
+                .ancestors()
+                .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
+                .find_map(ast::FnDef::cast);
+            return Some(NameRefKind::LocalRef { enclosing_fn });
         }
         if let Some(crate_path) = crate_path(path) {
             return Some(NameRefKind::CratePath(crate_path));
@@ -109,38 +133,6 @@ fn crate_path(mut path: ast::Path) -> Option<Vec<ast::NameRef>> {
     }
     res.reverse();
     Some(res)
-}
-
-fn complete_local_name<'a>(
-    acc: &mut Vec<CompletionItem>,
-    module_scope: &ModuleScope,
-    name_ref: ast::NameRef<'a>,
-) -> Option<ast::FnDef<'a>> {
-    let enclosing_fn = name_ref
-        .syntax()
-        .ancestors()
-        .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
-        .find_map(ast::FnDef::cast);
-    if let Some(fn_def) = enclosing_fn {
-        let scopes = FnScopes::new(fn_def);
-        complete_fn(name_ref, &scopes, acc);
-    }
-
-    acc.extend(
-        module_scope
-            .entries()
-            .iter()
-            .filter(|entry| {
-                // Don't expose this item
-                !entry.ptr().range().is_subrange(&name_ref.syntax().range())
-            })
-            .map(|entry| CompletionItem {
-                label: entry.name().to_string(),
-                lookup: None,
-                snippet: None,
-            }),
-    );
-    enclosing_fn
 }
 
 fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<CompletionItem>) {
