@@ -28,11 +28,10 @@ fn get_pass_mode<'a, 'tcx: 'a>(
     ty: Ty<'tcx>,
     is_return: bool,
 ) -> PassMode {
-    assert!(
-        !tcx.layout_of(ParamEnv::reveal_all().and(ty))
-            .unwrap()
-            .is_unsized()
-    );
+    assert!(!tcx
+        .layout_of(ParamEnv::reveal_all().and(ty))
+        .unwrap()
+        .is_unsized());
     if let ty::Never = ty.sty {
         if is_return {
             PassMode::NoPass
@@ -256,10 +255,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
         if let Some(val) = self.lib_call(name, input_tys, return_ty, &args) {
             CValue::ByVal(val, return_layout)
         } else {
-            CValue::ByRef(
-                self.bcx.ins().iconst(self.pointer_type, 0),
-                return_layout,
-            )
+            CValue::ByRef(self.bcx.ins().iconst(self.pointer_type, 0), return_layout)
         }
     }
 

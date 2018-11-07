@@ -17,10 +17,7 @@ impl MetadataLoader for CraneliftMetadataLoader {
         // Iterate over all entries in the archive:
         while let Some(entry_result) = archive.next_entry() {
             let mut entry = entry_result.map_err(|e| format!("{:?}", e))?;
-            if entry
-                .header()
-                .identifier() == METADATA_FILE
-            {
+            if entry.header().identifier() == METADATA_FILE {
                 let mut buf = Vec::new();
                 ::std::io::copy(&mut entry, &mut buf).map_err(|e| format!("{:?}", e))?;
                 let buf: OwningRef<Vec<u8>, [u8]> = OwningRef::new(buf).into();

@@ -131,10 +131,7 @@ impl<'tcx> CValue<'tcx> {
                     size: layout.size.bytes() as u32,
                     offset: None,
                 });
-                let addr = fx
-                    .bcx
-                    .ins()
-                    .stack_addr(fx.pointer_type, stack_slot, 0);
+                let addr = fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0);
                 fx.bcx.ins().store(MemFlags::new(), value, addr, 0);
                 addr
             }
@@ -161,9 +158,10 @@ impl<'tcx> CValue<'tcx> {
         match self {
             CValue::ByRef(addr, layout) => {
                 let cton_ty = fx.cton_type(layout.ty).unwrap_or_else(|| {
-                    if layout.ty.is_box() && !fx
-                        .layout_of(layout.ty.builtin_deref(true).unwrap().ty)
-                        .is_unsized()
+                    if layout.ty.is_box()
+                        && !fx
+                            .layout_of(layout.ty.builtin_deref(true).unwrap().ty)
+                            .is_unsized()
                     {
                         // Consider sized box to be a ptr
                         pointer_ty(fx.tcx)
@@ -190,14 +188,14 @@ impl<'tcx> CValue<'tcx> {
                 );
                 let val1_offset = layout.fields.offset(0).bytes() as i32;
                 let val2_offset = layout.fields.offset(1).bytes() as i32;
-                let val1 =
-                    fx.bcx
-                        .ins()
-                        .load(fx.pointer_type, MemFlags::new(), addr, val1_offset);
-                let val2 =
-                    fx.bcx
-                        .ins()
-                        .load(fx.pointer_type, MemFlags::new(), addr, val2_offset);
+                let val1 = fx
+                    .bcx
+                    .ins()
+                    .load(fx.pointer_type, MemFlags::new(), addr, val1_offset);
+                let val2 = fx
+                    .bcx
+                    .ins()
+                    .load(fx.pointer_type, MemFlags::new(), addr, val2_offset);
                 (val1, val2)
             }
             CValue::ByVal(_, _layout) => bug!("Please use load_value for ByVal"),
@@ -333,9 +331,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
             offset: None,
         });
         CPlace::Addr(
-            fx.bcx
-                .ins()
-                .stack_addr(fx.pointer_type, stack_slot, 0),
+            fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0),
             None,
             layout,
         )
@@ -349,9 +345,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         let layout = fx.layout_of(ty);
         assert!(!layout.is_unsized());
         CPlace::Addr(
-            fx.bcx
-                .ins()
-                .stack_addr(fx.pointer_type, stack_slot, 0),
+            fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, 0),
             None,
             layout,
         )
@@ -426,12 +420,10 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
 
                         let mut offset = 0;
                         while size - offset >= 8 {
-                            let byte = fx.bcx.ins().load(
-                                fx.pointer_type,
-                                MemFlags::new(),
-                                from,
-                                offset,
-                            );
+                            let byte =
+                                fx.bcx
+                                    .ins()
+                                    .load(fx.pointer_type, MemFlags::new(), from, offset);
                             fx.bcx.ins().store(MemFlags::new(), byte, addr, offset);
                             offset += 8;
                         }

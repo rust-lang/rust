@@ -1,4 +1,9 @@
-#![feature(rustc_private, macro_at_most_once_rep, never_type, extern_crate_item_prelude)]
+#![feature(
+    rustc_private,
+    macro_at_most_once_rep,
+    never_type,
+    extern_crate_item_prelude
+)]
 #![allow(intra_doc_link_resolution_failure)]
 
 extern crate byteorder;
@@ -80,10 +85,10 @@ mod prelude {
     pub use syntax::ast::{FloatTy, IntTy, UintTy};
     pub use syntax::source_map::DUMMY_SP;
 
-    pub use cranelift::codegen::isa::CallConv;
     pub use cranelift::codegen::ir::{
         condcodes::IntCC, function::Function, ExternalName, FuncRef, Inst, StackSlot,
     };
+    pub use cranelift::codegen::isa::CallConv;
     pub use cranelift::codegen::Context;
     pub use cranelift::prelude::*;
     pub use cranelift_module::{Backend, DataContext, DataId, FuncId, Linkage, Module};
@@ -174,9 +179,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
         let mut flags_builder = settings::builder();
         flags_builder.enable("is_pic").unwrap();
         let flags = settings::Flags::new(flags_builder);
-        let isa = cranelift::codegen::isa::lookup(tcx.sess.target.target.llvm_target.parse().unwrap())
-            .unwrap()
-            .finish(flags);
+        let isa =
+            cranelift::codegen::isa::lookup(tcx.sess.target.target.llvm_target.parse().unwrap())
+                .unwrap()
+                .finish(flags);
 
         // TODO: move to the end of this function when compiling libcore doesn't have unimplemented stuff anymore
         save_incremental(tcx);
@@ -197,7 +203,9 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     AbiParam::new(jit_module.target_config().pointer_type()),
                     AbiParam::new(jit_module.target_config().pointer_type()),
                 ],
-                returns: vec![AbiParam::new(jit_module.target_config().pointer_type() /*isize*/)],
+                returns: vec![AbiParam::new(
+                    jit_module.target_config().pointer_type(), /*isize*/
+                )],
                 call_conv: CallConv::SystemV,
             };
             let main_func_id = jit_module
@@ -225,7 +233,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 )
                 .unwrap(),
             );
-            assert_eq!(pointer_ty(tcx), faerie_module.target_config().pointer_type());
+            assert_eq!(
+                pointer_ty(tcx),
+                faerie_module.target_config().pointer_type()
+            );
 
             codegen_mono_items(tcx, &mut faerie_module);
 
@@ -347,9 +358,11 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
     };
 
     let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
-    let mono_items = cgus.iter().map(|cgu| {
-        cgu.items().iter()
-    }).flatten().collect::<FxHashSet<(_, _)>>();
+    let mono_items = cgus
+        .iter()
+        .map(|cgu| cgu.items().iter())
+        .flatten()
+        .collect::<FxHashSet<(_, _)>>();
 
     let before = ::std::time::Instant::now();
     println!("[codegen mono items] start");
@@ -374,7 +387,10 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
 
     crate::main_shim::maybe_create_entry_wrapper(tcx, module);
 
-    let any_dynamic_crate = tcx.sess.dependency_formats.borrow()
+    let any_dynamic_crate = tcx
+        .sess
+        .dependency_formats
+        .borrow()
         .iter()
         .any(|(_, list)| {
             use rustc::middle::dependency_format::Linkage;

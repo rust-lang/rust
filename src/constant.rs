@@ -4,7 +4,9 @@ use rustc::mir::interpret::{
     read_target_uint, AllocId, AllocType, Allocation, ConstValue, EvalResult, GlobalId, Scalar,
 };
 use rustc::ty::Const;
-use rustc_mir::interpret::{EvalContext, Machine, Memory, MemoryKind, MemPlace, OpTy, PlaceTy, Pointer};
+use rustc_mir::interpret::{
+    EvalContext, Machine, MemPlace, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
+};
 
 use cranelift_module::*;
 
@@ -176,10 +178,7 @@ fn cplace_for_dataid<'a, 'tcx: 'a>(
     data_id: DataId,
 ) -> CPlace<'tcx> {
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-    let global_ptr = fx
-        .bcx
-        .ins()
-        .global_value(fx.pointer_type, local_data_id);
+    let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
     let layout = fx.layout_of(fx.monomorphize(&ty));
     assert!(!layout.is_unsized(), "unsized statics aren't supported");
     CPlace::Addr(global_ptr, None, layout)
@@ -336,11 +335,23 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn tag_reference(_: &mut EvalContext<'a, 'mir, 'tcx, Self>, _: MemPlace, _: Ty<'tcx>, _: Size, _: Option<crate::rustc::hir::Mutability>) -> EvalResult<'tcx, MemPlace> {
+    fn tag_reference(
+        _: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _: MemPlace,
+        _: Ty<'tcx>,
+        _: Size,
+        _: Option<crate::rustc::hir::Mutability>,
+    ) -> EvalResult<'tcx, MemPlace> {
         panic!()
     }
 
-    fn tag_dereference(_: &EvalContext<'a, 'mir, 'tcx, Self>, _: MemPlace, _: Ty<'tcx>, _: Size, _: Option<crate::rustc::hir::Mutability>) -> EvalResult<'tcx, MemPlace> {
+    fn tag_dereference(
+        _: &EvalContext<'a, 'mir, 'tcx, Self>,
+        _: MemPlace,
+        _: Ty<'tcx>,
+        _: Size,
+        _: Option<crate::rustc::hir::Mutability>,
+    ) -> EvalResult<'tcx, MemPlace> {
         panic!();
     }
 
@@ -348,7 +359,11 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         Cow::Borrowed(alloc)
     }
 
-    fn tag_new_allocation(_: &mut EvalContext<'a, 'mir, 'tcx, Self>, ptr: Pointer, _: MemoryKind<!>) -> EvalResult<'tcx, Pointer> {
+    fn tag_new_allocation(
+        _: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ptr: Pointer,
+        _: MemoryKind<!>,
+    ) -> EvalResult<'tcx, Pointer> {
         Ok(ptr)
     }
 }

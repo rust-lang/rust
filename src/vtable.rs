@@ -64,9 +64,7 @@ pub fn get_vtable<'a, 'tcx: 'a>(
     };
 
     let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-    fx.bcx
-        .ins()
-        .global_value(fx.pointer_type, local_data_id)
+    fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
 }
 
 fn build_vtable<'a, 'tcx: 'a>(

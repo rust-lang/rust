@@ -630,11 +630,10 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     lval.write_cvalue(fx, CValue::ByVal(ptr, box_layout));
                 }
                 Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
-                    assert!(
-                        lval.layout()
-                            .ty
-                            .is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all())
-                    );
+                    assert!(lval
+                        .layout()
+                        .ty
+                        .is_sized(fx.tcx.at(DUMMY_SP), ParamEnv::reveal_all()));
                     let ty_size = fx.layout_of(ty).size.bytes();
                     let val = CValue::const_val(fx, fx.tcx.types.usize, ty_size as i64);
                     lval.write_cvalue(fx, val);

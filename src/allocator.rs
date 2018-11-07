@@ -11,7 +11,7 @@
 use crate::prelude::*;
 
 use rustc::middle::allocator::AllocatorKind;
-use rustc_allocator::{ALLOCATOR_METHODS, AllocatorTy};
+use rustc_allocator::{AllocatorTy, ALLOCATOR_METHODS};
 
 pub fn codegen(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind) {
     let usize_ty = module.target_config().pointer_type();
@@ -27,17 +27,16 @@ pub fn codegen(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind)
                 AllocatorTy::Ptr => arg_tys.push(usize_ty),
                 AllocatorTy::Usize => arg_tys.push(usize_ty),
 
-                AllocatorTy::ResultPtr |
-                AllocatorTy::Unit => panic!("invalid allocator arg"),
+                AllocatorTy::ResultPtr | AllocatorTy::Unit => panic!("invalid allocator arg"),
             }
         }
         let output = match method.output {
             AllocatorTy::ResultPtr => Some(usize_ty),
             AllocatorTy::Unit => None,
 
-            AllocatorTy::Layout |
-            AllocatorTy::Usize |
-            AllocatorTy::Ptr => panic!("invalid allocator output"),
+            AllocatorTy::Layout | AllocatorTy::Usize | AllocatorTy::Ptr => {
+                panic!("invalid allocator output")
+            }
         };
 
         let sig = Signature {
