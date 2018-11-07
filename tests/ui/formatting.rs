@@ -112,4 +112,16 @@ fn main() {
         1 + 2, 3 +
         4, 5 + 6,
     ];
+
+    // don't lint for bin op without unary equiv
+    // issue 3244
+    vec![
+        1
+        / 2,
+    ];
+    // issue 3396
+    vec![
+        true
+        | false,
+    ];
 }

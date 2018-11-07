@@ -173,12 +173,19 @@ fn check_else_if(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     }
 }
 
+fn has_unary_equivalent(bin_op: ast::BinOpKind) -> bool {
+    // &, *, -
+    bin_op == ast::BinOpKind::And
+    || bin_op == ast::BinOpKind::Mul
+    || bin_op == ast::BinOpKind::Sub
+}
+
 /// Implementation of the `POSSIBLE_MISSING_COMMA` lint for array
 fn check_array(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     if let ast::ExprKind::Array(ref array) = expr.node {
         for element in array {
             if let ast::ExprKind::Binary(ref op, ref lhs, _) = element.node {
-                if !differing_macro_contexts(lhs.span, op.span) {
+                if has_unary_equivalent(op.node) && !differing_macro_contexts(lhs.span, op.span) {
                     let space_span = lhs.span.between(op.span);
                     if let Some(space_snippet) = snippet_opt(cx, space_span) {
                         let lint_span = lhs.span.with_lo(lhs.span.hi());
