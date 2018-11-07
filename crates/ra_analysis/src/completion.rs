@@ -4,7 +4,7 @@ use ra_syntax::{
     ast::{self, AstChildren, LoopBodyOwner, ModuleItemOwner},
     AstNode, AtomEdit, SourceFileNode,
     SyntaxKind::*,
-    SyntaxNodeRef, TextUnit,
+    SyntaxNodeRef,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -14,7 +14,7 @@ use crate::{
     descriptors::module::{ModuleId, ModuleScope, ModuleTree, ModuleSource},
     descriptors::DescriptorDatabase,
     input::FilesDatabase,
-    Cancelable, FilePosition,
+    Cancelable, FilePosition, FileId,
 };
 
 #[derive(Debug)]
@@ -27,47 +27,87 @@ pub struct CompletionItem {
     pub snippet: Option<String>,
 }
 
-pub(crate) fn resolve_based_completion(
+pub(crate) fn completions(
     db: &db::RootDatabase,
     position: FilePosition,
 ) -> Cancelable<Option<Vec<CompletionItem>>> {
-    let source_root_id = db.file_source_root(position.file_id);
-    let file = db.file_syntax(position.file_id);
-    let module_tree = db.module_tree(source_root_id)?;
-    let module_id =
-        match module_tree.any_module_for_source(ModuleSource::SourceFile(position.file_id)) {
-            None => return Ok(None),
-            Some(it) => it,
-        };
+    let original_file = db.file_syntax(position.file_id);
+    // Insert a fake ident to get a valid parse tree
     let file = {
         let edit = AtomEdit::insert(position.offset, "intellijRulezz".to_string());
-        file.reparse(&edit)
+        original_file.reparse(&edit)
     };
-    let target_module_id = match find_target_module(&module_tree, module_id, &file, position.offset)
-    {
-        None => return Ok(None),
+
+    let mut res = Vec::new();
+    let mut has_completions = false;
+    // First, let's try to complete a reference to some declaration.
+    if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
+        has_completions = true;
+        // completion from lexical scope
+        complete_name_ref(&file, name_ref, &mut res);
+        // special case, `trait T { fn foo(i_am_a_name_ref) {} }`
+        if is_node::<ast::Param>(name_ref.syntax()) {
+            param_completions(name_ref.syntax(), &mut res);
+        }
+        // snippet completions
+        {
+            let name_range = name_ref.syntax().range();
+            let top_node = name_ref
+                .syntax()
+                .ancestors()
+                .take_while(|it| it.range() == name_range)
+                .last()
+                .unwrap();
+            match top_node.parent().map(|it| it.kind()) {
+                Some(SOURCE_FILE) | Some(ITEM_LIST) => complete_mod_item_snippets(&mut res),
+                _ => (),
+            }
+        }
+        complete_path(db, position.file_id, name_ref, &mut res)?;
+    }
+
+    // Otherwise, if this is a declaration, use heuristics to suggest a name.
+    if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
+        if is_node::<ast::Param>(name.syntax()) {
+            has_completions = true;
+            param_completions(name.syntax(), &mut res);
+        }
+    }
+    let res = if has_completions { Some(res) } else { None };
+    Ok(res)
+}
+
+fn complete_path(
+    db: &db::RootDatabase,
+    file_id: FileId,
+    name_ref: ast::NameRef,
+    acc: &mut Vec<CompletionItem>,
+) -> Cancelable<()> {
+    let source_root_id = db.file_source_root(file_id);
+    let module_tree = db.module_tree(source_root_id)?;
+    let module_id = match module_tree.any_module_for_source(ModuleSource::SourceFile(file_id)) {
+        None => return Ok(()),
+        Some(it) => it,
+    };
+    let target_module_id = match find_target_module(&module_tree, module_id, name_ref) {
+        None => return Ok(()),
         Some(it) => it,
     };
     let module_scope = db.module_scope(source_root_id, target_module_id)?;
-    let res: Vec<_> = module_scope
-        .entries()
-        .iter()
-        .map(|entry| CompletionItem {
-            label: entry.name().to_string(),
-            lookup: None,
-            snippet: None,
-        })
-        .collect();
-    Ok(Some(res))
+    let completions = module_scope.entries().iter().map(|entry| CompletionItem {
+        label: entry.name().to_string(),
+        lookup: None,
+        snippet: None,
+    });
+    acc.extend(completions);
+    Ok(())
 }
 
-pub(crate) fn find_target_module(
+fn find_target_module(
     module_tree: &ModuleTree,
     module_id: ModuleId,
-    file: &SourceFileNode,
-    offset: TextUnit,
+    name_ref: ast::NameRef,
 ) -> Option<ModuleId> {
-    let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), offset)?;
     let mut crate_path = crate_path(name_ref)?;
 
     crate_path.pop();
@@ -96,50 +136,6 @@ fn crate_path(name_ref: ast::NameRef) -> Option<Vec<ast::NameRef>> {
     }
     res.reverse();
     Some(res)
-}
-
-pub(crate) fn scope_completion(
-    db: &db::RootDatabase,
-    position: FilePosition,
-) -> Option<Vec<CompletionItem>> {
-    let original_file = db.file_syntax(position.file_id);
-    // Insert a fake ident to get a valid parse tree
-    let file = {
-        let edit = AtomEdit::insert(position.offset, "intellijRulezz".to_string());
-        original_file.reparse(&edit)
-    };
-    let mut has_completions = false;
-    let mut res = Vec::new();
-    if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
-        has_completions = true;
-        complete_name_ref(&file, name_ref, &mut res);
-        // special case, `trait T { fn foo(i_am_a_name_ref) {} }`
-        if is_node::<ast::Param>(name_ref.syntax()) {
-            param_completions(name_ref.syntax(), &mut res);
-        }
-        let name_range = name_ref.syntax().range();
-        let top_node = name_ref
-            .syntax()
-            .ancestors()
-            .take_while(|it| it.range() == name_range)
-            .last()
-            .unwrap();
-        match top_node.parent().map(|it| it.kind()) {
-            Some(SOURCE_FILE) | Some(ITEM_LIST) => complete_mod_item_snippets(&mut res),
-            _ => (),
-        }
-    }
-    if let Some(name) = find_node_at_offset::<ast::Name>(file.syntax(), position.offset) {
-        if is_node::<ast::Param>(name.syntax()) {
-            has_completions = true;
-            param_completions(name.syntax(), &mut res);
-        }
-    }
-    if has_completions {
-        Some(res)
-    } else {
-        None
-    }
 }
 
 fn complete_module_items(
@@ -383,7 +379,8 @@ mod tests {
 
     fn check_scope_completion(code: &str, expected_completions: &str) {
         let (analysis, position) = single_file_with_position(code);
-        let completions = scope_completion(&analysis.imp.db, position)
+        let completions = completions(&analysis.imp.db, position)
+            .unwrap()
             .unwrap()
             .into_iter()
             .filter(|c| c.snippet.is_none())
@@ -393,7 +390,8 @@ mod tests {
 
     fn check_snippet_completion(code: &str, expected_completions: &str) {
         let (analysis, position) = single_file_with_position(code);
-        let completions = scope_completion(&analysis.imp.db, position)
+        let completions = completions(&analysis.imp.db, position)
+            .unwrap()
             .unwrap()
             .into_iter()
             .filter(|c| c.snippet.is_some())

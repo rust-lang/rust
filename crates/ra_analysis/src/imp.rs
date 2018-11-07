@@ -17,7 +17,7 @@ use rustc_hash::FxHashSet;
 use salsa::{Database, ParallelDatabase};
 
 use crate::{
-    completion::{resolve_based_completion, scope_completion, CompletionItem},
+    completion::{completions, CompletionItem},
     db::{self, FileSyntaxQuery, SyntaxDatabase},
     descriptors::{
         function::{FnDescriptor, FnId},
@@ -267,18 +267,7 @@ impl AnalysisImpl {
         self.db.crate_graph().crate_roots[&crate_id]
     }
     pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
-        let mut res = Vec::new();
-        let mut has_completions = false;
-        if let Some(scope_based) = scope_completion(&self.db, position) {
-            res.extend(scope_based);
-            has_completions = true;
-        }
-        if let Some(scope_based) = resolve_based_completion(&self.db, position)? {
-            res.extend(scope_based);
-            has_completions = true;
-        }
-        let res = if has_completions { Some(res) } else { None };
-        Ok(res)
+        completions(&self.db, position)
     }
     pub fn approximately_resolve_symbol(
         &self,
