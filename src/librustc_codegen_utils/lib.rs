@@ -23,12 +23,15 @@
 #![allow(unused_attributes)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
+#![feature(libc)]
 
 #![recursion_limit="256"]
 
+extern crate cc;
 extern crate flate2;
 #[macro_use]
 extern crate log;
+extern crate libc;
 
 extern crate serialize;
 #[macro_use]

@@ -10,6 +10,7 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
+cc = "1.0.1"
 flate2 = "1.0"
 log = "0.4"
 
