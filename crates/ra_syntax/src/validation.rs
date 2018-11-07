@@ -49,14 +49,16 @@ fn validate_char(node: ast::Char, errors: &mut Vec<SyntaxError>) {
                 if text.len() < 4 {
                     errors.push(SyntaxError::new(TooShortAsciiCodeEscape, range));
                 } else {
-                    assert!(text.chars().count() == 4, "AsciiCodeEscape cannot be longer than 4 chars");
+                    assert!(
+                        text.chars().count() == 4,
+                        "AsciiCodeEscape cannot be longer than 4 chars"
+                    );
 
                     match u8::from_str_radix(&text[2..], 16) {
-                        Ok(code) if code < 128 => { /* Escape code is valid */ },
+                        Ok(code) if code < 128 => { /* Escape code is valid */ }
                         Ok(_) => errors.push(SyntaxError::new(AsciiCodeEscapeOutOfRange, range)),
                         Err(_) => errors.push(SyntaxError::new(MalformedAsciiCodeEscape, range)),
                     }
-
                 }
             }
             UnicodeEscape => {
@@ -127,7 +129,7 @@ fn validate_char(node: ast::Char, errors: &mut Vec<SyntaxError>) {
                 if text == "\t" || text == "\r" {
                     errors.push(SyntaxError::new(UnescapedCodepoint, range));
                 }
-            },
+            }
         }
     }
 
@@ -162,13 +164,17 @@ mod test {
 
     fn assert_valid_char(literal: &str) {
         let file = build_file(literal);
-        assert!(file.errors().len() == 0, "Errors for literal '{}': {:?}", literal, file.errors());
+        assert!(
+            file.errors().len() == 0,
+            "Errors for literal '{}': {:?}",
+            literal,
+            file.errors()
+        );
     }
 
-    fn assert_invalid_char(literal: &str) { //, expected_errors: HashSet<SyntaxErrorKind>) {
+    fn assert_invalid_char(literal: &str) {
         let file = build_file(literal);
         assert!(file.errors().len() > 0);
-        //let found_errors = file.errors().iter().map(|e| e.kind()).collect();
     }
 
     #[test]
@@ -184,9 +190,7 @@ mod test {
 
     #[test]
     fn test_unicode_codepoints() {
-        let valid = [
-            "Ƒ", "バ", "メ", "﷽"
-        ];
+        let valid = ["Ƒ", "バ", "メ", "﷽"];
         for c in &valid {
             assert_valid_char(c);
         }
@@ -194,9 +198,7 @@ mod test {
 
     #[test]
     fn test_unicode_multiple_codepoints() {
-        let invalid = [
-            "नी", "👨‍👨‍"
-        ];
+        let invalid = ["नी", "👨‍👨‍"];
         for c in &invalid {
             assert_invalid_char(c);
         }
@@ -204,9 +206,7 @@ mod test {
 
     #[test]
     fn test_valid_ascii_escape() {
-        let valid = [
-            r"\'", "\"", "\\\"", r"\n", r"\r", r"\t", r"\0", "a", "b"
-        ];
+        let valid = [r"\'", "\"", "\\\"", r"\n", r"\r", r"\t", r"\0", "a", "b"];
         for c in &valid {
             assert_valid_char(c);
         }
@@ -214,9 +214,7 @@ mod test {
 
     #[test]
     fn test_invalid_ascii_escape() {
-        let invalid = [
-            r"\a", r"\?", r"\"
-        ];
+        let invalid = [r"\a", r"\?", r"\"];
         for c in &invalid {
             assert_invalid_char(c);
         }
@@ -224,9 +222,7 @@ mod test {
 
     #[test]
     fn test_valid_ascii_code_escape() {
-        let valid = [
-            r"\x00", r"\x7F", r"\x55"
-        ];
+        let valid = [r"\x00", r"\x7F", r"\x55"];
         for c in &valid {
             assert_valid_char(c);
         }
@@ -234,18 +230,20 @@ mod test {
 
     #[test]
     fn test_invalid_ascii_code_escape() {
-        let invalid = [
-            r"\x", r"\x7", r"\xF0"
-        ];
+        let invalid = [r"\x", r"\x7", r"\xF0"];
         for c in &invalid {
             assert_invalid_char(c);
         }
     }
 
-     #[test]
+    #[test]
     fn test_valid_unicode_escape() {
         let valid = [
-            r"\u{FF}", r"\u{0}", r"\u{F}", r"\u{10FFFF}", r"\u{1_0__FF___FF_____}"
+            r"\u{FF}",
+            r"\u{0}",
+            r"\u{F}",
+            r"\u{10FFFF}",
+            r"\u{1_0__FF___FF_____}",
         ];
         for c in &valid {
             assert_valid_char(c);
@@ -255,7 +253,14 @@ mod test {
     #[test]
     fn test_invalid_unicode_escape() {
         let invalid = [
-            r"\u", r"\u{}", r"\u{", r"\u{FF", r"\u{FFFFFF}", r"\u{_F}", r"\u{00FFFFF}", r"\u{110000}"
+            r"\u",
+            r"\u{}",
+            r"\u{",
+            r"\u{FF",
+            r"\u{FFFFFF}",
+            r"\u{_F}",
+            r"\u{00FFFFF}",
+            r"\u{110000}",
         ];
         for c in &invalid {
             assert_invalid_char(c);
