@@ -10,5 +10,5 @@
 
 pub fn main() {
     let s: &str = "hello";
-    let c: u8 = s[4]; //~ ERROR the trait bound `{integer}: std::slice::SliceIndex<str>` is not satisfied
+    let c: u8 = s[4]; //~ ERROR the trait bound `{integer}: std::slice::SliceIndex<str>`
 }
