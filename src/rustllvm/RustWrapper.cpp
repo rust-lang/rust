@@ -705,17 +705,14 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
         FPVal->getValueAPF().bitcastToAPInt().getZExtValue());
   }
 
+  llvm::DIGlobalVariableExpression *VarExpr = Builder->createGlobalVariableExpression(
+      unwrapDI<DIDescriptor>(Context), Name, LinkageName,
+      unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
+      InitExpr, unwrapDIPtr<MDNode>(Decl),
 #if LLVM_VERSION_GE(8, 0)
-  llvm::DIGlobalVariableExpression *VarExpr = Builder->createGlobalVariableExpression(
-      unwrapDI<DIDescriptor>(Context), Name, LinkageName,
-      unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
-      InitExpr, unwrapDIPtr<MDNode>(Decl), nullptr, AlignInBits);
-#else
-  llvm::DIGlobalVariableExpression *VarExpr = Builder->createGlobalVariableExpression(
-      unwrapDI<DIDescriptor>(Context), Name, LinkageName,
-      unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
-      InitExpr, unwrapDIPtr<MDNode>(Decl), AlignInBits);
+      /* templateParams */ nullptr,
 #endif
+      AlignInBits);
 
   InitVal->setMetadata("dbg", VarExpr);
 
