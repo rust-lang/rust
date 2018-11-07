@@ -749,7 +749,7 @@ impl ConfigCodeBlock {
             .code_block
             .as_ref()
             .unwrap()
-            .split('\n')
+            .lines()
             .nth(0)
             .unwrap_or("")
             == "#![rustfmt::skip]";

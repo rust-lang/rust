@@ -184,6 +184,19 @@ fn issue1577() {
     });
 }
 
+// #3174
+fn issue_3174() {
+    let data =
+        if let Some(debug) = error.debug_info() {
+            json!({
+                "errorKind": format!("{:?}", error.err_kind()),
+                "debugMessage": debug.message,
+            })
+        } else {
+            json!({"errorKind": format!("{:?}", error.err_kind())})
+        };
+}
+
 gfx_pipeline!(pipe {
     vbuf: gfx::VertexBuffer<Vertex> = (),
     out: gfx::RenderTarget<ColorFormat> = "Target0",

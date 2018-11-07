@@ -144,11 +144,32 @@ fn rewrite_macro_name(
 }
 
 // Use this on failing to format the macro call.
-fn return_original_snippet_with_failure_marked(
+fn return_macro_parse_failure_fallback(
     context: &RewriteContext,
+    indent: Indent,
     span: Span,
 ) -> Option<String> {
+    // Mark this as a failure however we format it
     context.macro_rewrite_failure.replace(true);
+
+    // Heuristically determine whether the last line of the macro uses "Block" style
+    // rather than using "Visual" style, or another indentation style.
+    let is_like_block_indent_style = context
+        .snippet(span)
+        .lines()
+        .last()
+        .map(|closing_line| {
+            closing_line.trim().chars().all(|ch| match ch {
+                '}' | ')' | ']' => true,
+                _ => false,
+            })
+        })
+        .unwrap_or(false);
+    if is_like_block_indent_style {
+        return trim_left_preserve_layout(context.snippet(span), indent, &context.config);
+    }
+
+    // Return the snippet unmodified if the macro is not block-like
     Some(context.snippet(span).to_owned())
 }
 
@@ -239,7 +260,9 @@ pub fn rewrite_macro_inner(
         loop {
             match parse_macro_arg(&mut parser) {
                 Some(arg) => arg_vec.push(arg),
-                None => return return_original_snippet_with_failure_marked(context, mac.span),
+                None => {
+                    return return_macro_parse_failure_fallback(context, shape.indent, mac.span);
+                }
             }
 
             match parser.token {
@@ -260,17 +283,19 @@ pub fn rewrite_macro_inner(
                                     }
                                 }
                                 None => {
-                                    return return_original_snippet_with_failure_marked(
-                                        context, mac.span,
-                                    )
+                                    return return_macro_parse_failure_fallback(
+                                        context,
+                                        shape.indent,
+                                        mac.span,
+                                    );
                                 }
                             }
                         }
                     }
-                    return return_original_snippet_with_failure_marked(context, mac.span);
+                    return return_macro_parse_failure_fallback(context, shape.indent, mac.span);
                 }
                 _ if arg_vec.last().map_or(false, MacroArg::is_item) => continue,
-                _ => return return_original_snippet_with_failure_marked(context, mac.span),
+                _ => return return_macro_parse_failure_fallback(context, shape.indent, mac.span),
             }
 
             parser.bump();
@@ -376,7 +401,7 @@ pub fn rewrite_macro_inner(
         }
         DelimToken::Brace => {
             // Skip macro invocations with braces, for now.
-            trim_left_preserve_layout(context.snippet(mac.span), &shape.indent, &context.config)
+            trim_left_preserve_layout(context.snippet(mac.span), shape.indent, &context.config)
         }
         _ => unreachable!(),
     }

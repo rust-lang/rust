@@ -511,7 +511,7 @@ pub fn remove_trailing_white_spaces(text: &str) -> String {
 ///     ),
 /// }
 /// ```
-pub fn trim_left_preserve_layout(orig: &str, indent: &Indent, config: &Config) -> Option<String> {
+pub fn trim_left_preserve_layout(orig: &str, indent: Indent, config: &Config) -> Option<String> {
     let mut lines = LineClasses::new(orig);
     let first_line = lines.next().map(|(_, s)| s.trim_right().to_owned())?;
     let mut trimmed_lines = Vec::with_capacity(16);
@@ -598,7 +598,7 @@ mod test {
         let config = Config::default();
         let indent = Indent::new(4, 0);
         assert_eq!(
-            trim_left_preserve_layout(&s, &indent, &config),
+            trim_left_preserve_layout(&s, indent, &config),
             Some("aaa\n    bbb\n    ccc".to_string())
         );
     }

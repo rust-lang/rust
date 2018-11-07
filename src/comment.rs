@@ -332,7 +332,7 @@ fn identify_comment(
     let (first_group, rest) = orig.split_at(first_group_ending);
     let rewritten_first_group =
         if !config.normalize_comments() && has_bare_lines && style.is_block_comment() {
-            trim_left_preserve_layout(first_group, &shape.indent, config)?
+            trim_left_preserve_layout(first_group, shape.indent, config)?
         } else if !config.normalize_comments()
             && !config.wrap_comments()
             && !config.format_doc_comments()
