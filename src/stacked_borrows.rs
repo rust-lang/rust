@@ -217,10 +217,12 @@ impl<'tcx> Stack {
 
     /// Initiate `bor`; mostly this means pushing.
     /// This operation cannot fail; it is up to the caller to ensure that the precondition
-    /// is met: We cannot push onto frozen stacks.
+    /// is met: We cannot push `Uniq` onto frozen stacks.
+    /// Crucially, this makes pushing a `Shr` onto a frozen location a NOP.  We do not want
+    /// such a location to get mutably shared this way!
     fn initiate(&mut self, bor: Borrow) {
         if let Some(_) = self.frozen_since {
-            // "Pushing" a Shr or Frz on top is redundant.
+            // A frozen location, we won't change anything here!
             match bor {
                 Borrow::Uniq(_) => bug!("Trying to create unique ref to frozen location"),
                 Borrow::Shr(_) => trace!("initiate: New shared ref to frozen location is a NOP"),
@@ -272,39 +274,41 @@ impl State {
 
 /// Higher-level operations
 impl<'tcx> Stacks {
-    /// The single most important operation: Make sure that using `ptr` is okay,
-    /// and if `new_bor` is present then make that the new current borrow.
-    fn use_and_maybe_re_borrow(
+    /// `ptr` got used, reflect that in the stack.
+    fn reactivate(
         &self,
         ptr: Pointer<Borrow>,
         size: Size,
         usage: UsageKind,
-        new_bor: Option<Borrow>,
     ) -> EvalResult<'tcx> {
-        trace!("use_and_maybe_re_borrow of tag {:?} as {:?}, new {:?}: {:?}, size {}",
-            ptr.tag, usage, new_bor, ptr, size.bytes());
+        trace!("use_borrow of tag {:?} as {:?}: {:?}, size {}",
+            ptr.tag, usage, ptr, size.bytes());
         let mut stacks = self.stacks.borrow_mut();
         for stack in stacks.iter_mut(ptr.offset, size) {
             stack.reactivate(ptr.tag, usage == UsageKind::Write)?;
-            if let Some(new_bor) = new_bor {
-                stack.initiate(new_bor);
-            }
         }
         Ok(())
     }
 
-    /// Freeze the given memory range.
-    fn freeze(
+    /// Create a new borrow, the ptr must already have the new tag.
+    /// Also freezes the location if `freeze` is set and the tag is a timestamped `Shr`.
+    fn initiate(
         &self,
         ptr: Pointer<Borrow>,
         size: Size,
-        bor_t: Timestamp
-    ) -> EvalResult<'tcx> {
+        freeze: bool,
+    ) {
+        trace!("reborrow for tag {:?}: {:?}, size {}",
+            ptr.tag, ptr, size.bytes());
         let mut stacks = self.stacks.borrow_mut();
         for stack in stacks.iter_mut(ptr.offset, size) {
-            stack.freeze(bor_t);
+            stack.initiate(ptr.tag);
+            if freeze {
+                if let Borrow::Shr(Some(bor_t)) = ptr.tag {
+                    stack.freeze(bor_t);
+                }
+            }
         }
-        Ok(())
     }
 
     /// Check that this stack is fine with being dereferenced
@@ -312,6 +316,7 @@ impl<'tcx> Stacks {
         &self,
         ptr: Pointer<Borrow>,
         size: Size,
+        frozen: bool,
     ) -> EvalResult<'tcx> {
         let mut stacks = self.stacks.borrow_mut();
         // We need `iter_mut` because `iter` would skip gaps!
@@ -323,20 +328,14 @@ impl<'tcx> Stacks {
                     err
                 )))
             }
-        }
-        Ok(())
-    }
-
-    /// Check that this stack is appropriately frozen
-    fn check_frozen(
-        &self,
-        ptr: Pointer<Borrow>,
-        size: Size,
-        bor_t: Timestamp
-    ) -> EvalResult<'tcx> {
-        let mut stacks = self.stacks.borrow_mut();
-        for stack in stacks.iter_mut(ptr.offset, size) {
-            stack.check_frozen(bor_t)?;
+            // Sometimes we also need to be frozen.
+            if frozen {
+                // Even shared refs can have uniq tags (after transmute).  That's not an error
+                // but they do not get any freezing benefits.
+                if let Borrow::Shr(Some(bor_t)) = ptr.tag {
+                    stack.check_frozen(bor_t)?;
+                }
+            }
         }
         Ok(())
     }
@@ -351,7 +350,7 @@ impl AllocationExtra<Borrow> for Stacks {
         size: Size,
     ) -> EvalResult<'tcx> {
         // Reads behave exactly like the first half of a reborrow-to-shr
-        alloc.extra.use_and_maybe_re_borrow(ptr, size, UsageKind::Read, None)
+        alloc.extra.reactivate(ptr, size, UsageKind::Read)
     }
 
     #[inline(always)]
@@ -361,7 +360,7 @@ impl AllocationExtra<Borrow> for Stacks {
         size: Size,
     ) -> EvalResult<'tcx> {
         // Writes behave exactly like the first half of a reborrow-to-mut
-        alloc.extra.use_and_maybe_re_borrow(ptr, size, UsageKind::Write, None)
+        alloc.extra.reactivate(ptr, size, UsageKind::Read)
     }
 
     #[inline(always)]
@@ -371,7 +370,7 @@ impl AllocationExtra<Borrow> for Stacks {
         size: Size,
     ) -> EvalResult<'tcx> {
         // This is like mutating
-        alloc.extra.use_and_maybe_re_borrow(ptr, size, UsageKind::Write, None)
+        alloc.extra.reactivate(ptr, size, UsageKind::Write)
         // FIXME: Error out of there are any barriers?
     }
 }
@@ -429,72 +428,6 @@ pub trait EvalContextExt<'tcx> {
 }
 
 impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
-    /// Called for value-to-place conversion.
-    ///
-    /// Note that this does NOT mean that all this memory will actually get accessed/referenced!
-    /// We could be in the middle of `&(*var).1`.
-    fn tag_dereference(
-        &self,
-        place: MPlaceTy<'tcx, Borrow>,
-        size: Size,
-        usage: UsageKind,
-    ) -> EvalResult<'tcx, Borrow> {
-        trace!("tag_dereference: Accessing reference ({:?}) for {:?} (pointee {})",
-            usage, place.ptr, place.layout.ty);
-        let ptr = place.ptr.to_ptr()?;
-        // In principle we should not have to do anything here.  However, with transmutes involved,
-        // it can happen that the tag of `ptr` does not actually match `usage`, and we
-        // should adjust for that.
-        // Notably, the compiler can introduce such transmutes by optimizing away `&[mut]*`.
-        // That can transmute a raw ptr to a (shared/mut) ref, and a mut ref to a shared one.
-        match (usage, ptr.tag) {
-            (UsageKind::Raw, _) => {
-                // Don't use the tag, this is a raw access!  Even if there is a tag,
-                // that means transmute happened and we ignore the tag.
-                // Also don't do any further validation, this is raw after all.
-                return Ok(Borrow::default());
-            }
-            (UsageKind::Write, Borrow::Uniq(_)) |
-            (UsageKind::Read, Borrow::Shr(_)) => {
-                // Expected combinations.  Nothing to do.
-            }
-            (UsageKind::Write, Borrow::Shr(None)) => {
-                // Raw transmuted to mut ref.  Keep this as raw access.
-                // We cannot reborrow here; there might be a raw in `&(*var).1` where
-                // `var` is an `&mut`.  The other field of the struct might be already frozen,
-                // also using `var`, and that would be okay.
-            }
-            (UsageKind::Read, Borrow::Uniq(_)) => {
-                // A mut got transmuted to shr.  Can happen even from compiler transformations:
-                // `&*x` gets optimized to `x` even when `x` is a `&mut`.
-            }
-            (UsageKind::Write, Borrow::Shr(Some(_))) => {
-                // This is just invalid: A shr got transmuted to a mut.
-                // If we ever allow this, we have to consider what we do when a turn a
-                // `Raw`-tagged `&mut` into a raw pointer pointing to a frozen location.
-                // We probably do not want to allow that, but we have to allow
-                // turning a `Raw`-tagged `&` into a raw ptr to a frozen location.
-                return err!(MachineError(format!("Encountered mutable reference with frozen tag {:?}", ptr.tag)))
-            }
-        }
-
-        // If we got here, we do some checking, *but* we leave the tag unchanged.
-        self.memory().check_bounds(ptr, size, false)?;
-        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
-        alloc.extra.check_deref(ptr, size)?;
-        // Maybe check frozen stuff
-        if let Borrow::Shr(Some(bor_t)) = ptr.tag {
-            self.visit_frozen(place, size, |frz_ptr, size| {
-                debug_assert_eq!(frz_ptr.alloc_id, ptr.alloc_id);
-                // Are you frozen?
-                alloc.extra.check_frozen(frz_ptr, size, bor_t)
-            })?;
-        }
-
-        // All is good, and do not change the tag
-        Ok(ptr.tag)
-    }
-
     fn tag_new_allocation(
         &mut self,
         id: AllocId,
@@ -524,6 +457,92 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         Borrow::Uniq(time)
     }
 
+    /// Called for value-to-place conversion.
+    ///
+    /// Note that this does NOT mean that all this memory will actually get accessed/referenced!
+    /// We could be in the middle of `&(*var).1`.
+    fn tag_dereference(
+        &self,
+        place: MPlaceTy<'tcx, Borrow>,
+        size: Size,
+        usage: UsageKind,
+    ) -> EvalResult<'tcx, Borrow> {
+        trace!("tag_dereference: Accessing reference ({:?}) for {:?} (pointee {})",
+            usage, place.ptr, place.layout.ty);
+        let ptr = place.ptr.to_ptr()?;
+        // In principle we should not have to do anything here.  However, with transmutes involved,
+        // it can happen that the tag of `ptr` does not actually match `usage`, and we
+        // should adjust for that.
+        // Notably, the compiler can introduce such transmutes by optimizing away `&[mut]*`.
+        // That can transmute a raw ptr to a (shared/mut) ref, and a mut ref to a shared one.
+        match (usage, ptr.tag) {
+            (UsageKind::Raw, _) => {
+                // Don't use the tag, this is a raw access!  They should happen tagless.
+                // This does mean, however, that `&*foo` is *not* a NOP *if* `foo` is a raw ptr.
+                // Also don't do any further validation, this is raw after all.
+                return Ok(Borrow::default());
+            }
+            (UsageKind::Write, Borrow::Uniq(_)) |
+            (UsageKind::Read, Borrow::Shr(_)) => {
+                // Expected combinations.  Nothing to do.
+            }
+            (UsageKind::Write, Borrow::Shr(None)) => {
+                // Raw transmuted to mut ref.  Keep this as raw access.
+                // We cannot reborrow here; there might be a raw in `&(*var).1` where
+                // `var` is an `&mut`.  The other field of the struct might be already frozen,
+                // also using `var`, and that would be okay.
+            }
+            (UsageKind::Read, Borrow::Uniq(_)) => {
+                // A mut got transmuted to shr.  Can happen even from compiler transformations:
+                // `&*x` gets optimized to `x` even when `x` is a `&mut`.
+            }
+            (UsageKind::Write, Borrow::Shr(Some(_))) => {
+                // This is just invalid: A shr got transmuted to a mut.
+                // If we ever allow this, we have to consider what we do when a turn a
+                // `Raw`-tagged `&mut` into a raw pointer pointing to a frozen location.
+                // We probably do not want to allow that, but we have to allow
+                // turning a `Raw`-tagged `&` into a raw ptr to a frozen location.
+                return err!(MachineError(format!("Encountered mutable reference with frozen tag {:?}", ptr.tag)))
+            }
+        }
+
+        // Get the allocation
+        self.memory().check_bounds(ptr, size, false)?;
+        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
+        // If we got here, we do some checking, *but* we leave the tag unchanged.
+        if let Borrow::Shr(Some(_)) = ptr.tag {
+            // We need a frozen-sensitive check
+            self.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
+                alloc.extra.check_deref(cur_ptr, size, frozen)
+            })?;
+        } else {
+            // Just treat this as one big chunk
+            alloc.extra.check_deref(ptr, size, /*frozen*/false)?;
+        }
+
+        // All is good, and do not change the tag
+        Ok(ptr.tag)
+    }
+
+    /// The given place may henceforth be accessed through raw pointers.
+    fn escape_to_raw(
+        &mut self,
+        place: MPlaceTy<'tcx, Borrow>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        trace!("self: {:?} is now accessible by raw pointers", *place);
+        // Get the allocation
+        let mut ptr = place.ptr.to_ptr()?;
+        self.memory().check_bounds(ptr, size, false)?; // `ptr_dereference` wouldn't do any checks if this is a raw ptr
+        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
+        // Re-borrow to raw.  This is a NOP for shared borrows, but we do not know the borrow
+        // type here and that's also okay.  Freezing does not matter here.
+        alloc.extra.reactivate(ptr, size, UsageKind::Raw)?;
+        ptr.tag = Borrow::default();
+        alloc.extra.initiate(ptr, size, /*freeze*/false);
+        Ok(())
+    }
+
     fn retag_ptr(
         &mut self,
         val: ImmTy<'tcx, Borrow>,
@@ -546,25 +565,28 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             hir::MutMutable => Borrow::Uniq(time),
             hir::MutImmutable => Borrow::Shr(Some(time)),
         };
+        let new_ptr = Pointer::new_with_tag(ptr.alloc_id, ptr.offset, new_bor);
         trace!("retag: Creating new reference ({:?}) for {:?} (pointee {}): {:?}",
             mutbl, ptr, place.layout.ty, new_bor);
 
-        // Update the stacks.  First create a new borrow, then maybe freeze stuff.
+        // Get the allocation
         self.memory().check_bounds(ptr, size, false)?; // `ptr_dereference` wouldn't do any checks if this is a raw ptr
         let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
-        alloc.extra.use_and_maybe_re_borrow(ptr, size, Some(mutbl).into(), Some(new_bor))?;
-        // Maybe freeze stuff
-        if let Borrow::Shr(Some(bor_t)) = new_bor {
-            self.visit_frozen(place, size, |frz_ptr, size| {
-                debug_assert_eq!(frz_ptr.alloc_id, ptr.alloc_id);
-                // Be frozen!
-                alloc.extra.freeze(frz_ptr, size, bor_t)
+        // Update the stacks.  First use old borrow, then initiate new one.
+        alloc.extra.reactivate(ptr, size, Some(mutbl).into())?;
+        if mutbl == hir::MutImmutable {
+            // We need a frozen-sensitive initiate
+            self.visit_freeze_sensitive(place, size, |mut cur_ptr, size, frozen| {
+                cur_ptr.tag = new_bor;
+                Ok(alloc.extra.initiate(cur_ptr, size, frozen))
             })?;
+        } else {
+            // Just treat this as one big chunk
+            alloc.extra.initiate(new_ptr, size, /*frozen*/false);
         }
 
-        // Compute the new value and return that
-        let new_ptr = Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, new_bor));
-        let new_place = MemPlace { ptr: new_ptr, ..*place };
+        // Return new ptr
+        let new_place = MemPlace { ptr: Scalar::Ptr(new_ptr), ..*place };
         Ok(new_place.to_ref())
     }
 
@@ -584,21 +606,6 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         let val = self.read_immediate(self.place_to_op(place)?)?;
         let val = self.retag_ptr(val, mutbl)?;
         self.write_immediate(val, place)?;
-        Ok(())
-    }
-
-    fn escape_to_raw(
-        &mut self,
-        place: MPlaceTy<'tcx, Borrow>,
-        size: Size,
-    ) -> EvalResult<'tcx> {
-        trace!("self: {:?} is now accessible by raw pointers", *place);
-        // Re-borrow to raw.  This is a NOP for shared borrows, but we do not know the borrow
-        // type here and that's also okay.
-        let ptr = place.ptr.to_ptr()?;
-        self.memory().check_bounds(ptr, size, false)?; // `ptr_dereference` wouldn't do any checks if this is a raw ptr
-        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
-        alloc.extra.use_and_maybe_re_borrow(ptr, size, UsageKind::Raw, Some(Borrow::default()))?;
         Ok(())
     }
 }

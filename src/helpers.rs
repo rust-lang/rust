@@ -33,13 +33,13 @@ impl<Tag> ScalarExt for ScalarMaybeUndef<Tag> {
 pub trait EvalContextExt<'tcx> {
     fn resolve_path(&self, path: &[&str]) -> EvalResult<'tcx, ty::Instance<'tcx>>;
 
-    /// Visit the memory covered by `place` that is frozen -- i.e., NOT
-    /// what is inside an `UnsafeCell`.
-    fn visit_frozen(
+    /// Visit the memory covered by `place`, sensitive to freezing:  The 3rd parameter
+    /// will be true if this is frozen, false if this is in an `UnsafeCell`.
+    fn visit_freeze_sensitive(
         &self,
         place: MPlaceTy<'tcx, Borrow>,
         size: Size,
-        action: impl FnMut(Pointer<Borrow>, Size) -> EvalResult<'tcx>,
+        action: impl FnMut(Pointer<Borrow>, Size, bool) -> EvalResult<'tcx>,
     ) -> EvalResult<'tcx>;
 }
 
@@ -79,13 +79,11 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             })
     }
 
-    /// Visit the memory covered by `place` that is frozen -- i.e., NOT
-    /// what is inside an `UnsafeCell`.
-    fn visit_frozen(
+    fn visit_freeze_sensitive(
         &self,
         place: MPlaceTy<'tcx, Borrow>,
         size: Size,
-        mut frozen_action: impl FnMut(Pointer<Borrow>, Size) -> EvalResult<'tcx>,
+        mut action: impl FnMut(Pointer<Borrow>, Size, bool) -> EvalResult<'tcx>,
     ) -> EvalResult<'tcx> {
         trace!("visit_frozen(place={:?}, size={:?})", *place, size);
         debug_assert_eq!(size,
@@ -99,18 +97,29 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         let mut end_ptr = place.ptr;
         // Called when we detected an `UnsafeCell` at the given offset and size.
         // Calls `action` and advances `end_ptr`.
-        let mut unsafe_cell_action = |unsafe_cell_offset, unsafe_cell_size| {
+        let mut unsafe_cell_action = |unsafe_cell_ptr: Scalar<Borrow>, unsafe_cell_size: Size| {
+            if unsafe_cell_size != Size::ZERO {
+                debug_assert_eq!(unsafe_cell_ptr.to_ptr().unwrap().alloc_id,
+                    end_ptr.to_ptr().unwrap().alloc_id);
+                debug_assert_eq!(unsafe_cell_ptr.to_ptr().unwrap().tag,
+                    end_ptr.to_ptr().unwrap().tag);
+            }
             // We assume that we are given the fields in increasing offset order,
             // and nothing else changes.
+            let unsafe_cell_offset = unsafe_cell_ptr.get_ptr_offset(self);
             let end_offset = end_ptr.get_ptr_offset(self);
             assert!(unsafe_cell_offset >= end_offset);
             let frozen_size = unsafe_cell_offset - end_offset;
             // Everything between the end_ptr and this `UnsafeCell` is frozen.
             if frozen_size != Size::ZERO {
-                frozen_action(end_ptr.to_ptr()?, frozen_size)?;
+                action(end_ptr.to_ptr()?, frozen_size, /*frozen*/true)?;
+            }
+            // This `UnsafeCell` is NOT frozen.
+            if unsafe_cell_size != Size::ZERO {
+                action(unsafe_cell_ptr.to_ptr()?, unsafe_cell_size, /*frozen*/false)?;
             }
             // Update end end_ptr.
-            end_ptr = end_ptr.ptr_wrapping_offset(frozen_size+unsafe_cell_size, self);
+            end_ptr = unsafe_cell_ptr.ptr_wrapping_offset(unsafe_cell_size, self);
             // Done
             Ok(())
         };
@@ -126,7 +135,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                         .unwrap_or_else(|| place.layout.size_and_align());
                     // Now handle this `UnsafeCell`, unless it is empty.
                     if unsafe_cell_size != Size::ZERO {
-                        unsafe_cell_action(place.ptr.get_ptr_offset(self), unsafe_cell_size)
+                        unsafe_cell_action(place.ptr, unsafe_cell_size)
                     } else {
                         Ok(())
                     }
@@ -136,7 +145,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
         }
         // The part between the end_ptr and the end of the place is also frozen.
         // So pretend there is a 0-sized `UnsafeCell` at the end.
-        unsafe_cell_action(place.ptr.get_ptr_offset(self) + size, Size::ZERO)?;
+        unsafe_cell_action(place.ptr.ptr_wrapping_offset(size, self), Size::ZERO)?;
         // Done!
         return Ok(());
 
