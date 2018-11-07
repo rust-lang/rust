@@ -66,7 +66,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub-fat-ptr.rs:117:1
    |
 LL | const G: &Trait = &unsafe { BoolTransmute { val: 3 }.bl };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.<dyn-downcast>, but expected something in the range 0..=1
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.<dyn-downcast>, but expected something less or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
@@ -74,7 +74,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub-fat-ptr.rs:121:1
    |
 LL | const H: &[bool] = &[unsafe { BoolTransmute { val: 3 }.bl }];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>[0], but expected something in the range 0..=1
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>[0], but expected something less or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
@@ -82,7 +82,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub-fat-ptr.rs:127:1
    |
 LL | const I2: &MySliceBool = &MySlice(unsafe { BoolTransmute { val: 3 }.bl }, [false]);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.0, but expected something in the range 0..=1
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.0, but expected something less or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
@@ -90,7 +90,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/union-ub-fat-ptr.rs:130:1
    |
 LL | const I3: &MySliceBool = &MySlice(true, [unsafe { BoolTransmute { val: 3 }.bl }]);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.1[0], but expected something in the range 0..=1
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 3 at .<deref>.1[0], but expected something less or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 

@@ -71,7 +71,7 @@ impl<'b> JsonDumper<CallbackOutput<'b>> {
         config: Config,
     ) -> JsonDumper<CallbackOutput<'b>> {
         JsonDumper {
-            output: CallbackOutput { callback: callback },
+            output: CallbackOutput { callback },
             config: config.clone(),
             result: Analysis::new(config),
         }

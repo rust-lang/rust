@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue_21202.rs
+// aux-build:issue-21202.rs
 
 extern crate issue_21202 as crate1;
 

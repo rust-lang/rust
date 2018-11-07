@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:private_trait_xc.rs
+// aux-build:private-trait-xc.rs
 
 extern crate private_trait_xc;
 

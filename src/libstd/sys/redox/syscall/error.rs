@@ -19,7 +19,7 @@ pub type Result<T> = result::Result<T, Error>;
 
 impl Error {
     pub fn new(errno: i32) -> Error {
-        Error { errno: errno }
+        Error { errno }
     }
 
     pub fn mux(result: Result<usize>) -> usize {

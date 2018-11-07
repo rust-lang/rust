@@ -2202,8 +2202,7 @@ pub fn build_session_options_and_crate_config(
     if !cg.remark.is_empty() && debuginfo == DebugInfo::None {
         early_warn(
             error_format,
-            "-C remark will not show source locations without \
-             --debuginfo",
+            "-C remark requires \"-C debuginfo=n\" to show source locations",
         );
     }
 

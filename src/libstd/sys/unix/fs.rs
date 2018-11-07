@@ -317,7 +317,7 @@ impl DirEntry {
         cvt(unsafe {
             fstatat64(fd, self.entry.d_name.as_ptr(), &mut stat, libc::AT_SYMLINK_NOFOLLOW)
         })?;
-        Ok(FileAttr { stat: stat })
+        Ok(FileAttr { stat })
     }
 
     #[cfg(not(any(target_os = "linux", target_os = "emscripten", target_os = "android")))]
@@ -526,7 +526,7 @@ impl File {
         cvt(unsafe {
             fstat64(self.0.raw(), &mut stat)
         })?;
-        Ok(FileAttr { stat: stat })
+        Ok(FileAttr { stat })
     }
 
     pub fn fsync(&self) -> io::Result<()> {
@@ -807,7 +807,7 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
     cvt(unsafe {
         stat64(p.as_ptr(), &mut stat)
     })?;
-    Ok(FileAttr { stat: stat })
+    Ok(FileAttr { stat })
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
@@ -816,7 +816,7 @@ pub fn lstat(p: &Path) -> io::Result<FileAttr> {
     cvt(unsafe {
         lstat64(p.as_ptr(), &mut stat)
     })?;
-    Ok(FileAttr { stat: stat })
+    Ok(FileAttr { stat })
 }
 
 pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {

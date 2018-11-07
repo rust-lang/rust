@@ -3418,7 +3418,7 @@ mod test_map {
                 slot.borrow_mut()[k] += 1;
             });
 
-            Droppable { k: k }
+            Droppable { k }
         }
     }
 

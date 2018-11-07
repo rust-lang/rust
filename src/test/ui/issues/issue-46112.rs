@@ -12,7 +12,7 @@
 // paths rooted from `std` to be misrendered in the diagnostic output.
 
 // ignore-windows
-// aux-build:xcrate_issue_46112_rexport_core.rs
+// aux-build:xcrate-issue-46112-rexport-core.rs
 
 extern crate xcrate_issue_46112_rexport_core;
 fn test(r: Result<Option<()>, &'static str>) { }

@@ -952,7 +952,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             control.compilation_done.callback = box move |state| {
                 old_callback(state);
                 let sess = state.session;
-                println!("Fuel used by {}: {}",
+                eprintln!("Fuel used by {}: {}",
                     sess.print_fuel_crate.as_ref().unwrap(),
                     sess.print_fuel.get());
             }

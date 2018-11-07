@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue_38875_b.rs
+// aux-build:issue-38875-b.rs
 // compile-pass
 
 extern crate issue_38875_b;

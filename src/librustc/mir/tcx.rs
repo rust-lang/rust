@@ -32,7 +32,7 @@ pub enum PlaceTy<'tcx> {
 
 impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     pub fn from_ty(ty: Ty<'tcx>) -> PlaceTy<'tcx> {
-        PlaceTy::Ty { ty: ty }
+        PlaceTy::Ty { ty }
     }
 
     pub fn to_ty(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {

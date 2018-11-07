@@ -12,7 +12,8 @@
 
 use std::mem::size_of;
 
-// compile-flags: -Z fuel=foo=0
+// (#55495: The --error-format is to sidestep an issue in our test harness)
+// compile-flags: --error-format human -Z fuel=foo=0
 
 struct S1(u8, u16, u8);
 struct S2(u8, u16, u8);

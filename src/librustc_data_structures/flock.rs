@@ -214,7 +214,7 @@ cfg_if! {
                     unsafe { libc::close(fd); }
                     Err(err)
                 } else {
-                    Ok(Lock { fd: fd })
+                    Ok(Lock { fd })
                 }
             }
         }

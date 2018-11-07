@@ -945,7 +945,7 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
         ItemKind::Enum(enum_definition, generics) => {
             let generics = folder.fold_generics(generics);
             let variants = enum_definition.variants.move_map(|x| folder.fold_variant(x));
-            ItemKind::Enum(ast::EnumDef { variants: variants }, generics)
+            ItemKind::Enum(ast::EnumDef { variants }, generics)
         }
         ItemKind::Struct(struct_def, generics) => {
             let generics = folder.fold_generics(generics);

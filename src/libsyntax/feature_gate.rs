@@ -1614,7 +1614,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemKind::Struct(..) => {
-                if let Some(attr) = attr::find_by_name(&i.attrs[..], "repr") {
+                for attr in attr::filter_by_name(&i.attrs[..], "repr") {
                     for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
                         if item.check_name("simd") {
                             gate_feature_post!(&self, repr_simd, attr.span,

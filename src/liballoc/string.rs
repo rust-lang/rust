@@ -502,7 +502,7 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
         match str::from_utf8(&vec) {
-            Ok(..) => Ok(String { vec: vec }),
+            Ok(..) => Ok(String { vec }),
             Err(e) => {
                 Err(FromUtf8Error {
                     bytes: vec,

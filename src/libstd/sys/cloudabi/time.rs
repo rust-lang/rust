@@ -32,7 +32,7 @@ impl Instant {
             let mut t = mem::uninitialized();
             let ret = abi::clock_time_get(abi::clockid::MONOTONIC, 0, &mut t);
             assert_eq!(ret, abi::errno::SUCCESS);
-            Instant { t: t }
+            Instant { t }
         }
     }
 
@@ -71,7 +71,7 @@ impl SystemTime {
             let mut t = mem::uninitialized();
             let ret = abi::clock_time_get(abi::clockid::REALTIME, 0, &mut t);
             assert_eq!(ret, abi::errno::SUCCESS);
-            SystemTime { t: t }
+            SystemTime { t }
         }
     }
 

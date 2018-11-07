@@ -323,7 +323,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         index.record(DefId::local(CRATE_DEF_INDEX),
                      IsolatedEncoder::encode_info_for_mod,
                      FromId(CRATE_NODE_ID, (&krate.module, &krate.attrs, &vis)));
-        let mut visitor = EncodeVisitor { index: index };
+        let mut visitor = EncodeVisitor { index };
         krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
         for macro_def in &krate.exported_macros {
             visitor.visit_macro_def(macro_def);

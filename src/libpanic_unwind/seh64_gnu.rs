@@ -41,7 +41,7 @@ struct PanicData {
 }
 
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
-    let panic_ctx = Box::new(PanicData { data: data });
+    let panic_ctx = Box::new(PanicData { data });
     let params = [Box::into_raw(panic_ctx) as c::ULONG_PTR];
     c::RaiseException(RUST_PANIC,
                       c::EXCEPTION_NONCONTINUABLE,

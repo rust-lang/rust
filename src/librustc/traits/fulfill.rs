@@ -12,8 +12,9 @@ use infer::InferCtxt;
 use mir::interpret::{GlobalId, ErrorHandled};
 use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, ToPredicate};
 use ty::error::ExpectedFound;
-use rustc_data_structures::obligation_forest::{Error, ForestObligation, ObligationForest};
-use rustc_data_structures::obligation_forest::{ObligationProcessor, ProcessResult};
+use rustc_data_structures::obligation_forest::{DoCompleted, Error, ForestObligation};
+use rustc_data_structures::obligation_forest::{ObligationForest, ObligationProcessor};
+use rustc_data_structures::obligation_forest::{ProcessResult};
 use std::marker::PhantomData;
 use hir::def_id::DefId;
 
@@ -98,7 +99,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
             let outcome = self.predicates.process_obligations(&mut FulfillProcessor {
                 selcx,
                 register_region_obligations: self.register_region_obligations
-            });
+            }, DoCompleted::No);
             debug!("select: outcome={:#?}", outcome);
 
             // FIXME: if we kept the original cache key, we could mark projection

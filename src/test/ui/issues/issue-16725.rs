@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue_16725.rs
+// aux-build:issue-16725.rs
 
 extern crate issue_16725 as foo;
 

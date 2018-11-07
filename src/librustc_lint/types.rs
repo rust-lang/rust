@@ -795,7 +795,7 @@ impl LintPass for ImproperCTypes {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ImproperCTypes {
     fn check_foreign_item(&mut self, cx: &LateContext, it: &hir::ForeignItem) {
-        let mut vis = ImproperCTypesVisitor { cx: cx };
+        let mut vis = ImproperCTypesVisitor { cx };
         let abi = cx.tcx.hir.get_foreign_abi(it.id);
         if abi != Abi::RustIntrinsic && abi != Abi::PlatformIntrinsic {
             match it.node {

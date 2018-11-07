@@ -38,7 +38,7 @@ impl Thread {
             panic!("thread failed to exit");
         } else {
             mem::forget(p);
-            Ok(Thread { id: id })
+            Ok(Thread { id })
         }
     }
 

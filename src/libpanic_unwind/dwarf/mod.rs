@@ -29,7 +29,7 @@ struct Unaligned<T>(T);
 
 impl DwarfReader {
     pub fn new(ptr: *const u8) -> DwarfReader {
-        DwarfReader { ptr: ptr }
+        DwarfReader { ptr }
     }
 
     // DWARF streams are packed, so e.g. a u32 would not necessarily be aligned

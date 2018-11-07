@@ -6929,7 +6929,7 @@ impl<'a> Parser<'a> {
             _ => ()
         }
 
-        Ok(ast::EnumDef { variants: variants })
+        Ok(ast::EnumDef { variants })
     }
 
     /// Parse an "enum" declaration

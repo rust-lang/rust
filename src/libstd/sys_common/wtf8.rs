@@ -67,7 +67,7 @@ impl CodePoint {
     /// Only use when `value` is known to be less than or equal to 0x10FFFF.
     #[inline]
     pub unsafe fn from_u32_unchecked(value: u32) -> CodePoint {
-        CodePoint { value: value }
+        CodePoint { value }
     }
 
     /// Creates a new `CodePoint` if the value is a valid code point.
@@ -76,7 +76,7 @@ impl CodePoint {
     #[inline]
     pub fn from_u32(value: u32) -> Option<CodePoint> {
         match value {
-            0 ..= 0x10FFFF => Some(CodePoint { value: value }),
+            0 ..= 0x10FFFF => Some(CodePoint { value }),
             _ => None
         }
     }
