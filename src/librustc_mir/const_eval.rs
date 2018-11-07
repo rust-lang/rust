@@ -539,10 +539,10 @@ fn validate_const<'a, 'tcx>(
     let val = (|| {
         let op = ecx.const_to_op(constant)?;
         let mut ref_tracking = RefTracking::new(op);
-        while let Some((op, mut path)) = ref_tracking.todo.pop() {
+        while let Some((op, path)) = ref_tracking.todo.pop() {
             ecx.validate_operand(
                 op,
-                &mut path,
+                path,
                 Some(&mut ref_tracking),
                 /* const_mode */ true,
             )?;

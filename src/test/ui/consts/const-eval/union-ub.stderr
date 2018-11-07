@@ -1,8 +1,8 @@
 error[E0080]: it is undefined behavior to use this value
-  --> $DIR/union-ub.rs:36:1
+  --> $DIR/union-ub.rs:38:1
    |
 LL | const BAD_BOOL: bool = unsafe { DummyUnion { u8: 42 }.bool};
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 42, but expected something in the range 0..=1
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered 42, but expected something less or equal to 1
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 

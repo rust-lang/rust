@@ -17,11 +17,11 @@ use std::hash::Hash;
 
 use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
-use rustc::ty::{self, Ty, layout::{Size, TyLayout}, query::TyCtxtAt};
+use rustc::ty::{self, layout::{Size, TyLayout}, query::TyCtxtAt};
 
 use super::{
     Allocation, AllocId, EvalResult, Scalar,
-    EvalContext, PlaceTy, OpTy, Pointer, MemPlace, MemoryKind,
+    EvalContext, PlaceTy, MPlaceTy, OpTy, Pointer, MemoryKind,
 };
 
 /// Whether this kind of memory is allowed to leak
@@ -217,26 +217,22 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     #[inline]
     fn tag_reference(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        place: MemPlace<Self::PointerTag>,
-        _ty: Ty<'tcx>,
-        _size: Size,
+        place: MPlaceTy<'tcx, Self::PointerTag>,
         _mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, MemPlace<Self::PointerTag>> {
-        Ok(place)
+    ) -> EvalResult<'tcx, Scalar<Self::PointerTag>> {
+        Ok(place.ptr)
     }
 
     /// Executed when evaluating the `*` operator: Following a reference.
-    /// This has the change to adjust the tag.  It should not change anything else!
+    /// This has the chance to adjust the tag.  It should not change anything else!
     /// `mutability` can be `None` in case a raw ptr is being dereferenced.
     #[inline]
     fn tag_dereference(
         _ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
-        place: MemPlace<Self::PointerTag>,
-        _ty: Ty<'tcx>,
-        _size: Size,
+        place: MPlaceTy<'tcx, Self::PointerTag>,
         _mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, MemPlace<Self::PointerTag>> {
-        Ok(place)
+    ) -> EvalResult<'tcx, Scalar<Self::PointerTag>> {
+        Ok(place.ptr)
     }
 
     /// Execute a validation operation

@@ -91,12 +91,33 @@ pub trait PointerArithmetic: layout::HasDataLayout {
     }
 
     //// Trunace the given value to the pointer size; also return whether there was an overflow
+    #[inline]
     fn truncate_to_ptr(&self, val: u128) -> (u64, bool) {
         let max_ptr_plus_1 = 1u128 << self.pointer_size().bits();
         ((val % max_ptr_plus_1) as u64, val >= max_ptr_plus_1)
     }
 
+    #[inline]
+    fn offset<'tcx>(&self, val: u64, i: u64) -> EvalResult<'tcx, u64> {
+        let (res, over) = self.overflowing_offset(val, i);
+        if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
+    }
+
+    #[inline]
+    fn overflowing_offset(&self, val: u64, i: u64) -> (u64, bool) {
+        let (res, over1) = val.overflowing_add(i);
+        let (res, over2) = self.truncate_to_ptr(u128::from(res));
+        (res, over1 || over2)
+    }
+
+    #[inline]
+    fn signed_offset<'tcx>(&self, val: u64, i: i64) -> EvalResult<'tcx, u64> {
+        let (res, over) = self.overflowing_signed_offset(val, i128::from(i));
+        if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
+    }
+
     // Overflow checking only works properly on the range from -u64 to +u64.
+    #[inline]
     fn overflowing_signed_offset(&self, val: u64, i: i128) -> (u64, bool) {
         // FIXME: is it possible to over/underflow here?
         if i < 0 {
@@ -107,26 +128,6 @@ pub trait PointerArithmetic: layout::HasDataLayout {
         } else {
             self.overflowing_offset(val, i as u64)
         }
-    }
-
-    fn overflowing_offset(&self, val: u64, i: u64) -> (u64, bool) {
-        let (res, over1) = val.overflowing_add(i);
-        let (res, over2) = self.truncate_to_ptr(res as u128);
-        (res, over1 || over2)
-    }
-
-    fn signed_offset<'tcx>(&self, val: u64, i: i64) -> EvalResult<'tcx, u64> {
-        let (res, over) = self.overflowing_signed_offset(val, i as i128);
-        if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
-    }
-
-    fn offset<'tcx>(&self, val: u64, i: u64) -> EvalResult<'tcx, u64> {
-        let (res, over) = self.overflowing_offset(val, i);
-        if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
-    }
-
-    fn wrapping_signed_offset(&self, val: u64, i: i64) -> u64 {
-        self.overflowing_signed_offset(val, i as i128).0
     }
 }
 
@@ -176,32 +177,7 @@ impl<'tcx, Tag> Pointer<Tag> {
         Pointer { alloc_id, offset, tag }
     }
 
-    pub fn wrapping_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> Self {
-        Pointer::new_with_tag(
-            self.alloc_id,
-            Size::from_bytes(cx.data_layout().wrapping_signed_offset(self.offset.bytes(), i)),
-            self.tag,
-        )
-    }
-
-    pub fn overflowing_signed_offset(self, i: i128, cx: &impl HasDataLayout) -> (Self, bool) {
-        let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset.bytes(), i);
-        (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
-    }
-
-    pub fn signed_offset(self, i: i64, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
-        Ok(Pointer::new_with_tag(
-            self.alloc_id,
-            Size::from_bytes(cx.data_layout().signed_offset(self.offset.bytes(), i)?),
-            self.tag,
-        ))
-    }
-
-    pub fn overflowing_offset(self, i: Size, cx: &impl HasDataLayout) -> (Self, bool) {
-        let (res, over) = cx.data_layout().overflowing_offset(self.offset.bytes(), i.bytes());
-        (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
-    }
-
+    #[inline]
     pub fn offset(self, i: Size, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
         Ok(Pointer::new_with_tag(
             self.alloc_id,
@@ -211,6 +187,37 @@ impl<'tcx, Tag> Pointer<Tag> {
     }
 
     #[inline]
+    pub fn overflowing_offset(self, i: Size, cx: &impl HasDataLayout) -> (Self, bool) {
+        let (res, over) = cx.data_layout().overflowing_offset(self.offset.bytes(), i.bytes());
+        (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
+    }
+
+    #[inline(always)]
+    pub fn wrapping_offset(self, i: Size, cx: &impl HasDataLayout) -> Self {
+        self.overflowing_offset(i, cx).0
+    }
+
+    #[inline]
+    pub fn signed_offset(self, i: i64, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
+        Ok(Pointer::new_with_tag(
+            self.alloc_id,
+            Size::from_bytes(cx.data_layout().signed_offset(self.offset.bytes(), i)?),
+            self.tag,
+        ))
+    }
+
+    #[inline]
+    pub fn overflowing_signed_offset(self, i: i128, cx: &impl HasDataLayout) -> (Self, bool) {
+        let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset.bytes(), i);
+        (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
+    }
+
+    #[inline(always)]
+    pub fn wrapping_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> Self {
+        self.overflowing_signed_offset(i128::from(i), cx).0
+    }
+
+    #[inline(always)]
     pub fn erase_tag(self) -> Pointer {
         Pointer { alloc_id: self.alloc_id, offset: self.offset, tag: () }
     }

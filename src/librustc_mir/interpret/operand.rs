@@ -12,6 +12,7 @@
 //! All high-level functions to read from memory work on operands as sources.
 
 use std::convert::TryInto;
+use std::fmt;
 
 use rustc::{mir, ty};
 use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt};
@@ -33,6 +34,15 @@ impl<Tag> From<Scalar<Tag>> for ScalarMaybeUndef<Tag> {
     #[inline(always)]
     fn from(s: Scalar<Tag>) -> Self {
         ScalarMaybeUndef::Scalar(s)
+    }
+}
+
+impl<Tag> fmt::Display for ScalarMaybeUndef<Tag> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ScalarMaybeUndef::Undef => write!(f, "uninitialized bytes"),
+            ScalarMaybeUndef::Scalar(s) => write!(f, "{}", s),
+        }
     }
 }
 
@@ -732,8 +742,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         Ok(match rval.layout.variants {
             layout::Variants::Single { .. } => bug!(),
             layout::Variants::Tagged { .. } => {
+                let bits_discr = match raw_discr.to_bits(discr_val.layout.size) {
+                    Ok(raw_discr) => raw_discr,
+                    Err(_) => return err!(InvalidDiscriminant(raw_discr.erase_tag())),
+                };
                 let real_discr = if discr_val.layout.ty.is_signed() {
-                    let i = raw_discr.to_bits(discr_val.layout.size)? as i128;
+                    let i = bits_discr as i128;
                     // going from layout tag type to typeck discriminant type
                     // requires first sign extending with the layout discriminant
                     let shift = 128 - discr_val.layout.size.bits();
@@ -748,7 +762,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     let truncatee = sexted as u128;
                     (truncatee << shift) >> shift
                 } else {
-                    raw_discr.to_bits(discr_val.layout.size)?
+                    bits_discr
                 };
                 // Make sure we catch invalid discriminants
                 let index = rval.layout.ty
@@ -756,7 +770,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     .expect("tagged layout for non adt")
                     .discriminants(self.tcx.tcx)
                     .position(|var| var.val == real_discr)
-                    .ok_or_else(|| EvalErrorKind::InvalidDiscriminant(real_discr))?;
+                    .ok_or_else(|| EvalErrorKind::InvalidDiscriminant(raw_discr.erase_tag()))?;
                 (real_discr, index)
             },
             layout::Variants::NicheFilling {
