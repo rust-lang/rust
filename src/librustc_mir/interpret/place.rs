@@ -278,11 +278,9 @@ where
         let meta = val.to_meta()?;
         let ptr = val.to_scalar_ptr()?;
         let mplace = MemPlace { ptr, align, meta };
+        let mut mplace = MPlaceTy { mplace, layout };
         // Pointer tag tracking might want to adjust the tag.
-        let mplace = if M::ENABLE_PTR_TRACKING_HOOKS {
-            let (size, _) = self.size_and_align_of(meta, layout)?
-                // for extern types, just cover what we can
-                .unwrap_or_else(|| layout.size_and_align());
+        if M::ENABLE_PTR_TRACKING_HOOKS {
             let mutbl = match val.layout.ty.sty {
                 // `builtin_deref` considers boxes immutable, that's useless for our purposes
                 ty::Ref(_, _, mutbl) => Some(mutbl),
@@ -290,11 +288,10 @@ where
                 ty::RawPtr(_) => None,
                 _ => bug!("Unexpected pointer type {}", val.layout.ty.sty),
             };
-            M::tag_dereference(self, mplace, pointee_type, size, mutbl)?
-        } else {
-            mplace
-        };
-        Ok(MPlaceTy { mplace, layout })
+            mplace.mplace.ptr = M::tag_dereference(self, mplace, mutbl)?;
+        }
+        // Done
+        Ok(mplace)
     }
 
     /// Turn a mplace into a (thin or fat) pointer, as a reference, pointing to the same space.
@@ -302,18 +299,13 @@ where
     /// `mutbl` indicates whether we are create a shared or mutable ref, or a raw pointer (`None`).
     pub fn create_ref(
         &mut self,
-        place: MPlaceTy<'tcx, M::PointerTag>,
+        mut place: MPlaceTy<'tcx, M::PointerTag>,
         mutbl: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Immediate<M::PointerTag>> {
         // Pointer tag tracking might want to adjust the tag
-        let place = if M::ENABLE_PTR_TRACKING_HOOKS {
-            let (size, _) = self.size_and_align_of_mplace(place)?
-                // for extern types, just cover what we can
-                .unwrap_or_else(|| place.layout.size_and_align());
-            M::tag_reference(self, *place, place.layout.ty, size, mutbl)?
-        } else {
-            *place
-        };
+        if M::ENABLE_PTR_TRACKING_HOOKS {
+            place.mplace.ptr = M::tag_reference(self, place, mutbl)?
+        }
         Ok(match place.meta {
             None => Immediate::Scalar(place.ptr.into()),
             Some(meta) => Immediate::ScalarPair(place.ptr.into(), meta.into()),
@@ -489,6 +481,8 @@ where
 
     /// Get the place of a field inside the place, and also the field's type.
     /// Just a convenience function, but used quite a bit.
+    /// This is the only projection that might have a side-effect: We cannot project
+    /// into the field of a local `ScalarPair`, we have to first allocate it.
     pub fn place_field(
         &mut self,
         base: PlaceTy<'tcx, M::PointerTag>,
@@ -501,7 +495,7 @@ where
     }
 
     pub fn place_downcast(
-        &mut self,
+        &self,
         base: PlaceTy<'tcx, M::PointerTag>,
         variant: usize,
     ) -> EvalResult<'tcx, PlaceTy<'tcx, M::PointerTag>> {
@@ -643,7 +637,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(self.place_to_op(dest)?, &mut vec![], None, /*const_mode*/false)?;
+            self.validate_operand(self.place_to_op(dest)?, vec![], None, /*const_mode*/false)?;
         }
 
         Ok(())
@@ -765,7 +759,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(self.place_to_op(dest)?, &mut vec![], None, /*const_mode*/false)?;
+            self.validate_operand(self.place_to_op(dest)?, vec![], None, /*const_mode*/false)?;
         }
 
         Ok(())
@@ -843,7 +837,7 @@ where
 
         if M::enforce_validity(self) {
             // Data got changed, better make sure it matches the type!
-            self.validate_operand(dest.into(), &mut vec![], None, /*const_mode*/false)?;
+            self.validate_operand(dest.into(), vec![], None, /*const_mode*/false)?;
         }
 
         Ok(())

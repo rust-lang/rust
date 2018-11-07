@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(unused)]
+#![allow(const_err)] // make sure we cannot allow away the errors tested here
 
 // normalize-stderr-test "alignment \d+" -> "alignment N"
 // normalize-stderr-test "offset \d+" -> "offset N"

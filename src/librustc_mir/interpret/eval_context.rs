@@ -521,7 +521,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 // return place is always a local and then this cannot happen.
                 self.validate_operand(
                     self.place_to_op(return_place)?,
-                    &mut vec![],
+                    vec![],
                     None,
                     /*const_mode*/false,
                 )?;

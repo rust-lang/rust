@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(const_transmute)]
+#![allow(const_err)] // make sure we cannot allow away the errors tested here
 
 use std::mem;
 

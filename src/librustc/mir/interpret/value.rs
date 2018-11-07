@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unknown_lints)]
+use std::fmt;
 
 use ty::layout::{HasDataLayout, Size};
 use ty::subst::Substs;
@@ -99,6 +99,15 @@ pub enum Scalar<Tag=(), Id=AllocId> {
     Ptr(Pointer<Tag, Id>),
 }
 
+impl<Tag> fmt::Display for Scalar<Tag> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Scalar::Ptr(_) => write!(f, "a pointer"),
+            Scalar::Bits { bits, .. } => write!(f, "{}", bits),
+        }
+    }
+}
+
 impl<'tcx> Scalar<()> {
     #[inline]
     pub fn with_default_tag<Tag>(self) -> Scalar<Tag>
@@ -134,21 +143,6 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
-    pub fn ptr_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
-        let dl = cx.data_layout();
-        match self {
-            Scalar::Bits { bits, size } => {
-                assert_eq!(size as u64, dl.pointer_size.bytes());
-                Ok(Scalar::Bits {
-                    bits: dl.signed_offset(bits as u64, i)? as u128,
-                    size,
-                })
-            }
-            Scalar::Ptr(ptr) => ptr.signed_offset(i, dl).map(Scalar::Ptr),
-        }
-    }
-
-    #[inline]
     pub fn ptr_offset(self, i: Size, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
         let dl = cx.data_layout();
         match self {
@@ -164,17 +158,60 @@ impl<'tcx, Tag> Scalar<Tag> {
     }
 
     #[inline]
+    pub fn ptr_wrapping_offset(self, i: Size, cx: &impl HasDataLayout) -> Self {
+        let dl = cx.data_layout();
+        match self {
+            Scalar::Bits { bits, size } => {
+                assert_eq!(size as u64, dl.pointer_size.bytes());
+                Scalar::Bits {
+                    bits: dl.overflowing_offset(bits as u64, i.bytes()).0 as u128,
+                    size,
+                }
+            }
+            Scalar::Ptr(ptr) => Scalar::Ptr(ptr.wrapping_offset(i, dl)),
+        }
+    }
+
+    #[inline]
+    pub fn ptr_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
+        let dl = cx.data_layout();
+        match self {
+            Scalar::Bits { bits, size } => {
+                assert_eq!(size as u64, dl.pointer_size().bytes());
+                Ok(Scalar::Bits {
+                    bits: dl.signed_offset(bits as u64, i)? as u128,
+                    size,
+                })
+            }
+            Scalar::Ptr(ptr) => ptr.signed_offset(i, dl).map(Scalar::Ptr),
+        }
+    }
+
+    #[inline]
     pub fn ptr_wrapping_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> Self {
         let dl = cx.data_layout();
         match self {
             Scalar::Bits { bits, size } => {
                 assert_eq!(size as u64, dl.pointer_size.bytes());
                 Scalar::Bits {
-                    bits: dl.wrapping_signed_offset(bits as u64, i) as u128,
+                    bits: dl.overflowing_signed_offset(bits as u64, i128::from(i)).0 as u128,
                     size,
                 }
             }
             Scalar::Ptr(ptr) => Scalar::Ptr(ptr.wrapping_signed_offset(i, dl)),
+        }
+    }
+
+    /// Returns this pointers offset from the allocation base, or from NULL (for
+    /// integer pointers).
+    #[inline]
+    pub fn get_ptr_offset(self, cx: &impl HasDataLayout) -> Size {
+        match self {
+            Scalar::Bits { bits, size } => {
+                assert_eq!(size as u64, cx.pointer_size().bytes());
+                Size::from_bytes(bits as u64)
+            }
+            Scalar::Ptr(ptr) => ptr.offset,
         }
     }
 
