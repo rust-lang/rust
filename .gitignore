@@ -2,6 +2,5 @@ target
 /doc
 tex/*/out
 *.dot
-*.mir
 *.rs.bk
 Cargo.lock

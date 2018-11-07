@@ -6,7 +6,7 @@ use rustc::hir;
 use crate::{
     EvalResult, MiriEvalContext, HelpersEvalContextExt,
     MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra,
-    Pointer, PlaceTy, MPlaceTy,
+    Pointer, MemPlace, Scalar, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
 pub type Timestamp = u64;
@@ -395,13 +395,6 @@ impl<'tcx> Stacks {
 
 
 pub trait EvalContextExt<'tcx> {
-    fn tag_reference(
-        &mut self,
-        place: MPlaceTy<'tcx, Borrow>,
-        size: Size,
-        usage: UsageKind,
-    ) -> EvalResult<'tcx, Borrow>;
-
     fn tag_dereference(
         &self,
         place: MPlaceTy<'tcx, Borrow>,
@@ -415,47 +408,27 @@ pub trait EvalContextExt<'tcx> {
         kind: MemoryKind<MiriMemoryKind>,
     ) -> Borrow;
 
+    /// Retag an indidual pointer, returning the retagged version.
+    fn retag_ptr(
+        &mut self,
+        ptr: ImmTy<'tcx, Borrow>,
+        mutbl: hir::Mutability,
+    ) -> EvalResult<'tcx, Immediate<Borrow>>;
+
     fn retag(
         &mut self,
         fn_entry: bool,
         place: PlaceTy<'tcx, Borrow>
     ) -> EvalResult<'tcx>;
-}
 
-impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
-    /// Called for place-to-value conversion.
-    fn tag_reference(
+    fn escape_to_raw(
         &mut self,
         place: MPlaceTy<'tcx, Borrow>,
         size: Size,
-        usage: UsageKind,
-    ) -> EvalResult<'tcx, Borrow> {
-        let ptr = place.ptr.to_ptr()?;
-        let time = self.machine.stacked_borrows.increment_clock();
-        let new_bor = match usage {
-            UsageKind::Write => Borrow::Uniq(time),
-            UsageKind::Read => Borrow::Shr(Some(time)),
-            UsageKind::Raw => Borrow::Shr(None),
-        };
-        trace!("tag_reference: Creating new reference ({:?}) for {:?} (pointee {}): {:?}",
-            usage, ptr, place.layout.ty, new_bor);
+    ) -> EvalResult<'tcx>;
+}
 
-        // Update the stacks.  First create the new ref as usual, then maybe freeze stuff.
-        self.memory().check_bounds(ptr, size, false)?;
-        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
-        alloc.extra.use_and_maybe_re_borrow(ptr, size, usage, Some(new_bor))?;
-        // Maybe freeze stuff
-        if let Borrow::Shr(Some(bor_t)) = new_bor {
-            self.visit_frozen(place, size, |frz_ptr, size| {
-                debug_assert_eq!(frz_ptr.alloc_id, ptr.alloc_id);
-                // Be frozen!
-                alloc.extra.freeze(frz_ptr, size, bor_t)
-            })?;
-        }
-
-        Ok(new_bor)
-    }
-
+impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
     /// Called for value-to-place conversion.
     ///
     /// Note that this does NOT mean that all this memory will actually get accessed/referenced!
@@ -466,9 +439,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         size: Size,
         usage: UsageKind,
     ) -> EvalResult<'tcx, Borrow> {
-        let ptr = place.ptr.to_ptr()?;
         trace!("tag_dereference: Accessing reference ({:?}) for {:?} (pointee {})",
-            usage, ptr, place.layout.ty);
+            usage, place.ptr, place.layout.ty);
+        let ptr = place.ptr.to_ptr()?;
         // In principle we should not have to do anything here.  However, with transmutes involved,
         // it can happen that the tag of `ptr` does not actually match `usage`, and we
         // should adjust for that.
@@ -551,6 +524,50 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         Borrow::Uniq(time)
     }
 
+    fn retag_ptr(
+        &mut self,
+        val: ImmTy<'tcx, Borrow>,
+        mutbl: hir::Mutability,
+    ) -> EvalResult<'tcx, Immediate<Borrow>> {
+        // We want a place for where the ptr *points to*, so we get one.
+        let place = self.ref_to_mplace(val)?;
+        let size = self.size_and_align_of_mplace(place)?
+            .map(|(size, _)| size)
+            .unwrap_or_else(|| place.layout.size);
+        if size == Size::ZERO {
+            // Nothing to do for ZSTs.
+            return Ok(*val);
+        }
+
+        // Prepare to re-borrow this place.
+        let ptr = place.ptr.to_ptr()?;
+        let time = self.machine.stacked_borrows.increment_clock();
+        let new_bor = match mutbl {
+            hir::MutMutable => Borrow::Uniq(time),
+            hir::MutImmutable => Borrow::Shr(Some(time)),
+        };
+        trace!("retag: Creating new reference ({:?}) for {:?} (pointee {}): {:?}",
+            mutbl, ptr, place.layout.ty, new_bor);
+
+        // Update the stacks.  First create a new borrow, then maybe freeze stuff.
+        self.memory().check_bounds(ptr, size, false)?; // `ptr_dereference` wouldn't do any checks if this is a raw ptr
+        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
+        alloc.extra.use_and_maybe_re_borrow(ptr, size, Some(mutbl).into(), Some(new_bor))?;
+        // Maybe freeze stuff
+        if let Borrow::Shr(Some(bor_t)) = new_bor {
+            self.visit_frozen(place, size, |frz_ptr, size| {
+                debug_assert_eq!(frz_ptr.alloc_id, ptr.alloc_id);
+                // Be frozen!
+                alloc.extra.freeze(frz_ptr, size, bor_t)
+            })?;
+        }
+
+        // Compute the new value and return that
+        let new_ptr = Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, new_bor));
+        let new_place = MemPlace { ptr: new_ptr, ..*place };
+        Ok(new_place.to_ref())
+    }
+
     fn retag(
         &mut self,
         _fn_entry: bool,
@@ -558,20 +575,30 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
     ) -> EvalResult<'tcx> {
         // For now, we only retag if the toplevel type is a reference.
         // TODO: Recurse into structs and enums, sharing code with validation.
+        // TODO: Honor `fn_entry`.
         let mutbl = match place.layout.ty.sty {
             ty::Ref(_, _, mutbl) => mutbl, // go ahead
-            _ => return Ok(()), // don't do a thing
+            _ => return Ok(()), // do nothing, for now
         };
-        // We want to reborrow the reference stored there. This will call the hooks
-        // above.  First deref, which will call `tag_dereference`.
-        // (This is somewhat redundant because validation already did the same thing,
-        // but what can you do.)
+        // Retag the pointer and write it back.
         let val = self.read_immediate(self.place_to_op(place)?)?;
-        let dest = self.ref_to_mplace(val)?;
-        // Now put a new ref into the old place, which will call `tag_reference`.
-        // FIXME: Honor `fn_entry`!
-        let val = self.create_ref(dest, Some(mutbl))?;
+        let val = self.retag_ptr(val, mutbl)?;
         self.write_immediate(val, place)?;
+        Ok(())
+    }
+
+    fn escape_to_raw(
+        &mut self,
+        place: MPlaceTy<'tcx, Borrow>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        trace!("self: {:?} is now accessible by raw pointers", *place);
+        // Re-borrow to raw.  This is a NOP for shared borrows, but we do not know the borrow
+        // type here and that's also okay.
+        let ptr = place.ptr.to_ptr()?;
+        self.memory().check_bounds(ptr, size, false)?; // `ptr_dereference` wouldn't do any checks if this is a raw ptr
+        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
+        alloc.extra.use_and_maybe_re_borrow(ptr, size, UsageKind::Raw, Some(Borrow::default()))?;
         Ok(())
     }
 }

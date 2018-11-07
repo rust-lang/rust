@@ -296,7 +296,6 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     type AllocExtra = stacked_borrows::Stacks;
     type PointerTag = Borrow;
-    const ENABLE_PTR_TRACKING_HOOKS: bool = true;
 
     type MemoryMap = MonoHashMap<AllocId, (MemoryKind<MiriMemoryKind>, Allocation<Borrow, Self::AllocExtra>)>;
 
@@ -446,26 +445,6 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         Cow::Owned(alloc)
     }
 
-    #[inline(always)]
-    fn tag_reference(
-        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        place: MPlaceTy<'tcx, Borrow>,
-        mutability: Option<hir::Mutability>,
-    ) -> EvalResult<'tcx, Scalar<Borrow>> {
-        let (size, _) = ecx.size_and_align_of_mplace(place)?
-            // for extern types, just cover what we can
-            .unwrap_or_else(|| place.layout.size_and_align());
-        if !ecx.machine.validate || size == Size::ZERO {
-            // No tracking
-            Ok(place.ptr)
-        } else {
-            let ptr = place.ptr.to_ptr()?;
-            let tag = ecx.tag_reference(place, size, mutability.into())?;
-            Ok(Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag)))
-        }
-    }
-
-    #[inline(always)]
     fn tag_dereference(
         ecx: &EvalContext<'a, 'mir, 'tcx, Self>,
         place: MPlaceTy<'tcx, Borrow>,
@@ -478,7 +457,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             // No tracking
             Ok(place.ptr)
         } else {
-            let ptr = place.ptr.to_ptr()?;
+            let ptr = place.ptr.to_ptr()?; // assert this is not a scalar
             let tag = ecx.tag_dereference(place, size, mutability.into())?;
             Ok(Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag)))
         }
@@ -499,6 +478,31 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         }
     }
 
+    #[inline]
+    fn escape_to_raw(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        ptr: OpTy<'tcx, Self::PointerTag>,
+    ) -> EvalResult<'tcx> {
+        // It is tempting to check the type here, but drop glue does EscapeToRaw
+        // on a raw pointer.
+        // This is deliberately NOT `deref_operand` as we do not want `tag_dereference`
+        // to be called!  That would kill the original tag if we got a raw ptr.
+        let place = ecx.ref_to_mplace(ecx.read_immediate(ptr)?)?;
+        let (size, _) = ecx.size_and_align_of_mplace(place)?
+            // for extern types, just cover what we can
+            .unwrap_or_else(|| place.layout.size_and_align());
+        if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag ||
+            !ecx.machine.validate || size == Size::ZERO
+        {
+            // No tracking, or no retagging. The latter is possible because a dependency of ours
+            // might be called with different flags than we are, so there are `Retag`
+            // statements but we do not want to execute them.
+            Ok(())
+        } else {
+            ecx.escape_to_raw(place, size)
+        }
+    }
+
     #[inline(always)]
     fn retag(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
@@ -506,12 +510,14 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         place: PlaceTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx> {
         if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag || !Self::enforce_validity(ecx) {
-            // No tracking, or no retagging. This is possible because a dependency of ours might be
-            // called with different flags than we are,
+            // No tracking, or no retagging. The latter is possible because a dependency of ours
+            // might be called with different flags than we are, so there are `Retag`
+            // statements but we do not want to execute them.
             // Also, honor the whitelist in `enforce_validity` because otherwise we might retag
             // uninitialized data.
-            return Ok(())
+             Ok(())
+        } else {
+            ecx.retag(fn_entry, place)
         }
-        ecx.retag(fn_entry, place)
     }
 }
