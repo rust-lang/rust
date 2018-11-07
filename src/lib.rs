@@ -98,12 +98,6 @@ mod prelude {
     pub use crate::base::{trans_operand, trans_place};
     pub use crate::common::*;
     pub use crate::Caches;
-
-    pub fn should_codegen(_sess: &Session) -> bool {
-        true
-        //::std::env::var("SHOULD_CODEGEN").is_ok()
-        //    || sess.crate_types.get().contains(&CrateType::Executable)
-    }
 }
 
 use crate::constant::ConstantCx;
@@ -242,9 +236,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
             tcx.sess.abort_if_errors();
 
-            if should_codegen(tcx.sess) {
-                faerie_module.finalize_definitions();
-            }
+            faerie_module.finalize_definitions();
 
             return Box::new(OngoingCodegen {
                 product: faerie_module.finish(),
@@ -294,16 +286,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     let file = File::create(&output_name).unwrap();
                     let mut builder = ar::Builder::new(file);
 
-                    if should_codegen(sess) {
-                        // Add main object file
-                        let obj = artifact.emit().unwrap();
-                        builder
-                            .append(
-                                &ar::Header::new(b"data.o".to_vec(), obj.len() as u64),
-                                ::std::io::Cursor::new(obj),
-                            )
-                            .unwrap();
-                    }
+                    // Add main object file
+                    let obj = artifact.emit().unwrap();
+                    builder
+                        .append(
+                            &ar::Header::new(b"data.o".to_vec(), obj.len() as u64),
+                            ::std::io::Cursor::new(obj),
+                        )
+                        .unwrap();
 
                     // Non object files need to be added after object files, because ranlib will
                     // try to read the native architecture from the first file, even if it isn't

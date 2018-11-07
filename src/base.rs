@@ -129,14 +129,11 @@ fn trans_fn<'a, 'tcx: 'a>(
     verify_func(tcx, writer, &func);
 
     // Step 9. Define function
-    // TODO: cranelift doesn't yet support some of the things needed
-    if should_codegen(tcx.sess) {
-        caches.context.func = func;
-        module
-            .define_function(func_id, &mut caches.context)
-            .unwrap();
-        caches.context.clear();
-    }
+    caches.context.func = func;
+    module
+        .define_function(func_id, &mut caches.context)
+        .unwrap();
+    caches.context.clear();
 }
 
 fn verify_func(tcx: TyCtxt, writer: crate::pretty_clif::CommentWriter, func: &Function) {
