@@ -205,17 +205,6 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
-    pub fn expect_byref(self) -> (Value, TyLayout<'tcx>) {
-        match self {
-            CValue::ByRef(value, layout) => (value, layout),
-            CValue::ByVal(_, _) => bug!("Expected CValue::ByRef, found CValue::ByVal: {:?}", self),
-            CValue::ByValPair(_, _, _) => bug!(
-                "Expected CValue::ByRef, found CValue::ByValPair: {:?}",
-                self
-            ),
-        }
-    }
-
     pub fn value_field<'a>(
         self,
         fx: &mut FunctionCx<'a, 'tcx, impl Backend>,

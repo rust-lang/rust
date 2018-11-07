@@ -363,7 +363,7 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
             match err.downcast::<NonFatal>() {
                 Ok(non_fatal) => {
                     if cfg!(debug_assertions) {
-                        writeln!(log.as_mut().unwrap(), "{}", &non_fatal.0);
+                        writeln!(log.as_mut().unwrap(), "{}", &non_fatal.0).unwrap();
                     }
                     tcx.sess.err(&non_fatal.0)
                 }
@@ -382,7 +382,7 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
         });
     if any_dynamic_crate {
     } else if let Some(kind) = *tcx.sess.allocator_kind.get() {
-        allocator::codegen(tcx, module, kind);
+        allocator::codegen(module, kind);
     }
 
     ccx.finalize(tcx, module);

@@ -13,7 +13,7 @@ use crate::prelude::*;
 use rustc::middle::allocator::AllocatorKind;
 use rustc_allocator::{ALLOCATOR_METHODS, AllocatorTy};
 
-pub fn codegen(tcx: TyCtxt, module: &mut Module<impl Backend + 'static>, kind: AllocatorKind) {
+pub fn codegen(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind) {
     let usize_ty = module.target_config().pointer_type();
 
     for method in ALLOCATOR_METHODS {
