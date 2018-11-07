@@ -586,10 +586,17 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 return;
             }
 
+            let pin_did = tcx.lang_items().pin_type();
             // Or is it the closure environment?
             let (closure_layout, env_ref) = match arg.layout.ty.sty {
                 ty::RawPtr(ty::TypeAndMut { ty, .. }) |
                 ty::Ref(_, ty, _)  => (bx.layout_of(ty), true),
+                ty::Adt(def, substs) if Some(def.did) == pin_did => {
+                    match substs.type_at(0).sty {
+                        ty::Ref(_, ty, _)  => (bx.layout_of(ty), true),
+                        _ => (arg.layout, false),
+                    }
+                }
                 _ => (arg.layout, false)
             };
 
