@@ -30,7 +30,6 @@ extern crate cranelift_simplejit;
 extern crate target_lexicon;
 
 use std::any::Any;
-use std::fs::File;
 use std::sync::mpsc;
 
 use rustc::dep_graph::DepGraph;
@@ -59,6 +58,7 @@ mod base;
 mod common;
 mod constant;
 mod intrinsics;
+mod link;
 mod main_shim;
 mod metadata;
 mod pretty_clif;
@@ -119,8 +119,8 @@ impl<'tcx> Caches<'tcx> {
 
 struct CraneliftCodegenBackend;
 
-struct OngoingCodegen {
-    product: cranelift_faerie::FaerieProduct,
+struct CodegenResult {
+    artifact: faerie::Artifact,
     metadata: Vec<u8>,
     crate_name: Symbol,
 }
@@ -238,8 +238,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
             faerie_module.finalize_definitions();
 
-            return Box::new(OngoingCodegen {
-                product: faerie_module.finish(),
+            return Box::new(CodegenResult {
+                artifact: faerie_module.finish().artifact,
                 metadata: metadata.raw_data,
                 crate_name: tcx.crate_name(LOCAL_CRATE),
             });
@@ -248,80 +248,21 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
     fn join_codegen_and_link(
         &self,
-        ongoing_codegen: Box<Any>,
+        res: Box<Any>,
         sess: &Session,
         _dep_graph: &DepGraph,
         outputs: &OutputFilenames,
     ) -> Result<(), CompileIncomplete> {
-        let ongoing_codegen = *ongoing_codegen
-            .downcast::<OngoingCodegen>()
-            .expect("Expected CraneliftCodegenBackend's OngoingCodegen, found Box<Any>");
-
-        let artifact = ongoing_codegen.product.artifact;
-        let metadata = ongoing_codegen.metadata;
-
-        /*
-        artifact
-            .declare_with(
-                &metadata_name,
-                faerie::artifact::Decl::Data {
-                    global: true,
-                    writable: false,
-                },
-                metadata.clone(),
-            )
-            .unwrap();
-        */
+        let res = *res
+            .downcast::<CodegenResult>()
+            .expect("Expected CraneliftCodegenBackend's CodegenResult, found Box<Any>");
 
         for &crate_type in sess.opts.crate_types.iter() {
+            let output_name =
+                out_filename(sess, crate_type, &outputs, &res.crate_name.as_str());
             match crate_type {
-                // TODO: link executable
-                CrateType::Executable | CrateType::Rlib => {
-                    let output_name = out_filename(
-                        sess,
-                        crate_type,
-                        &outputs,
-                        &ongoing_codegen.crate_name.as_str(),
-                    );
-                    let file = File::create(&output_name).unwrap();
-                    let mut builder = ar::Builder::new(file);
-
-                    // Add main object file
-                    let obj = artifact.emit().unwrap();
-                    builder
-                        .append(
-                            &ar::Header::new(b"data.o".to_vec(), obj.len() as u64),
-                            ::std::io::Cursor::new(obj),
-                        )
-                        .unwrap();
-
-                    // Non object files need to be added after object files, because ranlib will
-                    // try to read the native architecture from the first file, even if it isn't
-                    // an object file
-                    if crate_type != CrateType::Executable {
-                        builder
-                            .append(
-                                &ar::Header::new(
-                                    metadata::METADATA_FILE.to_vec(),
-                                    metadata.len() as u64,
-                                ),
-                                ::std::io::Cursor::new(metadata.clone()),
-                            )
-                            .unwrap();
-                    }
-
-                    // Finalize archive
-                    std::mem::drop(builder);
-
-                    // Run ranlib to be able to link the archive
-                    let status = std::process::Command::new("ranlib")
-                        .arg(output_name)
-                        .status()
-                        .expect("Couldn't run ranlib");
-                    if !status.success() {
-                        sess.fatal(&format!("Ranlib exited with code {:?}", status.code()));
-                    }
-                }
+                CrateType::Rlib => link::link_rlib(sess, &res, output_name),
+                CrateType::Executable => link::link_bin(sess, &res, output_name),
                 _ => sess.fatal(&format!("Unsupported crate type: {:?}", crate_type)),
             }
         }
