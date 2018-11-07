@@ -222,6 +222,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     );
 
     if let Some(..) = ty {
+        // The first argument (index 0), but add 1 for the return value.
         let dropee_ptr = Place::Local(Local::new(1+0));
         if tcx.sess.opts.debugging_opts.mir_emit_retag {
             // We use raw ptr operations, better prepare the alias tracking for that
