@@ -97,6 +97,12 @@ fn is_known_tool(name: Name) -> bool {
     ["clippy", "rustfmt"].contains(&&*name.as_str())
 }
 
+enum DeterminacyExt {
+    Determined,
+    Undetermined,
+    WeakUndetermined,
+}
+
 /// A free importable items suggested in case of resolution failure.
 struct ImportSuggestion {
     path: Path,
@@ -1963,7 +1969,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
-                false,
                 record_used,
                 path_span,
             );
@@ -1994,7 +1999,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
-                false,
                 record_used,
                 path_span,
             );
@@ -2035,7 +2039,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     ModuleOrUniformRoot::Module(prelude),
                     ident,
                     ns,
-                    false,
                     false,
                     path_span,
                 ) {
@@ -2111,7 +2114,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             }
         }
         let result = self.resolve_ident_in_module_unadjusted(
-            module, ident, ns, false, record_used, span,
+            module, ident, ns, record_used, span,
         );
         self.current_module = orig_current_module;
         result
@@ -4333,7 +4336,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
-                false,
                 false,
                 module.span,
             ).is_ok() {

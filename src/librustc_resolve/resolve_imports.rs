@@ -11,7 +11,7 @@
 use self::ImportDirectiveSubclass::*;
 
 use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
-use {CrateLint, Module, ModuleOrUniformRoot, PerNS};
+use {CrateLint, DeterminacyExt, Module, ModuleOrUniformRoot, PerNS};
 use Namespace::{self, TypeNS, MacroNS};
 use {NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use Resolver;
@@ -135,16 +135,33 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                .or_insert_with(|| self.arenas.alloc_name_resolution())
     }
 
+    crate fn resolve_ident_in_module_unadjusted(
+        &mut self,
+        module: ModuleOrUniformRoot<'a>,
+        ident: Ident,
+        ns: Namespace,
+        record_used: bool,
+        path_span: Span,
+    ) -> Result<&'a NameBinding<'a>, Determinacy> {
+        self.resolve_ident_in_module_unadjusted_ext(
+            module, ident, ns, false, record_used, path_span
+        ).map_err(|determinacy_ext| match determinacy_ext {
+            DeterminacyExt::Determined => Determined,
+            DeterminacyExt::Undetermined | DeterminacyExt::WeakUndetermined => Undetermined,
+        })
+    }
+
     /// Attempts to resolve `ident` in namespaces `ns` of `module`.
     /// Invariant: if `record_used` is `Some`, expansion and import resolution must be complete.
-    pub fn resolve_ident_in_module_unadjusted(&mut self,
-                                              module: ModuleOrUniformRoot<'a>,
-                                              ident: Ident,
-                                              ns: Namespace,
-                                              restricted_shadowing: bool,
-                                              record_used: bool,
-                                              path_span: Span)
-                                              -> Result<&'a NameBinding<'a>, Determinacy> {
+    crate fn resolve_ident_in_module_unadjusted_ext(
+        &mut self,
+        module: ModuleOrUniformRoot<'a>,
+        ident: Ident,
+        ns: Namespace,
+        restricted_shadowing: bool,
+        record_used: bool,
+        path_span: Span,
+    ) -> Result<&'a NameBinding<'a>, DeterminacyExt> {
         let module = match module {
             ModuleOrUniformRoot::Module(module) => module,
             ModuleOrUniformRoot::UniformRoot(root) => {
@@ -157,7 +174,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                     let mut ctxt = ident.span.ctxt().modern();
                     let self_module = self.resolve_self(&mut ctxt, self.current_module);
 
-                    let binding = self.resolve_ident_in_module_unadjusted(
+                    let binding = self.resolve_ident_in_module_unadjusted_ext(
                         ModuleOrUniformRoot::Module(self_module),
                         ident,
                         ns,
@@ -211,12 +228,12 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                         return Ok(binding);
                     } else if !self.graph_root.unresolved_invocations.borrow().is_empty() {
                         // Macro-expanded `extern crate`items still can add names to extern prelude.
-                        return Err(Undetermined);
+                        return Err(DeterminacyExt::Undetermined);
                     } else {
-                        return Err(Determined);
+                        return Err(DeterminacyExt::Determined);
                     }
                 } else {
-                    return Err(Determined);
+                    return Err(DeterminacyExt::Determined);
                 };
                 self.populate_module_if_necessary(crate_root);
                 let binding = (crate_root, ty::Visibility::Public,
@@ -229,7 +246,8 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
 
         let resolution = self.resolution(module, ident, ns)
             .try_borrow_mut()
-            .map_err(|_| Determined)?; // This happens when there is a cycle of imports
+            // This happens when there is a cycle of imports.
+            .map_err(|_| DeterminacyExt::Determined)?;
 
         if let Some(binding) = resolution.binding {
             if !restricted_shadowing && binding.expansion != Mark::root() {
@@ -264,13 +282,13 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 }
             }
 
-            return resolution.binding.ok_or(Determined);
+            return resolution.binding.ok_or(DeterminacyExt::Determined);
         }
 
         let check_usable = |this: &mut Self, binding: &'a NameBinding<'a>| {
             // `extern crate` are always usable for backwards compatibility, see issue #37020.
             let usable = this.is_accessible(binding.vis) || binding.is_extern_crate();
-            if usable { Ok(binding) } else { Err(Determined) }
+            if usable { Ok(binding) } else { Err(DeterminacyExt::Determined) }
         };
 
         // Items and single imports are not shadowable, if we have one, then it's determined.
@@ -288,7 +306,8 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             if !self.is_accessible(single_import.vis.get()) {
                 continue;
             }
-            let module = unwrap_or!(single_import.imported_module.get(), return Err(Undetermined));
+            let module = unwrap_or!(single_import.imported_module.get(),
+                                    return Err(DeterminacyExt::Undetermined));
             let ident = match single_import.subclass {
                 SingleImport { source, .. } => source,
                 _ => unreachable!(),
@@ -298,7 +317,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 Ok(binding) if !self.is_accessible_from(
                     binding.vis, single_import.parent_scope.module
                 ) => continue,
-                Ok(_) | Err(Undetermined) => return Err(Undetermined),
+                Ok(_) | Err(Undetermined) => return Err(DeterminacyExt::Undetermined),
             }
         }
 
@@ -319,7 +338,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             if !unexpanded_macros || ns == MacroNS || restricted_shadowing {
                 return check_usable(self, binding);
             } else {
-                return Err(Undetermined);
+                return Err(DeterminacyExt::Undetermined);
             }
         }
 
@@ -328,17 +347,13 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         // Now we are in situation when new item/import can appear only from a glob or a macro
         // expansion. With restricted shadowing names from globs and macro expansions cannot
         // shadow names from outer scopes, so we can freely fallback from module search to search
-        // in outer scopes. To continue search in outer scopes we have to lie a bit and return
-        // `Determined` to `early_resolve_ident_in_lexical_scope` even if the correct answer
-        // for in-module resolution could be `Undetermined`.
-        if restricted_shadowing {
-            return Err(Determined);
-        }
+        // in outer scopes. For `early_resolve_ident_in_lexical_scope` to continue search in outer
+        // scopes we return `WeakUndetermined` instead of full `Undetermined`.
 
         // Check if one of unexpanded macros can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
         if unexpanded_macros {
-            return Err(Undetermined);
+            return Err(DeterminacyExt::WeakUndetermined);
         }
 
         // Check if one of glob imports can still define the name,
@@ -350,7 +365,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             let module = match glob_import.imported_module.get() {
                 Some(ModuleOrUniformRoot::Module(module)) => module,
                 Some(ModuleOrUniformRoot::UniformRoot(_)) => continue,
-                None => return Err(Undetermined),
+                None => return Err(DeterminacyExt::WeakUndetermined),
             };
             let (orig_current_module, mut ident) = (self.current_module, ident.modern());
             match ident.span.glob_adjust(module.expansion, glob_import.span.ctxt().modern()) {
@@ -363,7 +378,6 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 ident,
                 ns,
                 false,
-                false,
                 path_span,
             );
             self.current_module = orig_current_module;
@@ -373,12 +387,12 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 Ok(binding) if !self.is_accessible_from(
                     binding.vis, glob_import.parent_scope.module
                 ) => continue,
-                Ok(_) | Err(Undetermined) => return Err(Undetermined),
+                Ok(_) | Err(Undetermined) => return Err(DeterminacyExt::WeakUndetermined),
             }
         }
 
         // No resolution and no one else can define the name - determinate error.
-        Err(Determined)
+        Err(DeterminacyExt::Determined)
     }
 
     // Add an import directive to the current module.

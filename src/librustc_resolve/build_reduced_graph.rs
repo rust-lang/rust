@@ -860,7 +860,6 @@ impl<'a, 'b, 'cl> BuildReducedGraphVisitor<'a, 'b, 'cl> {
         let invocation = self.resolver.invocations[&mark];
         invocation.module.set(self.resolver.current_module);
         invocation.parent_legacy_scope.set(self.current_legacy_scope);
-        invocation.output_legacy_scope.set(self.current_legacy_scope);
         invocation
     }
 }
