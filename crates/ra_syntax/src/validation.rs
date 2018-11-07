@@ -148,7 +148,7 @@ fn validate_char(node: ast::Char, errors: &mut Vec<SyntaxError>) {
 
 fn is_ascii_escape(code: char) -> bool {
     match code {
-        '\'' | '"' | 'n' | 'r' | 't' | '0' => true,
+        '\\' | '\'' | '"' | 'n' | 'r' | 't' | '0' => true,
         _ => false,
     }
 }
@@ -206,7 +206,9 @@ mod test {
 
     #[test]
     fn test_valid_ascii_escape() {
-        let valid = [r"\'", "\"", "\\\"", r"\n", r"\r", r"\t", r"\0", "a", "b"];
+        let valid = [
+            r"\'", "\"", "\\\\", "\\\"", r"\n", r"\r", r"\t", r"\0", "a", "b",
+        ];
         for c in &valid {
             assert_valid_char(c);
         }
