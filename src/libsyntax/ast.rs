@@ -18,7 +18,6 @@ pub use util::parser::ExprPrecedence;
 use ext::hygiene::{Mark, SyntaxContext};
 use print::pprust;
 use ptr::P;
-use rustc_data_structures::indexed_vec;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_target::spec::abi::Abi;
 use source_map::{dummy_spanned, respan, Spanned};
@@ -31,7 +30,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use serialize::{self, Decoder, Encoder};
 use std::fmt;
-use std::u32;
 
 pub use rustc_target::abi::FloatTy;
 
@@ -213,71 +211,53 @@ pub struct ParenthesisedArgs {
     pub output: Option<P<Ty>>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub struct NodeId(u32);
+// hack to ensure that we don't try to access the private parts of `NodeId` in this module
+mod node_id_inner {
+    use rustc_data_structures::indexed_vec::Idx;
+    newtype_index! {
+        pub struct NodeId {
+            ENCODABLE = custom
+        }
+    }
+}
+
+pub use self::node_id_inner::NodeId;
 
 impl NodeId {
-    pub fn new(x: usize) -> NodeId {
-        assert!(x < (u32::MAX as usize));
-        NodeId(x as u32)
-    }
-
-    pub fn from_u32(x: u32) -> NodeId {
-        NodeId(x)
-    }
-
-    pub fn as_usize(&self) -> usize {
-        self.0 as usize
-    }
-
-    pub fn as_u32(&self) -> u32 {
-        self.0
-    }
-
     pub fn placeholder_from_mark(mark: Mark) -> Self {
-        NodeId(mark.as_u32())
+        NodeId::from_u32(mark.as_u32())
     }
 
     pub fn placeholder_to_mark(self) -> Mark {
-        Mark::from_u32(self.0)
+        Mark::from_u32(self.as_u32())
     }
 }
 
 impl fmt::Display for NodeId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.0, f)
+        fmt::Display::fmt(&self.as_u32(), f)
     }
 }
 
 impl serialize::UseSpecializedEncodable for NodeId {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u32(self.0)
+        s.emit_u32(self.as_u32())
     }
 }
 
 impl serialize::UseSpecializedDecodable for NodeId {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<NodeId, D::Error> {
-        d.read_u32().map(NodeId)
-    }
-}
-
-impl indexed_vec::Idx for NodeId {
-    fn new(idx: usize) -> Self {
-        NodeId::new(idx)
-    }
-
-    fn index(self) -> usize {
-        self.as_usize()
+        d.read_u32().map(NodeId::from_u32)
     }
 }
 
 /// Node id used to represent the root of the crate.
-pub const CRATE_NODE_ID: NodeId = NodeId(0);
+pub const CRATE_NODE_ID: NodeId = NodeId::from_u32_const(0);
 
 /// When parsing and doing expansions, we initially give all AST nodes this AST
 /// node value. Then later, in the renumber pass, we renumber them to have
 /// small, positive ids.
-pub const DUMMY_NODE_ID: NodeId = NodeId(!0);
+pub const DUMMY_NODE_ID: NodeId = NodeId::MAX;
 
 /// A modifier on a bound, currently this is only used for `?Sized`, where the
 /// modifier is `Maybe`. Negative bounds should also be handled here.

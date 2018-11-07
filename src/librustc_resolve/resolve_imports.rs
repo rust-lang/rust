@@ -663,7 +663,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         let mut errors = false;
         let mut seen_spans = FxHashSet::default();
         let mut error_vec = Vec::new();
-        let mut prev_root_id: NodeId = NodeId::new(0);
+        let mut prev_root_id: NodeId = NodeId::from_u32(0);
         for i in 0 .. self.determined_imports.len() {
             let import = self.determined_imports[i];
             let error = self.finalize_import(import);
