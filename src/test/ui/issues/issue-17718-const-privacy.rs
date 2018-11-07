@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue_17718_const_privacy.rs
+// aux-build:issue-17718-const-privacy.rs
 
 extern crate issue_17718_const_privacy as other;
 
