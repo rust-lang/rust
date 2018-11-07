@@ -62,7 +62,7 @@ pub fn impl_wf_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // We will tag this as part of the WF check -- logically, it is,
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
-    tcx.hir.krate().visit_all_item_likes(&mut ImplWfCheck { tcx: tcx });
+    tcx.hir.krate().visit_all_item_likes(&mut ImplWfCheck { tcx });
 }
 
 struct ImplWfCheck<'a, 'tcx: 'a> {

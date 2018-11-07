@@ -187,7 +187,7 @@ impl SystemTime {
 
 impl From<syscall::TimeSpec> for SystemTime {
     fn from(t: syscall::TimeSpec) -> SystemTime {
-        SystemTime { t: Timespec { t: t } }
+        SystemTime { t: Timespec { t } }
     }
 }
 

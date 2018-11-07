@@ -672,5 +672,5 @@ pub fn check_crate(session: &Session, krate: &Crate) {
             is_banned: false,
         }, krate);
 
-    visit::walk_crate(&mut AstValidator { session: session }, krate)
+    visit::walk_crate(&mut AstValidator { session }, krate)
 }

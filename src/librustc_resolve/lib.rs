@@ -4422,7 +4422,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         // declared as public (due to pruning, we don't explore
                         // outside crate private modules => no need to check this)
                         if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
-                            candidates.push(ImportSuggestion { path: path });
+                            candidates.push(ImportSuggestion { path });
                         }
                     }
                 }
@@ -4519,7 +4519,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             span: name_binding.span,
                             segments: path_segments,
                         };
-                        result = Some((module, ImportSuggestion { path: path }));
+                        result = Some((module, ImportSuggestion { path }));
                     } else {
                         // add the module to the lookup
                         if seen_modules.insert(module.def_id().unwrap()) {

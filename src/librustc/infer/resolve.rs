@@ -26,7 +26,7 @@ pub struct OpportunisticTypeResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> OpportunisticTypeResolver<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
-        OpportunisticTypeResolver { infcx: infcx }
+        OpportunisticTypeResolver { infcx }
     }
 }
 
@@ -54,7 +54,7 @@ pub struct OpportunisticTypeAndRegionResolver<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> OpportunisticTypeAndRegionResolver<'a, 'gcx, 'tcx> {
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
-        OpportunisticTypeAndRegionResolver { infcx: infcx }
+        OpportunisticTypeAndRegionResolver { infcx }
     }
 }
 

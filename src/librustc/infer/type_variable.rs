@@ -169,7 +169,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         // Hack: we only need this so that `types_escaping_snapshot`
         // can see what has been unified; see the Delegate impl for
         // more details.
-        self.values.record(Instantiate { vid: vid });
+        self.values.record(Instantiate { vid });
     }
 
     /// Creates a new type variable.

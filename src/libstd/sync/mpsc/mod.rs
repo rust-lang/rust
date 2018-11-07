@@ -931,7 +931,7 @@ impl<T> fmt::Debug for Sender<T> {
 
 impl<T> SyncSender<T> {
     fn new(inner: Arc<sync::Packet<T>>) -> SyncSender<T> {
-        SyncSender { inner: inner }
+        SyncSender { inner }
     }
 
     /// Sends a value on this synchronous channel.

@@ -28,7 +28,7 @@ pub struct HaveBeenBorrowedLocals<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> HaveBeenBorrowedLocals<'a, 'tcx> {
     pub fn new(mir: &'a Mir<'tcx>)
                -> Self {
-        HaveBeenBorrowedLocals { mir: mir }
+        HaveBeenBorrowedLocals { mir }
     }
 
     pub fn mir(&self) -> &Mir<'tcx> {

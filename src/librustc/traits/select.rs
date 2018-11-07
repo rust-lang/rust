@@ -3526,7 +3526,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             _ => bug!(),
         };
 
-        Ok(VtableBuiltinData { nested: nested })
+        Ok(VtableBuiltinData { nested })
     }
 
     ///////////////////////////////////////////////////////////////////////////

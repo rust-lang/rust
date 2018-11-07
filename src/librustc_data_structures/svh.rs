@@ -31,7 +31,7 @@ impl Svh {
     /// compute the SVH from some HIR, you want the `calculate_svh`
     /// function found in `librustc_incremental`.
     pub fn new(hash: u64) -> Svh {
-        Svh { hash: hash }
+        Svh { hash }
     }
 
     pub fn as_u64(&self) -> u64 {

@@ -21,7 +21,7 @@ pub struct MaybeStorageLive<'a, 'tcx: 'a> {
 impl<'a, 'tcx: 'a> MaybeStorageLive<'a, 'tcx> {
     pub fn new(mir: &'a Mir<'tcx>)
                -> Self {
-        MaybeStorageLive { mir: mir }
+        MaybeStorageLive { mir }
     }
 
     pub fn mir(&self) -> &Mir<'tcx> {

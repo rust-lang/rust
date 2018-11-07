@@ -993,7 +993,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             AdtField { ty: field_ty, span: field.span }
         })
         .collect();
-        AdtVariant { fields: fields }
+        AdtVariant { fields }
     }
 
     fn enum_variants(&self, enum_def: &hir::EnumDef) -> Vec<AdtVariant<'tcx>> {

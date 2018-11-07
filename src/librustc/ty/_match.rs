@@ -34,7 +34,7 @@ pub struct Match<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> Match<'a, 'gcx, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Match<'a, 'gcx, 'tcx> {
-        Match { tcx: tcx }
+        Match { tcx }
     }
 }
 

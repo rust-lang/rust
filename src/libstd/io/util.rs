@@ -150,7 +150,7 @@ pub struct Repeat { byte: u8 }
 /// assert_eq!(buffer, [0b101, 0b101, 0b101]);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn repeat(byte: u8) -> Repeat { Repeat { byte: byte } }
+pub fn repeat(byte: u8) -> Repeat { Repeat { byte } }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Read for Repeat {

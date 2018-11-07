@@ -52,7 +52,7 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.hir.krate().visit_all_item_likes(&mut OuterVisitor { tcx: tcx }.as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(&mut OuterVisitor { tcx }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
 
