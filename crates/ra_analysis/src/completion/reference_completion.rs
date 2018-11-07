@@ -105,6 +105,9 @@ fn classify_name_ref(name_ref: ast::NameRef) -> Option<NameRefKind> {
     let parent = name_ref.syntax().parent()?;
     if let Some(segment) = ast::PathSegment::cast(parent) {
         let path = segment.parent_path();
+        if let Some(crate_path) = crate_path(path) {
+            return Some(NameRefKind::CratePath(crate_path));
+        }
         if path.qualifier().is_none() {
             let enclosing_fn = name_ref
                 .syntax()
@@ -112,9 +115,6 @@ fn classify_name_ref(name_ref: ast::NameRef) -> Option<NameRefKind> {
                 .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
                 .find_map(ast::FnDef::cast);
             return Some(NameRefKind::LocalRef { enclosing_fn });
-        }
-        if let Some(crate_path) = crate_path(path) {
-            return Some(NameRefKind::CratePath(crate_path));
         }
     }
     None
@@ -129,10 +129,21 @@ fn crate_path(mut path: ast::Path) -> Option<Vec<ast::NameRef>> {
             ast::PathSegmentKind::CrateKw => break,
             ast::PathSegmentKind::SelfKw | ast::PathSegmentKind::SuperKw => return None,
         }
-        path = path.qualifier()?;
+        path = qualifier(path)?;
     }
     res.reverse();
-    Some(res)
+    return Some(res);
+
+    fn qualifier(path: ast::Path) -> Option<ast::Path> {
+        if let Some(q) = path.qualifier() {
+            return Some(q);
+        }
+        // TODO: this bottom up traversal is not too precise.
+        // Should we handle do a top-down analysiss, recording results?
+        let use_tree_list = path.syntax().ancestors().find_map(ast::UseTreeList::cast)?;
+        let use_tree = use_tree_list.parent_use_tree();
+        use_tree.path()
+    }
 }
 
 fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<CompletionItem>) {
