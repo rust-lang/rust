@@ -1,3 +1,12 @@
+Version 1.30.1 (2018-11-08)
+===========================
+
+- [Fixed overflow ICE in rustdoc][54199]
+- [Cap Cargo progress bar width at 60 in MSYS terminals][cargo/6122]
+
+[54199]: https://github.com/rust-lang/rust/pull/54199
+[cargo/6122]: https://github.com/rust-lang/cargo/pull/6122
+
 Version 1.30.0 (2018-10-25)
 ==========================
 
