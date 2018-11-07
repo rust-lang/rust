@@ -5,6 +5,7 @@ use crate::{
     ast::{self, AstNode},
     File,
     string_lexing::{self, CharComponentKind},
+    utils::MutAsciiString,
     yellow::{
         SyntaxError,
         SyntaxErrorKind::*,
@@ -73,12 +74,18 @@ fn validate_char(node: ast::Char, errors: &mut Vec<SyntaxError>) {
                     return;
                 }
 
-                let mut code = String::new();
+                let mut buf = &mut [0; 6];
+                let mut code = MutAsciiString::new(buf);
                 let mut closed = false;
                 for c in text[3..].chars() {
                     assert!(!closed, "no characters after escape is closed");
 
                     if c.is_digit(16) {
+                        if code.len() == 6 {
+                            errors.push(SyntaxError::new(OverlongUnicodeEscape, range));
+                            return;
+                        }
+
                         code.push(c);
                     } else if c == '_' {
                         // Reject leading _
@@ -101,10 +108,6 @@ fn validate_char(node: ast::Char, errors: &mut Vec<SyntaxError>) {
                 if code.len() == 0 {
                     errors.push(SyntaxError::new(EmptyUnicodeEcape, range));
                     return;
-                }
-
-                if code.len() > 6 {
-                    errors.push(SyntaxError::new(OverlongUnicodeEscape, range));
                 }
 
                 match u32::from_str_radix(&code, 16) {
