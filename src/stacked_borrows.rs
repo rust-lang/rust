@@ -167,13 +167,15 @@ impl<'tcx> Stack {
                                         behind a barrier", bor))
                 }
                 (BorStackItem::Uniq(itm_t), Borrow::Uniq(bor_t)) if itm_t == bor_t => {
-                    // Found matching unique item.
+                    // Found matching unique item.  This is *always* required to use a `Uniq`:
+                    // The item must still be on the stack.
                     if !is_write {
-                        // As a special case, if we are reading and since we *did* find the `Uniq`,
-                        // we try to pop less: We are happy with making a `Shr` or `Frz` active;
-                        // that one will not mind concurrent reads.
+                        // As a special case, if we are reading, let us see if it would be
+                        // beneficial to pretend we are a raw pointer instead.  If
+                        // raw pointers are allowed to read while popping *less* than we
+                        // would have to pop, there is no reason not to let them do this.
                         match self.reactivatable(Borrow::default(), is_write) {
-                            // If we got something better that `idx`, use that
+                            // If we got something better (popping less) that `idx`, use that
                             Ok(None) => return Ok(None),
                             Ok(Some(shr_idx)) if shr_idx <= idx => return Ok(Some(shr_idx)),
                             // Otherwise just go on.
@@ -329,6 +331,8 @@ impl<'tcx> Stacks {
                 )))
             }
             // Sometimes we also need to be frozen.
+            // In this case we *both* push `Shr` and then freeze.  This means that a `&mut`
+            // to `*const` to `*mut` cast through `&` actually works.
             if frozen {
                 // Even shared refs can have uniq tags (after transmute).  That's not an error
                 // but they do not get any freezing benefits.

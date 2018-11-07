@@ -6,6 +6,7 @@ fn main() {
     ref_raw_int_raw();
     mut_shr_raw();
     mut_raw_then_mut_shr();
+    mut_raw_mut();
 }
 
 // Deref a raw ptr to access a field of a large struct, where the field
@@ -73,6 +74,28 @@ fn mut_raw_then_mut_shr() {
         let xshr = &*xref;
         assert_eq!(*xshr, 2);
         unsafe { *xraw = 4; }
+    }
+    assert_eq!(x, 4);
+}
+
+// Ensure that if we derive from a mut a raw, and then from that a mut,
+// and then read through the original mut, that does not invalidate the raw.
+// This shows that the read-exception for `&mut` applies even if the `Shr` item
+// on the stack is not at the top.
+fn mut_raw_mut() {
+    let mut x = 2;
+    {
+        let xref1 = &mut x;
+        let xraw = xref1 as *mut _;
+        let _xref2 = unsafe { &mut *xraw };
+        let _val = *xref1;
+        unsafe { *xraw = 4; }
+        // we can now use both xraw and xref1, for reading
+        assert_eq!(*xref1, 4);
+        assert_eq!(unsafe { *xraw }, 4);
+        assert_eq!(*xref1, 4);
+        assert_eq!(unsafe { *xraw }, 4);
+        // we cannot use xref2; see `compile-fail/stacked-borows/illegal_read4.rs`
     }
     assert_eq!(x, 4);
 }
