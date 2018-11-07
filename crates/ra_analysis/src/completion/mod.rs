@@ -2,6 +2,7 @@ mod reference_completion;
 
 use ra_editor::find_node_at_offset;
 use ra_syntax::{
+    algo::find_leaf_at_offset,
     algo::visit::{visitor_ctx, VisitorCtx},
     ast,
     AstNode, AtomEdit,
@@ -11,6 +12,8 @@ use rustc_hash::{FxHashMap};
 
 use crate::{
     db::{self, SyntaxDatabase},
+    descriptors::{DescriptorDatabase, module::ModuleSource},
+    input::{FilesDatabase},
     Cancelable, FilePosition
 };
 
@@ -35,12 +38,32 @@ pub(crate) fn completions(
         original_file.reparse(&edit)
     };
 
+    let leaf = match find_leaf_at_offset(original_file.syntax(), position.offset).left_biased() {
+        None => return Ok(None),
+        Some(it) => it,
+    };
+    let source_root_id = db.file_source_root(position.file_id);
+    let module_tree = db.module_tree(source_root_id)?;
+    let module_source = ModuleSource::for_node(position.file_id, leaf);
+    let module_id = match module_tree.any_module_for_source(module_source) {
+        None => return Ok(None),
+        Some(it) => it,
+    };
+
     let mut res = Vec::new();
     let mut has_completions = false;
     // First, let's try to complete a reference to some declaration.
     if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(file.syntax(), position.offset) {
         has_completions = true;
-        reference_completion::completions(&mut res, db, position.file_id, &file, name_ref)?;
+        reference_completion::completions(
+            &mut res,
+            db,
+            source_root_id,
+            &module_tree,
+            module_id,
+            &file,
+            name_ref,
+        )?;
         // special case, `trait T { fn foo(i_am_a_name_ref) {} }`
         if is_node::<ast::Param>(name_ref.syntax()) {
             param_completions(name_ref.syntax(), &mut res);

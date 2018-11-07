@@ -3,7 +3,7 @@ pub(crate) mod scope;
 
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
-    SmolStr, SyntaxNode,
+    SmolStr, SyntaxNode, SyntaxNodeRef,
 };
 use relative_path::RelativePathBuf;
 
@@ -154,6 +154,16 @@ struct ModuleData {
 }
 
 impl ModuleSource {
+    pub(crate) fn for_node(file_id: FileId, node: SyntaxNodeRef) -> ModuleSource {
+        for node in node.ancestors() {
+            if let Some(m) = ast::Module::cast(node) {
+                if !m.has_semi() {
+                    return ModuleSource::new_inline(file_id, m);
+                }
+            }
+        }
+        ModuleSource::SourceFile(file_id)
+    }
     pub(crate) fn new_inline(file_id: FileId, module: ast::Module) -> ModuleSource {
         assert!(!module.has_semi());
         let ptr = SyntaxPtr::new(file_id, module.syntax());

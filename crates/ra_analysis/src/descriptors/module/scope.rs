@@ -25,7 +25,7 @@ enum EntryKind {
 }
 
 impl ModuleScope {
-    pub(crate) fn new<'a>(items: impl Iterator<Item = ast::ModuleItem<'a>>) -> ModuleScope {
+    pub(super) fn new<'a>(items: impl Iterator<Item = ast::ModuleItem<'a>>) -> ModuleScope {
         let mut entries = Vec::new();
         for item in items {
             let entry = match item {

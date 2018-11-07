@@ -3,24 +3,26 @@ use ra_editor::find_node_at_offset;
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
     SourceFileNode, AstNode,
-    ast::{self, AstChildren, ModuleItemOwner, LoopBodyOwner},
+    ast::{self, LoopBodyOwner},
     SyntaxKind::*,
 };
 
 use crate::{
     db::RootDatabase,
-    input::FilesDatabase,
+    input::{SourceRootId},
     completion::CompletionItem,
-    descriptors::module::{ModuleId, ModuleScope, ModuleTree, ModuleSource},
+    descriptors::module::{ModuleId, ModuleScope, ModuleTree},
     descriptors::function::FnScopes,
     descriptors::DescriptorDatabase,
-    FileId, Cancelable
+    Cancelable
 };
 
 pub(super) fn completions(
     acc: &mut Vec<CompletionItem>,
     db: &RootDatabase,
-    file_id: FileId,
+    source_root_id: SourceRootId,
+    module_tree: &ModuleTree,
+    module_id: ModuleId,
     file: &SourceFileNode,
     name_ref: ast::NameRef,
 ) -> Cancelable<()> {
@@ -28,14 +30,18 @@ pub(super) fn completions(
         Some(it) => it,
         None => return Ok(()),
     };
+
     match kind {
         NameRefKind::LocalRef => {
-            if let Some(fn_def) = complete_local_name(acc, &file, name_ref) {
+            let module_scope = db.module_scope(source_root_id, module_id)?;
+            if let Some(fn_def) = complete_local_name(acc, &module_scope, name_ref) {
                 complete_expr_keywords(&file, fn_def, name_ref, acc);
                 complete_expr_snippets(acc);
             }
         }
-        NameRefKind::CratePath(path) => complete_path(acc, db, file_id, path)?,
+        NameRefKind::CratePath(path) => {
+            complete_path(acc, db, source_root_id, module_tree, module_id, path)?
+        }
         NameRefKind::BareIdentInMod => {
             let name_range = name_ref.syntax().range();
             let top_node = name_ref
@@ -107,45 +113,26 @@ fn crate_path(mut path: ast::Path) -> Option<Vec<ast::NameRef>> {
 
 fn complete_local_name<'a>(
     acc: &mut Vec<CompletionItem>,
-    file: &SourceFileNode,
+    module_scope: &ModuleScope,
     name_ref: ast::NameRef<'a>,
 ) -> Option<ast::FnDef<'a>> {
-    let mut enclosing_fn = None;
-    for node in name_ref.syntax().ancestors() {
-        if let Some(items) = visitor()
-            .visit::<ast::SourceFile, _>(|it| Some(it.items()))
-            .visit::<ast::Module, _>(|it| Some(it.item_list()?.items()))
-            .accept(node)
-        {
-            if let Some(items) = items {
-                complete_module_items(file, items, Some(name_ref), acc);
-            }
-            break;
-        } else if enclosing_fn.is_none() {
-            if let Some(fn_def) = ast::FnDef::cast(node) {
-                enclosing_fn = Some(fn_def);
-                let scopes = FnScopes::new(fn_def);
-                complete_fn(name_ref, &scopes, acc);
-            }
-        }
+    let enclosing_fn = name_ref
+        .syntax()
+        .ancestors()
+        .take_while(|it| it.kind() != SOURCE_FILE && it.kind() != MODULE)
+        .find_map(ast::FnDef::cast);
+    if let Some(fn_def) = enclosing_fn {
+        let scopes = FnScopes::new(fn_def);
+        complete_fn(name_ref, &scopes, acc);
     }
-    enclosing_fn
-}
 
-fn complete_module_items(
-    file: &SourceFileNode,
-    items: AstChildren<ast::ModuleItem>,
-    this_item: Option<ast::NameRef>,
-    acc: &mut Vec<CompletionItem>,
-) {
-    let scope = ModuleScope::new(items); // FIXME
     acc.extend(
-        scope
+        module_scope
             .entries()
             .iter()
             .filter(|entry| {
-                let syntax = entry.ptr().resolve(file);
-                Some(syntax.borrowed()) != this_item.map(|it| it.syntax())
+                // Don't expose this item
+                !entry.ptr().range().is_subrange(&name_ref.syntax().range())
             })
             .map(|entry| CompletionItem {
                 label: entry.name().to_string(),
@@ -153,6 +140,7 @@ fn complete_module_items(
                 snippet: None,
             }),
     );
+    enclosing_fn
 }
 
 fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<CompletionItem>) {
@@ -180,16 +168,12 @@ fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<Completi
 fn complete_path(
     acc: &mut Vec<CompletionItem>,
     db: &RootDatabase,
-    file_id: FileId,
+    source_root_id: SourceRootId,
+    module_tree: &ModuleTree,
+    module_id: ModuleId,
     crate_path: Vec<ast::NameRef>,
 ) -> Cancelable<()> {
-    let source_root_id = db.file_source_root(file_id);
-    let module_tree = db.module_tree(source_root_id)?;
-    let module_id = match module_tree.any_module_for_source(ModuleSource::SourceFile(file_id)) {
-        None => return Ok(()),
-        Some(it) => it,
-    };
-    let target_module_id = match find_target_module(&module_tree, module_id, crate_path) {
+    let target_module_id = match find_target_module(module_tree, module_id, crate_path) {
         None => return Ok(()),
         Some(it) => it,
     };
@@ -327,5 +311,3 @@ fn complete_expr_snippets(acc: &mut Vec<CompletionItem>) {
         snippet: Some("eprintln!(\"$0 = {:#?}\", $0);".to_string()),
     });
 }
-
-
