@@ -1,4 +1,4 @@
-ROOT@[0; 51)
+SOURCE_FILE@[0; 51)
   STRUCT_DEF@[0; 12)
     UNION_KW@[0; 5)
     WHITESPACE@[5; 6)

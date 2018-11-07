@@ -52,7 +52,7 @@ pub(crate) enum ModuleSource {
 /// An owned syntax node for a module. Unlike `ModuleSource`,
 /// this holds onto the AST for the whole file.
 enum ModuleSourceNode {
-    Root(ast::RootNode),
+    Root(ast::SourceFileNode),
     Inline(ast::ModuleNode),
 }
 

@@ -3016,49 +3016,6 @@ impl<R: TreeRoot<RaTypes>> ReturnExprNode<R> {
 
 impl<'a> ReturnExpr<'a> {}
 
-// Root
-#[derive(Debug, Clone, Copy,)]
-pub struct RootNode<R: TreeRoot<RaTypes> = OwnedRoot> {
-    pub(crate) syntax: SyntaxNode<R>,
-}
-pub type Root<'a> = RootNode<RefRoot<'a>>;
-
-impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<RootNode<R1>> for RootNode<R2> {
-    fn eq(&self, other: &RootNode<R1>) -> bool { self.syntax == other.syntax }
-}
-impl<R: TreeRoot<RaTypes>> Eq for RootNode<R> {}
-impl<R: TreeRoot<RaTypes>> Hash for RootNode<R> {
-    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
-}
-
-impl<'a> AstNode<'a> for Root<'a> {
-    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
-        match syntax.kind() {
-            ROOT => Some(Root { syntax }),
-            _ => None,
-        }
-    }
-    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
-}
-
-impl<R: TreeRoot<RaTypes>> RootNode<R> {
-    pub fn borrowed(&self) -> Root {
-        RootNode { syntax: self.syntax.borrowed() }
-    }
-    pub fn owned(&self) -> RootNode {
-        RootNode { syntax: self.syntax.owned() }
-    }
-}
-
-
-impl<'a> ast::ModuleItemOwner<'a> for Root<'a> {}
-impl<'a> ast::FnDefOwner<'a> for Root<'a> {}
-impl<'a> Root<'a> {
-    pub fn modules(self) -> impl Iterator<Item = Module<'a>> + 'a {
-        super::children(self)
-    }
-}
-
 // SelfParam
 #[derive(Debug, Clone, Copy,)]
 pub struct SelfParamNode<R: TreeRoot<RaTypes> = OwnedRoot> {
@@ -3169,6 +3126,49 @@ impl<R: TreeRoot<RaTypes>> SliceTypeNode<R> {
 
 
 impl<'a> SliceType<'a> {}
+
+// SourceFile
+#[derive(Debug, Clone, Copy,)]
+pub struct SourceFileNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    pub(crate) syntax: SyntaxNode<R>,
+}
+pub type SourceFile<'a> = SourceFileNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<SourceFileNode<R1>> for SourceFileNode<R2> {
+    fn eq(&self, other: &SourceFileNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for SourceFileNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for SourceFileNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
+
+impl<'a> AstNode<'a> for SourceFile<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            SOURCE_FILE => Some(SourceFile { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<R: TreeRoot<RaTypes>> SourceFileNode<R> {
+    pub fn borrowed(&self) -> SourceFile {
+        SourceFileNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> SourceFileNode {
+        SourceFileNode { syntax: self.syntax.owned() }
+    }
+}
+
+
+impl<'a> ast::ModuleItemOwner<'a> for SourceFile<'a> {}
+impl<'a> ast::FnDefOwner<'a> for SourceFile<'a> {}
+impl<'a> SourceFile<'a> {
+    pub fn modules(self) -> impl Iterator<Item = Module<'a>> + 'a {
+        super::children(self)
+    }
+}
 
 // StaticDef
 #[derive(Debug, Clone, Copy,)]

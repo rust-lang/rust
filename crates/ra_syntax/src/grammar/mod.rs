@@ -53,7 +53,7 @@ pub(crate) fn root(p: &mut Parser) {
     let m = p.start();
     p.eat(SHEBANG);
     items::mod_contents(p, false);
-    m.complete(p, ROOT);
+    m.complete(p, SOURCE_FILE);
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

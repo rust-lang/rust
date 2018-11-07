@@ -172,7 +172,7 @@ impl<'a, S: Sink> EventProcessor<'a, S> {
     }
 
     fn start(&mut self, kind: SyntaxKind) {
-        if kind == ROOT {
+        if kind == SOURCE_FILE {
             self.sink.start_internal(kind);
             return;
         }

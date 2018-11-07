@@ -116,7 +116,7 @@ Grammar(
         "SHEBANG",
     ],
     nodes: [
-        "ROOT",
+        "SOURCE_FILE",
 
         "STRUCT_DEF",
         "ENUM_DEF",
@@ -239,7 +239,7 @@ Grammar(
         "ARG_LIST",
     ],
     ast: {
-        "Root": (
+        "SourceFile": (
             traits: [ "ModuleItemOwner", "FnDefOwner" ],
             collections: [
                 ["modules", "Module"],

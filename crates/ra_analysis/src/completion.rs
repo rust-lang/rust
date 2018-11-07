@@ -124,7 +124,7 @@ pub(crate) fn scope_completion(
             .last()
             .unwrap();
         match top_node.parent().map(|it| it.kind()) {
-            Some(ROOT) | Some(ITEM_LIST) => complete_mod_item_snippets(&mut res),
+            Some(SOURCE_FILE) | Some(ITEM_LIST) => complete_mod_item_snippets(&mut res),
             _ => (),
         }
     }
@@ -171,7 +171,7 @@ fn complete_name_ref(file: &SourceFileNode, name_ref: ast::NameRef, acc: &mut Ve
     let mut visited_fn = false;
     for node in name_ref.syntax().ancestors() {
         if let Some(items) = visitor()
-            .visit::<ast::Root, _>(|it| Some(it.items()))
+            .visit::<ast::SourceFile, _>(|it| Some(it.items()))
             .visit::<ast::Module, _>(|it| Some(it.item_list()?.items()))
             .accept(node)
         {
@@ -195,7 +195,7 @@ fn param_completions(ctx: SyntaxNodeRef, acc: &mut Vec<CompletionItem>) {
     let mut params = FxHashMap::default();
     for node in ctx.ancestors() {
         let _ = visitor_ctx(&mut params)
-            .visit::<ast::Root, _>(process)
+            .visit::<ast::SourceFile, _>(process)
             .visit::<ast::ItemList, _>(process)
             .accept(node);
     }

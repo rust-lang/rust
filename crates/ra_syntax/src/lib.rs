@@ -61,9 +61,8 @@ pub use crate::{
 
 use crate::yellow::GreenNode;
 
-// TODO: pick a single name for everything. SourceFileNode maybe?
-/// File represents a parse tree for a single Rust file.
-pub type SourceFileNode = ast::RootNode;
+/// `SourceFileNode` represents a parse tree for a single Rust file.
+pub use crate::ast::SourceFileNode;
 
 impl SourceFileNode {
     fn new(green: GreenNode, errors: Vec<SyntaxError>) -> SourceFileNode {
@@ -71,8 +70,8 @@ impl SourceFileNode {
         if cfg!(debug_assertions) {
             utils::validate_block_structure(root.borrowed());
         }
-        assert_eq!(root.kind(), SyntaxKind::ROOT);
-        ast::RootNode { syntax: root }
+        assert_eq!(root.kind(), SyntaxKind::SOURCE_FILE);
+        ast::SourceFileNode { syntax: root }
     }
     pub fn parse(text: &str) -> SourceFileNode {
         let tokens = tokenize(&text);
@@ -94,7 +93,7 @@ impl SourceFileNode {
         SourceFileNode::parse(&text)
     }
     /// Typed AST representation of the parse tree.
-    pub fn ast(&self) -> ast::Root {
+    pub fn ast(&self) -> ast::SourceFile {
         self.borrowed()
     }
     /// Untyped homogeneous representation of the parse tree.
