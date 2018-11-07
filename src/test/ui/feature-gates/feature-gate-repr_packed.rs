@@ -11,4 +11,8 @@
 #[repr(packed(1))] //~ error: the `#[repr(packed(n))]` attribute is experimental
 struct Foo(u64);
 
+#[repr(C)]
+#[repr(packed(1))] //~ error: the `#[repr(packed(n))]` attribute is experimental
+struct Bar(u64);
+
 fn main() {}

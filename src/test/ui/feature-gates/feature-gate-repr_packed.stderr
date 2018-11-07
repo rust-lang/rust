@@ -6,6 +6,14 @@ LL | #[repr(packed(1))] //~ error: the `#[repr(packed(n))]` attribute is experim
    |
    = help: add #![feature(repr_packed)] to the crate attributes to enable
 
-error: aborting due to previous error
+error[E0658]: the `#[repr(packed(n))]` attribute is experimental (see issue #33158)
+  --> $DIR/feature-gate-repr_packed.rs:15:1
+   |
+LL | #[repr(packed(1))] //~ error: the `#[repr(packed(n))]` attribute is experimental
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(repr_packed)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

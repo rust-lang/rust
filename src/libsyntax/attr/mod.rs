@@ -455,6 +455,11 @@ pub fn find_by_name<'a>(attrs: &'a [Attribute], name: &str) -> Option<&'a Attrib
     attrs.iter().find(|attr| attr.check_name(name))
 }
 
+pub fn filter_by_name<'a>(attrs: &'a [Attribute], name: &'a str)
+    -> impl Iterator<Item = &'a Attribute> {
+    attrs.iter().filter(move |attr| attr.check_name(name))
+}
+
 pub fn first_attr_value_str_by_name(attrs: &[Attribute], name: &str) -> Option<Symbol> {
     attrs.iter()
         .find(|at| at.check_name(name))
