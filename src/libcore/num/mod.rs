@@ -4788,9 +4788,9 @@ pub enum IntErrorKind {
     /// Among other causes, this variant will be constructed when parsing a string that
     /// contains a letter.
     InvalidDigit,
-    /// Integer is too small to store in target integer type.
-    Overflow,
     /// Integer is too large to store in target integer type.
+    Overflow,
+    /// Integer is too small to store in target integer type.
     Underflow,
 }
 
