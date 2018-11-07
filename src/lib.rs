@@ -1,4 +1,4 @@
-#![feature(rustc_private, macro_at_most_once_rep, never_type)]
+#![feature(rustc_private, macro_at_most_once_rep, never_type, extern_crate_item_prelude)]
 #![allow(intra_doc_link_resolution_failure)]
 
 extern crate byteorder;
@@ -26,15 +26,15 @@ extern crate target_lexicon;
 
 use std::any::Any;
 use std::fs::File;
-use std::sync::{mpsc, Arc};
+use std::sync::mpsc;
 
-use crate::rustc::dep_graph::DepGraph;
-use crate::rustc::middle::cstore::MetadataLoader;
-use crate::rustc::session::{config::OutputFilenames, CompileIncomplete};
-use crate::rustc::ty::query::Providers;
-use crate::rustc_codegen_utils::codegen_backend::CodegenBackend;
-use crate::rustc_codegen_utils::link::out_filename;
-use crate::syntax::symbol::Symbol;
+use rustc::dep_graph::DepGraph;
+use rustc::middle::cstore::MetadataLoader;
+use rustc::session::{config::OutputFilenames, CompileIncomplete};
+use rustc::ty::query::Providers;
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_codegen_utils::link::out_filename;
+use syntax::symbol::Symbol;
 
 use cranelift::codegen::settings;
 use cranelift_faerie::*;
@@ -63,24 +63,22 @@ mod prelude {
     pub use std::any::Any;
     pub use std::collections::{HashMap, HashSet};
 
-    pub use crate::rustc::hir::def_id::{DefId, LOCAL_CRATE};
-    pub use crate::rustc::mir;
-    pub use crate::rustc::mir::interpret::AllocId;
-    pub use crate::rustc::mir::*;
-    pub use crate::rustc::session::{config::CrateType, Session};
-    pub use crate::rustc::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyLayout};
-    pub use crate::rustc::ty::{
+    pub use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+    pub use rustc::mir::{self, interpret::AllocId, *};
+    pub use rustc::session::{config::CrateType, Session};
+    pub use rustc::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyLayout};
+    pub use rustc::ty::{
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
         TypeAndMut, TypeFoldable,
     };
-    pub use crate::rustc_data_structures::{
+    pub use rustc_data_structures::{
         fx::{FxHashMap, FxHashSet},
         indexed_vec::Idx,
         sync::Lrc,
     };
-    pub use crate::rustc_mir::monomorphize::{collector, MonoItem};
-    pub use crate::syntax::ast::{FloatTy, IntTy, UintTy};
-    pub use crate::syntax::source_map::DUMMY_SP;
+    pub use rustc_mir::monomorphize::{collector, MonoItem};
+    pub use syntax::ast::{FloatTy, IntTy, UintTy};
+    pub use syntax::source_map::DUMMY_SP;
 
     pub use cranelift::codegen::isa::CallConv;
     pub use cranelift::codegen::ir::{
@@ -379,7 +377,7 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
     let any_dynamic_crate = tcx.sess.dependency_formats.borrow()
         .iter()
         .any(|(_, list)| {
-            use crate::rustc::middle::dependency_format::Linkage;
+            use rustc::middle::dependency_format::Linkage;
             list.iter().any(|&linkage| linkage == Linkage::Dynamic)
         });
     if any_dynamic_crate {

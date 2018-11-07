@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::rustc_target::spec::{HasTargetSpec, Target};
+use rustc_target::spec::{HasTargetSpec, Target};
 
 use cranelift_module::Module;
 

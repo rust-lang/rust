@@ -6,8 +6,8 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     module: &mut Module<impl Backend + 'static>,
 ) {
-    use crate::rustc::middle::lang_items::StartFnLangItem;
-    use crate::rustc::session::config::EntryFnType;
+    use rustc::middle::lang_items::StartFnLangItem;
+    use rustc::session::config::EntryFnType;
 
     let (main_def_id, use_start_lang_item) = match *tcx.sess.entry_fn.borrow() {
         Some((id, _, entry_ty)) => (

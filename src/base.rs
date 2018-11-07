@@ -606,7 +606,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     lval.write_cvalue(fx, CValue::ByVal(len, usize_layout));
                 }
                 Rvalue::NullaryOp(NullOp::Box, content_ty) => {
-                    use crate::rustc::middle::lang_items::ExchangeMallocFnLangItem;
+                    use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 
                     let usize_type = fx.cton_type(fx.tcx.types.usize).unwrap();
                     let (size, align) = fx.layout_of(content_ty).size_and_align();

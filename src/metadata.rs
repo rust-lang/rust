@@ -1,5 +1,5 @@
-use crate::rustc::middle::cstore::MetadataLoader;
-use crate::rustc_data_structures::owning_ref::{self, OwningRef};
+use rustc::middle::cstore::MetadataLoader;
+use rustc_data_structures::owning_ref::{self, OwningRef};
 use std::fs::File;
 use std::path::Path;
 

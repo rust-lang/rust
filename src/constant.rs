@@ -1,11 +1,14 @@
-use cranelift_module::*;
-use crate::prelude::*;
-use crate::rustc::mir::interpret::{
+use std::borrow::Cow;
+
+use rustc::mir::interpret::{
     read_target_uint, AllocId, AllocType, Allocation, ConstValue, EvalResult, GlobalId, Scalar,
 };
-use crate::rustc::ty::Const;
-use crate::rustc_mir::interpret::{EvalContext, Machine, Memory, MemoryKind, MemPlace, OpTy, PlaceTy, Pointer};
-use std::borrow::Cow;
+use rustc::ty::Const;
+use rustc_mir::interpret::{EvalContext, Machine, Memory, MemoryKind, MemPlace, OpTy, PlaceTy, Pointer};
+
+use cranelift_module::*;
+
+use crate::prelude::*;
 
 #[derive(Default)]
 pub struct ConstantCx {

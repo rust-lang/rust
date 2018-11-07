@@ -10,8 +10,8 @@
 
 use crate::prelude::*;
 
-use crate::rustc::middle::allocator::AllocatorKind;
-use crate::rustc_allocator::{ALLOCATOR_METHODS, AllocatorTy};
+use rustc::middle::allocator::AllocatorKind;
+use rustc_allocator::{ALLOCATOR_METHODS, AllocatorTy};
 
 pub fn codegen(tcx: TyCtxt, module: &mut Module<impl Backend + 'static>, kind: AllocatorKind) {
     let usize_ty = module.target_config().pointer_type();
