@@ -99,7 +99,7 @@
 
 // lldb-command:print padded_tuple
 // lldbg-check:[...]$4 = &[(6, 7), (8, 9)]
-// lldbr-check:(&[(i32, i16)]) padded_tuple = { data_ptr = *0x555555555030 length = 2 }
+// lldbr-check:(&[(i32, i16)]) padded_tuple = { data_ptr = *[...] length = 2 }
 
 // lldb-command:print padded_struct
 // lldbg-check:[...]$5 = &[AStruct { x: 10, y: 11, z: 12 }, AStruct { x: 13, y: 14, z: 15 }]
