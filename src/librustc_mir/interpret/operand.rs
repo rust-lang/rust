@@ -12,7 +12,6 @@
 //! All high-level functions to read from memory work on operands as sources.
 
 use std::convert::TryInto;
-use std::fmt;
 
 use rustc::{mir, ty};
 use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt};

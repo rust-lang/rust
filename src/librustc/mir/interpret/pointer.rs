@@ -1,4 +1,4 @@
- use mir;
+use mir;
 use ty::layout::{self, HasDataLayout, Size};
 
 use super::{
