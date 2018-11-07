@@ -494,8 +494,8 @@ pub fn handle_hover(
 
             return Ok(Some(Hover {
                 contents,
-                range: Some(range)
-            }))
+                range: Some(range),
+            }));
         }
     }
 

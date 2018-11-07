@@ -261,7 +261,7 @@ impl Analysis {
     pub fn doc_comment_for(
         &self,
         file_id: FileId,
-        symbol: FileSymbol
+        symbol: FileSymbol,
     ) -> Cancelable<Option<String>> {
         self.imp.doc_comment_for(file_id, symbol)
     }

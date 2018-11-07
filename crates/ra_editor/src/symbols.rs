@@ -24,12 +24,17 @@ pub struct FileSymbol {
 
 impl FileSymbol {
     pub fn docs(&self, file: &File) -> Option<String> {
-        file.syntax().descendants()
+        file.syntax()
+            .descendants()
             .filter(|node| node.kind() == self.kind && node.range() == self.node_range)
             .filter_map(|node: SyntaxNodeRef| {
                 fn doc_comments<'a, N: DocCommentsOwner<'a>>(node: N) -> Option<String> {
                     let comments = node.doc_comment_text();
-                    if comments.is_empty() { None } else { Some(comments) }
+                    if comments.is_empty() {
+                        None
+                    } else {
+                        Some(comments)
+                    }
                 }
 
                 visitor()
@@ -42,7 +47,8 @@ impl FileSymbol {
                     .visit(doc_comments::<ast::ConstDef>)
                     .visit(doc_comments::<ast::StaticDef>)
                     .accept(node)?
-            }).nth(0)
+            })
+            .nth(0)
     }
 }
 
