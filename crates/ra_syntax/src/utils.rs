@@ -1,4 +1,4 @@
-use crate::{File, SyntaxKind, SyntaxNodeRef, WalkEvent};
+use crate::{SourceFileNode, SyntaxKind, SyntaxNodeRef, WalkEvent};
 use std::fmt::Write;
 use std::str;
 
@@ -45,7 +45,7 @@ pub fn dump_tree(syntax: SyntaxNodeRef) -> String {
 }
 
 pub fn check_fuzz_invariants(text: &str) {
-    let file = File::parse(text);
+    let file = SourceFileNode::parse(text);
     let root = file.syntax();
     validate_block_structure(root);
     let _ = file.ast();

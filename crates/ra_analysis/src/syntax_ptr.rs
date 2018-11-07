@@ -1,4 +1,4 @@
-use ra_syntax::{File, SyntaxKind, SyntaxNode, SyntaxNodeRef, TextRange};
+use ra_syntax::{SourceFileNode, SyntaxKind, SyntaxNode, SyntaxNodeRef, TextRange};
 
 use crate::db::SyntaxDatabase;
 use crate::FileId;
@@ -43,7 +43,7 @@ impl LocalSyntaxPtr {
         }
     }
 
-    pub(crate) fn resolve(self, file: &File) -> SyntaxNode {
+    pub(crate) fn resolve(self, file: &SourceFileNode) -> SyntaxNode {
         let mut curr = file.syntax();
         loop {
             if curr.range() == self.range && curr.kind() == self.kind {
@@ -67,7 +67,7 @@ impl LocalSyntaxPtr {
 #[test]
 fn test_local_syntax_ptr() {
     use ra_syntax::{ast, AstNode};
-    let file = File::parse("struct Foo { f: u32, }");
+    let file = SourceFileNode::parse("struct Foo { f: u32, }");
     let field = file
         .syntax()
         .descendants()

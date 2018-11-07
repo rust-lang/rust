@@ -5,7 +5,7 @@ use arrayvec::ArrayString;
 use crate::{
     algo::visit::{visitor_ctx, VisitorCtx},
     ast::{self, AstNode},
-    File,
+    SourceFileNode,
     string_lexing::{self, CharComponentKind},
     yellow::{
         SyntaxError,
@@ -13,7 +13,7 @@ use crate::{
     },
 };
 
-pub(crate) fn validate(file: &File) -> Vec<SyntaxError> {
+pub(crate) fn validate(file: &SourceFileNode) -> Vec<SyntaxError> {
     let mut errors = Vec::new();
     for node in file.syntax().descendants() {
         let _ = visitor_ctx(&mut errors)
@@ -155,11 +155,11 @@ fn is_ascii_escape(code: char) -> bool {
 
 #[cfg(test)]
 mod test {
-    use crate::File;
+    use crate::SourceFileNode;
 
-    fn build_file(literal: &str) -> File {
+    fn build_file(literal: &str) -> SourceFileNode {
         let src = format!("const C: char = '{}';", literal);
-        File::parse(&src)
+        SourceFileNode::parse(&src)
     }
 
     fn assert_valid_char(literal: &str) {

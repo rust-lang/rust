@@ -7,7 +7,7 @@ use std::{
 use ra_editor::{self, find_node_at_offset, FileSymbol, LineIndex, LocalEdit};
 use ra_syntax::{
     ast::{self, ArgListOwner, Expr, NameOwner},
-    AstNode, File, SmolStr,
+    AstNode, SourceFileNode, SmolStr,
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
@@ -27,7 +27,7 @@ use crate::{
     input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
     symbol_index::SymbolIndex,
     AnalysisChange, Cancelable, CrateGraph, CrateId, Diagnostic, FileId, FileResolver,
-    FileSystemEdit, FilePosition, Query, SourceChange, SourceFileEdit,
+    FileSystemEdit, FilePosition, Query, SourceChange, SourceFileNodeEdit,
 };
 
 #[derive(Clone, Debug)]
@@ -180,7 +180,7 @@ impl fmt::Debug for AnalysisImpl {
 }
 
 impl AnalysisImpl {
-    pub fn file_syntax(&self, file_id: FileId) -> File {
+    pub fn file_syntax(&self, file_id: FileId) -> SourceFileNode {
         self.db.file_syntax(file_id)
     }
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
@@ -562,7 +562,7 @@ impl AnalysisImpl {
 
 impl SourceChange {
     pub(crate) fn from_local_edit(file_id: FileId, label: &str, edit: LocalEdit) -> SourceChange {
-        let file_edit = SourceFileEdit {
+        let file_edit = SourceFileNodeEdit {
             file_id,
             edits: edit.edit.into_atoms(),
         };

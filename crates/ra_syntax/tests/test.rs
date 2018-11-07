@@ -11,7 +11,7 @@ use std::{
 
 use ra_syntax::{
     utils::{check_fuzz_invariants, dump_tree},
-    File,
+    SourceFileNode,
 };
 
 #[test]
@@ -25,7 +25,7 @@ fn lexer_tests() {
 #[test]
 fn parser_tests() {
     dir_tests(&["parser/inline", "parser/ok", "parser/err"], |text| {
-        let file = File::parse(text);
+        let file = SourceFileNode::parse(text);
         dump_tree(file.syntax())
     })
 }

@@ -95,10 +95,10 @@ fn collect_imports(tree: ast::UseTree, acc: &mut Vec<Entry>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ra_syntax::{ast::ModuleItemOwner, File};
+    use ra_syntax::{ast::ModuleItemOwner, SourceFileNode};
 
     fn do_check(code: &str, expected: &[&str]) {
-        let file = File::parse(&code);
+        let file = SourceFileNode::parse(&code);
         let scope = ModuleScope::new(file.ast().items());
         let actual = scope.entries.iter().map(|it| it.name()).collect::<Vec<_>>();
         assert_eq!(expected, actual.as_slice());

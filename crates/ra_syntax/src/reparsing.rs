@@ -180,7 +180,7 @@ fn merge_errors(
 #[cfg(test)]
 mod tests {
     use super::{
-        super::{test_utils::extract_range, text_utils::replace_range, utils::dump_tree, File},
+        super::{test_utils::extract_range, text_utils::replace_range, utils::dump_tree, SourceFileNode},
         reparse_block, reparse_leaf, AtomEdit, GreenNode, SyntaxError, SyntaxNodeRef,
 };
 
@@ -192,9 +192,9 @@ mod tests {
         let (range, before) = extract_range(before);
         let after = replace_range(before.clone(), range, replace_with);
 
-        let fully_reparsed = File::parse(&after);
+        let fully_reparsed = SourceFileNode::parse(&after);
         let incrementally_reparsed = {
-            let f = File::parse(&before);
+            let f = SourceFileNode::parse(&before);
             let edit = AtomEdit {
                 delete: range,
                 insert: replace_with.to_string(),
@@ -203,7 +203,7 @@ mod tests {
                 reparser(f.syntax(), &edit).expect("cannot incrementally reparse");
             let green_root = node.replace_with(green);
             let errors = super::merge_errors(f.errors(), new_errors, node, &edit);
-            File::new(green_root, errors)
+            SourceFileNode::new(green_root, errors)
         };
 
         assert_eq_text!(

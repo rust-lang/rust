@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ra_editor::LineIndex;
-use ra_syntax::{File, SyntaxNode};
+use ra_syntax::{SourceFileNode, SyntaxNode};
 use salsa::{self, Database};
 
 use crate::{
@@ -85,7 +85,7 @@ salsa::database_storage! {
 
 salsa::query_group! {
     pub(crate) trait SyntaxDatabase: crate::input::FilesDatabase {
-        fn file_syntax(file_id: FileId) -> File {
+        fn file_syntax(file_id: FileId) -> SourceFileNode {
             type FileSyntaxQuery;
         }
         fn file_lines(file_id: FileId) -> Arc<LineIndex> {
@@ -103,9 +103,9 @@ salsa::query_group! {
     }
 }
 
-fn file_syntax(db: &impl SyntaxDatabase, file_id: FileId) -> File {
+fn file_syntax(db: &impl SyntaxDatabase, file_id: FileId) -> SourceFileNode {
     let text = db.file_text(file_id);
-    File::parse(&*text)
+    SourceFileNode::parse(&*text)
 }
 fn file_lines(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id);

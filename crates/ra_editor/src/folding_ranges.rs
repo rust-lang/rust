@@ -1,7 +1,7 @@
 use rustc_hash::FxHashSet;
 
 use ra_syntax::{
-    ast, AstNode, Direction, File,
+    ast, AstNode, Direction, SourceFileNode,
     SyntaxKind::{self, *},
     SyntaxNodeRef, TextRange,
 };
@@ -18,7 +18,7 @@ pub struct Fold {
     pub kind: FoldKind,
 }
 
-pub fn folding_ranges(file: &File) -> Vec<Fold> {
+pub fn folding_ranges(file: &SourceFileNode) -> Vec<Fold> {
     let mut res = vec![];
     let mut visited_comments = FxHashSet::default();
     let mut visited_imports = FxHashSet::default();
@@ -171,7 +171,7 @@ mod tests {
 
     fn do_check(text: &str, fold_kinds: &[FoldKind]) {
         let (ranges, text) = extract_ranges(text);
-        let file = File::parse(&text);
+        let file = SourceFileNode::parse(&text);
         let folds = folding_ranges(&file);
 
         assert_eq!(

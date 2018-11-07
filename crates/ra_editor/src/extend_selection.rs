@@ -1,11 +1,11 @@
 use ra_syntax::{
     algo::{find_covering_node, find_leaf_at_offset, LeafAtOffset},
-    Direction, File,
+    Direction, SourceFileNode,
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
 
-pub fn extend_selection(file: &File, range: TextRange) -> Option<TextRange> {
+pub fn extend_selection(file: &SourceFileNode, range: TextRange) -> Option<TextRange> {
     let syntax = file.syntax();
     extend(syntax.borrowed(), range)
 }
@@ -120,7 +120,7 @@ mod tests {
 
     fn do_check(before: &str, afters: &[&str]) {
         let (cursor, before) = extract_offset(before);
-        let file = File::parse(&before);
+        let file = SourceFileNode::parse(&before);
         let mut range = TextRange::offset_len(cursor, 0.into());
         for &after in afters {
             range = extend_selection(&file, range).unwrap();

@@ -3,7 +3,7 @@ use crate::TextRange;
 use ra_syntax::{
     algo::visit::{visitor, Visitor},
     ast::{self, DocCommentsOwner, NameOwner},
-    AstNode, File, SmolStr, SyntaxKind, SyntaxNodeRef, WalkEvent,
+    AstNode, SourceFileNode, SmolStr, SyntaxKind, SyntaxNodeRef, WalkEvent,
 };
 
 #[derive(Debug, Clone)]
@@ -23,7 +23,7 @@ pub struct FileSymbol {
 }
 
 impl FileSymbol {
-    pub fn docs(&self, file: &File) -> Option<String> {
+    pub fn docs(&self, file: &SourceFileNode) -> Option<String> {
         file.syntax()
             .descendants()
             .filter(|node| node.kind() == self.kind && node.range() == self.node_range)
@@ -52,7 +52,7 @@ impl FileSymbol {
     }
 }
 
-pub fn file_symbols(file: &File) -> Vec<FileSymbol> {
+pub fn file_symbols(file: &SourceFileNode) -> Vec<FileSymbol> {
     file.syntax().descendants().filter_map(to_symbol).collect()
 }
 
@@ -77,7 +77,7 @@ fn to_symbol(node: SyntaxNodeRef) -> Option<FileSymbol> {
         .accept(node)?
 }
 
-pub fn file_structure(file: &File) -> Vec<StructureNode> {
+pub fn file_structure(file: &SourceFileNode) -> Vec<StructureNode> {
     let mut res = Vec::new();
     let mut stack = Vec::new();
 
@@ -153,7 +153,7 @@ mod tests {
 
     #[test]
     fn test_file_structure() {
-        let file = File::parse(
+        let file = SourceFileNode::parse(
             r#"
 struct Foo {
     x: i32

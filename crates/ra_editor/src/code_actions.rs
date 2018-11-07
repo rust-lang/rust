@@ -3,7 +3,7 @@ use join_to_string::join;
 use ra_syntax::{
     algo::{find_covering_node, find_leaf_at_offset},
     ast::{self, AstNode, AttrsOwner, NameOwner, TypeParamsOwner},
-    Direction, File,
+    Direction, SourceFileNode,
     SyntaxKind::{COMMA, WHITESPACE},
     SyntaxNodeRef, TextRange, TextUnit,
 };
@@ -16,7 +16,10 @@ pub struct LocalEdit {
     pub cursor_position: Option<TextUnit>,
 }
 
-pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> LocalEdit + 'a> {
+pub fn flip_comma<'a>(
+    file: &'a SourceFileNode,
+    offset: TextUnit,
+) -> Option<impl FnOnce() -> LocalEdit + 'a> {
     let syntax = file.syntax();
 
     let comma = find_leaf_at_offset(syntax, offset).find(|leaf| leaf.kind() == COMMA)?;
@@ -33,7 +36,10 @@ pub fn flip_comma<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() 
     })
 }
 
-pub fn add_derive<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> LocalEdit + 'a> {
+pub fn add_derive<'a>(
+    file: &'a SourceFileNode,
+    offset: TextUnit,
+) -> Option<impl FnOnce() -> LocalEdit + 'a> {
     let nominal = find_node_at_offset::<ast::NominalDef>(file.syntax(), offset)?;
     Some(move || {
         let derive_attr = nominal
@@ -58,7 +64,10 @@ pub fn add_derive<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() 
     })
 }
 
-pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() -> LocalEdit + 'a> {
+pub fn add_impl<'a>(
+    file: &'a SourceFileNode,
+    offset: TextUnit,
+) -> Option<impl FnOnce() -> LocalEdit + 'a> {
     let nominal = find_node_at_offset::<ast::NominalDef>(file.syntax(), offset)?;
     let name = nominal.name()?;
 
@@ -98,7 +107,7 @@ pub fn add_impl<'a>(file: &'a File, offset: TextUnit) -> Option<impl FnOnce() ->
 }
 
 pub fn introduce_variable<'a>(
-    file: &'a File,
+    file: &'a SourceFileNode,
     range: TextRange,
 ) -> Option<impl FnOnce() -> LocalEdit + 'a> {
     let node = find_covering_node(file.syntax(), range);

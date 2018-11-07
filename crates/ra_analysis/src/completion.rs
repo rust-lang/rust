@@ -2,7 +2,7 @@ use ra_editor::find_node_at_offset;
 use ra_syntax::{
     algo::visit::{visitor, visitor_ctx, Visitor, VisitorCtx},
     ast::{self, AstChildren, LoopBodyOwner, ModuleItemOwner},
-    AstNode, AtomEdit, File,
+    AstNode, AtomEdit, SourceFileNode,
     SyntaxKind::*,
     SyntaxNodeRef, TextUnit,
 };
@@ -63,7 +63,7 @@ pub(crate) fn resolve_based_completion(
 pub(crate) fn find_target_module(
     module_tree: &ModuleTree,
     module_id: ModuleId,
-    file: &File,
+    file: &SourceFileNode,
     offset: TextUnit,
 ) -> Option<ModuleId> {
     let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), offset)?;
@@ -142,7 +142,7 @@ pub(crate) fn scope_completion(
 }
 
 fn complete_module_items(
-    file: &File,
+    file: &SourceFileNode,
     items: AstChildren<ast::ModuleItem>,
     this_item: Option<ast::NameRef>,
     acc: &mut Vec<CompletionItem>,
@@ -164,7 +164,7 @@ fn complete_module_items(
     );
 }
 
-fn complete_name_ref(file: &File, name_ref: ast::NameRef, acc: &mut Vec<CompletionItem>) {
+fn complete_name_ref(file: &SourceFileNode, name_ref: ast::NameRef, acc: &mut Vec<CompletionItem>) {
     if !is_node::<ast::Path>(name_ref.syntax()) {
         return;
     }
@@ -239,7 +239,7 @@ fn is_node<'a, N: AstNode<'a>>(node: SyntaxNodeRef<'a>) -> bool {
 }
 
 fn complete_expr_keywords(
-    file: &File,
+    file: &SourceFileNode,
     fn_def: ast::FnDef,
     name_ref: ast::NameRef,
     acc: &mut Vec<CompletionItem>,

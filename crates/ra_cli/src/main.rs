@@ -11,7 +11,7 @@ use std::{fs, io::Read, path::Path, time::Instant};
 use clap::{App, Arg, SubCommand};
 use join_to_string::join;
 use ra_editor::{extend_selection, file_structure, syntax_tree};
-use ra_syntax::{File, TextRange};
+use ra_syntax::{SourceFileNode, TextRange};
 use tools::collect_tests;
 
 type Result<T> = ::std::result::Result<T, failure::Error>;
@@ -79,9 +79,9 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn file() -> Result<File> {
+fn file() -> Result<SourceFileNode> {
     let text = read_stdin()?;
-    Ok(File::parse(&text))
+    Ok(SourceFileNode::parse(&text))
 }
 
 fn read_stdin() -> Result<String> {
@@ -100,12 +100,12 @@ fn render_test(file: &Path, line: usize) -> Result<(String, String)> {
         None => bail!("No test found at line {} at {}", line, file.display()),
         Some((_start_line, test)) => test,
     };
-    let file = File::parse(&test.text);
+    let file = SourceFileNode::parse(&test.text);
     let tree = syntax_tree(&file);
     Ok((test.text, tree))
 }
 
-fn selections(file: &File, start: u32, end: u32) -> String {
+fn selections(file: &SourceFileNode, start: u32, end: u32) -> String {
     let mut ranges = Vec::new();
     let mut cur = Some(TextRange::from_to((start - 1).into(), (end - 1).into()));
     while let Some(r) = cur {

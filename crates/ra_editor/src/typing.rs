@@ -4,14 +4,14 @@ use ra_syntax::{
     algo::{find_covering_node, find_leaf_at_offset, LeafAtOffset},
     ast,
     text_utils::{contains_offset_nonstrict, intersect},
-    AstNode, File, SyntaxKind,
+    AstNode, SourceFileNode, SyntaxKind,
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
 
 use crate::{find_node_at_offset, EditBuilder, LocalEdit};
 
-pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
+pub fn join_lines(file: &SourceFileNode, range: TextRange) -> LocalEdit {
     let range = if range.is_empty() {
         let syntax = file.syntax();
         let text = syntax.text().slice(range.start()..);
@@ -55,7 +55,7 @@ pub fn join_lines(file: &File, range: TextRange) -> LocalEdit {
     }
 }
 
-pub fn on_enter(file: &File, offset: TextUnit) -> Option<LocalEdit> {
+pub fn on_enter(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit> {
     let comment = find_leaf_at_offset(file.syntax(), offset)
         .left_biased()
         .and_then(ast::Comment::cast)?;
@@ -80,7 +80,7 @@ pub fn on_enter(file: &File, offset: TextUnit) -> Option<LocalEdit> {
     })
 }
 
-fn node_indent<'a>(file: &'a File, node: SyntaxNodeRef) -> Option<&'a str> {
+fn node_indent<'a>(file: &'a SourceFileNode, node: SyntaxNodeRef) -> Option<&'a str> {
     let ws = match find_leaf_at_offset(file.syntax(), node.range().start()) {
         LeafAtOffset::Between(l, r) => {
             assert!(r == node);
@@ -100,7 +100,7 @@ fn node_indent<'a>(file: &'a File, node: SyntaxNodeRef) -> Option<&'a str> {
     Some(&text[pos..])
 }
 
-pub fn on_eq_typed(file: &File, offset: TextUnit) -> Option<LocalEdit> {
+pub fn on_eq_typed(file: &SourceFileNode, offset: TextUnit) -> Option<LocalEdit> {
     let let_stmt: ast::LetStmt = find_node_at_offset(file.syntax(), offset)?;
     if let_stmt.has_semi() {
         return None;
@@ -390,7 +390,7 @@ fn foo() {
 
     fn check_join_lines_sel(before: &str, after: &str) {
         let (sel, before) = extract_range(before);
-        let file = File::parse(&before);
+        let file = SourceFileNode::parse(&before);
         let result = join_lines(&file, sel);
         let actual = result.edit.apply(&before);
         assert_eq_text!(after, &actual);
@@ -469,7 +469,7 @@ pub fn handle_find_matching_brace() {
     fn test_on_eq_typed() {
         fn do_check(before: &str, after: &str) {
             let (offset, before) = extract_offset(before);
-            let file = File::parse(&before);
+            let file = SourceFileNode::parse(&before);
             let result = on_eq_typed(&file, offset).unwrap();
             let actual = result.edit.apply(&before);
             assert_eq_text!(after, &actual);
@@ -513,7 +513,7 @@ fn foo() {
     fn test_on_enter() {
         fn apply_on_enter(before: &str) -> Option<String> {
             let (offset, before) = extract_offset(before);
-            let file = File::parse(&before);
+            let file = SourceFileNode::parse(&before);
             let result = on_enter(&file, offset)?;
             let actual = result.edit.apply(&before);
             let actual = add_cursor(&actual, result.cursor_position.unwrap());

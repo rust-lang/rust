@@ -61,12 +61,12 @@ pub use crate::{
 
 use crate::yellow::GreenNode;
 
-// TODO: pick a single name for everything. SourceFile maybe?
+// TODO: pick a single name for everything. SourceFileNode maybe?
 /// File represents a parse tree for a single Rust file.
-pub type File = ast::RootNode;
+pub type SourceFileNode = ast::RootNode;
 
-impl File {
-    fn new(green: GreenNode, errors: Vec<SyntaxError>) -> File {
+impl SourceFileNode {
+    fn new(green: GreenNode, errors: Vec<SyntaxError>) -> SourceFileNode {
         let root = SyntaxNode::new(green, errors);
         if cfg!(debug_assertions) {
             utils::validate_block_structure(root.borrowed());
@@ -74,24 +74,24 @@ impl File {
         assert_eq!(root.kind(), SyntaxKind::ROOT);
         ast::RootNode { syntax: root }
     }
-    pub fn parse(text: &str) -> File {
+    pub fn parse(text: &str) -> SourceFileNode {
         let tokens = tokenize(&text);
         let (green, errors) =
             parser_impl::parse_with(yellow::GreenBuilder::new(), text, &tokens, grammar::root);
-        File::new(green, errors)
+        SourceFileNode::new(green, errors)
     }
-    pub fn reparse(&self, edit: &AtomEdit) -> File {
+    pub fn reparse(&self, edit: &AtomEdit) -> SourceFileNode {
         self.incremental_reparse(edit)
             .unwrap_or_else(|| self.full_reparse(edit))
     }
-    pub fn incremental_reparse(&self, edit: &AtomEdit) -> Option<File> {
+    pub fn incremental_reparse(&self, edit: &AtomEdit) -> Option<SourceFileNode> {
         reparsing::incremental_reparse(self.syntax(), edit, self.errors())
-            .map(|(green_node, errors)| File::new(green_node, errors))
+            .map(|(green_node, errors)| SourceFileNode::new(green_node, errors))
     }
-    fn full_reparse(&self, edit: &AtomEdit) -> File {
+    fn full_reparse(&self, edit: &AtomEdit) -> SourceFileNode {
         let text =
             text_utils::replace_range(self.syntax().text().to_string(), edit.delete, &edit.insert);
-        File::parse(&text)
+        SourceFileNode::parse(&text)
     }
     /// Typed AST representation of the parse tree.
     pub fn ast(&self) -> ast::Root {

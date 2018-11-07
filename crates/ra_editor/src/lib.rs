@@ -30,7 +30,7 @@ pub use ra_syntax::AtomEdit;
 use ra_syntax::{
     algo::find_leaf_at_offset,
     ast::{self, AstNode, NameOwner},
-    File,
+    SourceFileNode,
     Location,
     SyntaxKind::{self, *},
     SyntaxNodeRef, TextRange, TextUnit,
@@ -60,7 +60,7 @@ pub enum RunnableKind {
     Bin,
 }
 
-pub fn matching_brace(file: &File, offset: TextUnit) -> Option<TextUnit> {
+pub fn matching_brace(file: &SourceFileNode, offset: TextUnit) -> Option<TextUnit> {
     const BRACES: &[SyntaxKind] = &[
         L_CURLY, R_CURLY, L_BRACK, R_BRACK, L_PAREN, R_PAREN, L_ANGLE, R_ANGLE,
     ];
@@ -78,7 +78,7 @@ pub fn matching_brace(file: &File, offset: TextUnit) -> Option<TextUnit> {
     Some(matching_node.range().start())
 }
 
-pub fn highlight(file: &File) -> Vec<HighlightedRange> {
+pub fn highlight(file: &SourceFileNode) -> Vec<HighlightedRange> {
     let mut res = Vec::new();
     for node in file.syntax().descendants() {
         let tag = match node.kind() {
@@ -100,7 +100,7 @@ pub fn highlight(file: &File) -> Vec<HighlightedRange> {
     res
 }
 
-pub fn diagnostics(file: &File) -> Vec<Diagnostic> {
+pub fn diagnostics(file: &SourceFileNode) -> Vec<Diagnostic> {
     fn location_to_range(location: Location) -> TextRange {
         match location {
             Location::Offset(offset) => TextRange::offset_len(offset, 1.into()),
@@ -117,11 +117,11 @@ pub fn diagnostics(file: &File) -> Vec<Diagnostic> {
         .collect()
 }
 
-pub fn syntax_tree(file: &File) -> String {
+pub fn syntax_tree(file: &SourceFileNode) -> String {
     ::ra_syntax::utils::dump_tree(file.syntax())
 }
 
-pub fn runnables(file: &File) -> Vec<Runnable> {
+pub fn runnables(file: &SourceFileNode) -> Vec<Runnable> {
     file.syntax()
         .descendants()
         .filter_map(ast::FnDef::cast)
@@ -163,7 +163,7 @@ mod tests {
 
     #[test]
     fn test_highlighting() {
-        let file = File::parse(
+        let file = SourceFileNode::parse(
             r#"
 // comment
 fn main() {}
@@ -184,7 +184,7 @@ fn main() {}
 
     #[test]
     fn test_runnables() {
-        let file = File::parse(
+        let file = SourceFileNode::parse(
             r#"
 fn main() {}
 
@@ -209,7 +209,7 @@ fn test_foo() {}
     fn test_matching_brace() {
         fn do_check(before: &str, after: &str) {
             let (pos, before) = extract_offset(before);
-            let file = File::parse(&before);
+            let file = SourceFileNode::parse(&before);
             let new_pos = match matching_brace(&file, pos) {
                 None => pos,
                 Some(pos) => pos,

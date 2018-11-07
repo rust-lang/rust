@@ -20,7 +20,7 @@ pub mod mock_analysis;
 
 use std::{fmt, sync::Arc};
 
-use ra_syntax::{AtomEdit, File, TextRange, TextUnit};
+use ra_syntax::{AtomEdit, SourceFileNode, TextRange, TextUnit};
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 
@@ -128,13 +128,13 @@ pub struct FilePosition {
 #[derive(Debug)]
 pub struct SourceChange {
     pub label: String,
-    pub source_file_edits: Vec<SourceFileEdit>,
+    pub source_file_edits: Vec<SourceFileNodeEdit>,
     pub file_system_edits: Vec<FileSystemEdit>,
     pub cursor_position: Option<FilePosition>,
 }
 
 #[derive(Debug)]
-pub struct SourceFileEdit {
+pub struct SourceFileNodeEdit {
     pub file_id: FileId,
     pub edits: Vec<AtomEdit>,
 }
@@ -204,16 +204,16 @@ pub struct Analysis {
 }
 
 impl Analysis {
-    pub fn file_syntax(&self, file_id: FileId) -> File {
+    pub fn file_syntax(&self, file_id: FileId) -> SourceFileNode {
         self.imp.file_syntax(file_id).clone()
     }
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
         self.imp.file_line_index(file_id)
     }
-    pub fn extend_selection(&self, file: &File, range: TextRange) -> TextRange {
+    pub fn extend_selection(&self, file: &SourceFileNode, range: TextRange) -> TextRange {
         ra_editor::extend_selection(file, range).unwrap_or(range)
     }
-    pub fn matching_brace(&self, file: &File, offset: TextUnit) -> Option<TextUnit> {
+    pub fn matching_brace(&self, file: &SourceFileNode, offset: TextUnit) -> Option<TextUnit> {
         ra_editor::matching_brace(file, offset)
     }
     pub fn syntax_tree(&self, file_id: FileId) -> String {
@@ -309,7 +309,7 @@ pub struct LibraryData {
 impl LibraryData {
     pub fn prepare(files: Vec<(FileId, String)>, file_resolver: Arc<FileResolver>) -> LibraryData {
         let symbol_index = SymbolIndex::for_files(files.par_iter().map(|(file_id, text)| {
-            let file = File::parse(text);
+            let file = SourceFileNode::parse(text);
             (*file_id, file)
         }));
         LibraryData {

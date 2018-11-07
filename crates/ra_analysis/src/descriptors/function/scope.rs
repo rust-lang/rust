@@ -272,7 +272,7 @@ pub fn resolve_local_name<'a>(
 #[cfg(test)]
 mod tests {
     use ra_editor::find_node_at_offset;
-    use ra_syntax::File;
+    use ra_syntax::SourceFileNode;
     use test_utils::extract_offset;
 
     use super::*;
@@ -287,7 +287,7 @@ mod tests {
             buf.push_str(&code[off..]);
             buf
         };
-        let file = File::parse(&code);
+        let file = SourceFileNode::parse(&code);
         let marker: ast::PathExpr = find_node_at_offset(file.syntax(), off).unwrap();
         let fn_def: ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
         let scopes = FnScopes::new(fn_def);
@@ -376,7 +376,7 @@ mod tests {
 
     fn do_check_local_name(code: &str, expected_offset: u32) {
         let (off, code) = extract_offset(code);
-        let file = File::parse(&code);
+        let file = SourceFileNode::parse(&code);
         let fn_def: ast::FnDef = find_node_at_offset(file.syntax(), off).unwrap();
         let name_ref: ast::NameRef = find_node_at_offset(file.syntax(), off).unwrap();
 

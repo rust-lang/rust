@@ -6,7 +6,7 @@ use std::{
 use fst::{self, Streamer};
 use ra_editor::{file_symbols, FileSymbol};
 use ra_syntax::{
-    File,
+    SourceFileNode,
     SyntaxKind::{self, *},
 };
 use rayon::prelude::*;
@@ -34,7 +34,9 @@ impl Hash for SymbolIndex {
 }
 
 impl SymbolIndex {
-    pub(crate) fn for_files(files: impl ParallelIterator<Item = (FileId, File)>) -> SymbolIndex {
+    pub(crate) fn for_files(
+        files: impl ParallelIterator<Item = (FileId, SourceFileNode)>,
+    ) -> SymbolIndex {
         let mut symbols = files
             .flat_map(|(file_id, file)| {
                 file_symbols(&file)
@@ -51,7 +53,7 @@ impl SymbolIndex {
         SymbolIndex { symbols, map }
     }
 
-    pub(crate) fn for_file(file_id: FileId, file: File) -> SymbolIndex {
+    pub(crate) fn for_file(file_id: FileId, file: SourceFileNode) -> SymbolIndex {
         SymbolIndex::for_files(rayon::iter::once((file_id, file)))
     }
 }
