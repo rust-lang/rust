@@ -450,8 +450,7 @@ impl<'sess> OnDiskCache<'sess> {
                                      .map(|&(cnum, ..)| cnum)
                                      .max()
                                      .unwrap_or(0) + 1;
-            let mut map = IndexVec::new();
-            map.resize(map_size as usize, None);
+            let mut map = IndexVec::from_elem_n(None, map_size as usize);
 
             for &(prev_cnum, ref crate_name, crate_disambiguator) in prev_cnums {
                 let key = (crate_name.clone(), crate_disambiguator);
