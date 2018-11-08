@@ -97,7 +97,10 @@ pub unsafe extern fn __rust_start_panic(_payload: usize) -> u32 {
 pub mod personalities {
     #[no_mangle]
     #[cfg(not(any(
-        target_arch = "wasm32",
+        all(
+            target_arch = "wasm32",
+            not(target_os = "emscripten"),
+        ),
         all(
             target_os = "windows",
             target_env = "gnu",
