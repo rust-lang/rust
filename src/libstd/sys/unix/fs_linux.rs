@@ -1,5 +1,5 @@
 
-use io::{self, Error, ErrorKind};
+use io::{self, Error, ErrorKind, Read, Write};
 use libc;
 use mem;
 use path::Path;
@@ -38,7 +38,7 @@ unsafe fn copy_file_range(
 
 /// Corresponds to lseek(2) `wence`. This exists in std, but doesn't support sparse-files.
 #[allow(dead_code)]
-pub enum Wence {
+enum Wence {
     Set = libc::SEEK_SET as isize,
     Cur = libc::SEEK_CUR as isize,
     End = libc::SEEK_END as isize,
@@ -47,12 +47,12 @@ pub enum Wence {
 }
 
 #[derive(PartialEq, Debug)]
-pub enum SeekOff {
+enum SeekOff {
     Offset(u64),
     EOF
 }
 
-pub fn lseek(fd: &File, off: i64, wence: Wence) -> io::Result<SeekOff> {
+fn lseek(fd: &File, off: i64, wence: Wence) -> io::Result<SeekOff> {
     let r = unsafe {
         libc::lseek64(
             fd.as_raw_fd(),
@@ -76,9 +76,41 @@ pub fn lseek(fd: &File, off: i64, wence: Wence) -> io::Result<SeekOff> {
 
 }
 
-pub fn allocate_file(fd: &File, len: u64) -> io::Result<()> {
+fn allocate_file(fd: &File, len: u64) -> io::Result<()> {
     cvt_r(|| unsafe {libc::ftruncate64(fd.as_raw_fd(), len as i64)})?;
     Ok(())
+}
+
+
+// Version of copy_file_range(2) that copies the give range to the
+// same place in the target file. If off is None then use nul to
+// tell copy_file_range() track the file offset. See the manpage
+// for details.
+fn copy_bytes_kernel(reader: &File, writer: &File, nbytes: usize) -> io::Result<u64> {
+    let copy_result = unsafe {
+        cvt(copy_file_range(reader.as_raw_fd(),
+                            ptr::null_mut(),
+                            writer.as_raw_fd(),
+                            ptr::null_mut(),
+                            nbytes,
+                            0)
+        )
+    }
+    .map(|v| v as u64);
+
+    if let Err(ref copy_err) = copy_result {
+        match copy_err.raw_os_error() {
+            Some(libc::ENOSYS) | Some(libc::EPERM) => {
+                HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
+            }
+            _ => {}
+        }
+    }
+    copy_result
+}
+
+fn copy_bytes(reader: &File, writer: &File, nbytes: usize) -> io::Result<u64> {
+    copy_bytes_kernel(reader, writer, nbytes)
 }
 
 /// Version of copy_file_range that defers offset-management to the
@@ -96,6 +128,8 @@ pub fn copy_file_bytes(infd: &File, outfd: &File, bytes: u64) -> io::Result<u64>
     })?;
     Ok(r as u64)
 }
+
+
 
 /// Copy len bytes from whereever the descriptor cursors are set.
 fn copy_range(infd: &File, outfd: &File, len: u64) -> io::Result<u64> {
@@ -139,37 +173,6 @@ fn copy_sparse(infd: &File, outfd: &File) -> io::Result<u64> {
 }
 
 
-// Version of copy_file_range(2) that copies the give range to the
-// same place in the target file. If off is None then use nul to
-// tell copy_file_range() track the file offset. See the manpage
-// for details.
-fn copy_file_chunk(reader: &File, writer: &File, off: Option<i64>, bytes_to_copy: usize) -> io::Result<libc::c_long> {
-    let mut off_val = off.unwrap_or(0);
-    let copy_result = unsafe {
-        let off_ptr = if off.is_some() {
-            &mut off_val as *mut i64
-        } else {
-            ptr::null_mut()
-        };
-        cvt(copy_file_range(reader.as_raw_fd(),
-                            off_ptr,
-                            writer.as_raw_fd(),
-                            off_ptr,
-                            bytes_to_copy,
-                            0)
-        )
-    };
-    if let Err(ref copy_err) = copy_result {
-        match copy_err.raw_os_error() {
-            Some(libc::ENOSYS) | Some(libc::EPERM) => {
-                HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
-            }
-            _ => {}
-        }
-    }
-    copy_result
-}
-
 fn is_sparse(fd: &File) -> io::Result<bool> {
     let mut stat: libc::stat = unsafe { mem::uninitialized() };
     cvt(unsafe { libc::fstat(fd.as_raw_fd(), &mut stat) })?;
@@ -197,7 +200,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     while written < len {
         let copy_result = if has_copy_file_range {
             let bytes_to_copy = cmp::min(len - written, usize::max_value() as u64) as usize;
-            copy_file_chunk(&reader, &writer, None, bytes_to_copy)
+            copy_bytes(&reader, &writer, bytes_to_copy)
 
         } else {
             Err(io::Error::from_raw_os_error(libc::ENOSYS))
