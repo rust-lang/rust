@@ -408,10 +408,8 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
         let promoter = Promoter {
             promoted: Mir::new(
                 IndexVec::new(),
-                // FIXME: maybe try to filter this to avoid blowing up
-                // memory usage?
-                mir.source_scopes.clone(),
-                mir.source_scope_local_data.clone(),
+                IndexVec::new(),
+                ClearCrossCrate::Clear,
                 IndexVec::new(),
                 None,
                 initial_locals,
