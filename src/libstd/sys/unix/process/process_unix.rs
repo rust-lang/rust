@@ -135,14 +135,15 @@ impl Command {
             Some(envp) => {
                 match envp.get_items().iter().find(|var| var.as_bytes().starts_with(b"PATH=")) {
                     Some(p) => &p.as_bytes()[5..],
-                    None => return None,
+                    // Chosen to match what glibc does if there's no PATH variable
+                    None => b"/bin:/usr/bin",
                 }
             },
             // maybe_envp is None if the process isn't changing the parent's env at all.
             None => {
                 match parent_path.as_ref() {
                     Some(p) => p.as_bytes(),
-                    None => return None,
+                    None => b"/bin:/usr/bin",
                 }
             },
         };
