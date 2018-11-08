@@ -17,7 +17,7 @@ use session::Session;
 use session::config::{BorrowckMode, OutputFilenames};
 use session::config::CrateType;
 use middle;
-use hir::{TraitCandidate, HirId, ItemLocalId, Node};
+use hir::{TraitCandidate, HirId, ItemKind, ItemLocalId, Node};
 use hir::def::{Def, Export};
 use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use hir::map as hir_map;
@@ -1602,6 +1602,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         &self,
         scope_def_id: DefId,
     ) -> Option<Ty<'tcx>> {
+        // HACK: `type_of_def_id()` will fail on these (#55796), so return None
+        let node_id = self.hir.as_local_node_id(scope_def_id).unwrap();
+        match self.hir.get(node_id) {
+            Node::Item(item) => {
+                match item.node {
+                    ItemKind::Trait(..)
+                    | ItemKind::TraitAlias(..)
+                    | ItemKind::Mod(..)
+                    | ItemKind::ForeignMod(..)
+                    | ItemKind::GlobalAsm(..)
+                    | ItemKind::ExternCrate(..)
+                    | ItemKind::Use(..) => {
+                        return None;
+                    }
+                    _ => { /* type_of_def_id() will work */ }
+                }
+            }
+            _ => { /* type_of_def_id() will work or panic */ }
+        }
+
         let ret_ty = self.type_of(scope_def_id);
         match ret_ty.sty {
             ty::FnDef(_, _) => {
