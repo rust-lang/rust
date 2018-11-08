@@ -83,8 +83,6 @@ For this reason, we offer a macro that lets you write
 `let v = unpack!(block = self.generate_more_mir(...))`.
 It simply extracts the new block and overwrites the
 variable `block` that you named in the `unpack!`.
-MIR functions that generate statements always take as argument a
-basic block onto which the statements should be appended.
 
 ## Lowering expressions into the desired MIR
 
