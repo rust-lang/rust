@@ -339,7 +339,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             match &result {
                 &Ok(Some(ref vtable)) => {
                     // If we see an explicit negative impl (e.g. 'impl !Send for MyStruct'),
-                    // we immediately bail out, since it's impossible for us to continue'
+                    // we immediately bail out, since it's impossible for us to continue.
                     match vtable {
                         Vtable::VtableImpl(VtableImplData { impl_def_id, .. }) => {
                             // Blame tidy for the weird bracket placement
