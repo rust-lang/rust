@@ -15,6 +15,10 @@ matrix:
     - rust: stable
       env:
        - TARGET=i586-unknown-linux-gnu
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
       install:
        - rustup target add $TARGET
       script:
