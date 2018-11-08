@@ -193,7 +193,7 @@ pub fn codegen_intrinsic_call(
             return;
         }
         // Effectively no-ops
-        "uninit" => {
+        "uninit" | "forget" => {
             return;
         }
         "needs_drop" => {

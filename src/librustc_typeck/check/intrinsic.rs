@@ -134,6 +134,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "rustc_peek" => (1, vec![param(0)], param(0)),
             "init" => (1, Vec::new(), param(0)),
             "uninit" => (1, Vec::new(), param(0)),
+            "forget" => (1, vec![param(0)], param(0)),
             "transmute" => (2, vec![ param(0) ], param(1)),
             "move_val_init" => {
                 (1,

@@ -139,6 +139,124 @@ pub use intrinsics::transmute;
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+pub fn forget<T: ?Sized>(t: T) {
+    unsafe { intrinsics::forget(t) }
+}
+
+/// Takes ownership and "forgets" about the value **without running its destructor**.
+///
+/// Any resources the value manages, such as heap memory or a file handle, will linger
+/// forever in an unreachable state. However, it does not guarantee that pointers
+/// to this memory will remain valid.
+///
+/// * If you want to leak memory, see [`Box::leak`][leak].
+/// * If you want to obtain a raw pointer to the memory, see [`Box::into_raw`][into_raw].
+/// * If you want to dispose of a value properly, running its destructor, see
+/// [`mem::drop`][drop].
+///
+/// # Safety
+///
+/// `forget` is not marked as `unsafe`, because Rust's safety guarantees
+/// do not include a guarantee that destructors will always run. For example,
+/// a program can create a reference cycle using [`Rc`][rc], or call
+/// [`process::exit`][exit] to exit without running destructors. Thus, allowing
+/// `mem::forget` from safe code does not fundamentally change Rust's safety
+/// guarantees.
+///
+/// That said, leaking resources such as memory or I/O objects is usually undesirable,
+/// so `forget` is only recommended for specialized use cases like those shown below.
+///
+/// Because forgetting a value is allowed, any `unsafe` code you write must
+/// allow for this possibility. You cannot return a value and expect that the
+/// caller will necessarily run the value's destructor.
+///
+/// [rc]: ../../std/rc/struct.Rc.html
+/// [exit]: ../../std/process/fn.exit.html
+///
+/// # Examples
+///
+/// Leak an I/O object, never closing the file:
+///
+/// ```no_run
+/// use std::mem;
+/// use std::fs::File;
+///
+/// let file = File::open("foo.txt").unwrap();
+/// mem::forget(file);
+/// ```
+///
+/// The practical use cases for `forget` are rather specialized and mainly come
+/// up in unsafe or FFI code.
+///
+/// ## Use case 1
+///
+/// You have created an uninitialized value using [`mem::uninitialized`][uninit].
+/// You must either initialize or `forget` it on every computation path before
+/// Rust drops it automatically, like at the end of a scope or after a panic.
+/// Running the destructor on an uninitialized value would be [undefined behavior][ub].
+///
+/// ```
+/// use std::mem;
+/// use std::ptr;
+///
+/// # let some_condition = false;
+/// unsafe {
+///     let mut uninit_vec: Vec<u32> = mem::uninitialized();
+///
+///     if some_condition {
+///         // Initialize the variable.
+///         ptr::write(&mut uninit_vec, Vec::new());
+///     } else {
+///         // Forget the uninitialized value so its destructor doesn't run.
+///         mem::forget(uninit_vec);
+///     }
+/// }
+/// ```
+///
+/// ## Use case 2
+///
+/// You have duplicated the bytes making up a value, without doing a proper
+/// [`Clone`][clone]. You need the value's destructor to run only once,
+/// because a double `free` is undefined behavior.
+///
+/// An example is a possible implementation of [`mem::swap`][swap]:
+///
+/// ```
+/// use std::mem;
+/// use std::ptr;
+///
+/// # #[allow(dead_code)]
+/// fn swap<T>(x: &mut T, y: &mut T) {
+///     unsafe {
+///         // Give ourselves some scratch space to work with
+///         let mut t: T = mem::uninitialized();
+///
+///         // Perform the swap, `&mut` pointers never alias
+///         ptr::copy_nonoverlapping(&*x, &mut t, 1);
+///         ptr::copy_nonoverlapping(&*y, x, 1);
+///         ptr::copy_nonoverlapping(&t, y, 1);
+///
+///         // y and t now point to the same thing, but we need to completely
+///         // forget `t` because we do not want to run the destructor for `T`
+///         // on its value, which is still owned somewhere outside this function.
+///         mem::forget(t);
+///     }
+/// }
+/// ```
+///
+/// [drop]: fn.drop.html
+/// [uninit]: fn.uninitialized.html
+/// [clone]: ../clone/trait.Clone.html
+/// [swap]: fn.swap.html
+/// [FFI]: ../../book/first-edition/ffi.html
+/// [box]: ../../std/boxed/struct.Box.html
+/// [leak]: ../../std/boxed/struct.Box.html#method.leak
+/// [into_raw]: ../../std/boxed/struct.Box.html#method.into_raw
+/// [ub]: ../../reference/behavior-considered-undefined.html
+#[inline]
+#[cfg(stage0)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn forget<T>(t: T) {
     ManuallyDrop::new(t);
 }
@@ -763,7 +881,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// [`Copy`]: ../../std/marker/trait.Copy.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn drop<T>(_x: T) { }
+pub fn drop<T: ?Sized>(_x: T) { }
 
 /// Interprets `src` as having type `&U`, and then reads `src` without moving
 /// the contained value.
