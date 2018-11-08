@@ -29,7 +29,6 @@ fn main() -> Result<()> {
         }
     }
 }
-
 fn main_inner() -> Result<()> {
     let (receiver, sender, threads) = stdio_transport();
     let cwd = ::std::env::current_dir()?;
@@ -50,3 +49,27 @@ fn main_inner() -> Result<()> {
     info!("... IO is down");
     Ok(())
 }
+
+/*
+                    (let ((backend (eglot-xref-backend)))
+                      (mapcar 
+                       (lambda (xref)
+                         (let ((loc (xref-item-location xref)))
+                           (propertize
+                            (concat
+                             (when (xref-file-location-p loc)
+                               (with-slots (file line column) loc
+                                 (format "%s:%s:%s:" 
+                                         (propertize (file-relative-name file)
+                                                     'face 'compilation-info)
+                                         (propertize (format "%s" line)
+                                                     'face 'compilation-line
+                                                     )
+                                         column)))
+                             (xref-item-summary xref))
+                            'xref xref)))
+                       (xref-backend-apropos backend "Analysis"))
+                      )
+
+
+*/

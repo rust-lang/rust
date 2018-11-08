@@ -83,5 +83,41 @@
   "Set selections cache for current buffer state and START END."
   (setq ra--selections-cache `(,(buffer-modified-tick) 0 ,(ra--selections start end))))
 
+
+(require 'eglot)
+(require 'ivy)
+(require 'counsel)
+
+
+(defun workspace-symbols ()
+  (interactive)
+  (let ((buf (current-buffer)))
+    (ivy-read "Symbol name: "
+              (lambda (str)
+                (with-current-buffer buf
+                  (let ((backend (eglot-xref-backend)))
+                    (mapcar 
+                     (lambda (xref)
+                       (let ((loc (xref-item-location xref)))
+                         (propertize
+                          (concat
+                           (when (xref-file-location-p loc)
+                             (with-slots (file line column) loc
+                               (format "%s:%s:%s:" 
+                                       (propertize (file-relative-name file)
+                                                   'face 'compilation-info)
+                                       (propertize (format "%s" line)
+                                                   'face 'compilation-line
+                                                   )
+                                       column)))
+                           (xref-item-summary xref))
+                          'xref xref)))
+                     (xref-backend-apropos backend str))
+                    )))
+              :dynamic-collection t
+              :action (lambda (item)
+                        (xref--pop-to-location (get-text-property 0 'xref item))))))
+
+(add-to-list 'eglot-server-programs '(rust-mode . ("ra_lsp_server")))
 (provide 'ra)
 ;;; ra.el ends here
