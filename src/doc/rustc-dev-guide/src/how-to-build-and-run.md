@@ -24,7 +24,7 @@ settings (and possibly others, such as `llvm.ccache`):
 [llvm]
 # Enables LLVM assertions, which will check that the LLVM bitcode generated
 # by the compiler is internally consistent. These are particularly helpful
-# if you edit `trans`.
+# if you edit `codegen`.
 assertions = true
 
 [rust]
