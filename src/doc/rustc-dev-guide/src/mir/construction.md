@@ -126,7 +126,7 @@ In [MIR] there is no difference between method calls and function calls anymore.
 `if` conditions and `match` statements for `enum`s without variants with fields are
 lowered to `TerminatorKind::SwitchInt`. Each possible value (so `0` and `1` for `if`
 conditions) has a corresponding `BasicBlock` to which the code continues.
-The argument being branched on is (again) an `Operand` representing the value of 
+The argument being branched on is (again) an `Operand` representing the value of
 the if condition.
 
 ### Pattern matching
@@ -138,7 +138,8 @@ to a new temporary variable.
 
 ## Aggregate construction
 
-Aggregate values of any kind (e.g. structs or tuples) are built via `Rvalue::Aggregate`. All fields are
+Aggregate values of any kind (e.g. structs or tuples) are built via `Rvalue::Aggregate`.
+All fields are
 lowered to `Operator`s. This is essentially equivalent to one assignment
 statement per aggregate field plus an assignment to the discriminant in the
 case of `enum`s.
