@@ -114,7 +114,7 @@ These `Rvalue`s later get codegened to llvm primitive operations or llvm intrins
 Operators on all other types get lowered to a function call to their `impl` of the
 operator's corresponding trait.
 
-Irrelevant of the lowering kind, the arguments to the operator are lowered to `Operand`s.
+Regardless of the lowering kind, the arguments to the operator are lowered to `Operand`s.
 This means all arguments are either constants, or refer to an already existing value
 somewhere in a local or static.
 
