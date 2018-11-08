@@ -140,7 +140,7 @@ to a new temporary variable.
 
 ## Aggregate construction
 
-Aggregate values of any kind are built via `Rvalue::Aggregate`. All fields are
+Aggregate values of any kind (e.g. structs or tuples) are built via `Rvalue::Aggregate`. All fields are
 lowered to `Operator`s. This is essentially equivalent to one assignment
 statement per aggregate field plus an assignment to the discriminant in the
 case of `enum`s.
