@@ -30,7 +30,7 @@ use syntax::source_map::{BytePos, Span};
 use syntax::symbol;
 use syntax::tokenstream::{Cursor, ThinTokenStream, TokenStream, TokenTree};
 use syntax::ThinVec;
-use syntax::{ast, ptr};
+use syntax::{ast, parse, ptr};
 
 use comment::{contains_comment, CharClasses, FindUncommented, FullCodeCharKind, LineClasses};
 use expr::rewrite_array;
@@ -94,11 +94,11 @@ impl Rewrite for MacroArg {
     }
 }
 
-fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
+fn parse_macro_arg<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
     macro_rules! parse_macro_arg {
-        ($macro_arg:ident, $parser:ident, $f:expr) => {
+        ($macro_arg:ident, $parser:expr, $f:expr) => {
             let mut cloned_parser = (*parser).clone();
-            match cloned_parser.$parser() {
+            match $parser(&mut cloned_parser) {
                 Ok(x) => {
                     if parser.sess.span_diagnostic.has_errors() {
                         parser.sess.span_diagnostic.reset_err_count();
@@ -116,11 +116,27 @@ fn parse_macro_arg(parser: &mut Parser) -> Option<MacroArg> {
         };
     }
 
-    parse_macro_arg!(Expr, parse_expr, |x: ptr::P<ast::Expr>| Some(x));
-    parse_macro_arg!(Ty, parse_ty, |x: ptr::P<ast::Ty>| Some(x));
-    parse_macro_arg!(Pat, parse_pat, |x: ptr::P<ast::Pat>| Some(x));
+    parse_macro_arg!(
+        Expr,
+        |parser: &mut parse::parser::Parser<'b>| parser.parse_expr(),
+        |x: ptr::P<ast::Expr>| Some(x)
+    );
+    parse_macro_arg!(
+        Ty,
+        |parser: &mut parse::parser::Parser<'b>| parser.parse_ty(),
+        |x: ptr::P<ast::Ty>| Some(x)
+    );
+    parse_macro_arg!(
+        Pat,
+        |parser: &mut parse::parser::Parser<'b>| parser.parse_pat(None),
+        |x: ptr::P<ast::Pat>| Some(x)
+    );
     // `parse_item` returns `Option<ptr::P<ast::Item>>`.
-    parse_macro_arg!(Item, parse_item, |x: Option<ptr::P<ast::Item>>| x);
+    parse_macro_arg!(
+        Item,
+        |parser: &mut parse::parser::Parser<'b>| parser.parse_item(),
+        |x: Option<ptr::P<ast::Item>>| x
+    );
 
     None
 }

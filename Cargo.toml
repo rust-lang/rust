@@ -47,9 +47,9 @@ env_logger = "0.5"
 getopts = "0.2"
 derive-new = "0.5"
 cargo_metadata = "0.6"
-rustc-ap-rustc_target = "274.0.0"
-rustc-ap-syntax = "274.0.0"
-rustc-ap-syntax_pos = "274.0.0"
+rustc-ap-rustc_target = "290.0.0"
+rustc-ap-syntax = "290.0.0"
+rustc-ap-syntax_pos = "290.0.0"
 failure = "0.1.1"
 bytecount = { version = "0.3", features = ["simd-accel"] }
 

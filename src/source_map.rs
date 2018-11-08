@@ -79,14 +79,14 @@ impl LineRangeUtils for SourceMap {
         let hi = self.lookup_line(span.hi()).unwrap();
 
         debug_assert_eq!(
-            lo.fm.name, hi.fm.name,
+            lo.sf.name, hi.sf.name,
             "span crossed file boundary: lo: {:?}, hi: {:?}",
             lo, hi
         );
 
         // Line numbers start at 1
         LineRange {
-            file: lo.fm.clone(),
+            file: lo.sf.clone(),
             lo: lo.line + 1,
             hi: hi.line + 1,
         }
