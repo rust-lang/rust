@@ -72,10 +72,9 @@ directory structure to use is actually an area of active debate.)
 ## Comment explaining what the test is about
 
 When you create a test file, **include a comment summarizing the point
-of the test immediately after the copyright notice**. This should
-highlight which parts of the test are more important, and what the bug
-was that the test is fixing.  Citing an issue number is often very
-helpful.
+of the test at the start of the file**. This should highlight which
+parts of the test are more important, and what the bug was that the
+test is fixing. Citing an issue number is often very helpful.
 
 This comment doesn't have to be super extensive. Just something like
 "Regression test for #18060: match arms were matching in the wrong
