@@ -201,7 +201,30 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             _ => {
                 let expr_ty = expr.ty;
-                let temp = this.temp(expr.ty.clone(), expr_span);
+
+                // Issue #54382: When creating temp for the value of
+                // expression like:
+                //
+                // `{ side_effects(); { let l = stuff(); the_value } }`
+                //
+                // it is usually better to focus on `the_value` rather
+                // than the entirety of block(s) surrounding it.
+                let mut temp_span = expr_span;
+                if let ExprKind::Block { body } = expr.kind {
+                    if let Some(tail_expr) = &body.expr {
+                        let mut expr = tail_expr;
+                        while let rustc::hir::ExprKind::Block(subblock, _label) = &expr.node {
+                            if let Some(subtail_expr) = &subblock.expr {
+                                expr = subtail_expr
+                            } else {
+                                break;
+                            }
+                        }
+                        temp_span = expr.span;
+                    }
+                }
+
+                let temp = this.temp(expr.ty.clone(), temp_span);
                 unpack!(block = this.into(&temp, block, expr));
 
                 // Attribute drops of the statement's temps to the
