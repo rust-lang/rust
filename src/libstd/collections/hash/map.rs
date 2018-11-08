@@ -2030,7 +2030,7 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     ///
     /// assert_eq!(map["poneyland"], 12);
     ///
-    /// *map.raw_entry_mut().from_key("poneyland").or_insert("poneyland", 12).1 += 10;
+    /// *map.raw_entry_mut().from_key("poneyland").or_insert("poneyland", 10).1 += 10;
     /// assert_eq!(map["poneyland"], 22);
     /// ```
     #[unstable(feature = "hash_raw_entry", issue = "54043")]
@@ -2652,7 +2652,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     ///
     /// assert_eq!(map["poneyland"], 12);
     ///
-    /// *map.entry("poneyland").or_insert(12) += 10;
+    /// *map.entry("poneyland").or_insert(10) += 10;
     /// assert_eq!(map["poneyland"], 22);
     /// ```
     pub fn or_insert(self, default: V) -> &'a mut V {
