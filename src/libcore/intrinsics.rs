@@ -716,7 +716,7 @@ extern "rust-intrinsic" {
 
     /// Moves a value out of scope without running drop glue.
     #[cfg(not(stage0))]
-    pub fn forget<T>(_: T);
+    pub fn forget<T: ?Sized>(_: T);
 
     /// Reinterprets the bits of a value of one type as another type.
     ///
