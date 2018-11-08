@@ -37,68 +37,31 @@ impl_stable_hash_for!(struct mir::BasicBlockData<'tcx> { statements, terminator,
 impl_stable_hash_for!(struct mir::UnsafetyViolation { source_info, description, details, kind });
 impl_stable_hash_for!(struct mir::UnsafetyCheckResult { violations, unsafe_blocks });
 
-impl<'a> HashStable<StableHashingContext<'a>>
-for mir::BorrowKind {
-    #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
+impl_stable_hash_for!(enum mir::BorrowKind {
+    Shared,
+    Shallow,
+    Unique,
+    Mut { allow_two_phase_borrow },
+});
 
-        match *self {
-            mir::BorrowKind::Shared |
-            mir::BorrowKind::Shallow |
-            mir::BorrowKind::Unique => {}
-            mir::BorrowKind::Mut { allow_two_phase_borrow } => {
-                allow_two_phase_borrow.hash_stable(hcx, hasher);
-            }
-        }
-    }
-}
-
-
-impl<'a> HashStable<StableHashingContext<'a>>
-for mir::UnsafetyViolationKind {
-    #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-
-        mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            mir::UnsafetyViolationKind::General => {}
-            mir::UnsafetyViolationKind::MinConstFn => {}
-            mir::UnsafetyViolationKind::ExternStatic(lint_node_id) |
-            mir::UnsafetyViolationKind::BorrowPacked(lint_node_id) => {
-                lint_node_id.hash_stable(hcx, hasher);
-            }
-
-        }
-    }
-}
+impl_stable_hash_for!(enum mir::UnsafetyViolationKind {
+    General,
+    MinConstFn,
+    ExternStatic(lint_node_id),
+    BorrowPacked(lint_node_id),
+});
 
 impl_stable_hash_for!(struct mir::Terminator<'tcx> {
     kind,
     source_info
 });
 
-impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>> for mir::ClearCrossCrate<T>
-    where T: HashStable<StableHashingContext<'a>>
-{
-    #[inline]
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            mir::ClearCrossCrate::Clear => {}
-            mir::ClearCrossCrate::Set(ref value) => {
-                value.hash_stable(hcx, hasher);
-            }
-        }
+impl_stable_hash_for!(
+    impl<T> for enum mir::ClearCrossCrate<T> [ mir::ClearCrossCrate ] {
+        Clear,
+        Set(value),
     }
-}
+);
 
 impl<'a> HashStable<StableHashingContext<'a>> for mir::Local {
     #[inline]
