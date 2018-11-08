@@ -11,6 +11,20 @@ matrix:
       env:
        - FEATURES='nightly'
 
+    # test a target without sse2 for raw/generic.rs
+    - rust: stable
+      env:
+       - TARGET=i586-unknown-linux-gnu
+      addons:
+        apt:
+          packages:
+            - gcc-multilib
+      install:
+       - rustup target add $TARGET
+      script:
+       - cargo build --verbose --target $TARGET
+       - cargo test --verbose --target $TARGET
+
 branches:
   # Don't build these branches
   except:
