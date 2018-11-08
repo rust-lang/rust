@@ -90,7 +90,7 @@ basic block onto which the statements should be appended.
 
 There are essentially four kinds of representations one might want of an expression:
 
-* `Place` refers to a (or a part of) preexisting memory location (local, static, promoted)
+* `Place` refers to a (or part of a) preexisting memory location (local, static, promoted)
 * `Rvalue` is something that can be assigned to a `Place`
 * `Operand` is an argument to e.g. a `+` operation or a function call
 * a temporary variable containing a copy of the value
