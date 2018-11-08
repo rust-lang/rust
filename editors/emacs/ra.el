@@ -119,5 +119,10 @@
                         (xref--pop-to-location (get-text-property 0 'xref item))))))
 
 (add-to-list 'eglot-server-programs '(rust-mode . ("ra_lsp_server")))
+
+; (require 'rust-mode)
+; (define-key rust-mode-map (kbd "C-n") 'workspace-symbols)
+
+(define-key)
 (provide 'ra)
 ;;; ra.el ends here

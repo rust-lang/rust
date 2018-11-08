@@ -48,6 +48,7 @@ enum Task {
 pub fn main_loop(
     internal_mode: bool,
     root: PathBuf,
+    publish_decorations: bool,
     msg_receiver: &Receiver<RawMessage>,
     msg_sender: &Sender<RawMessage>,
 ) -> Result<()> {
@@ -67,6 +68,7 @@ pub fn main_loop(
     let mut subs = Subscriptions::new();
     let main_res = main_loop_inner(
         internal_mode,
+        publish_decorations,
         root,
         &pool,
         msg_sender,
@@ -99,6 +101,7 @@ pub fn main_loop(
 
 fn main_loop_inner(
     internal_mode: bool,
+    publish_decorations: bool,
     ws_root: PathBuf,
     pool: &ThreadPool,
     msg_sender: &Sender<RawMessage>,
@@ -210,6 +213,7 @@ fn main_loop_inner(
             update_file_notifications_on_threadpool(
                 pool,
                 state.snapshot(),
+                publish_decorations,
                 task_sender.clone(),
                 subs.subscriptions(),
             )
@@ -416,6 +420,7 @@ impl<'a> PoolDispatcher<'a> {
 fn update_file_notifications_on_threadpool(
     pool: &ThreadPool,
     world: ServerWorld,
+    publish_decorations: bool,
     sender: Sender<Task>,
     subscriptions: Vec<FileId>,
 ) {
@@ -432,15 +437,17 @@ fn update_file_notifications_on_threadpool(
                     sender.send(Task::Notify(not));
                 }
             }
-            match handlers::publish_decorations(&world, file_id) {
-                Err(e) => {
-                    if !is_canceled(&e) {
-                        error!("failed to compute decorations: {:?}", e);
+            if publish_decorations {
+                match handlers::publish_decorations(&world, file_id) {
+                    Err(e) => {
+                        if !is_canceled(&e) {
+                            error!("failed to compute decorations: {:?}", e);
+                        }
                     }
-                }
-                Ok(params) => {
-                    let not = RawNotification::new::<req::PublishDecorations>(&params);
-                    sender.send(Task::Notify(not))
+                    Ok(params) => {
+                        let not = RawNotification::new::<req::PublishDecorations>(&params);
+                        sender.send(Task::Notify(not))
+                    }
                 }
             }
         }

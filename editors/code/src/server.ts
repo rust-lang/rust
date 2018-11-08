@@ -20,7 +20,10 @@ export class Server {
             debug: run
         };
         const clientOptions: lc.LanguageClientOptions = {
-            documentSelector: [{ scheme: 'file', language: 'rust' }]
+            documentSelector: [{ scheme: 'file', language: 'rust' }],
+            initializationOptions: {
+                publishDecorations: true,
+            }
         };
 
         Server.client = new lc.LanguageClient(
