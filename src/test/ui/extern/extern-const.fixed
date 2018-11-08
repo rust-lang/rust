@@ -12,7 +12,7 @@ extern crate libc;
 
 #[link(name = "rust_test_helpers", kind = "static")]
 extern "C" {
-    const rust_dbg_static_mut: libc::c_int; //~ ERROR extern items cannot be `const`
+    static rust_dbg_static_mut: libc::c_int; //~ ERROR extern items cannot be `const`
 }
 
 fn main() {
