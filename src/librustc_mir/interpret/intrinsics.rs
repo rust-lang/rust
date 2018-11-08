@@ -150,6 +150,24 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 }
                 self.write_scalar(val, dest)?;
             }
+            "rotate_left" | "rotate_right" => {
+                // rotate_left: (X << (S % BW)) | (X >> ((BW - S) % BW))
+                // rotate_right: (X << ((BW - S) % BW)) | (X >> (S % BW))
+                let layout = self.layout_of(substs.type_at(0))?;
+                let val_bits = self.read_scalar(args[0])?.to_bits(layout.size)?;
+                let raw_shift_bits = self.read_scalar(args[1])?.to_bits(layout.size)?;
+                let width_bits = layout.size.bits() as u128;
+                let shift_bits = raw_shift_bits % width_bits;
+                let inv_shift_bits = (width_bits - raw_shift_bits) % width_bits;
+                let result_bits = if intrinsic_name == "rotate_left" {
+                    (val_bits << shift_bits) | (val_bits >> inv_shift_bits)
+                } else {
+                    (val_bits >> shift_bits) | (val_bits << inv_shift_bits)
+                };
+                let truncated_bits = self.truncate(result_bits, layout);
+                let result = Scalar::from_uint(truncated_bits, layout.size);
+                self.write_scalar(result, dest)?;
+            }
             "transmute" => {
                 self.copy_op_transmute(args[0], dest)?;
             }

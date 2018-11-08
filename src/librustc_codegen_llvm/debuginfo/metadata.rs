@@ -23,6 +23,7 @@ use value::Value;
 use llvm;
 use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor,
                       DICompositeType, DILexicalBlock, DIFlags};
+use llvm_util;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc::hir::CodegenFnAttrFlags;
@@ -1169,9 +1170,8 @@ fn prepare_union_metadata(
 fn use_enum_fallback(cx: &CodegenCx) -> bool {
     // On MSVC we have to use the fallback mode, because LLVM doesn't
     // lower variant parts to PDB.
-    return cx.sess().target.target.options.is_like_msvc || unsafe {
-        llvm::LLVMRustVersionMajor() < 7
-    };
+    return cx.sess().target.target.options.is_like_msvc
+        || llvm_util::get_major_version() < 7;
 }
 
 // Describes the members of an enum value: An enum is described as a union of

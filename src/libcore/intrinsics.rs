@@ -1465,6 +1465,20 @@ extern "rust-intrinsic" {
     /// y < 0 or y >= N, where N is the width of T in bits.
     pub fn unchecked_shr<T>(x: T, y: T) -> T;
 
+    /// Performs rotate left.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `rotate_left` method. For example,
+    /// [`std::u32::rotate_left`](../../std/primitive.u32.html#method.rotate_left)
+    #[cfg(not(stage0))]
+    pub fn rotate_left<T>(x: T, y: T) -> T;
+
+    /// Performs rotate right.
+    /// The stabilized versions of this intrinsic are available on the integer
+    /// primitives via the `rotate_right` method. For example,
+    /// [`std::u32::rotate_right`](../../std/primitive.u32.html#method.rotate_right)
+    #[cfg(not(stage0))]
+    pub fn rotate_right<T>(x: T, y: T) -> T;
+
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_add` method. For example,

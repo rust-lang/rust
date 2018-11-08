@@ -869,6 +869,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             | "overflowing_mul"
                             | "unchecked_shl"
                             | "unchecked_shr"
+                            | "rotate_left"
+                            | "rotate_right"
                             | "add_with_overflow"
                             | "sub_with_overflow"
                             | "mul_with_overflow"
