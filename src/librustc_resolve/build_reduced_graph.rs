@@ -809,6 +809,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     MacroNS,
+                    None,
                     false,
                     span,
                 );
