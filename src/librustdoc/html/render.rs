@@ -3237,13 +3237,14 @@ fn assoc_type<W: fmt::Write>(w: &mut W, it: &clean::Item,
     Ok(())
 }
 
-fn render_stability_since_raw<'a>(w: &mut fmt::Formatter,
-                                  ver: Option<&'a str>,
-                                  containing_ver: Option<&'a str>) -> fmt::Result {
+fn render_stability_since_raw<'a, T: fmt::Write>(
+    w: &mut T,
+    ver: Option<&'a str>,
+    containing_ver: Option<&'a str>,
+) -> fmt::Result {
     if let Some(v) = ver {
         if containing_ver != ver && v.len() > 0 {
-            write!(w, "<div class='since' title='Stable since Rust version {0}'>{0}</div>",
-                   v)?
+            write!(w, "<div class='since' title='Stable since Rust version {0}'>{0}</div>", v)?
         }
     }
     Ok(())
@@ -4067,21 +4068,44 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
                 write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
                 assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id))?;
-                write!(w, "</code></span></h4>\n")?;
+                write!(w, "</code></span></h4>")?;
             }
             clean::AssociatedConstItem(ref ty, ref default) => {
+                let mut version = String::new();
+
+                render_stability_since_raw(&mut version, item.stable_since(), outer_version)?;
+
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
                 let ns_id = cx.derive_id(format!("{}.{}", name, item_type.name_space()));
                 write!(w, "<h4 id='{}' class=\"{}{}\">", id, item_type, extra_class)?;
-                write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
+                write!(w, "<span id='{}' class='invisible'>", ns_id)?;
+                if !version.is_empty() {
+                    write!(w, "<table class='table-display'><tbody><tr><td><code>")?;
+                } else {
+                    write!(w, "<code>")?;
+                }
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id))?;
+                if !version.is_empty() {
+                    write!(w, "</code>")?;
+                }
                 let src = if let Some(l) = (Item { cx, item }).src_href() {
+                    if !version.is_empty() {
+                        write!(w, "</span></td><td><span class='out-of-band'>")?;
+                        write!(w, "<div class='ghost'></div>{}", version)?;
+                    }
                     format!("<a class='srclink' href='{}' title='{}'>[src]</a>",
                             l, "goto source code")
                 } else {
+                    if !version.is_empty() {
+                        write!(w, "</td><td>{}", version)?;
+                    }
                     String::new()
                 };
-                write!(w, "</code>{}</span></h4>\n", src)?;
+                if version.is_empty() {
+                    write!(w, "</code>{}</span></h4>", src)?;
+                } else {
+                    write!(w, "{}</td></tr></tbody></table></span></h4>", src)?;
+                }
             }
             clean::AssociatedTypeItem(ref bounds, ref default) => {
                 let id = cx.derive_id(format!("{}.{}", item_type, name));
