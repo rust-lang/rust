@@ -99,7 +99,7 @@ impl Group {
         // This algorithm is derived from
         // http://graphics.stanford.edu/~seander/bithacks.html##ValueInWord
         let cmp = self.0 ^ repeat(byte);
-        BitMask(((cmp - repeat(0x01)) & !cmp & repeat(0x80)).to_le())
+        BitMask((cmp.wrapping_sub(repeat(0x01)) & !cmp & repeat(0x80)).to_le())
     }
 
     /// Returns a `BitMask` indicating all bytes in the group which are
