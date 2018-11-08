@@ -112,7 +112,7 @@ again). Instead there are `Rvalue`s for binary and unary operators and index ope
 These `Rvalue`s later get codegened to llvm primitive operations or llvm intrinsics.
 
 Operators on all other types get lowered to a function call to their `impl` of the
-Operator's corresponding trait.
+operator's corresponding trait.
 
 Irrelevant of the lowering kind, the arguments to the operator are lowered to `Operand`s.
 This means all arguments are either constants, or refer to an already existing value
