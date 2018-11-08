@@ -217,8 +217,9 @@ fn program_clauses_for_trait<'a, 'tcx>(
 
     let implemented_from_env = Clause::ForAll(ty::Binder::bind(implemented_from_env));
 
-    let where_clauses = &tcx.predicates_defined_on(def_id).predicates
-        .into_iter()
+    let predicates = &tcx.predicates_defined_on(def_id).predicates;
+    let where_clauses = &predicates
+        .iter()
         .map(|(wc, _)| wc.lower())
         .map(|wc| wc.subst(tcx, bound_vars))
         .collect::<Vec<_>>();
@@ -314,8 +315,9 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     let trait_pred = ty::TraitPredicate { trait_ref }.lower();
 
     // `WC`
-    let where_clauses = tcx.predicates_of(def_id).predicates
-        .into_iter()
+    let predicates = &tcx.predicates_of(def_id).predicates;
+    let where_clauses = predicates
+        .iter()
         .map(|(wc, _)| wc.lower())
         .map(|wc| wc.subst(tcx, bound_vars));
 
@@ -352,7 +354,7 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
 
     // `WC`
     let where_clauses = tcx.predicates_of(def_id).predicates
-        .into_iter()
+        .iter()
         .map(|(wc, _)| wc.lower())
         .map(|wc| wc.subst(tcx, bound_vars))
         .collect::<Vec<_>>();
