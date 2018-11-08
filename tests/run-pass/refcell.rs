@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-fn main() {
+fn lots_of_funny_borrows() {
     let c = RefCell::new(42);
     {
         let s1 = c.borrow();
@@ -30,4 +30,8 @@ fn main() {
         let _x: i32 = *s1;
         let _y: i32 = *s2;
     }
+}
+
+fn main() {
+    lots_of_funny_borrows();
 }
