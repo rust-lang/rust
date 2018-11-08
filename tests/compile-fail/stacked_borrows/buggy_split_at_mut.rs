@@ -11,7 +11,7 @@ mod safe {
             assert!(mid <= len);
 
             (from_raw_parts_mut(ptr, len - mid), // BUG: should be "mid" instead of "len - mid"
-            //~^ ERROR reference with non-reactivatable tag
+            //~^ ERROR does not exist on the stack
             from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
         }
     }
