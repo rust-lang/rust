@@ -1870,11 +1870,9 @@ impl<'test> TestCx<'test> {
             } else {
                 self.fatal("no NodeJS binary found (--nodejs)");
             }
-        }
-
-        // If this is otherwise wasm , then run tests under nodejs with our
+        // If this is otherwise wasm, then run tests under nodejs with our
         // shim
-        if self.config.target.contains("wasm32") {
+        } else if self.config.target.contains("wasm32") {
             if let Some(ref p) = self.config.nodejs {
                 args.push(p.clone());
             } else {
