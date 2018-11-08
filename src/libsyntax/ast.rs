@@ -217,6 +217,7 @@ mod node_id_inner {
     newtype_index! {
         pub struct NodeId {
             ENCODABLE = custom
+            DEBUG_FORMAT = "NodeId({})"
         }
     }
 }
