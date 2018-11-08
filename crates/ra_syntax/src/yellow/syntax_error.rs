@@ -71,7 +71,7 @@ pub enum SyntaxErrorKind {
     UnescapedCodepoint,
     EmptyChar,
     UnclosedChar,
-    LongChar,
+    OverlongChar,
     EmptyAsciiEscape,
     InvalidAsciiEscape,
     TooShortAsciiCodeEscape,
@@ -82,6 +82,7 @@ pub enum SyntaxErrorKind {
     EmptyUnicodeEcape,
     OverlongUnicodeEscape,
     UnicodeEscapeOutOfRange,
+    UnclosedString,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -96,7 +97,7 @@ impl fmt::Display for SyntaxErrorKind {
             InvalidAsciiEscape => write!(f, "Invalid escape sequence"),
             EmptyChar => write!(f, "Empty char literal"),
             UnclosedChar => write!(f, "Unclosed char literal"),
-            LongChar => write!(f, "Char literal should be one character long"),
+            OverlongChar => write!(f, "Char literal should be one character long"),
             TooShortAsciiCodeEscape => write!(f, "Escape sequence should have two digits"),
             AsciiCodeEscapeOutOfRange => {
                 write!(f, "Escape sequence should be between \\x00 and \\x7F")
@@ -109,6 +110,7 @@ impl fmt::Display for SyntaxErrorKind {
                 write!(f, "Unicode escape sequence should have at most 6 digits")
             }
             UnicodeEscapeOutOfRange => write!(f, "Unicode escape code should be at most 0x10FFFF"),
+            UnclosedString => write!(f, "Unclosed string literal"),
             ParseError(msg) => write!(f, "{}", msg.0),
         }
     }

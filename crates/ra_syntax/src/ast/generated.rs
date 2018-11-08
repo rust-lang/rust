@@ -3236,6 +3236,43 @@ impl<'a> AstNode<'a> for Stmt<'a> {
 
 impl<'a> Stmt<'a> {}
 
+// String
+#[derive(Debug, Clone, Copy,)]
+pub struct StringNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    pub(crate) syntax: SyntaxNode<R>,
+}
+pub type String<'a> = StringNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<StringNode<R1>> for StringNode<R2> {
+    fn eq(&self, other: &StringNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for StringNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for StringNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
+
+impl<'a> AstNode<'a> for String<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            STRING => Some(String { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<R: TreeRoot<RaTypes>> StringNode<R> {
+    pub fn borrowed(&self) -> String {
+        StringNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> StringNode {
+        StringNode { syntax: self.syntax.owned() }
+    }
+}
+
+
+impl<'a> String<'a> {}
+
 // StructDef
 #[derive(Debug, Clone, Copy,)]
 pub struct StructDefNode<R: TreeRoot<RaTypes> = OwnedRoot> {

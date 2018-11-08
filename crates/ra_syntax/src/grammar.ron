@@ -411,6 +411,7 @@ Grammar(
         "PrefixExpr": (),
         "RangeExpr": (),
         "BinExpr": (),
+        "String": (),
         "Char": (),
         "Literal": (),
 
