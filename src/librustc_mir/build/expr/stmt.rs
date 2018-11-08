@@ -14,7 +14,18 @@ use hair::*;
 use rustc::mir::*;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
-    pub fn stmt_expr(&mut self, mut block: BasicBlock, expr: Expr<'tcx>) -> BlockAnd<()> {
+    /// Builds a block of MIR statements to evaluate the HAIR `expr`.
+    /// If the original expression was an AST statement,
+    /// (e.g. `some().code(&here());`) then `opt_stmt_span` is the
+    /// span of that statement (including its semicolon, if any).
+    /// Diagnostics use this span (which may be larger than that of
+    /// `expr`) to identify when statement temporaries are dropped.
+    pub fn stmt_expr(&mut self,
+                     mut block: BasicBlock,
+                     expr: Expr<'tcx>,
+                     opt_stmt_span: Option<StatementSpan>)
+                     -> BlockAnd<()>
+    {
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr.span);
@@ -29,7 +40,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             } => {
                 let value = this.hir.mirror(value);
                 this.in_scope((region_scope, source_info), lint_level, block, |this| {
-                    this.stmt_expr(block, value)
+                    this.stmt_expr(block, value, opt_stmt_span)
                 })
             }
             ExprKind::Assign { lhs, rhs } => {
@@ -192,7 +203,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let expr_ty = expr.ty;
                 let temp = this.temp(expr.ty.clone(), expr_span);
                 unpack!(block = this.into(&temp, block, expr));
-                unpack!(block = this.build_drop(block, expr_span, temp, expr_ty));
+
+                // Attribute drops of the statement's temps to the
+                // semicolon at the statement's end.
+                let drop_point = this.hir.tcx().sess.source_map().end_point(match opt_stmt_span {
+                    None => expr_span,
+                    Some(StatementSpan(span)) => span,
+                });
+
+                unpack!(block = this.build_drop(block, drop_point, temp, expr_ty));
                 block.unit()
             }
         }

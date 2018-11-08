@@ -90,7 +90,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         let source_info = this.source_info(span);
         for stmt in stmts {
-            let Stmt { kind, opt_destruction_scope } = this.hir.mirror(stmt);
+            let Stmt { kind, opt_destruction_scope, span: stmt_span } = this.hir.mirror(stmt);
             match kind {
                 StmtKind::Expr { scope, expr } => {
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result: true });
@@ -99,7 +99,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             let si = (scope, source_info);
                             this.in_scope(si, LintLevel::Inherited, block, |this| {
                                 let expr = this.hir.mirror(expr);
-                                this.stmt_expr(block, expr)
+                                this.stmt_expr(block, expr, Some(stmt_span))
                             })
                         }));
                 }

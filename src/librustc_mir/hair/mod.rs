@@ -72,9 +72,13 @@ pub enum StmtRef<'tcx> {
 }
 
 #[derive(Clone, Debug)]
+pub struct StatementSpan(pub Span);
+
+#[derive(Clone, Debug)]
 pub struct Stmt<'tcx> {
     pub kind: StmtKind<'tcx>,
     pub opt_destruction_scope: Option<region::Scope>,
+    pub span: StatementSpan,
 }
 
 #[derive(Clone, Debug)]
