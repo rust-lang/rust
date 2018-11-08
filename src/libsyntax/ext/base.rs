@@ -491,7 +491,7 @@ impl DummyResult {
     pub fn raw_expr(sp: Span) -> P<ast::Expr> {
         P(ast::Expr {
             id: ast::DUMMY_NODE_ID,
-            node: ast::ExprKind::Lit(P(source_map::respan(sp, ast::LitKind::Bool(false)))),
+            node: ast::ExprKind::Lit(source_map::respan(sp, ast::LitKind::Bool(false))),
             span: sp,
             attrs: ThinVec::new(),
         })
