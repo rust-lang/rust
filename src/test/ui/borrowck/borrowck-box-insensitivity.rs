@@ -1,13 +1,13 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
+// This test is an artifact of the old policy that `Box<T>` should not
+// be treated specially by the AST-borrowck.
 //
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
+// NLL goes back to treating `Box<T>` specially (namely, knowing that
+// it uniquely owns the data it holds). See rust-lang/rfcs#130.
 
+// revisions: ast mir
+//[ast] compile-flags: -Z borrowck=ast
+//[mir] compile-flags: -Z borrowck=mir
+// ignore-compare-mode-nll
 #![feature(box_syntax, rustc_attrs)]
 
 struct A {
