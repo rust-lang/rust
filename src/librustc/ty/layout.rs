@@ -697,7 +697,9 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                             Align::from_bytes(repr_align, repr_align).unwrap());
                     }
 
+                    let optimize = !def.repr.inhibit_union_abi_opt();
                     let mut size = Size::ZERO;
+                    let mut abi = Abi::Aggregate { sized: true };
                     let index = VariantIdx::new(0);
                     for field in &variants[index] {
                         assert!(!field.is_unsized());
@@ -708,13 +710,44 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         } else {
                             align = align.max(field.align);
                         }
+
+                        // If all non-ZST fields have the same ABI, forward this ABI
+                        if optimize && !field.is_zst() {
+                            // Normalize scalar_unit to the maximal valid range
+                            let field_abi = match &field.abi {
+                                Abi::Scalar(x) => Abi::Scalar(scalar_unit(x.value)),
+                                Abi::ScalarPair(x, y) => {
+                                    Abi::ScalarPair(
+                                        scalar_unit(x.value),
+                                        scalar_unit(y.value),
+                                    )
+                                }
+                                Abi::Vector { element: x, count } => {
+                                    Abi::Vector {
+                                        element: scalar_unit(x.value),
+                                        count: *count,
+                                    }
+                                }
+                                Abi::Uninhabited |
+                                Abi::Aggregate { .. }  => Abi::Aggregate { sized: true },
+                            };
+
+                            if size == Size::ZERO {
+                                // first non ZST: initialize 'abi'
+                                abi = field_abi;
+                            } else if abi != field_abi  {
+                                // different fields have different ABI: reset to Aggregate
+                                abi = Abi::Aggregate { sized: true };
+                            }
+                        }
+
                         size = cmp::max(size, field.size);
                     }
 
                     return Ok(tcx.intern_layout(LayoutDetails {
                         variants: Variants::Single { index },
                         fields: FieldPlacement::Union(variants[index].len()),
-                        abi: Abi::Aggregate { sized: true },
+                        abi,
                         align,
                         size: size.abi_align(align)
                     }));
