@@ -46,8 +46,3 @@ rm -f a.*
 # Make emsdk usable by any user
 cp /root/.emscripten /emsdk-portable
 chmod a+rxw -R /emsdk-portable
-
-# node 8 is required to run wasm
-cd /
-curl -sL https://nodejs.org/dist/v8.0.0/node-v8.0.0-linux-x64.tar.xz | \
-  tar -xJ
