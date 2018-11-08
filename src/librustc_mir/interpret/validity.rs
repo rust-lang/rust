@@ -167,12 +167,12 @@ struct ValidityVisitor<'rt, 'a: 'rt, 'mir: 'rt, 'tcx: 'a+'rt+'mir, M: Machine<'a
 }
 
 impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, 'mir, 'tcx, M> {
-    fn push_aggregate_field_path_elem(
+    fn aggregate_field_path_elem(
         &mut self,
         layout: TyLayout<'tcx>,
         field: usize,
-    ) {
-        let elem = match layout.ty.sty {
+    ) -> PathElem {
+        match layout.ty.sty {
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                 if let Some(upvar) = self.ecx.tcx.optimized_mir(def_id).upvar_decls.get(field) {
@@ -194,11 +194,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, '
                     layout::Variants::Single { index } =>
                         // Inside a variant
                         PathElem::Field(def.variants[index].fields[field].ident.name),
-                    _ => {
-                        // Enums have no fields other than their tag
-                        assert_eq!(field, 0);
-                        PathElem::Tag
-                    }
+                    _ => bug!(),
                 }
             }
 
@@ -213,8 +209,22 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, '
 
             // nothing else has an aggregate layout
             _ => bug!("aggregate_field_path_elem: got non-aggregate type {:?}", layout.ty),
-        };
+        }
+    }
+
+    fn visit_elem(
+        &mut self,
+        new_op: OpTy<'tcx, M::PointerTag>,
+        elem: PathElem,
+    ) -> EvalResult<'tcx> {
+        // Remember the old state
+        let path_len = self.path.len();
+        // Perform operation
         self.path.push(elem);
+        self.visit_value(new_op)?;
+        // Undo changes
+        self.path.truncate(path_len);
+        Ok(())
     }
 }
 
@@ -235,14 +245,8 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         field: usize,
         new_op: OpTy<'tcx, M::PointerTag>
     ) -> EvalResult<'tcx> {
-        // Remember the old state
-        let path_len = self.path.len();
-        // Perform operation
-        self.push_aggregate_field_path_elem(old_op.layout, field);
-        self.visit_value(new_op)?;
-        // Undo changes
-        self.path.truncate(path_len);
-        Ok(())
+        let elem = self.aggregate_field_path_elem(old_op.layout, field);
+        self.visit_elem(new_op, elem)
     }
 
     #[inline]
@@ -252,15 +256,8 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         variant_id: VariantIdx,
         new_op: OpTy<'tcx, M::PointerTag>
     ) -> EvalResult<'tcx> {
-        // Remember the old state
-        let path_len = self.path.len();
-        // Perform operation
         let name = old_op.layout.ty.ty_adt_def().unwrap().variants[variant_id].name;
-        self.path.push(PathElem::Variant(name));
-        self.visit_value(new_op)?;
-        // Undo changes
-        self.path.truncate(path_len);
-        Ok(())
+        self.visit_elem(new_op, PathElem::Variant(name))
     }
 
     #[inline]
