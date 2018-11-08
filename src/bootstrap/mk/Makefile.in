@@ -85,7 +85,12 @@ check-stage2-T-arm-linux-androideabi-H-x86_64-unknown-linux-gnu:
 check-stage2-T-x86_64-unknown-linux-musl-H-x86_64-unknown-linux-gnu:
 	$(Q)$(BOOTSTRAP) test --target x86_64-unknown-linux-musl
 
-TESTS_IN_2 := src/test/run-pass src/test/compile-fail src/test/run-pass-fulldeps
+TESTS_IN_2 := \
+	src/test/ui \
+	src/test/run-pass \
+	src/test/compile-fail \
+	src/test/run-pass-fulldeps \
+	src/tools/linkchecker
 
 appveyor-subset-1:
 	$(Q)$(BOOTSTRAP) test $(TESTS_IN_2:%=--exclude %)
