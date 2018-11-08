@@ -63,16 +63,6 @@ macro_rules! span_bug {
 }
 
 #[macro_export]
-macro_rules! static_assert {
-    ($name:ident: $test:expr) => {
-        // Use the bool to access an array such that if the bool is false, the access
-        // is out-of-bounds.
-        #[allow(dead_code)]
-        static $name: () = [()][!$test as usize];
-    }
-}
-
-#[macro_export]
 macro_rules! __impl_stable_hash_field {
     ($field:ident, $ctx:expr, $hasher:expr) => ($field.hash_stable($ctx, $hasher));
     ($field:ident, $ctx:expr, $hasher:expr, _) => ({ let _ = $field; });
