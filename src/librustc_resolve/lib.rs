@@ -103,6 +103,15 @@ enum DeterminacyExt {
     WeakUndetermined,
 }
 
+impl DeterminacyExt {
+    fn to_determinacy(self) -> Determinacy {
+        match self {
+            DeterminacyExt::Determined => Determined,
+            DeterminacyExt::Undetermined | DeterminacyExt::WeakUndetermined => Undetermined,
+        }
+    }
+}
+
 /// A free importable items suggested in case of resolution failure.
 struct ImportSuggestion {
     path: Path,
@@ -961,15 +970,22 @@ impl<'a> LexicalScopeBinding<'a> {
     }
 }
 
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum UniformRootKind {
+    CurrentScope,
+    ExternPrelude,
+}
+
 #[derive(Copy, Clone, Debug)]
-pub enum ModuleOrUniformRoot<'a> {
+enum ModuleOrUniformRoot<'a> {
     /// Regular module.
     Module(Module<'a>),
 
-    /// The `{{root}}` (`CrateRoot` aka "global") / `extern` initial segment
-    /// in which external crates resolve, and also `crate` (only in `{{root}}`,
-    /// but *not* `extern`), in the Rust 2018 edition.
-    UniformRoot(Name),
+    /// This "virtual module" denotes either resolution in extern prelude
+    /// for paths starting with `::` on 2018 edition or `extern::`,
+    /// or resolution in current scope for single-segment imports.
+    UniformRoot(UniformRootKind),
 }
 
 #[derive(Clone, Debug)]
@@ -2099,23 +2115,31 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         None
     }
 
-    fn resolve_ident_in_module(&mut self,
-                               module: ModuleOrUniformRoot<'a>,
-                               mut ident: Ident,
-                               ns: Namespace,
-                               record_used: bool,
-                               span: Span)
-                               -> Result<&'a NameBinding<'a>, Determinacy> {
+    fn resolve_ident_in_module(
+        &mut self,
+        module: ModuleOrUniformRoot<'a>,
+        mut ident: Ident,
+        ns: Namespace,
+        parent_scope: Option<&ParentScope<'a>>,
+        record_used: bool,
+        path_span: Span
+    ) -> Result<&'a NameBinding<'a>, Determinacy> {
         ident.span = ident.span.modern();
         let orig_current_module = self.current_module;
-        if let ModuleOrUniformRoot::Module(module) = module {
-            if let Some(def) = ident.span.adjust(module.expansion) {
-                self.current_module = self.macro_def_scope(def);
+        match module {
+            ModuleOrUniformRoot::Module(module) => {
+                if let Some(def) = ident.span.adjust(module.expansion) {
+                    self.current_module = self.macro_def_scope(def);
+                }
             }
+            ModuleOrUniformRoot::UniformRoot(UniformRootKind::ExternPrelude) => {
+                ident.span.adjust(Mark::root());
+            }
+            _ => {}
         }
-        let result = self.resolve_ident_in_module_unadjusted(
-            module, ident, ns, record_used, span,
-        );
+        let result = self.resolve_ident_in_module_unadjusted_ext(
+            module, ident, ns, parent_scope, false, record_used, path_span,
+        ).map_err(DeterminacyExt::to_determinacy);
         self.current_module = orig_current_module;
         result
     }
@@ -2614,6 +2638,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
+                None,
                 false,
                 span,
             ).is_err() {
@@ -3624,9 +3649,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         continue;
                     }
                     if name == keywords::Extern.name() ||
-                       name == keywords::CrateRoot.name() &&
-                       self.session.rust_2018() {
-                        module = Some(ModuleOrUniformRoot::UniformRoot(name));
+                       name == keywords::CrateRoot.name() && self.session.rust_2018() {
+                        module =
+                            Some(ModuleOrUniformRoot::UniformRoot(UniformRootKind::ExternPrelude));
                         continue;
                     }
                     if name == keywords::CrateRoot.name() ||
@@ -3656,7 +3681,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             }
 
             let binding = if let Some(module) = module {
-                self.resolve_ident_in_module(module, ident, ns, record_used, path_span)
+                self.resolve_ident_in_module(module, ident, ns, None, record_used, path_span)
             } else if opt_ns.is_none() || opt_ns == Some(MacroNS) {
                 assert!(ns == TypeNS);
                 self.early_resolve_ident_in_lexical_scope(ident, ns, None, opt_ns.is_none(),
@@ -3675,7 +3700,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             def, path.len() - 1
                         ));
                     }
-                    _ => Err(if record_used { Determined } else { Undetermined }),
+                    _ => Err(Determinacy::determined(record_used)),
                 }
             };
 
@@ -3748,7 +3773,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         PathResult::Module(match module {
             Some(module) => module,
-            None if path.is_empty() => ModuleOrUniformRoot::UniformRoot(keywords::Invalid.name()),
+            None if path.is_empty() =>
+                ModuleOrUniformRoot::UniformRoot(UniformRootKind::CurrentScope),
             _ => span_bug!(path_span, "resolve_path: non-empty path `{:?}` has no module", path),
         })
     }
@@ -3960,6 +3986,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     ns,
+                    None,
                     false,
                     module.span,
                 ) {
@@ -4282,6 +4309,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
+                None,
                 false,
                 module.span,
             ).is_ok() {
@@ -4879,6 +4907,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
     fn extern_prelude_get(&mut self, ident: Ident, speculative: bool, skip_feature_gate: bool)
                           -> Option<&'a NameBinding<'a>> {
+        if ident.is_path_segment_keyword() {
+            // Make sure `self`, `super` etc produce an error when passed to here.
+            return None;
+        }
         self.extern_prelude.get(&ident.modern()).cloned().and_then(|entry| {
             if let Some(binding) = entry.extern_crate_item {
                 if !speculative && !skip_feature_gate && entry.introduced_by_item &&

@@ -11,7 +11,7 @@
 use self::ImportDirectiveSubclass::*;
 
 use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
-use {CrateLint, DeterminacyExt, Module, ModuleOrUniformRoot, PerNS};
+use {CrateLint, DeterminacyExt, Module, ModuleOrUniformRoot, PerNS, UniformRootKind};
 use Namespace::{self, TypeNS, MacroNS};
 use {NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use Resolver;
@@ -23,7 +23,7 @@ use rustc_data_structures::ptr_key::PtrKey;
 use rustc::ty;
 use rustc::lint::builtin::BuiltinLintDiagnostics;
 use rustc::lint::builtin::{DUPLICATE_MACRO_EXPORTS, PUB_USE_OF_PRIVATE_EXTERN_CRATE};
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::def::*;
 use rustc::session::DiagnosticMessageId;
 use rustc::util::nodemap::FxHashSet;
@@ -61,7 +61,7 @@ pub enum ImportDirectiveSubclass<'a> {
 
 /// One import directive.
 #[derive(Debug,Clone)]
-pub struct ImportDirective<'a> {
+crate struct ImportDirective<'a> {
     /// The id of the `extern crate`, `UseTree` etc that imported this `ImportDirective`.
     ///
     /// In the case where the `ImportDirective` was expanded from a "nested" use tree,
@@ -144,11 +144,8 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         path_span: Span,
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
         self.resolve_ident_in_module_unadjusted_ext(
-            module, ident, ns, false, record_used, path_span
-        ).map_err(|determinacy_ext| match determinacy_ext {
-            DeterminacyExt::Determined => Determined,
-            DeterminacyExt::Undetermined | DeterminacyExt::WeakUndetermined => Undetermined,
-        })
+            module, ident, ns, None, false, record_used, path_span
+        ).map_err(DeterminacyExt::to_determinacy)
     }
 
     /// Attempts to resolve `ident` in namespaces `ns` of `module`.
@@ -158,87 +155,55 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         module: ModuleOrUniformRoot<'a>,
         ident: Ident,
         ns: Namespace,
+        parent_scope: Option<&ParentScope<'a>>,
         restricted_shadowing: bool,
         record_used: bool,
         path_span: Span,
     ) -> Result<&'a NameBinding<'a>, DeterminacyExt> {
         let module = match module {
             ModuleOrUniformRoot::Module(module) => module,
-            ModuleOrUniformRoot::UniformRoot(root) => {
-                // HACK(eddyb): `resolve_path` uses `keywords::Invalid` to indicate
-                // paths of length 0, and currently these are relative `use` paths.
-                let can_be_relative = !ident.is_path_segment_keyword() &&
-                    root == keywords::Invalid.name();
-                if can_be_relative {
-                    // Try first to resolve relatively.
-                    let mut ctxt = ident.span.ctxt().modern();
-                    let self_module = self.resolve_self(&mut ctxt, self.current_module);
-
-                    let binding = self.resolve_ident_in_module_unadjusted_ext(
-                        ModuleOrUniformRoot::Module(self_module),
-                        ident,
-                        ns,
-                        restricted_shadowing,
-                        record_used,
-                        path_span,
-                    );
-
-                    // FIXME(eddyb) This may give false negatives, specifically
-                    // if a crate with the same name is found in `extern_prelude`,
-                    // preventing the check below this one from returning `binding`
-                    // in all cases.
-                    //
-                    // That is, if there's no crate with the same name, `binding`
-                    // is always returned, which is the result of doing the exact
-                    // same lookup of `ident`, in the `self` module.
-                    // But when a crate does exist, it will get chosen even when
-                    // macro expansion could result in a success from the lookup
-                    // in the `self` module, later on.
-                    if binding.is_ok() {
-                        return binding;
+            ModuleOrUniformRoot::UniformRoot(uniform_root_kind) => {
+                assert!(!restricted_shadowing);
+                match uniform_root_kind {
+                    UniformRootKind::ExternPrelude => {
+                        return if let Some(binding) =
+                                self.extern_prelude_get(ident, !record_used, false) {
+                            Ok(binding)
+                        } else if !self.graph_root.unresolved_invocations.borrow().is_empty() {
+                            // Macro-expanded `extern crate` items can add names to extern prelude.
+                            Err(DeterminacyExt::Undetermined)
+                        } else {
+                            Err(DeterminacyExt::Determined)
+                        }
                     }
+                    UniformRootKind::CurrentScope => {
+                        let parent_scope =
+                            parent_scope.expect("no parent scope for a single-segment import");
 
-                    // Fall back to resolving to an external crate.
-                    if !(
-                        ns == TypeNS &&
-                        !ident.is_path_segment_keyword() &&
-                        self.extern_prelude.contains_key(&ident.modern())
-                    ) {
-                        // ... unless the crate name is not in the `extern_prelude`.
-                        return binding;
+                        if ns == TypeNS {
+                            if ident.name == keywords::Crate.name() ||
+                               ident.name == keywords::DollarCrate.name() {
+                                let module = self.resolve_crate_root(ident);
+                                let binding = (module, ty::Visibility::Public,
+                                               module.span, Mark::root())
+                                               .to_name_binding(self.arenas);
+                                return Ok(binding);
+                            } else if ident.name == keywords::Super.name() ||
+                                      ident.name == keywords::SelfValue.name() {
+                                // FIXME: Implement these with renaming requirements so that e.g.
+                                // `use super;` doesn't work, but `use super as name;` does.
+                            }
+                        }
+
+                        let binding = self.early_resolve_ident_in_lexical_scope(
+                            ident, ns, None, true, parent_scope, record_used, record_used, path_span
+                        );
+                        return binding.map_err(|determinacy| match determinacy {
+                            Determined => DeterminacyExt::Determined,
+                            Undetermined => DeterminacyExt::Undetermined,
+                        });
                     }
                 }
-
-                let crate_root = if
-                    ns == TypeNS &&
-                    root != keywords::Extern.name() &&
-                    (
-                        ident.name == keywords::Crate.name() ||
-                        ident.name == keywords::DollarCrate.name()
-                    )
-                {
-                    self.resolve_crate_root(ident)
-                } else if
-                    ns == TypeNS &&
-                    !ident.is_path_segment_keyword()
-                {
-                    if let Some(binding) = self.extern_prelude_get(ident, !record_used, false) {
-                        let module = self.get_module(binding.def().def_id());
-                        self.populate_module_if_necessary(module);
-                        return Ok(binding);
-                    } else if !self.graph_root.unresolved_invocations.borrow().is_empty() {
-                        // Macro-expanded `extern crate`items still can add names to extern prelude.
-                        return Err(DeterminacyExt::Undetermined);
-                    } else {
-                        return Err(DeterminacyExt::Determined);
-                    }
-                } else {
-                    return Err(DeterminacyExt::Determined);
-                };
-                self.populate_module_if_necessary(crate_root);
-                let binding = (crate_root, ty::Visibility::Public,
-                               crate_root.span, Mark::root()).to_name_binding(self.arenas);
-                return Ok(binding);
             }
         };
 
@@ -312,7 +277,8 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 SingleImport { source, .. } => source,
                 _ => unreachable!(),
             };
-            match self.resolve_ident_in_module(module, ident, ns, false, path_span) {
+            match self.resolve_ident_in_module(module, ident, ns, Some(&single_import.parent_scope),
+                                               false, path_span) {
                 Err(Determined) => continue,
                 Ok(binding) if !self.is_accessible_from(
                     binding.vis, single_import.parent_scope.module
@@ -439,8 +405,8 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
 
     // Given a binding and an import directive that resolves to it,
     // return the corresponding binding defined by the import directive.
-    pub fn import(&self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
-                  -> &'a NameBinding<'a> {
+    crate fn import(&self, binding: &'a NameBinding<'a>, directive: &'a ImportDirective<'a>)
+                    -> &'a NameBinding<'a> {
         let vis = if binding.pseudo_vis().is_at_least(directive.vis.get(), self) ||
                      // c.f. `PUB_USE_OF_PRIVATE_EXTERN_CRATE`
                      !directive.is_glob() && binding.is_extern_crate() {
@@ -766,10 +732,9 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         let module = if let Some(module) = directive.imported_module.get() {
             module
         } else {
-            let vis = directive.vis.get();
-            // For better failure detection, pretend that the import will not define any names
-            // while resolving its module path.
-            directive.vis.set(ty::Visibility::Invisible);
+            // For better failure detection, pretend that the import will
+            // not define any names while resolving its module path.
+            let orig_vis = directive.vis.replace(ty::Visibility::Invisible);
             let result = self.resolve_path(
                 &directive.module_path[..],
                 None,
@@ -778,7 +743,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 directive.span,
                 directive.crate_lint(),
             );
-            directive.vis.set(vis);
+            directive.vis.set(orig_vis);
 
             match result {
                 PathResult::Module(module) => module,
@@ -801,11 +766,15 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         let mut indeterminate = false;
         self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
             if let Err(Undetermined) = result[ns].get() {
-                result[ns].set(this.resolve_ident_in_module(module,
-                                                            source,
-                                                            ns,
-                                                            false,
-                                                            directive.span));
+                // For better failure detection, pretend that the import will
+                // not define any names while resolving its module path.
+                let orig_vis = directive.vis.replace(ty::Visibility::Invisible);
+                let binding = this.resolve_ident_in_module(
+                    module, source, ns, Some(&directive.parent_scope), false, directive.span
+                );
+                directive.vis.set(orig_vis);
+
+                result[ns].set(binding);
             } else {
                 return
             };
@@ -938,7 +907,10 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         if all_ns_err {
             let mut all_ns_failed = true;
             self.per_ns(|this, ns| if !type_ns_only || ns == TypeNS {
-                if this.resolve_ident_in_module(module, ident, ns, true, span).is_ok() {
+                let binding = this.resolve_ident_in_module(
+                    module, ident, ns, Some(&directive.parent_scope), true, span
+                );
+                if binding.is_ok() {
                     all_ns_failed = false;
                 }
             });
@@ -1138,8 +1110,9 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             if binding.is_import() || binding.is_macro_def() {
                 let def = binding.def();
                 if def != Def::Err {
-                    if !def.def_id().is_local() {
-                        self.cstore.export_macros_untracked(def.def_id().krate);
+                    let def_id = def.def_id();
+                    if !def_id.is_local() && def_id.krate != CrateNum::BuiltinMacros {
+                        self.cstore.export_macros_untracked(def_id.krate);
                     }
                     reexports.push(Export {
                         ident: ident.modern(),

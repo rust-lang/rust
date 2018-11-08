@@ -371,11 +371,11 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
 }
 
 impl<'a, 'cl> Resolver<'a, 'cl> {
-    pub fn dummy_parent_scope(&mut self) -> ParentScope<'a> {
+    pub fn dummy_parent_scope(&self) -> ParentScope<'a> {
         self.invoc_parent_scope(Mark::root(), Vec::new())
     }
 
-    fn invoc_parent_scope(&mut self, invoc_id: Mark, derives: Vec<ast::Path>) -> ParentScope<'a> {
+    fn invoc_parent_scope(&self, invoc_id: Mark, derives: Vec<ast::Path>) -> ParentScope<'a> {
         let invoc = self.invocations[&invoc_id];
         ParentScope {
             module: invoc.module.get().nearest_item_scope(),
@@ -606,6 +606,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         assert!(macro_kind.is_none() || !is_import); // `is_import` implies no macro kind
         ident = ident.modern();
 
+        // Make sure `self`, `super` etc produce an error when passed to here.
+        if ident.is_path_segment_keyword() {
+            return Err(Determinacy::Determined);
+        }
+
         // This is *the* result, resolution from the scope closest to the resolved identifier.
         // However, sometimes this result is "weak" because it comes from a glob import or
         // a macro expansion, and in this case it cannot shadow names from outer scopes, e.g.
@@ -667,6 +672,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         ModuleOrUniformRoot::Module(module),
                         ident,
                         ns,
+                        None,
                         true,
                         record_used,
                         path_span,
