@@ -63,36 +63,36 @@ fn move_after_borrow() {
     let _y = a.y;
     //~^ ERROR cannot move
     //~| move out of
+    use_imm(_x);
 }
-
 fn copy_after_mut_borrow() {
     let mut a: Box<_> = box A { x: box 0, y: 1 };
     let _x = &mut a.x;
     let _y = a.y; //~ ERROR cannot use
+    use_mut(_x);
 }
-
 fn move_after_mut_borrow() {
     let mut a: Box<_> = box B { x: box 0, y: box 1 };
     let _x = &mut a.x;
     let _y = a.y;
     //~^ ERROR cannot move
     //~| move out of
+    use_mut(_x);
 }
-
 fn borrow_after_mut_borrow() {
     let mut a: Box<_> = box A { x: box 0, y: 1 };
     let _x = &mut a.x;
     let _y = &a.y; //~ ERROR cannot borrow
     //~^ immutable borrow occurs here (via `a.y`)
+    use_mut(_x);
 }
-
 fn mut_borrow_after_borrow() {
     let mut a: Box<_> = box A { x: box 0, y: 1 };
     let _x = &a.x;
     let _y = &mut a.y; //~ ERROR cannot borrow
     //~^ mutable borrow occurs here (via `a.y`)
+    use_imm(_x);
 }
-
 fn copy_after_move_nested() {
     let a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
     let _x = a.x.x;
@@ -124,38 +124,38 @@ fn move_after_borrow_nested() {
     let _y = a.y;
     //~^ ERROR cannot move
     //~| move out of
+    use_imm(_x);
 }
-
 fn copy_after_mut_borrow_nested() {
     let mut a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
     let _x = &mut a.x.x;
     let _y = a.y; //~ ERROR cannot use
+    use_mut(_x);
 }
-
 fn move_after_mut_borrow_nested() {
     let mut a: Box<_> = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
     let _x = &mut a.x.x;
     let _y = a.y;
     //~^ ERROR cannot move
     //~| move out of
+    use_mut(_x);
 }
-
 fn borrow_after_mut_borrow_nested() {
     let mut a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
     let _x = &mut a.x.x;
     //~^ mutable borrow occurs here
     let _y = &a.y; //~ ERROR cannot borrow
     //~^ immutable borrow occurs here
+    use_mut(_x);
 }
-
 fn mut_borrow_after_borrow_nested() {
     let mut a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
     let _x = &a.x.x;
     //~^ immutable borrow occurs here
     let _y = &mut a.y; //~ ERROR cannot borrow
     //~^ mutable borrow occurs here
+    use_imm(_x);
 }
-
 #[rustc_error]
 fn main() {
     copy_after_move();
@@ -180,3 +180,6 @@ fn main() {
     borrow_after_mut_borrow_nested();
     mut_borrow_after_borrow_nested();
 }
+
+fn use_mut<T>(_: &mut T) { }
+fn use_imm<T>(_: &T) { }

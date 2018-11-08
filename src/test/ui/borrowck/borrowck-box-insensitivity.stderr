@@ -62,7 +62,7 @@ LL |     let _x = &mut a.x;
    |                   --- mutable borrow occurs here (via `a.x`)
 LL |     let _y = &a.y; //~ ERROR cannot borrow
    |               ^^^ immutable borrow occurs here (via `a.y`)
-LL |     //~^ immutable borrow occurs here (via `a.y`)
+...
 LL | }
    | - mutable borrow ends here
 
@@ -73,7 +73,7 @@ LL |     let _x = &a.x;
    |               --- immutable borrow occurs here (via `a.x`)
 LL |     let _y = &mut a.y; //~ ERROR cannot borrow
    |                   ^^^ mutable borrow occurs here (via `a.y`)
-LL |     //~^ mutable borrow occurs here (via `a.y`)
+...
 LL | }
    | - immutable borrow ends here
 
@@ -143,7 +143,7 @@ LL |     let _x = &mut a.x.x;
 LL |     //~^ mutable borrow occurs here
 LL |     let _y = &a.y; //~ ERROR cannot borrow
    |               ^^^ immutable borrow occurs here
-LL |     //~^ immutable borrow occurs here
+...
 LL | }
    | - mutable borrow ends here
 
@@ -155,7 +155,7 @@ LL |     let _x = &a.x.x;
 LL |     //~^ immutable borrow occurs here
 LL |     let _y = &mut a.y; //~ ERROR cannot borrow
    |                   ^^^ mutable borrow occurs here
-LL |     //~^ mutable borrow occurs here
+...
 LL | }
    | - immutable borrow ends here
 
