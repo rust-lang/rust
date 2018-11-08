@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.1.5] - 2018-11-08
+
+### Fixed
+- Fixed subtraction overflow in generic::Group::match_byte. (#28)
+
 ## [v0.1.4] - 2018-11-04
 
 ### Fixed
@@ -36,7 +41,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Initial release
 
-[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.1.5...HEAD
+[v0.1.4]: https://github.com/Amanieu/hashbrown/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/Amanieu/hashbrown/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/Amanieu/hashbrown/compare/v0.1.2...v0.1.3
 [v0.1.2]: https://github.com/Amanieu/hashbrown/compare/v0.1.1...v0.1.2
