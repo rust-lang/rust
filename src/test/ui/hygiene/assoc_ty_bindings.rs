@@ -11,8 +11,8 @@
 // ignore-pretty pretty-printing is unhygienic
 
 #![feature(decl_macro, associated_type_defaults)]
-#![feature(rustc_attrs)]
-
+// compile-pass
+// skip-codegen
 trait Base {
     type AssocTy;
     fn f();
@@ -45,5 +45,5 @@ macro mac() {
 
 mac!();
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

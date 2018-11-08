@@ -7,9 +7,9 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
-#![feature(custom_attribute, rustc_attrs)]
-
+// skip-codegen
+// compile-pass
+#![feature(custom_attribute)]
 macro_rules! mac {
     {} => {
         #[cfg(attr)]
@@ -28,5 +28,5 @@ macro_rules! mac {
 
 mac! {}
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

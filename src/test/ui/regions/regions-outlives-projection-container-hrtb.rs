@@ -12,7 +12,7 @@
 // "outlives" requirements. Issue #22246.
 
 #![allow(dead_code)]
-#![feature(rustc_attrs)]
+
 
 ///////////////////////////////////////////////////////////////////////////
 
@@ -64,6 +64,6 @@ fn with_assoc_sub<'a,'b>() {
     //~^ ERROR reference has a longer lifetime
 }
 
-#[rustc_error]
+
 fn main() {
 }

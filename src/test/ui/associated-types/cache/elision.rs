@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 #![allow(warnings)]
-
 // Check that you are allowed to implement using elision but write
 // trait without elision (a bug in this cropped up during
 // bootstrapping, so this is a regression test).
@@ -30,5 +30,5 @@ impl UnicodeStr for str {
     }
 }
 
-#[rustc_error]
-fn main() { } //~ ERROR compilation successful
+
+fn main() { }

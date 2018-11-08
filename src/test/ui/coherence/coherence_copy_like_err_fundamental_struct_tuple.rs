@@ -13,7 +13,7 @@
 
 // aux-build:coherence_copy_like_lib.rs
 
-#![feature(rustc_attrs)]
+
 
 extern crate coherence_copy_like_lib as lib;
 
@@ -26,5 +26,5 @@ impl<T: lib::MyCopy> MyTrait for T { }
 // Tuples are not fundamental.
 impl MyTrait for lib::MyFundamentalStruct<(MyType,)> { } //~ ERROR E0119
 
-#[rustc_error]
+
 fn main() { }

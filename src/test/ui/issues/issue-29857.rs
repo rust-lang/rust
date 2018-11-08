@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 
 use std::marker::PhantomData;
 
@@ -27,5 +27,5 @@ pub trait Bar {
 
 impl<T: 'static, W: Bar<Output = T>> Foo<*mut T> for W {}
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

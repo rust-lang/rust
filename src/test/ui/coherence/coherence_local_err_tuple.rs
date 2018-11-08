@@ -13,7 +13,7 @@
 
 // aux-build:coherence_copy_like_lib.rs
 
-#![feature(rustc_attrs)]
+
 #![allow(dead_code)]
 
 extern crate coherence_copy_like_lib as lib;
@@ -25,5 +25,5 @@ struct MyType { x: i32 }
 // Tuples are not fundamental, so this is not a local impl.
 impl lib::MyCopy for (MyType,) { } //~ ERROR E0117
 
-#[rustc_error]
+
 fn main() { }

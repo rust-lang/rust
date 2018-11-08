@@ -10,7 +10,7 @@
 
 // Check that we enforce WF conditions also for types in fns.
 
-#![feature(rustc_attrs)]
+
 #![allow(dead_code)]
 
 trait Object<T> { }
@@ -24,5 +24,5 @@ struct Foo<T> {
     x: Object<&'static T> //~ ERROR E0310
 }
 
-#[rustc_error]
+
 fn main() { }

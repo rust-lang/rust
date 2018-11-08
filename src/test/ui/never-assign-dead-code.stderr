@@ -30,15 +30,3 @@ LL | #![warn(unused)]
    |         ^^^^^^
    = note: #[warn(unused_variables)] implied by #[warn(unused)]
 
-error: compilation successful
-  --> $DIR/never-assign-dead-code.rs:18:1
-   |
-LL | / fn main() { //~ ERROR: compilation successful
-LL | |     let x: ! = panic!("aah"); //~ WARN unused
-LL | |     drop(x); //~ WARN unreachable
-LL | |     //~^ WARN unreachable
-LL | | }
-   | |_^
-
-error: aborting due to previous error
-

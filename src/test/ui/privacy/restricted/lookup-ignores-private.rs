@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(warnings)]
 
 mod foo {
@@ -36,8 +36,8 @@ mod foo {
     }
 }
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
     let s = foo::S::default();
     let _: bool = s.x;
     let _: bool = s.f();

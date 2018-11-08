@@ -25,16 +25,3 @@ warning: variable `theOtherTwo` should have a snake case name such as `the_other
 LL |     let theOtherTwo = 2; //~ WARN should have a snake case name
    |         ^^^^^^^^^^^
 
-error: compilation successful
-  --> $DIR/issue-24690.rs:21:1
-   |
-LL | / fn main() { //~ ERROR compilation successful
-LL | |     let theTwo = 2; //~ WARN should have a snake case name
-LL | |     let theOtherTwo = 2; //~ WARN should have a snake case name
-LL | |     //~^ WARN unused variable
-LL | |     println!("{}", theTwo);
-LL | | }
-   | |_^
-
-error: aborting due to previous error
-

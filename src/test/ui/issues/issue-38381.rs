@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 
 use std::ops::Deref;
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
     let _x: fn(&i32) -> <&i32 as Deref>::Target = unimplemented!();
 }

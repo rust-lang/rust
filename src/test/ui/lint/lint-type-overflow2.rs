@@ -7,15 +7,15 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-//
 
+// compile-flags: -O
 #![warn(overflowing_literals)]
 #![warn(const_err)]
-#![feature(rustc_attrs)]
+// compile-pass
 
 #[allow(unused_variables)]
-#[rustc_error]
-fn main() { //~ ERROR: compilation successful
+
+fn main() {
     let x2: i8 = --128; //~ warn: literal out of range for i8
 
     let x = -3.40282357e+38_f32; //~ warn: literal out of range for f32

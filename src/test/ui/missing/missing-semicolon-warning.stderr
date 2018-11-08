@@ -4,7 +4,7 @@ warning: expected `;`, found keyword `let`
 LL |         $( let x = $e1 )*; //~ WARN expected `;`
    |            ^^^
 ...
-LL | fn main() { m!(0, 0; 0, 0); } //~ ERROR compilation successful
+LL | fn main() { m!(0, 0; 0, 0); }
    |             --------------- in this macro invocation
    |
    = note: This was erroneously allowed and will become a hard error in a future release
@@ -15,16 +15,8 @@ warning: expected `;`, found `println`
 LL |         $( println!("{}", $e2) )*; //~ WARN expected `;`
    |            ^^^^^^^
 ...
-LL | fn main() { m!(0, 0; 0, 0); } //~ ERROR compilation successful
+LL | fn main() { m!(0, 0; 0, 0); }
    |             --------------- in this macro invocation
    |
    = note: This was erroneously allowed and will become a hard error in a future release
-
-error: compilation successful
-  --> $DIR/missing-semicolon-warning.rs:22:1
-   |
-LL | fn main() { m!(0, 0; 0, 0); } //~ ERROR compilation successful
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to previous error
 

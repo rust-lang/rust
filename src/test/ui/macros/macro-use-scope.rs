@@ -10,7 +10,7 @@
 
 // aux-build:two_macros.rs
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(unused)]
 
 fn f() {
@@ -28,5 +28,5 @@ macro_rules! m { () => {
 } }
 m!();
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

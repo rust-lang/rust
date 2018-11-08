@@ -12,7 +12,7 @@
 // they permit lifetimes to be approximated as expected.
 
 #![allow(dead_code)]
-#![feature(rustc_attrs)]
+// compile-pass
 
 struct SomeStruct<T>(fn(T));
 
@@ -23,5 +23,5 @@ fn bar<'min,'max>(v: SomeStruct<&'min ()>)
     v
 }
 
-#[rustc_error]
-fn main() { } //~ ERROR compilation successful
+
+fn main() { }

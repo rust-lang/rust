@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
-
+// compile-pass
+// skip-codegen
 mod a {
     pub mod b { pub struct Foo; }
 
@@ -21,8 +21,8 @@ mod a {
     pub use self::c::*;
 }
 
-#[rustc_error]
-fn main() {  //~ ERROR compilation successful
+
+fn main() {
     let _ = a::c::Bar(a::b::Foo);
     let _ = a::Bar(a::b::Foo);
 }

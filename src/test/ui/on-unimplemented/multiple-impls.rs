@@ -11,7 +11,7 @@
 // Test if the on_unimplemented message override works
 
 #![feature(on_unimplemented)]
-#![feature(rustc_attrs)]
+
 
 struct Foo<T>(T);
 struct Bar<T>(T);
@@ -38,7 +38,7 @@ impl Index<Bar<usize>> for [i32] {
     }
 }
 
-#[rustc_error]
+
 fn main() {
     Index::index(&[] as &[i32], 2u32);
     //~^ ERROR E0277

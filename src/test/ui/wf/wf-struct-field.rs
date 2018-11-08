@@ -11,7 +11,7 @@
 // Test that we check struct fields for WFedness.
 
 #![feature(associated_type_defaults)]
-#![feature(rustc_attrs)]
+
 #![allow(dead_code)]
 
 struct IsCopy<T:Copy> {
@@ -22,5 +22,5 @@ struct SomeStruct<A> {
     data: IsCopy<A> //~ ERROR E0277
 }
 
-#[rustc_error]
+
 fn main() { }

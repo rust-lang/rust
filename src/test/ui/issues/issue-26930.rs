@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 #![allow(unused)]
-
 extern crate core;
 use core as core_export;
 use self::x::*;
 mod x {}
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

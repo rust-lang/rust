@@ -634,11 +634,3 @@ warning: use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
 LL |         foo.trait_deprecated_text(); //~ WARN use of deprecated item 'this_crate::Trait::trait_deprecated_text': text
    |             ^^^^^^^^^^^^^^^^^^^^^
 
-error: compilation successful
-  --> $DIR/lint-stability-deprecated.rs:473:16
-   |
-LL | #[rustc_error] fn main() {} //~ ERROR: compilation successful
-   |                ^^^^^^^^^^^^
-
-error: aborting due to previous error
-

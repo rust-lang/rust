@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 #![allow(warnings)]
-
 pub type ParseResult<T> = Result<T, ()>;
 
 pub enum Item<'a> {     Literal(&'a str),
@@ -35,5 +35,5 @@ pub fn parse<'a, I>(mut s: &str, items: I) -> ParseResult<()>
     Ok(())
 }
 
-#[rustc_error]
-fn main() { } //~ ERROR compilation successful
+
+fn main() { }

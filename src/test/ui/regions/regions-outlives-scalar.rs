@@ -11,7 +11,7 @@
 // Test that scalar values outlive all regions.
 // Rule OutlivesScalar from RFC 1214.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(dead_code)]
 
 struct Foo<'a> {
@@ -19,5 +19,5 @@ struct Foo<'a> {
     y: &'static i32
 }
 
-#[rustc_error]
-fn main() { } //~ ERROR compilation successful
+
+fn main() { }

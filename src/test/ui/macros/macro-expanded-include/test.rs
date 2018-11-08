@@ -9,8 +9,8 @@
 // except according to those terms.
 
 // ignore-emscripten no asm! support
-
-#![feature(asm, rustc_attrs)]
+// compile-pass
+#![feature(asm)]
 #![allow(unused)]
 
 #[macro_use]
@@ -19,5 +19,5 @@ mod foo;
 m!();
 fn f() { n!(); }
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

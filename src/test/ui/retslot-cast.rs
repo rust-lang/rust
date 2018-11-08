@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+
 #![allow(warnings)]
 
 pub fn fail(x: Option<&(Iterator<Item=()>+Send)>)
@@ -29,5 +29,5 @@ pub fn inner(x: Option<&(Iterator<Item=()>+Send)>)
     x
 }
 
-#[rustc_error]
+
 fn main() {}

@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
     macro_rules! m { ($s:stmt;) => { $s } }
     m!(vec![].push(0););
 }

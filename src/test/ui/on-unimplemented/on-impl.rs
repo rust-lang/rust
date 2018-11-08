@@ -11,7 +11,7 @@
 // Test if the on_unimplemented message override works
 
 #![feature(on_unimplemented)]
-#![feature(rustc_attrs)]
+
 
 #[rustc_on_unimplemented = "invalid"]
 trait Index<Idx: ?Sized> {
@@ -27,7 +27,7 @@ impl Index<usize> for [i32] {
     }
 }
 
-#[rustc_error]
+
 fn main() {
     Index::<u32>::index(&[1, 2, 3] as &[i32], 2u32);
     //~^ ERROR E0277

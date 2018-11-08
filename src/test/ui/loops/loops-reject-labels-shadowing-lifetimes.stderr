@@ -100,13 +100,3 @@ LL |         fn meth_bad<'bad>(&self) {
 LL |             'bad: loop { break 'bad; }
    |             ^^^^ lifetime 'bad already in scope
 
-error: compilation successful
-  --> $DIR/loops-reject-labels-shadowing-lifetimes.rs:117:1
-   |
-LL | / pub fn main() { //~ ERROR compilation successful
-LL | |     foo();
-LL | | }
-   | |_^
-
-error: aborting due to previous error
-

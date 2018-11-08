@@ -11,7 +11,7 @@
 // Test that `<F as Foo<'a>>::Type: 'b`, where `trait Foo<'a> { Type:
 // 'a; }`, does not require that `F: 'b`.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(dead_code)]
 
 trait SomeTrait<'a> {
@@ -27,5 +27,5 @@ impl<'a: 'c, 'c, T> SomeTrait<'a> for &'c T where T: SomeTrait<'a> {
     // here, then we would require that `T:'a`, which is too strong.
 }
 
-#[rustc_error]
-fn main() { } //~ ERROR compilation successful
+
+fn main() { }

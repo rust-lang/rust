@@ -10,7 +10,7 @@
 
 // Check that a trait with by-value self is considered object-safe.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(dead_code)]
 #![allow(trivial_casts)]
 
@@ -51,6 +51,6 @@ fn make_quux_explicit<T:Quux>(t: &T) -> &Quux {
     t as &Quux
 }
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
 }

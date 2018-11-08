@@ -11,7 +11,7 @@
 // Various tests related to testing how region inference works
 // with respect to the object receivers.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(warnings)]
 
 trait Foo {
@@ -24,5 +24,5 @@ fn borrowed_receiver_related_lifetimes<'a,'b>(x: &'a (Foo+'b)) -> &'a () {
     x.borrowed()
 }
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

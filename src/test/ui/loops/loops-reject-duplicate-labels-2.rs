@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
 
 // ignore-tidy-linelength
 
@@ -39,7 +39,7 @@ pub fn foo() {
                                          //~^ WARN label name `'lt` shadows a label name that is already in scope
 }
 
-#[rustc_error]
-pub fn main() { //~ ERROR compilation successful
+
+pub fn main() {
     foo();
 }

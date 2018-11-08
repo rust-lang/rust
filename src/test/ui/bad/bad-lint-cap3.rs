@@ -12,10 +12,10 @@
 
 #![warn(unused)]
 #![deny(warnings)]
-#![feature(rustc_attrs)]
-
+// compile-pass
+// skip-codegen
 use std::option; //~ WARN
 
-#[rustc_error]
-fn main() {} //~ ERROR: compilation successful
+
+fn main() {}
 

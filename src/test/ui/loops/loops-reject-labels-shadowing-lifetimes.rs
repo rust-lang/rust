@@ -11,7 +11,7 @@
 // Issue #21633: reject duplicate loop labels in function bodies.
 // This is testing interaction between lifetime-params and labels.
 
-#![feature(rustc_attrs)]
+// compile-pass
 
 #![allow(dead_code, unused_variables)]
 
@@ -113,7 +113,7 @@ fn foo() {
     }
 }
 
-#[rustc_error]
-pub fn main() { //~ ERROR compilation successful
+
+pub fn main() {
     foo();
 }

@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
 
 use std::ops::*;
 
 #[derive(Copy, Clone)]
 struct R(RangeTo<usize>);
 
-#[rustc_error]
-fn main() {} //~ ERROR success
+
+fn main() {}
 

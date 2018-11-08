@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs, get_type_id)]
+// compile-pass
+#![feature(get_type_id)]
 #![allow(dead_code)]
-
 mod foo {
     pub use self::bar::T;
     mod bar {
@@ -31,5 +31,5 @@ fn f() {
     error.get_type_id(); // Regression test for #21670
 }
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

@@ -12,7 +12,7 @@
 // types are required. This test now just compiles fine, since the
 // relevant rules that triggered the overflow were removed.
 
-#![feature(rustc_attrs)]
+// compile-pass
 #![allow(dead_code)]
 
 use std::marker::PhantomData;
@@ -35,5 +35,5 @@ impl<B> Async for Complete<B> {
 
 fn foo(_: Receipt<Complete<()>>) { }
 
-#[rustc_error]
-fn main() { } //~ ERROR compilation successful
+
+fn main() { }

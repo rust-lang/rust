@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 #![allow(dead_code)]
-
 // Here we do not get a coherence conflict because `Baz: Iterator`
 // does not hold and (due to the orphan rules), we can rely on that.
 
@@ -25,5 +25,5 @@ impl Foo<i32> for Baz { }
 
 impl<A:Iterator> Foo<A::Item> for A { }
 
-#[rustc_error]
-fn main() {} //~ ERROR compilation successful
+
+fn main() {}

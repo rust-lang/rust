@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 
 use std::fmt;
 
@@ -16,8 +17,8 @@ use std::fmt;
 // an unsized tuple by transmuting a trait object.
 fn any<T>() -> T { unreachable!() }
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
     let t: &(u8, fmt::Debug) = any();
     println!("{:?}", &t.1);
 }

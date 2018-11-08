@@ -1303,13 +1303,7 @@ warning: unused attribute
 LL | #![proc_macro_derive          = "2500"] //~ WARN unused attribute
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: compilation successful
-  --> $DIR/issue-43106-gating-of-builtin-attrs.rs:844:1
-   |
-LL | / fn main() { //~ ERROR compilation successful
-LL | |     println!("Hello World");
-LL | | }
-   | |_^
+error: invalid windows subsystem `1000`, only `windows` and `console` are allowed
 
 error: aborting due to previous error
 

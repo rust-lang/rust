@@ -10,7 +10,7 @@
 
 // Check that we require that associated types in an impl are well-formed.
 
-#![feature(rustc_attrs)]
+
 #![allow(dead_code)]
 
 pub trait MyHash { }
@@ -28,5 +28,5 @@ impl<T> Foo for T {
     //~^ ERROR the trait bound `T: MyHash` is not satisfied
 }
 
-#[rustc_error]
+
 fn main() { }

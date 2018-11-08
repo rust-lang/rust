@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_attrs)]
+// compile-pass
+// skip-codegen
 
 use std::mem;
 
@@ -34,7 +35,7 @@ fn foo<'a>(x: &'a ()) -> <() as Lifetime<'a>>::Out {
 fn takes_lifetime(_f: for<'a> fn(&'a ()) -> <() as Lifetime<'a>>::Out) {
 }
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
     takes_lifetime(foo);
 }

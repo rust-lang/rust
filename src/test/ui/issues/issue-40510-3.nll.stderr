@@ -14,11 +14,3 @@ LL | |         }
            It represents potential unsoundness in your code.
            This warning will become a hard error in the future.
 
-error: compilation successful
-  --> $DIR/issue-40510-3.rs:25:1
-   |
-LL | fn main() {} //~ ERROR compilation successful
-   | ^^^^^^^^^^^^
-
-error: aborting due to previous error
-

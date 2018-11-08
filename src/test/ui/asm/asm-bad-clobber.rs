@@ -21,11 +21,11 @@
 // ignore-mips
 // ignore-mips64
 
-#![feature(asm, rustc_attrs)]
+#![feature(asm)]
 
 #[cfg(any(target_arch = "x86",
           target_arch = "x86_64"))]
-#[rustc_error]
+
 pub fn main() {
     unsafe {
         // clobber formatted as register input/output

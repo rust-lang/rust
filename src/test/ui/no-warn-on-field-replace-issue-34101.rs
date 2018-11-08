@@ -20,15 +20,15 @@
 // even though the compiler should enforce an invariant that any drop
 // flag for such subcontent of `Foo` will always have the same value
 // as the drop flag for `Foo` itself.
-//
-// This test is structured in a funny way; we cannot test for emission
-// of the warning in question via the lint system, and therefore
-// `#![deny(warnings)]` does nothing to detect it.
-//
-// So instead we use `#[rustc_error]` and put the test into
-// `compile_fail`, where the emitted warning *will* be caught.
 
-#![feature(rustc_attrs)]
+
+
+
+
+
+
+
+// compile-pass
 
 struct Foo(String);
 
@@ -49,8 +49,8 @@ fn outline() {
     f.0 = String::from("bar");
 }
 
-#[rustc_error]
-fn main() { //~ ERROR compilation successful
+
+fn main() {
     inline();
     outline();
 }
