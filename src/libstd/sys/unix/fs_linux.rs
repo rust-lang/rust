@@ -128,7 +128,7 @@ fn copy_sparse(infd: &File, outfd: &File) -> io::Result<u64> {
 
     while pos < len {
         let (next_data, next_hole) = next_sparse_segments(infd, pos)?;
-        lseek(infd, next_data as i64, Wence::Set)?;  // FIXME: EOF (but shouldn't happen)
+        lseek(infd, next_data as i64, Wence::Set)?;
         lseek(outfd, next_data as i64, Wence::Set)?;
 
         let _written = copy_range(infd, outfd, next_hole - next_data)?;
@@ -241,6 +241,33 @@ mod tests {
         cvt(unsafe {libc::ftruncate64(fd.as_raw_fd(), 1024*1024)}).unwrap();
     }
 
+    fn create_sparse_with_data(file: &String, head: u64, tail: u64) -> u64 {
+        let data = "c00lc0d3";
+        let len = 4096u64 * 4096 + data.len() as u64 + tail;
+
+        {
+            let fd = File::create(file).unwrap();
+            cvt(unsafe {libc::ftruncate64(fd.as_raw_fd(), len as i64)}).unwrap();
+        }
+
+        let mut fd = OpenOptions::new()
+            .write(true)
+            .append(false)
+            .open(&file).unwrap();
+
+        fd.seek(SeekFrom::Start(head)).unwrap();
+        write!(fd, "{}", data);
+
+        fd.seek(SeekFrom::Start(1024*4096)).unwrap();
+        write!(fd, "{}", data);
+
+        fd.seek(SeekFrom::Start(4096*4096)).unwrap();
+        write!(fd, "{}", data);
+
+        len
+    }
+
+
     fn tmps(dir: &TempDir) -> (String, String) {
         let file = dir.path().join("sparse.bin");
         let from = dir.path().join("from.txt");
@@ -255,7 +282,7 @@ mod tests {
 
         let dir = tempdir().unwrap();
         let (file, _) = tmps(&dir);
-        create_sparse(&file);
+        create_sparse_with_data(&file, 0, 0);
 
         {
             let fd = File::open(&file).unwrap();
@@ -384,30 +411,17 @@ mod tests {
         let dir = tempdir().unwrap();
         let (file, _) = tmps(&dir);
 
-        let data = "c00lc0d3";
-
-        {
-            let mut fd = File::create(&file).unwrap();
-            write!(fd, "{}", data);
-
-            fd.seek(SeekFrom::Start(1024*4096)).unwrap();
-            write!(fd, "{}", data);
-
-            fd.seek(SeekFrom::Start(4096*4096 - data.len() as u64)).unwrap();
-            write!(fd, "{}", data);
-        }
-
+        let len = create_sparse_with_data(&file, 0, 10) as usize;
         assert!(is_sparse(&File::open(&file).unwrap()).unwrap());
 
         let bytes = read(&file).unwrap();
-        assert!(bytes.len() == 4096*4096);
+        assert!(bytes.len() == len);
 
         let offset = 1024 * 4096;
         assert!(bytes[offset] == b'c');
         assert!(bytes[offset+1] == b'0');
         assert!(bytes[offset+2] == b'0');
         assert!(bytes[offset+3] == b'l');
-        assert!(bytes[offset+data.len()] == 0);
     }
 
 
