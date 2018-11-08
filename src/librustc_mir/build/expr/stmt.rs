@@ -210,6 +210,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // it is usually better to focus on `the_value` rather
                 // than the entirety of block(s) surrounding it.
                 let mut temp_span = expr_span;
+                let mut temp_in_tail_of_block = false;
                 if let ExprKind::Block { body } = expr.kind {
                     if let Some(tail_expr) = &body.expr {
                         let mut expr = tail_expr;
@@ -221,10 +222,25 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             }
                         }
                         temp_span = expr.span;
+                        temp_in_tail_of_block = true;
                     }
                 }
 
-                let temp = this.temp(expr.ty.clone(), temp_span);
+                let temp = {
+                    let mut local_decl = LocalDecl::new_temp(expr.ty.clone(), temp_span);
+                    if temp_in_tail_of_block {
+                        if this.block_context.currently_ignores_tail_results() {
+                            local_decl = local_decl.block_tail(BlockTailInfo {
+                                tail_result_is_ignored: true
+                            });
+                        }
+                    }
+                    let temp = this.local_decls.push(local_decl);
+                    let place = Place::Local(temp);
+                    debug!("created temp {:?} for expr {:?} in block_context: {:?}",
+                           temp, expr, this.block_context);
+                    place
+                };
                 unpack!(block = this.into(&temp, block, expr));
 
                 // Attribute drops of the statement's temps to the
