@@ -55,7 +55,7 @@ impl Server {
             "test server",
             128,
             move |mut msg_receiver, mut msg_sender| {
-                main_loop(true, path, &mut msg_receiver, &mut msg_sender).unwrap()
+                main_loop(true, path, true, &mut msg_receiver, &mut msg_sender).unwrap()
             },
         );
         let res = Server {
