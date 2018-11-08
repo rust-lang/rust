@@ -970,9 +970,13 @@ impl CStr {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
-        let len = sys::strlen(ptr);
-        let ptr = ptr as *const u8;
-        CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
+        if ptr.is_null() {
+            Default::default()
+        } else {
+            let len = sys::strlen(ptr);
+            let ptr = ptr as *const u8;
+            CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
+        }
     }
 
     /// Creates a C string wrapper from a byte slice.
@@ -1327,6 +1331,15 @@ mod tests {
         unsafe {
             assert_eq!(CStr::from_ptr(ptr).to_bytes(), b"123");
             assert_eq!(CStr::from_ptr(ptr).to_bytes_with_nul(), b"123\0");
+        }
+    }
+
+    #[test]
+    fn from_null_ptr() {
+        let ptr = ptr::null();
+        unsafe {
+            assert_eq!(CStr::from_ptr(ptr).to_bytes().len(), 0);
+            assert_eq!(CStr::from_ptr(ptr).to_bytes_with_nul(), b"\0");
         }
     }
 
