@@ -17,6 +17,16 @@ use ptr;
 use sys::cvt;
 use sys::process::process_common::*;
 
+#[cfg(all(not(target_os = "android"), not(target_env = "musl")))]
+const DEFAULT_PATH: &[u8] = b"/bin:/usr/bin";
+// Musl has a different default path.
+#[cfg(target_env = "musl")]
+const DEFAULT_PATH: &[u8] = b"/usr/local/bin:/bin:/usr/bin";
+// Android has a different default path.
+#[cfg(target_os = "android")]
+const DEFAULT_PATH: &[u8] = b"/sbin:/system/sbin:/system/bin:/system/xbin:\
+    /odm/bin:/vendor/bin:/vendor/xbin";
+
 ////////////////////////////////////////////////////////////////////////////////
 // Command
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,14 +145,15 @@ impl Command {
             Some(envp) => {
                 match envp.get_items().iter().find(|var| var.as_bytes().starts_with(b"PATH=")) {
                     Some(p) => &p.as_bytes()[5..],
-                    None => return None,
+                    // If there's no PATH, fall back to the default (which varies by platform).
+                    None => DEFAULT_PATH,
                 }
             },
             // maybe_envp is None if the process isn't changing the parent's env at all.
             None => {
                 match parent_path.as_ref() {
                     Some(p) => p.as_bytes(),
-                    None => return None,
+                    None => DEFAULT_PATH,
                 }
             },
         };
