@@ -1719,14 +1719,14 @@ pub struct Statement<'tcx> {
     pub kind: StatementKind<'tcx>,
 }
 
+// `Statement` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert!(MEM_SIZE_OF_STATEMENT: mem::size_of::<Statement<'_>>() == 56);
+
 impl<'tcx> Statement<'tcx> {
     /// Changes a statement to a nop. This is both faster than deleting instructions and avoids
     /// invalidating statement indices in `Location`s.
     pub fn make_nop(&mut self) {
-        // `Statement` contributes significantly to peak memory usage. Make
-        // sure it doesn't get bigger.
-        static_assert!(STATEMENT_IS_AT_MOST_56_BYTES: mem::size_of::<Statement<'_>>() <= 56);
-
         self.kind = StatementKind::Nop
     }
 
