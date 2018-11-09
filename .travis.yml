@@ -81,9 +81,6 @@ matrix:
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
     - env: INTEGRATION=chronotope/chrono
       if: repo =~ /^rust-lang\/rust-clippy$/ AND branch IN (auto, try)
-  allow_failures:
-  - os: windows
-    env: CARGO_INCREMENTAL=0 BASE_TESTS=true
 # prevent these jobs with default env vars
   exclude:
     - os: linux
