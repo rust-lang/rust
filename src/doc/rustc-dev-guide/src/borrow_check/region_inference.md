@@ -9,7 +9,7 @@ deprecated once they become the standard kind of lifetime.)
 
 The MIR-based region analysis consists of two major functions:
 
-- `replace_regions_in_mir`, invoked first, has two jobs:
+- [`replace_regions_in_mir`], invoked first, has two jobs:
   - First, it finds the set of regions that appear within the
     signature of the function (e.g., `'a` in `fn foo<'a>(&'a u32) {
     ... }`). These are called the "universal" or "free" regions – in
@@ -21,21 +21,28 @@ The MIR-based region analysis consists of two major functions:
     not of much interest. The intention is that – eventually – they
     will be "erased regions" (i.e., no information at all), since we
     won't be doing lexical region inference at all.
-- `compute_regions`, invoked second: this is given as argument the
+- [`compute_regions`], invoked second: this is given as argument the
   results of move analysis. It has the job of computing values for all
   the inference variables that `replace_regions_in_mir` introduced.
   - To do that, it first runs the [MIR type checker](#mirtypeck). This
     is basically a normal type-checker but specialized to MIR, which
-    is much simpler than full Rust of course. Running the MIR type
+    is much simpler than full Rust, of course. Running the MIR type
     checker will however create **outlives constraints** between
     region variables (e.g., that one variable must outlive another
     one) to reflect the subtyping relationships that arise.
   - It also adds **liveness constraints** that arise from where variables
     are used.
-  - More details to come, though the [NLL RFC] also includes fairly thorough
-    (and hopefully readable) coverage.
+  - After this, we create a [`RegionInferenceContext`] with the constraints we
+    have computed and the inference variables we introduced and use the
+    [`solve`] method to infer values for all region inference varaibles.
+  - The [NLL RFC] also includes fairly thorough (and hopefully readable)
+    coverage.
 
 [fvb]: ../appendix/background.html#free-vs-bound
+[`replace_regions_in_mir`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/fn.replace_regions_in_mir.html
+[`compute_regions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/fn.compute_regions.html
+[`RegionInferenceContext`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html
+[`solve`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/region_infer/struct.RegionInferenceContext.html#method.solve
 [NLL RFC]: http://rust-lang.github.io/rfcs/2094-nll.html
 
 ## Universal regions
