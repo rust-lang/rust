@@ -12,10 +12,9 @@
 
 # check.rs
 
-Within the check phase of type check, we check each item one at a time
+Within the check phase of type checking, we check each item one at a time
 (bodies of function expressions are checked as part of the containing
-function).  Inference is used to supply types wherever they are
-unknown.
+function).  Inference is used to supply types wherever they are unknown.
 
 By far the most complex case is checking the body of a function. This
 can be broken down into several distinct phases:
@@ -1026,9 +1025,11 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     let mut fcx = FnCtxt::new(inherited, param_env, body.value.id);
     *fcx.ps.borrow_mut() = UnsafetyState::function(fn_sig.unsafety, fn_id);
 
+    let fn_def_id = fcx.tcx.hir.local_def_id(fn_id);
     let declared_ret_ty = fn_sig.output();
     fcx.require_type_is_sized(declared_ret_ty, decl.output.span(), traits::SizedReturnType);
-    let revealed_ret_ty = fcx.instantiate_opaque_types_from_return_value(fn_id, &declared_ret_ty);
+    let revealed_ret_ty = fcx.instantiate_opaque_types_from_return_value(
+        fn_def_id, &declared_ret_ty);
     fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(revealed_ret_ty)));
     fn_sig = fcx.tcx.mk_fn_sig(
         fn_sig.inputs().iter().cloned(),
@@ -2248,10 +2249,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// `InferCtxt::instantiate_opaque_types` for more details.
     fn instantiate_opaque_types_from_return_value<T: TypeFoldable<'tcx>>(
         &self,
-        parent_id: ast::NodeId,
+        parent_def_id: DefId,
         value: &T,
     ) -> T {
-        let parent_def_id = self.tcx.hir.local_def_id(parent_id);
         debug!("instantiate_opaque_types_from_return_value(parent_def_id={:?}, value={:?})",
                parent_def_id,
                value);
@@ -5274,7 +5274,9 @@ pub fn check_bounds_are_used<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if own_counts.types == 0 {
         return;
     }
+
     // Make a vector of booleans initially false, set to true when used.
+    // FIXME: use `BitSet` here instead.
     let mut types_used = vec![false; own_counts.types];
 
     for leaf_ty in ty.walk() {

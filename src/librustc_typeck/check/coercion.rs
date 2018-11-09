@@ -68,7 +68,7 @@ use rustc::infer::{Coercion, InferResult, InferOk};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
-use rustc::ty::{self, TypeAndMut, Ty, ClosureSubsts};
+use rustc::ty::{self, DefIdTree, TypeAndMut, Ty, ClosureSubsts};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
@@ -536,9 +536,6 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 }
             }
         })?;
-
-        // Instantiate opaque type in tables.
-        self.fcx.instantiate_opaque_types_from_return_value(self., &coerce_source);
 
         // Create the obligations for `Source` satisfying the target predicates.
         let cause = ObligationCause::misc(self.cause.span, self.fcx.body_id);

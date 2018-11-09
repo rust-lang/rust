@@ -1361,7 +1361,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         let span = path.span;
         match path.def {
             Def::Existential(did) => {
-                // check for desugared impl trait
+                // Check for desugared impl trait.
                 assert!(ty::is_impl_trait_defn(tcx, did).is_none());
                 let item_segment = path.segments.split_last().unwrap();
                 self.prohibit_generics(item_segment.1);
@@ -1398,8 +1398,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 tcx.mk_ty_param(index, tcx.hir.name(node_id).as_interned_str())
             }
             Def::SelfTy(_, Some(def_id)) => {
-                // Self in impl (we know the concrete type).
-
+                // Self in impl. (We know the concrete type.)
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_generics(&path.segments);
 

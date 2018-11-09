@@ -1365,6 +1365,7 @@ fn find_existential_constraints<'a, 'tcx>(
         fn nested_visit_map<'this>(&'this mut self) -> intravisit::NestedVisitorMap<'this, 'tcx> {
             intravisit::NestedVisitorMap::All(&self.tcx.hir)
         }
+
         fn visit_item(&mut self, it: &'tcx Item) {
             let def_id = self.tcx.hir.local_def_id(it.id);
             // The existential type itself or its children are not within its reveal scope.
@@ -1373,6 +1374,7 @@ fn find_existential_constraints<'a, 'tcx>(
                 intravisit::walk_item(self, it);
             }
         }
+
         fn visit_impl_item(&mut self, it: &'tcx ImplItem) {
             let def_id = self.tcx.hir.local_def_id(it.id);
             // The existential type itself or its children are not within its reveal scope.
@@ -1381,6 +1383,7 @@ fn find_existential_constraints<'a, 'tcx>(
                 intravisit::walk_impl_item(self, it);
             }
         }
+
         fn visit_trait_item(&mut self, it: &'tcx TraitItem) {
             let def_id = self.tcx.hir.local_def_id(it.id);
             self.check(def_id);
