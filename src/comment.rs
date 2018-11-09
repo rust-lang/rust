@@ -626,7 +626,7 @@ impl<'a> CommentRewrite<'a> {
                     _ if self.code_block_buffer.is_empty() => String::new(),
                     _ => {
                         let mut config = self.fmt.config.clone();
-                        config.set().format_doc_comments(false);
+                        config.set().wrap_comments(false);
                         match ::format_code_block(&self.code_block_buffer, &config) {
                             Some(ref s) => trim_custom_comment_prefix(&s.snippet),
                             None => trim_custom_comment_prefix(&self.code_block_buffer),
@@ -798,16 +798,9 @@ fn trim_custom_comment_prefix(s: &str) -> String {
         .map(|line| {
             let left_trimmed = line.trim_left();
             if left_trimmed.starts_with(RUSTFMT_CUSTOM_COMMENT_PREFIX) {
-                let orig = left_trimmed.trim_left_matches(RUSTFMT_CUSTOM_COMMENT_PREFIX);
-                // due to comment wrapping, a line that was originally behind `#` is split over
-                // multiple lines, which needs then to be prefixed with a `#`
-                if !orig.trim_left().starts_with("# ") {
-                    Cow::from(format!("# {}", orig))
-                } else {
-                    Cow::from(orig)
-                }
+                left_trimmed.trim_left_matches(RUSTFMT_CUSTOM_COMMENT_PREFIX)
             } else {
-                Cow::from(line)
+                line
             }
         })
         .collect::<Vec<_>>()
