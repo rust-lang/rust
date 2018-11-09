@@ -12,14 +12,14 @@ interface FileSystemEdit {
 
 export interface SourceChange {
     label: string;
-    SourceFileNodeEdits: lc.TextDocumentEdit[];
+    sourceFileEdits: lc.TextDocumentEdit[];
     fileSystemEdits: FileSystemEdit[];
     cursorPosition?: lc.TextDocumentPositionParams;
 }
 
 export async function handle(change: SourceChange) {
     const wsEdit = new vscode.WorkspaceEdit();
-    for (const sourceEdit of change.SourceFileNodeEdits) {
+    for (const sourceEdit of change.sourceFileEdits) {
         const uri = Server.client.protocol2CodeConverter.asUri(
             sourceEdit.textDocument.uri
         );
