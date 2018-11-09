@@ -281,23 +281,21 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
     // Note that this set is expected to be small - only upvars from closures
     // would have a chance of erroneously adding non-user-defined mutable vars
     // to the set.
-    let temporary_used_locals: FxHashSet<Local> = mbcx
-        .used_mut
-        .iter()
+    let temporary_used_locals: FxHashSet<Local> = mbcx.used_mut.iter()
         .filter(|&local| mbcx.mir.local_decls[*local].is_user_variable.is_none())
         .cloned()
         .collect();
-    mbcx.gather_used_muts(temporary_used_locals);
+    // For the remaining unused locals that are marked as mutable, we avoid linting any that
+    // were never initialized. These locals may have been removed as unreachable code; or will be
+    // linted as unused variables.
+    let unused_mut_locals = mbcx.mir.mut_vars_iter()
+        .filter(|local| !mbcx.used_mut.contains(local))
+        .collect();
+    mbcx.gather_used_muts(temporary_used_locals, unused_mut_locals);
 
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
-
     let used_mut = mbcx.used_mut;
-
-    for local in mbcx
-        .mir
-        .mut_vars_and_args_iter()
-        .filter(|local| !used_mut.contains(local))
-    {
+    for local in mbcx.mir.mut_vars_and_args_iter().filter(|local| !used_mut.contains(local)) {
         if let ClearCrossCrate::Set(ref vsi) = mbcx.mir.source_scope_local_data {
             let local_decl = &mbcx.mir.local_decls[local];
 

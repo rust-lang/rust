@@ -304,6 +304,20 @@ impl<'tcx> Mir<'tcx> {
         })
     }
 
+    /// Returns an iterator over all user-declared mutable locals.
+    #[inline]
+    pub fn mut_vars_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
+        (self.arg_count + 1..self.local_decls.len()).filter_map(move |index| {
+            let local = Local::new(index);
+            let decl = &self.local_decls[local];
+            if decl.is_user_variable.is_some() && decl.mutability == Mutability::Mut {
+                Some(local)
+            } else {
+                None
+            }
+        })
+    }
+
     /// Returns an iterator over all user-declared mutable arguments and locals.
     #[inline]
     pub fn mut_vars_and_args_iter<'a>(&'a self) -> impl Iterator<Item = Local> + 'a {
