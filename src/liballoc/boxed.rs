@@ -77,7 +77,9 @@ use core::iter::FusedIterator;
 use core::marker::{Unpin, Unsize};
 use core::mem;
 use core::pin::Pin;
-use core::ops::{CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Generator, GeneratorState};
+use core::ops::{
+    CoerceUnsized, DispatchFromDyn, Deref, DerefMut, Receiver, Generator, GeneratorState
+};
 use core::ptr::{self, NonNull, Unique};
 use core::task::{LocalWaker, Poll};
 
@@ -581,6 +583,9 @@ impl<T: ?Sized> DerefMut for Box<T> {
         &mut **self
     }
 }
+
+#[unstable(feature = "receiver_trait", issue = "0")]
+impl<T: ?Sized> Receiver for Box<T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator + ?Sized> Iterator for Box<I> {

@@ -38,6 +38,7 @@ pub struct Autoderef<'a, 'gcx: 'tcx, 'tcx: 'a> {
     obligations: Vec<traits::PredicateObligation<'tcx>>,
     at_start: bool,
     include_raw_pointers: bool,
+    require_receiver_trait: bool,
     span: Span,
 }
 
@@ -136,11 +137,30 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
                                                                   trait_ref,
                                                                   Ident::from_str("Target"),
                                                               ),
-                                                              cause,
+                                                              cause.clone(),
                                                               0,
                                                               &mut self.obligations);
 
         debug!("overloaded_deref_ty({:?}) = {:?}", ty, normalized_ty);
+
+        if self.require_receiver_trait {
+            // cur_ty: Receiver
+            let trait_ref = TraitRef {
+                def_id: tcx.lang_items().receiver_trait()?,
+                substs: tcx.mk_substs_trait(self.cur_ty, &[]),
+            };
+
+            let obligation = traits::Obligation::new(
+                cause.clone(),
+                self.fcx.param_env,
+                trait_ref.to_predicate()
+            );
+
+            if !self.fcx.predicate_may_hold(&obligation) {
+                debug!("overloaded_deref_ty: `Receiver` trait not implemented");
+                return None;
+            }
+        }
 
         Some(self.fcx.resolve_type_vars_if_possible(&normalized_ty))
     }
@@ -211,6 +231,14 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         self
     }
 
+    /// require the `Receiver` trait, a subtrait of `Deref`
+    /// this is used to make sure only stdlib receiver types like `&T` and `Rc<T>`
+    /// are allowed without #![feature(arbitrary_self_types)]
+    pub fn require_receiver_trait(mut self) -> Self {
+        self.require_receiver_trait = true;
+        self
+    }
+
     pub fn finalize(self) {
         let fcx = self.fcx;
         fcx.register_predicates(self.into_obligations());
@@ -230,6 +258,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             obligations: vec![],
             at_start: true,
             include_raw_pointers: false,
+            require_receiver_trait: false,
             span,
         }
     }

@@ -91,7 +91,7 @@
 
 use fmt;
 use marker::Sized;
-use ops::{Deref, DerefMut, CoerceUnsized, DispatchFromDyn};
+use ops::{Deref, DerefMut, Receiver, CoerceUnsized, DispatchFromDyn};
 
 #[doc(inline)]
 pub use marker::Unpin;
@@ -291,6 +291,9 @@ where
         Pin::get_mut(Pin::as_mut(self))
     }
 }
+
+#[unstable(feature = "receiver_trait", issue = "0")]
+impl<P: Receiver> Receiver for Pin<P> {}
 
 #[unstable(feature = "pin", issue = "49150")]
 impl<P: fmt::Debug> fmt::Debug for Pin<P> {

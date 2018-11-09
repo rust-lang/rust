@@ -104,6 +104,7 @@
 #![feature(ptr_internals)]
 #![feature(ptr_offset_from)]
 #![feature(rustc_attrs)]
+#![feature(receiver_trait)]
 #![feature(specialization)]
 #![feature(split_ascii_whitespace)]
 #![feature(staged_api)]

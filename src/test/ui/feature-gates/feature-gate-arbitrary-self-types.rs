@@ -8,20 +8,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::rc::Rc;
+use std::{
+    ops::Deref,
+};
+
+struct Ptr<T: ?Sized>(Box<T>);
+
+impl<T: ?Sized> Deref for Ptr<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &*self.0
+    }
+}
 
 trait Foo {
-    fn foo(self: Rc<Box<Self>>); //~ ERROR arbitrary `self` types are unstable
+    fn foo(self: Ptr<Self>); //~ ERROR `Ptr<Self>` cannot be used as the type of `self` without
 }
 
 struct Bar;
 
 impl Foo for Bar {
-    fn foo(self: Rc<Box<Self>>) {} //~ ERROR arbitrary `self` types are unstable
+    fn foo(self: Ptr<Self>) {} //~ ERROR `Ptr<Bar>` cannot be used as the type of `self` without
 }
 
 impl Bar {
-    fn bar(self: Box<Rc<Self>>) {} //~ ERROR arbitrary `self` types are unstable
+    fn bar(self: Box<Ptr<Self>>) {} //~ ERROR `std::boxed::Box<Ptr<Bar>>` cannot be used as the
 }
 
 fn main() {}

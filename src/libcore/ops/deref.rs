@@ -177,3 +177,18 @@ pub trait DerefMut: Deref {
 impl<T: ?Sized> DerefMut for &mut T {
     fn deref_mut(&mut self) -> &mut T { *self }
 }
+
+/// A subtrait of `Deref` that indicates that a struct can be used as a method receiver, without the
+/// `arbitrary_self_types` feature. This is implemented by stdlib pointer types like `Box<T>`,
+/// `Rc<T>`, `&T`, and `Pin<P>`.
+#[cfg_attr(not(stage0), lang = "receiver")]
+#[unstable(feature = "receiver_trait", issue = "0")]
+pub trait Receiver: Deref {
+    // Empty.
+}
+
+#[unstable(feature = "receiver_trait", issue = "0")]
+impl<T: ?Sized> Receiver for &T {}
+
+#[unstable(feature = "receiver_trait", issue = "0")]
+impl<T: ?Sized> Receiver for &mut T {}

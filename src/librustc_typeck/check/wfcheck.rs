@@ -9,13 +9,13 @@
 // except according to those terms.
 
 use check::{Inherited, FnCtxt};
+use check::autoderef::Autoderef;
 use constrained_type_params::{identify_constrained_type_params, Parameter};
 
 use hir::def_id::DefId;
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Lift, Ty, TyCtxt, TyKind, GenericParamDefKind, TypeFoldable};
 use rustc::ty::subst::{Subst, Substs};
-use rustc::ty::util::ExplicitSelf;
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
 use rustc::infer::opaque_types::may_define_existential_type;
@@ -751,61 +751,91 @@ fn check_method_receiver<'fcx, 'gcx, 'tcx>(fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
         &ty::Binder::bind(self_arg_ty)
     );
 
-    let mut autoderef = fcx.autoderef(span, self_arg_ty).include_raw_pointers();
+    if fcx.tcx.features().arbitrary_self_types {
+        let mut autoderef = fcx.autoderef(span, self_arg_ty)
+            .include_raw_pointers();
 
-    loop {
-        if let Some((potential_self_ty, _)) = autoderef.next() {
-            debug!("check_method_receiver: potential self type `{:?}` to match `{:?}`",
-                potential_self_ty, self_ty);
+        if let Some(potential_self_ty) = receiver_derefs_to_self(fcx, &mut autoderef, self_ty) {
+            autoderef.finalize();
 
-            if fcx.infcx.can_eq(fcx.param_env, self_ty, potential_self_ty).is_ok() {
-                autoderef.finalize();
-                if let Some(mut err) = fcx.demand_eqtype_with_origin(
-                    &cause, self_ty, potential_self_ty) {
-                    err.emit();
-                }
-                break
+            if let Some(mut err) = fcx.demand_eqtype_with_origin(
+                &cause, self_ty, potential_self_ty) {
+                err.emit();
             }
         } else {
+            // report error, arbitrary_self_types was enabled
             fcx.tcx.sess.diagnostic().mut_span_err(
-                span, &format!("invalid `self` type: {:?}", self_arg_ty))
-            .note(&format!("type must be `{:?}` or a type that dereferences to it", self_ty))
+                span, &format!("invalid `self` type: {:?}", self_arg_ty)
+            ).note(&format!("type must be `{:?}` or a type that dereferences to it", self_ty))
             .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
             .code(DiagnosticId::Error("E0307".into()))
             .emit();
-            return
         }
-    }
+    } else {
+        let mut autoderef = fcx.autoderef(span, self_arg_ty)
+            .require_receiver_trait();
 
-    let is_self_ty = |ty| fcx.infcx.can_eq(fcx.param_env, self_ty, ty).is_ok();
-    let self_kind = ExplicitSelf::determine(self_arg_ty, is_self_ty);
+        if let Some(potential_self_ty) = receiver_derefs_to_self(fcx, &mut autoderef, self_ty) {
+            // receiver works fine
+            autoderef.finalize();
+            if let Some(mut err) = fcx.demand_eqtype_with_origin(
+                &cause, self_ty, potential_self_ty) {
+                err.emit();
+            }
+        } else {
+            // try again using `arbitrary_self_types` rules, to get a better error message
+            // don't require receiver trait, and allow raw pointer receivers
 
-    if !fcx.tcx.features().arbitrary_self_types {
-        match self_kind {
-            ExplicitSelf::ByValue |
-            ExplicitSelf::ByReference(_, _) |
-            ExplicitSelf::ByBox => (),
+            let mut autoderef = fcx.autoderef(span, self_arg_ty)
+                .include_raw_pointers();
 
-            ExplicitSelf::ByRawPointer(_) => {
+            if let Some(_) = receiver_derefs_to_self(fcx, &mut autoderef, self_ty) {
+                // report error, would have worked with arbitrary_self_types
                 feature_gate::feature_err(
                     &fcx.tcx.sess.parse_sess,
                     "arbitrary_self_types",
                     span,
                     GateIssue::Language,
-                    "raw pointer `self` is unstable")
+                    &format!(
+                        "`{}` cannot be used as the type of `self` without \
+                         the `arbitrary_self_types` feature",
+                        self_arg_ty,
+                    ),
+                ).help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
+                .emit();
+            } else {
+                // report error, would not have worked with arbitrary_self_types
+                fcx.tcx.sess.diagnostic().mut_span_err(
+                    span, &format!("invalid `self` type: {:?}", self_arg_ty)
+                ).note(&format!("type must be `{:?}` or a type that dereferences to it", self_ty))
                 .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
+                .code(DiagnosticId::Error("E0307".into()))
                 .emit();
             }
+        }
+    }
+}
 
-            ExplicitSelf::Other => {
-                feature_gate::feature_err(
-                    &fcx.tcx.sess.parse_sess,
-                    "arbitrary_self_types",
-                    span,
-                    GateIssue::Language,"arbitrary `self` types are unstable")
-                .help("consider changing to `self`, `&self`, `&mut self`, or `self: Box<Self>`")
-                .emit();
+/// Returns true if the Autoderef's final type can equal self_ty
+fn receiver_derefs_to_self<'fcx, 'tcx, 'gcx>(
+    fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
+    autoderef: &mut Autoderef<'fcx, 'gcx, 'tcx>,
+    self_ty: Ty<'tcx>
+) -> Option<Ty<'tcx>> {
+    loop {
+        if let Some((potential_self_ty, _)) = autoderef.next() {
+            debug!("receiver_derefs_to_self: potential self type `{:?}` to match `{:?}`",
+                potential_self_ty, self_ty);
+
+            let can_eq_self = fcx.infcx.can_eq(
+                fcx.param_env, self_ty, potential_self_ty
+            ).is_ok();
+
+            if can_eq_self {
+                return Some(potential_self_ty)
             }
+        } else {
+            return None
         }
     }
 }
