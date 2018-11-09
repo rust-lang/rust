@@ -23,7 +23,7 @@ use glue;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{HasDataLayout, LayoutOf};
+use rustc::ty::layout::LayoutOf;
 use rustc::hir;
 use syntax::ast;
 use syntax::symbol::Symbol;
@@ -690,28 +690,14 @@ fn copy_intrinsic(
     let cx = bx.cx;
     let (size, align) = cx.size_and_align_of(ty);
     let size = C_usize(cx, size.bytes());
-    let align = C_i32(cx, align.abi() as i32);
-
-    let operation = if allow_overlap {
-        "memmove"
-    } else {
-        "memcpy"
-    };
-
-    let name = format!("llvm.{}.p0i8.p0i8.i{}", operation,
-                       cx.data_layout().pointer_size.bits());
-
+    let align = align.abi();
     let dst_ptr = bx.pointercast(dst, Type::i8p(cx));
     let src_ptr = bx.pointercast(src, Type::i8p(cx));
-    let llfn = cx.get_intrinsic(&name);
-
-    bx.call(llfn,
-        &[dst_ptr,
-        src_ptr,
-        bx.mul(size, count),
-        align,
-        C_bool(cx, volatile)],
-        None)
+    if allow_overlap {
+        bx.memmove(dst_ptr, align, src_ptr, align, bx.mul(size, count), volatile)
+    } else {
+        bx.memcpy(dst_ptr, align, src_ptr, align, bx.mul(size, count), volatile)
+    }
 }
 
 fn memset_intrinsic(

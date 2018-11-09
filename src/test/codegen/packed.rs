@@ -65,7 +65,7 @@ pub struct BigPacked2 {
 pub fn call_pkd1(f: fn() -> Array) -> BigPacked1 {
 // CHECK: [[ALLOCA:%[_a-z0-9]+]] = alloca %Array
 // CHECK: call void %{{.*}}(%Array* noalias nocapture sret dereferenceable(32) [[ALLOCA]])
-// CHECK: call void @llvm.memcpy.{{.*}}(i8* align 1 %{{.*}}, i8* align 1 %{{.*}}, i{{[0-9]+}} 32, i1 false)
+// CHECK: call void @llvm.memcpy.{{.*}}(i8* align 1 %{{.*}}, i8* align 4 %{{.*}}, i{{[0-9]+}} 32, i1 false)
     // check that calls whose destination is a field of a packed struct
     // go through an alloca rather than calling the function with an
     // unaligned destination.
@@ -77,7 +77,7 @@ pub fn call_pkd1(f: fn() -> Array) -> BigPacked1 {
 pub fn call_pkd2(f: fn() -> Array) -> BigPacked2 {
 // CHECK: [[ALLOCA:%[_a-z0-9]+]] = alloca %Array
 // CHECK: call void %{{.*}}(%Array* noalias nocapture sret dereferenceable(32) [[ALLOCA]])
-// CHECK: call void @llvm.memcpy.{{.*}}(i8* align 2 %{{.*}}, i8* align 2 %{{.*}}, i{{[0-9]+}} 32, i1 false)
+// CHECK: call void @llvm.memcpy.{{.*}}(i8* align 2 %{{.*}}, i8* align 4 %{{.*}}, i{{[0-9]+}} 32, i1 false)
     // check that calls whose destination is a field of a packed struct
     // go through an alloca rather than calling the function with an
     // unaligned destination.

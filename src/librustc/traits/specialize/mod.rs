@@ -396,7 +396,10 @@ fn to_pretty_impl_header(tcx: TyCtxt<'_, '_, '_>, impl_def_id: DefId) -> Option<
     if !substs.is_noop() {
         types_without_default_bounds.extend(substs.types());
         w.push('<');
-        w.push_str(&substs.iter().map(|k| k.to_string()).collect::<Vec<_>>().join(", "));
+        w.push_str(&substs.iter()
+            .map(|k| k.to_string())
+            .filter(|k| &k[..] != "'_")
+            .collect::<Vec<_>>().join(", "));
         w.push('>');
     }
 

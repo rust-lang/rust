@@ -695,7 +695,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_lit(&self, sp: Span, lit: ast::LitKind) -> P<ast::Expr> {
-        self.expr(sp, ast::ExprKind::Lit(P(respan(sp, lit))))
+        self.expr(sp, ast::ExprKind::Lit(respan(sp, lit)))
     }
     fn expr_usize(&self, span: Span, i: usize) -> P<ast::Expr> {
         self.expr_lit(span, ast::LitKind::Int(i as u128,

@@ -225,9 +225,10 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 // ...and then memcpy it to the intended destination.
                 base::call_memcpy(bx,
                                   bx.pointercast(dst.llval, Type::i8p(cx)),
+                                  self.layout.align,
                                   bx.pointercast(llscratch, Type::i8p(cx)),
+                                  scratch_align,
                                   C_usize(cx, self.layout.size.bytes()),
-                                  self.layout.align.min(scratch_align),
                                   MemFlags::empty());
 
                 bx.lifetime_end(llscratch, scratch_size);

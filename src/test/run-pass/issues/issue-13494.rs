@@ -16,6 +16,7 @@
 // expose is still present.
 
 #![feature(mpsc_select)]
+#![allow(deprecated)]
 
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::thread;

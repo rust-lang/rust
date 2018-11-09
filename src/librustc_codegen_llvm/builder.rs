@@ -781,6 +781,24 @@ impl Builder<'a, 'll, 'tcx> {
         }
     }
 
+    pub fn memcpy(&self, dst: &'ll Value, dst_align: u64,
+                  src: &'ll Value, src_align: u64,
+                  size: &'ll Value, is_volatile: bool) -> &'ll Value {
+        unsafe {
+            llvm::LLVMRustBuildMemCpy(self.llbuilder, dst, dst_align as c_uint,
+                                      src, src_align as c_uint, size, is_volatile)
+        }
+    }
+
+    pub fn memmove(&self, dst: &'ll Value, dst_align: u64,
+                  src: &'ll Value, src_align: u64,
+                  size: &'ll Value, is_volatile: bool) -> &'ll Value {
+        unsafe {
+            llvm::LLVMRustBuildMemMove(self.llbuilder, dst, dst_align as c_uint,
+                                      src, src_align as c_uint, size, is_volatile)
+        }
+    }
+
     pub fn minnum(&self, lhs: &'ll Value, rhs: &'ll Value) -> &'ll Value {
         self.count_insn("minnum");
         unsafe {
