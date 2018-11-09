@@ -43,7 +43,7 @@
 	url = https://github.com/rust-lang/rust-by-example.git
 [submodule "src/llvm-emscripten"]
 	path = src/llvm-emscripten
-	url = https://github.com/kripken/emscripten-fastcomp
+	url = https://github.com/rust-lang/llvm.git
 [submodule "src/stdsimd"]
 	path = src/stdsimd
 	url = https://github.com/rust-lang-nursery/stdsimd.git
