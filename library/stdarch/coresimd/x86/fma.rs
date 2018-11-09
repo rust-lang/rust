@@ -29,7 +29,7 @@ use stdsimd_test::assert_instr;
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fmadd_pd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmadd213pd))]
+#[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fmadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     vfmaddpd(a, b, c)
@@ -41,7 +41,7 @@ pub unsafe fn _mm_fmadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fmadd_pd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmadd213pd))]
+#[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_fmadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     vfmaddpd256(a, b, c)
@@ -53,7 +53,7 @@ pub unsafe fn _mm256_fmadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fmadd_ps)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmadd213ps))]
+#[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fmadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
     vfmaddps(a, b, c)
@@ -65,7 +65,7 @@ pub unsafe fn _mm_fmadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fmadd_ps)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmadd213ps))]
+#[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_fmadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     vfmaddps256(a, b, c)
@@ -79,7 +79,7 @@ pub unsafe fn _mm256_fmadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fmadd_sd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmadd213sd))]
+#[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fmadd_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     vfmaddsd(a, b, c)
@@ -93,7 +93,7 @@ pub unsafe fn _mm_fmadd_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fmadd_ss)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmadd213ss))]
+#[cfg_attr(test, assert_instr(vfmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fmadd_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
     vfmaddss(a, b, c)
@@ -106,7 +106,7 @@ pub unsafe fn _mm_fmadd_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fmaddsub_pd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmaddsub213pd))]
+#[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fmaddsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     vfmaddsubpd(a, b, c)
@@ -119,7 +119,7 @@ pub unsafe fn _mm_fmaddsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fmaddsub_pd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmaddsub213pd))]
+#[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_fmaddsub_pd(
     a: __m256d, b: __m256d, c: __m256d,
@@ -134,7 +134,7 @@ pub unsafe fn _mm256_fmaddsub_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fmaddsub_ps)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmaddsub213ps))]
+#[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fmaddsub_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
     vfmaddsubps(a, b, c)
@@ -147,7 +147,7 @@ pub unsafe fn _mm_fmaddsub_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fmaddsub_ps)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmaddsub213ps))]
+#[cfg_attr(test, assert_instr(vfmaddsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_fmaddsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     vfmaddsubps256(a, b, c)
@@ -159,7 +159,7 @@ pub unsafe fn _mm256_fmaddsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fmsub_pd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmsub213pd))]
+#[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fmsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     vfmsubpd(a, b, c)
@@ -171,7 +171,7 @@ pub unsafe fn _mm_fmsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fmsub_pd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmsub213pd))]
+#[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_fmsub_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     vfmsubpd256(a, b, c)
@@ -209,7 +209,7 @@ pub unsafe fn _mm256_fmsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fmsub_sd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmsub213sd))]
+#[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fmsub_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     vfmsubsd(a, b, c)
@@ -223,7 +223,7 @@ pub unsafe fn _mm_fmsub_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fmsub_ss)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmsub213ss))]
+#[cfg_attr(test, assert_instr(vfmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fmsub_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
     vfmsubss(a, b, c)
@@ -236,7 +236,7 @@ pub unsafe fn _mm_fmsub_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fmsubadd_pd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmsubadd213pd))]
+#[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fmsubadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     vfmsubaddpd(a, b, c)
@@ -249,7 +249,7 @@ pub unsafe fn _mm_fmsubadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fmsubadd_pd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmsubadd213pd))]
+#[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_fmsubadd_pd(
     a: __m256d, b: __m256d, c: __m256d,
@@ -264,7 +264,7 @@ pub unsafe fn _mm256_fmsubadd_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fmsubadd_ps)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmsubadd213ps))]
+#[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fmsubadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
     vfmsubaddps(a, b, c)
@@ -277,7 +277,7 @@ pub unsafe fn _mm_fmsubadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fmsubadd_ps)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfmsubadd213ps))]
+#[cfg_attr(test, assert_instr(vfmsubadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_fmsubadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     vfmsubaddps256(a, b, c)
@@ -289,7 +289,7 @@ pub unsafe fn _mm256_fmsubadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fnmadd_pd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfnmadd213pd))]
+#[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fnmadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     vfnmaddpd(a, b, c)
@@ -301,7 +301,7 @@ pub unsafe fn _mm_fnmadd_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fnmadd_pd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfnmadd213pd))]
+#[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_fnmadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     vfnmaddpd256(a, b, c)
@@ -313,7 +313,7 @@ pub unsafe fn _mm256_fnmadd_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fnmadd_ps)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfnmadd213ps))]
+#[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fnmadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
     vfnmaddps(a, b, c)
@@ -325,7 +325,7 @@ pub unsafe fn _mm_fnmadd_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fnmadd_ps)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfnmadd213ps))]
+#[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_fnmadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     vfnmaddps256(a, b, c)
@@ -339,7 +339,7 @@ pub unsafe fn _mm256_fnmadd_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fnmadd_sd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfnmadd213sd))]
+#[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fnmadd_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     vfnmaddsd(a, b, c)
@@ -353,7 +353,7 @@ pub unsafe fn _mm_fnmadd_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fnmadd_ss)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfnmadd213ss))]
+#[cfg_attr(test, assert_instr(vfnmadd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fnmadd_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
     vfnmaddss(a, b, c)
@@ -366,7 +366,7 @@ pub unsafe fn _mm_fnmadd_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fnmsub_pd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfnmsub213pd))]
+#[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fnmsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     vfnmsubpd(a, b, c)
@@ -379,7 +379,7 @@ pub unsafe fn _mm_fnmsub_pd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fnmsub_pd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfnmsub213pd))]
+#[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_fnmsub_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
     vfnmsubpd256(a, b, c)
@@ -392,7 +392,7 @@ pub unsafe fn _mm256_fnmsub_pd(a: __m256d, b: __m256d, c: __m256d) -> __m256d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fnmsub_ps)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfnmsub213ps))]
+#[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fnmsub_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
     vfnmsubps(a, b, c)
@@ -405,7 +405,7 @@ pub unsafe fn _mm_fnmsub_ps(a: __m128, b: __m128, c: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_fnmsub_ps)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfnmsub213ps))]
+#[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_fnmsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
     vfnmsubps256(a, b, c)
@@ -420,7 +420,7 @@ pub unsafe fn _mm256_fnmsub_ps(a: __m256, b: __m256, c: __m256) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fnmsub_sd)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfnmsub213sd))]
+#[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fnmsub_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
     vfnmsubsd(a, b, c)
@@ -435,7 +435,7 @@ pub unsafe fn _mm_fnmsub_sd(a: __m128d, b: __m128d, c: __m128d) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_fnmsub_ss)
 #[inline]
 #[target_feature(enable = "fma")]
-#[cfg_attr(test, assert_instr(vfnmsub213ss))]
+#[cfg_attr(test, assert_instr(vfnmsub))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_fnmsub_ss(a: __m128, b: __m128, c: __m128) -> __m128 {
     vfnmsubss(a, b, c)
