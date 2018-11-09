@@ -5,57 +5,69 @@ rust: nightly
 matrix:
   fast_finish: true
   include:
-    - env: TARGET=i586-unknown-linux-gnu
-    - env: TARGET=i686-unknown-linux-gnu
-    - env: TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-    - env: TARGET=x86_64-unknown-linux-gnu-emulated NO_ADD=1 STDSIMD_TEST_EVERYTHING=1
-    - env: TARGET=x86_64-linux-android
-    - env: TARGET=arm-unknown-linux-gnueabihf
-    - env: TARGET=arm-linux-androideabi
-    - env: TARGET=armv7-unknown-linux-gnueabihf
-    - env: TARGET=aarch64-unknown-linux-gnu
-    - env: TARGET=mips-unknown-linux-gnu NORUN=1
-    - env: TARGET=mipsel-unknown-linux-gnu NORUN=1
-    - env: TARGET=mips64-unknown-linux-gnuabi64 NORUN=1
-    - env: TARGET=mips64el-unknown-linux-gnuabi64 NORUN=1
-    - env: TARGET=aarch64-linux-android
-    - env: TARGET=powerpc-unknown-linux-gnu
-    - env: TARGET=powerpc64-unknown-linux-gnu
-    - env: TARGET=powerpc64le-unknown-linux-gnu
-    - env: TARGET=s390x-unknown-linux-gnu NORUN=1
-    - os: osx
-      env: TARGET=i686-apple-darwin
+    - env: TARGET=x86_64-pc-windows-msvc NO_ADD=1
+      os: windows
       script: ci/run.sh
-    - os: osx
-      env: TARGET=x86_64-apple-darwin NO_ADD=1
+    - env: TARGET=x86_64-pc-windows-gnu
+      os: windows
       script: ci/run.sh
-    - env: TARGET=wasm32-unknown-unknown
-    - env: TARGET=thumbv6m-none-eabi NOSTD=1
-    - env: TARGET=thumbv7m-none-eabi NOSTD=1
-    - env: TARGET=thumbv7em-none-eabi NOSTD=1
-    - env: TARGET=thumbv7em-none-eabihf NOSTD=1
-    - env: DOCUMENTATION
-      install: true
-      script: ci/dox.sh
-    - env: VERIFY_X86
-      script: cargo test --manifest-path crates/stdsimd-verify/Cargo.toml
-      install: true
-    - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-      before_script:
-      - rustup component add rustfmt-preview
-      script:
-      - cargo fmt --all -- --check
-    - env: CLIPPY=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-      script: |
-        cargo install clippy
-        cargo clippy --all -- -D clippy-pedantic
-  allow_failures:
-    - env: CLIPPY=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-    - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-
-before_install:
-  # FIXME (travis-ci/travis-ci#8920) shouldn't be necessary...
-  - python -c "import fcntl; fcntl.fcntl(1, fcntl.F_SETFL, 0)"
+    - env: TARGET=i686-pc-windows-msvc
+      os: windows
+      script: ci/run.sh
+    - env: TARGET=i686-pc-windows-gnu
+      os: windows
+      script: ci/run.sh
+    #- env: TARGET=i586-unknown-linux-gnu
+    #- env: TARGET=i686-unknown-linux-gnu
+    #- env: TARGET=x86_64-unknown-linux-gnu NO_ADD=1
+    #- env: TARGET=x86_64-unknown-linux-gnu-emulated NO_ADD=1 STDSIMD_TEST_EVERYTHING=1
+    #- env: TARGET=x86_64-linux-android
+    #- env: TARGET=arm-unknown-linux-gnueabihf
+    #- env: TARGET=arm-linux-androideabi
+    #- env: TARGET=armv7-unknown-linux-gnueabihf
+    #- env: TARGET=aarch64-unknown-linux-gnu
+    #- env: TARGET=mips-unknown-linux-gnu NORUN=1
+    #- env: TARGET=mipsel-unknown-linux-gnu NORUN=1
+    #- env: TARGET=mips64-unknown-linux-gnuabi64 NORUN=1
+    #- env: TARGET=mips64el-unknown-linux-gnuabi64 NORUN=1
+    #- env: TARGET=aarch64-linux-android
+    #- env: TARGET=powerpc-unknown-linux-gnu
+    #- env: TARGET=powerpc64-unknown-linux-gnu
+    #- env: TARGET=powerpc64le-unknown-linux-gnu
+    #- env: TARGET=s390x-unknown-linux-gnu NORUN=1
+    #- os: osx
+    #  env: TARGET=i686-apple-darwin
+    #  script: ci/run.sh
+    #- os: osx
+    #  env: TARGET=x86_64-apple-darwin NO_ADD=1
+    #  script: ci/run.sh
+    #- env: TARGET=wasm32-unknown-unknown
+    #- env: TARGET=thumbv6m-none-eabi NOSTD=1
+    #- env: TARGET=thumbv7m-none-eabi NOSTD=1
+    #- env: TARGET=thumbv7em-none-eabi NOSTD=1
+    #- env: TARGET=thumbv7em-none-eabihf NOSTD=1
+    #- env: DOCUMENTATION
+    #  install: true
+    #  script: ci/dox.sh
+    #- env: VERIFY_X86
+    #  script: cargo test --manifest-path crates/stdsimd-verify/Cargo.toml
+    #  install: true
+    #- env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
+    #  before_script:
+    #  - rustup component add rustfmt-preview
+    #  script:
+    #  - cargo fmt --all -- --check
+    #- env: CLIPPY=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
+    #  script: |
+    #    cargo install clippy
+    #    cargo clippy --all -- -D clippy-pedantic
+  #allow_failures:
+    #- env: CLIPPY=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
+    #- env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
+    #- env: TARGET=x86_64-pc-windows-msvc
+    #- env: TARGET=x86_64-pc-windows-gnu
+    #- env: TARGET=i686-pc-windows-msvc
+    #- env: TARGET=i686-pc-windows-gnu
 
 install:
   - if [ "$NO_ADD" == "" ]; then rustup target add $TARGET; fi
