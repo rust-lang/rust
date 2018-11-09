@@ -3,7 +3,6 @@
 
 use std::slice::SliceConcatExt;
 use std::path::{PathBuf, Path};
-use std::io::Write;
 use std::env;
 
 use compiletest_rs as compiletest;
