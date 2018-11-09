@@ -9,14 +9,24 @@
 // except according to those terms.
 
 mod program_clauses;
+mod resolvent_ops;
 mod unify;
 
 use chalk_engine::fallible::{Fallible, NoSolution};
-use chalk_engine::{context, hh::HhGoal, DelayedLiteral, Literal, ExClause};
-use rustc::infer::canonical::{
-    Canonical, CanonicalVarValues, OriginalQueryValues, QueryResponse,
+use chalk_engine::{
+    context,
+    hh::HhGoal,
+    DelayedLiteral,
+    Literal,
+    ExClause
 };
 use rustc::infer::{InferCtxt, LateBoundRegionConversionTime};
+use rustc::infer::canonical::{
+    Canonical,
+    CanonicalVarValues,
+    OriginalQueryValues,
+    QueryResponse,
+};
 use rustc::traits::{
     DomainGoal,
     ExClauseFold,
@@ -28,9 +38,9 @@ use rustc::traits::{
     Environment,
     InEnvironment,
 };
+use rustc::ty::{self, TyCtxt};
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::subst::{Kind, UnpackedKind};
-use rustc::ty::{self, TyCtxt};
 use syntax_pos::DUMMY_SP;
 
 use std::fmt::{self, Debug};
@@ -201,7 +211,7 @@ impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
 
     fn is_trivial_substitution(
         u_canon: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
-        canonical_subst: &Canonical<'tcx, ConstrainedSubst<'tcx>>,
+        canonical_subst: &Canonical<'gcx, ConstrainedSubst<'gcx>>,
     ) -> bool {
         let subst = &canonical_subst.value.subst;
         assert_eq!(u_canon.variables.len(), subst.var_values.len());
@@ -283,30 +293,6 @@ impl context::InferenceTable<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
                 env.clauses.iter().cloned().chain(clauses.into_iter())
             )
         }
-    }
-}
-
-impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
-    for ChalkInferenceContext<'cx, 'gcx, 'tcx>
-{
-    fn resolvent_clause(
-        &mut self,
-        _environment: &Environment<'tcx>,
-        _goal: &DomainGoal<'tcx>,
-        _subst: &CanonicalVarValues<'tcx>,
-        _clause: &Clause<'tcx>,
-    ) -> Fallible<Canonical<'gcx, ChalkExClause<'gcx>>> {
-        panic!()
-    }
-
-    fn apply_answer_subst(
-        &mut self,
-        _ex_clause: ChalkExClause<'tcx>,
-        _selected_goal: &InEnvironment<'tcx, Goal<'tcx>>,
-        _answer_table_goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
-        _canonical_answer_subst: &Canonical<'gcx, ConstrainedSubst<'gcx>>,
-    ) -> Fallible<ChalkExClause<'tcx>> {
-        panic!()
     }
 }
 
