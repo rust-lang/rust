@@ -11,7 +11,7 @@ LL |     type Bar;
    |     --------- `Bar` defined here
 ...
 LL | type Foo = Trait<F=i32>; //~ ERROR E0220
-   |            ^^^^^^^^^^^^ missing associated type `Bar` value
+   |            ^^^^^^^^^^^^ associated type `Bar` must be specified
 
 error: aborting due to 2 previous errors
 

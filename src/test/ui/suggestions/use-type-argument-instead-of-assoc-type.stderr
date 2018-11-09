@@ -18,9 +18,9 @@ LL | }
 LL |  pub struct Foo { i: Box<T<usize, usize, usize, usize, B=usize>> }
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                          |
-   |                          missing associated type `A` value
-   |                          missing associated type `C` value
-help: if you meant to assign the missing associated type, use the name
+   |                          associated type `A` must be specified
+   |                          associated type `C` must be specified
+help: if you meant to specify the associated types, write
    |
 LL |  pub struct Foo { i: Box<T<usize, usize, A = usize, C = usize, B=usize>> }
    |                                          ^^^^^^^^^  ^^^^^^^^^

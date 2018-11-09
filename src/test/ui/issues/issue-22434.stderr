@@ -5,7 +5,7 @@ LL |     type A;
    |     ------- `A` defined here
 ...
 LL | type I<'a> = &'a (Foo + 'a);
-   |                   ^^^^^^^^ missing associated type `A` value
+   |                   ^^^^^^^^ associated type `A` must be specified
 
 error: aborting due to previous error
 

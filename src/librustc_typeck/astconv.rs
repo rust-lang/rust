@@ -1066,7 +1066,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 let assoc_item = tcx.associated_item(*item_def_id);
                 err.span_label(
                     span,
-                    format!("missing associated type `{}` value", assoc_item.ident),
+                    format!("associated type `{}` must be specified", assoc_item.ident),
                 );
                 err.span_label(
                     tcx.def_span(*item_def_id),
@@ -1084,8 +1084,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 }
             }
             if !suggestions.is_empty() {
+                let msg = if suggestions.len() == 1 {
+                    "if you meant to specify the associated type, write"
+                } else {
+                    "if you meant to specify the associated types, write"
+                };
                 err.multipart_suggestion_with_applicability(
-                    "if you meant to assign the missing associated type, use the name",
+                    msg,
                     suggestions,
                     Applicability::MaybeIncorrect,
                 );

@@ -5,7 +5,7 @@ LL |     type Bar;
    |     --------- `Bar` defined here
 ...
 LL | type Foo = Trait; //~ ERROR E0191
-   |            ^^^^^ missing associated type `Bar` value
+   |            ^^^^^ associated type `Bar` must be specified
 
 error: aborting due to previous error
 

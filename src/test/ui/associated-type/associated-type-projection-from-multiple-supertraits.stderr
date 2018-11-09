@@ -29,7 +29,7 @@ LL |     type Color;
    |     ----------- `Color` defined here
 ...
 LL | fn dent_object<COLOR>(c: BoxCar<Color=COLOR>) {
-   |                          ^^^^^^^^^^^^^^^^^^^ missing associated type `Color` value
+   |                          ^^^^^^^^^^^^^^^^^^^ associated type `Color` must be specified
 
 error[E0221]: ambiguous associated type `Color` in bounds of `C`
   --> $DIR/associated-type-projection-from-multiple-supertraits.rs:38:29
