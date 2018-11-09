@@ -258,8 +258,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             .expect("Expected CraneliftCodegenBackend's CodegenResult, found Box<Any>");
 
         for &crate_type in sess.opts.crate_types.iter() {
-            let output_name =
-                out_filename(sess, crate_type, &outputs, &res.crate_name.as_str());
+            let output_name = out_filename(sess, crate_type, &outputs, &res.crate_name.as_str());
             match crate_type {
                 CrateType::Rlib => link::link_rlib(sess, &res, output_name),
                 CrateType::Executable => link::link_bin(sess, &res, output_name),

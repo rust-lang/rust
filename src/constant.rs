@@ -5,7 +5,7 @@ use rustc::mir::interpret::{
 };
 use rustc::ty::Const;
 use rustc_mir::interpret::{
-    EvalContext, Machine, MemPlace, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
+    EvalContext, MPlaceTy, Machine, Memory, MemoryKind, OpTy, PlaceTy, Pointer,
 };
 
 use cranelift_module::*;
@@ -160,13 +160,12 @@ fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(
     def_id: DefId,
 ) -> DataId {
     let symbol_name = tcx.symbol_name(Instance::mono(tcx, def_id)).as_str();
-    let is_mutable =
-        if let crate::rustc::hir::Mutability::MutMutable = tcx.is_static(def_id).unwrap() {
-            true
-        } else {
-            !tcx.type_of(def_id)
-                .is_freeze(tcx, ParamEnv::reveal_all(), DUMMY_SP)
-        };
+    let is_mutable = if let ::rustc::hir::Mutability::MutMutable = tcx.is_static(def_id).unwrap() {
+        true
+    } else {
+        !tcx.type_of(def_id)
+            .is_freeze(tcx, ParamEnv::reveal_all(), DUMMY_SP)
+    };
     module
         .declare_data(&*symbol_name, Linkage::Export, is_mutable)
         .unwrap()
@@ -314,7 +313,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     }
 
     fn find_foreign_static(
-        _: crate::rustc::ty::query::TyCtxtAt<'a, 'tcx, 'tcx>,
+        _: ::rustc::ty::query::TyCtxtAt<'a, 'tcx, 'tcx>,
         _: DefId,
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation>> {
         panic!();
@@ -337,21 +336,17 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
 
     fn tag_reference(
         _: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _: MemPlace,
-        _: Ty<'tcx>,
-        _: Size,
-        _: Option<crate::rustc::hir::Mutability>,
-    ) -> EvalResult<'tcx, MemPlace> {
+        _: MPlaceTy<'tcx>,
+        _: Option<::rustc::hir::Mutability>,
+    ) -> EvalResult<'tcx, Scalar> {
         panic!()
     }
 
     fn tag_dereference(
         _: &EvalContext<'a, 'mir, 'tcx, Self>,
-        _: MemPlace,
-        _: Ty<'tcx>,
-        _: Size,
-        _: Option<crate::rustc::hir::Mutability>,
-    ) -> EvalResult<'tcx, MemPlace> {
+        _: MPlaceTy<'tcx>,
+        _: Option<::rustc::hir::Mutability>,
+    ) -> EvalResult<'tcx, Scalar> {
         panic!();
     }
 
