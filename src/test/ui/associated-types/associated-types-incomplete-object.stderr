@@ -10,18 +10,15 @@ error[E0191]: the value of the associated type `A` (from the trait `Foo`) must b
 LL |     let c = &42isize as &Foo<B=char>;
    |                          ^^^^^^^^^^^ missing associated type `A` value
 
-error[E0191]: the value of the associated type `A` (from the trait `Foo`) must be specified
+error[E0191]: the value of the associated types `A` (from the trait `Foo`), `B` (from the trait `Foo`) must be specified
   --> $DIR/associated-types-incomplete-object.rs:39:26
    |
 LL |     let d = &42isize as &Foo;
-   |                          ^^^ missing associated type `A` value
+   |                          ^^^
+   |                          |
+   |                          missing associated type `A` value
+   |                          missing associated type `B` value
 
-error[E0191]: the value of the associated type `B` (from the trait `Foo`) must be specified
-  --> $DIR/associated-types-incomplete-object.rs:39:26
-   |
-LL |     let d = &42isize as &Foo;
-   |                          ^^^ missing associated type `B` value
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0191`.

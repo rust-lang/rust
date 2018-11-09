@@ -6,19 +6,16 @@ LL |  pub struct Foo { i: Box<T<usize, usize, usize, usize, B=usize>> }
    |                                          |
    |                                          unexpected type argument
 
-error[E0191]: the value of the associated type `A` (from the trait `T`) must be specified
+error[E0191]: the value of the associated types `A` (from the trait `T`), `C` (from the trait `T`) must be specified
   --> $DIR/E0107-b.rs:6:26
    |
 LL |  pub struct Foo { i: Box<T<usize, usize, usize, usize, B=usize>> }
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing associated type `A` value
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                          |
+   |                          missing associated type `A` value
+   |                          missing associated type `C` value
 
-error[E0191]: the value of the associated type `C` (from the trait `T`) must be specified
-  --> $DIR/E0107-b.rs:6:26
-   |
-LL |  pub struct Foo { i: Box<T<usize, usize, usize, usize, B=usize>> }
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing associated type `C` value
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors occurred: E0107, E0191.
 For more information about an error, try `rustc --explain E0107`.

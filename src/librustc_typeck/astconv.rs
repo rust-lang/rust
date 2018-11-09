@@ -1029,18 +1029,31 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
             associated_types.remove(&projection_bound.projection_def_id());
         }
 
-        for item_def_id in associated_types {
-            let assoc_item = tcx.associated_item(item_def_id);
-            let trait_def_id = assoc_item.container.id();
+        if !associated_types.is_empty() {
+            let names = associated_types.iter().map(|item_def_id| {
+                let assoc_item = tcx.associated_item(*item_def_id);
+                let trait_def_id = assoc_item.container.id();
+                format!(
+                    "`{}` (from the trait `{}`)",
+                    assoc_item.ident,
+                    tcx.item_path_str(trait_def_id),
+                )
+            }).collect::<Vec<_>>().join(", ");
             let mut err = struct_span_err!(
                 tcx.sess,
                 span,
                 E0191,
-                "the value of the associated type `{}` (from the trait `{}`) must be specified",
-                assoc_item.ident,
-                tcx.item_path_str(trait_def_id),
+                "the value of the associated type{} {} must be specified",
+                if associated_types.len() == 1 { "" } else { "s" },
+                names,
             );
-            err.span_label(span, format!("missing associated type `{}` value", assoc_item.ident));
+            for item_def_id in associated_types {
+                let assoc_item = tcx.associated_item(item_def_id);
+                err.span_label(
+                    span,
+                    format!("missing associated type `{}` value", assoc_item.ident),
+                );
+            }
             err.emit();
         }
 
