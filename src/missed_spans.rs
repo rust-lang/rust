@@ -259,15 +259,16 @@ impl<'a> FmtVisitor<'a> {
         status.last_wspace = None;
         status.line_start = offset + subslice.len();
 
-        if let Some('/') = subslice.chars().nth(1) {
-            // Only add a newline if the last line is a line comment
-            if !subslice.trim_end().ends_with("*/") {
-                self.push_str("\n");
-            }
-        } else if status.line_start <= snippet.len() {
-            // For other comments add a newline if there isn't one at the end already
+        // Add a newline:
+        // - if there isn't one already
+        // - otherwise, only if the last line is a line comment
+        if status.line_start <= snippet.len() {
             match snippet[status.line_start..].chars().next() {
-                Some('\n') | Some('\r') => (),
+                Some('\n') | Some('\r') => {
+                    if !subslice.trim_end().ends_with("*/") {
+                        self.push_str("\n");
+                    }
+                }
                 _ => self.push_str("\n"),
             }
         }
