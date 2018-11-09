@@ -1,0 +1,16 @@
+error: irrefutable if-let pattern
+  --> $DIR/deny-irrefutable-if-let.rs:13:5
+   |
+LL | /     if let _ = 5 {
+LL | |         let _x = 1;
+LL | |     }
+   | |_____^
+   |
+note: lint level defined here
+  --> $DIR/deny-irrefutable-if-let.rs:11:8
+   |
+LL | #[deny(irrefutable_let_patterns)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,16 @@
+error: irrefutable while-let pattern
+  --> $DIR/deny-irrefutable-while-let.rs:13:5
+   |
+LL | /     while let _ = 5 {
+LL | |         break;
+LL | |     }
+   | |_____^
+   |
+note: lint level defined here
+  --> $DIR/deny-irrefutable-while-let.rs:11:8
+   |
+LL | #[deny(irrefutable_let_patterns)]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
