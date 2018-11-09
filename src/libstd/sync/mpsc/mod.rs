@@ -124,6 +124,7 @@
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
+#![allow(deprecated)] // for mpsc_select
 
 // A description of how Rust's channel implementation works
 //
