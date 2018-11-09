@@ -8,10 +8,10 @@ matrix:
     - env: TARGET=x86_64-pc-windows-msvc NO_ADD=1
       os: windows
       script: ci/run.sh
-    - env: TARGET=x86_64-pc-windows-gnu
+    - env: TARGET=x86_64-pc-windows-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
       os: windows
       script: ci/run.sh
-    - env: TARGET=i686-pc-windows-msvc
+    - env: TARGET=i686-pc-windows-msvc STDSIMD_DISABLE_ASSERT_INSTR=1
       os: windows
       script: ci/run.sh
     - env: TARGET=i686-pc-windows-gnu
