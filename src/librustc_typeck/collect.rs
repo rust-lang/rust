@@ -1109,7 +1109,7 @@ fn generics_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty
     })
 }
 
-fn report_assoc_ty_on_inherent_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span) {
+fn report_assoc_ty_in_inherent_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, span: Span) {
     span_err!(
         tcx.sess,
         span,
@@ -1148,7 +1148,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
                     .impl_trait_ref(tcx.hir.get_parent_did(node_id))
                     .is_none()
                 {
-                    report_assoc_ty_on_inherent_impl(tcx, item.span);
+                    report_assoc_ty_in_inherent_impl(tcx, item.span);
                 }
 
                 find_existential_constraints(tcx, def_id)
@@ -1158,7 +1158,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
                     .impl_trait_ref(tcx.hir.get_parent_did(node_id))
                     .is_none()
                 {
-                    report_assoc_ty_on_inherent_impl(tcx, item.span);
+                    report_assoc_ty_in_inherent_impl(tcx, item.span);
                 }
 
                 icx.to_ty(ty)
@@ -1330,7 +1330,7 @@ fn find_existential_constraints<'a, 'tcx>(
     impl<'a, 'tcx> ConstraintLocator<'a, 'tcx> {
         fn check(&mut self, def_id: DefId) {
             trace!("checking {:?}", def_id);
-            // don't try to check items that cannot possibly constrain the type
+            // Don't try to check items that cannot possibly constrain the type.
             if !self.tcx.has_typeck_tables(def_id) {
                 trace!("no typeck tables for {:?}", def_id);
                 return;
@@ -1342,11 +1342,11 @@ fn find_existential_constraints<'a, 'tcx>(
                 .get(&self.def_id)
                 .cloned();
             if let Some(ty) = ty {
-                // FIXME(oli-obk): trace the actual span from inference to improve errors
+                // FIXME(oli-obk): trace the actual span from inference to improve errors.
                 let span = self.tcx.def_span(def_id);
                 if let Some((prev_span, prev_ty)) = self.found {
                     if ty != prev_ty {
-                        // found different concrete types for the existential type
+                        // Found different concrete types for the existential type.
                         let mut err = self.tcx.sess.struct_span_err(
                             span,
                             "defining existential type use differs from previous",
@@ -1367,7 +1367,7 @@ fn find_existential_constraints<'a, 'tcx>(
         }
         fn visit_item(&mut self, it: &'tcx Item) {
             let def_id = self.tcx.hir.local_def_id(it.id);
-            // the existential type itself or its children are not within its reveal scope
+            // The existential type itself or its children are not within its reveal scope.
             if def_id != self.def_id {
                 self.check(def_id);
                 intravisit::walk_item(self, it);
@@ -1375,7 +1375,7 @@ fn find_existential_constraints<'a, 'tcx>(
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem) {
             let def_id = self.tcx.hir.local_def_id(it.id);
-            // the existential type itself or its children are not within its reveal scope
+            // The existential type itself or its children are not within its reveal scope.
             if def_id != self.def_id {
                 self.check(def_id);
                 intravisit::walk_impl_item(self, it);
@@ -1750,7 +1750,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                     let substs = Substs::identity_for_item(tcx, def_id);
                     let opaque_ty = tcx.mk_opaque(def_id, substs);
 
-                    // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
+                    // Collect the bounds, i.e. the `A + B + 'c` in `impl A + B + 'c`.
                     let bounds = compute_bounds(
                         &icx,
                         opaque_ty,

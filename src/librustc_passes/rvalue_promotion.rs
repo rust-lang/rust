@@ -615,6 +615,7 @@ fn check_adjustments<'a, 'tcx>(
             Adjust::ClosureFnPointer |
             Adjust::MutToConstPointer |
             Adjust::Borrow(_) |
+            Adjust::Hide(_) |
             Adjust::Unsize => {}
 
             Adjust::Deref(_) => {

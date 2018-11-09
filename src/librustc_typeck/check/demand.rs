@@ -89,11 +89,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty
     }
 
-    // Checks that the type of `expr` can be coerced to `expected`.
-    //
-    // NB: This code relies on `self.diverges` to be accurate. In
-    // particular, assignments to `!` will be permitted if the
-    // diverges flag is currently "always".
+    /// Checks that the type of `expr` can be coerced to `expected`.
+    ///
+    /// N.B., this code relies on `self.diverges` to be accurate. In
+    /// particular, assignments to `!` will be permitted if the
+    /// diverges flag is currently "always".
     pub fn demand_coerce_diag(&self,
                               expr: &hir::Expr,
                               checked_ty: Ty<'tcx>,
@@ -111,7 +111,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
         let mut err = self.report_mismatched_types(&cause, expected, expr_ty, e);
 
-        // If the expected type is an enum (Issue #55250) with any variants whose
+        // If the expected type is an enum (issue #55250) with any variants whose
         // sole field is of the found type, suggest such variants. (Issue #42764)
         if let ty::Adt(expected_adt, substs) = expected.sty {
             if expected_adt.is_enum() {

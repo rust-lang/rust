@@ -94,7 +94,7 @@ pub enum TraitQueryMode {
     Canonical,
 }
 
-/// An `Obligation` represents some trait reference (e.g. `int:Eq`) for
+/// An `Obligation` represents some trait reference (e.g. `int: Eq`) for
 /// which the vtable must be found.  The process of finding a vtable is
 /// called "resolving" the `Obligation`. This process consists of
 /// either identifying an `impl` (e.g., `impl Eq for int`) that
@@ -1015,7 +1015,7 @@ fn vtable_methods<'a, 'tcx>(
     )
 }
 
-impl<'tcx,O> Obligation<'tcx,O> {
+impl<'tcx, O> Obligation<'tcx, O> {
     pub fn new(cause: ObligationCause<'tcx>,
                param_env: ty::ParamEnv<'tcx>,
                predicate: O)

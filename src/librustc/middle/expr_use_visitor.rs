@@ -721,6 +721,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 adjustment::Adjust::UnsafeFnPointer |
                 adjustment::Adjust::ClosureFnPointer |
                 adjustment::Adjust::MutToConstPointer |
+                adjustment::Adjust::Hide(_) |
                 adjustment::Adjust::Unsize => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.

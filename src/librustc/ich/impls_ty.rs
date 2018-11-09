@@ -184,6 +184,9 @@ for ty::adjustment::Adjust<'gcx> {
             ty::adjustment::Adjust::ClosureFnPointer |
             ty::adjustment::Adjust::MutToConstPointer |
             ty::adjustment::Adjust::Unsize => {}
+            ty::adjustment::Adjust::Hide(ref revealed_ty) => {
+                revealed_ty.hash_stable(hcx, hasher);
+            }
             ty::adjustment::Adjust::Deref(ref overloaded) => {
                 overloaded.hash_stable(hcx, hasher);
             }

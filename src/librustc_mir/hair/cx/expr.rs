@@ -206,8 +206,20 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // since they get rid of a borrow implicitly.
             ExprKind::Use { source: cast_expr.to_ref() }
         }
+        Adjust::Hide(revealed_ty) => {
+            // See the above comment for Adjust::Deref.
+            if let ExprKind::Block { body } = expr.kind {
+                if let Some(ref last_expr) = body.expr {
+                    span = last_expr.span;
+                    expr.span = span;
+                }
+            }
+            expr.ty = revealed_ty;
+            debug!("hide: {:?} {:?}", expr, revealed_ty);
+            ExprKind::Cast { source: expr.to_ref() }
+        }
         Adjust::Unsize => {
-            // See the above comment for Adjust::Deref
+            // See the above comment for Adjust::Deref.
             if let ExprKind::Block { body } = expr.kind {
                 if let Some(ref last_expr) = body.expr {
                     span = last_expr.span;

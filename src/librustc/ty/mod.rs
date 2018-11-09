@@ -993,6 +993,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
         self.instantiate_into(tcx, &mut instantiated, substs);
         instantiated
     }
+
     pub fn instantiate_own(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: &Substs<'tcx>)
                            -> InstantiatedPredicates<'tcx> {
         InstantiatedPredicates {
@@ -1028,8 +1029,7 @@ impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
 
     pub fn instantiate_supertrait(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                   poly_trait_ref: &ty::PolyTraitRef<'tcx>)
-                                  -> InstantiatedPredicates<'tcx>
-    {
+                                  -> InstantiatedPredicates<'tcx> {
         assert_eq!(self.parent, None);
         InstantiatedPredicates {
             predicates: self.predicates.iter().map(|(pred, _)| {

@@ -286,7 +286,7 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_local(&mut self, l: &'gcx hir::Local) {
         intravisit::walk_local(self, l);
-        let var_ty = self.fcx.local_ty(l.span, l.id).decl_ty;
+        let var_ty = self.fcx.local_ty(l.span, l.id);
         let var_ty = self.resolve(&var_ty, &l.span);
         self.write_ty_to_tables(l.hir_id, var_ty);
     }
@@ -425,31 +425,31 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                     instantiated_ty,
                 )
             } else {
-                // prevent
+                // Prevent
                 // * `fn foo<T>() -> Foo<T>`
                 // * `fn foo<T: Bound + Other>() -> Foo<T>`
-                // from being defining
+                // from being defining.
 
                 // Also replace all generic params with the ones from the existential type
-                // definition so
+                // definition so that
                 // ```rust
                 // existential type Foo<T>: 'static;
                 // fn foo<U>() -> Foo<U> { .. }
                 // ```
-                // figures out the concrete type with `U`, but the stored type is with `T`
+                // figures out the concrete type with `U`, but the stored type is with `T`.
                 instantiated_ty.fold_with(&mut BottomUpFolder {
                     tcx: self.tcx().global_tcx(),
                     fldop: |ty| {
-                        trace!("checking type {:?}: {:#?}", ty, ty.sty);
-                        // find a type parameter
+                        trace!("visit_opaque_types: checking type {:?}: {:#?}", ty, ty.sty);
+                        // Find a type parameter.
                         if let ty::Param(..) = ty.sty {
-                            // look it up in the substitution list
+                            // Look it up in the substitution list.
                             assert_eq!(opaque_defn.substs.len(), generics.params.len());
                             for (subst, param) in opaque_defn.substs.iter().zip(&generics.params) {
                                 if let UnpackedKind::Type(subst) = subst.unpack() {
                                     if subst == ty {
-                                        // found it in the substitution list, replace with the
-                                        // parameter from the existential type
+                                        // Found it in the substitution list, replace with the
+                                        // parameter from the existential type.
                                         return self.tcx()
                                             .global_tcx()
                                             .mk_ty_param(param.index, param.name);
@@ -520,12 +520,13 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
             if let ty::Opaque(defin_ty_def_id, _substs) = definition_ty.sty {
                 if def_id == defin_ty_def_id {
-                    // Concrete type resolved to the existential type itself
-                    // Force a cycle error
+                    // Concrete type itself resolved to the existential type.
+                    // Force a cycle error.
                     self.tcx().at(span).type_of(defin_ty_def_id);
                 }
             }
 
+            debug!("visit_opaque_types: bar1: {:?} {:?} {:?}", span, def_id, definition_ty);
             let old = self.tables
                 .concrete_existential_types
                 .insert(def_id, definition_ty);
@@ -533,8 +534,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 if old != definition_ty {
                     span_bug!(
                         span,
-                        "visit_opaque_types tried to write \
-                        different types for the same existential type: {:?}, {:?}, {:?}",
+                        "visit_opaque_types: tried to write different types \
+                         for the same existential type: {:?}, {:?}, {:?}",
                         def_id,
                         definition_ty,
                         old,

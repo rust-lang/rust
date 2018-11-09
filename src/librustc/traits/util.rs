@@ -393,7 +393,7 @@ pub fn impl_trait_ref_and_oblig<'a, 'gcx, 'tcx>(selcx: &mut SelectionContext<'a,
     (impl_trait_ref, impl_obligations)
 }
 
-/// See `super::obligations_for_generics`
+/// See `super::predicates_for_generics`.
 pub fn predicates_for_generics<'tcx>(cause: ObligationCause<'tcx>,
                                      recursion_depth: usize,
                                      param_env: ty::ParamEnv<'tcx>,

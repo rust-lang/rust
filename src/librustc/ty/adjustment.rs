@@ -83,6 +83,9 @@ pub enum Adjust<'tcx> {
     /// Take the address and produce either a `&` or `*` pointer.
     Borrow(AutoBorrow<'tcx>),
 
+    /// Hide a value with an opaque type.
+    Hide(Ty<'tcx>),
+
     /// Unsize a pointer/reference value, e.g. `&[T; n]` to
     /// `&[T]`. Note that the source could be a thin or fat pointer.
     /// This will do things like convert thin pointers to fat

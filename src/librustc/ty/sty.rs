@@ -190,8 +190,8 @@ pub enum TyKind<'tcx> {
 
     /// Opaque (`impl Trait`) type found in a return type.
     /// The `DefId` comes either from
-    /// * the `impl Trait` ast::Ty node,
-    /// * or the `existential type` declaration
+    /// * the `impl Trait` `ast::Ty` node,
+    /// * the `existential type` declaration.
     /// The substitutions are for the generics of the function in question.
     /// After typeck, the concrete type can be found in the `types` map.
     Opaque(DefId, &'tcx Substs<'tcx>),
@@ -582,7 +582,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
 
     #[inline]
     pub fn projection_bounds<'a>(&'a self) ->
-        impl Iterator<Item=ExistentialProjection<'tcx>> + 'a {
+        impl Iterator<Item = ExistentialProjection<'tcx>> + 'a {
         self.iter().filter_map(|predicate| {
             match *predicate {
                 ExistentialPredicate::Projection(p) => Some(p),
@@ -592,7 +592,7 @@ impl<'tcx> List<ExistentialPredicate<'tcx>> {
     }
 
     #[inline]
-    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item=DefId> + 'a {
+    pub fn auto_traits<'a>(&'a self) -> impl Iterator<Item = DefId> + 'a {
         self.iter().filter_map(|predicate| {
             match *predicate {
                 ExistentialPredicate::AutoTrait(d) => Some(d),
@@ -619,7 +619,7 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
     }
 
     pub fn iter<'a>(&'a self)
-        -> impl DoubleEndedIterator<Item=Binder<ExistentialPredicate<'tcx>>> + 'tcx {
+        -> impl DoubleEndedIterator<Item = Binder<ExistentialPredicate<'tcx>>> + 'tcx {
         self.skip_binder().iter().cloned().map(Binder::bind)
     }
 }
