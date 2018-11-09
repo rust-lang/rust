@@ -70,7 +70,7 @@
 /* General structure and fonts */
 
 body {
-	font: 16px/1.4 "Source Serif Pro", Georgia, Times, "Times New Roman", serif;
+	font: 16px/1.4 "Source Serif Pro", serif;
 	margin: 0;
 	position: relative;
 	padding: 10px 15px 20px 15px;
@@ -114,7 +114,7 @@ h3.impl, h3.method, h3.type {
 h1, h2, h3, h4,
 .sidebar, a.source, .search-input, .content table :not(code)>a,
 .collapse-toggle, div.item-list .out-of-band {
-	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-family: "Fira Sans", sans-serif;
 }
 
 ol, ul {
@@ -133,7 +133,7 @@ summary {
 }
 
 code, pre {
-	font-family: "Source Code Pro", Menlo, Monaco, Consolas, "DejaVu Sans Mono", Inconsolata, monospace;
+	font-family: "Source Code Pro", monospace;
 	white-space: pre-wrap;
 }
 .docblock code, .docblock-short code {
@@ -415,7 +415,7 @@ h4 > code, h3 > code, .invisible > code {
 }
 #main > .since {
 	top: inherit;
-	font-family: "Fira Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+	font-family: "Fira Sans", sans-serif;
 }
 
 .content table:not(.table-display) {
@@ -1338,7 +1338,7 @@ h3.important {
 kbd {
 	display: inline-block;
 	padding: 3px 5px;
-	font: 15px "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+	font: 15px monospace;
 	line-height: 10px;
 	vertical-align: middle;
 	border: solid 1px;
