@@ -260,9 +260,8 @@ impl<'a> FmtVisitor<'a> {
         status.line_start = offset + subslice.len();
 
         if let Some('/') = subslice.chars().nth(1) {
-            // check that there are no contained block comments
-            if !subslice.lines().any(|s| s.trim_left().starts_with("/*")) {
-                // Add a newline after line comments
+            // Only add a newline if the last line is a line comment
+            if !subslice.trim_end().ends_with("*/") {
                 self.push_str("\n");
             }
         } else if status.line_start <= snippet.len() {
