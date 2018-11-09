@@ -687,22 +687,24 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         let mir_node_id = tcx.hir.as_local_node_id(mir_def_id).expect("non-local mir");
 
-        let (return_span, mir_description) =
-            if let hir::ExprKind::Closure(_, _, _, span, gen_move) =
-                tcx.hir.expect_expr(mir_node_id).node
-            {
-                (
-                    tcx.sess.source_map().end_point(span),
-                    if gen_move.is_some() {
-                        " of generator"
-                    } else {
-                        " of closure"
-                    },
-                )
-            } else {
-                // unreachable?
-                (mir.span, "")
-            };
+        let (return_span, mir_description) = match tcx.hir.get(mir_node_id) {
+            hir::Node::Expr(hir::Expr {
+                node: hir::ExprKind::Closure(_, _, _, span, gen_move),
+                ..
+            }) => (
+                tcx.sess.source_map().end_point(*span),
+                if gen_move.is_some() {
+                    " of generator"
+                } else {
+                    " of closure"
+                },
+            ),
+            hir::Node::ImplItem(hir::ImplItem {
+                node: hir::ImplItemKind::Method(method_sig, _),
+                ..
+            }) => (method_sig.decl.output.span(), ""),
+            _ => (mir.span, ""),
+        };
 
         Some(RegionName {
             // This counter value will already have been used, so this function will increment it
