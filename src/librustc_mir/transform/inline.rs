@@ -137,7 +137,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                 let callee_mir = match self.tcx.try_optimized_mir(callsite.location.span,
                                                                   callsite.callee) {
-                    Ok(callee_mir) if self.should_inline(callsite, callee_mir) => {
+                    Ok(callee_mir) if self.consider_optimizing(callsite, callee_mir) => {
                         self.tcx.subst_and_normalize_erasing_regions(
                             &callsite.substs,
                             param_env,
@@ -196,6 +196,18 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             CfgSimplifier::new(caller_mir).simplify();
             remove_dead_blocks(caller_mir);
         }
+    }
+
+    fn consider_optimizing(&self,
+                           callsite: CallSite<'tcx>,
+                           callee_mir: &Mir<'tcx>)
+                           -> bool
+    {
+        debug!("consider_optimizing({:?})", callsite);
+        self.should_inline(callsite, callee_mir)
+            && self.tcx.consider_optimizing(|| format!("Inline {:?} into {:?}",
+                                                       callee_mir.span,
+                                                       callsite))
     }
 
     fn should_inline(&self,
