@@ -2082,7 +2082,7 @@ pub fn build_session_options_and_crate_config(
                         error_format,
                         &format!(
                             "optimization level needs to be \
-                             between 0-3 (instead was `{}`)",
+                             between 0-3, s or z (instead was `{}`)",
                             arg
                         ),
                     );
