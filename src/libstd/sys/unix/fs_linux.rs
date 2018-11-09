@@ -103,10 +103,10 @@ thread_local! {
     static HAS_COPY_FILE_RANGE: RefCell<bool> = RefCell::new(true);
 }
 
-fn copy_bytes(mut reader: &File, mut writer: &File, nbytes: usize) -> io::Result<u64> {
+fn copy_bytes(mut reader: &File, mut writer: &File, uspace: bool, nbytes: usize) -> io::Result<u64> {
     HAS_COPY_FILE_RANGE.with(|cfr| {
         loop {
-            if !*cfr.borrow() {
+            if uspace || !*cfr.borrow() {
                 return io::copy(&mut reader, &mut writer);
 
             } else {
@@ -211,21 +211,21 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     };
     let _sparse = is_sparse(&reader)?;
 
+    let mut userspace = false;
     let mut written = 0u64;
     while written < len {
         let bytes_to_copy = cmp::min(len - written, usize::max_value() as u64) as usize;
-        let copy_result = copy_bytes_kernel(&mut reader, &mut writer, bytes_to_copy);
+        let copy_result = copy_bytes(&mut reader, &mut writer, userspace, bytes_to_copy);
 
         match copy_result {
             Ok(ret) => written += ret,
             Err(err) => {
                 match err.raw_os_error() {
                     Some(os_err) if os_err == libc::EXDEV => {
-                        // Files are mounted on different fs (EXDEV); try fallback io::copy.
+                        // Files are mounted on different fs (EXDEV);
+                        // flag as retry with userspace copy.
                         assert_eq!(written, 0);
-                        let ret = io::copy(&mut reader, &mut writer)?;
-                        writer.set_permissions(perm)?;
-                        return Ok(ret)
+                        userspace = true;
                     },
                     _ => return Err(err),
                 }
