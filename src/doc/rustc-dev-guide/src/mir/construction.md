@@ -45,7 +45,7 @@ First, if the function generates only statements, then it will take a
 basic block as argument onto which those statements should be appended.
 It can then return a result as normal:
 
-```rust
+```rust,ignore
 fn generate_some_mir(&mut self, block: BasicBlock) -> ResultType {
    ...
 }
@@ -58,7 +58,7 @@ In this case, the functions take a basic block where their code starts
 and return a (potentially) new basic block where the code generation ends.
 The `BlockAnd` type is used to represent this:
 
-```rust
+```rust,ignore
 fn generate_more_mir(&mut self, block: BasicBlock) -> BlockAnd<ResultType> {
     ...
 }
@@ -69,7 +69,7 @@ that is effectively a "cursor". It represents the point at which we are adding n
 When you invoke `generate_more_mir`, you want to update this cursor.
 You can do this manually, but it's tedious:
 
-```rust
+```rust,ignore
 let mut block;
 let v = match self.generate_more_mir(..) {
     BlockAnd { block: new_block, value: v } => {
