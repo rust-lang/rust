@@ -196,7 +196,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let source_info = SourceInfo { span, scope: OUTERMOST_SOURCE_SCOPE };
 
     let return_block = BasicBlock::new(1);
-    let mut blocks = IndexVec::new();
+    let mut blocks = IndexVec::with_capacity(2);
     let block = |blocks: &mut IndexVec<_, _>, kind| {
         blocks.push(BasicBlockData {
             statements: vec![],
@@ -768,7 +768,8 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }));
     }
 
-    let mut blocks = IndexVec::new();
+    let n_blocks = if let Adjustment::RefMut = rcvr_adjustment { 5 } else { 2 };
+    let mut blocks = IndexVec::with_capacity(n_blocks);
     let block = |blocks: &mut IndexVec<_, _>, statements, kind, is_cleanup| {
         blocks.push(BasicBlockData {
             statements,
