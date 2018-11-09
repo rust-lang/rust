@@ -14,7 +14,7 @@ LL | impl Copy for &'static NotSync {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
-           - impl<'_, T> std::marker::Copy for &T
+           - impl<T> std::marker::Copy for &T
              where T: ?Sized;
 
 error[E0119]: conflicting implementations of trait `std::marker::Copy` for type `&[NotSync]`:
@@ -24,7 +24,7 @@ LL | impl Copy for &'static [NotSync] {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: conflicting implementation in crate `core`:
-           - impl<'_, T> std::marker::Copy for &T
+           - impl<T> std::marker::Copy for &T
              where T: ?Sized;
 
 error[E0206]: the trait `Copy` may not be implemented for this type
