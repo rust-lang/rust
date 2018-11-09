@@ -24,31 +24,6 @@ pub fn opts() -> TargetOptions {
     // argument is *not* necessary for normal builds, but it can't hurt!
     base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-Wl,--eh-frame-hdr".to_string());
 
-    // There's a whole bunch of circular dependencies when dealing with MUSL
-    // unfortunately. To put this in perspective libc is statically linked to
-    // liblibc and libunwind is statically linked to libstd:
-    //
-    // * libcore depends on `fmod` which is in libc (transitively in liblibc).
-    //   liblibc, however, depends on libcore.
-    // * compiler-rt has personality symbols that depend on libunwind, but
-    //   libunwind is in libstd which depends on compiler-rt.
-    //
-    // Recall that linkers discard libraries and object files as much as
-    // possible, and with all the static linking and archives flying around with
-    // MUSL the linker is super aggressively stripping out objects. For example
-    // the first case has fmod stripped from liblibc (it's in its own object
-    // file) so it's not there when libcore needs it. In the second example all
-    // the unused symbols from libunwind are stripped (each is in its own object
-    // file in libstd) before we end up linking compiler-rt which depends on
-    // those symbols.
-    //
-    // To deal with these circular dependencies we just force the compiler to
-    // link everything as a group, not stripping anything out until everything
-    // is processed. The linker will still perform a pass to strip out object
-    // files but it won't do so until all objects/archives have been processed.
-    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-Wl,-(".to_string());
-    base.post_link_args.insert(LinkerFlavor::Gcc, vec!["-Wl,-)".to_string()]);
-
     // When generating a statically linked executable there's generally some
     // small setup needed which is listed in these files. These are provided by
     // a musl toolchain and are linked by default by the `musl-gcc` script. Note
