@@ -21,7 +21,6 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::bit_set::BitSet;
 use std::fmt;
-use std::hash::Hash;
 use std::ops::Index;
 
 crate struct BorrowSet<'tcx> {
@@ -233,21 +232,13 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
 
             self.insert_as_pending_if_two_phase(location, &assigned_place, region, kind, idx);
 
-            insert(&mut self.region_map, &region, idx);
+            self.region_map.entry(region).or_default().insert(idx);
             if let Some(local) = borrowed_place.root_local() {
-                insert(&mut self.local_map, &local, idx);
+                self.local_map.entry(local).or_default().insert(idx);
             }
         }
 
-        return self.super_assign(block, assigned_place, rvalue, location);
-
-        fn insert<'a, K, V>(map: &'a mut FxHashMap<K, FxHashSet<V>>, k: &K, v: V)
-        where
-            K: Clone + Eq + Hash,
-            V: Eq + Hash,
-        {
-            map.entry(k.clone()).or_default().insert(v);
-        }
+        self.super_assign(block, assigned_place, rvalue, location)
     }
 
     fn visit_place(
