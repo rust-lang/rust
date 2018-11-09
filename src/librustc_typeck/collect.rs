@@ -1892,7 +1892,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                         &hir::GenericBound::Trait(ref poly_trait_ref, _) => {
                             let mut projections = Vec::new();
 
-                            let trait_ref = AstConv::instantiate_poly_trait_ref(
+                            let (trait_ref, _) = AstConv::instantiate_poly_trait_ref(
                                 &icx,
                                 poly_trait_ref,
                                 ty,
@@ -2016,7 +2016,12 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(
     let mut projection_bounds = Vec::new();
 
     let mut trait_bounds: Vec<_> = trait_bounds.iter().map(|&bound| {
-        (astconv.instantiate_poly_trait_ref(bound, param_ty, &mut projection_bounds), bound.span)
+        let (poly_trait_ref, _) = astconv.instantiate_poly_trait_ref(
+            bound,
+            param_ty,
+            &mut projection_bounds,
+        );
+        (poly_trait_ref, bound.span)
     }).collect();
 
     let region_bounds = region_bounds
@@ -2057,7 +2062,7 @@ fn predicates_from_bound<'tcx>(
     match *bound {
         hir::GenericBound::Trait(ref tr, hir::TraitBoundModifier::None) => {
             let mut projections = Vec::new();
-            let pred = astconv.instantiate_poly_trait_ref(tr, param_ty, &mut projections);
+            let (pred, _) = astconv.instantiate_poly_trait_ref(tr, param_ty, &mut projections);
             iter::once((pred.to_predicate(), tr.span)).chain(
                 projections
                     .into_iter()

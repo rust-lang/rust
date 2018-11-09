@@ -389,7 +389,7 @@ pub fn hir_trait_to_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, hir_trait:
     let env_def_id = tcx.hir.local_def_id(env_node_id);
     let item_cx = self::collect::ItemCtxt::new(tcx, env_def_id);
     let mut projections = Vec::new();
-    let principal = astconv::AstConv::instantiate_poly_trait_ref_inner(
+    let (principal, _) = astconv::AstConv::instantiate_poly_trait_ref_inner(
         &item_cx, hir_trait, tcx.types.err, &mut projections, true
     );
 

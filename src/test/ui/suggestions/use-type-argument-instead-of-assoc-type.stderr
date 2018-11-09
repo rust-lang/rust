@@ -1,5 +1,5 @@
 error[E0107]: wrong number of type arguments: expected 2, found 4
-  --> $DIR/E0107-b.rs:6:42
+  --> $DIR/use-type-argument-instead-of-assoc-type.rs:6:42
    |
 LL |  pub struct Foo { i: Box<T<usize, usize, usize, usize, B=usize>> }
    |                                          ^^^^^  ^^^^^ unexpected type argument
@@ -7,7 +7,7 @@ LL |  pub struct Foo { i: Box<T<usize, usize, usize, usize, B=usize>> }
    |                                          unexpected type argument
 
 error[E0191]: the value of the associated types `A` (from the trait `T`), `C` (from the trait `T`) must be specified
-  --> $DIR/E0107-b.rs:6:26
+  --> $DIR/use-type-argument-instead-of-assoc-type.rs:6:26
    |
 LL |     type A;
    |     ------- `A` defined here
@@ -20,6 +20,10 @@ LL |  pub struct Foo { i: Box<T<usize, usize, usize, usize, B=usize>> }
    |                          |
    |                          missing associated type `A` value
    |                          missing associated type `C` value
+help: if you meant to assign the missing associated type, use the name
+   |
+LL |  pub struct Foo { i: Box<T<usize, usize, A = usize, C = usize, B=usize>> }
+   |                                          ^^^^^^^^^  ^^^^^^^^^
 
 error: aborting due to 2 previous errors
 
