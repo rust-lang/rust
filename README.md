@@ -7,7 +7,7 @@ undergraduate research course at the [University of Saskatchewan][usask].
 
 ## Building Miri
 
-I recommend that you install [rustup][rustup] to obtain Rust. Then all you have
+We recommend that you install [rustup][rustup] to obtain Rust. Then all you have
 to do is:
 
 ```sh
@@ -117,11 +117,12 @@ Miri will often require using a locally built rustc. This includes getting a
 trace of the execution, as distributed rustc has `debug!` and `trace!` disabled.
 
 The first-time setup for a local rustc looks as follows:
-```
+```sh
 git clone https://github.com/rust-lang/rust/ rustc
 cd rustc
 cp config.toml.example config.toml
-# Now edit `config.toml` and set `debug-assertions = true`
+# Now edit `config.toml` and set `debug-assertions = true` and `test-miri = true`.
+# The latter is important to build libstd with the right flags for miri.
 ./x.py build src/rustc
 # You may have to change the architecture in the next command
 rustup toolchain link custom build/x86_64-unknown-linux-gnu/stage2
@@ -130,9 +131,20 @@ rustup override set custom
 ```
 The `build` step can take 30 minutes and more.
 
-Now you can `cargo build` Miri, and you can `cargo test` it.  But the key point
-is, you can now run Miri with a trace of all execution steps:
+Now you can `cargo build` Miri, and you can `cargo test --release` it.  `cargo
+test --release FILTER` only runs those tests that contain `FILTER` in their
+filename (including the base directory, e.g. `cargo test --release fail` will
+run all compile-fail tests).  We recommend using `--release` to make test
+running take less time.
 
+Notice that the "fullmir" tests only run if you have `MIRI_SYSROOT` set, the
+test runner does not realized that your libstd comes with full MIR.  The
+following will set it correctly:
+```sh
+MIRI_SYSROOT=$(rustc --print sysroot) cargo test --release
+```
+
+Moreover, you can now run Miri with a trace of all execution steps:
 ```sh
 MIRI_LOG=debug cargo run tests/run-pass/vecs.rs
 ```
@@ -141,9 +153,8 @@ Setting `MIRI_LOG` like this will configure logging for miri itself as well as
 the `rustc::mir::interpret` and `rustc_mir::interpret` modules in rustc.  You
 can also do more targeted configuration, e.g. to debug the stacked borrows
 implementation:
-
 ```sh
-MIRI_LOG=miri::stacked_borrows=trace,rustc_mir::interpret=debug cargo run tests/run-pass/vecs.rs
+MIRI_LOG=rustc_mir::interpret=debug,miri::stacked_borrows cargo run tests/run-pass/vecs.rs
 ```
 
 In addition, you can set `MIRI_BACKTRACE=1` to get a backtrace of where an

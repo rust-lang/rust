@@ -1,20 +1,13 @@
-#![feature(slice_concat_ext)]
-
-extern crate compiletest_rs as compiletest;
-extern crate colored;
-
-use colored::*;
+#![feature(slice_concat_ext, custom_test_frameworks)]
+#![test_runner(test_runner)]
 
 use std::slice::SliceConcatExt;
 use std::path::{PathBuf, Path};
 use std::io::Write;
+use std::env;
 
-macro_rules! eprintln {
-    ($($arg:tt)*) => {
-        let stderr = std::io::stderr();
-        writeln!(stderr.lock(), $($arg)*).unwrap();
-    }
-}
+use compiletest_rs as compiletest;
+use colored::*;
 
 fn miri_path() -> PathBuf {
     if rustc_test_suite().is_some() {
@@ -37,9 +30,21 @@ fn have_fullmir() -> bool {
     std::env::var("MIRI_SYSROOT").is_ok() || rustc_test_suite().is_some()
 }
 
+fn mk_config(mode: &str) -> compiletest::Config {
+    let mut config = compiletest::Config::default();
+    config.mode = mode.parse().expect("Invalid mode");
+    config.rustc_path = miri_path();
+    if rustc_test_suite().is_some() {
+        config.run_lib_path = rustc_lib_path();
+        config.compile_lib_path = rustc_lib_path();
+    }
+    config.filter = env::args().nth(1);
+    config
+}
+
 fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir: bool, opt: bool) {
     if need_fullmir && !have_fullmir() {
-        eprintln!("{}", format!(
+        eprintln!("{}\n", format!(
             "## Skipping compile-fail tests in {} against miri for target {} due to missing mir",
             path,
             target
@@ -65,23 +70,17 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullm
         flags.push("-Zmir-opt-level=1".to_owned());
     }
 
-    let mut config = compiletest::Config::default().tempdir();
-    config.mode = "compile-fail".parse().expect("Invalid mode");
-    config.rustc_path = miri_path();
-    if rustc_test_suite().is_some() {
-        config.run_lib_path = rustc_lib_path();
-        config.compile_lib_path = rustc_lib_path();
-    }
-    config.src_base = PathBuf::from(path.to_string());
-    config.target_rustcflags = Some(flags.join(" "));
+    let mut config = mk_config("compile-fail");
+    config.src_base = PathBuf::from(path);
     config.target = target.to_owned();
     config.host = host.to_owned();
-    compiletest::run_tests(&config);
+    config.target_rustcflags = Some(flags.join(" "));
+    compiletest::run_tests(&config.tempdir()); // FIXME: `tempdir` can be done by `mk_config` once `ConfigWithTemp` is exposed as type from compiletest
 }
 
 fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir: bool, opt: bool) {
     if need_fullmir && !have_fullmir() {
-        eprintln!("{}", format!(
+        eprintln!("{}\n", format!(
             "## Skipping run-pass tests in {} against miri for target {} due to missing mir",
             path,
             target
@@ -104,18 +103,12 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
         flags.push("-Zmir-opt-level=3".to_owned());
     }
 
-    let mut config = compiletest::Config::default().tempdir();
-    config.mode = "ui".parse().expect("Invalid mode");
+    let mut config = mk_config("ui");
     config.src_base = PathBuf::from(path);
     config.target = target.to_owned();
     config.host = host.to_owned();
-    config.rustc_path = miri_path();
-    if rustc_test_suite().is_some() {
-        config.run_lib_path = rustc_lib_path();
-        config.compile_lib_path = rustc_lib_path();
-    }
     config.target_rustcflags = Some(flags.join(" "));
-    compiletest::run_tests(&config);
+    compiletest::run_tests(&config.tempdir()); // FIXME: `tempdir` can be done by `mk_config` once `ConfigWithTemp` is exposed as type from compiletest
 }
 
 fn is_target_dir<P: Into<PathBuf>>(path: P) -> bool {
@@ -151,7 +144,6 @@ fn get_sysroot() -> PathBuf {
 
 fn get_host() -> String {
     let rustc = rustc_test_suite().unwrap_or(PathBuf::from("rustc"));
-    println!("using rustc at {}", rustc.display());
     let host = std::process::Command::new(rustc)
         .arg("-vV")
         .output()
@@ -184,8 +176,7 @@ fn compile_fail_miri(opt: bool) {
     compile_fail(&sysroot, "tests/compile-fail-fullmir", &host, &host, true, opt);
 }
 
-#[test]
-fn test() {
+fn test_runner(_tests: &[&()]) {
     // We put everything into a single test to avoid the parallelism `cargo test`
     // introduces.  We still get parallelism within our tests because `compiletest`
     // uses `libtest` which runs jobs in parallel.
