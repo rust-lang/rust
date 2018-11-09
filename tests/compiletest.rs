@@ -29,8 +29,8 @@ fn have_fullmir() -> bool {
     std::env::var("MIRI_SYSROOT").is_ok() || rustc_test_suite().is_some()
 }
 
-fn mk_config(mode: &str) -> compiletest::Config {
-    let mut config = compiletest::Config::default();
+fn mk_config(mode: &str) -> compiletest::common::ConfigWithTemp {
+    let mut config = compiletest::Config::default().tempdir();
     config.mode = mode.parse().expect("Invalid mode");
     config.rustc_path = miri_path();
     if rustc_test_suite().is_some() {
@@ -74,7 +74,7 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullm
     config.target = target.to_owned();
     config.host = host.to_owned();
     config.target_rustcflags = Some(flags.join(" "));
-    compiletest::run_tests(&config.tempdir()); // FIXME: `tempdir` can be done by `mk_config` once `ConfigWithTemp` is exposed as type from compiletest
+    compiletest::run_tests(&config);
 }
 
 fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir: bool, opt: bool) {
@@ -107,7 +107,7 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
     config.target = target.to_owned();
     config.host = host.to_owned();
     config.target_rustcflags = Some(flags.join(" "));
-    compiletest::run_tests(&config.tempdir()); // FIXME: `tempdir` can be done by `mk_config` once `ConfigWithTemp` is exposed as type from compiletest
+    compiletest::run_tests(&config);
 }
 
 fn is_target_dir<P: Into<PathBuf>>(path: P) -> bool {
