@@ -1237,6 +1237,40 @@ extern "C" LLVMValueRef LLVMRustBuildCall(LLVMBuilderRef B, LLVMValueRef Fn,
       unwrap(Fn), makeArrayRef(unwrap(Args), NumArgs), Bundles, Name));
 }
 
+extern "C" LLVMValueRef LLVMRustBuildMemCpy(LLVMBuilderRef B,
+                                            LLVMValueRef Dst, unsigned DstAlign,
+                                            LLVMValueRef Src, unsigned SrcAlign,
+                                            LLVMValueRef Size, bool IsVolatile) {
+#if LLVM_VERSION_GE(7, 0)
+  return wrap(unwrap(B)->CreateMemCpy(
+      unwrap(Dst), DstAlign,
+      unwrap(Src), SrcAlign,
+      unwrap(Size), IsVolatile));
+#else
+  unsigned Align = std::min(DstAlign, SrcAlign);
+  return wrap(unwrap(B)->CreateMemCpy(
+      unwrap(Dst), unwrap(Src),
+      unwrap(Size), Align, IsVolatile));
+#endif
+}
+
+extern "C" LLVMValueRef LLVMRustBuildMemMove(LLVMBuilderRef B,
+                                             LLVMValueRef Dst, unsigned DstAlign,
+                                             LLVMValueRef Src, unsigned SrcAlign,
+                                             LLVMValueRef Size, bool IsVolatile) {
+#if LLVM_VERSION_GE(7, 0)
+  return wrap(unwrap(B)->CreateMemMove(
+      unwrap(Dst), DstAlign,
+      unwrap(Src), SrcAlign,
+      unwrap(Size), IsVolatile));
+#else
+  unsigned Align = std::min(DstAlign, SrcAlign);
+  return wrap(unwrap(B)->CreateMemMove(
+      unwrap(Dst), unwrap(Src),
+      unwrap(Size), Align, IsVolatile));
+#endif
+}
+
 extern "C" LLVMValueRef
 LLVMRustBuildInvoke(LLVMBuilderRef B, LLVMValueRef Fn, LLVMValueRef *Args,
                     unsigned NumArgs, LLVMBasicBlockRef Then,
