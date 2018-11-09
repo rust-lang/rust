@@ -137,9 +137,9 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let byte_amount = fx.bcx.ins().imul(count, elem_size);
 
             if intrinsic.ends_with("_nonoverlapping") {
-                fx.bcx.call_memcpy(&fx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memcpy(fx.module.target_config(), dst, src, byte_amount);
             } else {
-                fx.bcx.call_memmove(&fx.module.target_config(), dst, src, byte_amount);
+                fx.bcx.call_memmove(fx.module.target_config(), dst, src, byte_amount);
             }
         };
         discriminant_value, (c val) {
@@ -301,14 +301,14 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let addr = fx.bcx.ins().stack_addr(pointer_ty(fx.tcx), stack_slot, 0);
             let zero_val = fx.bcx.ins().iconst(types::I8, 0);
             let len_val = fx.bcx.ins().iconst(pointer_ty(fx.tcx), layout.size.bytes() as i64);
-            fx.bcx.call_memset(&fx.module.target_config(), addr, zero_val, len_val);
+            fx.bcx.call_memset(fx.module.target_config(), addr, zero_val, len_val);
 
             let uninit_place = CPlace::from_stack_slot(fx, stack_slot, T);
             let uninit_val = uninit_place.to_cvalue(fx);
             ret.write_cvalue(fx, uninit_val);
         };
         write_bytes, (v dst, v val, v count) {
-            fx.bcx.call_memset(&fx.module.target_config(), dst, val, count);
+            fx.bcx.call_memset(fx.module.target_config(), dst, val, count);
         };
         uninit, <T> () {
             let layout = fx.layout_of(T);
