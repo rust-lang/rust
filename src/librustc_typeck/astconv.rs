@@ -338,33 +338,31 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                 (required, "")
             };
 
-            let mut span = span;
-            let label = if required == permitted && provided > permitted {
-                let diff = provided - permitted;
-                if diff == 1 {
-                    // In the case when the user has provided too many arguments,
-                    // we want to point to the first unexpected argument.
-                    let first_superfluous_arg: &GenericArg = &args.args[offset + permitted];
-                    span = first_superfluous_arg.span();
-                }
-                format!(
-                    "{}unexpected {} argument{}",
-                    if diff != 1 { format!("{} ", diff) } else { String::new() },
-                    kind,
-                    if diff != 1 { "s" } else { "" },
+            let (spans, label) = if required == permitted && provided > permitted {
+                // In the case when the user has provided too many arguments,
+                // we want to point to the unexpected arguments.
+                (
+                    args.args[offset+permitted .. offset+provided]
+                        .iter()
+                        .map(|arg| arg.span())
+                        .collect(),
+                    format!(
+                        "unexpected {} argument",
+                        kind,
+                    ),
                 )
             } else {
-                format!(
+                (vec![span], format!(
                     "expected {}{} {} argument{}",
                     quantifier,
                     bound,
                     kind,
                     if bound != 1 { "s" } else { "" },
-                )
+                ))
             };
 
-            tcx.sess.struct_span_err_with_code(
-                span,
+            let mut err = tcx.sess.struct_span_err_with_code(
+                spans.clone(),
                 &format!(
                     "wrong number of {} arguments: expected {}{}, found {}",
                     kind,
@@ -373,7 +371,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                     provided,
                 ),
                 DiagnosticId::Error("E0107".into())
-            ).span_label(span, label).emit();
+            );
+            for span in spans {
+                err.span_label(span, label.as_str());
+            }
+            err.emit();
 
             provided > required // `suppress_error`
         };
@@ -1030,13 +1032,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
         for item_def_id in associated_types {
             let assoc_item = tcx.associated_item(item_def_id);
             let trait_def_id = assoc_item.container.id();
-            struct_span_err!(tcx.sess, span, E0191, "the value of the associated type `{}` \
-                                                     (from the trait `{}`) must be specified",
-                                                    assoc_item.ident,
-                                                    tcx.item_path_str(trait_def_id))
-                .span_label(span, format!("missing associated type `{}` value",
-                                          assoc_item.ident))
-                .emit();
+            let mut err = struct_span_err!(
+                tcx.sess,
+                span,
+                E0191,
+                "the value of the associated type `{}` (from the trait `{}`) must be specified",
+                assoc_item.ident,
+                tcx.item_path_str(trait_def_id),
+            );
+            err.span_label(span, format!("missing associated type `{}` value", assoc_item.ident));
+            err.emit();
         }
 
         // Erase the `dummy_self` (`TRAIT_OBJECT_DUMMY_SELF`) used above.
