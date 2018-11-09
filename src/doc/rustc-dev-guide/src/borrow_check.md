@@ -51,13 +51,14 @@ the [`mir_borrowck`] query.
   the purpose of this type check is to determine all of the constraints between
   different regions.
 - Next, we do [region inference](borrow_check/region_inference.html), which computes
-  the values of each region — basically, points in the control-flow graph.
+  the values of each region — basically, the points in the control-flow graph where
+  each lifetime must be valid according to the constraints we collected.
 - At this point, we can compute the "borrows in scope" at each point.
 - Finally, we do a second walk over the MIR, looking at the actions it
   does and reporting errors. For example, if we see a statement like
   `*a + 1`, then we would check that the variable `a` is initialized
   and that it is not mutably borrowed, as either of those would
-  require an error to be reported.
-  - Doing this check requires the results of all the previous analyses.
+  require an error to be reported. Doing this check requires the results of all
+  the previous analyses.
 
 [`replace_regions_in_mir`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir/borrow_check/nll/fn.replace_regions_in_mir.html
