@@ -404,6 +404,7 @@ impl<'a> Context<'a> {
                             closures::rewrite_last_closure(self.context, expr, shape)
                         }
                     }
+
                     // When overflowing the expressions which consists of a control flow
                     // expression, avoid condition to use multi line.
                     ast::ExprKind::If(..)
@@ -422,6 +423,7 @@ impl<'a> Context<'a> {
                             expr.rewrite(self.context, shape)
                         }
                     }
+
                     _ => expr.rewrite(self.context, shape),
                 }
             }

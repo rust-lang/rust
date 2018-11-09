@@ -88,8 +88,10 @@ create_config! {
     // Misc.
     remove_nested_parens: bool, true, true, "Remove nested parens";
     combine_control_expr: bool, true, false, "Combine control expressions with function calls";
-    struct_field_align_threshold: usize, 0, false, "Align struct fields if their diffs fits within \
-                                             threshold";
+    overflow_delimited_expr: bool, false, false,
+        "Allow trailing bracket/brace delimited expressions to overflow";
+    struct_field_align_threshold: usize, 0, false,
+        "Align struct fields if their diffs fits within threshold";
     enum_discrim_align_threshold: usize, 0, false,
         "Align enum variants discrims, if their diffs fit within threshold";
     match_arm_blocks: bool, true, false, "Wrap the body of arms in blocks when it does not fit on \

@@ -2089,6 +2089,88 @@ fn main() {
 
 See also: [`match_block_trailing_comma`](#match_block_trailing_comma).
 
+## `overflow_delimited_expr`
+
+When structs, slices, arrays, and block/array-like macros are used as the last
+argument in an expression list, allow them to overflow (like blocks/closures)
+instead of being indented on a new line.
+
+- **Default value**: `false`
+- **Possible values**: `true`, `false`
+- **Stable**: No
+
+#### `false` (default):
+
+```rust
+fn example() {
+    foo(ctx, |param| {
+        action();
+        foo(param)
+    });
+
+    foo(
+        ctx,
+        Bar {
+            x: value,
+            y: value2,
+        },
+    );
+
+    foo(
+        ctx,
+        &[
+            MAROON_TOMATOES,
+            PURPLE_POTATOES,
+            ORGANE_ORANGES,
+            GREEN_PEARS,
+            RED_APPLES,
+        ],
+    );
+
+    foo(
+        ctx,
+        vec![
+            MAROON_TOMATOES,
+            PURPLE_POTATOES,
+            ORGANE_ORANGES,
+            GREEN_PEARS,
+            RED_APPLES,
+        ],
+    );
+}
+```
+
+#### `true`:
+
+```rust
+fn example() {
+    foo(ctx, |param| {
+        action();
+        foo(param)
+    });
+
+    foo(ctx, Bar {
+        x: value,
+        y: value2,
+    });
+
+    foo(ctx, &[
+        MAROON_TOMATOES,
+        PURPLE_POTATOES,
+        ORGANE_ORANGES,
+        GREEN_PEARS,
+        RED_APPLES,
+    ]);
+
+    foo(ctx, vec![
+        MAROON_TOMATOES,
+        PURPLE_POTATOES,
+        ORGANE_ORANGES,
+        GREEN_PEARS,
+        RED_APPLES,
+    ]);
+}
+```
 
 ## `blank_lines_upper_bound`
 
