@@ -1,4 +1,5 @@
 
+use cell::RefCell;
 use io::{self, Error, ErrorKind, Read, Write};
 use libc;
 use mem;
@@ -12,10 +13,6 @@ use super::ext::fs::MetadataExt;
 use super::ext::io::AsRawFd;
 
 
-
-// Kernel prior to 4.5 don't have copy_file_range
-// We store the availability in a global to avoid unnecessary syscalls
-static HAS_COPY_FILE_RANGE: AtomicBool = AtomicBool::new(true);
 
 unsafe fn copy_file_range(
     fd_in: libc::c_int,
@@ -87,7 +84,7 @@ fn allocate_file(fd: &File, len: u64) -> io::Result<()> {
 // tell copy_file_range() track the file offset. See the manpage
 // for details.
 fn copy_bytes_kernel(reader: &File, writer: &File, nbytes: usize) -> io::Result<u64> {
-    let copy_result = unsafe {
+    unsafe {
         cvt(copy_file_range(reader.as_raw_fd(),
                             ptr::null_mut(),
                             writer.as_raw_fd(),
@@ -96,21 +93,40 @@ fn copy_bytes_kernel(reader: &File, writer: &File, nbytes: usize) -> io::Result<
                             0)
         )
     }
-    .map(|v| v as u64);
-
-    if let Err(ref copy_err) = copy_result {
-        match copy_err.raw_os_error() {
-            Some(libc::ENOSYS) | Some(libc::EPERM) => {
-                HAS_COPY_FILE_RANGE.store(false, Ordering::Relaxed);
-            }
-            _ => {}
-        }
-    }
-    copy_result
+    .map(|v| v as u64)
 }
 
-fn copy_bytes(reader: &File, writer: &File, nbytes: usize) -> io::Result<u64> {
-    copy_bytes_kernel(reader, writer, nbytes)
+
+// Kernel prior to 4.5 don't have copy_file_range We store the
+// availability in a thread-local flag to avoid unnecessary syscalls
+thread_local! {
+    static HAS_COPY_FILE_RANGE: RefCell<bool> = RefCell::new(true);
+}
+
+fn copy_bytes(mut reader: &File, mut writer: &File, nbytes: usize) -> io::Result<u64> {
+    HAS_COPY_FILE_RANGE.with(|cfr| {
+        loop {
+            if !*cfr.borrow() {
+                return io::copy(&mut reader, &mut writer);
+
+            } else {
+                let result = copy_bytes_kernel(reader, writer, nbytes);
+
+                if let Err(ref err) = result {
+                    match err.raw_os_error() {
+                        Some(libc::ENOSYS) | Some(libc::EPERM) => {
+                            // Flag as missing and retry.
+                            *cfr.borrow_mut() = false;
+                            continue;
+                        }
+                        _ => {}
+
+                    }
+                }
+                return result;
+            }
+        }
+    })
 }
 
 /// Version of copy_file_range that defers offset-management to the
@@ -195,27 +211,17 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
     };
     let _sparse = is_sparse(&reader)?;
 
-    let has_copy_file_range = HAS_COPY_FILE_RANGE.load(Ordering::Relaxed);
     let mut written = 0u64;
     while written < len {
-        let copy_result = if has_copy_file_range {
-            let bytes_to_copy = cmp::min(len - written, usize::max_value() as u64) as usize;
-            copy_bytes(&reader, &writer, bytes_to_copy)
+        let bytes_to_copy = cmp::min(len - written, usize::max_value() as u64) as usize;
+        let copy_result = copy_bytes_kernel(&mut reader, &mut writer, bytes_to_copy);
 
-        } else {
-            Err(io::Error::from_raw_os_error(libc::ENOSYS))
-        };
         match copy_result {
-            Ok(ret) => written += ret as u64,
+            Ok(ret) => written += ret,
             Err(err) => {
                 match err.raw_os_error() {
-                    Some(os_err) if os_err == libc::ENOSYS
-                                 || os_err == libc::EXDEV
-                                 || os_err == libc::EPERM => {
-                        // Try fallback io::copy if either:
-                        // - Kernel version is < 4.5 (ENOSYS)
-                        // - Files are mounted on different fs (EXDEV)
-                        // - copy_file_range is disallowed, for example by seccomp (EPERM)
+                    Some(os_err) if os_err == libc::EXDEV => {
+                        // Files are mounted on different fs (EXDEV); try fallback io::copy.
                         assert_eq!(written, 0);
                         let ret = io::copy(&mut reader, &mut writer)?;
                         writer.set_permissions(perm)?;
