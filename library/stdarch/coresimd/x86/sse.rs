@@ -1073,7 +1073,7 @@ pub unsafe fn _mm_unpacklo_ps(a: __m128, b: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_movehl_ps)
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(test, assert_instr(movhlps))]
+#[cfg_attr(all(test, not(target_os = "windows")), assert_instr(movhlps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
     // TODO; figure why this is a different instruction on Windows?
@@ -1086,7 +1086,7 @@ pub unsafe fn _mm_movehl_ps(a: __m128, b: __m128) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_movelh_ps)
 #[inline]
 #[target_feature(enable = "sse")]
-#[cfg_attr(test, assert_instr(movlhps))]
+#[cfg_attr(all(test, not(target_os = "windows")), assert_instr(movlhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_movelh_ps(a: __m128, b: __m128) -> __m128 {
     simd_shuffle4(a, b, [0, 1, 4, 5])
@@ -1347,7 +1347,8 @@ pub unsafe fn _mm_loadr_ps(p: *const f32) -> __m128 {
 // fine.
 // On i586 (no SSE2) it just generates plain MOV instructions.
 #[cfg_attr(
-    all(test, any(target_arch = "x86_64", target_feature = "sse2")),
+    all(test, any(target_arch = "x86_64", target_feature = "sse2"),
+        not(target_os = "windows")),
     // assert_instr(movhpd)
     assert_instr(movhps) // LLVM7 prefers single-precision instructions
 )]
@@ -1378,7 +1379,8 @@ pub unsafe fn _mm_storeh_pi(p: *mut __m64, a: __m128) {
 #[target_feature(enable = "sse")]
 // On i586 the codegen just generates plane MOVs. No need to test for that.
 #[cfg_attr(
-    all(test, any(target_arch = "x86_64", target_feature = "sse2")),
+    all(test, any(target_arch = "x86_64", target_feature = "sse2"),
+        not(target_os = "windows")),
     assert_instr(movlps)
 )]
 pub unsafe fn _mm_storel_pi(p: *mut __m64, a: __m128) {

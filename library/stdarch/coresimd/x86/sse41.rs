@@ -166,8 +166,8 @@ pub unsafe fn _mm_blend_ps(a: __m128, b: __m128, imm4: i32) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_extract_ps)
 #[inline]
 #[target_feature(enable = "sse4.1")]
-// TODO: Add test for Windows
-#[cfg_attr(test, assert_instr(extractps, imm8 = 0))]
+#[cfg_attr(all(test, not(target_os = "windows")),
+           assert_instr(extractps, imm8 = 0))]
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_ps(a: __m128, imm8: i32) -> i32 {
@@ -195,8 +195,8 @@ pub unsafe fn _mm_extract_epi8(a: __m128i, imm8: i32) -> i32 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_extract_epi32)
 #[inline]
 #[target_feature(enable = "sse4.1")]
-// TODO: Add test for Windows
-#[cfg_attr(test, assert_instr(extractps, imm8 = 1))]
+#[cfg_attr(all(test, not(target_os = "windows")),
+           assert_instr(extractps, imm8 = 1))]
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi32(a: __m128i, imm8: i32) -> i32 {

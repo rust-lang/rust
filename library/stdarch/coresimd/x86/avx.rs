@@ -1078,7 +1078,8 @@ pub unsafe fn _mm256_cvttps_epi32(a: __m256) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extractf128_ps)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vextractf128, imm8 = 1))]
+#[cfg_attr(all(test, not(target_os = "windows")),
+           assert_instr(vextractf128, imm8 = 1))]
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extractf128_ps(a: __m256, imm8: i32) -> __m128 {
@@ -1094,7 +1095,8 @@ pub unsafe fn _mm256_extractf128_ps(a: __m256, imm8: i32) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extractf128_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vextractf128, imm8 = 1))]
+#[cfg_attr(all(test, not(target_os = "windows")),
+           assert_instr(vextractf128, imm8 = 1))]
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extractf128_pd(a: __m256d, imm8: i32) -> __m128d {
@@ -1109,7 +1111,8 @@ pub unsafe fn _mm256_extractf128_pd(a: __m256d, imm8: i32) -> __m128d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_extractf128_si256)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vextractf128, imm8 = 1))]
+#[cfg_attr(all(test, not(target_os = "windows")),
+           assert_instr(vextractf128, imm8 = 1))]
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_extractf128_si256(a: __m256i, imm8: i32) -> __m128i {
@@ -1510,7 +1513,8 @@ pub unsafe fn _mm256_broadcast_pd(a: &__m128d) -> __m256d {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_insertf128_ps)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
+#[cfg_attr(all(test, not(target_os = "windows")),
+           assert_instr(vinsertf128, imm8 = 1))]
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insertf128_ps(a: __m256, b: __m128, imm8: i32) -> __m256 {
@@ -1528,7 +1532,8 @@ pub unsafe fn _mm256_insertf128_ps(a: __m256, b: __m128, imm8: i32) -> __m256 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_insertf128_pd)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
+#[cfg_attr(all(test, not(target_os = "windows")),
+           assert_instr(vinsertf128, imm8 = 1))]
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insertf128_pd(
@@ -1546,7 +1551,8 @@ pub unsafe fn _mm256_insertf128_pd(
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm256_insertf128_si256)
 #[inline]
 #[target_feature(enable = "avx")]
-#[cfg_attr(test, assert_instr(vinsertf128, imm8 = 1))]
+#[cfg_attr(all(test, not(target_os = "windows")),
+           assert_instr(vinsertf128, imm8 = 1))]
 #[rustc_args_required_const(2)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_insertf128_si256(
