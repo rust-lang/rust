@@ -6,13 +6,9 @@ matrix:
   fast_finish: true
   include:
     - env: TARGET=i586-unknown-linux-gnu
-      rust: nightly-2018-10-20
     - env: TARGET=i686-unknown-linux-gnu
-      rust: nightly-2018-10-20
     - env: TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-      rust: nightly-2018-10-20
     - env: TARGET=x86_64-unknown-linux-gnu-emulated NO_ADD=1 STDSIMD_TEST_EVERYTHING=1
-      rust: nightly-2018-10-20
     - env: TARGET=x86_64-linux-android
     - env: TARGET=arm-unknown-linux-gnueabihf
     - env: TARGET=arm-linux-androideabi
@@ -30,11 +26,9 @@ matrix:
     - os: osx
       env: TARGET=i686-apple-darwin
       script: ci/run.sh
-      rust: nightly-2018-10-20
     - os: osx
       env: TARGET=x86_64-apple-darwin NO_ADD=1
       script: ci/run.sh
-      rust: nightly-2018-10-20
     - env: TARGET=wasm32-unknown-unknown
     - env: TARGET=thumbv6m-none-eabi NOSTD=1
     - env: TARGET=thumbv7m-none-eabi NOSTD=1
