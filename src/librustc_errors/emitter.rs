@@ -108,7 +108,13 @@ pub enum ColorConfig {
 impl ColorConfig {
     fn to_color_choice(&self) -> ColorChoice {
         match *self {
-            ColorConfig::Always => ColorChoice::Always,
+            ColorConfig::Always => {
+                if atty::is(atty::Stream::Stderr) {
+                    ColorChoice::Always
+                } else {
+                    ColorChoice::AlwaysAnsi
+                }
+            }
             ColorConfig::Never => ColorChoice::Never,
             ColorConfig::Auto if atty::is(atty::Stream::Stderr) => {
                 ColorChoice::Auto
