@@ -814,11 +814,6 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             report_unexpected_def(def);
             return self.tcx.types.err;
         }
-        // Replace constructor type with constructed type for tuple struct patterns.
-        let pat_ty = pat_ty.fn_sig(tcx).output();
-        let pat_ty = pat_ty.no_bound_vars().expect("expected fn type");
-
-        self.demand_eqtype(pat.span, expected, pat_ty);
 
         let variant = match def {
             Def::Err => {
@@ -836,6 +831,13 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
             }
             _ => bug!("unexpected pattern definition: {:?}", def)
         };
+
+        // Replace constructor type with constructed type for tuple struct patterns.
+        let pat_ty = pat_ty.fn_sig(tcx).output();
+        let pat_ty = pat_ty.no_bound_vars().expect("expected fn type");
+
+        self.demand_eqtype(pat.span, expected, pat_ty);
+
         // Type check subpatterns.
         if subpats.len() == variant.fields.len() ||
                 subpats.len() < variant.fields.len() && ddpos.is_some() {
