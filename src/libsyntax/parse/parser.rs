@@ -1989,7 +1989,7 @@ impl<'a> Parser<'a> {
         let minus_lo = self.span;
         let minus_present = self.eat(&token::BinOp(token::Minus));
         let lo = self.span;
-        let literal = P(self.parse_lit()?);
+        let literal = self.parse_lit()?;
         let hi = self.prev_span;
         let expr = self.mk_expr(lo.to(hi), ExprKind::Lit(literal), ThinVec::new());
 
