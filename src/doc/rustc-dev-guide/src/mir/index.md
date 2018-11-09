@@ -38,7 +38,7 @@ This section introduces the key concepts of MIR, summarized here:
     the end of a block
   - (if you're not familiar with the term *basic block*, see the [background
     chapter][cfg])
-- **Locals:** Memory locations alloated on the stack (conceptually, at
+- **Locals:** Memory locations allocated on the stack (conceptually, at
   least), such as function arguments, local variables, and
   temporaries. These are identified by an index, written with a
   leading underscore, like `_1`. There is also a special "local"
