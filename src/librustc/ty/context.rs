@@ -1607,16 +1607,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         match self.hir.get(node_id) {
             Node::Item(item) => {
                 match item.node {
-                    ItemKind::Trait(..)
-                    | ItemKind::TraitAlias(..)
-                    | ItemKind::Mod(..)
-                    | ItemKind::ForeignMod(..)
-                    | ItemKind::GlobalAsm(..)
-                    | ItemKind::ExternCrate(..)
-                    | ItemKind::Use(..) => {
+                    ItemKind::Fn(..) => { /* type_of_def_id() will work */ }
+                    _ => {
                         return None;
                     }
-                    _ => { /* type_of_def_id() will work */ }
                 }
             }
             _ => { /* type_of_def_id() will work or panic */ }
