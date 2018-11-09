@@ -67,7 +67,7 @@ matrix:
     #- env: TARGET=x86_64-pc-windows-msvc
     #- env: TARGET=x86_64-pc-windows-gnu
     #- env: TARGET=i686-pc-windows-msvc
-    #- env: TARGET=i686-pc-windows-gnu
+    - env: TARGET=i686-pc-windows-gnu
 
 install:
   - if [ "$NO_ADD" == "" ]; then rustup target add $TARGET; fi
