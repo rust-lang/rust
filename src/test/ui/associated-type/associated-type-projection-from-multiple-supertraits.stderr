@@ -25,6 +25,9 @@ LL | fn dent_object<COLOR>(c: BoxCar<Color=COLOR>) {
 error[E0191]: the value of the associated type `Color` (from the trait `Vehicle`) must be specified
   --> $DIR/associated-type-projection-from-multiple-supertraits.rs:33:26
    |
+LL |     type Color;
+   |     ----------- `Color` defined here
+...
 LL | fn dent_object<COLOR>(c: BoxCar<Color=COLOR>) {
    |                          ^^^^^^^^^^^^^^^^^^^ missing associated type `Color` value
 

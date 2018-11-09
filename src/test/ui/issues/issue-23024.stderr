@@ -17,6 +17,11 @@ error[E0191]: the value of the associated type `Output` (from the trait `std::op
    |
 LL |     println!("{:?}",(vfnfer[0] as Fn)(3));
    |                                   ^^ missing associated type `Output` value
+   | 
+  ::: $SRC_DIR/libcore/ops/function.rs:LL:COL
+   |
+LL |     type Output;
+   |     ------------ `Output` defined here
 
 error: aborting due to 3 previous errors
 

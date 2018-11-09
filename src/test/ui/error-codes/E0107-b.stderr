@@ -9,6 +9,12 @@ LL |  pub struct Foo { i: Box<T<usize, usize, usize, usize, B=usize>> }
 error[E0191]: the value of the associated types `A` (from the trait `T`), `C` (from the trait `T`) must be specified
   --> $DIR/E0107-b.rs:6:26
    |
+LL |     type A;
+   |     ------- `A` defined here
+LL |     type B;
+LL |     type C;
+   |     ------- `C` defined here
+LL | }
 LL |  pub struct Foo { i: Box<T<usize, usize, usize, usize, B=usize>> }
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                          |

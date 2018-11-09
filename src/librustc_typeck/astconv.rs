@@ -1053,6 +1053,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                     span,
                     format!("missing associated type `{}` value", assoc_item.ident),
                 );
+                err.span_label(
+                    tcx.def_span(item_def_id),
+                    format!("`{}` defined here", assoc_item.ident),
+                );
             }
             err.emit();
         }

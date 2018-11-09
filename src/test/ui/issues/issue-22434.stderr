@@ -1,6 +1,9 @@
 error[E0191]: the value of the associated type `A` (from the trait `Foo`) must be specified
   --> $DIR/issue-22434.rs:15:19
    |
+LL |     type A;
+   |     ------- `A` defined here
+...
 LL | type I<'a> = &'a (Foo + 'a);
    |                   ^^^^^^^^ missing associated type `A` value
 
