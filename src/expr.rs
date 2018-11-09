@@ -1340,24 +1340,18 @@ pub fn can_be_overflowed_expr(context: &RewriteContext, expr: &ast::Expr, args_l
         | ast::ExprKind::WhileLet(..) => {
             context.config.combine_control_expr() && context.use_block_indent() && args_len == 1
         }
-        ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => {
-            context.use_block_indent() || context.config.indent_style() == IndentStyle::Visual
-        }
+
+        // Handle always block-like expressions
+        ast::ExprKind::Block(..) | ast::ExprKind::Closure(..) => true,
 
         // Handle `[]` and `{}`-like expressions
         ast::ExprKind::Array(..) | ast::ExprKind::Struct(..) => {
-            if context.config.overflow_delimited_expr() {
-                context.use_block_indent() || context.config.indent_style() == IndentStyle::Visual
-            } else {
-                context.use_block_indent() && args_len == 1
-            }
+            context.config.overflow_delimited_expr()
+                || (context.use_block_indent() && args_len == 1)
         }
         ast::ExprKind::Mac(ref macro_) => {
             match (macro_.node.delim, context.config.overflow_delimited_expr()) {
-                (ast::MacDelimiter::Bracket, true) | (ast::MacDelimiter::Brace, true) => {
-                    context.use_block_indent()
-                        || context.config.indent_style() == IndentStyle::Visual
-                }
+                (ast::MacDelimiter::Bracket, true) | (ast::MacDelimiter::Brace, true) => true,
                 _ => context.use_block_indent() && args_len == 1,
             }
         }
