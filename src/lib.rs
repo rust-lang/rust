@@ -308,16 +308,18 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
         // Some functions are whitelisted until we figure out how to fix them.
         // We walk up the stack a few frames to also cover their callees.
-        const WHITELIST: &[&str] = &[
+        const WHITELIST: &[(&str, &str)] = &[
             // Uses mem::uninitialized
-            "std::ptr::read",
-            "std::sys::windows::mutex::Mutex::",
+            ("std::ptr::read", ""),
+            ("std::sys::windows::mutex::Mutex::", ""),
+            // Should directly take a raw reference
+            ("<std::cell::UnsafeCell<T>>", "::get"),
         ];
         for frame in ecx.stack().iter()
             .rev().take(3)
         {
             let name = frame.instance.to_string();
-            if WHITELIST.iter().any(|white| name.starts_with(white)) {
+            if WHITELIST.iter().any(|(prefix, suffix)| name.starts_with(prefix) && name.ends_with(suffix)) {
                 return false;
             }
         }
@@ -453,7 +455,9 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         let (size, _) = ecx.size_and_align_of_mplace(place)?
             // for extern types, just cover what we can
             .unwrap_or_else(|| place.layout.size_and_align());
-        if !ecx.machine.validate || size == Size::ZERO {
+        if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag ||
+            !Self::enforce_validity(ecx) || size == Size::ZERO
+        {
             // No tracking
             Ok(place.ptr)
         } else {

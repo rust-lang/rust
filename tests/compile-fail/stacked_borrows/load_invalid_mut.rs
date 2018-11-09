@@ -4,6 +4,6 @@ fn main() {
     let xraw = x as *mut _;
     let xref = unsafe { &mut *xraw };
     let xref_in_mem = Box::new(xref);
-    let _val = *x; // invalidate xraw
+    let _val = unsafe { *xraw }; // invalidate xref
     let _val = *xref_in_mem; //~ ERROR does not exist on the stack
 }
