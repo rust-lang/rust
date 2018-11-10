@@ -2206,6 +2206,20 @@ impl<'a> From<&'a str> for String {
 #[cfg(not(test))]
 #[stable(feature = "string_from_box", since = "1.18.0")]
 impl From<Box<str>> for String {
+    /// Converts the given boxed `str` slice to a `String`. 
+    /// It is notable that the `str` slice must be owned.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let s1 : String = String::from("hello world");
+    /// let s2 : Box<str> = s1.into_boxed_str();
+    /// let s3 : String = String::from(s2); 
+    ///
+    /// assert_eq!("hello world", s3)
+    /// ```
     fn from(s: Box<str>) -> String {
         s.into_string()
     }
