@@ -11,6 +11,7 @@ run() {
     mkdir -p target
     target=$(echo "${1}" | sed 's/-emulated//')
     echo "Running docker"
+    # shellcheck disable=SC2016
     docker run \
       --user "$(id -u)":"$(id -g)" \
       --rm \
