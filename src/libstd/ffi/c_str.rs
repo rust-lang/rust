@@ -1178,7 +1178,7 @@ impl CStr {
     ///
     /// If the contents of the `CStr` are valid UTF-8 data, this
     /// function will return a [`Cow`]`::`[`Borrowed`]`(`[`&str`]`)`
-    /// with the the corresponding [`&str`] slice. Otherwise, it will
+    /// with the corresponding [`&str`] slice. Otherwise, it will
     /// replace any invalid UTF-8 sequences with
     /// [`U+FFFD REPLACEMENT CHARACTER`][U+FFFD] and return a
     /// [`Cow`]`::`[`Owned`]`(`[`String`]`)` with the result.
