@@ -14,5 +14,5 @@ warning: `...` range patterns are deprecated
   --> $DIR/inclusive-range-pattern-syntax.rs:25:9
    |
 LL |         &1...2 => {}
-   |         ^^^^^^ help: use `..=` for an inclusive range
+   |         ^^^^^^ help: use `..=` for an inclusive range: `&(1..=2)`
 

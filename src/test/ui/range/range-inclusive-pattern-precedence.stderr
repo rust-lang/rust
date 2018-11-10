@@ -14,7 +14,7 @@ warning: `...` range patterns are deprecated
   --> $DIR/range-inclusive-pattern-precedence.rs:24:9
    |
 LL |         &0...9 => {}
-   |         ^^^^^^ help: use `..=` for an inclusive range
+   |         ^^^^^^ help: use `..=` for an inclusive range: `&(0..=9)`
    |
 note: lint level defined here
   --> $DIR/range-inclusive-pattern-precedence.rs:19:9
