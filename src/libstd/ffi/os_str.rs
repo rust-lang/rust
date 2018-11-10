@@ -590,14 +590,19 @@ impl OsStr {
 
     /// Returns the length of this `OsStr`.
     ///
-    /// Note that this does **not** return the number of bytes in this string
-    /// as, for example, OS strings on Windows are encoded as a list of [`u16`]
-    /// rather than a list of bytes. This number is simply useful for passing to
-    /// other methods like [`OsString::with_capacity`] to avoid reallocations.
+    /// Note that this does **not** return the number of bytes in the string in
+    /// OS string form.
     ///
-    /// See `OsStr` introduction for more information about encoding.
+    /// The length returned is that of the underlying storage used by `OsStr`;
+    /// As discussed in the [`OsString`] introduction, [`OsString`] and `OsStr`
+    /// store strings in a form best suited for cheap inter-conversion between
+    /// native-platform and Rust string forms, which may differ significantly
+    /// from both of them, including in storage size and encoding.
     ///
-    /// [`u16`]: ../primitive.u16.html
+    /// This number is simply useful for passing to other methods, like
+    /// [`OsString::with_capacity`] to avoid reallocations.
+    ///
+    /// [`OsString`]: struct.OsString.html
     /// [`OsString::with_capacity`]: struct.OsString.html#method.with_capacity
     ///
     /// # Examples
