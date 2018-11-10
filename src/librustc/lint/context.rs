@@ -1020,9 +1020,12 @@ impl<'a> ast_visit::Visitor<'a> for EarlyContext<'a> {
     }
 
     fn visit_pat(&mut self, p: &'a ast::Pat) {
-        run_lints!(self, check_pat, p);
+        let mut visit_subpats = true;
+        run_lints!(self, check_pat, p, &mut visit_subpats);
         self.check_id(p.id);
-        ast_visit::walk_pat(self, p);
+        if visit_subpats {
+            ast_visit::walk_pat(self, p);
+        }
     }
 
     fn visit_expr(&mut self, e: &'a ast::Expr) {
