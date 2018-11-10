@@ -30,7 +30,11 @@ extern crate cranelift_simplejit;
 extern crate target_lexicon;
 
 use std::any::Any;
+use std::fs::File;
+use std::io::Write;
 use std::sync::mpsc;
+
+use syntax::symbol::Symbol;
 
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::MetadataLoader;
@@ -38,10 +42,12 @@ use rustc::session::{config::OutputFilenames, CompileIncomplete};
 use rustc::ty::query::Providers;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::out_filename;
-use syntax::symbol::Symbol;
 
 use cranelift::codegen::settings;
 use cranelift_faerie::*;
+
+use crate::constant::ConstantCx;
+use crate::prelude::*;
 
 struct NonFatal(pub String);
 
@@ -73,19 +79,22 @@ mod prelude {
 
     pub use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
     pub use rustc::mir::{self, interpret::AllocId, *};
-    pub use rustc::session::{config::{CrateType, Lto}, Session};
+    pub use rustc::session::{
+        config::{CrateType, Lto},
+        Session,
+    };
     pub use rustc::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyLayout};
     pub use rustc::ty::{
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
         TypeAndMut, TypeFoldable,
     };
+    pub use rustc_codegen_utils::CompiledModule;
     pub use rustc_data_structures::{
         fx::{FxHashMap, FxHashSet},
         indexed_vec::Idx,
         sync::Lrc,
     };
     pub use rustc_mir::monomorphize::{collector, MonoItem};
-    pub use rustc_codegen_utils::CompiledModule;
 
     pub use cranelift::codegen::ir::{
         condcodes::IntCC, function::Function, ExternalName, FuncRef, Inst, StackSlot,
@@ -101,12 +110,6 @@ mod prelude {
     pub use crate::common::*;
     pub use crate::{Caches, CodegenResults};
 }
-
-use std::fs::File;
-use std::io::Write;
-
-use crate::constant::ConstantCx;
-use crate::prelude::*;
 
 pub struct Caches<'tcx> {
     pub context: Context,
@@ -147,7 +150,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             Lto::Fat | Lto::Thin | Lto::ThinLocal => {
                 sess.warn("Rustc codegen cranelift doesn't support lto");
             }
-            Lto::No => {},
+            Lto::No => {}
         }
         if sess.opts.cg.rpath {
             sess.err("rpath is not yet supported");
@@ -200,8 +203,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         tcx.sess.warn("Saved incremental data");
 
         let mut log = if cfg!(debug_assertions) {
-            Some(File::create(concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/log.txt"))
-                    .unwrap())
+            Some(File::create(concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/log.txt")).unwrap())
         } else {
             None
         };
