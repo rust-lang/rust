@@ -24,6 +24,7 @@ run() {
       --env STDSIMD_DISABLE_ASSERT_INSTR \
       --env NOSTD \
       --env NORUN \
+      --env RUSTFLAGS \
       --env STDSIMD_TEST_NORUN \
       --volume "$(pwd)":/checkout:ro \
       --volume "$(pwd)"/target:/checkout/target \
