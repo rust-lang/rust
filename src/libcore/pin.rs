@@ -3,7 +3,7 @@
 //! It is sometimes useful to have objects that are guaranteed to not move,
 //! in the sense that their placement in memory does not change, and can thus be relied upon.
 //!
-//! A prime example of such a scenario would be building self-referencial structs,
+//! A prime example of such a scenario would be building self-referential structs,
 //! since moving an object with pointers to itself will invalidate them,
 //! which could cause undefined behavior.
 //!
@@ -39,7 +39,7 @@
 //! use std::marker::Pinned;
 //! use std::ptr::NonNull;
 //!
-//! // This is a self referencial struct since the slice field points to the data field.
+//! // This is a self-referential struct since the slice field points to the data field.
 //! // We cannot inform the compiler about that with a normal reference,
 //! // since this pattern cannot be described with the usual borrowing rules.
 //! // Instead we use a raw pointer, though one which is known to not be null,
