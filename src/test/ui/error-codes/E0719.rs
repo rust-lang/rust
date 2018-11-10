@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait {
-    type Bar;
+trait Foo: Iterator<Item = i32, Item = i32> {}
+
+type Unit = ();
+
+fn test() -> Box<Iterator<Item = (), Item = Unit>> {
+    Box::new(None.into_iter())
 }
 
-type Foo = Trait; //~ ERROR E0191
-
-fn main() {}
+fn main() {
+    let _: &Iterator<Item = i32, Item = i32>;
+    test();
+}

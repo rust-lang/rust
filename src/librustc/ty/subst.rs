@@ -27,7 +27,7 @@ use std::marker::PhantomData;
 use std::mem;
 use std::num::NonZeroUsize;
 
-/// An entity in the Rust typesystem, which can be one of
+/// An entity in the Rust type system, which can be one of
 /// several kinds (only types and lifetimes for now).
 /// To reduce memory usage, a `Kind` is a interned pointer,
 /// with the lowest 2 bits being reserved for a tag to
@@ -171,7 +171,7 @@ impl<'tcx> Decodable for Kind<'tcx> {
 pub type Substs<'tcx> = List<Kind<'tcx>>;
 
 impl<'a, 'gcx, 'tcx> Substs<'tcx> {
-    /// Creates a Substs that maps each generic parameter to itself.
+    /// Creates a `Substs` that maps each generic parameter to itself.
     pub fn identity_for_item(tcx: TyCtxt<'a, 'gcx, 'tcx>, def_id: DefId)
                              -> &'tcx Substs<'tcx> {
         Substs::for_item(tcx, def_id, |param, _| {
@@ -179,9 +179,9 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         })
     }
 
-    /// Creates a Substs for generic parameter definitions,
+    /// Creates a `Substs` for generic parameter definitions,
     /// by calling closures to obtain each kind.
-    /// The closures get to observe the Substs as they're
+    /// The closures get to observe the `Substs` as they're
     /// being built, which can be used to correctly
     /// substitute defaults of generic parameters.
     pub fn for_item<F>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -242,7 +242,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     }
 
     #[inline]
-    pub fn types(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
+    pub fn types(&'a self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'a {
         self.iter().filter_map(|k| {
             if let UnpackedKind::Type(ty) = k.unpack() {
                 Some(ty)
@@ -253,7 +253,7 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     }
 
     #[inline]
-    pub fn regions(&'a self) -> impl DoubleEndedIterator<Item=ty::Region<'tcx>> + 'a {
+    pub fn regions(&'a self) -> impl DoubleEndedIterator<Item = ty::Region<'tcx>> + 'a {
         self.iter().filter_map(|k| {
             if let UnpackedKind::Lifetime(lt) = k.unpack() {
                 Some(lt)
@@ -332,7 +332,7 @@ impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Substs<'tcx> {}
 // `foo`. Or use `foo.subst_spanned(tcx, substs, Some(span))` when
 // there is more information available (for better errors).
 
-pub trait Subst<'tcx> : Sized {
+pub trait Subst<'tcx>: Sized {
     fn subst<'a, 'gcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
                        substs: &[Kind<'tcx>]) -> Self {
         self.subst_spanned(tcx, substs, None)

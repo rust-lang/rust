@@ -8,16 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
+#![feature(trait_alias)]
 
-use std::iter::Iterator;
-
-type Unit = ();
-
-fn test() ->  Box<Iterator<Item = (), Item = Unit>> {
-    Box::new(None.into_iter())
-}
+trait I32Iterator = Iterator<Item = i32>;
 
 fn main() {
-    test();
+    let _: &I32Iterator<Item = u32> = &vec![42].into_iter();
 }

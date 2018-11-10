@@ -301,12 +301,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
-    Warn,
-    "warns about duplicate associated type bindings in generics"
-}
-
-declare_lint! {
     pub DUPLICATE_MACRO_EXPORTS,
     Deny,
     "detects duplicate macro exports"
@@ -418,7 +412,6 @@ impl LintPass for HardwiredLints {
             ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             UNSTABLE_NAME_COLLISIONS,
             IRREFUTABLE_LET_PATTERNS,
-            DUPLICATE_ASSOCIATED_TYPE_BINDINGS,
             DUPLICATE_MACRO_EXPORTS,
             INTRA_DOC_LINK_RESOLUTION_FAILURE,
             MISSING_DOC_CODE_EXAMPLES,

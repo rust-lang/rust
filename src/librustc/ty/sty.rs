@@ -627,7 +627,7 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
 /// A complete reference to a trait. These take numerous guises in syntax,
 /// but perhaps the most recognizable form is in a where clause:
 ///
-///     T : Foo<U>
+///     T: Foo<U>
 ///
 /// This would be represented by a trait-reference where the def-id is the
 /// def-id for the trait `Foo` and the substs define `T` as parameter 0,
@@ -637,8 +637,8 @@ impl<'tcx> Binder<&'tcx List<ExistentialPredicate<'tcx>>> {
 /// that case the `Self` parameter is absent from the substitutions.
 ///
 /// Note that a `TraitRef` introduces a level of region binding, to
-/// account for higher-ranked trait bounds like `T : for<'a> Foo<&'a
-/// U>` or higher-ranked object types.
+/// account for higher-ranked trait bounds like `T: for<'a> Foo<&'a U>`
+/// or higher-ranked object types.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
@@ -663,7 +663,7 @@ impl<'tcx> TraitRef<'tcx> {
         self.substs.type_at(0)
     }
 
-    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
+    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'a {
         // Select only the "input types" from a trait-reference. For
         // now this is all the types that appear in the
         // trait-reference, but it should eventually exclude
@@ -886,16 +886,16 @@ pub struct ProjectionTy<'tcx> {
     /// The parameters of the associated item.
     pub substs: &'tcx Substs<'tcx>,
 
-    /// The DefId of the TraitItem for the associated type N.
+    /// The `DefId` of the `TraitItem` for the associated type `N`.
     ///
-    /// Note that this is not the DefId of the TraitRef containing this
-    /// associated type, which is in tcx.associated_item(item_def_id).container.
+    /// Note that this is not the `DefId` of the `TraitRef` containing this
+    /// associated type, which is in `tcx.associated_item(item_def_id).container`.
     pub item_def_id: DefId,
 }
 
 impl<'a, 'tcx> ProjectionTy<'tcx> {
-    /// Construct a ProjectionTy by searching the trait from trait_ref for the
-    /// associated item named item_name.
+    /// Construct a `ProjectionTy` by searching the trait from `trait_ref` for the
+    /// associated item named `item_name`.
     pub fn from_ref_and_name(
         tcx: TyCtxt<'_, '_, '_>, trait_ref: ty::TraitRef<'tcx>, item_name: Ident
     ) -> ProjectionTy<'tcx> {

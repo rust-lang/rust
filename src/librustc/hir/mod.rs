@@ -506,9 +506,9 @@ pub enum TraitBoundModifier {
 }
 
 /// The AST represents all type param bounds as types.
-/// typeck::collect::compute_bounds matches these against
-/// the "special" built-in traits (see middle::lang_items) and
-/// detects Copy, Send and Sync.
+/// `typeck::collect::compute_bounds` matches these against
+/// the "special" built-in traits (see `middle::lang_items`) and
+/// detects `Copy`, `Send` and `Sync`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub enum GenericBound {
     Trait(PolyTraitRef, TraitBoundModifier),
