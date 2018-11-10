@@ -1,6 +1,6 @@
-From 7bc14b679a5e5a43940fd47a7f3be7f1cc27509b Mon Sep 17 00:00:00 2001
+From 13b3aab50eec5bd0ae22ebb76eba4d0ccb90ae14 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Sat, 6 Oct 2018 13:08:34 +0200
+Date: Sat, 10 Nov 2018 10:49:26 +0100
 Subject: [PATCH] Disable u128 and i128 in libcore
 
 ---
@@ -18,10 +18,11 @@ Subject: [PATCH] Disable u128 and i128 in libcore
  src/libcore/num/wrapping.rs  |  14 ++--
  src/libcore/ops/arith.rs     |  22 +++---
  src/libcore/ops/bit.rs       |  30 +++------
+ src/libcore/sync/atomic.rs   |  28 --------
  src/libcore/tests/iter.rs    |  15 -----
  src/libcore/tests/num/mod.rs |  18 -----
  src/libcore/time.rs          | 126 -----------------------------------
- 17 files changed, 62 insertions(+), 311 deletions(-)
+ 18 files changed, 62 insertions(+), 339 deletions(-)
 
 diff --git a/src/libcore/clone.rs b/src/libcore/clone.rs
 index 46bb580..fcf9fa8 100644
@@ -39,10 +40,10 @@ index 46bb580..fcf9fa8 100644
          bool char
      }
 diff --git a/src/libcore/cmp.rs b/src/libcore/cmp.rs
-index edaed31..570217b 100644
+index 33881de..0e1e823 100644
 --- a/src/libcore/cmp.rs
 +++ b/src/libcore/cmp.rs
-@@ -886,7 +886,7 @@ mod impls {
+@@ -883,7 +883,7 @@ mod impls {
      }
  
      partial_eq_impl! {
@@ -51,7 +52,7 @@ index edaed31..570217b 100644
      }
  
      macro_rules! eq_impl {
-@@ -896,7 +896,7 @@ mod impls {
+@@ -893,7 +893,7 @@ mod impls {
          )*)
      }
  
@@ -60,7 +61,7 @@ index edaed31..570217b 100644
  
      macro_rules! partial_ord_impl {
          ($($t:ty)*) => ($(
-@@ -985,7 +985,7 @@ mod impls {
+@@ -982,7 +982,7 @@ mod impls {
          }
      }
  
@@ -70,7 +71,7 @@ index edaed31..570217b 100644
      #[unstable(feature = "never_type", issue = "35121")]
      impl PartialEq for ! {
 diff --git a/src/libcore/default.rs b/src/libcore/default.rs
-index ab36e29..1926719 100644
+index 638aceb..8b6ff80 100644
 --- a/src/libcore/default.rs
 +++ b/src/libcore/default.rs
 @@ -145,14 +145,12 @@ default_impl! { u8, 0, "Returns the default value of `0`" }
@@ -213,7 +214,7 @@ index f95f8e7..549d832 100644
  
  /// An iterator adapter that produces output as long as the underlying
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index 61181c2..5694583 100644
+index 3e7db7a..1217d4a 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
 @@ -153,14 +153,12 @@ mod uint_macros;
@@ -232,10 +233,10 @@ index 61181c2..5694583 100644
  #[path = "num/f32.rs"]   pub mod f32;
  #[path = "num/f64.rs"]   pub mod f64;
 diff --git a/src/libcore/marker.rs b/src/libcore/marker.rs
-index 266c691..39feadb 100644
+index 662a8dd..856878e 100644
 --- a/src/libcore/marker.rs
 +++ b/src/libcore/marker.rs
-@@ -672,8 +672,8 @@ mod copy_impls {
+@@ -673,8 +673,8 @@ mod copy_impls {
      }
  
      impl_copy! {
@@ -247,7 +248,7 @@ index 266c691..39feadb 100644
          bool char
      }
 diff --git a/src/libcore/mem.rs b/src/libcore/mem.rs
-index 27ee955..e45a2c9 100644
+index 1d0b194..cf15fda 100644
 --- a/src/libcore/mem.rs
 +++ b/src/libcore/mem.rs
 @@ -162,12 +162,10 @@ pub fn forget<T>(t: T) {
@@ -264,7 +265,7 @@ index 27ee955..e45a2c9 100644
  /// f64 | 8
  /// char | 4
 diff --git a/src/libcore/num/mod.rs b/src/libcore/num/mod.rs
-index c6473a2..c513f30 100644
+index c6cbeea..08ef46c 100644
 --- a/src/libcore/num/mod.rs
 +++ b/src/libcore/num/mod.rs
 @@ -112,7 +112,6 @@ nonzero_integers! {
@@ -294,7 +295,7 @@ index c6473a2..c513f30 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "isize"]
  impl isize {
-@@ -4339,17 +4326,6 @@ impl u64 {
+@@ -4337,17 +4324,6 @@ impl u64 {
          "[0x12, 0x34, 0x56, 0x78, 0x90, 0x12, 0x34, 0x56]" }
  }
  
@@ -312,7 +313,7 @@ index c6473a2..c513f30 100644
  #[cfg(target_pointer_width = "16")]
  #[lang = "usize"]
  impl usize {
-@@ -4433,7 +4409,7 @@ macro_rules! from_str_radix_int_impl {
+@@ -4431,7 +4407,7 @@ macro_rules! from_str_radix_int_impl {
          }
      )*}
  }
@@ -321,7 +322,7 @@ index c6473a2..c513f30 100644
  
  /// The error type returned when a checked integral type conversion fails.
  #[unstable(feature = "try_from", issue = "33417")]
-@@ -4549,30 +4525,25 @@ macro_rules! rev {
+@@ -4547,30 +4523,25 @@ macro_rules! rev {
  try_from_upper_bounded!(u16, u8);
  try_from_upper_bounded!(u32, u16, u8);
  try_from_upper_bounded!(u64, u32, u16, u8);
@@ -356,7 +357,7 @@ index c6473a2..c513f30 100644
  
  // usize/isize
  try_from_upper_bounded!(usize, isize);
-@@ -4584,21 +4555,21 @@ mod ptr_try_from_impls {
+@@ -4582,21 +4553,21 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8);
@@ -386,7 +387,7 @@ index c6473a2..c513f30 100644
  }
  
  #[cfg(target_pointer_width = "32")]
-@@ -4607,24 +4578,24 @@ mod ptr_try_from_impls {
+@@ -4605,24 +4576,24 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16);
@@ -419,7 +420,7 @@ index c6473a2..c513f30 100644
  }
  
  #[cfg(target_pointer_width = "64")]
-@@ -4633,24 +4604,20 @@ mod ptr_try_from_impls {
+@@ -4631,24 +4602,20 @@ mod ptr_try_from_impls {
      use convert::TryFrom;
  
      try_from_upper_bounded!(usize, u8, u16, u32);
@@ -448,7 +449,7 @@ index c6473a2..c513f30 100644
  }
  
  #[doc(hidden)]
-@@ -4685,7 +4652,7 @@ macro_rules! doit {
+@@ -4683,7 +4650,7 @@ macro_rules! doit {
          }
      })*)
  }
@@ -457,7 +458,7 @@ index c6473a2..c513f30 100644
  
  fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, ParseIntError> {
      use self::IntErrorKind::*;
-@@ -4853,52 +4820,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
+@@ -4851,52 +4818,38 @@ impl_from_bool! { u8, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u16, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u32, #[stable(feature = "from_bool", since = "1.28.0")] }
  impl_from_bool! { u64, #[stable(feature = "from_bool", since = "1.28.0")] }
@@ -833,6 +834,45 @@ index 3900f36..66b7980 100644
  
 -shr_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 +shr_assign_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
+diff --git a/src/libcore/sync/atomic.rs b/src/libcore/sync/atomic.rs
+index 56d3b42..34df75f 100644
+--- a/src/libcore/sync/atomic.rs
++++ b/src/libcore/sync/atomic.rs
+@@ -1938,34 +1938,6 @@ atomic_int! {
+     8,
+     u64 AtomicU64 ATOMIC_U64_INIT
+ }
+-#[cfg(all(not(stage0), target_has_atomic = "128"))]
+-atomic_int! {
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    "i128", "../../../std/primitive.i128.html",
+-    "#![feature(integer_atomics)]\n\n",
+-    atomic_min, atomic_max,
+-    16,
+-    i128 AtomicI128 ATOMIC_I128_INIT
+-}
+-#[cfg(all(not(stage0), target_has_atomic = "128"))]
+-atomic_int! {
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    unstable(feature = "integer_atomics", issue = "32976"),
+-    "u128", "../../../std/primitive.u128.html",
+-    "#![feature(integer_atomics)]\n\n",
+-    atomic_umin, atomic_umax,
+-    16,
+-    u128 AtomicU128 ATOMIC_U128_INIT
+-}
+ #[cfg(target_pointer_width = "16")]
+ macro_rules! ptr_width {
+     () => { 2 }
 diff --git a/src/libcore/tests/iter.rs b/src/libcore/tests/iter.rs
 index 2476c07..2075670 100644
 --- a/src/libcore/tests/iter.rs
@@ -936,7 +976,7 @@ index ab96d31..bb5c1d0 100644
  test_impl_try_from_always_ok! { test_try_usizeusize, usize, usize }
  test_impl_try_from_always_ok! { test_try_isizeisize, isize, isize }
 diff --git a/src/libcore/time.rs b/src/libcore/time.rs
-index 81ae8ad..0e3dd39 100644
+index cfbd431..aee8065 100644
 --- a/src/libcore/time.rs
 +++ b/src/libcore/time.rs
 @@ -30,7 +30,6 @@ const NANOS_PER_MILLI: u32 = 1_000_000;
@@ -1087,5 +1127,5 @@ index 81ae8ad..0e3dd39 100644
      ///
      /// # Examples
 -- 
-2.17.1 (Apple Git-112)
+2.17.2 (Apple Git-113)
 
