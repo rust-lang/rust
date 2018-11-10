@@ -350,9 +350,8 @@ macro_rules! try {
 /// assert_eq!(v, b"s = \"abc 123\"");
 /// ```
 ///
-/// Note: This macro can be used in `no_std` setups as well
-/// In a `no_std` setup you are responsible for the
-/// implementation details of the components.
+/// Note: This macro can be used in `no_std` setups as well.
+/// In a `no_std` setup you are responsible for the implementation details of the components.
 ///
 /// ```no_run
 /// # extern crate core;
@@ -440,7 +439,7 @@ macro_rules! writeln {
 ///
 /// If the determination that the code is unreachable proves incorrect, the
 /// program immediately terminates with a [`panic!`].  The function [`unreachable_unchecked`],
-/// which belongs to the [`std::hint`] module, informs the compilier to
+/// which belongs to the [`std::hint`] module, informs the compiler to
 /// optimize the code out of the release version entirely.
 ///
 /// [`panic!`]:  ../std/macro.panic.html
