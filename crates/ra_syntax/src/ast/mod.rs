@@ -1,6 +1,7 @@
 mod generated;
 
 use std::marker::PhantomData;
+use std::string::String as RustString;
 
 use itertools::Itertools;
 
@@ -76,7 +77,7 @@ pub trait DocCommentsOwner<'a>: AstNode<'a> {
 
     /// Returns the textual content of a doc comment block as a single string.
     /// That is, strips leading `///` and joins lines
-    fn doc_comment_text(self) -> String {
+    fn doc_comment_text(self) -> RustString {
         self.doc_comments()
             .map(|comment| {
                 let prefix = comment.prefix();
@@ -128,6 +129,12 @@ impl<'a> Lifetime<'a> {
 }
 
 impl<'a> Char<'a> {
+    pub fn text(&self) -> &SmolStr {
+        &self.syntax().leaf_text().unwrap()
+    }
+}
+
+impl<'a> String<'a> {
     pub fn text(&self) -> &SmolStr {
         &self.syntax().leaf_text().unwrap()
     }

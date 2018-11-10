@@ -1,6 +1,68 @@
 use self::CharComponentKind::*;
 use rowan::{TextRange, TextUnit};
 
+pub fn parse_string_literal(src: &str) -> StringComponentIterator {
+    StringComponentIterator {
+        parser: Parser::new(src),
+        has_closing_quote: false,
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub struct StringComponent {
+    pub range: TextRange,
+    pub kind: StringComponentKind,
+}
+
+impl StringComponent {
+    fn new(range: TextRange, kind: StringComponentKind) -> StringComponent {
+        StringComponent { range, kind }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Clone)]
+pub enum StringComponentKind {
+    IgnoreNewline,
+    Char(CharComponentKind),
+}
+
+pub struct StringComponentIterator<'a> {
+    parser: Parser<'a>,
+    pub has_closing_quote: bool,
+}
+
+impl<'a> Iterator for StringComponentIterator<'a> {
+    type Item = StringComponent;
+    fn next(&mut self) -> Option<StringComponent> {
+        if self.parser.pos == 0 {
+            assert!(
+                self.parser.advance() == '"',
+                "string literal should start with double quotes"
+            );
+        }
+
+        if let Some(component) = self.parser.parse_string_component() {
+            return Some(component);
+        }
+
+        // We get here when there are no char components left to parse
+        if self.parser.peek() == Some('"') {
+            self.parser.advance();
+            self.has_closing_quote = true;
+        }
+
+        assert!(
+            self.parser.peek() == None,
+            "string literal should leave no unparsed input: src = {}, pos = {}, length = {}",
+            self.parser.src,
+            self.parser.pos,
+            self.parser.src.len()
+        );
+
+        None
+    }
+}
+
 pub fn parse_char_literal(src: &str) -> CharComponentIterator {
     CharComponentIterator {
         parser: Parser::new(src),
@@ -93,6 +155,12 @@ impl<'a> Parser<'a> {
         next
     }
 
+    pub fn skip_whitespace(&mut self) {
+        while self.peek().map(|c| c.is_whitespace()) == Some(true) {
+            self.advance();
+        }
+    }
+
     pub fn get_pos(&self) -> TextUnit {
         (self.pos as u32).into()
     }
@@ -169,6 +237,51 @@ impl<'a> Parser<'a> {
             Some(CharComponent::new(
                 TextRange::from_to(start, end),
                 CodePoint,
+            ))
+        }
+    }
+
+    pub fn parse_ignore_newline(&mut self, start: TextUnit) -> Option<StringComponent> {
+        // In string literals, when a `\` occurs immediately before the newline, the `\`,
+        // the newline, and all whitespace at the beginning of the next line are ignored
+        match self.peek() {
+            Some('\n') | Some('\r') => {
+                self.skip_whitespace();
+                Some(StringComponent::new(
+                    TextRange::from_to(start, self.get_pos()),
+                    StringComponentKind::IgnoreNewline,
+                ))
+            }
+            _ => None,
+        }
+    }
+
+    pub fn parse_string_component(&mut self) -> Option<StringComponent> {
+        let next = self.peek()?;
+
+        // Ignore string close
+        if next == '"' {
+            return None;
+        }
+
+        let start = self.get_pos();
+        self.advance();
+
+        if next == '\\' {
+            // Strings can use `\` to ignore newlines, so we first try to parse one of those
+            // before falling back to parsing char escapes
+            self.parse_ignore_newline(start).or_else(|| {
+                let char_component = self.parse_escape(start);
+                Some(StringComponent::new(
+                    char_component.range,
+                    StringComponentKind::Char(char_component.kind),
+                ))
+            })
+        } else {
+            let end = self.get_pos();
+            Some(StringComponent::new(
+                TextRange::from_to(start, end),
+                StringComponentKind::Char(CodePoint),
             ))
         }
     }
