@@ -330,6 +330,7 @@ impl Def {
         match *self {
             Def::AssociatedTy(..) | Def::AssociatedConst(..) | Def::AssociatedExistential(..) |
             Def::Enum(..) | Def::Existential(..) | Def::Err => "an",
+            Def::Macro(.., macro_kind) => macro_kind.article(),
             _ => "a",
         }
     }

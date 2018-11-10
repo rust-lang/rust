@@ -9,8 +9,9 @@
 // except according to those terms.
 
 use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
-use {CrateLint, DeterminacyExt, Resolver, ResolutionError, is_known_tool, resolve_error};
+use {CrateLint, DeterminacyExt, Resolver, ResolutionError};
 use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, ToNameBinding};
+use {is_known_tool, names_to_string, resolve_error};
 use ModuleOrUniformRoot;
 use Namespace::{self, *};
 use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
@@ -480,29 +481,19 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         if path.len() > 1 {
             let def = match self.resolve_path(&path, Some(MacroNS), parent_scope,
                                               false, path_span, CrateLint::No) {
-                PathResult::NonModule(path_res) => match path_res.base_def() {
-                    Def::Err => Err(Determinacy::Determined),
-                    def @ _ => {
-                        if path_res.unresolved_segments() > 0 {
-                            self.found_unresolved_macro = true;
-                            self.session.span_err(path_span,
-                                                  "fail to resolve non-ident macro path");
-                            Err(Determinacy::Determined)
-                        } else {
-                            Ok(def)
-                        }
-                    }
-                },
-                PathResult::Module(..) => unreachable!(),
+                PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
+                    Ok(path_res.base_def())
+                }
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
-                _ => {
+                PathResult::NonModule(..) | PathResult::Indeterminate | PathResult::Failed(..) => {
                     self.found_unresolved_macro = true;
                     Err(Determinacy::Determined)
-                },
+                }
+                PathResult::Module(..) => unreachable!(),
             };
 
-            parent_scope.module.macro_resolutions.borrow_mut()
-                .push((path, parent_scope.clone(), path_span));
+            parent_scope.module.multi_segment_macro_resolutions.borrow_mut()
+                .push((path, path_span, kind, parent_scope.clone(), def.ok()));
 
             def
         } else {
@@ -515,7 +506,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
             }
 
-            parent_scope.module.legacy_macro_resolutions.borrow_mut()
+            parent_scope.module.single_segment_macro_resolutions.borrow_mut()
                 .push((path[0].ident, kind, parent_scope.clone(), binding.ok()));
 
             binding.map(|binding| binding.def_ignoring_ambiguity())
@@ -922,50 +913,68 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
 
+        let check_consistency = |this: &mut Self, path: &[Ident], span,
+                                 kind: MacroKind, initial_def, def| {
+            if let Some(initial_def) = initial_def {
+                if def != initial_def && def != Def::Err && this.ambiguity_errors.is_empty() {
+                    // Make sure compilation does not succeed if preferred macro resolution
+                    // has changed after the macro had been expanded. In theory all such
+                    // situations should be reported as ambiguity errors, so this is a bug.
+                    span_bug!(span, "inconsistent resolution for a macro");
+                }
+            } else {
+                // It's possible that the macro was unresolved (indeterminate) and silently
+                // expanded into a dummy fragment for recovery during expansion.
+                // Now, post-expansion, the resolution may succeed, but we can't change the
+                // past and need to report an error.
+                // However, non-speculative `resolve_path` can successfully return private items
+                // even if speculative `resolve_path` returned nothing previously, so we skip this
+                // less informative error if the privacy error is reported elsewhere.
+                if this.privacy_errors.is_empty() {
+                    let msg = format!("cannot determine resolution for the {} `{}`",
+                                        kind.descr(), names_to_string(path));
+                    let msg_note = "import resolution is stuck, try simplifying macro imports";
+                    this.session.struct_span_err(span, &msg).note(msg_note).emit();
+                }
+            }
+        };
+
         let macro_resolutions =
-            mem::replace(&mut *module.macro_resolutions.borrow_mut(), Vec::new());
-        for (mut path, parent_scope, path_span) in macro_resolutions {
+            mem::replace(&mut *module.multi_segment_macro_resolutions.borrow_mut(), Vec::new());
+        for (mut path, path_span, kind, parent_scope, initial_def) in macro_resolutions {
             // FIXME: Path resolution will ICE if segment IDs present.
             for seg in &mut path { seg.id = None; }
             match self.resolve_path(&path, Some(MacroNS), &parent_scope,
                                     true, path_span, CrateLint::No) {
-                PathResult::NonModule(_) => {},
-                PathResult::Failed(span, msg, _) => {
+                PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
+                    let def = path_res.base_def();
+                    check_consistency(self, &path, path_span, kind, initial_def, def);
+                }
+                path_res @ PathResult::NonModule(..) | path_res @  PathResult::Failed(..) => {
+                    let (span, msg) = if let PathResult::Failed(span, msg, ..) = path_res {
+                        (span, msg)
+                    } else {
+                        (path_span, format!("partially resolved path in {} {}",
+                                            kind.article(), kind.descr()))
+                    };
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 }
-                _ => unreachable!(),
+                PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
             }
         }
 
-        let legacy_macro_resolutions =
-            mem::replace(&mut *module.legacy_macro_resolutions.borrow_mut(), Vec::new());
-        for (ident, kind, parent_scope, initial_binding) in legacy_macro_resolutions {
-            let binding = self.early_resolve_ident_in_lexical_scope(
-                ident, MacroNS, Some(kind), false, &parent_scope, true, true, ident.span
-            );
-            match binding {
+        let macro_resolutions =
+            mem::replace(&mut *module.single_segment_macro_resolutions.borrow_mut(), Vec::new());
+        for (ident, kind, parent_scope, initial_binding) in macro_resolutions {
+            match self.early_resolve_ident_in_lexical_scope(ident, MacroNS, Some(kind), false,
+                                                            &parent_scope, true, true, ident.span) {
                 Ok(binding) => {
-                    let def = binding.def_ignoring_ambiguity();
-                    if let Some(initial_binding) = initial_binding {
+                    let initial_def = initial_binding.map(|initial_binding| {
                         self.record_use(ident, MacroNS, initial_binding);
-                        let initial_def = initial_binding.def_ignoring_ambiguity();
-                        if self.ambiguity_errors.is_empty() &&
-                           def != initial_def && def != Def::Err {
-                            // Make sure compilation does not succeed if preferred macro resolution
-                            // has changed after the macro had been expanded. In theory all such
-                            // situations should be reported as ambiguity errors, so this is a bug.
-                            span_bug!(ident.span, "inconsistent resolution for a macro");
-                        }
-                    } else {
-                        // It's possible that the macro was unresolved (indeterminate) and silently
-                        // expanded into a dummy fragment for recovery during expansion.
-                        // Now, post-expansion, the resolution may succeed, but we can't change the
-                        // past and need to report an error.
-                        let msg = format!("cannot determine resolution for the {} `{}`",
-                                          kind.descr(), ident);
-                        let msg_note = "import resolution is stuck, try simplifying macro imports";
-                        self.session.struct_span_err(ident.span, &msg).note(msg_note).emit();
-                    }
+                        initial_binding.def_ignoring_ambiguity()
+                    });
+                    let def = binding.def_ignoring_ambiguity();
+                    check_consistency(self, &[ident], ident.span, kind, initial_def, def);
                 }
                 Err(..) => {
                     assert!(initial_binding.is_none());

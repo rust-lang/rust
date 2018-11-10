@@ -10,7 +10,7 @@
 
 mod m {
     fn check() {
-        Result::Ok!(); //~ ERROR fail to resolve non-ident macro path
+        Result::Ok!(); //~ ERROR failed to resolve. partially resolved path in a macro
     }
 }
 

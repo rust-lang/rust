@@ -1,8 +1,9 @@
-error: fail to resolve non-ident macro path
+error[E0433]: failed to resolve. partially resolved path in a macro
   --> $DIR/macro-path-prelude-fail-2.rs:13:9
    |
-LL |         Result::Ok!(); //~ ERROR fail to resolve non-ident macro path
-   |         ^^^^^^^^^^
+LL |         Result::Ok!(); //~ ERROR failed to resolve. partially resolved path in a macro
+   |         ^^^^^^^^^^ partially resolved path in a macro
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0433`.

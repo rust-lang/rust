@@ -595,6 +595,13 @@ impl MacroKind {
             MacroKind::ProcMacroStub => "crate-local procedural macro",
         }
     }
+
+    pub fn article(self) -> &'static str {
+        match self {
+            MacroKind::Attr => "an",
+            _ => "a",
+        }
+    }
 }
 
 /// An enum representing the different kinds of syntax extensions.
