@@ -42,6 +42,13 @@ use sys_common::{AsInner, IntoInner, FromInner};
 /// in each pair are owned strings; the latter are borrowed
 /// references.
 ///
+/// Note, `OsString` and `OsStr` internally do not necessarily hold strings in
+/// the form native to the platform; While on Unix, strings are stored as a
+/// sequence of 8-bit values, on Windows, where strings are 16-bit value based
+/// as just discussed, strings are also actually stored as a sequence of 8-bit
+/// values, encoded in a less-strict variant of UTF-8. This is useful to
+/// understand when handling capacity and length values.
+///
 /// # Creating an `OsString`
 ///
 /// **From a Rust string**: `OsString` implements
