@@ -53,6 +53,7 @@ extern crate rustc_cratesio_shim;
 
 #[macro_use]
 extern crate bitflags;
+extern crate smallvec;
 
 use std::cmp::Ordering;
 use std::fmt;
