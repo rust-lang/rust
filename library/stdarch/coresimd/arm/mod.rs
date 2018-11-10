@@ -20,10 +20,7 @@ mod v7;
 #[cfg(any(target_arch = "aarch64", target_feature = "v7"))]
 pub use self::v7::*;
 
-#[cfg(any(
-    all(target_feature = "v7", not(target_feature = "mclass")),
-    dox
-))]
+#[cfg(any(all(target_feature = "v7", not(target_feature = "mclass")), dox))]
 mod dsp;
 #[cfg(any(
     all(target_feature = "v7", not(target_feature = "mclass")),

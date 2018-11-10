@@ -635,7 +635,8 @@ impl v128 {
         const C: [ImmByte; 16] = unsafe {
             U {
                 v: ::_core::u128::MAX,
-            }.c
+            }
+            .c
         };
         Self::xor(v128::const_(C), a)
     }

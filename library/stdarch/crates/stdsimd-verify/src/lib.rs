@@ -83,7 +83,8 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
                     required_const: &[#(#required_const),*],
                 }
             }
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
 
     let ret = quote! { #input: &[Function] = &[#(#functions),*]; };
     // println!("{}", ret);
@@ -184,7 +185,8 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
                 }
             }
             _ => None,
-        }).filter_map(|nested| match nested {
+        })
+        .filter_map(|nested| match nested {
             syn::NestedMeta::Meta(syn::Meta::List(i)) => {
                 if i.ident == "assert_instr" {
                     i.nested.into_iter().next()
@@ -193,10 +195,12 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
                 }
             }
             _ => None,
-        }).filter_map(|nested| match nested {
+        })
+        .filter_map(|nested| match nested {
             syn::NestedMeta::Meta(syn::Meta::Word(i)) => Some(i),
             _ => None,
-        }).collect()
+        })
+        .collect()
 }
 
 fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
@@ -212,11 +216,13 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
                 }
             }
             _ => None,
-        }).flat_map(|list| list)
+        })
+        .flat_map(|list| list)
         .filter_map(|nested| match nested {
             syn::NestedMeta::Meta(m) => Some(m),
             syn::NestedMeta::Literal(_) => None,
-        }).filter_map(|m| match m {
+        })
+        .filter_map(|m| match m {
             syn::Meta::NameValue(i) => {
                 if i.ident == "enable" {
                     Some(i.lit)
@@ -225,7 +231,8 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
                 }
             }
             _ => None,
-        }).next()
+        })
+        .next()
 }
 
 fn find_required_const(attrs: &[syn::Attribute]) -> Vec<usize> {
@@ -249,9 +256,7 @@ impl syn::parse::Parse for RustcArgsRequiredConst {
         let list = syn::punctuated::Punctuated::<syn::LitInt, Token![,]>
             ::parse_terminated(&content)?;
         Ok(RustcArgsRequiredConst {
-            args: list.into_iter()
-                .map(|a| a.value() as usize)
-                .collect(),
+            args: list.into_iter().map(|a| a.value() as usize).collect(),
         })
     }
 }

@@ -120,7 +120,8 @@ pub fn simd_test(
             #[target_feature(enable = #enable_feature)]
             #item
         }
-    }.into();
+    }
+    .into();
     ret.into()
 }
 

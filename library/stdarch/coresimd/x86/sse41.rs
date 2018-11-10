@@ -166,8 +166,10 @@ pub unsafe fn _mm_blend_ps(a: __m128, b: __m128, imm4: i32) -> __m128 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_extract_ps)
 #[inline]
 #[target_feature(enable = "sse4.1")]
-#[cfg_attr(all(test, not(target_os = "windows")),
-           assert_instr(extractps, imm8 = 0))]
+#[cfg_attr(
+    all(test, not(target_os = "windows")),
+    assert_instr(extractps, imm8 = 0)
+)]
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_ps(a: __m128, imm8: i32) -> i32 {
@@ -195,8 +197,10 @@ pub unsafe fn _mm_extract_epi8(a: __m128i, imm8: i32) -> i32 {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_extract_epi32)
 #[inline]
 #[target_feature(enable = "sse4.1")]
-#[cfg_attr(all(test, not(target_os = "windows")),
-           assert_instr(extractps, imm8 = 1))]
+#[cfg_attr(
+    all(test, not(target_os = "windows")),
+    assert_instr(extractps, imm8 = 1)
+)]
 #[rustc_args_required_const(1)]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_extract_epi32(a: __m128i, imm8: i32) -> i32 {
@@ -998,14 +1002,14 @@ pub unsafe fn _mm_mullo_epi32(a: __m128i, b: __m128i) -> __m128i {
 /// * `a` - A 128-bit vector of type `__m128i`.
 /// * `b` - A 128-bit vector of type `__m128i`.
 /// * `imm8` - An 8-bit immediate operand specifying how the absolute
-///            differences are to be calculated
+///   differences are to be calculated
 ///     * Bit `[2]` specify the offset for operand `a`
 ///     * Bits `[1:0]` specify the offset for operand `b`
 ///
 /// Returns:
 ///
-/// * A `__m128i` vector containing the sums of the sets of
-///   absolute differences between both operands.
+/// * A `__m128i` vector containing the sums of the sets of   absolute
+///   differences between both operands.
 ///
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_mpsadbw_epu8)
 #[inline]
@@ -1031,7 +1035,7 @@ pub unsafe fn _mm_mpsadbw_epu8(a: __m128i, b: __m128i, imm8: i32) -> __m128i {
 ///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
 /// * `mask` - A 128-bit integer vector selecting which bits to test in
-///            operand `a`.
+///   operand `a`.
 ///
 /// Returns:
 ///
@@ -1054,7 +1058,7 @@ pub unsafe fn _mm_testz_si128(a: __m128i, mask: __m128i) -> i32 {
 ///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
 /// * `mask` - A 128-bit integer vector selecting which bits to test in
-///            operand `a`.
+///   operand `a`.
 ///
 /// Returns:
 ///
@@ -1077,7 +1081,7 @@ pub unsafe fn _mm_testc_si128(a: __m128i, mask: __m128i) -> i32 {
 ///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
 /// * `mask` - A 128-bit integer vector selecting which bits to test in
-///            operand `a`.
+///   operand `a`.
 ///
 /// Returns:
 ///
@@ -1100,7 +1104,7 @@ pub unsafe fn _mm_testnzc_si128(a: __m128i, mask: __m128i) -> i32 {
 ///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
 /// * `mask` - A 128-bit integer vector selecting which bits to test in
-///            operand `a`.
+///   operand `a`.
 ///
 /// Returns:
 ///
@@ -1145,7 +1149,7 @@ pub unsafe fn _mm_test_all_ones(a: __m128i) -> i32 {
 ///
 /// * `a` - A 128-bit integer vector containing the bits to be tested.
 /// * `mask` - A 128-bit integer vector selecting which bits to test in
-///            operand `a`.
+///   operand `a`.
 ///
 /// Returns:
 ///

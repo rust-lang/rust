@@ -85,7 +85,8 @@ pub fn assert_instr(
                 .ident
                 .to_string()
                 .starts_with("target")
-        }).collect::<Vec<_>>();
+        })
+        .collect::<Vec<_>>();
     let attrs = Append(&attrs);
 
     // Use an ABI on Windows that passes SIMD values in registers, like what
@@ -132,7 +133,8 @@ pub fn assert_instr(
                                    stringify!(#shim_name),
                                    #instr);
         }
-    }.into();
+    }
+    .into();
     // why? necessary now to get tests to work?
     let tts: TokenStream =
         tts.to_string().parse().expect("cannot parse tokenstream");
@@ -140,7 +142,8 @@ pub fn assert_instr(
     let tts: TokenStream = quote! {
         #item
         #tts
-    }.into();
+    }
+    .into();
     tts.into()
 }
 

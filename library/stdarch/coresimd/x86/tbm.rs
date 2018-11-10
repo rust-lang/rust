@@ -288,7 +288,7 @@ mod tests {
     unsafe fn test_bextr_u32() {
         assert_eq!(_bextr_u32(0b0101_0000u32, 4, 4), 0b0000_0101u32);
     }
-
+    
     #[simd_test(enable = "tbm")]
     unsafe fn test_bextr_u64() {
         assert_eq!(_bextr_u64(0b0101_0000u64, 4, 4), 0b0000_0101u64);

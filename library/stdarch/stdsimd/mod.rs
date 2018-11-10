@@ -208,7 +208,8 @@
 /// AVX2 and also for the default platform.
 ///
 /// ```rust
-/// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
+/// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature,
+/// # stdsimd))]
 ///
 /// # #[cfg(not(dox))]
 /// # #[macro_use]
@@ -226,7 +227,7 @@
 ///         // Note that this `unsafe` block is safe because we're testing
 ///         // that the `avx2` feature is indeed available on our CPU.
 ///         if is_x86_feature_detected!("avx2") {
-///             return unsafe { add_quickly_avx2(a, b, c) }
+///             return unsafe { add_quickly_avx2(a, b, c) };
 ///         }
 ///     }
 ///
@@ -380,7 +381,10 @@ pub mod arch {
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::powerpc64;
 
-    #[cfg(all(not(dox), any(target_arch = "nvptx", target_arch = "nvptx64")))]
+    #[cfg(all(
+        not(dox),
+        any(target_arch = "nvptx", target_arch = "nvptx64")
+    ))]
     #[unstable(feature = "stdsimd", issue = "27731")]
     pub use coresimd::arch::nvptx;
 

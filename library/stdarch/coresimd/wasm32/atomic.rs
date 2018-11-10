@@ -33,8 +33,8 @@ extern "C" {
 /// the calling thread will be blocked forever.
 ///
 /// The calling thread can only be woken up with a call to the `wake` intrinsic
-/// once it has been blocked. Changing the memory behind `ptr` will not wake the
-/// thread once it's blocked.
+/// once it has been blocked. Changing the memory behind `ptr` will not wake
+/// the thread once it's blocked.
 ///
 /// # Return value
 ///
@@ -47,13 +47,15 @@ extern "C" {
 ///
 /// This intrinsic is only available **when the standard library itself is
 /// compiled with the `atomics` target feature**. This version of the standard
-/// library is not obtainable via `rustup`, but rather will require the standard
-/// library to be compiled from source.
+/// library is not obtainable via `rustup`, but rather will require the
+/// standard library to be compiled from source.
 ///
 /// [instr]: https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wait
 #[inline]
 #[cfg_attr(test, assert_instr("i32.atomic.wait"))]
-pub unsafe fn wait_i32(ptr: *mut i32, expression: i32, timeout_ns: i64) -> i32 {
+pub unsafe fn wait_i32(
+    ptr: *mut i32, expression: i32, timeout_ns: i64,
+) -> i32 {
     llvm_atomic_wait_i32(ptr, expression, timeout_ns)
 }
 
@@ -68,8 +70,8 @@ pub unsafe fn wait_i32(ptr: *mut i32, expression: i32, timeout_ns: i64) -> i32 {
 /// the calling thread will be blocked forever.
 ///
 /// The calling thread can only be woken up with a call to the `wake` intrinsic
-/// once it has been blocked. Changing the memory behind `ptr` will not wake the
-/// thread once it's blocked.
+/// once it has been blocked. Changing the memory behind `ptr` will not wake
+/// the thread once it's blocked.
 ///
 /// # Return value
 ///
@@ -82,13 +84,15 @@ pub unsafe fn wait_i32(ptr: *mut i32, expression: i32, timeout_ns: i64) -> i32 {
 ///
 /// This intrinsic is only available **when the standard library itself is
 /// compiled with the `atomics` target feature**. This version of the standard
-/// library is not obtainable via `rustup`, but rather will require the standard
-/// library to be compiled from source.
+/// library is not obtainable via `rustup`, but rather will require the
+/// standard library to be compiled from source.
 ///
 /// [instr]: https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wait
 #[inline]
 #[cfg_attr(test, assert_instr("i64.atomic.wait"))]
-pub unsafe fn wait_i64(ptr: *mut i64, expression: i64, timeout_ns: i64) -> i32 {
+pub unsafe fn wait_i64(
+    ptr: *mut i64, expression: i64, timeout_ns: i64,
+) -> i32 {
     llvm_atomic_wait_i64(ptr, expression, timeout_ns)
 }
 
@@ -110,8 +114,8 @@ pub unsafe fn wait_i64(ptr: *mut i64, expression: i64, timeout_ns: i64) -> i32 {
 ///
 /// This intrinsic is only available **when the standard library itself is
 /// compiled with the `atomics` target feature**. This version of the standard
-/// library is not obtainable via `rustup`, but rather will require the standard
-/// library to be compiled from source.
+/// library is not obtainable via `rustup`, but rather will require the
+/// standard library to be compiled from source.
 ///
 /// [instr]: https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wake
 #[inline]

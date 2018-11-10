@@ -973,8 +973,7 @@ pub unsafe fn _mm_cvtsi32_si128(a: i32) -> __m128i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_cvtsi128_si32)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(target_os = "windows")),
-           assert_instr(movd))]
+#[cfg_attr(all(test, not(target_os = "windows")), assert_instr(movd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_cvtsi128_si32(a: __m128i) -> i32 {
     simd_extract(a.as_i32x4(), 0)
@@ -1665,8 +1664,7 @@ pub unsafe fn _mm_unpacklo_epi32(a: __m128i, b: __m128i) -> __m128i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_unpacklo_epi64)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(target_os = "windows")),
-           assert_instr(movlhps))]
+#[cfg_attr(all(test, not(target_os = "windows")), assert_instr(movlhps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_unpacklo_epi64(a: __m128i, b: __m128i) -> __m128i {
     mem::transmute::<i64x2, _>(simd_shuffle2(
@@ -2584,8 +2582,7 @@ pub unsafe fn _mm_stream_pd(mem_addr: *mut f64, a: __m128d) {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_store_sd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(target_os = "windows")),
-           assert_instr(movlps))]
+#[cfg_attr(all(test, not(target_os = "windows")), assert_instr(movlps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_store_sd(mem_addr: *mut f64, a: __m128d) {
     *mem_addr = simd_extract(a, 0)
@@ -2663,8 +2660,7 @@ pub unsafe fn _mm_storer_pd(mem_addr: *mut f64, a: __m128d) {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_storeh_pd)
 #[inline]
 #[target_feature(enable = "sse2")]
-#[cfg_attr(all(test, not(target_os = "windows")),
-           assert_instr(movhpd))]
+#[cfg_attr(all(test, not(target_os = "windows")), assert_instr(movhpd))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_storeh_pd(mem_addr: *mut f64, a: __m128d) {
     *mem_addr = simd_extract(a, 1);

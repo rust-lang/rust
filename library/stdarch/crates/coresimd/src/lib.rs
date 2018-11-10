@@ -33,16 +33,9 @@
     arm_target_feature,
     aarch64_target_feature,
     mips_target_feature,
-    powerpc_target_feature,
+    powerpc_target_feature
 )]
-#![cfg_attr(
-    test,
-    feature(
-        test,
-        abi_vectorcall,
-        untagged_unions
-    )
-)]
+#![cfg_attr(test, feature(test, abi_vectorcall, untagged_unions))]
 #![cfg_attr(
     feature = "cargo-clippy",
     allow(

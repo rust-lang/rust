@@ -1379,8 +1379,11 @@ pub unsafe fn _mm_storeh_pi(p: *mut __m64, a: __m128) {
 #[target_feature(enable = "sse")]
 // On i586 the codegen just generates plane MOVs. No need to test for that.
 #[cfg_attr(
-    all(test, any(target_arch = "x86_64", target_feature = "sse2"),
-        not(target_os = "windows")),
+    all(
+        test,
+        any(target_arch = "x86_64", target_feature = "sse2"),
+        not(target_os = "windows")
+    ),
     assert_instr(movlps)
 )]
 pub unsafe fn _mm_storel_pi(p: *mut __m64, a: __m128) {
