@@ -80,7 +80,8 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                          elem: &PlaceElem<'tcx>)
                          -> PlaceTy<'tcx>
     {
-        self.projection_ty_core(tcx, elem, |_, _, ty| ty)
+        self.projection_ty_core(tcx, elem, |_, _, ty| -> Result<Ty<'tcx>, ()> { Ok(ty) })
+            .unwrap()
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
@@ -88,11 +89,12 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
     /// `Ty` or downcast variant corresponding to that projection.
     /// The `handle_field` callback must map a `Field` to its `Ty`,
     /// (which should be trivial when `T` = `Ty`).
-    pub fn projection_ty_core<V, T>(self,
-                                    tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                    elem: &ProjectionElem<'tcx, V, T>,
-                                    mut handle_field: impl FnMut(&Self, &Field, &T) -> Ty<'tcx>)
-                                    -> PlaceTy<'tcx>
+    pub fn projection_ty_core<V, T, E>(
+        self,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        elem: &ProjectionElem<'tcx, V, T>,
+        mut handle_field: impl FnMut(&Self, &Field, &T) -> Result<Ty<'tcx>, E>)
+        -> Result<PlaceTy<'tcx>, E>
     where
         V: ::std::fmt::Debug, T: ::std::fmt::Debug
     {
@@ -142,10 +144,11 @@ impl<'a, 'gcx, 'tcx> PlaceTy<'tcx> {
                         bug!("cannot downcast non-ADT type: `{:?}`", self)
                     }
                 },
-            ProjectionElem::Field(ref f, ref fty) => PlaceTy::Ty { ty: handle_field(&self, f, fty) }
+            ProjectionElem::Field(ref f, ref fty) =>
+                PlaceTy::Ty { ty: handle_field(&self, f, fty)? },
         };
         debug!("projection_ty self: {:?} elem: {:?} yields: {:?}", self, elem, answer);
-        answer
+        Ok(answer)
     }
 }
 

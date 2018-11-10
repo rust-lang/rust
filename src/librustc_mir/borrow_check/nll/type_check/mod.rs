@@ -1021,20 +1021,39 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let v1 = ty::Contravariant.xform(v);
 
                 let tcx = self.infcx.tcx;
-                let mut projected_ty = PlaceTy::from_ty(ty);
+                let ty = self.normalize(ty, locations);
+
+                // We need to follow any provided projetions into the type.
+                //
+                // if we hit a ty var as we descend, then just skip the
+                // attempt to relate the mir local with any type.
+                #[derive(Debug)] struct HitTyVar;
+                let mut curr_projected_ty: Result<PlaceTy, HitTyVar>;
+
+                curr_projected_ty = Ok(PlaceTy::from_ty(ty));
                 for proj in &user_ty.projs {
-                    projected_ty = projected_ty.projection_ty_core(
+                    let projected_ty = if let Ok(projected_ty) = curr_projected_ty {
+                        projected_ty
+                    } else {
+                        break;
+                    };
+                    curr_projected_ty = projected_ty.projection_ty_core(
                         tcx, proj, |this, field, &()| {
-                            let ty = this.field_ty(tcx, field);
-                            self.normalize(ty, locations)
+                            if this.to_ty(tcx).is_ty_var() {
+                                Err(HitTyVar)
+                            } else {
+                                let ty = this.field_ty(tcx, field);
+                                Ok(self.normalize(ty, locations))
+                            }
                         });
                 }
                 debug!("user_ty base: {:?} freshened: {:?} projs: {:?} yields: {:?}",
-                       user_ty.base, ty, user_ty.projs, projected_ty);
+                       user_ty.base, ty, user_ty.projs, curr_projected_ty);
 
-                let ty = projected_ty.to_ty(tcx);
-
-                self.relate_types(ty, v1, a, locations, category)?;
+                if let Ok(projected_ty) = curr_projected_ty {
+                    let ty = projected_ty.to_ty(tcx);
+                    self.relate_types(ty, v1, a, locations, category)?;
+                }
             }
             UserTypeAnnotation::TypeOf(def_id, canonical_substs) => {
                 let (
