@@ -51,10 +51,18 @@ time xargo build
 popd
 
 # TODO linux linker doesn't accept duplicate definitions
-$RUSTC --sysroot ~/.xargo/HOST example/alloc_example.rs --crate-type bin
-./target/out/alloc_example
+#$RUSTC --sysroot ~/.xargo/HOST example/alloc_example.rs --crate-type bin
+#./target/out/alloc_example
 
 $RUSTC --sysroot ~/.xargo/HOST example/mod_bench.rs --crate-type bin
+
+echo "[BUILD] RUSTFLAGS=-Zmir-opt-level=3"
+pushd xargo
+rm -r ~/.xargo/HOST || true
+rm -r target || true
+time RUSTFLAGS="-Zmir-opt-level=3 $RUSTFLAGS" xargo build
+popd
+
 $RUSTC --sysroot ~/.xargo/HOST example/mod_bench.rs --crate-type bin -Zmir-opt-level=3 --crate-name mod_bench_inline
 
 rustc example/mod_bench.rs --crate-type bin -Copt-level=0 -o target/out/mod_bench_llvm_0 -Cpanic=abort
