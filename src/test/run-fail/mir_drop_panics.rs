@@ -17,7 +17,7 @@ impl Drop for Droppable {
         if self.0 == 1 {
             panic!("panic 1");
         } else {
-            eprint!("drop {}", self.0);
+            eprintln!("drop {}", self.0);
         }
     }
 }

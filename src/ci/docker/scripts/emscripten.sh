@@ -33,8 +33,8 @@ curl -fL https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-portab
 
 cd /emsdk-portable
 ./emsdk update
-hide_output ./emsdk install sdk-1.37.13-64bit
-./emsdk activate sdk-1.37.13-64bit
+hide_output ./emsdk install sdk-1.38.15-64bit
+./emsdk activate sdk-1.38.15-64bit
 
 # Compile and cache libc
 source ./emsdk_env.sh
@@ -46,8 +46,3 @@ rm -f a.*
 # Make emsdk usable by any user
 cp /root/.emscripten /emsdk-portable
 chmod a+rxw -R /emsdk-portable
-
-# node 8 is required to run wasm
-cd /
-curl -sL https://nodejs.org/dist/v8.0.0/node-v8.0.0-linux-x64.tar.xz | \
-  tar -xJ

@@ -20,11 +20,11 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV PATH=$PATH:/emsdk-portable
-ENV PATH=$PATH:/emsdk-portable/clang/e1.37.13_64bit/
-ENV PATH=$PATH:/emsdk-portable/emscripten/1.37.13/
-ENV PATH=$PATH:/emsdk-portable/node/4.1.1_64bit/bin/
-ENV EMSCRIPTEN=/emsdk-portable/emscripten/1.37.13/
-ENV BINARYEN_ROOT=/emsdk-portable/clang/e1.37.13_64bit/binaryen/
+ENV PATH=$PATH:/emsdk-portable/clang/e1.38.15_64bit/
+ENV PATH=$PATH:/emsdk-portable/emscripten/1.38.15/
+ENV PATH=$PATH:/emsdk-portable/node/8.9.1_64bit/bin/
+ENV EMSCRIPTEN=/emsdk-portable/emscripten/1.38.15/
+ENV BINARYEN_ROOT=/emsdk-portable/clang/e1.38.15_64bit/binaryen/
 ENV EM_CONFIG=/emsdk-portable/.emscripten
 
 ENV TARGETS=asmjs-unknown-emscripten

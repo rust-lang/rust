@@ -10,6 +10,8 @@
 
 // Test that the compiler will catch invalid inline assembly constraints.
 
+// ignore-emscripten
+
 #![feature(asm)]
 
 extern "C" {

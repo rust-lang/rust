@@ -736,7 +736,7 @@ pub fn build_codegen_backend(builder: &Builder,
 
             // Pass down configuration from the LLVM build into the build of
             // librustc_llvm and librustc_codegen_llvm.
-            if builder.is_rust_llvm(target) {
+            if builder.is_rust_llvm(target) && backend != "emscripten" {
                 cargo.env("LLVM_RUSTLLVM", "1");
             }
             cargo.env("LLVM_CONFIG", &llvm_config);

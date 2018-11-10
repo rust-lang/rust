@@ -429,7 +429,7 @@ extern "C" void LLVMRustConfigurePassManagerBuilder(
     LLVMPassManagerBuilderRef PMBR, LLVMRustCodeGenOptLevel OptLevel,
     bool MergeFunctions, bool SLPVectorize, bool LoopVectorize, bool PrepareForThinLTO,
     const char* PGOGenPath, const char* PGOUsePath) {
-#if LLVM_RUSTLLVM
+#if LLVM_VERSION_GE(7, 0)
   unwrap(PMBR)->MergeFunctions = MergeFunctions;
 #endif
   unwrap(PMBR)->SLPVectorize = SLPVectorize;
