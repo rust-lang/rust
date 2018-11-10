@@ -140,3 +140,11 @@ fn str_slice() {
     let boxed: Box<str> = Box::from(s);
     assert_eq!(&*boxed, s)
 }
+
+#[test]
+fn boxed_slice_from_iter() {
+    let iter = 0..100;
+    let boxed: Box<[u32]> = iter.collect();
+    assert_eq!(boxed.len(), 100);
+    assert_eq!(boxed[7], 7);
+}
