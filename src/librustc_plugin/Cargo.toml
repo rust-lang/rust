@@ -7,7 +7,7 @@ build = false
 [lib]
 name = "rustc_plugin"
 path = "lib.rs"
-crate-type = ["dylib"]
+crate-type = ["dylib", "rlib"]
 
 [dependencies]
 rustc = { path = "../librustc" }

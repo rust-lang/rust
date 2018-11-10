@@ -6,7 +6,7 @@ version = "0.0.0"
 [lib]
 name = "rustc_metadata"
 path = "lib.rs"
-crate-type = ["dylib"]
+crate-type = ["dylib", "rlib"]
 
 [dependencies]
 flate2 = "1.0"

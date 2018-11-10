@@ -6,7 +6,7 @@ version = "0.0.0"
 [lib]
 name = "syntax_ext"
 path = "lib.rs"
-crate-type = ["dylib"]
+crate-type = ["dylib", "rlib"]
 
 [dependencies]
 fmt_macros = { path = "../libfmt_macros" }

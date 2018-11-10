@@ -6,4 +6,4 @@ version = "0.0.0"
 [lib]
 name = "graphviz"
 path = "lib.rs"
-crate-type = ["dylib"]
+crate-type = ["dylib", "rlib"]

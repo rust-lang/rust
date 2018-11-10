@@ -6,7 +6,7 @@ version = "0.0.0"
 [lib]
 name = "arena"
 path = "lib.rs"
-crate-type = ["dylib"]
+crate-type = ["dylib", "rlib"]
 
 [dependencies]
 rustc_data_structures = { path = "../librustc_data_structures" }

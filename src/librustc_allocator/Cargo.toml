@@ -5,7 +5,7 @@ version = "0.0.0"
 
 [lib]
 path = "lib.rs"
-crate-type = ["dylib"]
+crate-type = ["dylib", "rlib"]
 test = false
 
 [dependencies]

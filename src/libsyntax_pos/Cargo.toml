@@ -6,7 +6,7 @@ version = "0.0.0"
 [lib]
 name = "syntax_pos"
 path = "lib.rs"
-crate-type = ["dylib"]
+crate-type = ["dylib", "rlib"]
 
 [dependencies]
 serialize = { path = "../libserialize" }

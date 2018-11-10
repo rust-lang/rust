@@ -6,7 +6,7 @@ version = "0.0.0"
 [lib]
 name = "rustc_data_structures"
 path = "lib.rs"
-crate-type = ["dylib"]
+crate-type = ["dylib", "rlib"]
 
 [dependencies]
 ena = "0.9.3"
