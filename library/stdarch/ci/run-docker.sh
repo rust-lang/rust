@@ -19,6 +19,10 @@ run() {
       --env TARGET=$target \
       --env STDSIMD_TEST_EVERYTHING \
       --env STDSIMD_ASSERT_INSTR_IGNORE \
+      --env STDSIMD_DISABLE_ASSERT_INSTR \
+      --env NOSTD \
+      --env NORUN \
+      --env STDSIMD_TEST_NORUN \
       --volume `pwd`:/checkout:ro \
       --volume `pwd`/target:/checkout/target \
       --workdir /checkout \

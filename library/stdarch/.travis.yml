@@ -5,81 +5,113 @@ rust: nightly
 matrix:
   fast_finish: true
   include:
-    - env: TARGET=i586-unknown-linux-gnu
-    - env: TARGET=i686-unknown-linux-gnu
-    - env: TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-    - env: TARGET=x86_64-unknown-linux-gnu-emulated NO_ADD=1 STDSIMD_TEST_EVERYTHING=1
-    - env: TARGET=x86_64-linux-android
-    - env: TARGET=arm-unknown-linux-gnueabihf
-    - env: TARGET=arm-linux-androideabi
-    - env: TARGET=armv7-unknown-linux-gnueabihf
-    - env: TARGET=aarch64-unknown-linux-gnu
-    - env: TARGET=mips-unknown-linux-gnu NORUN=1
-    - env: TARGET=mipsel-unknown-linux-gnu NORUN=1
-    - env: TARGET=mips64-unknown-linux-gnuabi64 NORUN=1
-    - env: TARGET=mips64el-unknown-linux-gnuabi64 NORUN=1
-    - env: TARGET=aarch64-linux-android
-    - env: TARGET=powerpc-unknown-linux-gnu
-    - env: TARGET=powerpc64-unknown-linux-gnu
-    - env: TARGET=powerpc64le-unknown-linux-gnu
-    - env: TARGET=s390x-unknown-linux-gnu NORUN=1
-    - os: osx
+    - name: "i586-unknown-linux-gnu"
+      env: TARGET=i586-unknown-linux-gnu
+    - name: "i686-unknown-linux-gnu"
+      env: TARGET=i686-unknown-linux-gnu
+    - name: "x86_64-unknown-linux-gnu"
+      env: TARGET=x86_64-unknown-linux-gnu
+      install: true
+    - name: "x86_64-unknown-linux-gnu-emulated (runs all assert_instr tests)"
+      env: TARGET=x86_64-unknown-linux-gnu-emulated STDSIMD_TEST_EVERYTHING=1
+      install: true
+    - name: "x86_64-linux-android - no assert_instr"
+      env: TARGET=x86_64-linux-android STDSIMD_DISABLE_ASSERT_INSTR=1
+    - name: "arm-unknown-linux-gnueabihf"
+      env: TARGET=arm-unknown-linux-gnueabihf
+    - name: "arm-linux-androideabi - no assert_instr"
+      env: TARGET=arm-linux-androideabi STDSIMD_DISABLE_ASSERT_INSTR=1
+    - name: "armv7-unknown-linux-gnueabihf - NEON"
+      env: TARGET=armv7-unknown-linux-gnueabihf RUSTFLAGS="-C target-feature=+neon"
+    - name: "aarch64-unknown-linux-gnu"
+      env: TARGET=aarch64-unknown-linux-gnu
+    - name: "mips-unknown-linux-gnu - build-only"
+      env: TARGET=mips-unknown-linux-gnu NORUN=1
+    - name: "mipsel-unknown-linux-gnu - build-only"
+      env: TARGET=mipsel-unknown-linux-gnu NORUN=1
+    - name: "mips64-unknown-linux-gnuabi64 - build-only"
+      env: TARGET=mips64-unknown-linux-gnuabi64 NORUN=1
+    - name: "mips64el-unknown-linux-gnuabi64 - build-only"
+      env: TARGET=mips64el-unknown-linux-gnuabi64 NORUN=1
+    - name: "aarch64-linux-android - no assert_instr"
+      env: TARGET=aarch64-linux-android STDSIMD_DISABLE_ASSERT_INSTR=1
+    - name: "powerpc-unknown-linux-gnu - no assert_instr"
+      env: TARGET=powerpc-unknown-linux-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
+    - name: "powerpc64-unknown-linux-gnu - no assert_instr, no simd_test"
+      env: TARGET=powerpc64-unknown-linux-gnu STDSIMD_DISABLE_ASSERT_INSTR=1 STDSIMD_TEST_NORUN=1
+    - name: "powerpc64le-unknown-linux-gnu - no assert_instr, no simd_test"
+      env: TARGET=powerpc64le-unknown-linux-gnu STDSIMD_DISABLE_ASSERT_INSTR=1 STDSIMD_TEST_NORUN=1
+    - name: "s390x-unknown-linux-gnu - build-only"
+      env: TARGET=s390x-unknown-linux-gnu NORUN=1
+    - name: "i686-apple-darwin"
       env: TARGET=i686-apple-darwin
+      os: osx
+      osx_image: xcode10
       script: ci/run.sh
-    - os: osx
-      env: TARGET=x86_64-apple-darwin NO_ADD=1
+    - name: "env: TARGET=x86_64-apple-darwin"
+      env: TARGET=x86_64-apple-darwin
+      os: osx
+      osx_image: xcode10
+      install: true
       script: ci/run.sh
-    - env: TARGET=wasm32-unknown-unknown
-    - env: TARGET=thumbv6m-none-eabi NOSTD=1
-    - env: TARGET=thumbv7m-none-eabi NOSTD=1
-    - env: TARGET=thumbv7em-none-eabi NOSTD=1
-    - env: TARGET=thumbv7em-none-eabihf NOSTD=1
-    - env: TARGET=x86_64-pc-windows-msvc NO_ADD=1
+    - name: "wasm32-unknown-unknown"
+      env: TARGET=wasm32-unknown-unknown
+    - name: "thumbv6m-none-eabi - build libcore only"
+      env: TARGET=thumbv6m-none-eabi NORUN=1 NOSTD=1
+      script: ci/run.sh
+    - name: "thumbv7m-none-eabi - build libcore only"
+      env: TARGET=thumbv7m-none-eabi NORUN=1 NOSTD=1
+      script: ci/run.sh
+    - name: "thumbv7em-none-eabi - build libcore only"
+      env: TARGET=thumbv7em-none-eabi NORUN=1 NOSTD=1
+      script: ci/run.sh
+    - name: "thumbv7em-none-eabihf - build libcore only"
+      env: TARGET=thumbv7em-none-eabihf NORUN=1 NOSTD=1
+      script: ci/run.sh
+    - name: "x86_64-pc-windows-msvc"
+      env: TARGET=x86_64-pc-windows-msvc
       os: windows
       script: ci/run.sh
-    - env: TARGET=x86_64-pc-windows-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
+      install: true
+    - name: "x86_64-pc-windows-gnu - no assert_instr"
+      # FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/595
+      env: TARGET=x86_64-pc-windows-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
       os: windows
       script: ci/run.sh
-    - env: TARGET=i686-pc-windows-msvc STDSIMD_DISABLE_ASSERT_INSTR=1
+    - name: "i686-pc-windows-msvc - no assert_instr"
+      # FIXME: https://github.com/rust-lang-nursery/stdsimd/issues/595
+      env: TARGET=i686-pc-windows-msvc STDSIMD_DISABLE_ASSERT_INSTR=1
       os: windows
       script: ci/run.sh
-    - env: TARGET=i686-pc-windows-gnu
+    - name: "i686-pc-windows-gnu"
+      env: TARGET=i686-pc-windows-gnu
       os: windows
       script: ci/run.sh
-    - env: DOCUMENTATION
+    - name: "Documentation"
       install: true
       script: ci/dox.sh
-    - env: VERIFY_X86
+    - name: "Automatic verification: x86 and x86_64"
       script: cargo test --manifest-path crates/stdsimd-verify/Cargo.toml
       install: true
-    - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-      before_script:
-      - rustup component add rustfmt-preview
-      script:
-      - cargo fmt --all -- --check
-    - env: CLIPPY=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
+    - name: "rustfmt"
+      install: rustup component add rustfmt-preview
+      script: cargo fmt --all -- --check
+    - name: "clippy"
+      install: true
       script: |
-        cargo install clippy
-        cargo clippy --all -- -D clippy-pedantic
+        if rustup component add clippy-preview; then
+            cargo clippy --all -- -D clippy::pedantic
+        fi
+    - name: "Shellcheck"
+      install: true
+      script: shellcheck ci/*.sh
   allow_failures:
-    - env: CLIPPY=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
-    - env: RUSTFMT=On TARGET=x86_64-unknown-linux-gnu NO_ADD=1
     - env: TARGET=i686-pc-windows-gnu
 
-install:
-  - if [ "$NO_ADD" == "" ]; then rustup target add $TARGET; fi
-
-script:
+install: rustup target add $TARGET
+script: 
   - cargo generate-lockfile
-  - |
-    if [ "$NORUN" == "1" ]; then
-      cargo build --target=$TARGET -p coresimd -p stdsimd --manifest-path crates/stdsimd/Cargo.toml
-      cargo build --release --target=$TARGET -p coresimd -p stdsimd --manifest-path crates/stdsimd/Cargo.toml
-    elif [ "$NOSTD" == "1" ]; then
-      cargo build --target=$TARGET -p coresimd --manifest-path crates/stdsimd/Cargo.toml
-    else
-      ci/run-docker.sh $TARGET $FEATURES
-    fi
+  - ci/run-docker.sh $TARGET $FEATURES
 
 notifications:
   email:

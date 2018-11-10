@@ -12,22 +12,7 @@ export RUST_TEST_THREADS=1
 
 RUSTFLAGS="$RUSTFLAGS --cfg stdsimd_strict"
 
-# FIXME: on armv7 neon intrinsics require the neon target-feature to be
-# unconditionally enabled.
-# FIXME: on powerpc (32-bit) and powerpc64 (big endian) disable
-# the instr tests.
 case ${TARGET} in
-    armv7*)
-        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+neon"
-        ;;
-    powerpc-*)
-        export STDSIMD_DISABLE_ASSERT_INSTR=1
-        ;;
-    powerpc64-*)
-        export STDSIMD_DISABLE_ASSERT_INSTR=1
-        export STDSIMD_TEST_NORUN=1
-        ;;
-
     # On 32-bit use a static relocation model which avoids some extra
     # instructions when dealing with static data, notably allowing some
     # instruction assertion checks to pass below the 20 instruction limit. If
@@ -39,11 +24,6 @@ case ${TARGET} in
     i686-* | i586-*)
         export RUSTFLAGS="${RUSTFLAGS} -C relocation-model=static -Z plt=yes"
         ;;
-    *android*)
-        export STDSIMD_DISABLE_ASSERT_INSTR=1
-        ;;
-    *)
-        ;;
 esac
 
 echo "RUSTFLAGS=${RUSTFLAGS}"
@@ -53,8 +33,18 @@ echo "STDSIMD_DISABLE_ASSERT_INSTR=${STDSIMD_DISABLE_ASSERT_INSTR}"
 echo "STDSIMD_TEST_EVERYTHING=${STDSIMD_TEST_EVERYTHING}"
 
 cargo_test() {
-    cmd="cargo test --target=$TARGET $1"
-    cmd="$cmd -p coresimd -p stdsimd"
+    subcmd="test"
+    if [ "$NORUN" = "1" ]
+    then
+        export subcmd="build"
+    fi
+    cmd="cargo ${subcmd} --target=$TARGET $1"
+    if [ "$NOSTD" = "1" ]
+    then
+        cmd="$cmd -p coresimd"
+    else
+        cmd="$cmd -p coresimd -p stdsimd"
+    fi
     cmd="$cmd -- $2"
     $cmd
 }
@@ -65,8 +55,16 @@ cargo_test "--release"
 # Test targets compiled with extra features.
 case ${TARGET} in
     x86*)
-        RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
         export STDSIMD_DISABLE_ASSERT_INSTR=1
+        case ${TARGET} in
+            *apple*)
+                # Travis Apple VMs do not support AVX2
+                export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
+                ;;
+            *)
+                export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx2"
+                ;;
+        esac
         cargo_test "--release"
         ;;
     wasm32-unknown-unknown*)
