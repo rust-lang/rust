@@ -1432,20 +1432,26 @@ impl EarlyLintPass for EllipsisInclusiveRangePatterns {
         if let Some((start, end, join)) = endpoints {
             let msg = "`...` range patterns are deprecated";
             let suggestion = "use `..=` for an inclusive range";
-            let (span, replacement) = if parenthesise {
+            if parenthesise {
                 *visit_subpats = false;
-                (pat.span, format!("&({}..={})", expr_to_string(&start), expr_to_string(&end)))
+                let mut err = cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, pat.span, msg);
+                err.span_suggestion_with_applicability(
+                    pat.span,
+                    suggestion,
+                    format!("&({}..={})", expr_to_string(&start), expr_to_string(&end)),
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
             } else {
-                (join, "..=".to_owned())
+                let mut err = cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, join, msg);
+                err.span_suggestion_short_with_applicability(
+                    join,
+                    suggestion,
+                    "..=".to_owned(),
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
             };
-            let mut err = cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, span, msg);
-            err.span_suggestion_short_with_applicability(
-                span,
-                suggestion,
-                replacement,
-                Applicability::MachineApplicable,
-            );
-            err.emit();
         }
     }
 }
