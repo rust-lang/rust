@@ -120,7 +120,7 @@ pub use intrinsics::write_bytes;
 ///
 /// Additionally, if `T` is not [`Copy`], using the pointed-to value after
 /// calling `drop_in_place` can cause undefined behavior. Note that `*to_drop =
-/// foo` counts as a use because it will cause the the value to be dropped
+/// foo` counts as a use because it will cause the value to be dropped
 /// again. [`write`] can be used to overwrite data without causing it to be
 /// dropped.
 ///
@@ -371,7 +371,7 @@ pub(crate) unsafe fn swap_nonoverlapping_one<T>(x: *mut T, y: *mut T) {
 #[inline]
 unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, len: usize) {
     // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
-    // that swapping either 32 bytes or 64 bytes at a time is most efficient for intel
+    // that swapping either 32 bytes or 64 bytes at a time is most efficient for Intel
     // Haswell E processors. LLVM is more able to optimize if we give a struct a
     // #[repr(simd)], even if we don't actually use this struct directly.
     //
@@ -1005,7 +1005,7 @@ impl<T: ?Sized> *const T {
     /// # Null-unchecked version
     ///
     /// If you are sure the pointer can never be null and are looking for some kind of
-    /// `as_ref_unchecked` that returns the `&T` instead of `Option<&T>, know that you can
+    /// `as_ref_unchecked` that returns the `&T` instead of `Option<&T>`, know that you can
     /// dereference the pointer directly.
     ///
     /// ```
@@ -1625,7 +1625,7 @@ impl<T: ?Sized> *mut T {
     /// # Null-unchecked version
     ///
     /// If you are sure the pointer can never be null and are looking for some kind of
-    /// `as_ref_unchecked` that returns the `&T` instead of `Option<&T>, know that you can
+    /// `as_ref_unchecked` that returns the `&T` instead of `Option<&T>`, know that you can
     /// dereference the pointer directly.
     ///
     /// ```

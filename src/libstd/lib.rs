@@ -495,7 +495,7 @@ mod memchr;
 // compiler
 pub mod rt;
 
-// Pull in the the `stdsimd` crate directly into libstd. This is the same as
+// Pull in the `stdsimd` crate directly into libstd. This is the same as
 // libcore's arch/simd modules where the source of truth here is in a different
 // repository, but we pull things in here manually to get it into libstd.
 //

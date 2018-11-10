@@ -506,7 +506,7 @@ pub unsafe trait GlobalAlloc {
         ptr
     }
 
-    /// Shink or grow a block of memory to the given `new_size`.
+    /// Shrink or grow a block of memory to the given `new_size`.
     /// The block is described by the given `ptr` pointer and `layout`.
     ///
     /// If this returns a non-null pointer, then ownership of the memory block
@@ -757,7 +757,7 @@ pub unsafe trait Alloc {
     // realloc. alloc_excess, realloc_excess
 
     /// Returns a pointer suitable for holding data described by
-    /// a new layout with `layout`’s alginment and a size given
+    /// a new layout with `layout`’s alignment and a size given
     /// by `new_size`. To
     /// accomplish this, this may extend or shrink the allocation
     /// referenced by `ptr` to fit the new layout.
