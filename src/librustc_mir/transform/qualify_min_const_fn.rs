@@ -169,6 +169,10 @@ fn check_rvalue(
             span,
             "function pointer casts are not allowed in const fn".into(),
         )),
+        Rvalue::Cast(CastKind::Hide, _, _) => Err((
+            span,
+            "hiding casts are not allowed in const fn".into(),
+        )),
         Rvalue::Cast(CastKind::Unsize, _, _) => Err((
             span,
             "unsizing casts are not allowed in const fn".into(),

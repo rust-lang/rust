@@ -631,7 +631,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             adjustment::Adjust::ClosureFnPointer |
             adjustment::Adjust::MutToConstPointer |
             adjustment::Adjust::Borrow(_) |
-            adjustment::Adjust::Hide(_) |
+            adjustment::Adjust::Hide |
             adjustment::Adjust::Unsize => {
                 // Result is an rvalue.
                 Ok(self.cat_rvalue_node(expr.hir_id, expr.span, target))

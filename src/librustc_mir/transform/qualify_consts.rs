@@ -642,6 +642,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::Cast(CastKind::ReifyFnPointer, ..) |
             Rvalue::Cast(CastKind::UnsafeFnPointer, ..) |
             Rvalue::Cast(CastKind::ClosureFnPointer, ..) |
+            Rvalue::Cast(CastKind::Hide, ..) |
             Rvalue::Cast(CastKind::Unsize, ..) |
             Rvalue::Discriminant(..) |
             Rvalue::Len(_) => {}
@@ -756,11 +757,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     (CastTy::Ptr(_), CastTy::Int(_)) |
                     (CastTy::FnPtr, CastTy::Int(_)) => {
                         if let Mode::Fn = self.mode {
-                            // in normal functions, mark such casts as not promotable
+                            // In normal functions, mark such casts as not promotable.
                             self.add(Qualif::NOT_CONST);
                         } else if !self.tcx.sess.features_untracked().const_raw_ptr_to_usize_cast {
-                            // in const fn and constants require the feature gate
-                            // FIXME: make it unsafe inside const fn and constants
+                            // In const functions and constants require the feature gate.
+                            // FIXME: make it unsafe inside const fn and constants.
                             emit_feature_err(
                                 &self.tcx.sess.parse_sess, "const_raw_ptr_to_usize_cast",
                                 self.span, GateIssue::Language,
@@ -783,11 +784,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             op == BinOp::Offset);
 
                     if let Mode::Fn = self.mode {
-                        // raw pointer operations are not allowed inside promoteds
+                        // Raw pointer operations are not allowed inside promoteds.
                         self.add(Qualif::NOT_CONST);
                     } else if !self.tcx.sess.features_untracked().const_compare_raw_pointers {
-                        // require the feature gate inside constants and const fn
-                        // FIXME: make it unsafe to use these operations
+                        // Require the feature gate inside constants and const fn.
+                        // FIXME: make it unsafe to use these operations.
                         emit_feature_err(
                             &self.tcx.sess.parse_sess,
                             "const_compare_raw_pointers",
@@ -872,16 +873,16 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             | "add_with_overflow"
                             | "sub_with_overflow"
                             | "mul_with_overflow"
-                            // no need to check feature gates, intrinsics are only callable from the
-                            // libstd or with forever unstable feature gates
+                            // No need to check feature gates, intrinsics are only callable from the
+                            // libstd or with forever unstable feature gates.
                             => is_const_fn = true,
-                            // special intrinsic that can be called diretly without an intrinsic
-                            // feature gate needs a language feature gate
+                            // Special intrinsic that can be called diretly without an intrinsic
+                            // feature gate needs a language feature gate.
                             "transmute" => {
-                                // never promote transmute calls
+                                // Never promote transmute calls.
                                 if self.mode != Mode::Fn {
                                     is_const_fn = true;
-                                    // const eval transmute calls only with the feature gate
+                                    // Const-eval transmute calls only with the feature gate.
                                     if !self.tcx.sess.features_untracked().const_transmute {
                                         emit_feature_err(
                                             &self.tcx.sess.parse_sess, "const_transmute",
@@ -900,10 +901,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         }
                     }
                     _ => {
-                        // in normal functions we only care about promotion
+                        // In normal functions we only care about promotion.
                         if self.mode == Mode::Fn {
-                            // never promote const fn calls of
-                            // functions without #[rustc_promotable]
+                            // Never promote const fn calls of
+                            // functions without `#[rustc_promotable]`.
                             if self.tcx.is_promotable_const_fn(def_id) {
                                 is_const_fn = true;
                                 is_promotable_const_fn = true;
@@ -911,19 +912,19 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 is_const_fn = true;
                             }
                         } else {
-                            // stable const fn or unstable const fns with their feature gate
-                            // active
+                            // Stable const fn or unstable const fns with their feature gate
+                            // active.
                             if self.tcx.is_const_fn(def_id) {
                                 is_const_fn = true;
                             } else if self.is_const_panic_fn(def_id) {
-                                // check the const_panic feature gate
+                                // Check the `const_panic` feature gate.
                                 // FIXME: cannot allow this inside `allow_internal_unstable` because
                                 // that would make `panic!` insta stable in constants, since the
-                                // macro is marked with the attr
+                                // macro is marked with the attr.
                                 if self.tcx.sess.features_untracked().const_panic {
                                     is_const_fn = true;
                                 } else {
-                                    // don't allow panics in constants without the feature gate
+                                    // Don't allow panics in constants without the feature gate.
                                     emit_feature_err(
                                         &self.tcx.sess.parse_sess,
                                         "const_panic",
@@ -933,11 +934,11 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                     );
                                 }
                             } else if let Some(feature) = self.tcx.is_unstable_const_fn(def_id) {
-                                // check `#[unstable]` const fns or `#[rustc_const_unstable]`
+                                // Check `#[unstable]` const fns or `#[rustc_const_unstable]`
                                 // functions without the feature gate active in this crate to report
-                                // a better error message than the one below
+                                // a better error message than the one below.
                                 if self.span.allows_unstable() {
-                                    // `allow_internal_unstable` can make such calls stable
+                                    // `allow_internal_unstable` can make such calls stable.
                                     is_const_fn = true;
                                 } else {
                                     let mut err = self.tcx.sess.struct_span_err(self.span,
@@ -950,7 +951,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                     err.emit();
                                 }
                             } else {
-                                // FIXME(#24111) Remove this check when const fn stabilizes
+                                // FIXME(#24111): remove this check when const fn stabilizes.
                                 let (msg, note) = if let UnstableFeatures::Disallow =
                                         self.tcx.sess.opts.unstable_features {
                                     (format!("calls in {}s are limited to \
@@ -1032,7 +1033,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 });
             }
 
-            // non-const fn calls.
+            // non-const fn calls
             if !is_const_fn {
                 self.qualif = Qualif::NOT_CONST;
                 if self.mode != Mode::Fn {

@@ -973,6 +973,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
+        // FIXME(alexreg): see issue #54600.
         if let Err(terr) = self.sub_types(sub, sup, locations, category) {
             if let TyKind::Opaque(..) = sup.sty {
                 // When you have `let x: impl Foo = ...` in a closure,
@@ -1059,17 +1060,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn eq_opaque_type_and_type(
         &mut self,
-        revealed_ty: Ty<'tcx>,
-        anon_ty: Ty<'tcx>,
-        anon_owner_def_id: DefId,
+        concrete_ty: Ty<'tcx>,
+        opaque_ty: Ty<'tcx>,
+        parent_def_id: DefId,
         locations: Locations,
         category: ConstraintCategory,
     ) -> Fallible<()> {
         debug!(
             "eq_opaque_type_and_type( \
-             revealed_ty={:?}, \
-             anon_ty={:?})",
-            revealed_ty, anon_ty
+             concrete_ty={:?}, \
+             opaque_ty={:?})",
+            concrete_ty, opaque_ty
         );
         let infcx = self.infcx;
         let tcx = infcx.tcx;
@@ -1085,21 +1086,21 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     let dummy_body_id = ObligationCause::dummy().body_id;
                     let (output_ty, opaque_type_map) =
                         obligations.add(infcx.instantiate_opaque_types(
-                            anon_owner_def_id,
+                            parent_def_id,
                             dummy_body_id,
                             param_env,
-                            &anon_ty,
+                            &opaque_ty,
                         ));
                     debug!(
                         "eq_opaque_type_and_type: \
                          instantiated output_ty={:?} \
                          opaque_type_map={:#?} \
-                         revealed_ty={:?}",
-                        output_ty, opaque_type_map, revealed_ty
+                         concrete_ty={:?}",
+                        output_ty, opaque_type_map, concrete_ty
                     );
                     obligations.add(infcx
                         .at(&ObligationCause::dummy(), param_env)
-                        .eq(output_ty, revealed_ty)?);
+                        .eq(output_ty, concrete_ty)?);
 
                     for (&opaque_def_id, opaque_decl) in &opaque_type_map {
                         let opaque_defn_ty = tcx.type_of(opaque_def_id);
@@ -1524,7 +1525,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
             }
             None => {
-                // FIXME(canndrew): This is_never should probably be an is_uninhabited
+                // FIXME(canndrew): this `is_never` should probably be an `is_uninhabited`.
                 if !sig.output().is_never() {
                     span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
                 }
@@ -1910,6 +1911,25 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         }
                     }
 
+                    CastKind::Hide => {
+                        let predicates = match ty.sty {
+                            ty::Opaque(def_id, substs) => {
+                                let bounds = tcx.predicates_of(def_id);
+                                let result = bounds.instantiate(tcx, substs);
+                                // TODO: do I need to normalize associated types here somehow.
+                                // as is done in coercion.rs?
+                                result
+                            }
+                            _ => bug!(),
+                        };
+
+                        self.prove_predicates(
+                            predicates.predicates,
+                            location.to_locations(),
+                            ConstraintCategory::Cast,
+                        );
+                    }
+
                     CastKind::Unsize => {
                         let &ty = ty;
                         let trait_ref = ty::TraitRef {
@@ -1932,7 +1952,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 self.add_reborrow_constraint(location, region, borrowed_place);
             }
 
-            // FIXME: These other cases have to be implemented in future PRs
+            // FIXME: these other cases have to be implemented in future PRs.
             Rvalue::Use(..)
             | Rvalue::Len(..)
             | Rvalue::BinaryOp(..)
@@ -2164,7 +2184,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
 
             // For closures, we have some **extra requirements** we
-            //
             // have to check. In particular, in their upvars and
             // signatures, closures often reference various regions
             // from the surrounding function -- we call those the

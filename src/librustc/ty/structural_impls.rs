@@ -346,8 +346,8 @@ impl<'a, 'tcx> Lift<'tcx> for ty::adjustment::Adjust<'a> {
                 Some(ty::adjustment::Adjust::ClosureFnPointer),
             ty::adjustment::Adjust::MutToConstPointer =>
                 Some(ty::adjustment::Adjust::MutToConstPointer),
-            ty::adjustment::Adjust::Hide(ref revealed_ty) =>
-                tcx.lift(revealed_ty).map(ty::adjustment::Adjust::Hide),
+            ty::adjustment::Adjust::Hide =>
+                Some(ty::adjustment::Adjust::Hide),
             ty::adjustment::Adjust::Unsize =>
                 Some(ty::adjustment::Adjust::Unsize),
             ty::adjustment::Adjust::Deref(ref overloaded) => {
@@ -883,7 +883,7 @@ EnumTypeFoldableImpl! {
         (ty::adjustment::Adjust::UnsafeFnPointer),
         (ty::adjustment::Adjust::ClosureFnPointer),
         (ty::adjustment::Adjust::MutToConstPointer),
-        (ty::adjustment::Adjust::Hide)(a),
+        (ty::adjustment::Adjust::Hide),
         (ty::adjustment::Adjust::Unsize),
         (ty::adjustment::Adjust::Deref)(a),
         (ty::adjustment::Adjust::Borrow)(a),

@@ -240,7 +240,11 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         }
                     }
                     mir::CastKind::UnsafeFnPointer => {
-                        // this is a no-op at the LLVM level
+                        // This is a no-op at the LLVM level.
+                        operand.val
+                    }
+                    mir::CastKind::Hide => {
+                        // This is a no-op at the LLVM level.
                         operand.val
                     }
                     mir::CastKind::Unsize => {

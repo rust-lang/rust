@@ -9,19 +9,19 @@
 // except according to those terms.
 
 use hair::*;
-use rustc_data_structures::indexed_vec::Idx;
 use hair::cx::Cx;
 use hair::cx::block;
 use hair::cx::to_ref::ToRef;
 use hair::util::UserAnnotatedTyHelpers;
 use rustc::hir::def::{Def, CtorKind};
+use rustc::mir::{BorrowKind};
 use rustc::mir::interpret::{GlobalId, ErrorHandled};
 use rustc::ty::{self, AdtKind, Ty};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
 use rustc::hir::def_id::LocalDefId;
-use rustc::mir::{BorrowKind};
+use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
@@ -150,9 +150,8 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
         Adjust::Borrow(AutoBorrow::RawPtr(m)) => {
-            // Convert this to a suitable `&foo` and
-            // then an unsafe coercion. Limit the region to be just this
-            // expression.
+            // Convert this to a suitable `&foo` and then an unsafe coercion.
+            // Limit the region to be just this expression.
             let region = ty::ReScope(region::Scope {
                 id: hir_expr.hir_id.local_id,
                 data: region::ScopeData::Node
@@ -162,8 +161,8 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 temp_lifetime,
                 ty: cx.tcx.mk_ref(region,
                                   ty::TypeAndMut {
-                                    ty: expr.ty,
-                                    mutbl: m,
+                                      ty: expr.ty,
+                                      mutbl: m,
                                   }),
                 span,
                 kind: ExprKind::Borrow {
@@ -181,45 +180,43 @@ fn apply_adjustment<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
             // To ensure that both implicit and explicit coercions are
             // handled the same way, we insert an extra layer of indirection here.
-            // For explicit casts (e.g. 'foo as *const T'), the source of the 'Use'
-            // will be an ExprKind::Hair with the appropriate cast expression. Here,
-            // we make our Use source the generated Cast from the original coercion.
+            // For explicit casts (e.g. `foo as *const T`), the source of the `Use`
+            // will be an `ExprKind::Hair` with the appropriate cast expression. Here,
+            // we make our Use source the generated `Cast` from the original coercion.
             //
-            // In both cases, this outer 'Use' ensures that the inner 'Cast' is handled by
-            // as_operand, not by as_rvalue - causing the cast result to be stored in a temporary.
-            // Ordinary, this is identical to using the cast directly as an rvalue. However, if the
-            // source of the cast was previously borrowed as mutable, storing the cast in a
-            // temporary gives the source a chance to expire before the cast is used. For
-            // structs with a self-referential *mut ptr, this allows assignment to work as
+            // In both cases, this outer `Use` ensures that the inner 'Cast' is handled by
+            // `as_operand`, not by `as_rvalue` - causing the cast result to be stored in a
+            // temporary. Ordinarily, this is identical to using the cast directly as an rvalue.
+            // However, if the source of the cast was previously borrowed as mutable, storing the
+            // cast in a temporary gives the source a chance to expire before the cast is used.
+            // For structs with a self-referential `*mut ptr`, this allows assignment to work as
             // expected.
             //
-            // For example, consider the type 'struct Foo { field: *mut Foo }',
-            // The method 'fn bar(&mut self) { self.field = self }'
-            // triggers a coercion from '&mut self' to '*mut self'. In order
+            // For example, consider the type `struct Foo { field: *mut Foo }`,
+            // The method `fn bar(&mut self) { self.field = self }`
+            // triggers a coercion from `&mut self` to `*mut self`. In order
             // for the assignment to be valid, the implicit borrow
-            // of 'self' involved in the coercion needs to end before the local
-            // containing the '*mut T' is assigned to 'self.field' - otherwise,
-            // we end up trying to assign to 'self.field' while we have another mutable borrow
+            // of `self` involved in the coercion needs to end before the local
+            // containing the `*mut T` is assigned to `self.field` -- otherwise,
+            // we end up trying to assign to `self.field` while we have another mutable borrow
             // active.
             //
             // We only need to worry about this kind of thing for coercions from refs to ptrs,
             // since they get rid of a borrow implicitly.
             ExprKind::Use { source: cast_expr.to_ref() }
         }
-        Adjust::Hide(revealed_ty) => {
-            // See the above comment for Adjust::Deref.
+        Adjust::Hide => {
+            // See the above comment for `Adjust::Deref`.
             if let ExprKind::Block { body } = expr.kind {
                 if let Some(ref last_expr) = body.expr {
                     span = last_expr.span;
                     expr.span = span;
                 }
             }
-            expr.ty = revealed_ty;
-            debug!("hide: {:?} {:?}", expr, revealed_ty);
-            ExprKind::Cast { source: expr.to_ref() }
+            ExprKind::Hide { source: expr.to_ref() }
         }
         Adjust::Unsize => {
-            // See the above comment for Adjust::Deref.
+            // See the above comment for `Adjust::Deref`.
             if let ExprKind::Block { body } = expr.kind {
                 if let Some(ref last_expr) = body.expr {
                     span = last_expr.span;
@@ -664,25 +661,25 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
             // Check to see if this cast is a "coercion cast", where the cast is actually done
             // using a coercion (or is a no-op).
-            let cast = if let Some(&TyCastKind::CoercionCast) =
-                cx.tables()
+            let cast = if let Some(&TyCastKind::CoercionCast) = cx
+                .tables()
                 .cast_kinds()
                 .get(source.hir_id)
             {
                 // Convert the lexpr to a vexpr.
                 ExprKind::Use { source: source.to_ref() }
             } else {
-                // check whether this is casting an enum variant discriminant
+                // Check whether this is casting an enum variant discriminant
                 // to prevent cycles, we refer to the discriminant initializer
                 // which is always an integer and thus doesn't need to know the
-                // enum's layout (or its tag type) to compute it during const eval
+                // enum's layout (or its tag type) to compute it during const eval.
                 // Example:
                 // enum Foo {
                 //     A,
                 //     B = A as isize + 4,
                 // }
                 // The correct solution would be to add symbolic computations to miri,
-                // so we wouldn't have to compute and store the actual value
+                // so we wouldn't have to compute and store the actual value.
                 let var = if let hir::ExprKind::Path(ref qpath) = source.node {
                     let def = cx.tables().qpath_def(qpath, source.hir_id);
                     cx
@@ -751,8 +748,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             };
 
             if let Some(user_ty) = user_ty {
-                // NOTE: Creating a new Expr and wrapping a Cast inside of it may be
-                //       inefficient, revisit this when performance becomes an issue.
+                // NOTE: Creating a new `Expr` and wrapping a `Cast` inside of it may be
+                // inefficient; revisit this when performance becomes an issue.
                 let cast_expr = Expr {
                     temp_lifetime,
                     ty: expr_ty,

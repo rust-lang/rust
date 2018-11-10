@@ -1057,7 +1057,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         Substs::for_item(self.tcx, def_id, |param, _| self.var_for_def(span, param))
     }
 
-    /// True if errors have been reported since this infcx was
+    /// Returns `true` if errors have been reported since this infcx was
     /// created.  This is sometimes used as a heuristic to skip
     /// reporting errors that often occur as a result of earlier
     /// errors, but where it's hard to be 100% sure (e.g., unresolved
@@ -1251,7 +1251,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         value.fold_with(&mut r)
     }
 
-    /// Returns true if `T` contains unresolved type variables. In the
+    /// Returns `true` if `T` contains unresolved type variables. In the
     /// process of visiting `T`, this will resolve (where possible)
     /// type variables in `T`, but it never constructs the final,
     /// resolved type, so it's more efficient than

@@ -10,9 +10,8 @@
 
 //! This module contains the code to convert from the wacky tcx data
 //! structures into the hair. The `builder` is generally ignorant of
-//! the tcx etc, and instead goes through the `Cx` for most of its
-//! work.
-//!
+//! the tcx and whatnot, and instead goes through the `Cx` for most of
+//! its work.
 
 use hair::*;
 use hair::util::UserAnnotatedTyHelpers;
@@ -77,7 +76,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         // the settings for the crate they are codegened in.
         let mut check_overflow = attr::contains_name(attrs, "rustc_inherit_overflow_checks");
 
-        // Respect -C overflow-checks.
+        // Respect `-C overflow-checks` compiler flag.
         check_overflow |= tcx.sess.overflow_checks();
 
         // Constants always need overflow checks.
@@ -130,7 +129,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         ty::Const::from_bool(self.tcx, false)
     }
 
-    // FIXME: Combine with rustc_mir::hair::pattern::lit_to_const
+    // FIXME: Combine with `rustc_mir::hair::pattern::lit_to_const`.
     pub fn const_eval_literal(
         &mut self,
         lit: &'tcx ast::LitKind,

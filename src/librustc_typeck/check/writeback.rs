@@ -8,9 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Type resolution: the phase that finds all the types in the AST with
-// unresolved type variables and replaces "ty_var" types with their
-// substitutions.
+/*
+
+# Writeback
+
+This phase of type resolution finds all the types in the AST with
+unresolved type variables and replaces "ty_var" types with their
+substitutions.
+
+*/
 
 use check::FnCtxt;
 use rustc::hir;
@@ -526,7 +532,6 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 }
             }
 
-            debug!("visit_opaque_types: bar1: {:?} {:?} {:?}", span, def_id, definition_ty);
             let old = self.tables
                 .concrete_existential_types
                 .insert(def_id, definition_ty);

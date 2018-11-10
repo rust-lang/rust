@@ -180,7 +180,7 @@ impl<'a, 'tcx> MaybeInProgressTables<'a, 'tcx> {
     }
 }
 
-/// closures defined within the function.  For example:
+/// Closures defined within the function. For example:
 ///
 ///     fn foo() {
 ///         bar(move|| { ... })
@@ -230,6 +230,7 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> Deref for Inherited<'a, 'gcx, 'tcx> {
     type Target = InferCtxt<'a, 'gcx, 'tcx>;
+
     fn deref(&self) -> &Self::Target {
         &self.infcx
     }
@@ -574,6 +575,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> Deref for FnCtxt<'a, 'gcx, 'tcx> {
     type Target = Inherited<'a, 'gcx, 'tcx>;
+
     fn deref(&self) -> &Self::Target {
         &self.inh
     }

@@ -2128,16 +2128,16 @@ impl<'tcx> Operand<'tcx> {
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub enum Rvalue<'tcx> {
-    /// x (either a move or copy, depending on type of x)
+    /// `x` (either a move or copy, depending on type of `x`)
     Use(Operand<'tcx>),
 
-    /// [x; 32]
+    /// `[x; 32]`
     Repeat(Operand<'tcx>, u64),
 
-    /// &x or &mut x
+    /// `&x` or `&mut x`
     Ref(Region<'tcx>, BorrowKind, Place<'tcx>),
 
-    /// length of a [X] or [X;n] value
+    /// length of a `[X]` or `[X;n]` value
     Len(Place<'tcx>),
 
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
@@ -2166,14 +2166,18 @@ pub enum Rvalue<'tcx> {
 pub enum CastKind {
     Misc,
 
-    /// Convert unique, zero-sized type for a fn to fn()
+    /// Convert a unique, zero-sized type for a fn to `fn()`
     ReifyFnPointer,
 
-    /// Convert non capturing closure to fn()
+    /// Convert a non capturing closure to `fn()`
     ClosureFnPointer,
 
-    /// Convert safe fn() to unsafe fn()
+    /// Convert a safe fn() to unsafe `fn()`
     UnsafeFnPointer,
+
+    // "Hide" -- convert a value to an opaque type, i.e. `impl Trait`,
+    // thus hiding information about its conrete type.
+    Hide,
 
     /// "Unsize" -- convert a thin-or-fat pointer to a fat pointer.
     /// codegen must figure out the details once full monomorphization
@@ -2185,7 +2189,7 @@ pub enum CastKind {
 
 #[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum AggregateKind<'tcx> {
-    /// The type is of the element
+    /// The type is of the element.
     Array(Ty<'tcx>),
     Tuple,
 

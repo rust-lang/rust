@@ -174,6 +174,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let source = unpack!(block = this.as_operand(block, scope, source));
                 block.and(Rvalue::Cast(CastKind::ClosureFnPointer, source, expr.ty))
             }
+            ExprKind::Hide { source } => {
+                let source = this.hir.mirror(source);
+
+                let source = unpack!(block = this.as_operand(block, scope, source));
+                block.and(Rvalue::Cast(CastKind::Hide, source, expr.ty))
+            }
             ExprKind::Unsize { source } => {
                 let source = unpack!(block = this.as_operand(block, scope, source));
                 block.and(Rvalue::Cast(CastKind::Unsize, source, expr.ty))

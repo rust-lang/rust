@@ -1184,7 +1184,7 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
                     impl_trait_fn: None,
                     ..
                 }) => find_existential_constraints(tcx, def_id),
-                // existential types desugared from impl Trait
+                // existential types desugared from `impl Trait`
                 ItemKind::Existential(hir::ExistTy {
                     impl_trait_fn: Some(owner),
                     ..
@@ -1194,17 +1194,8 @@ fn type_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Ty<'tcx> {
                         .get(&def_id)
                         .cloned()
                         .unwrap_or_else(|| {
-                            // This can occur if some error in the
-                            // owner fn prevented us from populating
-                            // the `concrete_existential_types` table.
-                            tcx.sess.delay_span_bug(
-                                DUMMY_SP,
-                                &format!(
-                                    "owner {:?} has no existential type for {:?} in its tables",
-                                    owner, def_id,
-                                ),
-                            );
-                            tcx.types.err
+                            let substs = Substs::identity_for_item(tcx, def_id);
+                            tcx.mk_opaque(def_id, substs)
                         })
                 }
                 ItemKind::Trait(..)
@@ -1708,7 +1699,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                 let substs = Substs::identity_for_item(tcx, def_id);
                 let opaque_ty = tcx.mk_opaque(def_id, substs);
 
-                // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
+                // Collect the bounds, i.e. the `A + B + 'c` in `impl A + B + 'c`.
                 let bounds = compute_bounds(
                     &icx,
                     opaque_ty,

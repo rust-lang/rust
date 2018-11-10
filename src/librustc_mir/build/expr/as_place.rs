@@ -189,6 +189,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             | ExprKind::ReifyFnPointer { .. }
             | ExprKind::ClosureFnPointer { .. }
             | ExprKind::UnsafeFnPointer { .. }
+            | ExprKind::Hide { .. }
             | ExprKind::Unsize { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Borrow { .. }
@@ -205,7 +206,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             | ExprKind::InlineAsm { .. }
             | ExprKind::Yield { .. }
             | ExprKind::Call { .. } => {
-                // these are not places, so we need to make a temporary.
+                // These are not places, so we need to make a temporary.
                 debug_assert!(match Category::of(&expr.kind) {
                     Some(Category::Place) => false,
                     _ => true,

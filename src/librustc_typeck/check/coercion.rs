@@ -68,7 +68,7 @@ use rustc::infer::{Coercion, InferResult, InferOk};
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{Adjustment, Adjust, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
-use rustc::ty::{self, DefIdTree, TypeAndMut, Ty, ClosureSubsts};
+use rustc::ty::{self, TypeAndMut, Ty, ClosureSubsts};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
@@ -516,7 +516,6 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         // Handle reborrows before checking target is subtype of source.
         let reborrow = self.reborrow(source, target)?;
-        let coerce_source = reborrow.as_ref().map_or(source, |&(_, ref r)| r.target);
 
         // Set up either a subtyping or a LUB relationship between
         // the opaque type and the expected type.
@@ -526,7 +525,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         let coerce_target = self.next_ty_var(origin);
         let mut coercion = self.unify_and(coerce_target, target, |target| {
             let hide = Adjustment {
-                kind: Adjust::Hide(coerce_source),
+                kind: Adjust::Hide,
                 target
             };
             match reborrow {

@@ -13,7 +13,6 @@ use hir::def_id::DefId;
 use ty::{self, Ty, TyCtxt};
 use ty::subst::Substs;
 
-
 /// Represents coercing a value to a different type of value.
 ///
 /// We transform values by following a number of `Adjust` steps in order.
@@ -84,7 +83,7 @@ pub enum Adjust<'tcx> {
     Borrow(AutoBorrow<'tcx>),
 
     /// Hide a value with an opaque type.
-    Hide(Ty<'tcx>),
+    Hide,
 
     /// Unsize a pointer/reference value, e.g. `&[T; n]` to
     /// `&[T]`. Note that the source could be a thin or fat pointer.

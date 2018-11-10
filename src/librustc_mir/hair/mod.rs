@@ -193,9 +193,9 @@ pub enum ExprKind<'tcx> {
     UnsafeFnPointer {
         source: ExprRef<'tcx>,
     },
-    // Hide {
-    //     source: ExprRef<'tcx>,
-    // },
+    Hide {
+        source: ExprRef<'tcx>,
+    },
     Unsize {
         source: ExprRef<'tcx>,
     },
