@@ -27,8 +27,8 @@ matrix:
       env: TARGET=aarch64-unknown-linux-gnu
     - name: "mips-unknown-linux-gnu - build-only"
       env: TARGET=mips-unknown-linux-gnu NORUN=1
-    - name: "mipsel-unknown-linux-gnu - build-only"
-      env: TARGET=mipsel-unknown-linux-gnu NORUN=1
+    - name: "mipsel-unknown-linux-musl - build-only"
+      env: TARGET=mipsel-unknown-linux-musl NORUN=1
     - name: "mips64-unknown-linux-gnuabi64 - build-only"
       env: TARGET=mips64-unknown-linux-gnuabi64 NORUN=1
     - name: "mips64el-unknown-linux-gnuabi64 - build-only"
