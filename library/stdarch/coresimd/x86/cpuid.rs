@@ -1,6 +1,6 @@
 //! `cpuid` intrinsics
 
-#![cfg_attr(feature = "cargo-clippy", allow(stutter))]
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::stutter))]
 
 use mem;
 
@@ -9,7 +9,7 @@ use stdsimd_test::assert_instr;
 
 /// Result of the `cpuid` instruction.
 #[derive(Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
-#[cfg_attr(feature = "cargo-clippy", allow(stutter))]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::stutter))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub struct CpuidResult {
     /// EAX register.

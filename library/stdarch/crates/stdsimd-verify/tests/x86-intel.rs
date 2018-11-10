@@ -2,14 +2,14 @@
 #![cfg_attr(
     feature = "cargo-clippy",
     allow(
-        shadow_reuse,
-        cast_lossless,
-        match_same_arms,
-        nonminimal_bool,
-        print_stdout,
-        use_debug,
-        eq_op,
-        useless_format
+        clippy::shadow_reuse,
+        clippy::cast_lossless,
+        clippy::match_same_arms,
+        clippy::nonminimal_bool,
+        clippy::print_stdout,
+        clippy::use_debug,
+        clippy::eq_op,
+        clippy::useless_format
     )
 )]
 

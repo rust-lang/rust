@@ -119,7 +119,7 @@ mod tests {
     }
 
     #[simd_test(enable = "bmi2")]
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     unsafe fn test_mulx_u64() {
         let a: u64 = 9_223_372_036_854_775_800;
         let b: u64 = 100;

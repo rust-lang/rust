@@ -1278,6 +1278,7 @@ pub unsafe fn _mm_load_ps1(p: *const f32) -> __m128 {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
 pub unsafe fn _mm_load_ps(p: *const f32) -> __m128 {
     *(p as *const __m128)
 }
@@ -1438,6 +1439,7 @@ pub unsafe fn _mm_store_ss(p: *mut f32, a: __m128) {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
 pub unsafe fn _mm_store1_ps(p: *mut f32, a: __m128) {
     let b: __m128 = simd_shuffle4(a, a, [0, 0, 0, 0]);
     *(p as *mut __m128) = b;
@@ -1469,6 +1471,7 @@ pub unsafe fn _mm_store_ps1(p: *mut f32, a: __m128) {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
 pub unsafe fn _mm_store_ps(p: *mut f32, a: __m128) {
     *(p as *mut __m128) = a;
 }
@@ -1512,6 +1515,7 @@ pub unsafe fn _mm_storeu_ps(p: *mut f32, a: __m128) {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movaps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
 pub unsafe fn _mm_storer_ps(p: *mut f32, a: __m128) {
     let b: __m128 = simd_shuffle4(a, a, [3, 2, 1, 0]);
     *(p as *mut __m128) = b;
@@ -2099,8 +2103,9 @@ extern "C" {
 #[target_feature(enable = "sse")]
 #[cfg_attr(test, assert_instr(movntps))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_ptr_alignment))]
 pub unsafe fn _mm_stream_ps(mem_addr: *mut f32, a: __m128) {
-    intrinsics::nontemporal_store(mem::transmute(mem_addr), a);
+    intrinsics::nontemporal_store(mem_addr as *mut __m128, a);
 }
 
 /// Store 64-bits of integer data from a into memory using a non-temporal
@@ -4068,7 +4073,7 @@ mod tests {
 
     #[simd_test(enable = "sse,mmx")]
     unsafe fn test_mm_sad_pu8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_pi8(
             255u8 as i8, 254u8 as i8, 253u8 as i8, 252u8 as i8,
             1, 2, 3, 4,

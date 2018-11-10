@@ -6,7 +6,7 @@
 
 #![cfg_attr(
     feature = "cargo-clippy",
-    allow(missing_docs_in_private_items, print_stdout)
+    allow(clippy::missing_docs_in_private_items, clippy::print_stdout)
 )]
 
 extern crate assert_instr_macro;
@@ -119,28 +119,34 @@ pub fn assert(fnptr: usize, fnname: &str, expected: &str) {
     }
 
     let instruction_limit = std::env::var("STDSIMD_ASSERT_INSTR_LIMIT")
-        .map(|v| v.parse().unwrap())
-        .unwrap_or_else(|_| match expected {
-            // cpuid returns a pretty big aggregate structure so exempt it from
-            // the slightly more restrictive 22 instructions below
-            "cpuid" => 30,
+        .ok()
+        .map_or_else(
+            || match expected {
+                // cpuid returns a pretty big aggregate structure so exempt it
+                // from the slightly more restrictive 22
+                // instructions below
+                "cpuid" => 30,
 
-            // Apparently on Windows LLVM generates a bunch of saves/restores
-            // of xmm registers around these intstructions which
-            // blows the 20 limit below. As it seems dictates by
-            // Windows's abi (I guess?) we probably can't do much
-            // about it...
-            "vzeroall" | "vzeroupper" if cfg!(windows) => 30,
+                // Apparently on Windows LLVM generates a bunch of
+                // saves/restores of xmm registers around these
+                // intstructions which blows the 20 limit
+                // below. As it seems dictates by Windows's abi
+                // (I guess?) we probably can't do much
+                // about it...
+                "vzeroall" | "vzeroupper" if cfg!(windows) => 30,
 
-            // Intrinsics using `cvtpi2ps` are typically "composites" and in
-            // some cases exceed the limit.
-            "cvtpi2ps" => 25,
+                // Intrinsics using `cvtpi2ps` are typically "composites" and
+                // in some cases exceed the limit.
+                "cvtpi2ps" => 25,
 
-            // Original limit was 20 instructions, but ARM DSP Intrinsics are
-            // exactly 20 instructions long. So bump the limit to 22 instead of
-            // adding here a long list of exceptions.
-            _ => 22,
-        });
+                // Original limit was 20 instructions, but ARM DSP Intrinsics
+                // are exactly 20 instructions long. So bump
+                // the limit to 22 instead of adding here a
+                // long list of exceptions.
+                _ => 22,
+            },
+            |v| v.parse().unwrap(),
+        );
     let probably_only_one_instruction = instrs.len() < instruction_limit;
 
     if found && probably_only_one_instruction && !inlining_failed {

@@ -1233,21 +1233,21 @@ mod tests {
 
     #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_blendv_epi8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_epi8(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm_setr_epi8(
             16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let mask = _mm_setr_epi8(
             0, -1, 0, -1, 0, -1, 0, -1,
             0, -1, 0, -1, 0, -1, 0, -1,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm_setr_epi8(
             0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31,
         );
@@ -1312,7 +1312,7 @@ mod tests {
 
     #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_extract_epi8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_epi8(
             -1, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15
@@ -1363,18 +1363,18 @@ mod tests {
 
     #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_max_epi8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_epi8(
             1, 4, 5, 8, 9, 12, 13, 16,
             17, 20, 21, 24, 25, 28, 29, 32,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm_setr_epi8(
             2, 3, 6, 7, 10, 11, 14, 15,
             18, 19, 22, 23, 26, 27, 30, 31,
         );
         let r = _mm_max_epi8(a, b);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm_setr_epi8(
             2, 4, 6, 8, 10, 12, 14, 16,
             18, 20, 22, 24, 26, 28, 30, 32,
@@ -1411,18 +1411,18 @@ mod tests {
 
     #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_min_epi8_1() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_epi8(
             1, 4, 5, 8, 9, 12, 13, 16,
             17, 20, 21, 24, 25, 28, 29, 32,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm_setr_epi8(
             2, 3, 6, 7, 10, 11, 14, 15,
             18, 19, 22, 23, 26, 27, 30, 31,
         );
         let r = _mm_min_epi8(a, b);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm_setr_epi8(
             1, 3, 5, 7, 9, 11, 13, 15,
             17, 19, 21, 23, 25, 27, 29, 31,
@@ -1432,18 +1432,18 @@ mod tests {
 
     #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_min_epi8_2() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_epi8(
             1, -4, -5, 8, -9, -12, 13, -16,
             17, 20, 21, 24, 25, 28, 29, 32,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm_setr_epi8(
             2, -3, -6, 7, -10, -11, 14, -15,
             18, 19, 22, 23, 26, 27, 30, 31,
         );
         let r = _mm_min_epi8(a, b);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm_setr_epi8(
             1, -4, -6, 7, -10, -12, 13, -16,
             17, 19, 21, 23, 25, 27, 29, 31,
@@ -1820,7 +1820,7 @@ mod tests {
 
     #[simd_test(enable = "sse4.1")]
     unsafe fn test_mm_mpsadbw_epu8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_epi8(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,

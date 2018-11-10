@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env sh
 # Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -11,10 +11,11 @@
 
 set -ex
 
-curl -O https://dl.google.com/android/repository/android-ndk-r15b-linux-x86_64.zip
+curl -O \
+     https://dl.google.com/android/repository/android-ndk-r15b-linux-x86_64.zip
 unzip -q android-ndk-r15b-linux-x86_64.zip
 
-case "$1" in
+case "${1}" in
   aarch64)
     arch=arm64
     ;;
@@ -24,14 +25,14 @@ case "$1" in
     ;;
 
   *)
-    arch=$1
+    arch="${1}"
     ;;
 esac;
 
 android-ndk-r15b/build/tools/make_standalone_toolchain.py \
         --unified-headers \
-        --install-dir /android/ndk-$1 \
-        --arch $arch \
+        --install-dir "/android/ndk-${1}" \
+        --arch "${arch}" \
         --api 24
 
 rm -rf ./android-ndk-r15b-linux-x86_64.zip ./android-ndk-r15b

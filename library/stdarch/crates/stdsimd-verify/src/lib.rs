@@ -19,30 +19,27 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
     let mut files = Vec::new();
     walk(&root.join("../coresimd/x86"), &mut files);
     walk(&root.join("../coresimd/x86_64"), &mut files);
-    assert!(files.len() > 0);
+    assert!(!files.is_empty());
 
     let mut functions = Vec::new();
-    for &mut (ref mut file, ref path) in files.iter_mut() {
+    for &mut (ref mut file, ref path) in &mut files {
         for item in file.items.drain(..) {
-            match item {
-                syn::Item::Fn(f) => functions.push((f, path)),
-                _ => {}
+            if let syn::Item::Fn(f) = item {
+                functions.push((f, path))
             }
         }
     }
-    assert!(functions.len() > 0);
+    assert!(!functions.is_empty());
 
     functions.retain(|&(ref f, _)| {
-        match f.vis {
-            syn::Visibility::Public(_) => {}
-            _ => return false,
+        if let syn::Visibility::Public(_) = f.vis {
+            if f.unsafety.is_some() {
+                return true;
+            }
         }
-        if f.unsafety.is_none() {
-            return false;
-        }
-        true
+        false
     });
-    assert!(functions.len() > 0);
+    assert!(!functions.is_empty());
 
     let input = proc_macro2::TokenStream::from(input);
 
@@ -67,9 +64,11 @@ pub fn x86_functions(input: TokenStream) -> TokenStream {
                 }
             };
             let instrs = find_instrs(&f.attrs);
-            let target_feature = match find_target_feature(&f.attrs) {
-                Some(i) => quote! { Some(#i) },
-                None => quote! { None },
+            let target_feature = if let Some(i) = find_target_feature(&f.attrs)
+            {
+                quote! { Some(#i) }
+            } else {
+                quote! { None }
             };
             let required_const = find_required_const(&f.attrs);
             quote! {
@@ -206,29 +205,23 @@ fn find_instrs(attrs: &[syn::Attribute]) -> Vec<syn::Ident> {
 fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
     attrs
         .iter()
-        .filter_map(|a| a.interpret_meta())
-        .filter_map(|a| match a {
-            syn::Meta::List(i) => {
-                if i.ident == "target_feature" {
-                    Some(i.nested)
-                } else {
-                    None
+        .flat_map(|a| {
+            if let Some(a) = a.interpret_meta() {
+                if let syn::Meta::List(i) = a {
+                    if i.ident == "target_feature" {
+                        return i.nested;
+                    }
                 }
             }
-            _ => None,
+            syn::punctuated::Punctuated::new()
         })
-        .flat_map(|list| list)
         .filter_map(|nested| match nested {
             syn::NestedMeta::Meta(m) => Some(m),
             syn::NestedMeta::Literal(_) => None,
         })
         .filter_map(|m| match m {
-            syn::Meta::NameValue(i) => {
-                if i.ident == "enable" {
-                    Some(i.lit)
-                } else {
-                    None
-                }
+            syn::Meta::NameValue(ref i) if i.ident == "enable" => {
+                Some(i.clone().lit)
             }
             _ => None,
         })
@@ -238,10 +231,15 @@ fn find_target_feature(attrs: &[syn::Attribute]) -> Option<syn::Lit> {
 fn find_required_const(attrs: &[syn::Attribute]) -> Vec<usize> {
     attrs
         .iter()
-        .filter(|a| a.path.segments[0].ident == "rustc_args_required_const")
-        .map(|a| a.tts.clone())
-        .map(|a| syn::parse::<RustcArgsRequiredConst>(a.into()).unwrap())
-        .flat_map(|a| a.args)
+        .flat_map(|a| {
+            if a.path.segments[0].ident == "rustc_args_required_const" {
+                syn::parse::<RustcArgsRequiredConst>(a.tts.clone().into())
+                    .unwrap()
+                    .args
+            } else {
+                Vec::new()
+            }
+        })
         .collect()
 }
 
@@ -250,12 +248,16 @@ struct RustcArgsRequiredConst {
 }
 
 impl syn::parse::Parse for RustcArgsRequiredConst {
+    #[cfg_attr(
+        feature = "cargo-clippy",
+        allow(clippy::cast_possible_truncation)
+    )]
     fn parse(input: syn::parse::ParseStream) -> syn::parse::Result<Self> {
         let content;
         parenthesized!(content in input);
         let list = syn::punctuated::Punctuated::<syn::LitInt, Token![,]>
             ::parse_terminated(&content)?;
-        Ok(RustcArgsRequiredConst {
+        Ok(Self {
             args: list.into_iter().map(|a| a.value() as usize).collect(),
         })
     }

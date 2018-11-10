@@ -41,14 +41,14 @@ mod tests {
 
     #[simd_test(enable = "msa")]
     unsafe fn __msa_add_a_b() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = i8x16(
             1, 2, 3, 4,
             1, 2, 3, 4,
             1, 2, 3, 4,
             1, 2, 3, 4,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = i8x16(
             -4, -3, -2, -1,
             -4, -3, -2, -1,

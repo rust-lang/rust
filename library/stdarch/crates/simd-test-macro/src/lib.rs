@@ -8,9 +8,9 @@ extern crate proc_macro2;
 #[macro_use]
 extern crate quote;
 
-use std::env;
-
 use proc_macro2::{Ident, Literal, Span, TokenStream, TokenTree};
+use quote::ToTokens;
+use std::env;
 
 fn string(s: &str) -> TokenTree {
     Literal::string(s).into()
@@ -25,7 +25,7 @@ pub fn simd_test(
         panic!("expected #[simd_test(enable = \"feature\")]");
     }
     match &tokens[0] {
-        TokenTree::Ident(tt) if tt.to_string() == "enable" => {}
+        TokenTree::Ident(tt) if *tt == "enable" => {}
         _ => panic!("expected #[simd_test(enable = \"feature\")]"),
     }
     match &tokens[1] {
@@ -42,26 +42,23 @@ pub fn simd_test(
     let target_features: Vec<String> = enable_feature
         .replace('+', "")
         .split(',')
-        .map(|v| String::from(v))
+        .map(String::from)
         .collect();
 
     let enable_feature = string(enable_feature);
     let item = TokenStream::from(item);
     let name = find_name(item.clone());
 
-    let name: TokenStream = name
-        .to_string()
-        .parse()
-        .expect(&format!("failed to parse name: {}", name.to_string()));
+    let name: TokenStream = name.to_string().parse().unwrap_or_else(|_| {
+        panic!("failed to parse name: {}", name.to_string())
+    });
 
     let target = env::var("TARGET")
         .expect("TARGET environment variable should be set for rustc");
     let mut force_test = false;
-    let macro_test = match target
-        .split('-')
-        .next()
-        .expect(&format!("target triple contained no \"-\": {}", target))
-    {
+    let macro_test = match target.split('-').next().unwrap_or_else(|| {
+        panic!("target triple contained no \"-\": {}", target)
+    }) {
         "i686" | "x86_64" | "i586" => "is_x86_feature_detected",
         "arm" | "armv7" => "is_arm_feature_detected",
         "aarch64" => "is_aarch64_feature_detected",
@@ -87,7 +84,6 @@ pub fn simd_test(
     let macro_test = Ident::new(macro_test, Span::call_site());
 
     let mut cfg_target_features = TokenStream::new();
-    use quote::ToTokens;
     for feature in target_features {
         let q = quote_spanned! {
             proc_macro2::Span::call_site() =>
@@ -99,10 +95,10 @@ pub fn simd_test(
     q.to_tokens(&mut cfg_target_features);
 
     let test_norun = std::env::var("STDSIMD_TEST_NORUN").is_ok();
-    let maybe_ignore = if !test_norun {
-        TokenStream::new()
+    let maybe_ignore = if test_norun {
+        quote! { #[ignore] }
     } else {
-        (quote! { #[ignore] }).into()
+        TokenStream::new()
     };
 
     let ret: TokenStream = quote_spanned! {
@@ -120,8 +116,7 @@ pub fn simd_test(
             #[target_feature(enable = #enable_feature)]
             #item
         }
-    }
-    .into();
+    };
     ret.into()
 }
 

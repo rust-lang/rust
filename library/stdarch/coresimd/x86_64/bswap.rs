@@ -1,6 +1,6 @@
 //! Byte swap intrinsics.
 
-#![cfg_attr(feature = "cargo-clippy", allow(stutter))]
+#![cfg_attr(feature = "cargo-clippy", allow(clippy::stutter))]
 
 #[cfg(test)]
 use stdsimd_test::assert_instr;

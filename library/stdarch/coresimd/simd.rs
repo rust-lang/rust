@@ -1,7 +1,6 @@
 //! Internal `#[repr(simd)]` types
 
-#![cfg_attr(rustfmt, rustfmt_skip)]
-
+#![rustfmt::skip]
 #![allow(non_camel_case_types)]
 
 macro_rules! simd_ty {

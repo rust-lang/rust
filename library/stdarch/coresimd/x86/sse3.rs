@@ -214,7 +214,7 @@ mod tests {
 
     #[simd_test(enable = "sse3")]
     unsafe fn test_mm_lddqu_si128() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_epi8(
             1, 2, 3, 4,
             5, 6, 7, 8,

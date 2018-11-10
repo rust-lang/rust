@@ -1,8 +1,8 @@
-#!/bin/sh
+#!/usr/bin/env sh
 
 set -ex
 
-: ${TARGET?"The TARGET environment variable must be set."}
+: "${TARGET?The TARGET environment variable must be set.}"
 
 # Tests are all super fast anyway, and they fault often enough on travis that
 # having only one thread increases debuggability to be worth it.

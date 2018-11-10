@@ -17,13 +17,13 @@
 #![cfg_attr(
     feature = "cargo-clippy",
     allow(
-        result_unwrap_used,
-        print_stdout,
-        option_unwrap_used,
-        shadow_reuse,
-        cast_possible_wrap,
-        cast_sign_loss,
-        missing_docs_in_private_items
+        clippy::result_unwrap_used,
+        clippy::print_stdout,
+        clippy::option_unwrap_used,
+        clippy::shadow_reuse,
+        clippy::cast_possible_wrap,
+        clippy::cast_sign_loss,
+        clippy::missing_docs_in_private_items
     )
 )]
 

@@ -322,7 +322,7 @@ mod tests {
 
     #[simd_test(enable = "tbm")]
     #[cfg(not(target_arch = "x86"))]
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     unsafe fn test_blci_u64() {
         assert_eq!(
             _blci_u64(0b0101_0000u64),
@@ -384,7 +384,7 @@ mod tests {
 
     #[simd_test(enable = "tbm")]
     #[cfg(not(target_arch = "x86"))]
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     unsafe fn test_blsfill_u64() {
         assert_eq!(_blsfill_u64(0b0101_0100u64), 0b0101_0111u64);
         assert_eq!(
@@ -407,7 +407,7 @@ mod tests {
 
     #[simd_test(enable = "tbm")]
     #[cfg(not(target_arch = "x86"))]
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     unsafe fn test_blsic_u64() {
         assert_eq!(
             _blsic_u64(0b0101_0100u64),
@@ -433,7 +433,7 @@ mod tests {
 
     #[simd_test(enable = "tbm")]
     #[cfg(not(target_arch = "x86"))]
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     unsafe fn test_t1mksc_u64() {
         assert_eq!(
             _t1mskc_u64(0b0101_0111u64),

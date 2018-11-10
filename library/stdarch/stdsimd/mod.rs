@@ -58,8 +58,12 @@
 /// available, and can be used like so:
 ///
 /// ```ignore
-/// #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"),
-///       target_feature = "avx2"))]
+/// #[cfg(
+///     all(
+///         any(target_arch = "x86", target_arch = "x86_64"),
+///         target_feature = "avx2"
+///     )
+/// )]
 /// fn foo() {
 ///     #[cfg(target_arch = "x86")]
 ///     use std::arch::x86::_mm256_add_epi64;
@@ -208,9 +212,10 @@
 /// AVX2 and also for the default platform.
 ///
 /// ```rust
-/// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature,
-/// # stdsimd))]
-///
+/// # #![cfg_attr(
+/// #     not(dox),
+/// #     feature(cfg_target_feature, target_feature, stdsimd)
+/// # )]
 /// # #[cfg(not(dox))]
 /// # #[macro_use]
 /// # extern crate stdsimd;
@@ -251,7 +256,10 @@
 /// we'll be using SSE4.1 features to implement hex encoding.
 ///
 /// ```
-/// # #![cfg_attr(not(dox), feature(cfg_target_feature, target_feature, stdsimd))]
+/// # #![cfg_attr(
+/// #    not(dox),
+/// #    feature(cfg_target_feature, target_feature, stdsimd)
+/// # )]
 /// # #![cfg_attr(not(dox), no_std)]
 /// # #[cfg(not(dox))]
 /// # extern crate std as real_std;
@@ -286,7 +294,8 @@
 ///     hex_encode_fallback(src, dst)
 /// }
 ///
-/// // translated from https://github.com/Matherunner/bin2hex-sse/blob/master/base16_sse4.cpp
+/// // translated from
+/// // https://github.com/Matherunner/bin2hex-sse/blob/master/base16_sse4.cpp
 /// #[target_feature(enable = "sse4.1")]
 /// #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 /// unsafe fn hex_encode_sse41(mut src: &[u8], dst: &mut [u8]) {
@@ -326,8 +335,11 @@
 ///         let res2 = _mm_unpackhi_epi8(masked2, masked1);
 ///
 ///         _mm_storeu_si128(dst.as_mut_ptr().offset(i * 2) as *mut _, res1);
-/// _mm_storeu_si128(dst.as_mut_ptr().offset(i * 2 + 16) as *mut _,
-/// res2);         src = &src[16..];
+///         _mm_storeu_si128(
+///             dst.as_mut_ptr().offset(i * 2 + 16) as *mut _,
+///             res2,
+///         );
+///         src = &src[16..];
 ///         i += 16;
 ///     }
 ///

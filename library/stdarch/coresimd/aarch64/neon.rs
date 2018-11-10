@@ -1692,7 +1692,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vmaxvq_s8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let r = vmaxvq_s8(::mem::transmute(i8x16::new(
             1, 2, 3, 4,
             -16, 6, 7, 5,
@@ -1735,7 +1735,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vmaxvq_u8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let r = vmaxvq_u8(::mem::transmute(u8x16::new(
             1, 2, 3, 4,
             16, 6, 7, 5,
@@ -1796,7 +1796,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vminvq_s8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let r = vminvq_s8(::mem::transmute(i8x16::new(
             1, 2, 3, 4,
             -16, 6, 7, 5,
@@ -1839,7 +1839,7 @@ mod tests {
 
     #[simd_test(enable = "neon")]
     unsafe fn test_vminvq_u8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let r = vminvq_u8(::mem::transmute(u8x16::new(
             1, 2, 3, 4,
             16, 6, 7, 5,

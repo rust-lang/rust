@@ -19,7 +19,7 @@ use stdsimd_test::assert_instr;
 #[inline]
 #[target_feature(enable = "rdrand")]
 #[cfg_attr(test, assert_instr(rdrand))]
-#[cfg_attr(feature = "cargo-clippy", allow(stutter))]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::stutter))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _rdrand16_step(val: &mut u16) -> i32 {
     let (v, flag) = x86_rdrand16_step();
@@ -34,7 +34,7 @@ pub unsafe fn _rdrand16_step(val: &mut u16) -> i32 {
 #[inline]
 #[target_feature(enable = "rdrand")]
 #[cfg_attr(test, assert_instr(rdrand))]
-#[cfg_attr(feature = "cargo-clippy", allow(stutter))]
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::stutter))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _rdrand32_step(val: &mut u32) -> i32 {
     let (v, flag) = x86_rdrand32_step();

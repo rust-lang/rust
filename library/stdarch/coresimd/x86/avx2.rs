@@ -2786,7 +2786,7 @@ pub unsafe fn _mm256_shufflehi_epi16(a: __m256i, imm8: i32) -> __m256i {
     let a = a.as_i16x16();
     macro_rules! shuffle_done {
         ($x01:expr, $x23:expr, $x45:expr, $x67:expr) => {
-            #[cfg_attr(rustfmt, rustfmt_skip)]
+            #[rustfmt::skip]
                         simd_shuffle16(a, a, [
                             0, 1, 2, 3, 4+$x01, 4+$x23, 4+$x45, 4+$x67,
                             8, 9, 10, 11, 12+$x01, 12+$x23, 12+$x45, 12+$x67
@@ -2847,7 +2847,7 @@ pub unsafe fn _mm256_shufflelo_epi16(a: __m256i, imm8: i32) -> __m256i {
     let a = a.as_i16x16();
     macro_rules! shuffle_done {
         ($x01: expr, $x23: expr, $x45: expr, $x67: expr) => {
-            #[cfg_attr(rustfmt, rustfmt_skip)]
+            #[rustfmt::skip]
                         simd_shuffle16(a, a, [
                             0+$x01, 0+$x23, 0+$x45, 0+$x67, 4, 5, 6, 7,
                             8+$x01, 8+$x23, 8+$x45, 8+$x67, 12, 13, 14, 15,
@@ -3464,7 +3464,7 @@ pub unsafe fn _mm256_subs_epu8(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpunpckhbw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_unpackhi_epi8(a: __m256i, b: __m256i) -> __m256i {
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     let r: i8x32 = simd_shuffle32(a.as_i8x32(), b.as_i8x32(), [
             8, 40, 9, 41, 10, 42, 11, 43,
             12, 44, 13, 45, 14, 46, 15, 47,
@@ -3523,7 +3523,7 @@ pub unsafe fn _mm256_unpackhi_epi8(a: __m256i, b: __m256i) -> __m256i {
 #[cfg_attr(test, assert_instr(vpunpcklbw))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_unpacklo_epi8(a: __m256i, b: __m256i) -> __m256i {
-    #[cfg_attr(rustfmt, rustfmt_skip)]
+    #[rustfmt::skip]
     let r: i8x32 = simd_shuffle32(a.as_i8x32(), b.as_i8x32(), [
         0, 32, 1, 33, 2, 34, 3, 35,
         4, 36, 5, 37, 6, 38, 7, 39,
@@ -4155,13 +4155,13 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_abs_epi32() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi32(
             0, 1, -1, std::i32::MAX,
             std::i32::MIN, 100, -100, -32,
         );
         let r = _mm256_abs_epi32(a);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi32(
             0, 1, 1, std::i32::MAX,
             std::i32::MAX.wrapping_add(1), 100, 100, 32,
@@ -4171,13 +4171,13 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_abs_epi16() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi16(
             0,  1, -1, 2, -2, 3, -3, 4,
             -4, 5, -5, std::i16::MAX, std::i16::MIN, 100, -100, -32,
         );
         let r = _mm256_abs_epi16(a);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi16(
             0, 1, 1, 2, 2, 3, 3, 4,
             4, 5, 5, std::i16::MAX, std::i16::MAX.wrapping_add(1), 100, 100, 32,
@@ -4187,7 +4187,7 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_abs_epi8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi8(
             0, 1, -1, 2, -2, 3, -3, 4,
             -4, 5, -5, std::i8::MAX, std::i8::MIN, 100, -100, -32,
@@ -4195,7 +4195,7 @@ mod tests {
             -4, 5, -5, std::i8::MAX, std::i8::MIN, 100, -100, -32,
         );
         let r = _mm256_abs_epi8(a);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi8(
             0, 1, 1, 2, 2, 3, 3, 4,
             4, 5, 5, std::i8::MAX, std::i8::MAX.wrapping_add(1), 100, 100, 32,
@@ -4225,18 +4225,18 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_add_epi16() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi16(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm256_setr_epi16(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
         );
         let r = _mm256_add_epi16(a, b);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi16(
             0, 2, 4, 6, 8, 10, 12, 14,
             16, 18, 20, 22, 24, 26, 28, 30,
@@ -4246,14 +4246,14 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_add_epi8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi8(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
             16, 17, 18, 19, 20, 21, 22, 23,
             24, 25, 26, 27, 28, 29, 30, 31,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm256_setr_epi8(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
@@ -4261,7 +4261,7 @@ mod tests {
             24, 25, 26, 27, 28, 29, 30, 31,
         );
         let r = _mm256_add_epi8(a, b);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi8(
             0, 2, 4, 6, 8, 10, 12, 14,
             16, 18, 20, 22, 24, 26, 28, 30,
@@ -4273,14 +4273,14 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_adds_epi8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi8(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
             16, 17, 18, 19, 20, 21, 22, 23,
             24, 25, 26, 27, 28, 29, 30, 31,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm256_setr_epi8(
             32, 33, 34, 35, 36, 37, 38, 39,
             40, 41, 42, 43, 44, 45, 46, 47,
@@ -4288,7 +4288,7 @@ mod tests {
             56, 57, 58, 59, 60, 61, 62, 63,
         );
         let r = _mm256_adds_epi8(a, b);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi8(
             32, 34, 36, 38, 40, 42, 44, 46,
             48, 50, 52, 54, 56, 58, 60, 62,
@@ -4316,18 +4316,18 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_adds_epi16() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi16(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm256_setr_epi16(
             32, 33, 34, 35, 36, 37, 38, 39,
             40, 41, 42, 43, 44, 45, 46, 47,
         );
         let r = _mm256_adds_epi16(a, b);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi16(
             32, 34, 36, 38, 40, 42, 44, 46,
             48, 50, 52, 54, 56, 58, 60, 62,
@@ -4354,14 +4354,14 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_adds_epu8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi8(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
             16, 17, 18, 19, 20, 21, 22, 23,
             24, 25, 26, 27, 28, 29, 30, 31,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm256_setr_epi8(
             32, 33, 34, 35, 36, 37, 38, 39,
             40, 41, 42, 43, 44, 45, 46, 47,
@@ -4369,7 +4369,7 @@ mod tests {
             56, 57, 58, 59, 60, 61, 62, 63,
         );
         let r = _mm256_adds_epu8(a, b);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi8(
             32, 34, 36, 38, 40, 42, 44, 46,
             48, 50, 52, 54, 56, 58, 60, 62,
@@ -4389,18 +4389,18 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_adds_epu16() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi16(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm256_setr_epi16(
             32, 33, 34, 35, 36, 37, 38, 39,
             40, 41, 42, 43, 44, 45, 46, 47,
         );
         let r = _mm256_adds_epu16(a, b);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi16(
             32, 34, 36, 38, 40, 42, 44, 46,
             48, 50, 52, 54, 56, 58, 60, 62,
@@ -4594,14 +4594,14 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_cmpeq_epi8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi8(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
             16, 17, 18, 19, 20, 21, 22, 23,
             24, 25, 26, 27, 28, 29, 30, 31,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm256_setr_epi8(
             31, 30, 2, 28, 27, 26, 25, 24,
             23, 22, 21, 20, 19, 18, 17, 16,
@@ -4614,12 +4614,12 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_cmpeq_epi16() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi16(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm256_setr_epi16(
             15, 14, 2, 12, 11, 10, 9, 8,
             7, 6, 5, 4, 3, 2, 1, 0,
@@ -4680,12 +4680,12 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_cvtepi8_epi16() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_epi8(
             0, 0, -1, 1, -2, 2, -3, 3,
             -4, 4, -5, 5, -6, 6, -7, 7,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let r = _mm256_setr_epi16(
             0, 0, -1, 1, -2, 2, -3, 3,
             -4, 4, -5, 5, -6, 6, -7, 7,
@@ -4695,7 +4695,7 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_cvtepi8_epi32() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_epi8(
             0, 0, -1, 1, -2, 2, -3, 3,
             -4, 4, -5, 5, -6, 6, -7, 7,
@@ -4706,7 +4706,7 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_cvtepi8_epi64() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_epi8(
             0, 0, -1, 1, -2, 2, -3, 3,
             -4, 4, -5, 5, -6, 6, -7, 7,
@@ -4759,12 +4759,12 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_cvtepu8_epi16() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_epi8(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let r = _mm256_setr_epi16(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
@@ -4774,7 +4774,7 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_cvtepu8_epi32() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_epi8(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
@@ -4785,7 +4785,7 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_cvtepu8_epi64() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm_setr_epi8(
             0, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
@@ -4828,7 +4828,7 @@ mod tests {
         let a = _mm256_insert_epi16(a, 1, 1);
         let b = _mm256_set1_epi16(4);
         let r = _mm256_hadds_epi16(a, b);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi16(
             0x7FFF, 4, 4, 4, 8, 8, 8, 8,
             4, 4, 4, 4, 8, 8, 8, 8,
@@ -5161,7 +5161,7 @@ mod tests {
         let a = _mm256_set1_epi16(2);
         let b = _mm256_set1_epi16(4);
         let r = _mm256_packs_epi16(a, b);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi8(
             2, 2, 2, 2, 2, 2, 2, 2,
             4, 4, 4, 4, 4, 4, 4, 4,
@@ -5188,7 +5188,7 @@ mod tests {
         let a = _mm256_set1_epi16(2);
         let b = _mm256_set1_epi16(4);
         let r = _mm256_packus_epi16(a, b);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi8(
             2, 2, 2, 2, 2, 2, 2, 2,
             4, 4, 4, 4, 4, 4, 4, 4,
@@ -5221,12 +5221,12 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_shufflehi_epi16() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi16(
             0, 1, 2, 3, 11, 22, 33, 44,
             4, 5, 6, 7, 55, 66, 77, 88,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi16(
             0, 1, 2, 3, 44, 22, 22, 11,
             4, 5, 6, 7, 88, 66, 66, 55,
@@ -5237,12 +5237,12 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_shufflelo_epi16() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi16(
             11, 22, 33, 44, 0, 1, 2, 3,
             55, 66, 77, 88, 4, 5, 6, 7,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi16(
             44, 22, 22, 11, 0, 1, 2, 3,
             88, 66, 66, 55, 4, 5, 6, 7,
@@ -5421,7 +5421,7 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_srli_si256() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi8(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
@@ -5429,7 +5429,7 @@ mod tests {
             25, 26, 27, 28, 29, 30, 31, 32,
         );
         let r = _mm256_srli_si256(a, 3);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let e = _mm256_setr_epi8(
             4, 5, 6, 7, 8, 9, 10, 11,
             12, 13, 14, 15, 16, 0, 0, 0,
@@ -5597,14 +5597,14 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_alignr_epi8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi8(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm256_setr_epi8(
             -1, -2, -3, -4, -5, -6, -7, -8,
             -9, -10, -11, -12, -13, -14, -15, -16,
@@ -5615,7 +5615,7 @@ mod tests {
         assert_eq_m256i(r, _mm256_set1_epi8(0));
 
         let r = _mm256_alignr_epi8(a, b, 17);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let expected = _mm256_setr_epi8(
             2, 3, 4, 5, 6, 7, 8, 9,
             10, 11, 12, 13, 14, 15, 16, 0,
@@ -5625,7 +5625,7 @@ mod tests {
         assert_eq_m256i(r, expected);
 
         let r = _mm256_alignr_epi8(a, b, 4);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let expected = _mm256_setr_epi8(
             -5, -6, -7, -8, -9, -10, -11, -12,
             -13, -14, -15, -16, 1, 2, 3, 4,
@@ -5634,7 +5634,7 @@ mod tests {
         );
         assert_eq_m256i(r, expected);
 
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let expected = _mm256_setr_epi8(
             -1, -2, -3, -4, -5, -6, -7, -8,
             -9, -10, -11, -12, -13, -14, -15, -16, -17,
@@ -5645,7 +5645,7 @@ mod tests {
         assert_eq_m256i(r, expected);
 
         let r = _mm256_alignr_epi8(a, b, 15);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let expected = _mm256_setr_epi8(
             -16, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
@@ -5660,21 +5660,21 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_shuffle_epi8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi8(
             1, 2, 3, 4, 5, 6, 7, 8,
             9, 10, 11, 12, 13, 14, 15, 16,
             17, 18, 19, 20, 21, 22, 23, 24,
             25, 26, 27, 28, 29, 30, 31, 32,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b = _mm256_setr_epi8(
             4, 128u8 as i8, 4, 3, 24, 12, 6, 19,
             12, 5, 5, 10, 4, 1, 8, 0,
             4, 128u8 as i8, 4, 3, 24, 12, 6, 19,
             12, 5, 5, 10, 4, 1, 8, 0,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let expected = _mm256_setr_epi8(
             5, 0, 5, 4, 9, 13, 7, 4,
             13, 6, 6, 11, 5, 2, 9, 1,
@@ -6258,7 +6258,7 @@ mod tests {
 
     #[simd_test(enable = "avx")]
     unsafe fn test_mm256_extract_epi8() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi8(
             -1, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,
@@ -6273,7 +6273,7 @@ mod tests {
 
     #[simd_test(enable = "avx2")]
     unsafe fn test_mm256_extract_epi16() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a = _mm256_setr_epi16(
             -1, 1, 2, 3, 4, 5, 6, 7,
             8, 9, 10, 11, 12, 13, 14, 15,

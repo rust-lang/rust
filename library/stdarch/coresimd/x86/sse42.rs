@@ -789,7 +789,7 @@ mod tests {
         let a = str_to_m128i(b"Hello! Good-Bye!");
         let b = str_to_m128i(b"hello! good-bye!");
         let i = _mm_cmpistrm(a, b, _SIDD_UNIT_MASK);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let res = _mm_setr_epi8(
             0x00, !0, !0, !0, !0, !0, !0, 0x00,
             !0, !0, !0, !0, 0x00, !0, !0, !0,
@@ -831,12 +831,12 @@ mod tests {
 
     #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpistro() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a_bytes = _mm_setr_epi8(
             0x00, 0x47, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
             0x00, 0x6f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
         );
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let b_bytes = _mm_setr_epi8(
             0x00, 0x48, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
             0x00, 0x6f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -860,7 +860,7 @@ mod tests {
         let a = str_to_m128i(b"Hello!");
         let b = str_to_m128i(b"Hello.");
         let i = _mm_cmpestrm(a, 5, b, 5, _SIDD_UNIT_MASK);
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let r = _mm_setr_epi8(
             !0, !0, !0, !0, !0, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
@@ -894,7 +894,7 @@ mod tests {
 
     #[simd_test(enable = "sse4.2")]
     unsafe fn test_mm_cmpestrs() {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let a_bytes = _mm_setr_epi8(
             0x00, 0x48, 0x00, 0x65, 0x00, 0x6c, 0x00, 0x6c,
             0x00, 0x6f, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
