@@ -1,0 +1,10 @@
+error: index out of bounds: the len is 3 but the index is 3
+  --> $DIR/const-prop-ice.rs:2:5
+   |
+LL |     [0; 3][3u64 as usize]; //~ ERROR the len is 3 but the index is 3
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: #[deny(const_err)] on by default
+
+error: aborting due to previous error
+
