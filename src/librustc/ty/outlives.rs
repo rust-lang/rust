@@ -12,6 +12,7 @@
 // refers to rules defined in RFC 1214 (`OutlivesFooBar`), so see that
 // RFC for reference.
 
+use smallvec::SmallVec;
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 
 #[derive(Debug)]
@@ -55,17 +56,15 @@ pub enum Component<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    /// Returns all the things that must outlive `'a` for the condition
+    /// Push onto `out` all the things that must outlive `'a` for the condition
     /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
-    pub fn outlives_components(&self, ty0: Ty<'tcx>)
-                               -> Vec<Component<'tcx>> {
-        let mut components = vec![];
-        self.compute_components(ty0, &mut components);
-        debug!("components({:?}) = {:?}", ty0, components);
-        components
+    pub fn push_outlives_components(&self, ty0: Ty<'tcx>,
+                                    out: &mut SmallVec<[Component<'tcx>; 4]>) {
+        self.compute_components(ty0, out);
+        debug!("components({:?}) = {:?}", ty0, out);
     }
 
-    fn compute_components(&self, ty: Ty<'tcx>, out: &mut Vec<Component<'tcx>>) {
+    fn compute_components(&self, ty: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
         // Descend through the types, looking for the various "base"
         // components and collecting them into `out`. This is not written
         // with `collect()` because of the need to sometimes skip subtrees
@@ -164,7 +163,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // list is maintained explicitly, because bound regions
                 // themselves can be readily identified.
 
-                push_region_constraints(out, ty.regions());
+                push_region_constraints(ty, out);
                 for subty in ty.walk_shallow() {
                     self.compute_components(subty, out);
                 }
@@ -173,15 +172,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn capture_components(&self, ty: Ty<'tcx>) -> Vec<Component<'tcx>> {
-        let mut temp = vec![];
-        push_region_constraints(&mut temp, ty.regions());
+        let mut temp = smallvec![];
+        push_region_constraints(ty, &mut temp);
         for subty in ty.walk_shallow() {
             self.compute_components(subty, &mut temp);
         }
-        temp
+        temp.into_iter().collect()
     }
 }
 
-fn push_region_constraints<'tcx>(out: &mut Vec<Component<'tcx>>, regions: Vec<ty::Region<'tcx>>) {
+fn push_region_constraints<'tcx>(ty: Ty<'tcx>, out: &mut SmallVec<[Component<'tcx>; 4]>) {
+    let mut regions = smallvec![];
+    ty.push_regions(&mut regions);
     out.extend(regions.iter().filter(|&r| !r.is_late_bound()).map(|r| Component::Region(r)));
 }

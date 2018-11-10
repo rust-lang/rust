@@ -22,6 +22,7 @@ use ty::{List, TyS, ParamEnvAnd, ParamEnv};
 use util::captures::Captures;
 use mir::interpret::{Scalar, Pointer};
 
+use smallvec::SmallVec;
 use std::iter;
 use std::cmp::Ordering;
 use rustc_target::spec::abi;
@@ -1846,28 +1847,27 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    /// Returns the regions directly referenced from this type (but
-    /// not types reachable from this type via `walk_tys`). This
-    /// ignores late-bound regions binders.
-    pub fn regions(&self) -> Vec<ty::Region<'tcx>> {
+    /// Push onto `out` the regions directly referenced from this type (but not
+    /// types reachable from this type via `walk_tys`). This ignores late-bound
+    /// regions binders.
+    pub fn push_regions(&self, out: &mut SmallVec<[ty::Region<'tcx>; 4]>) {
         match self.sty {
             Ref(region, _, _) => {
-                vec![region]
+                out.push(region);
             }
             Dynamic(ref obj, region) => {
-                let mut v = vec![region];
-                v.extend(obj.principal().skip_binder().substs.regions());
-                v
+                out.push(region);
+                out.extend(obj.principal().skip_binder().substs.regions());
             }
             Adt(_, substs) | Opaque(_, substs) => {
-                substs.regions().collect()
+                out.extend(substs.regions())
             }
             Closure(_, ClosureSubsts { ref substs }) |
             Generator(_, GeneratorSubsts { ref substs }, _) => {
-                substs.regions().collect()
+                out.extend(substs.regions())
             }
             Projection(ref data) | UnnormalizedProjection(ref data) => {
-                data.substs.regions().collect()
+                out.extend(data.substs.regions())
             }
             FnDef(..) |
             FnPtr(_) |
@@ -1887,9 +1887,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             Param(_) |
             Bound(..) |
             Infer(_) |
-            Error => {
-                vec![]
-            }
+            Error => {}
         }
     }
 

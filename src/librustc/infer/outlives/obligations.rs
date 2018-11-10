@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! Code that handles "type-outlives" constraints like `T: 'a`. This
-//! is based on the `outlives_components` function defined on the tcx,
+//! is based on the `push_outlives_components` function defined on the tcx,
 //! but it adds a bit of heuristics on top, in particular to deal with
 //! associated types and projections.
 //!
@@ -307,17 +307,18 @@ where
 
         assert!(!ty.has_escaping_bound_vars());
 
-        let components = self.tcx.outlives_components(ty);
-        self.components_must_outlive(origin, components, region);
+        let mut components = smallvec![];
+        self.tcx.push_outlives_components(ty, &mut components);
+        self.components_must_outlive(origin, &components, region);
     }
 
     fn components_must_outlive(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
-        components: Vec<Component<'tcx>>,
+        components: &[Component<'tcx>],
         region: ty::Region<'tcx>,
     ) {
-        for component in components {
+        for component in components.iter() {
             let origin = origin.clone();
             match component {
                 Component::Region(region1) => {
@@ -325,13 +326,13 @@ where
                         .push_sub_region_constraint(origin, region, region1);
                 }
                 Component::Param(param_ty) => {
-                    self.param_ty_must_outlive(origin, region, param_ty);
+                    self.param_ty_must_outlive(origin, region, *param_ty);
                 }
                 Component::Projection(projection_ty) => {
-                    self.projection_must_outlive(origin, region, projection_ty);
+                    self.projection_must_outlive(origin, region, *projection_ty);
                 }
                 Component::EscapingProjection(subcomponents) => {
-                    self.components_must_outlive(origin, subcomponents, region);
+                    self.components_must_outlive(origin, &subcomponents, region);
                 }
                 Component::UnresolvedInferenceVariable(v) => {
                     // ignore this, we presume it will yield an error

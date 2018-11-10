@@ -366,7 +366,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let mut types = vec![concrete_ty];
         let bound_region = |r| self.sub_regions(infer::CallReturn(span), least_region, r);
         while let Some(ty) = types.pop() {
-            let mut components = self.tcx.outlives_components(ty);
+            let mut components = smallvec![];
+            self.tcx.push_outlives_components(ty, &mut components);
             while let Some(component) = components.pop() {
                 match component {
                     Component::Region(r) => {
