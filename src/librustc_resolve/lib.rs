@@ -988,6 +988,18 @@ enum ModuleOrUniformRoot<'a> {
     UniformRoot(UniformRootKind),
 }
 
+impl<'a> PartialEq for ModuleOrUniformRoot<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        match (*self, *other) {
+            (ModuleOrUniformRoot::Module(lhs), ModuleOrUniformRoot::Module(rhs)) =>
+                ptr::eq(lhs, rhs),
+            (ModuleOrUniformRoot::UniformRoot(lhs), ModuleOrUniformRoot::UniformRoot(rhs)) =>
+                lhs == rhs,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 enum PathResult<'a> {
     Module(ModuleOrUniformRoot<'a>),
@@ -1029,9 +1041,10 @@ pub struct ModuleData<'a> {
     normal_ancestor_id: DefId,
 
     resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
-    legacy_macro_resolutions: RefCell<Vec<(Ident, MacroKind, ParentScope<'a>,
-                                           Option<&'a NameBinding<'a>>)>>,
-    macro_resolutions: RefCell<Vec<(Vec<Ident>, ParentScope<'a>, Span)>>,
+    single_segment_macro_resolutions: RefCell<Vec<(Ident, MacroKind, ParentScope<'a>,
+                                                   Option<&'a NameBinding<'a>>)>>,
+    multi_segment_macro_resolutions: RefCell<Vec<(Vec<Ident>, Span, MacroKind, ParentScope<'a>,
+                                                  Option<Def>)>>,
     builtin_attrs: RefCell<Vec<(Ident, ParentScope<'a>)>>,
 
     // Macro invocations that can expand into items in this module.
@@ -1069,8 +1082,8 @@ impl<'a> ModuleData<'a> {
             kind,
             normal_ancestor_id,
             resolutions: Default::default(),
-            legacy_macro_resolutions: RefCell::new(Vec::new()),
-            macro_resolutions: RefCell::new(Vec::new()),
+            single_segment_macro_resolutions: RefCell::new(Vec::new()),
+            multi_segment_macro_resolutions: RefCell::new(Vec::new()),
             builtin_attrs: RefCell::new(Vec::new()),
             unresolved_invocations: Default::default(),
             no_implicit_prelude: false,
@@ -1466,6 +1479,9 @@ pub struct Resolver<'a, 'b: 'a> {
     /// The current self item if inside an ADT (used for better errors).
     current_self_item: Option<NodeId>,
 
+    /// FIXME: Refactor things so that this is passed through arguments and not resolver.
+    last_import_segment: bool,
+
     /// The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
 
@@ -1793,6 +1809,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             current_trait_ref: None,
             current_self_type: None,
             current_self_item: None,
+            last_import_segment: false,
 
             primitive_type_table: PrimitiveTypeTable::new(),
 
@@ -1894,27 +1911,23 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         self.arenas.alloc_module(module)
     }
 
-    fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>)
-                  -> bool /* true if an error was reported */ {
+    fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>) {
         match binding.kind {
-            NameBindingKind::Import { directive, binding, ref used }
-                    if !used.get() => {
+            NameBindingKind::Import { directive, binding, ref used } if !used.get() => {
                 used.set(true);
                 directive.used.set(true);
                 self.used_imports.insert((directive.id, ns));
                 self.add_to_glob_map(directive.id, ident);
-                self.record_use(ident, ns, binding)
+                self.record_use(ident, ns, binding);
             }
-            NameBindingKind::Import { .. } => false,
             NameBindingKind::Ambiguity { kind, b1, b2 } => {
                 self.ambiguity_errors.push(AmbiguityError {
                     kind, ident, b1, b2,
                     misc1: AmbiguityErrorMisc::None,
                     misc2: AmbiguityErrorMisc::None,
                 });
-                true
             }
-            _ => false
+            _ => {}
         }
     }
 
@@ -4735,7 +4748,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
     fn report_errors(&mut self, krate: &Crate) {
         self.report_with_use_injections(krate);
-        let mut reported_spans = FxHashSet::default();
 
         for &(span_use, span_def) in &self.macro_expanded_macro_export_errors {
             let msg = "macro-expanded `macro_export` macros from the current crate \
@@ -4749,11 +4761,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
 
         for ambiguity_error in &self.ambiguity_errors {
-            if reported_spans.insert(ambiguity_error.ident.span) {
-                self.report_ambiguity_error(ambiguity_error);
-            }
+            self.report_ambiguity_error(ambiguity_error);
         }
 
+        let mut reported_spans = FxHashSet::default();
         for &PrivacyError(dedup_span, ident, binding) in &self.privacy_errors {
             if reported_spans.insert(dedup_span) {
                 span_err!(self.session, ident.span, E0603, "{} `{}` is private",
