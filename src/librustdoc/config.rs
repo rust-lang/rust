@@ -29,6 +29,7 @@ use core::new_handler;
 use externalfiles::ExternalHtml;
 use html;
 use html::markdown::IdMap;
+use html::static_files;
 use opts;
 use passes::{self, DefaultPassOption};
 use theme;
@@ -261,7 +262,7 @@ impl Options {
 
         let to_check = matches.opt_strs("theme-checker");
         if !to_check.is_empty() {
-            let paths = theme::load_css_paths(include_bytes!("html/static/themes/light.css"));
+            let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
             let mut errors = 0;
 
             println!("rustdoc: [theme-checker] Starting tests!");
@@ -338,7 +339,7 @@ impl Options {
 
         let mut themes = Vec::new();
         if matches.opt_present("themes") {
-            let paths = theme::load_css_paths(include_bytes!("html/static/themes/light.css"));
+            let paths = theme::load_css_paths(static_files::themes::LIGHT.as_bytes());
 
             for (theme_file, theme_s) in matches.opt_strs("themes")
                                                 .iter()

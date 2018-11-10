@@ -76,7 +76,7 @@ use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
 use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine, ErrorCodes, IdMap};
-use html::{highlight, layout};
+use html::{highlight, layout, static_files};
 
 use minifier;
 
@@ -767,10 +767,10 @@ fn write_shared(
     // overwrite them anyway to make sure that they're fresh and up-to-date.
 
     write_minify(cx.dst.join(&format!("rustdoc{}.css", cx.shared.resource_suffix)),
-                 include_str!("static/rustdoc.css"),
+                 static_files::RUSTDOC_CSS,
                  options.enable_minification)?;
     write_minify(cx.dst.join(&format!("settings{}.css", cx.shared.resource_suffix)),
-                 include_str!("static/settings.css"),
+                 static_files::SETTINGS_CSS,
                  options.enable_minification)?;
 
     // To avoid "light.css" to be overwritten, we'll first run over the received themes and only
@@ -790,15 +790,15 @@ fn write_shared(
     }
 
     write(cx.dst.join(&format!("brush{}.svg", cx.shared.resource_suffix)),
-          include_bytes!("static/brush.svg"))?;
+          static_files::BRUSH_SVG)?;
     write(cx.dst.join(&format!("wheel{}.svg", cx.shared.resource_suffix)),
-          include_bytes!("static/wheel.svg"))?;
+          static_files::WHEEL_SVG)?;
     write_minify(cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
-                 include_str!("static/themes/light.css"),
+                 static_files::themes::LIGHT,
                  options.enable_minification)?;
     themes.insert("light".to_owned());
     write_minify(cx.dst.join(&format!("dark{}.css", cx.shared.resource_suffix)),
-                 include_str!("static/themes/dark.css"),
+                 static_files::themes::DARK,
                  options.enable_minification)?;
     themes.insert("dark".to_owned());
 
@@ -854,16 +854,16 @@ themePicker.onblur = handleThemeButtonsBlur;
     )?;
 
     write_minify(cx.dst.join(&format!("main{}.js", cx.shared.resource_suffix)),
-                 include_str!("static/main.js"),
+                 static_files::MAIN_JS,
                  options.enable_minification)?;
     write_minify(cx.dst.join(&format!("settings{}.js", cx.shared.resource_suffix)),
-                 include_str!("static/settings.js"),
+                 static_files::SETTINGS_JS,
                  options.enable_minification)?;
 
     {
         let mut data = format!("var resourcesSuffix = \"{}\";\n",
                                cx.shared.resource_suffix);
-        data.push_str(include_str!("static/storage.js"));
+        data.push_str(static_files::STORAGE_JS);
         write_minify(cx.dst.join(&format!("storage{}.js", cx.shared.resource_suffix)),
                      &data,
                      options.enable_minification)?;
@@ -882,36 +882,36 @@ themePicker.onblur = handleThemeButtonsBlur;
         }
     }
     write_minify(cx.dst.join(&format!("normalize{}.css", cx.shared.resource_suffix)),
-                 include_str!("static/normalize.css"),
+                 static_files::NORMALIZE_CSS,
                  options.enable_minification)?;
     write(cx.dst.join("FiraSans-Regular.woff"),
-          include_bytes!("static/FiraSans-Regular.woff"))?;
+          static_files::fira_sans::REGULAR)?;
     write(cx.dst.join("FiraSans-Medium.woff"),
-          include_bytes!("static/FiraSans-Medium.woff"))?;
+          static_files::fira_sans::MEDIUM)?;
     write(cx.dst.join("FiraSans-LICENSE.txt"),
-          include_bytes!("static/FiraSans-LICENSE.txt"))?;
+          static_files::fira_sans::LICENSE)?;
     write(cx.dst.join("Heuristica-Italic.woff"),
-          include_bytes!("static/Heuristica-Italic.woff"))?;
+          static_files::heuristica::ITALIC)?;
     write(cx.dst.join("Heuristica-LICENSE.txt"),
-          include_bytes!("static/Heuristica-LICENSE.txt"))?;
+          static_files::heuristica::LICENSE)?;
     write(cx.dst.join("SourceSerifPro-Regular.woff"),
-          include_bytes!("static/SourceSerifPro-Regular.woff"))?;
+          static_files::source_serif_pro::REGULAR)?;
     write(cx.dst.join("SourceSerifPro-Bold.woff"),
-          include_bytes!("static/SourceSerifPro-Bold.woff"))?;
+          static_files::source_serif_pro::BOLD)?;
     write(cx.dst.join("SourceSerifPro-LICENSE.txt"),
-          include_bytes!("static/SourceSerifPro-LICENSE.txt"))?;
+          static_files::source_serif_pro::LICENSE)?;
     write(cx.dst.join("SourceCodePro-Regular.woff"),
-          include_bytes!("static/SourceCodePro-Regular.woff"))?;
+          static_files::source_code_pro::REGULAR)?;
     write(cx.dst.join("SourceCodePro-Semibold.woff"),
-          include_bytes!("static/SourceCodePro-Semibold.woff"))?;
+          static_files::source_code_pro::SEMIBOLD)?;
     write(cx.dst.join("SourceCodePro-LICENSE.txt"),
-          include_bytes!("static/SourceCodePro-LICENSE.txt"))?;
+          static_files::source_code_pro::LICENSE)?;
     write(cx.dst.join("LICENSE-MIT.txt"),
-          include_bytes!("static/LICENSE-MIT.txt"))?;
+          static_files::LICENSE_MIT)?;
     write(cx.dst.join("LICENSE-APACHE.txt"),
-          include_bytes!("static/LICENSE-APACHE.txt"))?;
+          static_files::LICENSE_APACHE)?;
     write(cx.dst.join("COPYRIGHT.txt"),
-          include_bytes!("static/COPYRIGHT.txt"))?;
+          static_files::COPYRIGHT)?;
 
     fn collect(path: &Path, krate: &str, key: &str) -> io::Result<(Vec<String>, Vec<String>)> {
         let mut ret = Vec::new();
