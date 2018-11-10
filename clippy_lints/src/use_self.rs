@@ -73,7 +73,7 @@ fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path) {
 }
 
 struct TraitImplTyVisitor<'a, 'tcx: 'a> {
-    item_path: &'a Path,
+    item_type: ty::Ty<'tcx>,
     cx: &'a LateContext<'a, 'tcx>,
     trait_type_walker: ty::walk::TypeWalker<'tcx>,
     impl_type_walker: ty::walk::TypeWalker<'tcx>,
@@ -85,21 +85,28 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
         let impl_ty = self.impl_type_walker.next();
 
         if let TyKind::Path(QPath::Resolved(_, path)) = &t.node {
-            if self.item_path.def == path.def {
-                let is_self_ty = if let def::Def::SelfTy(..) = path.def {
-                    true
-                } else {
-                    false
-                };
 
-                if !is_self_ty && impl_ty != trait_ty {
-                    // The implementation and trait types don't match which means that
-                    // the concrete type was specified by the implementation but
-                    // it didn't use `Self`
-                    span_use_self_lint(self.cx, path);
+            // The implementation and trait types don't match which means that
+            // the concrete type was specified by the implementation
+            if impl_ty != trait_ty {
+
+                if let Some(impl_ty) = impl_ty {
+                    if self.item_type == impl_ty {
+                        let is_self_ty = if let def::Def::SelfTy(..) = path.def {
+                            true
+                        } else {
+                            false
+                        };
+
+                        if !is_self_ty {
+                            span_use_self_lint(self.cx, path);
+                        }
+                    }
                 }
+
             }
         }
+
         walk_ty(self, t)
     }
 
@@ -110,7 +117,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
 
 fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
     cx: &'a LateContext<'a, 'tcx>,
-    item_path: &'a Path,
+    item_type: ty::Ty<'tcx>,
     impl_item: &ImplItem,
     impl_decl: &'tcx FnDecl,
     impl_trait_ref: &ty::TraitRef<'_>,
@@ -151,7 +158,7 @@ fn check_trait_method_impl_decl<'a, 'tcx: 'a>(
     ) {
         let mut visitor = TraitImplTyVisitor {
             cx,
-            item_path,
+            item_type,
             trait_type_walker: trait_ty.walk(),
             impl_type_walker: impl_ty.walk(),
         };
@@ -192,7 +199,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UseSelf {
                             let impl_item = cx.tcx.hir.impl_item(impl_item_ref.id);
                             if let ImplItemKind::Method(MethodSig{ decl: impl_decl, .. }, impl_body_id)
                                     = &impl_item.node {
-                                check_trait_method_impl_decl(cx, item_path, impl_item, impl_decl, &impl_trait_ref);
+                                let item_type = cx.tcx.type_of(impl_def_id);
+                                check_trait_method_impl_decl(cx, item_type, impl_item, impl_decl, &impl_trait_ref);
+
                                 let body = cx.tcx.hir.body(*impl_body_id);
                                 visitor.visit_body(body);
                             } else {

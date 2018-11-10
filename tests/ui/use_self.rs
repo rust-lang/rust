@@ -219,3 +219,17 @@ mod existential {
         }
     }
 }
+
+mod issue3410 {
+
+    struct A;
+    struct B;
+
+    trait Trait<T>: Sized {
+        fn a(v: T);
+    }
+
+    impl Trait<Vec<A>> for Vec<B> {
+        fn a(_: Vec<A>) {}
+    }
+}
