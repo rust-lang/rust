@@ -1,7 +1,7 @@
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:59:14
    |
-LL |     let x = |mut y: isize| 10; //[lexical]~ ERROR: variable does not need to be mutable
+LL |     let x = |mut y: isize| 10; //~ ERROR: variable does not need to be mutable
    |              ----^
    |              |
    |              help: remove this `mut`
@@ -15,7 +15,7 @@ LL | #![deny(unused_mut)]
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:24:9
    |
-LL |     let mut a = 3; //[lexical]~ ERROR: variable does not need to be mutable
+LL |     let mut a = 3; //~ ERROR: variable does not need to be mutable
    |         ----^
    |         |
    |         help: remove this `mut`
@@ -23,7 +23,7 @@ LL |     let mut a = 3; //[lexical]~ ERROR: variable does not need to be mutable
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:26:9
    |
-LL |     let mut a = 2; //[lexical]~ ERROR: variable does not need to be mutable
+LL |     let mut a = 2; //~ ERROR: variable does not need to be mutable
    |         ----^
    |         |
    |         help: remove this `mut`
@@ -31,7 +31,7 @@ LL |     let mut a = 2; //[lexical]~ ERROR: variable does not need to be mutable
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:28:9
    |
-LL |     let mut b = 3; //[lexical]~ ERROR: variable does not need to be mutable
+LL |     let mut b = 3; //~ ERROR: variable does not need to be mutable
    |         ----^
    |         |
    |         help: remove this `mut`
@@ -39,7 +39,7 @@ LL |     let mut b = 3; //[lexical]~ ERROR: variable does not need to be mutable
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:30:9
    |
-LL |     let mut a = vec![3]; //[lexical]~ ERROR: variable does not need to be mutable
+LL |     let mut a = vec![3]; //~ ERROR: variable does not need to be mutable
    |         ----^
    |         |
    |         help: remove this `mut`
@@ -47,7 +47,7 @@ LL |     let mut a = vec![3]; //[lexical]~ ERROR: variable does not need to be m
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:32:10
    |
-LL |     let (mut a, b) = (1, 2); //[lexical]~ ERROR: variable does not need to be mutable
+LL |     let (mut a, b) = (1, 2); //~ ERROR: variable does not need to be mutable
    |          ----^
    |          |
    |          help: remove this `mut`
@@ -55,7 +55,7 @@ LL |     let (mut a, b) = (1, 2); //[lexical]~ ERROR: variable does not need to 
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:34:9
    |
-LL |     let mut a; //[lexical]~ ERROR: variable does not need to be mutable
+LL |     let mut a; //~ ERROR: variable does not need to be mutable
    |         ----^
    |         |
    |         help: remove this `mut`
@@ -63,7 +63,7 @@ LL |     let mut a; //[lexical]~ ERROR: variable does not need to be mutable
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:38:9
    |
-LL |     let mut b; //[lexical]~ ERROR: variable does not need to be mutable
+LL |     let mut b; //~ ERROR: variable does not need to be mutable
    |         ----^
    |         |
    |         help: remove this `mut`
@@ -71,7 +71,7 @@ LL |     let mut b; //[lexical]~ ERROR: variable does not need to be mutable
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:47:9
    |
-LL |         mut x => {} //[lexical]~ ERROR: variable does not need to be mutable
+LL |         mut x => {} //~ ERROR: variable does not need to be mutable
    |         ----^
    |         |
    |         help: remove this `mut`
@@ -79,7 +79,7 @@ LL |         mut x => {} //[lexical]~ ERROR: variable does not need to be mutabl
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:51:8
    |
-LL |       (mut x, 1) | //[lexical]~ ERROR: variable does not need to be mutable
+LL |       (mut x, 1) | //~ ERROR: variable does not need to be mutable
    |        ----^
    |        |
    |        help: remove this `mut`
@@ -87,7 +87,7 @@ LL |       (mut x, 1) | //[lexical]~ ERROR: variable does not need to be mutable
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:64:9
    |
-LL |     let mut a = &mut 5; //[lexical]~ ERROR: variable does not need to be mutable
+LL |     let mut a = &mut 5; //~ ERROR: variable does not need to be mutable
    |         ----^
    |         |
    |         help: remove this `mut`
@@ -95,7 +95,7 @@ LL |     let mut a = &mut 5; //[lexical]~ ERROR: variable does not need to be mu
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:69:9
    |
-LL |     let mut b = (&mut a,); //[lexical]~ ERROR: variable does not need to be mutable
+LL |     let mut b = (&mut a,); //~ ERROR: variable does not need to be mutable
    |         ----^
    |         |
    |         help: remove this `mut`
@@ -103,7 +103,7 @@ LL |     let mut b = (&mut a,); //[lexical]~ ERROR: variable does not need to be
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:72:9
    |
-LL |     let mut x = &mut 1; //[lexical]~ ERROR: variable does not need to be mutable
+LL |     let mut x = &mut 1; //~ ERROR: variable does not need to be mutable
    |         ----^
    |         |
    |         help: remove this `mut`
@@ -111,7 +111,7 @@ LL |     let mut x = &mut 1; //[lexical]~ ERROR: variable does not need to be mu
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:84:9
    |
-LL |     let mut v : &mut Vec<()> = &mut vec![]; //[lexical]~ ERROR: variable does not need to be mutable
+LL |     let mut v : &mut Vec<()> = &mut vec![]; //~ ERROR: variable does not need to be mutable
    |         ----^
    |         |
    |         help: remove this `mut`
@@ -119,7 +119,7 @@ LL |     let mut v : &mut Vec<()> = &mut vec![]; //[lexical]~ ERROR: variable do
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:61:13
    |
-LL |     fn what(mut foo: isize) {} //[lexical]~ ERROR: variable does not need to be mutable
+LL |     fn what(mut foo: isize) {} //~ ERROR: variable does not need to be mutable
    |             ----^^^
    |             |
    |             help: remove this `mut`
@@ -135,7 +135,7 @@ LL |     fn mut_ref_arg(mut arg : &mut [u8]) -> &mut [u8] {
 error: variable does not need to be mutable
   --> $DIR/lint-unused-mut-variables.rs:143:9
    |
-LL |     let mut b = vec![2]; //[lexical]~ ERROR: variable does not need to be mutable
+LL |     let mut b = vec![2]; //~ ERROR: variable does not need to be mutable
    |         ----^
    |         |
    |         help: remove this `mut`
