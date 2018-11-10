@@ -22,7 +22,7 @@ pub(crate) fn link_rlib(sess: &Session, res: &crate::CodegenResults, output_name
     builder
         .append(
             &ar::Header::new(
-                crate::metadata::METADATA_FILENAME.to_vec(),
+                crate::metadata::METADATA_FILENAME.as_bytes().to_vec(),
                 res.metadata.len() as u64,
             ),
             ::std::io::Cursor::new(res.metadata.clone()),

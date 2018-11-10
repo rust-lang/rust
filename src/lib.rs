@@ -73,7 +73,7 @@ mod prelude {
 
     pub use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
     pub use rustc::mir::{self, interpret::AllocId, *};
-    pub use rustc::session::{config::CrateType, Session};
+    pub use rustc::session::{config::{CrateType, Lto}, Session};
     pub use rustc::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyLayout};
     pub use rustc::ty::{
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
@@ -142,6 +142,18 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     ));
                 }
             }
+        }
+        match sess.lto() {
+            Lto::Fat | Lto::Thin | Lto::ThinLocal => {
+                sess.warn("Rustc codegen cranelift doesn't support lto");
+            }
+            Lto::No => {},
+        }
+        if sess.opts.cg.rpath {
+            sess.err("rpath is not yet supported");
+        }
+        if sess.opts.debugging_opts.pgo_gen.is_some() {
+            sess.err("pgo is not supported");
         }
     }
 
