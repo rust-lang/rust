@@ -42,7 +42,7 @@ const WASM_EXTERNAL_KIND_GLOBAL: u8 = 3;
 /// https://github.com/llvm-mirror/llvm/commit/0f32e1365, although support still
 /// needs to be added, tracked at https://bugs.llvm.org/show_bug.cgi?id=37168
 pub fn rewrite_imports(path: &Path, import_map: &FxHashMap<String, String>) {
-    if import_map.len() == 0 {
+    if import_map.is_empty() {
         return
     }
 
@@ -127,7 +127,7 @@ impl<'a> Iterator for WasmSections<'a> {
     type Item = (u8, &'a [u8]);
 
     fn next(&mut self) -> Option<(u8, &'a [u8])> {
-        if self.0.data.len() == 0 {
+        if self.0.data.is_empty() {
             return None
         }
 

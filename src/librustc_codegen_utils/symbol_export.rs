@@ -47,11 +47,10 @@ fn crate_export_threshold(crate_type: config::CrateType) -> SymbolExportLevel {
     }
 }
 
-pub fn crates_export_threshold(crate_types: &[config::CrateType])
-                                      -> SymbolExportLevel {
-    if crate_types.iter().any(|&crate_type| {
-        crate_export_threshold(crate_type) == SymbolExportLevel::Rust
-    }) {
+pub fn crates_export_threshold(crate_types: &[config::CrateType]) -> SymbolExportLevel {
+    if crate_types.iter().any(|&crate_type|
+        crate_export_threshold(crate_type) == SymbolExportLevel::Rust)
+    {
         SymbolExportLevel::Rust
     } else {
         SymbolExportLevel::C
@@ -359,7 +358,7 @@ fn is_unreachable_local_definition_provider(tcx: TyCtxt, def_id: DefId) -> bool 
         !tcx.reachable_set(LOCAL_CRATE).0.contains(&node_id)
     } else {
         bug!("is_unreachable_local_definition called with non-local DefId: {:?}",
-              def_id)
+             def_id)
     }
 }
 

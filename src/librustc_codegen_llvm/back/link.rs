@@ -47,8 +47,8 @@ use std::str;
 use syntax::attr;
 
 pub use rustc_codegen_utils::link::{find_crate_name, filename_for_input, default_output_for_target,
-                                  invalid_output_for_target, out_filename, check_file_is_writeable,
-                                  filename_for_metadata};
+                                    invalid_output_for_target, filename_for_metadata,
+                                    out_filename, check_file_is_writeable};
 
 // The third parameter is for env vars, used on windows to set up the
 // path for MSVC to find its DLLs, and gcc to find its bundled
@@ -107,13 +107,10 @@ pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathB
 }
 
 pub fn remove(sess: &Session, path: &Path) {
-    match fs::remove_file(path) {
-        Ok(..) => {}
-        Err(e) => {
-            sess.err(&format!("failed to remove {}: {}",
-                             path.display(),
-                             e));
-        }
+    if let Err(e) = fs::remove_file(path) {
+        sess.err(&format!("failed to remove {}: {}",
+                          path.display(),
+                          e));
     }
 }
 
@@ -147,9 +144,7 @@ pub(crate) fn link_binary(sess: &Session,
 
     // Remove the temporary object file and metadata if we aren't saving temps
     if !sess.opts.cg.save_temps {
-        if sess.opts.output_types.should_codegen() &&
-            !preserve_objects_for_their_debuginfo(sess)
-        {
+        if sess.opts.output_types.should_codegen() && !preserve_objects_for_their_debuginfo(sess) {
             for obj in codegen_results.modules.iter().filter_map(|m| m.object.as_ref()) {
                 remove(sess, obj);
             }
@@ -186,7 +181,7 @@ fn preserve_objects_for_their_debuginfo(sess: &Session) -> bool {
     // the objects as they're losslessly contained inside the archives.
     let output_linked = sess.crate_types.borrow()
         .iter()
-        .any(|x| *x != config::CrateType::Rlib && *x != config::CrateType::Staticlib);
+        .any(|&x| x != config::CrateType::Rlib && x != config::CrateType::Staticlib);
     if !output_linked {
         return false
     }
@@ -270,7 +265,7 @@ pub(crate) fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) 
     // crates providing these functions don't participate in LTO (e.g.
     // no_builtins or compiler builtins crates).
     !sess.target.target.options.no_builtins &&
-        (info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum))
+        (info.compiler_builtins == Some(cnum) || info.is_no_builtins.contains(&cnum))
 }
 
 fn link_binary_output(sess: &Session,
@@ -291,13 +286,10 @@ fn link_binary_output(sess: &Session,
         // final destination, with a `fs::rename` call. In order for the rename to
         // always succeed, the temporary file needs to be on the same filesystem,
         // which is why we create it inside the output directory specifically.
-        let metadata_tmpdir = match TempFileBuilder::new()
+        let metadata_tmpdir = TempFileBuilder::new()
             .prefix("rmeta")
             .tempdir_in(out_filename.parent().unwrap())
-        {
-            Ok(tmpdir) => tmpdir,
-            Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
-        };
+            .unwrap_or_else(|err| sess.fatal(&format!("couldn't create a temp dir: {}", err)));
         let metadata = emit_metadata(sess, codegen_results, &metadata_tmpdir);
         if let Err(e) = fs::rename(metadata, &out_filename) {
             sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
@@ -305,10 +297,8 @@ fn link_binary_output(sess: &Session,
         out_filenames.push(out_filename);
     }
 
-    let tmpdir = match TempFileBuilder::new().prefix("rustc").tempdir() {
-        Ok(tmpdir) => tmpdir,
-        Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
-    };
+    let tmpdir = TempFileBuilder::new().prefix("rustc").tempdir().unwrap_or_else(|err|
+        sess.fatal(&format!("couldn't create a temp dir: {}", err)));
 
     if outputs.outputs.should_codegen() {
         let out_filename = out_filename(sess, crate_type, outputs, crate_name);
@@ -342,7 +332,8 @@ fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
     sess.target_filesearch(PathKind::Native).for_each_lib_search_path(|path, _| {
         search.push(path.to_path_buf());
     });
-    return search;
+
+    search
 }
 
 fn archive_config<'a>(sess: &'a Session,
@@ -814,8 +805,8 @@ fn link_natively(sess: &Session,
                     .unwrap_or_else(|_| {
                         let mut x = "Non-UTF-8 output: ".to_string();
                         x.extend(s.iter()
-                                 .flat_map(|&b| ascii::escape_default(b))
-                                 .map(|b| char::from_u32(b as u32).unwrap()));
+                                  .flat_map(|&b| ascii::escape_default(b))
+                                  .map(char::from));
                         x
                     })
             }
@@ -870,9 +861,8 @@ fn link_natively(sess: &Session,
         sess.opts.debuginfo != DebugInfo::None &&
         !preserve_objects_for_their_debuginfo(sess)
     {
-        match Command::new("dsymutil").arg(out_filename).output() {
-            Ok(..) => {}
-            Err(e) => sess.fatal(&format!("failed to run dsymutil: {}", e)),
+        if let Err(e) = Command::new("dsymutil").arg(out_filename).output() {
+            sess.fatal(&format!("failed to run dsymutil: {}", e))
         }
     }
 
@@ -1012,8 +1002,7 @@ fn exec_linker(sess: &Session, cmd: &mut Command, out_filename: &Path, tmpdir: &
                 // ensure the line is interpreted as one whole argument.
                 for c in self.arg.chars() {
                     match c {
-                        '\\' |
-                        ' ' => write!(f, "\\{}", c)?,
+                        '\\' | ' ' => write!(f, "\\{}", c)?,
                         c => write!(f, "{}", c)?,
                     }
                 }
@@ -1426,7 +1415,6 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
         for f in archive.src_files() {
             if f.ends_with(RLIB_BYTECODE_EXTENSION) || f == METADATA_FILENAME {
                 archive.remove_file(&f);
-                continue
             }
         }
 

@@ -224,9 +224,9 @@ impl<'a> GccLinker<'a> {
 }
 
 impl<'a> Linker for GccLinker<'a> {
-    fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.cmd.arg(format!("-l{}",lib)); }
+    fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.cmd.arg(format!("-l{}", lib)); }
     fn link_staticlib(&mut self, lib: &str) {
-        self.hint_static(); self.cmd.arg(format!("-l{}",lib));
+        self.hint_static(); self.cmd.arg(format!("-l{}", lib));
     }
     fn link_rlib(&mut self, lib: &Path) { self.hint_static(); self.cmd.arg(lib); }
     fn include_path(&mut self, path: &Path) { self.cmd.arg("-L").arg(path); }
@@ -243,7 +243,7 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
         self.hint_dynamic();
-        self.cmd.arg(format!("-l{}",lib));
+        self.cmd.arg(format!("-l{}", lib));
     }
 
     fn link_framework(&mut self, framework: &str) {
@@ -261,7 +261,7 @@ impl<'a> Linker for GccLinker<'a> {
         self.hint_static();
         let target = &self.sess.target.target;
         if !target.options.is_like_osx {
-            self.linker_arg("--whole-archive").cmd.arg(format!("-l{}",lib));
+            self.linker_arg("--whole-archive").cmd.arg(format!("-l{}", lib));
             self.linker_arg("--no-whole-archive");
         } else {
             // -force_load is the macOS equivalent of --whole-archive, but it
@@ -343,17 +343,13 @@ impl<'a> Linker for GccLinker<'a> {
     }
 
     fn debuginfo(&mut self) {
-        match self.sess.opts.debuginfo {
-            DebugInfo::None => {
-                // If we are building without debuginfo enabled and we were called with
-                // `-Zstrip-debuginfo-if-disabled=yes`, tell the linker to strip any debuginfo
-                // found when linking to get rid of symbols from libstd.
-                match self.sess.opts.debugging_opts.strip_debuginfo_if_disabled {
-                    Some(true) => { self.linker_arg("-S"); },
-                    _ => {},
-                }
-            },
-            _ => {},
+        if let DebugInfo::None = self.sess.opts.debuginfo {
+            // If we are building without debuginfo enabled and we were called with
+            // `-Zstrip-debuginfo-if-disabled=yes`, tell the linker to strip any debuginfo
+            // found when linking to get rid of symbols from libstd.
+            if let Some(true) = self.sess.opts.debugging_opts.strip_debuginfo_if_disabled {
+                self.linker_arg("-S");
+            }
         };
     }
 
@@ -373,8 +369,7 @@ impl<'a> Linker for GccLinker<'a> {
             // purely to support rustbuild right now, we should get a more
             // principled solution at some point to force the compiler to pass
             // the right `-Wl,-install_name` with an `@rpath` in it.
-            if self.sess.opts.cg.rpath ||
-               self.sess.opts.debugging_opts.osx_rpath_install_name {
+            if self.sess.opts.cg.rpath || self.sess.opts.debugging_opts.osx_rpath_install_name {
                 self.linker_arg("-install_name");
                 let mut v = OsString::from("@rpath/");
                 v.push(out_filename.file_name().unwrap());
@@ -461,9 +456,8 @@ impl<'a> Linker for GccLinker<'a> {
 
     fn finalize(&mut self) -> Command {
         self.hint_dynamic(); // Reset to default before returning the composed command line.
-        let mut cmd = Command::new("");
-        ::std::mem::swap(&mut cmd, &mut self.cmd);
-        cmd
+
+        ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
     fn group_start(&mut self) {
@@ -715,9 +709,7 @@ impl<'a> Linker for MsvcLinker<'a> {
     }
 
     fn finalize(&mut self) -> Command {
-        let mut cmd = Command::new("");
-        ::std::mem::swap(&mut cmd, &mut self.cmd);
-        cmd
+        ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
     // MSVC doesn't need group indicators
@@ -865,7 +857,7 @@ impl<'a> Linker for EmLinker<'a> {
             let res = encoder.emit_seq(symbols.len(), |encoder| {
                 for (i, sym) in symbols.iter().enumerate() {
                     encoder.emit_seq_elt(i, |encoder| {
-                        encoder.emit_str(&("_".to_string() + sym))
+                        encoder.emit_str(&("_".to_owned() + sym))
                     })?;
                 }
                 Ok(())
@@ -885,9 +877,7 @@ impl<'a> Linker for EmLinker<'a> {
     }
 
     fn finalize(&mut self) -> Command {
-        let mut cmd = Command::new("");
-        ::std::mem::swap(&mut cmd, &mut self.cmd);
-        cmd
+        ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
     // Appears not necessary on Emscripten
@@ -1085,9 +1075,7 @@ impl<'a> Linker for WasmLd<'a> {
         // indicative of bugs, let's prevent them.
         self.cmd.arg("--fatal-warnings");
 
-        let mut cmd = Command::new("");
-        ::std::mem::swap(&mut cmd, &mut self.cmd);
-        cmd
+        ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 
     // Not needed for now with LLD
