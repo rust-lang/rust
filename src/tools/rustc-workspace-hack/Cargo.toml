@@ -59,4 +59,4 @@ openssl = { version = "0.10.12", optional = true }
 
 
 [features]
-all-static = ['openssl/vendored', 'curl-sys/static-curl']
+all-static = ['openssl/vendored', 'curl-sys/static-curl', 'curl-sys/force-system-lib-on-osx']
