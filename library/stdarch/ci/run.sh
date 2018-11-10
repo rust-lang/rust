@@ -56,15 +56,7 @@ cargo_test "--release"
 case ${TARGET} in
     x86*)
         export STDSIMD_DISABLE_ASSERT_INSTR=1
-        case ${TARGET} in
-            *apple*)
-                # Travis Apple VMs do not support AVX2
-                export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
-                ;;
-            *)
-                export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx2"
-                ;;
-        esac
+        export RUSTFLAGS="${RUSTFLAGS} -C target-feature=+avx"
         cargo_test "--release"
         ;;
     wasm32-unknown-unknown*)
