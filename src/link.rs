@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use rustc::session::Session;
 
-pub(crate) fn link_rlib(sess: &Session, res: &crate::CodegenResult, output_name: PathBuf) {
+pub(crate) fn link_rlib(sess: &Session, res: &crate::CodegenResults, output_name: PathBuf) {
     let file = File::create(&output_name).unwrap();
     let mut builder = ar::Builder::new(file);
 
@@ -22,7 +22,7 @@ pub(crate) fn link_rlib(sess: &Session, res: &crate::CodegenResult, output_name:
     builder
         .append(
             &ar::Header::new(
-                crate::metadata::METADATA_FILE.to_vec(),
+                crate::metadata::METADATA_FILENAME.to_vec(),
                 res.metadata.len() as u64,
             ),
             ::std::io::Cursor::new(res.metadata.clone()),
@@ -42,7 +42,7 @@ pub(crate) fn link_rlib(sess: &Session, res: &crate::CodegenResult, output_name:
     }
 }
 
-pub(crate) fn link_bin(sess: &Session, res: &crate::CodegenResult, output_name: PathBuf) {
+pub(crate) fn link_bin(sess: &Session, res: &crate::CodegenResults, output_name: PathBuf) {
     // TODO: link executable
     let obj = res.artifact.emit().unwrap();
     std::fs::write(output_name, obj).unwrap();

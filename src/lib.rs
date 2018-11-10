@@ -68,7 +68,10 @@ mod prelude {
     pub use std::any::Any;
     pub use std::collections::{HashMap, HashSet};
 
-    pub use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+    pub use syntax::ast::{FloatTy, IntTy, UintTy};
+    pub use syntax::source_map::DUMMY_SP;
+
+    pub use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
     pub use rustc::mir::{self, interpret::AllocId, *};
     pub use rustc::session::{config::CrateType, Session};
     pub use rustc::ty::layout::{self, Abi, LayoutOf, Scalar, Size, TyLayout};
@@ -82,8 +85,7 @@ mod prelude {
         sync::Lrc,
     };
     pub use rustc_mir::monomorphize::{collector, MonoItem};
-    pub use syntax::ast::{FloatTy, IntTy, UintTy};
-    pub use syntax::source_map::DUMMY_SP;
+    pub use rustc_codegen_utils::CompiledModule;
 
     pub use cranelift::codegen::ir::{
         condcodes::IntCC, function::Function, ExternalName, FuncRef, Inst, StackSlot,
@@ -97,8 +99,11 @@ mod prelude {
     pub use crate::abi::*;
     pub use crate::base::{trans_operand, trans_place};
     pub use crate::common::*;
-    pub use crate::Caches;
+    pub use crate::{Caches, CodegenResults};
 }
+
+use std::fs::File;
+use std::io::Write;
 
 use crate::constant::ConstantCx;
 use crate::prelude::*;
@@ -119,7 +124,7 @@ impl<'tcx> Caches<'tcx> {
 
 struct CraneliftCodegenBackend;
 
-struct CodegenResult {
+pub struct CodegenResults {
     artifact: faerie::Artifact,
     metadata: Vec<u8>,
     crate_name: Symbol,
@@ -182,15 +187,16 @@ impl CodegenBackend for CraneliftCodegenBackend {
         save_incremental(tcx);
         tcx.sess.warn("Saved incremental data");
 
+        let mut log = if cfg!(debug_assertions) {
+            Some(File::create(concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/log.txt"))
+                    .unwrap())
+        } else {
+            None
+        };
+
         if std::env::var("SHOULD_RUN").is_ok() {
             let mut jit_module: Module<SimpleJITBackend> = Module::new(SimpleJITBuilder::new());
             assert_eq!(pointer_ty(tcx), jit_module.target_config().pointer_type());
-
-            codegen_mono_items(tcx, &mut jit_module);
-
-            tcx.sess.abort_if_errors();
-            println!("Compiled everything");
-            println!("Rustc codegen cranelift will JIT run the executable, because the SHOULD_RUN env var is set");
 
             let sig = Signature {
                 params: vec![
@@ -206,7 +212,12 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 .declare_function("main", Linkage::Import, &sig)
                 .unwrap();
 
-            jit_module.finalize_definitions();
+            codegen_mono_items(tcx, &mut jit_module, &mut log);
+
+            tcx.sess.abort_if_errors();
+            println!("Compiled everything");
+            println!("Rustc codegen cranelift will JIT run the executable, because the SHOULD_RUN env var is set");
+
             let finalized_main: *const u8 = jit_module.get_finalized_function(main_func_id);
             println!("🎉 Finalized everything");
 
@@ -232,13 +243,11 @@ impl CodegenBackend for CraneliftCodegenBackend {
                 faerie_module.target_config().pointer_type()
             );
 
-            codegen_mono_items(tcx, &mut faerie_module);
+            codegen_mono_items(tcx, &mut faerie_module, &mut log);
 
             tcx.sess.abort_if_errors();
 
-            faerie_module.finalize_definitions();
-
-            return Box::new(CodegenResult {
+            return Box::new(CodegenResults {
                 artifact: faerie_module.finish().artifact,
                 metadata: metadata.raw_data,
                 crate_name: tcx.crate_name(LOCAL_CRATE),
@@ -254,7 +263,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         outputs: &OutputFilenames,
     ) -> Result<(), CompileIncomplete> {
         let res = *res
-            .downcast::<CodegenResult>()
+            .downcast::<CodegenResults>()
             .expect("Expected CraneliftCodegenBackend's CodegenResult, found Box<Any>");
 
         for &crate_type in sess.opts.crate_types.iter() {
@@ -272,20 +281,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
 fn codegen_mono_items<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     module: &mut Module<impl Backend + 'static>,
+    log: &mut Option<File>,
 ) {
-    use std::io::Write;
-
     let mut caches = Caches::new();
     let mut ccx = ConstantCx::default();
-
-    let mut log = if cfg!(debug_assertions) {
-        Some(
-            ::std::fs::File::create(concat!(env!("CARGO_MANIFEST_DIR"), "/target/out/log.txt"))
-                .unwrap(),
-        )
-    } else {
-        None
-    };
 
     let (_, cgus) = tcx.collect_and_partition_mono_items(LOCAL_CRATE);
     let mono_items = cgus
@@ -332,6 +331,7 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
     }
 
     ccx.finalize(tcx, module);
+    module.finalize_definitions();
 
     let after = ::std::time::Instant::now();
     println!("[codegen mono items] end time: {:?}", after - before);
