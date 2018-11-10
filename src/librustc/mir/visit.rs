@@ -377,7 +377,6 @@ macro_rules! make_mir_visitor {
                             location
                         );
                     }
-                    StatementKind::EndRegion(_) => {}
                     StatementKind::SetDiscriminant{ ref $($mutability)* place, .. } => {
                         self.visit_place(
                             place,

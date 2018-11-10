@@ -592,10 +592,6 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                     self.consume_operand(context, (input, span), flow_state);
                 }
             }
-            StatementKind::EndRegion(ref _rgn) => {
-                // ignored when consuming results (update to
-                // flow_state already handled).
-            }
             StatementKind::Nop
             | StatementKind::AscribeUserType(..)
             | StatementKind::Retag { .. }

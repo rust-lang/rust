@@ -112,7 +112,6 @@ impl<'a, 'tcx> Visitor<'tcx> for UnsafetyChecker<'a, 'tcx> {
             StatementKind::SetDiscriminant { .. } |
             StatementKind::StorageLive(..) |
             StatementKind::StorageDead(..) |
-            StatementKind::EndRegion(..) |
             StatementKind::Retag { .. } |
             StatementKind::EscapeToRaw { .. } |
             StatementKind::AscribeUserType(..) |

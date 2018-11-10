@@ -1149,8 +1149,6 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "when debug-printing compiler state, do not include spans"), // o/w tests have closure@path
     identify_regions: bool = (false, parse_bool, [UNTRACKED],
         "make unnamed regions display as '# (where # is some non-ident unique id)"),
-    emit_end_regions: bool = (false, parse_bool, [UNTRACKED],
-        "emit EndRegion as part of MIR; enable transforms that solely process EndRegion"),
     borrowck: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "select which borrowck is used (`ast`, `mir`, `migrate`, or `compare`)"),
     two_phase_borrows: bool = (false, parse_bool, [UNTRACKED],

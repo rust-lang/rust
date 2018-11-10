@@ -129,7 +129,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             }
 
             // Statements we do not track.
-            EndRegion(..) => {}
             AscribeUserType(..) => {}
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the

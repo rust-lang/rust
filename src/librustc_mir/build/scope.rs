@@ -90,7 +90,7 @@ should go to.
 use build::{BlockAnd, BlockAndExtension, Builder, CFG};
 use hair::LintLevel;
 use rustc::middle::region;
-use rustc::ty::{Ty, TyCtxt};
+use rustc::ty::Ty;
 use rustc::hir;
 use rustc::hir::def_id::LOCAL_CRATE;
 use rustc::mir::*;
@@ -381,7 +381,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let scope = self.scopes.pop().unwrap();
         assert_eq!(scope.region_scope, region_scope.0);
 
-        self.cfg.push_end_region(self.hir.tcx(), block, region_scope.1, scope.region_scope);
         let resume_block = self.resume_block();
         unpack!(block = build_scope_drops(&mut self.cfg,
                                           resume_block,
@@ -439,9 +438,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 b
             };
 
-            // End all regions for scopes out of which we are breaking.
-            self.cfg.push_end_region(self.hir.tcx(), block, region_scope.1, scope.region_scope);
-
             unpack!(block = build_scope_drops(&mut self.cfg,
                                               resume_block,
                                               scope,
@@ -490,9 +486,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                    TerminatorKind::Goto { target: b });
                 b
             };
-
-            // End all regions for scopes out of which we are breaking.
-            self.cfg.push_end_region(self.hir.tcx(), block, src_info, scope.region_scope);
 
             unpack!(block = build_scope_drops(&mut self.cfg,
                                               resume_block,
@@ -790,7 +783,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         if scopes.iter().any(|scope| scope.needs_cleanup) {
             for scope in scopes.iter_mut() {
-                target = build_diverge_scope(self.hir.tcx(), cfg, scope.region_scope_span,
+                target = build_diverge_scope(cfg, scope.region_scope_span,
                                              scope, target, generator_drop);
             }
         }
@@ -950,8 +943,7 @@ fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
     block.unit()
 }
 
-fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                       cfg: &mut CFG<'tcx>,
+fn build_diverge_scope<'a, 'gcx, 'tcx>(cfg: &mut CFG<'tcx>,
                                        span: Span,
                                        scope: &mut Scope<'tcx>,
                                        mut target: BasicBlock,
@@ -1018,7 +1010,6 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             cached_block
         } else {
             let block = cfg.start_new_cleanup_block();
-            cfg.push_end_region(tcx, block, source_info(span), scope.region_scope);
             cfg.terminate(block, source_info(span), TerminatorKind::Goto { target });
             *cached_block = Some(block);
             block

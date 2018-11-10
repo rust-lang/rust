@@ -190,8 +190,7 @@ impl<'a, 'gcx, 'tcx> Borrows<'a, 'gcx, 'tcx> {
     }
 
     /// Add all borrows to the kill set, if those borrows are out of scope at `location`.
-    /// That means either they went out of either a nonlexical scope, if we care about those
-    /// at the moment, or the location represents a lexical EndRegion
+    /// That means they went out of a nonlexical scope
     fn kill_loans_out_of_scope_at_location(&self,
                                            sets: &mut BlockSets<BorrowIndex>,
                                            location: Location) {
@@ -252,9 +251,6 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
         });
 
         match stmt.kind {
-            mir::StatementKind::EndRegion(_) => {
-            }
-
             mir::StatementKind::Assign(ref lhs, ref rhs) => {
                 // Make sure there are no remaining borrows for variables
                 // that are assigned over.

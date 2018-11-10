@@ -15,7 +15,6 @@
 use hir::def::CtorKind;
 use hir::def_id::DefId;
 use hir::{self, HirId, InlineAsm};
-use middle::region;
 use mir::interpret::{ConstValue, EvalErrorKind, Scalar};
 use mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
@@ -1789,10 +1788,6 @@ pub enum StatementKind<'tcx> {
     /// for more details.
     EscapeToRaw(Operand<'tcx>),
 
-    /// Mark one terminating point of a region scope (i.e. static region).
-    /// (The starting point(s) arise implicitly from borrows.)
-    EndRegion(region::Scope),
-
     /// Encodes a user's type ascription. These need to be preserved
     /// intact so that NLL can respect them. For example:
     ///
@@ -1846,8 +1841,6 @@ impl<'tcx> Debug for Statement<'tcx> {
         match self.kind {
             Assign(ref place, ref rv) => write!(fmt, "{:?} = {:?}", place, rv),
             FakeRead(ref cause, ref place) => write!(fmt, "FakeRead({:?}, {:?})", cause, place),
-            // (reuse lifetime rendering policy from ppaux.)
-            EndRegion(ref ce) => write!(fmt, "EndRegion({})", ty::ReScope(*ce)),
             Retag { fn_entry, ref place } =>
                 write!(fmt, "Retag({}{:?})", if fn_entry { "[fn entry] " } else { "" }, place),
             EscapeToRaw(ref place) => write!(fmt, "EscapeToRaw({:?})", place),
@@ -3028,7 +3021,6 @@ EnumTypeFoldableImpl! {
         (StatementKind::InlineAsm) { asm, outputs, inputs },
         (StatementKind::Retag) { fn_entry, place },
         (StatementKind::EscapeToRaw)(place),
-        (StatementKind::EndRegion)(a),
         (StatementKind::AscribeUserType)(a, v, b),
         (StatementKind::Nop),
     }
