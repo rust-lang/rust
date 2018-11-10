@@ -45,18 +45,15 @@
 //!
 //! * **Nul terminators and implicit string lengths** - Often, C
 //! strings are nul-terminated, i.e., they have a `\0` character at the
-//! end. The length of a string buffer is not stored, but has to be
-//! calculated; to compute the length of a string, C code must
-//! manually call a function like `strlen()` for `char`-based strings,
-//! or `wcslen()` for `wchar_t`-based ones. Those functions return
-//! the number of characters in the string excluding the nul
-//! terminator, so the buffer length is really `len+1` characters.
-//! Rust strings don't have a nul terminator; their length is always
-//! stored and does not need to be calculated. While in Rust
-//! accessing a string's length is a O(1) operation (because the
-//! length is stored); in C it is an O(length) operation because the
-//! length needs to be computed by scanning the string for the nul
-//! terminator.
+//! end. The length of the string is not stored, but has to be determined
+//! by scanning through the bytes of the string, looking for the
+//! nul that marks its end, counting as it goes. The value returned by
+//! common functions that perform this, is effectively the index position
+//! of the nul, and thus the string length (in terms of buffer size) is
+//! actually len+1. Rust strings don't have a nul terminator, their
+//! length is always stored. As such, in Rust, accessing a string's
+//! length is an O(1) operation; while in C, it is an O(length)
+//! operation.
 //!
 //! * **Internal nul characters** - When C strings have a nul
 //! terminator character, this usually means that they cannot have nul
