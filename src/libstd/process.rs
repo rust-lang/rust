@@ -764,14 +764,15 @@ impl Command {
     ///
     /// ```should_panic
     /// use std::process::Command;
+    /// use std::io::{self, Write};
     /// let output = Command::new("/bin/cat")
     ///                      .arg("file.txt")
     ///                      .output()
     ///                      .expect("failed to execute process");
     ///
     /// println!("status: {}", output.status);
-    /// println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
-    /// println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+    /// io::stdout().write_all(&output.stdout).unwrap();
+    /// io::stderr().write_all(&output.stderr).unwrap();
     ///
     /// assert!(output.status.success());
     /// ```
@@ -951,6 +952,7 @@ impl Stdio {
     ///
     /// ```no_run
     /// use std::process::{Command, Stdio};
+    /// use std::io::{self, Write};
     ///
     /// let output = Command::new("rev")
     ///     .stdin(Stdio::inherit())
@@ -958,7 +960,8 @@ impl Stdio {
     ///     .output()
     ///     .expect("Failed to execute command");
     ///
-    /// println!("You piped in the reverse of: {}", String::from_utf8_lossy(&output.stdout));
+    /// print!("You piped in the reverse of: ");
+    /// io::stdout().write_all(&output.stdout).unwrap();
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn inherit() -> Stdio { Stdio(imp::Stdio::Inherit) }
