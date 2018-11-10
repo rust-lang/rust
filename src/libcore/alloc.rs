@@ -218,6 +218,23 @@ impl Layout {
         len_rounded_up.wrapping_sub(len)
     }
 
+    /// Creates a layout by rounding the size of this layout up to a multiple
+    /// of the layout's alignment.
+    ///
+    /// Returns `Err` if the padded size would overflow.
+    ///
+    /// This is equivalent to adding the result of `padding_needed_for`
+    /// to the layout's current size.
+    #[unstable(feature = "alloc_layout_extra", issue = "55724")]
+    #[inline]
+    pub fn pad_to_align(&self) -> Result<Layout, LayoutErr> {
+        let pad = self.padding_needed_for(self.align());
+        let new_size = self.size().checked_add(pad)
+            .ok_or(LayoutErr { private: () })?;
+
+        Layout::from_size_align(new_size, self.align())
+    }
+
     /// Creates a layout describing the record for `n` instances of
     /// `self`, with a suitable amount of padding between each to
     /// ensure that each instance is given its requested size and
