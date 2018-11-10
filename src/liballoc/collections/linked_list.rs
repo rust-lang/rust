@@ -402,7 +402,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
-        self.len() == 0
+        self.head.is_none()
     }
 
     /// Returns the length of the `LinkedList`.

@@ -1617,9 +1617,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub fn sign_plus(&self) -> bool {
-        self.flags & (1 << FlagV1::SignPlus as u32) != 0
-    }
+    pub fn sign_plus(&self) -> bool { self.flags & (1 << FlagV1::SignPlus as u32) != 0 }
 
     /// Determines if the `-` flag was specified.
     ///
@@ -1645,9 +1643,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{}", Foo(23)), "Foo(23)");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub fn sign_minus(&self) -> bool {
-        self.flags & (1 << FlagV1::SignMinus as u32) != 0
-    }
+    pub fn sign_minus(&self) -> bool { self.flags & (1 << FlagV1::SignMinus as u32) != 0 }
 
     /// Determines if the `#` flag was specified.
     ///
@@ -1672,9 +1668,7 @@ impl<'a> Formatter<'a> {
     /// assert_eq!(&format!("{}", Foo(23)), "23");
     /// ```
     #[stable(feature = "fmt_flags", since = "1.5.0")]
-    pub fn alternate(&self) -> bool {
-        self.flags & (1 << FlagV1::Alternate as u32) != 0
-    }
+    pub fn alternate(&self) -> bool { self.flags & (1 << FlagV1::Alternate as u32) != 0 }
 
     /// Determines if the `0` flag was specified.
     ///
@@ -1703,13 +1697,9 @@ impl<'a> Formatter<'a> {
 
     // FIXME: Decide what public API we want for these two flags.
     // https://github.com/rust-lang/rust/issues/48584
-    fn debug_lower_hex(&self) -> bool {
-        self.flags & (1 << FlagV1::DebugLowerHex as u32) != 0
-    }
+    fn debug_lower_hex(&self) -> bool { self.flags & (1 << FlagV1::DebugLowerHex as u32) != 0 }
 
-    fn debug_upper_hex(&self) -> bool {
-        self.flags & (1 << FlagV1::DebugUpperHex as u32) != 0
-    }
+    fn debug_upper_hex(&self) -> bool { self.flags & (1 << FlagV1::DebugUpperHex as u32) != 0 }
 
     /// Creates a [`DebugStruct`] builder designed to assist with creation of
     /// [`fmt::Debug`] implementations for structs.
