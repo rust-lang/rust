@@ -48,7 +48,7 @@ matrix:
       os: osx
       osx_image: xcode10
       script: ci/run.sh
-    - name: "env: TARGET=x86_64-apple-darwin"
+    - name: "x86_64-apple-darwin"
       env: TARGET=x86_64-apple-darwin
       os: osx
       osx_image: xcode10
