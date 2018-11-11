@@ -2679,7 +2679,6 @@ dependencies = [
  "rustc_lsan 0.0.0",
  "rustc_msan 0.0.0",
  "rustc_tsan 0.0.0",
- "tempfile 3.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "unwind 0.0.0",
 ]
 

@@ -235,21 +235,17 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    extern crate tempfile;
-    use self::tempfile::{tempdir, TempDir};
+    use sys_common::io::test::{TempDir, tmpdir};
     use fs::{read, OpenOptions};
     use io::{Seek, SeekFrom, Write};
+    use path::PathBuf;
 
-    fn create_sparse_len(file: &String, len: i64) {
+    fn create_sparse(file: &PathBuf, len: i64) {
         let fd = File::create(file).unwrap();
         cvt(unsafe {libc::ftruncate64(fd.as_raw_fd(), len)}).unwrap();
     }
 
-    fn create_sparse(file: &String) {
-        create_sparse_len(file, 1024*1024);
-    }
-
-    fn create_sparse_with_data(file: &String, head: u64, tail: u64) -> u64 {
+    fn create_sparse_with_data(file: &PathBuf, head: u64, tail: u64) -> u64 {
         let data = "c00lc0d3";
         let len = 4096u64 * 4096 + data.len() as u64 + tail;
 
@@ -276,11 +272,10 @@ mod tests {
     }
 
 
-    fn tmps(dir: &TempDir) -> (String, String) {
-        let sparse = dir.path().join("sparse.bin");
-        let other = dir.path().join("other.txt");
-        (sparse.to_str().unwrap().to_string(),
-         other.to_str().unwrap().to_string())
+    fn tmps(dir: &TempDir) -> (PathBuf, PathBuf) {
+        let from = dir.path().join("from.bin");
+        let to = dir.path().join("to.bin");
+        (from, to)
     }
 
 
@@ -289,50 +284,55 @@ mod tests {
         Ok(stat.st_blocks < stat.st_size / stat.st_blksize)
     }
 
+    fn is_fsparse(file: &PathBuf) -> io::Result<bool> {
+        let fd = File::open(file)?;
+        is_sparse(&fd)
+    }
+
     #[test]
     fn test_sparse_detection() {
         assert!(!is_sparse(&File::open("Cargo.toml").unwrap()).unwrap());
 
-        let dir = tempdir().unwrap();
-        let (sparse, _) = tmps(&dir);
-        create_sparse_with_data(&sparse, 0, 0);
+        let dir = tmpdir();
+        let (from, _) = tmps(&dir);
+        create_sparse_with_data(&from, 0, 0);
 
         {
-            let fd = File::open(&sparse).unwrap();
+            let fd = File::open(&from).unwrap();
             assert!(is_sparse(&fd).unwrap());
         }
         {
-            let mut fd = File::open(&sparse).unwrap();
+            let mut fd = File::open(&from).unwrap();
             write!(fd, "{}", "test");
         }
         {
-            let fd = File::open(&sparse).unwrap();
+            let fd = File::open(&from).unwrap();
             assert!(is_sparse(&fd).unwrap());
         }
     }
 
     fn test_copy_range(uspace: bool) {
-        let dir = tempdir().unwrap();
-        let (sparse, other) = tmps(&dir);
+        let dir = tmpdir();
+        let (from, to) = tmps(&dir);
         let data = "test data";
 
         {
-            let mut fd = File::create(&other).unwrap();
+            let mut fd = File::create(&to).unwrap();
             write!(fd, "{}", data);
         }
 
-        create_sparse(&sparse);
+        create_sparse(&from, 1024*1024);
 
         {
-            let infd = File::open(&other).unwrap();
+            let infd = File::open(&to).unwrap();
             let outfd: File = OpenOptions::new()
                 .write(true)
                 .append(false)
-                .open(&sparse).unwrap();
+                .open(&from).unwrap();
             copy_range(&infd, &outfd, uspace, data.len() as u64).unwrap();
         }
 
-        assert!(is_sparse(&File::open(&sparse).unwrap()).unwrap());
+        assert!(is_sparse(&File::open(&from).unwrap()).unwrap());
     }
 
     #[test]
@@ -347,24 +347,24 @@ mod tests {
 
     #[test]
     fn test_sparse_copy_middle() {
-        let dir = tempdir().unwrap();
-        let (sparse, other) = tmps(&dir);
+        let dir = tmpdir();
+        let (from, to) = tmps(&dir);
         let data = "test data";
 
         {
-            let mut fd = File::create(&other).unwrap();
+            let mut fd = File::create(&to).unwrap();
             write!(fd, "{}", data);
         }
 
-        create_sparse(&sparse);
+        create_sparse(&from, 1024*1024);
 
         let offset = 512*1024;
         {
-            let infd = File::open(&other).unwrap();
+            let infd = File::open(&to).unwrap();
             let outfd: File = OpenOptions::new()
                 .write(true)
                 .append(false)
-                .open(&sparse).unwrap();
+                .open(&from).unwrap();
             let mut offdat: i64 = 512*1024;
             let offptr = &mut offdat as *mut i64;
             cvt(
@@ -379,9 +379,9 @@ mod tests {
                 }).unwrap();
         }
 
-        assert!(is_sparse(&File::open(&sparse).unwrap()).unwrap());
+        assert!(is_sparse(&File::open(&from).unwrap()).unwrap());
 
-        let bytes = read(&sparse).unwrap();
+        let bytes = read(&from).unwrap();
         assert!(bytes.len() == 1024*1024);
         assert!(bytes[offset] == b't');
         assert!(bytes[offset+1] == b'e');
@@ -392,24 +392,24 @@ mod tests {
 
     #[test]
     fn test_lseek_data() {
-        let dir = tempdir().unwrap();
-        let (sparse, other) = tmps(&dir);
+        let dir = tmpdir();
+        let (from, to) = tmps(&dir);
         let data = "test data";
         let offset = 512*1024;
 
         {
-            let mut fd = File::create(&other).unwrap();
+            let mut fd = File::create(&to).unwrap();
             write!(fd, "{}", data);
         }
 
-        create_sparse(&sparse);
+        create_sparse(&from, 1024*1024);
 
         {
-            let infd = File::open(&other).unwrap();
+            let infd = File::open(&to).unwrap();
             let outfd: File = OpenOptions::new()
                 .write(true)
                 .append(false)
-                .open(&sparse).unwrap();
+                .open(&from).unwrap();
             cvt(
                 unsafe {
                     copy_file_range(
@@ -422,21 +422,21 @@ mod tests {
                 }).unwrap();
         }
 
-        assert!(is_sparse(&File::open(&sparse).unwrap()).unwrap());
+        assert!(is_sparse(&File::open(&from).unwrap()).unwrap());
 
-        let off = lseek(&File::open(&sparse).unwrap(), 0, Wence::Data).unwrap();
+        let off = lseek(&File::open(&from).unwrap(), 0, Wence::Data).unwrap();
         assert_eq!(off, SeekOff::Offset(offset));
     }
 
     #[test]
     fn test_sparse_rust_seek() {
-        let dir = tempdir().unwrap();
-        let (sparse, _) = tmps(&dir);
+        let dir = tmpdir();
+        let (from, _) = tmps(&dir);
 
-        let len = create_sparse_with_data(&sparse, 0, 10);
-        assert!(is_sparse(&File::open(&sparse).unwrap()).unwrap());
+        let len = create_sparse_with_data(&from, 0, 10);
+        assert!(is_sparse(&File::open(&from).unwrap()).unwrap());
 
-        let bytes = read(&sparse).unwrap();
+        let bytes = read(&from).unwrap();
         assert!(bytes.len() == len as usize);
 
         let offset = 1024 * 4096;
@@ -449,30 +449,30 @@ mod tests {
 
     #[test]
     fn test_lseek_no_data() {
-        let dir = tempdir().unwrap();
-        let (sparse, _) = tmps(&dir);
-        create_sparse(&sparse);
+        let dir = tmpdir();
+        let (from, _) = tmps(&dir);
+        create_sparse(&from, 1024*1024);
 
-        assert!(is_sparse(&File::open(&sparse).unwrap()).unwrap());
+        assert!(is_sparse(&File::open(&from).unwrap()).unwrap());
 
-        let fd = File::open(&sparse).unwrap();
+        let fd = File::open(&from).unwrap();
         let off = lseek(&fd, 0, Wence::Data).unwrap();
         assert!(off == SeekOff::EOF);
     }
 
     #[test]
     fn test_allocate_file_is_sparse() {
-        let dir = tempdir().unwrap();
-        let (sparse, _) = tmps(&dir);
+        let dir = tmpdir();
+        let (from, _) = tmps(&dir);
         let len = 32 * 1024 * 1024;
 
         {
-            let fd = File::create(&sparse).unwrap();
+            let fd = File::create(&from).unwrap();
             allocate_file(&fd, len).unwrap();
         }
 
         {
-            let fd = File::open(&sparse).unwrap();
+            let fd = File::open(&from).unwrap();
             assert_eq!(len, fd.metadata().unwrap().len());
             assert!(is_sparse(&fd).unwrap());
         }
@@ -481,34 +481,34 @@ mod tests {
 
     #[test]
     fn test_copy_bytes_uspace() {
-        let dir = tempdir().unwrap();
-        let (sparse, other) = tmps(&dir);
+        let dir = tmpdir();
+        let (from, to) = tmps(&dir);
         let data = "test data";
         let offset = 32;
 
         {
-            let mut fd = File::create(&other).unwrap();
+            let mut fd = File::create(&to).unwrap();
             write!(fd, "{}", data);
         }
 
-        create_sparse_len(&sparse, 128);
-        create_sparse_len(&other, 128);
+        create_sparse(&from, 128);
+        create_sparse(&to, 128);
 
         {
             let mut fd: File = OpenOptions::new()
                 .write(true)
                 .append(false)
-                .open(&sparse).unwrap();
+                .open(&from).unwrap();
             fd.seek(SeekFrom::Start(offset)).unwrap();
             write!(fd, "{}", data);
         }
 
         {
-            let mut infd = File::open(&sparse).unwrap();
+            let mut infd = File::open(&from).unwrap();
             let mut outfd: File = OpenOptions::new()
                 .write(true)
                 .append(false)
-                .open(&other).unwrap();
+                .open(&to).unwrap();
             infd.seek(SeekFrom::Start(offset)).unwrap();
             outfd.seek(SeekFrom::Start(offset)).unwrap();
 
@@ -517,9 +517,103 @@ mod tests {
         }
 
         {
-            let from_data = read(&sparse).unwrap();
-            let to_data = read(&other).unwrap();
+            let from_data = read(&from).unwrap();
+            let to_data = read(&to).unwrap();
             assert_eq!(from_data, to_data);
         }
+    }
+
+
+
+
+    #[test]
+    fn test_simple_copy() {
+        let dir = tmpdir();
+        let (from, to) = tmps(&dir);
+        let text = "This is a test file.";
+
+        {
+            let file = File::create(&from).unwrap();
+            write!(&file, "{}", text).unwrap();
+        }
+
+        let written = copy(&from, &to).unwrap();
+        assert_eq!(text.len() as u64, written);
+
+        let from_data = read(&from).unwrap();
+        let to_data = read(&to).unwrap();
+        assert_eq!(from_data, to_data);
+    }
+
+    #[test]
+    fn test_sparse() {
+        let dir = tmpdir();
+        let (from, to) = tmps(&dir);
+
+        let slen = create_sparse_with_data(&from, 0, 0);
+        assert_eq!(slen, from.metadata().unwrap().len());
+        assert!(is_fsparse(&from).unwrap());
+
+        let written = copy(&from, &to).unwrap();
+        assert_eq!(slen, written);
+        assert!(is_fsparse(&to).unwrap());
+
+        let from_data = read(&from).unwrap();
+        let to_data = read(&to).unwrap();
+        assert_eq!(from_data, to_data);
+    }
+
+    #[test]
+    fn test_sparse_leading_gap() {
+        let dir = tmpdir();
+        let (from, to) = tmps(&dir);
+
+        let slen = create_sparse_with_data(&from, 1024, 0);
+        assert_eq!(slen, from.metadata().unwrap().len());
+        assert!(is_fsparse(&from).unwrap());
+
+        let written = copy(&from, &to).unwrap();
+        assert_eq!(slen, written);
+        assert!(is_fsparse(&to).unwrap());
+
+        let from_data = read(&from).unwrap();
+        let to_data = read(&to).unwrap();
+        assert_eq!(from_data, to_data);
+    }
+
+    #[test]
+    fn test_sparse_trailng_gap() {
+        let dir = tmpdir();
+        let (from, to) = tmps(&dir);
+
+        let slen = create_sparse_with_data(&from, 1024, 1024);
+        assert_eq!(slen, from.metadata().unwrap().len());
+        assert!(is_fsparse(&from).unwrap());
+
+        let written = copy(&from, &to).unwrap();
+        assert_eq!(slen, written);
+        assert!(is_fsparse(&to).unwrap());
+
+        let from_data = read(&from).unwrap();
+        let to_data = read(&to).unwrap();
+        assert_eq!(from_data, to_data);
+    }
+
+    #[test]
+    fn test_empty_sparse() {
+        let dir = tmpdir();
+        let (from, to) = tmps(&dir);
+
+        create_sparse(&from, 1024*1024);
+        assert_eq!(from.metadata().unwrap().len(), 1024*1024);
+
+        let _written = copy(&from, &to).unwrap();
+        assert_eq!(to.metadata().unwrap().len(), 1024*1024);
+
+        assert!(is_fsparse(&to).unwrap());
+
+        let from_data = read(&from).unwrap();
+        let to_data = read(&to).unwrap();
+        assert_eq!(from_data, to_data);
     }
 }
