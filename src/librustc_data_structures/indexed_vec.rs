@@ -101,7 +101,7 @@ macro_rules! newtype_index {
         #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
         #[rustc_layout_scalar_valid_range_end($max)]
         $v struct $type {
-            private: ::std::num::NonZeroU32
+            private: u32
         }
 
         impl $type {
@@ -134,7 +134,7 @@ macro_rules! newtype_index {
 
             #[inline]
             $v const unsafe fn from_u32_unchecked(value: u32) -> Self {
-                $type { private: ::std::num::NonZeroU32::new_unchecked(value + 1) }
+                $type { private: value }
             }
 
             /// Extract value of this index as an integer.
@@ -146,7 +146,7 @@ macro_rules! newtype_index {
             /// Extract value of this index as a usize.
             #[inline]
             $v const fn as_u32(self) -> u32 {
-                self.private.get() - 1
+                self.private
             }
 
             /// Extract value of this index as a u32.

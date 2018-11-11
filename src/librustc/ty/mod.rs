@@ -1498,7 +1498,7 @@ newtype_index! {
 impl_stable_hash_for!(struct UniverseIndex { private });
 
 impl UniverseIndex {
-    pub const ROOT: UniverseIndex = UniverseIndex::from_u32_const(0);
+    pub const ROOT: UniverseIndex = UniverseIndex::from_u32(0);
 
     /// Returns the "next" universe index in order -- this new index
     /// is considered to extend all previous universes. This
