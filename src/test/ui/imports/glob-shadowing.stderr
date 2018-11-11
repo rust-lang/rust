@@ -11,7 +11,7 @@ note: `env` could also refer to the macro imported here
 LL |     use m::*;
    |         ^^^^
    = help: consider adding an explicit import of `env` to disambiguate
-   = help: or use `self::env` to refer to the macro unambiguously
+   = help: or use `self::env` to refer to this macro unambiguously
 
 error[E0659]: `env` is ambiguous (glob import vs any other name from outer scope during import/macro resolution)
   --> $DIR/glob-shadowing.rs:29:21
@@ -44,7 +44,7 @@ note: `fenv` could also refer to the macro defined here
    |
 LL |     pub macro fenv($e: expr) { $e }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: use `self::fenv` to refer to the macro unambiguously
+   = help: use `self::fenv` to refer to this macro unambiguously
 
 error: aborting due to 3 previous errors
 

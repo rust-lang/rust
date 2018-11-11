@@ -32,7 +32,7 @@ note: `m` could also refer to the macro imported here
    |
 LL |     use two_macros::m;
    |         ^^^^^^^^^^^^^
-   = help: use `self::m` to refer to the macro unambiguously
+   = help: use `self::m` to refer to this macro unambiguously
 
 error: aborting due to 2 previous errors
 

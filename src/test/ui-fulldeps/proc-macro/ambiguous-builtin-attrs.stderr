@@ -16,7 +16,7 @@ note: `repr` could also refer to the attribute macro imported here
    |
 LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
-   = help: use `self::repr` to refer to the attribute macro unambiguously
+   = help: use `self::repr` to refer to this attribute macro unambiguously
 
 error[E0659]: `repr` is ambiguous (built-in attribute vs any other name)
   --> $DIR/ambiguous-builtin-attrs.rs:11:19
@@ -30,7 +30,7 @@ note: `repr` could also refer to the attribute macro imported here
    |
 LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
-   = help: use `self::repr` to refer to the attribute macro unambiguously
+   = help: use `self::repr` to refer to this attribute macro unambiguously
 
 error[E0659]: `repr` is ambiguous (built-in attribute vs any other name)
   --> $DIR/ambiguous-builtin-attrs.rs:20:34
@@ -44,7 +44,7 @@ note: `repr` could also refer to the attribute macro imported here
    |
 LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
-   = help: use `self::repr` to refer to the attribute macro unambiguously
+   = help: use `self::repr` to refer to this attribute macro unambiguously
 
 error[E0659]: `repr` is ambiguous (built-in attribute vs any other name)
   --> $DIR/ambiguous-builtin-attrs.rs:22:11
@@ -58,7 +58,7 @@ note: `repr` could also refer to the attribute macro imported here
    |
 LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
-   = help: use `self::repr` to refer to the attribute macro unambiguously
+   = help: use `self::repr` to refer to this attribute macro unambiguously
 
 error[E0659]: `feature` is ambiguous (built-in attribute vs any other name)
   --> $DIR/ambiguous-builtin-attrs.rs:3:4
@@ -72,7 +72,7 @@ note: `feature` could also refer to the attribute macro imported here
    |
 LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
-   = help: use `self::feature` to refer to the attribute macro unambiguously
+   = help: use `self::feature` to refer to this attribute macro unambiguously
 
 error: aborting due to 6 previous errors
 

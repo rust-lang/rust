@@ -2,7 +2,7 @@ error[E0530]: match bindings cannot shadow statics
   --> $DIR/issue-16149.rs:17:9
    |
 LL |     static externalValue: isize;
-   |     ---------------------------- a static `externalValue` is defined here
+   |     ---------------------------- the static `externalValue` is defined here
 ...
 LL |         externalValue => true,
    |         ^^^^^^^^^^^^^ cannot be named the same as a static

@@ -14,7 +14,7 @@ note: `my_attr` could also refer to the attribute macro imported here
    |
 LL | use derive_helper_shadowing::*;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = help: use `self::my_attr` to refer to the attribute macro unambiguously
+   = help: use `self::my_attr` to refer to this attribute macro unambiguously
 
 error: aborting due to previous error
 

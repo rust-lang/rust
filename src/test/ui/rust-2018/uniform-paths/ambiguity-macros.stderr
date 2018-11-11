@@ -5,7 +5,7 @@ LL | use std::io;
    |     ^^^ ambiguous name
    |
    = note: `std` could refer to a built-in extern crate
-   = help: use `::std` to refer to the extern crate unambiguously
+   = help: use `::std` to refer to this extern crate unambiguously
 note: `std` could also refer to the module defined here
   --> $DIR/ambiguity-macros.rs:22:9
    |
@@ -16,7 +16,7 @@ LL | |         }
 ...
 LL |   m!();
    |   ----- in this macro invocation
-   = help: use `self::std` to refer to the module unambiguously
+   = help: use `self::std` to refer to this module unambiguously
 
 error: aborting due to previous error
 

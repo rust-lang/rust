@@ -406,13 +406,13 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             err
         }
         ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
-            let (shadows_what, article) = (binding.descr(), binding.article());
+            let shadows_what = binding.descr();
             let mut err = struct_span_err!(resolver.session, span, E0530, "{}s cannot shadow {}s",
                                            what_binding, shadows_what);
             err.span_label(span, format!("cannot be named the same as {} {}",
-                                         article, shadows_what));
+                                         binding.article(), shadows_what));
             let participle = if binding.is_import() { "imported" } else { "defined" };
-            let msg = format!("{} {} `{}` is {} here", article, shadows_what, name, participle);
+            let msg = format!("the {} `{}` is {} here", shadows_what, name, participle);
             err.span_label(binding.span, msg);
             err
         }
@@ -4722,11 +4722,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                         `{ident}` to disambiguate", ident = ident))
             }
             if b.is_extern_crate() && self.session.rust_2018() {
-                help_msgs.push(format!("use `::{ident}` to refer to the {thing} unambiguously",
+                help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously",
                                        ident = ident, thing = b.descr()))
             }
             if misc == AmbiguityErrorMisc::SuggestSelf {
-                help_msgs.push(format!("use `self::{ident}` to refer to the {thing} unambiguously",
+                help_msgs.push(format!("use `self::{ident}` to refer to this {thing} unambiguously",
                                        ident = ident, thing = b.descr()))
             }
 
