@@ -82,7 +82,7 @@ mod test_linux {
         assert_eq!(from_data, to_data);
     }
 
-    //#[test]
+    #[test]
     fn test_sparse() {
         let dir = tempdir().unwrap();
         let from = dir.path().join("sparse.bin");
@@ -101,7 +101,7 @@ mod test_linux {
         assert_eq!(from_data, to_data);
     }
 
-    //#[test]
+    #[test]
     fn test_sparse_leading_gap() {
         let dir = tempdir().unwrap();
         let from = dir.path().join("sparse.bin");
@@ -122,7 +122,7 @@ mod test_linux {
         assert_eq!(from_data, to_data);
     }
 
-    //#[test]
+    #[test]
     fn test_sparse_trailng_gap() {
         let dir = tempdir().unwrap();
         let from = dir.path().join("sparse.bin");
@@ -142,7 +142,7 @@ mod test_linux {
         assert_eq!(from_data, to_data);
     }
 
-    //#[test]
+    #[test]
     fn test_empty_sparse() {
         let dir = tempdir().unwrap();
         let from = dir.path().join("sparse.bin");

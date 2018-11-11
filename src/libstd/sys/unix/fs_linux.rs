@@ -232,7 +232,6 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 }
 
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
