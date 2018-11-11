@@ -700,7 +700,7 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 #[unstable(feature = "dispatch_from_dyn", issue = "0")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Box<U>> for Box<T> {}
 
-#[unstable(feature = "boxed_slice_from_iter", issue = "0")]
+#[stable(feature = "boxed_slice_from_iter", since = "1.32.0")]
 impl<A> FromIterator<A> for Box<[A]> {
     fn from_iter<T: IntoIterator<Item = A>>(iter: T) -> Self {
         iter.into_iter().collect::<Vec<_>>().into_boxed_slice()
