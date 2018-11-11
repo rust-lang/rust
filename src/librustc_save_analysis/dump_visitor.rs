@@ -1254,21 +1254,25 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
                     Vec::new()
                 };
 
-                let sub_span =
-                    self.span.sub_span_of_token(use_tree.span, token::BinOp(token::Star));
-                if !self.span.filter_generated(use_tree.span) {
-                    let span =
-                        self.span_from_span(sub_span.expect("No span found for use glob"));
-                    self.dumper.import(&access, Import {
-                        kind: ImportKind::GlobUse,
-                        ref_id: None,
-                        span,
-                        alias_span: None,
-                        name: "*".to_owned(),
-                        value: names.join(", "),
-                        parent,
-                    });
-                    self.write_sub_paths(&path);
+                // Otherwise it's a span with wrong macro expansion info, which
+                // we don't want to track anyway, since it's probably macro-internal `use`
+                if let Some(sub_span) =
+                    self.span.sub_span_of_token(use_tree.span, token::BinOp(token::Star))
+                {
+                    if !self.span.filter_generated(use_tree.span) {
+                        let span = self.span_from_span(sub_span);
+
+                        self.dumper.import(&access, Import {
+                            kind: ImportKind::GlobUse,
+                            ref_id: None,
+                            span,
+                            alias_span: None,
+                            name: "*".to_owned(),
+                            value: names.join(", "),
+                            parent,
+                        });
+                        self.write_sub_paths(&path);
+                    }
                 }
             }
             ast::UseTreeKind::Nested(ref nested_items) => {
