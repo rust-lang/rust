@@ -202,7 +202,7 @@ pub fn forget<T>(t: T) {
 ///
 /// ## Size of Enums
 ///
-/// Enums that carry no data other than the descriminant have the same size as C enums
+/// Enums that carry no data other than the discriminant have the same size as C enums
 /// on the platform they are compiled for.
 ///
 /// ## Size of Unions
@@ -1081,7 +1081,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// # Unsafety
     ///
-    /// It is up to the caller to guarantee that the the `MaybeUninit` really is in an initialized
+    /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
     /// state, otherwise this will immediately cause undefined behavior.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     pub unsafe fn into_inner(self) -> T {
@@ -1092,7 +1092,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// # Unsafety
     ///
-    /// It is up to the caller to guarantee that the the `MaybeUninit` really is in an initialized
+    /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
     /// state, otherwise this will immediately cause undefined behavior.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     pub unsafe fn get_ref(&self) -> &T {
@@ -1103,7 +1103,7 @@ impl<T> MaybeUninit<T> {
     ///
     /// # Unsafety
     ///
-    /// It is up to the caller to guarantee that the the `MaybeUninit` really is in an initialized
+    /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
     /// state, otherwise this will immediately cause undefined behavior.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     pub unsafe fn get_mut(&mut self) -> &mut T {

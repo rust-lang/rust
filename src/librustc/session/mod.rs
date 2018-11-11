@@ -963,6 +963,10 @@ impl Session {
         self.opts.debugging_opts.teach && self.diagnostic().must_teach(code)
     }
 
+    pub fn rust_2015(&self) -> bool {
+        self.opts.edition == Edition::Edition2015
+    }
+
     /// Are we allowed to use features from the Rust 2018 edition?
     pub fn rust_2018(&self) -> bool {
         self.opts.edition >= Edition::Edition2018

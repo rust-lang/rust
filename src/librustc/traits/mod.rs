@@ -50,11 +50,8 @@ pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError
 pub use self::specialize::{OverlapError, specialization_graph, translate_substs};
 pub use self::specialize::find_associated_item;
 pub use self::engine::{TraitEngine, TraitEngineExt};
-pub use self::util::elaborate_predicates;
-pub use self::util::supertraits;
-pub use self::util::Supertraits;
-pub use self::util::supertrait_def_ids;
-pub use self::util::SupertraitDefIds;
+pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
+pub use self::util::{supertraits, supertrait_def_ids, Supertraits, SupertraitDefIds};
 pub use self::util::transitive_bounds;
 
 #[allow(dead_code)]

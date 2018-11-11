@@ -591,8 +591,8 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
         if let TerminatorKind::Assert { expected, msg, cond, .. } = kind {
             if let Some(value) = self.eval_operand(cond, source_info) {
                 trace!("assertion on {:?} should be {:?}", value, expected);
-                let expected = Immediate::Scalar(Scalar::from_bool(*expected).into());
-                if expected != value.0.to_immediate() {
+                let expected = ScalarMaybeUndef::from(Scalar::from_bool(*expected));
+                if expected != self.ecx.read_scalar(value.0).unwrap() {
                     // poison all places this operand references so that further code
                     // doesn't use the invalid value
                     match cond {
@@ -628,20 +628,20 @@ impl<'b, 'a, 'tcx> Visitor<'tcx> for ConstPropagator<'b, 'a, 'tcx> {
                             let len = self
                                 .eval_operand(len, source_info)
                                 .expect("len must be const");
-                            let len = match len.0.to_immediate() {
-                                Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits {
+                            let len = match self.ecx.read_scalar(len.0) {
+                                Ok(ScalarMaybeUndef::Scalar(Scalar::Bits {
                                     bits, ..
                                 })) => bits,
-                                _ => bug!("const len not primitive: {:?}", len),
+                                other => bug!("const len not primitive: {:?}", other),
                             };
                             let index = self
                                 .eval_operand(index, source_info)
                                 .expect("index must be const");
-                            let index = match index.0.to_immediate() {
-                                Immediate::Scalar(ScalarMaybeUndef::Scalar(Scalar::Bits {
+                            let index = match self.ecx.read_scalar(index.0) {
+                                Ok(ScalarMaybeUndef::Scalar(Scalar::Bits {
                                     bits, ..
                                 })) => bits,
-                                _ => bug!("const index not primitive: {:?}", index),
+                                other => bug!("const index not primitive: {:?}", other),
                             };
                             format!(
                                 "index out of bounds: \

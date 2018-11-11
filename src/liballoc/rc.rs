@@ -672,14 +672,16 @@ impl<T: ?Sized> Rc<T> {
         // Previously, layout was calculated on the expression
         // `&*(ptr as *const RcBox<T>)`, but this created a misaligned
         // reference (see #54908).
-        let (layout, _) = Layout::new::<RcBox<()>>()
-            .extend(Layout::for_value(&*ptr)).unwrap();
+        let layout = Layout::new::<RcBox<()>>()
+            .extend(Layout::for_value(&*ptr)).unwrap().0
+            .pad_to_align().unwrap();
 
         let mem = Global.alloc(layout)
             .unwrap_or_else(|_| handle_alloc_error(layout));
 
         // Initialize the RcBox
         let inner = set_data_ptr(ptr as *mut T, mem.as_ptr() as *mut u8) as *mut RcBox<T>;
+        debug_assert_eq!(Layout::for_value(&*inner), layout);
 
         ptr::write(&mut (*inner).strong, Cell::new(1));
         ptr::write(&mut (*inner).weak, Cell::new(1));

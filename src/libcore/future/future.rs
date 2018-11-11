@@ -17,7 +17,7 @@ use ops;
 use pin::Pin;
 use task::{Poll, LocalWaker};
 
-/// A future represents an asychronous computation.
+/// A future represents an asynchronous computation.
 ///
 /// A future is a value that may not have finished computing yet. This kind of
 /// "asynchronous value" makes it possible for a thread to continue doing useful

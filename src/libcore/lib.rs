@@ -228,7 +228,7 @@ mod nonzero;
 mod tuple;
 mod unit;
 
-// Pull in the the `coresimd` crate directly into libcore. This is where all the
+// Pull in the `coresimd` crate directly into libcore. This is where all the
 // architecture-specific (and vendor-specific) intrinsics are defined. AKA
 // things like SIMD and such. Note that the actual source for all this lies in a
 // different repository, rust-lang-nursery/stdsimd. That's why the setup here is

@@ -11,6 +11,7 @@
 use rustc::ty::outlives::Component;
 use rustc::ty::subst::{Kind, UnpackedKind};
 use rustc::ty::{self, Region, RegionKind, Ty, TyCtxt};
+use smallvec::smallvec;
 use std::collections::BTreeSet;
 
 /// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
@@ -40,7 +41,9 @@ pub fn insert_outlives_predicate<'tcx>(
             //
             // Or if within `struct Foo<U>` you had `T = Vec<U>`, then
             // we would want to add `U: 'outlived_region`
-            for component in tcx.outlives_components(ty) {
+            let mut components = smallvec![];
+            tcx.push_outlives_components(ty, &mut components);
+            for component in components {
                 match component {
                     Component::Region(r) => {
                         // This would arise from something like:

@@ -20,6 +20,7 @@ use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::outlives::Component;
 use rustc::ty::query::Providers;
 use rustc::ty::wf;
+use smallvec::{SmallVec, smallvec};
 use syntax::ast::DUMMY_NODE_ID;
 use syntax::source_map::DUMMY_SP;
 use rustc::traits::FulfillmentContext;
@@ -133,7 +134,8 @@ fn compute_implied_outlives_bounds<'tcx>(
                     None => vec![],
                     Some(ty::OutlivesPredicate(ty_a, r_b)) => {
                         let ty_a = infcx.resolve_type_vars_if_possible(&ty_a);
-                        let components = tcx.outlives_components(ty_a);
+                        let mut components = smallvec![];
+                        tcx.push_outlives_components(ty_a, &mut components);
                         implied_bounds_from_components(r_b, components)
                     }
                 },
@@ -155,7 +157,7 @@ fn compute_implied_outlives_bounds<'tcx>(
 /// those relationships.
 fn implied_bounds_from_components(
     sub_region: ty::Region<'tcx>,
-    sup_components: Vec<Component<'tcx>>,
+    sup_components: SmallVec<[Component<'tcx>; 4]>,
 ) -> Vec<OutlivesBound<'tcx>> {
     sup_components
         .into_iter()

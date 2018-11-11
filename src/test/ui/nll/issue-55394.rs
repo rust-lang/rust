@@ -1,4 +1,4 @@
-// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
+#![feature(nll)]
 
-use std::iter::Iterator;
+struct Bar;
 
-type Unit = ();
-
-fn test() ->  Box<Iterator<Item = (), Item = Unit>> {
-    Box::new(None.into_iter())
+struct Foo<'s> {
+    bar: &'s mut Bar,
 }
 
-fn main() {
-    test();
+impl Foo<'_> {
+    fn new(bar: &mut Bar) -> Self {
+        Foo { bar }
+    }
 }
+
+fn main() { }
