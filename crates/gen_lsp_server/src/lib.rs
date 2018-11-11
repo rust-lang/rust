@@ -1,4 +1,4 @@
-//! A language server scaffold, exposing synchroneous crossbeam-channel based API.
+//! A language server scaffold, exposing a synchronous crossbeam-channel based API.
 //! This crate handles protocol handshaking and parsing messages, while you
 //! control the message dispatch loop yourself.
 //!

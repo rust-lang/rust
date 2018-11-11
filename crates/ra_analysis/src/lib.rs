@@ -1,5 +1,5 @@
 //! ra_analyzer crate is the brain of Rust analyzer. It relies on the `salsa`
-//! crate, which provides and incremental on-deman database of facts.
+//! crate, which provides and incremental on-demand database of facts.
 
 extern crate fst;
 extern crate ra_editor;
