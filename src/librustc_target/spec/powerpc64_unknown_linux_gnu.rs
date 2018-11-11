@@ -20,9 +20,6 @@ pub fn target() -> TargetResult {
     // for now. https://github.com/rust-lang/rust/pull/43170#issuecomment-315411474
     base.relro_level = RelroLevel::Partial;
 
-    // see #36994
-    base.exe_allocation_crate = None;
-
     Ok(Target {
         llvm_target: "powerpc64-unknown-linux-gnu".to_string(),
         target_endian: "big".to_string(),

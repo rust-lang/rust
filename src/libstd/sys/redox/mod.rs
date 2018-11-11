@@ -15,6 +15,8 @@ use io::{self, ErrorKind};
 pub use libc::strlen;
 pub use self::rand::hashmap_random_keys;
 
+#[path = "../unix/alloc.rs"]
+pub mod alloc;
 pub mod args;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;

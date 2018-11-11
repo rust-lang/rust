@@ -859,7 +859,6 @@ impl Step for Src {
             "src/build_helper",
             "src/dlmalloc",
             "src/liballoc",
-            "src/liballoc_system",
             "src/libbacktrace",
             "src/libcompiler_builtins",
             "src/libcore",

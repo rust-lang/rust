@@ -12,6 +12,8 @@ use io;
 use libc;
 use mem;
 
+#[path = "../unix/alloc.rs"]
+pub mod alloc;
 pub mod args;
 #[cfg(feature = "backtrace")]
 pub mod backtrace;

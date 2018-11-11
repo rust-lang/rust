@@ -36,6 +36,7 @@ pub use libc::strlen;
 #[macro_use]
 pub mod weak;
 
+pub mod alloc;
 pub mod args;
 pub mod android;
 #[cfg(feature = "backtrace")]

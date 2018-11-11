@@ -14,9 +14,6 @@ pub fn target() -> TargetResult {
     let mut base = super::linux_base::opts();
     base.max_atomic_width = Some(128);
 
-    // see #36994
-    base.exe_allocation_crate = None;
-
     Ok(Target {
         llvm_target: "aarch64-unknown-linux-gnu".to_string(),
         target_endian: "little".to_string(),

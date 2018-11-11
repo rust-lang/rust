@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use alloc_system::System;
-use std::alloc::{Global, Alloc, Layout};
+use std::alloc::{Global, Alloc, Layout, System};
 
 /// https://github.com/rust-lang/rust/issues/45955
 #[test]
