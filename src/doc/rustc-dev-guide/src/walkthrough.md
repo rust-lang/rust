@@ -120,17 +120,16 @@ itself to reflect the course of the discussion (e.g. new alternatives or prior
 work may be added or you may decide to change parts of the proposal itself).
 
 In the end, when the discussion seems to reach a consensus and die down a bit,
-a rust team member may propose [to merge the RFC][rfcmerge]. This means that
-they want the other members of the appropriate teams to review and comment on
-the RFC.  More changes may be proposed. At some point, when everyone is
+a rust team member may propose to move to FCP with one of three possible dispositions.
+This means that they want the other members of the appropriate teams to review
+and comment on the RFC. More discussion may ensue, which may result in more changes
+or unresolved questions being added. At some point, when everyone is
 satisfied, the RFC enters the "final comment period" (FCP), which is the last
-chance for people to bring up objections. When the FCP is over, the RFC is
-"merged" (or accepted).
+chance for people to bring up objections. When the FCP is over, the disposition is
+adopted. Here are the three possible dispositions:
 
-[rfcmerge]: https://github.com/rust-lang/rfcs/pull/2298#issuecomment-360582667
-
-Some other possible outcomes might be for a team member to propose to
-
+- _Merge_: accept the feature. Here is the proposal to merge for our [`?` macro
+  feature][rfcmerge].
 - _Close_: this feature in its current form is not a good fit for rust. Don't
   be discouraged if this happens to your RFC, and don't take it personally.
   This is not a reflection on you, but rather a community decision that rust
@@ -140,6 +139,15 @@ Some other possible outcomes might be for a team member to propose to
   bandwidth to shepherd the feature through the process to stabilization. Often
   this is the case when the feature doesn't fit into the team's roadmap.
   Postponed ideas may be revisited later.
+
+[rfcmerge]: https://github.com/rust-lang/rfcs/pull/2298#issuecomment-360582667
+
+When an RFC is merged, the PR is merged into the RFCs repo. A new _tracking
+issue_ is created in the [rust-lang/rust] repo to track progress on the feature
+and discuss unresolved questions, implementation progress and blockers, etc.
+Here is the tracking issue on for our [`?` macro feature][tracking].
+
+[tracking]: https://github.com/rust-lang/rust/issues/48075
 
 <a name="impl"></a>
 
@@ -199,14 +207,29 @@ There are a couple of things that may happen for some PRs during the review proc
   to check if you introduced a change to compiler behavior that affects a large
   portion of the ecosystem.
 - If the diff of your PR is large or the reviewer is busy, your PR may have
-  some merge conflicts with other PRs. You should fix these merge conflicts
-  using the normal git procedures.
+  some merge conflicts with other PRs that happen to get merged first. You
+  should fix these merge conflicts using the normal git procedures.
 
 [crater]: ./tests/intro.html#crater
 
+If you are not doing a new feature or something like that (e.g. if you are
+fixing a bug), then that's it! Thanks for your contribution :)
+
 ## Refining your implementation
 
+As people get experience with your new feature on nightly, slight changes may
+be proposed and unresolved questions may become resolved. Updates/changes go
+through the same process for implementing any other changes, as described
+above (i.e. submit a PR, go through review, wait for `@bors`, etc).
+
+Some changes may be major enough to require an FCP and some review by rust team
+members.
+
+For the `?` macro feature, we went through a few different iterations after the
+original implementation: [1][impl2], [2][impl3], [3][impl4].
+
 TODO
+
 
 ## Stabilization
 
