@@ -213,9 +213,7 @@ mod test {
 
     #[test]
     fn test_valid_ascii_escape() {
-        let valid = [
-            r"\'", "\"", "\\\\", "\\\"", r"\n", r"\r", r"\t", r"\0",
-        ];
+        let valid = [r"\'", "\"", "\\\\", "\\\"", r"\n", r"\r", r"\t", r"\0"];
         for c in &valid {
             assert_valid_char(c);
         }

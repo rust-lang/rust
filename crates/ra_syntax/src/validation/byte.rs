@@ -48,7 +48,10 @@ pub(super) fn validate_byte_component(
         AsciiCodeEscape => validate_byte_code_escape(text, range, errors),
         UnicodeEscape => errors.push(SyntaxError::new(UnicodeEscapeForbidden, range)),
         CodePoint => {
-            let c = text.chars().next().expect("Code points should be one character long");
+            let c = text
+                .chars()
+                .next()
+                .expect("Code points should be one character long");
 
             // These bytes must always be escaped
             if c == '\t' || c == '\r' || c == '\n' {
@@ -148,9 +151,7 @@ mod test {
 
     #[test]
     fn test_valid_byte_escape() {
-        let valid = [
-            r"\'", "\"", "\\\\", "\\\"", r"\n", r"\r", r"\t", r"\0",
-        ];
+        let valid = [r"\'", "\"", "\\\\", "\\\"", r"\n", r"\r", r"\t", r"\0"];
         for c in &valid {
             assert_valid_byte(c);
         }

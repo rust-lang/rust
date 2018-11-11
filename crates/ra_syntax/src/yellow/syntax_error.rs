@@ -117,7 +117,10 @@ impl fmt::Display for SyntaxErrorKind {
             InvalidByteEscape => write!(f, "Invalid escape sequence"),
             TooShortByteCodeEscape => write!(f, "Escape sequence should have two digits"),
             MalformedByteCodeEscape => write!(f, "Escape sequence should be a hexadecimal number"),
-            UnicodeEscapeForbidden => write!(f, "Unicode escapes are not allowed in byte literals or byte strings"),
+            UnicodeEscapeForbidden => write!(
+                f,
+                "Unicode escapes are not allowed in byte literals or byte strings"
+            ),
             TooShortAsciiCodeEscape => write!(f, "Escape sequence should have two digits"),
             AsciiCodeEscapeOutOfRange => {
                 write!(f, "Escape sequence should be between \\x00 and \\x7F")
