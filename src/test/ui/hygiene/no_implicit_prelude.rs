@@ -21,7 +21,10 @@ mod bar {
         Vec::new(); //~ ERROR failed to resolve
         ().clone() //~ ERROR no method named `clone` found
     }
-    fn f() { ::foo::m!(); }
+    fn f() {
+        ::foo::m!();
+        println!(); // OK on 2015 edition (at least for now)
+    }
 }
 
 fn main() {}

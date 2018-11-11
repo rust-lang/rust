@@ -663,10 +663,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     binding.map(|binding| (binding, Flags::MODULE, Flags::empty()))
                 }
                 WhereToResolve::MacroUsePrelude => {
-                    match self.macro_use_prelude.get(&ident.name).cloned() {
-                        Some(binding) => Ok((binding, Flags::PRELUDE, Flags::empty())),
-                        None => Err(Determinacy::Determined),
+                    let mut result = Err(Determinacy::Determined);
+                    if use_prelude || self.session.rust_2015() {
+                        if let Some(binding) = self.macro_use_prelude.get(&ident.name).cloned() {
+                            result = Ok((binding, Flags::PRELUDE, Flags::empty()));
+                        }
                     }
+                    result
                 }
                 WhereToResolve::BuiltinMacros => {
                     match self.builtin_macros.get(&ident.name).cloned() {
@@ -685,7 +688,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                 }
                 WhereToResolve::LegacyPluginHelpers => {
-                    if self.session.plugin_attributes.borrow().iter()
+                    if (use_prelude || self.session.rust_2015()) &&
+                       self.session.plugin_attributes.borrow().iter()
                                                      .any(|(name, _)| ident.name == &**name) {
                         let binding = (Def::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),
                                        ty::Visibility::Public, ident.span, Mark::root())
