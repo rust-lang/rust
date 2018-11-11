@@ -2206,7 +2206,7 @@ impl<'a> From<&'a str> for String {
 #[cfg(not(test))]
 #[stable(feature = "string_from_box", since = "1.18.0")]
 impl From<Box<str>> for String {
-    /// Converts the given boxed `str` slice to a `String`. 
+    /// Converts the given boxed `str` slice to a `String`.
     /// It is notable that the `str` slice is owned.
     ///
     /// # Examples
@@ -2216,7 +2216,7 @@ impl From<Box<str>> for String {
     /// ```
     /// let s1 : String = String::from("hello world");
     /// let s2 : Box<str> = s1.into_boxed_str();
-    /// let s3 : String = String::from(s2); 
+    /// let s3 : String = String::from(s2);
     ///
     /// assert_eq!("hello world", s3)
     /// ```
@@ -2308,7 +2308,7 @@ impl From<String> for Vec<u8> {
     /// ```
     /// let s1 = String::from("hello world");
     /// let v1 = Vec::from(s1);
-    /// 
+    ///
     /// for b in v1 {
     ///     println!("{}", b);
     /// }
