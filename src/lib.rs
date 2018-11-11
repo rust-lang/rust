@@ -77,6 +77,7 @@ mod common;
 mod constant;
 mod intrinsics;
 mod link;
+mod link_copied;
 mod main_shim;
 mod metadata;
 mod pretty_clif;
@@ -404,7 +405,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             std::fs::write(&tmp_file, obj).unwrap();
 
             /*use rustc_mir::monomorphize::partitioning::CodegenUnitExt;
-            
+
             let dep_node = tcx.codegen_unit(cgu_name).codegen_dep_node(tcx);
             let ((stats, module), _) = tcx.dep_graph.with_task(
                 dep_node,
