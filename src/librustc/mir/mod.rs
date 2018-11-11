@@ -20,6 +20,7 @@ use mir::interpret::{ConstValue, EvalErrorKind, Scalar};
 use mir::visit::MirVisitable;
 use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::dominators::{dominators, Dominators};
 use rustc_data_structures::graph::{self, GraphPredecessors, GraphSuccessors};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -2718,6 +2719,36 @@ impl Location {
             block: self.block,
             statement_index: self.statement_index + 1,
         }
+    }
+
+    /// Returns `true` if `other` is earlier in the control flow graph than `self`.
+    pub fn is_predecessor_of<'tcx>(&self, other: Location, mir: &Mir<'tcx>) -> bool {
+        // If we are in the same block as the other location and are an earlier statement
+        // then we are a predecessor of `other`.
+        if self.block == other.block && self.statement_index < other.statement_index {
+            return true;
+        }
+
+        // If we're in another block, then we want to check that block is a predecessor of `other`.
+        let mut queue: Vec<BasicBlock> = mir.predecessors_for(other.block).clone();
+        let mut visited = FxHashSet::default();
+
+        while let Some(block) = queue.pop() {
+            // If we haven't visited this block before, then make sure we visit it's predecessors.
+            if visited.insert(block) {
+                queue.append(&mut mir.predecessors_for(block).clone());
+            } else {
+                continue;
+            }
+
+            // If we found the block that `self` is in, then we are a predecessor of `other` (since
+            // we found that block by looking at the predecessors of `other`).
+            if self.block == block {
+                return true;
+            }
+        }
+
+        false
     }
 
     pub fn dominates(&self, other: Location, dominators: &Dominators<BasicBlock>) -> bool {
