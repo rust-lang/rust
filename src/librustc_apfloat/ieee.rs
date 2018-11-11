@@ -895,7 +895,7 @@ impl<S: Semantics> Float for IeeeFloat<S> {
             }
 
             // The intermediate result of the multiplication has "2 * S::PRECISION"
-            // signicant bit; adjust the addend to be consistent with mul result.
+            // significant bit; adjust the addend to be consistent with mul result.
             let mut ext_addend_sig = [addend.sig[0], 0];
 
             // Extend the addend significand to ext_precision - 1. This guarantees
@@ -920,7 +920,7 @@ impl<S: Semantics> Float for IeeeFloat<S> {
 
         // Convert the result having "2 * S::PRECISION" significant-bits back to the one
         // having "S::PRECISION" significant-bits. First, move the radix point from
-        // poision "2*S::PRECISION - 1" to "S::PRECISION - 1". The exponent need to be
+        // position "2*S::PRECISION - 1" to "S::PRECISION - 1". The exponent need to be
         // adjusted by "2*S::PRECISION - 1" - "S::PRECISION - 1" = "S::PRECISION".
         self.exp -= S::PRECISION as ExpInt + 1;
 

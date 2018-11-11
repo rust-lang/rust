@@ -1896,7 +1896,7 @@ mod traits {
         #[inline]
         fn index_mut(self, slice: &mut str) -> &mut Self::Output {
             // is_char_boundary checks that the index is in [0, .len()]
-            // canot reuse `get` as above, because of NLL trouble
+            // cannot reuse `get` as above, because of NLL trouble
             if self.start <= self.end &&
                slice.is_char_boundary(self.start) &&
                slice.is_char_boundary(self.end) {

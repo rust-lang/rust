@@ -142,7 +142,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         //
         // It does the actual traversal of the graph, while the `next` method on the iterator
         // just pops off of the stack. `visit_stack` is a stack containing pairs of nodes and
-        // iterators over the sucessors of those nodes. Each iteration attempts to get the next
+        // iterators over the successors of those nodes. Each iteration attempts to get the next
         // node from the top of the stack, then pushes that node and an iterator over the
         // successors to the top of the stack. This loop only grows `visit_stack`, stopping when
         // we reach a child that has no children that we haven't already visited.
@@ -163,7 +163,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
         // The state of the stack starts out with just the root node (`A` in this case);
         //     [(A, [B, C])]
         //
-        // When the first call to `traverse_sucessor` happens, the following happens:
+        // When the first call to `traverse_successor` happens, the following happens:
         //
         //     [(B, [D]),  // `B` taken from the successors of `A`, pushed to the
         //                 // top of the stack along with the successors of `B`

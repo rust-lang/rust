@@ -2610,7 +2610,7 @@ pub fn fmt_const_val(f: &mut impl Write, const_val: &ty::Const<'_>) -> fmt::Resu
             _ => {}
         }
     }
-    // print function definitons
+    // print function definitions
     if let FnDef(did, _) = ty.sty {
         return write!(f, "{}", item_path_str(did));
     }

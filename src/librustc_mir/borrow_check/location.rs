@@ -11,7 +11,7 @@
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 
-/// Maps between a MIR Location, which identifies the a particular
+/// Maps between a MIR Location, which identifies a particular
 /// statement within a basic block, to a "rich location", which
 /// identifies at a finer granularity. In particular, we distinguish
 /// the *start* of a statement and the *mid-point*. The mid-point is
