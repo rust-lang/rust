@@ -17,7 +17,7 @@ use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
-    Scalar, AllocType, EvalResult, EvalErrorKind
+    Scalar, AllocType, EvalResult, EvalErrorKind,
 };
 
 use super::{

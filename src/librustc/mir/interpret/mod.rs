@@ -17,27 +17,32 @@ macro_rules! err {
 
 mod error;
 mod value;
+mod allocation;
+mod pointer;
 
 pub use self::error::{
     EvalError, EvalResult, EvalErrorKind, AssertMessage, ConstEvalErr, struct_error,
     FrameInfo, ConstEvalResult, ErrorHandled,
 };
 
-pub use self::value::{Scalar, ConstValue};
+pub use self::value::{Scalar, ConstValue, ScalarMaybeUndef};
+
+pub use self::allocation::{
+    Allocation, AllocationExtra,
+    Relocations, UndefMask,
+};
+
+pub use self::pointer::{Pointer, PointerArithmetic};
 
 use std::fmt;
 use mir;
 use hir::def_id::DefId;
 use ty::{self, TyCtxt, Instance};
-use ty::layout::{self, Align, HasDataLayout, Size};
+use ty::layout::{self, Size};
 use middle::region;
-use std::iter;
 use std::io;
-use std::ops::{Deref, DerefMut};
 use std::hash::Hash;
-use syntax::ast::Mutability;
 use rustc_serialize::{Encoder, Decodable, Encodable};
-use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{Lock as Mutex, HashMapExt};
 use rustc_data_structures::tiny_list::TinyList;
@@ -77,152 +82,6 @@ pub struct GlobalId<'tcx> {
     /// The index for promoted globals within their function's `Mir`.
     pub promoted: Option<mir::Promoted>,
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// Pointer arithmetic
-////////////////////////////////////////////////////////////////////////////////
-
-pub trait PointerArithmetic: layout::HasDataLayout {
-    // These are not supposed to be overridden.
-
-    #[inline(always)]
-    fn pointer_size(&self) -> Size {
-        self.data_layout().pointer_size
-    }
-
-    //// Trunace the given value to the pointer size; also return whether there was an overflow
-    #[inline]
-    fn truncate_to_ptr(&self, val: u128) -> (u64, bool) {
-        let max_ptr_plus_1 = 1u128 << self.pointer_size().bits();
-        ((val % max_ptr_plus_1) as u64, val >= max_ptr_plus_1)
-    }
-
-    #[inline]
-    fn offset<'tcx>(&self, val: u64, i: u64) -> EvalResult<'tcx, u64> {
-        let (res, over) = self.overflowing_offset(val, i);
-        if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
-    }
-
-    #[inline]
-    fn overflowing_offset(&self, val: u64, i: u64) -> (u64, bool) {
-        let (res, over1) = val.overflowing_add(i);
-        let (res, over2) = self.truncate_to_ptr(u128::from(res));
-        (res, over1 || over2)
-    }
-
-    #[inline]
-    fn signed_offset<'tcx>(&self, val: u64, i: i64) -> EvalResult<'tcx, u64> {
-        let (res, over) = self.overflowing_signed_offset(val, i128::from(i));
-        if over { err!(Overflow(mir::BinOp::Add)) } else { Ok(res) }
-    }
-
-    // Overflow checking only works properly on the range from -u64 to +u64.
-    #[inline]
-    fn overflowing_signed_offset(&self, val: u64, i: i128) -> (u64, bool) {
-        // FIXME: is it possible to over/underflow here?
-        if i < 0 {
-            // trickery to ensure that i64::min_value() works fine
-            // this formula only works for true negative values, it panics for zero!
-            let n = u64::max_value() - (i as u64) + 1;
-            val.overflowing_sub(n)
-        } else {
-            self.overflowing_offset(val, i as u64)
-        }
-    }
-}
-
-impl<T: layout::HasDataLayout> PointerArithmetic for T {}
-
-
-/// Pointer is generic over the type that represents a reference to Allocations,
-/// thus making it possible for the most convenient representation to be used in
-/// each context.
-///
-/// Defaults to the index based and loosely coupled AllocId.
-///
-/// Pointer is also generic over the `Tag` associated with each pointer,
-/// which is used to do provenance tracking during execution.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, RustcEncodable, RustcDecodable, Hash)]
-pub struct Pointer<Tag=(),Id=AllocId> {
-    pub alloc_id: Id,
-    pub offset: Size,
-    pub tag: Tag,
-}
-
-/// Produces a `Pointer` which points to the beginning of the Allocation
-impl From<AllocId> for Pointer {
-    #[inline(always)]
-    fn from(alloc_id: AllocId) -> Self {
-        Pointer::new(alloc_id, Size::ZERO)
-    }
-}
-
-impl<'tcx> Pointer<()> {
-    #[inline(always)]
-    pub fn new(alloc_id: AllocId, offset: Size) -> Self {
-        Pointer { alloc_id, offset, tag: () }
-    }
-
-    #[inline(always)]
-    pub fn with_default_tag<Tag>(self) -> Pointer<Tag>
-        where Tag: Default
-    {
-        Pointer::new_with_tag(self.alloc_id, self.offset, Default::default())
-    }
-}
-
-impl<'tcx, Tag> Pointer<Tag> {
-    #[inline(always)]
-    pub fn new_with_tag(alloc_id: AllocId, offset: Size, tag: Tag) -> Self {
-        Pointer { alloc_id, offset, tag }
-    }
-
-    #[inline]
-    pub fn offset(self, i: Size, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
-        Ok(Pointer::new_with_tag(
-            self.alloc_id,
-            Size::from_bytes(cx.data_layout().offset(self.offset.bytes(), i.bytes())?),
-            self.tag
-        ))
-    }
-
-    #[inline]
-    pub fn overflowing_offset(self, i: Size, cx: &impl HasDataLayout) -> (Self, bool) {
-        let (res, over) = cx.data_layout().overflowing_offset(self.offset.bytes(), i.bytes());
-        (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
-    }
-
-    #[inline(always)]
-    pub fn wrapping_offset(self, i: Size, cx: &impl HasDataLayout) -> Self {
-        self.overflowing_offset(i, cx).0
-    }
-
-    #[inline]
-    pub fn signed_offset(self, i: i64, cx: &impl HasDataLayout) -> EvalResult<'tcx, Self> {
-        Ok(Pointer::new_with_tag(
-            self.alloc_id,
-            Size::from_bytes(cx.data_layout().signed_offset(self.offset.bytes(), i)?),
-            self.tag,
-        ))
-    }
-
-    #[inline]
-    pub fn overflowing_signed_offset(self, i: i128, cx: &impl HasDataLayout) -> (Self, bool) {
-        let (res, over) = cx.data_layout().overflowing_signed_offset(self.offset.bytes(), i);
-        (Pointer::new_with_tag(self.alloc_id, Size::from_bytes(res), self.tag), over)
-    }
-
-    #[inline(always)]
-    pub fn wrapping_signed_offset(self, i: i64, cx: &impl HasDataLayout) -> Self {
-        self.overflowing_signed_offset(i128::from(i), cx).0
-    }
-
-    #[inline(always)]
-    pub fn erase_tag(self) -> Pointer {
-        Pointer { alloc_id: self.alloc_id, offset: self.offset, tag: () }
-    }
-}
-
 
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd, Debug)]
 pub struct AllocId(pub u64);
@@ -528,91 +387,6 @@ impl<'tcx, M: fmt::Debug + Eq + Hash + Clone> AllocMap<'tcx, M> {
     }
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-pub struct Allocation<Tag=(),Extra=()> {
-    /// The actual bytes of the allocation.
-    /// Note that the bytes of a pointer represent the offset of the pointer
-    pub bytes: Vec<u8>,
-    /// Maps from byte addresses to extra data for each pointer.
-    /// Only the first byte of a pointer is inserted into the map; i.e.,
-    /// every entry in this map applies to `pointer_size` consecutive bytes starting
-    /// at the given offset.
-    pub relocations: Relocations<Tag>,
-    /// Denotes undefined memory. Reading from undefined memory is forbidden in miri
-    pub undef_mask: UndefMask,
-    /// The alignment of the allocation to detect unaligned reads.
-    pub align: Align,
-    /// Whether the allocation is mutable.
-    /// Also used by codegen to determine if a static should be put into mutable memory,
-    /// which happens for `static mut` and `static` with interior mutability.
-    pub mutability: Mutability,
-    /// Extra state for the machine.
-    pub extra: Extra,
-}
-
-impl<Tag, Extra: Default> Allocation<Tag, Extra> {
-    /// Creates a read-only allocation initialized by the given bytes
-    pub fn from_bytes(slice: &[u8], align: Align) -> Self {
-        let mut undef_mask = UndefMask::new(Size::ZERO);
-        undef_mask.grow(Size::from_bytes(slice.len() as u64), true);
-        Self {
-            bytes: slice.to_owned(),
-            relocations: Relocations::new(),
-            undef_mask,
-            align,
-            mutability: Mutability::Immutable,
-            extra: Extra::default(),
-        }
-    }
-
-    pub fn from_byte_aligned_bytes(slice: &[u8]) -> Self {
-        Allocation::from_bytes(slice, Align::from_bytes(1, 1).unwrap())
-    }
-
-    pub fn undef(size: Size, align: Align) -> Self {
-        assert_eq!(size.bytes() as usize as u64, size.bytes());
-        Allocation {
-            bytes: vec![0; size.bytes() as usize],
-            relocations: Relocations::new(),
-            undef_mask: UndefMask::new(size),
-            align,
-            mutability: Mutability::Mutable,
-            extra: Extra::default(),
-        }
-    }
-}
-
-impl<'tcx> ::serialize::UseSpecializedDecodable for &'tcx Allocation {}
-
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct Relocations<Tag=(), Id=AllocId>(SortedMap<Size, (Tag, Id)>);
-
-impl<Tag, Id> Relocations<Tag, Id> {
-    pub fn new() -> Self {
-        Relocations(SortedMap::new())
-    }
-
-    // The caller must guarantee that the given relocations are already sorted
-    // by address and contain no duplicates.
-    pub fn from_presorted(r: Vec<(Size, (Tag, Id))>) -> Self {
-        Relocations(SortedMap::from_presorted_elements(r))
-    }
-}
-
-impl<Tag> Deref for Relocations<Tag> {
-    type Target = SortedMap<Size, (Tag, AllocId)>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<Tag> DerefMut for Relocations<Tag> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Methods to access integers in the target endianness
 ////////////////////////////////////////////////////////////////////////////////
@@ -654,104 +428,4 @@ pub fn truncate(value: u128, size: Size) -> u128 {
     let shift = 128 - size;
     // truncate (shift left to drop out leftover values, shift right to fill with zeroes)
     (value << shift) >> shift
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Undefined byte tracking
-////////////////////////////////////////////////////////////////////////////////
-
-type Block = u64;
-const BLOCK_SIZE: u64 = 64;
-
-#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
-pub struct UndefMask {
-    blocks: Vec<Block>,
-    len: Size,
-}
-
-impl_stable_hash_for!(struct mir::interpret::UndefMask{blocks, len});
-
-impl UndefMask {
-    pub fn new(size: Size) -> Self {
-        let mut m = UndefMask {
-            blocks: vec![],
-            len: Size::ZERO,
-        };
-        m.grow(size, false);
-        m
-    }
-
-    /// Check whether the range `start..end` (end-exclusive) is entirely defined.
-    ///
-    /// Returns `Ok(())` if it's defined. Otherwise returns the index of the byte
-    /// at which the first undefined access begins.
-    #[inline]
-    pub fn is_range_defined(&self, start: Size, end: Size) -> Result<(), Size> {
-        if end > self.len {
-            return Err(self.len);
-        }
-
-        let idx = (start.bytes()..end.bytes())
-            .map(|i| Size::from_bytes(i))
-            .find(|&i| !self.get(i));
-
-        match idx {
-            Some(idx) => Err(idx),
-            None => Ok(())
-        }
-    }
-
-    pub fn set_range(&mut self, start: Size, end: Size, new_state: bool) {
-        let len = self.len;
-        if end > len {
-            self.grow(end - len, new_state);
-        }
-        self.set_range_inbounds(start, end, new_state);
-    }
-
-    pub fn set_range_inbounds(&mut self, start: Size, end: Size, new_state: bool) {
-        for i in start.bytes()..end.bytes() {
-            self.set(Size::from_bytes(i), new_state);
-        }
-    }
-
-    #[inline]
-    pub fn get(&self, i: Size) -> bool {
-        let (block, bit) = bit_index(i);
-        (self.blocks[block] & 1 << bit) != 0
-    }
-
-    #[inline]
-    pub fn set(&mut self, i: Size, new_state: bool) {
-        let (block, bit) = bit_index(i);
-        if new_state {
-            self.blocks[block] |= 1 << bit;
-        } else {
-            self.blocks[block] &= !(1 << bit);
-        }
-    }
-
-    pub fn grow(&mut self, amount: Size, new_state: bool) {
-        let unused_trailing_bits = self.blocks.len() as u64 * BLOCK_SIZE - self.len.bytes();
-        if amount.bytes() > unused_trailing_bits {
-            let additional_blocks = amount.bytes() / BLOCK_SIZE + 1;
-            assert_eq!(additional_blocks as usize as u64, additional_blocks);
-            self.blocks.extend(
-                iter::repeat(0).take(additional_blocks as usize),
-            );
-        }
-        let start = self.len;
-        self.len += amount;
-        self.set_range_inbounds(start, start + amount, new_state);
-    }
-}
-
-#[inline]
-fn bit_index(bits: Size) -> (usize, usize) {
-    let bits = bits.bytes();
-    let a = bits / BLOCK_SIZE;
-    let b = bits % BLOCK_SIZE;
-    assert_eq!(a as usize as u64, a);
-    assert_eq!(b as usize as u64, b);
-    (a as usize, b as usize)
 }
