@@ -36,9 +36,6 @@
 #include "llvm/Transforms/IPO/FunctionImport.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/LTO/LTO.h"
-#if LLVM_VERSION_LE(4, 0)
-#include "llvm/Object/ModuleSummaryIndexObjectFile.h"
-#endif
 
 #include "llvm-c/Transforms/PassManagerBuilder.h"
 
@@ -111,12 +108,11 @@ extern "C" void LLVMRustAddPass(LLVMPassManagerRef PMR, LLVMPassRef RustPass) {
 }
 
 extern "C"
-bool LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
+void LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
   LLVMPassManagerBuilderRef PMBR,
   LLVMPassManagerRef PMR
 ) {
   unwrap(PMBR)->populateThinLTOPassManager(*unwrap(PMR));
-  return true;
 }
 
 #ifdef LLVM_COMPONENT_X86
@@ -869,21 +865,10 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
 
     Ret->ModuleMap[module->identifier] = mem_buffer;
 
-#if LLVM_VERSION_GE(5, 0)
     if (Error Err = readModuleSummaryIndex(mem_buffer, Ret->Index, i)) {
       LLVMRustSetLastError(toString(std::move(Err)).c_str());
       return nullptr;
     }
-#else
-    Expected<std::unique_ptr<object::ModuleSummaryIndexObjectFile>> ObjOrErr =
-      object::ModuleSummaryIndexObjectFile::create(mem_buffer);
-    if (!ObjOrErr) {
-      LLVMRustSetLastError(toString(ObjOrErr.takeError()).c_str());
-      return nullptr;
-    }
-    auto Index = (*ObjOrErr)->takeIndex();
-    Ret->Index.mergeFrom(std::move(Index), i);
-#endif
   }
 
   // Collect for each module the list of function it defines (GUID -> Summary)
@@ -900,7 +885,6 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   // combined index
   //
   // This is copied from `lib/LTO/ThinLTOCodeGenerator.cpp`
-#if LLVM_VERSION_GE(5, 0)
 #if LLVM_VERSION_GE(7, 0)
   auto deadIsPrevailing = [&](GlobalValue::GUID G) {
     return PrevailingType::Unknown;
@@ -915,16 +899,6 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
     Ret->ImportLists,
     Ret->ExportLists
   );
-#else
-  auto DeadSymbols = computeDeadSymbols(Ret->Index, Ret->GUIDPreservedSymbols);
-  ComputeCrossModuleImport(
-    Ret->Index,
-    Ret->ModuleToDefinedGVSummaries,
-    Ret->ImportLists,
-    Ret->ExportLists,
-    &DeadSymbols
-  );
-#endif
 
   // Resolve LinkOnce/Weak symbols, this has to be computed early be cause it
   // impacts the caching.
@@ -934,13 +908,8 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   StringMap<std::map<GlobalValue::GUID, GlobalValue::LinkageTypes>> ResolvedODR;
   DenseMap<GlobalValue::GUID, const GlobalValueSummary *> PrevailingCopy;
   for (auto &I : Ret->Index) {
-#if LLVM_VERSION_GE(5, 0)
     if (I.second.SummaryList.size() > 1)
       PrevailingCopy[I.first] = getFirstDefinitionForLinker(I.second.SummaryList);
-#else
-    if (I.second.size() > 1)
-      PrevailingCopy[I.first] = getFirstDefinitionForLinker(I.second);
-#endif
   }
   auto isPrevailing = [&](GlobalValue::GUID GUID, const GlobalValueSummary *S) {
     const auto &Prevailing = PrevailingCopy.find(GUID);
@@ -962,19 +931,11 @@ LLVMRustCreateThinLTOData(LLVMRustThinLTOModule *modules,
   // linkage will stay as external, and internal will stay as internal.
   std::set<GlobalValue::GUID> ExportedGUIDs;
   for (auto &List : Ret->Index) {
-#if LLVM_VERSION_GE(5, 0)
     for (auto &GVS: List.second.SummaryList) {
-#else
-    for (auto &GVS: List.second) {
-#endif
       if (GlobalValue::isLocalLinkage(GVS->linkage()))
         continue;
       auto GUID = GVS->getOriginalName();
-#if LLVM_VERSION_GE(5, 0)
       if (GVS->flags().Live)
-#else
-      if (!DeadSymbols.count(GUID))
-#endif
         ExportedGUIDs.insert(GUID);
     }
   }

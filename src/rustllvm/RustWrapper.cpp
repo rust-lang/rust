@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #include "rustllvm.h"
+#include "llvm/IR/CallSite.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
@@ -18,14 +19,7 @@
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/Support/Signals.h"
-
-#include "llvm/IR/CallSite.h"
-
-#if LLVM_VERSION_GE(5, 0)
 #include "llvm/ADT/Optional.h"
-#else
-#include <cstdlib>
-#endif
 
 #include <iostream>
 
@@ -212,14 +206,7 @@ extern "C" void LLVMRustAddCallSiteAttribute(LLVMValueRef Instr, unsigned Index,
                                              LLVMRustAttribute RustAttr) {
   CallSite Call = CallSite(unwrap<Instruction>(Instr));
   Attribute Attr = Attribute::get(Call->getContext(), fromRust(RustAttr));
-#if LLVM_VERSION_GE(5, 0)
   Call.addAttribute(Index, Attr);
-#else
-  AttrBuilder B(Attr);
-  Call.setAttributes(Call.getAttributes().addAttributes(
-      Call->getContext(), Index,
-      AttributeSet::get(Call->getContext(), Index, B)));
-#endif
 }
 
 extern "C" void LLVMRustAddAlignmentCallSiteAttr(LLVMValueRef Instr,
@@ -228,14 +215,8 @@ extern "C" void LLVMRustAddAlignmentCallSiteAttr(LLVMValueRef Instr,
   CallSite Call = CallSite(unwrap<Instruction>(Instr));
   AttrBuilder B;
   B.addAlignmentAttr(Bytes);
-#if LLVM_VERSION_GE(5, 0)
   Call.setAttributes(Call.getAttributes().addAttributes(
       Call->getContext(), Index, B));
-#else
-  Call.setAttributes(Call.getAttributes().addAttributes(
-      Call->getContext(), Index,
-      AttributeSet::get(Call->getContext(), Index, B)));
-#endif
 }
 
 extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
@@ -244,14 +225,8 @@ extern "C" void LLVMRustAddDereferenceableCallSiteAttr(LLVMValueRef Instr,
   CallSite Call = CallSite(unwrap<Instruction>(Instr));
   AttrBuilder B;
   B.addDereferenceableAttr(Bytes);
-#if LLVM_VERSION_GE(5, 0)
   Call.setAttributes(Call.getAttributes().addAttributes(
       Call->getContext(), Index, B));
-#else
-  Call.setAttributes(Call.getAttributes().addAttributes(
-      Call->getContext(), Index,
-      AttributeSet::get(Call->getContext(), Index, B)));
-#endif
 }
 
 extern "C" void LLVMRustAddDereferenceableOrNullCallSiteAttr(LLVMValueRef Instr,
@@ -260,14 +235,8 @@ extern "C" void LLVMRustAddDereferenceableOrNullCallSiteAttr(LLVMValueRef Instr,
   CallSite Call = CallSite(unwrap<Instruction>(Instr));
   AttrBuilder B;
   B.addDereferenceableOrNullAttr(Bytes);
-#if LLVM_VERSION_GE(5, 0)
   Call.setAttributes(Call.getAttributes().addAttributes(
       Call->getContext(), Index, B));
-#else
-  Call.setAttributes(Call.getAttributes().addAttributes(
-      Call->getContext(), Index,
-      AttributeSet::get(Call->getContext(), Index, B)));
-#endif
 }
 
 extern "C" void LLVMRustAddFunctionAttribute(LLVMValueRef Fn, unsigned Index,
@@ -275,11 +244,7 @@ extern "C" void LLVMRustAddFunctionAttribute(LLVMValueRef Fn, unsigned Index,
   Function *A = unwrap<Function>(Fn);
   Attribute Attr = Attribute::get(A->getContext(), fromRust(RustAttr));
   AttrBuilder B(Attr);
-#if LLVM_VERSION_GE(5, 0)
   A->addAttributes(Index, B);
-#else
-  A->addAttributes(Index, AttributeSet::get(A->getContext(), Index, B));
-#endif
 }
 
 extern "C" void LLVMRustAddAlignmentAttr(LLVMValueRef Fn,
@@ -288,11 +253,7 @@ extern "C" void LLVMRustAddAlignmentAttr(LLVMValueRef Fn,
   Function *A = unwrap<Function>(Fn);
   AttrBuilder B;
   B.addAlignmentAttr(Bytes);
-#if LLVM_VERSION_GE(5, 0)
   A->addAttributes(Index, B);
-#else
-  A->addAttributes(Index, AttributeSet::get(A->getContext(), Index, B));
-#endif
 }
 
 extern "C" void LLVMRustAddDereferenceableAttr(LLVMValueRef Fn, unsigned Index,
@@ -300,11 +261,7 @@ extern "C" void LLVMRustAddDereferenceableAttr(LLVMValueRef Fn, unsigned Index,
   Function *A = unwrap<Function>(Fn);
   AttrBuilder B;
   B.addDereferenceableAttr(Bytes);
-#if LLVM_VERSION_GE(5, 0)
   A->addAttributes(Index, B);
-#else
-  A->addAttributes(Index, AttributeSet::get(A->getContext(), Index, B));
-#endif
 }
 
 extern "C" void LLVMRustAddDereferenceableOrNullAttr(LLVMValueRef Fn,
@@ -313,11 +270,7 @@ extern "C" void LLVMRustAddDereferenceableOrNullAttr(LLVMValueRef Fn,
   Function *A = unwrap<Function>(Fn);
   AttrBuilder B;
   B.addDereferenceableOrNullAttr(Bytes);
-#if LLVM_VERSION_GE(5, 0)
   A->addAttributes(Index, B);
-#else
-  A->addAttributes(Index, AttributeSet::get(A->getContext(), Index, B));
-#endif
 }
 
 extern "C" void LLVMRustAddFunctionAttrStringValue(LLVMValueRef Fn,
@@ -327,11 +280,7 @@ extern "C" void LLVMRustAddFunctionAttrStringValue(LLVMValueRef Fn,
   Function *F = unwrap<Function>(Fn);
   AttrBuilder B;
   B.addAttribute(Name, Value);
-#if LLVM_VERSION_GE(5, 0)
   F->addAttributes(Index, B);
-#else
-  F->addAttributes(Index, AttributeSet::get(F->getContext(), Index, B));
-#endif
 }
 
 extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn,
@@ -341,12 +290,7 @@ extern "C" void LLVMRustRemoveFunctionAttributes(LLVMValueRef Fn,
   Attribute Attr = Attribute::get(F->getContext(), fromRust(RustAttr));
   AttrBuilder B(Attr);
   auto PAL = F->getAttributes();
-#if LLVM_VERSION_GE(5, 0)
   auto PALNew = PAL.removeAttributes(F->getContext(), Index, B);
-#else
-  const AttributeSet PALNew = PAL.removeAttributes(
-      F->getContext(), Index, AttributeSet::get(F->getContext(), Index, B));
-#endif
   F->setAttributes(PALNew);
 }
 
@@ -396,7 +340,6 @@ enum class LLVMRustSynchronizationScope {
   CrossThread,
 };
 
-#if LLVM_VERSION_GE(5, 0)
 static SyncScope::ID fromRust(LLVMRustSynchronizationScope Scope) {
   switch (Scope) {
   case LLVMRustSynchronizationScope::SingleThread:
@@ -407,18 +350,6 @@ static SyncScope::ID fromRust(LLVMRustSynchronizationScope Scope) {
     report_fatal_error("bad SynchronizationScope.");
   }
 }
-#else
-static SynchronizationScope fromRust(LLVMRustSynchronizationScope Scope) {
-  switch (Scope) {
-  case LLVMRustSynchronizationScope::SingleThread:
-    return SingleThread;
-  case LLVMRustSynchronizationScope::CrossThread:
-    return CrossThread;
-  default:
-    report_fatal_error("bad SynchronizationScope.");
-  }
-}
-#endif
 
 extern "C" LLVMValueRef
 LLVMRustBuildAtomicFence(LLVMBuilderRef B, LLVMAtomicOrdering Order,
@@ -462,18 +393,6 @@ extern "C" void LLVMRustAppendModuleInlineAsm(LLVMModuleRef M, const char *Asm) 
 }
 
 typedef DIBuilder *LLVMRustDIBuilderRef;
-
-#if LLVM_VERSION_LT(5, 0)
-typedef struct LLVMOpaqueMetadata *LLVMMetadataRef;
-
-namespace llvm {
-DEFINE_ISA_CONVERSION_FUNCTIONS(Metadata, LLVMMetadataRef)
-
-inline Metadata **unwrap(LLVMMetadataRef *Vals) {
-  return reinterpret_cast<Metadata **>(Vals);
-}
-}
-#endif
 
 template <typename DIT> DIT *unwrapDIPtr(LLVMMetadataRef Ref) {
   return (DIT *)(Ref ? unwrap<MDNode>(Ref) : nullptr);
@@ -590,11 +509,6 @@ static DINode::DIFlags fromRust(LLVMRustDIFlags Flags) {
   if (isSet(Flags & LLVMRustDIFlags::FlagRValueReference)) {
     Result |= DINode::DIFlags::FlagRValueReference;
   }
-#if LLVM_VERSION_LE(4, 0)
-  if (isSet(Flags & LLVMRustDIFlags::FlagExternalTypeRef)) {
-    Result |= DINode::DIFlags::FlagExternalTypeRef;
-  }
-#endif
   if (isSet(Flags & LLVMRustDIFlags::FlagIntroducedVirtual)) {
     Result |= DINode::DIFlags::FlagIntroducedVirtual;
   }
@@ -693,9 +607,7 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreatePointerType(
     uint64_t SizeInBits, uint32_t AlignInBits, const char *Name) {
   return wrap(Builder->createPointerType(unwrapDI<DIType>(PointeeTy),
                                          SizeInBits, AlignInBits,
-#if LLVM_VERSION_GE(5, 0)
                                          /* DWARFAddressSpace */ None,
-#endif
                                          Name));
 }
 
@@ -902,12 +814,7 @@ LLVMRustDIBuilderCreateNameSpace(LLVMRustDIBuilderRef Builder,
                                  LLVMMetadataRef Scope, const char *Name,
                                  LLVMMetadataRef File, unsigned LineNo) {
   return wrap(Builder->createNameSpace(
-      unwrapDI<DIDescriptor>(Scope), Name
-#if LLVM_VERSION_LT(5, 0)
-      ,
-      unwrapDI<DIFile>(File), LineNo
-#endif
-      ,
+      unwrapDI<DIDescriptor>(Scope), Name,
       false // ExportSymbols (only relevant for C++ anonymous namespaces)
       ));
 }
@@ -937,12 +844,7 @@ extern "C" int64_t LLVMRustDIBuilderCreateOpDeref() {
 }
 
 extern "C" int64_t LLVMRustDIBuilderCreateOpPlusUconst() {
-#if LLVM_VERSION_GE(5, 0)
   return dwarf::DW_OP_plus_uconst;
-#else
-  // older LLVM used `plus` to behave like `plus_uconst`.
-  return dwarf::DW_OP_plus;
-#endif
 }
 
 extern "C" void LLVMRustWriteTypeToString(LLVMTypeRef Ty, RustStringRef Str) {
@@ -1014,21 +916,12 @@ extern "C" void LLVMRustUnpackOptimizationDiagnostic(
   *FunctionOut = wrap(&Opt->getFunction());
 
   RawRustStringOstream FilenameOS(FilenameOut);
-#if LLVM_VERSION_GE(5,0)
   DiagnosticLocation loc = Opt->getLocation();
   if (loc.isValid()) {
     *Line = loc.getLine();
     *Column = loc.getColumn();
     FilenameOS << loc.getFilename();
   }
-#else
-  const DebugLoc &loc = Opt->getDebugLoc();
-  if (loc) {
-    *Line = loc.getLine();
-    *Column = loc.getCol();
-    FilenameOS << cast<DIScope>(loc.getScope())->getFilename();
-  }
-#endif
 
   RawRustStringOstream MessageOS(MessageOut);
   MessageOS << Opt->getMsg();
@@ -1485,7 +1378,6 @@ LLVMRustModuleCost(LLVMModuleRef M) {
 }
 
 // Vector reductions:
-#if LLVM_VERSION_GE(5, 0)
 extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFAdd(LLVMBuilderRef B, LLVMValueRef Acc, LLVMValueRef Src) {
     return wrap(unwrap(B)->CreateFAddReduce(unwrap(Acc),unwrap(Src)));
@@ -1530,54 +1422,6 @@ extern "C" LLVMValueRef
 LLVMRustBuildVectorReduceFMax(LLVMBuilderRef B, LLVMValueRef Src, bool NoNaN) {
   return wrap(unwrap(B)->CreateFPMaxReduce(unwrap(Src), NoNaN));
 }
-
-#else
-
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceFAdd(LLVMBuilderRef, LLVMValueRef, LLVMValueRef) {
-  return nullptr;
-}
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceFMul(LLVMBuilderRef, LLVMValueRef, LLVMValueRef) {
-  return nullptr;
-}
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceAdd(LLVMBuilderRef, LLVMValueRef) {
-  return nullptr;
-}
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceMul(LLVMBuilderRef, LLVMValueRef) {
-  return nullptr;
-}
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceAnd(LLVMBuilderRef, LLVMValueRef) {
-  return nullptr;
-}
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceOr(LLVMBuilderRef, LLVMValueRef) {
-  return nullptr;
-}
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceXor(LLVMBuilderRef, LLVMValueRef) {
-  return nullptr;
-}
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceMin(LLVMBuilderRef, LLVMValueRef, bool) {
-  return nullptr;
-}
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceMax(LLVMBuilderRef, LLVMValueRef, bool) {
-  return nullptr;
-}
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceFMin(LLVMBuilderRef, LLVMValueRef, bool) {
-  return nullptr;
-}
-extern "C" LLVMValueRef
-LLVMRustBuildVectorReduceFMax(LLVMBuilderRef, LLVMValueRef, bool) {
-  return nullptr;
-}
-#endif
 
 #if LLVM_VERSION_GE(6, 0)
 extern "C" LLVMValueRef
