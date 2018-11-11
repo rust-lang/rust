@@ -14,5 +14,4 @@ trait Trait {
 
 type Foo = Trait; //~ ERROR E0191
 
-fn main() {
-}
+fn main() {}

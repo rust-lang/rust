@@ -8,20 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(trait_alias)]
+// compile-pass
 
-trait Foo = PartialEq<i32> + Send;
-trait Bar = Foo + Sync;
+#![crate_type = "lib"]
+#![feature(linkage)]
 
-trait I32Iterator = Iterator<Item = i32>;
+// MergeFunctions will merge these via an anonymous internal
+// backing function, which must be named if ThinLTO buffers are used
 
-pub fn main() {
-    let a: &dyn Bar = &123;
-    assert!(*a == 123);
-    let b = Box::new(456) as Box<dyn Foo>;
-    assert!(*b == 456);
+#[linkage = "weak"]
+pub fn fn1(a: u32, b: u32, c: u32) -> u32 {
+    a + b + c
+}
 
-    // FIXME(alexreg): associated type should be gotten from trait alias definition
-    // let c: &dyn I32Iterator = &vec![123].into_iter();
-    // assert_eq!(c.next(), Some(123));
+#[linkage = "weak"]
+pub fn fn2(a: u32, b: u32, c: u32) -> u32 {
+    a + b + c
 }

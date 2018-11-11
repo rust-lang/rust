@@ -39,7 +39,7 @@ impl<'a, 'tcx> VirtualIndex {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", llvtable, self);
 
-        let llvtable = bx.pointercast(llvtable, fn_ty.llvm_type(bx.cx).ptr_to().ptr_to());
+        let llvtable = bx.pointercast(llvtable, fn_ty.ptr_to_llvm_type(bx.cx).ptr_to());
         let ptr_align = bx.tcx().data_layout.pointer_align;
         let ptr = bx.load(bx.inbounds_gep(llvtable, &[C_usize(bx.cx, self.0)]), ptr_align);
         bx.nonnull_metadata(ptr);

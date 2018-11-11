@@ -35,7 +35,8 @@ pub struct TargetDataLayout {
     pub aggregate_align: Align,
 
     /// Alignments for vector types.
-    pub vector_align: Vec<(Size, Align)>
+    pub vector_align: Vec<(Size, Align)>,
+    pub instruction_address_space: u32,
 }
 
 impl Default for TargetDataLayout {
@@ -57,13 +58,22 @@ impl Default for TargetDataLayout {
             vector_align: vec![
                 (Size::from_bits(64), Align::from_bits(64, 64).unwrap()),
                 (Size::from_bits(128), Align::from_bits(128, 128).unwrap())
-            ]
+            ],
+            instruction_address_space: 0,
         }
     }
 }
 
 impl TargetDataLayout {
     pub fn parse(target: &Target) -> Result<TargetDataLayout, String> {
+        // Parse an address space index from a string.
+        let parse_address_space = |s: &str, cause: &str| {
+            s.parse::<u32>().map_err(|err| {
+                format!("invalid address space `{}` for `{}` in \"data-layout\": {}",
+                        s, cause, err)
+            })
+        };
+
         // Parse a bit count from a string.
         let parse_bits = |s: &str, kind: &str, cause: &str| {
             s.parse::<u64>().map_err(|err| {
@@ -96,6 +106,9 @@ impl TargetDataLayout {
             match spec.split(':').collect::<Vec<_>>()[..] {
                 ["e"] => dl.endian = Endian::Little,
                 ["E"] => dl.endian = Endian::Big,
+                [p] if p.starts_with("P") => {
+                    dl.instruction_address_space = parse_address_space(&p[1..], "P")?
+                }
                 ["a", ref a..] => dl.aggregate_align = align(a, "a")?,
                 ["f32", ref a..] => dl.f32_align = align(a, "f32")?,
                 ["f64", ref a..] => dl.f64_align = align(a, "f64")?,

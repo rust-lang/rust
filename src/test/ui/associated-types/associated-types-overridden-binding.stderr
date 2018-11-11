@@ -1,0 +1,15 @@
+error[E0284]: type annotations required: cannot resolve `<Self as std::iter::Iterator>::Item == i32`
+  --> $DIR/associated-types-overridden-binding.rs:14:1
+   |
+LL | trait Bar: Foo<Item = u32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: required by `Foo`
+  --> $DIR/associated-types-overridden-binding.rs:13:1
+   |
+LL | trait Foo: Iterator<Item = i32> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0284`.

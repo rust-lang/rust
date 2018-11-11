@@ -42,7 +42,7 @@ pub fn get_rpath_flags(config: &mut RPathConfig) -> Vec<String> {
 
     // Use DT_RUNPATH instead of DT_RPATH if available
     if config.linker_is_gnu {
-        flags.push("-Wl,--enable-new-dtags".to_string());
+        flags.push("-Wl,--enable-new-dtags".to_owned());
     }
 
     flags
@@ -59,7 +59,8 @@ fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
             ret.push(format!("-Wl,-rpath,{}", &(*rpath)));
         }
     }
-    return ret;
+
+    ret
 }
 
 fn get_rpaths(config: &mut RPathConfig, libs: &[PathBuf]) -> Vec<String> {
@@ -92,7 +93,8 @@ fn get_rpaths(config: &mut RPathConfig, libs: &[PathBuf]) -> Vec<String> {
 
     // Remove duplicates
     let rpaths = minimize_rpaths(&rpaths);
-    return rpaths;
+
+    rpaths
 }
 
 fn get_rpaths_relative_to_output(config: &mut RPathConfig,
@@ -117,8 +119,7 @@ fn get_rpath_relative_to_output(config: &mut RPathConfig, lib: &Path) -> String 
     let relative = path_relative_from(&lib, &output).unwrap_or_else(||
         panic!("couldn't create relative path from {:?} to {:?}", output, lib));
     // FIXME (#9639): This needs to handle non-utf8 paths
-    format!("{}/{}", prefix,
-            relative.to_str().expect("non-utf8 component in path"))
+    format!("{}/{}", prefix, relative.to_str().expect("non-utf8 component in path"))
 }
 
 // This routine is adapted from the *old* Path's `path_relative_from`
@@ -168,7 +169,7 @@ fn get_install_prefix_rpath(config: &mut RPathConfig) -> String {
     let path = (config.get_install_prefix_lib_path)();
     let path = env::current_dir().unwrap().join(&path);
     // FIXME (#9639): This needs to handle non-utf8 paths
-    path.to_str().expect("non-utf8 component in rpath").to_string()
+    path.to_str().expect("non-utf8 component in rpath").to_owned()
 }
 
 fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {

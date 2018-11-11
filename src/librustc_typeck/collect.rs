@@ -1978,9 +1978,9 @@ pub enum SizedByDefault {
     No,
 }
 
-/// Translate the AST's notion of ty param bounds (which are an enum consisting of a newtyped Ty or
-/// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
-/// built-in trait (formerly known as kind): Send.
+/// Translate the AST's notion of ty param bounds (which are an enum consisting of a newtyped `Ty`
+/// or a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
+/// built-in trait `Send`.
 pub fn compute_bounds<'gcx: 'tcx, 'tcx>(
     astconv: &dyn AstConv<'gcx, 'tcx>,
     param_ty: Ty<'tcx>,
@@ -1988,8 +1988,8 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(
     sized_by_default: SizedByDefault,
     span: Span,
 ) -> Bounds<'tcx> {
-    let mut region_bounds = vec![];
-    let mut trait_bounds = vec![];
+    let mut region_bounds = Vec::new();
+    let mut trait_bounds = Vec::new();
 
     for ast_bound in ast_bounds {
         match *ast_bound {
@@ -1999,7 +1999,7 @@ pub fn compute_bounds<'gcx: 'tcx, 'tcx>(
         }
     }
 
-    let mut projection_bounds = vec![];
+    let mut projection_bounds = Vec::new();
 
     let mut trait_bounds: Vec<_> = trait_bounds.iter().map(|&bound| {
         (astconv.instantiate_poly_trait_ref(bound, param_ty, &mut projection_bounds), bound.span)

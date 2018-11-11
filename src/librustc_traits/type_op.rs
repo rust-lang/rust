@@ -151,17 +151,35 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
         debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
         let ty = self.normalize(ty);
 
-        let mut projected_ty = PlaceTy::from_ty(ty);
+        // We need to follow any provided projetions into the type.
+        //
+        // if we hit a ty var as we descend, then just skip the
+        // attempt to relate the mir local with any type.
+
+        struct HitTyVar;
+        let mut curr_projected_ty: Result<PlaceTy, HitTyVar>;
+        curr_projected_ty = Ok(PlaceTy::from_ty(ty));
         for proj in projs {
-            projected_ty = projected_ty.projection_ty_core(
+            let projected_ty = if let Ok(projected_ty) = curr_projected_ty {
+                projected_ty
+            } else {
+                break;
+            };
+            curr_projected_ty = projected_ty.projection_ty_core(
                 tcx, proj, |this, field, &()| {
-                    let ty = this.field_ty(tcx, field);
-                    self.normalize(ty)
+                    if this.to_ty(tcx).is_ty_var() {
+                        Err(HitTyVar)
+                    } else {
+                        let ty = this.field_ty(tcx, field);
+                        Ok(self.normalize(ty))
+                    }
                 });
         }
-        let ty = projected_ty.to_ty(tcx);
 
-        self.relate(mir_ty, variance, ty)?;
+        if let Ok(projected_ty) = curr_projected_ty {
+            let ty = projected_ty.to_ty(tcx);
+            self.relate(mir_ty, variance, ty)?;
+        }
 
         if let Some(UserSelfTy {
             impl_def_id,

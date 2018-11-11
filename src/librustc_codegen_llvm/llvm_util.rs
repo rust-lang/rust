@@ -257,6 +257,10 @@ pub fn print_version() {
     }
 }
 
+pub fn get_major_version() -> u32 {
+    unsafe { llvm::LLVMRustVersionMajor() }
+}
+
 pub fn print_passes() {
     // Can be called without initializing LLVM
     unsafe { llvm::LLVMRustPrintPasses(); }

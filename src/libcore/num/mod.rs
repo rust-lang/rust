@@ -2152,6 +2152,7 @@ Basic usage:
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::min_value(), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_promotable]
             #[inline]
             pub const fn min_value() -> Self { 0 }
         }
@@ -2168,6 +2169,7 @@ Basic usage:
 stringify!($MaxV), ");", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_promotable]
             #[inline]
             pub const fn max_value() -> Self { !0 }
         }
@@ -2301,7 +2303,12 @@ assert_eq!(n.rotate_left(", $rot, "), m);
             #[rustc_const_unstable(feature = "const_int_rotate")]
             #[inline]
             pub const fn rotate_left(self, n: u32) -> Self {
-                (self << (n % $BITS)) | (self >> (($BITS - (n % $BITS)) % $BITS))
+                #[cfg(not(stage0))] {
+                    unsafe { intrinsics::rotate_left(self, n as $SelfT) }
+                }
+                #[cfg(stage0)] {
+                    (self << (n % $BITS)) | (self >> (($BITS - (n % $BITS)) % $BITS))
+                }
             }
         }
 
@@ -2326,7 +2333,12 @@ assert_eq!(n.rotate_right(", $rot, "), m);
             #[rustc_const_unstable(feature = "const_int_rotate")]
             #[inline]
             pub const fn rotate_right(self, n: u32) -> Self {
-                (self >> (n % $BITS)) | (self << (($BITS - (n % $BITS)) % $BITS))
+                #[cfg(not(stage0))] {
+                    unsafe { intrinsics::rotate_right(self, n as $SelfT) }
+                }
+                #[cfg(stage0)] {
+                    (self >> (n % $BITS)) | (self << (($BITS - (n % $BITS)) % $BITS))
+                }
             }
         }
 
