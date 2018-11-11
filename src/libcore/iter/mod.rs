@@ -339,6 +339,8 @@ pub use self::sources::{RepeatWith, repeat_with};
 pub use self::sources::{Empty, empty};
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub use self::sources::{Once, once};
+#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+pub use self::sources::{Unfold, unfold};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{FromIterator, IntoIterator, DoubleEndedIterator, Extend};

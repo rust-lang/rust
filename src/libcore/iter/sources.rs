@@ -386,3 +386,79 @@ impl<T> FusedIterator for Once<T> {}
 pub fn once<T>(value: T) -> Once<T> {
     Once { inner: Some(value).into_iter() }
 }
+
+/// Creates a new iterator where each iteration calls the provided closure
+/// `F: FnMut(&mut St) -> Option<T>`.
+///
+/// This allows creating a custom iterator with any behavior
+/// without using the more verbose syntax of creating a dedicated type
+/// and implementing the `Iterator` trait for it.
+///
+/// In addition to its captures and environment,
+/// the closure is given a mutable reference to some state
+/// that is preserved across iterations.
+/// That state starts as the given `initial_state` value.
+///
+/// Note that the `Unfold` iterator doesn’t make assumptions about the behavior of the closure,
+/// and therefore conservatively does not implement [`FusedIterator`],
+/// or override [`Iterator::size_hint`] from its default `(0, None)`.
+///
+/// [`FusedIterator`]: trait.FusedIterator.html
+/// [`Iterator::size_hint`]: trait.Iterator.html#method.size_hint
+///
+/// # Examples
+///
+/// Let’s re-implement the counter iterator from [module-level documentation]:
+///
+/// [module-level documentation]: index.html
+///
+/// ```
+/// #![feature(iter_unfold)]
+/// let counter = std::iter::unfold(0, |count| {
+///     // increment our count. This is why we started at zero.
+///     *count += 1;
+///
+///     // check to see if we've finished counting or not.
+///     if *count < 6 {
+///         Some(*count)
+///     } else {
+///         None
+///     }
+/// });
+/// assert_eq!(counter.collect::<Vec<_>>(), &[1, 2, 3, 4, 5]);
+/// ```
+#[inline]
+#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+pub fn unfold<St, T, F>(initial_state: St, f: F) -> Unfold<St, F>
+    where F: FnMut(&mut St) -> Option<T>
+{
+    Unfold {
+        state: initial_state,
+        f,
+    }
+}
+
+/// An iterator where each iteration calls the provided closure `F: FnMut(&mut St) -> Option<T>`.
+///
+/// This `struct` is created by the [`unfold`] function.
+/// See its documentation for more.
+///
+/// [`unfold`]: fn.unfold.html
+#[derive(Copy, Clone, Debug)]
+#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+pub struct Unfold<St, F> {
+    state: St,
+    f: F,
+}
+
+#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+impl<St, T, F> Iterator for Unfold<St, F>
+    where F: FnMut(&mut St) -> Option<T>
+{
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        (self.f)(&mut self.state)
+    }
+}
