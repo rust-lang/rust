@@ -1,0 +1,58 @@
+error[E0364]: `legacy_macro` is private, and cannot be re-exported
+  --> $DIR/macro-rules.rs:11:9
+   |
+LL |     use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
+   |         ^^^^^^^^^^^^^^^^^
+   |
+note: consider marking `legacy_macro` as `pub` in the imported module
+  --> $DIR/macro-rules.rs:11:9
+   |
+LL |     use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
+   |         ^^^^^^^^^^^^^^^^^
+
+error[E0364]: `legacy_macro` is private, and cannot be re-exported
+  --> $DIR/macro-rules.rs:30:13
+   |
+LL |         use legacy_macro as _; //~ ERROR `legacy_macro` is ambiguous
+   |             ^^^^^^^^^^^^^^^^^
+   |
+note: consider marking `legacy_macro` as `pub` in the imported module
+  --> $DIR/macro-rules.rs:30:13
+   |
+LL |         use legacy_macro as _; //~ ERROR `legacy_macro` is ambiguous
+   |             ^^^^^^^^^^^^^^^^^
+
+error[E0364]: `legacy_macro` is private, and cannot be re-exported
+  --> $DIR/macro-rules.rs:41:9
+   |
+LL |     use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
+   |         ^^^^^^^^^^^^^^^^^
+   |
+note: consider marking `legacy_macro` as `pub` in the imported module
+  --> $DIR/macro-rules.rs:41:9
+   |
+LL |     use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
+   |         ^^^^^^^^^^^^^^^^^
+
+error[E0659]: `legacy_macro` is ambiguous (name vs any other name during import resolution)
+  --> $DIR/macro-rules.rs:30:13
+   |
+LL |         use legacy_macro as _; //~ ERROR `legacy_macro` is ambiguous
+   |             ^^^^^^^^^^^^ ambiguous name
+   |
+note: `legacy_macro` could refer to the macro defined here
+  --> $DIR/macro-rules.rs:27:9
+   |
+LL |         macro_rules! legacy_macro { () => () }
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: `legacy_macro` could also refer to the macro defined here
+  --> $DIR/macro-rules.rs:24:5
+   |
+LL |     macro legacy_macro() {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use `self::legacy_macro` to refer to this macro unambiguously
+
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0364, E0659.
+For more information about an error, try `rustc --explain E0364`.

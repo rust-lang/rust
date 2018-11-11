@@ -261,6 +261,12 @@ impl NonMacroAttrKind {
 
 impl Def {
     pub fn def_id(&self) -> DefId {
+        self.opt_def_id().unwrap_or_else(|| {
+            bug!("attempted .def_id() on invalid def: {:?}", self)
+        })
+    }
+
+    pub fn opt_def_id(&self) -> Option<DefId> {
         match *self {
             Def::Fn(id) | Def::Mod(id) | Def::Static(id, _) |
             Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) |
@@ -268,9 +274,8 @@ impl Def {
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
             Def::AssociatedConst(id) | Def::Macro(id, ..) |
-            Def::Existential(id) | Def::AssociatedExistential(id) | Def::ForeignTy(id) |
-            Def::SelfCtor(id) => {
-                id
+            Def::Existential(id) | Def::AssociatedExistential(id) | Def::ForeignTy(id) => {
+                Some(id)
             }
 
             Def::Local(..) |
@@ -278,10 +283,11 @@ impl Def {
             Def::Label(..)  |
             Def::PrimTy(..) |
             Def::SelfTy(..) |
+            Def::SelfCtor(..) |
             Def::ToolMod |
             Def::NonMacroAttr(..) |
             Def::Err => {
-                bug!("attempted .def_id() on invalid def: {:?}", self)
+                None
             }
         }
     }

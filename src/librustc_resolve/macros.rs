@@ -227,7 +227,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
         let binding = self.arenas.alloc_name_binding(NameBinding {
             kind: NameBindingKind::Def(Def::Macro(def_id, kind), false),
             span: DUMMY_SP,
-            vis: ty::Visibility::Invisible,
+            vis: ty::Visibility::Public,
             expansion: Mark::root(),
         });
         if self.builtin_macros.insert(ident.name, binding).is_some() {

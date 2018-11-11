@@ -1079,8 +1079,18 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         // this may resolve to either a value or a type, but for documentation
         // purposes it's good enough to just favor one over the other.
         self.per_ns(|this, ns| if let Some(binding) = result[ns].get().ok() {
+            let mut def = binding.def();
+            if let Def::Macro(def_id, _) = def {
+                // `DefId`s from the "built-in macro crate" should not leak from resolve because
+                // later stages are not ready to deal with them and produce lots of ICEs. Replace
+                // them with `Def::Err` until some saner scheme is implemented for built-in macros.
+                if def_id.krate == CrateNum::BuiltinMacros {
+                    this.session.span_err(directive.span, "cannot import a built-in macro");
+                    def = Def::Err;
+                }
+            }
             let import = this.import_map.entry(directive.id).or_default();
-            import[ns] = Some(PathResolution::new(binding.def()));
+            import[ns] = Some(PathResolution::new(def));
         });
 
         debug!("(resolving single import) successfully resolved import");
@@ -1152,9 +1162,10 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             if binding.is_import() || binding.is_macro_def() {
                 let def = binding.def();
                 if def != Def::Err {
-                    let def_id = def.def_id();
-                    if !def_id.is_local() && def_id.krate != CrateNum::BuiltinMacros {
-                        self.cstore.export_macros_untracked(def_id.krate);
+                    if let Some(def_id) = def.opt_def_id() {
+                        if !def_id.is_local() && def_id.krate != CrateNum::BuiltinMacros {
+                            self.cstore.export_macros_untracked(def_id.krate);
+                        }
                     }
                     reexports.push(Export {
                         ident: ident.modern(),
