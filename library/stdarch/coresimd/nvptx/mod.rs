@@ -11,9 +11,6 @@
 //! [llvm_docs]:
 //! https://llvm.org/docs/NVPTXUsage.html
 
-#[cfg(test)]
-use stdsimd_test::assert_instr;
-
 #[allow(improper_ctypes)]
 extern "C" {
     #[link_name = "llvm.nvvm.barrier0"]
