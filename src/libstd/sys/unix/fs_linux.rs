@@ -6,10 +6,7 @@ use mem;
 use path::Path;
 use ptr;
 use sys::{cvt, cvt_r};
-use cmp;
 use fs::File;
-use sync::atomic::{AtomicBool, Ordering};
-use super::ext::fs::MetadataExt;
 use super::ext::io::AsRawFd;
 
 
@@ -122,24 +119,24 @@ fn copy_bytes_uspace(mut reader: &File, mut writer: &File, nbytes: usize) -> io:
 
 
 // Kernel prior to 4.5 don't have copy_file_range We store the
-// availability in a thread-local flag to avoid unnecessary syscalls
+// availability in a thread-local flag to avoid unnecessary syscalls.
 thread_local! {
     static HAS_COPY_FILE_RANGE: RefCell<bool> = RefCell::new(true);
 }
 
-fn copy_bytes(mut reader: &File, mut writer: &File, uspace: bool, nbytes: usize) -> io::Result<u64> {
+fn copy_bytes(reader: &File, writer: &File, uspace: bool, nbytes: u64) -> io::Result<u64> {
     HAS_COPY_FILE_RANGE.with(|cfr| {
         loop {
             if uspace || !*cfr.borrow() {
-                return io::copy(&mut reader, &mut writer);
+                return copy_bytes_uspace(reader, writer, nbytes as usize)
 
             } else {
-                let result = copy_bytes_kernel(reader, writer, nbytes);
+                let result = copy_bytes_kernel(reader, writer, nbytes as usize);
 
                 if let Err(ref err) = result {
                     match err.raw_os_error() {
                         Some(libc::ENOSYS) | Some(libc::EPERM) => {
-                            // Flag as missing and retry.
+                            // Flag as unavailable and retry.
                             *cfr.borrow_mut() = false;
                             continue;
                         }
@@ -153,29 +150,12 @@ fn copy_bytes(mut reader: &File, mut writer: &File, uspace: bool, nbytes: usize)
     })
 }
 
-/// Version of copy_file_range that defers offset-management to the
-/// syscall. see copy_file_range(2) for details.
-pub fn copy_file_bytes(infd: &File, outfd: &File, bytes: u64) -> io::Result<u64> {
-    let r = cvt(unsafe {
-        copy_file_range(
-            infd.as_raw_fd(),
-            ptr::null_mut(),
-            outfd.as_raw_fd(),
-            ptr::null_mut(),
-            bytes as usize,
-            0,
-        ) as i64
-    })?;
-    Ok(r as u64)
-}
-
-
 
 /// Copy len bytes from whereever the descriptor cursors are set.
-fn copy_range(infd: &File, outfd: &File, len: u64) -> io::Result<u64> {
-    let mut written = 0u64;
+fn copy_range(infd: &File, outfd: &File, uspace: bool, len: u64) -> io::Result<u64> {
+    let mut written = 0;
     while written < len {
-        let result = copy_file_bytes(&infd, &outfd, len - written)?;
+        let result = copy_bytes(&infd, &outfd, uspace, len - written)?;
         written += result;
     }
     Ok(written)
@@ -194,7 +174,7 @@ fn next_sparse_segments(fd: &File, pos: u64) -> io::Result<(u64, u64)> {
     Ok((next_data, next_hole))
 }
 
-fn copy_sparse(infd: &File, outfd: &File) -> io::Result<u64> {
+fn copy_sparse(infd: &File, outfd: &File, uspace: bool) -> io::Result<u64> {
     let len = infd.metadata()?.len();
     allocate_file(&outfd, len)?;
 
@@ -205,7 +185,7 @@ fn copy_sparse(infd: &File, outfd: &File) -> io::Result<u64> {
         lseek(infd, next_data as i64, Wence::Set)?;
         lseek(outfd, next_data as i64, Wence::Set)?;
 
-        let _written = copy_range(infd, outfd, next_hole - next_data)?;
+        let _written = copy_range(infd, outfd, uspace, next_hole - next_data)?;
         pos = next_hole;
     }
 
@@ -213,52 +193,44 @@ fn copy_sparse(infd: &File, outfd: &File) -> io::Result<u64> {
 }
 
 
-fn is_sparse(fd: &File) -> io::Result<bool> {
+fn stat(fd: &File) -> io::Result<libc::stat> {
     let mut stat: libc::stat = unsafe { mem::uninitialized() };
     cvt(unsafe { libc::fstat(fd.as_raw_fd(), &mut stat) })?;
-    Ok(stat.st_blocks < stat.st_size / stat.st_blksize)
+    Ok(stat)
+}
+
+fn copy_parms(infd: &File, outfd: &File) -> io::Result<(bool, bool)> {
+    let in_stat = stat(infd)?;
+    let out_stat = stat(outfd)?;
+    let is_sparse = in_stat.st_blocks < in_stat.st_size / in_stat.st_blksize;
+    let is_xmount = in_stat.st_dev != out_stat.st_dev;
+    Ok((is_sparse, is_xmount))
 }
 
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
-
     if !from.is_file() {
         return Err(Error::new(ErrorKind::InvalidInput,
                               "the source path is not an existing regular file"))
     }
 
-    let mut reader = File::open(from)?;
-    let mut writer = File::create(to)?;
-    let (perm, len) = {
-        let metadata = reader.metadata()?;
-        (metadata.permissions(), metadata.size())
+    let infd = File::open(from)?;
+    let outfd = File::create(to)?;
+    let (is_sparse, is_xmount) = copy_parms(&infd, &outfd)?;
+    let uspace = is_xmount;
+
+    let total = if is_sparse {
+        copy_sparse(&infd, &outfd, uspace)?
+
+    } else {
+        let len = infd.metadata()?.len();
+        copy_range(&infd, &outfd, uspace, len)?
     };
-    let _sparse = is_sparse(&reader)?;
 
-    let mut userspace = false;
-    let mut written = 0u64;
-    while written < len {
-        let bytes_to_copy = cmp::min(len - written, usize::max_value() as u64) as usize;
-        let copy_result = copy_bytes(&mut reader, &mut writer, userspace, bytes_to_copy);
-
-        match copy_result {
-            Ok(ret) => written += ret,
-            Err(err) => {
-                match err.raw_os_error() {
-                    Some(os_err) if os_err == libc::EXDEV => {
-                        // Files are mounted on different fs (EXDEV);
-                        // flag as retry with userspace copy.
-                        assert_eq!(written, 0);
-                        userspace = true;
-                    },
-                    _ => return Err(err),
-                }
-            }
-        }
-    }
-    writer.set_permissions(perm)?;
-    Ok(written)
+    outfd.set_permissions(infd.metadata()?.permissions())?;
+    Ok(total)
 }
+
 
 
 #[cfg(test)]
@@ -313,6 +285,11 @@ mod tests {
     }
 
 
+    fn is_sparse(fd: &File) -> io::Result<bool> {
+        let stat = stat(fd)?;
+        Ok(stat.st_blocks < stat.st_size / stat.st_blksize)
+    }
+
     #[test]
     fn test_sparse_detection() {
         assert!(!is_sparse(&File::open("Cargo.toml").unwrap()).unwrap());
@@ -335,8 +312,7 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_copy_range_sparse() {
+    fn test_copy_range(uspace: bool) {
         let dir = tempdir().unwrap();
         let (sparse, other) = tmps(&dir);
         let data = "test data";
@@ -354,10 +330,20 @@ mod tests {
                 .write(true)
                 .append(false)
                 .open(&sparse).unwrap();
-            copy_file_bytes(&infd, &outfd, data.len() as u64).unwrap();
+            copy_range(&infd, &outfd, uspace, data.len() as u64).unwrap();
         }
 
         assert!(is_sparse(&File::open(&sparse).unwrap()).unwrap());
+    }
+
+    #[test]
+    fn test_copy_range_sparse_kernel() {
+        test_copy_range(false);
+    }
+
+    #[test]
+    fn test_copy_range_sparse_uspace() {
+        test_copy_range(true);
     }
 
     #[test]
@@ -373,7 +359,7 @@ mod tests {
 
         create_sparse(&sparse);
 
-        let offset: usize = 512*1024;
+        let offset = 512*1024;
         {
             let infd = File::open(&other).unwrap();
             let outfd: File = OpenOptions::new()
@@ -448,11 +434,11 @@ mod tests {
         let dir = tempdir().unwrap();
         let (sparse, _) = tmps(&dir);
 
-        let len = create_sparse_with_data(&sparse, 0, 10) as usize;
+        let len = create_sparse_with_data(&sparse, 0, 10);
         assert!(is_sparse(&File::open(&sparse).unwrap()).unwrap());
 
         let bytes = read(&sparse).unwrap();
-        assert!(bytes.len() == len);
+        assert!(bytes.len() == len as usize);
 
         let offset = 1024 * 4096;
         assert!(bytes[offset] == b'c');
