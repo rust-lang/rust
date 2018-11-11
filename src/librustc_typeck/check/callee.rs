@@ -218,35 +218,62 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
 
-                let mut err = type_error_struct!(
-                    self.tcx.sess,
-                    call_expr.span,
-                    callee_ty,
-                    E0618,
-                    "expected function, found {}",
-                    match unit_variant {
-                        Some(ref path) => format!("enum variant `{}`", path),
-                        None => format!("`{}`", callee_ty),
-                    });
+                if let hir::ExprKind::Call(ref callee, _) = call_expr.node {
+                    let mut err = type_error_struct!(
+                        self.tcx.sess,
+                        callee.span,
+                        callee_ty,
+                        E0618,
+                        "expected function, found {}",
+                        match unit_variant {
+                            Some(ref path) => format!("enum variant `{}`", path),
+                            None => format!("`{}`", callee_ty),
+                        });
 
-                err.span_label(call_expr.span, "not a function");
+                    if let Some(ref path) = unit_variant {
+                        err.span_suggestion_with_applicability(
+                            call_expr.span,
+                            &format!("`{}` is a unit variant, you need to write it \
+                                      without the parenthesis", path),
+                            path.to_string(),
+                            Applicability::MachineApplicable
+                        );
+                    }
 
-                if let Some(ref path) = unit_variant {
-                    err.span_suggestion_with_applicability(
-                        call_expr.span,
-                        &format!("`{}` is a unit variant, you need to write it \
-                                  without the parenthesis", path),
-                        path.to_string(),
-                        Applicability::MachineApplicable
-                    );
-                }
-
-                if let hir::ExprKind::Call(ref expr, _) = call_expr.node {
-                    let def = if let hir::ExprKind::Path(ref qpath) = expr.node {
-                        self.tables.borrow().qpath_def(qpath, expr.hir_id)
-                    } else {
-                        Def::Err
+                    let mut inner_callee_path = None;
+                    let def = match callee.node {
+                        hir::ExprKind::Path(ref qpath) => {
+                            self.tables.borrow().qpath_def(qpath, callee.hir_id)
+                        },
+                        hir::ExprKind::Call(ref inner_callee, _) => {
+                            // If the call spans more than one line and the callee kind is
+                            // itself another `ExprCall`, that's a clue that we might just be
+                            // missing a semicolon (Issue #51055)
+                            let call_is_multiline = self.tcx.sess.source_map()
+                                .is_multiline(call_expr.span);
+                            if call_is_multiline {
+                                let span = self.tcx.sess.source_map().next_point(callee.span);
+                                err.span_suggestion_with_applicability(
+                                    span,
+                                    "try adding a semicolon",
+                                    ";".to_owned(),
+                                    Applicability::MaybeIncorrect
+                                );
+                            }
+                            if let hir::ExprKind::Path(ref inner_qpath) = inner_callee.node {
+                                inner_callee_path = Some(inner_qpath);
+                                self.tables.borrow().qpath_def(inner_qpath, inner_callee.hir_id)
+                            } else {
+                                Def::Err
+                            }
+                        },
+                        _ => {
+                            Def::Err
+                        }
                     };
+
+                    err.span_label(call_expr.span, "call expression requires function");
+
                     let def_span = match def {
                         Def::Err => None,
                         Def::Local(id) | Def::Upvar(id, ..) => {
@@ -255,15 +282,19 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         _ => self.tcx.hir.span_if_local(def.def_id())
                     };
                     if let Some(span) = def_span {
-                        let name = match unit_variant {
-                            Some(path) => path,
-                            None => callee_ty.to_string(),
+                        let label = match (unit_variant, inner_callee_path) {
+                            (Some(path), _) => format!("`{}` defined here", path),
+                            (_, Some(hir::QPath::Resolved(_, path))) => format!(
+                                "`{}` defined here returns `{}`", path, callee_ty.to_string()
+                            ),
+                            _ => format!("`{}` defined here", callee_ty.to_string()),
                         };
-                        err.span_label(span, format!("`{}` defined here", name));
+                        err.span_label(span, label);
                     }
+                    err.emit();
+                } else {
+                    bug!("call_expr.node should be an ExprKind::Call, got {:?}", call_expr.node);
                 }
-
-                err.emit();
 
                 // This is the "default" function signature, used in case of error.
                 // In that case, we check each argument against "error" in order to
