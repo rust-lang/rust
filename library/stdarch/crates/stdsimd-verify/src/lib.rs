@@ -113,7 +113,7 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
                 "u64" => quote! { &U64 },
                 "u8" => quote! { &U8 },
                 "CpuidResult" => quote! { &CPUID },
-                s => panic!("unspported type: {}", s),
+                s => panic!("unspported type: \"{}\"", s),
             }
         }
         syn::Type::Ptr(syn::TypePtr { ref elem, .. })
@@ -124,6 +124,7 @@ fn to_type(t: &syn::Type) -> proc_macro2::TokenStream {
         syn::Type::Slice(_) => panic!("unsupported slice"),
         syn::Type::Array(_) => panic!("unsupported array"),
         syn::Type::Tuple(_) => quote! { &TUPLE },
+        syn::Type::Never(_) => quote! { &NEVER },
         _ => panic!("unsupported type"),
     }
 }

@@ -57,6 +57,7 @@ static M256D: Type = Type::M256D;
 
 static TUPLE: Type = Type::Tuple;
 static CPUID: Type = Type::CpuidResult;
+static NEVER: Type = Type::Never;
 
 #[derive(Debug)]
 enum Type {
@@ -73,6 +74,7 @@ enum Type {
     M256I,
     Tuple,
     CpuidResult,
+    Never,
 }
 
 x86_functions!(static FUNCTIONS);
@@ -135,14 +137,20 @@ fn verify_all_signatures() {
     let mut all_valid = true;
     'outer: for rust in FUNCTIONS {
         match rust.name {
-            // These aren't defined by Intel but they're defined by what
-            // appears to be all other compilers. For more
-            // information see rust-lang-nursery/stdsimd#307, and
-            // otherwise these signatures have all been manually
-            // verified.
-            "__readeflags" | "__writeeflags" | "__cpuid_count" | "__cpuid"
-            | "__get_cpuid_max" => continue,
-
+            // These aren't defined by Intel but they're defined by what appears
+            // to be all other compilers. For more information see
+            // rust-lang-nursery/stdsimd#307, and otherwise these signatures
+            // have all been manually verified.
+            "__readeflags" |
+            "__writeeflags" |
+            "__cpuid_count" |
+            "__cpuid" |
+            "__get_cpuid_max" |
+            // The UD2 intrinsic is not defined by Intel, but it was agreed on
+            // in the RFC Issue 2512:
+            // https://github.com/rust-lang/rfcs/issues/2512
+            "ud2"
+                => continue,
             _ => {}
         }
 
