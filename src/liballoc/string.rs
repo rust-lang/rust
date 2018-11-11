@@ -2214,9 +2214,9 @@ impl From<Box<str>> for String {
     /// Basic usage:
     ///
     /// ```
-    /// let s1 : String = String::from("hello world");
-    /// let s2 : Box<str> = s1.into_boxed_str();
-    /// let s3 : String = String::from(s2);
+    /// let s1: String = String::from("hello world");
+    /// let s2: Box<str> = s1.into_boxed_str();
+    /// let s3: String = String::from(s2);
     ///
     /// assert_eq!("hello world", s3)
     /// ```
@@ -2234,9 +2234,9 @@ impl From<String> for Box<str> {
     /// Basic usage:
     ///
     /// ```
-    /// let s1 = String::from("hello world");
-    /// let s2 : Box<str> = Box::from(s1);
-    /// let s3 : String = String::from(s2);
+    /// let s1: String = String::from("hello world");
+    /// let s2: Box<str> = Box::from(s1);
+    /// let s3: String = String::from(s2);
     ///
     /// assert_eq!("hello world", s3)
     /// ```
