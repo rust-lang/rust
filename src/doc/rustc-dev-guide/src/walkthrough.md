@@ -15,7 +15,7 @@ where to start, please feel free to ask!
 The feature I will discuss in this chapter is the `?` Kleene operator for
 macros. Basically, we want to be able to write something like this:
 
-```rust
+```rust,ignore
 macro_rules! foo {
     ($arg:ident $(, $optional_arg:ident)?) => {
         println!("{}", $arg);
@@ -144,5 +144,70 @@ Some other possible outcomes might be for a team member to propose to
 <a name="impl"></a>
 
 ## Implementation
+
+To make a change to the compiler, open a PR against the [rust-lang/rust] repo.
+
+[rust-lang/rust]: https://github.com/rust-lang/rust
+
+Depending on the feature/change/bug fix/improvement, implementation may be
+relatively-straightforward or it may be a major undertaking. You can always ask
+for help or mentorship from more experienced compiler devs.  Also, you don't
+have to be the one to implement your feature; but keep in mind that if you
+don't it might be a while before someone else does.
+
+For the `?` macro feature, I needed to go understand the relevant parts of
+macro expansion in the compiler. Personally, I find that [improving the
+comments][comments] in the code is a helpful way of making sure I understand
+it, but you don't have to do that if you don't want to.
+
+[comments]: https://github.com/rust-lang/rust/pull/47732
+
+I then [implemented][impl1] the original feature, as described in the RFC. When
+a new feature is implemented, it goes behind a _feature gate_, which means that
+you have to use `#![feature(my_feature_name)]` to use the feature. The feature
+gate is removed when the feature is stabilized.
+
+**Most bug fixes and improvements** don't require a feature gate. You can just
+make your changes/improvements.
+
+When you open a PR on the [rust-lang/rust], a bot will assign your PR to a
+review. If there is a particular rust team member you are working with, you can
+request that reviewer by leaving a comment on the thread with `r?
+@reviewer-github-id` (e.g. `r? @eddyb`). If you don't know who to request,
+don't request anyone; the bot will assign someone automatically.
+
+The reviewer may request changes before they approve your PR. Feel free to ask
+questions or discuss things you don't understand or disagree with. However,
+recognize that the PR won't be merged unless someone on the rust team approves
+it.
+
+When your review approves the PR, it will go into a queue for yet another bot
+called `@bors`.  `@bors` manages the CI build/merge queue. When your PR reaches
+the head of the `@bors` queue, `@bors` will test out the merge by running all
+tests against your PR on Travis CI. This takes about 2 hours as of this
+writing.  If all tests pass, the PR is merged and becomes part of the next
+nightly compiler!
+
+There are a couple of things that may happen for some PRs during the review process
+
+- If the change is substantial enough, the reviewer may request an FCP on
+  the PR. This gives all members of the appropriate team a chance to review the
+  changes.
+- If the change may cause breakage, the reviewer may request a [crater] run.
+  This compiles the compiler with your changes and then attempts to compile all
+  crates on crates.io with your modified compiler. This is a great smoke test
+  to check if you introduced a change to compiler behavior that affects a large
+  portion of the ecosystem.
+- If the diff of your PR is large or the reviewer is busy, your PR may have
+  some merge conflicts with other PRs. You should fix these merge conflicts
+  using the normal git procedures.
+
+[crater]: ./tests/intro.html#crater
+
+## Refining your implementation
+
+TODO
+
+## Stabilization
 
 TODO
