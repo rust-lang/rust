@@ -58,7 +58,7 @@ impl RWLock {
             }
             panic!("rwlock read lock would result in deadlock");
         } else {
-            debug_assert_eq!(r, 0);
+            assert_eq!(r, 0);
             self.num_readers.fetch_add(1, Ordering::Relaxed);
         }
     }
