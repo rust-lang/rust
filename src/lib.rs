@@ -404,16 +404,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
             let obj = artifact.emit().unwrap();
             std::fs::write(&tmp_file, obj).unwrap();
 
-            /*use rustc_mir::monomorphize::partitioning::CodegenUnitExt;
-
-            let dep_node = tcx.codegen_unit(cgu_name).codegen_dep_node(tcx);
-            let ((stats, module), _) = tcx.dep_graph.with_task(
-                dep_node,
-                tcx,
-                cgu_name,
-                module_codegen,
-            );*/
-
             return Box::new(CodegenResults {
                 artifact,
                 metadata: metadata.raw_data,

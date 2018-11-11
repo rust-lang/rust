@@ -253,20 +253,6 @@ pub(crate) fn link_bin(sess: &Session, codegen_results: &CodegenResults, out_fil
     }
 }
 
-/*
-res.artifact
-    .declare_with(
-        &metadata_name,
-        faerie::artifact::Decl::Data {
-            global: true,
-            writable: false,
-        },
-        res.metadata.clone(),
-    )
-    .unwrap();
-*/
-
-
 fn link_args(cmd: &mut dyn Linker,
              flavor: LinkerFlavor,
              sess: &Session,
