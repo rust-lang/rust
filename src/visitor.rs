@@ -236,7 +236,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
             }
         }
 
-        let unindent_comment = (self.is_if_else_block && !b.stmts.is_empty()) && {
+        let unindent_comment = self.is_if_else_block && !b.stmts.is_empty() && {
             let end_pos = source!(self, b.span).hi() - brace_compensation - remove_len;
             let snippet = self.snippet(mk_sp(self.last_pos, end_pos));
             snippet.contains("//") || snippet.contains("/*")
