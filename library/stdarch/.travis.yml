@@ -13,7 +13,7 @@ matrix:
       env: TARGET=x86_64-unknown-linux-gnu
       install: true
     - name: "x86_64-unknown-linux-gnu-emulated (runs all assert_instr tests)"
-      env: TARGET=x86_64-unknown-linux-gnu-emulated STDSIMD_TEST_EVERYTHING=1
+      env: TARGET=x86_64-unknown-linux-gnu-emulated STDSIMD_TEST_EVERYTHING=1 RUSTFLAGS="--cfg stdsimd_intel_sde"
       install: true
     - name: "x86_64-linux-android - no assert_instr"
       env: TARGET=x86_64-linux-android STDSIMD_DISABLE_ASSERT_INSTR=1
@@ -104,7 +104,9 @@ matrix:
         fi
     - name: "Shellcheck"
       install: true
-      script: shellcheck ci/*.sh
+      script:
+        - shellcheck --version
+        - shellcheck ci/*.sh
   allow_failures:
     - env: TARGET=i686-pc-windows-gnu
 
