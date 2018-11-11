@@ -16,7 +16,7 @@ mod foo {
     pub type Bar = u32;
 }
 
-mod baz {
+mod bazz {
     use foo::Bar;
 
     fn baz() {

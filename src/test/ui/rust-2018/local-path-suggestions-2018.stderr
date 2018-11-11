@@ -6,18 +6,12 @@ LL |     use foo::Bar;
    |
    = note: `use` statements changed in Rust 2018; read more at <https://doc.rust-lang.org/edition-guide/rust-2018/module-system/path-clarity.html>
 
-error[E0432]: unresolved import `foo`
-  --> $DIR/local-path-suggestions-2018.rs:27:5
-   |
-LL | use foo::Bar;
-   |     ^^^ Did you mean `self::foo`?
-
 error[E0432]: unresolved import `foobar`
   --> $DIR/local-path-suggestions-2018.rs:29:5
    |
 LL | use foobar::Baz;
    |     ^^^^^^ Did you mean `baz::foobar`?
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0432`.
