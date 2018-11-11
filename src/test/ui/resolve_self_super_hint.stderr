@@ -14,13 +14,13 @@ error[E0432]: unresolved import `alloc`
   --> $DIR/resolve_self_super_hint.rs:24:17
    |
 LL |             use alloc::HashMap;
-   |                 ^^^^^ Did you mean `std::alloc`?
+   |                 ^^^^^ Did you mean `a::alloc`?
 
 error[E0432]: unresolved import `alloc`
   --> $DIR/resolve_self_super_hint.rs:28:21
    |
 LL |                 use alloc::HashMap;
-   |                     ^^^^^ Did you mean `std::alloc`?
+   |                     ^^^^^ Did you mean `a::alloc`?
 
 error: aborting due to 4 previous errors
 

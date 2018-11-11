@@ -23,11 +23,11 @@ mod a {
         mod c {
             use alloc::HashMap;
             //~^ ERROR unresolved import `alloc` [E0432]
-            //~| Did you mean `std::alloc`?
+            //~| Did you mean `a::alloc`?
             mod d {
                 use alloc::HashMap;
                 //~^ ERROR unresolved import `alloc` [E0432]
-                //~| Did you mean `std::alloc`?
+                //~| Did you mean `a::alloc`?
             }
         }
     }

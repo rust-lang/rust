@@ -11,46 +11,40 @@
 use {CrateLint, PathResult};
 use macros::ParentScope;
 
-use std::collections::BTreeSet;
-
 use syntax::ast::Ident;
-use syntax::symbol::{keywords, Symbol};
+use syntax::symbol::keywords;
 use syntax_pos::Span;
 
 use resolve_imports::ImportResolver;
+use std::cmp::Reverse;
 
 impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     /// Add suggestions for a path that cannot be resolved.
     pub(crate) fn make_path_suggestion(
         &mut self,
         span: Span,
-        path: Vec<Ident>,
+        mut path: Vec<Ident>,
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Ident>, Option<String>)> {
         debug!("make_path_suggestion: span={:?} path={:?}", span, path);
-        // If we don't have a path to suggest changes to, then return.
-        if path.is_empty() {
-            return None;
-        }
-
-        // Check whether a ident is a path segment that is not root.
-        let is_special = |ident: Ident| ident.is_path_segment_keyword() &&
-                                        ident.name != keywords::CrateRoot.name();
 
         match (path.get(0), path.get(1)) {
-            // Make suggestions that require at least two non-special path segments.
-            (Some(fst), Some(snd)) if !is_special(*fst) && !is_special(*snd) => {
-                debug!("make_path_suggestion: fst={:?} snd={:?}", fst, snd);
-
-                self.make_missing_self_suggestion(span, path.clone(), parent_scope)
-                    .or_else(|| self.make_missing_crate_suggestion(span, path.clone(),
-                                                                   parent_scope))
-                    .or_else(|| self.make_missing_super_suggestion(span, path.clone(),
-                                                                   parent_scope))
-                    .or_else(|| self.make_external_crate_suggestion(span, path, parent_scope))
-            },
-            _ => None,
+            // `{{root}}::ident::...` on both editions.
+            // On 2015 `{{root}}` is usually added implicitly.
+            (Some(fst), Some(snd)) if fst.name == keywords::CrateRoot.name() &&
+                                      !snd.is_path_segment_keyword() => {}
+            // `ident::...` on 2018
+            (Some(fst), _) if self.session.rust_2018() && !fst.is_path_segment_keyword() => {
+                // Insert a placeholder that's later replaced by `self`/`super`/etc.
+                path.insert(0, keywords::Invalid.ident());
+            }
+            _ => return None,
         }
+
+        self.make_missing_self_suggestion(span, path.clone(), parent_scope)
+            .or_else(|| self.make_missing_crate_suggestion(span, path.clone(), parent_scope))
+            .or_else(|| self.make_missing_super_suggestion(span, path.clone(), parent_scope))
+            .or_else(|| self.make_external_crate_suggestion(span, path, parent_scope))
     }
 
     /// Suggest a missing `self::` if that resolves to an correct module.
@@ -148,22 +142,20 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         mut path: Vec<Ident>,
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Ident>, Option<String>)> {
-        // Need to clone else we can't call `resolve_path` without a borrow error. We also store
-        // into a `BTreeMap` so we can get consistent ordering (and therefore the same diagnostic)
-        // each time.
-        let external_crate_names: BTreeSet<Symbol> = self.resolver.extern_prelude
-            .iter().map(|(ident, _)| ident.name).collect();
+        if !self.session.rust_2018() {
+            return None;
+        }
 
-        // Insert a new path segment that we can replace.
-        let new_path_segment = path[0].clone();
-        path.insert(1, new_path_segment);
+        // Sort extern crate names in reverse order to get
+        // 1) some consistent ordering for emitted dignostics and
+        // 2) `std` suggestions before `core` suggestions.
+        let mut extern_crate_names =
+            self.resolver.extern_prelude.iter().map(|(ident, _)| ident.name).collect::<Vec<_>>();
+        extern_crate_names.sort_by_key(|name| Reverse(name.as_str()));
 
-        // Iterate in reverse so that we start with crates at the end of the alphabet. This means
-        // that we'll always get `std` before `core`.
-        for name in external_crate_names.iter().rev() {
-            // Replace the first after root (a placeholder we inserted) with a crate name
-            // and check if that is valid.
-            path[1].name = *name;
+        for name in extern_crate_names.into_iter() {
+            // Replace first ident with a crate name and check if that is valid.
+            path[0].name = name;
             let result = self.resolve_path(&path, None, parent_scope, false, span, CrateLint::No);
             debug!("make_external_crate_suggestion: name={:?} path={:?} result={:?}",
                     name, path, result);
@@ -172,8 +164,6 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             }
         }
 
-        // Remove our placeholder segment.
-        path.remove(1);
         None
     }
 }
