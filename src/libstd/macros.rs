@@ -16,7 +16,7 @@
 
 /// The entry point for panic of Rust threads.
 ///
-/// This allows a program to to terminate immediately and provide feedback
+/// This allows a program to terminate immediately and provide feedback
 /// to the caller of the program. `panic!` should be used when a program reaches
 /// an unrecoverable problem.
 ///
