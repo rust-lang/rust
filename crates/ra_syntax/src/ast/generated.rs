@@ -372,6 +372,43 @@ impl<R: TreeRoot<RaTypes>> BreakExprNode<R> {
 
 impl<'a> BreakExpr<'a> {}
 
+// Byte
+#[derive(Debug, Clone, Copy,)]
+pub struct ByteNode<R: TreeRoot<RaTypes> = OwnedRoot> {
+    pub(crate) syntax: SyntaxNode<R>,
+}
+pub type Byte<'a> = ByteNode<RefRoot<'a>>;
+
+impl<R1: TreeRoot<RaTypes>, R2: TreeRoot<RaTypes>> PartialEq<ByteNode<R1>> for ByteNode<R2> {
+    fn eq(&self, other: &ByteNode<R1>) -> bool { self.syntax == other.syntax }
+}
+impl<R: TreeRoot<RaTypes>> Eq for ByteNode<R> {}
+impl<R: TreeRoot<RaTypes>> Hash for ByteNode<R> {
+    fn hash<H: Hasher>(&self, state: &mut H) { self.syntax.hash(state) }
+}
+
+impl<'a> AstNode<'a> for Byte<'a> {
+    fn cast(syntax: SyntaxNodeRef<'a>) -> Option<Self> {
+        match syntax.kind() {
+            BYTE => Some(Byte { syntax }),
+            _ => None,
+        }
+    }
+    fn syntax(self) -> SyntaxNodeRef<'a> { self.syntax }
+}
+
+impl<R: TreeRoot<RaTypes>> ByteNode<R> {
+    pub fn borrowed(&self) -> Byte {
+        ByteNode { syntax: self.syntax.borrowed() }
+    }
+    pub fn owned(&self) -> ByteNode {
+        ByteNode { syntax: self.syntax.owned() }
+    }
+}
+
+
+impl<'a> Byte<'a> {}
+
 // CallExpr
 #[derive(Debug, Clone, Copy,)]
 pub struct CallExprNode<R: TreeRoot<RaTypes> = OwnedRoot> {
