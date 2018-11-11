@@ -20,26 +20,7 @@ pub(super) fn validate_byte_node(node: ast::Byte, errors: &mut Vec<SyntaxError>)
         len += 1;
         let text = &literal_text[component.range];
         let range = component.range + literal_range.start();
-
-        use self::CharComponentKind::*;
-        match component.kind {
-            AsciiEscape => validate_byte_escape(text, range, errors),
-            AsciiCodeEscape => validate_byte_code_escape(text, range, errors),
-            UnicodeEscape => errors.push(SyntaxError::new(UnicodeEscapeForbidden, range)),
-            CodePoint => {
-                let c = text.chars().next().expect("Code points should be one character long");
-
-                // These bytes must always be escaped
-                if c == '\t' || c == '\r' || c == '\n' {
-                    errors.push(SyntaxError::new(UnescapedByte, range));
-                }
-
-                // Only ASCII bytes are allowed
-                if c > 0x7F as char {
-                    errors.push(SyntaxError::new(ByteOutOfRange, range));
-                }
-            }
-        }
+        validate_byte_component(text, component.kind, range, errors);
     }
 
     if !components.has_closing_quote {
@@ -52,6 +33,33 @@ pub(super) fn validate_byte_node(node: ast::Byte, errors: &mut Vec<SyntaxError>)
 
     if len > 1 {
         errors.push(SyntaxError::new(OverlongByte, literal_range));
+    }
+}
+
+pub(super) fn validate_byte_component(
+    text: &str,
+    kind: CharComponentKind,
+    range: TextRange,
+    errors: &mut Vec<SyntaxError>,
+) {
+    use self::CharComponentKind::*;
+    match kind {
+        AsciiEscape => validate_byte_escape(text, range, errors),
+        AsciiCodeEscape => validate_byte_code_escape(text, range, errors),
+        UnicodeEscape => errors.push(SyntaxError::new(UnicodeEscapeForbidden, range)),
+        CodePoint => {
+            let c = text.chars().next().expect("Code points should be one character long");
+
+            // These bytes must always be escaped
+            if c == '\t' || c == '\r' || c == '\n' {
+                errors.push(SyntaxError::new(UnescapedByte, range));
+            }
+
+            // Only ASCII bytes are allowed
+            if c > 0x7F as char {
+                errors.push(SyntaxError::new(ByteOutOfRange, range));
+            }
+        }
     }
 }
 
@@ -141,7 +149,7 @@ mod test {
     #[test]
     fn test_valid_byte_escape() {
         let valid = [
-            r"\'", "\"", "\\\\", "\\\"", r"\n", r"\r", r"\t", r"\0", "a", "b",
+            r"\'", "\"", "\\\\", "\\\"", r"\n", r"\r", r"\t", r"\0",
         ];
         for c in &valid {
             assert_valid_byte(c);

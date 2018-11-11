@@ -413,6 +413,7 @@ Grammar(
         "BinExpr": (),
         "String": (),
         "Byte": (),
+        "ByteString": (),
         "Char": (),
         "Literal": (),
 

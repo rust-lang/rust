@@ -140,6 +140,12 @@ impl<'a> Byte<'a> {
     }
 }
 
+impl<'a> ByteString<'a> {
+    pub fn text(&self) -> &SmolStr {
+        &self.syntax().leaf_text().unwrap()
+    }
+}
+
 impl<'a> String<'a> {
     pub fn text(&self) -> &SmolStr {
         &self.syntax().leaf_text().unwrap()
