@@ -265,7 +265,7 @@ impl<'tcx> LayoutLlvmExt<'tcx> for TyLayout<'tcx> {
                         ty::ParamEnv::reveal_all(),
                         &sig,
                     );
-                    FnType::new(cx, sig, &[]).llvm_type(cx).ptr_to()
+                    FnType::new(cx, sig, &[]).ptr_to_llvm_type(cx)
                 }
                 _ => self.scalar_llvm_type_at(cx, scalar, Size::ZERO)
             };
