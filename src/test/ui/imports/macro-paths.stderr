@@ -34,7 +34,7 @@ LL | / pub mod baz {
 LL | |     pub use two_macros::m;
 LL | | }
    | |_^
-   = help: use `self::baz` to refer to the module unambiguously
+   = help: use `self::baz` to refer to this module unambiguously
 
 error: aborting due to 2 previous errors
 

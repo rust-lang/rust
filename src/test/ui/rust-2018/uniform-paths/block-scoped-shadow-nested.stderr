@@ -16,7 +16,7 @@ LL | / mod sub {
 LL | |     pub fn bar() {}
 LL | | }
    | |_^
-   = help: use `self::sub` to refer to the module unambiguously
+   = help: use `self::sub` to refer to this module unambiguously
 
 error: aborting due to previous error
 

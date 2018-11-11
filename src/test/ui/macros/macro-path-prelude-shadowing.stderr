@@ -11,7 +11,7 @@ note: `std` could also refer to the module imported here
 LL |     use m2::*; // glob-import user-defined `std`
    |         ^^^^^
    = help: consider adding an explicit import of `std` to disambiguate
-   = help: or use `self::std` to refer to the module unambiguously
+   = help: or use `self::std` to refer to this module unambiguously
 
 error: aborting due to previous error
 

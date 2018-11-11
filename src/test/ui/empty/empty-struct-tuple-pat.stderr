@@ -2,7 +2,7 @@ error[E0530]: match bindings cannot shadow tuple structs
   --> $DIR/empty-struct-tuple-pat.rs:32:9
    |
 LL | struct Empty2();
-   | ---------------- a tuple struct `Empty2` is defined here
+   | ---------------- the tuple struct `Empty2` is defined here
 ...
 LL |         Empty2 => () //~ ERROR match bindings cannot shadow tuple structs
    |         ^^^^^^ cannot be named the same as a tuple struct
@@ -11,7 +11,7 @@ error[E0530]: match bindings cannot shadow tuple structs
   --> $DIR/empty-struct-tuple-pat.rs:35:9
    |
 LL | use empty_struct::*;
-   |     --------------- a tuple struct `XEmpty6` is imported here
+   |     --------------- the tuple struct `XEmpty6` is imported here
 ...
 LL |         XEmpty6 => () //~ ERROR match bindings cannot shadow tuple structs
    |         ^^^^^^^ cannot be named the same as a tuple struct
