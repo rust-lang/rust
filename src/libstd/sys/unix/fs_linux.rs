@@ -13,7 +13,6 @@ use super::ext::fs::MetadataExt;
 use super::ext::io::AsRawFd;
 
 
-
 unsafe fn copy_file_range(
     fd_in: libc::c_int,
     off_in: *mut libc::loff_t,
@@ -94,6 +93,31 @@ fn copy_bytes_kernel(reader: &File, writer: &File, nbytes: usize) -> io::Result<
         )
     }
     .map(|v| v as u64)
+}
+
+// Slightly modified version of io::copy() that only copies a set amount of bytes.
+fn copy_bytes_uspace(mut reader: &File, mut writer: &File, nbytes: usize) -> io::Result<u64> {
+    let mut buf = unsafe {
+        // Assume 4k blocks on disk.
+        let mut buf: [u8; 4 * 1024] = mem::uninitialized();
+        reader.initializer().initialize(&mut buf);
+        buf
+    };
+
+    let mut written = 0;
+    while written < nbytes {
+        let left = nbytes - written;
+        let len = match reader.read(&mut buf[..left]) {
+            Ok(0) => return Err(Error::new(ErrorKind::InvalidData,
+                                           "Source file ended prematurely.")),
+            Ok(len) => len,
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+            Err(e) => return Err(e),
+        };
+        writer.write_all(&buf[..len])?;
+        written += len;
+    }
+    Ok(written as u64)
 }
 
 
@@ -245,9 +269,13 @@ mod tests {
     use fs::{read, OpenOptions};
     use io::{Seek, SeekFrom, Write};
 
-    fn create_sparse(file: &String) {
+    fn create_sparse_len(file: &String, len: i64) {
         let fd = File::create(file).unwrap();
-        cvt(unsafe {libc::ftruncate64(fd.as_raw_fd(), 1024*1024)}).unwrap();
+        cvt(unsafe {libc::ftruncate64(fd.as_raw_fd(), len)}).unwrap();
+    }
+
+    fn create_sparse(file: &String) {
+        create_sparse_len(file, 1024*1024);
     }
 
     fn create_sparse_with_data(file: &String, head: u64, tail: u64) -> u64 {
@@ -462,6 +490,51 @@ mod tests {
             let fd = File::open(&sparse).unwrap();
             assert_eq!(len, fd.metadata().unwrap().len());
             assert!(is_sparse(&fd).unwrap());
+        }
+    }
+
+
+    #[test]
+    fn test_copy_bytes_uspace() {
+        let dir = tempdir().unwrap();
+        let (sparse, other) = tmps(&dir);
+        let data = "test data";
+        let offset = 32;
+
+        {
+            let mut fd = File::create(&other).unwrap();
+            write!(fd, "{}", data);
+        }
+
+        create_sparse_len(&sparse, 128);
+        create_sparse_len(&other, 128);
+
+        {
+            let mut fd: File = OpenOptions::new()
+                .write(true)
+                .append(false)
+                .open(&sparse).unwrap();
+            fd.seek(SeekFrom::Start(offset)).unwrap();
+            write!(fd, "{}", data);
+        }
+
+        {
+            let mut infd = File::open(&sparse).unwrap();
+            let mut outfd: File = OpenOptions::new()
+                .write(true)
+                .append(false)
+                .open(&other).unwrap();
+            infd.seek(SeekFrom::Start(offset)).unwrap();
+            outfd.seek(SeekFrom::Start(offset)).unwrap();
+
+            let written = copy_bytes_uspace(&infd, &outfd, data.len()).unwrap();
+            assert_eq!(written, data.len() as u64);
+        }
+
+        {
+            let from_data = read(&sparse).unwrap();
+            let to_data = read(&other).unwrap();
+            assert_eq!(from_data, to_data);
         }
     }
 }
