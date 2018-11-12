@@ -20,6 +20,7 @@ use print::pprust;
 use ptr::P;
 use rustc_data_structures::indexed_vec;
 use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::static_assert;
 use rustc_target::spec::abi::Abi;
 use source_map::{dummy_spanned, respan, Spanned};
 use symbol::{keywords, Symbol};
@@ -923,6 +924,10 @@ pub struct Expr {
     pub span: Span,
     pub attrs: ThinVec<Attribute>,
 }
+
+// `Expr` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert!(MEM_SIZE_OF_EXPR: std::mem::size_of::<Expr>() == 88);
 
 impl Expr {
     /// Whether this expression would be valid somewhere that expects a value, for example, an `if`
