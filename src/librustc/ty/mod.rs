@@ -2674,10 +2674,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn associated_items(
         self,
         def_id: DefId,
-    ) -> impl Iterator<Item = AssociatedItem> + 'a {
-        let def_ids = self.associated_item_def_ids(def_id);
-        Box::new((0..def_ids.len()).map(move |i| self.associated_item(def_ids[i])))
-            as Box<dyn Iterator<Item = AssociatedItem> + 'a>
+    ) -> AssociatedItemsIterator<'a, 'gcx, 'tcx> {
+        // Ideally, we would use `-> impl Iterator` here, but it falls
+        // afoul of the conservative "capture [restrictions]" we put
+        // in place, so we use a hand-written iterator.
+        //
+        // [restrictions]: https://github.com/rust-lang/rust/issues/34511#issuecomment-373423999
+        AssociatedItemsIterator {
+            tcx: self,
+            def_ids: self.associated_item_def_ids(def_id),
+            next_index: 0,
+        }
     }
 
     /// Returns `true` if the impls are the same polarity and the trait either
@@ -2871,6 +2878,22 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             None => self.hir.get_module_parent(block),
         };
         (ident, scope)
+    }
+}
+
+pub struct AssociatedItemsIterator<'a, 'gcx: 'tcx, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    def_ids: Lrc<Vec<DefId>>,
+    next_index: usize,
+}
+
+impl Iterator for AssociatedItemsIterator<'_, '_, '_> {
+    type Item = AssociatedItem;
+
+    fn next(&mut self) -> Option<AssociatedItem> {
+        let def_id = self.def_ids.get(self.next_index)?;
+        self.next_index += 1;
+        Some(self.tcx.associated_item(*def_id))
     }
 }
 
