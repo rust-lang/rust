@@ -59,7 +59,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// If you want to check bounds before doing a memory access, better use `check_bounds`.
     pub fn check_bounds_ptr(
         &self,
-        ptr: Pointer<M::PointerTag>,
+        ptr: Pointer<Tag>,
         check: InboundsCheck,
     ) -> EvalResult<'tcx> {
         let allocation_size = match check {
@@ -85,7 +85,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     #[inline(always)]
     pub fn check_bounds(
         &self,
-        ptr: Pointer<M::PointerTag>,
+        ptr: Pointer<Tag>,
         size: Size,
         check: InboundsCheck,
     ) -> EvalResult<'tcx> {
@@ -183,9 +183,9 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// Return all relocations overlapping with the given ptr-offset pair.
     fn relocations(
         &self,
-        ptr: Pointer<M::PointerTag>,
+        ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx, &[(Size, (M::PointerTag, AllocId))]> {
+    ) -> EvalResult<'tcx, &[(Size, (Tag, AllocId))]> {
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
         // the beginning of this range.
         let start = ptr.offset.bytes().saturating_sub(self.pointer_size().bytes() - 1);
@@ -195,7 +195,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
 
     /// Check that there ar eno relocations overlapping with the given range.
     #[inline(always)]
-    fn check_relocations(&self, ptr: Pointer<M::PointerTag>, size: Size) -> EvalResult<'tcx> {
+    fn check_relocations(&self, ptr: Pointer<Tag>, size: Size) -> EvalResult<'tcx> {
         if self.relocations(ptr, size)?.len() != 0 {
             err!(ReadPointerAsBytes)
         } else {
@@ -209,7 +209,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// uninitialized.  This is a somewhat odd "spooky action at a distance",
     /// but it allows strictly more code to run than if we would just error
     /// immediately in that case.
-    fn clear_relocations(&mut self, ptr: Pointer<M::PointerTag>, size: Size) -> EvalResult<'tcx> {
+    fn clear_relocations(&mut self, ptr: Pointer<Tag>, size: Size) -> EvalResult<'tcx> {
         // Find the start and end of the given range and its outermost relocations.
         let (first, last) = {
             // Find all relocations overlapping the given range.
@@ -244,7 +244,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// Error if there are relocations overlapping with the edges of the
     /// given memory range.
     #[inline]
-    fn check_relocation_edges(&self, ptr: Pointer<M::PointerTag>, size: Size) -> EvalResult<'tcx> {
+    fn check_relocation_edges(&self, ptr: Pointer<Tag>, size: Size) -> EvalResult<'tcx> {
         self.check_relocations(ptr, Size::ZERO)?;
         self.check_relocations(ptr.offset(size, self)?, Size::ZERO)?;
         Ok(())
@@ -257,7 +257,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// Checks that a range of bytes is defined. If not, returns the `ReadUndefBytes`
     /// error which will report the first byte which is undefined.
     #[inline]
-    fn check_defined(&self, ptr: Pointer<M::PointerTag>, size: Size) -> EvalResult<'tcx> {
+    fn check_defined(&self, ptr: Pointer<Tag>, size: Size) -> EvalResult<'tcx> {
         let alloc = self.get(ptr.alloc_id)?;
         alloc.undef_mask.is_range_defined(
             ptr.offset,
@@ -267,7 +267,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
 
     pub fn mark_definedness(
         &mut self,
-        ptr: Pointer<M::PointerTag>,
+        ptr: Pointer<Tag>,
         size: Size,
         new_state: bool,
     ) -> EvalResult<'tcx> {
