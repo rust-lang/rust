@@ -1,6 +1,3 @@
-// FIXME: Disabled due to https://github.com/rust-lang/rust/issues/55747
-// ignore-test
-
 use std::cell::RefCell;
 use std::rc::Rc;
 

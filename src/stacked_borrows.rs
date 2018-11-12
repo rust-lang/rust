@@ -5,7 +5,7 @@ use rustc::hir;
 
 use crate::{
     EvalResult, MiriEvalContext, HelpersEvalContextExt,
-    MemoryKind, MiriMemoryKind, RangeMap, AllocId,
+    MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra,
     Pointer, PlaceTy, MPlaceTy,
 };
 
@@ -343,27 +343,30 @@ impl<'tcx> Stacks {
 }
 
 /// Hooks and glue
-impl<'tcx> Stacks {
+impl AllocationExtra<Borrow> for Stacks {
     #[inline(always)]
-    pub fn memory_read(
-        &self,
+    fn memory_read<'tcx>(
+        alloc: &Allocation<Borrow, Stacks>,
         ptr: Pointer<Borrow>,
         size: Size,
     ) -> EvalResult<'tcx> {
         // Reads behave exactly like the first half of a reborrow-to-shr
-        self.use_and_maybe_re_borrow(ptr, size, UsageKind::Read, None)
+        alloc.extra.use_and_maybe_re_borrow(ptr, size, UsageKind::Read, None)
     }
 
     #[inline(always)]
-    pub fn memory_written(
-        &mut self,
+    fn memory_written<'tcx>(
+        alloc: &mut Allocation<Borrow, Stacks>,
         ptr: Pointer<Borrow>,
         size: Size,
     ) -> EvalResult<'tcx> {
         // Writes behave exactly like the first half of a reborrow-to-mut
-        self.use_and_maybe_re_borrow(ptr, size, UsageKind::Write, None)
+        alloc.extra.use_and_maybe_re_borrow(ptr, size, UsageKind::Write, None)
     }
+}
 
+impl<'tcx> Stacks {
+    #[inline(always)]
     pub fn memory_deallocated(
         &mut self,
         ptr: Pointer<Borrow>,
