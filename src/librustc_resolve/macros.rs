@@ -891,7 +891,33 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         // The first found solution was the only one, return it.
-        if let Some((binding, ..)) = innermost_result {
+        if let Some((binding, flags)) = innermost_result {
+            if is_import && !self.session.features_untracked().uniform_paths {
+                // We get to here only if there's no ambiguity, in ambiguous cases an error will
+                // be reported anyway, so there's no reason to report an additional feature error.
+                // The `binding` can actually be introduced by something other than `--extern`,
+                // but its `Def` should coincide with a crate passed with `--extern`
+                // (otherwise there would be ambiguity) and we can skip feature error in this case.
+                if ns != TypeNS || !use_prelude ||
+                   self.extern_prelude_get(ident, true, false).is_none() {
+                    let msg = "imports can only refer to extern crate names \
+                               passed with `--extern` on stable channel";
+                    let mut err = feature_err(&self.session.parse_sess, "uniform_paths",
+                                              ident.span, GateIssue::Language, msg);
+
+                    let what = self.binding_description(binding, ident,
+                                                        flags.contains(Flags::MISC_FROM_PRELUDE));
+                    let note_msg = format!("this import refers to {what}", what = what);
+                    if binding.span.is_dummy() {
+                        err.note(&note_msg);
+                    } else {
+                        err.span_note(binding.span, &note_msg);
+                        err.span_label(binding.span, "not an extern crate passed with `--extern`");
+                    }
+                    err.emit();
+                }
+            }
+
             return Ok(binding);
         }
 
