@@ -1,5 +1,6 @@
 
 use cell::RefCell;
+use cmp;
 use io::{self, Error, ErrorKind, Read, Write};
 use libc;
 use mem;
@@ -94,17 +95,17 @@ fn copy_bytes_kernel(reader: &File, writer: &File, nbytes: usize) -> io::Result<
 
 // Slightly modified version of io::copy() that only copies a set amount of bytes.
 fn copy_bytes_uspace(mut reader: &File, mut writer: &File, nbytes: usize) -> io::Result<u64> {
+    const BLKSIZE: usize = 4 * 1024;  // Assume 4k blocks on disk.
     let mut buf = unsafe {
-        // Assume 4k blocks on disk.
-        let mut buf: [u8; 4 * 1024] = mem::uninitialized();
+        let mut buf: [u8; BLKSIZE] = mem::uninitialized();
         reader.initializer().initialize(&mut buf);
         buf
     };
 
     let mut written = 0;
     while written < nbytes {
-        let left = nbytes - written;
-        let len = match reader.read(&mut buf[..left]) {
+        let next = cmp::min(nbytes - written, BLKSIZE);
+        let len = match reader.read(&mut buf[..next]) {
             Ok(0) => return Err(Error::new(ErrorKind::InvalidData,
                                            "Source file ended prematurely.")),
             Ok(len) => len,
@@ -235,14 +236,15 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use iter;
     use sys_common::io::test::{TempDir, tmpdir};
     use fs::{read, OpenOptions};
     use io::{Seek, SeekFrom, Write};
     use path::PathBuf;
 
-    fn create_sparse(file: &PathBuf, len: i64) {
+    fn create_sparse(file: &PathBuf, len: u64) {
         let fd = File::create(file).unwrap();
-        cvt(unsafe {libc::ftruncate64(fd.as_raw_fd(), len)}).unwrap();
+        cvt(unsafe {libc::ftruncate64(fd.as_raw_fd(), len as i64)}).unwrap();
     }
 
     fn create_sparse_with_data(file: &PathBuf, head: u64, tail: u64) -> u64 {
@@ -321,7 +323,7 @@ mod tests {
             write!(fd, "{}", data);
         }
 
-        create_sparse(&from, 1024*1024);
+        create_sparse_with_data(&from, 0, 0);
 
         {
             let infd = File::open(&to).unwrap();
@@ -480,7 +482,7 @@ mod tests {
 
 
     #[test]
-    fn test_copy_bytes_uspace() {
+    fn test_copy_bytes_uspace_small() {
         let dir = tmpdir();
         let (from, to) = tmps(&dir);
         let data = "test data";
@@ -515,6 +517,36 @@ mod tests {
             let written = copy_bytes_uspace(&infd, &outfd, data.len()).unwrap();
             assert_eq!(written, data.len() as u64);
         }
+
+        {
+            let from_data = read(&from).unwrap();
+            let to_data = read(&to).unwrap();
+            assert_eq!(from_data, to_data);
+        }
+    }
+
+    #[test]
+    fn test_copy_bytes_uspace_large() {
+        let dir = tmpdir();
+        let (from, to) = tmps(&dir);
+        let size = 128*1024;
+        let data = iter::repeat("X").take(size).collect::<String>();
+
+        {
+            let mut fd: File = File::create(&from).unwrap();
+            write!(fd, "{}", data).unwrap();
+        }
+
+        {
+            let infd = File::open(&from).unwrap();
+            let outfd = File::create(&to).unwrap();
+            let written = copy_bytes_uspace(&infd, &outfd, size).unwrap();
+
+            assert_eq!(written, size as u64);
+        }
+
+        assert_eq!(from.metadata().unwrap().len(),
+                   to.metadata().unwrap().len());
 
         {
             let from_data = read(&from).unwrap();
