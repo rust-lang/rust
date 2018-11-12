@@ -291,7 +291,8 @@ define_queries! { <'tcx>
         /// Gets a complete map from all types to their inherent impls.
         /// Not meant to be used directly outside of coherence.
         /// (Defined only for LOCAL_CRATE)
-        [] fn crate_inherent_impls: crate_inherent_impls_dep_node(CrateNum) -> CrateInherentImpls,
+        [] fn crate_inherent_impls: crate_inherent_impls_dep_node(CrateNum)
+            -> Lrc<CrateInherentImpls>,
 
         /// Checks all types in the krate for overlap in their inherent impls. Reports errors.
         /// Not meant to be used directly outside of coherence.

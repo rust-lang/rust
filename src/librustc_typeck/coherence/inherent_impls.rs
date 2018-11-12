@@ -31,7 +31,7 @@ use syntax_pos::Span;
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
 pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       crate_num: CrateNum)
-                                      -> CrateInherentImpls {
+                                      -> Lrc<CrateInherentImpls> {
     assert_eq!(crate_num, LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
@@ -42,7 +42,7 @@ pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     };
     krate.visit_all_item_likes(&mut collect);
-    collect.impls_map
+    Lrc::new(collect.impls_map)
 }
 
 /// On-demand query: yields a vector of the inherent impls for a specific type.
