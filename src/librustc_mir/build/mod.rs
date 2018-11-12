@@ -336,6 +336,9 @@ impl BlockFrame {
     }
  }
 
+#[derive(Debug)]
+struct BlockContext(Vec<BlockFrame>);
+
 struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     hir: Cx<'a, 'gcx, 'tcx>,
     cfg: CFG<'tcx>,
@@ -359,7 +362,7 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// start just throwing new entries onto that vector in order to
     /// distinguish the context of EXPR1 from the context of EXPR2 in
     /// `{ STMTS; EXPR1 } + EXPR2`
-    block_context: Vec<BlockFrame>,
+    block_context: BlockContext,
 
     /// The current unsafe block in scope, even if it is hidden by
     /// a PushUnsafeBlock
@@ -406,6 +409,55 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn var_local_id(&self, id: ast::NodeId, for_guard: ForGuard) -> Local {
         self.var_indices[&id].local_id(for_guard)
+    }
+}
+
+impl BlockContext {
+    fn new() -> Self { BlockContext(vec![]) }
+    fn push(&mut self, bf: BlockFrame) { self.0.push(bf); }
+    fn pop(&mut self) -> Option<BlockFrame> { self.0.pop() }
+
+    /// Traverses the frames on the BlockContext, searching for either
+    /// the first block-tail expression frame with no intervening
+    /// statement frame.
+    ///
+    /// Notably, this skips over `SubExpr` frames; this method is
+    /// meant to be used in the context of understanding the
+    /// relationship of a temp (created within some complicated
+    /// expression) with its containing expression, and whether the
+    /// value of that *containing expression* (not the temp!) is
+    /// ignored.
+    fn currently_in_block_tail(&self) -> Option<BlockTailInfo> {
+        for bf in self.0.iter().rev() {
+            match bf {
+                BlockFrame::SubExpr => continue,
+                BlockFrame::Statement { .. } => break,
+                &BlockFrame::TailExpr { tail_result_is_ignored } =>
+                    return Some(BlockTailInfo { tail_result_is_ignored })
+            }
+        }
+
+        return None;
+    }
+
+    /// Looks at the topmost frame on the BlockContext and reports
+    /// whether its one that would discard a block tail result.
+    ///
+    /// Unlike `currently_within_ignored_tail_expression`, this does
+    /// *not* skip over `SubExpr` frames: here, we want to know
+    /// whether the block result itself is discarded.
+    fn currently_ignores_tail_results(&self) -> bool {
+        match self.0.last() {
+            // no context: conservatively assume result is read
+            None => false,
+
+            // sub-expression: block result feeds into some computation
+            Some(BlockFrame::SubExpr) => false,
+
+            // otherwise: use accumulated is_ignored state.
+            Some(BlockFrame::TailExpr { tail_result_is_ignored: ignored }) |
+            Some(BlockFrame::Statement { ignores_expr_result: ignored }) => *ignored,
+        }
     }
 }
 
@@ -764,7 +816,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             fn_span: span,
             arg_count,
             scopes: vec![],
-            block_context: vec![],
+            block_context: BlockContext::new(),
             source_scopes: IndexVec::new(),
             source_scope: OUTERMOST_SOURCE_SCOPE,
             source_scope_local_data: IndexVec::new(),

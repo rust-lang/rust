@@ -10,7 +10,7 @@
 
 //! See docs in build/expr/mod.rs
 
-use build::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
+use build::{BlockAnd, BlockAndExtension, Builder};
 use hair::*;
 use rustc::middle::region;
 use rustc::mir::*;
@@ -68,19 +68,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             debug!("creating temp {:?} with block_context: {:?}", local_decl, this.block_context);
             // Find out whether this temp is being created within the
             // tail expression of a block whose result is ignored.
-            for bf in this.block_context.iter().rev() {
-                match bf {
-                    BlockFrame::SubExpr => continue,
-                    BlockFrame::Statement { .. } => break,
-                    &BlockFrame::TailExpr { tail_result_is_ignored } => {
-                        local_decl = local_decl.block_tail(BlockTailInfo {
-                            tail_result_is_ignored
-                        });
-                        break;
-                    }
-                }
+            if let Some(tail_info) = this.block_context.currently_in_block_tail() {
+                local_decl = local_decl.block_tail(tail_info);
             }
-
             this.local_decls.push(local_decl)
         };
         if !expr_ty.is_never() {
