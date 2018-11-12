@@ -133,6 +133,79 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     }
 }
 
+/// Relocations
+impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
+    /// Return all relocations overlapping with the given ptr-offset pair.
+    fn relocations(
+        &self,
+        ptr: Pointer<M::PointerTag>,
+        size: Size,
+    ) -> EvalResult<'tcx, &[(Size, (M::PointerTag, AllocId))]> {
+        // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
+        // the beginning of this range.
+        let start = ptr.offset.bytes().saturating_sub(self.pointer_size().bytes() - 1);
+        let end = ptr.offset + size; // this does overflow checking
+        Ok(self.get(ptr.alloc_id)?.relocations.range(Size::from_bytes(start)..end))
+    }
+
+    /// Check that there ar eno relocations overlapping with the given range.
+    #[inline(always)]
+    fn check_relocations(&self, ptr: Pointer<M::PointerTag>, size: Size) -> EvalResult<'tcx> {
+        if self.relocations(ptr, size)?.len() != 0 {
+            err!(ReadPointerAsBytes)
+        } else {
+            Ok(())
+        }
+    }
+
+    /// Remove all relocations inside the given range.
+    /// If there are relocations overlapping with the edges, they
+    /// are removed as well *and* the bytes they cover are marked as
+    /// uninitialized.  This is a somewhat odd "spooky action at a distance",
+    /// but it allows strictly more code to run than if we would just error
+    /// immediately in that case.
+    fn clear_relocations(&mut self, ptr: Pointer<M::PointerTag>, size: Size) -> EvalResult<'tcx> {
+        // Find the start and end of the given range and its outermost relocations.
+        let (first, last) = {
+            // Find all relocations overlapping the given range.
+            let relocations = self.relocations(ptr, size)?;
+            if relocations.is_empty() {
+                return Ok(());
+            }
+
+            (relocations.first().unwrap().0,
+             relocations.last().unwrap().0 + self.pointer_size())
+        };
+        let start = ptr.offset;
+        let end = start + size;
+
+        let alloc = self.get_mut(ptr.alloc_id)?;
+
+        // Mark parts of the outermost relocations as undefined if they partially fall outside the
+        // given range.
+        if first < start {
+            alloc.undef_mask.set_range(first, start, false);
+        }
+        if last > end {
+            alloc.undef_mask.set_range(end, last, false);
+        }
+
+        // Forget all the relocations.
+        alloc.relocations.remove_range(first..last);
+
+        Ok(())
+    }
+
+    /// Error if there are relocations overlapping with the edges of the
+    /// given memory range.
+    #[inline]
+    fn check_relocation_edges(&self, ptr: Pointer<M::PointerTag>, size: Size) -> EvalResult<'tcx> {
+        self.check_relocations(ptr, Size::ZERO)?;
+        self.check_relocations(ptr.offset(size, self)?, Size::ZERO)?;
+        Ok(())
+    }
+}
+
 pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Default + Clone {
     /// Hook for performing extra checks on a memory read access.
     ///
