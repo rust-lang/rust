@@ -149,7 +149,7 @@ fn verify_func(tcx: TyCtxt, writer: crate::pretty_clif::CommentWriter, func: &Fu
                 err,
             );
             tcx.sess
-                .fatal(&format!("cretonne verify error:\n{}", pretty_error));
+                .fatal(&format!("cranelift verify error:\n{}", pretty_error));
         }
     }
 }
