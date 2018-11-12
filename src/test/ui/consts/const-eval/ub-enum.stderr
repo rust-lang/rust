@@ -34,7 +34,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-enum.rs:51:1
    |
 LL | const BAD_ENUM_UNDEF: [Enum2; 2] = [unsafe { TransmuteEnum2 { in3: () }.out1 }; 2];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempted to read undefined bytes
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes at [0], but expected a valid enum discriminant
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 

@@ -274,7 +274,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     ),
                 EvalErrorKind::ReadPointerAsBytes =>
                     validation_failure!(
-                        "a pointer", self.path, "plain bytes"
+                        "a pointer", self.path, "plain (non-pointer) bytes"
                     ),
                 _ => Err(err),
             }
@@ -304,7 +304,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                 if self.const_mode {
                     // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
                     try_validation!(value.to_bits(size),
-                        value, self.path, "initialized plain bits");
+                        value, self.path, "initialized plain (non-pointer) bytes");
                 } else {
                     // At run-time, for now, we accept *anything* for these types, including
                     // undef. We should fix that, but let's start low.

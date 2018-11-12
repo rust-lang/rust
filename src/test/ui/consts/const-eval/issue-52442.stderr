@@ -8,7 +8,7 @@ error[E0080]: it is undefined behavior to use this value
   --> $DIR/issue-52442.rs:12:11
    |
 LL |     [();  { &loop { break } as *const _ as usize } ]; //~ ERROR unimplemented expression type
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected initialized plain bits
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected initialized plain (non-pointer) bytes
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 

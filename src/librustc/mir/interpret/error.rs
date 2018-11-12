@@ -15,7 +15,7 @@ use ty::{Ty, layout};
 use ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
 
-use super::{Pointer, Scalar};
+use super::{Pointer, ScalarMaybeUndef};
 
 use backtrace::Backtrace;
 
@@ -240,7 +240,7 @@ pub enum EvalErrorKind<'tcx, O> {
     InvalidMemoryAccess,
     InvalidFunctionPointer,
     InvalidBool,
-    InvalidDiscriminant(Scalar),
+    InvalidDiscriminant(ScalarMaybeUndef),
     PointerOutOfBounds {
         ptr: Pointer,
         access: bool,

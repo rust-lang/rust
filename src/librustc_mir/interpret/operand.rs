@@ -601,7 +601,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         // read raw discriminant value
         let discr_op = self.operand_field(rval, 0)?;
         let discr_val = self.read_immediate(discr_op)?;
-        let raw_discr = discr_val.to_scalar()?;
+        let raw_discr = discr_val.to_scalar_or_undef();
         trace!("discr value: {:?}", raw_discr);
         // post-process
         Ok(match rval.layout.variants {
@@ -647,13 +647,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let variants_start = niche_variants.start().as_u32() as u128;
                 let variants_end = niche_variants.end().as_u32() as u128;
                 match raw_discr {
-                    Scalar::Ptr(_) => {
+                    ScalarMaybeUndef::Scalar(Scalar::Ptr(_)) => {
                         // The niche must be just 0 (which a pointer value never is)
                         assert!(niche_start == 0);
                         assert!(variants_start == variants_end);
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },
-                    Scalar::Bits { bits: raw_discr, size } => {
+                    ScalarMaybeUndef::Scalar(Scalar::Bits { bits: raw_discr, size }) => {
                         assert_eq!(size as u64, discr_val.layout.size.bytes());
                         let discr = raw_discr.wrapping_sub(niche_start)
                             .wrapping_add(variants_start);
@@ -669,6 +669,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                             (dataful_variant.as_u32() as u128, dataful_variant)
                         }
                     },
+                    ScalarMaybeUndef::Undef =>
+                        return err!(InvalidDiscriminant(ScalarMaybeUndef::Undef)),
                 }
             }
         })
