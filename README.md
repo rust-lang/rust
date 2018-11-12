@@ -70,7 +70,9 @@ compile your project and its dependencies against that libstd:
 1. Run `cargo clean` to eliminate any cached dependencies that were built against
 the non-MIR `libstd`.
 2. To run all tests in your project through, Miri, use
-`MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri test`.
+`MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri test`. **NOTE**: This is
+currently broken, see the discussion in
+[#479](https://github.com/solson/miri/issues/479).
 3. If you have a binary project, you can run it through Miri using
 `MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri`.
 
