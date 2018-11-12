@@ -21,6 +21,10 @@ use core::usize;
 pub use core::alloc::*;
 
 extern "Rust" {
+    // These are the magic symbols to call the global allocator.  rustc generates
+    // them from the `#[global_allocator]` attribute if there is one, or uses the
+    // default implementations in libstd (`__rdl_alloc` etc in `src/libstd/alloc.rs`)
+    // otherwise.
     #[allocator]
     #[rustc_allocator_nounwind]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
