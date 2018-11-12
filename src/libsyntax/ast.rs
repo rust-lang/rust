@@ -20,6 +20,7 @@ use print::pprust;
 use ptr::P;
 use rustc_data_structures::indexed_vec;
 use rustc_data_structures::indexed_vec::Idx;
+#[cfg(target_arch = "x86_64")]
 use rustc_data_structures::static_assert;
 use rustc_target::spec::abi::Abi;
 use source_map::{dummy_spanned, respan, Spanned};
