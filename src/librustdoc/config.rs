@@ -187,7 +187,7 @@ pub struct RenderOptions {
     /// Whether to generate a table of contents on the output file when reading a standalone
     /// Markdown file.
     pub markdown_no_toc: bool,
-    /// Additional CSS files to link in pages generated from standlone Markdown files.
+    /// Additional CSS files to link in pages generated from standalone Markdown files.
     pub markdown_css: Vec<String>,
     /// If present, playground URL to use in the "Run" button added to code samples generated from
     /// standalone Markdown files. If not present, `playground_url` is used.

@@ -55,11 +55,11 @@
 /// all the values it covers are already covered by row 2.
 ///
 /// To compute `U`, we must have two other concepts.
-///     1. `S(c, P)` is a "specialised matrix", where `c` is a constructor (like `Some` or
+///     1. `S(c, P)` is a "specialized matrix", where `c` is a constructor (like `Some` or
 ///        `None`). You can think of it as filtering `P` to just the rows whose *first* pattern
 ///        can cover `c` (and expanding OR-patterns into distinct patterns), and then expanding
 ///        the constructor into all of its components.
-///        The specialisation of a row vector is computed by `specialize`.
+///        The specialization of a row vector is computed by `specialize`.
 ///
 ///        It is computed as follows. For each row `p_i` of P, we have four cases:
 ///             1.1. `p_(i,1) = c(r_1, .., r_a)`. Then `S(c, P)` has a corresponding row:
@@ -1453,7 +1453,7 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'_, 'tcx, 'tcx>, ctor: &Construct
 /// mean creating a separate constructor for every single value in the range, which is clearly
 /// impractical. However, observe that for some ranges of integers, the specialisation will be
 /// identical across all values in that range (i.e. there are equivalence classes of ranges of
-/// constructors based on their `is_useful_specialised` outcome). These classes are grouped by
+/// constructors based on their `is_useful_specialized` outcome). These classes are grouped by
 /// the patterns that apply to them (in the matrix `P`). We can split the range whenever the
 /// patterns that apply to that range (specifically: the patterns that *intersect* with that range)
 /// change.

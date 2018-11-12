@@ -1160,10 +1160,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Takes ownership of the list of variable regions. This implies
-    /// that all the region constriants have already been taken, and
+    /// that all the region constraints have already been taken, and
     /// hence that `resolve_regions_and_report_errors` can never be
     /// called. This is used only during NLL processing to "hand off" ownership
-    /// of the set of region vairables into the NLL region context.
+    /// of the set of region variables into the NLL region context.
     pub fn take_region_var_origins(&self) -> VarInfos {
         let (var_infos, data) = self.region_constraints
             .borrow_mut()
@@ -1478,7 +1478,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Clears the selection, evaluation, and projection caches. This is useful when
-    /// repeatedly attemping to select an Obligation while changing only
+    /// repeatedly attempting to select an Obligation while changing only
     /// its ParamEnv, since FulfillmentContext doesn't use 'probe'
     pub fn clear_caches(&self) {
         self.selection_cache.clear();

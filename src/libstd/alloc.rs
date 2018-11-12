@@ -85,7 +85,7 @@ pub use alloc_crate::alloc::*;
 /// This is based on `malloc` on Unix platforms and `HeapAlloc` on Windows,
 /// plus related functions.
 ///
-/// This type implements the `GlobalAlloc` trait and Rust programs by deafult
+/// This type implements the `GlobalAlloc` trait and Rust programs by default
 /// work as if they had this definition:
 ///
 /// ```rust

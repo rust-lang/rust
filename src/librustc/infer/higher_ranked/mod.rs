@@ -428,7 +428,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ///
     /// This routine is only intended to be used when the leak-check has
     /// passed; currently, it's used in the trait matching code to create
-    /// a set of nested obligations frmo an impl that matches against
+    /// a set of nested obligations from an impl that matches against
     /// something higher-ranked.  More details can be found in
     /// `librustc/middle/traits/README.md`.
     ///

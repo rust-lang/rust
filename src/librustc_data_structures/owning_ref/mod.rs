@@ -452,7 +452,7 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     /// use owning_ref::{OwningRef, Erased};
     ///
     /// fn main() {
-    ///     // NB: Using the concrete types here for explicitnes.
+    ///     // NB: Using the concrete types here for explicitness.
     ///     // For less verbose code type aliases like `BoxRef` are provided.
     ///
     ///     let owning_ref_a: OwningRef<Box<[i32; 4]>, [i32; 4]>
@@ -722,7 +722,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     /// use owning_ref::{OwningRefMut, Erased};
     ///
     /// fn main() {
-    ///     // NB: Using the concrete types here for explicitnes.
+    ///     // NB: Using the concrete types here for explicitness.
     ///     // For less verbose code type aliases like `BoxRef` are provided.
     ///
     ///     let owning_ref_mut_a: OwningRefMut<Box<[i32; 4]>, [i32; 4]>

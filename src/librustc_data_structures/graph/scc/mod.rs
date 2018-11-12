@@ -38,7 +38,7 @@ struct SccData<S: Idx> {
     /// successors can be found.
     ranges: IndexVec<S, Range<usize>>,
 
-    /// Contains the succcessors for all the Sccs, concatenated. The
+    /// Contains the successors for all the Sccs, concatenated. The
     /// range of indices corresponding to a given SCC is found in its
     /// SccData.
     all_successors: Vec<S>,

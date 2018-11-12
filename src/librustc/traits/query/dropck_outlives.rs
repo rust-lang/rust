@@ -200,7 +200,7 @@ impl_stable_hash_for!(struct DtorckConstraint<'tcx> {
 /// trivial for dropck-outlives.
 ///
 /// Note also that `needs_drop` requires a "global" type (i.e., one
-/// with erased regions), but this funtcion does not.
+/// with erased regions), but this function does not.
 pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'_, '_, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
         // None of these types have a destructor and hence they do not

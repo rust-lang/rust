@@ -108,7 +108,7 @@ impl Drop for Waker {
 /// is ready to be run.
 ///
 /// This is similar to the `Waker` type, but cannot be sent across threads.
-/// Task executors can use this type to implement more optimized singlethreaded wakeup
+/// Task executors can use this type to implement more optimized single-threaded wakeup
 /// behavior.
 #[repr(transparent)]
 #[derive(Clone)]

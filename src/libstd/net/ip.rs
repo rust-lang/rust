@@ -852,7 +852,7 @@ impl From<[u8; 4]> for IpAddr {
 impl Ipv6Addr {
     /// Creates a new IPv6 address from eight 16-bit segments.
     ///
-    /// The result will represent the IP address a:b:c:d:e:f:g:h.
+    /// The result will represent the IP address `a:b:c:d:e:f:g:h`.
     ///
     /// # Examples
     ///

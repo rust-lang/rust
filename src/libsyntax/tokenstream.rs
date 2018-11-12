@@ -150,7 +150,7 @@ impl TokenTree {
         }
     }
 
-    /// Modify the `TokenTree`'s span inplace.
+    /// Modify the `TokenTree`'s span in-place.
     pub fn set_span(&mut self, span: Span) {
         match *self {
             TokenTree::Token(ref mut sp, _) => *sp = span,

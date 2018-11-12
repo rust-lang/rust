@@ -160,7 +160,7 @@ const LABELS_FN_IN_TRAIT: &[&[&str]] = &[
     EXTRA_TRAIT,
 ];
 
-/// For generic cases like inline-assemply/mod/etc
+/// For generic cases like inline-assembly/mod/etc
 const LABELS_HIR_ONLY: &[&[&str]] = &[
     BASE_HIR,
 ];
