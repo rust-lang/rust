@@ -143,25 +143,12 @@ pub fn forget<T>(t: T) {
     ManuallyDrop::new(t);
 }
 
-/// Takes ownership and "forgets" about the value **without running its destructor**.
+/// Like [`forget`], but also accepts unsized values.
 ///
-/// This function works exactly the same as [`forget`], except it also accepts unsized values. It
-/// will never be stabilized and is only available because we haven't decided to relax the bounds
-/// on [`forget`] just yet.
+/// This function is just a shim intended to be removed when the `unsized_locals` feature gets
+/// stabilized.
 ///
 /// [`forget`]: fn.forget.html
-///
-/// # Examples
-///
-/// ```
-/// #![feature(forget_unsized)]
-///
-/// use std::mem;
-///
-/// let f: Box<FnOnce()> = Box::new(|| ());
-/// let f = *f;
-/// mem::forget_unsized(f);
-/// ```
 #[inline]
 #[cfg(not(stage0))]
 #[unstable(feature = "forget_unsized", issue = "0")]
