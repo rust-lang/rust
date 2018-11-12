@@ -17,7 +17,7 @@ use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
-    Scalar, AllocType, EvalResult, EvalErrorKind,
+    Scalar, AllocType, EvalResult, EvalErrorKind, InboundsCheck,
 };
 
 use super::{
@@ -394,7 +394,8 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                         }
                         // Maintain the invariant that the place we are checking is
                         // already verified to be in-bounds.
-                        try_validation!(self.ecx.memory.check_bounds(ptr, size, false),
+                        try_validation!(
+                            self.ecx.memory.check_bounds(ptr, size, InboundsCheck::Live),
                             "dangling (not entirely in bounds) reference", self.path);
                     }
                     // Check if we have encountered this pointer+layout combination

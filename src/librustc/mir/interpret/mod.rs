@@ -28,7 +28,7 @@ pub use self::error::{
 pub use self::value::{Scalar, ConstValue, ScalarMaybeUndef};
 
 pub use self::allocation::{
-    Allocation, AllocationExtra,
+    InboundsCheck, Allocation, AllocationExtra,
     Relocations, UndefMask,
 };
 

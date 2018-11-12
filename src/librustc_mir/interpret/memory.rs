@@ -28,7 +28,7 @@ use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use syntax::ast::Mutability;
 
 use super::{
-    Pointer, AllocId, Allocation, ConstValue, GlobalId, AllocationExtra,
+    Pointer, AllocId, Allocation, ConstValue, GlobalId, AllocationExtra, InboundsCheck,
     EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
     Machine, AllocMap, MayLeak, ScalarMaybeUndef, ErrorHandled,
 };
@@ -249,17 +249,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // Check non-NULL/Undef, extract offset
         let (offset, alloc_align) = match ptr {
             Scalar::Ptr(ptr) => {
-                let (size, align) = self.get_size_and_align(ptr.alloc_id);
                 // check this is not NULL -- which we can ensure only if this is in-bounds
                 // of some (potentially dead) allocation.
-                if ptr.offset > size {
-                    return err!(PointerOutOfBounds {
-                        ptr: ptr.erase_tag(),
-                        access: true,
-                        allocation_size: size,
-                    });
-                };
-                // keep data for alignment check
+                self.check_bounds_ptr(ptr, InboundsCheck::MaybeDead)?;
+                // data required for alignment check
+                let (_, align) = self.get_size_and_align(ptr.alloc_id);
                 (ptr.offset.bytes(), align)
             }
             Scalar::Bits { bits, size } => {
@@ -293,18 +287,28 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     /// Check if the pointer is "in-bounds". Notice that a pointer pointing at the end
     /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
-    /// in-bounds!  This follows C's/LLVM's rules.  The `access` boolean is just used
-    /// for the error message.
-    /// If you want to check bounds before doing a memory access, be sure to
-    /// check the pointer one past the end of your access, then everything will
-    /// work out exactly.
-    pub fn check_bounds_ptr(&self, ptr: Pointer<M::PointerTag>, access: bool) -> EvalResult<'tcx> {
-        let alloc = self.get(ptr.alloc_id)?;
-        let allocation_size = alloc.bytes.len() as u64;
+    /// in-bounds!  This follows C's/LLVM's rules.  `check` indicates whether we
+    /// additionally require the pointer to be pointing to a *live* (still allocated)
+    /// allocation.
+    /// If you want to check bounds before doing a memory access, better use `check_bounds`.
+    pub fn check_bounds_ptr(
+        &self,
+        ptr: Pointer<M::PointerTag>,
+        check: InboundsCheck,
+    ) -> EvalResult<'tcx> {
+        let allocation_size = match check {
+            InboundsCheck::Live => {
+                let alloc = self.get(ptr.alloc_id)?;
+                alloc.bytes.len() as u64
+            }
+            InboundsCheck::MaybeDead => {
+                self.get_size_and_align(ptr.alloc_id).0.bytes()
+            }
+        };
         if ptr.offset.bytes() > allocation_size {
             return err!(PointerOutOfBounds {
                 ptr: ptr.erase_tag(),
-                access,
+                check,
                 allocation_size: Size::from_bytes(allocation_size),
             });
         }
@@ -317,10 +321,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         &self,
         ptr: Pointer<M::PointerTag>,
         size: Size,
-        access: bool
+        check: InboundsCheck,
     ) -> EvalResult<'tcx> {
         // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
-        self.check_bounds_ptr(ptr.offset(size, &*self)?, access)
+        self.check_bounds_ptr(ptr.offset(size, &*self)?, check)
     }
 }
 
@@ -626,7 +630,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, &[u8]> {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_align(ptr.into(), align)?;
-        self.check_bounds(ptr, size, true)?;
+        self.check_bounds(ptr, size, InboundsCheck::Live)?;
 
         if check_defined_and_ptr {
             self.check_defined(ptr, size)?;
@@ -677,7 +681,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     ) -> EvalResult<'tcx, &mut [u8]> {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_align(ptr.into(), align)?;
-        self.check_bounds(ptr, size, true)?;
+        self.check_bounds(ptr, size, InboundsCheck::Live)?;
 
         self.mark_definedness(ptr, size, true)?;
         self.clear_relocations(ptr, size)?;

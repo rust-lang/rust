@@ -39,6 +39,7 @@ union TransmuteEnum2 {
     in3: (),
     out1: Enum2,
     out2: Wrap<Enum2>, // something wrapping the enum so that we test layout first, not enum
+    out3: Option<Enum2>,
 }
 const BAD_ENUM2: Enum2 = unsafe { TransmuteEnum2 { in1: 0 }.out1 };
 //~^ ERROR is undefined behavior
@@ -49,6 +50,10 @@ const BAD_ENUM4: Wrap<Enum2> = unsafe { TransmuteEnum2 { in2: &0 }.out2 };
 
 // Undef enum discriminant. In an arry to avoid `Scalar` layout.
 const BAD_ENUM_UNDEF: [Enum2; 2] = [unsafe { TransmuteEnum2 { in3: () }.out1 }; 2];
+//~^ ERROR is undefined behavior
+
+// Pointer value in an enum with a niche that is not just 0.
+const BAD_ENUM_PTR: Option<Enum2> = unsafe { TransmuteEnum2 { in2: &0 }.out3 };
 //~^ ERROR is undefined behavior
 
 // Invalid enum field content (mostly to test printing of paths for enum tuple
