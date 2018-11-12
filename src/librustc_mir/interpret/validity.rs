@@ -21,7 +21,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    OpTy, MPlaceTy, Machine, EvalContext, ValueVisitor
+    OpTy, MPlaceTy, Machine, EvalContext, ValueVisitor, Operand,
 };
 
 macro_rules! validation_failure {
@@ -396,7 +396,9 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                         // Maintain the invariant that the place we are checking is
                         // already verified to be in-bounds.
                         try_validation!(
-                            self.ecx.memory.check_bounds(ptr, size, InboundsCheck::Live),
+                            self.ecx.memory
+                                .get(ptr.alloc_id)?
+                                .check_bounds(self.ecx, ptr, size),
                             "dangling (not entirely in bounds) reference", self.path);
                     }
                     // Check if we have encountered this pointer+layout combination
@@ -520,12 +522,14 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     _ => false,
                 }
             } => {
-                let mplace = if op.layout.is_zst() {
+                let mplace = match *op {
                     // it's a ZST, the memory content cannot matter
-                    MPlaceTy::dangling(op.layout, self.ecx)
-                } else {
-                    // non-ZST array/slice/str cannot be immediate
-                    op.to_mem_place()
+                    Operand::Immediate(_) if op.layout.is_zst() =>
+                        // invent an aligned mplace
+                        MPlaceTy::dangling(op.layout, self.ecx),
+                    // FIXME: what about single element arrays? They can be Scalar layout I think
+                    Operand::Immediate(_) => bug!("non-ZST array/slice cannot be immediate"),
+                    Operand::Indirect(_) => op.to_mem_place(),
                 };
                 // This is the length of the array/slice.
                 let len = mplace.len(self.ecx)?;
@@ -533,6 +537,11 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                 let ty_size = self.ecx.layout_of(tys)?.size;
                 // This is the size in bytes of the whole array.
                 let size = ty_size * len;
+
+                if op.layout.is_zst() {
+                    return self.ecx.memory.check_align(mplace.ptr, op.layout.align);
+                }
+                let ptr = mplace.ptr.to_ptr()?;
 
                 // NOTE: Keep this in sync with the handling of integer and float
                 // types above, in `visit_primitive`.
@@ -543,8 +552,9 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                 // to reject those pointers, we just do not have the machinery to
                 // talk about parts of a pointer.
                 // We also accept undef, for consistency with the type-based checks.
-                match self.ecx.memory.check_bytes(
-                    mplace.ptr,
+                match self.ecx.memory.get(ptr.alloc_id)?.check_bytes(
+                    self.ecx,
+                    ptr,
                     size,
                     /*allow_ptr_and_undef*/!self.const_mode,
                 ) {

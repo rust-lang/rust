@@ -404,7 +404,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let ptr_align = self.tcx.data_layout.pointer_align.abi;
                 let ptr = self.deref_operand(args[0])?;
                 let vtable = ptr.vtable()?;
-                let fn_ptr = self.memory.read_ptr_sized(
+                let fn_ptr = self.memory.get(vtable.alloc_id)?.read_ptr_sized(
+                    self,
                     vtable.offset(ptr_size * (idx as u64 + 3), self)?,
                     ptr_align
                 )?.to_ptr()?;

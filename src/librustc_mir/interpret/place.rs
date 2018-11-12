@@ -718,6 +718,7 @@ where
         }
 
         let ptr = ptr.to_ptr()?;
+        let tcx = &*self.tcx;
         // FIXME: We should check that there are dest.layout.size many bytes available in
         // memory.  The code below is not sufficient, with enough padding it might not
         // cover all the bytes!
@@ -729,8 +730,8 @@ where
                             dest.layout)
                 }
 
-                self.memory.write_scalar(
-                    ptr, ptr_align.min(dest.layout.align.abi), scalar, dest.layout.size
+                self.memory.get_mut(ptr.alloc_id)?.write_scalar(
+                    tcx, ptr, ptr_align.min(dest.layout.align.abi), scalar, dest.layout.size
                 )
             }
             Immediate::ScalarPair(a_val, b_val) => {
@@ -742,14 +743,18 @@ where
                 let (a_size, b_size) = (a.size(self), b.size(self));
                 let (a_align, b_align) = (a.align(self).abi, b.align(self).abi);
                 let b_offset = a_size.align_to(b_align);
-                let b_ptr = ptr.offset(b_offset, self)?.into();
+                let b_ptr = ptr.offset(b_offset, self)?;
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
                 // but that does not work: We could be a newtype around a pair, then the
                 // fields do not match the `ScalarPair` components.
 
-                self.memory.write_scalar(ptr, ptr_align.min(a_align), a_val, a_size)?;
-                self.memory.write_scalar(b_ptr, ptr_align.min(b_align), b_val, b_size)
+                self.memory
+                    .get_mut(ptr.alloc_id)?
+                    .write_scalar(tcx, ptr, ptr_align.min(a_align), a_val, a_size)?;
+                self.memory
+                    .get_mut(b_ptr.alloc_id)?
+                    .write_scalar(tcx, b_ptr, ptr_align.min(b_align), b_val, b_size)
             }
         }
     }

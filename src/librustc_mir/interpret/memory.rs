@@ -21,7 +21,7 @@ use std::ptr;
 use std::borrow::Cow;
 
 use rustc::ty::{self, Instance, ParamEnv, query::TyCtxtAt};
-use rustc::ty::layout::{self, Align, TargetDataLayout, Size, HasDataLayout};
+use rustc::ty::layout::{Align, TargetDataLayout, Size, HasDataLayout};
 pub use rustc::mir::interpret::{truncate, write_target_uint, read_target_uint};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 
@@ -30,7 +30,7 @@ use syntax::ast::Mutability;
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra, InboundsCheck,
     EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
-    Machine, AllocMap, MayLeak, ScalarMaybeUndef, ErrorHandled,
+    Machine, AllocMap, MayLeak, ErrorHandled,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -655,7 +655,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // (`get_bytes_with_undef_and_ptr` below checks that there are no
         // relocations overlapping the edges; those would not be handled correctly).
         let relocations = {
-            let relocations = self.relocations(src, size)?;
+            let relocations = self.get(src.alloc_id)?.relocations(self, src, size)?;
             let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
             for i in 0..length {
                 new_relocations.extend(
@@ -671,9 +671,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             new_relocations
         };
 
+        let tcx = self.tcx.tcx;
+
         // This also checks alignment, and relocation edges on the src.
-        let src_bytes = self.get_bytes_with_undef_and_ptr(src, size, src_align)?.as_ptr();
-        let dest_bytes = self.get_bytes_mut(dest, size * length, dest_align)?.as_mut_ptr();
+        let src_bytes = self.get(src.alloc_id)?
+            .get_bytes_with_undef_and_ptr(&tcx, src, size, src_align)?
+            .as_ptr();
+        let dest_bytes = self.get_mut(dest.alloc_id)?
+            .get_bytes_mut(&tcx, dest, size * length, dest_align)?
+            .as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes
         // behind `src` and `dest`. Also, we use the overlapping-safe `ptr::copy` if `src` and

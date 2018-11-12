@@ -10,9 +10,12 @@
 
 //! The virtual memory representation of the MIR interpreter
 
-use super::{Pointer, EvalResult, AllocId};
+use super::{
+    Pointer, EvalResult, AllocId, ScalarMaybeUndef, write_target_uint, read_target_uint, Scalar,
+    truncate,
+};
 
-use ty::layout::{Size, Align};
+use ty::layout::{self, Size, Align};
 use syntax::ast::Mutability;
 use std::iter;
 use mir;
@@ -88,16 +91,19 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
 
 /// Reading and writing
 impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
-    pub fn read_c_str(&self, ptr: Pointer<M::PointerTag>) -> EvalResult<'tcx, &[u8]> {
-        let alloc = self.get(ptr.alloc_id)?;
+    pub fn read_c_str(
+        &self,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
+    ) -> EvalResult<'tcx, &[u8]> {
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         let offset = ptr.offset.bytes() as usize;
-        match alloc.bytes[offset..].iter().position(|&c| c == 0) {
+        match self.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
                 let p1 = Size::from_bytes((size + 1) as u64);
-                self.check_relocations(ptr, p1)?;
+                self.check_relocations(cx, ptr, p1)?;
                 self.check_defined(ptr, p1)?;
-                Ok(&alloc.bytes[offset..offset + size])
+                Ok(&self.bytes[offset..offset + size])
             }
             None => err!(UnterminatedCString(ptr.erase_tag())),
         }
@@ -105,7 +111,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
     pub fn check_bytes(
         &self,
-        ptr: Scalar<M::PointerTag>,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
         size: Size,
         allow_ptr_and_undef: bool,
     ) -> EvalResult<'tcx> {
@@ -115,42 +122,54 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
             self.check_align(ptr, align)?;
             return Ok(());
         }
-        let ptr = ptr.to_ptr()?;
         // Check bounds, align and relocations on the edges
-        self.get_bytes_with_undef_and_ptr(ptr, size, align)?;
+        self.get_bytes_with_undef_and_ptr(cx, ptr, size, align)?;
         // Check undef and ptr
         if !allow_ptr_and_undef {
             self.check_defined(ptr, size)?;
-            self.check_relocations(ptr, size)?;
+            self.check_relocations(cx, ptr, size)?;
         }
         Ok(())
     }
 
-    pub fn read_bytes(&self, ptr: Scalar<M::PointerTag>, size: Size) -> EvalResult<'tcx, &[u8]> {
+    pub fn read_bytes(
+        &self,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
+        size: Size,
+    ) -> EvalResult<'tcx, &[u8]> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1).unwrap();
         if size.bytes() == 0 {
             self.check_align(ptr, align)?;
             return Ok(&[]);
         }
-        self.get_bytes(ptr.to_ptr()?, size, align)
+        self.get_bytes(cx, ptr, size, align)
     }
 
-    pub fn write_bytes(&mut self, ptr: Scalar<M::PointerTag>, src: &[u8]) -> EvalResult<'tcx> {
+    pub fn write_bytes(
+        &mut self,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
+        src: &[u8],
+    ) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
         let align = Align::from_bytes(1).unwrap();
         if src.is_empty() {
             self.check_align(ptr, align)?;
             return Ok(());
         }
-        let bytes = self.get_bytes_mut(ptr.to_ptr()?, Size::from_bytes(src.len() as u64), align)?;
+        let bytes = self.get_bytes_mut(
+            cx, ptr, Size::from_bytes(src.len() as u64), align,
+        )?;
         bytes.clone_from_slice(src);
         Ok(())
     }
 
     pub fn write_repeat(
         &mut self,
-        ptr: Scalar<M::PointerTag>,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
         val: u8,
         count: Size
     ) -> EvalResult<'tcx> {
@@ -160,7 +179,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
             self.check_align(ptr, align)?;
             return Ok(());
         }
-        let bytes = self.get_bytes_mut(ptr.to_ptr()?, count, align)?;
+        let bytes = self.get_bytes_mut(cx, ptr, count, align)?;
         for b in bytes {
             *b = val;
         }
@@ -170,13 +189,14 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// Read a *non-ZST* scalar
     pub fn read_scalar(
         &self,
-        ptr: Pointer<M::PointerTag>,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
         ptr_align: Align,
         size: Size
-    ) -> EvalResult<'tcx, ScalarMaybeUndef<M::PointerTag>> {
+    ) -> EvalResult<'tcx, ScalarMaybeUndef<Tag>> {
         // get_bytes_unchecked tests alignment and relocation edges
         let bytes = self.get_bytes_with_undef_and_ptr(
-            ptr, size, ptr_align.min(self.int_align(size))
+            cx, ptr, size, ptr_align.min(self.int_align(cx, size))
         )?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
@@ -186,14 +206,13 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
             return Ok(ScalarMaybeUndef::Undef);
         }
         // Now we do the actual reading
-        let bits = read_target_uint(self.tcx.data_layout.endian, bytes).unwrap();
+        let bits = read_target_uint(cx.data_layout().endian, bytes).unwrap();
         // See if we got a pointer
-        if size != self.pointer_size() {
+        if size != cx.data_layout().pointer_size {
             // *Now* better make sure that the inside also is free of relocations.
-            self.check_relocations(ptr, size)?;
+            self.check_relocations(cx, ptr, size)?;
         } else {
-            let alloc = self.get(ptr.alloc_id)?;
-            match alloc.relocations.get(&ptr.offset) {
+            match self.relocations.get(&ptr.offset) {
                 Some(&(tag, alloc_id)) => {
                     let ptr = Pointer::new_with_tag(alloc_id, Size::from_bytes(bits as u64), tag);
                     return Ok(ScalarMaybeUndef::Scalar(ptr.into()))
@@ -207,18 +226,20 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
     pub fn read_ptr_sized(
         &self,
-        ptr: Pointer<M::PointerTag>,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
         ptr_align: Align
-    ) -> EvalResult<'tcx, ScalarMaybeUndef<M::PointerTag>> {
-        self.read_scalar(ptr, ptr_align, self.pointer_size())
+    ) -> EvalResult<'tcx, ScalarMaybeUndef<Tag>> {
+        self.read_scalar(cx, ptr, ptr_align, cx.data_layout().pointer_size)
     }
 
     /// Write a *non-ZST* scalar
     pub fn write_scalar(
         &mut self,
-        ptr: Pointer<M::PointerTag>,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
         ptr_align: Align,
-        val: ScalarMaybeUndef<M::PointerTag>,
+        val: ScalarMaybeUndef<Tag>,
         type_size: Size,
     ) -> EvalResult<'tcx> {
         let val = match val {
@@ -228,7 +249,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
         let bytes = match val {
             Scalar::Ptr(val) => {
-                assert_eq!(type_size, self.pointer_size());
+                assert_eq!(type_size, cx.data_layout().pointer_size);
                 val.offset.bytes() as u128
             }
 
@@ -242,15 +263,15 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
         {
             // get_bytes_mut checks alignment
-            let endian = self.tcx.data_layout.endian;
-            let dst = self.get_bytes_mut(ptr, type_size, ptr_align)?;
+            let endian = cx.data_layout().endian;
+            let dst = self.get_bytes_mut(cx, ptr, type_size, ptr_align)?;
             write_target_uint(endian, dst, bytes).unwrap();
         }
 
         // See if we have to also write a relocation
         match val {
             Scalar::Ptr(val) => {
-                self.get_mut(ptr.alloc_id)?.relocations.insert(
+                self.relocations.insert(
                     ptr.offset,
                     (val.tag, val.alloc_id),
                 );
@@ -263,15 +284,20 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
     pub fn write_ptr_sized(
         &mut self,
-        ptr: Pointer<M::PointerTag>,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
         ptr_align: Align,
-        val: ScalarMaybeUndef<M::PointerTag>
+        val: ScalarMaybeUndef<Tag>
     ) -> EvalResult<'tcx> {
-        let ptr_size = self.pointer_size();
-        self.write_scalar(ptr.into(), ptr_align, val, ptr_size)
+        let ptr_size = cx.data_layout().pointer_size;
+        self.write_scalar(cx, ptr.into(), ptr_align, val, ptr_size)
     }
 
-    fn int_align(&self, size: Size) -> Align {
+    fn int_align(
+        &self,
+        cx: &impl HasDataLayout,
+        size: Size,
+    ) -> Align {
         // We assume pointer-sized integers have the same alignment as pointers.
         // We also assume signed and unsigned integers of the same size have the same alignment.
         let ity = match size.bytes() {
@@ -282,7 +308,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
             16 => layout::I128,
             _ => bug!("bad integer size: {}", size.bytes()),
         };
-        ity.align(self).abi
+        ity.align(cx).abi
     }
 }
 
@@ -337,7 +363,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// It is the caller's responsibility to handle undefined and pointer bytes.
     /// However, this still checks that there are no relocations on the *edges*.
     #[inline]
-    fn get_bytes_with_undef_and_ptr(
+    pub fn get_bytes_with_undef_and_ptr(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
@@ -349,7 +375,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
     /// Just calling this already marks everything as defined and removes relocations,
     /// so be sure to actually put data there!
-    fn get_bytes_mut(
+    pub fn get_bytes_mut(
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
@@ -375,7 +401,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 /// Relocations
 impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// Return all relocations overlapping with the given ptr-offset pair.
-    fn relocations(
+    pub fn relocations(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
