@@ -1,3 +1,5 @@
+//! Validation of char literals
+
 use std::u32;
 
 use arrayvec::ArrayString;
@@ -12,7 +14,7 @@ use crate::{
     },
 };
 
-pub(crate) fn validate_char_node(node: ast::Char, errors: &mut Vec<SyntaxError>) {
+pub(super) fn validate_char_node(node: ast::Char, errors: &mut Vec<SyntaxError>) {
     let literal_text = node.text();
     let literal_range = node.syntax().range();
     let mut components = string_lexing::parse_char_literal(literal_text);
@@ -37,7 +39,7 @@ pub(crate) fn validate_char_node(node: ast::Char, errors: &mut Vec<SyntaxError>)
     }
 }
 
-pub(crate) fn validate_char_component(
+pub(super) fn validate_char_component(
     text: &str,
     kind: CharComponentKind,
     range: TextRange,
@@ -46,109 +48,115 @@ pub(crate) fn validate_char_component(
     // Validate escapes
     use self::CharComponentKind::*;
     match kind {
-        AsciiEscape => {
-            if text.len() == 1 {
-                // Escape sequence consists only of leading `\`
-                errors.push(SyntaxError::new(EmptyAsciiEscape, range));
-            } else {
-                let escape_code = text.chars().skip(1).next().unwrap();
-                if !is_ascii_escape(escape_code) {
-                    errors.push(SyntaxError::new(InvalidAsciiEscape, range));
-                }
-            }
-        }
-        AsciiCodeEscape => {
-            // An AsciiCodeEscape has 4 chars, example: `\xDD`
-            if text.len() < 4 {
-                errors.push(SyntaxError::new(TooShortAsciiCodeEscape, range));
-            } else {
-                assert!(
-                    text.chars().count() == 4,
-                    "AsciiCodeEscape cannot be longer than 4 chars"
-                );
-
-                match u8::from_str_radix(&text[2..], 16) {
-                    Ok(code) if code < 128 => { /* Escape code is valid */ }
-                    Ok(_) => errors.push(SyntaxError::new(AsciiCodeEscapeOutOfRange, range)),
-                    Err(_) => errors.push(SyntaxError::new(MalformedAsciiCodeEscape, range)),
-                }
-            }
-        }
-        UnicodeEscape => {
-            assert!(&text[..2] == "\\u", "UnicodeEscape always starts with \\u");
-
-            if text.len() == 2 {
-                // No starting `{`
-                errors.push(SyntaxError::new(MalformedUnicodeEscape, range));
-                return;
-            }
-
-            if text.len() == 3 {
-                // Only starting `{`
-                errors.push(SyntaxError::new(UnclosedUnicodeEscape, range));
-                return;
-            }
-
-            let mut code = ArrayString::<[_; 6]>::new();
-            let mut closed = false;
-            for c in text[3..].chars() {
-                assert!(!closed, "no characters after escape is closed");
-
-                if c.is_digit(16) {
-                    if code.len() == 6 {
-                        errors.push(SyntaxError::new(OverlongUnicodeEscape, range));
-                        return;
-                    }
-
-                    code.push(c);
-                } else if c == '_' {
-                    // Reject leading _
-                    if code.len() == 0 {
-                        errors.push(SyntaxError::new(MalformedUnicodeEscape, range));
-                        return;
-                    }
-                } else if c == '}' {
-                    closed = true;
-                } else {
-                    errors.push(SyntaxError::new(MalformedUnicodeEscape, range));
-                    return;
-                }
-            }
-
-            if !closed {
-                errors.push(SyntaxError::new(UnclosedUnicodeEscape, range))
-            }
-
-            if code.len() == 0 {
-                errors.push(SyntaxError::new(EmptyUnicodeEcape, range));
-                return;
-            }
-
-            match u32::from_str_radix(&code, 16) {
-                Ok(code_u32) if code_u32 > 0x10FFFF => {
-                    errors.push(SyntaxError::new(UnicodeEscapeOutOfRange, range));
-                }
-                Ok(_) => {
-                    // Valid escape code
-                }
-                Err(_) => {
-                    errors.push(SyntaxError::new(MalformedUnicodeEscape, range));
-                }
-            }
-        }
+        AsciiEscape => validate_ascii_escape(text, range, errors),
+        AsciiCodeEscape => validate_ascii_code_escape(text, range, errors),
+        UnicodeEscape => validate_unicode_escape(text, range, errors),
         CodePoint => {
             // These code points must always be escaped
-            if text == "\t" || text == "\r" {
+            if text == "\t" || text == "\r" || text == "\n" {
                 errors.push(SyntaxError::new(UnescapedCodepoint, range));
             }
         }
     }
 }
 
-fn is_ascii_escape(code: char) -> bool {
+fn validate_ascii_escape(text: &str, range: TextRange, errors: &mut Vec<SyntaxError>) {
+    if text.len() == 1 {
+        // Escape sequence consists only of leading `\`
+        errors.push(SyntaxError::new(EmptyAsciiEscape, range));
+    } else {
+        let escape_code = text.chars().skip(1).next().unwrap();
+        if !is_ascii_escape(escape_code) {
+            errors.push(SyntaxError::new(InvalidAsciiEscape, range));
+        }
+    }
+}
+
+pub(super) fn is_ascii_escape(code: char) -> bool {
     match code {
         '\\' | '\'' | '"' | 'n' | 'r' | 't' | '0' => true,
         _ => false,
+    }
+}
+
+fn validate_ascii_code_escape(text: &str, range: TextRange, errors: &mut Vec<SyntaxError>) {
+    // An AsciiCodeEscape has 4 chars, example: `\xDD`
+    if text.len() < 4 {
+        errors.push(SyntaxError::new(TooShortAsciiCodeEscape, range));
+    } else {
+        assert!(
+            text.chars().count() == 4,
+            "AsciiCodeEscape cannot be longer than 4 chars"
+        );
+
+        match u8::from_str_radix(&text[2..], 16) {
+            Ok(code) if code < 128 => { /* Escape code is valid */ }
+            Ok(_) => errors.push(SyntaxError::new(AsciiCodeEscapeOutOfRange, range)),
+            Err(_) => errors.push(SyntaxError::new(MalformedAsciiCodeEscape, range)),
+        }
+    }
+}
+
+fn validate_unicode_escape(text: &str, range: TextRange, errors: &mut Vec<SyntaxError>) {
+    assert!(&text[..2] == "\\u", "UnicodeEscape always starts with \\u");
+
+    if text.len() == 2 {
+        // No starting `{`
+        errors.push(SyntaxError::new(MalformedUnicodeEscape, range));
+        return;
+    }
+
+    if text.len() == 3 {
+        // Only starting `{`
+        errors.push(SyntaxError::new(UnclosedUnicodeEscape, range));
+        return;
+    }
+
+    let mut code = ArrayString::<[_; 6]>::new();
+    let mut closed = false;
+    for c in text[3..].chars() {
+        assert!(!closed, "no characters after escape is closed");
+
+        if c.is_digit(16) {
+            if code.len() == 6 {
+                errors.push(SyntaxError::new(OverlongUnicodeEscape, range));
+                return;
+            }
+
+            code.push(c);
+        } else if c == '_' {
+            // Reject leading _
+            if code.len() == 0 {
+                errors.push(SyntaxError::new(MalformedUnicodeEscape, range));
+                return;
+            }
+        } else if c == '}' {
+            closed = true;
+        } else {
+            errors.push(SyntaxError::new(MalformedUnicodeEscape, range));
+            return;
+        }
+    }
+
+    if !closed {
+        errors.push(SyntaxError::new(UnclosedUnicodeEscape, range))
+    }
+
+    if code.len() == 0 {
+        errors.push(SyntaxError::new(EmptyUnicodeEcape, range));
+        return;
+    }
+
+    match u32::from_str_radix(&code, 16) {
+        Ok(code_u32) if code_u32 > 0x10FFFF => {
+            errors.push(SyntaxError::new(UnicodeEscapeOutOfRange, range));
+        }
+        Ok(_) => {
+            // Valid escape code
+        }
+        Err(_) => {
+            errors.push(SyntaxError::new(MalformedUnicodeEscape, range));
+        }
     }
 }
 
@@ -205,9 +213,7 @@ mod test {
 
     #[test]
     fn test_valid_ascii_escape() {
-        let valid = [
-            r"\'", "\"", "\\\\", "\\\"", r"\n", r"\r", r"\t", r"\0", "a", "b",
-        ];
+        let valid = [r"\'", "\"", "\\\\", "\\\"", r"\n", r"\r", r"\t", r"\0"];
         for c in &valid {
             assert_valid_char(c);
         }
