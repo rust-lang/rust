@@ -496,7 +496,7 @@ where
                         return (None, KleeneOp::ZeroOrMore);
                     }
 
-                    // #2 is a Kleene op, which is the the only valid option
+                    // #2 is a Kleene op, which is the only valid option
                     Ok(Ok((op, _))) => {
                         // Warn that `?` as a separator will be deprecated
                         sess.buffer_lint(

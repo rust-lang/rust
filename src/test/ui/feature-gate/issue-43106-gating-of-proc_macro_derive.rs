@@ -13,7 +13,7 @@
 // not descend further into the mod for other occurrences of the same
 // error.
 //
-// This file sits on its own because the the "weird" occurrences here
+// This file sits on its own because the "weird" occurrences here
 // signal errors, making it incompatible with the "warnings only"
 // nature of issue-43106-gating-of-builtin-attrs.rs
 

@@ -132,7 +132,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ///
     /// See the `region_obligations` field of `InferCtxt` for some
     /// comments about how this function fits into the overall expected
-    /// flow of the the inferencer. The key point is that it is
+    /// flow of the inferencer. The key point is that it is
     /// invoked after all type-inference variables have been bound --
     /// towards the end of regionck. This also ensures that the
     /// region-bound-pairs are available (see comments above regarding
