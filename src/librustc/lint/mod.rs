@@ -341,7 +341,7 @@ pub trait EarlyLintPass: LintPass {
     fn check_block_post(&mut self, _: &EarlyContext<'_>, _: &ast::Block) { }
     fn check_stmt(&mut self, _: &EarlyContext<'_>, _: &ast::Stmt) { }
     fn check_arm(&mut self, _: &EarlyContext<'_>, _: &ast::Arm) { }
-    fn check_pat(&mut self, _: &EarlyContext<'_>, _: &ast::Pat) { }
+    fn check_pat(&mut self, _: &EarlyContext<'_>, _: &ast::Pat, _: &mut bool) { }
     fn check_expr(&mut self, _: &EarlyContext<'_>, _: &ast::Expr) { }
     fn check_expr_post(&mut self, _: &EarlyContext<'_>, _: &ast::Expr) { }
     fn check_ty(&mut self, _: &EarlyContext<'_>, _: &ast::Ty) { }
