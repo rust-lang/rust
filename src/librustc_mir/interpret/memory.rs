@@ -984,33 +984,4 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         Ok(())
     }
-
-    /// Checks that a range of bytes is defined. If not, returns the `ReadUndefBytes`
-    /// error which will report the first byte which is undefined.
-    #[inline]
-    fn check_defined(&self, ptr: Pointer<M::PointerTag>, size: Size) -> EvalResult<'tcx> {
-        let alloc = self.get(ptr.alloc_id)?;
-        alloc.undef_mask.is_range_defined(
-            ptr.offset,
-            ptr.offset + size,
-        ).or_else(|idx| err!(ReadUndefBytes(idx)))
-    }
-
-    pub fn mark_definedness(
-        &mut self,
-        ptr: Pointer<M::PointerTag>,
-        size: Size,
-        new_state: bool,
-    ) -> EvalResult<'tcx> {
-        if size.bytes() == 0 {
-            return Ok(());
-        }
-        let alloc = self.get_mut(ptr.alloc_id)?;
-        alloc.undef_mask.set_range(
-            ptr.offset,
-            ptr.offset + size,
-            new_state,
-        );
-        Ok(())
-    }
 }
