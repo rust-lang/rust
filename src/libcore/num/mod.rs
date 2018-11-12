@@ -2152,6 +2152,7 @@ Basic usage:
 ", $Feature, "assert_eq!(", stringify!($SelfT), "::min_value(), 0);", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_promotable]
             #[inline]
             pub const fn min_value() -> Self { 0 }
         }
@@ -2168,6 +2169,7 @@ Basic usage:
 stringify!($MaxV), ");", $EndFeature, "
 ```"),
             #[stable(feature = "rust1", since = "1.0.0")]
+            #[rustc_promotable]
             #[inline]
             pub const fn max_value() -> Self { !0 }
         }

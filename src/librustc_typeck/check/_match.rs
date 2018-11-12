@@ -626,9 +626,9 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
         let discrim_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
 
-        // Typecheck the patterns first, so that we get types for all the
-        // bindings.
-        let all_arm_pats_diverge = arms.iter().map(|arm| {
+        // rust-lang/rust#55810: Typecheck patterns first (via eager
+        // collection into `Vec`), so we get types for all bindings.
+        let all_arm_pats_diverge: Vec<_> = arms.iter().map(|arm| {
             let mut all_pats_diverge = Diverges::WarnedAlways;
             for p in &arm.pats {
                 self.diverges.set(Diverges::Maybe);
@@ -644,7 +644,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 Diverges::Maybe => Diverges::Maybe,
                 Diverges::Always | Diverges::WarnedAlways => Diverges::WarnedAlways,
             }
-        });
+        }).collect();
 
         // Now typecheck the blocks.
         //
