@@ -334,9 +334,9 @@ impl OperandValue<'ll> {
 
 impl FunctionCx<'a, 'll, 'tcx> {
     fn maybe_codegen_consume_direct(&mut self,
-                                  bx: &Builder<'a, 'll, 'tcx>,
-                                  place: &mir::Place<'tcx>)
-                                   -> Option<OperandRef<'ll, 'tcx>>
+                                    bx: &Builder<'a, 'll, 'tcx>,
+                                    place: &mir::Place<'tcx>)
+                                     -> Option<OperandRef<'ll, 'tcx>>
     {
         debug!("maybe_codegen_consume_direct(place={:?})", place);
 
@@ -382,9 +382,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 
     pub fn codegen_consume(&mut self,
-                         bx: &Builder<'a, 'll, 'tcx>,
-                         place: &mir::Place<'tcx>)
-                         -> OperandRef<'ll, 'tcx>
+                           bx: &Builder<'a, 'll, 'tcx>,
+                           place: &mir::Place<'tcx>)
+                           -> OperandRef<'ll, 'tcx>
     {
         debug!("codegen_consume(place={:?})", place);
 
@@ -406,9 +406,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 
     pub fn codegen_operand(&mut self,
-                         bx: &Builder<'a, 'll, 'tcx>,
-                         operand: &mir::Operand<'tcx>)
-                         -> OperandRef<'ll, 'tcx>
+                           bx: &Builder<'a, 'll, 'tcx>,
+                           operand: &mir::Operand<'tcx>)
+                           -> OperandRef<'ll, 'tcx>
     {
         debug!("codegen_operand(operand={:?})", operand);
 

@@ -232,6 +232,7 @@ impl<'tcx> Rvalue<'tcx> {
             }
             Rvalue::Len(..) => tcx.types.usize,
             Rvalue::Cast(.., ty) => ty,
+            Rvalue::Hide(.., ty) => ty,
             Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
                 let lhs_ty = lhs.ty(local_decls, tcx);
                 let rhs_ty = rhs.ty(local_decls, tcx);

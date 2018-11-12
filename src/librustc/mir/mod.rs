@@ -2142,6 +2142,8 @@ pub enum Rvalue<'tcx> {
 
     Cast(CastKind, Operand<'tcx>, Ty<'tcx>),
 
+    Hide(Operand<'tcx>, Ty<'tcx>),
+
     BinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
     CheckedBinaryOp(BinOp, Operand<'tcx>, Operand<'tcx>),
 
@@ -2284,6 +2286,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             Len(ref a) => write!(fmt, "Len({:?})", a),
             Cast(ref kind, ref place, ref ty) => {
                 write!(fmt, "{:?} as {:?} ({:?})", place, ty, kind)
+            }
+            Hide(ref place, ref ty) => {
+                write!(fmt, "hide {:?} as {:?}", place, ty)
             }
             BinaryOp(ref op, ref a, ref b) => write!(fmt, "{:?}({:?}, {:?})", op, a, b),
             CheckedBinaryOp(ref op, ref a, ref b) => {
@@ -3181,6 +3186,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
             }
             Len(ref place) => Len(place.fold_with(folder)),
             Cast(kind, ref op, ty) => Cast(kind, op.fold_with(folder), ty.fold_with(folder)),
+            Hide(ref op, ty) => Hide(op.fold_with(folder), ty.fold_with(folder)),
             BinaryOp(op, ref rhs, ref lhs) => {
                 BinaryOp(op, rhs.fold_with(folder), lhs.fold_with(folder))
             }
@@ -3221,6 +3227,7 @@ impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
             Ref(region, _, ref place) => region.visit_with(visitor) || place.visit_with(visitor),
             Len(ref place) => place.visit_with(visitor),
             Cast(_, ref op, ty) => op.visit_with(visitor) || ty.visit_with(visitor),
+            Hide(ref op, ty) => op.visit_with(visitor) || ty.visit_with(visitor),
             BinaryOp(_, ref rhs, ref lhs) | CheckedBinaryOp(_, ref rhs, ref lhs) => {
                 rhs.visit_with(visitor) || lhs.visit_with(visitor)
             }

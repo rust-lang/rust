@@ -34,10 +34,10 @@ use super::place::PlaceRef;
 
 impl FunctionCx<'a, 'll, 'tcx> {
     pub fn codegen_rvalue(&mut self,
-                        bx: Builder<'a, 'll, 'tcx>,
-                        dest: PlaceRef<'ll, 'tcx>,
-                        rvalue: &mir::Rvalue<'tcx>)
-                        -> Builder<'a, 'll, 'tcx>
+                          bx: Builder<'a, 'll, 'tcx>,
+                          dest: PlaceRef<'ll, 'tcx>,
+                          rvalue: &mir::Rvalue<'tcx>)
+                          -> Builder<'a, 'll, 'tcx>
     {
         debug!("codegen_rvalue(dest.llval={:?}, rvalue={:?})",
                dest.llval, rvalue);
@@ -199,9 +199,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
     }
 
     pub fn codegen_rvalue_operand(&mut self,
-                                bx: Builder<'a, 'll, 'tcx>,
-                                rvalue: &mir::Rvalue<'tcx>)
-                                -> (Builder<'a, 'll, 'tcx>, OperandRef<'ll, 'tcx>)
+                                  bx: Builder<'a, 'll, 'tcx>,
+                                  rvalue: &mir::Rvalue<'tcx>)
+                                  -> (Builder<'a, 'll, 'tcx>, OperandRef<'ll, 'tcx>)
     {
         assert!(self.rvalue_creates_operand(rvalue), "cannot codegen {:?} to operand", rvalue);
 
@@ -240,10 +240,6 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         }
                     }
                     mir::CastKind::UnsafeFnPointer => {
-                        // This is a no-op at the LLVM level.
-                        operand.val
-                    }
-                    mir::CastKind::Hide => {
                         // This is a no-op at the LLVM level.
                         operand.val
                     }
@@ -390,6 +386,11 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 })
             }
 
+            mir::Rvalue::Hide(ref operand, _) => {
+                let operand = self.codegen_operand(&bx, operand);
+                (bx, operand)
+            }
+
             mir::Rvalue::Ref(_, bk, ref place) => {
                 let cg_place = self.codegen_place(&bx, place);
 
@@ -446,6 +447,7 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 };
                 (bx, operand)
             }
+
             mir::Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
                 let lhs = self.codegen_operand(&bx, lhs);
                 let rhs = self.codegen_operand(&bx, rhs);
@@ -525,10 +527,12 @@ impl FunctionCx<'a, 'll, 'tcx> {
                 };
                 (bx, operand)
             }
+
             mir::Rvalue::Use(ref operand) => {
                 let operand = self.codegen_operand(&bx, operand);
                 (bx, operand)
             }
+
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
                 // According to `rvalue_creates_operand`, only ZST

@@ -349,7 +349,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                 })
             }
 
-            // FIXME(oli-obk): evaluate static/constant slice lengths
+            // FIXME(oli-obk): evaluate static/constant slice lengths.
             Rvalue::Len(_) => None,
             Rvalue::NullaryOp(NullOp::SizeOf, ty) => {
                 type_size_of(self.tcx, self.param_env, ty).and_then(|n| Some((

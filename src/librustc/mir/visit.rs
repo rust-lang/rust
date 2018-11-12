@@ -621,6 +621,12 @@ macro_rules! make_mir_visitor {
                         self.visit_ty(ty, TyContext::Location(location));
                     }
 
+                    Rvalue::Hide(ref $($mutability)* operand,
+                                 ref $($mutability)* ty) => {
+                        self.visit_operand(operand, location);
+                        self.visit_ty(ty, TyContext::Location(location));
+                    }
+
                     Rvalue::BinaryOp(_bin_op,
                                      ref $($mutability)* lhs,
                                      ref $($mutability)* rhs) |
