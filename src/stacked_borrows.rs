@@ -509,10 +509,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
                 // Expected combinations.  Nothing to do.
             }
             (Some(MutMutable), Borrow::Shr(None)) => {
-                // Raw transmuted to mut ref.  Keep this as raw access.
-                // We cannot reborrow here; there might be a raw in `&(*var).1` where
-                // `var` is an `&mut`.  The other field of the struct might be already frozen,
-                // also using `var`, and that would be okay.
+                // Raw transmuted to mut ref.  This is something real unsafe code does.
+                // We cannot reborrow here because we do not want to mutate state on a deref.
             }
             (Some(MutImmutable), Borrow::Uniq(_)) => {
                 // A mut got transmuted to shr.  Can happen even from compiler transformations:
