@@ -18,6 +18,7 @@ use std::iter;
 use mir;
 use std::ops::{Deref, DerefMut};
 use rustc_data_structures::sorted_map::SortedMap;
+use rustc_target::abi::HasDataLayout;
 
 /// Used by `check_bounds` to indicate whether the pointer needs to be just inbounds
 /// or also inbounds of a *live* allocation.
@@ -76,16 +77,17 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     #[inline(always)]
     pub fn check_bounds(
         &self,
+        cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx> {
         // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
-        self.check_bounds_ptr(ptr.offset(size, &*self)?)
+        self.check_bounds_ptr(ptr.offset(size, cx)?)
     }
 }
 
 /// Byte accessors
-impl<'tcx, Tag, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
+impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// The last argument controls whether we error out when there are undefined
     /// or pointer bytes.  You should never call this, call `get_bytes` or
     /// `get_bytes_with_undef_and_ptr` instead,
@@ -95,6 +97,7 @@ impl<'tcx, Tag, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// on that.
     fn get_bytes_internal(
         &self,
+        cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
         align: Align,
@@ -102,14 +105,14 @@ impl<'tcx, Tag, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     ) -> EvalResult<'tcx, &[u8]> {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_align(ptr.into(), align)?;
-        self.check_bounds(ptr, size, InboundsCheck::Live)?;
+        self.check_bounds(cx, ptr, size)?;
 
         if check_defined_and_ptr {
             self.check_defined(ptr, size)?;
-            self.check_relocations(ptr, size)?;
+            self.check_relocations(cx, ptr, size)?;
         } else {
             // We still don't want relocations on the *edges*
-            self.check_relocation_edges(ptr, size)?;
+            self.check_relocation_edges(cx, ptr, size)?;
         }
 
         AllocationExtra::memory_read(self, ptr, size)?;
@@ -123,11 +126,12 @@ impl<'tcx, Tag, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     #[inline]
     fn get_bytes(
         &self,
+        cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
         align: Align
     ) -> EvalResult<'tcx, &[u8]> {
-        self.get_bytes_internal(ptr, size, align, true)
+        self.get_bytes_internal(cx, ptr, size, align, true)
     }
 
     /// It is the caller's responsibility to handle undefined and pointer bytes.
@@ -135,27 +139,29 @@ impl<'tcx, Tag, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     #[inline]
     fn get_bytes_with_undef_and_ptr(
         &self,
+        cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
         align: Align
     ) -> EvalResult<'tcx, &[u8]> {
-        self.get_bytes_internal(ptr, size, align, false)
+        self.get_bytes_internal(cx, ptr, size, align, false)
     }
 
     /// Just calling this already marks everything as defined and removes relocations,
     /// so be sure to actually put data there!
     fn get_bytes_mut(
         &mut self,
+        cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
         align: Align,
     ) -> EvalResult<'tcx, &mut [u8]> {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
         self.check_align(ptr.into(), align)?;
-        self.check_bounds(ptr, size, InboundsCheck::Live)?;
+        self.check_bounds(cx, ptr, size)?;
 
         self.mark_definedness(ptr, size, true)?;
-        self.clear_relocations(ptr, size)?;
+        self.clear_relocations(cx, ptr, size)?;
 
         AllocationExtra::memory_written(self, ptr, size)?;
 
@@ -167,24 +173,30 @@ impl<'tcx, Tag, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 }
 
 /// Relocations
-impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
+impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
     /// Return all relocations overlapping with the given ptr-offset pair.
     fn relocations(
         &self,
+        cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx, &[(Size, (Tag, AllocId))]> {
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
         // the beginning of this range.
-        let start = ptr.offset.bytes().saturating_sub(self.pointer_size().bytes() - 1);
+        let start = ptr.offset.bytes().saturating_sub(cx.data_layout().pointer_size.bytes() - 1);
         let end = ptr.offset + size; // this does overflow checking
         Ok(self.relocations.range(Size::from_bytes(start)..end))
     }
 
     /// Check that there ar eno relocations overlapping with the given range.
     #[inline(always)]
-    fn check_relocations(&self, ptr: Pointer<Tag>, size: Size) -> EvalResult<'tcx> {
-        if self.relocations(ptr, size)?.len() != 0 {
+    fn check_relocations(
+        &self,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        if self.relocations(cx, ptr, size)?.len() != 0 {
             err!(ReadPointerAsBytes)
         } else {
             Ok(())
@@ -197,17 +209,22 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// uninitialized.  This is a somewhat odd "spooky action at a distance",
     /// but it allows strictly more code to run than if we would just error
     /// immediately in that case.
-    fn clear_relocations(&mut self, ptr: Pointer<Tag>, size: Size) -> EvalResult<'tcx> {
+    fn clear_relocations(
+        &mut self,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
         // Find the start and end of the given range and its outermost relocations.
         let (first, last) = {
             // Find all relocations overlapping the given range.
-            let relocations = self.relocations(ptr, size)?;
+            let relocations = self.relocations(cx, ptr, size)?;
             if relocations.is_empty() {
                 return Ok(());
             }
 
             (relocations.first().unwrap().0,
-             relocations.last().unwrap().0 + self.pointer_size())
+             relocations.last().unwrap().0 + cx.data_layout().pointer_size)
         };
         let start = ptr.offset;
         let end = start + size;
@@ -230,9 +247,14 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// Error if there are relocations overlapping with the edges of the
     /// given memory range.
     #[inline]
-    fn check_relocation_edges(&self, ptr: Pointer<Tag>, size: Size) -> EvalResult<'tcx> {
-        self.check_relocations(ptr, Size::ZERO)?;
-        self.check_relocations(ptr.offset(size, self)?, Size::ZERO)?;
+    fn check_relocation_edges(
+        &self,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
+        size: Size,
+    ) -> EvalResult<'tcx> {
+        self.check_relocations(cx, ptr, Size::ZERO)?;
+        self.check_relocations(cx, ptr.offset(size, cx)?, Size::ZERO)?;
         Ok(())
     }
 }
