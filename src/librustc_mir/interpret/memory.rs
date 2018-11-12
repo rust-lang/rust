@@ -284,48 +284,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             })
         }
     }
-
-    /// Check if the pointer is "in-bounds". Notice that a pointer pointing at the end
-    /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
-    /// in-bounds!  This follows C's/LLVM's rules.  `check` indicates whether we
-    /// additionally require the pointer to be pointing to a *live* (still allocated)
-    /// allocation.
-    /// If you want to check bounds before doing a memory access, better use `check_bounds`.
-    pub fn check_bounds_ptr(
-        &self,
-        ptr: Pointer<M::PointerTag>,
-        check: InboundsCheck,
-    ) -> EvalResult<'tcx> {
-        let allocation_size = match check {
-            InboundsCheck::Live => {
-                let alloc = self.get(ptr.alloc_id)?;
-                alloc.bytes.len() as u64
-            }
-            InboundsCheck::MaybeDead => {
-                self.get_size_and_align(ptr.alloc_id).0.bytes()
-            }
-        };
-        if ptr.offset.bytes() > allocation_size {
-            return err!(PointerOutOfBounds {
-                ptr: ptr.erase_tag(),
-                check,
-                allocation_size: Size::from_bytes(allocation_size),
-            });
-        }
-        Ok(())
-    }
-
-    /// Check if the memory range beginning at `ptr` and of size `Size` is "in-bounds".
-    #[inline(always)]
-    pub fn check_bounds(
-        &self,
-        ptr: Pointer<M::PointerTag>,
-        size: Size,
-        check: InboundsCheck,
-    ) -> EvalResult<'tcx> {
-        // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
-        self.check_bounds_ptr(ptr.offset(size, &*self)?, check)
-    }
 }
 
 /// Allocation accessors
