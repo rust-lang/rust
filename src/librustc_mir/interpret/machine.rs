@@ -174,16 +174,6 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx>;
 
-    /// Hook for performing extra checks when memory gets deallocated.
-    #[inline]
-    fn memory_deallocated(
-        _alloc: &mut Allocation<Self::PointerTag, Self::AllocExtra>,
-        _ptr: Pointer<Self::PointerTag>,
-        _size: Size,
-    ) -> EvalResult<'tcx> {
-        Ok(())
-    }
-
     /// Add the tag for a newly allocated pointer.
     fn tag_new_allocation(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
