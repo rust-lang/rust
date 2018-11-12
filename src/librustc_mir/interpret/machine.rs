@@ -17,7 +17,7 @@ use std::hash::Hash;
 
 use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
-use rustc::ty::{self, layout::{Size, TyLayout}, query::TyCtxtAt};
+use rustc::ty::{self, layout::TyLayout, query::TyCtxtAt};
 
 use super::{
     Allocation, AllocId, EvalResult, Scalar, AllocationExtra,
