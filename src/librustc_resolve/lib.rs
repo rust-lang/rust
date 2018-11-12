@@ -4670,6 +4670,34 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
     }
 
+    fn binding_description(&self, b: &NameBinding, ident: Ident, from_prelude: bool) -> String {
+        if b.span.is_dummy() {
+            let add_built_in = match b.def() {
+                // These already contain the "built-in" prefix or look bad with it.
+                Def::NonMacroAttr(..) | Def::PrimTy(..) | Def::ToolMod => false,
+                _ => true,
+            };
+            let (built_in, from) = if from_prelude {
+                ("", " from prelude")
+            } else if b.is_extern_crate() && !b.is_import() &&
+                        self.session.opts.externs.get(&ident.as_str()).is_some() {
+                ("", " passed with `--extern`")
+            } else if add_built_in {
+                (" built-in", "")
+            } else {
+                ("", "")
+            };
+
+            let article = if built_in.is_empty() { b.article() } else { "a" };
+            format!("{a}{built_in} {thing}{from}",
+                    a = article, thing = b.descr(), built_in = built_in, from = from)
+        } else {
+            let introduced = if b.is_import() { "imported" } else { "defined" };
+            format!("the {thing} {introduced} here",
+                    thing = b.descr(), introduced = introduced)
+        }
+    }
+
     fn report_ambiguity_error(&self, ambiguity_error: &AmbiguityError) {
         let AmbiguityError { kind, ident, b1, b2, misc1, misc2 } = *ambiguity_error;
         let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
@@ -4685,31 +4713,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         err.span_label(ident.span, "ambiguous name");
 
         let mut could_refer_to = |b: &NameBinding, misc: AmbiguityErrorMisc, also: &str| {
-            let what = if b.span.is_dummy() {
-                let add_built_in = match b.def() {
-                    // These already contain the "built-in" prefix or look bad with it.
-                    Def::NonMacroAttr(..) | Def::PrimTy(..) | Def::ToolMod => false,
-                    _ => true,
-                };
-                let (built_in, from) = if misc == AmbiguityErrorMisc::FromPrelude {
-                    ("", " from prelude")
-                } else if b.is_extern_crate() && !b.is_import() &&
-                          self.session.opts.externs.get(&ident.as_str()).is_some() {
-                    ("", " passed with `--extern`")
-                } else if add_built_in {
-                    (" built-in", "")
-                } else {
-                    ("", "")
-                };
-
-                let article = if built_in.is_empty() { b.article() } else { "a" };
-                format!("{a}{built_in} {thing}{from}",
-                        a = article, thing = b.descr(), built_in = built_in, from = from)
-            } else {
-                let participle = if b.is_import() { "imported" } else { "defined" };
-                format!("the {thing} {introduced} here",
-                        thing = b.descr(), introduced = participle)
-            };
+            let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
             let note_msg = format!("`{ident}` could{also} refer to {what}",
                                    ident = ident, also = also, what = what);
 

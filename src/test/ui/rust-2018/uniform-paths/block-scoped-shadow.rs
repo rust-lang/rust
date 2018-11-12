@@ -10,8 +10,6 @@
 
 // edition:2018
 
-#![feature(uniform_paths)]
-
 enum Foo {}
 
 struct std;

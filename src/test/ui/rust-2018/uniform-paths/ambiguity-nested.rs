@@ -10,8 +10,6 @@
 
 // edition:2018
 
-#![feature(uniform_paths)]
-
 // This test is similar to `ambiguity.rs`, but nested in a module.
 
 mod foo {
