@@ -60,7 +60,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// on that.
     fn get_bytes_internal(
         &self,
-        ptr: Pointer<M::PointerTag>,
+        ptr: Pointer<Tag>,
         size: Size,
         align: Align,
         check_defined_and_ptr: bool,
@@ -89,7 +89,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     #[inline]
     fn get_bytes(
         &self,
-        ptr: Pointer<M::PointerTag>,
+        ptr: Pointer<Tag>,
         size: Size,
         align: Align
     ) -> EvalResult<'tcx, &[u8]> {
@@ -101,7 +101,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     #[inline]
     fn get_bytes_with_undef_and_ptr(
         &self,
-        ptr: Pointer<M::PointerTag>,
+        ptr: Pointer<Tag>,
         size: Size,
         align: Align
     ) -> EvalResult<'tcx, &[u8]> {
@@ -112,7 +112,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// so be sure to actually put data there!
     fn get_bytes_mut(
         &mut self,
-        ptr: Pointer<M::PointerTag>,
+        ptr: Pointer<Tag>,
         size: Size,
         align: Align,
     ) -> EvalResult<'tcx, &mut [u8]> {
