@@ -18,7 +18,7 @@ pub fn analyze<'a, 'tcx: 'a>(fx: &FunctionCx<'a, 'tcx, impl Backend>) -> HashMap
     not_ssa(&mut flag_map, RETURN_PLACE);
 
     for (local, local_decl) in fx.mir.local_decls.iter_enumerated() {
-        if fx.cton_type(local_decl.ty).is_none() {
+        if fx.clif_type(local_decl.ty).is_none() {
             not_ssa(&mut flag_map, local);
         }
     }

@@ -59,7 +59,7 @@ macro_rules! intrinsic_match {
 
 macro_rules! atomic_binop_return_old {
     ($fx:expr, $op:ident<$T:ident>($ptr:ident, $src:ident) -> $ret:ident) => {
-        let clif_ty = $fx.cton_type($T).unwrap();
+        let clif_ty = $fx.clif_type($T).unwrap();
         let old = $fx.bcx.ins().load(clif_ty, MemFlags::new(), $ptr, 0);
         let new = $fx.bcx.ins().band(old, $src);
         $fx.bcx.ins().store(MemFlags::new(), new, $ptr, 0);
@@ -70,7 +70,7 @@ macro_rules! atomic_binop_return_old {
 macro_rules! atomic_minmax {
     ($fx:expr, $cc:expr, <$T:ident> ($ptr:ident, $src:ident) -> $ret:ident) => {
         // Read old
-        let clif_ty = $fx.cton_type($T).unwrap();
+        let clif_ty = $fx.clif_type($T).unwrap();
         let old = $fx.bcx.ins().load(clif_ty, MemFlags::new(), $ptr, 0);
 
         // Compare
@@ -362,7 +362,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         _ if intrinsic.starts_with("atomic_xchg"), <T> (v ptr, c src) {
             // Read old
-            let clif_ty = fx.cton_type(T).unwrap();
+            let clif_ty = fx.clif_type(T).unwrap();
             let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
             ret.write_cvalue(fx, CValue::ByVal(old, fx.layout_of(T)));
 
@@ -372,7 +372,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         };
         _ if intrinsic.starts_with("atomic_cxchg"), <T> (v ptr, v test_old, v new) { // both atomic_cxchg_* and atomic_cxchgweak_*
             // Read old
-            let clif_ty = fx.cton_type(T).unwrap();
+            let clif_ty = fx.clif_type(T).unwrap();
             let old = fx.bcx.ins().load(clif_ty, MemFlags::new(), ptr, 0);
 
             // Compare

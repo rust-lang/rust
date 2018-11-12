@@ -16,7 +16,7 @@ impl PassMode {
     fn get_param_ty(self, fx: &FunctionCx<impl Backend>) -> Type {
         match self {
             PassMode::NoPass => unimplemented!("pass mode nopass"),
-            PassMode::ByVal(cton_type) => cton_type,
+            PassMode::ByVal(clif_type) => clif_type,
             PassMode::ByRef => fx.pointer_type,
         }
     }
@@ -44,7 +44,7 @@ fn get_pass_mode<'a, 'tcx: 'a>(
         } else {
             PassMode::ByRef
         }
-    } else if let Some(ret_ty) = crate::common::cton_type_from_ty(tcx, ty) {
+    } else if let Some(ret_ty) = crate::common::clif_type_from_ty(tcx, ty) {
         PassMode::ByVal(ret_ty)
     } else {
         if abi == Abi::C {
@@ -70,7 +70,7 @@ fn adjust_arg_for_abi<'a, 'tcx: 'a>(
     }
 }
 
-pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(
+pub fn clif_sig_from_fn_ty<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     fn_ty: Ty<'tcx>,
 ) -> Signature {
@@ -97,7 +97,7 @@ pub fn cton_sig_from_fn_ty<'a, 'tcx: 'a>(
     let inputs = inputs
         .into_iter()
         .filter_map(|ty| match get_pass_mode(tcx, sig.abi, ty, false) {
-            PassMode::ByVal(cton_ty) => Some(cton_ty),
+            PassMode::ByVal(clif_ty) => Some(clif_ty),
             PassMode::NoPass => unimplemented!("pass mode nopass"),
             PassMode::ByRef => Some(pointer_ty(tcx)),
         });
@@ -178,7 +178,7 @@ pub fn get_function_name_and_sig<'a, 'tcx>(
 ) -> (String, Signature) {
     assert!(!inst.substs.needs_infer() && !inst.substs.has_param_types());
     let fn_ty = inst.ty(tcx);
-    let sig = cton_sig_from_fn_ty(tcx, fn_ty);
+    let sig = clif_sig_from_fn_ty(tcx, fn_ty);
     (tcx.symbol_name(inst).as_str().to_string(), sig)
 }
 
@@ -238,7 +238,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
             .into_iter()
             .map(|arg| {
                 (
-                    self.cton_type(arg.layout().ty).unwrap(),
+                    self.clif_type(arg.layout().ty).unwrap(),
                     arg.load_value(self),
                 )
             })
@@ -250,7 +250,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
             }
             None
         } else {
-            Some(self.cton_type(return_ty).unwrap())
+            Some(self.clif_type(return_ty).unwrap())
         };
         if let Some(val) = self.lib_call(name, input_tys, return_ty, &args) {
             CValue::ByVal(val, return_layout)
@@ -307,18 +307,18 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
 
                 let mut ebb_params = Vec::new();
                 for arg_ty in tupled_arg_tys.iter() {
-                    let cton_type =
+                    let clif_type =
                         get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false).get_param_ty(fx);
-                    ebb_params.push(fx.bcx.append_ebb_param(start_ebb, cton_type));
+                    ebb_params.push(fx.bcx.append_ebb_param(start_ebb, clif_type));
                 }
 
                 (local, ArgKind::Spread(ebb_params), arg_ty)
             } else {
-                let cton_type =
+                let clif_type =
                     get_pass_mode(fx.tcx, fx.self_sig().abi, arg_ty, false).get_param_ty(fx);
                 (
                     local,
-                    ArgKind::Normal(fx.bcx.append_ebb_param(start_ebb, cton_type)),
+                    ArgKind::Normal(fx.bcx.append_ebb_param(start_ebb, clif_type)),
                     arg_ty,
                 )
             }
@@ -368,7 +368,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
                 .contains(crate::analyze::Flags::NOT_SSA)
             {
                 fx.bcx
-                    .declare_var(mir_var(local), fx.cton_type(ty).unwrap());
+                    .declare_var(mir_var(local), fx.clif_type(ty).unwrap());
                 match get_pass_mode(fx.tcx, fx.self_sig().abi, ty, false) {
                     PassMode::NoPass => unimplemented!("pass mode nopass"),
                     PassMode::ByVal(_) => fx.bcx.def_var(mir_var(local), ebb_param),
@@ -434,7 +434,7 @@ pub fn codegen_fn_prelude<'a, 'tcx: 'a>(
             CPlace::from_stack_slot(fx, stack_slot, ty)
         } else {
             fx.bcx
-                .declare_var(mir_var(local), fx.cton_type(ty).unwrap());
+                .declare_var(mir_var(local), fx.clif_type(ty).unwrap());
             CPlace::Var(local, layout)
         };
 
@@ -568,7 +568,7 @@ pub fn codegen_call_inner<'a, 'tcx: 'a>(
         )
         .collect::<Vec<_>>();
 
-    let sig = fx.bcx.import_signature(cton_sig_from_fn_ty(fx.tcx, fn_ty));
+    let sig = fx.bcx.import_signature(clif_sig_from_fn_ty(fx.tcx, fn_ty));
     let call_inst = if let Some(func_ref) = func_ref {
         fx.bcx.ins().call_indirect(sig, func_ref, &call_args)
     } else {
