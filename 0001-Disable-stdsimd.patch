@@ -1,6 +1,6 @@
-From 17e82251ba8f36149c03aee327de8b4054e6c88e Mon Sep 17 00:00:00 2001
+From fd6acae580c2be9e8ba9c32b013df4e9547d936f Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Sat, 6 Oct 2018 11:07:31 +0200
+Date: Mon, 12 Nov 2018 19:08:45 +0100
 Subject: [PATCH] Disable stdsimd
 
 ---
@@ -9,35 +9,35 @@ Subject: [PATCH] Disable stdsimd
  2 files changed, 4 insertions(+)
 
 diff --git a/src/libcore/lib.rs b/src/libcore/lib.rs
-index 0211b05..cd224f1 100644
+index c69d444..1b7abad 100644
 --- a/src/libcore/lib.rs
 +++ b/src/libcore/lib.rs
-@@ -226,6 +226,7 @@ mod nonzero;
+@@ -228,6 +228,7 @@ mod nonzero;
  mod tuple;
  mod unit;
  
 +/*
- // Pull in the the `coresimd` crate directly into libcore. This is where all the
+ // Pull in the `coresimd` crate directly into libcore. This is where all the
  // architecture-specific (and vendor-specific) intrinsics are defined. AKA
  // things like SIMD and such. Note that the actual source for all this lies in a
-@@ -254,3 +255,4 @@ mod coresimd;
+@@ -256,3 +257,4 @@ mod coresimd;
  #[stable(feature = "simd_arch", since = "1.27.0")]
  #[cfg(not(stage0))]
  pub use coresimd::arch;
 +*/
 diff --git a/src/libstd/lib.rs b/src/libstd/lib.rs
-index c58bd36..4768e8b 100644
+index f460d10..6110b05 100644
 --- a/src/libstd/lib.rs
 +++ b/src/libstd/lib.rs
-@@ -501,6 +501,7 @@ mod memchr;
+@@ -493,6 +493,7 @@ mod memchr;
  // compiler
  pub mod rt;
  
 +/*
- // Pull in the the `stdsimd` crate directly into libstd. This is the same as
+ // Pull in the `stdsimd` crate directly into libstd. This is the same as
  // libcore's arch/simd modules where the source of truth here is in a different
  // repository, but we pull things in here manually to get it into libstd.
-@@ -525,6 +526,7 @@ mod coresimd {
+@@ -517,6 +518,7 @@ mod coresimd {
  #[stable(feature = "simd_arch", since = "1.27.0")]
  #[cfg(all(not(stage0), not(test)))]
  pub use stdsimd::arch;
@@ -46,5 +46,5 @@ index c58bd36..4768e8b 100644
  // Include a number of private modules that exist solely to provide
  // the rustdoc documentation for primitive types. Using `include!`
 -- 
-2.17.1 (Apple Git-112)
+2.11.0
 

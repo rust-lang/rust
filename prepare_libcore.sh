@@ -13,10 +13,15 @@ rm -rf $DST_DIR
 mkdir -p $DST_DIR/src
 cp -r $SRC_DIR/src $DST_DIR/
 
-cd $DST_DIR
+pushd $DST_DIR
 git init
 git add .
 git commit -m "Initial commit" -q
 git apply ../../000*.patch
+popd
+
+# `alloc_system` has been merged with libstd, which doesn't build yet.
+# This copies the original source to the sysroot source dir to simplify building it
+cp -r alloc_system $DST_DIR/src/liballoc_system
 
 echo "Successfully prepared libcore for building"

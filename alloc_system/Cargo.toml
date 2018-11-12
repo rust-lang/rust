@@ -1,0 +1,16 @@
+[package]
+authors = ["The Rust Project Developers", "bjorn3 (edited to be usable outside the rust source)"]
+name = "alloc_system"
+version = "0.0.0"
+[lib]
+name = "alloc_system"
+path = "lib.rs"
+test = false
+doc = false
+[dependencies]
+core = { path = "../libcore" }
+libc = { path = "../rustc/libc_shim" }
+compiler_builtins = { path = "../rustc/compiler_builtins_shim" }
+# See comments in the source for what this dependency is
+[target.'cfg(all(target_arch = "wasm32", not(target_os = "emscripten")))'.dependencies]
+dlmalloc = { path = "../rustc/dlmalloc_shim" }
