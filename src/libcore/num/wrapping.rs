@@ -387,7 +387,7 @@ assert_eq!(n.count_ones(), 3);
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub fn count_ones(self) -> u32 {
+                pub const fn count_ones(self) -> u32 {
                     self.0.count_ones()
                 }
             }
@@ -407,7 +407,7 @@ assert_eq!(Wrapping(!0", stringify!($t), ").count_zeros(), 0);
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub fn count_zeros(self) -> u32 {
+                pub const fn count_zeros(self) -> u32 {
                     self.0.count_zeros()
                 }
             }
@@ -430,7 +430,7 @@ assert_eq!(n.trailing_zeros(), 3);
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub fn trailing_zeros(self) -> u32 {
+                pub const fn trailing_zeros(self) -> u32 {
                     self.0.trailing_zeros()
                 }
             }
@@ -456,7 +456,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// ```
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-            pub fn rotate_left(self, n: u32) -> Self {
+            pub const fn rotate_left(self, n: u32) -> Self {
                 Wrapping(self.0.rotate_left(n))
             }
 
@@ -481,7 +481,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// ```
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-            pub fn rotate_right(self, n: u32) -> Self {
+            pub const fn rotate_right(self, n: u32) -> Self {
                 Wrapping(self.0.rotate_right(n))
             }
 
@@ -505,7 +505,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// ```
             #[inline]
             #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-            pub fn swap_bytes(self) -> Self {
+            pub const fn swap_bytes(self) -> Self {
                 Wrapping(self.0.swap_bytes())
             }
 
@@ -532,7 +532,7 @@ assert_eq!(n.trailing_zeros(), 3);
             /// ```
             #[unstable(feature = "reverse_bits", issue = "48763")]
             #[inline]
-            pub fn reverse_bits(self) -> Self {
+            pub const fn reverse_bits(self) -> Self {
                 Wrapping(self.0.reverse_bits())
             }
 
@@ -560,7 +560,7 @@ if cfg!(target_endian = \"big\") {
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub fn from_be(x: Self) -> Self {
+                pub const fn from_be(x: Self) -> Self {
                     Wrapping(<$t>::from_be(x.0))
                 }
             }
@@ -589,7 +589,7 @@ if cfg!(target_endian = \"little\") {
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub fn from_le(x: Self) -> Self {
+                pub const fn from_le(x: Self) -> Self {
                     Wrapping(<$t>::from_le(x.0))
                 }
             }
@@ -618,7 +618,7 @@ if cfg!(target_endian = \"big\") {
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub fn to_be(self) -> Self {
+                pub const fn to_be(self) -> Self {
                     Wrapping(self.0.to_be())
                 }
             }
@@ -647,7 +647,7 @@ if cfg!(target_endian = \"little\") {
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub fn to_le(self) -> Self {
+                pub const fn to_le(self) -> Self {
                     Wrapping(self.0.to_le())
                 }
             }
@@ -707,7 +707,7 @@ assert_eq!(n.leading_zeros(), 3);
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub fn leading_zeros(self) -> u32 {
+                pub const fn leading_zeros(self) -> u32 {
                     self.0.leading_zeros()
                 }
             }
@@ -784,7 +784,7 @@ assert!(!Wrapping(-10", stringify!($t), ").is_positive());
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub fn is_positive(self) -> bool {
+                pub const fn is_positive(self) -> bool {
                     self.0.is_positive()
                 }
             }
@@ -806,7 +806,7 @@ assert!(!Wrapping(10", stringify!($t), ").is_negative());
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub fn is_negative(self) -> bool {
+                pub const fn is_negative(self) -> bool {
                     self.0.is_negative()
                 }
             }
@@ -836,7 +836,7 @@ assert_eq!(n.leading_zeros(), 2);
 ```"),
                 #[inline]
                 #[unstable(feature = "wrapping_int_impl", issue = "32463")]
-                pub fn leading_zeros(self) -> u32 {
+                pub const fn leading_zeros(self) -> u32 {
                     self.0.leading_zeros()
                 }
             }

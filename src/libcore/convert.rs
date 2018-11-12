@@ -104,7 +104,6 @@
 /// assert_eq!(vec![1, 3], filtered);
 /// ```
 #[unstable(feature = "convert_id", issue = "53500")]
-#[rustc_const_unstable(feature = "const_convert_id")]
 #[inline]
 pub const fn identity<T>(x: T) -> T { x }
 

@@ -1091,7 +1091,7 @@ impl CStr {
     /// [`CString`]: struct.CString.html
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn as_ptr(&self) -> *const c_char {
+    pub const fn as_ptr(&self) -> *const c_char {
         self.inner.as_ptr()
     }
 

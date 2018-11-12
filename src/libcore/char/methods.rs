@@ -903,7 +903,7 @@ impl char {
     /// ```
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
-    pub fn is_ascii(&self) -> bool {
+    pub const fn is_ascii(&self) -> bool {
         *self as u32 <= 0x7F
     }
 

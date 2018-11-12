@@ -416,7 +416,7 @@ impl<Idx> RangeInclusive<Idx> {
     /// ```
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
-    pub fn start(&self) -> &Idx {
+    pub const fn start(&self) -> &Idx {
         &self.start
     }
 
@@ -440,7 +440,7 @@ impl<Idx> RangeInclusive<Idx> {
     /// ```
     #[stable(feature = "inclusive_range_methods", since = "1.27.0")]
     #[inline]
-    pub fn end(&self) -> &Idx {
+    pub const fn end(&self) -> &Idx {
         &self.end
     }
 

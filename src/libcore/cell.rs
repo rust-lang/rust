@@ -474,7 +474,7 @@ impl<T: ?Sized> Cell<T> {
     /// ```
     #[inline]
     #[stable(feature = "cell_as_ptr", since = "1.12.0")]
-    pub fn as_ptr(&self) -> *mut T {
+    pub const fn as_ptr(&self) -> *mut T {
         self.value.get()
     }
 
@@ -1508,7 +1508,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get(&self) -> *mut T {
+    pub const fn get(&self) -> *mut T {
         &self.value as *const T as *mut T
     }
 }

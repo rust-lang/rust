@@ -2277,7 +2277,6 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[rustc_const_unstable(feature = "const_str_as_ptr")]
     pub const fn as_ptr(&self) -> *const u8 {
         self as *const str as *const u8
     }

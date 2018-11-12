@@ -23,13 +23,16 @@ unsafe impl Sync for Foo {}
 
 static FOO: Foo = Foo(UnsafeCell::new(42));
 
+fn foo() {}
+
 static BAR: () = unsafe {
     *FOO.0.get() = 5;
-    //~^ ERROR calls in statics are limited to constant functions, tuple structs and tuple variants
-
+    //~^ ERROR statements in statics are unstable (see issue #48821)
     // This error is caused by a separate bug that the feature gate error is reported
     // even though the feature gate "const_let" is active.
-    //~| statements in statics are unstable (see issue #48821)
+
+    foo();
+    //~^ ERROR calls in statics are limited to constant functions, tuple structs and tuple variants
 };
 
 fn main() {
