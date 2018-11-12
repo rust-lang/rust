@@ -243,6 +243,9 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         // This is a no-op at the LLVM level.
                         operand.val
                     }
+                    mir::CastKind::Hide => {
+                        return (bx, operand);
+                    }
                     mir::CastKind::Unsize => {
                         assert!(cast.is_llvm_scalar_pair());
                         match operand.val {
@@ -384,11 +387,6 @@ impl FunctionCx<'a, 'll, 'tcx> {
                     val,
                     layout: cast
                 })
-            }
-
-            mir::Rvalue::Hide(ref operand, _) => {
-                let operand = self.codegen_operand(&bx, operand);
-                (bx, operand)
             }
 
             mir::Rvalue::Ref(_, bk, ref place) => {

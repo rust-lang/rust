@@ -423,10 +423,6 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for mir::Rvalue<'gcx> {
                 operand.hash_stable(hcx, hasher);
                 ty.hash_stable(hcx, hasher);
             }
-            mir::Rvalue::Hide(ref operand, ty) => {
-                operand.hash_stable(hcx, hasher);
-                ty.hash_stable(hcx, hasher);
-            }
             mir::Rvalue::BinaryOp(op, ref operand1, ref operand2) |
             mir::Rvalue::CheckedBinaryOp(op, ref operand1, ref operand2) => {
                 op.hash_stable(hcx, hasher);

@@ -39,6 +39,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     ) -> EvalResult<'tcx> {
         use rustc::mir::CastKind::*;
         match kind {
+            Hide => {
+                // TODO: implement
+                unimplemented!();
+            }
+
             Unsize => {
                 self.unsize_into(src, dest)?;
             }

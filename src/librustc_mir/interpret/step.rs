@@ -284,14 +284,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 self.cast(src, kind, dest)?;
             }
 
-            Hide(kind, ref operand, cast_ty) => {
-                debug_assert_eq!(self.monomorphize(cast_ty, self.substs()), dest.layout.ty);
-                let src = self.eval_operand(operand, None)?;
-                // TODO: unimplemented
-                unimplemented!();
-                // self.hide(src, dest)?;
-            }
-
             Discriminant(ref place) => {
                 let place = self.eval_place(place)?;
                 let discr_val = self.read_discriminant(self.place_to_op(place)?)?.0;
