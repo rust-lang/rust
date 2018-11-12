@@ -60,21 +60,12 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     pub fn check_bounds_ptr(
         &self,
         ptr: Pointer<Tag>,
-        check: InboundsCheck,
     ) -> EvalResult<'tcx> {
-        let allocation_size = match check {
-            InboundsCheck::Live => {
-                let alloc = self.get(ptr.alloc_id)?;
-                alloc.bytes.len() as u64
-            }
-            InboundsCheck::MaybeDead => {
-                self.get_size_and_align(ptr.alloc_id).0.bytes()
-            }
-        };
+        let allocation_size = self.bytes.len() as u64;
         if ptr.offset.bytes() > allocation_size {
             return err!(PointerOutOfBounds {
                 ptr: ptr.erase_tag(),
-                check,
+                check: InboundsCheck::Live,
                 allocation_size: Size::from_bytes(allocation_size),
             });
         }
@@ -87,15 +78,14 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         &self,
         ptr: Pointer<Tag>,
         size: Size,
-        check: InboundsCheck,
     ) -> EvalResult<'tcx> {
         // if ptr.offset is in bounds, then so is ptr (because offset checks for overflow)
-        self.check_bounds_ptr(ptr.offset(size, &*self)?, check)
+        self.check_bounds_ptr(ptr.offset(size, &*self)?)
     }
 }
 
 /// Byte accessors
-impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
+impl<'tcx, Tag, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// The last argument controls whether we error out when there are undefined
     /// or pointer bytes.  You should never call this, call `get_bytes` or
     /// `get_bytes_with_undef_and_ptr` instead,
@@ -122,13 +112,12 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
             self.check_relocation_edges(ptr, size)?;
         }
 
-        let alloc = self.get(ptr.alloc_id)?;
-        AllocationExtra::memory_read(alloc, ptr, size)?;
+        AllocationExtra::memory_read(self, ptr, size)?;
 
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
         let offset = ptr.offset.bytes() as usize;
-        Ok(&alloc.bytes[offset..offset + size.bytes() as usize])
+        Ok(&self.bytes[offset..offset + size.bytes() as usize])
     }
 
     #[inline]
@@ -168,13 +157,12 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         self.mark_definedness(ptr, size, true)?;
         self.clear_relocations(ptr, size)?;
 
-        let alloc = self.get_mut(ptr.alloc_id)?;
-        AllocationExtra::memory_written(alloc, ptr, size)?;
+        AllocationExtra::memory_written(self, ptr, size)?;
 
         assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
         assert_eq!(size.bytes() as usize as u64, size.bytes());
         let offset = ptr.offset.bytes() as usize;
-        Ok(&mut alloc.bytes[offset..offset + size.bytes() as usize])
+        Ok(&mut self.bytes[offset..offset + size.bytes() as usize])
     }
 }
 
@@ -190,7 +178,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         // the beginning of this range.
         let start = ptr.offset.bytes().saturating_sub(self.pointer_size().bytes() - 1);
         let end = ptr.offset + size; // this does overflow checking
-        Ok(self.get(ptr.alloc_id)?.relocations.range(Size::from_bytes(start)..end))
+        Ok(self.relocations.range(Size::from_bytes(start)..end))
     }
 
     /// Check that there ar eno relocations overlapping with the given range.
@@ -224,19 +212,17 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         let start = ptr.offset;
         let end = start + size;
 
-        let alloc = self.get_mut(ptr.alloc_id)?;
-
         // Mark parts of the outermost relocations as undefined if they partially fall outside the
         // given range.
         if first < start {
-            alloc.undef_mask.set_range(first, start, false);
+            self.undef_mask.set_range(first, start, false);
         }
         if last > end {
-            alloc.undef_mask.set_range(end, last, false);
+            self.undef_mask.set_range(end, last, false);
         }
 
         // Forget all the relocations.
-        alloc.relocations.remove_range(first..last);
+        self.relocations.remove_range(first..last);
 
         Ok(())
     }
@@ -258,8 +244,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// error which will report the first byte which is undefined.
     #[inline]
     fn check_defined(&self, ptr: Pointer<Tag>, size: Size) -> EvalResult<'tcx> {
-        let alloc = self.get(ptr.alloc_id)?;
-        alloc.undef_mask.is_range_defined(
+        self.undef_mask.is_range_defined(
             ptr.offset,
             ptr.offset + size,
         ).or_else(|idx| err!(ReadUndefBytes(idx)))
@@ -274,8 +259,7 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
         if size.bytes() == 0 {
             return Ok(());
         }
-        let alloc = self.get_mut(ptr.alloc_id)?;
-        alloc.undef_mask.set_range(
+        self.undef_mask.set_range(
             ptr.offset,
             ptr.offset + size,
             new_state,
