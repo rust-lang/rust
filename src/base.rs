@@ -110,9 +110,9 @@ fn trans_fn<'a, 'tcx: 'a>(
     // Step 7. Write function to file for debugging
     let mut writer = crate::pretty_clif::CommentWriter(fx.comments);
 
-    let mut cton = String::new();
+    let mut clif = String::new();
     if cfg!(debug_assertions) {
-        ::cranelift::codegen::write::decorate_function(&mut writer, &mut cton, &func, None)
+        ::cranelift::codegen::write::decorate_function(&mut writer, &mut clif, &func, None)
             .unwrap();
         let clif_file_name = format!(
             "{}/{}__{}.clif",
@@ -120,7 +120,7 @@ fn trans_fn<'a, 'tcx: 'a>(
             tcx.crate_name(LOCAL_CRATE),
             tcx.symbol_name(instance).as_str(),
         );
-        if let Err(e) = ::std::fs::write(clif_file_name, cton.as_bytes()) {
+        if let Err(e) = ::std::fs::write(clif_file_name, clif.as_bytes()) {
             tcx.sess.warn(&format!("err writing clif file: {:?}", e));
         }
     }
@@ -149,7 +149,7 @@ fn verify_func(tcx: TyCtxt, writer: crate::pretty_clif::CommentWriter, func: &Fu
                 err,
             );
             tcx.sess
-                .fatal(&format!("cretonne verify error:\n{}", pretty_error));
+                .fatal(&format!("cranelift verify error:\n{}", pretty_error));
         }
     }
 }
@@ -452,7 +452,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         }
                         UnOp::Neg => match layout.ty.sty {
                             ty::Int(_) => {
-                                let clif_ty = fx.cton_type(layout.ty).unwrap();
+                                let clif_ty = fx.clif_type(layout.ty).unwrap();
                                 let zero = fx.bcx.ins().iconst(clif_ty, 0);
                                 fx.bcx.ins().isub(zero, val)
                             }
@@ -495,20 +495,20 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         | (ty::Uint(_), ty::Int(_))
                         | (ty::Uint(_), ty::Uint(_)) => {
                             let from = operand.load_value(fx);
-                            let res = crate::common::cton_intcast(
+                            let res = crate::common::clif_intcast(
                                 fx,
                                 from,
-                                fx.cton_type(to_ty).unwrap(),
+                                fx.clif_type(to_ty).unwrap(),
                                 false,
                             );
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (ty::Int(_), ty::Int(_)) | (ty::Int(_), ty::Uint(_)) => {
                             let from = operand.load_value(fx);
-                            let res = crate::common::cton_intcast(
+                            let res = crate::common::clif_intcast(
                                 fx,
                                 from,
-                                fx.cton_type(to_ty).unwrap(),
+                                fx.clif_type(to_ty).unwrap(),
                                 true,
                             );
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
@@ -527,7 +527,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (ty::Int(_), ty::Float(_)) => {
-                            let from_ty = fx.cton_type(from_ty).unwrap();
+                            let from_ty = fx.clif_type(from_ty).unwrap();
                             let from = operand.load_value(fx);
                             // FIXME missing encoding for fcvt_from_sint.f32.i8
                             let from = if from_ty == types::I8 || from_ty == types::I16 {
@@ -535,12 +535,12 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             } else {
                                 from
                             };
-                            let f_type = fx.cton_type(to_ty).unwrap();
+                            let f_type = fx.clif_type(to_ty).unwrap();
                             let res = fx.bcx.ins().fcvt_from_sint(f_type, from);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (ty::Uint(_), ty::Float(_)) => {
-                            let from_ty = fx.cton_type(from_ty).unwrap();
+                            let from_ty = fx.clif_type(from_ty).unwrap();
                             let from = operand.load_value(fx);
                             // FIXME missing encoding for fcvt_from_uint.f32.i8
                             let from = if from_ty == types::I8 || from_ty == types::I16 {
@@ -548,12 +548,12 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             } else {
                                 from
                             };
-                            let f_type = fx.cton_type(to_ty).unwrap();
+                            let f_type = fx.clif_type(to_ty).unwrap();
                             let res = fx.bcx.ins().fcvt_from_uint(f_type, from);
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
                         (ty::Bool, ty::Uint(_)) | (ty::Bool, ty::Int(_)) => {
-                            let to_ty = fx.cton_type(to_ty).unwrap();
+                            let to_ty = fx.clif_type(to_ty).unwrap();
                             let from = operand.load_value(fx);
                             let res = if to_ty != types::I8 {
                                 fx.bcx.ins().uextend(to_ty, from)
@@ -605,7 +605,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 Rvalue::NullaryOp(NullOp::Box, content_ty) => {
                     use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 
-                    let usize_type = fx.cton_type(fx.tcx.types.usize).unwrap();
+                    let usize_type = fx.clif_type(fx.tcx.types.usize).unwrap();
                     let (size, align) = fx.layout_of(content_ty).size_and_align();
                     let llsize = fx.bcx.ins().iconst(usize_type, size.bytes() as i64);
                     let llalign = fx.bcx.ins().iconst(usize_type, align.abi() as i64);
@@ -690,7 +690,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                 layout::Int(_, signed) => signed,
                 _ => false,
             };
-            let val = cton_intcast(fx, lldiscr, fx.cton_type(dest_layout.ty).unwrap(), signed);
+            let val = clif_intcast(fx, lldiscr, fx.clif_type(dest_layout.ty).unwrap(), signed);
             return CValue::ByVal(val, dest_layout);
         }
         layout::Variants::NicheFilling {
@@ -699,8 +699,8 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
             niche_start,
             ..
         } => {
-            let niche_llty = fx.cton_type(discr_ty).unwrap();
-            let dest_cton_ty = fx.cton_type(dest_layout.ty).unwrap();
+            let niche_llty = fx.clif_type(discr_ty).unwrap();
+            let dest_clif_ty = fx.clif_type(dest_layout.ty).unwrap();
             if niche_variants.start() == niche_variants.end() {
                 let b = fx
                     .bcx
@@ -709,11 +709,11 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                 let if_true = fx
                     .bcx
                     .ins()
-                    .iconst(dest_cton_ty, *niche_variants.start() as u64 as i64);
+                    .iconst(dest_clif_ty, *niche_variants.start() as u64 as i64);
                 let if_false = fx
                     .bcx
                     .ins()
-                    .iconst(dest_cton_ty, dataful_variant as u64 as i64);
+                    .iconst(dest_clif_ty, dataful_variant as u64 as i64);
                 let val = fx.bcx.ins().select(b, if_true, if_false);
                 return CValue::ByVal(val, dest_layout);
             } else {
@@ -727,11 +727,11 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                     *niche_variants.end() as u64 as i64,
                 );
                 let if_true =
-                    cton_intcast(fx, lldiscr, fx.cton_type(dest_layout.ty).unwrap(), false);
+                    clif_intcast(fx, lldiscr, fx.clif_type(dest_layout.ty).unwrap(), false);
                 let if_false = fx
                     .bcx
                     .ins()
-                    .iconst(dest_cton_ty, dataful_variant as u64 as i64);
+                    .iconst(dest_clif_ty, dataful_variant as u64 as i64);
                 let val = fx.bcx.ins().select(b, if_true, if_false);
                 return CValue::ByVal(val, dest_layout);
             }
@@ -748,10 +748,10 @@ macro_rules! binop_match {
         let ret_layout = $fx.layout_of($ret_ty);
 
         // TODO HACK no encoding for icmp.i8
-        use crate::common::cton_intcast;
+        use crate::common::clif_intcast;
         let (lhs, rhs) = (
-            cton_intcast($fx, $lhs, types::I64, $signed),
-            cton_intcast($fx, $rhs, types::I64, $signed),
+            clif_intcast($fx, $lhs, types::I64, $signed),
+            clif_intcast($fx, $rhs, types::I64, $signed),
         );
         let b = $fx.bcx.ins().icmp(IntCC::$cc, lhs, rhs);
 

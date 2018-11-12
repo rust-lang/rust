@@ -19,7 +19,7 @@ pub fn pointer_ty(tcx: TyCtxt) -> types::Type {
     }
 }
 
-fn scalar_to_cton_type(tcx: TyCtxt, scalar: &Scalar) -> Type {
+fn scalar_to_clif_type(tcx: TyCtxt, scalar: &Scalar) -> Type {
     match scalar.value.size(&tcx).bits() {
         8 => types::I8,
         16 => types::I16,
@@ -29,7 +29,7 @@ fn scalar_to_cton_type(tcx: TyCtxt, scalar: &Scalar) -> Type {
     }
 }
 
-pub fn cton_type_from_ty<'a, 'tcx: 'a>(
+pub fn clif_type_from_ty<'a, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<types::Type> {
@@ -157,7 +157,7 @@ impl<'tcx> CValue<'tcx> {
     {
         match self {
             CValue::ByRef(addr, layout) => {
-                let cton_ty = fx.cton_type(layout.ty).unwrap_or_else(|| {
+                let clif_ty = fx.clif_type(layout.ty).unwrap_or_else(|| {
                     if layout.ty.is_box()
                         && !fx
                             .layout_of(layout.ty.builtin_deref(true).unwrap().ty)
@@ -169,7 +169,7 @@ impl<'tcx> CValue<'tcx> {
                         panic!("load_value of type {:?}", layout.ty);
                     }
                 });
-                fx.bcx.ins().load(cton_ty, MemFlags::new(), addr, 0)
+                fx.bcx.ins().load(clif_ty, MemFlags::new(), addr, 0)
             }
             CValue::ByVal(value, _layout) => value,
             CValue::ByValPair(_, _, _layout) => bug!("Please use load_value_pair for ByValPair"),
@@ -294,9 +294,9 @@ impl<'tcx> CValue<'tcx> {
     where
         'tcx: 'a,
     {
-        let cton_ty = fx.cton_type(ty).unwrap();
+        let clif_ty = fx.clif_type(ty).unwrap();
         let layout = fx.layout_of(ty);
-        CValue::ByVal(fx.bcx.ins().iconst(cton_ty, const_val), layout)
+        CValue::ByVal(fx.bcx.ins().iconst(clif_ty, const_val), layout)
     }
 
     pub fn unchecked_cast_to(self, layout: TyLayout<'tcx>) -> Self {
@@ -506,9 +506,9 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                     let ptr =
                         fx.bcx
                             .ins()
-                            .load(scalar_to_cton_type(fx.tcx, a), MemFlags::new(), addr, 0);
+                            .load(scalar_to_clif_type(fx.tcx, a), MemFlags::new(), addr, 0);
                     let extra = fx.bcx.ins().load(
-                        scalar_to_cton_type(fx.tcx, b),
+                        scalar_to_clif_type(fx.tcx, b),
                         MemFlags::new(),
                         addr,
                         a.value.size(&fx.tcx).bytes() as u32 as i32,
@@ -567,7 +567,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     }
 }
 
-pub fn cton_intcast<'a, 'tcx: 'a>(
+pub fn clif_intcast<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     val: Value,
     to: Type,
@@ -664,8 +664,8 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
         )
     }
 
-    pub fn cton_type(&self, ty: Ty<'tcx>) -> Option<Type> {
-        cton_type_from_ty(self.tcx, self.monomorphize(&ty))
+    pub fn clif_type(&self, ty: Ty<'tcx>) -> Option<Type> {
+        clif_type_from_ty(self.tcx, self.monomorphize(&ty))
     }
 
     pub fn get_ebb(&self, bb: BasicBlock) -> Ebb {
