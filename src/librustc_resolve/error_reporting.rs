@@ -52,7 +52,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     /// ```
     ///    |
     /// LL | use foo::Bar;
-    ///    |     ^^^ Did you mean `self::foo`?
+    ///    |     ^^^ did you mean `self::foo`?
     /// ```
     fn make_missing_self_suggestion(
         &mut self,
@@ -76,7 +76,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     /// ```
     ///    |
     /// LL | use foo::Bar;
-    ///    |     ^^^ Did you mean `crate::foo`?
+    ///    |     ^^^ did you mean `crate::foo`?
     /// ```
     fn make_missing_crate_suggestion(
         &mut self,
@@ -107,7 +107,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     /// ```
     ///    |
     /// LL | use foo::Bar;
-    ///    |     ^^^ Did you mean `super::foo`?
+    ///    |     ^^^ did you mean `super::foo`?
     /// ```
     fn make_missing_super_suggestion(
         &mut self,
@@ -131,7 +131,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     /// ```
     ///    |
     /// LL | use foobar::Baz;
-    ///    |     ^^^^^^ Did you mean `baz::foobar`?
+    ///    |     ^^^^^^ did you mean `baz::foobar`?
     /// ```
     ///
     /// Used when importing a submodule of an external crate but missing that crate's

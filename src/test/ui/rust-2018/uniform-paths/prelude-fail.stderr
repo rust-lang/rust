@@ -8,7 +8,7 @@ error[E0432]: unresolved import `rustfmt`
   --> $DIR/prelude-fail.rs:9:5
    |
 LL | use rustfmt::skip as imported_rustfmt_skip; //~ ERROR unresolved import `rustfmt`
-   |     ^^^^^^^ Not a module `rustfmt`
+   |     ^^^^^^^ not a module `rustfmt`
 
 error: aborting due to 2 previous errors
 
