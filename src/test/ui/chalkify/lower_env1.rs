@@ -17,7 +17,7 @@ trait Foo { }
 trait Bar where Self: Foo { }
 
 #[rustc_dump_env_program_clauses] //~ ERROR program clause dump
-fn bar<T: Bar>() {
+fn bar<T: Bar + ?Sized>() {
 }
 
 fn main() {

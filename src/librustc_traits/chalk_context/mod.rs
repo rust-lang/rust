@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+mod program_clauses;
+
 use chalk_engine::fallible::Fallible as ChalkEngineFallible;
 use chalk_engine::{context, hh::HhGoal, DelayedLiteral, ExClause};
 use rustc::infer::canonical::{
@@ -15,15 +17,12 @@ use rustc::infer::canonical::{
 };
 use rustc::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc::traits::{
-    WellFormed,
-    FromEnv,
     DomainGoal,
     ExClauseFold,
     ExClauseLift,
     Goal,
     GoalKind,
     Clause,
-    ProgramClauseCategory,
     QuantifierKind,
     Environment,
     InEnvironment,
@@ -31,7 +30,6 @@ use rustc::traits::{
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::subst::Kind;
 use rustc::ty::{self, TyCtxt};
-use rustc::hir::def_id::DefId;
 
 use std::fmt::{self, Debug};
 use std::marker::PhantomData;
@@ -335,228 +333,7 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         environment: &Environment<'tcx>,
         goal: &DomainGoal<'tcx>,
     ) -> Vec<Clause<'tcx>> {
-        use rustc::traits::WhereClause::*;
-
-        fn assemble_clauses_from_impls<'tcx>(
-            tcx: ty::TyCtxt<'_, '_, 'tcx>,
-            trait_def_id: DefId,
-            clauses: &mut Vec<Clause<'tcx>>
-        ) {
-            tcx.for_each_impl(trait_def_id, |impl_def_id| {
-                clauses.extend(
-                    tcx.program_clauses_for(impl_def_id)
-                        .into_iter()
-                        .cloned()
-                );
-            });
-        }
-
-        fn assemble_clauses_from_assoc_ty_values<'tcx>(
-            tcx: ty::TyCtxt<'_, '_, 'tcx>,
-            trait_def_id: DefId,
-            clauses: &mut Vec<Clause<'tcx>>
-        ) {
-            tcx.for_each_impl(trait_def_id, |impl_def_id| {
-                for def_id in tcx.associated_item_def_ids(impl_def_id).iter() {
-                    clauses.extend(
-                        tcx.program_clauses_for(*def_id)
-                            .into_iter()
-                            .cloned()
-                    );
-                }
-            });
-        }
-
-        let mut clauses = match goal {
-            DomainGoal::Holds(Implemented(trait_predicate)) => {
-                // These come from:
-                // * implementations of the trait itself (rule `Implemented-From-Impl`)
-                // * the trait decl (rule `Implemented-From-Env`)
-
-                let mut clauses = vec![];
-                assemble_clauses_from_impls(
-                    self.infcx.tcx,
-                    trait_predicate.def_id(),
-                    &mut clauses
-                );
-
-                // FIXME: we need to add special rules for builtin impls:
-                // * `Copy` / `Clone`
-                // * `Sized`
-                // * `Unsize`
-                // * `Generator`
-                // * `FnOnce` / `FnMut` / `Fn`
-                // * trait objects
-                // * auto traits
-
-                // Rule `Implemented-From-Env` will be computed from the environment.
-                clauses
-            }
-
-            DomainGoal::Holds(ProjectionEq(projection_predicate)) => {
-                // These come from:
-                // * the assoc type definition (rule `ProjectionEq-Placeholder`)
-                // * normalization of the assoc ty values (rule `ProjectionEq-Normalize`)
-                // * implied bounds from trait definitions (rule `Implied-Bound-From-Trait`)
-                // * implied bounds from type definitions (rule `Implied-Bound-From-Type`)
-
-                let clauses = self.infcx.tcx.program_clauses_for(
-                    projection_predicate.projection_ty.item_def_id
-                ).into_iter()
-
-                    // only select `ProjectionEq-Placeholder` and `ProjectionEq-Normalize`
-                    .filter(|clause| clause.category() == ProgramClauseCategory::Other)
-
-                    .cloned()
-                    .collect::<Vec<_>>();
-
-                // Rules `Implied-Bound-From-Trait` and `Implied-Bound-From-Type` will be computed
-                // from the environment.
-                clauses
-            }
-
-            DomainGoal::Holds(RegionOutlives(..)) => {
-                // These come from:
-                // * implied bounds from trait definitions (rule `Implied-Bound-From-Trait`)
-                // * implied bounds from type definitions (rule `Implied-Bound-From-Type`)
-
-                // All of these rules are computed in the environment.
-                vec![]
-            }
-
-            DomainGoal::Holds(TypeOutlives(..)) => {
-                // These come from:
-                // * implied bounds from trait definitions (rule `Implied-Bound-From-Trait`)
-                // * implied bounds from type definitions (rule `Implied-Bound-From-Type`)
-
-                // All of these rules are computed in the environment.
-                vec![]
-            }
-
-            DomainGoal::WellFormed(WellFormed::Trait(trait_predicate)) => {
-                // These come from -- the trait decl (rule `WellFormed-TraitRef`).
-                self.infcx.tcx.program_clauses_for(trait_predicate.def_id())
-                    .into_iter()
-
-                    // only select `WellFormed-TraitRef`
-                    .filter(|clause| clause.category() == ProgramClauseCategory::WellFormed)
-
-                    .cloned()
-                    .collect()
-            }
-
-            DomainGoal::WellFormed(WellFormed::Ty(ty)) => {
-                // These come from:
-                // * the associated type definition if `ty` refers to an unnormalized
-                //   associated type (rule `WellFormed-AssocTy`)
-                // * custom rules for built-in types
-                // * the type definition otherwise (rule `WellFormed-Type`)
-                let clauses = match ty.sty {
-                    ty::Projection(data) => {
-                        self.infcx.tcx.program_clauses_for(data.item_def_id)
-                    }
-
-                    // These types are always WF (recall that we do not check
-                    // for parameters to be WF)
-                    ty::Bool |
-                    ty::Char |
-                    ty::Int(..) |
-                    ty::Uint(..) |
-                    ty::Float(..) |
-                    ty::Str |
-                    ty::RawPtr(..) |
-                    ty::FnPtr(..) |
-                    ty::Param(..) |
-                    ty::Never => {
-                        ty::List::empty()
-                    }
-
-                    // WF if inner type is `Sized`
-                    ty::Slice(..) |
-                    ty::Array(..) => {
-                        ty::List::empty()
-                    }
-
-                    ty::Tuple(..) => {
-                        ty::List::empty()
-                    }
-
-                    // WF if `sub_ty` outlives `region`
-                    ty::Ref(..) => {
-                        ty::List::empty()
-                    }
-
-                    ty::Dynamic(..) => {
-                        // FIXME: no rules yet for trait objects
-                        ty::List::empty()
-                    }
-
-                    ty::Adt(def, ..) => {
-                        self.infcx.tcx.program_clauses_for(def.did)
-                    }
-
-                    ty::Foreign(def_id) |
-                    ty::FnDef(def_id, ..) |
-                    ty::Closure(def_id, ..) |
-                    ty::Generator(def_id, ..) |
-                    ty::Opaque(def_id, ..) => {
-                        self.infcx.tcx.program_clauses_for(def_id)
-                    }
-
-                    ty::GeneratorWitness(..) |
-                    ty::UnnormalizedProjection(..) |
-                    ty::Infer(..) |
-                    ty::Bound(..) |
-                    ty::Error => {
-                        bug!("unexpected type {:?}", ty)
-                    }
-                };
-
-                clauses.into_iter()
-                    .filter(|clause| clause.category() == ProgramClauseCategory::WellFormed)
-                    .cloned()
-                    .collect()
-            }
-
-            DomainGoal::FromEnv(FromEnv::Trait(..)) => {
-                // These come from:
-                // * implied bounds from trait definitions (rule `Implied-Bound-From-Trait`)
-                // * implied bounds from type definitions (rule `Implied-Bound-From-Type`)
-                // * implied bounds from assoc type defs (rules `Implied-Trait-From-AssocTy`,
-                //   `Implied-Bound-From-AssocTy` and `Implied-WC-From-AssocTy`)
-
-                // All of these rules are computed in the environment.
-                vec![]
-            }
-
-            DomainGoal::FromEnv(FromEnv::Ty(..)) => {
-                // There are no `FromEnv::Ty(..) :- ...` rules (this predicate only
-                // comes from the environment).
-                vec![]
-            }
-
-            DomainGoal::Normalize(projection_predicate) => {
-                // These come from -- assoc ty values (rule `Normalize-From-Impl`).
-                let mut clauses = vec![];
-
-                assemble_clauses_from_assoc_ty_values(
-                    self.infcx.tcx,
-                    projection_predicate.projection_ty.trait_ref(self.infcx.tcx).def_id,
-                    &mut clauses
-                );
-
-                clauses
-            }
-        };
-
-        let environment = self.infcx.tcx.lift_to_global(environment)
-            .expect("environment is not global");
-        clauses.extend(
-            self.infcx.tcx.program_clauses_for_env(environment)
-                .into_iter()
-                .cloned()
-        );
-        clauses
+        self.program_clauses_impl(environment, goal)
     }
 
     fn instantiate_binders_universally(
@@ -570,12 +347,11 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         &mut self,
         arg: &ty::Binder<Goal<'tcx>>,
     ) -> Goal<'tcx> {
-        let (value, _map) = self.infcx.replace_late_bound_regions_with_fresh_var(
+        self.infcx.replace_bound_vars_with_fresh_vars(
             DUMMY_SP,
             LateBoundRegionConversionTime::HigherRankedType,
-            arg,
-        );
-        value
+            arg
+        ).0
     }
 
     fn debug_ex_clause(&mut self, value: &'v ChalkExClause<'tcx>) -> Box<dyn Debug + 'v> {

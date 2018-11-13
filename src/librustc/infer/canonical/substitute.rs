@@ -80,6 +80,6 @@ where
             }
         };
 
-        tcx.replace_escaping_bound_vars(value, fld_r, fld_t)
+        tcx.replace_escaping_bound_vars(value, fld_r, fld_t).0
     }
 }

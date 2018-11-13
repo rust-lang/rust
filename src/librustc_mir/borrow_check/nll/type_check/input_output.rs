@@ -62,7 +62,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     // "inside" the closure.
                     Some(
                         self.infcx
-                            .replace_late_bound_regions_with_fresh_var(
+                            .replace_bound_vars_with_fresh_vars(
                                 mir.span,
                                 LateBoundRegionConversionTime::FnCall,
                                 &poly_sig,

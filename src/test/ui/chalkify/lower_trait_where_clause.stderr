@@ -1,18 +1,15 @@
 error: program clause dump
-  --> $DIR/lower_trait_where_clause.rs:16:1
+  --> $DIR/lower_trait_where_clause.rs:15:1
    |
 LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: FromEnv(S: std::fmt::Debug) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-   = note: FromEnv(S: std::marker::Sized) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-   = note: FromEnv(T: std::borrow::Borrow<U>) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-   = note: FromEnv(T: std::marker::Sized) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-   = note: Implemented(Self: Foo<'a, 'b, S, T, U>) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-   = note: RegionOutlives('a : 'b) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-   = note: TypeOutlives(U : 'b) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
-   = note: WellFormed(Self: Foo<'a, 'b, S, T, U>) :- Implemented(Self: Foo<'a, 'b, S, T, U>), WellFormed(S: std::marker::Sized), WellFormed(T: std::marker::Sized), WellFormed(S: std::fmt::Debug), WellFormed(T: std::borrow::Borrow<U>), RegionOutlives('a : 'b), TypeOutlives(U : 'b), WellFormed(std::vec::Vec<T>).
-   = note: WellFormed(std::vec::Vec<T>) :- FromEnv(Self: Foo<'a, 'b, S, T, U>).
+   = note: forall<'a, 'b, Self, T, U> { FromEnv(T: std::borrow::Borrow<U>) :- FromEnv(Self: Foo<'a, 'b, T, U>). }
+   = note: forall<'a, 'b, Self, T, U> { Implemented(Self: Foo<'a, 'b, T, U>) :- FromEnv(Self: Foo<'a, 'b, T, U>). }
+   = note: forall<'a, 'b, Self, T, U> { RegionOutlives('a: 'b) :- FromEnv(Self: Foo<'a, 'b, T, U>). }
+   = note: forall<'a, 'b, Self, T, U> { TypeOutlives(U: 'b) :- FromEnv(Self: Foo<'a, 'b, T, U>). }
+   = note: forall<'a, 'b, Self, T, U> { TypeOutlives(std::boxed::Box<T>: '<empty>) :- FromEnv(Self: Foo<'a, 'b, T, U>). }
+   = note: forall<'a, 'b, Self, T, U> { WellFormed(Self: Foo<'a, 'b, T, U>) :- Implemented(Self: Foo<'a, 'b, T, U>), WellFormed(T: std::borrow::Borrow<U>), TypeOutlives(U: 'b), RegionOutlives('a: 'b), TypeOutlives(std::boxed::Box<T>: '<empty>). }
 
 error: aborting due to previous error
 

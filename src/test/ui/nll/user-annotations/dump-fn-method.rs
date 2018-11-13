@@ -39,7 +39,7 @@ fn main() {
     // Here: we only want the `T` to be given, the rest should be variables.
     //
     // (`T` refers to the declaration of `Bazoom`)
-    let x = <_ as Bazoom<u32>>::method::<_>; //~ ERROR [?0, u32, ?1]
+    let x = <_ as Bazoom<u32>>::method::<_>; //~ ERROR [^0, u32, ^1]
     x(&22, 44, 66);
 
     // Here: all are given
@@ -51,7 +51,7 @@ fn main() {
     //
     // (`U` refers to the declaration of `Bazoom`)
     let y = 22_u32;
-    y.method::<u32>(44, 66); //~ ERROR [?0, ?1, u32]
+    y.method::<u32>(44, 66); //~ ERROR [^0, ^1, u32]
 
     // Here: nothing is given, so we don't have any annotation.
     let y = 22_u32;

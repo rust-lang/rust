@@ -1857,8 +1857,9 @@ fn explicit_predicates_of<'a, 'tcx>(
             &hir::WherePredicate::BoundPredicate(ref bound_pred) => {
                 let ty = icx.to_ty(&bound_pred.bounded_ty);
 
-                // Keep the type around in a WF predicate, in case of no bounds.
-                // That way, `where Ty:` is not a complete noop (see #53696).
+                // Keep the type around in a dummy predicate, in case of no bounds.
+                // That way, `where Ty:` is not a complete noop (see #53696) and `Ty`
+                // is still checked for WF.
                 if bound_pred.bounds.is_empty() {
                     if let ty::Param(_) = ty.sty {
                         // This is a `where T:`, which can be in the HIR from the
@@ -1869,7 +1870,10 @@ fn explicit_predicates_of<'a, 'tcx>(
                         // compiler/tooling bugs from not handling WF predicates.
                     } else {
                         let span = bound_pred.bounded_ty.span;
-                        predicates.push((ty::Predicate::WellFormed(ty), span));
+                        let predicate = ty::OutlivesPredicate(ty, tcx.mk_region(ty::ReEmpty));
+                        predicates.push(
+                            (ty::Predicate::TypeOutlives(ty::Binder::dummy(predicate)), span)
+                        );
                     }
                 }
 

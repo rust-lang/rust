@@ -179,6 +179,34 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
         })
     }
 
+    /// Creates a `Substs` that maps each generic parameter to a higher-ranked
+    /// var bound at index `0`. For types, we use a `BoundVar` index equal to
+    /// the type parameter index. For regions, we use the `BoundRegion::BrNamed`
+    /// variant (which has a def-id).
+    pub fn bound_vars_for_item(
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        def_id: DefId
+    ) -> &'tcx Substs<'tcx> {
+        Substs::for_item(tcx, def_id, |param, _| {
+            match param.kind {
+                ty::GenericParamDefKind::Type { .. } => {
+                    tcx.mk_ty(ty::Bound(ty::BoundTy {
+                        index: ty::INNERMOST,
+                        var: ty::BoundVar::from(param.index),
+                        kind: ty::BoundTyKind::Param(param.name),
+                    })).into()
+                }
+
+                ty::GenericParamDefKind::Lifetime => {
+                    tcx.mk_region(ty::RegionKind::ReLateBound(
+                        ty::INNERMOST,
+                        ty::BoundRegion::BrNamed(param.def_id, param.name)
+                    )).into()
+                }
+            }
+        })
+    }
+
     /// Creates a `Substs` for generic parameter definitions,
     /// by calling closures to obtain each kind.
     /// The closures get to observe the `Substs` as they're

@@ -28,6 +28,7 @@ use rustc::traits::{
 };
 use rustc::ty::query::Providers;
 use rustc::ty::{self, List, TyCtxt};
+use rustc::ty::subst::{Subst, Substs};
 use syntax::ast;
 
 use std::iter;
@@ -112,13 +113,14 @@ impl<'tcx> Lower<PolyDomainGoal<'tcx>> for ty::Predicate<'tcx> {
             Predicate::RegionOutlives(predicate) => predicate.lower(),
             Predicate::TypeOutlives(predicate) => predicate.lower(),
             Predicate::Projection(predicate) => predicate.lower(),
-            Predicate::WellFormed(ty) => {
-                ty::Binder::dummy(DomainGoal::WellFormed(WellFormed::Ty(*ty)))
+
+            Predicate::WellFormed(..) |
+            Predicate::ObjectSafe(..) |
+            Predicate::ClosureKind(..) |
+            Predicate::Subtype(..) |
+            Predicate::ConstEvaluatable(..) => {
+                bug!("unexpected predicate {}", self)
             }
-            Predicate::ObjectSafe(..)
-            | Predicate::ClosureKind(..)
-            | Predicate::Subtype(..)
-            | Predicate::ConstEvaluatable(..) => unimplemented!(),
         }
     }
 }
@@ -189,9 +191,14 @@ fn program_clauses_for_trait<'a, 'tcx>(
     // }
     // ```
 
+    let bound_vars = Substs::bound_vars_for_item(tcx, def_id);
+
     // `Self: Trait<P1..Pn>`
     let trait_pred = ty::TraitPredicate {
-        trait_ref: ty::TraitRef::identity(tcx, def_id),
+        trait_ref: ty::TraitRef {
+            def_id,
+            substs: bound_vars,
+        },
     };
 
     // `Implemented(Self: Trait<P1..Pn>)`
@@ -208,11 +215,12 @@ fn program_clauses_for_trait<'a, 'tcx>(
         category: ProgramClauseCategory::ImpliedBound,
     };
 
-    let clauses = iter::once(Clause::ForAll(ty::Binder::dummy(implemented_from_env)));
+    let implemented_from_env = Clause::ForAll(ty::Binder::bind(implemented_from_env));
 
     let where_clauses = &tcx.predicates_defined_on(def_id).predicates
         .into_iter()
         .map(|(wc, _)| wc.lower())
+        .map(|wc| wc.subst(tcx, bound_vars))
         .collect::<Vec<_>>();
 
     // Rule Implied-Bound-From-Trait
@@ -230,11 +238,22 @@ fn program_clauses_for_trait<'a, 'tcx>(
         .cloned()
 
         // `FromEnv(WC) :- FromEnv(Self: Trait<P1..Pn>)`
-        .map(|wc| wc.map_bound(|goal| ProgramClause {
-            goal: goal.into_from_env_goal(),
-            hypotheses,
-            category: ProgramClauseCategory::ImpliedBound,
-        }))
+        .map(|wc| {
+            // we move binders to the left
+            wc.map_bound(|goal| ProgramClause {
+                goal: goal.into_from_env_goal(),
+
+                // FIXME: As where clauses can only bind lifetimes for now,
+                // and that named bound regions have a def-id, it is safe
+                // to just inject `hypotheses` (which contains named vars bound at index `0`)
+                // into this binding level. This may change if we ever allow where clauses
+                // to bind types (e.g. for GATs things), because bound types only use a `BoundVar`
+                // index (no def-id).
+                hypotheses,
+
+                category: ProgramClauseCategory::ImpliedBound,
+            })
+        })
         .map(Clause::ForAll);
 
     // Rule WellFormed-TraitRef
@@ -246,28 +265,27 @@ fn program_clauses_for_trait<'a, 'tcx>(
     // }
     // ```
 
-    // `Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)`
-    let wf_conditions = iter::once(ty::Binder::dummy(trait_pred.lower()))
-        .chain(
-            where_clauses
-                .into_iter()
-                .map(|wc| wc.map_bound(|goal| goal.into_well_formed_goal()))
-        );
+    // `WellFormed(WC)`
+    let wf_conditions = where_clauses
+        .into_iter()
+        .map(|wc| wc.map_bound(|goal| goal.into_well_formed_goal()));
 
     // `WellFormed(Self: Trait<P1..Pn>) :- Implemented(Self: Trait<P1..Pn>) && WellFormed(WC)`
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Trait(trait_pred)),
         hypotheses: tcx.mk_goals(
-            wf_conditions.map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx))),
+            iter::once(tcx.mk_goal(GoalKind::DomainGoal(impl_trait))).chain(
+                wf_conditions.map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx)))
+            )
         ),
         category: ProgramClauseCategory::WellFormed,
     };
-    let wf_clause = iter::once(Clause::ForAll(ty::Binder::dummy(wf_clause)));
+    let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
 
     tcx.mk_clauses(
-        clauses
+        iter::once(implemented_from_env)
             .chain(implied_bound_clauses)
-            .chain(wf_clause)
+            .chain(iter::once(wf_clause))
     )
 }
 
@@ -286,7 +304,11 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     // }
     // ```
 
-    let trait_ref = tcx.impl_trait_ref(def_id).expect("not an impl");
+    let bound_vars = Substs::bound_vars_for_item(tcx, def_id);
+
+    let trait_ref = tcx.impl_trait_ref(def_id)
+        .expect("not an impl")
+        .subst(tcx, bound_vars);
 
     // `Implemented(A0: Trait<A1..An>)`
     let trait_pred = ty::TraitPredicate { trait_ref }.lower();
@@ -294,7 +316,8 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
     // `WC`
     let where_clauses = tcx.predicates_of(def_id).predicates
         .into_iter()
-        .map(|(wc, _)| wc.lower());
+        .map(|(wc, _)| wc.lower())
+        .map(|wc| wc.subst(tcx, bound_vars));
 
     // `Implemented(A0: Trait<A1..An>) :- WC`
     let clause = ProgramClause {
@@ -305,7 +328,7 @@ fn program_clauses_for_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId
         ),
         category: ProgramClauseCategory::Other,
     };
-    tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause))))
+    tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::bind(clause))))
 }
 
 pub fn program_clauses_for_type_def<'a, 'tcx>(
@@ -322,17 +345,20 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
     // }
     // ```
 
+    let bound_vars = Substs::bound_vars_for_item(tcx, def_id);
+
     // `Ty<...>`
-    let ty = tcx.type_of(def_id);
+    let ty = tcx.type_of(def_id).subst(tcx, bound_vars);
 
     // `WC`
     let where_clauses = tcx.predicates_of(def_id).predicates
         .into_iter()
         .map(|(wc, _)| wc.lower())
+        .map(|wc| wc.subst(tcx, bound_vars))
         .collect::<Vec<_>>();
 
     // `WellFormed(Ty<...>) :- WC1, ..., WCm`
-    let well_formed = ProgramClause {
+    let well_formed_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(ty)),
         hypotheses: tcx.mk_goals(
             where_clauses
@@ -342,10 +368,9 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
         ),
         category: ProgramClauseCategory::WellFormed,
     };
+    let well_formed_clause = Clause::ForAll(ty::Binder::bind(well_formed_clause));
 
-    let well_formed_clause = iter::once(Clause::ForAll(ty::Binder::dummy(well_formed)));
-
-    // Rule FromEnv-Type
+    // Rule Implied-Bound-From-Type
     //
     // For each where clause `WC`:
     // ```
@@ -363,22 +388,30 @@ pub fn program_clauses_for_type_def<'a, 'tcx>(
         .into_iter()
 
         // `FromEnv(WC) :- FromEnv(Ty<...>)`
-        .map(|wc| wc.map_bound(|goal| ProgramClause {
-            goal: goal.into_from_env_goal(),
-            hypotheses,
-            category: ProgramClauseCategory::ImpliedBound,
-        }))
+        .map(|wc| {
+            // move the binders to the left
+            wc.map_bound(|goal| ProgramClause {
+                goal: goal.into_from_env_goal(),
+
+                // FIXME: we inject `hypotheses` into this binding level,
+                // which may be incorrect in the future: see the FIXME in
+                // `program_clauses_for_trait`
+                hypotheses,
+
+                category: ProgramClauseCategory::ImpliedBound,
+            })
+        })
 
         .map(Clause::ForAll);
 
-    tcx.mk_clauses(well_formed_clause.chain(from_env_clauses))
+    tcx.mk_clauses(iter::once(well_formed_clause).chain(from_env_clauses))
 }
 
 pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     item_id: DefId,
 ) -> Clauses<'tcx> {
-    // Rule ProjectionEq-Skolemize
+    // Rule ProjectionEq-Placeholder
     //
     // ```
     // trait Trait<P1..Pn> {
@@ -403,7 +436,12 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
         ty::AssociatedItemContainer::TraitContainer(trait_id) => trait_id,
         _ => bug!("not an trait container"),
     };
-    let trait_ref = ty::TraitRef::identity(tcx, trait_id);
+
+    let trait_bound_vars = Substs::bound_vars_for_item(tcx, trait_id);
+    let trait_ref = ty::TraitRef {
+        def_id: trait_id,
+        substs: trait_bound_vars,
+    };
 
     let projection_ty = ty::ProjectionTy::from_ref_and_name(tcx, trait_ref, item.ident);
     let placeholder_ty = tcx.mk_ty(ty::UnnormalizedProjection(projection_ty));
@@ -417,6 +455,7 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
         hypotheses: ty::List::empty(),
         category: ProgramClauseCategory::Other,
     };
+    let projection_eq_clause = Clause::ForAll(ty::Binder::bind(projection_eq_clause));
 
     // Rule WellFormed-AssocTy
     // ```
@@ -430,11 +469,13 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
     let hypothesis = tcx.mk_goal(
         DomainGoal::Holds(WhereClause::Implemented(trait_predicate)).into_goal()
     );
+
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(placeholder_ty)),
         hypotheses: tcx.mk_goals(iter::once(hypothesis)),
         category: ProgramClauseCategory::WellFormed,
     };
+    let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
 
     // Rule Implied-Trait-From-AssocTy
     // ```
@@ -447,16 +488,17 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
     let hypothesis = tcx.mk_goal(
         DomainGoal::FromEnv(FromEnv::Ty(placeholder_ty)).into_goal()
     );
+
     let from_env_clause = ProgramClause {
         goal: DomainGoal::FromEnv(FromEnv::Trait(trait_predicate)),
         hypotheses: tcx.mk_goals(iter::once(hypothesis)),
         category: ProgramClauseCategory::ImpliedBound,
     };
+    let from_env_clause = Clause::ForAll(ty::Binder::bind(from_env_clause));
 
     let clauses = iter::once(projection_eq_clause)
         .chain(iter::once(wf_clause))
         .chain(iter::once(from_env_clause));
-    let clauses = clauses.map(|clause| Clause::ForAll(ty::Binder::dummy(clause)));
     tcx.mk_clauses(clauses)
 }
 
@@ -490,17 +532,18 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
         _ => bug!("not an impl container"),
     };
 
+    let impl_bound_vars = Substs::bound_vars_for_item(tcx, impl_id);
+
     // `A0 as Trait<A1..An>`
-    let trait_ref = tcx.impl_trait_ref(impl_id).unwrap();
+    let trait_ref = tcx.impl_trait_ref(impl_id)
+        .unwrap()
+        .subst(tcx, impl_bound_vars);
 
     // `T`
     let ty = tcx.type_of(item_id);
 
     // `Implemented(A0: Trait<A1..An>)`
-    let trait_implemented = ty::Binder::dummy(ty::TraitPredicate { trait_ref }.lower());
-
-    // `Implemented(A0: Trait<A1..An>)`
-    let hypotheses = vec![trait_implemented];
+    let trait_implemented: DomainGoal = ty::TraitPredicate { trait_ref }.lower();
 
     // `<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm>`
     let projection_ty = ty::ProjectionTy::from_ref_and_name(tcx, trait_ref, item.ident);
@@ -509,16 +552,16 @@ pub fn program_clauses_for_associated_type_value<'a, 'tcx>(
     let normalize_goal = DomainGoal::Normalize(ty::ProjectionPredicate { projection_ty, ty });
 
     // `Normalize(... -> T) :- ...`
-    let clause = ProgramClause {
+    let normalize_clause = ProgramClause {
         goal: normalize_goal,
         hypotheses: tcx.mk_goals(
-            hypotheses
-                .into_iter()
-                .map(|wc| tcx.mk_goal(GoalKind::from_poly_domain_goal(wc, tcx))),
+            iter::once(tcx.mk_goal(GoalKind::DomainGoal(trait_implemented)))
         ),
         category: ProgramClauseCategory::Other,
     };
-    tcx.mk_clauses(iter::once(Clause::ForAll(ty::Binder::dummy(clause))))
+    let normalize_clause = Clause::ForAll(ty::Binder::bind(normalize_clause));
+
+    tcx.mk_clauses(iter::once(normalize_clause))
 }
 
 pub fn dump_program_clauses<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
@@ -548,7 +591,7 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
 
             if attr.check_name("rustc_dump_env_program_clauses") {
                 let environment = self.tcx.environment(def_id);
-                clauses = Some(self.tcx.program_clauses_for_env(environment));
+                clauses = Some(self.tcx.program_clauses_for_env(*environment.skip_binder()));
             }
 
             if let Some(clauses) = clauses {
@@ -559,14 +602,7 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
 
                 let mut strings: Vec<_> = clauses
                     .iter()
-                    .map(|clause| {
-                        // Skip the top-level binder for a less verbose output
-                        let program_clause = match clause {
-                            Clause::Implies(program_clause) => program_clause,
-                            Clause::ForAll(program_clause) => program_clause.skip_binder(),
-                        };
-                        program_clause.to_string()
-                    })
+                    .map(|clause| clause.to_string())
                     .collect();
 
                 strings.sort();

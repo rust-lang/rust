@@ -20,6 +20,8 @@ use rustc::traits::{
 use rustc::ty::{self, TyCtxt, Ty};
 use rustc::hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashSet;
+use super::Lower;
+use std::iter;
 
 struct ClauseVisitor<'set, 'a, 'tcx: 'a + 'set> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -45,9 +47,32 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
                 );
             }
 
-            // forall<'a, T> { `Outlives(T, 'a) :- FromEnv(&'a T)` }
-            ty::Ref(_region, _sub_ty, ..) => {
-                // FIXME: we'd need bound tys in order to properly write the above rule
+            // forall<'a, T> { `Outlives(T: 'a) :- FromEnv(&'a T)` }
+            ty::Ref(..) => {
+                use rustc::hir;
+
+                let region = self.tcx.mk_region(
+                    ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
+                );
+                let ty = self.tcx.mk_ty(
+                    ty::Bound(ty::BoundTy::new(ty::INNERMOST, ty::BoundVar::from_u32(1)))
+                );
+
+                let ref_ty = self.tcx.mk_ref(region, ty::TypeAndMut {
+                    ty,
+                    mutbl: hir::Mutability::MutImmutable,
+                });
+                let from_env = DomainGoal::FromEnv(FromEnv::Ty(ref_ty));
+
+                let clause = ProgramClause {
+                    goal: ty::OutlivesPredicate(ty, region).lower(),
+                    hypotheses: self.tcx.mk_goals(
+                        iter::once(self.tcx.mk_goal(from_env.into_goal()))
+                    ),
+                    category: ProgramClauseCategory::ImpliedBound,
+                };
+                let clause = Clause::ForAll(ty::Binder::bind(clause));
+                self.round.insert(clause);
             }
 
             ty::Dynamic(..) => {
@@ -88,12 +113,12 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
             ty::FnPtr(..) |
             ty::Tuple(..) |
             ty::Never |
-            ty::Param(..) => (),
+            ty::Infer(..) |
+            ty::Bound(..) => (),
 
             ty::GeneratorWitness(..) |
             ty::UnnormalizedProjection(..) |
-            ty::Infer(..) |
-            ty::Bound(..) |
+            ty::Param(..) |
             ty::Error => {
                 bug!("unexpected type {:?}", ty);
             }
@@ -173,21 +198,28 @@ crate fn program_clauses_for_env<'a, 'tcx>(
     );
 }
 
-crate fn environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Environment<'tcx> {
+crate fn environment<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId
+) -> ty::Binder<Environment<'tcx>> {
     use super::{Lower, IntoFromEnvGoal};
     use rustc::hir::{Node, TraitItemKind, ImplItemKind, ItemKind, ForeignItemKind};
+    use rustc::ty::subst::{Subst, Substs};
 
     // The environment of an impl Trait type is its defining function's environment.
     if let Some(parent) = ty::is_impl_trait_defn(tcx, def_id) {
         return environment(tcx, parent);
     }
 
+    let bound_vars = Substs::bound_vars_for_item(tcx, def_id);
+
     // Compute the bounds on `Self` and the type parameters.
-    let ty::InstantiatedPredicates { predicates } =
-        tcx.predicates_of(def_id).instantiate_identity(tcx);
+    let ty::InstantiatedPredicates { predicates } = tcx.predicates_of(def_id)
+        .instantiate_identity(tcx);
 
     let clauses = predicates.into_iter()
         .map(|predicate| predicate.lower())
+        .map(|predicate| predicate.subst(tcx, bound_vars))
         .map(|domain_goal| domain_goal.map_bound(|bound| bound.into_from_env_goal()))
         .map(|domain_goal| domain_goal.map_bound(|bound| bound.into_program_clause()))
 
@@ -228,33 +260,43 @@ crate fn environment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> En
 
     let mut input_tys = FxHashSet::default();
 
-    // In an impl, we assume that the receiver type and all its constituents
+    // In an impl, we assume that the header trait ref and all its constituents
     // are well-formed.
     if is_impl {
-        let trait_ref = tcx.impl_trait_ref(def_id).expect("not an impl");
-        input_tys.extend(trait_ref.self_ty().walk());
+        let trait_ref = tcx.impl_trait_ref(def_id)
+            .expect("not an impl")
+            .subst(tcx, bound_vars);
+
+        input_tys.extend(
+            trait_ref.substs.types().flat_map(|ty| ty.walk())
+        );
     }
 
     // In an fn, we assume that the arguments and all their constituents are
     // well-formed.
     if is_fn {
-        let fn_sig = tcx.fn_sig(def_id);
+        // `skip_binder` because we move region parameters to the root binder,
+        // restored in the return type of this query
+        let fn_sig = tcx.fn_sig(def_id).skip_binder().subst(tcx, bound_vars);
+
         input_tys.extend(
-            // FIXME: `skip_binder` seems ok for now? In a real setting,
-            // the late bound regions would next be instantiated with things
-            // in the inference table.
-            fn_sig.skip_binder().inputs().iter().flat_map(|ty| ty.walk())
+            fn_sig.inputs().iter().flat_map(|ty| ty.walk())
         );
     }
 
     let clauses = clauses.chain(
         input_tys.into_iter()
+            // Filter out type parameters
+            .filter(|ty| match ty.sty {
+                ty::Bound(..) => false,
+                _ => true,
+            })
             .map(|ty| DomainGoal::FromEnv(FromEnv::Ty(ty)))
             .map(|domain_goal| domain_goal.into_program_clause())
             .map(Clause::Implies)
     );
 
-    Environment {
+    ty::Binder::bind(Environment {
         clauses: tcx.mk_clauses(clauses),
-    }
+    })
 }

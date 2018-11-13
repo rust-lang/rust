@@ -4,9 +4,10 @@ error: program clause dump
 LL | #[rustc_dump_program_clauses] //~ ERROR program clause dump
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: FromEnv(T: std::marker::Sized) :- FromEnv(Foo<T>).
-   = note: FromEnv(std::boxed::Box<T>: std::clone::Clone) :- FromEnv(Foo<T>).
-   = note: WellFormed(Foo<T>) :- Implemented(T: std::marker::Sized), Implemented(std::boxed::Box<T>: std::clone::Clone).
+   = note: forall<'a, T> { FromEnv(T: std::marker::Sized) :- FromEnv(Foo<'a, T>). }
+   = note: forall<'a, T> { FromEnv(std::boxed::Box<T>: std::clone::Clone) :- FromEnv(Foo<'a, T>). }
+   = note: forall<'a, T> { TypeOutlives(T: 'a) :- FromEnv(Foo<'a, T>). }
+   = note: forall<'a, T> { WellFormed(Foo<'a, T>) :- Implemented(T: std::marker::Sized), Implemented(std::boxed::Box<T>: std::clone::Clone), TypeOutlives(T: 'a). }
 
 error: aborting due to previous error
 
