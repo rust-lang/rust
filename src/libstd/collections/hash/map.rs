@@ -2026,12 +2026,12 @@ impl<'a, K, V, S> RawEntryMut<'a, K, V, S> {
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
-    /// map.raw_entry_mut().from_key("poneyland").or_insert("poneyland", 12);
     ///
-    /// assert_eq!(map["poneyland"], 12);
+    /// map.raw_entry_mut().from_key("poneyland").or_insert("poneyland", 3);
+    /// assert_eq!(map["poneyland"], 3);
     ///
-    /// *map.raw_entry_mut().from_key("poneyland").or_insert("poneyland", 10).1 += 10;
-    /// assert_eq!(map["poneyland"], 22);
+    /// *map.raw_entry_mut().from_key("poneyland").or_insert("poneyland", 10).1 *= 2;
+    /// assert_eq!(map["poneyland"], 6);
     /// ```
     #[unstable(feature = "hash_raw_entry", issue = "54043")]
     pub fn or_insert(self, default_key: K, default_val: V) -> (&'a mut K, &'a mut V)
@@ -2648,12 +2648,12 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// use std::collections::HashMap;
     ///
     /// let mut map: HashMap<&str, u32> = HashMap::new();
-    /// map.entry("poneyland").or_insert(12);
     ///
-    /// assert_eq!(map["poneyland"], 12);
+    /// map.entry("poneyland").or_insert(3);
+    /// assert_eq!(map["poneyland"], 3);
     ///
-    /// *map.entry("poneyland").or_insert(10) += 10;
-    /// assert_eq!(map["poneyland"], 22);
+    /// *map.entry("poneyland").or_insert(10) *= 2;
+    /// assert_eq!(map["poneyland"], 6);
     /// ```
     pub fn or_insert(self, default: V) -> &'a mut V {
         match self {
