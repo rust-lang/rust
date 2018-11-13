@@ -142,6 +142,7 @@ pub use alloc_crate::alloc::*;
 #[derive(Debug, Copy, Clone)]
 pub struct System;
 
+// The Alloc impl just forwards to the GlobalAlloc impl, which is in `std::sys::*::alloc`.
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl Alloc for System {
     #[inline]
@@ -226,6 +227,10 @@ pub fn rust_oom(layout: Layout) -> ! {
 #[unstable(feature = "alloc_internals", issue = "0")]
 pub mod __default_lib_allocator {
     use super::{System, Layout, GlobalAlloc};
+    // These magic symbol names are used as a fallback for implementing the
+    // `__rust_alloc` etc symbols (see `src/liballoc/alloc.rs) when there is
+    // no `#[global_allocator]` attribute.
+
     // for symbol names src/librustc/middle/allocator.rs
     // for signatures src/librustc_allocator/lib.rs
 
