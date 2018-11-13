@@ -58,7 +58,6 @@ macro_rules! hir_vec {
     ($($x:expr),*) => (
         $crate::hir::HirVec::from(vec![$($x),*])
     );
-    ($($x:expr,)*) => (hir_vec![$($x),*])
 }
 
 pub mod check_attr;
