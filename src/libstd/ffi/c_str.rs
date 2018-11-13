@@ -971,7 +971,7 @@ impl CStr {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
         if ptr.is_null() {
-            Default::default()
+            panic!("can't create string from null pointer")
         } else {
             let len = sys::strlen(ptr);
             let ptr = ptr as *const u8;
@@ -1335,11 +1335,10 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
     fn from_null_ptr() {
-        let ptr = ptr::null();
         unsafe {
-            assert_eq!(CStr::from_ptr(ptr).to_bytes().len(), 0);
-            assert_eq!(CStr::from_ptr(ptr).to_bytes_with_nul(), b"\0");
+            CStr::from_ptr(ptr::null());
         }
     }
 
