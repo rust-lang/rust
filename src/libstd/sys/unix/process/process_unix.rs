@@ -11,9 +11,9 @@
 use io::{self, Error, ErrorKind};
 use libc::{self, c_int, gid_t, pid_t, uid_t};
 use ptr;
-
 use sys::cvt;
 use sys::process::process_common::*;
+use sys;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -22,8 +22,6 @@ use sys::process::process_common::*;
 impl Command {
     pub fn spawn(&mut self, default: Stdio, needs_stdin: bool)
                  -> io::Result<(Process, StdioPipes)> {
-        use sys;
-
         const CLOEXEC_MSG_FOOTER: &'static [u8] = b"NOEX";
 
         let envp = self.capture_env();
@@ -41,8 +39,21 @@ impl Command {
 
         let (input, output) = sys::pipe::anon_pipe()?;
 
+        // Whatever happens after the fork is almost for sure going to touch or
+        // look at the environment in one way or another (PATH in `execvp` or
+        // accessing the `environ` pointer ourselves). Make sure no other thread
+        // is accessing the environment when we do the fork itself.
+        //
+        // Note that as soon as we're done with the fork there's no need to hold
+        // a lock any more because the parent won't do anything and the child is
+        // in its own process.
+        let result = unsafe {
+            let _env_lock = sys::os::env_lock();
+            cvt(libc::fork())?
+        };
+
         let pid = unsafe {
-            match cvt(libc::fork())? {
+            match result {
                 0 => {
                     drop(input);
                     let err = self.do_exec(theirs, envp.as_ref());
@@ -114,7 +125,16 @@ impl Command {
         }
 
         match self.setup_io(default, true) {
-            Ok((_, theirs)) => unsafe { self.do_exec(theirs, envp.as_ref()) },
+            Ok((_, theirs)) => {
+                unsafe {
+                    // Similar to when forking, we want to ensure that access to
+                    // the environment is synchronized, so make sure to grab the
+                    // environment lock before we try to exec.
+                    let _lock = sys::os::env_lock();
+
+                    self.do_exec(theirs, envp.as_ref())
+                }
+            }
             Err(e) => e,
         }
     }
@@ -193,9 +213,6 @@ impl Command {
         if let Some(ref cwd) = *self.get_cwd() {
             t!(cvt(libc::chdir(cwd.as_ptr())));
         }
-        if let Some(envp) = maybe_envp {
-            *sys::os::environ() = envp.as_ptr();
-        }
 
         // emscripten has no signal support.
         #[cfg(not(any(target_os = "emscripten")))]
@@ -229,6 +246,27 @@ impl Command {
 
         for callback in self.get_closures().iter_mut() {
             t!(callback());
+        }
+
+        // Although we're performing an exec here we may also return with an
+        // error from this function (without actually exec'ing) in which case we
+        // want to be sure to restore the global environment back to what it
+        // once was, ensuring that our temporary override, when free'd, doesn't
+        // corrupt our process's environment.
+        let mut _reset = None;
+        if let Some(envp) = maybe_envp {
+            struct Reset(*const *const libc::c_char);
+
+            impl Drop for Reset {
+                fn drop(&mut self) {
+                    unsafe {
+                        *sys::os::environ() = self.0;
+                    }
+                }
+            }
+
+            _reset = Some(Reset(*sys::os::environ()));
+            *sys::os::environ() = envp.as_ptr();
         }
 
         libc::execvp(self.get_argv()[0], self.get_argv().as_ptr());
@@ -330,6 +368,8 @@ impl Command {
                 libc::POSIX_SPAWN_SETSIGMASK;
             cvt(libc::posix_spawnattr_setflags(&mut attrs.0, flags as _))?;
 
+            // Make sure we synchronize access to the global `environ` resource
+            let _env_lock = sys::os::env_lock();
             let envp = envp.map(|c| c.as_ptr())
                 .unwrap_or_else(|| *sys::os::environ() as *const _);
             let ret = libc::posix_spawnp(
