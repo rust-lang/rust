@@ -225,11 +225,22 @@ mod issue3410 {
     struct A;
     struct B;
 
-    trait Trait<T>: Sized {
+    trait Trait<T> {
         fn a(v: T);
     }
 
     impl Trait<Vec<A>> for Vec<B> {
         fn a(_: Vec<A>) {}
+    }
+}
+
+mod issue3425 {
+    enum Enum {
+        A,
+    }
+    impl Enum {
+        fn a () {
+            use self::Enum::*;
+        }
     }
 }
