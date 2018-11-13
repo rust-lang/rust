@@ -176,7 +176,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     ) -> EvalResult<'tcx, ScalarMaybeUndef<Tag>> {
         // get_bytes_unchecked tests alignment and relocation edges
         let bytes = self.get_bytes_with_undef_and_ptr(
-            cx, ptr, size, ptr_align.min(self.int_align(cx, size))
+            cx, ptr, size, ptr_align.min(int_align(cx, size))
         )?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
@@ -272,24 +272,23 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         let ptr_size = cx.data_layout().pointer_size;
         self.write_scalar(cx, ptr.into(), ptr_align, val, ptr_size)
     }
+}
 
-    fn int_align(
-        &self,
-        cx: &impl HasDataLayout,
-        size: Size,
-    ) -> Align {
-        // We assume pointer-sized integers have the same alignment as pointers.
-        // We also assume signed and unsigned integers of the same size have the same alignment.
-        let ity = match size.bytes() {
-            1 => layout::I8,
-            2 => layout::I16,
-            4 => layout::I32,
-            8 => layout::I64,
-            16 => layout::I128,
-            _ => bug!("bad integer size: {}", size.bytes()),
-        };
-        ity.align(cx).abi
-    }
+fn int_align(
+    cx: &impl HasDataLayout,
+    size: Size,
+) -> Align {
+    // We assume pointer-sized integers have the same alignment as pointers.
+    // We also assume signed and unsigned integers of the same size have the same alignment.
+    let ity = match size.bytes() {
+        1 => layout::I8,
+        2 => layout::I16,
+        4 => layout::I32,
+        8 => layout::I64,
+        16 => layout::I128,
+        _ => bug!("bad integer size: {}", size.bytes()),
+    };
+    ity.align(cx).abi
 }
 
 /// Byte accessors
