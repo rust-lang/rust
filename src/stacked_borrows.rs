@@ -245,40 +245,31 @@ impl<'tcx> Stack {
     fn create(&mut self, bor: Borrow, kind: RefKind) {
         // First, push the item.  We do this even if we will later freeze, because we
         // will allow mutation of shared data at the expense of unfreezing.
-        if let Some(itm_t) = self.frozen_since {
-            // A frozen location, we won't change anything here!
-            match bor {
-                Borrow::Uniq(_) => bug!("Trying to create unique ref to frozen location"),
-                Borrow::Shr(Some(bor_t)) if kind == RefKind::Frozen => {
-                    // Make sure we are frozen long enough.  This is part 1 of ensuring F1.
-                    assert!(itm_t <= bor_t, "Trying to freeze shorter than it was frozen?");
-                    trace!("create: Freezing a frozen location is a NOP");
-                }
-                Borrow::Shr(_) => trace!("create: Sharing a frozen location is a NOP"),
-            }
+        if self.frozen_since.is_some() {
+            // A frozen location, this should be impossible!
+            bug!("We should never try pushing to a frozen stack");
+        }
+        // First, push.
+        let itm = match bor {
+            Borrow::Uniq(t) => BorStackItem::Uniq(t),
+            Borrow::Shr(_) => BorStackItem::Shr,
+        };
+        if *self.borrows.last().unwrap() == itm {
+            assert!(bor.is_shared());
+            trace!("create: Sharing a shared location is a NOP");
         } else {
-            // First push.
-            let itm = match bor {
-                Borrow::Uniq(t) => BorStackItem::Uniq(t),
-                Borrow::Shr(_) => BorStackItem::Shr,
+            // This ensures U1.
+            trace!("create: Pushing {:?}", itm);
+            self.borrows.push(itm);
+        }
+        // Then, maybe freeze.  This is part 2 of ensuring F1.
+        if kind == RefKind::Frozen {
+            let bor_t = match bor {
+                Borrow::Shr(Some(t)) => t,
+                _ => bug!("Creating illegal borrow {:?} for frozen ref", bor),
             };
-            if *self.borrows.last().unwrap() == itm {
-                assert!(bor.is_shared());
-                trace!("create: Sharing a shared location is a NOP");
-            } else {
-                // This ensures U1.
-                trace!("create: Pushing {:?}", itm);
-                self.borrows.push(itm);
-            }
-            // Now, maybe freeze.  This is part 2 of ensuring F1.
-            if kind == RefKind::Frozen {
-                let bor_t = match bor {
-                    Borrow::Shr(Some(t)) => t,
-                    _ => bug!("Creating illegal borrow {:?} for frozen ref", bor),
-                };
-                trace!("create: Freezing");
-                self.frozen_since = Some(bor_t);
-            }
+            trace!("create: Freezing");
+            self.frozen_since = Some(bor_t);
         }
     }
 }
