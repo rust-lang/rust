@@ -479,11 +479,15 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         (ty::Ref(..), ty::Ref(..))
                         | (ty::Ref(..), ty::RawPtr(..))
                         | (ty::RawPtr(..), ty::Ref(..))
-                        | (ty::RawPtr(..), ty::RawPtr(..)) => {
+                        | (ty::RawPtr(..), ty::RawPtr(..))
+                        | (ty::FnPtr(..), ty::RawPtr(..)) => {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
-                        (ty::RawPtr(..), ty::Uint(_)) | (ty::FnPtr(..), ty::Uint(_))
-                            if to_ty.sty == fx.tcx.types.usize.sty =>
+                        (ty::RawPtr(..), ty::Uint(_))
+                        | (ty::RawPtr(..), ty::Int(_))
+                        | (ty::FnPtr(..), ty::Uint(_))
+                            if to_ty.sty == fx.tcx.types.usize.sty
+                                || to_ty.sty == fx.tcx.types.isize.sty =>
                         {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
@@ -655,8 +659,7 @@ fn codegen_array_len<'a, 'tcx: 'a>(
 ) -> Value {
     match place.layout().ty.sty {
         ty::Array(_elem_ty, len) => {
-            let len = crate::constant::force_eval_const(fx, len)
-                .unwrap_usize(fx.tcx) as i64;
+            let len = crate::constant::force_eval_const(fx, len).unwrap_usize(fx.tcx) as i64;
             fx.bcx.ins().iconst(fx.pointer_type, len)
         }
         ty::Slice(_elem_ty) => match place {
@@ -1076,7 +1079,7 @@ pub fn trans_place<'a, 'tcx: 'a>(
                         fx.bcx.ins().iadd_imm(len, -(offset as i64))
                     };
                     base.place_index(fx, index)
-                },
+                }
                 ProjectionElem::Subslice { from, to } => unimpl!(
                     "projection subslice {:?} from {} to {}",
                     projection.base,
