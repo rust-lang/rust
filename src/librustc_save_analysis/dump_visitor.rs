@@ -658,11 +658,13 @@ impl<'l, 'tcx: 'l, 'll, O: DumpOutput + 'll> DumpVisitor<'l, 'tcx, 'll, O> {
         impl_items: &'l [ast::ImplItem],
     ) {
         if let Some(impl_data) = self.save_ctxt.get_item_data(item) {
-            if let super::Data::RelationData(rel, imp) = impl_data {
-                self.dumper.dump_relation(rel);
-                self.dumper.dump_impl(imp);
-            } else {
-                span_bug!(item.span, "unexpected data kind: {:?}", impl_data);
+            if !self.span.filter_generated(item.span) {
+                if let super::Data::RelationData(rel, imp) = impl_data {
+                    self.dumper.dump_relation(rel);
+                    self.dumper.dump_impl(imp);
+                } else {
+                    span_bug!(item.span, "unexpected data kind: {:?}", impl_data);
+                }
             }
         }
         self.visit_ty(&typ);
