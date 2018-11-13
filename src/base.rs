@@ -487,7 +487,8 @@ fn trans_stmt<'a, 'tcx: 'a>(
                         | (ty::RawPtr(..), ty::Int(_))
                         | (ty::FnPtr(..), ty::Uint(_))
                             if to_ty.sty == fx.tcx.types.usize.sty
-                                || to_ty.sty == fx.tcx.types.isize.sty =>
+                                || to_ty.sty == fx.tcx.types.isize.sty
+                                || fx.clif_type(to_ty).unwrap() == pointer_ty(fx.tcx) =>
                         {
                             lval.write_cvalue(fx, operand.unchecked_cast_to(dest_layout));
                         }
