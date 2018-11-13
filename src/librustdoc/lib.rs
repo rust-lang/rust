@@ -387,9 +387,21 @@ fn main_args(args: &[String]) -> isize {
         info!("going to format");
         let (error_format, treat_err_as_bug, ui_testing) = diag_opts;
         let diag = core::new_handler(error_format, None, treat_err_as_bug, ui_testing);
-        html::render::run(krate, renderopts, passes.into_iter().collect(), renderinfo, &diag)
-            .expect("failed to generate documentation");
-        0
+        match html::render::run(
+            krate,
+            renderopts,
+            passes.into_iter().collect(),
+            renderinfo,
+            &diag,
+        ) {
+            Ok(_) => rustc_driver::EXIT_SUCCESS,
+            Err(e) => {
+                diag.struct_err(&format!("couldn't generate documentation: {}", e.error))
+                    .note(&format!("failed to create or modify \"{}\"", e.file.display()))
+                    .emit();
+                rustc_driver::EXIT_FAILURE
+            }
+        }
     })
 }
 
