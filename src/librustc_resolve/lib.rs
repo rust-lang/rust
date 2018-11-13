@@ -386,7 +386,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
         }
         ResolutionError::FailedToResolve(msg) => {
             let mut err = struct_span_err!(resolver.session, span, E0433,
-                                           "failed to resolve. {}", msg);
+                                           "failed to resolve: {}", msg);
             err.span_label(span, msg);
             err
         }
@@ -3663,7 +3663,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             continue;
                         }
                     }
-                    let msg = "There are too many initial `super`s.".to_string();
+                    let msg = "there are too many initial `super`s.".to_string();
                     return PathResult::Failed(ident.span, msg, false);
                 }
                 if i == 0 {
@@ -3755,7 +3755,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         ));
                     } else {
                         return PathResult::Failed(ident.span,
-                                                  format!("Not a module `{}`", ident),
+                                                  format!("not a module `{}`", ident),
                                                   is_last);
                     }
                 }
@@ -3780,14 +3780,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             (c.path.segments.len(), c.path.to_string())
                         });
                         if let Some(candidate) = candidates.get(0) {
-                            format!("Did you mean `{}`?", candidate.path)
+                            format!("did you mean `{}`?", candidate.path)
                         } else {
-                            format!("Maybe a missing `extern crate {};`?", ident)
+                            format!("maybe a missing `extern crate {};`?", ident)
                         }
                     } else if i == 0 {
-                        format!("Use of undeclared type or module `{}`", ident)
+                        format!("use of undeclared type or module `{}`", ident)
                     } else {
-                        format!("Could not find `{}` in `{}`", ident, path[i - 1])
+                        format!("could not find `{}` in `{}`", ident, path[i - 1])
                     };
                     return PathResult::Failed(ident.span, msg, is_last);
                 }

@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let super: isize; //~ ERROR failed to resolve. There are too many initial `super`s
+    let super: isize; //~ ERROR failed to resolve: there are too many initial `super`s
 }

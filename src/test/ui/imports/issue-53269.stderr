@@ -2,7 +2,7 @@ error[E0432]: unresolved import `nonexistent_module`
   --> $DIR/issue-53269.rs:16:9
    |
 LL |     use nonexistent_module::mac; //~ ERROR unresolved import `nonexistent_module`
-   |         ^^^^^^^^^^^^^^^^^^ Maybe a missing `extern crate nonexistent_module;`?
+   |         ^^^^^^^^^^^^^^^^^^ maybe a missing `extern crate nonexistent_module;`?
 
 error[E0659]: `mac` is ambiguous (`macro_rules` vs non-`macro_rules` from other module)
   --> $DIR/issue-53269.rs:18:5
