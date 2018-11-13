@@ -327,7 +327,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
         };
 
         let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
-        let (def, ext) = self.resolve_macro_to_def(path, kind, &parent_scope, force)?;
+        let (def, ext) = self.resolve_macro_to_def(path, kind, &parent_scope, true, force)?;
 
         if let Def::Macro(def_id, _) = def {
             if after_derive {
@@ -350,7 +350,7 @@ impl<'a, 'crateloader: 'a> base::Resolver for Resolver<'a, 'crateloader> {
                           derives_in_scope: Vec<ast::Path>, force: bool)
                           -> Result<Lrc<SyntaxExtension>, Determinacy> {
         let parent_scope = self.invoc_parent_scope(invoc_id, derives_in_scope);
-        Ok(self.resolve_macro_to_def(path, kind, &parent_scope, force)?.1)
+        Ok(self.resolve_macro_to_def(path, kind, &parent_scope, false, force)?.1)
     }
 
     fn check_unused_macros(&self) {
@@ -391,9 +391,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         path: &ast::Path,
         kind: MacroKind,
         parent_scope: &ParentScope<'a>,
+        trace: bool,
         force: bool,
     ) -> Result<(Def, Lrc<SyntaxExtension>), Determinacy> {
-        let def = self.resolve_macro_to_def_inner(path, kind, parent_scope, force);
+        let def = self.resolve_macro_to_def_inner(path, kind, parent_scope, trace, force);
 
         // Report errors and enforce feature gates for the resolved macro.
         if def != Err(Determinacy::Undetermined) {
@@ -465,6 +466,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         path: &ast::Path,
         kind: MacroKind,
         parent_scope: &ParentScope<'a>,
+        trace: bool,
         force: bool,
     ) -> Result<Def, Determinacy> {
         let path_span = path.span;
@@ -491,8 +493,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 PathResult::Module(..) => unreachable!(),
             };
 
-            parent_scope.module.multi_segment_macro_resolutions.borrow_mut()
-                .push((path, path_span, kind, parent_scope.clone(), def.ok()));
+            if trace {
+                parent_scope.module.multi_segment_macro_resolutions.borrow_mut()
+                    .push((path, path_span, kind, parent_scope.clone(), def.ok()));
+            }
 
             def
         } else {
@@ -505,8 +509,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
             }
 
-            parent_scope.module.single_segment_macro_resolutions.borrow_mut()
-                .push((path[0], kind, parent_scope.clone(), binding.ok()));
+            if trace {
+                parent_scope.module.single_segment_macro_resolutions.borrow_mut()
+                    .push((path[0], kind, parent_scope.clone(), binding.ok()));
+            }
 
             binding.map(|binding| binding.def_ignoring_ambiguity())
         }
@@ -633,7 +639,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     for derive in &parent_scope.derives {
                         let parent_scope = ParentScope { derives: Vec::new(), ..*parent_scope };
                         match self.resolve_macro_to_def(derive, MacroKind::Derive,
-                                                        &parent_scope, force) {
+                                                        &parent_scope, true, force) {
                             Ok((_, ext)) => {
                                 if let SyntaxExtension::ProcMacroDerive(_, helpers, _) = &*ext {
                                     if helpers.contains(&ident.name) {
