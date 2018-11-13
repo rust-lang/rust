@@ -234,7 +234,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 if self.last_import_segment && check_usable(self, binding).is_err() {
                     Err(DeterminacyExt::Determined)
                 } else {
-                    self.record_use(ident, ns, binding);
+                    self.record_use(ident, ns, binding, restricted_shadowing);
 
                     if let Some(shadowed_glob) = resolution.shadowed_glob {
                         // Forbid expanded shadowing to avoid time travel.
@@ -922,7 +922,8 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                     // Consistency checks, analogous to `finalize_current_module_macro_resolutions`.
                     let initial_def = result[ns].get().map(|initial_binding| {
                         all_ns_err = false;
-                        this.record_use(ident, MacroNS, initial_binding);
+                        this.record_use(ident, ns, initial_binding,
+                                        directive.module_path.is_empty());
                         initial_binding.def_ignoring_ambiguity()
                     });
                     let def = binding.def_ignoring_ambiguity();

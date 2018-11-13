@@ -1911,14 +1911,26 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         self.arenas.alloc_module(module)
     }
 
-    fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>) {
-        match binding.kind {
+    fn record_use(&mut self, ident: Ident, ns: Namespace,
+                  used_binding: &'a NameBinding<'a>, is_lexical_scope: bool) {
+        match used_binding.kind {
             NameBindingKind::Import { directive, binding, ref used } if !used.get() => {
+                // Avoid marking `extern crate` items that refer to a name from extern prelude,
+                // but not introduce it, as used if they are accessed from lexical scope.
+                if is_lexical_scope {
+                    if let Some(entry) = self.extern_prelude.get(&ident.modern()) {
+                        if let Some(crate_item) = entry.extern_crate_item {
+                            if ptr::eq(used_binding, crate_item) && !entry.introduced_by_item {
+                                return;
+                            }
+                        }
+                    }
+                }
                 used.set(true);
                 directive.used.set(true);
                 self.used_imports.insert((directive.id, ns));
                 self.add_to_glob_map(directive.id, ident);
-                self.record_use(ident, ns, binding);
+                self.record_use(ident, ns, binding, false);
             }
             NameBindingKind::Ambiguity { kind, b1, b2 } => {
                 self.ambiguity_errors.push(AmbiguityError {
@@ -2908,7 +2920,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             Def::Const(..) if is_syntactic_ambiguity => {
                                 // Disambiguate in favor of a unit struct/variant
                                 // or constant pattern.
-                                self.record_use(ident, ValueNS, binding.unwrap());
+                                self.record_use(ident, ValueNS, binding.unwrap(), false);
                                 Some(PathResolution::new(def))
                             }
                             Def::StructCtor(..) | Def::VariantCtor(..) |
