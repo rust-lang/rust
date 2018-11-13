@@ -5,7 +5,6 @@ Subject: [PATCH] [alloc] Disable some unsupported stuff
 
 ---
  src/liballoc/boxed.rs | 6 ------
- src/liballoc/str.rs   | 4 ++++
  src/liballoc/vec.rs   | 2 --
  3 files changed, 4 insertions(+), 8 deletions(-)
 
@@ -33,42 +32,6 @@ index f989e70..597dd15 100644
      fn write_isize(&mut self, i: isize) {
          (**self).write_isize(i)
      }
-diff --git a/src/liballoc/str.rs b/src/liballoc/str.rs
-index 2af8956..23dbb79 100644
---- a/src/liballoc/str.rs
-+++ b/src/liballoc/str.rs
-@@ -361,6 +361,7 @@ impl str {
-     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
-     pub fn to_lowercase(&self) -> String {
-         let mut s = String::with_capacity(self.len());
-+        /*
-         for (i, c) in self[..].char_indices() {
-             if c == 'Σ' {
-                 // Σ maps to σ, except at the end of a word where it maps to ς.
-@@ -384,6 +385,7 @@ impl str {
-                 }
-             }
-         }
-+        */
-         return s;
- 
-         fn map_uppercase_sigma(from: &str, i: usize, to: &mut String) {
-@@ -435,6 +437,7 @@ impl str {
-     #[stable(feature = "unicode_case_mapping", since = "1.2.0")]
-     pub fn to_uppercase(&self) -> String {
-         let mut s = String::with_capacity(self.len());
-+        /*
-         for c in self[..].chars() {
-             match conversions::to_upper(c) {
-                 [a, '\0', _] => s.push(a),
-@@ -449,6 +452,7 @@ impl str {
-                 }
-             }
-         }
-+        */
-         return s;
-     }
- 
 diff --git a/src/liballoc/vec.rs b/src/liballoc/vec.rs
 index 2bc037e..2fe8894 100644
 --- a/src/liballoc/vec.rs
@@ -79,14 +42,13 @@ index 2bc037e..2fe8894 100644
  impl_is_zero!(i64, |x| x == 0);
 -impl_is_zero!(i128, |x| x == 0);
  impl_is_zero!(isize, |x| x == 0);
- 
+
  impl_is_zero!(u16, |x| x == 0);
  impl_is_zero!(u32, |x| x == 0);
  impl_is_zero!(u64, |x| x == 0);
 -impl_is_zero!(u128, |x| x == 0);
  impl_is_zero!(usize, |x| x == 0);
- 
- impl_is_zero!(char, |x| x == '\0');
--- 
-2.17.1 (Apple Git-112)
 
+ impl_is_zero!(char, |x| x == '\0');
+--
+2.17.1 (Apple Git-112)

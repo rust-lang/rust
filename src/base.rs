@@ -588,18 +588,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                 Rvalue::Len(place) => {
                     let place = trans_place(fx, place);
                     let usize_layout = fx.layout_of(fx.tcx.types.usize);
-                    let len = match place.layout().ty.sty {
-                        ty::Array(_elem_ty, len) => {
-                            let len = crate::constant::force_eval_const(fx, len)
-                                .unwrap_usize(fx.tcx) as i64;
-                            fx.bcx.ins().iconst(fx.pointer_type, len)
-                        }
-                        ty::Slice(_elem_ty) => match place {
-                            CPlace::Addr(_, size, _) => size.unwrap(),
-                            CPlace::Var(_, _) => unreachable!(),
-                        },
-                        _ => bug!("Rvalue::Len({:?})", place),
-                    };
+                    let len = codegen_array_len(fx, place);
                     lval.write_cvalue(fx, CValue::ByVal(len, usize_layout));
                 }
                 Rvalue::NullaryOp(NullOp::Box, content_ty) => {
@@ -657,6 +646,24 @@ fn trans_stmt<'a, 'tcx: 'a>(
         | StatementKind::AscribeUserType(..) => {}
 
         StatementKind::InlineAsm { .. } => unimpl!("Inline assembly is not supported"),
+    }
+}
+
+fn codegen_array_len<'a, 'tcx: 'a>(
+    fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
+    place: CPlace<'tcx>,
+) -> Value {
+    match place.layout().ty.sty {
+        ty::Array(_elem_ty, len) => {
+            let len = crate::constant::force_eval_const(fx, len)
+                .unwrap_usize(fx.tcx) as i64;
+            fx.bcx.ins().iconst(fx.pointer_type, len)
+        }
+        ty::Slice(_elem_ty) => match place {
+            CPlace::Addr(_, size, _) => size.unwrap(),
+            CPlace::Var(_, _) => unreachable!(),
+        },
+        _ => bug!("Rvalue::Len({:?})", place),
     }
 }
 
@@ -1060,21 +1067,16 @@ pub fn trans_place<'a, 'tcx: 'a>(
                 ProjectionElem::ConstantIndex {
                     offset,
                     min_length: _,
-                    from_end: false,
-                } => unimpl!(
-                    "projection const index {:?} offset {:?} not from end",
-                    projection.base,
-                    offset
-                ),
-                ProjectionElem::ConstantIndex {
-                    offset,
-                    min_length: _,
-                    from_end: true,
-                } => unimpl!(
-                    "projection const index {:?} offset {:?} from end",
-                    projection.base,
-                    offset
-                ),
+                    from_end,
+                } => {
+                    let index = if !from_end {
+                        fx.bcx.ins().iconst(fx.pointer_type, offset as i64)
+                    } else {
+                        let len = codegen_array_len(fx, base);
+                        fx.bcx.ins().iadd_imm(len, -(offset as i64))
+                    };
+                    base.place_index(fx, index)
+                },
                 ProjectionElem::Subslice { from, to } => unimpl!(
                     "projection subslice {:?} from {} to {}",
                     projection.base,
