@@ -613,7 +613,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         // from the CodeView line tables in the object files.
         self.cmd.arg("/DEBUG");
 
-        // This will cause the Microsoft linker to embed .natvis info into the the PDB file
+        // This will cause the Microsoft linker to embed .natvis info into the PDB file
         let sysroot = self.sess.sysroot();
         let natvis_dir_path = sysroot.join("lib\\rustlib\\etc");
         if let Ok(natvis_dir) = fs::read_dir(&natvis_dir_path) {

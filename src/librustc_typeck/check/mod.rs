@@ -550,7 +550,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// current expression. As each subpart is processed, they may set
     /// the flag to `Always` etc.  Finally, at the end, we take the
     /// result and "union" it with the original value, so that when we
-    /// return the flag indicates if any subpart of the the parent
+    /// return the flag indicates if any subpart of the parent
     /// expression (up to and including this part) has diverged.  So,
     /// if you read it after evaluating a subexpression `X`, the value
     /// you get indicates whether any subexpression that was

@@ -1956,7 +1956,7 @@ impl<'a> Parser<'a> {
 
                 if suffix_illegal {
                     let sp = self.span;
-                    self.expect_no_suffix(sp, &format!("{} literal", lit.short_name()), suf)
+                    self.expect_no_suffix(sp, lit.literal_name(), suf)
                 }
 
                 result.unwrap()

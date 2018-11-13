@@ -211,6 +211,10 @@ pub enum TyKind<'tcx> {
     Error,
 }
 
+// `TyKind` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert!(MEM_SIZE_OF_TY_KIND: ::std::mem::size_of::<TyKind<'_>>() == 24);
+
 /// A closure can be modeled as a struct that looks like:
 ///
 ///     struct Closure<'l0...'li, T0...Tj, CK, CS, U0...Uk> {

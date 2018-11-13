@@ -2262,17 +2262,17 @@
     onEach(document.getElementsByClassName('rust-example-rendered'), function(e) {
         if (hasClass(e, 'compile_fail')) {
             e.addEventListener("mouseover", function(event) {
-                e.previousElementSibling.childNodes[0].style.color = '#f00';
+                this.parentElement.previousElementSibling.childNodes[0].style.color = '#f00';
             });
             e.addEventListener("mouseout", function(event) {
-                e.previousElementSibling.childNodes[0].style.color = '';
+                this.parentElement.previousElementSibling.childNodes[0].style.color = '';
             });
         } else if (hasClass(e, 'ignore')) {
             e.addEventListener("mouseover", function(event) {
-                e.previousElementSibling.childNodes[0].style.color = '#ff9200';
+                this.parentElement.previousElementSibling.childNodes[0].style.color = '#ff9200';
             });
             e.addEventListener("mouseout", function(event) {
-                e.previousElementSibling.childNodes[0].style.color = '';
+                this.parentElement.previousElementSibling.childNodes[0].style.color = '';
             });
         }
         lineNumbersFunc(e);

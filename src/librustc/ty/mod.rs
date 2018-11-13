@@ -515,6 +515,10 @@ pub struct TyS<'tcx> {
     outer_exclusive_binder: ty::DebruijnIndex,
 }
 
+// `TyS` is used a lot. Make sure it doesn't unintentionally get bigger.
+#[cfg(target_arch = "x86_64")]
+static_assert!(MEM_SIZE_OF_TY_S: ::std::mem::size_of::<TyS<'_>>() == 32);
+
 impl<'tcx> Ord for TyS<'tcx> {
     fn cmp(&self, other: &TyS<'tcx>) -> Ordering {
         self.sty.cmp(&other.sty)

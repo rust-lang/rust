@@ -63,16 +63,6 @@ macro_rules! span_bug {
 }
 
 #[macro_export]
-macro_rules! static_assert {
-    ($name:ident: $test:expr) => {
-        // Use the bool to access an array such that if the bool is false, the access
-        // is out-of-bounds.
-        #[allow(dead_code)]
-        static $name: () = [()][!$test as usize];
-    }
-}
-
-#[macro_export]
 macro_rules! __impl_stable_hash_field {
     ($field:ident, $ctx:expr, $hasher:expr) => ($field.hash_stable($ctx, $hasher));
     ($field:ident, $ctx:expr, $hasher:expr, _) => ({ let _ = $field; });
@@ -81,6 +71,7 @@ macro_rules! __impl_stable_hash_field {
 
 #[macro_export]
 macro_rules! impl_stable_hash_for {
+    // Enums
     // FIXME(mark-i-m): Some of these should be `?` rather than `*`. See the git blame and change
     // them back when `?` is supported again.
     (enum $enum_name:path {
@@ -91,12 +82,37 @@ macro_rules! impl_stable_hash_for {
            $( { $($named_field:ident $(-> $named_delegate:tt)*),* } )*
         ),* $(,)*
     }) => {
-        impl<'a, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $enum_name {
+        impl_stable_hash_for!(
+            impl<> for enum $enum_name [ $enum_name ] { $( $variant
+                $( ( $($field $(-> $delegate)*),* ) )*
+                $( { $($named_field $(-> $named_delegate)*),* } )*
+            ),* }
+        );
+    };
+    // We want to use the enum name both in the `impl ... for $enum_name` as well as for
+    // importing all the variants. Unfortunately it seems we have to take the name
+    // twice for this purpose
+    (impl<$($lt:lifetime $(: $lt_bound:lifetime)* ),* $(,)* $($T:ident),* $(,)*>
+        for enum $enum_name:path
+        [ $enum_path:path ]
+    {
+        $( $variant:ident
+           // this incorrectly allows specifying both tuple-like and struct-like fields, as in `Variant(a,b){c,d}`,
+           // when it should be only one or the other
+           $( ( $($field:ident $(-> $delegate:tt)*),* ) )*
+           $( { $($named_field:ident $(-> $named_delegate:tt)*),* } )*
+        ),* $(,)*
+    }) => {
+        impl<'a, $($lt $(: $lt_bound)*,)* $($T,)*>
+            ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>>
+            for $enum_name
+            where $($T: ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>>),*
+        {
             #[inline]
             fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
                                                   __ctx: &mut $crate::ich::StableHashingContext<'a>,
                                                   __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<W>) {
-                use $enum_name::*;
+                use $enum_path::*;
                 ::std::mem::discriminant(self).hash_stable(__ctx, __hasher);
 
                 match *self {
@@ -110,41 +126,17 @@ macro_rules! impl_stable_hash_for {
             }
         }
     };
+    // Structs
     // FIXME(mark-i-m): same here.
     (struct $struct_name:path { $($field:ident $(-> $delegate:tt)*),*  $(,)* }) => {
-        impl<'a, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $struct_name {
-            #[inline]
-            fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
-                                                  __ctx: &mut $crate::ich::StableHashingContext<'a>,
-                                                  __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<W>) {
-                let $struct_name {
-                    $(ref $field),*
-                } = *self;
-
-                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*
-            }
-        }
+        impl_stable_hash_for!(
+            impl<'tcx> for struct $struct_name { $($field $(-> $delegate)*),* }
+        );
     };
-    // FIXME(mark-i-m): same here.
-    (tuple_struct $struct_name:path { $($field:ident $(-> $delegate:tt)*),*  $(,)* }) => {
-        impl<'a, 'tcx> ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $struct_name {
-            #[inline]
-            fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
-                                                  __ctx: &mut $crate::ich::StableHashingContext<'a>,
-                                                  __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<W>) {
-                let $struct_name (
-                    $(ref $field),*
-                ) = *self;
-
-                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*
-            }
-        }
-    };
-
-    (impl<$tcx:lifetime $(, $lt:lifetime $(: $lt_bound:lifetime)*)* $(, $T:ident)*> for struct $struct_name:path {
+    (impl<$($lt:lifetime $(: $lt_bound:lifetime)* ),* $(,)* $($T:ident),* $(,)*> for struct $struct_name:path {
         $($field:ident $(-> $delegate:tt)*),* $(,)*
     }) => {
-        impl<'a, $tcx, $($lt $(: $lt_bound)*,)* $($T,)*>
+        impl<'a, $($lt $(: $lt_bound)*,)* $($T,)*>
             ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $struct_name
             where $($T: ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>>),*
         {
@@ -155,6 +147,32 @@ macro_rules! impl_stable_hash_for {
                 let $struct_name {
                     $(ref $field),*
                 } = *self;
+
+                $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*
+            }
+        }
+    };
+    // Tuple structs
+    // We cannot use normale parentheses here, the parser won't allow it
+    // FIXME(mark-i-m): same here.
+    (tuple_struct $struct_name:path { $($field:ident $(-> $delegate:tt)*),*  $(,)* }) => {
+        impl_stable_hash_for!(
+            impl<'tcx> for tuple_struct $struct_name { $($field $(-> $delegate)*),* }
+        );
+    };
+    (impl<$($lt:lifetime $(: $lt_bound:lifetime)* ),* $(,)* $($T:ident),* $(,)*>
+     for tuple_struct $struct_name:path { $($field:ident $(-> $delegate:tt)*),*  $(,)* }) => {
+        impl<'a, $($lt $(: $lt_bound)*,)* $($T,)*>
+            ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>> for $struct_name
+            where $($T: ::rustc_data_structures::stable_hasher::HashStable<$crate::ich::StableHashingContext<'a>>),*
+        {
+            #[inline]
+            fn hash_stable<W: ::rustc_data_structures::stable_hasher::StableHasherResult>(&self,
+                                                  __ctx: &mut $crate::ich::StableHashingContext<'a>,
+                                                  __hasher: &mut ::rustc_data_structures::stable_hasher::StableHasher<W>) {
+                let $struct_name (
+                    $(ref $field),*
+                ) = *self;
 
                 $( __impl_stable_hash_field!($field, __ctx, __hasher $(, $delegate)*) );*
             }

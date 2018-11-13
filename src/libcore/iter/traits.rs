@@ -960,7 +960,7 @@ impl<T, U, E> Product<Result<U, E>> for Result<T, E>
 ///
 /// Calling next on a fused iterator that has returned `None` once is guaranteed
 /// to return [`None`] again. This trait should be implemented by all iterators
-/// that behave this way because it allows for some significant optimizations.
+/// that behave this way because it allows optimizing [`Iterator::fuse`].
 ///
 /// Note: In general, you should not use `FusedIterator` in generic bounds if
 /// you need a fused iterator. Instead, you should just call [`Iterator::fuse`]

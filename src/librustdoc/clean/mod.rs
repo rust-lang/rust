@@ -3502,13 +3502,16 @@ impl Clean<Vec<Item>> for doctree::Import {
         // forcefully don't inline if this is not public or if the
         // #[doc(no_inline)] attribute is present.
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
-        let denied = !self.vis.node.is_pub() || self.attrs.iter().any(|a| {
+        let mut denied = !self.vis.node.is_pub() || self.attrs.iter().any(|a| {
             a.name() == "doc" && match a.meta_item_list() {
                 Some(l) => attr::list_contains_name(&l, "no_inline") ||
                            attr::list_contains_name(&l, "hidden"),
                 None => false,
             }
         });
+        // Also check whether imports were asked to be inlined, in case we're trying to re-export a
+        // crate in Rust 2018+
+        let please_inline = self.attrs.lists("doc").has_word("inline");
         let path = self.path.clean(cx);
         let inner = if self.glob {
             if !denied {
@@ -3521,6 +3524,16 @@ impl Clean<Vec<Item>> for doctree::Import {
             Import::Glob(resolve_use_source(cx, path))
         } else {
             let name = self.name;
+            if !please_inline {
+                match path.def {
+                    Def::Mod(did) => if !did.is_local() && did.index == CRATE_DEF_INDEX {
+                        // if we're `pub use`ing an extern crate root, don't inline it unless we
+                        // were specifically asked for it
+                        denied = true;
+                    }
+                    _ => {}
+                }
+            }
             if !denied {
                 let mut visited = FxHashSet::default();
                 if let Some(items) = inline::try_inline(cx, path.def, name, &mut visited) {

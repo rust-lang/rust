@@ -65,6 +65,17 @@ pub trait AllocationExtra<Tag>: ::std::fmt::Debug + Default + Clone {
     ) -> EvalResult<'tcx> {
         Ok(())
     }
+
+    /// Hook for performing extra checks on a memory deallocation.
+    /// `size` will be the size of the allocation.
+    #[inline]
+    fn memory_deallocated(
+        _alloc: &mut Allocation<Tag, Self>,
+        _ptr: Pointer<Tag>,
+        _size: Size,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
 }
 
 impl AllocationExtra<()> for () {}

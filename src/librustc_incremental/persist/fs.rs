@@ -490,7 +490,7 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(),()> {
     }
 }
 
-/// Allocate a the lock-file and lock it.
+/// Allocate the lock-file and lock it.
 fn lock_directory(sess: &Session,
                   session_dir: &Path)
                   -> Result<(flock::Lock, PathBuf), ()> {

@@ -184,7 +184,7 @@ const WASM_WHITELIST: &[(&str, Option<&str>)] = &[
 ];
 
 /// When rustdoc is running, provide a list of all known features so that all their respective
-/// primtives may be documented.
+/// primitives may be documented.
 ///
 /// IMPORTANT: If you're adding another whitelist to the above lists, make sure to add it to this
 /// iterator!
