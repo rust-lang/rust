@@ -13,7 +13,8 @@
 use rustc::hir::Node;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::ty::layout::{self, IntegerExt, LayoutOf};
+use rustc::ty::layout::{self, IntegerExt, LayoutOf, VariantIdx};
+use rustc_data_structures::indexed_vec::Idx;
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -452,10 +453,13 @@ fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if def.variants.len() == 2 {
         let data_idx;
 
-        if def.variants[0].fields.is_empty() {
-            data_idx = 1;
-        } else if def.variants[1].fields.is_empty() {
-            data_idx = 0;
+        let zero = VariantIdx::new(0);
+        let one = VariantIdx::new(1);
+
+        if def.variants[zero].fields.is_empty() {
+            data_idx = one;
+        } else if def.variants[one].fields.is_empty() {
+            data_idx = zero;
         } else {
             return false;
         }

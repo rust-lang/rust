@@ -32,6 +32,7 @@ use mir::GeneratorLayout;
 use session::CrateDisambiguator;
 use traits::{self, Reveal};
 use ty;
+use ty::layout::VariantIdx;
 use ty::subst::{Subst, Substs};
 use ty::util::{IntTypeExt, Discr};
 use ty::walk::TypeWalker;
@@ -57,7 +58,7 @@ use syntax::symbol::{keywords, Symbol, LocalInternedString, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 
 use smallvec;
-use rustc_data_structures::indexed_vec::Idx;
+use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
 
@@ -1785,7 +1786,7 @@ pub enum VariantDiscr {
     /// For efficiency reasons, the distance from the
     /// last `Explicit` discriminant is being stored,
     /// or `0` for the first variant, if it has none.
-    Relative(usize),
+    Relative(u32),
 }
 
 #[derive(Debug)]
@@ -1801,7 +1802,7 @@ pub struct FieldDef {
 /// table.
 pub struct AdtDef {
     pub did: DefId,
-    pub variants: Vec<VariantDef>,
+    pub variants: IndexVec<self::layout::VariantIdx, VariantDef>,
     flags: AdtFlags,
     pub repr: ReprOptions,
 }
@@ -1999,7 +2000,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     fn new(tcx: TyCtxt<'_, '_, '_>,
            did: DefId,
            kind: AdtKind,
-           variants: Vec<VariantDef>,
+           variants: IndexVec<VariantIdx, VariantDef>,
            repr: ReprOptions) -> Self {
         debug!("AdtDef::new({:?}, {:?}, {:?}, {:?})", did, kind, variants, repr);
         let mut flags = AdtFlags::NO_ADT_FLAGS;
@@ -2121,7 +2122,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     /// Asserts this is a struct or union and returns its unique variant.
     pub fn non_enum_variant(&self) -> &VariantDef {
         assert!(self.is_struct() || self.is_union());
-        &self.variants[0]
+        &self.variants[VariantIdx::new(0)]
     }
 
     #[inline]
@@ -2148,11 +2149,12 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             .expect("variant_with_id: unknown variant")
     }
 
-    pub fn variant_index_with_id(&self, vid: DefId) -> usize {
+    pub fn variant_index_with_id(&self, vid: DefId) -> VariantIdx {
         self.variants
-            .iter()
-            .position(|v| v.did == vid)
+            .iter_enumerated()
+            .find(|(_, v)| v.did == vid)
             .expect("variant_index_with_id: unknown variant")
+            .0
     }
 
     pub fn variant_of_def(&self, def: Def) -> &VariantDef {
@@ -2216,11 +2218,11 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     pub fn discriminants(
         &'a self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    ) -> impl Iterator<Item=Discr<'tcx>> + Captures<'gcx> + 'a {
+    ) -> impl Iterator<Item=(VariantIdx, Discr<'tcx>)> + Captures<'gcx> + 'a {
         let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx.global_tcx());
         let mut prev_discr = None::<Discr<'tcx>>;
-        self.variants.iter().map(move |v| {
+        self.variants.iter_enumerated().map(move |(i, v)| {
             let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr(tcx));
             if let VariantDiscr::Explicit(expr_did) = v.discr {
                 if let Some(new_discr) = self.eval_explicit_discr(tcx, expr_did) {
@@ -2229,7 +2231,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             }
             prev_discr = Some(discr);
 
-            discr
+            (i, discr)
         })
     }
 
@@ -2240,7 +2242,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     /// assuming there are no constant-evaluation errors there.
     pub fn discriminant_for_variant(&self,
                                     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                    variant_index: usize)
+                                    variant_index: VariantIdx)
                                     -> Discr<'tcx> {
         let (val, offset) = self.discriminant_def_for_variant(variant_index);
         let explicit_value = val
@@ -2254,12 +2256,12 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     /// inferred discriminant directly
     pub fn discriminant_def_for_variant(
         &self,
-        variant_index: usize,
-    ) -> (Option<DefId>, usize) {
-        let mut explicit_index = variant_index;
+        variant_index: VariantIdx,
+    ) -> (Option<DefId>, u32) {
+        let mut explicit_index = variant_index.as_u32();
         let expr_did;
         loop {
-            match self.variants[explicit_index].discr {
+            match self.variants[VariantIdx::from_u32(explicit_index)].discr {
                 ty::VariantDiscr::Relative(0) => {
                     expr_did = None;
                     break;
@@ -2273,7 +2275,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 }
             }
         }
-        (expr_did, variant_index - explicit_index)
+        (expr_did, variant_index.as_u32() - explicit_index)
     }
 
     pub fn destructor(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Destructor> {

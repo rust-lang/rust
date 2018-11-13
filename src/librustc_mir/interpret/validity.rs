@@ -13,7 +13,7 @@ use std::hash::Hash;
 use std::ops::RangeInclusive;
 
 use syntax_pos::symbol::Symbol;
-use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf};
+use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
@@ -74,6 +74,7 @@ macro_rules! try_validation {
 #[derive(Copy, Clone, Debug)]
 pub enum PathElem {
     Field(Symbol),
+    Variant(Symbol),
     ClosureVar(Symbol),
     ArrayElem(usize),
     TupleElem(usize),
@@ -107,6 +108,7 @@ fn path_format(path: &Vec<PathElem>) -> String {
     for elem in path.iter() {
         match elem {
             Field(name) => write!(out, ".{}", name),
+            Variant(name) => write!(out, ".<downcast-variant({})>", name),
             ClosureVar(name) => write!(out, ".<closure-var({})>", name),
             TupleElem(idx) => write!(out, ".{}", idx),
             ArrayElem(idx) => write!(out, "[{}]", idx),
@@ -165,12 +167,12 @@ struct ValidityVisitor<'rt, 'a: 'rt, 'mir: 'rt, 'tcx: 'a+'rt+'mir, M: Machine<'a
 }
 
 impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, 'mir, 'tcx, M> {
-    fn push_aggregate_field_path_elem(
+    fn aggregate_field_path_elem(
         &mut self,
         layout: TyLayout<'tcx>,
         field: usize,
-    ) {
-        let elem = match layout.ty.sty {
+    ) -> PathElem {
+        match layout.ty.sty {
             // generators and closures.
             ty::Closure(def_id, _) | ty::Generator(def_id, _, _) => {
                 if let Some(upvar) = self.ecx.tcx.optimized_mir(def_id).upvar_decls.get(field) {
@@ -192,9 +194,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, '
                     layout::Variants::Single { index } =>
                         // Inside a variant
                         PathElem::Field(def.variants[index].fields[field].ident.name),
-                    _ =>
-                        // To a variant
-                        PathElem::Field(def.variants[field].name)
+                    _ => bug!(),
                 }
             }
 
@@ -209,8 +209,22 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> ValidityVisitor<'rt, 'a, '
 
             // nothing else has an aggregate layout
             _ => bug!("aggregate_field_path_elem: got non-aggregate type {:?}", layout.ty),
-        };
+        }
+    }
+
+    fn visit_elem(
+        &mut self,
+        new_op: OpTy<'tcx, M::PointerTag>,
+        elem: PathElem,
+    ) -> EvalResult<'tcx> {
+        // Remember the old state
+        let path_len = self.path.len();
+        // Perform operation
         self.path.push(elem);
+        self.visit_value(new_op)?;
+        // Undo changes
+        self.path.truncate(path_len);
+        Ok(())
     }
 }
 
@@ -231,14 +245,19 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         field: usize,
         new_op: OpTy<'tcx, M::PointerTag>
     ) -> EvalResult<'tcx> {
-        // Remember the old state
-        let path_len = self.path.len();
-        // Perform operation
-        self.push_aggregate_field_path_elem(old_op.layout, field);
-        self.visit_value(new_op)?;
-        // Undo changes
-        self.path.truncate(path_len);
-        Ok(())
+        let elem = self.aggregate_field_path_elem(old_op.layout, field);
+        self.visit_elem(new_op, elem)
+    }
+
+    #[inline]
+    fn visit_variant(
+        &mut self,
+        old_op: OpTy<'tcx, M::PointerTag>,
+        variant_id: VariantIdx,
+        new_op: OpTy<'tcx, M::PointerTag>
+    ) -> EvalResult<'tcx> {
+        let name = old_op.layout.ty.ty_adt_def().unwrap().variants[variant_id].name;
+        self.visit_elem(new_op, PathElem::Variant(name))
     }
 
     #[inline]

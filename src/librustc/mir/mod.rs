@@ -40,6 +40,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use ty::subst::{CanonicalUserSubsts, Subst, Substs};
 use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt};
+use ty::layout::VariantIdx;
 use util::ppaux;
 
 pub use mir::interpret::AssertMessage;
@@ -1753,7 +1754,7 @@ pub enum StatementKind<'tcx> {
     /// Write the discriminant for a variant to the enum Place.
     SetDiscriminant {
         place: Place<'tcx>,
-        variant_index: usize,
+        variant_index: VariantIdx,
     },
 
     /// Start a live range for the storage of the local.
@@ -1939,7 +1940,7 @@ pub enum ProjectionElem<'tcx, V, T> {
     /// "Downcast" to a variant of an ADT. Currently, we only introduce
     /// this for ADTs with more than one variant. It may be better to
     /// just introduce it always, or always for enums.
-    Downcast(&'tcx AdtDef, usize),
+    Downcast(&'tcx AdtDef, VariantIdx),
 }
 
 /// Alias for projections as they appear in places, where the base is a place
@@ -1949,6 +1950,11 @@ pub type PlaceProjection<'tcx> = Projection<'tcx, Place<'tcx>, Local, Ty<'tcx>>;
 /// Alias for projections as they appear in places, where the base is a place
 /// and the index is a local.
 pub type PlaceElem<'tcx> = ProjectionElem<'tcx, Local, Ty<'tcx>>;
+
+// at least on 64 bit systems, `PlaceElem` should not be larger than two pointers
+static_assert!(PROJECTION_ELEM_IS_2_PTRS_LARGE:
+    mem::size_of::<PlaceElem<'_>>() <= 16
+);
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
@@ -1969,7 +1975,7 @@ impl<'tcx> Place<'tcx> {
         self.elem(ProjectionElem::Deref)
     }
 
-    pub fn downcast(self, adt_def: &'tcx AdtDef, variant_index: usize) -> Place<'tcx> {
+    pub fn downcast(self, adt_def: &'tcx AdtDef, variant_index: VariantIdx) -> Place<'tcx> {
         self.elem(ProjectionElem::Downcast(adt_def, variant_index))
     }
 
@@ -2211,7 +2217,7 @@ pub enum AggregateKind<'tcx> {
     /// active field index would identity the field `c`
     Adt(
         &'tcx AdtDef,
-        usize,
+        VariantIdx,
         &'tcx Substs<'tcx>,
         Option<UserTypeAnnotation<'tcx>>,
         Option<usize>,

@@ -10,7 +10,7 @@
 
 use llvm::{self, LLVMConstInBoundsGEP};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, Size};
+use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, Size, VariantIdx};
 use rustc::mir;
 use rustc::mir::tcx::PlaceTy;
 use base;
@@ -281,7 +281,7 @@ impl PlaceRef<'ll, 'tcx> {
         match self.layout.variants {
             layout::Variants::Single { index } => {
                 let discr_val = self.layout.ty.ty_adt_def().map_or(
-                    index as u128,
+                    index.as_u32() as u128,
                     |def| def.discriminant_for_variant(bx.cx.tcx, index).val);
                 return C_uint_big(cast_to, discr_val);
             }
@@ -320,16 +320,16 @@ impl PlaceRef<'ll, 'tcx> {
                         C_uint_big(niche_llty, niche_start)
                     };
                     bx.select(bx.icmp(llvm::IntEQ, lldiscr, niche_llval),
-                        C_uint(cast_to, *niche_variants.start() as u64),
-                        C_uint(cast_to, dataful_variant as u64))
+                        C_uint(cast_to, niche_variants.start().as_u32() as u64),
+                        C_uint(cast_to, dataful_variant.as_u32() as u64))
                 } else {
                     // Rebase from niche values to discriminant values.
-                    let delta = niche_start.wrapping_sub(*niche_variants.start() as u128);
+                    let delta = niche_start.wrapping_sub(niche_variants.start().as_u32() as u128);
                     let lldiscr = bx.sub(lldiscr, C_uint_big(niche_llty, delta));
-                    let lldiscr_max = C_uint(niche_llty, *niche_variants.end() as u64);
+                    let lldiscr_max = C_uint(niche_llty, niche_variants.end().as_u32() as u64);
                     bx.select(bx.icmp(llvm::IntULE, lldiscr, lldiscr_max),
                         bx.intcast(lldiscr, cast_to, false),
-                        C_uint(cast_to, dataful_variant as u64))
+                        C_uint(cast_to, dataful_variant.as_u32() as u64))
                 }
             }
         }
@@ -337,7 +337,7 @@ impl PlaceRef<'ll, 'tcx> {
 
     /// Set the discriminant for a new value of the given case of the given
     /// representation.
-    pub fn codegen_set_discr(&self, bx: &Builder<'a, 'll, 'tcx>, variant_index: usize) {
+    pub fn codegen_set_discr(&self, bx: &Builder<'a, 'll, 'tcx>, variant_index: VariantIdx) {
         if self.layout.for_variant(bx.cx, variant_index).abi.is_uninhabited() {
             return;
         }
@@ -376,7 +376,8 @@ impl PlaceRef<'ll, 'tcx> {
 
                     let niche = self.project_field(bx, 0);
                     let niche_llty = niche.layout.immediate_llvm_type(bx.cx);
-                    let niche_value = ((variant_index - *niche_variants.start()) as u128)
+                    let niche_value = variant_index.as_u32() - niche_variants.start().as_u32();
+                    let niche_value = (niche_value as u128)
                         .wrapping_add(niche_start);
                     // FIXME(eddyb) Check the actual primitive type here.
                     let niche_llval = if niche_value == 0 {
@@ -401,7 +402,7 @@ impl PlaceRef<'ll, 'tcx> {
         }
     }
 
-    pub fn project_downcast(&self, bx: &Builder<'a, 'll, 'tcx>, variant_index: usize)
+    pub fn project_downcast(&self, bx: &Builder<'a, 'll, 'tcx>, variant_index: VariantIdx)
                             -> PlaceRef<'ll, 'tcx> {
         let mut downcast = *self;
         downcast.layout = self.layout.for_variant(bx.cx, variant_index);

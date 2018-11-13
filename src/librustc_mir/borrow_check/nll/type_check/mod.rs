@@ -47,7 +47,8 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, Substs, UnpackedKind};
 use rustc::ty::{self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc::ty::layout::VariantIdx;
 use std::rc::Rc;
 use std::{fmt, iter};
 use syntax_pos::{Span, DUMMY_SP};
@@ -574,7 +575,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
             },
             ProjectionElem::Downcast(adt_def1, index) => match base_ty.sty {
                 ty::Adt(adt_def, substs) if adt_def.is_enum() && adt_def == adt_def1 => {
-                    if index >= adt_def.variants.len() {
+                    if index.as_usize() >= adt_def.variants.len() {
                         PlaceTy::Ty {
                             ty: span_mirbug_and_err!(
                                 self,
@@ -654,7 +655,8 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                 variant_index,
             } => (&adt_def.variants[variant_index], substs),
             PlaceTy::Ty { ty } => match ty.sty {
-                ty::Adt(adt_def, substs) if !adt_def.is_enum() => (&adt_def.variants[0], substs),
+                ty::Adt(adt_def, substs) if !adt_def.is_enum() =>
+                    (&adt_def.variants[VariantIdx::new(0)], substs),
                 ty::Closure(def_id, substs) => {
                     return match substs.upvar_tys(def_id, tcx).nth(field.index()) {
                         Some(ty) => Ok(ty),
@@ -1280,7 +1282,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         );
                     }
                 };
-                if variant_index >= adt.variants.len() {
+                if variant_index.as_usize() >= adt.variants.len() {
                     span_bug!(
                         stmt.source_info.span,
                         "bad set discriminant ({:?} = {:?}): value of of range",

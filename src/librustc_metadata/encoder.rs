@@ -27,6 +27,7 @@ use rustc::mir::{self, interpret};
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt, ReprOptions, SymbolName};
 use rustc::ty::codec::{self as ty_codec, TyEncoder};
+use rustc::ty::layout::VariantIdx;
 
 use rustc::session::config::{self, CrateType};
 use rustc::util::nodemap::FxHashMap;
@@ -580,7 +581,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     /// the right to access any information in the adt-def (including,
     /// e.g., the length of the various vectors).
     fn encode_enum_variant_info(&mut self,
-                                (enum_did, Untracked(index)): (DefId, Untracked<usize>))
+                                (enum_did, Untracked(index)): (DefId, Untracked<VariantIdx>))
                                 -> Entry<'tcx> {
         let tcx = self.tcx;
         let def = tcx.adt_def(enum_did);
@@ -675,7 +676,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> IsolatedEncoder<'a, 'b, 'tcx> {
     /// vectors).
     fn encode_field(&mut self,
                     (adt_def_id, Untracked((variant_index, field_index))): (DefId,
-                                                                            Untracked<(usize,
+                                                                            Untracked<(VariantIdx,
                                                                                        usize)>))
                     -> Entry<'tcx> {
         let tcx = self.tcx;
@@ -1667,7 +1668,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     fn encode_fields(&mut self, adt_def_id: DefId) {
         let def = self.tcx.adt_def(adt_def_id);
-        for (variant_index, variant) in def.variants.iter().enumerate() {
+        for (variant_index, variant) in def.variants.iter_enumerated() {
             for (field_index, field) in variant.fields.iter().enumerate() {
                 self.record(field.did,
                             IsolatedEncoder::encode_field,
@@ -1734,7 +1735,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                 self.encode_fields(def_id);
 
                 let def = self.tcx.adt_def(def_id);
-                for (i, variant) in def.variants.iter().enumerate() {
+                for (i, variant) in def.variants.iter_enumerated() {
                     self.record(variant.did,
                                 IsolatedEncoder::encode_enum_variant_info,
                                 (def_id, Untracked(i)));

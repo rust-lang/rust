@@ -13,6 +13,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::mir::*;
 use rustc::ty::{self, Ty, TyCtxt, GenericParamDefKind};
+use rustc::ty::layout::VariantIdx;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::query::Providers;
 
@@ -291,7 +292,7 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
     fn deref_subpath(&self, _path: Self::Path) -> Option<Self::Path> {
         None
     }
-    fn downcast_subpath(&self, _path: Self::Path, _variant: usize) -> Option<Self::Path> {
+    fn downcast_subpath(&self, _path: Self::Path, _variant: VariantIdx) -> Option<Self::Path> {
         Some(())
     }
     fn array_subpath(&self, _path: Self::Path, _index: u32, _size: u32) -> Option<Self::Path> {
@@ -867,7 +868,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
     let variant_no = if adt_def.is_enum() {
         adt_def.variant_index_with_id(def_id)
     } else {
-        0
+        VariantIdx::new(0)
     };
 
     // return = ADT(arg0, arg1, ...); return

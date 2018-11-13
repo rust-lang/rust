@@ -103,6 +103,8 @@ use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoB
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::query::Providers;
 use rustc::ty::util::{Representability, IntTypeExt, Discr};
+use rustc::ty::layout::VariantIdx;
+use rustc_data_structures::indexed_vec::Idx;
 use errors::{Applicability, DiagnosticBuilder, DiagnosticId};
 
 use require_c_abi_if_variadic;
@@ -1837,10 +1839,11 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let mut disr_vals: Vec<Discr<'tcx>> = Vec::with_capacity(vs.len());
-    for (discr, v) in def.discriminants(tcx).zip(vs) {
+    for ((_, discr), v) in def.discriminants(tcx).zip(vs) {
         // Check for duplicate discriminant values
         if let Some(i) = disr_vals.iter().position(|&x| x.val == discr.val) {
-            let variant_i_node_id = tcx.hir.as_local_node_id(def.variants[i].did).unwrap();
+            let variant_did = def.variants[VariantIdx::new(i)].did;
+            let variant_i_node_id = tcx.hir.as_local_node_id(variant_did).unwrap();
             let variant_i = tcx.hir.expect_variant(variant_i_node_id);
             let i_span = match variant_i.node.disr_expr {
                 Some(ref expr) => tcx.hir.span(expr.id),

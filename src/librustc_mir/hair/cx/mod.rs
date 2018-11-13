@@ -25,6 +25,7 @@ use rustc::infer::InferCtxt;
 use rustc::ty::subst::Subst;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Substs};
+use rustc::ty::layout::VariantIdx;
 use syntax::ast::{self, LitKind};
 use syntax::attr;
 use syntax::symbol::Symbol;
@@ -228,7 +229,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         bug!("found no method `{}` in `{:?}`", method_name, trait_def_id);
     }
 
-    pub fn all_fields(&mut self, adt_def: &ty::AdtDef, variant_index: usize) -> Vec<Field> {
+    pub fn all_fields(&mut self, adt_def: &ty::AdtDef, variant_index: VariantIdx) -> Vec<Field> {
         (0..adt_def.variants[variant_index].fields.len())
             .map(Field::new)
             .collect()

@@ -284,7 +284,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                 Some((adt_def, adt_def.variant_index_with_id(variant_id)))
                             }
                             Def::StructCtor(_, CtorKind::Fn) |
-                            Def::SelfCtor(..) => Some((adt_def, 0)),
+                            Def::SelfCtor(..) => Some((adt_def, VariantIdx::new(0))),
                             _ => None,
                         }
                     })
@@ -468,7 +468,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         AdtKind::Struct | AdtKind::Union => {
                             ExprKind::Adt {
                                 adt_def: adt,
-                                variant_index: 0,
+                                variant_index: VariantIdx::new(0),
                                 substs,
                                 user_ty: cx.user_substs_applied_to_adt(expr.hir_id, adt),
                                 fields: field_refs(cx, fields),

@@ -1241,7 +1241,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     // This doesn't matter in this case.
                     NoDiscriminant
                 };
-                (0..variants.len()).map(|i| {
+                variants.iter_enumerated().map(|(i, _)| {
                     let variant = self.layout.for_variant(cx, i);
                     let (variant_type_metadata, member_desc_factory) =
                         describe_enum_variant(cx,
@@ -1341,7 +1341,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         }
                     ]
                 } else {
-                    (0..variants.len()).map(|i| {
+                    variants.iter_enumerated().map(|(i, _)| {
                         let variant = self.layout.for_variant(cx, i);
                         let (variant_type_metadata, member_desc_factory) =
                             describe_enum_variant(cx,
@@ -1361,8 +1361,8 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         let niche_value = if i == dataful_variant {
                             None
                         } else {
-                            let value = (i as u128)
-                                .wrapping_sub(*niche_variants.start() as u128)
+                            let value = (i.as_u32() as u128)
+                                .wrapping_sub(niche_variants.start().as_u32() as u128)
                                 .wrapping_add(niche_start);
                             let value = value & ((1u128 << niche.value.size(cx).bits()) - 1);
                             Some(value as u64)
@@ -1530,7 +1530,7 @@ fn prepare_enum_metadata(
         let def = enum_type.ty_adt_def().unwrap();
         let enumerators_metadata: Vec<_> = def.discriminants(cx.tcx)
             .zip(&def.variants)
-            .map(|(discr, v)| {
+            .map(|((_, discr), v)| {
                 let name = SmallCStr::new(&v.name.as_str());
                 unsafe {
                     Some(llvm::LLVMRustDIBuilderCreateEnumerator(

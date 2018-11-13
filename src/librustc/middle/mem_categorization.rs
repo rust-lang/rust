@@ -76,6 +76,7 @@ use hir::def::{Def, CtorKind};
 use ty::adjustment;
 use ty::{self, Ty, TyCtxt};
 use ty::fold::TypeFoldable;
+use ty::layout::VariantIdx;
 
 use hir::{MutImmutable, MutMutable, PatKind};
 use hir::pat_util::EnumerateAndAdjustIterator;
@@ -87,6 +88,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use rustc_data_structures::sync::Lrc;
+use rustc_data_structures::indexed_vec::Idx;
 use std::rc::Rc;
 use util::nodemap::ItemLocalSet;
 
@@ -227,7 +229,7 @@ impl<'tcx> cmt_<'tcx> {
             }
             _ => {
                 assert_eq!(adt_def.variants.len(), 1);
-                &adt_def.variants[0]
+                &adt_def.variants[VariantIdx::new(0)]
             }
         };
         Some((adt_def, &variant_def.fields[field_index]))

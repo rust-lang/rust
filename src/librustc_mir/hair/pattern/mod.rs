@@ -25,6 +25,7 @@ use rustc::mir::{ProjectionElem, UserTypeAnnotation, UserTypeProjection, UserTyp
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty};
 use rustc::ty::subst::{Substs, Kind};
+use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -111,7 +112,7 @@ impl<'tcx> PatternTypeProjections<'tcx> {
 
     pub(crate) fn variant(&self,
                           adt_def: &'tcx AdtDef,
-                          variant_index: usize,
+                          variant_index: VariantIdx,
                           field: Field) -> Self {
         self.map_projs(|pat_ty_proj| pat_ty_proj.variant(adt_def, variant_index, field))
     }
@@ -153,7 +154,7 @@ impl<'tcx> PatternTypeProjection<'tcx> {
 
     pub(crate) fn variant(&self,
                           adt_def: &'tcx AdtDef,
-                          variant_index: usize,
+                          variant_index: VariantIdx,
                           field: Field) -> Self {
         let mut new = self.clone();
         new.0.projs.push(ProjectionElem::Downcast(adt_def, variant_index));
@@ -200,7 +201,7 @@ pub enum PatternKind<'tcx> {
     Variant {
         adt_def: &'tcx AdtDef,
         substs: &'tcx Substs<'tcx>,
-        variant_index: usize,
+        variant_index: VariantIdx,
         subpatterns: Vec<FieldPattern<'tcx>>,
     },
 
@@ -273,7 +274,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                     }
                     _ => if let ty::Adt(adt, _) = self.ty.sty {
                         if !adt.is_enum() {
-                            Some(&adt.variants[0])
+                            Some(&adt.variants[VariantIdx::new(0)])
                         } else {
                             None
                         }
@@ -1160,7 +1161,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatternKind<'tcx> {
             } => PatternKind::Variant {
                 adt_def: adt_def.fold_with(folder),
                 substs: substs.fold_with(folder),
-                variant_index: variant_index.fold_with(folder),
+                variant_index,
                 subpatterns: subpatterns.fold_with(folder)
             },
             PatternKind::Leaf {

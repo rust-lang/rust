@@ -40,6 +40,7 @@ extern crate log;
 extern crate rustc_mir;
 extern crate rustc_target;
 extern crate syntax_pos;
+extern crate rustc_data_structures;
 
 use rustc::lint;
 use rustc::lint::{LateContext, LateLintPass, LintPass, LintArray};

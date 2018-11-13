@@ -21,7 +21,7 @@ use rustc::hir::def::Def;
 use rustc::mir::interpret::{ConstEvalErr, ErrorHandled};
 use rustc::mir;
 use rustc::ty::{self, TyCtxt, Instance, query::TyCtxtAt};
-use rustc::ty::layout::{self, LayoutOf, TyLayout};
+use rustc::ty::layout::{self, LayoutOf, TyLayout, VariantIdx};
 use rustc::ty::subst::Subst;
 use rustc::traits::Reveal;
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -481,7 +481,7 @@ pub fn const_field<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     instance: ty::Instance<'tcx>,
-    variant: Option<usize>,
+    variant: Option<VariantIdx>,
     field: mir::Field,
     value: &'tcx ty::Const<'tcx>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
@@ -513,7 +513,7 @@ pub fn const_variant_index<'a, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     instance: ty::Instance<'tcx>,
     val: &'tcx ty::Const<'tcx>,
-) -> EvalResult<'tcx, usize> {
+) -> EvalResult<'tcx, VariantIdx> {
     trace!("const_variant_index: {:?}, {:?}", instance, val);
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let op = ecx.const_to_op(val)?;
