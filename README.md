@@ -15,13 +15,8 @@ for example:
   or an invalid enum discriminant)
 * WIP: Violations of the rules governing aliasing for reference types
 
-This project began as part of an undergraduate research course at the
-[University of Saskatchewan][usask].
-
-
 [rust]: https://www.rust-lang.org/
 [mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
-[usask]: https://www.usask.ca/
 [`unreachable_unchecked`]: https://doc.rust-lang.org/stable/std/hint/fn.unreachable_unchecked.html
 [`copy_nonoverlapping`]: https://doc.rust-lang.org/stable/std/ptr/fn.copy_nonoverlapping.html
 
@@ -196,6 +191,23 @@ Check out the issues on this GitHub repository for some ideas. There's lots that
 needs to be done that I haven't documented in the issues yet, however. For more
 ideas or help with running or hacking on Miri, you can contact me (`scott`) on
 Mozilla IRC in any of the Rust IRC channels (`#rust`, `#rust-offtopic`, etc).
+
+## History
+
+This project began as part of an undergraduate research course in 2015 by
+@solson at the [University of Saskatchewan][usask]. In 2016, @oli-obk joined to
+prepare miri for eventually being used as const evaluator in the Rust compiler
+itself (basically, for `const` and `static` stuff), replacing the old evaluator
+that worked directly on the AST.  In 2017, @RalfJung did an internship with
+Mozilla and began developing miri towards a tool for detecting undefined
+behavior, and also using miri as a way to explore the consequences of various
+possible definitions for undefined behavior in Rust.  @oli-obk's move of the
+miri engine into the compiler finally came to completion in early 2018.
+Meanwhile, later that year, @RalfJung did a second internship, developing miri
+further with support for checking basic type invariants and verifying that
+references are used according to their aliasing restrictions.
+
+[usask]: https://www.usask.ca/
 
 ## License
 
