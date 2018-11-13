@@ -1,15 +1,15 @@
 
 use cell::RefCell;
 use cmp;
+use fs::File;
 use io::{self, Error, ErrorKind, Read, Write};
 use libc;
 use mem;
+use os::linux::fs::MetadataExt;
 use path::Path;
 use ptr;
-use sys::{cvt, cvt_r};
-use fs::File;
 use super::ext::io::AsRawFd;
-
+use sys::{cvt, cvt_r};
 
 unsafe fn copy_file_range(
     fd_in: libc::c_int,
@@ -76,10 +76,8 @@ fn allocate_file(fd: &File, len: u64) -> io::Result<()> {
 }
 
 
-// Version of copy_file_range(2) that copies the give range to the
-// same place in the target file. If off is None then use nul to
-// tell copy_file_range() track the file offset. See the manpage
-// for details.
+// Wrapper for copy_file_range(2) that defers file offset tracking to
+// the underlying call. See the manpage for details.
 fn copy_bytes_kernel(reader: &File, writer: &File, nbytes: usize) -> io::Result<u64> {
     unsafe {
         cvt(copy_file_range(reader.as_raw_fd(),
@@ -119,7 +117,7 @@ fn copy_bytes_uspace(mut reader: &File, mut writer: &File, nbytes: usize) -> io:
 }
 
 
-// Kernel prior to 4.5 don't have copy_file_range We store the
+// Kernels prior to 4.5 don't have copy_file_range,so we store the
 // availability in a thread-local flag to avoid unnecessary syscalls.
 thread_local! {
     static HAS_COPY_FILE_RANGE: RefCell<bool> = RefCell::new(true);
@@ -256,13 +254,13 @@ mod tests {
             .open(&file).unwrap();
 
         fd.seek(SeekFrom::Start(head)).unwrap();
-        write!(fd, "{}", data);
+        write!(fd, "{}", data).unwrap();
 
         fd.seek(SeekFrom::Start(1024*4096)).unwrap();
-        write!(fd, "{}", data);
+        write!(fd, "{}", data).unwrap();
 
         fd.seek(SeekFrom::Start(4096*4096)).unwrap();
-        write!(fd, "{}", data);
+        write!(fd, "{}", data).unwrap();
 
         len
     }
@@ -276,8 +274,8 @@ mod tests {
 
 
     fn is_sparse(fd: &File) -> io::Result<bool> {
-        let stat = stat(fd)?;
-        Ok(stat.st_blocks < stat.st_size / stat.st_blksize)
+        let stat = fd.metadata()?;
+        Ok(stat.st_blocks() < stat.st_size() / stat.st_blksize())
     }
 
     fn is_fsparse(file: &PathBuf) -> io::Result<bool> {
@@ -298,8 +296,11 @@ mod tests {
             assert!(is_sparse(&fd).unwrap());
         }
         {
-            let mut fd = File::open(&from).unwrap();
-            write!(fd, "{}", "test");
+            let mut fd = OpenOptions::new()
+                .write(true)
+                .append(true)
+                .open(&from).unwrap();
+            write!(fd, "{}", "test").unwrap();
         }
         {
             let fd = File::open(&from).unwrap();
@@ -314,7 +315,7 @@ mod tests {
 
         {
             let mut fd = File::create(&to).unwrap();
-            write!(fd, "{}", data);
+            write!(fd, "{}", data).unwrap();
         }
 
         create_sparse_with_data(&from, 0, 0);
@@ -349,7 +350,7 @@ mod tests {
 
         {
             let mut fd = File::create(&to).unwrap();
-            write!(fd, "{}", data);
+            write!(fd, "{}", data).unwrap();
         }
 
         create_sparse(&from, 1024*1024);
@@ -395,7 +396,7 @@ mod tests {
 
         {
             let mut fd = File::create(&to).unwrap();
-            write!(fd, "{}", data);
+            write!(fd, "{}", data).unwrap();
         }
 
         create_sparse(&from, 1024*1024);
@@ -484,7 +485,7 @@ mod tests {
 
         {
             let mut fd = File::create(&to).unwrap();
-            write!(fd, "{}", data);
+            write!(fd, "{}", data).unwrap();
         }
 
         create_sparse(&from, 128);
@@ -496,7 +497,7 @@ mod tests {
                 .append(false)
                 .open(&from).unwrap();
             fd.seek(SeekFrom::Start(offset)).unwrap();
-            write!(fd, "{}", data);
+            write!(fd, "{}", data).unwrap();
         }
 
         {
