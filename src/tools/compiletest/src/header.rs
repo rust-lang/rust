@@ -490,7 +490,7 @@ impl TestProps {
             }
 
             if !self.compile_pass {
-                // run-pass implies must_compile_sucessfully
+                // run-pass implies must_compile_successfully
                 self.compile_pass = config.parse_compile_pass(ln) || self.run_pass;
             }
 

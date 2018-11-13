@@ -122,7 +122,7 @@ impl<'tt> TokenTreeOrTokenTreeSlice<'tt> {
         }
     }
 
-    /// The the `index`-th token tree of `self`.
+    /// The `index`-th token tree of `self`.
     fn get_tt(&self, index: usize) -> TokenTree {
         match *self {
             TtSeq(ref v) => v[index].clone(),
