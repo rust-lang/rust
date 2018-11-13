@@ -996,7 +996,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                                             &parent_scope, true, true, ident.span) {
                 Ok(binding) => {
                     let initial_def = initial_binding.map(|initial_binding| {
-                        self.record_use(ident, MacroNS, initial_binding);
+                        self.record_use(ident, MacroNS, initial_binding, false);
                         initial_binding.def_ignoring_ambiguity()
                     });
                     let def = binding.def_ignoring_ambiguity();
