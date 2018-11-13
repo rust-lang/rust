@@ -47,7 +47,7 @@ rustc_tools_util = { version = "0.1.0", path = "rustc_tools_util"}
 
 [dev-dependencies]
 clippy_dev = { version = "0.0.1", path = "clippy_dev" }
-cargo_metadata = "0.6"
+cargo_metadata = "0.6.2"
 compiletest_rs = "0.3.16"
 lazy_static = "1.0"
 serde_derive = "1.0"

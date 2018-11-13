@@ -628,6 +628,7 @@ All notable changes to this project will be documented in this file.
 [`box_vec`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#box_vec
 [`boxed_local`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#boxed_local
 [`builtin_type_shadow`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#builtin_type_shadow
+[`cargo_common_metadata`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cargo_common_metadata
 [`cast_lossless`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cast_lossless
 [`cast_possible_truncation`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cast_possible_truncation
 [`cast_possible_wrap`]: https://rust-lang-nursery.github.io/rust-clippy/master/index.html#cast_possible_wrap

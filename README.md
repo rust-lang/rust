@@ -9,7 +9,7 @@ We are currently in the process of discussing Clippy 1.0 via the RFC process in 
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
-[There are 287 lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)
+[There are 288 lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)
 
 We have a bunch of lint categories to allow you to choose how much Clippy is supposed to ~~annoy~~ help you:
 
