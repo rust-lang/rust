@@ -330,7 +330,7 @@ impl Path {
 
 impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "path({})", print::to_string(print::NO_ANN, |s| s.print_path(self, false)))
+        write!(f, "path({})", self)
     }
 }
 
