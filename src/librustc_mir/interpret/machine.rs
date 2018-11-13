@@ -17,7 +17,7 @@ use std::hash::Hash;
 
 use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
-use rustc::ty::{self, layout::{Size, TyLayout}, query::TyCtxtAt};
+use rustc::ty::{self, layout::TyLayout, query::TyCtxtAt};
 
 use super::{
     Allocation, AllocId, EvalResult, Scalar, AllocationExtra,
@@ -173,16 +173,6 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         dest: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx>;
-
-    /// Hook for performing extra checks when memory gets deallocated.
-    #[inline]
-    fn memory_deallocated(
-        _alloc: &mut Allocation<Self::PointerTag, Self::AllocExtra>,
-        _ptr: Pointer<Self::PointerTag>,
-        _size: Size,
-    ) -> EvalResult<'tcx> {
-        Ok(())
-    }
 
     /// Add the tag for a newly allocated pointer.
     fn tag_new_allocation(

@@ -225,7 +225,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         // Let the machine take some extra action
         let size = Size::from_bytes(alloc.bytes.len() as u64);
-        M::memory_deallocated(&mut alloc, ptr, size)?;
+        AllocationExtra::memory_deallocated(&mut alloc, ptr, size)?;
 
         // Don't forget to remember size and align of this now-dead allocation
         let old = self.dead_alloc_map.insert(
