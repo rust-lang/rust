@@ -351,10 +351,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         mplace: MPlaceTy<'tcx, M::PointerTag>,
     ) -> EvalResult<'tcx, &str> {
         let len = mplace.len(self)?;
-        let ptr = mplace.ptr.to_ptr()?;
-        let bytes = self.memory
-            .get(ptr.alloc_id)?
-            .read_bytes(self, ptr, Size::from_bytes(len as u64))?;
+        let bytes = self.memory.read_bytes(mplace.ptr, Size::from_bytes(len as u64))?;
         let str = ::std::str::from_utf8(bytes)
             .map_err(|err| EvalErrorKind::ValidationFailure(err.to_string()))?;
         Ok(str)

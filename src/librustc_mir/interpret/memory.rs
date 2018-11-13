@@ -567,6 +567,22 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 }
 
+/// Byte Accessors
+impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
+    pub fn read_bytes(
+        &self,
+        ptr: Scalar<M::PointerTag>,
+        size: Size,
+    ) -> EvalResult<'tcx, &[u8]> {
+        if size.bytes() == 0 {
+            Ok(&[])
+        } else {
+            let ptr = ptr.to_ptr()?;
+            self.get(ptr.alloc_id)?.read_bytes(self, ptr, size)
+        }
+    }
+}
+
 /// Interning (for CTFE)
 impl<'a, 'mir, 'tcx, M> Memory<'a, 'mir, 'tcx, M>
 where
