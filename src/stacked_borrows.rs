@@ -337,7 +337,7 @@ impl<'tcx> Stacks {
             // the stack than the one we come from, just use that.
             // IOW, we check if `new_bor` *already* is "derived from" `ptr.tag`.
             // This also checks frozenness, if required.
-            let bor_already_happened = match (ptr_idx, stack.deref(new_bor, new_kind)) {
+            let bor_redundant = match (ptr_idx, stack.deref(new_bor, new_kind)) {
                 // If the new borrow works with the frozen item, or else if it lives
                 // above the old one in the stack, our job here is done.
                 (_, Ok(None)) => true,
@@ -345,9 +345,9 @@ impl<'tcx> Stacks {
                 // Otherwise we need to create a new borrow.
                 _ => false,
             };
-            if bor_already_happened {
+            if bor_redundant {
                 assert!(new_bor.is_shared(), "A unique reborrow can never be redundant");
-                trace!("Reborrow is a NOP");
+                trace!("reborrow is redundant");
                 continue;
             }
             // We need to do some actual work.
