@@ -264,7 +264,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                     drop_place.write_place_ref(fx, arg_place);
                     match ty.sty {
                         ty::Dynamic(..) => {
-                            unimplemented!("Drop for trait object");
+                            unimpl!("Drop for trait object");
                         }
                         _ => {
                             let drop_fn_ty = drop_fn.ty(fx.tcx);
@@ -1061,7 +1061,7 @@ pub fn trans_place<'a, 'tcx: 'a>(
                     offset,
                     min_length: _,
                     from_end: false,
-                } => unimplemented!(
+                } => unimpl!(
                     "projection const index {:?} offset {:?} not from end",
                     projection.base,
                     offset
@@ -1070,12 +1070,12 @@ pub fn trans_place<'a, 'tcx: 'a>(
                     offset,
                     min_length: _,
                     from_end: true,
-                } => unimplemented!(
+                } => unimpl!(
                     "projection const index {:?} offset {:?} from end",
                     projection.base,
                     offset
                 ),
-                ProjectionElem::Subslice { from, to } => unimplemented!(
+                ProjectionElem::Subslice { from, to } => unimpl!(
                     "projection subslice {:?} from {} to {}",
                     projection.base,
                     from,

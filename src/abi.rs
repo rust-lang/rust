@@ -75,7 +75,9 @@ pub fn clif_sig_from_fn_ty<'a, 'tcx: 'a>(
     fn_ty: Ty<'tcx>,
 ) -> Signature {
     let sig = ty_fn_sig(tcx, fn_ty);
-    assert!(!sig.variadic, "Variadic function are not yet supported");
+    if sig.variadic {
+        unimpl!("Variadic function are not yet supported");
+    }
     let (call_conv, inputs, output): (CallConv, Vec<Ty>, Ty) = match sig.abi {
         Abi::Rust => (CallConv::Fast, sig.inputs().to_vec(), sig.output()),
         Abi::C => (CallConv::SystemV, sig.inputs().to_vec(), sig.output()),
