@@ -406,12 +406,12 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-    ) -> EvalResult<'tcx, &[(Size, (Tag, AllocId))]> {
+    ) -> &[(Size, (Tag, AllocId))] {
         // We have to go back `pointer_size - 1` bytes, as that one would still overlap with
         // the beginning of this range.
         let start = ptr.offset.bytes().saturating_sub(cx.data_layout().pointer_size.bytes() - 1);
         let end = ptr.offset + size; // this does overflow checking
-        Ok(self.relocations.range(Size::from_bytes(start)..end))
+        self.relocations.range(Size::from_bytes(start)..end)
     }
 
     /// Check that there ar eno relocations overlapping with the given range.
@@ -422,10 +422,10 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         ptr: Pointer<Tag>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        if self.relocations(cx, ptr, size)?.len() != 0 {
-            err!(ReadPointerAsBytes)
-        } else {
+        if self.relocations(cx, ptr, size).is_empty() {
             Ok(())
+        } else {
+            err!(ReadPointerAsBytes)
         }
     }
 
@@ -444,7 +444,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         // Find the start and end of the given range and its outermost relocations.
         let (first, last) = {
             // Find all relocations overlapping the given range.
-            let relocations = self.relocations(cx, ptr, size)?;
+            let relocations = self.relocations(cx, ptr, size);
             if relocations.is_empty() {
                 return Ok(());
             }

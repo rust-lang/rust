@@ -655,7 +655,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // (`get_bytes_with_undef_and_ptr` below checks that there are no
         // relocations overlapping the edges; those would not be handled correctly).
         let relocations = {
-            let relocations = self.get(src.alloc_id)?.relocations(self, src, size)?;
+            let relocations = self.get(src.alloc_id)?.relocations(self, src, size);
             let mut new_relocations = Vec::with_capacity(relocations.len() * (length as usize));
             for i in 0..length {
                 new_relocations.extend(
