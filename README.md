@@ -1,13 +1,33 @@
 # Miri [[slides](https://solson.me/miri-slides.pdf)] [[report](https://solson.me/miri-report.pdf)] [![Build Status](https://travis-ci.org/solson/miri.svg?branch=master)](https://travis-ci.org/solson/miri) [![Windows build status](https://ci.appveyor.com/api/projects/status/github/solson/miri?svg=true)](https://ci.appveyor.com/project/solson63299/miri)
 
 
-An experimental interpreter for [Rust][rust]'s [mid-level intermediate
-representation][mir] (MIR). This project began as part of my work for the
-undergraduate research course at the [University of Saskatchewan][usask].
+An experimental interpreter for [Rust][rust]'s
+[mid-level intermediate representation][mir] (MIR).  It can run binaries and
+test suites of cargo projects and detect certain classes of undefined behavior,
+for example:
+
+* Out-of-bounds memory accesses and use-after-free
+* Invalid use of uninitialized data
+* Violation of intrinsic preconditions (an [`unreachable_unchecked`] being
+  reached, calling [`copy_nonoverlapping`] with overlapping ranges, ...)
+* Not sufficiently aligned memory accesses and references
+* Violation of basic type invariants (a `bool` that is not 0 or 1, for example,
+  or an invalid enum discriminant)
+* WIP: Violations of the rules governing aliasing for reference types
+
+This project began as part of an undergraduate research course at the
+[University of Saskatchewan][usask].
+
+
+[rust]: https://www.rust-lang.org/
+[mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
+[usask]: https://www.usask.ca/
+[`unreachable_unchecked`]: https://doc.rust-lang.org/stable/std/hint/fn.unreachable_unchecked.html
+[`copy_nonoverlapping`]: https://doc.rust-lang.org/stable/std/ptr/fn.copy_nonoverlapping.html
 
 ## Building Miri
 
-We recommend that you install [rustup][rustup] to obtain Rust. Then all you have
+We recommend that you install [rustup] to obtain Rust. Then all you have
 to do is:
 
 ```sh
@@ -24,6 +44,8 @@ To avoid repeating the nightly version all the time, you can use
 `rustup override set nightly` (or `rustup override set nightly-YYYY-MM-DD`),
 which means `nightly` Rust will automatically be used whenever you are working
 in this directory.
+
+[rustup]: https://www.rustup.rs
 
 ## Running Miri
 
@@ -188,8 +210,3 @@ Licensed under either of
 Unless you explicitly state otherwise, any contribution intentionally submitted
 for inclusion in the work by you shall be dual licensed as above, without any
 additional terms or conditions.
-
-[rust]: https://www.rust-lang.org/
-[mir]: https://github.com/rust-lang/rfcs/blob/master/text/1211-mir.md
-[usask]: https://www.usask.ca/
-[rustup]: https://www.rustup.rs
