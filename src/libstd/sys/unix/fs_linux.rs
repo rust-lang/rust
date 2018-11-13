@@ -194,17 +194,11 @@ fn copy_sparse(infd: &File, outfd: &File, uspace: bool) -> io::Result<u64> {
 }
 
 
-fn stat(fd: &File) -> io::Result<libc::stat> {
-    let mut stat: libc::stat = unsafe { mem::uninitialized() };
-    cvt(unsafe { libc::fstat(fd.as_raw_fd(), &mut stat) })?;
-    Ok(stat)
-}
-
 fn copy_parms(infd: &File, outfd: &File) -> io::Result<(bool, bool)> {
-    let in_stat = stat(infd)?;
-    let out_stat = stat(outfd)?;
-    let is_sparse = in_stat.st_blocks < in_stat.st_size / in_stat.st_blksize;
-    let is_xmount = in_stat.st_dev != out_stat.st_dev;
+    let in_stat = infd.metadata()?;
+    let out_stat = outfd.metadata()?;
+    let is_sparse = in_stat.st_blocks() < in_stat.st_size() / in_stat.st_blksize();
+    let is_xmount = in_stat.st_dev() != out_stat.st_dev();
     Ok((is_sparse, is_xmount))
 }
 
