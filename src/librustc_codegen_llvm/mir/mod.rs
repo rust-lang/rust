@@ -18,7 +18,6 @@ use rustc::ty::subst::Substs;
 use rustc::session::config::DebugInfo;
 use base;
 use debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
-use common::Funclet;
 use monomorphize::Instance;
 use abi::{FnType, PassMode};
 use interfaces::*;
@@ -70,7 +69,7 @@ pub struct FunctionCx<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
 
     /// When targeting MSVC, this stores the cleanup info for each funclet
     /// BB. This is initialized as we compute the funclets' head block in RPO.
-    funclets: IndexVec<mir::BasicBlock, Option<Funclet<'static, Bx::Value>>>,
+    funclets: IndexVec<mir::BasicBlock, Option<Bx::Funclet>>,
 
     /// This stores the landing-pad block for a given BB, computed lazily on GNU
     /// and eagerly on MSVC.
@@ -372,7 +371,7 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     cleanup_kinds: &IndexVec<mir::BasicBlock, CleanupKind>,
     block_bxs: &IndexVec<mir::BasicBlock, Bx::BasicBlock>)
     -> (IndexVec<mir::BasicBlock, Option<Bx::BasicBlock>>,
-        IndexVec<mir::BasicBlock, Option<Funclet<'static, Bx::Value>>>)
+        IndexVec<mir::BasicBlock, Option<Bx::Funclet>>)
 {
     block_bxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
         match *cleanup_kind {
@@ -380,7 +379,7 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             _ => return (None, None)
         }
 
-        let cleanup;
+        let funclet;
         let ret_llbb;
         match mir[bb].terminator.as_ref().map(|t| &t.kind) {
             // This is a basic block that we're aborting the program for,
@@ -417,18 +416,18 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 // represents that this is a catch-all block.
                 let null = bx.cx().const_null(bx.cx().type_i8p());
                 let sixty_four = bx.cx().const_i32(64);
-                cleanup = cp_bx.catch_pad(cs, &[null, sixty_four, null]);
+                funclet = cp_bx.catch_pad(cs, &[null, sixty_four, null]);
                 cp_bx.br(llbb);
             }
             _ => {
                 let cleanup_bx = bx.build_sibling_block(&format!("funclet_{:?}", bb));
                 ret_llbb = cleanup_bx.llbb();
-                cleanup = cleanup_bx.cleanup_pad(None, &[]);
+                funclet = cleanup_bx.cleanup_pad(None, &[]);
                 cleanup_bx.br(llbb);
             }
         };
 
-        (Some(ret_llbb), Some(Funclet::new(cleanup)))
+        (Some(ret_llbb), Some(funclet))
     }).unzip()
 }
 

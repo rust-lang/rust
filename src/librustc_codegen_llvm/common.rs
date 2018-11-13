@@ -12,7 +12,7 @@
 
 //! Code that is useful in various codegen modules.
 
-use llvm::{self, True, False, Bool, BasicBlock};
+use llvm::{self, True, False, Bool, BasicBlock, OperandBundleDef};
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
 use abi;
@@ -23,7 +23,7 @@ use type_of::LayoutLlvmExt;
 use value::Value;
 use interfaces::*;
 
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{Ty, TyCtxt};
 use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size};
 use rustc::mir::interpret::{Scalar, AllocType, Allocation};
 use rustc::hir;
@@ -35,35 +35,9 @@ use libc::{c_uint, c_char};
 
 use syntax::symbol::LocalInternedString;
 use syntax::ast::Mutability;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 
 pub use context::CodegenCx;
-
-pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.needs_drop(tcx, ty::ParamEnv::reveal_all())
-}
-
-pub fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_sized(tcx.at(DUMMY_SP), ty::ParamEnv::reveal_all())
-}
-
-pub fn type_is_freeze<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
-    ty.is_freeze(tcx, ty::ParamEnv::reveal_all(), DUMMY_SP)
-}
-
-pub struct OperandBundleDef<'a, V> {
-    pub name: &'a str,
-    pub val: V
-}
-
-impl<'a, V> OperandBundleDef<'a, V> {
-    pub fn new(name: &'a str, val: V) -> Self {
-        OperandBundleDef {
-            name,
-            val
-        }
-    }
-}
 
 /*
 * A note on nomenclature of linking: "extern", "foreign", and "upcall".
@@ -105,24 +79,24 @@ impl<'a, V> OperandBundleDef<'a, V> {
 /// When inside of a landing pad, each function call in LLVM IR needs to be
 /// annotated with which landing pad it's a part of. This is accomplished via
 /// the `OperandBundleDef` value created for MSVC landing pads.
-pub struct Funclet<'a, V> {
-    cleanuppad: V,
-    operand: OperandBundleDef<'a, V>,
+pub struct Funclet<'ll> {
+    cleanuppad: &'ll Value,
+    operand: OperandBundleDef<'ll>,
 }
 
-impl<'a, V: CodegenObject> Funclet<'a, V> {
-    pub fn new(cleanuppad: V) -> Self {
+impl Funclet<'ll> {
+    pub fn new(cleanuppad: &'ll Value) -> Self {
         Funclet {
             cleanuppad,
-            operand: OperandBundleDef::new("funclet", cleanuppad),
+            operand: OperandBundleDef::new("funclet", &[cleanuppad]),
         }
     }
 
-    pub fn cleanuppad(&self) -> V {
+    pub fn cleanuppad(&self) -> &'ll Value {
         self.cleanuppad
     }
 
-    pub fn bundle(&self) -> &OperandBundleDef<'a, V> {
+    pub fn bundle(&self) -> &OperandBundleDef<'ll> {
         &self.operand
     }
 }
@@ -132,6 +106,7 @@ impl BackendTypes for CodegenCx<'ll, 'tcx> {
     type BasicBlock = &'ll BasicBlock;
     type Type = &'ll Type;
     type Context = &'ll llvm::Context;
+    type Funclet = Funclet<'ll>;
 
     type DIScope = &'ll llvm::debuginfo::DIScope;
 }

@@ -28,6 +28,7 @@ pub trait BackendTypes {
     type BasicBlock: Copy;
     type Type: CodegenObject;
     type Context;
+    type Funclet;
 
     type DIScope: Copy;
 }

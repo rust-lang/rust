@@ -17,7 +17,7 @@ use abi::{Abi, FnType, PassMode};
 use rustc_target::abi::call::ArgType;
 use base;
 use builder::MemFlags;
-use common::{self, Funclet};
+use common;
 use rustc_codegen_utils::common::IntPredicate;
 use meth;
 use monomorphize;
@@ -67,7 +67,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             funclet_bb: Option<mir::BasicBlock>
         ) -> impl for<'b> Fn(
             &'b FunctionCx<'a, 'tcx, Bx>,
-        ) -> Option<&'b Funclet<'static, Bx::Value>> {
+        ) -> Option<&'b Bx::Funclet> {
             move |this| {
                 match funclet_bb {
                     Some(funclet_bb) => this.funclets[funclet_bb].as_ref(),
@@ -76,8 +76,6 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         }
         let funclet = funclet_closure_factory(funclet_bb);
-
-        let cleanup_pad = |this: &Self| funclet(this).map(|lp| lp.cleanuppad());
 
         let lltarget = |this: &mut Self, target: mir::BasicBlock| {
             let lltarget = this.blocks[target];
@@ -106,7 +104,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 debug!("llblock: creating cleanup trampoline for {:?}", target);
                 let name = &format!("{:?}_cleanup_trampoline_{:?}", bb, target);
                 let trampoline = this.new_block(name);
-                trampoline.cleanup_ret(cleanup_pad(this).unwrap(), Some(lltarget));
+                trampoline.cleanup_ret(funclet(this).unwrap(), Some(lltarget));
                 trampoline.llbb()
             } else {
                 lltarget
@@ -119,7 +117,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if is_cleanupret {
                     // micro-optimization: generate a `ret` rather than a jump
                     // to a trampoline.
-                    bx.cleanup_ret(cleanup_pad(this).unwrap(), Some(lltarget));
+                    bx.cleanup_ret(funclet(this).unwrap(), Some(lltarget));
                 } else {
                     bx.br(lltarget);
                 }
@@ -175,8 +173,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         self.set_debug_loc(&bx, terminator.source_info);
         match terminator.kind {
             mir::TerminatorKind::Resume => {
-                if let Some(cleanup_pad) = cleanup_pad(self) {
-                    bx.cleanup_ret(cleanup_pad, None);
+                if let Some(funclet) = funclet(self) {
+                    bx.cleanup_ret(funclet, None);
                 } else {
                     let slot = self.get_personality_slot(&bx);
                     let lp0 = bx.load_operand(slot.project_field(&bx, 0)).immediate();

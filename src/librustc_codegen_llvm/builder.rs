@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use llvm::{AtomicRmwBinOp, AtomicOrdering, SynchronizationScope, AsmDialect};
-use llvm::{self, False, OperandBundleDef, BasicBlock};
-use common;
+use llvm::{self, False, BasicBlock};
 use rustc_codegen_utils::common::{IntPredicate, TypeKind, RealPredicate};
 use rustc_codegen_utils;
+use common::Funclet;
 use context::CodegenCx;
 use type_::Type;
 use type_of::LayoutLlvmExt;
@@ -66,6 +66,7 @@ impl BackendTypes for Builder<'_, 'll, 'tcx> {
     type BasicBlock = <CodegenCx<'ll, 'tcx> as BackendTypes>::BasicBlock;
     type Type = <CodegenCx<'ll, 'tcx> as BackendTypes>::Type;
     type Context = <CodegenCx<'ll, 'tcx> as BackendTypes>::Context;
+    type Funclet = <CodegenCx<'ll, 'tcx> as BackendTypes>::Funclet;
 
     type DIScope = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIScope;
 }
@@ -218,12 +219,14 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn invoke(&self,
-                  llfn: &'ll Value,
-                  args: &[&'ll Value],
-                  then: &'ll BasicBlock,
-                  catch: &'ll BasicBlock,
-                  funclet: Option<&common::Funclet<&'ll Value>>) -> &'ll Value {
+    fn invoke(
+        &self,
+        llfn: &'ll Value,
+        args: &[&'ll Value],
+        then: &'ll BasicBlock,
+        catch: &'ll BasicBlock,
+        funclet: Option<&Funclet<'ll>>,
+    ) -> &'ll Value {
         self.count_insn("invoke");
 
         debug!("Invoke {:?} with args ({:?})",
@@ -232,7 +235,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         let args = self.check_call("invoke", llfn, args);
         let bundle = funclet.map(|funclet| funclet.bundle());
-        let bundle = bundle.map(OperandBundleDef::from_generic);
         let bundle = bundle.as_ref().map(|b| &*b.raw);
 
         unsafe {
@@ -1123,7 +1125,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn cleanup_pad(&self,
                        parent: Option<&'ll Value>,
-                       args: &[&'ll Value]) -> &'ll Value {
+                       args: &[&'ll Value]) -> Funclet<'ll> {
         self.count_insn("cleanuppad");
         let name = const_cstr!("cleanuppad");
         let ret = unsafe {
@@ -1133,23 +1135,23 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                                           args.as_ptr(),
                                           name.as_ptr())
         };
-        ret.expect("LLVM does not have support for cleanuppad")
+        Funclet::new(ret.expect("LLVM does not have support for cleanuppad"))
     }
 
     fn cleanup_ret(
-        &self, cleanup: &'ll Value,
+        &self, funclet: &Funclet<'ll>,
         unwind: Option<&'ll BasicBlock>,
     ) -> &'ll Value {
         self.count_insn("cleanupret");
         let ret = unsafe {
-            llvm::LLVMRustBuildCleanupRet(self.llbuilder, cleanup, unwind)
+            llvm::LLVMRustBuildCleanupRet(self.llbuilder, funclet.cleanuppad(), unwind)
         };
         ret.expect("LLVM does not have support for cleanupret")
     }
 
     fn catch_pad(&self,
                      parent: &'ll Value,
-                     args: &[&'ll Value]) -> &'ll Value {
+                     args: &[&'ll Value]) -> Funclet<'ll> {
         self.count_insn("catchpad");
         let name = const_cstr!("catchpad");
         let ret = unsafe {
@@ -1157,13 +1159,13 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                                         args.len() as c_uint, args.as_ptr(),
                                         name.as_ptr())
         };
-        ret.expect("LLVM does not have support for catchpad")
+        Funclet::new(ret.expect("LLVM does not have support for catchpad"))
     }
 
-    fn catch_ret(&self, pad: &'ll Value, unwind: &'ll BasicBlock) -> &'ll Value {
+    fn catch_ret(&self, funclet: &Funclet<'ll>, unwind: &'ll BasicBlock) -> &'ll Value {
         self.count_insn("catchret");
         let ret = unsafe {
-            llvm::LLVMRustBuildCatchRet(self.llbuilder, pad, unwind)
+            llvm::LLVMRustBuildCatchRet(self.llbuilder, funclet.cleanuppad(), unwind)
         };
         ret.expect("LLVM does not have support for catchret")
     }
@@ -1356,8 +1358,12 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.call(lifetime_intrinsic, &[self.cx.const_u64(size), ptr], None);
     }
 
-    fn call(&self, llfn: &'ll Value, args: &[&'ll Value],
-                funclet: Option<&common::Funclet<&'ll Value>>) -> &'ll Value {
+    fn call(
+        &self,
+        llfn: &'ll Value,
+        args: &[&'ll Value],
+        funclet: Option<&Funclet<'ll>>,
+    ) -> &'ll Value {
         self.count_insn("call");
 
         debug!("Call {:?} with args ({:?})",
@@ -1366,7 +1372,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
         let args = self.check_call("call", llfn, args);
         let bundle = funclet.map(|funclet| funclet.bundle());
-        let bundle = bundle.map(OperandBundleDef::from_generic);
         let bundle = bundle.as_ref().map(|b| &*b.raw);
 
         unsafe {

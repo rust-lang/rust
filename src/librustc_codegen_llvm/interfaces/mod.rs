@@ -72,6 +72,7 @@ pub trait HasCodegen<'tcx>: Backend<'tcx> {
             BasicBlock = Self::BasicBlock,
             Type = Self::Type,
             Context = Self::Context,
+            Funclet = Self::Funclet,
             DIScope = Self::DIScope,
         >;
 }

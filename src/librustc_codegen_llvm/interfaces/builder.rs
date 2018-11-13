@@ -15,7 +15,6 @@ use super::intrinsic::IntrinsicCallMethods;
 use super::type_::ArgTypeMethods;
 use super::HasCodegen;
 use builder::MemFlags;
-use common::*;
 use libc::c_char;
 use mir::operand::OperandRef;
 use mir::place::PlaceRef;
@@ -58,7 +57,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         args: &[Self::Value],
         then: Self::BasicBlock,
         catch: Self::BasicBlock,
-        funclet: Option<&Funclet<Self::Value>>,
+        funclet: Option<&Self::Funclet>,
     ) -> Self::Value;
     fn unreachable(&self);
     fn add(&self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
@@ -213,10 +212,10 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn add_clause(&self, landing_pad: Self::Value, clause: Self::Value);
     fn set_cleanup(&self, landing_pad: Self::Value);
     fn resume(&self, exn: Self::Value) -> Self::Value;
-    fn cleanup_pad(&self, parent: Option<Self::Value>, args: &[Self::Value]) -> Self::Value;
-    fn cleanup_ret(&self, cleanup: Self::Value, unwind: Option<Self::BasicBlock>) -> Self::Value;
-    fn catch_pad(&self, parent: Self::Value, args: &[Self::Value]) -> Self::Value;
-    fn catch_ret(&self, pad: Self::Value, unwind: Self::BasicBlock) -> Self::Value;
+    fn cleanup_pad(&self, parent: Option<Self::Value>, args: &[Self::Value]) -> Self::Funclet;
+    fn cleanup_ret(&self, funclet: &Self::Funclet, unwind: Option<Self::BasicBlock>) -> Self::Value;
+    fn catch_pad(&self, parent: Self::Value, args: &[Self::Value]) -> Self::Funclet;
+    fn catch_ret(&self, funclet: &Self::Funclet, unwind: Self::BasicBlock) -> Self::Value;
     fn catch_switch(
         &self,
         parent: Option<Self::Value>,
@@ -276,7 +275,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         &self,
         llfn: Self::Value,
         args: &[Self::Value],
-        funclet: Option<&Funclet<Self::Value>>,
+        funclet: Option<&Self::Funclet>,
     ) -> Self::Value;
     fn zext(&self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 

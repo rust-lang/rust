@@ -894,7 +894,7 @@ fn codegen_msvc_try(
             Some(did) => cx.get_static(did),
             None => bug!("msvc_try_filter not defined"),
         };
-        let tok = catchpad.catch_pad(cs, &[tydesc, cx.const_i32(0), slot]);
+        let funclet = catchpad.catch_pad(cs, &[tydesc, cx.const_i32(0), slot]);
         let addr = catchpad.load(slot, ptr_align);
 
         let i64_align = bx.tcx().data_layout.i64_align;
@@ -904,7 +904,7 @@ fn codegen_msvc_try(
         let local_ptr = catchpad.bitcast(local_ptr, i64p);
         catchpad.store(arg1, local_ptr, i64_align);
         catchpad.store(arg2, catchpad.inbounds_gep(local_ptr, &[val1]), i64_align);
-        catchpad.catch_ret(tok, caught.llbb());
+        catchpad.catch_ret(&funclet, caught.llbb());
 
         caught.ret(cx.const_i32(1));
     });
