@@ -158,8 +158,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             unsafe_cell_action: F,
         }
 
-        impl<'ecx, 'a, 'mir, 'tcx, F> ValueVisitor<'a, 'mir, 'tcx, Evaluator<'tcx>>
-        for UnsafeCellVisitor<'ecx, 'a, 'mir, 'tcx, F>
+        impl<'ecx, 'a, 'mir, 'tcx, F>
+            ValueVisitor<'a, 'mir, 'tcx, Evaluator<'tcx>>
+        for
+            UnsafeCellVisitor<'ecx, 'a, 'mir, 'tcx, F>
         where
             F: FnMut(MPlaceTy<'tcx, Borrow>) -> EvalResult<'tcx>
         {
@@ -230,7 +232,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
             }
 
             // We should never get to a primitive, but always short-circuit somewhere above
-            fn visit_primitive(&mut self, _val: ImmTy<'tcx, Borrow>) -> EvalResult<'tcx>
+            fn visit_primitive(&mut self, _v: MPlaceTy<'tcx, Borrow>) -> EvalResult<'tcx>
             {
                 bug!("We should always short-circit before coming to a primitive")
             }

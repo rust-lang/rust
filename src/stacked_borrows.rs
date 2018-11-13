@@ -4,7 +4,7 @@ use rustc::ty::{self, layout::Size};
 use rustc::hir::{Mutability, MutMutable, MutImmutable};
 
 use crate::{
-    EvalResult, EvalErrorKind, MiriEvalContext, HelpersEvalContextExt,
+    EvalResult, EvalErrorKind, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
     MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra,
     Pointer, MemPlace, Scalar, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
@@ -602,17 +602,56 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         _fn_entry: bool,
         place: PlaceTy<'tcx, Borrow>
     ) -> EvalResult<'tcx> {
-        // For now, we only retag if the toplevel type is a reference.
-        // TODO: Recurse into structs and enums, sharing code with validation.
         // TODO: Honor `fn_entry`.
-        let mutbl = match place.layout.ty.sty {
-            ty::Ref(_, _, mutbl) => mutbl, // go ahead
-            _ => return Ok(()), // do nothing, for now
+
+        // We need a visitor to visit all references.  However, that requires
+        // a `MemPlace`, so we have a fast path for reference types that
+        // avoids allocating.
+        match place.layout.ty.sty {
+            ty::Ref(_, _, mutbl) => {
+                // fast path
+                let val = self.read_immediate(self.place_to_op(place)?)?;
+                let val = self.reborrow(val, mutbl)?;
+                self.write_immediate(val, place)?;
+            }
+            _ => {}, // handled with the general case below
         };
-        // Retag the pointer and write it back.
-        let val = self.read_immediate(self.place_to_op(place)?)?;
-        let val = self.reborrow(val, mutbl)?;
-        self.write_immediate(val, place)?;
+        let place = self.force_allocation(place)?;
+
+        let mut visitor = RetagVisitor { ecx: self };
+        visitor.visit_value(place)?;
+
+        // The actual visitor
+        struct RetagVisitor<'ecx, 'a, 'mir, 'tcx> {
+            ecx: &'ecx mut MiriEvalContext<'a, 'mir, 'tcx>,
+        }
+        impl<'ecx, 'a, 'mir, 'tcx>
+            MutValueVisitor<'a, 'mir, 'tcx, Evaluator<'tcx>>
+        for
+            RetagVisitor<'ecx, 'a, 'mir, 'tcx>
+        {
+            type V = MPlaceTy<'tcx, Borrow>;
+
+            #[inline(always)]
+            fn ecx(&mut self) -> &mut MiriEvalContext<'a, 'mir, 'tcx> {
+                &mut self.ecx
+            }
+
+            // Primitives of reference type, that is the one thing we are interested in.
+            fn visit_primitive(&mut self, place: MPlaceTy<'tcx, Borrow>) -> EvalResult<'tcx>
+            {
+                match place.layout.ty.sty {
+                    ty::Ref(_, _, mutbl) => {
+                        let val = self.ecx.read_immediate(place.into())?;
+                        let val = self.ecx.reborrow(val, mutbl)?;
+                        self.ecx.write_immediate(val, place.into())?;
+                    }
+                    _ => {}, // nothing to do
+                }
+                Ok(())
+            }
+        }
+
         Ok(())
     }
 }
