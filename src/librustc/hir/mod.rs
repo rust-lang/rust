@@ -1193,8 +1193,8 @@ impl StmtKind {
 
     pub fn id(&self) -> NodeId {
         match *self {
-            StmtKind::Decl(_, id) => id,
-            StmtKind::Expr(_, id) => id,
+            StmtKind::Decl(_, id) |
+            StmtKind::Expr(_, id) |
             StmtKind::Semi(_, id) => id,
         }
     }
