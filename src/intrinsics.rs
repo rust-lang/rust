@@ -194,9 +194,9 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let type_id = CValue::const_val(fx, u64_layout.ty, type_id as i64);
             ret.write_cvalue(fx, type_id);
         };
-        _ if intrinsic.starts_with("unchecked_"), (c x, c y) {
+        _ if intrinsic.starts_with("unchecked_") || intrinsic == "exact_div", (c x, c y) {
             let bin_op = match intrinsic {
-                "unchecked_div" => BinOp::Div,
+                "unchecked_div" | "exact_div" => BinOp::Div,
                 "unchecked_rem" => BinOp::Rem,
                 "unchecked_shl" => BinOp::Shl,
                 "unchecked_shr" => BinOp::Shr,
