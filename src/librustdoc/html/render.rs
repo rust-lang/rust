@@ -2584,24 +2584,39 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                     _ => "",
                 };
 
+                let stab = myitem.stability_class();
+                let add = if stab.is_some() {
+                    " "
+                } else {
+                    ""
+                };
+
                 let doc_value = myitem.doc_value().unwrap_or("");
-                write!(w, "
-                       <tr class='{stab} module-item'>
-                           <td><a class=\"{class}\" href=\"{href}\"
-                                  title='{title_type} {title}'>{name}</a>{unsafety_flag}</td>
-                           <td class='docblock-short'>
-                               {stab_docs} {docs}
-                           </td>
+                write!(w, "\
+                       <tr class='{stab}{add}module-item'>\
+                           <td><a class=\"{class}\" href=\"{href}\" \
+                                  title='{title}'>{name}</a>{unsafety_flag}</td>\
+                           <td class='docblock-short'>{stab_docs}{docs}\
+                           </td>\
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
                        stab_docs = stab_docs,
                        docs = MarkdownSummaryLine(doc_value, &myitem.links()),
                        class = myitem.type_(),
-                       stab = myitem.stability_class().unwrap_or(String::new()),
+                       add = add,
+                       stab = stab.unwrap_or_else(|| String::new()),
                        unsafety_flag = unsafety_flag,
                        href = item_path(myitem.type_(), myitem.name.as_ref().unwrap()),
-                       title_type = myitem.type_(),
-                       title = full_path(cx, myitem))?;
+                       title = [full_path(cx, myitem), myitem.type_().to_string()]
+                                .iter()
+                                .filter_map(|s| if !s.is_empty() {
+                                    Some(s.as_str())
+                                } else {
+                                    None
+                                })
+                                .collect::<Vec<_>>()
+                                .join(" "),
+                      )?;
             }
         }
     }
