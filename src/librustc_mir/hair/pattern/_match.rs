@@ -309,6 +309,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     /// outside it's module and should not be matchable with an empty match
     /// statement.
     pub module: DefId,
+    param_env: ty::ParamEnv<'tcx>,
     pub pattern_arena: &'a TypedArena<Pattern<'tcx>>,
     pub byte_array_map: FxHashMap<*const Pattern<'tcx>, Vec<&'a Pattern<'tcx>>>,
 }
@@ -316,6 +317,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub fn create_and_enter<F, R>(
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
         module: DefId,
         f: F) -> R
         where F: for<'b> FnOnce(MatchCheckCtxt<'b, 'tcx>) -> R
@@ -324,6 +326,7 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
 
         f(MatchCheckCtxt {
             tcx,
+            param_env,
             module,
             pattern_arena: &pattern_arena,
             byte_array_map: FxHashMap::default(),
@@ -1668,17 +1671,14 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     // necessarily point to memory, they are usually just integers. The only time
                     // they should be pointing to memory is when they are subslices of nonzero
                     // slices
-                    let (opt_ptr, data_len) = match value.ty.builtin_deref(false).unwrap().ty.sty {
-                        ty::TyKind::Array(t, n) => {
-                            assert!(t == cx.tcx.types.u8);
-                            (value.to_ptr(), n.unwrap_usize(cx.tcx))
-                        },
+                    let (opt_ptr, n, ty) = match value.ty.builtin_deref(false).unwrap().ty.sty {
+                        ty::TyKind::Array(t, n) => (value.to_ptr(), n.unwrap_usize(cx.tcx), t),
                         ty::TyKind::Slice(t) => {
-                            assert!(t == cx.tcx.types.u8);
                             match value.val {
                                 ConstValue::ScalarPair(ptr, n) => (
                                     ptr.to_ptr().ok(),
-                                    n.to_bits(cx.tcx.data_layout.pointer_size).unwrap() as u64
+                                    n.to_bits(cx.tcx.data_layout.pointer_size).unwrap() as u64,
+                                    t,
                                 ),
                                 _ => span_bug!(
                                     pat.span,
@@ -1694,26 +1694,27 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                             constructor,
                         ),
                     };
-                    if wild_patterns.len() as u64 == data_len {
-                        // convert a byte-string pattern to a list of u8 patterns.
-                        match (data_len, opt_ptr) {
+                    if wild_patterns.len() as u64 == n {
+                        // convert a constant slice/array pattern to a list of patterns.
+                        match (n, opt_ptr) {
                             (0, _) => Some(Vec::new()),
                             (_, Some(ptr)) => {
                                 let alloc = cx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
-                                // FIXME: use `Allocation::read_bytes` once available
-                                assert_eq!(ptr.offset.bytes(), 0);
-                                Some(alloc.bytes.iter().map(|b| {
-                                    &*cx.pattern_arena.alloc(Pattern {
-                                        ty: cx.tcx.types.u8,
+                                let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
+                                (0..n).map(|i| {
+                                    let ptr = ptr.offset(layout.size * i, &cx.tcx).ok()?;
+                                    let scalar = alloc.read_scalar(
+                                        &cx.tcx, ptr, layout.size,
+                                    ).ok()?;
+                                    let scalar = scalar.not_undef().ok()?;
+                                    let value = ty::Const::from_scalar(cx.tcx, scalar, ty);
+                                    let pattern = Pattern {
+                                        ty,
                                         span: pat.span,
-                                        kind: box PatternKind::Constant {
-                                            value: ty::Const::from_bits(
-                                                cx.tcx,
-                                                *b as u128,
-                                                ty::ParamEnv::empty().and(cx.tcx.types.u8))
-                                        },
-                                    })
-                                }).collect())
+                                        kind: box PatternKind::Constant { value },
+                                    };
+                                    Some(&*cx.pattern_arena.alloc(pattern))
+                                }).collect()
                             },
                             (_, None) => span_bug!(
                                 pat.span,

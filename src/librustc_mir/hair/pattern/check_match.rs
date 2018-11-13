@@ -193,7 +193,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
         }
 
         let module = self.tcx.hir.get_module_parent(scrut.id);
-        MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
+        MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut have_errors = false;
 
             let inlined_arms : Vec<(Vec<_>, _)> = arms.iter().map(|arm| (
@@ -268,7 +268,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
     fn check_irrefutable(&self, pat: &'tcx Pat, origin: &str) {
         let module = self.tcx.hir.get_module_parent(pat.id);
-        MatchCheckCtxt::create_and_enter(self.tcx, module, |ref mut cx| {
+        MatchCheckCtxt::create_and_enter(self.tcx, self.param_env, module, |ref mut cx| {
             let mut patcx = PatternContext::new(self.tcx,
                                                 self.param_env.and(self.identity_substs),
                                                 self.tables);
