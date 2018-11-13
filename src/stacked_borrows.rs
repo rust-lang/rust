@@ -333,28 +333,24 @@ impl<'tcx> Stacks {
         for stack in stacks.iter_mut(ptr.offset, size) {
             // Access source `ptr`, create new ref.
             let ptr_idx = stack.deref(ptr.tag, new_kind).map_err(EvalErrorKind::MachineError)?;
-            if new_kind == RefKind::Raw {
-                assert!(new_bor.is_shared());
-                // Raw references do not get quite as many guarantees as the other kinds:
-                // If we can deref the new tag already, and if that tag lives higher on
-                // the stack than the one we come from, just use that.
-                // IOW, we check if `new_bor` *already* is "derived from" `ptr.tag`.
-                match (ptr_idx, stack.deref(new_bor, new_kind)) {
-                    // If the new borrow works with the forzen item, or else if it lives
-                    // above the old one in the stack, our job here is done.
-                    (_, Ok(None)) => {
-                        trace!("reborrow-to-raw on a frozen location is a NOP");
-                        continue
-                    },
-                    (Some(ptr_idx), Ok(Some(new_idx))) if new_idx >= ptr_idx => {
-                        trace!("reborrow-to-raw is a NOP because the src ptr already got reborrowed-to-raw");
-                        continue
-                    },
-                    _ => {},
-                }
+            // If we can deref the new tag already, and if that tag lives higher on
+            // the stack than the one we come from, just use that.
+            // IOW, we check if `new_bor` *already* is "derived from" `ptr.tag`.
+            // This also checks frozenness, if required.
+            let bor_already_happened = match (ptr_idx, stack.deref(new_bor, new_kind)) {
+                // If the new borrow works with the frozen item, or else if it lives
+                // above the old one in the stack, our job here is done.
+                (_, Ok(None)) => true,
+                (Some(ptr_idx), Ok(Some(new_idx))) if new_idx >= ptr_idx => true,
+                // Otherwise we need to create a new borrow.
+                _ => false,
+            };
+            if bor_already_happened {
+                assert!(new_bor.is_shared(), "A unique reborrow can never be redundant");
+                trace!("Reborrow is a NOP");
+                continue;
             }
-            // Non-raw reborrows should behave exactly as if we also did a
-            // read/write to the given location.
+            // We need to do some actual work.
             stack.access(ptr.tag, new_kind == RefKind::Unique)?;
             stack.create(new_bor, new_kind);
         }
