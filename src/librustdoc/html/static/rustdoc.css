@@ -284,6 +284,7 @@ nav.sub {
 
 body:not(.source) .example-wrap {
 	display: inline-flex;
+	margin-bottom: 10px;
 }
 
 .example-wrap {
@@ -301,6 +302,10 @@ body:not(.source) .example-wrap {
 
 body:not(.source) .example-wrap > pre.rust {
 	width: 100%;
+}
+
+body:not(.source) .example-wrap > pre {
+	margin: 0;
 }
 
 #search {
