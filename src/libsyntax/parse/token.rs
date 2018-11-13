@@ -79,14 +79,14 @@ pub enum Lit {
 }
 
 impl Lit {
-    crate fn short_name(&self) -> &'static str {
+    crate fn literal_name(&self) -> &'static str {
         match *self {
-            Byte(_) => "byte",
-            Char(_) => "char",
-            Integer(_) => "integer",
-            Float(_) => "float",
-            Str_(_) | StrRaw(..) => "string",
-            ByteStr(_) | ByteStrRaw(..) => "byte string"
+            Byte(_) => "byte literal",
+            Char(_) => "char literal",
+            Integer(_) => "integer literal",
+            Float(_) => "float literal",
+            Str_(_) | StrRaw(..) => "string literal",
+            ByteStr(_) | ByteStrRaw(..) => "byte string literal"
         }
     }
 
