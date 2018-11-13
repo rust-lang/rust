@@ -8,7 +8,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    Machine, EvalContext, MPlaceTy, OpTy, ImmTy,
+    Machine, EvalContext, MPlaceTy, OpTy,
 };
 
 // A thing that we can project into, and that has a layout.
@@ -201,9 +201,11 @@ macro_rules! make_value_visitor {
             { Ok(()) }
 
             /// Called whenever we reach a value of primitive type.  There can be no recursion
-            /// below such a value.  This is the leave function.
+            /// below such a value.  This is the leaf function.
+            /// We do *not* provide an `ImmTy` here because some implementations might want
+            /// to write to the place this primitive lives in.
             #[inline(always)]
-            fn visit_primitive(&mut self, _val: ImmTy<'tcx, M::PointerTag>) -> EvalResult<'tcx>
+            fn visit_primitive(&mut self, _v: Self::V) -> EvalResult<'tcx>
             { Ok(()) }
 
             // Default recursors. Not meant to be overloaded.
@@ -279,9 +281,7 @@ macro_rules! make_value_visitor {
                     _ => v.layout().ty.builtin_deref(true).is_some(),
                 };
                 if primitive {
-                    let op = v.to_op(self.ecx())?;
-                    let val = self.ecx().read_immediate(op)?;
-                    return self.visit_primitive(val);
+                    return self.visit_primitive(v);
                 }
 
                 // Proceed into the fields.
