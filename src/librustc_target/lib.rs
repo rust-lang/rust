@@ -24,6 +24,7 @@
 #![feature(box_syntax)]
 #![feature(nll)]
 #![feature(slice_patterns)]
+#![feature(const_fn)]
 
 #[macro_use]
 extern crate bitflags;
