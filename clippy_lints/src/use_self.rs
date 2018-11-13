@@ -16,6 +16,7 @@ use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::ty;
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax_pos::symbol::keywords::SelfType;
+use crate::syntax::ast::NodeId;
 
 /// **What it does:** Checks for unnecessary repetition of structure name when a
 /// replacement with `Self` is applicable.
@@ -232,6 +233,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UseSelfVisitor<'a, 'tcx> {
         }
 
         walk_path(self, path);
+    }
+
+    fn visit_use(&mut self, _path: &'tcx Path, _id: NodeId, _hir_id: HirId) {
+        // Don't check use statements
     }
 
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
