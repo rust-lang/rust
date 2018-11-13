@@ -27,7 +27,7 @@ use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
 use syntax::source_map::{self, Spanned};
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
-use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
+use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::InlineAttr;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
@@ -696,8 +696,6 @@ pub struct WhereEqPredicate {
     pub lhs_ty: P<Ty>,
     pub rhs_ty: P<Ty>,
 }
-
-pub type CrateConfig = HirVec<P<MetaItem>>;
 
 /// The top-level data structure that stores the entire contents of
 /// the crate currently being compiled.
