@@ -48,13 +48,6 @@ fn main() {
                 println!("passed");
             }
 
-            "exec-test5" => {
-                env::set_var("VARIABLE", "ABC");
-                Command::new("definitely-not-a-real-binary").env("VARIABLE", "XYZ").exec();
-                assert_eq!(env::var("VARIABLE").unwrap(), "ABC");
-                println!("passed");
-            }
-
             _ => panic!("unknown argument: {}", arg),
         }
         return
@@ -76,11 +69,6 @@ fn main() {
     assert_eq!(output.stdout, b"passed\n");
 
     let output = Command::new(&me).arg("exec-test4").output().unwrap();
-    assert!(output.status.success());
-    assert!(output.stderr.is_empty());
-    assert_eq!(output.stdout, b"passed\n");
-
-    let output = Command::new(&me).arg("exec-test5").output().unwrap();
     assert!(output.status.success());
     assert!(output.stderr.is_empty());
     assert_eq!(output.stdout, b"passed\n");
