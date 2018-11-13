@@ -89,6 +89,91 @@ impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     }
 }
 
+/// Byte accessors
+impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
+    /// The last argument controls whether we error out when there are undefined
+    /// or pointer bytes.  You should never call this, call `get_bytes` or
+    /// `get_bytes_with_undef_and_ptr` instead,
+    ///
+    /// This function also guarantees that the resulting pointer will remain stable
+    /// even when new allocations are pushed to the `HashMap`. `copy_repeatedly` relies
+    /// on that.
+    fn get_bytes_internal(
+        &self,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
+        size: Size,
+        align: Align,
+        check_defined_and_ptr: bool,
+    ) -> EvalResult<'tcx, &[u8]> {
+        self.check_align(ptr.into(), align)?;
+        self.check_bounds(cx, ptr, size)?;
+
+        if check_defined_and_ptr {
+            self.check_defined(ptr, size)?;
+            self.check_relocations(cx, ptr, size)?;
+        } else {
+            // We still don't want relocations on the *edges*
+            self.check_relocation_edges(cx, ptr, size)?;
+        }
+
+        AllocationExtra::memory_read(self, ptr, size)?;
+
+        assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
+        assert_eq!(size.bytes() as usize as u64, size.bytes());
+        let offset = ptr.offset.bytes() as usize;
+        Ok(&self.bytes[offset..offset + size.bytes() as usize])
+    }
+
+    #[inline]
+    fn get_bytes(
+        &self,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
+        size: Size,
+        align: Align
+    ) -> EvalResult<'tcx, &[u8]> {
+        self.get_bytes_internal(cx, ptr, size, align, true)
+    }
+
+    /// It is the caller's responsibility to handle undefined and pointer bytes.
+    /// However, this still checks that there are no relocations on the *edges*.
+    #[inline]
+    pub fn get_bytes_with_undef_and_ptr(
+        &self,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
+        size: Size,
+        align: Align
+    ) -> EvalResult<'tcx, &[u8]> {
+        self.get_bytes_internal(cx, ptr, size, align, false)
+    }
+
+    /// Just calling this already marks everything as defined and removes relocations,
+    /// so be sure to actually put data there!
+    pub fn get_bytes_mut(
+        &mut self,
+        cx: &impl HasDataLayout,
+        ptr: Pointer<Tag>,
+        size: Size,
+        align: Align,
+    ) -> EvalResult<'tcx, &mut [u8]> {
+        assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
+        self.check_align(ptr.into(), align)?;
+        self.check_bounds(cx, ptr, size)?;
+
+        self.mark_definedness(ptr, size, true)?;
+        self.clear_relocations(cx, ptr, size)?;
+
+        AllocationExtra::memory_written(self, ptr, size)?;
+
+        assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
+        assert_eq!(size.bytes() as usize as u64, size.bytes());
+        let offset = ptr.offset.bytes() as usize;
+        Ok(&mut self.bytes[offset..offset + size.bytes() as usize])
+    }
+}
+
 /// Reading and writing
 impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     pub fn read_c_str(
@@ -289,91 +374,6 @@ fn int_align(
         _ => bug!("bad integer size: {}", size.bytes()),
     };
     ity.align(cx).abi
-}
-
-/// Byte accessors
-impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
-    /// The last argument controls whether we error out when there are undefined
-    /// or pointer bytes.  You should never call this, call `get_bytes` or
-    /// `get_bytes_with_undef_and_ptr` instead,
-    ///
-    /// This function also guarantees that the resulting pointer will remain stable
-    /// even when new allocations are pushed to the `HashMap`. `copy_repeatedly` relies
-    /// on that.
-    fn get_bytes_internal(
-        &self,
-        cx: &impl HasDataLayout,
-        ptr: Pointer<Tag>,
-        size: Size,
-        align: Align,
-        check_defined_and_ptr: bool,
-    ) -> EvalResult<'tcx, &[u8]> {
-        self.check_align(ptr.into(), align)?;
-        self.check_bounds(cx, ptr, size)?;
-
-        if check_defined_and_ptr {
-            self.check_defined(ptr, size)?;
-            self.check_relocations(cx, ptr, size)?;
-        } else {
-            // We still don't want relocations on the *edges*
-            self.check_relocation_edges(cx, ptr, size)?;
-        }
-
-        AllocationExtra::memory_read(self, ptr, size)?;
-
-        assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
-        assert_eq!(size.bytes() as usize as u64, size.bytes());
-        let offset = ptr.offset.bytes() as usize;
-        Ok(&self.bytes[offset..offset + size.bytes() as usize])
-    }
-
-    #[inline]
-    fn get_bytes(
-        &self,
-        cx: &impl HasDataLayout,
-        ptr: Pointer<Tag>,
-        size: Size,
-        align: Align
-    ) -> EvalResult<'tcx, &[u8]> {
-        self.get_bytes_internal(cx, ptr, size, align, true)
-    }
-
-    /// It is the caller's responsibility to handle undefined and pointer bytes.
-    /// However, this still checks that there are no relocations on the *edges*.
-    #[inline]
-    pub fn get_bytes_with_undef_and_ptr(
-        &self,
-        cx: &impl HasDataLayout,
-        ptr: Pointer<Tag>,
-        size: Size,
-        align: Align
-    ) -> EvalResult<'tcx, &[u8]> {
-        self.get_bytes_internal(cx, ptr, size, align, false)
-    }
-
-    /// Just calling this already marks everything as defined and removes relocations,
-    /// so be sure to actually put data there!
-    pub fn get_bytes_mut(
-        &mut self,
-        cx: &impl HasDataLayout,
-        ptr: Pointer<Tag>,
-        size: Size,
-        align: Align,
-    ) -> EvalResult<'tcx, &mut [u8]> {
-        assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
-        self.check_align(ptr.into(), align)?;
-        self.check_bounds(cx, ptr, size)?;
-
-        self.mark_definedness(ptr, size, true)?;
-        self.clear_relocations(cx, ptr, size)?;
-
-        AllocationExtra::memory_written(self, ptr, size)?;
-
-        assert_eq!(ptr.offset.bytes() as usize as u64, ptr.offset.bytes());
-        assert_eq!(size.bytes() as usize as u64, size.bytes());
-        let offset = ptr.offset.bytes() as usize;
-        Ok(&mut self.bytes[offset..offset + size.bytes() as usize])
-    }
 }
 
 /// Relocations
