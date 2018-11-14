@@ -124,12 +124,8 @@ impl<'a> SpanUtils<'a> {
     /// Used to filter out spans of minimal value,
     /// such as references to macro internal variables.
     pub fn filter_generated(&self, span: Span) -> bool {
-        if span.is_dummy() {
+        if generated_code(span) {
             return true;
-        }
-
-        if !generated_code(span) {
-            return false;
         }
 
         //If the span comes from a fake source_file, filter it.
