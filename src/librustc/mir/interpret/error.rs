@@ -10,8 +10,9 @@
 
 use std::{fmt, env};
 
+use hir::map::definitions::DefPathData;
 use mir;
-use ty::{Ty, layout};
+use ty::{self, Ty, layout};
 use ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
 
@@ -19,7 +20,6 @@ use super::{Pointer, Scalar};
 
 use backtrace::Backtrace;
 
-use ty;
 use ty::query::TyCtxtAt;
 use errors::DiagnosticBuilder;
 
@@ -52,14 +52,28 @@ pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
     pub error: ::mir::interpret::EvalErrorKind<'tcx, u64>,
-    pub stacktrace: Vec<FrameInfo>,
+    pub stacktrace: Vec<FrameInfo<'tcx>>,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct FrameInfo {
+pub struct FrameInfo<'tcx> {
     pub span: Span,
-    pub location: String,
+    pub instance: ty::Instance<'tcx>,
     pub lint_root: Option<ast::NodeId>,
+}
+
+impl<'tcx> fmt::Display for FrameInfo<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        ty::tls::with(|tcx| {
+            if tcx.def_key(self.instance.def_id()).disambiguated_data.data
+                == DefPathData::ClosureExpr
+            {
+                write!(f, "inside call to closure")
+            } else {
+                write!(f, "inside call to `{}`", self.instance)
+            }
+        })
+    }
 }
 
 impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
@@ -135,8 +149,13 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             struct_error(tcx, message)
         };
         err.span_label(self.span, self.error.to_string());
-        for FrameInfo { span, location, .. } in &self.stacktrace {
-            err.span_label(*span, format!("inside call to `{}`", location));
+        // Skip the last, which is just the environment of the constant.  The stacktrace
+        // is sometimes empty because we create "fake" eval contexts in CTFE to do work
+        // on constant values.
+        if self.stacktrace.len() > 0 {
+            for frame_info in &self.stacktrace[..self.stacktrace.len()-1] {
+                err.span_label(frame_info.span, frame_info.to_string());
+            }
         }
         Ok(err)
     }
