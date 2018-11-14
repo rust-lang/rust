@@ -45,14 +45,14 @@ use super::FnCtxt;
 use middle::expr_use_visitor as euv;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::Categorization;
-use rustc::hir::def_id::DefId;
-use rustc::ty::{self, Ty, TyCtxt, UpvarSubsts};
-use rustc::infer::UpvarRegion;
-use syntax::ast;
-use syntax_pos::Span;
 use rustc::hir;
+use rustc::hir::def_id::DefId;
 use rustc::hir::def_id::LocalDefId;
 use rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc::infer::UpvarRegion;
+use rustc::ty::{self, Ty, TyCtxt, UpvarSubsts};
+use syntax::ast;
+use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn closure_analyze(&self, body: &'gcx hir::Body) {
@@ -121,7 +121,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        let infer_kind = if let UpvarSubsts::Closure(closure_substs) = substs{
+        let infer_kind = if let UpvarSubsts::Closure(closure_substs) = substs {
             if self.closure_kind(closure_def_id, closure_substs).is_none() {
                 Some(closure_substs)
             } else {
@@ -213,12 +213,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let final_upvar_tys = self.final_upvar_tys(closure_node_id);
         debug!(
             "analyze_closure: id={:?} substs={:?} final_upvar_tys={:?}",
-            closure_node_id,
-            substs,
-            final_upvar_tys
+            closure_node_id, substs, final_upvar_tys
         );
-        for (upvar_ty, final_upvar_ty) in substs.upvar_tys(closure_def_id, self.tcx)
-                                                .zip(final_upvar_tys)
+        for (upvar_ty, final_upvar_ty) in substs
+            .upvar_tys(closure_def_id, self.tcx)
+            .zip(final_upvar_tys)
         {
             self.demand_suptype(span, upvar_ty, final_upvar_ty);
         }
@@ -256,9 +255,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     debug!(
                         "var_id={:?} freevar_ty={:?} capture={:?}",
-                        var_node_id,
-                        freevar_ty,
-                        capture
+                        var_node_id, freevar_ty, capture
                     );
 
                     match capture {
@@ -271,8 +268,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             },
                         ),
                     }
-                })
-                .collect()
+                }).collect()
         })
     }
 }
@@ -301,12 +297,14 @@ struct InferBorrowKind<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
-    fn adjust_upvar_borrow_kind_for_consume(&mut self, cmt: &mc::cmt_<'tcx>,
-                                            mode: euv::ConsumeMode) {
+    fn adjust_upvar_borrow_kind_for_consume(
+        &mut self,
+        cmt: &mc::cmt_<'tcx>,
+        mode: euv::ConsumeMode,
+    ) {
         debug!(
             "adjust_upvar_borrow_kind_for_consume(cmt={:?}, mode={:?})",
-            cmt,
-            mode
+            cmt, mode
         );
 
         // we only care about moves
@@ -381,9 +379,9 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
         debug!("adjust_upvar_borrow_kind_for_mut(cmt={:?})", cmt);
 
         match cmt.cat.clone() {
-            Categorization::Deref(base, mc::Unique) |
-            Categorization::Interior(base, _) |
-            Categorization::Downcast(base, _) => {
+            Categorization::Deref(base, mc::Unique)
+            | Categorization::Interior(base, _)
+            | Categorization::Downcast(base, _) => {
                 // Interior or owned data is mutable if base is
                 // mutable, so iterate to the base.
                 self.adjust_upvar_borrow_kind_for_mut(&base);
@@ -399,12 +397,12 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
                 }
             }
 
-            Categorization::Deref(_, mc::UnsafePtr(..)) |
-            Categorization::StaticItem |
-            Categorization::ThreadLocal(..) |
-            Categorization::Rvalue(..) |
-            Categorization::Local(_) |
-            Categorization::Upvar(..) => {
+            Categorization::Deref(_, mc::UnsafePtr(..))
+            | Categorization::StaticItem
+            | Categorization::ThreadLocal(..)
+            | Categorization::Rvalue(..)
+            | Categorization::Local(_)
+            | Categorization::Upvar(..) => {
                 return;
             }
         }
@@ -414,9 +412,9 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
         debug!("adjust_upvar_borrow_kind_for_unique(cmt={:?})", cmt);
 
         match cmt.cat.clone() {
-            Categorization::Deref(base, mc::Unique) |
-            Categorization::Interior(base, _) |
-            Categorization::Downcast(base, _) => {
+            Categorization::Deref(base, mc::Unique)
+            | Categorization::Interior(base, _)
+            | Categorization::Downcast(base, _) => {
                 // Interior or owned data is unique if base is
                 // unique.
                 self.adjust_upvar_borrow_kind_for_unique(&base);
@@ -430,18 +428,20 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
                 }
             }
 
-            Categorization::Deref(_, mc::UnsafePtr(..)) |
-            Categorization::StaticItem |
-            Categorization::ThreadLocal(..) |
-            Categorization::Rvalue(..) |
-            Categorization::Local(_) |
-            Categorization::Upvar(..) => {}
+            Categorization::Deref(_, mc::UnsafePtr(..))
+            | Categorization::StaticItem
+            | Categorization::ThreadLocal(..)
+            | Categorization::Rvalue(..)
+            | Categorization::Local(_)
+            | Categorization::Upvar(..) => {}
         }
     }
 
-    fn try_adjust_upvar_deref(&mut self, cmt: &mc::cmt_<'tcx>, borrow_kind: ty::BorrowKind)
-                              -> bool
-    {
+    fn try_adjust_upvar_deref(
+        &mut self,
+        cmt: &mc::cmt_<'tcx>,
+        borrow_kind: ty::BorrowKind,
+    ) -> bool {
         assert!(match borrow_kind {
             ty::MutBorrow => true,
             ty::UniqueImmBorrow => true,
@@ -493,15 +493,14 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
     /// Here the argument `mutbl` is the borrow_kind that is required by
     /// some particular use.
     fn adjust_upvar_borrow_kind(&mut self, upvar_id: ty::UpvarId, kind: ty::BorrowKind) {
-        let upvar_capture = self.adjust_upvar_captures
+        let upvar_capture = self
+            .adjust_upvar_captures
             .get(&upvar_id)
             .cloned()
             .unwrap_or_else(|| self.fcx.tables.borrow().upvar_capture(upvar_id));
         debug!(
             "adjust_upvar_borrow_kind(upvar_id={:?}, upvar_capture={:?}, kind={:?})",
-            upvar_id,
-            upvar_capture,
-            kind
+            upvar_id, upvar_capture, kind
         );
 
         match upvar_capture {
@@ -511,18 +510,18 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
             ty::UpvarCapture::ByRef(mut upvar_borrow) => {
                 match (upvar_borrow.kind, kind) {
                     // Take RHS:
-                    (ty::ImmBorrow, ty::UniqueImmBorrow) |
-                    (ty::ImmBorrow, ty::MutBorrow) |
-                    (ty::UniqueImmBorrow, ty::MutBorrow) => {
+                    (ty::ImmBorrow, ty::UniqueImmBorrow)
+                    | (ty::ImmBorrow, ty::MutBorrow)
+                    | (ty::UniqueImmBorrow, ty::MutBorrow) => {
                         upvar_borrow.kind = kind;
                         self.adjust_upvar_captures
                             .insert(upvar_id, ty::UpvarCapture::ByRef(upvar_borrow));
                     }
                     // Take LHS:
-                    (ty::ImmBorrow, ty::ImmBorrow) |
-                    (ty::UniqueImmBorrow, ty::ImmBorrow) |
-                    (ty::UniqueImmBorrow, ty::UniqueImmBorrow) |
-                    (ty::MutBorrow, _) => {}
+                    (ty::ImmBorrow, ty::ImmBorrow)
+                    | (ty::UniqueImmBorrow, ty::ImmBorrow)
+                    | (ty::UniqueImmBorrow, ty::UniqueImmBorrow)
+                    | (ty::MutBorrow, _) => {}
                 }
             }
         }
@@ -537,10 +536,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
     ) {
         debug!(
             "adjust_closure_kind(closure_id={:?}, new_kind={:?}, upvar_span={:?}, var_name={})",
-            closure_id,
-            new_kind,
-            upvar_span,
-            var_name
+            closure_id, new_kind, upvar_span, var_name
         );
 
         // Is this the closure whose kind is currently being inferred?
@@ -554,22 +550,20 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
 
         debug!(
             "adjust_closure_kind: closure_id={:?}, existing_kind={:?}, new_kind={:?}",
-            closure_id,
-            existing_kind,
-            new_kind
+            closure_id, existing_kind, new_kind
         );
 
         match (existing_kind, new_kind) {
-            (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
-            (ty::ClosureKind::FnMut, ty::ClosureKind::Fn) |
-            (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
-            (ty::ClosureKind::FnOnce, _) => {
+            (ty::ClosureKind::Fn, ty::ClosureKind::Fn)
+            | (ty::ClosureKind::FnMut, ty::ClosureKind::Fn)
+            | (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut)
+            | (ty::ClosureKind::FnOnce, _) => {
                 // no change needed
             }
 
-            (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) |
-            (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
-            (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
+            (ty::ClosureKind::Fn, ty::ClosureKind::FnMut)
+            | (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce)
+            | (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
                 // new kind is stronger than the old kind
                 self.current_closure_kind = new_kind;
                 self.current_origin = Some((upvar_span, var_name));
@@ -590,12 +584,20 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
         self.adjust_upvar_borrow_kind_for_consume(cmt, mode);
     }
 
-    fn matched_pat(&mut self, _matched_pat: &hir::Pat, _cmt: &mc::cmt_<'tcx>,
-                   _mode: euv::MatchMode) {
+    fn matched_pat(
+        &mut self,
+        _matched_pat: &hir::Pat,
+        _cmt: &mc::cmt_<'tcx>,
+        _mode: euv::MatchMode,
+    ) {
     }
 
-    fn consume_pat(&mut self, _consume_pat: &hir::Pat, cmt: &mc::cmt_<'tcx>,
-                   mode: euv::ConsumeMode) {
+    fn consume_pat(
+        &mut self,
+        _consume_pat: &hir::Pat,
+        cmt: &mc::cmt_<'tcx>,
+        mode: euv::ConsumeMode,
+    ) {
         debug!("consume_pat(cmt={:?},mode={:?})", cmt, mode);
         self.adjust_upvar_borrow_kind_for_consume(cmt, mode);
     }
@@ -611,9 +613,7 @@ impl<'a, 'gcx, 'tcx> euv::Delegate<'tcx> for InferBorrowKind<'a, 'gcx, 'tcx> {
     ) {
         debug!(
             "borrow(borrow_id={}, cmt={:?}, bk={:?})",
-            borrow_id,
-            cmt,
-            bk
+            borrow_id, cmt, bk
         );
 
         match bk {
