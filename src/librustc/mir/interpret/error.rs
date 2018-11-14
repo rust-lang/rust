@@ -191,16 +191,23 @@ fn print_backtrace(backtrace: &mut Backtrace) -> String {
     write!(trace_text, "backtrace frames: {}\n", backtrace.frames().len()).unwrap();
     'frames: for (i, frame) in backtrace.frames().iter().enumerate() {
         if frame.symbols().is_empty() {
-            write!(trace_text, "{}: no symbols\n", i).unwrap();
+            write!(trace_text, "  {}: no symbols\n", i).unwrap();
         }
+        let mut first = true;
         for symbol in frame.symbols() {
-            write!(trace_text, "{}: ", i).unwrap();
+            if first {
+                write!(trace_text, "  {}: ", i).unwrap();
+                first = false;
+            } else {
+                let len = i.to_string().len();
+                write!(trace_text, "  {}  ", " ".repeat(len)).unwrap();
+            }
             if let Some(name) = symbol.name() {
                 write!(trace_text, "{}\n", name).unwrap();
             } else {
                 write!(trace_text, "<unknown>\n").unwrap();
             }
-            write!(trace_text, "\tat ").unwrap();
+            write!(trace_text, "           at ").unwrap();
             if let Some(file_path) = symbol.filename() {
                 write!(trace_text, "{}", file_path.display()).unwrap();
             } else {
