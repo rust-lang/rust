@@ -1,0 +1,16 @@
+error: index out of bounds: the len is 1 but the index is 1
+  --> $DIR/issue-54348.rs:3:5
+   |
+LL |     [1][1.5 as usize]; // ERROR index out of bounds
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = note: #[deny(const_err)] on by default
+
+error: index out of bounds: the len is 1 but the index is 1
+  --> $DIR/issue-54348.rs:4:5
+   |
+LL |     [1][1u64 as usize]; // ERROR index out of bounds
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
