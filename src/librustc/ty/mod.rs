@@ -1209,7 +1209,7 @@ impl<'tcx> TraitPredicate<'tcx> {
         self.trait_ref.def_id
     }
 
-    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
+    pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'a {
         self.trait_ref.input_types()
     }
 
@@ -1246,7 +1246,7 @@ pub type PolySubtypePredicate<'tcx> = ty::Binder<SubtypePredicate<'tcx>>;
 /// This kind of predicate has no *direct* correspondent in the
 /// syntax, but it roughly corresponds to the syntactic forms:
 ///
-/// 1. `T: TraitRef<..., Item=Type>`
+/// 1. `T: TraitRef<..., Item = Type>`
 /// 2. `<T as TraitRef<...>>::Item == Type` (NYI)
 ///
 /// In particular, form #1 is "desugared" to the combination of a
@@ -2314,7 +2314,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     pub fn discriminants(
         &'a self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
-    ) -> impl Iterator<Item=(VariantIdx, Discr<'tcx>)> + Captures<'gcx> + 'a {
+    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'gcx> + 'a {
         let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx.global_tcx());
         let mut prev_discr = None::<Discr<'tcx>>;

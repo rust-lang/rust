@@ -1,21 +1,18 @@
 use check::{Inherited, FnCtxt};
 use constrained_type_params::{identify_constrained_type_params, Parameter};
-
+use hir;
 use hir::def_id::DefId;
+use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::traits::{self, ObligationCauseCode};
 use rustc::ty::{self, Lift, Ty, TyCtxt, TyKind, GenericParamDefKind, TypeFoldable, ToPredicate};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::middle::lang_items;
 use rustc::infer::opaque_types::may_define_existential_type;
-
 use syntax::ast;
 use syntax::feature_gate::{self, GateIssue};
 use syntax_pos::Span;
 use errors::{DiagnosticBuilder, DiagnosticId};
-
-use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
-use rustc::hir;
 
 /// Helper type of a temporary returned by `.for_item(...)`.
 /// Necessary because we can't write the following bound:
@@ -979,7 +976,7 @@ fn check_false_global_bounds<'a, 'gcx, 'tcx>(
         .iter()
         .map(|(p, _)| *p)
         .collect();
-    // Check elaborated bounds
+    // Check elaborated bounds.
     let implied_obligations = traits::elaborate_predicates(fcx.tcx, predicates);
 
     for pred in implied_obligations {

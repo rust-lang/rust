@@ -10,7 +10,7 @@ use hir::HirVec;
 use lint;
 use middle::resolve_lifetime as rl;
 use namespace::Namespace;
-use rustc::traits;
+use rustc::traits::{self, TraitRefExpansionInfoDignosticBuilder};
 use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::subst::{Kind, Subst, Substs};
@@ -968,6 +968,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         let mut projection_bounds = Vec::new();
         let dummy_self = tcx.mk_ty(TRAIT_OBJECT_DUMMY_SELF);
+        let mut bound_trait_refs = Vec::with_capacity(trait_bounds.len());
         let (principal, potential_assoc_types) = self.instantiate_poly_trait_ref(
             &trait_bounds[0],
             dummy_self,
@@ -975,22 +976,27 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         );
         debug!("principal: {:?}", principal);
 
-        for trait_bound in trait_bounds[1..].iter() {
+        for trait_bound in trait_bounds[1..].iter().rev() {
             // sanity check for non-principal trait bounds
-            self.instantiate_poly_trait_ref(trait_bound,
-                                            dummy_self,
-                                            &mut vec![]);
+            let tr = self.instantiate_poly_trait_ref(trait_bound,
+                                                     dummy_self,
+                                                     &mut Vec::new());
+            bound_trait_refs.push((tr, trait_bound.span));
         }
+        bound_trait_refs.push((principal, trait_bounds[0].span));
 
-        let (mut auto_traits, trait_bounds) = split_auto_traits(tcx, &trait_bounds[1..]);
-
-        if !trait_bounds.is_empty() {
-            let b = &trait_bounds[0];
-            let span = b.trait_ref.path.span;
-            struct_span_err!(self.tcx().sess, span, E0225,
-                "only auto traits can be used as additional traits in a trait object")
-                .span_label(span, "non-auto additional trait")
-                .emit();
+        let expanded_traits = traits::expand_trait_refs(tcx, bound_trait_refs);
+        let (auto_traits, regular_traits): (Vec<_>, Vec<_>) =
+            expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref.def_id()));
+        if regular_traits.len() > 1 {
+            let extra_trait = &regular_traits[1];
+            let mut err = struct_span_err!(tcx.sess, extra_trait.top_level_span, E0225,
+                "only auto traits can be used as additional traits in a trait object");
+            err.span_label(extra_trait.span, "non-auto additional trait");
+            if extra_trait.span != extra_trait.top_level_span {
+                err.span_label(extra_trait.top_level_span, "expanded from this alias");
+            }
+            err.emit();
         }
 
         // Check that there are no gross object safety violations;
@@ -1133,11 +1139,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             })
         });
 
-        // Dedup auto traits so that `dyn Trait + Send + Send` is the same as `dyn Trait + Send`.
+        // Dedup auto traits so that e.g. `dyn Trait + Send + Send` is the same as
+        // `dyn Trait + Send`. Skip the first auto trait if it is the principal trait.
+        let auto_traits_start_index =
+            if auto_traits.first().map_or(false, |i| i.trait_ref == principal) {
+                1
+            } else {
+                0
+            };
+        let mut auto_traits: Vec<_> =
+            auto_traits[auto_traits_start_index..].into_iter()
+                                                  .map(|i| i.trait_ref.def_id())
+                                                  .collect();
         auto_traits.sort();
         auto_traits.dedup();
+        debug!("auto_traits: {:?}", auto_traits);
 
-        // Calling `skip_binder` is okay, because the predicates are re-bound.
+        // Calling `skip_binder` is okay, since the predicates are re-bound.
         let mut v =
             iter::once(ty::ExistentialPredicate::Trait(*existential_principal.skip_binder()))
             .chain(auto_traits.into_iter().map(ty::ExistentialPredicate::AutoTrait))
@@ -1961,33 +1979,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         }
         return Some(r);
     }
-}
-
-/// Divides a list of general trait bounds into two groups: auto traits (e.g., Sync and Send) and
-/// the remaining general trait bounds.
-fn split_auto_traits<'a, 'b, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                         trait_bounds: &'b [hir::PolyTraitRef])
-    -> (Vec<DefId>, Vec<&'b hir::PolyTraitRef>)
-{
-    let (auto_traits, trait_bounds): (Vec<_>, _) = trait_bounds.iter().partition(|bound| {
-        // Checks whether `trait_did` is an auto trait and adds it to `auto_traits` if so.
-        match bound.trait_ref.path.def {
-            Def::Trait(trait_did) if tcx.trait_is_auto(trait_did) => {
-                true
-            }
-            _ => false
-        }
-    });
-
-    let auto_traits = auto_traits.into_iter().map(|tr| {
-        if let Def::Trait(trait_did) = tr.trait_ref.path.def {
-            trait_did
-        } else {
-            unreachable!()
-        }
-    }).collect::<Vec<_>>();
-
-    (auto_traits, trait_bounds)
 }
 
 // A helper struct for conveniently grouping a set of bounds which we pass to

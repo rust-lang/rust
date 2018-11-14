@@ -810,7 +810,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Returns the name associated with the given NodeId's AST.
+    /// Returns the name associated with the given `NodeId`'s AST.
     pub fn name(&self, id: NodeId) -> Name {
         match self.get(id) {
             Node::Item(i) => i.ident.name,

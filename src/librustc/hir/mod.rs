@@ -289,7 +289,7 @@ impl Lifetime {
     }
 }
 
-/// A "Path" is essentially Rust's notion of a name; for instance:
+/// A `Path` is essentially Rust's notion of a name; for instance:
 /// `std::cmp::PartialEq`. It's represented as a sequence of identifiers,
 /// along with a bunch of supporting information.
 #[derive(Clone, RustcEncodable, RustcDecodable)]
@@ -2040,12 +2040,12 @@ pub enum UseKind {
     ListStem,
 }
 
-/// TraitRef's appear in impls.
+/// `TraitRef` are references to traits in impls.
 ///
-/// resolve maps each TraitRef's ref_id to its defining trait; that's all
-/// that the ref_id is for. Note that ref_id's value is not the NodeId of the
-/// trait being referred to but just a unique NodeId that serves as a key
-/// within the DefMap.
+/// `resolve` maps each `TraitRef`'s `ref_id` to its defining trait; that's all
+/// that the `ref_id` is for. Note that `ref_id`'s value is not the `NodeId` of the
+/// trait being referred to but just a unique `NodeId` that serves as a key
+/// within the `DefMap`.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct TraitRef {
     pub path: Path,
@@ -2055,10 +2055,10 @@ pub struct TraitRef {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct PolyTraitRef {
-    /// The `'a` in `<'a> Foo<&'a T>`
+    /// The `'a` in `<'a> Foo<&'a T>`.
     pub bound_generic_params: HirVec<GenericParam>,
 
-    /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`
+    /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`.
     pub trait_ref: TraitRef,
 
     pub span: Span,
