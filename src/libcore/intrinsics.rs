@@ -675,7 +675,6 @@ extern "rust-intrinsic" {
     ///
     /// The stabilized version of this intrinsic is
     /// [`std::mem::size_of`](../../std/mem/fn.size_of.html).
-
     pub fn size_of<T>() -> usize;
 
     /// Moves a value to an uninitialized memory location.
