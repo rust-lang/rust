@@ -229,10 +229,27 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 mod tests {
     use super::*;
     use iter;
+    use ffi::CStr;
     use sys_common::io::test::{TempDir, tmpdir};
     use fs::{read, OpenOptions};
     use io::{Seek, SeekFrom, Write};
     use path::PathBuf;
+
+    fn supported_kernel() -> bool {
+        let mut uname = unsafe { mem::zeroed() };
+        cvt(unsafe { libc::uname(&mut uname) }).unwrap();
+
+        let release =
+            unsafe { CStr::from_ptr(uname.release.as_ptr()) }
+            .to_str().unwrap();
+        let s = release
+            .split(|c| c == '.' || c == '-')
+            .collect::<Vec<&str>>();
+
+        // Kernel >= 4.5
+        s[0].parse::<u32>().unwrap() >= 4 &&
+            s[1].parse::<u32>().unwrap() >= 5
+    }
 
     fn create_sparse(file: &PathBuf, len: u64) {
         let fd = File::create(file).unwrap();
@@ -344,6 +361,10 @@ mod tests {
 
     #[test]
     fn test_sparse_copy_middle() {
+        if !supported_kernel() {
+            return;
+        }
+
         let dir = tmpdir();
         let (from, to) = tmps(&dir);
         let data = "test data";
@@ -389,6 +410,10 @@ mod tests {
 
     #[test]
     fn test_lseek_data() {
+        if !supported_kernel() {
+            return;
+        }
+
         let dir = tmpdir();
         let (from, to) = tmps(&dir);
         let data = "test data";
