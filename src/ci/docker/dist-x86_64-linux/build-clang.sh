@@ -13,7 +13,7 @@ set -ex
 
 source shared.sh
 
-LLVM=6.0.0
+LLVM=7.0.0
 
 mkdir clang
 cd clang
