@@ -464,7 +464,8 @@ impl<'a> FmtVisitor<'a> {
                 BracePos::Auto
             },
             self.block_indent,
-            mk_sp(span.lo(), body_start),
+            // make a span that starts right after `enum Foo`
+            mk_sp(ident.span.hi(), body_start),
             last_line_width(&enum_header),
         )
         .unwrap();
@@ -1186,7 +1187,8 @@ fn format_unit_struct(context: &RewriteContext, p: &StructParts, offset: Indent)
             context.config.brace_style(),
             BracePos::None,
             offset,
-            mk_sp(generics.span.lo(), hi),
+            // make a span that starts right after `struct Foo`
+            mk_sp(p.ident.span.hi(), hi),
             last_line_width(&header_str),
         )?
     } else {
@@ -1208,7 +1210,7 @@ pub fn format_struct_struct(
     let header_str = struct_parts.format_header(context);
     result.push_str(&header_str);
 
-    let header_hi = span.lo() + BytePos(header_str.len() as u32);
+    let header_hi = struct_parts.ident.span.hi();
     let body_lo = context.snippet_provider.span_after(span, "{");
 
     let generics_str = match struct_parts.generics {
@@ -1222,6 +1224,7 @@ pub fn format_struct_struct(
                 BracePos::Auto
             },
             offset,
+            // make a span that starts right after `struct Foo`
             mk_sp(header_hi, body_lo),
             last_line_width(&result),
         )?,
