@@ -293,15 +293,23 @@ class RustStdVecDequePrinter(object):
     def to_string(self):
         (tail, head, data_ptr, cap) = \
             rustpp.extract_tail_head_ptr_and_cap_from_std_vecdeque(self.__val)
+        if head >= tail:
+            size = head - tail
+        else:
+            size = cap + head - tail
         return (self.__val.type.get_unqualified_type_name() +
-                ("(len: %i, cap: %i)" % (head - tail, cap)))
+                ("(len: %i, cap: %i)" % (size, cap)))
 
     def children(self):
         (tail, head, data_ptr, cap) = \
             rustpp.extract_tail_head_ptr_and_cap_from_std_vecdeque(self.__val)
         gdb_ptr = data_ptr.get_wrapped_value()
-        for index in xrange(tail, head):
-            yield (str(index), (gdb_ptr + index).dereference())
+        if head >= tail:
+            size = head - tail
+        else:
+            size = cap + head - tail
+        for index in xrange(0, size):
+            yield (str(index), (gdb_ptr + ((tail + index) % cap)).dereference())
 
 
 class RustStdBTreeSetPrinter(object):
