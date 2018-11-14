@@ -672,6 +672,9 @@ extern "rust-intrinsic" {
     ///
     /// More specifically, this is the offset in bytes between successive
     /// items of the same type, including alignment padding.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::mem::size_of`](../../std/mem/fn.size_of.html).
     pub fn size_of<T>() -> usize;
 
     /// Moves a value to an uninitialized memory location.
