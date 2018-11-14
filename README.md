@@ -1,4 +1,4 @@
-# Miri [[slides](https://solson.me/miri-slides.pdf)] [[report](https://solson.me/miri-report.pdf)] [![Build Status](https://travis-ci.org/solson/miri.svg?branch=master)](https://travis-ci.org/solson/miri) [![Windows build status](https://ci.appveyor.com/api/projects/status/github/solson/miri?svg=true)](https://ci.appveyor.com/project/solson63299/miri)
+# Miri [![Build Status](https://travis-ci.org/solson/miri.svg?branch=master)](https://travis-ci.org/solson/miri) [![Windows build status](https://ci.appveyor.com/api/projects/status/github/solson/miri?svg=true)](https://ci.appveyor.com/project/solson63299/miri)
 
 
 An experimental interpreter for [Rust][rust]'s
@@ -195,19 +195,22 @@ Mozilla IRC in any of the Rust IRC channels (`#rust`, `#rust-offtopic`, etc).
 ## History
 
 This project began as part of an undergraduate research course in 2015 by
-@solson at the [University of Saskatchewan][usask]. In 2016, @oli-obk joined to
-prepare miri for eventually being used as const evaluator in the Rust compiler
-itself (basically, for `const` and `static` stuff), replacing the old evaluator
-that worked directly on the AST.  In 2017, @RalfJung did an internship with
-Mozilla and began developing miri towards a tool for detecting undefined
-behavior, and also using miri as a way to explore the consequences of various
-possible definitions for undefined behavior in Rust.  @oli-obk's move of the
-miri engine into the compiler finally came to completion in early 2018.
-Meanwhile, later that year, @RalfJung did a second internship, developing miri
-further with support for checking basic type invariants and verifying that
-references are used according to their aliasing restrictions.
+@solson at the [University of Saskatchewan][usask].  There are [slides] and a
+[report] available from that project.  In 2016, @oli-obk joined to prepare miri
+for eventually being used as const evaluator in the Rust compiler itself
+(basically, for `const` and `static` stuff), replacing the old evaluator that
+worked directly on the AST.  In 2017, @RalfJung did an internship with Mozilla
+and began developing miri towards a tool for detecting undefined behavior, and
+also using miri as a way to explore the consequences of various possible
+definitions for undefined behavior in Rust.  @oli-obk's move of the miri engine
+into the compiler finally came to completion in early 2018.  Meanwhile, later
+that year, @RalfJung did a second internship, developing miri further with
+support for checking basic type invariants and verifying that references are
+used according to their aliasing restrictions.
 
 [usask]: https://www.usask.ca/
+[slides]: https://solson.me/miri-slides.pdf
+[report]: https://solson.me/miri-report.pdf
 
 ## License
 
