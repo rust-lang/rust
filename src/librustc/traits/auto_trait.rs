@@ -374,7 +374,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                 }
                 &Ok(None) => {}
                 &Err(SelectionError::Unimplemented) => {
-                    if self.is_of_param(pred.skip_binder().self_ty()) {
+                    if self.is_param_no_infer(pred.skip_binder().trait_ref.substs) {
                         already_visited.remove(&pred);
                         self.add_user_pred(
                             &mut user_computed_preds,
@@ -636,6 +636,11 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         finished_map
     }
 
+    fn is_param_no_infer(&self, substs: &Substs<'_>) -> bool {
+        return self.is_of_param(substs.type_at(0)) &&
+            !substs.types().any(|t| t.has_infer_types());
+    }
+
     pub fn is_of_param(&self, ty: Ty<'_>) -> bool {
         return match ty.sty {
             ty::Param(_) => true,
@@ -685,7 +690,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
             // from the various possible predicates
             match &predicate {
                 &ty::Predicate::Trait(ref p) => {
-                    if self.is_of_param(p.skip_binder().self_ty())
+                    if self.is_param_no_infer(p.skip_binder().trait_ref.substs)
                         && !only_projections
                         && is_new_pred {
 
@@ -702,7 +707,7 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                     // an inference variable.
                     // Additionally, we check if we've seen this predicate before,
                     // to avoid rendering duplicate bounds to the user.
-                    if self.is_of_param(p.skip_binder().projection_ty.self_ty())
+                    if self.is_param_no_infer(p.skip_binder().projection_ty.substs)
                         && !p.ty().skip_binder().is_ty_infer()
                         && is_new_pred {
                             debug!("evaluate_nested_obligations: adding projection predicate\
