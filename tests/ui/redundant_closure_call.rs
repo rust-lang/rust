@@ -28,4 +28,9 @@ fn main() {
 	i = closure(3);
 
 	i = closure(4);
+
+    #[allow(clippy::needless_return)]
+    (|| return 2)();
+    (|| -> Option<i32> { None? })();
+    (|| -> Result<i32, i32> { r#try!(Err(2)) })();
 }

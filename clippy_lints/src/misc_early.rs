@@ -15,7 +15,7 @@ use if_chain::if_chain;
 use std::char;
 use crate::syntax::ast::*;
 use crate::syntax::source_map::Span;
-use crate::syntax::visit::FnKind;
+use crate::syntax::visit::{FnKind, Visitor, walk_expr};
 use crate::utils::{constants, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then};
 use crate::rustc_errors::Applicability;
 
@@ -199,6 +199,31 @@ impl LintPass for MiscEarly {
     }
 }
 
+// Used to find `return` statements or equivalents e.g. `?`
+struct ReturnVisitor {
+    found_return: bool,
+}
+
+impl ReturnVisitor {
+    fn new() -> Self {
+        Self {
+            found_return: false,
+        }
+    }
+}
+
+impl<'ast> Visitor<'ast> for ReturnVisitor {
+    fn visit_expr(&mut self, ex: &'ast Expr) {
+        if let ExprKind::Ret(_) = ex.node {
+            self.found_return = true;
+        } else if let ExprKind::Try(_) = ex.node {
+            self.found_return = true;
+        }
+
+        walk_expr(self, ex)
+    }
+}
+
 impl EarlyLintPass for MiscEarly {
     fn check_generics(&mut self, cx: &EarlyContext<'_>, gen: &Generics) {
         for param in &gen.params {
@@ -311,21 +336,25 @@ impl EarlyLintPass for MiscEarly {
         match expr.node {
             ExprKind::Call(ref paren, _) => if let ExprKind::Paren(ref closure) = paren.node {
                 if let ExprKind::Closure(_, _, _, ref decl, ref block, _) = closure.node {
-                    span_lint_and_then(
-                        cx,
-                        REDUNDANT_CLOSURE_CALL,
-                        expr.span,
-                        "Try not to call a closure in the expression where it is declared.",
-                        |db| if decl.inputs.is_empty() {
-                            let hint = snippet(cx, block.span, "..").into_owned();
-                            db.span_suggestion_with_applicability(
-                                expr.span,
-                                "Try doing something like: ",
-                                hint,
-                                Applicability::MachineApplicable, // snippet
-                            );
-                        },
-                    );
+                    let mut visitor = ReturnVisitor::new();
+                    visitor.visit_expr(block);
+                    if !visitor.found_return {
+                        span_lint_and_then(
+                            cx,
+                            REDUNDANT_CLOSURE_CALL,
+                            expr.span,
+                            "Try not to call a closure in the expression where it is declared.",
+                            |db| if decl.inputs.is_empty() {
+                                let hint = snippet(cx, block.span, "..").into_owned();
+                                db.span_suggestion_with_applicability(
+                                    expr.span,
+                                    "Try doing something like: ",
+                                    hint,
+                                    Applicability::MachineApplicable, // snippet
+                                );
+                            },
+                        );
+                    }
                 }
             },
             ExprKind::Unary(UnOp::Neg, ref inner) => if let ExprKind::Unary(UnOp::Neg, _) = inner.node {
