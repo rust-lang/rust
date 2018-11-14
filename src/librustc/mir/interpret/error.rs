@@ -23,7 +23,7 @@ use backtrace::Backtrace;
 use ty::query::TyCtxtAt;
 use errors::DiagnosticBuilder;
 
-use syntax_pos::Span;
+use syntax_pos::{Pos, Span};
 use syntax::ast;
 use syntax::symbol::Symbol;
 
@@ -68,10 +68,15 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             if tcx.def_key(self.instance.def_id()).disambiguated_data.data
                 == DefPathData::ClosureExpr
             {
-                write!(f, "inside call to closure")
+                write!(f, "inside call to closure")?;
             } else {
-                write!(f, "inside call to `{}`", self.instance)
+                write!(f, "inside call to `{}`", self.instance)?;
             }
+            if !self.span.is_dummy() {
+                let lo = tcx.sess.source_map().lookup_char_pos_adj(self.span.lo());
+                write!(f, " at {}:{}:{}", lo.filename, lo.line, lo.col.to_usize() + 1)?;
+            }
+            Ok(())
         })
     }
 }
