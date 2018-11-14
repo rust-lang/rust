@@ -30,7 +30,7 @@ use syntax::ast::Mutability;
 use super::{
     Pointer, AllocId, Allocation, GlobalId, AllocationExtra, InboundsCheck,
     EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
-    Machine, AllocMap, MayLeak, ErrorHandled,
+    Machine, AllocMap, MayLeak, ErrorHandled, AllocationExtra,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
