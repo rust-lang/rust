@@ -496,9 +496,51 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
     };
     let from_env_clause = Clause::ForAll(ty::Binder::bind(from_env_clause));
 
+    // Rule ProjectionEq-Normalize
+    //
+    // ProjectionEq can succeed by normalizing:
+    // ```
+    // forall<Self, P1..Pn, Pn+1..Pm, U> {
+    //   ProjectionEq(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> = U) :-
+    //       Normalize(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> -> U)
+    // }
+    // ```
+
+    let offset = tcx.generics_of(trait_id).params
+        .iter()
+        .map(|p| p.index)
+        .max()
+        .unwrap_or(0);
+    // Add a new type param after the existing ones (`U` in the comment above).
+    let ty_var = ty::Bound(
+        ty::BoundTy::new(ty::INNERMOST, ty::BoundVar::from_u32(offset + 1))
+    );
+
+    // `ProjectionEq(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> = U)`
+    let projection = ty::ProjectionPredicate {
+        projection_ty,
+        ty: tcx.mk_ty(ty_var),
+    };
+
+    // `Normalize(<A0 as Trait<A1..An>>::AssocType<Pn+1..Pm> -> U)`
+    let hypothesis = tcx.mk_goal(
+        DomainGoal::Normalize(projection).into_goal()
+    );
+
+    //  ProjectionEq(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> = U) :-
+    //      Normalize(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> -> U)
+    let normalize_clause = ProgramClause {
+        goal: DomainGoal::Holds(WhereClause::ProjectionEq(projection)),
+        hypotheses: tcx.mk_goals(iter::once(hypothesis)),
+        category: ProgramClauseCategory::Other,
+    };
+    let normalize_clause = Clause::ForAll(ty::Binder::bind(normalize_clause));
+
     let clauses = iter::once(projection_eq_clause)
         .chain(iter::once(wf_clause))
-        .chain(iter::once(from_env_clause));
+        .chain(iter::once(from_env_clause))
+        .chain(iter::once(normalize_clause));
+
     tcx.mk_clauses(clauses)
 }
 
