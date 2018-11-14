@@ -22,7 +22,7 @@ cranelift-faerie = { git = "https://github.com/CraneStation/cranelift.git" }
 target-lexicon = "0.2.0"
 #goblin = "0.0.17"
 faerie = "0.6.0"
-ar = "0.6.0"
+ar = "0.6.1"
 bitflags = "1.0.3"
 byteorder = "1.2.6"
 cc = "1.0.25"
