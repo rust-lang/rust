@@ -205,8 +205,8 @@ struct ReturnVisitor {
 }
 
 impl ReturnVisitor {
-    fn new() -> ReturnVisitor {
-        ReturnVisitor {
+    fn new() -> Self {
+        Self {
             found_return: false,
         }
     }
