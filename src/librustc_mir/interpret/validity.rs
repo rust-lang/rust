@@ -21,7 +21,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    OpTy, MPlaceTy, Machine, EvalContext, ValueVisitor, Operand,
+    OpTy, Machine, EvalContext, ValueVisitor,
 };
 
 macro_rules! validation_failure {
@@ -522,25 +522,22 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     _ => false,
                 }
             } => {
-                let mplace = match *op {
-                    // it's a ZST, the memory content cannot matter
-                    Operand::Immediate(_) if op.layout.is_zst() =>
-                        // invent an aligned mplace
-                        MPlaceTy::dangling(op.layout, self.ecx),
-                    // FIXME: what about single element arrays? They can be Scalar layout I think
-                    Operand::Immediate(_) => bug!("non-ZST array/slice cannot be immediate"),
-                    Operand::Indirect(_) => op.to_mem_place(),
-                };
+                if op.layout.is_zst() {
+                    return Ok(());
+                }
+                // non-ZST array cannot be immediate, slices are never immediate
+                let mplace = op.to_mem_place();
                 // This is the length of the array/slice.
                 let len = mplace.len(self.ecx)?;
+                // zero length slices have nothing to be checked
+                if len == 0 {
+                    return Ok(());
+                }
                 // This is the element type size.
                 let ty_size = self.ecx.layout_of(tys)?.size;
                 // This is the size in bytes of the whole array.
                 let size = ty_size * len;
 
-                if op.layout.is_zst() {
-                    return self.ecx.memory.check_align(mplace.ptr, op.layout.align);
-                }
                 let ptr = mplace.ptr.to_ptr()?;
 
                 // NOTE: Keep this in sync with the handling of integer and float
