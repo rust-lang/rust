@@ -522,6 +522,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     _ => false,
                 }
             } => {
+                // bailing out for zsts is ok, since the array element type can only be int/float
                 if op.layout.is_zst() {
                     return Ok(());
                 }
