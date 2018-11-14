@@ -561,7 +561,7 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         }
     }
 
-    pub fn downcast_variant(self, fx: &FunctionCx<'a, 'tcx, impl Backend>, variant: usize) -> Self {
+    pub fn downcast_variant(self, fx: &FunctionCx<'a, 'tcx, impl Backend>, variant: VariantIdx) -> Self {
         let layout = self.layout().for_variant(fx, variant);
         self.unchecked_cast_to(layout)
     }

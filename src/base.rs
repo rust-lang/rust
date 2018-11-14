@@ -373,7 +373,7 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     if *variant_index != dataful_variant {
                         let niche = place.place_field(fx, mir::Field::new(0));
                         //let niche_llty = niche.layout.immediate_llvm_type(bx.cx);
-                        let niche_value = ((variant_index - *niche_variants.start()) as u128)
+                        let niche_value = ((variant_index.as_u32() - niche_variants.start().as_u32()) as u128)
                             .wrapping_add(niche_start);
                         // FIXME(eddyb) Check the actual primitive type here.
                         let niche_llval = if niche_value == 0 {
@@ -683,7 +683,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
     }
     match layout.variants {
         layout::Variants::Single { index } => {
-            let discr_val = layout.ty.ty_adt_def().map_or(index as u128, |def| {
+            let discr_val = layout.ty.ty_adt_def().map_or(index.as_u32() as u128, |def| {
                 def.discriminant_for_variant(fx.tcx, index).val
             });
             return CValue::const_val(fx, dest_layout.ty, discr_val as u64 as i64);
@@ -720,29 +720,29 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
                 let if_true = fx
                     .bcx
                     .ins()
-                    .iconst(dest_clif_ty, *niche_variants.start() as u64 as i64);
+                    .iconst(dest_clif_ty, niche_variants.start().as_u32() as i64);
                 let if_false = fx
                     .bcx
                     .ins()
-                    .iconst(dest_clif_ty, dataful_variant as u64 as i64);
+                    .iconst(dest_clif_ty, dataful_variant.as_u32() as i64);
                 let val = fx.bcx.ins().select(b, if_true, if_false);
                 return CValue::ByVal(val, dest_layout);
             } else {
                 // Rebase from niche values to discriminant values.
-                let delta = niche_start.wrapping_sub(*niche_variants.start() as u128);
+                let delta = niche_start.wrapping_sub(niche_variants.start().as_u32() as u128);
                 let delta = fx.bcx.ins().iconst(niche_llty, delta as u64 as i64);
                 let lldiscr = fx.bcx.ins().isub(lldiscr, delta);
                 let b = fx.bcx.ins().icmp_imm(
                     IntCC::UnsignedLessThanOrEqual,
                     lldiscr,
-                    *niche_variants.end() as u64 as i64,
+                    niche_variants.end().as_u32() as i64,
                 );
                 let if_true =
                     clif_intcast(fx, lldiscr, fx.clif_type(dest_layout.ty).unwrap(), false);
                 let if_false = fx
                     .bcx
                     .ins()
-                    .iconst(dest_clif_ty, dataful_variant as u64 as i64);
+                    .iconst(dest_clif_ty, dataful_variant.as_u32() as i64);
                 let val = fx.bcx.ins().select(b, if_true, if_false);
                 return CValue::ByVal(val, dest_layout);
             }
