@@ -447,15 +447,6 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     #[inline(always)]
-    fn memory_deallocated(
-        alloc: &mut Allocation<Borrow, Self::AllocExtra>,
-        ptr: Pointer<Borrow>,
-        size: Size,
-    ) -> EvalResult<'tcx> {
-        alloc.extra.memory_deallocated(ptr, size)
-    }
-
-    #[inline(always)]
     fn tag_reference(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         place: MPlaceTy<'tcx, Borrow>,
