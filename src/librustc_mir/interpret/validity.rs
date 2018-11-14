@@ -67,7 +67,7 @@ macro_rules! try_validation {
     }}
 }
 
-/// We want to show a nice path to the invalid field for diagnotsics,
+/// We want to show a nice path to the invalid field for diagnostics,
 /// but avoid string operations in the happy case where no error happens.
 /// So we track a `Vec<PathElem>` where `PathElem` contains all the data we
 /// need to later print something for the user.

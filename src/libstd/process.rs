@@ -1122,7 +1122,7 @@ impl From<fs::File> for Stdio {
     /// let file = File::open("foo.txt").unwrap();
     ///
     /// let reverse = Command::new("rev")
-    ///     .stdin(file)  // Implicit File convertion into a Stdio
+    ///     .stdin(file)  // Implicit File conversion into a Stdio
     ///     .output()
     ///     .expect("failed reverse command");
     ///
@@ -1340,7 +1340,7 @@ impl Child {
     /// Attempts to collect the exit status of the child if it has already
     /// exited.
     ///
-    /// This function will not block the calling thread and will only advisorily
+    /// This function will not block the calling thread and will only
     /// check to see if the child process has exited or not. If the child has
     /// exited then on Unix the process id is reaped. This function is
     /// guaranteed to repeatedly return a successful exit status so long as the

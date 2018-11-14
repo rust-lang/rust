@@ -116,7 +116,7 @@ pub enum StmtKind<'tcx> {
 /// reference to an expression in this enum is an `ExprRef<'tcx>`, which
 /// may in turn be another instance of this enum (boxed), or else an
 /// unlowered `&'tcx H::Expr`. Note that instances of `Expr` are very
-/// shortlived. They are created by `Hair::to_expr`, analyzed and
+/// short-lived. They are created by `Hair::to_expr`, analyzed and
 /// converted into MIR, and then discarded.
 ///
 /// If you compare `Expr` to the full compiler AST, you will see it is

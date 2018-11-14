@@ -15,7 +15,7 @@ use std::mem;
 use std::ops::{RangeBounds, Bound, Index, IndexMut};
 
 /// `SortedMap` is a data structure with similar characteristics as BTreeMap but
-/// slightly different trade-offs: lookup, inseration, and removal are O(log(N))
+/// slightly different trade-offs: lookup, insertion, and removal are O(log(N))
 /// and elements can be iterated in order cheaply.
 ///
 /// `SortedMap` can be faster than a `BTreeMap` for small sizes (<50) since it

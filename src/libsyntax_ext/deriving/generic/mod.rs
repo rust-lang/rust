@@ -68,7 +68,7 @@
 //! The `i32`s in `B` and `C0` don't have an identifier, so the
 //! `Option<ident>`s would be `None` for them.
 //!
-//! In the static cases, the structure is summarised, either into the just
+//! In the static cases, the structure is summarized, either into the just
 //! spans of the fields or a list of spans and the field idents (for tuple
 //! structs and record structs, respectively), or a list of these, for
 //! enums (one for each variant). For empty struct and empty enum

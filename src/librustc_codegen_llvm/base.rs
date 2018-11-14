@@ -942,7 +942,7 @@ pub fn codegen_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 ///
 /// In the process of working on rust-lang/rust#55238 a mysterious segfault was
 /// stumbled upon. The segfault was never reproduced locally, but it was
-/// suspected to be releated to the fact that codegen worker threads were
+/// suspected to be related to the fact that codegen worker threads were
 /// sticking around by the time the main thread was exiting, causing issues.
 ///
 /// This structure is an attempt to fix that issue where the `codegen_aborted`

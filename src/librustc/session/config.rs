@@ -224,7 +224,7 @@ impl Default for ErrorOutputType {
 
 // Use tree-based collections to cheaply get a deterministic Hash implementation.
 // DO NOT switch BTreeMap out for an unsorted container type! That would break
-// dependency tracking for commandline arguments.
+// dependency tracking for command-line arguments.
 #[derive(Clone, Hash)]
 pub struct OutputTypes(BTreeMap<OutputType, Option<PathBuf>>);
 
@@ -273,7 +273,7 @@ impl OutputTypes {
 
 // Use tree-based collections to cheaply get a deterministic Hash implementation.
 // DO NOT switch BTreeMap or BTreeSet out for an unsorted container type! That
-// would break dependency tracking for commandline arguments.
+// would break dependency tracking for command-line arguments.
 #[derive(Clone, Hash)]
 pub struct Externs(BTreeMap<String, BTreeSet<Option<String>>>);
 
@@ -339,7 +339,7 @@ macro_rules! top_level_options {
     );
 }
 
-// The top-level commandline options struct
+// The top-level command-line options struct
 //
 // For each option, one has to specify how it behaves with regard to the
 // dependency tracking system of incremental compilation. This is done via the
@@ -2377,11 +2377,11 @@ impl fmt::Display for CrateType {
     }
 }
 
-/// Commandline arguments passed to the compiler have to be incorporated with
+/// Command-line arguments passed to the compiler have to be incorporated with
 /// the dependency tracking system for incremental compilation. This module
 /// provides some utilities to make this more convenient.
 ///
-/// The values of all commandline arguments that are relevant for dependency
+/// The values of all command-line arguments that are relevant for dependency
 /// tracking are hashed into a single value that determines whether the
 /// incremental compilation cache can be re-used or not. This hashing is done
 /// via the DepTrackingHash trait defined below, since the standard Hash
@@ -2394,7 +2394,7 @@ impl fmt::Display for CrateType {
 /// impl_dep_tracking_hash_via_hash!() macro that allows to simply reuse the
 /// Hash implementation for DepTrackingHash. It's important though that
 /// we have an opt-in scheme here, so one is hopefully forced to think about
-/// how the hash should be calculated when adding a new commandline argument.
+/// how the hash should be calculated when adding a new command-line argument.
 mod dep_tracking {
     use lint;
     use middle::cstore;
