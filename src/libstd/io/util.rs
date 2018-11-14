@@ -23,8 +23,9 @@ use mem;
 /// On success, the total number of bytes that were copied from
 /// `reader` to `writer` is returned.
 ///
-/// If you’re wanting to copy the contents of one file to another and you’re
-/// working with filesystem paths, see the [`fs::copy`] function.
+/// If you’re copying the contents of one file to another and you’re
+/// working with filesystem paths, see the [`fs::copy`] function,
+/// which handles permissions and platform-specific optimisations.
 ///
 /// [`fs::copy`]: ../fs/fn.copy.html
 ///

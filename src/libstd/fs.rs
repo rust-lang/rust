@@ -1569,20 +1569,30 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// If you’re wanting to copy the contents of one file to another and you’re
 /// working with [`File`]s, see the [`io::copy`] function.
 ///
-/// [`io::copy`]: ../io/fn.copy.html
-/// [`File`]: ./struct.File.html
-///
 /// # Platform-specific behavior
+///
+/// Note that, these behaviours [may change in the future][changes].
+///
+/// ## Unix-like
 ///
 /// This function currently corresponds to the `open` function in Unix
 /// with `O_RDONLY` for `from` and `O_WRONLY`, `O_CREAT`, and `O_TRUNC` for `to`.
 /// `O_CLOEXEC` is set for returned file descriptors.
+///
+/// On Linux this call will attempt to preserve [sparse-files][sparse]
+/// if the target filesystem supports them. If this is not the desired
+/// behaviour use [`io::copy`].
+///
+/// ## Windows
+///
 /// On Windows, this function currently corresponds to `CopyFileEx`. Alternate
 /// NTFS streams are copied but only the size of the main stream is returned by
 /// this function.
-/// Note that, this [may change in the future][changes].
 ///
 /// [changes]: ../io/index.html#platform-specific-behavior
+/// [sparse]: https://en.wikipedia.org/wiki/Sparse_file
+/// [`io::copy`]: ../io/fn.copy.html
+/// [`File`]: ./struct.File.html
 ///
 /// # Errors
 ///
