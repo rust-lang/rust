@@ -39,18 +39,24 @@ pub fn codegen(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind)
             }
         };
 
-        let sig = Signature {
+        let mut sig = Signature {
             call_conv: CallConv::Fast,
             params: arg_tys.iter().cloned().map(AbiParam::new).collect(),
             returns: output.into_iter().map(AbiParam::new).collect(),
         };
 
+        let caller_name = format!("__rust_{}", method.name);
+        let callee_name = kind.fn_name(method.name);
+        //eprintln!("Codegen allocator shim {} -> {} ({:?} -> {:?})", caller_name, callee_name, sig.params, sig.returns);
+
+        sig.call_conv = CallConv::Fast; // "rust" abi
         let func_id = module
-            .declare_function(&format!("__rust_{}", method.name), Linkage::Export, &sig)
+            .declare_function(&caller_name, Linkage::Export, &sig)
             .unwrap();
 
+        sig.call_conv = CallConv::SystemV; // "C" abi
         let callee_func_id = module
-            .declare_function(&kind.fn_name(method.name), Linkage::Import, &sig)
+            .declare_function(&callee_name, Linkage::Import, &sig)
             .unwrap();
 
         let mut ctx = Context::new();
