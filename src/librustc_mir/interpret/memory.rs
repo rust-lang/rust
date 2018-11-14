@@ -73,6 +73,9 @@ pub struct Memory<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     /// that do not exist any more.
     dead_alloc_map: FxHashMap<AllocId, (Size, Align)>,
 
+    /// Extra data added by the machine.
+    pub extra: M::MemoryExtra,
+
     /// Lets us implement `HasDataLayout`, which is awfully convenient.
     pub(super) tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
 }
@@ -88,13 +91,19 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> HasDataLayout
 
 // FIXME: Really we shouldn't clone memory, ever. Snapshot machinery should instead
 // carefully copy only the reachable parts.
-impl<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>>
-    Clone for Memory<'a, 'mir, 'tcx, M>
+impl<'a, 'mir, 'tcx, M>
+    Clone
+for
+    Memory<'a, 'mir, 'tcx, M>
+where
+    M: Machine<'a, 'mir, 'tcx, PointerTag=(), AllocExtra=(), MemoryExtra=()>,
+    M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 {
     fn clone(&self) -> Self {
         Memory {
             alloc_map: self.alloc_map.clone(),
             dead_alloc_map: self.dead_alloc_map.clone(),
+            extra: (),
             tcx: self.tcx,
         }
     }
@@ -103,8 +112,9 @@ impl<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>>
 impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     pub fn new(tcx: TyCtxtAt<'a, 'tcx, 'tcx>) -> Self {
         Memory {
-            alloc_map: Default::default(),
+            alloc_map: M::MemoryMap::default(),
             dead_alloc_map: FxHashMap::default(),
+            extra: M::MemoryExtra::default(),
             tcx,
         }
     }
@@ -133,7 +143,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         align: Align,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx, Pointer> {
-        Ok(Pointer::from(self.allocate_with(Allocation::undef(size, align), kind)?))
+        let extra = AllocationExtra::memory_allocated(size, &self.extra)?;
+        Ok(Pointer::from(self.allocate_with(Allocation::undef(size, align, extra), kind)?))
     }
 
     pub fn reallocate(
@@ -601,7 +612,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 /// Interning (for CTFE)
 impl<'a, 'mir, 'tcx, M> Memory<'a, 'mir, 'tcx, M>
 where
-    M: Machine<'a, 'mir, 'tcx, PointerTag=(), AllocExtra=()>,
+    M: Machine<'a, 'mir, 'tcx, PointerTag=(), AllocExtra=(), MemoryExtra=()>,
+    // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation)>,
 {
     /// mark an allocation as static and initialized, either mutable or not

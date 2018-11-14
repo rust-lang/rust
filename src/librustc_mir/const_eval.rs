@@ -353,6 +353,7 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     for CompileTimeInterpreter<'a, 'mir, 'tcx>
 {
     type MemoryKinds = !;
+    type MemoryExtra = ();
     type AllocExtra = ();
     type PointerTag = ();
 
