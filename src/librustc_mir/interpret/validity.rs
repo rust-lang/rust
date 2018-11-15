@@ -21,7 +21,7 @@ use rustc::mir::interpret::{
 };
 
 use super::{
-    OpTy, MPlaceTy, ImmTy, Machine, EvalContext, ValueVisitor
+    OpTy, MPlaceTy, Machine, EvalContext, ValueVisitor
 };
 
 macro_rules! validation_failure {
@@ -281,8 +281,9 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
         }
     }
 
-    fn visit_primitive(&mut self, value: ImmTy<'tcx, M::PointerTag>) -> EvalResult<'tcx>
+    fn visit_primitive(&mut self, value: OpTy<'tcx, M::PointerTag>) -> EvalResult<'tcx>
     {
+        let value = self.ecx.read_immediate(value)?;
         // Go over all the primitive types
         let ty = value.layout.ty;
         match ty.sty {
