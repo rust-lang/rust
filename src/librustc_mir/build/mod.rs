@@ -628,12 +628,7 @@ fn should_abort_on_panic<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
     // unwind anyway. Don't stop them.
     let attrs = &tcx.get_attrs(fn_def_id);
     match attr::find_unwind_attr(Some(tcx.sess.diagnostic()), attrs) {
-        None => {
-            // FIXME(rust-lang/rust#48251) -- Had to disable
-            // abort-on-panic for backwards compatibility reasons.
-            false
-        }
-
+        None => true,
         Some(UnwindAttr::Allowed) => false,
         Some(UnwindAttr::Aborts) => true,
     }

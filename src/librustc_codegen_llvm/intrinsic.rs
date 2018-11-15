@@ -1081,7 +1081,7 @@ fn gen_fn<'ll, 'tcx>(
         Abi::Rust
     ));
     let llfn = cx.define_internal_fn(name, rust_fn_sig);
-    attributes::from_fn_attrs(cx, llfn, None);
+    attributes::from_fn_attrs(cx, llfn, None, rust_fn_sig);
     let bx = Builder::new_block(cx, llfn, "entry-block");
     codegen(bx);
     llfn

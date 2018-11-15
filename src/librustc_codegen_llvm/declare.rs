@@ -26,8 +26,7 @@ use rustc::ty::{self, PolyFnSig};
 use rustc::ty::layout::LayoutOf;
 use rustc::session::config::Sanitizer;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_target::spec::PanicStrategy;
-use abi::{Abi, FnType, FnTypeExt};
+use abi::{FnType, FnTypeExt};
 use attributes;
 use context::CodegenCx;
 use type_::Type;
@@ -86,10 +85,6 @@ fn declare_raw_fn(
         _ => {},
     }
 
-    if cx.tcx.sess.panic_strategy() != PanicStrategy::Unwind {
-        attributes::unwind(llfn, false);
-    }
-
     attributes::non_lazy_bind(cx.sess(), llfn);
 
     llfn
@@ -130,10 +125,6 @@ impl DeclareMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         if self.layout_of(sig.output()).abi.is_uninhabited() {
             llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
-        }
-
-        if sig.abi != Abi::Rust && sig.abi != Abi::RustCall {
-            attributes::unwind(llfn, false);
         }
 
         fty.apply_attrs_llfn(llfn);
