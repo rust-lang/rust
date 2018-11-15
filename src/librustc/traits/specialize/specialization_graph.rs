@@ -73,8 +73,8 @@ enum Inserted {
     /// The impl was inserted as a new child in this group of children.
     BecameNewSibling(Option<OverlapError>),
 
-    /// The impl should replace an existing impl X, because the impl specializes X.
-    ReplaceChild(DefId),
+    /// The impl should replace existing impls [X1, ..], because the impl specializes X1, X2, etc.
+    ReplaceChildren(Vec<DefId>),
 
     /// The impl is a specialization of an existing child.
     ShouldRecurseOn(DefId),
@@ -124,6 +124,7 @@ impl<'a, 'gcx, 'tcx> Children {
               -> Result<Inserted, OverlapError>
     {
         let mut last_lint = None;
+        let mut replace_children = Vec::new();
 
         debug!(
             "insert(impl_def_id={:?}, simplified_self={:?})",
@@ -194,7 +195,7 @@ impl<'a, 'gcx, 'tcx> Children {
                 debug!("placing as parent of TraitRef {:?}",
                        tcx.impl_trait_ref(possible_sibling).unwrap());
 
-                return Ok(Inserted::ReplaceChild(possible_sibling));
+                replace_children.push(possible_sibling);
             } else {
                 if !tcx.impls_are_allowed_to_overlap(impl_def_id, possible_sibling) {
                     traits::overlapping_impls(
@@ -209,6 +210,10 @@ impl<'a, 'gcx, 'tcx> Children {
 
                 // no overlap (error bailed already via ?)
             }
+        }
+
+        if !replace_children.is_empty() {
+            return Ok(Inserted::ReplaceChildren(replace_children));
         }
 
         // no overlap with any potential siblings, so add as a new sibling
@@ -282,7 +287,7 @@ impl<'a, 'gcx, 'tcx> Graph {
                     last_lint = opt_lint;
                     break;
                 }
-                ReplaceChild(grand_child_to_be) => {
+                ReplaceChildren(grand_children_to_be) => {
                     // We currently have
                     //
                     //     P
@@ -302,17 +307,23 @@ impl<'a, 'gcx, 'tcx> Graph {
                         let siblings = self.children
                             .get_mut(&parent)
                             .unwrap();
-                        siblings.remove_existing(tcx, grand_child_to_be);
+                        for &grand_child_to_be in &grand_children_to_be {
+                            siblings.remove_existing(tcx, grand_child_to_be);
+                        }
                         siblings.insert_blindly(tcx, impl_def_id);
                     }
 
                     // Set G's parent to N and N's parent to P
-                    self.parent.insert(grand_child_to_be, impl_def_id);
+                    for &grand_child_to_be in &grand_children_to_be {
+                        self.parent.insert(grand_child_to_be, impl_def_id);
+                    }
                     self.parent.insert(impl_def_id, parent);
 
                     // Add G as N's child.
-                    self.children.entry(impl_def_id).or_default()
-                        .insert_blindly(tcx, grand_child_to_be);
+                    for &grand_child_to_be in &grand_children_to_be {
+                        self.children.entry(impl_def_id).or_default()
+                            .insert_blindly(tcx, grand_child_to_be);
+                    }
                     break;
                 }
                 ShouldRecurseOn(new_parent) => {
