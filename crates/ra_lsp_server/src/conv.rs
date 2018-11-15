@@ -49,7 +49,6 @@ impl ConvWith for Position {
     type Output = TextUnit;
 
     fn conv_with(self, line_index: &LineIndex) -> TextUnit {
-        // TODO: UTF-16
         let line_col = LineCol {
             line: self.line as u32,
             col: (self.character as u32).into(),
@@ -64,7 +63,6 @@ impl ConvWith for TextUnit {
 
     fn conv_with(self, line_index: &LineIndex) -> Position {
         let line_col = line_index.line_col(self);
-        // TODO: UTF-16
         Position::new(u64::from(line_col.line), u64::from(u32::from(line_col.col)))
     }
 }
