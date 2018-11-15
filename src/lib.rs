@@ -301,6 +301,7 @@ type MiriEvalContext<'a, 'mir, 'tcx> = EvalContext<'a, 'mir, 'tcx, Evaluator<'tc
 impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryKinds = MiriMemoryKind;
 
+    type MemoryExtra = ();
     type AllocExtra = stacked_borrows::Stacks;
     type PointerTag = Borrow;
 
@@ -405,8 +406,9 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     }
 
     fn find_foreign_static(
-        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         def_id: DefId,
+        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        memory_extra: &Self::MemoryExtra,
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Borrow, Self::AllocExtra>>> {
         let attrs = tcx.get_attrs(def_id);
         let link_name = match attr::first_attr_value_str_by_name(&attrs, "link_name") {
@@ -417,8 +419,10 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         let alloc = match &link_name[..] {
             "__cxa_thread_atexit_impl" => {
                 // This should be all-zero, pointer-sized
-                let data = vec![0; tcx.data_layout.pointer_size.bytes() as usize];
-                Allocation::from_bytes(&data[..], tcx.data_layout.pointer_align.abi)
+                let size = tcx.data_layout.pointer_size;
+                let data = vec![0; size.bytes() as usize];
+                let extra = AllocationExtra::memory_allocated(size, memory_extra);
+                Allocation::from_bytes(&data[..], tcx.data_layout.pointer_align.abi, extra)
             }
             _ => return err!(Unimplemented(
                     format!("can't access foreign static: {}", link_name),
@@ -434,9 +438,14 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         Ok(())
     }
 
-    fn adjust_static_allocation(
-        alloc: &'_ Allocation
-    ) -> Cow<'_, Allocation<Borrow, Self::AllocExtra>> {
+    fn adjust_static_allocation<'b>(
+        alloc: &'b Allocation,
+        memory_extra: &Self::MemoryExtra,
+    ) -> Cow<'b, Allocation<Borrow, Self::AllocExtra>> {
+        let extra = AllocationExtra::memory_allocated(
+            Size::from_bytes(alloc.bytes.len() as u64),
+            memory_extra,
+        );
         let alloc: Allocation<Borrow, Self::AllocExtra> = Allocation {
             bytes: alloc.bytes.clone(),
             relocations: Relocations::from_presorted(
@@ -447,7 +456,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             undef_mask: alloc.undef_mask.clone(),
             align: alloc.align,
             mutability: alloc.mutability,
-            extra: Self::AllocExtra::default(),
+            extra,
         };
         Cow::Owned(alloc)
     }

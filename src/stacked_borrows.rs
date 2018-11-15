@@ -126,7 +126,7 @@ impl State {
 }
 
 /// Extra per-allocation state
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Stacks {
     // Even reading memory can have effects on the stack, so we need a `RefCell` here.
     stacks: RefCell<RangeMap<Stack>>,
@@ -289,9 +289,8 @@ impl<'tcx> Stacks {
     ) -> EvalResult<'tcx> {
         trace!("deref for tag {:?} as {:?}: {:?}, size {}",
             ptr.tag, kind, ptr, size.bytes());
-        let mut stacks = self.stacks.borrow_mut();
-        // We need `iter_mut` because `iter` would skip gaps!
-        for stack in stacks.iter_mut(ptr.offset, size) {
+        let stacks = self.stacks.borrow();
+        for stack in stacks.iter(ptr.offset, size) {
             stack.deref(ptr.tag, kind).map_err(EvalErrorKind::MachineError)?;
         }
         Ok(())
@@ -359,7 +358,14 @@ impl<'tcx> Stacks {
 }
 
 /// Hooks and glue
-impl AllocationExtra<Borrow> for Stacks {
+impl AllocationExtra<Borrow, ()> for Stacks {
+    #[inline(always)]
+    fn memory_allocated<'tcx>(size: Size, _extra: &()) -> Self {
+        Stacks {
+            stacks: RefCell::new(RangeMap::new(size, Stack::default()))
+        }
+    }
+
     #[inline(always)]
     fn memory_read<'tcx>(
         alloc: &Allocation<Borrow, Stacks>,
