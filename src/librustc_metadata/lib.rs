@@ -30,6 +30,8 @@
 extern crate libc;
 #[macro_use]
 extern crate log;
+extern crate memmap;
+extern crate stable_deref_trait;
 #[macro_use]
 extern crate syntax;
 extern crate syntax_pos;

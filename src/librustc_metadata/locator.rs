@@ -243,12 +243,14 @@ use std::cmp;
 use std::fmt;
 use std::fs;
 use std::io::{self, Read};
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use flate2::read::DeflateDecoder;
 
 use rustc_data_structures::owning_ref::OwningRef;
+
 pub struct CrateMismatch {
     path: PathBuf,
     got: String,
@@ -856,6 +858,19 @@ fn get_metadata_section(target: &Target,
     return ret;
 }
 
+/// A trivial wrapper for `Mmap` that implements `StableDeref`.
+struct StableDerefMmap(memmap::Mmap);
+
+impl Deref for StableDerefMmap {
+    type Target = [u8];
+
+    fn deref(&self) -> &[u8] {
+        self.0.deref()
+    }
+}
+
+unsafe impl stable_deref_trait::StableDeref for StableDerefMmap {}
+
 fn get_metadata_section_imp(target: &Target,
                             flavor: CrateFlavor,
                             filename: &Path,
@@ -892,9 +907,14 @@ fn get_metadata_section_imp(target: &Target,
             }
         }
         CrateFlavor::Rmeta => {
-            let buf = fs::read(filename).map_err(|_|
-                format!("failed to read rmeta metadata: '{}'", filename.display()))?;
-            rustc_erase_owner!(OwningRef::new(buf).map_owner_box())
+            // mmap the file, because only a small fraction of it is read.
+            let file = std::fs::File::open(filename).map_err(|_|
+                format!("failed to open rmeta metadata: '{}'", filename.display()))?;
+            let mmap = unsafe { memmap::Mmap::map(&file) };
+            let mmap = mmap.map_err(|_|
+                format!("failed to mmap rmeta metadata: '{}'", filename.display()))?;
+
+            rustc_erase_owner!(OwningRef::new(StableDerefMmap(mmap)).map_owner_box())
         }
     };
     let blob = MetadataBlob(raw_bytes);
