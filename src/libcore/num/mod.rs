@@ -4438,7 +4438,7 @@ macro_rules! from_str_radix_int_impl {
         impl FromStr for $t {
             type Err = ParseIntError;
             fn from_str(src: &str) -> Result<Self, ParseIntError> {
-                from_str_radix(src, 10)
+                <($t)>::from_str_radix(src, 10)
             }
         }
     )*}
