@@ -1034,14 +1034,19 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// implies `T: scope` but is actually stronger than that in the
     /// case of projections. This helps overcome some weakenesses in
     /// our inference (see #55756).
+    ///
+    /// (This is the lexical equivalent of NLL's "liveness rules",
+    /// which require that any region which appears at the point P
+    /// must contain the point P.)
     pub fn type_must_be_valid_for_scope(
         &self,
         origin: infer::SubregionOrigin<'tcx>,
         ty: Ty<'tcx>,
         scope: region::Scope,
     ) {
-        let region = self.tcx.mk_region(ty::ReScope(scope));
-        self.type_must_outlive(origin, ty, region)
+        let scope_region = self.tcx.mk_region(ty::ReScope(scope));
+        let ty = self.resolve_type_vars_if_possible(&ty);
+        self.tcx.for_each_free_region(&ty, |ty_region| self.sub_regions(origin.clone(), scope_region, ty_region));
     }
 
     /// Adds constraints to inference such that `T: 'a` holds (or
