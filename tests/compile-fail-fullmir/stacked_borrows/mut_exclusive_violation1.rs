@@ -21,7 +21,7 @@ fn unknown_code_1(x: &i32) { unsafe {
 } }
 
 fn unknown_code_2() { unsafe {
-    *LEAK = 7; //~ ERROR does not exist on the stack
+    *LEAK = 7; //~ ERROR barrier
 } }
 
 fn main() {
