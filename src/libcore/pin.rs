@@ -7,23 +7,30 @@
 //! since moving an object with pointers to itself will invalidate them,
 //! which could cause undefined behavior.
 //!
-//! In order to prevent objects from moving, they must be pinned
-//! by wrapping a pointer to the data in the [`Pin`] type. A pointer wrapped
-//! in a `Pin` is otherwise equivalent to its normal version, e.g., `Pin<Box<T>>`
-//! and `Box<T>` work the same way except that the first is pinning the value
-//! of `T` in place.
+//! By default, all types in Rust are movable. Rust allows passing all types by-value,
+//! and common smart-pointer types such as `Box`, `Rc`, and `&mut` allow replacing and
+//! moving the values they contain. In order to prevent objects from moving, they must
+//! be pinned by wrapping a pointer to the data in the [`Pin`] type.
+//! Doing this prohibits moving the value behind the pointer.
+//! For example, `Pin<Box<T>>` functions much like a regular `Box<T>`,
+//! but doesn't allow moving `T`. The pointer value itself (the `Box`) can still be moved,
+//! but the value behind it cannot.
 //!
-//! First of all, these are pointer types because pinned data mustn't be passed around by value
-//! (that would change its location in memory).
-//! Secondly, since data can be moved out of `&mut` and `Box` with functions such as [`swap`],
-//! which causes their contents to swap places in memory,
-//! we need dedicated types that prohibit such operations.
+//! Since data can be moved out of `&mut` and `Box` with functions such as [`swap`],
+//! changing the location of the underlying data, [`Pin`] prohibits accessing the
+//! underlying pointer type (the `&mut` or `Box`) directly, and provides its own set of
+//! APIs for accessing and using the value.
 //!
-//! However, these restrictions are usually not necessary,
-//! so most types implement the [`Unpin`] auto-trait,
-//! which indicates that the type can be moved out safely.
-//! Doing so removes the limitations of pinning types,
-//! making them the same as their non-pinning counterparts.
+//! However, these restrictions are usually not necessary. Many types are always freely
+//! movable. These types implement the [`Unpin`] auto-trait, which nullifies the affect
+//! of [`Pin`]. For `T: Unpin`, `Pin<Box<T>>` and `Box<T>` function identically, as do
+//! `Pin<&mut T>` and `&mut T`.
+//!
+//! Note that pinning and `Unpin` only affect the pointed-to type. For example, whether
+//! or not `Box<T>` is `Unpin` has no affect on the behavior of `Pin<Box<T>>`. Similarly,
+//! `Pin<Box<T>>` and `Pin<&mut T>` are always `Unpin` themselves, even though the
+//! `T` underneath them isn't, because the pointers in `Pin<Box<_>>` and `Pin<&mut _>`
+//! are always freely movable, even if the data they point to isn't.
 //!
 //! [`Pin`]: struct.Pin.html
 //! [`Unpin`]: trait.Unpin.html
