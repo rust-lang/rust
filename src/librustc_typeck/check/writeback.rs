@@ -306,7 +306,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 ty::UpvarCapture::ByValue => ty::UpvarCapture::ByValue,
                 ty::UpvarCapture::ByRef(ref upvar_borrow) => {
                     let r = upvar_borrow.region;
-                    let r = self.resolve(&r, &upvar_id.var_id);
+                    let r = self.resolve(&r, &upvar_id.var_path.hir_id);
                     ty::UpvarCapture::ByRef(ty::UpvarBorrow {
                         kind: upvar_borrow.kind,
                         region: r,
