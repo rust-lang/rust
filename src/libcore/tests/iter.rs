@@ -1760,6 +1760,17 @@ fn test_repeat_with_take_collect() {
 }
 
 #[test]
+fn test_successors() {
+    let mut powers_of_10 = successors(Some(1_u16), |n| n.checked_mul(10));
+    assert_eq!(powers_of_10.by_ref().collect::<Vec<_>>(), &[1, 10, 100, 1_000, 10_000]);
+    assert_eq!(powers_of_10.next(), None);
+
+    let mut empty = successors(None::<u32>, |_| unimplemented!());
+    assert_eq!(empty.next(), None);
+    assert_eq!(empty.next(), None);
+}
+
+#[test]
 fn test_fuse() {
     let mut it = 0..3;
     assert_eq!(it.len(), 3);

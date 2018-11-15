@@ -471,3 +471,79 @@ impl<St: fmt::Debug, F> fmt::Debug for Unfold<St, F> {
             .finish()
     }
 }
+
+/// Creates a new iterator where each successive item is computed based on the preceding one.
+///
+/// The iterator starts with the given first item (if any)
+/// and calls the given `FnMut(&T) -> Option<T>` closure to compute each item’s successor.
+///
+/// ```
+/// #![feature(iter_unfold)]
+/// use std::iter::successors;
+///
+/// let powers_of_10 = successors(Some(1_u16), |n| n.checked_mul(10));
+/// assert_eq!(powers_of_10.collect::<Vec<_>>(), &[1, 10, 100, 1_000, 10_000]);
+/// ```
+#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+pub fn successors<T, F>(first: Option<T>, succ: F) -> Successors<T, F>
+    where F: FnMut(&T) -> Option<T>
+{
+    // If this function returned `impl Iterator<Item=T>`
+    // it could be based on `unfold` and not need a dedicated type.
+    // However having a named `Successors<T, F>` type allows it to be `Clone` when `T` and `F` are.
+    Successors {
+        next: first,
+        succ,
+    }
+}
+
+/// An new iterator where each successive item is computed based on the preceding one.
+///
+/// This `struct` is created by the [`successors`] function.
+/// See its documentation for more.
+///
+/// [`successors`]: fn.successors.html
+#[derive(Clone)]
+#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+pub struct Successors<T, F> {
+    next: Option<T>,
+    succ: F,
+}
+
+#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+impl<T, F> Iterator for Successors<T, F>
+    where F: FnMut(&T) -> Option<T>
+{
+    type Item = T;
+
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        self.next.take().map(|item| {
+            self.next = (self.succ)(&item);
+            item
+        })
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        if self.next.is_some() {
+            (1, None)
+        } else {
+            (0, Some(0))
+        }
+    }
+}
+
+#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+impl<T, F> FusedIterator for Successors<T, F>
+    where F: FnMut(&T) -> Option<T>
+{}
+
+#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+impl<T: fmt::Debug, F> fmt::Debug for Successors<T, F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Successors")
+            .field("next", &self.next)
+            .finish()
+    }
+}
