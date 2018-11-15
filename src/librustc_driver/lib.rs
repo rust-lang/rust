@@ -643,8 +643,8 @@ impl Compilation {
     }
 }
 
-/// A trait for customising the compilation process. Offers a number of hooks for
-/// executing custom code or customising input.
+/// A trait for customizing the compilation process. Offers a number of hooks for
+/// executing custom code or customizing input.
 pub trait CompilerCalls<'a> {
     /// Hook for a callback early in the process of handling arguments. This will
     /// be called straight after options have been parsed but before anything

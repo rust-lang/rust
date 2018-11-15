@@ -172,7 +172,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     /// While the `ExprUseVisitor` walks, we will identify which
     /// expressions are borrowed, and insert their ids into this
     /// table. Actually, we insert the "borrow-id", which is normally
-    /// the id of the expession being borrowed: but in the case of
+    /// the id of the expression being borrowed: but in the case of
     /// `ref mut` borrows, the `id` of the pattern is
     /// inserted. Therefore later we remove that entry from the table
     /// and transfer it over to the value being matched. This will

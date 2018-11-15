@@ -781,7 +781,7 @@ pub fn shift_vars<'a, 'gcx, 'tcx, T>(
 ///
 /// Note that what I'm calling an "escaping var" is often just called a "free var". However,
 /// we already use the term "free var". It refers to the regions or types that we use to represent
-/// bound regions or type params on a fn definition while we are typechecking its body.
+/// bound regions or type params on a fn definition while we are type checking its body.
 ///
 /// To clarify, conceptually there is no particular difference between
 /// an "escaping" var and a "free" var. However, there is a big
@@ -857,7 +857,7 @@ struct LateBoundRegionsCollector {
 
     /// If true, we only want regions that are known to be
     /// "constrained" when you equate this type with another type. In
-    /// partcular, if you have e.g. `&'a u32` and `&'b u32`, equating
+    /// particular, if you have e.g. `&'a u32` and `&'b u32`, equating
     /// them constraints `'a == 'b`.  But if you have `<&'a u32 as
     /// Trait>::Foo` and `<&'b u32 as Trait>::Foo`, normalizing those
     /// types may mean that `'a` and `'b` don't appear in the results,

@@ -262,7 +262,7 @@ struct PlaceComponents<'p, 'tcx: 'p> {
 impl<'p, 'tcx> PlaceComponents<'p, 'tcx> {
     /// Converts a list of `Place` components into an iterator; this
     /// iterator yields up a never-ending stream of `Option<&Place>`.
-    /// These begin with the "innermst" place and then with each
+    /// These begin with the "innermost" place and then with each
     /// projection therefrom. So given a place like `a.b.c` it would
     /// yield up:
     ///

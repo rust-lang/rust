@@ -11,7 +11,7 @@
 //! This module contains code to substitute new values into a
 //! `Canonical<'tcx, T>`.
 //!
-//! For an overview of what canonicaliation is and how it fits into
+//! For an overview of what canonicalization is and how it fits into
 //! rustc, check out the [chapter in the rustc guide][c].
 //!
 //! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html

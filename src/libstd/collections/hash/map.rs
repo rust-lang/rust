@@ -1569,7 +1569,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// where the key should go, meaning the keys may become "lost" if their
     /// location does not reflect their state. For instance, if you change a key
     /// so that the map now contains keys which compare equal, search may start
-    /// acting eratically, with two keys randomly masking eachother. Implementations
+    /// acting erratically, with two keys randomly masking each other. Implementations
     /// are free to assume this doesn't happen (within the limits of memory-safety).
     #[unstable(feature = "hash_raw_entry", issue = "54043")]
     pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<K, V, S> {

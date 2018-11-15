@@ -36,7 +36,7 @@ pub enum NonMacroAttrKind {
     Tool,
     /// Single-segment custom attribute registered by a derive macro (`#[serde(default)]`).
     DeriveHelper,
-    /// Single-segment custom attriubte registered by a legacy plugin (`register_attribute`).
+    /// Single-segment custom attribute registered by a legacy plugin (`register_attribute`).
     LegacyPluginHelper,
     /// Single-segment custom attribute not registered in any way (`#[my_attr]`).
     Custom,

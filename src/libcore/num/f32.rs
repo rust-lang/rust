@@ -445,7 +445,7 @@ impl f32 {
     /// signaling NaNs on MIPS are quiet NaNs on x86, and vice-versa.
     ///
     /// Rather than trying to preserve signaling-ness cross-platform, this
-    /// implementation favours preserving the exact bits. This means that
+    /// implementation favors preserving the exact bits. This means that
     /// any payloads encoded in NaNs will be preserved even if the result of
     /// this method is sent over the network from an x86 machine to a MIPS one.
     ///

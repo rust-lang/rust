@@ -45,7 +45,7 @@ pub unsafe fn brk(addr: usize) -> Result<usize> {
 /// # Errors
 ///
 /// * `EACCES` - permission is denied for one of the components of `path`, or `path`
-/// * `EFAULT` - `path` does not point to the process's addressible memory
+/// * `EFAULT` - `path` does not point to the process's addressable memory
 /// * `EIO` - an I/O error occurred
 /// * `ENOENT` - `path` does not exit
 /// * `ENOTDIR` - `path` is not a directory
@@ -342,7 +342,7 @@ pub fn waitpid(pid: usize, status: &mut usize, options: usize) -> Result<usize> 
 ///
 /// * `EAGAIN` - the file descriptor was opened with `O_NONBLOCK` and writing would block
 /// * `EBADF` - the file descriptor is not valid or is not open for writing
-/// * `EFAULT` - `buf` does not point to the process's addressible memory
+/// * `EFAULT` - `buf` does not point to the process's addressable memory
 /// * `EIO` - an I/O error occurred
 /// * `ENOSPC` - the device containing the file descriptor has no room for data
 /// * `EPIPE` - the file descriptor refers to a pipe or socket whose reading end is closed

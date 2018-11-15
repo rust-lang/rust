@@ -2400,7 +2400,7 @@ impl<'a, 'gcx, 'tcx> FieldDef {
 
 /// Represents the various closure traits in the Rust language. This
 /// will determine the type of the environment (`self`, in the
-/// desuaring) argument that the closure expects.
+/// desugaring) argument that the closure expects.
 ///
 /// You can get the environment type of a closure using
 /// `tcx.closure_env_ty()`.

@@ -1516,7 +1516,7 @@ declare_lint! {
     "detects edition keywords being used as an identifier"
 }
 
-/// Checks for uses of edtion keywords used as an identifier
+/// Checks for uses of edition keywords used as an identifier
 #[derive(Clone)]
 pub struct KeywordIdents;
 

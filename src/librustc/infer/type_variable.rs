@@ -320,7 +320,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// but which have only been unified since `s` started, and
     /// return the types with which they were unified. So if we had
     /// a type variable `V0`, then we started the snapshot, then we
-    /// created a type variable `V1`, unifed `V0` with `T0`, and
+    /// created a type variable `V1`, unified `V0` with `T0`, and
     /// unified `V1` with `T1`, this function would return `{T0}`.
     pub fn types_escaping_snapshot(&mut self, s: &Snapshot<'tcx>) -> Vec<Ty<'tcx>> {
         let mut new_elem_threshold = u32::MAX;
