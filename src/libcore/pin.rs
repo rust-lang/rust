@@ -19,7 +19,10 @@
 //! Since data can be moved out of `&mut` and `Box` with functions such as [`swap`],
 //! changing the location of the underlying data, [`Pin`] prohibits accessing the
 //! underlying pointer type (the `&mut` or `Box`) directly, and provides its own set of
-//! APIs for accessing and using the value.
+//! APIs for accessing and using the value. [`Pin`] also guarantees that no other
+//! functions will move the pointed-to value. This allows for the creation of
+//! self-references and other special behaviors that are only possible for unmovable
+//! values.
 //!
 //! However, these restrictions are usually not necessary. Many types are always freely
 //! movable. These types implement the [`Unpin`] auto-trait, which nullifies the affect
@@ -43,7 +46,7 @@
 //! #![feature(pin)]
 //!
 //! use std::pin::Pin;
-//! use std::marker::Pinned;
+//! use std::marker::PhantomPinned;
 //! use std::ptr::NonNull;
 //!
 //! // This is a self-referential struct since the slice field points to the data field.
@@ -54,7 +57,7 @@
 //! struct Unmovable {
 //!     data: String,
 //!     slice: NonNull<String>,
-//!     _pin: Pinned,
+//!     _pin: PhantomPinned,
 //! }
 //!
 //! impl Unmovable {
@@ -67,7 +70,7 @@
 //!             // we only create the pointer once the data is in place
 //!             // otherwise it will have already moved before we even started
 //!             slice: NonNull::dangling(),
-//!             _pin: Pinned,
+//!             _pin: PhantomPinned,
 //!         };
 //!         let mut boxed = Box::pinned(res);
 //!
