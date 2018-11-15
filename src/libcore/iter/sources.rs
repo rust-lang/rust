@@ -444,7 +444,7 @@ pub fn unfold<St, T, F>(initial_state: St, f: F) -> Unfold<St, F>
 /// See its documentation for more.
 ///
 /// [`unfold`]: fn.unfold.html
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 #[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
 pub struct Unfold<St, F> {
     state: St,
