@@ -18,9 +18,9 @@ use std::collections::Bound;
 use crate::syntax::ast::LitKind;
 use crate::syntax::source_map::Span;
 use crate::utils::paths;
-use crate::utils::{expr_block, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg,
-            remove_blocks, snippet, span_lint_and_sugg, span_lint_and_then,
-            span_note_and_lint, walk_ptrs_ty};
+use crate::utils::{expr_block, in_macro, is_allowed, is_expn_of, match_qpath, match_type,
+    multispan_sugg, remove_blocks, snippet, span_lint_and_sugg, span_lint_and_then,
+    span_note_and_lint, walk_ptrs_ty};
 use crate::utils::sugg::Sugg;
 use crate::consts::{constant, Constant};
 use crate::rustc_errors::Applicability;
@@ -457,7 +457,9 @@ fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr:
         }));
 
         span_lint_and_then(cx, MATCH_REF_PATS, expr.span, title, |db| {
-            multispan_sugg(db, msg.to_owned(), suggs);
+            if !in_macro(expr.span) {
+                multispan_sugg(db, msg.to_owned(), suggs);
+            }
         });
     }
 }
