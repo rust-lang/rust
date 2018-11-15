@@ -295,7 +295,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let a_val = self.memory
                     .get(ptr.alloc_id)?
                     .read_scalar(self, a_ptr, a_size)?;
-                self.memory.check_align(b_ptr.into(), b.align(self))?;
+                self.memory.check_align(b_ptr.into(), b.align(self).min(ptr_align))?;
                 let b_val = self.memory
                     .get(ptr.alloc_id)?
                     .read_scalar(self, b_ptr, b_size)?;
