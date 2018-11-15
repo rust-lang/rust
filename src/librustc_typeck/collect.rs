@@ -39,6 +39,7 @@ use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::{ReprOptions, ToPredicate};
 use rustc::util::captures::Captures;
 use rustc::util::nodemap::FxHashMap;
+use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi;
 
 use syntax::ast;
@@ -178,7 +179,8 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
         self.tcx
     }
 
-    fn get_type_parameter_bounds(&self, span: Span, def_id: DefId) -> ty::GenericPredicates<'tcx> {
+    fn get_type_parameter_bounds(&self, span: Span, def_id: DefId)
+                                 -> Lrc<ty::GenericPredicates<'tcx>> {
         self.tcx
             .at(span)
             .type_param_predicates((self.item_def_id, def_id))
@@ -243,7 +245,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
 fn type_param_predicates<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     (item_def_id, def_id): (DefId, DefId),
-) -> ty::GenericPredicates<'tcx> {
+) -> Lrc<ty::GenericPredicates<'tcx>> {
     use rustc::hir::*;
 
     // In the AST, bounds can derive from two places. Either
@@ -264,11 +266,11 @@ fn type_param_predicates<'a, 'tcx>(
         tcx.generics_of(item_def_id).parent
     };
 
-    let mut result = parent.map_or(
-        ty::GenericPredicates {
+    let mut result = parent.map_or_else(
+        || Lrc::new(ty::GenericPredicates {
             parent: None,
             predicates: vec![],
-        },
+        }),
         |parent| {
             let icx = ItemCtxt::new(tcx, parent);
             icx.get_type_parameter_bounds(DUMMY_SP, def_id)
@@ -298,7 +300,7 @@ fn type_param_predicates<'a, 'tcx>(
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_node_id {
                         let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
-                        result
+                        Lrc::make_mut(&mut result)
                             .predicates
                             .push((identity_trait_ref.to_predicate(), item.span));
                     }
@@ -317,7 +319,7 @@ fn type_param_predicates<'a, 'tcx>(
     };
 
     let icx = ItemCtxt::new(tcx, item_def_id);
-    result
+    Lrc::make_mut(&mut result)
         .predicates
         .extend(icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty,
             OnlySelfBounds(true)));
@@ -685,7 +687,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
 fn super_predicates_of<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_def_id: DefId,
-) -> ty::GenericPredicates<'tcx> {
+) -> Lrc<ty::GenericPredicates<'tcx>> {
     debug!("super_predicates(trait_def_id={:?})", trait_def_id);
     let trait_node_id = tcx.hir.as_local_node_id(trait_def_id).unwrap();
 
@@ -729,10 +731,10 @@ fn super_predicates_of<'a, 'tcx>(
         }
     }
 
-    ty::GenericPredicates {
+    Lrc::new(ty::GenericPredicates {
         parent: None,
         predicates: superbounds,
-    }
+    })
 }
 
 fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::TraitDef {
@@ -1605,27 +1607,23 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
 fn predicates_defined_on<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-) -> ty::GenericPredicates<'tcx> {
-    let explicit = tcx.explicit_predicates_of(def_id);
-    let span = tcx.def_span(def_id);
-    let predicates = explicit.predicates.into_iter().chain(
-        tcx.inferred_outlives_of(def_id).iter().map(|&p| (p, span))
-    ).collect();
-
-    ty::GenericPredicates {
-        parent: explicit.parent,
-        predicates: predicates,
+) -> Lrc<ty::GenericPredicates<'tcx>> {
+    let mut result = tcx.explicit_predicates_of(def_id);
+    let inferred_outlives = tcx.inferred_outlives_of(def_id);
+    if !inferred_outlives.is_empty() {
+        let span = tcx.def_span(def_id);
+        Lrc::make_mut(&mut result)
+            .predicates
+            .extend(inferred_outlives.iter().map(|&p| (p, span)));
     }
+    result
 }
 
 fn predicates_of<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-) -> ty::GenericPredicates<'tcx> {
-    let ty::GenericPredicates {
-        parent,
-        mut predicates,
-    } = tcx.predicates_defined_on(def_id);
+) -> Lrc<ty::GenericPredicates<'tcx>> {
+    let mut result = tcx.predicates_defined_on(def_id);
 
     if tcx.is_trait(def_id) {
         // For traits, add `Self: Trait` predicate. This is
@@ -1641,16 +1639,17 @@ fn predicates_of<'a, 'tcx>(
         // used, and adding the predicate into this list ensures
         // that this is done.
         let span = tcx.def_span(def_id);
-        predicates.push((ty::TraitRef::identity(tcx, def_id).to_predicate(), span));
+        Lrc::make_mut(&mut result)
+            .predicates
+            .push((ty::TraitRef::identity(tcx, def_id).to_predicate(), span));
     }
-
-    ty::GenericPredicates { parent, predicates }
+    result
 }
 
 fn explicit_predicates_of<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-) -> ty::GenericPredicates<'tcx> {
+) -> Lrc<ty::GenericPredicates<'tcx>> {
     use rustc::hir::*;
     use rustc_data_structures::fx::FxHashSet;
 
@@ -1761,10 +1760,10 @@ fn explicit_predicates_of<'a, 'tcx>(
 
                     if impl_trait_fn.is_some() {
                         // impl Trait
-                        return ty::GenericPredicates {
+                        return Lrc::new(ty::GenericPredicates {
                             parent: None,
                             predicates: bounds.predicates(tcx, opaque_ty),
-                        };
+                        });
                     } else {
                         // named existential types
                         predicates.extend(bounds.predicates(tcx, opaque_ty));
@@ -1794,7 +1793,7 @@ fn explicit_predicates_of<'a, 'tcx>(
     // on a trait we need to add in the supertrait bounds and bounds found on
     // associated types.
     if let Some((_trait_ref, _)) = is_trait {
-        predicates.extend(tcx.super_predicates_of(def_id).predicates);
+        predicates.extend(tcx.super_predicates_of(def_id).predicates.iter().cloned());
     }
 
     // In default impls, we can assume that the self type implements
@@ -1971,10 +1970,10 @@ fn explicit_predicates_of<'a, 'tcx>(
         );
     }
 
-    ty::GenericPredicates {
+    Lrc::new(ty::GenericPredicates {
         parent: generics.parent,
         predicates,
-    }
+    })
 }
 
 pub enum SizedByDefault {
