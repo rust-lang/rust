@@ -428,7 +428,7 @@ pub fn once<T>(value: T) -> Once<T> {
 /// assert_eq!(counter.collect::<Vec<_>>(), &[1, 2, 3, 4, 5]);
 /// ```
 #[inline]
-#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+#[unstable(feature = "iter_unfold", issue = "55977")]
 pub fn unfold<St, T, F>(initial_state: St, f: F) -> Unfold<St, F>
     where F: FnMut(&mut St) -> Option<T>
 {
@@ -445,13 +445,13 @@ pub fn unfold<St, T, F>(initial_state: St, f: F) -> Unfold<St, F>
 ///
 /// [`unfold`]: fn.unfold.html
 #[derive(Clone)]
-#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+#[unstable(feature = "iter_unfold", issue = "55977")]
 pub struct Unfold<St, F> {
     state: St,
     f: F,
 }
 
-#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+#[unstable(feature = "iter_unfold", issue = "55977")]
 impl<St, T, F> Iterator for Unfold<St, F>
     where F: FnMut(&mut St) -> Option<T>
 {
@@ -463,7 +463,7 @@ impl<St, T, F> Iterator for Unfold<St, F>
     }
 }
 
-#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+#[unstable(feature = "iter_unfold", issue = "55977")]
 impl<St: fmt::Debug, F> fmt::Debug for Unfold<St, F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Unfold")
@@ -484,7 +484,7 @@ impl<St: fmt::Debug, F> fmt::Debug for Unfold<St, F> {
 /// let powers_of_10 = successors(Some(1_u16), |n| n.checked_mul(10));
 /// assert_eq!(powers_of_10.collect::<Vec<_>>(), &[1, 10, 100, 1_000, 10_000]);
 /// ```
-#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+#[unstable(feature = "iter_unfold", issue = "55977")]
 pub fn successors<T, F>(first: Option<T>, succ: F) -> Successors<T, F>
     where F: FnMut(&T) -> Option<T>
 {
@@ -504,13 +504,13 @@ pub fn successors<T, F>(first: Option<T>, succ: F) -> Successors<T, F>
 ///
 /// [`successors`]: fn.successors.html
 #[derive(Clone)]
-#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+#[unstable(feature = "iter_unfold", issue = "55977")]
 pub struct Successors<T, F> {
     next: Option<T>,
     succ: F,
 }
 
-#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+#[unstable(feature = "iter_unfold", issue = "55977")]
 impl<T, F> Iterator for Successors<T, F>
     where F: FnMut(&T) -> Option<T>
 {
@@ -534,12 +534,12 @@ impl<T, F> Iterator for Successors<T, F>
     }
 }
 
-#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+#[unstable(feature = "iter_unfold", issue = "55977")]
 impl<T, F> FusedIterator for Successors<T, F>
     where F: FnMut(&T) -> Option<T>
 {}
 
-#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+#[unstable(feature = "iter_unfold", issue = "55977")]
 impl<T: fmt::Debug, F> fmt::Debug for Successors<T, F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Successors")
