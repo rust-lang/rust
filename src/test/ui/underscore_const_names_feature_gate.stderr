@@ -1,0 +1,19 @@
+error[E0658]: naming constants with `_` is unstable (see issue #54912)
+  --> $DIR/underscore_const_names_feature_gate.rs:11:1
+   |
+LL | const _: () = ();
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(underscore_const_names)] to the crate attributes to enable
+
+error[E0658]: naming constants with `_` is unstable (see issue #54912)
+  --> $DIR/underscore_const_names_feature_gate.rs:12:1
+   |
+LL | static _: () = ();
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(underscore_const_names)] to the crate attributes to enable
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

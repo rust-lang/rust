@@ -1591,6 +1591,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
+            ast::ItemKind::Static(..) |
             ast::ItemKind::Const(_,_) => {
                 if i.ident.name == "_" {
                     gate_feature_post!(&self, underscore_const_names, i.span,
