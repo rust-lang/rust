@@ -314,7 +314,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
         // which cannot be outlived.
         None => return Ok(()),
     };
-    let parent_scope = rcx.tcx.mk_region(ty::ReScope(parent_scope));
+    let parent_scope_region = rcx.tcx.mk_region(ty::ReScope(parent_scope));
     let origin = || infer::SubregionOrigin::SafeDestructor(span);
     let cause = &ObligationCause::misc(span, body_id);
     let infer_ok = rcx.infcx.at(cause, rcx.fcx.param_env).dropck_outlives(ty);
@@ -322,8 +322,8 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     let kinds = rcx.fcx.register_infer_ok_obligations(infer_ok);
     for kind in kinds {
         match kind.unpack() {
-            UnpackedKind::Lifetime(r) => rcx.sub_regions(origin(), parent_scope, r),
-            UnpackedKind::Type(ty) => rcx.type_must_outlive(origin(), ty, parent_scope),
+            UnpackedKind::Lifetime(r) => rcx.sub_regions(origin(), parent_scope_region, r),
+            UnpackedKind::Type(ty) => rcx.type_must_be_valid_for_scope(origin(), ty, parent_scope),
         }
     }
     Ok(())

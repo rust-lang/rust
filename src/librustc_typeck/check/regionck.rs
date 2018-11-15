@@ -373,10 +373,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             body.id(),
             call_site_scope
         );
-        let call_site_region = self.tcx.mk_region(ty::ReScope(call_site_scope));
 
         let body_hir_id = self.tcx.hir.node_to_hir_id(body_id.node_id);
-        self.type_of_node_must_outlive(infer::CallReturn(span), body_hir_id, call_site_region);
+        self.type_of_node_must_be_valid_for_scope(infer::CallReturn(span), body_hir_id, call_site_scope);
 
         self.constrain_opaque_types(
             &self.fcx.opaque_types.borrow(),
@@ -434,10 +433,9 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             // that the lifetime of any regions that appear in a
             // variable's type enclose at least the variable's scope.
             let var_scope = self.region_scope_tree.var_scope(hir_id.local_id);
-            let var_region = self.tcx.mk_region(ty::ReScope(var_scope));
 
             let origin = infer::BindingTypeIsNotValidAtDecl(span);
-            self.type_of_node_must_outlive(origin, hir_id, var_region);
+            self.type_of_node_must_be_valid_for_scope(origin, hir_id, var_scope);
 
             let typ = self.resolve_node_type(hir_id);
             let body_id = self.body_id;
@@ -520,14 +518,15 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
         // scope of that expression. This also guarantees basic WF.
         let expr_ty = self.resolve_node_type(expr.hir_id);
         // the region corresponding to this expression
-        let expr_region = self.tcx.mk_region(ty::ReScope(region::Scope {
+        let expr_scope = region::Scope {
             id: expr.hir_id.local_id,
             data: region::ScopeData::Node,
-        }));
-        self.type_must_outlive(
+        };
+        let expr_region = self.tcx.mk_region(ty::ReScope(expr_scope));
+        self.type_must_be_valid_for_scope(
             infer::ExprTypeIsNotInScope(expr_ty, expr.span),
             expr_ty,
-            expr_region,
+            expr_scope,
         );
 
         let is_method_call = self.tables.borrow().is_method_call(expr);
@@ -546,7 +545,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
             };
 
             let substs = self.tables.borrow().node_substs(expr.hir_id);
-            self.substs_wf_in_scope(origin, substs, expr.span, expr_region);
+            self.substs_wf_in_scope(origin, substs, expr.span, expr_scope);
             // Arguments (sub-expressions) are checked via `constrain_call`, below.
         }
 
@@ -572,7 +571,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
             hir::ExprKind::Path(_) => {
                 let substs = self.tables.borrow().node_substs(expr.hir_id);
                 let origin = infer::ParameterOrigin::Path;
-                self.substs_wf_in_scope(origin, substs, expr.span, expr_region);
+                self.substs_wf_in_scope(origin, substs, expr.span, expr_scope);
             }
 
             hir::ExprKind::Call(ref callee, ref args) => {
@@ -619,7 +618,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 let lhs_ty = self.resolve_expr_type_adjusted(&lhs);
                 let rhs_ty = self.resolve_expr_type_adjusted(&rhs);
                 for &ty in &[lhs_ty, rhs_ty] {
-                    self.type_must_outlive(infer::Operand(expr.span), ty, expr_region);
+                    self.type_must_be_valid_for_scope(infer::Operand(expr.span), ty, expr_scope);
                 }
                 intravisit::walk_expr(self, expr);
             }
@@ -674,7 +673,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
                 // FIXME(https://github.com/rust-lang/rfcs/issues/811)
                 // nested method calls requires that this rule change
                 let ty0 = self.resolve_node_type(expr.hir_id);
-                self.type_must_outlive(infer::AddrOf(expr.span), ty0, expr_region);
+                self.type_must_be_valid_for_scope(infer::AddrOf(expr.span), ty0, expr_scope);
                 intravisit::walk_expr(self, expr);
             }
 
@@ -705,16 +704,15 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for RegionCtxt<'a, 'gcx, 'tcx> {
             }
 
             hir::ExprKind::Ret(Some(ref ret_expr)) => {
-                let call_site_scope = self.call_site_scope;
+                let call_site_scope = self.call_site_scope.unwrap();
                 debug!(
                     "visit_expr ExprKind::Ret ret_expr.id {} call_site_scope: {:?}",
                     ret_expr.id, call_site_scope
                 );
-                let call_site_region = self.tcx.mk_region(ty::ReScope(call_site_scope.unwrap()));
-                self.type_of_node_must_outlive(
+                self.type_of_node_must_be_valid_for_scope(
                     infer::CallReturn(ret_expr.span),
                     ret_expr.hir_id,
-                    call_site_region,
+                    call_site_scope,
                 );
                 intravisit::walk_expr(self, expr);
             }
@@ -813,26 +811,25 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             id: call_expr.hir_id.local_id,
             data: region::ScopeData::Node,
         };
-        let callee_region = self.tcx.mk_region(ty::ReScope(callee_scope));
 
-        debug!("callee_region={:?}", callee_region);
+        debug!("callee_scope={:?}", callee_scope);
 
         for arg_expr in arg_exprs {
             debug!("Argument: {:?}", arg_expr);
 
             // ensure that any regions appearing in the argument type are
             // valid for at least the lifetime of the function:
-            self.type_of_node_must_outlive(
+            self.type_of_node_must_be_valid_for_scope(
                 infer::CallArg(arg_expr.span),
                 arg_expr.hir_id,
-                callee_region,
+                callee_scope,
             );
         }
 
         // as loop above, but for receiver
         if let Some(r) = receiver {
             debug!("receiver: {:?}", r);
-            self.type_of_node_must_outlive(infer::CallRcvr(r.span), r.hir_id, callee_region);
+            self.type_of_node_must_be_valid_for_scope(infer::CallRcvr(r.span), r.hir_id, callee_scope);
         }
     }
 
@@ -867,10 +864,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // expression.
         self.check_safety_of_rvalue_destructor_if_necessary(&cmt, expr.span);
 
-        let expr_region = self.tcx.mk_region(ty::ReScope(region::Scope {
+        let expr_scope = region::Scope {
             id: expr.hir_id.local_id,
             data: region::ScopeData::Node,
-        }));
+        };
+        let expr_region = self.tcx.mk_region(ty::ReScope(expr_scope));
         for adjustment in adjustments {
             debug!(
                 "constrain_adjustments: adjustment={:?}, cmt={:?}",
@@ -905,8 +903,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 );
 
                 // Specialized version of constrain_call.
-                self.type_must_outlive(infer::CallRcvr(expr.span), input, expr_region);
-                self.type_must_outlive(infer::CallReturn(expr.span), output, expr_region);
+                self.type_must_be_valid_for_scope(infer::CallRcvr(expr.span), input, expr_scope);
+                self.type_must_be_valid_for_scope(infer::CallReturn(expr.span), output, expr_scope);
             }
 
             if let adjustment::Adjust::Borrow(ref autoref) = adjustment.kind {
@@ -916,10 +914,10 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 // the current node.
                 //
                 // FIXME(#6268) remove to support nested method calls
-                self.type_of_node_must_outlive(
+                self.type_of_node_must_be_valid_for_scope(
                     infer::AutoBorrow(expr.span),
                     expr.hir_id,
-                    expr_region,
+                    expr_scope,
                 );
             }
 
@@ -999,13 +997,16 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Guarantees that any lifetimes which appear in the type of the node `id` (after applying
-    /// adjustments) are valid for at least `minimum_lifetime`
-    fn type_of_node_must_outlive(
+    /// Requires that all regions in the (fully adjusted) type of the
+    /// node `hir_id` are **valid** during the scope. This means that
+    /// they have to outlive `scope`.  This implies `T: scope` but is
+    /// actually stronger than that in the case of projections. This
+    /// helps overcome some weakenesses in our inference (see #55756).
+    fn type_of_node_must_be_valid_for_scope(
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         hir_id: hir::HirId,
-        minimum_lifetime: ty::Region<'tcx>,
+        scope: region::Scope,
     ) {
         // Try to resolve the type.  If we encounter an error, then typeck
         // is going to fail anyway, so just stop here and let typeck
@@ -1021,10 +1022,26 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         let ty = self.resolve_type(ty);
         debug!(
             "constrain_regions_in_type_of_node(\
-             ty={}, ty0={}, id={:?}, minimum_lifetime={:?})",
-            ty, ty0, hir_id, minimum_lifetime
+             ty={}, ty0={}, id={:?}, scope={:?})",
+            ty, ty0, hir_id, scope
         );
-        self.type_must_outlive(origin, ty, minimum_lifetime);
+
+        self.type_must_be_valid_for_scope(origin, ty, scope)
+    }
+
+    /// Requires that all regions in the type `T` are **valid** during
+    /// the scope. This means that they have to outlive `scope`.  This
+    /// implies `T: scope` but is actually stronger than that in the
+    /// case of projections. This helps overcome some weakenesses in
+    /// our inference (see #55756).
+    pub fn type_must_be_valid_for_scope(
+        &self,
+        origin: infer::SubregionOrigin<'tcx>,
+        ty: Ty<'tcx>,
+        scope: region::Scope,
+    ) {
+        let region = self.tcx.mk_region(ty::ReScope(scope));
+        self.type_must_outlive(origin, ty, region)
     }
 
     /// Adds constraints to inference such that `T: 'a` holds (or
@@ -1408,25 +1425,26 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         origin: infer::ParameterOrigin,
         substs: &Substs<'tcx>,
         expr_span: Span,
-        expr_region: ty::Region<'tcx>,
+        expr_scope: region::Scope,
     ) {
         debug!(
             "substs_wf_in_scope(substs={:?}, \
-             expr_region={:?}, \
+             expr_scope={:?}, \
              origin={:?}, \
              expr_span={:?})",
-            substs, expr_region, origin, expr_span
+            substs, expr_scope, origin, expr_span
         );
 
         let origin = infer::ParameterInScope(origin, expr_span);
 
+        let expr_region = self.tcx.mk_region(ty::ReScope(expr_scope));
         for region in substs.regions() {
             self.sub_regions(origin.clone(), expr_region, region);
         }
 
         for ty in substs.types() {
             let ty = self.resolve_type(ty);
-            self.type_must_outlive(origin.clone(), ty, expr_region);
+            self.type_must_be_valid_for_scope(origin.clone(), ty, expr_scope);
         }
     }
 }
