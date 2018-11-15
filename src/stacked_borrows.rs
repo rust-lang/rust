@@ -363,20 +363,20 @@ impl AllocationExtra<Borrow> for Stacks {
         // Writes behave exactly like the first half of a reborrow-to-mut
         alloc.extra.use_and_maybe_re_borrow(ptr, size, UsageKind::Write, None)
     }
-}
 
-impl<'tcx> Stacks {
     #[inline(always)]
-    pub fn memory_deallocated(
-        &mut self,
+    fn memory_deallocated<'tcx>(
+        alloc: &mut Allocation<Borrow, Stacks>,
         ptr: Pointer<Borrow>,
         size: Size,
     ) -> EvalResult<'tcx> {
         // This is like mutating
-        self.use_and_maybe_re_borrow(ptr, size, UsageKind::Write, None)
+        alloc.extra.use_and_maybe_re_borrow(ptr, size, UsageKind::Write, None)
         // FIXME: Error out of there are any barriers?
     }
+}
 
+impl<'tcx> Stacks {
     /// Pushes the first item to the stacks.
     pub fn first_item(
         &mut self,
