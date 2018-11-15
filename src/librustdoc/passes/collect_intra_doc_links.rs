@@ -243,7 +243,7 @@ fn look_for_tests<'a, 'tcx: 'a, 'rcx: 'a, 'cstore: 'rcx>(
         if tests.found_tests == 0 {
             let mut diag = cx.tcx.struct_span_lint_node(
                 lint::builtin::MISSING_DOC_CODE_EXAMPLES,
-                NodeId::new(0),
+                NodeId::from_u32(0),
                 span_of_attrs(&item.attrs),
                 "Missing code example in this documentation");
             diag.emit();
@@ -281,14 +281,14 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocFolder for LinkCollector<'a, 'tcx, 'rcx, 'cstor
         let current_item = match item.inner {
             ModuleItem(..) => {
                 if item.attrs.inner_docs {
-                    if item_node_id.unwrap() != NodeId::new(0) {
+                    if item_node_id.unwrap() != NodeId::from_u32(0) {
                         item.name.clone()
                     } else {
                         None
                     }
                 } else {
                     match parent_node.or(self.mod_ids.last().cloned()) {
-                        Some(parent) if parent != NodeId::new(0) => {
+                        Some(parent) if parent != NodeId::from_u32(0) => {
                             //FIXME: can we pull the parent module's name from elsewhere?
                             Some(self.cx.tcx.hir.name(parent).to_string())
                         }
@@ -538,13 +538,13 @@ fn resolution_failure(
             );
 
             diag = cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-                                                NodeId::new(0),
+                                                NodeId::from_u32(0),
                                                 sp,
                                                 &msg);
             diag.span_label(sp, "cannot be resolved, ignoring");
         } else {
             diag = cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-                                                NodeId::new(0),
+                                                NodeId::from_u32(0),
                                                 sp,
                                                 &msg);
 
@@ -564,7 +564,7 @@ fn resolution_failure(
         diag
     } else {
         cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
-                                     NodeId::new(0),
+                                     NodeId::from_u32(0),
                                      sp,
                                      &msg)
     };
