@@ -106,8 +106,7 @@ impl<'a> dot::GraphWalk<'a> for &'a cfg::CFG {
     type Node = Node<'a>;
     type Edge = Edge<'a>;
     fn nodes(&'a self) -> dot::Nodes<'a, Node<'a>> {
-        let mut v = Vec::new();
-        self.graph.each_node(|i, nd| { v.push((i, nd)); true });
+        let v: Vec<_> = self.graph.enumerated_nodes().collect();
         v.into()
     }
     fn edges(&'a self) -> dot::Edges<'a, Edge<'a>> {
