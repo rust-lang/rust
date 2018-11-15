@@ -746,6 +746,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::Infer(_) |
             ty::Param(..) |
             ty::Bound(..) |
+            ty::Placeholder(..) |
             ty::Never |
             ty::Foreign(..) => return self
         };
@@ -792,6 +793,7 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
             ty::Error |
             ty::Infer(_) |
             ty::Bound(..) |
+            ty::Placeholder(..) |
             ty::Param(..) |
             ty::Never |
             ty::Foreign(..) => false,

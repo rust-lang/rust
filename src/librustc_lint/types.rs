@@ -727,6 +727,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             ty::Closure(..) |
             ty::Generator(..) |
             ty::GeneratorWitness(..) |
+            ty::Placeholder(..) |
             ty::UnnormalizedProjection(..) |
             ty::Projection(..) |
             ty::Opaque(..) |

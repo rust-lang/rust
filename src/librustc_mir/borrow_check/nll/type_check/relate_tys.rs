@@ -84,7 +84,10 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, '_, 'tcx> {
         }
     }
 
-    fn next_placeholder_region(&mut self, placeholder: ty::Placeholder) -> ty::Region<'tcx> {
+    fn next_placeholder_region(
+        &mut self,
+        placeholder: ty::PlaceholderRegion
+    ) -> ty::Region<'tcx> {
         if let Some(borrowck_context) = &mut self.borrowck_context {
             borrowck_context.constraints.placeholder_region(self.infcx, placeholder)
         } else {

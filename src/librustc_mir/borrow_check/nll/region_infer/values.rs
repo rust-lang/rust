@@ -150,7 +150,7 @@ crate enum RegionElement {
 
     /// A placeholder (e.g., instantiated from a `for<'a> fn(&'a u32)`
     /// type).
-    PlaceholderRegion(ty::Placeholder),
+    PlaceholderRegion(ty::PlaceholderRegion),
 }
 
 /// When we initially compute liveness, we use a bit matrix storing
@@ -219,17 +219,17 @@ impl<N: Idx> LivenessValues<N> {
     }
 }
 
-/// Maps from `ty::Placeholder` values that are used in the rest of
+/// Maps from `ty::PlaceholderRegion` values that are used in the rest of
 /// rustc to the internal `PlaceholderIndex` values that are used in
 /// NLL.
 #[derive(Default)]
 crate struct PlaceholderIndices {
-    to_index: FxHashMap<ty::Placeholder, PlaceholderIndex>,
-    from_index: IndexVec<PlaceholderIndex, ty::Placeholder>,
+    to_index: FxHashMap<ty::PlaceholderRegion, PlaceholderIndex>,
+    from_index: IndexVec<PlaceholderIndex, ty::PlaceholderRegion>,
 }
 
 impl PlaceholderIndices {
-    crate fn insert(&mut self, placeholder: ty::Placeholder) -> PlaceholderIndex {
+    crate fn insert(&mut self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
         let PlaceholderIndices {
             to_index,
             from_index,
@@ -239,11 +239,11 @@ impl PlaceholderIndices {
             .or_insert_with(|| from_index.push(placeholder))
     }
 
-    crate fn lookup_index(&self, placeholder: ty::Placeholder) -> PlaceholderIndex {
+    crate fn lookup_index(&self, placeholder: ty::PlaceholderRegion) -> PlaceholderIndex {
         self.to_index[&placeholder]
     }
 
-    crate fn lookup_placeholder(&self, placeholder: PlaceholderIndex) -> ty::Placeholder {
+    crate fn lookup_placeholder(&self, placeholder: PlaceholderIndex) -> ty::PlaceholderRegion {
         self.from_index[placeholder]
     }
 
@@ -375,7 +375,7 @@ impl<N: Idx> RegionValues<N> {
     crate fn placeholders_contained_in<'a>(
         &'a self,
         r: N,
-    ) -> impl Iterator<Item = ty::Placeholder> + 'a {
+    ) -> impl Iterator<Item = ty::PlaceholderRegion> + 'a {
         self.placeholders
             .row(r)
             .into_iter()
@@ -432,7 +432,7 @@ impl ToElementIndex for RegionVid {
     }
 }
 
-impl ToElementIndex for ty::Placeholder {
+impl ToElementIndex for ty::PlaceholderRegion {
     fn add_to_row<N: Idx>(self, values: &mut RegionValues<N>, row: N) -> bool {
         let index = values.placeholder_indices.lookup_index(self);
         values.placeholders.insert(row, index)

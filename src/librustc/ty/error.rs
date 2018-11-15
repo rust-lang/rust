@@ -212,7 +212,8 @@ impl<'a, 'gcx, 'lcx, 'tcx> ty::TyS<'tcx> {
             ty::Infer(ty::TyVar(_)) => "inferred type".into(),
             ty::Infer(ty::IntVar(_)) => "integral variable".into(),
             ty::Infer(ty::FloatVar(_)) => "floating-point variable".into(),
-            ty::Bound(_) |
+            ty::Placeholder(..) => "placeholder type".into(),
+            ty::Bound(..) => "bound type".into(),
             ty::Infer(ty::FreshTy(_)) => "fresh type".into(),
             ty::Infer(ty::FreshIntTy(_)) => "fresh integral type".into(),
             ty::Infer(ty::FreshFloatTy(_)) => "fresh floating-point type".into(),

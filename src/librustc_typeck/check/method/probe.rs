@@ -1494,7 +1494,7 @@ impl<'tcx> Candidate<'tcx> {
                     // `WhereClausePick`.
                     assert!(
                         !trait_ref.skip_binder().substs.needs_infer()
-                            && !trait_ref.skip_binder().substs.has_skol()
+                            && !trait_ref.skip_binder().substs.has_placeholders()
                     );
 
                     WhereClausePick(trait_ref.clone())
