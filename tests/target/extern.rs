@@ -14,6 +14,11 @@ extern crate foo;
 extern crate proc_macro;
 extern crate proc_macro2;
 
+// #3128
+extern crate serde; // 1.0.78
+extern crate serde_derive; // 1.0.78
+extern crate serde_json; // 1.0.27
+
 extern "C" {
     fn c_func(x: *mut *mut libc::c_void);
 
