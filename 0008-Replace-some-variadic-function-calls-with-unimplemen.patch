@@ -1,0 +1,211 @@
+From 96aefe8fdd28704d903d585f5be6a667d2485582 Mon Sep 17 00:00:00 2001
+From: bjorn3 <bjorn3@users.noreply.github.com>
+Date: Thu, 15 Nov 2018 11:41:06 +0100
+Subject: [PATCH] Replace some variadic function calls with unimplemented!()
+
+---
+ src/libstd/sys/unix/fd.rs     | 18 ++++++++++++++++++
+ src/libstd/sys/unix/fs.rs     |  9 +++++++++
+ src/libstd/sys/unix/net.rs    |  3 +++
+ src/libstd/sys/unix/rand.rs   |  3 +++
+ src/libstd/sys/unix/thread.rs |  3 +++
+ 5 files changed, 36 insertions(+)
+
+diff --git a/src/libstd/sys/unix/fd.rs b/src/libstd/sys/unix/fd.rs
+index af33d26..2433ae4 100644
+--- a/src/libstd/sys/unix/fd.rs
++++ b/src/libstd/sys/unix/fd.rs
+@@ -156,9 +156,12 @@ impl FileDesc {
+ 
+     #[cfg(target_os = "linux")]
+     pub fn get_cloexec(&self) -> io::Result<bool> {
++        /*
+         unsafe {
+             Ok((cvt(libc::fcntl(self.fd, libc::F_GETFD))? & libc::FD_CLOEXEC) != 0)
+         }
++        */
++        unimplemented!();
+     }
+ 
+     #[cfg(not(any(target_env = "newlib",
+@@ -168,10 +171,13 @@ impl FileDesc {
+                   target_os = "l4re",
+                   target_os = "haiku")))]
+     pub fn set_cloexec(&self) -> io::Result<()> {
++        /*
+         unsafe {
+             cvt(libc::ioctl(self.fd, libc::FIOCLEX))?;
+             Ok(())
+         }
++        */
++        unimplemented!();
+     }
+     #[cfg(any(target_env = "newlib",
+               target_os = "solaris",
+@@ -180,6 +186,7 @@ impl FileDesc {
+               target_os = "l4re",
+               target_os = "haiku"))]
+     pub fn set_cloexec(&self) -> io::Result<()> {
++        /*
+         unsafe {
+             let previous = cvt(libc::fcntl(self.fd, libc::F_GETFD))?;
+             let new = previous | libc::FD_CLOEXEC;
+@@ -188,19 +195,25 @@ impl FileDesc {
+             }
+             Ok(())
+         }
++        */
++        unimplemented!();
+     }
+ 
+     #[cfg(target_os = "linux")]
+     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
++        /*
+         unsafe {
+             let v = nonblocking as c_int;
+             cvt(libc::ioctl(self.fd, libc::FIONBIO, &v))?;
+             Ok(())
+         }
++        */
++        unimplemented!();
+     }
+ 
+     #[cfg(not(target_os = "linux"))]
+     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
++        /*
+         unsafe {
+             let previous = cvt(libc::fcntl(self.fd, libc::F_GETFL))?;
+             let new = if nonblocking {
+@@ -213,9 +226,12 @@ impl FileDesc {
+             }
+             Ok(())
+         }
++        */
++        unimplemented!();
+     }
+ 
+     pub fn duplicate(&self) -> io::Result<FileDesc> {
++        /*
+         // We want to atomically duplicate this file descriptor and set the
+         // CLOEXEC flag, and currently that's done via F_DUPFD_CLOEXEC. This
+         // flag, however, isn't supported on older Linux kernels (earlier than
+@@ -263,6 +279,8 @@ impl FileDesc {
+             }
+         }
+         cvt(unsafe { libc::fcntl(fd, libc::F_DUPFD, 0) }).and_then(make_filedesc)
++        */
++        unimplemented!();
+     }
+ }
+ 
+diff --git a/src/libstd/sys/unix/fs.rs b/src/libstd/sys/unix/fs.rs
+index add06ae..e0d3f84 100644
+--- a/src/libstd/sys/unix/fs.rs
++++ b/src/libstd/sys/unix/fs.rs
+@@ -465,6 +465,7 @@ impl File {
+     }
+ 
+     pub fn open_c(path: &CStr, opts: &OpenOptions) -> io::Result<File> {
++        /*
+         let flags = libc::O_CLOEXEC |
+                     opts.get_access_mode()? |
+                     opts.get_creation_mode()? |
+@@ -519,6 +520,8 @@ impl File {
+ 
+         ensure_cloexec(&fd)?;
+         Ok(File(fd))
++        */
++        unimplemented!();
+     }
+ 
+     pub fn file_attr(&self) -> io::Result<FileAttr> {
+@@ -667,6 +670,7 @@ impl fmt::Debug for File {
+ 
+         #[cfg(any(target_os = "linux", target_os = "macos"))]
+         fn get_mode(fd: c_int) -> Option<(bool, bool)> {
++            /*
+             let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
+             if mode == -1 {
+                 return None;
+@@ -677,6 +681,8 @@ impl fmt::Debug for File {
+                 libc::O_WRONLY => Some((false, true)),
+                 _ => None
+             }
++            */
++            unimplemented!();
+         }
+ 
+         #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+@@ -868,6 +874,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+         len: libc::size_t,
+         flags: libc::c_uint,
+     ) -> libc::c_long {
++        /*
+         libc::syscall(
+             libc::SYS_copy_file_range,
+             fd_in,
+@@ -877,6 +884,8 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+             len,
+             flags,
+         )
++        */
++        unimplemented!();
+     }
+ 
+     if !from.is_file() {
+diff --git a/src/libstd/sys/unix/net.rs b/src/libstd/sys/unix/net.rs
+index 2d10541..19e96c4 100644
+--- a/src/libstd/sys/unix/net.rs
++++ b/src/libstd/sys/unix/net.rs
+@@ -339,8 +339,11 @@ impl Socket {
+     }
+ 
+     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
++        /*
+         let mut nonblocking = nonblocking as libc::c_int;
+         cvt(unsafe { libc::ioctl(*self.as_inner(), libc::FIONBIO, &mut nonblocking) }).map(|_| ())
++        */
++        unimplemented!();
+     }
+ 
+     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
+diff --git a/src/libstd/sys/unix/rand.rs b/src/libstd/sys/unix/rand.rs
+index 371e58a..28d4c68 100644
+--- a/src/libstd/sys/unix/rand.rs
++++ b/src/libstd/sys/unix/rand.rs
+@@ -34,9 +34,12 @@ mod imp {
+ 
+     #[cfg(any(target_os = "linux", target_os = "android"))]
+     fn getrandom(buf: &mut [u8]) -> libc::c_long {
++        /*
+         unsafe {
+             libc::syscall(libc::SYS_getrandom, buf.as_mut_ptr(), buf.len(), libc::GRND_NONBLOCK)
+         }
++        */
++        unimplemented!();
+     }
+ 
+     #[cfg(not(any(target_os = "linux", target_os = "android")))]
+diff --git a/src/libstd/sys/unix/thread.rs b/src/libstd/sys/unix/thread.rs
+index f3a45d2..1c2f0ce 100644
+--- a/src/libstd/sys/unix/thread.rs
++++ b/src/libstd/sys/unix/thread.rs
+@@ -100,12 +100,15 @@ impl Thread {
+     #[cfg(any(target_os = "linux",
+               target_os = "android"))]
+     pub fn set_name(name: &CStr) {
++        /*
+         const PR_SET_NAME: libc::c_int = 15;
+         // pthread wrapper only appeared in glibc 2.12, so we use syscall
+         // directly.
+         unsafe {
+             libc::prctl(PR_SET_NAME, name.as_ptr() as libc::c_ulong, 0, 0, 0);
+         }
++        */
++        unimplemented!();
+     }
+ 
+     #[cfg(any(target_os = "freebsd",
+-- 
+2.11.0
+
