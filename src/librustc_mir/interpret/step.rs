@@ -12,7 +12,7 @@
 //!
 //! The main entry point is the `step` method.
 
-use rustc::{hir, mir};
+use rustc::mir;
 use rustc::ty::layout::LayoutOf;
 use rustc::mir::interpret::{EvalResult, Scalar, PointerArithmetic};
 
@@ -118,12 +118,17 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             // interpreter is solely intended for borrowck'ed code.
             FakeRead(..) => {}
 
-            // Retagging.
+            // Stacked Borrows.
             Retag { fn_entry, ref place } => {
                 let dest = self.eval_place(place)?;
                 M::retag(self, fn_entry, dest)?;
             }
+            EscapeToRaw(ref op) => {
+                let op = self.eval_operand(op, None)?;
+                M::escape_to_raw(self, op)?;
+            }
 
+            // Statements we do not track.
             EndRegion(..) => {}
             AscribeUserType(..) => {}
 
@@ -247,19 +252,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 )?;
             }
 
-            Ref(_, borrow_kind, ref place) => {
+            Ref(_, _, ref place) => {
                 let src = self.eval_place(place)?;
                 let val = self.force_allocation(src)?;
-                let mutbl = match borrow_kind {
-                    mir::BorrowKind::Mut { .. } |
-                    mir::BorrowKind::Unique =>
-                        hir::MutMutable,
-                    mir::BorrowKind::Shared |
-                    mir::BorrowKind::Shallow =>
-                        hir::MutImmutable,
-                };
-                let val = self.create_ref(val, Some(mutbl))?;
-                self.write_immediate(val, dest)?;
+                self.write_immediate(val.to_ref(), dest)?;
             }
 
             NullaryOp(mir::NullOp::Box, _) => {

@@ -85,6 +85,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             StatementKind::FakeRead(..) => "StatementKind::FakeRead",
             StatementKind::EndRegion(..) => "StatementKind::EndRegion",
             StatementKind::Retag { .. } => "StatementKind::Retag",
+            StatementKind::EscapeToRaw { .. } => "StatementKind::EscapeToRaw",
             StatementKind::SetDiscriminant { .. } => "StatementKind::SetDiscriminant",
             StatementKind::StorageLive(..) => "StatementKind::StorageLive",
             StatementKind::StorageDead(..) => "StatementKind::StorageDead",

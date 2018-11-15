@@ -685,6 +685,13 @@ fn create_generator_drop_shim<'a, 'tcx>(
         is_block_tail: None,
         is_user_variable: None,
     };
+    if tcx.sess.opts.debugging_opts.mir_emit_retag {
+        // Alias tracking must know we changed the type
+        mir.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
+            source_info,
+            kind: StatementKind::EscapeToRaw(Operand::Copy(Place::Local(self_arg()))),
+        })
+    }
 
     no_landing_pads(tcx, &mut mir);
 

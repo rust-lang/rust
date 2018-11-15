@@ -65,10 +65,11 @@ impl RemoveNoopLandingPads {
                     // turn a landing pad to a non-nop
                 }
 
-                StatementKind::Assign(_, _) |
+                StatementKind::Assign { .. } |
                 StatementKind::SetDiscriminant { .. } |
                 StatementKind::InlineAsm { .. } |
-                StatementKind::Retag { .. } => {
+                StatementKind::Retag { .. } |
+                StatementKind::EscapeToRaw { .. } => {
                     return false;
                 }
             }

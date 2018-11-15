@@ -431,17 +431,6 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         })
     }
 
-    // Take an operand, representing a pointer, and dereference it to a place -- that
-    // will always be a MemPlace.
-    pub(super) fn deref_operand(
-        &self,
-        src: OpTy<'tcx, M::PointerTag>,
-    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
-        let val = self.read_immediate(src)?;
-        trace!("deref to {} on {:?}", val.layout.ty, *val);
-        Ok(self.ref_to_mplace(val)?)
-    }
-
     pub fn operand_projection(
         &self,
         base: OpTy<'tcx, M::PointerTag>,

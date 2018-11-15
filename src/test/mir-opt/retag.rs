@@ -26,7 +26,9 @@ fn main() {
     {
         let v = Test(0).foo(&mut x); // just making sure we do not panic when there is a tuple struct ctor
         let w = { v }; // assignment
-        let _w = w; // reborrow
+        let w = w; // reborrow
+        // escape-to-raw (mut)
+        let _w = w as *mut _;
     }
 
     // Also test closures
@@ -35,6 +37,9 @@ fn main() {
 
     // need to call `foo_shr` or it doesn't even get generated
     Test(0).foo_shr(&0);
+
+    // escape-to-raw (shr)
+    let _w = _w as *const _;
 }
 
 // END RUST SOURCE
@@ -44,6 +49,7 @@ fn main() {
 //         Retag([fn entry] _2);
 //         ...
 //         _0 = &mut (*_3);
+//         Retag(_0);
 //         ...
 //         return;
 //     }
@@ -73,23 +79,36 @@ fn main() {
 //         _9 = move _3;
 //         Retag(_9);
 //         _8 = &mut (*_9);
+//         Retag(_8);
 //         StorageDead(_9);
 //         StorageLive(_10);
 //         _10 = move _8;
 //         Retag(_10);
 //         ...
-//         _13 = move _14(move _15) -> bb2;
+//         _14 = &mut (*_10);
+//         Retag(_14);
+//         EscapeToRaw(move _14);
+//         _13 = move _14 as *mut i32 (Misc);
+//         ...
+//         _17 = move _18(move _19) -> bb2;
 //     }
 //
 //     bb2: {
-//         Retag(_13);
+//         Retag(_17);
 //         ...
+//         _21 = const Test::foo_shr(move _22, move _24) -> bb3;
 //     }
+//
+//     bb3: {
+//         ...
+//         return;
+//     }
+//
 //     ...
 // }
 // END rustc.main.EraseRegions.after.mir
 // START rustc.main-{{closure}}.EraseRegions.after.mir
-// fn main::{{closure}}(_1: &[closure@NodeId(117)], _2: &i32) -> &i32 {
+// fn main::{{closure}}(_1: &[closure@NodeId(124)], _2: &i32) -> &i32 {
 //     ...
 //     bb0: {
 //         Retag([fn entry] _1);

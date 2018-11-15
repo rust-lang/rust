@@ -220,6 +220,9 @@ for mir::StatementKind<'gcx> {
             mir::StatementKind::EndRegion(ref region_scope) => {
                 region_scope.hash_stable(hcx, hasher);
             }
+            mir::StatementKind::EscapeToRaw(ref place) => {
+                place.hash_stable(hcx, hasher);
+            }
             mir::StatementKind::Retag { fn_entry, ref place } => {
                 fn_entry.hash_stable(hcx, hasher);
                 place.hash_stable(hcx, hasher);
