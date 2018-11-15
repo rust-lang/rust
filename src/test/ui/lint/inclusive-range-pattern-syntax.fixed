@@ -20,4 +20,10 @@ fn main() {
         //~^ WARN `...` range patterns are deprecated
         _ => {}
     }
+
+    match &despondency {
+        &(1..=2) => {}
+        //~^ WARN `...` range patterns are deprecated
+        _ => {}
+    }
 }
