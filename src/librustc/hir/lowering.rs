@@ -52,13 +52,13 @@ use lint::builtin::{self, PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
 use middle::cstore::CrateStore;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::IndexVec;
+use rustc_data_structures::sorted_map::HybridSortedMap;
 use rustc_data_structures::thin_vec::ThinVec;
 use session::Session;
 use session::config::nightly_options;
 use util::common::FN_OUTPUT_NAME;
 use util::nodemap::{DefIdMap, NodeMap};
 
-use std::collections::BTreeMap;
 use std::fmt::Debug;
 use std::mem;
 use smallvec::SmallVec;
@@ -91,15 +91,15 @@ pub struct LoweringContext<'a> {
     resolver: &'a mut dyn Resolver,
 
     /// The items being lowered are collected here.
-    items: BTreeMap<NodeId, hir::Item>,
+    items: HybridSortedMap<NodeId, hir::Item>,
 
-    trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem>,
-    impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
-    bodies: BTreeMap<hir::BodyId, hir::Body>,
+    trait_items: HybridSortedMap<hir::TraitItemId, hir::TraitItem>,
+    impl_items: HybridSortedMap<hir::ImplItemId, hir::ImplItem>,
+    bodies: HybridSortedMap<hir::BodyId, hir::Body>,
     exported_macros: Vec<hir::MacroDef>,
 
-    trait_impls: BTreeMap<DefId, Vec<NodeId>>,
-    trait_auto_impl: BTreeMap<DefId, NodeId>,
+    trait_impls: HybridSortedMap<DefId, Vec<NodeId>>,
+    trait_auto_impl: HybridSortedMap<DefId, NodeId>,
 
     is_generator: bool,
 
@@ -233,12 +233,12 @@ pub fn lower_crate(
         sess,
         cstore,
         resolver,
-        items: BTreeMap::new(),
-        trait_items: BTreeMap::new(),
-        impl_items: BTreeMap::new(),
-        bodies: BTreeMap::new(),
-        trait_impls: BTreeMap::new(),
-        trait_auto_impl: BTreeMap::new(),
+        items: HybridSortedMap::new(),
+        trait_items: HybridSortedMap::new(),
+        impl_items: HybridSortedMap::new(),
+        bodies: HybridSortedMap::new(),
+        trait_impls: HybridSortedMap::new(),
+        trait_auto_impl: HybridSortedMap::new(),
         exported_macros: Vec::new(),
         catch_scopes: Vec::new(),
         loop_scopes: Vec::new(),
@@ -5057,7 +5057,7 @@ impl<'a> LoweringContext<'a> {
     }
 }
 
-fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body>) -> Vec<hir::BodyId> {
+fn body_ids(bodies: &HybridSortedMap<hir::BodyId, hir::Body>) -> Vec<hir::BodyId> {
     // Sorting by span ensures that we get things in order within a
     // file, and also puts the files in a sensible order.
     let mut body_ids: Vec<_> = bodies.keys().cloned().collect();

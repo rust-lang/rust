@@ -25,11 +25,11 @@ use middle::region;
 use super::Constraint;
 use infer::SubregionOrigin;
 use infer::region_constraints::RegionConstraintData;
+use rustc_data_structures::sorted_map::HybridSortedMap;
 use util::nodemap::{FxHashMap, FxHashSet};
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry::Vacant;
-use std::collections::btree_map::BTreeMap;
 use std::env;
 use std::fs::File;
 use std::io;
@@ -121,7 +121,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
 struct ConstraintGraph<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     graph_name: String,
     region_rels: &'a RegionRelations<'a, 'gcx, 'tcx>,
-    map: &'a BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
+    map: &'a HybridSortedMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
     node_ids: FxHashMap<Node, usize>,
 }
 
@@ -255,7 +255,7 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     }
 }
 
-pub type ConstraintMap<'tcx> = BTreeMap<Constraint<'tcx>, SubregionOrigin<'tcx>>;
+pub type ConstraintMap<'tcx> = HybridSortedMap<Constraint<'tcx>, SubregionOrigin<'tcx>>;
 
 fn dump_region_data_to<'a, 'gcx, 'tcx>(region_rels: &RegionRelations<'a, 'gcx, 'tcx>,
                                        map: &ConstraintMap<'tcx>,

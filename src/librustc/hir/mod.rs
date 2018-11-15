@@ -37,11 +37,11 @@ use syntax::util::parser::ExprPrecedence;
 use ty::AdtKind;
 use ty::query::Providers;
 
+use rustc_data_structures::sorted_map::HybridSortedMap;
 use rustc_data_structures::sync::{ParallelIterator, par_iter, Send, Sync, scope};
 use rustc_data_structures::thin_vec::ThinVec;
 
 use serialize::{self, Encoder, Encodable, Decoder, Decodable};
-use std::collections::BTreeMap;
 use std::fmt;
 
 /// HIR doesn't commit to a concrete storage type and has its own alias for a vector.
@@ -697,19 +697,19 @@ pub struct Crate {
     pub span: Span,
     pub exported_macros: HirVec<MacroDef>,
 
-    // NB: We use a BTreeMap here so that `visit_all_items` iterates
+    // NB: We use a HybridSortedMap here so that `visit_all_items` iterates
     // over the ids in increasing order. In principle it should not
     // matter what order we visit things in, but in *practice* it
     // does, because it can affect the order in which errors are
     // detected, which in turn can make compile-fail tests yield
     // slightly different results.
-    pub items: BTreeMap<NodeId, Item>,
+    pub items: HybridSortedMap<NodeId, Item>,
 
-    pub trait_items: BTreeMap<TraitItemId, TraitItem>,
-    pub impl_items: BTreeMap<ImplItemId, ImplItem>,
-    pub bodies: BTreeMap<BodyId, Body>,
-    pub trait_impls: BTreeMap<DefId, Vec<NodeId>>,
-    pub trait_auto_impl: BTreeMap<DefId, NodeId>,
+    pub trait_items: HybridSortedMap<TraitItemId, TraitItem>,
+    pub impl_items: HybridSortedMap<ImplItemId, ImplItem>,
+    pub bodies: HybridSortedMap<BodyId, Body>,
+    pub trait_impls: HybridSortedMap<DefId, Vec<NodeId>>,
+    pub trait_auto_impl: HybridSortedMap<DefId, NodeId>,
 
     /// A list of the body ids written out in the order in which they
     /// appear in the crate. If you're going to process all the bodies

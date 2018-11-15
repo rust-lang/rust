@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::fmt;
 use std::path::PathBuf;
 
 use errors;
 use errors::emitter::ColorConfig;
 use getopts;
+use rustc_data_structures::sorted_map::HybridSortedMap;
 use rustc::lint::Level;
 use rustc::session::early_error;
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
@@ -166,7 +167,7 @@ pub struct RenderOptions {
     /// If present, CSS file that contains rules to add to the default CSS.
     pub extension_css: Option<PathBuf>,
     /// A map of crate names to the URL to use instead of querying the crate's `html_root_url`.
-    pub extern_html_root_urls: BTreeMap<String, String>,
+    pub extern_html_root_urls: HybridSortedMap<String, String>,
     /// If present, suffix added to CSS/JavaScript files when referencing them in generated pages.
     pub resource_suffix: String,
     /// Whether to run the static CSS/JavaScript through a minifier when outputting them. `true` by
@@ -528,8 +529,8 @@ fn check_deprecated_options(matches: &getopts::Matches, diag: &errors::Handler) 
 /// describing the issue.
 fn parse_extern_html_roots(
     matches: &getopts::Matches,
-) -> Result<BTreeMap<String, String>, &'static str> {
-    let mut externs = BTreeMap::new();
+) -> Result<HybridSortedMap<String, String>, &'static str> {
+    let mut externs = HybridSortedMap::new();
     for arg in &matches.opt_strs("extern-html-root-url") {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().ok_or("--extern-html-root-url must not be empty")?;
@@ -545,7 +546,7 @@ fn parse_extern_html_roots(
 /// error message.
 // FIXME(eddyb) This shouldn't be duplicated with `rustc::session`.
 fn parse_externs(matches: &getopts::Matches) -> Result<Externs, String> {
-    let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
+    let mut externs: HybridSortedMap<_, BTreeSet<_>> = HybridSortedMap::new();
     for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().ok_or("--extern value must not be empty".to_string())?;

@@ -24,10 +24,10 @@ use infer::canonical::{Canonical, CanonicalVarValues};
 use middle::free_region::RegionRelations;
 use middle::lang_items;
 use middle::region;
+use rustc_data_structures::sorted_map::HybridSortedMap;
 use rustc_data_structures::unify as ut;
 use session::config::BorrowckMode;
 use std::cell::{Cell, Ref, RefCell, RefMut};
-use std::collections::BTreeMap;
 use std::fmt;
 use syntax::ast;
 use syntax_pos::symbol::InternedString;
@@ -230,7 +230,7 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 /// A map returned by `replace_late_bound_regions_with_placeholders()`
 /// indicating the placeholder region that each late-bound region was
 /// replaced with.
-pub type PlaceholderMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
+pub type PlaceholderMap<'tcx> = HybridSortedMap<ty::BoundRegion, ty::Region<'tcx>>;
 
 /// See `error_reporting` module for more details
 #[derive(Clone, Debug)]
@@ -1333,7 +1333,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         span: Span,
         lbrct: LateBoundRegionConversionTime,
         value: &ty::Binder<T>
-    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> (T, HybridSortedMap<ty::BoundRegion, ty::Region<'tcx>>)
     where
         T: TypeFoldable<'tcx>
     {

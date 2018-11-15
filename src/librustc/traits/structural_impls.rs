@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use chalk_engine;
+use rustc_data_structures::sorted_map::HybridSortedMap;
 use smallvec::SmallVec;
 use traits;
 use traits::project::Normalized;
@@ -18,7 +19,7 @@ use syntax::symbol::InternedString;
 
 use std::fmt;
 use std::rc::Rc;
-use std::collections::{BTreeSet, BTreeMap};
+use std::collections::BTreeSet;
 
 // structural impls for the structs in traits
 
@@ -274,7 +275,7 @@ struct BoundNamesCollector {
 
     // Sort by `BoundVar` index, so usually this should be equivalent to the order given
     // by the list of type parameters.
-    types: BTreeMap<u32, InternedString>,
+    types: HybridSortedMap<u32, InternedString>,
 
     binder_index: ty::DebruijnIndex,
 }
@@ -283,7 +284,7 @@ impl BoundNamesCollector {
     fn new() -> Self {
         BoundNamesCollector {
             regions: BTreeSet::new(),
-            types: BTreeMap::new(),
+            types: HybridSortedMap::new(),
             binder_index: ty::INNERMOST,
         }
     }

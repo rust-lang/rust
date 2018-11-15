@@ -32,12 +32,13 @@ use syntax::feature_gate::UnstableFeatures;
 use errors::{ColorConfig, FatalError, Handler};
 
 use getopts;
-use std::collections::{BTreeMap, BTreeSet};
-use std::collections::btree_map::Iter as BTreeMapIter;
-use std::collections::btree_map::Keys as BTreeMapKeysIter;
-use std::collections::btree_map::Values as BTreeMapValuesIter;
+use std::collections::BTreeSet;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sorted_map::HybridSortedMap;
+use rustc_data_structures::sorted_map::HybridSortedMapIter;
+use rustc_data_structures::sorted_map::HybridSortedMapKeys;
+use rustc_data_structures::sorted_map::HybridSortedMapValues;
 use std::{fmt, str};
 use std::hash::Hasher;
 use std::collections::hash_map::DefaultHasher;
@@ -223,16 +224,16 @@ impl Default for ErrorOutputType {
 }
 
 // Use tree-based collections to cheaply get a deterministic Hash implementation.
-// DO NOT switch BTreeMap out for an unsorted container type! That would break
+// DO NOT switch HybridSortedMap out for an unsorted container type! That would break
 // dependency tracking for command-line arguments.
 #[derive(Clone, Hash)]
-pub struct OutputTypes(BTreeMap<OutputType, Option<PathBuf>>);
+pub struct OutputTypes(HybridSortedMap<OutputType, Option<PathBuf>>);
 
 impl_stable_hash_via_hash!(OutputTypes);
 
 impl OutputTypes {
     pub fn new(entries: &[(OutputType, Option<PathBuf>)]) -> OutputTypes {
-        OutputTypes(BTreeMap::from_iter(
+        OutputTypes(HybridSortedMap::from_iter(
             entries.iter().map(|&(k, ref v)| (k, v.clone())),
         ))
     }
@@ -245,11 +246,11 @@ impl OutputTypes {
         self.0.contains_key(key)
     }
 
-    pub fn keys<'a>(&'a self) -> BTreeMapKeysIter<'a, OutputType, Option<PathBuf>> {
+    pub fn keys<'a>(&'a self) -> HybridSortedMapKeys<'a, OutputType, Option<PathBuf>> {
         self.0.keys()
     }
 
-    pub fn values<'a>(&'a self) -> BTreeMapValuesIter<'a, OutputType, Option<PathBuf>> {
+    pub fn values<'a>(&'a self) -> HybridSortedMapValues<'a, OutputType, Option<PathBuf>> {
         self.0.values()
     }
 
@@ -272,21 +273,21 @@ impl OutputTypes {
 }
 
 // Use tree-based collections to cheaply get a deterministic Hash implementation.
-// DO NOT switch BTreeMap or BTreeSet out for an unsorted container type! That
+// DO NOT switch HybridSortedMap or BTreeSet out for an unsorted container type! That
 // would break dependency tracking for command-line arguments.
 #[derive(Clone, Hash)]
-pub struct Externs(BTreeMap<String, BTreeSet<Option<String>>>);
+pub struct Externs(HybridSortedMap<String, BTreeSet<Option<String>>>);
 
 impl Externs {
-    pub fn new(data: BTreeMap<String, BTreeSet<Option<String>>>) -> Externs {
+    pub fn new(data: HybridSortedMap<String, BTreeSet<Option<String>>>) -> Externs {
         Externs(data)
     }
 
     pub fn get(&self, key: &str) -> Option<&BTreeSet<Option<String>>> {
-        self.0.get(key)
+        self.0.get(&key.to_owned()) // FIXME: call to to_owned caused by a restriction in sorted_map
     }
 
-    pub fn iter<'a>(&'a self) -> BTreeMapIter<'a, String, BTreeSet<Option<String>>> {
+    pub fn iter<'a>(&'a self) -> HybridSortedMapIter<'a, String, BTreeSet<Option<String>>> {
         self.0.iter()
     }
 }
@@ -320,7 +321,7 @@ macro_rules! top_level_options {
 
         impl Options {
             pub fn dep_tracking_hash(&self) -> u64 {
-                let mut sub_hashes = BTreeMap::new();
+                let mut sub_hashes = HybridSortedMap::new();
                 $({
                     hash_option!($opt,
                                  &self.$opt,
@@ -592,7 +593,7 @@ impl Default for Options {
             lint_opts: Vec::new(),
             lint_cap: None,
             describe_lints: false,
-            output_types: OutputTypes(BTreeMap::new()),
+            output_types: OutputTypes(HybridSortedMap::new()),
             search_paths: SearchPaths::new(),
             maybe_sysroot: None,
             target_triple: TargetTriple::from_triple(host_triple()),
@@ -603,7 +604,7 @@ impl Default for Options {
             borrowck_mode: BorrowckMode::Ast,
             cg: basic_codegen_options(),
             error_format: ErrorOutputType::default(),
-            externs: Externs(BTreeMap::new()),
+            externs: Externs(HybridSortedMap::new()),
             crate_name: None,
             alt_std_name: None,
             libs: Vec::new(),
@@ -766,7 +767,7 @@ macro_rules! options {
 
     impl<'a> dep_tracking::DepTrackingHash for $struct_name {
         fn hash(&self, hasher: &mut DefaultHasher, error_format: ErrorOutputType) {
-            let mut sub_hashes = BTreeMap::new();
+            let mut sub_hashes = HybridSortedMap::new();
             $({
                 hash_option!($opt,
                              &self.$opt,
@@ -1911,7 +1912,7 @@ pub fn build_session_options_and_crate_config(
         );
     }
 
-    let mut output_types = BTreeMap::new();
+    let mut output_types = HybridSortedMap::new();
     if !debugging_opts.parse_only {
         for list in matches.opt_strs("emit") {
             for output_type in list.split(',') {
@@ -2206,7 +2207,7 @@ pub fn build_session_options_and_crate_config(
         );
     }
 
-    let mut externs: BTreeMap<_, BTreeSet<_>> = BTreeMap::new();
+    let mut externs: HybridSortedMap<_, BTreeSet<_>> = HybridSortedMap::new();
     for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(2, '=');
         let name = parts.next().unwrap_or_else(||
@@ -2398,13 +2399,13 @@ impl fmt::Display for CrateType {
 mod dep_tracking {
     use lint;
     use middle::cstore;
-    use std::collections::BTreeMap;
     use std::hash::Hash;
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
     use super::{CrateType, DebugInfo, ErrorOutputType, OptLevel, OutputTypes,
                 Passes, Sanitizer, LtoCli, CrossLangLto};
     use syntax::feature_gate::UnstableFeatures;
+    use rustc_data_structures::sorted_map::HybridSortedMap;
     use rustc_target::spec::{PanicStrategy, RelroLevel, TargetTriple};
     use syntax::edition::Edition;
 
@@ -2509,9 +2510,9 @@ mod dep_tracking {
         }
     }
 
-    // This is a stable hash because BTreeMap is a sorted container
+    // This is a stable hash because HybridSortedMap is a sorted container
     pub fn stable_hash(
-        sub_hashes: BTreeMap<&'static str, &dyn DepTrackingHash>,
+        sub_hashes: HybridSortedMap<&'static str, &dyn DepTrackingHash>,
         hasher: &mut DefaultHasher,
         error_format: ErrorOutputType,
     ) {
@@ -2534,10 +2535,11 @@ mod tests {
     use session::config::{build_configuration, build_session_options_and_crate_config};
     use session::config::{LtoCli, CrossLangLto};
     use session::build_session;
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeSet;
     use std::iter::FromIterator;
     use std::path::PathBuf;
     use super::{Externs, OutputType, OutputTypes};
+    use rustc_data_structures::sorted_map::HybridSortedMap;
     use rustc_target::spec::{PanicStrategy, RelroLevel};
     use syntax::symbol::Symbol;
     use syntax::edition::{Edition, DEFAULT_EDITION};
@@ -2552,8 +2554,8 @@ mod tests {
         return opts;
     }
 
-    fn mk_map<K: Ord, V>(entries: Vec<(K, V)>) -> BTreeMap<K, V> {
-        BTreeMap::from_iter(entries.into_iter())
+    fn mk_map<K: Ord, V>(entries: Vec<(K, V)>) -> HybridSortedMap<K, V> {
+        HybridSortedMap::from_iter(entries.into_iter())
     }
 
     fn mk_set<V: Ord>(entries: Vec<V>) -> BTreeSet<V> {

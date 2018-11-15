@@ -41,9 +41,9 @@
 
 use mir::interpret::ConstValue;
 use hir::def_id::DefId;
+use rustc_data_structures::sorted_map::HybridSortedMap;
 use ty::{self, Binder, Ty, TyCtxt, TypeFlags};
 
-use std::collections::BTreeMap;
 use std::fmt;
 use util::nodemap::FxHashSet;
 
@@ -521,7 +521,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self,
         value: &Binder<T>,
         fld_r: F
-    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> (T, HybridSortedMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               T: TypeFoldable<'tcx>
     {
@@ -537,12 +537,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         value: &T,
         mut fld_r: F,
         mut fld_t: G
-    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> (T, HybridSortedMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               G: FnMut(ty::BoundTy) -> ty::Ty<'tcx>,
               T: TypeFoldable<'tcx>
     {
-        let mut map = BTreeMap::new();
+        let mut map = HybridSortedMap::new();
 
         if !value.has_escaping_bound_vars() {
             (value.clone(), map)
@@ -565,7 +565,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         value: &Binder<T>,
         fld_r: F,
         fld_t: G
-    ) -> (T, BTreeMap<ty::BoundRegion, ty::Region<'tcx>>)
+    ) -> (T, HybridSortedMap<ty::BoundRegion, ty::Region<'tcx>>)
         where F: FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
               G: FnMut(ty::BoundTy) -> ty::Ty<'tcx>,
               T: TypeFoldable<'tcx>
