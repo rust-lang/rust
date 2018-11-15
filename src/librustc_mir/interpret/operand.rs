@@ -271,13 +271,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         if mplace.layout.is_zst() {
             // Not all ZSTs have a layout we would handle below, so just short-circuit them
             // all here.
-            self.memory.check_align(ptr, ptr_align)?;
+            self.memory.check_align(ptr, ptr_align.min(mplace.layout.align))?;
             return Ok(Some(Immediate::Scalar(Scalar::zst().into())));
         }
 
         // check for integer pointers before alignment to report better errors
         let ptr = ptr.to_ptr()?;
-        self.memory.check_align(ptr.into(), ptr_align)?;
+        self.memory.check_align(ptr.into(), ptr_align.min(mplace.layout.align))?;
         match mplace.layout.abi {
             layout::Abi::Scalar(..) => {
                 let scalar = self.memory
