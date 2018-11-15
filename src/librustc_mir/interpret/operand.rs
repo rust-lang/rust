@@ -19,7 +19,7 @@ use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerEx
 use rustc::mir::interpret::{
     GlobalId, AllocId,
     ConstValue, Pointer, Scalar,
-    EvalResult, EvalErrorKind
+    EvalResult, EvalErrorKind, InboundsCheck,
 };
 use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
 pub use rustc::mir::interpret::ScalarMaybeUndef;
@@ -601,7 +601,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         // read raw discriminant value
         let discr_op = self.operand_field(rval, 0)?;
         let discr_val = self.read_immediate(discr_op)?;
-        let raw_discr = discr_val.to_scalar()?;
+        let raw_discr = discr_val.to_scalar_or_undef();
         trace!("discr value: {:?}", raw_discr);
         // post-process
         Ok(match rval.layout.variants {
@@ -647,28 +647,33 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let variants_start = niche_variants.start().as_u32() as u128;
                 let variants_end = niche_variants.end().as_u32() as u128;
                 match raw_discr {
-                    Scalar::Ptr(_) => {
-                        // The niche must be just 0 (which a pointer value never is)
-                        assert!(niche_start == 0);
-                        assert!(variants_start == variants_end);
+                    ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) => {
+                        // The niche must be just 0 (which an inbounds pointer value never is)
+                        let ptr_valid = niche_start == 0 && variants_start == variants_end &&
+                            self.memory.check_bounds_ptr(ptr, InboundsCheck::MaybeDead).is_ok();
+                        if !ptr_valid {
+                            return err!(InvalidDiscriminant(raw_discr.erase_tag()));
+                        }
                         (dataful_variant.as_u32() as u128, dataful_variant)
                     },
-                    Scalar::Bits { bits: raw_discr, size } => {
+                    ScalarMaybeUndef::Scalar(Scalar::Bits { bits: raw_discr, size }) => {
                         assert_eq!(size as u64, discr_val.layout.size.bytes());
-                        let discr = raw_discr.wrapping_sub(niche_start)
+                        let adjusted_discr = raw_discr.wrapping_sub(niche_start)
                             .wrapping_add(variants_start);
-                        if variants_start <= discr && discr <= variants_end {
-                            let index = discr as usize;
-                            assert_eq!(index as u128, discr);
+                        if variants_start <= adjusted_discr && adjusted_discr <= variants_end {
+                            let index = adjusted_discr as usize;
+                            assert_eq!(index as u128, adjusted_discr);
                             assert!(index < rval.layout.ty
                                 .ty_adt_def()
                                 .expect("tagged layout for non adt")
                                 .variants.len());
-                            (discr, VariantIdx::from_usize(index))
+                            (adjusted_discr, VariantIdx::from_usize(index))
                         } else {
                             (dataful_variant.as_u32() as u128, dataful_variant)
                         }
                     },
+                    ScalarMaybeUndef::Undef =>
+                        return err!(InvalidDiscriminant(ScalarMaybeUndef::Undef)),
                 }
             }
         })

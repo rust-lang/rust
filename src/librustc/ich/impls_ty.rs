@@ -451,7 +451,7 @@ impl_stable_hash_for!(
         FunctionRetMismatch(a, b),
         NoMirFor(s),
         UnterminatedCString(ptr),
-        PointerOutOfBounds { ptr, access, allocation_size },
+        PointerOutOfBounds { ptr, check, allocation_size },
         InvalidBoolOp(bop),
         Unimplemented(s),
         BoundsCheck { len, index },
@@ -470,6 +470,11 @@ impl_stable_hash_for!(
         Overflow(op),
     }
 );
+
+impl_stable_hash_for!(enum mir::interpret::InboundsCheck {
+    Live,
+    MaybeDead
+});
 
 impl_stable_hash_for!(enum mir::interpret::Lock {
     NoLock,

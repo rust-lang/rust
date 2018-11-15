@@ -19,6 +19,14 @@ use mir;
 use std::ops::{Deref, DerefMut};
 use rustc_data_structures::sorted_map::SortedMap;
 
+/// Used by `check_bounds` to indicate whether the pointer needs to be just inbounds
+/// or also inbounds of a *live* allocation.
+#[derive(Debug, Copy, Clone, RustcEncodable, RustcDecodable)]
+pub enum InboundsCheck {
+    Live,
+    MaybeDead,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct Allocation<Tag=(),Extra=()> {
     /// The actual bytes of the allocation.
