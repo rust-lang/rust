@@ -231,6 +231,11 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     }
 
     /// Read a *non-ZST* scalar
+    ///
+    /// zsts can't be read out of two reasons:
+    /// * byteorder cannot work with zero element buffers
+    /// * in oder to obtain a `Pointer` we need to check for ZSTness anyway due to integer pointers
+    ///   being valid for ZSTs
     pub fn read_scalar(
         &self,
         cx: &impl HasDataLayout,
@@ -274,6 +279,11 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     }
 
     /// Write a *non-ZST* scalar
+    ///
+    /// zsts can't be read out of two reasons:
+    /// * byteorder cannot work with zero element buffers
+    /// * in oder to obtain a `Pointer` we need to check for ZSTness anyway due to integer pointers
+    ///   being valid for ZSTs
     pub fn write_scalar(
         &mut self,
         cx: &impl HasDataLayout,
