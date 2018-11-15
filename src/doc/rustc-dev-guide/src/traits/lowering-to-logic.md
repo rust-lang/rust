@@ -50,7 +50,7 @@ so by applying the rules recursively:
 
 - `Clone(Vec<Vec<usize>>)` is provable if:
   - `Clone(Vec<usize>)` is provable if:
-    - `Clone(usize)` is provable. (Which is is, so we're all good.)
+    - `Clone(usize)` is provable. (Which it is, so we're all good.)
 
 But now suppose we tried to prove that `Clone(Vec<Bar>)`. This would
 fail (after all, I didn't give an impl of `Clone` for `Bar`):
@@ -130,8 +130,8 @@ Ok, so far so good. Let's move on to type-checking a more complex function.
 In the last section, we used standard Prolog horn-clauses (augmented with Rust's
 notion of type equality) to type-check some simple Rust functions. But that only
 works when we are type-checking non-generic functions. If we want to type-check
-a generic function, it turns out we need a stronger notion of goal than Prolog
-can be provide. To see what I'm talking about, let's revamp our previous
+a generic function, it turns out we need a stronger notion of goal than what Prolog
+can provide. To see what I'm talking about, let's revamp our previous
 example to make `foo` generic:
 
 ```rust,ignore
