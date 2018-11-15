@@ -8,16 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(flt2dec)]
-#![feature(test)]
-
-extern crate core;
-extern crate test;
-
-mod any;
-mod char;
-mod hash;
-mod iter;
-mod num;
-mod ops;
-mod slice;
+mod methods;
