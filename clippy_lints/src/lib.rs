@@ -96,6 +96,7 @@ pub mod blacklisted_name;
 pub mod block_in_if_condition;
 pub mod booleans;
 pub mod bytecount;
+pub mod cargo_common_metadata;
 pub mod collapsible_if;
 pub mod const_static_lifetime;
 pub mod copies;
@@ -444,6 +445,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     reg.register_late_lint_pass(box double_comparison::Pass);
     reg.register_late_lint_pass(box question_mark::Pass);
     reg.register_late_lint_pass(box suspicious_trait_impl::SuspiciousImpl);
+    reg.register_early_lint_pass(box cargo_common_metadata::Pass);
     reg.register_early_lint_pass(box multiple_crate_versions::Pass);
     reg.register_early_lint_pass(box wildcard_dependencies::Pass);
     reg.register_late_lint_pass(box map_unit_fn::Pass);
@@ -985,6 +987,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
     ]);
 
     reg.register_lint_group("clippy::cargo", Some("clippy_cargo"), vec![
+        cargo_common_metadata::CARGO_COMMON_METADATA,
         multiple_crate_versions::MULTIPLE_CRATE_VERSIONS,
         wildcard_dependencies::WILDCARD_DEPENDENCIES,
     ]);
