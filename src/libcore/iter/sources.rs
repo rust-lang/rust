@@ -444,7 +444,7 @@ pub fn unfold<St, T, F>(initial_state: St, f: F) -> Unfold<St, F>
 /// See its documentation for more.
 ///
 /// [`unfold`]: fn.unfold.html
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 #[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
 pub struct Unfold<St, F> {
     state: St,
@@ -460,5 +460,14 @@ impl<St, T, F> Iterator for Unfold<St, F>
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         (self.f)(&mut self.state)
+    }
+}
+
+#[unstable(feature = "iter_unfold", issue = /* FIXME */ "0")]
+impl<St: fmt::Debug, F> fmt::Debug for Unfold<St, F> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_struct("Unfold")
+            .field("state", &self.state)
+            .finish()
     }
 }
