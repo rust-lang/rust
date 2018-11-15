@@ -320,15 +320,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     /// this machine use the same pointer tag, so it is indirected through
     /// `M::static_with_default_tag`.
     fn get_static_alloc(
-        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         id: AllocId,
+        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        memory_extra: &M::MemoryExtra,
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<M::PointerTag, M::AllocExtra>>> {
         let alloc = tcx.alloc_map.lock().get(id);
         let def_id = match alloc {
             Some(AllocType::Memory(mem)) => {
                 // We got tcx memory. Let the machine figure out whether and how to
                 // turn that into memory with the right pointer tag.
-                return Ok(M::adjust_static_allocation(mem))
+                return Ok(M::adjust_static_allocation(mem, memory_extra))
             }
             Some(AllocType::Function(..)) => {
                 return err!(DerefFunctionPointer)
@@ -342,7 +343,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // We got a "lazy" static that has not been computed yet, do some work
         trace!("static_alloc: Need to compute {:?}", def_id);
         if tcx.is_foreign_item(def_id) {
-            return M::find_foreign_static(tcx, def_id);
+            return M::find_foreign_static(def_id, tcx, memory_extra);
         }
         let instance = Instance::mono(tcx.tcx, def_id);
         let gid = GlobalId {
@@ -362,7 +363,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             let allocation = tcx.alloc_map.lock().unwrap_memory(raw_const.alloc_id);
             // We got tcx memory. Let the machine figure out whether and how to
             // turn that into memory with the right pointer tag.
-            M::adjust_static_allocation(allocation)
+            M::adjust_static_allocation(allocation, memory_extra)
         })
     }
 
@@ -372,7 +373,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         // `get_static_alloc` that we can actually use directly without inserting anything anywhere.
         // So the error type is `EvalResult<'tcx, &Allocation<M::PointerTag>>`.
         let a = self.alloc_map.get_or(id, || {
-            let alloc = Self::get_static_alloc(self.tcx, id).map_err(Err)?;
+            let alloc = Self::get_static_alloc(id, self.tcx, &self.extra).map_err(Err)?;
             match alloc {
                 Cow::Borrowed(alloc) => {
                     // We got a ref, cheaply return that as an "error" so that the
@@ -401,10 +402,11 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         id: AllocId,
     ) -> EvalResult<'tcx, &mut Allocation<M::PointerTag, M::AllocExtra>> {
         let tcx = self.tcx;
+        let memory_extra = &self.extra;
         let a = self.alloc_map.get_mut_or(id, || {
             // Need to make a copy, even if `get_static_alloc` is able
             // to give us a cheap reference.
-            let alloc = Self::get_static_alloc(tcx, id)?;
+            let alloc = Self::get_static_alloc(id, tcx, memory_extra)?;
             if alloc.mutability == Mutability::Immutable {
                 return err!(ModifiedConstantMemory);
             }

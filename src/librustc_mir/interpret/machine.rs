@@ -140,8 +140,9 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// the machine memory. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
     fn find_foreign_static(
-        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         def_id: DefId,
+        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        memory_extra: &Self::MemoryExtra,
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag, Self::AllocExtra>>>;
 
     /// Called to turn an allocation obtained from the `tcx` into one that has
@@ -151,9 +152,10 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// allocation (because a copy had to be done to add tags or metadata), machine memory will
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
-    fn adjust_static_allocation(
-        alloc: &'_ Allocation
-    ) -> Cow<'_, Allocation<Self::PointerTag, Self::AllocExtra>>;
+    fn adjust_static_allocation<'b>(
+        alloc: &'b Allocation,
+        memory_extra: &Self::MemoryExtra,
+    ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>;
 
     /// Called for all binary operations on integer(-like) types when one operand is a pointer
     /// value, and for the `Offset` operation that is inherently about pointers.

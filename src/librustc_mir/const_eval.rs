@@ -433,16 +433,18 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     }
 
     fn find_foreign_static(
-        _tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         _def_id: DefId,
+        _tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        _memory_extra: &(),
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag>>> {
         err!(ReadForeignStatic)
     }
 
     #[inline(always)]
-    fn adjust_static_allocation(
-        alloc: &'_ Allocation
-    ) -> Cow<'_, Allocation<Self::PointerTag>> {
+    fn adjust_static_allocation<'b>(
+        alloc: &'b Allocation,
+        _memory_extra: &(),
+    ) -> Cow<'b, Allocation<Self::PointerTag>> {
         // We do not use a tag so we can just cheaply forward the reference
         Cow::Borrowed(alloc)
     }
