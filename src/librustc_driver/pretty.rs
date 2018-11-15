@@ -425,7 +425,7 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
             pprust_hir::AnnNode::Item(item) => {
                 s.s.space()?;
                 s.synth_comment(format!("node_id: {} hir local_id: {}",
-                                        item.id, item.hir_id.local_id.0))
+                                        item.id, item.hir_id.local_id.as_u32()))
             }
             pprust_hir::AnnNode::SubItem(id) => {
                 s.s.space()?;
@@ -434,18 +434,18 @@ impl<'hir> pprust_hir::PpAnn for IdentifiedAnnotation<'hir> {
             pprust_hir::AnnNode::Block(blk) => {
                 s.s.space()?;
                 s.synth_comment(format!("block node_id: {} hir local_id: {}",
-                                        blk.id, blk.hir_id.local_id.0))
+                                        blk.id, blk.hir_id.local_id.as_u32()))
             }
             pprust_hir::AnnNode::Expr(expr) => {
                 s.s.space()?;
                 s.synth_comment(format!("node_id: {} hir local_id: {}",
-                                        expr.id, expr.hir_id.local_id.0))?;
+                                        expr.id, expr.hir_id.local_id.as_u32()))?;
                 s.pclose()
             }
             pprust_hir::AnnNode::Pat(pat) => {
                 s.s.space()?;
                 s.synth_comment(format!("pat node_id: {} hir local_id: {}",
-                                        pat.id, pat.hir_id.local_id.0))
+                                        pat.id, pat.hir_id.local_id.as_u32()))
             }
         }
     }
@@ -566,7 +566,7 @@ impl FromStr for UserIdentifiedItem {
     type Err = ();
     fn from_str(s: &str) -> Result<UserIdentifiedItem, ()> {
         Ok(s.parse()
-            .map(ast::NodeId::new)
+            .map(ast::NodeId::from_u32)
             .map(ItemViaNode)
             .unwrap_or_else(|_| ItemViaPath(s.split("::").map(|s| s.to_string()).collect())))
     }

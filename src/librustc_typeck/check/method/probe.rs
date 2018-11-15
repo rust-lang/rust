@@ -1440,7 +1440,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     ///
     /// 1. Because the numbers of the region variables would otherwise be fairly unique to this
     ///    particular method call, it winds up creating fewer types overall, which helps for memory
-    ///    usage. (Admittedly, this is a rather small effect, though measureable.)
+    ///    usage. (Admittedly, this is a rather small effect, though measurable.)
     ///
     /// 2. It makes it easier to deal with higher-ranked trait bounds, because we can replace any
     ///    late-bound regions with 'static. Otherwise, if we were going to replace late-bound

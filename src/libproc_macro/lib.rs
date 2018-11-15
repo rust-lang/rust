@@ -535,7 +535,7 @@ impl TokenTree {
     }
 }
 
-/// Prints token treee in a form convenient for debugging.
+/// Prints token tree in a form convenient for debugging.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl fmt::Debug for TokenTree {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -730,7 +730,7 @@ impl fmt::Debug for Group {
 
 /// An `Punct` is an single punctuation character like `+`, `-` or `#`.
 ///
-/// Multicharacter operators like `+=` are represented as two instances of `Punct` with different
+/// Multi-character operators like `+=` are represented as two instances of `Punct` with different
 /// forms of `Spacing` returned.
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 #[derive(Clone)]
@@ -788,7 +788,7 @@ impl Punct {
 
     /// Returns the spacing of this punctuation character, indicating whether it's immediately
     /// followed by another `Punct` in the token stream, so they can potentially be combined into
-    /// a multicharacter operator (`Joint`), or it's followed by some other token or whitespace
+    /// a multi-character operator (`Joint`), or it's followed by some other token or whitespace
     /// (`Alone`) so the operator has certainly ended.
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn spacing(&self) -> Spacing {
@@ -947,7 +947,7 @@ macro_rules! suffixed_int_literals {
         /// This function will create an integer like `1u32` where the integer
         /// value specified is the first part of the token and the integral is
         /// also suffixed at the end.
-        /// Literals created from negative numbers may not survive rountrips through
+        /// Literals created from negative numbers may not survive round-trips through
         /// `TokenStream` or strings and may be broken into two tokens (`-` and positive literal).
         ///
         /// Literals created through this method have the `Span::call_site()`
@@ -1047,7 +1047,7 @@ impl Literal {
 
     /// Creates a new suffixed floating-point literal.
     ///
-    /// This consturctor will create a literal like `1.0f32` where the value
+    /// This constructor will create a literal like `1.0f32` where the value
     /// specified is the preceding part of the token and `f32` is the suffix of
     /// the token. This token will always be inferred to be an `f32` in the
     /// compiler.
@@ -1096,7 +1096,7 @@ impl Literal {
 
     /// Creates a new suffixed floating-point literal.
     ///
-    /// This consturctor will create a literal like `1.0f64` where the value
+    /// This constructor will create a literal like `1.0f64` where the value
     /// specified is the preceding part of the token and `f64` is the suffix of
     /// the token. This token will always be inferred to be an `f64` in the
     /// compiler.

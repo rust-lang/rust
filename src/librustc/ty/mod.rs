@@ -2130,7 +2130,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> GenericPredicates<'gcx> {
+    pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Lrc<GenericPredicates<'gcx>> {
         tcx.predicates_of(self.did)
     }
 
@@ -2373,8 +2373,8 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     def_id: sized_trait,
                     substs: tcx.mk_substs_trait(ty, &[])
                 }).to_predicate();
-                let predicates = tcx.predicates_of(self.did).predicates;
-                if predicates.into_iter().any(|(p, _)| p == sized_predicate) {
+                let predicates = &tcx.predicates_of(self.did).predicates;
+                if predicates.iter().any(|(p, _)| *p == sized_predicate) {
                     vec![]
                 } else {
                     vec![ty]
@@ -2400,7 +2400,7 @@ impl<'a, 'gcx, 'tcx> FieldDef {
 
 /// Represents the various closure traits in the Rust language. This
 /// will determine the type of the environment (`self`, in the
-/// desuaring) argument that the closure expects.
+/// desugaring) argument that the closure expects.
 ///
 /// You can get the environment type of a closure using
 /// `tcx.closure_env_ty()`.

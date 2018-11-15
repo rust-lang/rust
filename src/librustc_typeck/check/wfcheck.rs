@@ -910,8 +910,8 @@ fn check_false_global_bounds<'a, 'gcx, 'tcx>(
 
     let def_id = fcx.tcx.hir.local_def_id(id);
     let predicates = fcx.tcx.predicates_of(def_id).predicates
-        .into_iter()
-        .map(|(p, _)| p)
+        .iter()
+        .map(|(p, _)| *p)
         .collect();
     // Check elaborated bounds
     let implied_obligations = traits::elaborate_predicates(fcx.tcx, predicates);

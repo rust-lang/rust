@@ -49,7 +49,6 @@ use hir::map::{self, Map};
 use super::itemlikevisit::DeepVisitor;
 
 use std::cmp;
-use std::u32;
 
 #[derive(Copy, Clone)]
 pub enum FnKind<'a> {
@@ -1152,8 +1151,8 @@ pub struct IdRange {
 impl IdRange {
     pub fn max() -> IdRange {
         IdRange {
-            min: NodeId::from_u32(u32::MAX),
-            max: NodeId::from_u32(u32::MIN),
+            min: NodeId::MAX,
+            max: NodeId::from_u32(0),
         }
     }
 

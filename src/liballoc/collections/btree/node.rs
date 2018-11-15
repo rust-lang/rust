@@ -69,7 +69,7 @@ struct LeafNode<K, V> {
 
     /// This node's index into the parent node's `edges` array.
     /// `*node.parent.edges[node.parent_idx]` should be the same thing as `node`.
-    /// This is only guaranteed to be initialized when `parent` is nonnull.
+    /// This is only guaranteed to be initialized when `parent` is non-null.
     parent_idx: MaybeUninit<u16>,
 
     /// The number of keys and values this node stores.

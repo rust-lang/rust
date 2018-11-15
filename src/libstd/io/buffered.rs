@@ -525,6 +525,25 @@ impl<W: Write> BufWriter<W> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut W { self.inner.as_mut().unwrap() }
 
+    /// Returns a reference to the internally buffered data.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # #![feature(bufreader_buffer)]
+    /// use std::io::BufWriter;
+    /// use std::net::TcpStream;
+    ///
+    /// let buf_writer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    ///
+    /// // See how many bytes are currently buffered
+    /// let bytes_buffered = buf_writer.buffer().len();
+    /// ```
+    #[unstable(feature = "bufreader_buffer", issue = "45323")]
+    pub fn buffer(&self) -> &[u8] {
+        &self.buf
+    }
+
     /// Unwraps this `BufWriter`, returning the underlying writer.
     ///
     /// The buffer is written out before returning the writer.
@@ -965,31 +984,31 @@ mod tests {
         let mut buf = [0, 0, 0];
         let nread = reader.read(&mut buf);
         assert_eq!(nread.unwrap(), 3);
-        let b: &[_] = &[5, 6, 7];
-        assert_eq!(buf, b);
+        assert_eq!(buf, [5, 6, 7]);
+        assert_eq!(reader.buffer(), []);
 
         let mut buf = [0, 0];
         let nread = reader.read(&mut buf);
         assert_eq!(nread.unwrap(), 2);
-        let b: &[_] = &[0, 1];
-        assert_eq!(buf, b);
+        assert_eq!(buf, [0, 1]);
+        assert_eq!(reader.buffer(), []);
 
         let mut buf = [0];
         let nread = reader.read(&mut buf);
         assert_eq!(nread.unwrap(), 1);
-        let b: &[_] = &[2];
-        assert_eq!(buf, b);
+        assert_eq!(buf, [2]);
+        assert_eq!(reader.buffer(), [3]);
 
         let mut buf = [0, 0, 0];
         let nread = reader.read(&mut buf);
         assert_eq!(nread.unwrap(), 1);
-        let b: &[_] = &[3, 0, 0];
-        assert_eq!(buf, b);
+        assert_eq!(buf, [3, 0, 0]);
+        assert_eq!(reader.buffer(), []);
 
         let nread = reader.read(&mut buf);
         assert_eq!(nread.unwrap(), 1);
-        let b: &[_] = &[4, 0, 0];
-        assert_eq!(buf, b);
+        assert_eq!(buf, [4, 0, 0]);
+        assert_eq!(reader.buffer(), []);
 
         assert_eq!(reader.read(&mut buf).unwrap(), 0);
     }
@@ -1078,31 +1097,40 @@ mod tests {
         let mut writer = BufWriter::with_capacity(2, inner);
 
         writer.write(&[0, 1]).unwrap();
+        assert_eq!(writer.buffer(), []);
         assert_eq!(*writer.get_ref(), [0, 1]);
 
         writer.write(&[2]).unwrap();
+        assert_eq!(writer.buffer(), [2]);
         assert_eq!(*writer.get_ref(), [0, 1]);
 
         writer.write(&[3]).unwrap();
+        assert_eq!(writer.buffer(), [2, 3]);
         assert_eq!(*writer.get_ref(), [0, 1]);
 
         writer.flush().unwrap();
+        assert_eq!(writer.buffer(), []);
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3]);
 
         writer.write(&[4]).unwrap();
         writer.write(&[5]).unwrap();
+        assert_eq!(writer.buffer(), [4, 5]);
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3]);
 
         writer.write(&[6]).unwrap();
+        assert_eq!(writer.buffer(), [6]);
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5]);
 
         writer.write(&[7, 8]).unwrap();
+        assert_eq!(writer.buffer(), []);
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7, 8]);
 
         writer.write(&[9, 10, 11]).unwrap();
+        assert_eq!(writer.buffer(), []);
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 
         writer.flush().unwrap();
+        assert_eq!(writer.buffer(), []);
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     }
 

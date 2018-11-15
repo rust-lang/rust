@@ -1287,7 +1287,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 /// Type size "skeleton", i.e. the only information determining a type's size.
 /// While this is conservative, (aside from constant sizes, only pointers,
 /// newtypes thereof and null pointer optimized enums are allowed), it is
-/// enough to statically check common usecases of transmute.
+/// enough to statically check common use cases of transmute.
 #[derive(Copy, Clone, Debug)]
 pub enum SizeSkeleton<'tcx> {
     /// Any statically computable Layout.

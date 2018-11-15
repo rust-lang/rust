@@ -672,6 +672,9 @@ extern "rust-intrinsic" {
     ///
     /// More specifically, this is the offset in bytes between successive
     /// items of the same type, including alignment padding.
+    ///
+    /// The stabilized version of this intrinsic is
+    /// [`std::mem::size_of`](../../std/mem/fn.size_of.html).
     pub fn size_of<T>() -> usize;
 
     /// Moves a value to an uninitialized memory location.
@@ -713,6 +716,10 @@ extern "rust-intrinsic" {
     /// undropped. In the general case one must use `ptr::write` to
     /// initialize memory previous set to the result of `uninit`.
     pub fn uninit<T>() -> T;
+
+    /// Moves a value out of scope without running drop glue.
+    #[cfg(not(stage0))]
+    pub fn forget<T: ?Sized>(_: T);
 
     /// Reinterprets the bits of a value of one type as another type.
     ///

@@ -396,12 +396,12 @@ impl EarlyLintPass for UnusedParens {
         self.check_unused_parens_expr(cx, &value, msg, followed_by_block);
     }
 
-    fn check_pat(&mut self, cx: &EarlyContext, p: &ast::Pat) {
+    fn check_pat(&mut self, cx: &EarlyContext, p: &ast::Pat, _: &mut bool) {
         use ast::PatKind::{Paren, Range};
         // The lint visitor will visit each subpattern of `p`. We do not want to lint any range
         // pattern no matter where it occurs in the pattern. For something like `&(a..=b)`, there
         // is a recursive `check_pat` on `a` and `b`, but we will assume that if there are
-        // unnecessry parens they serve a purpose of readability.
+        // unnecessary parens they serve a purpose of readability.
         if let Paren(ref pat) = p.node {
             match pat.node {
                 Range(..) => {}

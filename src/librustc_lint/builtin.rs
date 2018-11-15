@@ -40,6 +40,8 @@ use rustc::util::nodemap::FxHashSet;
 
 use syntax::tokenstream::{TokenTree, TokenStream};
 use syntax::ast;
+use syntax::ptr::P;
+use syntax::ast::Expr;
 use syntax::attr;
 use syntax::source_map::Spanned;
 use syntax::edition::Edition;
@@ -47,6 +49,7 @@ use syntax::feature_gate::{AttributeGate, AttributeType, Stability, deprecated_a
 use syntax_pos::{BytePos, Span, SyntaxContext};
 use syntax::symbol::keywords;
 use syntax::errors::{Applicability, DiagnosticBuilder};
+use syntax::print::pprust::expr_to_string;
 
 use rustc::hir::{self, GenericParamKind, PatKind};
 use rustc::hir::intravisit::FnKind;
@@ -1407,21 +1410,48 @@ impl LintPass for EllipsisInclusiveRangePatterns {
 }
 
 impl EarlyLintPass for EllipsisInclusiveRangePatterns {
-    fn check_pat(&mut self, cx: &EarlyContext, pat: &ast::Pat) {
-        use self::ast::{PatKind, RangeEnd, RangeSyntax};
+    fn check_pat(&mut self, cx: &EarlyContext, pat: &ast::Pat, visit_subpats: &mut bool) {
+        use self::ast::{PatKind, RangeEnd, RangeSyntax::DotDotDot};
 
-        if let PatKind::Range(
-            _, _, Spanned { span, node: RangeEnd::Included(RangeSyntax::DotDotDot) }
-        ) = pat.node {
+        /// If `pat` is a `...` pattern, return the start and end of the range, as well as the span
+        /// corresponding to the ellipsis.
+        fn matches_ellipsis_pat(pat: &ast::Pat) -> Option<(&P<Expr>, &P<Expr>, Span)> {
+            match &pat.node {
+                PatKind::Range(a, b, Spanned { span, node: RangeEnd::Included(DotDotDot), .. }) => {
+                    Some((a, b, *span))
+                }
+                _ => None,
+            }
+        }
+
+        let (parenthesise, endpoints) = match &pat.node {
+            PatKind::Ref(subpat, _) => (true, matches_ellipsis_pat(&subpat)),
+            _ => (false, matches_ellipsis_pat(pat)),
+        };
+
+        if let Some((start, end, join)) = endpoints {
             let msg = "`...` range patterns are deprecated";
-            let mut err = cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, span, msg);
-            err.span_suggestion_short_with_applicability(
-                span, "use `..=` for an inclusive range", "..=".to_owned(),
-                // FIXME: outstanding problem with precedence in ref patterns:
-                // https://github.com/rust-lang/rust/issues/51043#issuecomment-392252285
-                Applicability::MaybeIncorrect
-            );
-            err.emit()
+            let suggestion = "use `..=` for an inclusive range";
+            if parenthesise {
+                *visit_subpats = false;
+                let mut err = cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, pat.span, msg);
+                err.span_suggestion_with_applicability(
+                    pat.span,
+                    suggestion,
+                    format!("&({}..={})", expr_to_string(&start), expr_to_string(&end)),
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+            } else {
+                let mut err = cx.struct_span_lint(ELLIPSIS_INCLUSIVE_RANGE_PATTERNS, join, msg);
+                err.span_suggestion_short_with_applicability(
+                    join,
+                    suggestion,
+                    "..=".to_owned(),
+                    Applicability::MachineApplicable,
+                );
+                err.emit();
+            };
         }
     }
 }
@@ -1486,7 +1516,7 @@ declare_lint! {
     "detects edition keywords being used as an identifier"
 }
 
-/// Checks for uses of edtion keywords used as an identifier
+/// Checks for uses of edition keywords used as an identifier
 #[derive(Clone)]
 pub struct KeywordIdents;
 

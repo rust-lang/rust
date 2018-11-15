@@ -143,6 +143,19 @@ pub fn forget<T>(t: T) {
     ManuallyDrop::new(t);
 }
 
+/// Like [`forget`], but also accepts unsized values.
+///
+/// This function is just a shim intended to be removed when the `unsized_locals` feature gets
+/// stabilized.
+///
+/// [`forget`]: fn.forget.html
+#[inline]
+#[cfg(not(stage0))]
+#[unstable(feature = "forget_unsized", issue = "0")]
+pub fn forget_unsized<T: ?Sized>(t: T) {
+    unsafe { intrinsics::forget(t) }
+}
+
 /// Returns the size of a type in bytes.
 ///
 /// More specifically, this is the offset in bytes between successive elements

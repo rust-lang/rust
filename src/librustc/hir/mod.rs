@@ -27,7 +27,7 @@ use syntax_pos::{Span, DUMMY_SP, symbol::InternedString};
 use syntax::source_map::{self, Spanned};
 use rustc_target::spec::abi::Abi;
 use syntax::ast::{self, CrateSugar, Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
-use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
+use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy};
 use syntax::attr::InlineAttr;
 use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
@@ -37,7 +37,6 @@ use syntax::util::parser::ExprPrecedence;
 use ty::AdtKind;
 use ty::query::Providers;
 
-use rustc_data_structures::indexed_vec;
 use rustc_data_structures::sync::{ParallelIterator, par_iter, Send, Sync, scope};
 use rustc_data_structures::thin_vec::ThinVec;
 
@@ -58,7 +57,6 @@ macro_rules! hir_vec {
     ($($x:expr),*) => (
         $crate::hir::HirVec::from(vec![$($x),*])
     );
-    ($($x:expr,)*) => (hir_vec![$($x),*])
 }
 
 pub mod check_attr;
@@ -121,40 +119,28 @@ impl serialize::UseSpecializedDecodable for HirId {
     }
 }
 
-
-/// An `ItemLocalId` uniquely identifies something within a given "item-like",
-/// that is within a hir::Item, hir::TraitItem, or hir::ImplItem. There is no
-/// guarantee that the numerical value of a given `ItemLocalId` corresponds to
-/// the node's position within the owning item in any way, but there is a
-/// guarantee that the `LocalItemId`s within an owner occupy a dense range of
-/// integers starting at zero, so a mapping that maps all or most nodes within
-/// an "item-like" to something else can be implement by a `Vec` instead of a
-/// tree or hash map.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug,
-         RustcEncodable, RustcDecodable)]
-pub struct ItemLocalId(pub u32);
-
-impl ItemLocalId {
-    pub fn as_usize(&self) -> usize {
-        self.0 as usize
+// hack to ensure that we don't try to access the private parts of `ItemLocalId` in this module
+mod item_local_id_inner {
+    use rustc_data_structures::indexed_vec::Idx;
+    /// An `ItemLocalId` uniquely identifies something within a given "item-like",
+    /// that is within a hir::Item, hir::TraitItem, or hir::ImplItem. There is no
+    /// guarantee that the numerical value of a given `ItemLocalId` corresponds to
+    /// the node's position within the owning item in any way, but there is a
+    /// guarantee that the `LocalItemId`s within an owner occupy a dense range of
+    /// integers starting at zero, so a mapping that maps all or most nodes within
+    /// an "item-like" to something else can be implement by a `Vec` instead of a
+    /// tree or hash map.
+    newtype_index! {
+        pub struct ItemLocalId { .. }
     }
 }
 
-impl indexed_vec::Idx for ItemLocalId {
-    fn new(idx: usize) -> Self {
-        debug_assert!((idx as u32) as usize == idx);
-        ItemLocalId(idx as u32)
-    }
-
-    fn index(self) -> usize {
-        self.0 as usize
-    }
-}
+pub use self::item_local_id_inner::ItemLocalId;
 
 /// The `HirId` corresponding to CRATE_NODE_ID and CRATE_DEF_INDEX
 pub const CRATE_HIR_ID: HirId = HirId {
     owner: CRATE_DEF_INDEX,
-    local_id: ItemLocalId(0)
+    local_id: ItemLocalId::from_u32_const(0)
 };
 
 pub const DUMMY_HIR_ID: HirId = HirId {
@@ -162,7 +148,7 @@ pub const DUMMY_HIR_ID: HirId = HirId {
     local_id: DUMMY_ITEM_LOCAL_ID,
 };
 
-pub const DUMMY_ITEM_LOCAL_ID: ItemLocalId = ItemLocalId(!0);
+pub const DUMMY_ITEM_LOCAL_ID: ItemLocalId = ItemLocalId::MAX;
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Copy)]
 pub struct Label {
@@ -331,7 +317,7 @@ impl Path {
 
 impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "path({})", print::to_string(print::NO_ANN, |s| s.print_path(self, false)))
+        write!(f, "path({})", self)
     }
 }
 
@@ -697,8 +683,6 @@ pub struct WhereEqPredicate {
     pub lhs_ty: P<Ty>,
     pub rhs_ty: P<Ty>,
 }
-
-pub type CrateConfig = HirVec<P<MetaItem>>;
 
 /// The top-level data structure that stores the entire contents of
 /// the crate currently being compiled.
@@ -1196,8 +1180,8 @@ impl StmtKind {
 
     pub fn id(&self) -> NodeId {
         match *self {
-            StmtKind::Decl(_, id) => id,
-            StmtKind::Expr(_, id) => id,
+            StmtKind::Decl(_, id) |
+            StmtKind::Expr(_, id) |
             StmtKind::Semi(_, id) => id,
         }
     }

@@ -961,7 +961,7 @@ span.since {
 		padding-top: 0px;
 	}
 
-	body > .sidebar {
+	.rustdoc > .sidebar {
 		height: 45px;
 		min-height: 40px;
 		margin: 0;

@@ -233,7 +233,7 @@ pub use self::local::{LocalKey, AccessError};
 ///
 /// You may want to use [`spawn`] instead of [`thread::spawn`], when you want
 /// to recover from a failure to launch a thread, indeed the free function will
-/// panick where the `Builder` method will return a [`io::Result`].
+/// panic where the `Builder` method will return a [`io::Result`].
 ///
 /// # Examples
 ///

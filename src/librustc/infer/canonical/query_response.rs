@@ -556,7 +556,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     }
 
     /// Given two sets of values for the same set of canonical variables, unify them.
-    /// The second set is produced lazilly by supplying indices from the first set.
+    /// The second set is produced lazily by supplying indices from the first set.
     fn unify_canonical_vars(
         &self,
         cause: &ObligationCause<'tcx>,

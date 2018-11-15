@@ -106,6 +106,7 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(unboxed_closures)]
+#![feature(unsized_locals)]
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(doc_alias)]

@@ -393,7 +393,7 @@ impl Session {
 
         match id.as_usize().checked_add(count) {
             Some(next) => {
-                self.next_node_id.set(ast::NodeId::new(next));
+                self.next_node_id.set(ast::NodeId::from_usize(next));
             }
             None => bug!("Input too large, ran out of node ids!"),
         }
@@ -1160,7 +1160,7 @@ pub fn build_session_(
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
         const_eval_stack_frame_limit: 100,
-        next_node_id: OneThread::new(Cell::new(NodeId::new(1))),
+        next_node_id: OneThread::new(Cell::new(NodeId::from_u32(1))),
         allocator_kind: Once::new(),
         injected_panic_runtime: Once::new(),
         imported_macro_spans: OneThread::new(RefCell::new(FxHashMap::default())),

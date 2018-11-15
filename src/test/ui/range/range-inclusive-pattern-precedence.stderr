@@ -11,10 +11,10 @@ LL |         box 10..=15 => {}
    |             ^^^^^^^ help: add parentheses to clarify the precedence: `(10 ..=15)`
 
 warning: `...` range patterns are deprecated
-  --> $DIR/range-inclusive-pattern-precedence.rs:24:11
+  --> $DIR/range-inclusive-pattern-precedence.rs:24:9
    |
 LL |         &0...9 => {}
-   |           ^^^ help: use `..=` for an inclusive range
+   |         ^^^^^^ help: use `..=` for an inclusive range: `&(0..=9)`
    |
 note: lint level defined here
   --> $DIR/range-inclusive-pattern-precedence.rs:19:9

@@ -588,7 +588,7 @@ impl<'a> LoweringContext<'a> {
             *local_id_counter += 1;
             hir::HirId {
                 owner: def_index,
-                local_id: hir::ItemLocalId(local_id),
+                local_id: hir::ItemLocalId::from_u32(local_id),
             }
         })
     }
@@ -616,7 +616,7 @@ impl<'a> LoweringContext<'a> {
 
             hir::HirId {
                 owner: def_index,
-                local_id: hir::ItemLocalId(local_id),
+                local_id: hir::ItemLocalId::from_u32(local_id),
             }
         })
     }
