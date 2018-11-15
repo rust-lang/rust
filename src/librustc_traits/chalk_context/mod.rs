@@ -26,6 +26,7 @@ use rustc::infer::canonical::{
     CanonicalVarValues,
     OriginalQueryValues,
     QueryResponse,
+    Certainty,
 };
 use rustc::traits::{
     DomainGoal,
@@ -132,9 +133,34 @@ impl context::AggregateOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
     fn make_solution(
         &self,
         _root_goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
-        _simplified_answers: impl context::AnswerStream<ChalkArenas<'gcx>>,
+        mut simplified_answers: impl context::AnswerStream<ChalkArenas<'gcx>>,
     ) -> Option<Canonical<'gcx, QueryResponse<'gcx, ()>>> {
-        unimplemented!()
+        use chalk_engine::SimplifiedAnswer;
+
+        if simplified_answers.peek_answer().is_none() {
+            return None;
+        }
+
+        let SimplifiedAnswer { subst, ambiguous } = simplified_answers
+            .next_answer()
+            .unwrap();
+
+        let ambiguous = simplified_answers.peek_answer().is_some() || ambiguous;
+
+        Some(subst.unchecked_map(|subst| {
+            QueryResponse {
+                var_values: subst.subst,
+                region_constraints: subst.constraints
+                    .into_iter()
+                    .map(|c| ty::Binder::bind(c))
+                    .collect(),
+                certainty: match ambiguous {
+                    true => Certainty::Ambiguous,
+                    false => Certainty::Proven,
+                },
+                value: (),
+            }
+        }))
     }
 }
 
