@@ -679,7 +679,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 mir::ClearCrossCrate::Set(ref ivs) => Some(ivs[source_info.scope].lint_root),
                 mir::ClearCrossCrate::Clear => None,
             };
-            frames.push(FrameInfo { span, instance, lint_root });
+            frames.push(FrameInfo { call_site: span, instance, lint_root });
         }
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
         frames

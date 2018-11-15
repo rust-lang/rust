@@ -57,7 +57,7 @@ pub struct ConstEvalErr<'tcx> {
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub struct FrameInfo<'tcx> {
-    pub span: Span,
+    pub call_site: Span, // this span is in the caller!
     pub instance: ty::Instance<'tcx>,
     pub lint_root: Option<ast::NodeId>,
 }
@@ -72,8 +72,8 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             } else {
                 write!(f, "inside call to `{}`", self.instance)?;
             }
-            if !self.span.is_dummy() {
-                let lo = tcx.sess.source_map().lookup_char_pos_adj(self.span.lo());
+            if !self.call_site.is_dummy() {
+                let lo = tcx.sess.source_map().lookup_char_pos_adj(self.call_site.lo());
                 write!(f, " at {}:{}:{}", lo.filename, lo.line, lo.col.to_usize() + 1)?;
             }
             Ok(())
@@ -159,7 +159,7 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
         // on constant values.
         if self.stacktrace.len() > 0 {
             for frame_info in &self.stacktrace[..self.stacktrace.len()-1] {
-                err.span_label(frame_info.span, frame_info.to_string());
+                err.span_label(frame_info.call_site, frame_info.to_string());
             }
         }
         Ok(err)

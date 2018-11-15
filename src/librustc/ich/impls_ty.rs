@@ -388,7 +388,7 @@ impl_stable_hash_for!(enum mir::interpret::ErrorHandled {
 });
 
 impl_stable_hash_for!(struct mir::interpret::FrameInfo<'tcx> {
-    span,
+    call_site,
     lint_root,
     instance
 });
