@@ -241,7 +241,7 @@ impl EarlyLintPass for MiscEarly {
         }
     }
 
-    fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat) {
+    fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat, _: &mut bool) {
         if let PatKind::Struct(ref npat, ref pfields, _) = pat.node {
             let mut wilds = 0;
             let type_name = npat.segments
