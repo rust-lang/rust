@@ -247,11 +247,19 @@ macro_rules! supported_targets {
                         // run-time that the parser works correctly
                         t = Target::from_json(t.to_json())?;
                         debug!("Got builtin target: {:?}", t);
-                        Ok(t)
+                        return Ok(t)
                     },
                 )+
-                _ => Err(format!("Unable to find target: {}", target))
+                _ => {},
             }
+            let mut triple: Vec<&str> = target.splitn(3, '-').collect();
+            if triple.len() >= 3 {
+                if triple[1] != "unknown" {
+                    triple[1] = "unknown";
+                    return load_specific(&triple.join("-"))
+                }
+            }
+            Err(format!("Unable to find target: {}", target))
         }
 
         pub fn get_targets() -> Box<dyn Iterator<Item=String>> {
