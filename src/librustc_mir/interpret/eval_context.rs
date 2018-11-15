@@ -49,7 +49,7 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
     pub(crate) memory: Memory<'a, 'mir, 'tcx, M>,
 
     /// The virtual call stack.
-    pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag>>,
+    pub(crate) stack: Vec<Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>>,
 
     /// A cache for deduplicating vtables
     pub(super) vtables: FxHashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), AllocId>,
@@ -57,7 +57,7 @@ pub struct EvalContext<'a, 'mir, 'tcx: 'a + 'mir, M: Machine<'a, 'mir, 'tcx>> {
 
 /// A stack frame.
 #[derive(Clone)]
-pub struct Frame<'mir, 'tcx: 'mir, Tag=()> {
+pub struct Frame<'mir, 'tcx: 'mir, Tag=(), Extra=()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Function and callsite information
     ////////////////////////////////////////////////////////////////////////////////
@@ -96,6 +96,9 @@ pub struct Frame<'mir, 'tcx: 'mir, Tag=()> {
 
     /// The index of the currently evaluated statement.
     pub stmt: usize,
+
+    /// Extra data for the machine
+    pub extra: Extra,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
@@ -196,7 +199,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     }
 
     #[inline(always)]
-    pub fn stack(&self) -> &[Frame<'mir, 'tcx, M::PointerTag>] {
+    pub fn stack(&self) -> &[Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>] {
         &self.stack
     }
 
@@ -207,12 +210,12 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
     }
 
     #[inline(always)]
-    pub fn frame(&self) -> &Frame<'mir, 'tcx, M::PointerTag> {
+    pub fn frame(&self) -> &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra> {
         self.stack.last().expect("no call frames exist")
     }
 
     #[inline(always)]
-    pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx, M::PointerTag> {
+    pub fn frame_mut(&mut self) -> &mut Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra> {
         self.stack.last_mut().expect("no call frames exist")
     }
 
@@ -294,7 +297,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
 
     pub fn layout_of_local(
         &self,
-        frame: &Frame<'mir, 'tcx, M::PointerTag>,
+        frame: &Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local
     ) -> EvalResult<'tcx, TyLayout<'tcx>> {
         let local_ty = frame.mir.local_decls[local].ty;
@@ -424,6 +427,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         ::log_settings::settings().indentation += 1;
 
         // first push a stack frame so we have access to the local substs
+        let extra = M::stack_push(self)?;
         self.stack.push(Frame {
             mir,
             block: mir::START_BLOCK,
@@ -435,6 +439,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             span,
             instance,
             stmt: 0,
+            extra,
         });
 
         // don't allocate at all for trivial constants
@@ -504,6 +509,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
         );
+        M::stack_pop(self, frame.extra)?;
         // Abort early if we do not want to clean up: We also avoid validation in that case,
         // because this is CTFE and the final value will be thoroughly validated anyway.
         match frame.return_to_block {

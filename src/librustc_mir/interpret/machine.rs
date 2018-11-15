@@ -77,6 +77,9 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// The `default()` is used for pointers to consts, statics, vtables and functions.
     type PointerTag: ::std::fmt::Debug + Default + Copy + Eq + Hash + 'static;
 
+    /// Extra data stored in every call frame.
+    type FrameExtra;
+
     /// Extra data stored in memory.  A reference to this is available when `AllocExtra`
     /// gets initialized, so you can e.g. have an `Rc` here if there is global state you
     /// need access to in the `AllocExtra` hooks.
@@ -213,4 +216,15 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     ) -> EvalResult<'tcx> {
         Ok(())
     }
+
+    /// Called immediately before a new stack frame got pushed
+    fn stack_push(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+    ) -> EvalResult<'tcx, Self::FrameExtra>;
+
+    /// Called immediately after a stack frame gets popped
+    fn stack_pop(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        extra: Self::FrameExtra,
+    ) -> EvalResult<'tcx>;
 }

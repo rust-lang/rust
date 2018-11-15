@@ -65,6 +65,7 @@ pub fn mk_borrowck_eval_cx<'a, 'mir, 'tcx>(
         return_place: None,
         return_to_block: StackPopCleanup::Goto(None), // never pop
         stmt: 0,
+        extra: (),
     });
     Ok(ecx)
 }
@@ -353,9 +354,11 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
     for CompileTimeInterpreter<'a, 'mir, 'tcx>
 {
     type MemoryKinds = !;
+    type PointerTag = ();
+
+    type FrameExtra = ();
     type MemoryExtra = ();
     type AllocExtra = ();
-    type PointerTag = ();
 
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation)>;
 
@@ -489,6 +492,22 @@ impl<'a, 'mir, 'tcx> interpret::Machine<'a, 'mir, 'tcx>
         _kind: MemoryKind<Self::MemoryKinds>,
     ) -> EvalResult<'tcx, Pointer> {
         Ok(ptr)
+    }
+
+    #[inline(always)]
+    fn stack_push(
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+    ) -> EvalResult<'tcx> {
+        Ok(())
+    }
+
+    /// Called immediately before a stack frame gets popped
+    #[inline(always)]
+    fn stack_pop(
+        _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        _extra: (),
+    ) -> EvalResult<'tcx> {
+        Ok(())
     }
 }
 

@@ -471,7 +471,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     /// When you know the layout of the local in advance, you can pass it as last argument
     pub fn access_local(
         &self,
-        frame: &super::Frame<'mir, 'tcx, M::PointerTag>,
+        frame: &super::Frame<'mir, 'tcx, M::PointerTag, M::FrameExtra>,
         local: mir::Local,
         layout: Option<TyLayout<'tcx>>,
     ) -> EvalResult<'tcx, OpTy<'tcx, M::PointerTag>> {
