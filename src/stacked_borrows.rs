@@ -1,4 +1,6 @@
 use std::cell::RefCell;
+use std::collections::HashSet;
+use std::rc::Rc;
 
 use rustc::ty::{self, layout::Size};
 use rustc::hir::{Mutability, MutMutable, MutImmutable};
@@ -10,6 +12,7 @@ use crate::{
 };
 
 pub type Timestamp = u64;
+pub type CallId = u64;
 
 /// Information about which kind of borrow was used to create the reference this is tagged
 /// with.
@@ -80,15 +83,6 @@ pub struct Stack {
     frozen_since: Option<Timestamp>, // virtual frozen "item" on top of the stack
 }
 
-impl Default for Stack {
-    fn default() -> Self {
-        Stack {
-            borrows: vec![BorStackItem::Shr],
-            frozen_since: None,
-        }
-    }
-}
-
 impl Stack {
     #[inline(always)]
     pub fn is_frozen(&self) -> bool {
@@ -107,17 +101,50 @@ pub enum RefKind {
     Raw,
 }
 
+/// Extra global state in the memory, available to the memory access hooks
+#[derive(Debug)]
+pub struct BarrierTracking {
+    next_id: CallId,
+    active_calls: HashSet<CallId>,
+}
+pub type MemoryState = Rc<RefCell<BarrierTracking>>;
+
+impl Default for BarrierTracking {
+    fn default() -> Self {
+        BarrierTracking {
+            next_id: 0,
+            active_calls: HashSet::default(),
+        }
+    }
+}
+
+impl BarrierTracking {
+    pub fn new_call(&mut self) -> CallId {
+        let id = self.next_id;
+        trace!("new_call: Assigning ID {}", id);
+        self.active_calls.insert(id);
+        self.next_id += 1;
+        id
+    }
+
+    pub fn end_call(&mut self, id: CallId) {
+        assert!(self.active_calls.remove(&id));
+    }
+}
+
 /// Extra global machine state
 #[derive(Clone, Debug)]
 pub struct State {
     clock: Timestamp
 }
 
-impl State {
-    pub fn new() -> State {
+impl Default for State {
+    fn default() -> Self {
         State { clock: 0 }
     }
+}
 
+impl State {
     fn increment_clock(&mut self) -> Timestamp {
         let val = self.clock;
         self.clock = val + 1;
@@ -130,6 +157,7 @@ impl State {
 pub struct Stacks {
     // Even reading memory can have effects on the stack, so we need a `RefCell` here.
     stacks: RefCell<RangeMap<Stack>>,
+    barrier_tracking: MemoryState,
 }
 
 /// Core per-location operations: deref, access, create.
@@ -358,11 +386,16 @@ impl<'tcx> Stacks {
 }
 
 /// Hooks and glue
-impl AllocationExtra<Borrow, ()> for Stacks {
+impl AllocationExtra<Borrow, MemoryState> for Stacks {
     #[inline(always)]
-    fn memory_allocated<'tcx>(size: Size, _extra: &()) -> Self {
+    fn memory_allocated<'tcx>(size: Size, extra: &MemoryState) -> Self {
+        let stack = Stack {
+            borrows: vec![BorStackItem::Shr],
+            frozen_since: None,
+        };
         Stacks {
-            stacks: RefCell::new(RangeMap::new(size, Stack::default()))
+            stacks: RefCell::new(RangeMap::new(size, stack)),
+            barrier_tracking: Rc::clone(extra),
         }
     }
 

@@ -289,7 +289,7 @@ impl<'tcx> Evaluator<'tcx> {
             env_vars: HashMap::default(),
             tls: TlsData::default(),
             validate,
-            stacked_borrows: stacked_borrows::State::new(),
+            stacked_borrows: stacked_borrows::State::default(),
         }
     }
 }
@@ -301,7 +301,8 @@ type MiriEvalContext<'a, 'mir, 'tcx> = EvalContext<'a, 'mir, 'tcx, Evaluator<'tc
 impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     type MemoryKinds = MiriMemoryKind;
 
-    type MemoryExtra = ();
+    type FrameExtra = stacked_borrows::CallId;
+    type MemoryExtra = stacked_borrows::MemoryState;
     type AllocExtra = stacked_borrows::Stacks;
     type PointerTag = Borrow;
 
@@ -537,5 +538,20 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         } else {
             ecx.retag(fn_entry, place)
         }
+    }
+
+    #[inline(always)]
+    fn stack_push(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+    ) -> EvalResult<'tcx, stacked_borrows::CallId> {
+        Ok(ecx.memory().extra.borrow_mut().new_call())
+    }
+
+    #[inline(always)]
+    fn stack_pop(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        extra: stacked_borrows::CallId,
+    ) -> EvalResult<'tcx> {
+        Ok(ecx.memory().extra.borrow_mut().end_call(extra))
     }
 }
