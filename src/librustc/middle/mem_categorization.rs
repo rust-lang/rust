@@ -818,7 +818,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let closure_expr_def_id = self.tcx.hir.local_def_id(fn_node_id);
         let var_hir_id = self.tcx.hir.node_to_hir_id(var_id);
         let upvar_id = ty::UpvarId {
-            var_id: var_hir_id,
+            var_path: ty::UpvarPath { hir_id: var_hir_id },
             closure_expr_id: closure_expr_def_id.to_local(),
         };
 

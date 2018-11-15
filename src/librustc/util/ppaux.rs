@@ -678,8 +678,8 @@ impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
 impl fmt::Debug for ty::UpvarId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "UpvarId({:?};`{}`;{:?})",
-               self.var_id,
-               ty::tls::with(|tcx| tcx.hir.name(tcx.hir.hir_to_node_id(self.var_id))),
+               self.var_path.hir_id,
+               ty::tls::with(|tcx| tcx.hir.name(tcx.hir.hir_to_node_id(self.var_path.hir_id))),
                self.closure_expr_id)
     }
 }

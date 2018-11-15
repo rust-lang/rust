@@ -134,7 +134,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.tcx.with_freevars(closure_node_id, |freevars| {
             for freevar in freevars {
                 let upvar_id = ty::UpvarId {
-                    var_id: self.tcx.hir.node_to_hir_id(freevar.var_id()),
+                    var_path: ty::UpvarPath {
+                        hir_id : self.tcx.hir.node_to_hir_id(freevar.var_id()),
+                    },
                     closure_expr_id: LocalDefId::from_def_id(closure_def_id),
                 };
                 debug!("seed upvar_id {:?}", upvar_id);
@@ -248,7 +250,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let var_hir_id = tcx.hir.node_to_hir_id(var_node_id);
                     let freevar_ty = self.node_ty(var_hir_id);
                     let upvar_id = ty::UpvarId {
-                        var_id: var_hir_id,
+                        var_path: ty::UpvarPath {
+                            hir_id: var_hir_id,
+                        },
                         closure_expr_id: LocalDefId::from_def_id(closure_def_index),
                     };
                     let capture = self.tables.borrow().upvar_capture(upvar_id);
@@ -347,7 +351,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
                         upvar_id.closure_expr_id,
                         ty::ClosureKind::FnOnce,
                         guarantor.span,
-                        var_name(tcx, upvar_id.var_id),
+                        var_name(tcx, upvar_id.var_path.hir_id),
                     );
 
                     self.adjust_upvar_captures
@@ -364,7 +368,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
                         upvar_id.closure_expr_id,
                         ty::ClosureKind::FnOnce,
                         guarantor.span,
-                        var_name(tcx, upvar_id.var_id),
+                        var_name(tcx, upvar_id.var_path.hir_id),
                     );
                 }
                 mc::NoteIndex | mc::NoteNone => {}
@@ -465,7 +469,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
                     upvar_id.closure_expr_id,
                     ty::ClosureKind::FnMut,
                     cmt.span,
-                    var_name(tcx, upvar_id.var_id),
+                    var_name(tcx, upvar_id.var_path.hir_id),
                 );
 
                 true
@@ -478,7 +482,7 @@ impl<'a, 'gcx, 'tcx> InferBorrowKind<'a, 'gcx, 'tcx> {
                     upvar_id.closure_expr_id,
                     ty::ClosureKind::FnMut,
                     cmt.span,
-                    var_name(tcx, upvar_id.var_id),
+                    var_name(tcx, upvar_id.var_path.hir_id),
                 );
 
                 true
