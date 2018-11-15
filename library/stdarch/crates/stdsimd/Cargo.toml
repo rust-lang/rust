@@ -30,7 +30,7 @@ cfg-if = "0.1"
 [dev-dependencies]
 auxv = "0.3.3"
 quickcheck = "0.7"
-rand = "0.5"
+rand = "0.6"
 cupid = "0.6.0"
 
 [[example]]
