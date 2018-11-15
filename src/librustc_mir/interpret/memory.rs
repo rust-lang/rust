@@ -578,7 +578,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Ok(&[])
         } else {
             let ptr = ptr.to_ptr()?;
-            self.get(ptr.alloc_id)?.read_bytes(self, ptr, size)
+            self.get(ptr.alloc_id)?.get_bytes(self, ptr, size)
         }
     }
 }
@@ -656,10 +656,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         length: u64,
         nonoverlapping: bool,
     ) -> EvalResult<'tcx> {
+        self.check_align(src, src_align)?;
+        self.check_align(dest, dest_align)?;
         if size.bytes() == 0 {
             // Nothing to do for ZST, other than checking alignment and non-NULLness.
-            self.check_align(src, src_align)?;
-            self.check_align(dest, dest_align)?;
             return Ok(());
         }
         let src = src.to_ptr()?;
@@ -689,12 +689,12 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
         let tcx = self.tcx.tcx;
 
-        // This also checks alignment, and relocation edges on the src.
+        // This checks relocation edges on the src.
         let src_bytes = self.get(src.alloc_id)?
-            .get_bytes_with_undef_and_ptr(&tcx, src, size, src_align)?
+            .get_bytes_with_undef_and_ptr(&tcx, src, size)?
             .as_ptr();
         let dest_bytes = self.get_mut(dest.alloc_id)?
-            .get_bytes_mut(&tcx, dest, size * length, dest_align)?
+            .get_bytes_mut(&tcx, dest, size * length)?
             .as_mut_ptr();
 
         // SAFE: The above indexing would have panicked if there weren't at least `size` bytes

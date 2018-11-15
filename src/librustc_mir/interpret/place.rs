@@ -713,11 +713,12 @@ where
 
         // Nothing to do for ZSTs, other than checking alignment
         if dest.layout.is_zst() {
-            self.memory.check_align(ptr, ptr_align)?;
-            return Ok(());
+            return self.memory.check_align(ptr, ptr_align);
         }
 
+        // check for integer pointers before alignment to report better errors
         let ptr = ptr.to_ptr()?;
+        self.memory.check_align(ptr.into(), ptr_align)?;
         let tcx = &*self.tcx;
         // FIXME: We should check that there are dest.layout.size many bytes available in
         // memory.  The code below is not sufficient, with enough padding it might not
@@ -729,9 +730,8 @@ where
                     _ => bug!("write_immediate_to_mplace: invalid Scalar layout: {:#?}",
                             dest.layout)
                 }
-
                 self.memory.get_mut(ptr.alloc_id)?.write_scalar(
-                    tcx, ptr, ptr_align.min(dest.layout.align.abi), scalar, dest.layout.size
+                    tcx, ptr, scalar, dest.layout.size
                 )
             }
             Immediate::ScalarPair(a_val, b_val) => {
@@ -741,9 +741,11 @@ where
                               dest.layout)
                 };
                 let (a_size, b_size) = (a.size(self), b.size(self));
-                let (a_align, b_align) = (a.align(self).abi, b.align(self).abi);
+                let b_align = b.align(self).abi;
                 let b_offset = a_size.align_to(b_align);
                 let b_ptr = ptr.offset(b_offset, self)?;
+
+                self.memory.check_align(b_ptr.into(), ptr_align.min(b_align))?;
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
                 // but that does not work: We could be a newtype around a pair, then the
@@ -751,10 +753,10 @@ where
 
                 self.memory
                     .get_mut(ptr.alloc_id)?
-                    .write_scalar(tcx, ptr, ptr_align.min(a_align), a_val, a_size)?;
+                    .write_scalar(tcx, ptr, a_val, a_size)?;
                 self.memory
                     .get_mut(b_ptr.alloc_id)?
-                    .write_scalar(tcx, b_ptr, ptr_align.min(b_align), b_val, b_size)
+                    .write_scalar(tcx, b_ptr, b_val, b_size)
             }
         }
     }

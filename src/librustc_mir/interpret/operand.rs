@@ -275,12 +275,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             return Ok(Some(Immediate::Scalar(Scalar::zst().into())));
         }
 
+        // check for integer pointers before alignment to report better errors
         let ptr = ptr.to_ptr()?;
+        self.memory.check_align(ptr.into(), ptr_align)?;
         match mplace.layout.abi {
             layout::Abi::Scalar(..) => {
                 let scalar = self.memory
                     .get(ptr.alloc_id)?
-                    .read_scalar(self, ptr, ptr_align, mplace.layout.size)?;
+                    .read_scalar(self, ptr, mplace.layout.size)?;
                 Ok(Some(Immediate::Scalar(scalar)))
             }
             layout::Abi::ScalarPair(ref a, ref b) => {
@@ -289,13 +291,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let a_ptr = ptr;
                 let b_offset = a_size.align_to(b.align(self).abi);
                 assert!(b_offset.bytes() > 0); // we later use the offset to test which field to use
-                let b_ptr = ptr.offset(b_offset, self)?.into();
+                let b_ptr = ptr.offset(b_offset, self)?;
                 let a_val = self.memory
                     .get(ptr.alloc_id)?
-                    .read_scalar(self, a_ptr, ptr_align, a_size)?;
+                    .read_scalar(self, a_ptr, a_size)?;
+                self.memory.check_align(b_ptr.into(), b.align(self))?;
                 let b_val = self.memory
                     .get(ptr.alloc_id)?
-                    .read_scalar(self, b_ptr, ptr_align, b_size)?;
+                    .read_scalar(self, b_ptr, b_size)?;
                 Ok(Some(Immediate::ScalarPair(a_val, b_val)))
             }
             _ => Ok(None),

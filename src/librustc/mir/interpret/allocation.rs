@@ -15,7 +15,7 @@ use super::{
     truncate,
 };
 
-use ty::layout::{self, Size, Align};
+use ty::layout::{Size, Align};
 use syntax::ast::Mutability;
 use std::iter;
 use mir;
@@ -103,10 +103,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-        align: Align,
         check_defined_and_ptr: bool,
     ) -> EvalResult<'tcx, &[u8]> {
-        self.check_align(ptr.into(), align)?;
         self.check_bounds(cx, ptr, size)?;
 
         if check_defined_and_ptr {
@@ -126,14 +124,13 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     }
 
     #[inline]
-    fn get_bytes(
+    pub fn get_bytes(
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-        align: Align
     ) -> EvalResult<'tcx, &[u8]> {
-        self.get_bytes_internal(cx, ptr, size, align, true)
+        self.get_bytes_internal(cx, ptr, size, true)
     }
 
     /// It is the caller's responsibility to handle undefined and pointer bytes.
@@ -144,9 +141,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-        align: Align
     ) -> EvalResult<'tcx, &[u8]> {
-        self.get_bytes_internal(cx, ptr, size, align, false)
+        self.get_bytes_internal(cx, ptr, size, false)
     }
 
     /// Just calling this already marks everything as defined and removes relocations,
@@ -156,10 +152,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         size: Size,
-        align: Align,
     ) -> EvalResult<'tcx, &mut [u8]> {
         assert_ne!(size.bytes(), 0, "0-sized accesses should never even get a `Pointer`");
-        self.check_align(ptr.into(), align)?;
         self.check_bounds(cx, ptr, size)?;
 
         self.mark_definedness(ptr, size, true)?;
@@ -201,9 +195,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         size: Size,
         allow_ptr_and_undef: bool,
     ) -> EvalResult<'tcx> {
-        let align = Align::from_bytes(1).unwrap();
         // Check bounds, align and relocations on the edges
-        self.get_bytes_with_undef_and_ptr(cx, ptr, size, align)?;
+        self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
         // Check undef and ptr
         if !allow_ptr_and_undef {
             self.check_defined(ptr, size)?;
@@ -212,26 +205,13 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         Ok(())
     }
 
-    pub fn read_bytes(
-        &self,
-        cx: &impl HasDataLayout,
-        ptr: Pointer<Tag>,
-        size: Size,
-    ) -> EvalResult<'tcx, &[u8]> {
-        let align = Align::from_bytes(1).unwrap();
-        self.get_bytes(cx, ptr, size, align)
-    }
-
     pub fn write_bytes(
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
         src: &[u8],
     ) -> EvalResult<'tcx> {
-        let align = Align::from_bytes(1).unwrap();
-        let bytes = self.get_bytes_mut(
-            cx, ptr, Size::from_bytes(src.len() as u64), align,
-        )?;
+        let bytes = self.get_bytes_mut(cx, ptr, Size::from_bytes(src.len() as u64))?;
         bytes.clone_from_slice(src);
         Ok(())
     }
@@ -243,8 +223,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         val: u8,
         count: Size
     ) -> EvalResult<'tcx> {
-        let align = Align::from_bytes(1).unwrap();
-        let bytes = self.get_bytes_mut(cx, ptr, count, align)?;
+        let bytes = self.get_bytes_mut(cx, ptr, count)?;
         for b in bytes {
             *b = val;
         }
@@ -256,13 +235,10 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-        ptr_align: Align,
         size: Size
     ) -> EvalResult<'tcx, ScalarMaybeUndef<Tag>> {
-        // get_bytes_unchecked tests alignment and relocation edges
-        let bytes = self.get_bytes_with_undef_and_ptr(
-            cx, ptr, size, ptr_align.min(int_align(cx, size))
-        )?;
+        // get_bytes_unchecked tests relocation edges
+        let bytes = self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
         // Undef check happens *after* we established that the alignment is correct.
         // We must not return Ok() for unaligned pointers!
         if self.check_defined(ptr, size).is_err() {
@@ -293,9 +269,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-        ptr_align: Align
     ) -> EvalResult<'tcx, ScalarMaybeUndef<Tag>> {
-        self.read_scalar(cx, ptr, ptr_align, cx.data_layout().pointer_size)
+        self.read_scalar(cx, ptr, cx.data_layout().pointer_size)
     }
 
     /// Write a *non-ZST* scalar
@@ -303,7 +278,6 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-        ptr_align: Align,
         val: ScalarMaybeUndef<Tag>,
         type_size: Size,
     ) -> EvalResult<'tcx> {
@@ -327,9 +301,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         };
 
         {
-            // get_bytes_mut checks alignment
             let endian = cx.data_layout().endian;
-            let dst = self.get_bytes_mut(cx, ptr, type_size, ptr_align)?;
+            let dst = self.get_bytes_mut(cx, ptr, type_size)?;
             write_target_uint(endian, dst, bytes).unwrap();
         }
 
@@ -351,29 +324,11 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         &mut self,
         cx: &impl HasDataLayout,
         ptr: Pointer<Tag>,
-        ptr_align: Align,
         val: ScalarMaybeUndef<Tag>
     ) -> EvalResult<'tcx> {
         let ptr_size = cx.data_layout().pointer_size;
-        self.write_scalar(cx, ptr.into(), ptr_align, val, ptr_size)
+        self.write_scalar(cx, ptr.into(), val, ptr_size)
     }
-}
-
-fn int_align(
-    cx: &impl HasDataLayout,
-    size: Size,
-) -> Align {
-    // We assume pointer-sized integers have the same alignment as pointers.
-    // We also assume signed and unsigned integers of the same size have the same alignment.
-    let ity = match size.bytes() {
-        1 => layout::I8,
-        2 => layout::I16,
-        4 => layout::I32,
-        8 => layout::I64,
-        16 => layout::I128,
-        _ => bug!("bad integer size: {}", size.bytes()),
-    };
-    ity.align(cx).abi
 }
 
 /// Relocations

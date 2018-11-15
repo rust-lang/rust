@@ -61,16 +61,16 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         let drop = self.memory.create_fn_alloc(drop).with_default_tag();
         self.memory
             .get_mut(vtable.alloc_id)?
-            .write_ptr_sized(tcx, vtable, ptr_align, Scalar::Ptr(drop).into())?;
+            .write_ptr_sized(tcx, vtable, Scalar::Ptr(drop).into())?;
 
         let size_ptr = vtable.offset(ptr_size, self)?;
         self.memory
             .get_mut(size_ptr.alloc_id)?
-            .write_ptr_sized(tcx, size_ptr, ptr_align, Scalar::from_uint(size, ptr_size).into())?;
+            .write_ptr_sized(tcx, size_ptr, Scalar::from_uint(size, ptr_size).into())?;
         let align_ptr = vtable.offset(ptr_size * 2, self)?;
         self.memory
             .get_mut(align_ptr.alloc_id)?
-            .write_ptr_sized(tcx, align_ptr, ptr_align, Scalar::from_uint(align, ptr_size).into())?;
+            .write_ptr_sized(tcx, align_ptr, Scalar::from_uint(align, ptr_size).into())?;
 
         for (i, method) in methods.iter().enumerate() {
             if let Some((def_id, substs)) = *method {
@@ -79,7 +79,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let method_ptr = vtable.offset(ptr_size * (3 + i as u64), self)?;
                 self.memory
                     .get_mut(method_ptr.alloc_id)?
-                    .write_ptr_sized(tcx, method_ptr, ptr_align, Scalar::Ptr(fn_ptr).into())?;
+                    .write_ptr_sized(tcx, method_ptr, Scalar::Ptr(fn_ptr).into())?;
             }
         }
 
@@ -95,10 +95,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         vtable: Pointer<M::PointerTag>,
     ) -> EvalResult<'tcx, (ty::Instance<'tcx>, ty::Ty<'tcx>)> {
         // we don't care about the pointee type, we just want a pointer
-        let pointer_align = self.tcx.data_layout.pointer_align.abi;
+        self.memory.check_align(vtable.into(), self.tcx.data_layout.pointer_align.abi)?;
         let drop_fn = self.memory
             .get(vtable.alloc_id)?
-            .read_ptr_sized(self, vtable, pointer_align)?
+            .read_ptr_sized(self, vtable)?
             .to_ptr()?;
         let drop_instance = self.memory.get_fn(drop_fn)?;
         trace!("Found drop fn: {:?}", drop_instance);
@@ -114,14 +114,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         vtable: Pointer<M::PointerTag>,
     ) -> EvalResult<'tcx, (Size, Align)> {
         let pointer_size = self.pointer_size();
-        let pointer_align = self.tcx.data_layout.pointer_align.abi;
+        self.memory.check_align(vtable.into(), self.tcx.data_layout.pointer_align.abi)?;
         let alloc = self.memory.get(vtable.alloc_id)?;
-        let size = alloc.read_ptr_sized(self, vtable.offset(pointer_size, self)?, pointer_align)?
+        let size = alloc.read_ptr_sized(self, vtable.offset(pointer_size, self)?)?
             .to_bits(pointer_size)? as u64;
         let align = alloc.read_ptr_sized(
             self,
             vtable.offset(pointer_size * 2, self)?,
-            pointer_align
         )?.to_bits(pointer_size)? as u64;
         Ok((Size::from_bytes(size), Align::from_bytes(align).unwrap()))
     }
