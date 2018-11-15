@@ -143,7 +143,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         align: Align,
         kind: MemoryKind<M::MemoryKinds>,
     ) -> EvalResult<'tcx, Pointer> {
-        let extra = AllocationExtra::memory_allocated(size, &self.extra)?;
+        let extra = AllocationExtra::memory_allocated(size, &self.extra);
         Ok(Pointer::from(self.allocate_with(Allocation::undef(size, align, extra), kind)?))
     }
 

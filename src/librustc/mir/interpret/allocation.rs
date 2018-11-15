@@ -59,7 +59,7 @@ pub trait AllocationExtra<Tag, MemoryExtra>: ::std::fmt::Debug + Clone {
     fn memory_allocated(
         _size: Size,
         _memory_extra: &MemoryExtra
-    ) -> EvalResult<'tcx, Self>;
+    ) -> Self;
 
     /// Hook for performing extra checks on a memory read access.
     ///
@@ -102,8 +102,8 @@ impl AllocationExtra<(), ()> for () {
     fn memory_allocated(
         _size: Size,
         _memory_extra: &()
-    ) -> EvalResult<'tcx, Self> {
-        Ok(())
+    ) -> Self {
+        ()
     }
 }
 
