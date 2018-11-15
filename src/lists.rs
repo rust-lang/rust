@@ -36,6 +36,8 @@ pub struct ListFormatting<'a> {
     preserve_newline: bool,
     // Nested import lists get some special handling for the "Mixed" list type
     nested: bool,
+    // Whether comments should be visually aligned.
+    align_comments: bool,
     config: &'a Config,
 }
 
@@ -50,6 +52,7 @@ impl<'a> ListFormatting<'a> {
             ends_with_newline: true,
             preserve_newline: false,
             nested: false,
+            align_comments: true,
             config,
         }
     }
@@ -86,6 +89,11 @@ impl<'a> ListFormatting<'a> {
 
     pub fn nested(mut self, nested: bool) -> Self {
         self.nested = nested;
+        self
+    }
+
+    pub fn align_comments(mut self, align_comments: bool) -> Self {
+        self.align_comments = align_comments;
         self
     }
 
@@ -465,23 +473,31 @@ where
             let mut formatted_comment = rewrite_post_comment(&mut item_max_width)?;
 
             if !starts_with_newline(comment) {
-                let mut comment_alignment =
-                    post_comment_alignment(item_max_width, inner_item.len());
-                if first_line_width(&formatted_comment)
-                    + last_line_width(&result)
-                    + comment_alignment
-                    + 1
-                    > formatting.config.max_width()
-                {
-                    item_max_width = None;
-                    formatted_comment = rewrite_post_comment(&mut item_max_width)?;
-                    comment_alignment = post_comment_alignment(item_max_width, inner_item.len());
+                if formatting.align_comments {
+                    let mut comment_alignment =
+                        post_comment_alignment(item_max_width, inner_item.len());
+                    if first_line_width(&formatted_comment)
+                        + last_line_width(&result)
+                        + comment_alignment
+                        + 1
+                        > formatting.config.max_width()
+                    {
+                        item_max_width = None;
+                        formatted_comment = rewrite_post_comment(&mut item_max_width)?;
+                        comment_alignment =
+                            post_comment_alignment(item_max_width, inner_item.len());
+                    }
+                    for _ in 0..=comment_alignment {
+                        result.push(' ');
+                    }
                 }
-                for _ in 0..=comment_alignment {
-                    result.push(' ');
-                }
-                // An additional space for the missing trailing separator.
-                if last && item_max_width.is_some() && !separate && !formatting.separator.is_empty()
+                // An additional space for the missing trailing separator (or
+                // if we skipped alignment above).
+                if !formatting.align_comments
+                    || (last
+                        && item_max_width.is_some()
+                        && !separate
+                        && !formatting.separator.is_empty())
                 {
                     result.push(' ');
                 }
@@ -902,6 +918,7 @@ pub fn struct_lit_formatting<'a>(
         ends_with_newline,
         preserve_newline: true,
         nested: false,
+        align_comments: true,
         config: context.config,
     }
 }

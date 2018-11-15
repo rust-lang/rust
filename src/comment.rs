@@ -163,6 +163,14 @@ pub fn combine_strs_with_missing_comments(
     shape: Shape,
     allow_extend: bool,
 ) -> Option<String> {
+    trace!(
+        "combine_strs_with_missing_comments `{}` `{}` {:?} {:?}",
+        prev_str,
+        next_str,
+        span,
+        shape
+    );
+
     let mut result =
         String::with_capacity(prev_str.len() + next_str.len() + shape.indent.width() + 128);
     result.push_str(prev_str);

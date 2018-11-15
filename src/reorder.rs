@@ -69,7 +69,9 @@ fn wrap_reorderable_items(
     list_items: &[ListItem],
     shape: Shape,
 ) -> Option<String> {
-    let fmt = ListFormatting::new(shape, context.config).separator("");
+    let fmt = ListFormatting::new(shape, context.config)
+        .separator("")
+        .align_comments(false);
     write_list(list_items, &fmt)
 }
 
