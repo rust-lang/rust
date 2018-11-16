@@ -393,8 +393,9 @@ where
         let dl = &self.tcx.data_layout;
         Ok((0..len).map(move |i| {
             let ptr = base.ptr.ptr_offset(i * stride, dl)?;
+            let align = base.align.restrict_for_offset(i * stride);
             Ok(MPlaceTy {
-                mplace: MemPlace { ptr, align: base.align, meta: None },
+                mplace: MemPlace { ptr, align, meta: None },
                 layout
             })
         }))
@@ -417,6 +418,7 @@ where
             _ => bug!("Unexpected layout of index access: {:#?}", base.layout),
         };
         let ptr = base.ptr.ptr_offset(from_offset, self)?;
+        let align = base.align.restrict_for_offset(from_offset);
 
         // Compute meta and new layout
         let inner_len = len - to - from;
@@ -435,7 +437,7 @@ where
         let layout = self.layout_of(ty)?;
 
         Ok(MPlaceTy {
-            mplace: MemPlace { ptr, align: base.align, meta },
+            mplace: MemPlace { ptr, align, meta },
             layout
         })
     }
@@ -741,11 +743,11 @@ where
                               dest.layout)
                 };
                 let (a_size, b_size) = (a.size(self), b.size(self));
-                let b_align = b.align(self).abi;
-                let b_offset = a_size.align_to(b_align);
+                let b_offset = a_size.align_to(b.align(self).abi);
+                let b_align = ptr_align.restrict_for_offset(b_offset);
                 let b_ptr = ptr.offset(b_offset, self)?;
 
-                self.memory.check_align(b_ptr.into(), ptr_align.min(b_align))?;
+                self.memory.check_align(b_ptr.into(), b_align)?;
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
                 // but that does not work: We could be a newtype around a pair, then the
