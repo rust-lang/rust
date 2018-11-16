@@ -45,14 +45,19 @@ in this directory.
 ## Running Miri
 
 ```sh
-cargo +nightly run tests/run-pass/vecs.rs # Or whatever test you like.
+cargo +nightly run -- -Zmiri-disable-validation tests/run-pass/vecs.rs # Or whatever test you like.
 ```
+
+We have to disable validation because that can lead to errors when libstd is not
+compiled the right way.
 
 ## Running Miri with full libstd
 
-Per default libstd does not contain the MIR of non-polymorphic functions. When
-Miri hits a call to such a function, execution terminates. To fix this, it is
-possible to compile libstd with full MIR:
+Per default libstd does not contain the MIR of non-polymorphic functions, and
+also does not contain some extra MIR statements that miri needs for validation.
+When Miri hits a call to such a function, execution terminates, and even when
+the MIR is present, validation can fail.  To fix this, it is possible to compile
+libstd with full MIR:
 
 ```sh
 rustup component add --toolchain nightly rust-src

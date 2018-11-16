@@ -103,6 +103,10 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
         // whitelist.
         flags.push("-Zmir-opt-level=1".to_owned());
     }
+    if !have_fullmir() {
+        // Validation relies on the EscapeToRaw statements being emitted
+        flags.push("-Zmiri-disable-validation".to_owned());
+    }
 
     let mut config = mk_config("ui");
     config.src_base = PathBuf::from(path);
