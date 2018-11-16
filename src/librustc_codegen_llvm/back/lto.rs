@@ -649,7 +649,7 @@ pub unsafe fn optimize_thin_module(
     timeline: &mut Timeline
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
     let diag_handler = cgcx.create_diag_handler();
-    let tm = (cgcx.tm_factory)().map_err(|e| {
+    let tm = (cgcx.tm_factory.0)().map_err(|e| {
         write::llvm_err(&diag_handler, &e)
     })?;
 

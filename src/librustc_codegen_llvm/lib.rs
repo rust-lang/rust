@@ -165,17 +165,6 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
     }
 }
 
-impl Clone for &'static mut llvm::TargetMachine {
-    fn clone(&self) -> Self {
-        // This method should never be called. It is put here because in
-        // rustc_codegen_ssa::back::write::CodegenContext, the TargetMachine is contained in a
-        // closure returned by a function under an Arc. The clone-deriving algorithm works when the
-        // struct contains the original LLVM TargetMachine type but not any more when supplied with
-        // a generic type. Hence this dummy Clone implementation.
-        panic!()
-    }
-}
-
 impl WriteBackendMethods for LlvmCodegenBackend {
     type Module = ModuleLlvm;
     type ModuleBuffer = back::lto::ModuleBuffer;

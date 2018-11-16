@@ -178,6 +178,17 @@ pub struct AssemblerCommand {
     cmd: Command,
 }
 
+// HACK(eddyb) work around `#[derive]` producing wrong bounds for `Clone`.
+pub struct TargetMachineFactory<B: WriteBackendMethods>(
+    pub Arc<dyn Fn() -> Result<B::TargetMachine, String> + Send + Sync>,
+);
+
+impl<B: WriteBackendMethods> Clone for TargetMachineFactory<B> {
+    fn clone(&self) -> Self {
+        TargetMachineFactory(self.0.clone())
+    }
+}
+
 /// Additional resources used by optimize_and_codegen (not module specific)
 #[derive(Clone)]
 pub struct CodegenContext<B: WriteBackendMethods> {
@@ -196,8 +207,7 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub regular_module_config: Arc<ModuleConfig>,
     pub metadata_module_config: Arc<ModuleConfig>,
     pub allocator_module_config: Arc<ModuleConfig>,
-    pub tm_factory: Arc<dyn Fn()
-        -> Result<B::TargetMachine, String> + Send + Sync>,
+    pub tm_factory: TargetMachineFactory<B>,
     pub msvc_imps_needed: bool,
     pub target_pointer_width: String,
     pub debuginfo: config::DebugInfo,
@@ -962,7 +972,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         regular_module_config: modules_config,
         metadata_module_config: metadata_config,
         allocator_module_config: allocator_config,
-        tm_factory: backend.target_machine_factory(tcx.sess, false),
+        tm_factory: TargetMachineFactory(backend.target_machine_factory(tcx.sess, false)),
         total_cgus,
         msvc_imps_needed: msvc_imps_needed(tcx),
         target_pointer_width: tcx.sess.target.target.target_pointer_width.clone(),

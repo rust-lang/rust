@@ -18,7 +18,7 @@ use rustc_errors::{FatalError, Handler};
 
 pub trait WriteBackendMethods: 'static + Sized + Clone {
     type Module: Send + Sync;
-    type TargetMachine: Clone;
+    type TargetMachine;
     type ModuleBuffer: ModuleBufferMethods;
     type Context: ?Sized;
     type ThinData: Send + Sync;
