@@ -659,7 +659,8 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         self.check_align(src, src_align)?;
         self.check_align(dest, dest_align)?;
         if size.bytes() == 0 {
-            // Nothing to do for ZST, other than checking alignment and non-NULLness which already happened.
+            // Nothing to do for ZST, other than checking alignment and
+            // non-NULLness which already happened.
             return Ok(());
         }
         let src = src.to_ptr()?;
