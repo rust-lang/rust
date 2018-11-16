@@ -281,6 +281,16 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             };
             ret.write_cvalue(fx, res);
         };
+        rotate_left, <T>(v x, v y) {
+            let layout = fx.layout_of(T);
+            let res = fx.bcx.ins().rotl(x, y);
+            ret.write_cvalue(fx, CValue::ByVal(res, layout));
+        };
+        rotate_right, <T>(v x, v y) {
+            let layout = fx.layout_of(T);
+            let res = fx.bcx.ins().rotr(x, y);
+            ret.write_cvalue(fx, CValue::ByVal(res, layout));
+        };
         offset, (v base, v offset) {
             let res = fx.bcx.ins().iadd(base, offset);
             ret.write_cvalue(fx, CValue::ByVal(res, args[0].layout()));
