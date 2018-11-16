@@ -302,6 +302,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 );
 
                 let ty_source_info = self.source_info(user_ty_span);
+                let user_ty = box pat_ascription_ty.user_ty(
+                    &mut self.canonical_user_type_annotations, ty_source_info.span
+                );
                 self.cfg.push(
                     block,
                     Statement {
@@ -309,7 +312,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                         kind: StatementKind::AscribeUserType(
                             place,
                             ty::Variance::Invariant,
-                            box pat_ascription_ty.user_ty(),
+                            user_ty,
                         ),
                     },
                 );
@@ -1314,6 +1317,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 ascription.user_ty,
             );
 
+            let user_ty = box ascription.user_ty.clone().user_ty(
+                &mut self.canonical_user_type_annotations, source_info.span
+            );
             self.cfg.push(
                 block,
                 Statement {
@@ -1321,7 +1327,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     kind: StatementKind::AscribeUserType(
                         ascription.source.clone(),
                         ty::Variance::Covariant,
-                        box ascription.user_ty.clone().user_ty(),
+                        user_ty,
                     ),
                 },
             );
@@ -1484,10 +1490,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             BindingMode::ByValue => ty::BindingMode::BindByValue(mutability.into()),
             BindingMode::ByRef { .. } => ty::BindingMode::BindByReference(mutability.into()),
         };
+        let user_ty = user_var_ty.clone().user_ty(&mut self.canonical_user_type_annotations);
+        debug!("declare_binding: user_ty={:?}", user_ty);
         let local = LocalDecl::<'tcx> {
             mutability,
             ty: var_ty,
-            user_ty: user_var_ty.clone().user_ty(),
+            user_ty,
             name: Some(name),
             source_info,
             visibility_scope,
