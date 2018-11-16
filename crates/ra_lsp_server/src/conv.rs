@@ -49,10 +49,9 @@ impl ConvWith for Position {
     type Output = TextUnit;
 
     fn conv_with(self, line_index: &LineIndex) -> TextUnit {
-        // TODO: UTF-16
         let line_col = LineCol {
             line: self.line as u32,
-            col: (self.character as u32).into(),
+            col_utf16: self.character as u32,
         };
         line_index.offset(line_col)
     }
@@ -64,8 +63,10 @@ impl ConvWith for TextUnit {
 
     fn conv_with(self, line_index: &LineIndex) -> Position {
         let line_col = line_index.line_col(self);
-        // TODO: UTF-16
-        Position::new(u64::from(line_col.line), u64::from(u32::from(line_col.col)))
+        Position::new(
+            u64::from(line_col.line),
+            u64::from(u32::from(line_col.col_utf16)),
+        )
     }
 }
 
@@ -203,8 +204,10 @@ impl TryConvWith for SourceChange {
                     .map(|it| it.edits.as_slice())
                     .unwrap_or(&[]);
                 let line_col = translate_offset_with_edit(&*line_index, pos.offset, edits);
-                let position =
-                    Position::new(u64::from(line_col.line), u64::from(u32::from(line_col.col)));
+                let position = Position::new(
+                    u64::from(line_col.line),
+                    u64::from(u32::from(line_col.col_utf16)),
+                );
                 Some(TextDocumentPositionParams {
                     text_document: TextDocumentIdentifier::new(pos.file_id.try_conv_with(world)?),
                     position,
@@ -247,12 +250,12 @@ fn translate_offset_with_edit(
     if in_edit_line_col.line == 0 {
         LineCol {
             line: edit_line_col.line,
-            col: edit_line_col.col + in_edit_line_col.col,
+            col_utf16: edit_line_col.col_utf16 + in_edit_line_col.col_utf16,
         }
     } else {
         LineCol {
             line: edit_line_col.line + in_edit_line_col.line,
-            col: in_edit_line_col.col,
+            col_utf16: in_edit_line_col.col_utf16,
         }
     }
 }
