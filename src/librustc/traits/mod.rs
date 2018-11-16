@@ -700,7 +700,12 @@ fn do_normalize_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      predicates: Vec<ty::Predicate<'tcx>>)
                                      -> Result<Vec<ty::Predicate<'tcx>>, ErrorReported>
 {
-    debug!("do_normalize_predicates({:?})", predicates);
+    debug!(
+        "do_normalize_predicates(predicates={:?}, region_context={:?}, cause={:?})",
+        predicates,
+        region_context,
+        cause,
+    );
     let span = cause.span;
     tcx.infer_ctxt().enter(|infcx| {
         // FIXME. We should really... do something with these region
