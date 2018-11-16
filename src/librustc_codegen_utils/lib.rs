@@ -21,7 +21,6 @@
 #![feature(custom_attribute)]
 #![feature(nll)]
 #![allow(unused_attributes)]
-#![allow(dead_code)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 
