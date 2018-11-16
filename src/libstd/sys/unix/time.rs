@@ -47,25 +47,18 @@ impl Timespec {
     }
 
     fn checked_add_duration(&self, other: &Duration) -> Option<Timespec> {
-        let mut secs = match other
+        let mut secs = other
             .as_secs()
             .try_into() // <- target type would be `libc::time_t`
             .ok()
-            .and_then(|secs| self.t.tv_sec.checked_add(secs))
-        {
-            Some(ts) => ts,
-            None => return None,
-        };
+            .and_then(|secs| self.t.tv_sec.checked_add(secs))?;
 
         // Nano calculations can't overflow because nanos are <1B which fit
         // in a u32.
         let mut nsec = other.subsec_nanos() + self.t.tv_nsec as u32;
         if nsec >= NSEC_PER_SEC as u32 {
             nsec -= NSEC_PER_SEC as u32;
-            secs = match secs.checked_add(1) {
-                Some(ts) => ts,
-                None => return None,
-            }
+            secs = secs.checked_add(1)?;
         }
         Some(Timespec {
             t: libc::timespec {
