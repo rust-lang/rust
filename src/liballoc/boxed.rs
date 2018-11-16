@@ -481,7 +481,7 @@ impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
     /// let slice: &[u8] = &[104, 101, 108, 108, 111];
     /// let boxed_slice = Box::from(slice);
     ///
-    /// println!({:?}, boxed_slice);
+    /// println!("{:?}", boxed_slice);
     /// ```
     fn from(slice: &'a [T]) -> Box<[T]> {
         let mut boxed = unsafe { RawVec::with_capacity(slice.len()).into_box() };
