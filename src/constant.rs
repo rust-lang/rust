@@ -45,7 +45,7 @@ pub fn codegen_static_ref<'a, 'tcx: 'a>(
     fx: &mut FunctionCx<'a, 'tcx, impl Backend>,
     static_: &Static<'tcx>,
 ) -> CPlace<'tcx> {
-    let data_id = data_id_for_static(fx.tcx, fx.module, static_.def_id);
+    let data_id = data_id_for_static(fx.tcx, fx.module, static_.def_id, Linkage::Import);
     cplace_for_dataid(fx, static_.ty, data_id)
 }
 
@@ -158,6 +158,7 @@ fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     module: &mut Module<B>,
     def_id: DefId,
+    linkage: Linkage,
 ) -> DataId {
     let symbol_name = tcx.symbol_name(Instance::mono(tcx, def_id)).as_str();
     let is_mutable = if let ::rustc::hir::Mutability::MutMutable = tcx.is_static(def_id).unwrap() {
@@ -167,7 +168,7 @@ fn data_id_for_static<'a, 'tcx: 'a, B: Backend>(
             .is_freeze(tcx, ParamEnv::reveal_all(), DUMMY_SP)
     };
     module
-        .declare_data(&*symbol_name, Linkage::Export, is_mutable)
+        .declare_data(&*symbol_name, linkage, is_mutable)
         .unwrap()
 }
 
@@ -212,7 +213,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
                     _ => bug!("static const eval returned {:#?}", const_),
                 };
 
-                let data_id = data_id_for_static(tcx, module, def_id);
+                let data_id = data_id_for_static(tcx, module, def_id, Linkage::Export);
                 (data_id, alloc)
             }
         };
@@ -251,7 +252,7 @@ fn define_all_allocs<'a, 'tcx: 'a, B: Backend + 'a>(
                 }
                 AllocType::Static(def_id) => {
                     cx.todo.insert(TodoItem::Static(def_id));
-                    data_id_for_static(tcx, module, def_id)
+                    data_id_for_static(tcx, module, def_id, Linkage::Import)
                 }
             };
 
