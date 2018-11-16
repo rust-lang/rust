@@ -72,21 +72,21 @@ function createDirEntry(elem, parent, fullPath, currentFile, hasFoundFile) {
     children.appendChild(files);
     parent.appendChild(name);
     parent.appendChild(children);
-    return hasFoundFile === true && search.currentFile !== null;
+    return hasFoundFile === true && currentFile.startsWith(fullPath);
 }
 
 function toggleSidebar() {
     var sidebar = document.getElementById("source-sidebar");
     var child = this.children[0].children[0];
-    if (child.innerText === "<") {
-        sidebar.style.right = "";
-        this.style.right = "";
-        child.innerText = ">";
+    if (child.innerText === ">") {
+        sidebar.style.left = "";
+        this.style.left = "";
+        child.innerText = "<";
         updateLocalStorage("rustdoc-source-sidebar-hidden", "false");
     } else {
-        sidebar.style.right = "-300px";
-        this.style.right = "0";
-        child.innerText = "<";
+        sidebar.style.left = "-300px";
+        this.style.left = "0";
+        child.innerText = ">";
         updateLocalStorage("rustdoc-source-sidebar-hidden", "true");
     }
 }
@@ -102,10 +102,10 @@ function createSidebarToggle() {
     var inner2 = document.createElement("div");
     inner2.style.marginTop = "-2px";
     if (getCurrentValue("rustdoc-source-sidebar-hidden") === "true") {
-        inner2.innerText = "<";
-        sidebarToggle.style.right = "0";
-    } else {
         inner2.innerText = ">";
+        sidebarToggle.style.left = "0";
+    } else {
+        inner2.innerText = "<";
     }
 
     inner1.appendChild(inner2);
@@ -125,7 +125,7 @@ function createSourceSidebar() {
     var sidebar = document.createElement("div");
     sidebar.id = "source-sidebar";
     if (getCurrentValue("rustdoc-source-sidebar-hidden") === "true") {
-        sidebar.style.right = "-300px";
+        sidebar.style.left = "-300px";
     }
 
     var currentFile = getCurrentFilePath();

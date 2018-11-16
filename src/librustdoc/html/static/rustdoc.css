@@ -1464,25 +1464,28 @@ kbd {
 #sidebar-toggle {
 	position: fixed;
 	top: 30px;
-	right: 300px;
+	left: 300px;
 	z-index: 10;
 	padding: 3px;
-	border-top-left-radius: 3px;
-	border-bottom-left-radius: 3px;
+	border-top-right-radius: 3px;
+	border-bottom-right-radius: 3px;
 	cursor: pointer;
 	font-weight: bold;
-	transition: right 1s;
+	transition: left .5s;
 	font-size: 1.2em;
+	border: 1px solid;
+	border-left: 0;
 }
 #source-sidebar {
 	position: fixed;
 	top: 0;
 	bottom: 0;
-	right: 0;
+	left: 0;
 	width: 300px;
 	z-index: 1;
 	overflow: auto;
-	transition: right 1s;
+	transition: left .5s;
+	border-right: 1px solid;
 }
 #source-sidebar > .title {
 	font-size: 1.5em;
@@ -1494,6 +1497,11 @@ kbd {
 div.children {
 	padding-left: 27px;
 	display: none;
+}
+div.name {
+	cursor: pointer;
+	position: relative;
+	margin-left: 16px;
 }
 div.files > a {
 	display: block;
@@ -1507,10 +1515,13 @@ div.name.expand + .children {
 }
 div.name::before {
 	content: "\25B6";
-	display: inline-block;
-	padding-right: 4px;
+	padding-left: 4px;
 	font-size: 0.7em;
+	position: absolute;
+	left: -16px;
+	top: 4px;
 }
 div.name.expand::before {
 	transform: rotate(90deg);
+	left: -14px;
 }
