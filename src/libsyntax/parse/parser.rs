@@ -5385,11 +5385,16 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool)
                      -> PResult<'a, (Vec<Arg> , bool)> {
+        self.expect(&token::OpenDelim(token::Paren))?;
+
+        if let Ok(Some(_)) = self.parse_self_arg() {
+            return Err(self.fatal("unexpected `self` argument in bare function"))
+        }
+
         let sp = self.span;
         let mut variadic = false;
         let args: Vec<Option<Arg>> =
-            self.parse_unspanned_seq(
-                &token::OpenDelim(token::Paren),
+            self.parse_seq_to_before_end(
                 &token::CloseDelim(token::Paren),
                 SeqSep::trailing_allowed(token::Comma),
                 |p| {
@@ -5435,6 +5440,8 @@ impl<'a> Parser<'a> {
                     }
                 }
             )?;
+
+        self.eat(&token::CloseDelim(token::Paren));
 
         let args: Vec<_> = args.into_iter().filter_map(|x| x).collect();
 

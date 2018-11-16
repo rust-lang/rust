@@ -1,0 +1,8 @@
+error: unexpected `self` argument in bare function
+  --> $DIR/bare-function-self.rs:12:11
+   |
+LL | fn a(&self) { }
+   |           ^
+
+error: aborting due to previous error
+
