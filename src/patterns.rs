@@ -313,7 +313,7 @@ fn rewrite_tuple_pat(
     context: &RewriteContext,
     shape: Shape,
 ) -> Option<String> {
-    let mut pat_vec: Vec<_> = pats.into_iter().map(|x| TuplePatField::Pat(x)).collect();
+    let mut pat_vec: Vec<_> = pats.iter().map(|x| TuplePatField::Pat(x)).collect();
 
     if let Some(pos) = dotdot_pos {
         let prev = if pos == 0 {

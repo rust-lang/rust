@@ -114,7 +114,7 @@ fn write_message(msg: &str) {
 fn system_tests() {
     // Get all files in the tests/source directory.
     let files = get_test_files(Path::new("tests/source"), true);
-    let (_reports, count, fails) = check_files(files, None);
+    let (_reports, count, fails) = check_files(files, &None);
 
     // Display results.
     println!("Ran {} system tests.", count);
@@ -126,7 +126,7 @@ fn system_tests() {
 #[test]
 fn coverage_tests() {
     let files = get_test_files(Path::new("tests/coverage/source"), true);
-    let (_reports, count, fails) = check_files(files, None);
+    let (_reports, count, fails) = check_files(files, &None);
 
     println!("Ran {} tests in coverage mode.", count);
     assert_eq!(fails, 0, "{} tests failed", fails);
@@ -230,7 +230,7 @@ fn idempotence_tests() {
     }
     // Get all files in the tests/target directory.
     let files = get_test_files(Path::new("tests/target"), true);
-    let (_reports, count, fails) = check_files(files, None);
+    let (_reports, count, fails) = check_files(files, &None);
 
     // Display results.
     println!("Ran {} idempotent tests.", count);
@@ -251,7 +251,7 @@ fn self_tests() {
     }
     files.push(PathBuf::from("src/lib.rs"));
 
-    let (reports, count, fails) = check_files(files, Some(PathBuf::from("rustfmt.toml")));
+    let (reports, count, fails) = check_files(files, &Some(PathBuf::from("rustfmt.toml")));
     let mut warnings = 0;
 
     // Display results.
@@ -340,7 +340,7 @@ fn format_lines_errors_are_reported_with_tabs() {
 
 // For each file, run rustfmt and collect the output.
 // Returns the number of files checked and the number of failures.
-fn check_files(files: Vec<PathBuf>, opt_config: Option<PathBuf>) -> (Vec<FormatReport>, u32, u32) {
+fn check_files(files: Vec<PathBuf>, opt_config: &Option<PathBuf>) -> (Vec<FormatReport>, u32, u32) {
     let mut count = 0;
     let mut fails = 0;
     let mut reports = vec![];
