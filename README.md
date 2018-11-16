@@ -77,7 +77,7 @@ nightly).
 
 ## Running Miri on your own project('s test suite)
 
-Install Miri as a cargo subcommand with `cargo install +nightly --all-features
+Install Miri as a cargo subcommand with `cargo +nightly install --all-features
 --path .`.  Be aware that if you used `rustup override set` to fix a particular
 Rust version for the miri directory, that will *not* apply to your own project
 directory!  You have to use a consistent Rust version for building miri and your
