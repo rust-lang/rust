@@ -318,6 +318,7 @@ impl<'tcx> Stacks {
         new_bor: Borrow,
         new_kind: RefKind,
     ) -> EvalResult<'tcx> {
+        assert_eq!(new_bor.is_unique(), new_kind == RefKind::Unique);
         trace!("reborrow for tag {:?} to {:?} as {:?}: {:?}, size {}",
             ptr.tag, new_bor, new_kind, ptr, size.bytes());
         let mut stacks = self.stacks.borrow_mut();
