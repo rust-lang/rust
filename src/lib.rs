@@ -2,7 +2,8 @@
     rustc_private,
     macro_at_most_once_rep,
     never_type,
-    extern_crate_item_prelude
+    extern_crate_item_prelude,
+    decl_macro,
 )]
 #![allow(intra_doc_link_resolution_failure)]
 
@@ -34,7 +35,6 @@ extern crate target_lexicon;
 
 use std::any::Any;
 use std::fs::File;
-use std::io::Write;
 use std::sync::mpsc;
 
 use syntax::symbol::Symbol;
@@ -60,14 +60,6 @@ use cranelift_faerie::*;
 use crate::constant::ConstantCx;
 use crate::prelude::*;
 
-struct NonFatal(pub String);
-
-macro_rules! unimpl {
-    ($($tt:tt)*) => {
-        panic!(crate::NonFatal(format!($($tt)*)));
-    };
-}
-
 mod abi;
 mod allocator;
 mod analyze;
@@ -82,6 +74,7 @@ mod main_shim;
 mod metadata;
 mod pretty_clif;
 mod trap;
+mod unimpl;
 mod vtable;
 
 mod prelude {
@@ -123,6 +116,7 @@ mod prelude {
     pub use crate::base::{trans_operand, trans_place};
     pub use crate::common::*;
     pub use crate::trap::*;
+    pub use crate::unimpl::{unimpl, with_unimpl_span};
     pub use crate::{Caches, CodegenResults, CrateInfo};
 }
 
@@ -482,21 +476,9 @@ fn codegen_mono_items<'a, 'tcx: 'a>(
     println!("[codegen mono items] start");
 
     for (&mono_item, &(_linkage, _vis)) in mono_items {
-        let res = ::std::panic::catch_unwind(::std::panic::AssertUnwindSafe(|| {
+        unimpl::try_unimpl(tcx, log, || {
             base::trans_mono_item(tcx, module, &mut caches, &mut ccx, mono_item);
-        }));
-
-        if let Err(err) = res {
-            match err.downcast::<NonFatal>() {
-                Ok(non_fatal) => {
-                    if cfg!(debug_assertions) {
-                        writeln!(log.as_mut().unwrap(), "{}", &non_fatal.0).unwrap();
-                    }
-                    tcx.sess.err(&non_fatal.0)
-                }
-                Err(err) => ::std::panic::resume_unwind(err),
-            }
-        }
+        });
     }
 
     crate::main_shim::maybe_create_entry_wrapper(tcx, module);
