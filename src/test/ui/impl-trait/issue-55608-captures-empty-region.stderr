@@ -1,11 +1,8 @@
-error[E0700]: hidden type for `impl Trait` captures lifetime that does not appear in bounds
-  --> $DIR/issue-55608-captures-empty-region.rs:6:16
+warning: the feature `conservative_impl_trait` has been stable since 1.26.0 and no longer requires an attribute to enable
+  --> $DIR/issue-55608-captures-empty-region.rs:6:12
    |
-LL | fn server() -> impl FilterBase2 { //~ ERROR [E0700]
-   |                ^^^^^^^^^^^^^^^^
+LL | #![feature(conservative_impl_trait)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: hidden type `Map2<[closure@$DIR/issue-55608-captures-empty-region.rs:7:36: 7:41]>` captures an empty lifetime
+   = note: #[warn(stable_features)] on by default
 
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0700`.

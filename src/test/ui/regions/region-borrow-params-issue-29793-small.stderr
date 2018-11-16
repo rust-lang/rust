@@ -7,9 +7,10 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
    |                 capture occurs here
 ...
 LL |     };
-   |     - borrowed value dropped before borrower
-   |
-   = note: values in a scope are dropped in the opposite order they are created
+   |     - borrowed value only lives until here
+...
+LL | }
+   | - borrowed value needs to live until here
 
 error[E0597]: `y` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:19:45
@@ -20,9 +21,10 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
    |                 capture occurs here
 ...
 LL |     };
-   |     - borrowed value dropped before borrower
-   |
-   = note: values in a scope are dropped in the opposite order they are created
+   |     - borrowed value only lives until here
+...
+LL | }
+   | - borrowed value needs to live until here
 
 error[E0597]: `x` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:34:34
@@ -33,9 +35,10 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
    |                 capture occurs here
 ...
 LL |     };
-   |     - borrowed value dropped before borrower
-   |
-   = note: values in a scope are dropped in the opposite order they are created
+   |     - borrowed value only lives until here
+...
+LL | }
+   | - borrowed value needs to live until here
 
 error[E0597]: `y` does not live long enough
   --> $DIR/region-borrow-params-issue-29793-small.rs:34:45
@@ -46,9 +49,10 @@ LL |         let f = |t: bool| if t { x } else { y }; // (separate errors for `x
    |                 capture occurs here
 ...
 LL |     };
-   |     - borrowed value dropped before borrower
-   |
-   = note: values in a scope are dropped in the opposite order they are created
+   |     - borrowed value only lives until here
+...
+LL | }
+   | - borrowed value needs to live until here
 
 error[E0373]: closure may outlive the current function, but it borrows `x`, which is owned by the current function
   --> $DIR/region-borrow-params-issue-29793-small.rs:65:17

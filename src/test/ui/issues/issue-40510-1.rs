@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
+// (This regression test *used* to pass, but started to fail once
+// #55756 was fixed.)
+
 #![allow(unused)]
 
 fn f() {
     let mut x: Box<()> = Box::new(());
 
     || {
-        &mut x
+        &mut x //~ ERROR cannot infer
     };
 }
 

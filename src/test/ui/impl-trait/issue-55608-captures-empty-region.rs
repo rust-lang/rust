@@ -1,22 +1,36 @@
 // This used to ICE because it creates an `impl Trait` that captures a
 // hidden empty region.
+//
+// compile-pass
 
 #![feature(conservative_impl_trait)]
 
-fn server() -> impl FilterBase2 { //~ ERROR [E0700]
-    segment2(|| { loop { } }).map2(|| "")
+fn server() -> impl FilterBase2 {
+    segment2(|| loop {}).map2(|| "")
 }
 
 trait FilterBase2 {
-    fn map2<F>(self, _fn: F) -> Map2<F> where Self: Sized { loop { } }
+    fn map2<F>(self, _fn: F) -> Map2<F>
+    where
+        Self: Sized,
+    {
+        loop {}
+    }
 }
 
-struct Map2<F> { _func: F }
-
-impl<F> FilterBase2 for Map2<F> { }
-
-fn segment2<F>(_fn: F) -> Map2<F> where F: Fn() -> Result<(), ()> {
-    loop { }
+struct Map2<F> {
+    _func: F,
 }
 
-fn main() { server(); }
+impl<F> FilterBase2 for Map2<F> {}
+
+fn segment2<F>(_fn: F) -> Map2<F>
+where
+    F: Fn() -> Result<(), ()>,
+{
+    loop {}
+}
+
+fn main() {
+    server();
+}

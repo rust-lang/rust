@@ -219,8 +219,31 @@ LL |             &mut x; //[ast]~ ERROR cannot borrow `**x` as mutable more than
 LL |         };
    |         - first borrow ends here
 
+error[E0598]: lifetime of `x` is too short to guarantee its contents can be safely reborrowed
+  --> $DIR/borrowck-describe-lvalue.rs:305:16
+   |
+LL |                || { //[mir]~ ERROR captured variable cannot escape `FnMut` closure body
+   |                ^^
+   |
+note: `x` would have to be valid for the expression at 304:12...
+  --> $DIR/borrowck-describe-lvalue.rs:304:12
+   |
+LL | /            || {
+LL | |                || { //[mir]~ ERROR captured variable cannot escape `FnMut` closure body
+LL | |                    //[ast]~^ ERROR lifetime of `x` is too short
+LL | |                    let y = &mut x;
+...  |
+LL | |                 }
+LL | |            };
+   | |____________^
+note: ...but `x` is only valid for the lifetime  as defined on the body at 304:12
+  --> $DIR/borrowck-describe-lvalue.rs:304:12
+   |
+LL |            || {
+   |            ^^
+
 error[E0499]: cannot borrow `**x` as mutable more than once at a time
-  --> $DIR/borrowck-describe-lvalue.rs:307:25
+  --> $DIR/borrowck-describe-lvalue.rs:308:25
    |
 LL |                    let y = &mut x;
    |                                 - first mutable borrow occurs here
@@ -231,7 +254,7 @@ LL |                 }
    |                 - first borrow ends here
 
 error[E0382]: use of moved value: `x`
-  --> $DIR/borrowck-describe-lvalue.rs:318:22
+  --> $DIR/borrowck-describe-lvalue.rs:319:22
    |
 LL |                 drop(x);
    |                      - value moved here
@@ -240,7 +263,7 @@ LL |                 drop(x); //[ast]~ ERROR use of moved value: `x`
    |
    = note: move occurs because `x` has type `std::vec::Vec<i32>`, which does not implement the `Copy` trait
 
-error: aborting due to 26 previous errors
+error: aborting due to 27 previous errors
 
-Some errors occurred: E0382, E0499, E0502, E0503.
+Some errors occurred: E0382, E0499, E0502, E0503, E0598.
 For more information about an error, try `rustc --explain E0382`.

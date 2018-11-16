@@ -1,20 +1,20 @@
 error[E0598]: lifetime of `x` is too short to guarantee its contents can be safely reborrowed
-  --> $DIR/issue-49824.rs:23:9
+  --> $DIR/issue-40510-3.rs:20:9
    |
 LL |         || { //~ ERROR too short
    |         ^^
    |
-note: `x` would have to be valid for the expression at 22:5...
-  --> $DIR/issue-49824.rs:22:5
+note: `x` would have to be valid for the expression at 19:5...
+  --> $DIR/issue-40510-3.rs:19:5
    |
 LL | /     || {
 LL | |         || { //~ ERROR too short
-LL | |             let _y = &mut x;
+LL | |             x.push(())
 LL | |         }
 LL | |     };
    | |_____^
-note: ...but `x` is only valid for the lifetime  as defined on the body at 22:5
-  --> $DIR/issue-49824.rs:22:5
+note: ...but `x` is only valid for the lifetime  as defined on the body at 19:5
+  --> $DIR/issue-40510-3.rs:19:5
    |
 LL |     || {
    |     ^^
