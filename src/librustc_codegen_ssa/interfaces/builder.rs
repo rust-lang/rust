@@ -15,7 +15,7 @@ use super::intrinsic::IntrinsicCallMethods;
 use super::type_::ArgTypeMethods;
 use super::HasCodegen;
 use common::{AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope};
-use libc::c_char;
+use std::ffi::CStr;
 use mir::operand::OperandRef;
 use mir::place::PlaceRef;
 use rustc::ty::layout::{Align, Size};
@@ -162,8 +162,8 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     ) -> Self::Value;
     fn inline_asm_call(
         &mut self,
-        asm: *const c_char,
-        cons: *const c_char,
+        asm: &CStr,
+        cons: &CStr,
         inputs: &[Self::Value],
         output: Self::Type,
         volatile: bool,
@@ -318,6 +318,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     ) -> Self::Value;
     fn zext(&mut self, val: Self::Value, dest_ty: Self::Type) -> Self::Value;
 
-    fn delete_basic_block(&mut self, bb: Self::BasicBlock);
+    unsafe fn delete_basic_block(&mut self, bb: Self::BasicBlock);
     fn do_not_inline(&mut self, llret: Self::Value);
 }

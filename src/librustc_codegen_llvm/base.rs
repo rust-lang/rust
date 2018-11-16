@@ -194,7 +194,9 @@ pub fn compile_codegen_unit<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
 
             // Run replace-all-uses-with for statics that need it
             for &(old_g, new_g) in cx.statics_to_rauw().borrow().iter() {
-                cx.static_replace_all_uses(old_g, new_g)
+                unsafe {
+                    cx.static_replace_all_uses(old_g, new_g)
+                }
             }
 
             // Create the llvm.used variable

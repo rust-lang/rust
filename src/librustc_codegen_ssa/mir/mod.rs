@@ -359,7 +359,9 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         // Unreachable block
         if !visited.contains(bb.index()) {
             debug!("codegen_mir: block {:?} was not visited", bb);
-            bx.delete_basic_block(fx.blocks[bb]);
+            unsafe {
+                bx.delete_basic_block(fx.blocks[bb]);
+            }
         }
     }
 }

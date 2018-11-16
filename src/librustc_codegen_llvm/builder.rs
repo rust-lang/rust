@@ -28,6 +28,7 @@ use rustc_codegen_ssa::base::to_immediate;
 use rustc_codegen_ssa::mir::operand::{OperandValue, OperandRef};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use std::borrow::Cow;
+use std::ffi::CStr;
 use std::ops::Range;
 use std::ptr;
 
@@ -838,7 +839,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn inline_asm_call(&mut self, asm: *const c_char, cons: *const c_char,
+    fn inline_asm_call(&mut self, asm: &CStr, cons: &CStr,
                        inputs: &[&'ll Value], output: &'ll Type,
                        volatile: bool, alignstack: bool,
                        dia: syntax::ast::AsmDialect) -> Option<&'ll Value> {
@@ -858,11 +859,17 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let fty = self.cx().type_func(&argtys[..], output);
         unsafe {
             // Ask LLVM to verify that the constraints are well-formed.
-            let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons);
+            let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr());
             debug!("Constraint verification result: {:?}", constraints_ok);
             if constraints_ok {
                 let v = llvm::LLVMRustInlineAsm(
-                    fty, asm, cons, volatile, alignstack, AsmDialect::from_generic(dia));
+                    fty,
+                    asm.as_ptr(),
+                    cons.as_ptr(),
+                    volatile,
+                    alignstack,
+                    AsmDialect::from_generic(dia),
+                );
                 Some(self.call(v, inputs, None))
             } else {
                 // LLVM has detected an issue with our constraints, bail out
@@ -1400,10 +1407,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.cx
     }
 
-    fn delete_basic_block(&mut self, bb: &'ll BasicBlock) {
-        unsafe {
-            llvm::LLVMDeleteBasicBlock(bb);
-        }
+    unsafe fn delete_basic_block(&mut self, bb: &'ll BasicBlock) {
+        llvm::LLVMDeleteBasicBlock(bb);
     }
 
     fn do_not_inline(&mut self, llret: &'ll Value) {

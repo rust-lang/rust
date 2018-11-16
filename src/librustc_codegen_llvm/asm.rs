@@ -84,8 +84,8 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
         let constraint_cstr = CString::new(all_constraints).unwrap();
         let r = self.inline_asm_call(
-            asm.as_ptr(),
-            constraint_cstr.as_ptr(),
+            &asm,
+            &constraint_cstr,
             &inputs,
             output_type,
             ia.volatile,
