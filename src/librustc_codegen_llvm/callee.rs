@@ -19,7 +19,7 @@ use llvm;
 use monomorphize::Instance;
 use context::CodegenCx;
 use value::Value;
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 
 use rustc::ty::TypeFoldable;
 use rustc::ty::layout::{LayoutOf, HasTyCtxt};

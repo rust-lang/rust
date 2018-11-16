@@ -26,7 +26,7 @@ use rustc::session::config::{self, OutputFilenames, OutputType, Passes, Sanitize
 use rustc::session::Session;
 use rustc::util::nodemap::FxHashMap;
 use rustc::util::time_graph::{self, TimeGraph, Timeline};
-use interfaces::*;
+use traits::*;
 use rustc::hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc::ty::TyCtxt;
 use rustc::util::common::{time_depth, set_time_depth, print_time_passes_entry};

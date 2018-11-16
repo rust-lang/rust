@@ -18,7 +18,7 @@ use common::IntPredicate;
 use meth;
 use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
-use interfaces::*;
+use traits::*;
 
 pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,

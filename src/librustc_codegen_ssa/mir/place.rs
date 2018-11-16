@@ -16,7 +16,7 @@ use MemFlags;
 use common::IntPredicate;
 use glue;
 
-use interfaces::*;
+use traits::*;
 
 use super::{FunctionCx, LocalRef};
 use super::operand::OperandValue;

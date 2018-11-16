@@ -17,7 +17,7 @@ use base;
 use MemFlags;
 use glue;
 
-use interfaces::*;
+use traits::*;
 
 use std::fmt;
 

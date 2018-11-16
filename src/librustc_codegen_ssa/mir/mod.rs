@@ -18,7 +18,7 @@ use base;
 use debuginfo::{self, VariableAccess, VariableKind, FunctionDebugContext};
 use rustc_mir::monomorphize::Instance;
 use rustc_target::abi::call::{FnType, PassMode};
-use interfaces::*;
+use traits::*;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;

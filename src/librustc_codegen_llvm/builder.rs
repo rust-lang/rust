@@ -22,7 +22,7 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, Size, TyLayout};
 use rustc::session::config;
 use rustc_data_structures::small_c_str::SmallCStr;
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 use syntax;
 use rustc_codegen_ssa::base::to_immediate;
 use rustc_codegen_ssa::mir::operand::{OperandValue, OperandRef};

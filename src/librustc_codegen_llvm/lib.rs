@@ -67,7 +67,7 @@ extern crate cc; // Used to locate MSVC
 extern crate tempfile;
 extern crate memmap;
 
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig};
 use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinModule};
 use rustc_codegen_ssa::CompiledModule;

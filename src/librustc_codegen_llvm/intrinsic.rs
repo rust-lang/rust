@@ -32,7 +32,7 @@ use syntax::symbol::Symbol;
 use builder::Builder;
 use value::Value;
 
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 
 use rustc::session::Session;
 use syntax_pos::Span;

@@ -16,7 +16,7 @@ use rustc::ty::layout::{self, Align, LayoutOf, Size, TyLayout};
 use rustc_target::abi::FloatTy;
 use rustc_mir::monomorphize::item::DefPathBasedNames;
 use type_::Type;
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 
 use std::fmt::Write;
 

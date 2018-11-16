@@ -17,7 +17,7 @@ use rustc_codegen_ssa::debuginfo::FunctionDebugContext;
 use llvm;
 use llvm::debuginfo::DIScope;
 use builder::Builder;
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 
 use libc::c_uint;
 use syntax_pos::{Span, Pos};

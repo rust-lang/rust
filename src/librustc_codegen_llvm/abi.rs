@@ -19,7 +19,7 @@ use type_of::{LayoutLlvmExt, PointerKind};
 use value::Value;
 use rustc_target::abi::call::ArgType;
 
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, Abi as LayoutAbi};
 use rustc::ty::{self, Ty, Instance};

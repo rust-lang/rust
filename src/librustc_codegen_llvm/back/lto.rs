@@ -12,7 +12,7 @@ use back::bytecode::{DecodedBytecode, RLIB_BYTECODE_EXTENSION};
 use rustc_codegen_ssa::back::symbol_export;
 use rustc_codegen_ssa::back::write::{ModuleConfig, CodegenContext, pre_lto_bitcode_filename};
 use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinShared, ThinModule};
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 use back::write::{self, DiagnosticHandlers, with_llvm_pmb, save_temp_bitcode, get_llvm_opt_level};
 use errors::{FatalError, Handler};
 use llvm::archive_ro::ArchiveRO;

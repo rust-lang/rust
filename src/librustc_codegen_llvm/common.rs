@@ -18,7 +18,7 @@ use consts;
 use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 
 use rustc::ty::layout::{HasDataLayout, LayoutOf, self, TyLayout, Size};
 use rustc::mir::interpret::{Scalar, AllocType, Allocation};

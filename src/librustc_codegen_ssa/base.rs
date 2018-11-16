@@ -57,7 +57,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_codegen_utils::{symbol_names_test, check_for_rustc_errors_attr};
 use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 
-use interfaces::*;
+use traits::*;
 
 use std::any::Any;
 use std::cmp;

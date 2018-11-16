@@ -12,7 +12,7 @@ use attributes;
 use back::bytecode::{self, RLIB_BYTECODE_EXTENSION};
 use back::lto::ThinBuffer;
 use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig, run_assembler};
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 use base;
 use consts;
 use rustc::session::config::{self, OutputType, Passes, Lto};

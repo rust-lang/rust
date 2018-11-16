@@ -49,7 +49,7 @@ use syntax_pos::{self, Span, Pos};
 use syntax::ast;
 use syntax::symbol::{Symbol, InternedString};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 
 pub mod gdb;
 mod utils;

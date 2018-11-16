@@ -15,7 +15,7 @@ pub use llvm::Type;
 use llvm;
 use llvm::{Bool, False, True};
 use context::CodegenCx;
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 use value::Value;
 
 use rustc::util::nodemap::FxHashMap;

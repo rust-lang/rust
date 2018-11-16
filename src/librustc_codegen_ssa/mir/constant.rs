@@ -16,7 +16,7 @@ use rustc::mir::interpret::{GlobalId, ConstValue};
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, LayoutOf};
 use syntax::source_map::Span;
-use interfaces::*;
+use traits::*;
 
 use super::FunctionCx;
 

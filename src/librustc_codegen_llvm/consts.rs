@@ -26,7 +26,7 @@ use type_::Type;
 use type_of::LayoutLlvmExt;
 use value::Value;
 use rustc::ty::{self, Ty};
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 
 use rustc::ty::layout::{self, Size, Align, LayoutOf};
 

@@ -20,7 +20,7 @@ For these reasons, the separation process involves two transformations that have
 1. replace all the LLVM-specific types by generics inside function signatures and structure definitions;
 2. encapsulate all functions calling the LLVM FFI inside a set of traits that will define the interface between backend-agnostic code and the backend.
 
-While the LLVM-specific code will be left in `rustc_codegen_llvm`, all the new interfaces and backend-agnostic code will be moved in `rustc_codegen_ssa` (name suggestion by @eddyb).
+While the LLVM-specific code will be left in `rustc_codegen_llvm`, all the new traits and backend-agnostic code will be moved in `rustc_codegen_ssa` (name suggestion by @eddyb).
 
 ## Generic types and structures
 
@@ -58,7 +58,7 @@ However, the two most important structures `CodegenCx` and `Builder` are not def
 
 ## Traits and interface
 
-Because they have to be defined by the backend, `CodegenCx` and `Builder` will be the structures implementing all the traits defining the backend's interface. These traits are defined in the folder `rustc_codegen_ssa/interfaces` and all the backend-agnostic code is parametrized by them. For instance, let us explain how a function in `base.rs` is parametrized:
+Because they have to be defined by the backend, `CodegenCx` and `Builder` will be the structures implementing all the traits defining the backend's interface. These traits are defined in the folder `rustc_codegen_ssa/traits` and all the backend-agnostic code is parametrized by them. For instance, let us explain how a function in `base.rs` is parametrized:
 
 ```rust
 pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
@@ -71,7 +71,7 @@ pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
 In this signature, we have the two lifetime parameters explained earlier and the master type `Bx` which satisfies the trait `BuilderMethods` corresponding to the interface satisfied by the `Builder` struct. The `BuilderMethods` defines an associated type `Bx::CodegenCx` that itself satisfies the `CodegenMethods` traits implemented by the struct `CodegenCx`.
 
-On the trait side, here is an example with part of the definition of `BuilderMethods` in `interfaces/builder.rs`:
+On the trait side, here is an example with part of the definition of `BuilderMethods` in `traits/builder.rs`:
 
 ```rust
 pub trait BuilderMethods<'a, 'tcx: 'a>:
@@ -116,6 +116,6 @@ However, the current separation between backend-agnostic and LLVM-specific code 
 
 The `debuginfo` folder has been left almost untouched by the splitting and is specific to LLVM. Only its high-level features have been traitified.
 
-The new `interfaces` folder has 1500 LOC only for trait definitions. Overall, the 27,000 LOC-sized old `rustc_codegen_llvm` code has been split into the new 18,500 LOC-sized new `rustc_codegen_llvm` and the 12,000 LOC-sized `rustc_codegen_ssa`. We can say that this refactoring allowed the reuse of approximately 10,000 LOC that would otherwise have had to be duplicated between the multiple backends of `rustc`.
+The new `traits` folder has 1500 LOC only for trait definitions. Overall, the 27,000 LOC-sized old `rustc_codegen_llvm` code has been split into the new 18,500 LOC-sized new `rustc_codegen_llvm` and the 12,000 LOC-sized `rustc_codegen_ssa`. We can say that this refactoring allowed the reuse of approximately 10,000 LOC that would otherwise have had to be duplicated between the multiple backends of `rustc`.
 
 The refactored version of `rustc`'s backend introduced no regression over the test suite nor in performance benchmark, which is in coherence with the nature of the refactoring that used only compile-time parametricity (no trait objects).

@@ -31,7 +31,7 @@ use abi::{Abi, FnType, FnTypeExt};
 use attributes;
 use context::CodegenCx;
 use type_::Type;
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 use value::Value;
 
 /// Declare a function.

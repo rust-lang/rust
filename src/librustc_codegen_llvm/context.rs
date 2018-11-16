@@ -20,7 +20,7 @@ use value::Value;
 use monomorphize::partitioning::CodegenUnit;
 use type_::Type;
 use type_of::PointeeInfo;
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 use libc::c_uint;
 
 use rustc_data_structures::base_n;

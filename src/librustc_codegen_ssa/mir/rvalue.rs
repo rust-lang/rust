@@ -22,7 +22,7 @@ use callee;
 use common::{self, RealPredicate, IntPredicate};
 use rustc_mir::monomorphize;
 
-use interfaces::*;
+use traits::*;
 
 use super::{FunctionCx, LocalRef};
 use super::operand::{OperandRef, OperandValue};

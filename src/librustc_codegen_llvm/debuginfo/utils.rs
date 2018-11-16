@@ -19,7 +19,7 @@ use rustc::ty::DefIdTree;
 use llvm;
 use llvm::debuginfo::{DIScope, DIBuilder, DIDescriptor, DIArray};
 use common::{CodegenCx};
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 
 use syntax_pos::{self, Span};
 

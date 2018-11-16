@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use interfaces::*;
+use traits::*;
 use rustc::ty;
 use rustc::ty::subst::Substs;
 use rustc::hir::def_id::DefId;

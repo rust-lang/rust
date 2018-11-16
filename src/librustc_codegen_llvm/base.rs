@@ -42,7 +42,7 @@ use monomorphize::partitioning::CodegenUnitExt;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
 use rustc_data_structures::small_c_str::SmallCStr;
 
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::back::write::submit_codegened_module_to_llvm;
 
 use std::ffi::CString;

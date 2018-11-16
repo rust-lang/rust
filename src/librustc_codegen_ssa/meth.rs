@@ -12,7 +12,7 @@ use rustc_target::abi::call::FnType;
 use callee;
 use rustc_mir::monomorphize;
 
-use interfaces::*;
+use traits::*;
 
 use rustc::ty::{self, Ty};
 

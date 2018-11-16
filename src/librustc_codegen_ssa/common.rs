@@ -15,10 +15,10 @@ use syntax_pos::{DUMMY_SP, Span};
 use rustc::hir::def_id::DefId;
 use rustc::middle::lang_items::LangItem;
 use base;
-use interfaces::*;
+use traits::*;
 
 use rustc::hir;
-use interfaces::BuilderMethods;
+use traits::BuilderMethods;
 
 pub fn type_needs_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
     ty.needs_drop(tcx, ty::ParamEnv::reveal_all())

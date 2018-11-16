@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use super::write::CodegenContext;
-use interfaces::*;
+use traits::*;
 use ModuleCodegen;
 
 use rustc::util::time_graph::Timeline;

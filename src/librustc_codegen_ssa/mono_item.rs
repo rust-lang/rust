@@ -20,7 +20,7 @@ use rustc::hir::def::Def;
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::layout::HasTyCtxt;
 use std::fmt;
-use interfaces::*;
+use traits::*;
 
 pub use rustc::mir::mono::MonoItem;
 

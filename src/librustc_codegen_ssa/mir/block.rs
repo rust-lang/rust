@@ -21,7 +21,7 @@ use common::{self, IntPredicate};
 use meth;
 use rustc_mir::monomorphize;
 
-use interfaces::*;
+use traits::*;
 
 use syntax::symbol::Symbol;
 use syntax_pos::Pos;

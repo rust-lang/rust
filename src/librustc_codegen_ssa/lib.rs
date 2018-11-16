@@ -66,7 +66,7 @@ use syntax_pos::symbol::Symbol;
 mod diagnostics;
 
 pub mod common;
-pub mod interfaces;
+pub mod traits;
 pub mod mir;
 pub mod debuginfo;
 pub mod base;

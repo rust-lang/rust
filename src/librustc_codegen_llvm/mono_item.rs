@@ -18,7 +18,7 @@ use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::mono::{Linkage, Visibility};
 use rustc::ty::TypeFoldable;
 use rustc::ty::layout::{LayoutOf, HasTyCtxt};
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 
 pub use rustc::mir::mono::MonoItem;
 

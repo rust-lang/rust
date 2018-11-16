@@ -15,7 +15,7 @@ use builder::Builder;
 use value::Value;
 
 use rustc::hir;
-use rustc_codegen_ssa::interfaces::*;
+use rustc_codegen_ssa::traits::*;
 
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::mir::operand::OperandValue;
