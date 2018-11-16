@@ -375,7 +375,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         );
 
         let body_hir_id = self.tcx.hir.node_to_hir_id(body_id.node_id);
-        self.type_of_node_must_be_valid_for_scope(infer::CallReturn(span), body_hir_id, call_site_scope);
+        self.type_of_node_must_be_valid_for_scope(
+            infer::CallReturn(span),
+            body_hir_id,
+            call_site_scope,
+        );
 
         self.constrain_opaque_types(
             &self.fcx.opaque_types.borrow(),
@@ -829,7 +833,11 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // as loop above, but for receiver
         if let Some(r) = receiver {
             debug!("receiver: {:?}", r);
-            self.type_of_node_must_be_valid_for_scope(infer::CallRcvr(r.span), r.hir_id, callee_scope);
+            self.type_of_node_must_be_valid_for_scope(
+                infer::CallRcvr(r.span),
+                r.hir_id,
+                callee_scope,
+            );
         }
     }
 
@@ -1046,7 +1054,10 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     ) {
         let scope_region = self.tcx.mk_region(ty::ReScope(scope));
         let ty = self.resolve_type_vars_if_possible(&ty);
-        self.tcx.for_each_free_region(&ty, |ty_region| self.sub_regions(origin.clone(), scope_region, ty_region));
+        self.tcx.for_each_free_region(
+            &ty,
+            |ty_region| self.sub_regions(origin.clone(), scope_region, ty_region),
+        );
     }
 
     /// Adds constraints to inference such that `T: 'a` holds (or
