@@ -47,7 +47,7 @@ use abi::Abi;
 /// There is one `CodegenCx` per compilation unit. Each one has its own LLVM
 /// `llvm::Context` so that several compilation units may be optimized in parallel.
 /// All other LLVM data structures in the `CodegenCx` are tied to that `llvm::Context`.
-pub struct CodegenCx<'ll, 'tcx: 'll, V = &'ll Value> {
+pub struct CodegenCx<'ll, 'tcx: 'll> {
     pub tcx: TyCtxt<'ll, 'tcx, 'tcx>,
     pub check_overflow: bool,
     pub use_dll_storage_attrs: bool,
@@ -59,11 +59,11 @@ pub struct CodegenCx<'ll, 'tcx: 'll, V = &'ll Value> {
     pub codegen_unit: Arc<CodegenUnit<'tcx>>,
 
     /// Cache instances of monomorphic and polymorphic items
-    pub instances: RefCell<FxHashMap<Instance<'tcx>, V>>,
+    pub instances: RefCell<FxHashMap<Instance<'tcx>, &'ll Value>>,
     /// Cache generated vtables
-    pub vtables: RefCell<FxHashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), V>>,
+    pub vtables: RefCell<FxHashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), &'ll Value>>,
     /// Cache of constant strings,
-    pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, V>>,
+    pub const_cstr_cache: RefCell<FxHashMap<LocalInternedString, &'ll Value>>,
 
     /// Reverse-direction for const ptrs cast from globals.
     /// Key is a Value holding a *T,
@@ -73,20 +73,20 @@ pub struct CodegenCx<'ll, 'tcx: 'll, V = &'ll Value> {
     /// when we ptrcast, and we have to ptrcast during codegen
     /// of a [T] const because we form a slice, a (*T,usize) pair, not
     /// a pointer to an LLVM array type. Similar for trait objects.
-    pub const_unsized: RefCell<FxHashMap<V, V>>,
+    pub const_unsized: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
 
     /// Cache of emitted const globals (value -> global)
-    pub const_globals: RefCell<FxHashMap<V, V>>,
+    pub const_globals: RefCell<FxHashMap<&'ll Value, &'ll Value>>,
 
     /// List of globals for static variables which need to be passed to the
     /// LLVM function ReplaceAllUsesWith (RAUW) when codegen is complete.
     /// (We have to make sure we don't invalidate any Values referring
     /// to constants.)
-    pub statics_to_rauw: RefCell<Vec<(V, V)>>,
+    pub statics_to_rauw: RefCell<Vec<(&'ll Value, &'ll Value)>>,
 
     /// Statics that will be placed in the llvm.used variable
     /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
-    pub used_statics: RefCell<Vec<V>>,
+    pub used_statics: RefCell<Vec<&'ll Value>>,
 
     pub lltypes: RefCell<FxHashMap<(Ty<'tcx>, Option<VariantIdx>), &'ll Type>>,
     pub scalar_lltypes: RefCell<FxHashMap<Ty<'tcx>, &'ll Type>>,
@@ -95,11 +95,11 @@ pub struct CodegenCx<'ll, 'tcx: 'll, V = &'ll Value> {
 
     pub dbg_cx: Option<debuginfo::CrateDebugContext<'ll, 'tcx>>,
 
-    eh_personality: Cell<Option<V>>,
-    eh_unwind_resume: Cell<Option<V>>,
-    pub rust_try_fn: Cell<Option<V>>,
+    eh_personality: Cell<Option<&'ll Value>>,
+    eh_unwind_resume: Cell<Option<&'ll Value>>,
+    pub rust_try_fn: Cell<Option<&'ll Value>>,
 
-    intrinsics: RefCell<FxHashMap<&'static str, V>>,
+    intrinsics: RefCell<FxHashMap<&'static str, &'ll Value>>,
 
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,

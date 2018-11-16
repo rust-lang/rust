@@ -180,17 +180,17 @@ pub fn compile_codegen_unit<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
             let mono_items = cx.codegen_unit
                                .items_in_deterministic_order(cx.tcx);
             for &(mono_item, (linkage, visibility)) in &mono_items {
-                mono_item.predefine::<Builder<&Value>>(&cx, linkage, visibility);
+                mono_item.predefine::<Builder>(&cx, linkage, visibility);
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.
             for &(mono_item, _) in &mono_items {
-                mono_item.define::<Builder<&Value>>(&cx);
+                mono_item.define::<Builder>(&cx);
             }
 
             // If this codegen unit contains the main function, also create the
             // wrapper here
-            maybe_create_entry_wrapper::<Builder<&Value>>(&cx);
+            maybe_create_entry_wrapper::<Builder>(&cx);
 
             // Run replace-all-uses-with for statics that need it
             for &(old_g, new_g) in cx.statics_to_rauw().borrow().iter() {

@@ -29,12 +29,12 @@ While the LLVM-specific code will be left in `rustc_codegen_llvm`, all the new t
 The two most important structures for the LLVM codegen are `CodegenCx` and `Builder`. They are parametrized by multiple liftime parameters and the type for `Value`.
 
 ```rust
-struct CodegenCx<'ll, 'tcx: 'll, V: 'll = &'ll Value> {
+struct CodegenCx<'ll, 'tcx: 'll> {
   /* ... */
 }
 
-struct Builder<'a, 'll: 'a, 'tcx: 'll, V: 'll = &'ll Value> {
-  cx: &'a CodegenCx<'ll, 'tcx, V>,
+struct Builder<'a, 'll: 'a, 'tcx: 'll> {
+  cx: &'a CodegenCx<'ll, 'tcx>,
   /* ... */
 }
 ```

@@ -34,12 +34,12 @@ use std::ptr;
 
 // All Builders must have an llfn associated with them
 #[must_use]
-pub struct Builder<'a, 'll: 'a, 'tcx: 'll, V: 'll = &'ll Value> {
+pub struct Builder<'a, 'll: 'a, 'tcx: 'll> {
     pub llbuilder: &'ll mut llvm::Builder<'ll>,
-    pub cx: &'a CodegenCx<'ll, 'tcx, V>,
+    pub cx: &'a CodegenCx<'ll, 'tcx>,
 }
 
-impl<V> Drop for Builder<'a, 'll, 'tcx, V> {
+impl Drop for Builder<'a, 'll, 'tcx> {
     fn drop(&mut self) {
         unsafe {
             llvm::LLVMDisposeBuilder(&mut *(self.llbuilder as *mut _));
