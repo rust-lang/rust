@@ -36,7 +36,10 @@ use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{ObligationCause, PredicateObligations};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Subst, Substs, UnpackedKind};
-use rustc::ty::{self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind};
+use rustc::ty::{
+    self, RegionVid, ToPolyTraitRef, Ty, TyCtxt, TyKind, UserTypeAnnotation,
+    UserTypeAnnotationIndex,
+};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::ty::layout::VariantIdx;
@@ -272,19 +275,20 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         self.sanitize_constant(constant, location);
         self.sanitize_type(constant, constant.ty);
 
-        if let Some(user_ty) = constant.user_ty {
+        if let Some(annotation_index) = constant.user_ty {
             if let Err(terr) = self.cx.relate_type_and_user_type(
                 constant.ty,
                 ty::Variance::Invariant,
-                &UserTypeProjection { base: user_ty, projs: vec![], },
+                &UserTypeProjection { base: annotation_index, projs: vec![], },
                 location.to_locations(),
                 ConstraintCategory::Boring,
             ) {
+                let annotation = self.cx.instantiated_type_annotations[&annotation_index];
                 span_mirbug!(
                     self,
                     constant,
                     "bad constant user type {:?} vs {:?}: {:?}",
-                    user_ty,
+                    annotation,
                     constant.ty,
                     terr,
                 );
@@ -715,6 +719,15 @@ struct TypeChecker<'a, 'gcx: 'tcx, 'tcx: 'a> {
     reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
     borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
     universal_region_relations: Option<&'a UniversalRegionRelations<'tcx>>,
+    /// For each user-type annotation (identified by a UserTypeAnnotationIndex), we create
+    /// an "instantiated" version at the beginning of type check, which replaces each
+    /// canonical variable with a fresh inference variable. These instantiated versions are
+    /// stored either in this field or in user_substs, depending on the kind of user-type
+    /// annotation. They are then referenced by the code which has the job of enforcing these
+    /// annotations. Part of the reason for this setup is that it allows us to enforce basic
+    /// WF criteria on the types even if the code that referenced them is dead
+    /// code (see #54943).
+    instantiated_type_annotations: FxHashMap<UserTypeAnnotationIndex, UserTypeAnnotation<'tcx>>,
 }
 
 struct BorrowCheckContext<'a, 'tcx: 'a> {
@@ -860,7 +873,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         borrowck_context: Option<&'a mut BorrowCheckContext<'a, 'tcx>>,
         universal_region_relations: Option<&'a UniversalRegionRelations<'tcx>>,
     ) -> Self {
-        TypeChecker {
+        let mut checker = Self {
             infcx,
             last_span: DUMMY_SP,
             mir,
@@ -871,7 +884,36 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             borrowck_context,
             reported_errors: Default::default(),
             universal_region_relations,
+            instantiated_type_annotations: Default::default(),
+        };
+        checker.instantiate_user_type_annotations();
+        checker
+    }
+
+    /// Instantiate canonical types from user type annotations in the `Mir` into the
+    /// `TypeChecker`. Used when relating user type annotations and when checking if
+    /// annotations are well-formed.
+    fn instantiate_user_type_annotations(&mut self) {
+        debug!(
+            "instantiate_user_type_annotations: user_type_annotations={:?}",
+             self.mir.user_type_annotations
+        );
+        for annotation_index in self.mir.user_type_annotations.indices() {
+            let (span, canonical_annotation) = &self.mir.user_type_annotations[annotation_index];
+            let (mut annotation, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
+                *span, &canonical_annotation
+            );
+            match annotation {
+                UserTypeAnnotation::Ty(ref mut ty) =>
+                    *ty = self.normalize(ty, Locations::All(*span)),
+                _ => {},
+            }
+            self.instantiated_type_annotations.insert(annotation_index, annotation);
         }
+        debug!(
+            "instantiate_user_type_annotations: instantiated_type_annotations={:?}",
+            self.instantiated_type_annotations,
+        );
     }
 
     /// Given some operation `op` that manipulates types, proves
@@ -1003,18 +1045,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             a, v, user_ty, locations,
         );
 
-        match user_ty.base {
-            UserTypeAnnotation::Ty(canonical_ty) => {
-                let (ty, _) = self.infcx
-                    .instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_ty);
-
+        match self.instantiated_type_annotations[&user_ty.base] {
+            UserTypeAnnotation::Ty(ty) => {
                 // The `TypeRelating` code assumes that "unresolved inference
                 // variables" appear in the "a" side, so flip `Contravariant`
                 // ambient variance to get the right relationship.
                 let v1 = ty::Contravariant.xform(v);
-
                 let tcx = self.infcx.tcx;
-                let ty = self.normalize(ty, locations);
 
                 // We need to follow any provided projetions into the type.
                 //
@@ -1048,13 +1085,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     self.relate_types(ty, v1, a, locations, category)?;
                 }
             }
-            UserTypeAnnotation::TypeOf(def_id, canonical_substs) => {
-                let (
-                    user_substs,
-                    _,
-                ) = self.infcx
-                    .instantiate_canonical_with_fresh_inference_vars(DUMMY_SP, &canonical_substs);
-
+            UserTypeAnnotation::TypeOf(def_id, user_substs) => {
                 let projs = self.infcx.tcx.intern_projs(&user_ty.projs);
                 self.fully_perform_op(
                     locations,
@@ -1225,19 +1256,20 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                 }
 
-                if let Some(user_ty) = self.rvalue_user_ty(rv) {
+                if let Some(annotation_index) = self.rvalue_user_ty(rv) {
                     if let Err(terr) = self.relate_type_and_user_type(
                         rv_ty,
                         ty::Variance::Invariant,
-                        &UserTypeProjection { base: user_ty, projs: vec![], },
+                        &UserTypeProjection { base: annotation_index, projs: vec![], },
                         location.to_locations(),
                         ConstraintCategory::Boring,
                     ) {
+                        let annotation = self.instantiated_type_annotations[&annotation_index];
                         span_mirbug!(
                             self,
                             stmt,
                             "bad user type on rvalue ({:?} = {:?}): {:?}",
-                            user_ty,
+                            annotation,
                             rv_ty,
                             terr
                         );
@@ -1282,21 +1314,23 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     );
                 };
             }
-            StatementKind::AscribeUserType(ref place, variance, box ref c_ty) => {
+            StatementKind::AscribeUserType(ref place, variance, box ref projection) => {
                 let place_ty = place.ty(mir, tcx).to_ty(tcx);
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,
                     variance,
-                    c_ty,
+                    projection,
                     Locations::All(stmt.source_info.span),
                     ConstraintCategory::TypeAnnotation,
                 ) {
+                    let annotation = self.instantiated_type_annotations[&projection.base];
                     span_mirbug!(
                         self,
                         stmt,
-                        "bad type assert ({:?} <: {:?}): {:?}",
+                        "bad type assert ({:?} <: {:?} with projections {:?}): {:?}",
                         place_ty,
-                        c_ty,
+                        annotation,
+                        projection.projs,
                         terr
                     );
                 }
@@ -1955,7 +1989,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     /// If this rvalue supports a user-given type annotation, then
     /// extract and return it. This represents the final type of the
     /// rvalue and will be unified with the inferred type.
-    fn rvalue_user_ty(&self, rvalue: &Rvalue<'tcx>) -> Option<UserTypeAnnotation<'tcx>> {
+    fn rvalue_user_ty(&self, rvalue: &Rvalue<'tcx>) -> Option<UserTypeAnnotationIndex> {
         match rvalue {
             Rvalue::Use(_)
             | Rvalue::Repeat(..)

@@ -27,9 +27,12 @@ use syntax::ast::{self, Name};
 use syntax::symbol::InternedString;
 use syntax_pos::{Span, DUMMY_SP};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
-use ty::subst::{CanonicalUserSubsts, Subst, Substs};
-use ty::{self, AdtDef, CanonicalTy, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt};
+use ty::subst::{Subst, Substs};
 use ty::layout::VariantIdx;
+use ty::{
+    self, AdtDef, CanonicalUserTypeAnnotations, ClosureSubsts, GeneratorSubsts, Region, Ty, TyCtxt,
+    UserTypeAnnotationIndex, UserTypeAnnotation,
+};
 use util::ppaux;
 
 pub use mir::interpret::AssertMessage;
@@ -121,6 +124,9 @@ pub struct Mir<'tcx> {
     /// variables and temporaries.
     pub local_decls: LocalDecls<'tcx>,
 
+    /// User type annotations
+    pub user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
+
     /// Number of arguments this function takes.
     ///
     /// Starting at local 1, `arg_count` locals will be provided by the caller
@@ -161,7 +167,8 @@ impl<'tcx> Mir<'tcx> {
         source_scope_local_data: ClearCrossCrate<IndexVec<SourceScope, SourceScopeLocalData>>,
         promoted: IndexVec<Promoted, Mir<'tcx>>,
         yield_ty: Option<Ty<'tcx>>,
-        local_decls: IndexVec<Local, LocalDecl<'tcx>>,
+        local_decls: LocalDecls<'tcx>,
+        user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
         upvar_decls: Vec<UpvarDecl>,
         span: Span,
@@ -185,6 +192,7 @@ impl<'tcx> Mir<'tcx> {
             generator_drop: None,
             generator_layout: None,
             local_decls,
+            user_type_annotations,
             arg_count,
             upvar_decls,
             spread_arg: None,
@@ -418,6 +426,7 @@ impl_stable_hash_for!(struct Mir<'tcx> {
     generator_drop,
     generator_layout,
     local_decls,
+    user_type_annotations,
     arg_count,
     upvar_decls,
     spread_arg,
@@ -2232,7 +2241,7 @@ pub enum AggregateKind<'tcx> {
         &'tcx AdtDef,
         VariantIdx,
         &'tcx Substs<'tcx>,
-        Option<UserTypeAnnotation<'tcx>>,
+        Option<UserTypeAnnotationIndex>,
         Option<usize>,
     ),
 
@@ -2446,36 +2455,9 @@ pub struct Constant<'tcx> {
     /// indicate that `Vec<_>` was explicitly specified.
     ///
     /// Needed for NLL to impose user-given type constraints.
-    pub user_ty: Option<UserTypeAnnotation<'tcx>>,
+    pub user_ty: Option<UserTypeAnnotationIndex>,
 
     pub literal: &'tcx ty::Const<'tcx>,
-}
-
-/// A user-given type annotation attached to a constant.  These arise
-/// from constants that are named via paths, like `Foo::<A>::new` and
-/// so forth.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-pub enum UserTypeAnnotation<'tcx> {
-    Ty(CanonicalTy<'tcx>),
-
-    /// The canonical type is the result of `type_of(def_id)` with the
-    /// given substitutions applied.
-    TypeOf(DefId, CanonicalUserSubsts<'tcx>),
-}
-
-EnumTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for UserTypeAnnotation<'tcx> {
-        (UserTypeAnnotation::Ty)(ty),
-        (UserTypeAnnotation::TypeOf)(def, substs),
-    }
-}
-
-EnumLiftImpl! {
-    impl<'a, 'tcx> Lift<'tcx> for UserTypeAnnotation<'a> {
-        type Lifted = UserTypeAnnotation<'tcx>;
-        (UserTypeAnnotation::Ty)(ty),
-        (UserTypeAnnotation::TypeOf)(def, substs),
-    }
 }
 
 /// A collection of projections into user types.
@@ -2556,7 +2538,7 @@ impl<'tcx> UserTypeProjections<'tcx> {
 ///   determined by finding the type of the `.0` field from `T`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct UserTypeProjection<'tcx> {
-    pub base: UserTypeAnnotation<'tcx>,
+    pub base: UserTypeAnnotationIndex,
     pub projs: Vec<ProjectionElem<'tcx, (), ()>>,
 }
 
@@ -2970,6 +2952,7 @@ CloneTypeFoldableAndLiftImpls! {
     SourceScope,
     SourceScopeData,
     SourceScopeLocalData,
+    UserTypeAnnotationIndex,
 }
 
 BraceStructTypeFoldableImpl! {
@@ -2983,6 +2966,7 @@ BraceStructTypeFoldableImpl! {
         generator_drop,
         generator_layout,
         local_decls,
+        user_type_annotations,
         arg_count,
         upvar_decls,
         spread_arg,

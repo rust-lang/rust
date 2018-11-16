@@ -379,6 +379,7 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// (A match binding can have two locals; the 2nd is for the arm's guard.)
     var_indices: NodeMap<LocalsForNode>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
+    canonical_user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
     upvar_decls: Vec<UpvarDecl>,
     unit_temp: Option<Place<'tcx>>,
 
@@ -812,6 +813,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 LocalDecl::new_return_place(return_ty, return_span),
                 1,
             ),
+            canonical_user_type_annotations: IndexVec::new(),
             upvar_decls,
             var_indices: Default::default(),
             unit_temp: None,
@@ -845,6 +847,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             IndexVec::new(),
             yield_ty,
             self.local_decls,
+            self.canonical_user_type_annotations,
             self.arg_count,
             self.upvar_decls,
             self.fn_span,

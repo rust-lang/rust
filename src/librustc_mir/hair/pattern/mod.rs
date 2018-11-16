@@ -12,9 +12,10 @@ use hair::util::UserAnnotatedTyHelpers;
 use hair::constant::*;
 
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
-use rustc::mir::{ProjectionElem, UserTypeAnnotation, UserTypeProjection, UserTypeProjections};
+use rustc::mir::{ProjectionElem, UserTypeProjection, UserTypeProjections};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
 use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, Lift};
+use rustc::ty::{CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, UserTypeAnnotation};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -63,9 +64,15 @@ pub(crate) struct PatternTypeProjections<'tcx> {
 }
 
 impl<'tcx> PatternTypeProjections<'tcx> {
-    pub(crate) fn user_ty(self) -> UserTypeProjections<'tcx> {
+    pub(crate) fn user_ty(
+        self,
+        annotations: &mut CanonicalUserTypeAnnotations<'tcx>,
+    ) -> UserTypeProjections<'tcx> {
         UserTypeProjections::from_projections(
-            self.contents.into_iter().map(|(pat_ty_proj, span)| (pat_ty_proj.user_ty(), span)))
+            self.contents
+                .into_iter()
+                .map(|(pat_ty_proj, span)| (pat_ty_proj.user_ty(annotations, span), span))
+        )
     }
 
     pub(crate) fn none() -> Self {
@@ -115,30 +122,33 @@ impl<'tcx> PatternTypeProjections<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub struct PatternTypeProjection<'tcx>(UserTypeProjection<'tcx>);
+pub struct PatternTypeProjection<'tcx> {
+    pub base: CanonicalUserTypeAnnotation<'tcx>,
+    pub projs: Vec<ProjectionElem<'tcx, (), ()>>,
+}
 
 impl<'tcx> PatternTypeProjection<'tcx> {
     pub(crate) fn index(&self) -> Self {
         let mut new = self.clone();
-        new.0.projs.push(ProjectionElem::Index(()));
+        new.projs.push(ProjectionElem::Index(()));
         new
     }
 
     pub(crate) fn subslice(&self, from: u32, to: u32) -> Self {
         let mut new = self.clone();
-        new.0.projs.push(ProjectionElem::Subslice { from, to });
+        new.projs.push(ProjectionElem::Subslice { from, to });
         new
     }
 
     pub(crate) fn deref(&self) -> Self {
         let mut new = self.clone();
-        new.0.projs.push(ProjectionElem::Deref);
+        new.projs.push(ProjectionElem::Deref);
         new
     }
 
     pub(crate) fn leaf(&self, field: Field) -> Self {
         let mut new = self.clone();
-        new.0.projs.push(ProjectionElem::Field(field, ()));
+        new.projs.push(ProjectionElem::Field(field, ()));
         new
     }
 
@@ -147,24 +157,29 @@ impl<'tcx> PatternTypeProjection<'tcx> {
                           variant_index: VariantIdx,
                           field: Field) -> Self {
         let mut new = self.clone();
-        new.0.projs.push(ProjectionElem::Downcast(adt_def, variant_index));
-        new.0.projs.push(ProjectionElem::Field(field, ()));
+        new.projs.push(ProjectionElem::Downcast(adt_def, variant_index));
+        new.projs.push(ProjectionElem::Field(field, ()));
         new
     }
 
-    pub(crate) fn from_canonical_ty(c_ty: ty::CanonicalTy<'tcx>) -> Self {
-        Self::from_user_type(UserTypeAnnotation::Ty(c_ty))
+    pub(crate) fn from_user_type(user_annotation: CanonicalUserTypeAnnotation<'tcx>) -> Self {
+        Self {
+            base: user_annotation,
+            projs: Vec::new(),
+        }
     }
 
-    pub(crate) fn from_user_type(u_ty: UserTypeAnnotation<'tcx>) -> Self {
-        Self::from_user_type_proj(UserTypeProjection { base: u_ty, projs: vec![], })
+    pub(crate) fn user_ty(
+        self,
+        annotations: &mut CanonicalUserTypeAnnotations<'tcx>,
+        span: Span,
+    ) -> UserTypeProjection<'tcx> {
+        let annotation_index = annotations.push((span, self.base));
+        UserTypeProjection {
+            base: annotation_index,
+            projs: self.projs
+        }
     }
-
-    pub(crate) fn from_user_type_proj(u_ty: UserTypeProjection<'tcx>) -> Self {
-        PatternTypeProjection(u_ty)
-    }
-
-    pub(crate) fn user_ty(self) -> UserTypeProjection<'tcx> { self.0 }
 }
 
 #[derive(Clone, Debug)]
@@ -788,18 +803,14 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         };
 
         if let Some(user_ty) = self.user_substs_applied_to_ty_of_hir_id(hir_id) {
-            let subpattern = Pattern {
-                span,
-                ty,
-                kind: Box::new(kind),
-            };
-
-            debug!("pattern user_ty = {:?} for pattern at {:?}", user_ty, span);
-
-            let pat_ty = PatternTypeProjection::from_user_type(user_ty);
+            debug!("lower_variant_or_leaf: user_ty={:?} span={:?}", user_ty, span);
             kind = PatternKind::AscribeUserType {
-                subpattern,
-                user_ty: pat_ty,
+                subpattern: Pattern {
+                    span,
+                    ty,
+                    kind: Box::new(kind),
+                },
+                user_ty: PatternTypeProjection::from_user_type(user_ty),
                 user_ty_span: span,
             };
         }

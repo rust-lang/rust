@@ -14,7 +14,7 @@ use rustc::traits::{
     Normalized, Obligation, ObligationCause, TraitEngine, TraitEngineExt,
 };
 use rustc::ty::query::Providers;
-use rustc::ty::subst::{Kind, Subst, UserSelfTy, UserSubsts};
+use rustc::ty::subst::{Kind, Subst, UserSubsts, UserSelfTy};
 use rustc::ty::{
     FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable, Variance,
 };
@@ -44,28 +44,16 @@ fn type_op_ascribe_user_type<'tcx>(
     tcx.infer_ctxt()
         .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
             let (
-                param_env,
-                AscribeUserType {
-                    mir_ty,
-                    variance,
-                    def_id,
-                    user_substs,
-                    projs,
-                },
+                param_env, AscribeUserType { mir_ty, variance, def_id, user_substs, projs }
             ) = key.into_parts();
 
             debug!(
-                "type_op_ascribe_user_type(\
-                 mir_ty={:?}, variance={:?}, def_id={:?}, user_substs={:?}, projs={:?}\
-                 )",
-                mir_ty, variance, def_id, user_substs, projs,
+                "type_op_user_type_relation: mir_ty={:?} variance={:?} def_id={:?} \
+                 user_substs={:?} projs={:?}",
+                mir_ty, variance, def_id, user_substs, projs
             );
 
-            let mut cx = AscribeUserTypeCx {
-                infcx,
-                param_env,
-                fulfill_cx,
-            };
+            let mut cx = AscribeUserTypeCx { infcx, param_env, fulfill_cx };
             cx.relate_mir_and_user_ty(mir_ty, variance, def_id, user_substs, projs)?;
 
             Ok(())
@@ -130,10 +118,9 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
         projs: &[ProjectionKind<'tcx>],
     ) -> Result<(), NoSolution> {
         let UserSubsts {
-            substs,
             user_self_ty,
+            substs,
         } = user_substs;
-
         let tcx = self.tcx();
 
         let ty = tcx.type_of(def_id);
@@ -174,8 +161,7 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
         if let Some(UserSelfTy {
             impl_def_id,
             self_ty,
-        }) = user_self_ty
-        {
+        }) = user_self_ty {
             let impl_self_ty = self.tcx().type_of(impl_def_id);
             let impl_self_ty = self.subst(impl_self_ty, &substs);
             let impl_self_ty = self.normalize(impl_self_ty);

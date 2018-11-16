@@ -1,4 +1,5 @@
 use hir::def_id::DefId;
+use infer::canonical::Canonical;
 use ty::subst::Substs;
 use ty::{ClosureSubsts, GeneratorSubsts, Region, Ty};
 use mir::*;
@@ -219,9 +220,10 @@ macro_rules! make_mir_visitor {
 
             fn visit_user_type_annotation(
                 &mut self,
-                ty: & $($mutability)* UserTypeAnnotation<'tcx>,
+                index: UserTypeAnnotationIndex,
+                ty: & $($mutability)* Canonical<'tcx, UserTypeAnnotation<'tcx>>,
             ) {
-                self.super_user_type_annotation(ty);
+                self.super_user_type_annotation(index, ty);
             }
 
             fn visit_region(&mut self,
@@ -305,6 +307,14 @@ macro_rules! make_mir_visitor {
 
                 for local in mir.local_decls.indices() {
                     self.visit_local_decl(local, & $($mutability)* mir.local_decls[local]);
+                }
+
+                for index in mir.user_type_annotations.indices() {
+                    let (span, annotation) = & $($mutability)* mir.user_type_annotations[index];
+                    self.visit_user_type_annotation(
+                        index, annotation
+                    );
+                    self.visit_span(span);
                 }
 
                 self.visit_span(&$($mutability)* mir.span);
@@ -865,18 +875,14 @@ macro_rules! make_mir_visitor {
 
             fn super_user_type_projection(
                 &mut self,
-                ty: & $($mutability)* UserTypeProjection<'tcx>,
+                _ty: & $($mutability)* UserTypeProjection<'tcx>,
             ) {
-                let UserTypeProjection {
-                    ref $($mutability)* base,
-                    projs: _, // Note: Does not visit projection elems!
-                } = *ty;
-                self.visit_user_type_annotation(base);
             }
 
             fn super_user_type_annotation(
                 &mut self,
-                _ty: & $($mutability)* UserTypeAnnotation<'tcx>,
+                _index: UserTypeAnnotationIndex,
+                _ty: & $($mutability)* Canonical<'tcx, UserTypeAnnotation<'tcx>>,
             ) {
             }
 
