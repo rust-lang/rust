@@ -283,7 +283,6 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     type AllocExtra = ();
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation<()>)>;
     const STATIC_KIND: Option<!> = None;
-    const ENABLE_PTR_TRACKING_HOOKS: bool = false;
 
     fn enforce_validity(_: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool {
         false
@@ -332,14 +331,6 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
 
     fn box_alloc(_: &mut EvalContext<'a, 'mir, 'tcx, Self>, _: PlaceTy<'tcx>) -> EvalResult<'tcx> {
         panic!();
-    }
-
-    fn tag_reference(
-        _: &mut EvalContext<'a, 'mir, 'tcx, Self>,
-        _: MPlaceTy<'tcx>,
-        _: Option<::rustc::hir::Mutability>,
-    ) -> EvalResult<'tcx, Scalar> {
-        panic!()
     }
 
     fn tag_dereference(
