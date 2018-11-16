@@ -126,23 +126,107 @@ impl LineIndex {
 fn test_line_index() {
     let text = "hello\nworld";
     let index = LineIndex::new(text);
-    assert_eq!(index.line_col(0.into()), LineCol { line: 0, col_utf16: 0 });
-    assert_eq!(index.line_col(1.into()), LineCol { line: 0, col_utf16: 1 });
-    assert_eq!(index.line_col(5.into()), LineCol { line: 0, col_utf16: 5 });
-    assert_eq!(index.line_col(6.into()), LineCol { line: 1, col_utf16: 0 });
-    assert_eq!(index.line_col(7.into()), LineCol { line: 1, col_utf16: 1 });
-    assert_eq!(index.line_col(8.into()), LineCol { line: 1, col_utf16: 2 });
-    assert_eq!(index.line_col(10.into()), LineCol { line: 1, col_utf16: 4 });
-    assert_eq!(index.line_col(11.into()), LineCol { line: 1, col_utf16: 5 });
-    assert_eq!(index.line_col(12.into()), LineCol { line: 1, col_utf16: 6 });
+    assert_eq!(
+        index.line_col(0.into()),
+        LineCol {
+            line: 0,
+            col_utf16: 0
+        }
+    );
+    assert_eq!(
+        index.line_col(1.into()),
+        LineCol {
+            line: 0,
+            col_utf16: 1
+        }
+    );
+    assert_eq!(
+        index.line_col(5.into()),
+        LineCol {
+            line: 0,
+            col_utf16: 5
+        }
+    );
+    assert_eq!(
+        index.line_col(6.into()),
+        LineCol {
+            line: 1,
+            col_utf16: 0
+        }
+    );
+    assert_eq!(
+        index.line_col(7.into()),
+        LineCol {
+            line: 1,
+            col_utf16: 1
+        }
+    );
+    assert_eq!(
+        index.line_col(8.into()),
+        LineCol {
+            line: 1,
+            col_utf16: 2
+        }
+    );
+    assert_eq!(
+        index.line_col(10.into()),
+        LineCol {
+            line: 1,
+            col_utf16: 4
+        }
+    );
+    assert_eq!(
+        index.line_col(11.into()),
+        LineCol {
+            line: 1,
+            col_utf16: 5
+        }
+    );
+    assert_eq!(
+        index.line_col(12.into()),
+        LineCol {
+            line: 1,
+            col_utf16: 6
+        }
+    );
 
     let text = "\nhello\nworld";
     let index = LineIndex::new(text);
-    assert_eq!(index.line_col(0.into()), LineCol { line: 0, col_utf16: 0 });
-    assert_eq!(index.line_col(1.into()), LineCol { line: 1, col_utf16: 0 });
-    assert_eq!(index.line_col(2.into()), LineCol { line: 1, col_utf16: 1 });
-    assert_eq!(index.line_col(6.into()), LineCol { line: 1, col_utf16: 5 });
-    assert_eq!(index.line_col(7.into()), LineCol { line: 2, col_utf16: 0 });
+    assert_eq!(
+        index.line_col(0.into()),
+        LineCol {
+            line: 0,
+            col_utf16: 0
+        }
+    );
+    assert_eq!(
+        index.line_col(1.into()),
+        LineCol {
+            line: 1,
+            col_utf16: 0
+        }
+    );
+    assert_eq!(
+        index.line_col(2.into()),
+        LineCol {
+            line: 1,
+            col_utf16: 1
+        }
+    );
+    assert_eq!(
+        index.line_col(6.into()),
+        LineCol {
+            line: 1,
+            col_utf16: 5
+        }
+    );
+    assert_eq!(
+        index.line_col(7.into()),
+        LineCol {
+            line: 2,
+            col_utf16: 0
+        }
+    );
 }
 
 #[cfg(test)]
