@@ -329,6 +329,21 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         let mut flags_builder = settings::builder();
         flags_builder.enable("is_pic").unwrap();
+
+        use rustc::session::config::OptLevel;
+        match tcx.sess.opts.optimize {
+            OptLevel::No => {
+                flags_builder.set("opt_level", "fastest").unwrap();
+            },
+            OptLevel::Less | OptLevel::Default => {},
+            OptLevel::Aggressive => {
+                flags_builder.set("opt_level", "best").unwrap();
+            },
+            OptLevel::Size | OptLevel::SizeMin => {
+                tcx.sess.warn("Optimizing for size is not supported. Just ignoring the request");
+            }
+        }
+
         let flags = settings::Flags::new(flags_builder);
         let isa =
             cranelift::codegen::isa::lookup(tcx.sess.target.target.llvm_target.parse().unwrap())

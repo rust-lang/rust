@@ -63,7 +63,7 @@ rm -r target || true
 time RUSTFLAGS="-Zmir-opt-level=3 $RUSTFLAGS" xargo build
 popd
 
-$RUSTC --sysroot ~/.xargo/HOST example/mod_bench.rs --crate-type bin -Zmir-opt-level=3 --crate-name mod_bench_inline
+$RUSTC --sysroot ~/.xargo/HOST example/mod_bench.rs --crate-type bin -Zmir-opt-level=3 -Og --crate-name mod_bench_inline
 
 rustc example/mod_bench.rs --crate-type bin -Copt-level=0 -o target/out/mod_bench_llvm_0 -Cpanic=abort
 rustc example/mod_bench.rs --crate-type bin -Copt-level=1 -o target/out/mod_bench_llvm_1 -Cpanic=abort
