@@ -170,6 +170,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
 
 /// Reading and writing
 impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
+    /// Reads bytes until a `0` is encountered. Will error if the end of the allocation is reached
+    /// before a `0` is found.
     pub fn read_c_str(
         &self,
         cx: &impl HasDataLayout,
@@ -188,6 +190,9 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         }
     }
 
+    /// Validates that `ptr.offset` and `ptr.offset + size` do not point to the middle of a
+    /// relocation. If `allow_ptr_and_undef` is `false`, also enforces that the memory in the
+    /// given range contains neither relocations nor undef bytes.
     pub fn check_bytes(
         &self,
         cx: &impl HasDataLayout,
@@ -195,7 +200,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         size: Size,
         allow_ptr_and_undef: bool,
     ) -> EvalResult<'tcx> {
-        // Check bounds, align and relocations on the edges
+        // Check bounds and relocations on the edges
         self.get_bytes_with_undef_and_ptr(cx, ptr, size)?;
         // Check undef and ptr
         if !allow_ptr_and_undef {
@@ -205,6 +210,9 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         Ok(())
     }
 
+    /// Writes `src` to the memory starting at `ptr.offset`.
+    ///
+    /// Will do bounds checks on the allocation.
     pub fn write_bytes(
         &mut self,
         cx: &impl HasDataLayout,
@@ -216,6 +224,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         Ok(())
     }
 
+    /// Sets `count` bytes starting at `ptr.offset` with `val`. Basically `memset`.
     pub fn write_repeat(
         &mut self,
         cx: &impl HasDataLayout,
@@ -236,6 +245,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// * byteorder cannot work with zero element buffers
     /// * in oder to obtain a `Pointer` we need to check for ZSTness anyway due to integer pointers
     ///   being valid for ZSTs
+    ///
+    /// Note: This function does not do *any* alignment checks, you need to do these before calling
     pub fn read_scalar(
         &self,
         cx: &impl HasDataLayout,
@@ -270,6 +281,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         Ok(ScalarMaybeUndef::Scalar(Scalar::from_uint(bits, size)))
     }
 
+    /// Note: This function does not do *any* alignment checks, you need to do these before calling
     pub fn read_ptr_sized(
         &self,
         cx: &impl HasDataLayout,
@@ -284,6 +296,8 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
     /// * byteorder cannot work with zero element buffers
     /// * in oder to obtain a `Pointer` we need to check for ZSTness anyway due to integer pointers
     ///   being valid for ZSTs
+    ///
+    /// Note: This function does not do *any* alignment checks, you need to do these before calling
     pub fn write_scalar(
         &mut self,
         cx: &impl HasDataLayout,
@@ -330,6 +344,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         Ok(())
     }
 
+    /// Note: This function does not do *any* alignment checks, you need to do these before calling
     pub fn write_ptr_sized(
         &mut self,
         cx: &impl HasDataLayout,
@@ -357,7 +372,7 @@ impl<'tcx, Tag: Copy, Extra> Allocation<Tag, Extra> {
         self.relocations.range(Size::from_bytes(start)..end)
     }
 
-    /// Check that there ar eno relocations overlapping with the given range.
+    /// Check that there are no relocations overlapping with the given range.
     #[inline(always)]
     fn check_relocations(
         &self,
