@@ -497,6 +497,19 @@ fn span_of_attrs(attrs: &Attributes) -> syntax_pos::Span {
     start.to(end)
 }
 
+/// Reports a resolution failure diagnostic.
+///
+/// Ideally we can report the diagnostic with the actual span in the source where the link failure
+/// occurred. However, there's a mismatch between the span in the source code and the span in the
+/// markdown, so we have to do a bit of work to figure out the correspondence.
+///
+/// It's not too hard to find the span for sugared doc comments (`///` and `/**`), because the
+/// source will match the markdown exactly, excluding the comment markers. However, it's much more
+/// difficult to calculate the spans for unsugared docs, because we have to deal with escaping and
+/// other source features. So, we attempt to find the exact source span of the resolution failure
+/// in sugared docs, but use the span of the documentation attributes themselves for unsugared
+/// docs. Because this span might be overly large, we display the markdown line containing the
+/// failure as a note.
 fn resolution_failure(
     cx: &DocContext,
     attrs: &Attributes,
@@ -507,34 +520,50 @@ fn resolution_failure(
     let sp = span_of_attrs(attrs);
     let msg = format!("`[{}]` cannot be resolved, ignoring it...", path_str);
 
-    let code_dox = sp.to_src(cx);
-
-    let doc_comment_padding = 3;
     let mut diag = if let Some(link_range) = link_range {
-        // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
-        //                       ^    ~~~~~~
-        //                       |    link_range
-        //                       last_new_line_offset
-
         let mut diag;
-        if dox.lines().count() == code_dox.lines().count() {
-            let line_offset = dox[..link_range.start].lines().count();
-            // The span starts in the `///`, so we don't have to account for the leading whitespace
-            let code_dox_len = if line_offset <= 1 {
-                doc_comment_padding
-            } else {
-                // The first `///`
-                doc_comment_padding +
-                    // Each subsequent leading whitespace and `///`
-                    code_dox.lines().skip(1).take(line_offset - 1).fold(0, |sum, line| {
-                        sum + doc_comment_padding + line.len() - line.trim_start().len()
-                    })
-            };
 
-            // Extract the specific span
+        if attrs.doc_strings.iter().all(|frag| match frag {
+            DocFragment::SugaredDoc(..) => true,
+            _ => false,
+        }) {
+            let source_dox = sp.to_src(cx);
+            let mut source_lines = source_dox.lines().peekable();
+            let mut md_lines = dox.lines().peekable();
+
+            // The number of bytes from the start of the source span to the resolution failure that
+            // are *not* part of the markdown, like comment markers.
+            let mut source_offset = 0;
+
+            // Eat any source lines before the markdown starts (e.g., `/**` on its own line).
+            while let Some(source_line) = source_lines.peek() {
+                if source_line.contains(md_lines.peek().unwrap()) {
+                    break;
+                }
+
+                // Include the newline.
+                source_offset += source_line.len() + 1;
+                source_lines.next().unwrap();
+            }
+
+            // The number of lines up to and including the resolution failure.
+            let num_lines = dox[..link_range.start].lines().count();
+
+            // Consume inner comment markers (e.g., `///` or ` *`).
+            for (source_line, md_line) in source_lines.zip(md_lines).take(num_lines) {
+                source_offset += if md_line.is_empty() {
+                    // If there is no markdown on this line, then the whole line is a comment
+                    // marker. We don't have to count the newline here because it's in the markdown
+                    // too.
+                    source_line.len()
+                } else {
+                    source_line.find(md_line).unwrap()
+                };
+            }
+
             let sp = sp.from_inner_byte_pos(
-                link_range.start + code_dox_len,
-                link_range.end + code_dox_len,
+                link_range.start + source_offset,
+                link_range.end + source_offset,
             );
 
             diag = cx.tcx.struct_span_lint_node(lint::builtin::INTRA_DOC_LINK_RESOLUTION_FAILURE,
@@ -548,6 +577,10 @@ fn resolution_failure(
                                                 sp,
                                                 &msg);
 
+            // blah blah blah\nblah\nblah [blah] blah blah\nblah blah
+            //                       ^     ~~~~
+            //                       |     link_range
+            //                       last_new_line_offset
             let last_new_line_offset = dox[..link_range.start].rfind('\n').map_or(0, |n| n + 1);
             let line = dox[last_new_line_offset..].lines().next().unwrap_or("");
 
