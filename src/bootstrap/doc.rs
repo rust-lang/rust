@@ -18,8 +18,7 @@
 //! `rustdoc`.
 
 use std::collections::HashSet;
-use std::fs::{self, File};
-use std::io::prelude::*;
+use std::fs;
 use std::io;
 use std::path::{PathBuf, Path};
 
@@ -379,12 +378,11 @@ impl Step for Standalone {
         let version_info = out.join("version_info.html");
 
         if !builder.config.dry_run && !up_to_date(&version_input, &version_info) {
-            let mut info = String::new();
-            t!(t!(File::open(&version_input)).read_to_string(&mut info));
-            let info = info.replace("VERSION", &builder.rust_release())
-                           .replace("SHORT_HASH", builder.rust_info.sha_short().unwrap_or(""))
-                           .replace("STAMP", builder.rust_info.sha().unwrap_or(""));
-            t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
+            let info = t!(fs::read_to_string(&version_input))
+                .replace("VERSION", &builder.rust_release())
+                .replace("SHORT_HASH", builder.rust_info.sha_short().unwrap_or(""))
+                .replace("STAMP", builder.rust_info.sha().unwrap_or(""));
+            t!(fs::write(&version_info, &info));
         }
 
         for file in t!(fs::read_dir(builder.src.join("src/doc"))) {

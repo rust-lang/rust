@@ -38,7 +38,7 @@ use getopts::Options;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
-use std::io::{self, Read};
+use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use test::ColorConfig;
@@ -686,13 +686,11 @@ fn up_to_date(
 ) -> bool {
     let stamp_name = stamp(config, testpaths, revision);
     // Check hash.
-    let mut f = match fs::File::open(&stamp_name) {
+    let contents = match fs::read_to_string(&stamp_name) {
         Ok(f) => f,
+        Err(ref e) if e.kind() == ErrorKind::InvalidData => panic!("Can't read stamp contents"),
         Err(_) => return true,
     };
-    let mut contents = String::new();
-    f.read_to_string(&mut contents)
-        .expect("Can't read stamp contents");
     let expected_hash = runtest::compute_stamp_hash(config);
     if contents != expected_hash {
         return true;

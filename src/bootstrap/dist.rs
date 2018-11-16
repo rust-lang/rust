@@ -19,8 +19,8 @@
 //! pieces of `rustup.rs`!
 
 use std::env;
-use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::fs;
+use std::io::Write;
 use std::path::{PathBuf, Path};
 use std::process::{Command, Stdio};
 
@@ -1511,8 +1511,7 @@ impl Step for Extended {
         }
 
         let xform = |p: &Path| {
-            let mut contents = String::new();
-            t!(t!(File::open(p)).read_to_string(&mut contents));
+            let mut contents = t!(fs::read_to_string(p));
             if rls_installer.is_none() {
                 contents = filter(&contents, "rls");
             }
@@ -1523,8 +1522,8 @@ impl Step for Extended {
                 contents = filter(&contents, "rustfmt");
             }
             let ret = tmp.join(p.file_name().unwrap());
-            t!(t!(File::create(&ret)).write_all(contents.as_bytes()));
-            return ret
+            t!(fs::write(&ret, &contents));
+            ret
         };
 
         if target.contains("apple-darwin") {
@@ -1869,8 +1868,7 @@ impl Step for HashSign {
         let file = builder.config.dist_gpg_password_file.as_ref().unwrap_or_else(|| {
             panic!("\n\nfailed to specify `dist.gpg-password-file` in `config.toml`\n\n")
         });
-        let mut pass = String::new();
-        t!(t!(File::open(&file)).read_to_string(&mut pass));
+        let pass = t!(fs::read_to_string(&file));
 
         let today = output(Command::new("date").arg("+%Y-%m-%d"));
 

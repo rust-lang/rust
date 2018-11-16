@@ -34,8 +34,8 @@ use tokenstream::{TokenStream, TokenTree};
 use visit::{self, Visitor};
 
 use rustc_data_structures::fx::FxHashMap;
-use std::fs::File;
-use std::io::Read;
+use std::fs;
+use std::io::ErrorKind;
 use std::{iter, mem};
 use std::rc::Rc;
 use std::path::PathBuf;
@@ -1507,20 +1507,8 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                         return noop_fold_attribute(at, self);
                     }
 
-                    let mut buf = vec![];
                     let filename = self.cx.root_path.join(file.to_string());
-
-                    match File::open(&filename).and_then(|mut f| f.read_to_end(&mut buf)) {
-                        Ok(..) => {}
-                        Err(e) => {
-                            self.cx.span_err(at.span,
-                                             &format!("couldn't read {}: {}",
-                                                      filename.display(),
-                                                      e));
-                        }
-                    }
-
-                    match String::from_utf8(buf) {
+                    match fs::read_to_string(&filename) {
                         Ok(src) => {
                             let src_interned = Symbol::intern(&src);
 
@@ -1530,21 +1518,34 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
 
                             let include_info = vec![
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(
-                                        attr::mk_name_value_item_str(Ident::from_str("file"),
-                                                                     dummy_spanned(file)))),
+                                    attr::mk_name_value_item_str(
+                                        Ident::from_str("file"),
+                                        dummy_spanned(file),
+                                    ),
+                                )),
                                 dummy_spanned(ast::NestedMetaItemKind::MetaItem(
-                                        attr::mk_name_value_item_str(Ident::from_str("contents"),
-                                                            dummy_spanned(src_interned)))),
+                                    attr::mk_name_value_item_str(
+                                        Ident::from_str("contents"),
+                                        dummy_spanned(src_interned),
+                                    ),
+                                )),
                             ];
 
                             let include_ident = Ident::from_str("include");
                             let item = attr::mk_list_item(DUMMY_SP, include_ident, include_info);
                             items.push(dummy_spanned(ast::NestedMetaItemKind::MetaItem(item)));
                         }
-                        Err(_) => {
-                            self.cx.span_err(at.span,
-                                             &format!("{} wasn't a utf-8 file",
-                                                      filename.display()));
+                        Err(ref e) if e.kind() == ErrorKind::InvalidData => {
+                            self.cx.span_err(
+                                at.span,
+                                &format!("{} wasn't a utf-8 file", filename.display()),
+                            );
+                        }
+                        Err(e) => {
+                            self.cx.span_err(
+                                at.span,
+                                &format!("couldn't read {}: {}", filename.display(), e),
+                            );
                         }
                     }
                 } else {
