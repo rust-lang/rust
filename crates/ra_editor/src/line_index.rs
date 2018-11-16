@@ -11,7 +11,7 @@ pub struct LineIndex {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct LineCol {
     pub line: u32,
-    pub col: u32,
+    pub col_utf16: u32,
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -75,13 +75,13 @@ impl LineIndex {
 
         LineCol {
             line: line as u32,
-            col: self.utf8_to_utf16_col(line as u32, col) as u32,
+            col_utf16: self.utf8_to_utf16_col(line as u32, col) as u32,
         }
     }
 
     pub fn offset(&self, line_col: LineCol) -> TextUnit {
         //TODO: return Result
-        let col = self.utf16_to_utf8_col(line_col.line, line_col.col);
+        let col = self.utf16_to_utf8_col(line_col.line, line_col.col_utf16);
         self.newlines[line_col.line as usize] + col
     }
 
@@ -126,23 +126,23 @@ impl LineIndex {
 fn test_line_index() {
     let text = "hello\nworld";
     let index = LineIndex::new(text);
-    assert_eq!(index.line_col(0.into()), LineCol { line: 0, col: 0 });
-    assert_eq!(index.line_col(1.into()), LineCol { line: 0, col: 1 });
-    assert_eq!(index.line_col(5.into()), LineCol { line: 0, col: 5 });
-    assert_eq!(index.line_col(6.into()), LineCol { line: 1, col: 0 });
-    assert_eq!(index.line_col(7.into()), LineCol { line: 1, col: 1 });
-    assert_eq!(index.line_col(8.into()), LineCol { line: 1, col: 2 });
-    assert_eq!(index.line_col(10.into()), LineCol { line: 1, col: 4 });
-    assert_eq!(index.line_col(11.into()), LineCol { line: 1, col: 5 });
-    assert_eq!(index.line_col(12.into()), LineCol { line: 1, col: 6 });
+    assert_eq!(index.line_col(0.into()), LineCol { line: 0, col_utf16: 0 });
+    assert_eq!(index.line_col(1.into()), LineCol { line: 0, col_utf16: 1 });
+    assert_eq!(index.line_col(5.into()), LineCol { line: 0, col_utf16: 5 });
+    assert_eq!(index.line_col(6.into()), LineCol { line: 1, col_utf16: 0 });
+    assert_eq!(index.line_col(7.into()), LineCol { line: 1, col_utf16: 1 });
+    assert_eq!(index.line_col(8.into()), LineCol { line: 1, col_utf16: 2 });
+    assert_eq!(index.line_col(10.into()), LineCol { line: 1, col_utf16: 4 });
+    assert_eq!(index.line_col(11.into()), LineCol { line: 1, col_utf16: 5 });
+    assert_eq!(index.line_col(12.into()), LineCol { line: 1, col_utf16: 6 });
 
     let text = "\nhello\nworld";
     let index = LineIndex::new(text);
-    assert_eq!(index.line_col(0.into()), LineCol { line: 0, col: 0 });
-    assert_eq!(index.line_col(1.into()), LineCol { line: 1, col: 0 });
-    assert_eq!(index.line_col(2.into()), LineCol { line: 1, col: 1 });
-    assert_eq!(index.line_col(6.into()), LineCol { line: 1, col: 5 });
-    assert_eq!(index.line_col(7.into()), LineCol { line: 2, col: 0 });
+    assert_eq!(index.line_col(0.into()), LineCol { line: 0, col_utf16: 0 });
+    assert_eq!(index.line_col(1.into()), LineCol { line: 1, col_utf16: 0 });
+    assert_eq!(index.line_col(2.into()), LineCol { line: 1, col_utf16: 1 });
+    assert_eq!(index.line_col(6.into()), LineCol { line: 1, col_utf16: 5 });
+    assert_eq!(index.line_col(7.into()), LineCol { line: 2, col_utf16: 0 });
 }
 
 #[cfg(test)]
