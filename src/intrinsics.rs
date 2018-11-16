@@ -101,10 +101,10 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             // Insert non returning intrinsics here
             match intrinsic {
                 "abort" => {
-                    fx.bcx.ins().trap(TrapCode::User(!0 - 1));
+                    trap_panic(&mut fx.bcx);
                 }
                 "unreachable" => {
-                    fx.bcx.ins().trap(TrapCode::User(!0 - 1));
+                    trap_unreachable(&mut fx.bcx);
                 }
                 _ => unimplemented!("unsupported instrinsic {}", intrinsic),
             }
@@ -423,6 +423,6 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
         let ret_ebb = fx.get_ebb(dest);
         fx.bcx.ins().jump(ret_ebb, &[]);
     } else {
-        fx.bcx.ins().trap(TrapCode::User(!0));
+        trap_unreachable(&mut fx.bcx);
     }
 }

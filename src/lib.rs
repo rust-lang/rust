@@ -81,6 +81,7 @@ mod link_copied;
 mod main_shim;
 mod metadata;
 mod pretty_clif;
+mod trap;
 mod vtable;
 
 mod prelude {
@@ -121,6 +122,7 @@ mod prelude {
     pub use crate::abi::*;
     pub use crate::base::{trans_operand, trans_place};
     pub use crate::common::*;
+    pub use crate::trap::*;
     pub use crate::{Caches, CodegenResults, CrateInfo};
 }
 

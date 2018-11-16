@@ -504,7 +504,7 @@ pub fn codegen_terminator_call<'a, 'tcx: 'a>(
         let ret_ebb = fx.get_ebb(dest);
         fx.bcx.ins().jump(ret_ebb, &[]);
     } else {
-        fx.bcx.ins().trap(TrapCode::User(!0));
+        trap_unreachable(&mut fx.bcx);
     }
 }
 

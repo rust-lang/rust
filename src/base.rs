@@ -202,7 +202,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                 } else {
                     fx.bcx.ins().brz(cond, target, &[]);
                 };
-                fx.bcx.ins().trap(TrapCode::User(!0));
+                trap_panic(&mut fx.bcx);
             }
 
             TerminatorKind::SwitchInt {
@@ -230,7 +230,7 @@ fn codegen_fn_content<'a, 'tcx: 'a>(fx: &mut FunctionCx<'a, 'tcx, impl Backend>)
                 crate::abi::codegen_terminator_call(fx, func, args, destination);
             }
             TerminatorKind::Resume | TerminatorKind::Abort | TerminatorKind::Unreachable => {
-                fx.bcx.ins().trap(TrapCode::User(!0));
+                trap_unreachable(&mut fx.bcx);
             }
             TerminatorKind::Yield { .. }
             | TerminatorKind::FalseEdges { .. }
@@ -680,7 +680,7 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
     let layout = value.layout();
 
     if layout.abi == layout::Abi::Uninhabited {
-        fx.bcx.ins().trap(TrapCode::User(!0));
+        trap_unreachable(&mut fx.bcx);
     }
     match layout.variants {
         layout::Variants::Single { index } => {
