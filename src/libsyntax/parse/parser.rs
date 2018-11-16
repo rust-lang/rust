@@ -5388,7 +5388,10 @@ impl<'a> Parser<'a> {
         self.expect(&token::OpenDelim(token::Paren))?;
 
         if let Ok(Some(_)) = self.parse_self_arg() {
-            return Err(self.fatal("unexpected `self` argument in bare function"))
+            let mut err = self.struct_span_err(self.prev_span
+                , "unexpected `self` argument in bare function");
+            err.span_label(self.prev_span, "invalid argument in bare function");
+            return Err(err);
         }
 
         let sp = self.span;
