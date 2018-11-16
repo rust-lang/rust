@@ -229,8 +229,8 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     }
 }
 
-unsafe impl<'a> Send for LlvmCodegenBackend {} // Llvm is on a per-thread basis
-unsafe impl<'a> Sync for LlvmCodegenBackend {}
+unsafe impl Send for LlvmCodegenBackend {} // Llvm is on a per-thread basis
+unsafe impl Sync for LlvmCodegenBackend {}
 
 impl LlvmCodegenBackend {
     pub fn new() -> Box<dyn CodegenBackend> {
@@ -238,7 +238,7 @@ impl LlvmCodegenBackend {
     }
 }
 
-impl<'a> CodegenBackend for LlvmCodegenBackend {
+impl CodegenBackend for LlvmCodegenBackend {
     fn init(&self, sess: &Session) {
         llvm_util::init(sess); // Make sure llvm is inited
     }
