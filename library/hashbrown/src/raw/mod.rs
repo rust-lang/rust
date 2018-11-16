@@ -153,7 +153,8 @@ fn calculate_layout<T>(buckets: usize) -> Option<(Layout, usize)> {
     // perform bounds-checking while probing.
     let ctrl = Layout::array::<u8>(buckets + Group::WIDTH)
         .ok()?
-        .align_to(Group::WIDTH);
+        .align_to(Group::WIDTH)
+        .ok()?;
 
     ctrl.extend(data).ok()
 }

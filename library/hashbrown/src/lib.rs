@@ -12,7 +12,7 @@
 #![no_std]
 #![cfg_attr(
     feature = "nightly",
-    feature(alloc, allocator_api, ptr_offset_from, test, core_intrinsics)
+    feature(alloc, alloc_layout_extra, allocator_api, ptr_offset_from, test, core_intrinsics)
 )]
 #![warn(missing_docs)]
 
