@@ -14,6 +14,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::ty::subst::{Kind, Subst, UnpackedKind};
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::fold::TypeFoldable;
 use rustc::util::nodemap::FxHashMap;
 
 use super::explicit::ExplicitPredicatesMap;
@@ -311,13 +312,23 @@ pub fn check_explicit_predicates<'tcx>(
         //
         // Note that we do this check for self **before** applying `substs`. In the
         // case that `substs` come from a `dyn Trait` type, our caller will have
-        // included `Self = dyn Trait<'x, X>` as the value for `Self`. If we were
+        // included `Self = usize` as the value for `Self`. If we were
         // to apply the substs, and not filter this predicate, we might then falsely
         // conclude that e.g. `X: 'x` was a reasonable inferred requirement.
-        if let UnpackedKind::Type(ty) = outlives_predicate.0.unpack() {
-            if ty.is_self() && ignore_self_ty.0 {
-                debug!("skipping self ty = {:?}", &ty);
-                continue;
+        //
+        // Another similar case is where we have a inferred
+        // requirement like `<Self as Trait>::Foo: 'b`. We presently
+        // ignore such requirements as well (cc #54467)-- though
+        // conceivably it might be better if we could extract the `Foo
+        // = X` binding from the object type (there must be such a
+        // binding) and thus infer an outlives requirement that `X:
+        // 'b`.
+        if ignore_self_ty.0 {
+            if let UnpackedKind::Type(ty) = outlives_predicate.0.unpack() {
+                if ty.has_self_ty() {
+                    debug!("skipping self ty = {:?}", &ty);
+                    continue;
+                }
             }
         }
 
