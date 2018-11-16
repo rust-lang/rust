@@ -4,6 +4,13 @@ error[E0015]: calls in constants are limited to constant functions, tuple struct
 LL |     let _ = [0; f(2)];
    |                 ^^^^
 
-error: aborting due to previous error
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-call.rs:16:17
+   |
+LL |     let _ = [0; f(2)];
+   |                 ^^^^ calling non-const function `f`
 
-For more information about this error, try `rustc --explain E0015`.
+error: aborting due to 2 previous errors
+
+Some errors occurred: E0015, E0080.
+For more information about an error, try `rustc --explain E0015`.
