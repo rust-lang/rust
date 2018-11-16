@@ -10,6 +10,6 @@
 
 
 fn a(&self) { }
-//~^ ERROR `self` argument in bare function
+//~^ ERROR unexpected `self` argument in bare function
 
 fn main() { }
