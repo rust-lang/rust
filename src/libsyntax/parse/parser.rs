@@ -5394,7 +5394,7 @@ impl<'a> Parser<'a> {
     fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool)
                      -> PResult<'a, (Vec<Arg> , bool)> {
         self.expect(&token::OpenDelim(token::Paren))?;
-        
+
         let sp = self.span;
         let mut variadic = false;
         let args: Vec<Option<Arg>> =
