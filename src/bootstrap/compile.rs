@@ -18,7 +18,7 @@
 
 use std::borrow::Cow;
 use std::env;
-use std::fs::{self, File};
+use std::fs;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
@@ -707,7 +707,7 @@ impl Step for CodegenBackend {
         }
         let stamp = codegen_backend_stamp(builder, compiler, target, backend);
         let codegen_backend = codegen_backend.to_str().unwrap();
-        t!(t!(File::create(&stamp)).write_all(codegen_backend.as_bytes()));
+        t!(fs::write(&stamp, &codegen_backend));
     }
 }
 
@@ -796,8 +796,7 @@ fn copy_codegen_backends_to_sysroot(builder: &Builder,
 
     for backend in builder.config.rust_codegen_backends.iter() {
         let stamp = codegen_backend_stamp(builder, compiler, target, *backend);
-        let mut dylib = String::new();
-        t!(t!(File::open(&stamp)).read_to_string(&mut dylib));
+        let dylib = t!(fs::read_to_string(&stamp));
         let file = Path::new(&dylib);
         let filename = file.file_name().unwrap().to_str().unwrap();
         // change `librustc_codegen_llvm-xxxxxx.so` to `librustc_codegen_llvm-llvm.so`
@@ -1137,10 +1136,7 @@ pub fn run_cargo(builder: &Builder,
     // contents (the list of files to copy) is different or if any dep's mtime
     // is newer then we rewrite the stamp file.
     deps.sort();
-    let mut stamp_contents = Vec::new();
-    if let Ok(mut f) = File::open(stamp) {
-        t!(f.read_to_end(&mut stamp_contents));
-    }
+    let stamp_contents = fs::read(stamp);
     let stamp_mtime = mtime(&stamp);
     let mut new_contents = Vec::new();
     let mut max = None;
@@ -1156,7 +1152,10 @@ pub fn run_cargo(builder: &Builder,
     }
     let max = max.unwrap();
     let max_path = max_path.unwrap();
-    if stamp_contents == new_contents && max <= stamp_mtime {
+    let contents_equal = stamp_contents
+        .map(|contents| contents == new_contents)
+        .unwrap_or_default();
+    if contents_equal && max <= stamp_mtime {
         builder.verbose(&format!("not updating {:?}; contents equal and {:?} <= {:?}",
                 stamp, max, stamp_mtime));
         return deps
@@ -1166,7 +1165,7 @@ pub fn run_cargo(builder: &Builder,
     } else {
         builder.verbose(&format!("updating {:?} as deps changed", stamp));
     }
-    t!(t!(File::create(stamp)).write_all(&new_contents));
+    t!(fs::write(&stamp, &new_contents));
     deps
 }
 

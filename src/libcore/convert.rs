@@ -327,7 +327,8 @@ pub trait Into<T>: Sized {
 /// An example usage for error handling:
 ///
 /// ```
-/// use std::io::{self, Read};
+/// use std::fs;
+/// use std::io;
 /// use std::num;
 ///
 /// enum CliError {
@@ -348,9 +349,7 @@ pub trait Into<T>: Sized {
 /// }
 ///
 /// fn open_and_parse_file(file_name: &str) -> Result<i32, CliError> {
-///     let mut file = std::fs::File::open("test")?;
-///     let mut contents = String::new();
-///     file.read_to_string(&mut contents)?;
+///     let mut contents = fs::read_to_string(&file_name)?;
 ///     let num: i32 = contents.trim().parse()?;
 ///     Ok(num)
 /// }

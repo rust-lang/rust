@@ -21,8 +21,7 @@
 use std::collections::HashMap;
 use std::env;
 use std::ffi::{OsString, OsStr};
-use std::fs::{self, File};
-use std::io::Read;
+use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
@@ -235,9 +234,7 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
     }
 
     if build.config.channel == "stable" {
-        let mut stage0 = String::new();
-        t!(t!(File::open(build.src.join("src/stage0.txt")))
-            .read_to_string(&mut stage0));
+        let stage0 = t!(fs::read_to_string(build.src.join("src/stage0.txt")));
         if stage0.contains("\ndev:") {
             panic!("bootstrapping from a dev compiler in a stable release, but \
                     should only be bootstrapping from a released compiler!");

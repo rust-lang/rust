@@ -31,7 +31,7 @@ use std::path::{Path, PathBuf};
 
 use std::env;
 use std::fs;
-use std::io::{self, Read};
+use std::io;
 use errors::SourceMapper;
 
 /// Return the span itself if it doesn't come from a macro expansion,
@@ -96,9 +96,7 @@ impl FileLoader for RealFileLoader {
     }
 
     fn read_file(&self, path: &Path) -> io::Result<String> {
-        let mut src = String::new();
-        fs::File::open(path)?.read_to_string(&mut src)?;
-        Ok(src)
+        fs::read_to_string(path)
     }
 }
 

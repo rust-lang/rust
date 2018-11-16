@@ -11,8 +11,7 @@
 use std::env;
 use std::process::Command;
 use std::path::{Path, PathBuf};
-use std::fs::File;
-use std::io::Write;
+use std::fs;
 
 struct Test {
     repo: &'static str,
@@ -91,10 +90,7 @@ fn test_repo(cargo: &Path, out_dir: &Path, test: &Test) {
     println!("testing {}", test.repo);
     let dir = clone_repo(test, out_dir);
     if let Some(lockfile) = test.lock {
-        File::create(&dir.join("Cargo.lock"))
-            .expect("")
-            .write_all(lockfile.as_bytes())
-            .expect("");
+        fs::write(&dir.join("Cargo.lock"), lockfile).unwrap();
     }
     if !run_cargo_test(cargo, &dir, test.packages) {
         panic!("tests failed for {}", test.repo);

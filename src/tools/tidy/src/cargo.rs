@@ -15,8 +15,7 @@
 //! `extern crate` declarations. This should help us keep the DAG correctly
 //! structured through various refactorings to prune out unnecessary edges.
 
-use std::io::prelude::*;
-use std::fs::File;
+use std::fs;
 use std::path::Path;
 
 pub fn check(path: &Path, bad: &mut bool) {
@@ -41,10 +40,8 @@ pub fn check(path: &Path, bad: &mut bool) {
 // Verify that the dependencies in Cargo.toml at `tomlfile` are sync'd with the
 // `extern crate` annotations in the lib.rs at `libfile`.
 fn verify(tomlfile: &Path, libfile: &Path, bad: &mut bool) {
-    let mut toml = String::new();
-    let mut librs = String::new();
-    t!(t!(File::open(tomlfile)).read_to_string(&mut toml));
-    t!(t!(File::open(libfile)).read_to_string(&mut librs));
+    let toml = t!(fs::read_to_string(&tomlfile));
+    let librs = t!(fs::read_to_string(&libfile));
 
     if toml.contains("name = \"bootstrap\"") {
         return
