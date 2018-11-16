@@ -1509,7 +1509,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn get(&self) -> *mut T {
-        &self.value as *const T as *mut T
+        self as *const UnsafeCell<T> as *const T as *mut T
     }
 }
 
