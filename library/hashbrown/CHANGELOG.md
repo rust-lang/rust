@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [v0.1.6] - 2018-11-17
+
+### Fixed
+- Fixed compile error on nightly. (#29)
+
 ## [v0.1.5] - 2018-11-08
 
 ### Fixed
@@ -41,7 +46,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Initial release
 
-[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/Amanieu/hashbrown/compare/v0.1.6...HEAD
+[v0.1.6]: https://github.com/Amanieu/hashbrown/compare/v0.1.5...v0.1.6
 [v0.1.5]: https://github.com/Amanieu/hashbrown/compare/v0.1.4...v0.1.5
 [v0.1.4]: https://github.com/Amanieu/hashbrown/compare/v0.1.3...v0.1.4
 [v0.1.3]: https://github.com/Amanieu/hashbrown/compare/v0.1.2...v0.1.3
