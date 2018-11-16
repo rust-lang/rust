@@ -11,5 +11,5 @@ fn main() {
     retarget(&mut target_alias, target);
     // now `target_alias` points to the same thing as `target`
     *target = 13;
-    let _val = *target_alias; //~ ERROR reference with non-reactivatable tag
+    let _val = *target_alias; //~ ERROR does not exist on the stack
 }

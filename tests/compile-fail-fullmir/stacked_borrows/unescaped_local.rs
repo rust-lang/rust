@@ -1,10 +1,8 @@
-use std::mem;
-
 // Make sure we cannot use raw ptrs to access a local that
-// has never been escaped to the raw world.
+// we took the direct address of.
 fn main() {
     let mut x = 42;
-    let ptr = &mut x;
-    let raw: *mut i32 = unsafe { mem::transmute(ptr) };
+    let raw = &mut x as *mut i32 as usize as *mut i32;
+    let _ptr = &mut x;
     unsafe { *raw = 13; } //~ ERROR does not exist on the stack
 }

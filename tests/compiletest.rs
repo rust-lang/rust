@@ -99,7 +99,13 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
     flags.push(format!("--sysroot {}", sysroot.display()));
     flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
     if opt {
-        flags.push("-Zmir-opt-level=3".to_owned());
+        // FIXME: We use opt level 1 because MIR inlining defeats the validation
+        // whitelist.
+        flags.push("-Zmir-opt-level=1".to_owned());
+    }
+    if !have_fullmir() {
+        // Validation relies on the EscapeToRaw statements being emitted
+        flags.push("-Zmiri-disable-validation".to_owned());
     }
 
     let mut config = mk_config("ui");

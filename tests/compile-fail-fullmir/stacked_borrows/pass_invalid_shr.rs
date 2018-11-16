@@ -3,8 +3,8 @@ fn foo(_: &i32) {}
 
 fn main() {
     let x = &mut 42;
-    let xraw = &*x as *const _;
+    let xraw = &*x as *const _ as *mut _;
     let xref = unsafe { &*xraw };
-    *x = 42; // invalidate xraw
-    foo(xref); //~ ERROR does not exist on the stack
+    unsafe { *xraw = 42 }; // unfreeze
+    foo(xref); //~ ERROR is not frozen
 }

@@ -59,7 +59,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             "atomic_load_relaxed" |
             "atomic_load_acq" |
             "volatile_load" => {
-                let ptr = self.ref_to_mplace(self.read_immediate(args[0])?)?;
+                let ptr = self.deref_operand(args[0])?;
                 let val = self.read_scalar(ptr.into())?; // make sure it fits into a scalar; otherwise it cannot be atomic
                 self.write_scalar(val, dest)?;
             }
@@ -68,7 +68,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             "atomic_store_relaxed" |
             "atomic_store_rel" |
             "volatile_store" => {
-                let ptr = self.ref_to_mplace(self.read_immediate(args[0])?)?;
+                let ptr = self.deref_operand(args[0])?;
                 let val = self.read_scalar(args[1])?; // make sure it fits into a scalar; otherwise it cannot be atomic
                 self.write_scalar(val, ptr.into())?;
             }
@@ -78,7 +78,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             }
 
             _ if intrinsic_name.starts_with("atomic_xchg") => {
-                let ptr = self.ref_to_mplace(self.read_immediate(args[0])?)?;
+                let ptr = self.deref_operand(args[0])?;
                 let new = self.read_scalar(args[1])?;
                 let old = self.read_scalar(ptr.into())?;
                 self.write_scalar(old, dest)?; // old value is returned
@@ -86,10 +86,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             }
 
             _ if intrinsic_name.starts_with("atomic_cxchg") => {
-                let ptr = self.ref_to_mplace(self.read_immediate(args[0])?)?;
-                let expect_old = self.read_immediate(args[1])?; // read as value for the sake of `binary_op_imm()`
+                let ptr = self.deref_operand(args[0])?;
+                let expect_old = self.read_immediate(args[1])?; // read as immediate for the sake of `binary_op_imm()`
                 let new = self.read_scalar(args[2])?;
-                let old = self.read_immediate(ptr.into())?; // read as value for the sake of `binary_op_imm()`
+                let old = self.read_immediate(ptr.into())?; // read as immediate for the sake of `binary_op_imm()`
                 // binary_op_imm will bail if either of them is not a scalar
                 let (eq, _) = self.binary_op_imm(mir::BinOp::Eq, old, expect_old)?;
                 let res = Immediate::ScalarPair(old.to_scalar_or_undef(), eq.into());
@@ -125,7 +125,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             "atomic_xsub_rel" |
             "atomic_xsub_acqrel" |
             "atomic_xsub_relaxed" => {
-                let ptr = self.ref_to_mplace(self.read_immediate(args[0])?)?;
+                let ptr = self.deref_operand(args[0])?;
                 if !ptr.layout.ty.is_integral() {
                     return err!(Unimplemented(format!("Atomic arithmetic operations only work on integer types")));
                 }
@@ -167,7 +167,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             }
 
             "discriminant_value" => {
-                let place = self.ref_to_mplace(self.read_immediate(args[0])?)?;
+                let place = self.deref_operand(args[0])?;
                 let discr_val = self.read_discriminant(place.into())?.0;
                 self.write_scalar(Scalar::from_uint(discr_val, dest.layout.size), dest)?;
             }
@@ -279,7 +279,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             }
 
             "move_val_init" => {
-                let ptr = self.ref_to_mplace(self.read_immediate(args[0])?)?;
+                let ptr = self.deref_operand(args[0])?;
                 self.copy_op(args[1], ptr.into())?;
             }
 
@@ -347,7 +347,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             }
 
             "size_of_val" => {
-                let mplace = self.ref_to_mplace(self.read_immediate(args[0])?)?;
+                let mplace = self.deref_operand(args[0])?;
                 let (size, _) = self.size_and_align_of_mplace(mplace)?
                     .expect("size_of_val called on extern type");
                 let ptr_size = self.pointer_size();
@@ -359,7 +359,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
 
             "min_align_of_val" |
             "align_of_val" => {
-                let mplace = self.ref_to_mplace(self.read_immediate(args[0])?)?;
+                let mplace = self.deref_operand(args[0])?;
                 let (_, align) = self.size_and_align_of_mplace(mplace)?
                     .expect("size_of_val called on extern type");
                 let ptr_size = self.pointer_size();

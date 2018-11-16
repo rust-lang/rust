@@ -2,8 +2,8 @@
 fn foo(x: &mut (i32, i32)) -> &i32 {
     let xraw = x as *mut (i32, i32);
     let ret = unsafe { &(*xraw).1 };
-    x.1 = 42; // invalidate xraw on the 2nd field
-    ret //~ ERROR does not exist on the stack
+    unsafe { *xraw = (42, 23) }; // unfreeze
+    ret //~ ERROR is not frozen
 }
 
 fn main() {

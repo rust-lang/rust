@@ -4,6 +4,6 @@ fn main() {
     let xraw = x as *mut _;
     let xref = unsafe { &*xraw };
     let xref_in_mem = Box::new(xref);
-    *x = 42; // invalidate xraw
-    let _val = *xref_in_mem; //~ ERROR does not exist on the stack
+    unsafe { *xraw = 42 }; // unfreeze
+    let _val = *xref_in_mem; //~ ERROR is not frozen
 }
