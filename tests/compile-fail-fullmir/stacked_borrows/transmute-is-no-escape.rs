@@ -8,5 +8,6 @@ use std::mem;
 fn main() {
     let mut x: i32 = 42;
     let raw: *mut i32 = unsafe { mem::transmute(&mut x) };
+    let raw = raw as usize as *mut i32; // make sure we killed the tag
     unsafe { *raw = 13; } //~ ERROR does not exist on the stack
 }

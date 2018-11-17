@@ -461,9 +461,9 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             // No tracking
             Ok(place.ptr)
         } else {
-            let ptr = place.ptr.to_ptr()?; // assert this is not a scalar
-            let tag = ecx.tag_dereference(place, size, mutability.into())?;
-            Ok(Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag)))
+            ecx.ptr_dereference(place, size, mutability.into())?;
+            // We never change the pointer
+            Ok(place.ptr)
         }
     }
 

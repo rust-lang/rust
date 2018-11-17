@@ -405,12 +405,12 @@ impl<'tcx> Stacks {
 
 
 pub trait EvalContextExt<'tcx> {
-    fn tag_dereference(
+    fn ptr_dereference(
         &self,
         place: MPlaceTy<'tcx, Borrow>,
         size: Size,
         mutability: Option<Mutability>,
-    ) -> EvalResult<'tcx, Borrow>;
+    ) -> EvalResult<'tcx>;
 
     fn tag_new_allocation(
         &mut self,
@@ -480,13 +480,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
     ///
     /// Note that this does NOT mean that all this memory will actually get accessed/referenced!
     /// We could be in the middle of `&(*var).1`.
-    fn tag_dereference(
+    fn ptr_dereference(
         &self,
         place: MPlaceTy<'tcx, Borrow>,
         size: Size,
         mutability: Option<Mutability>,
-    ) -> EvalResult<'tcx, Borrow> {
-        trace!("tag_dereference: Accessing {} reference for {:?} (pointee {})",
+    ) -> EvalResult<'tcx> {
+        trace!("ptr_dereference: Accessing {} reference for {:?} (pointee {})",
             if let Some(mutability) = mutability { format!("{:?}", mutability) } else { format!("raw") },
             place.ptr, place.layout.ty);
         let ptr = place.ptr.to_ptr()?;
@@ -497,12 +497,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         // That can transmute a raw ptr to a (shared/mut) ref, and a mut ref to a shared one.
         match (mutability, ptr.tag) {
             (None, _) => {
-                // Don't use the tag, this is a raw access!  They should happen tagless.
-                // This is needed for `*mut` to make any sense: Writes *do* enforce the
-                // `Uniq` tag to be up top, but we must make sure raw writes do not do that.
-                // This does mean, however, that `&*foo` is *not* a NOP *if* `foo` is a raw ptr.
-                // Also don't do any further validation, this is raw after all.
-                return Ok(Borrow::default());
+                // No further validation on raw accesses.
+                return Ok(());
             }
             (Some(MutMutable), Borrow::Uniq(_)) |
             (Some(MutImmutable), Borrow::Shr(_)) => {
@@ -543,8 +539,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             alloc.extra.deref(ptr, size, kind)?;
         }
 
-        // All is good, and do not change the tag
-        Ok(ptr.tag)
+        // All is good
+        Ok(())
     }
 
     /// The given place may henceforth be accessed through raw pointers.
