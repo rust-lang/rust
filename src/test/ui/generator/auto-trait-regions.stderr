@@ -20,31 +20,15 @@ LL |     assert_foo(gen);
    = note: lifetime RePlaceholder(Placeholder { universe: U35, name: BrAnon(1) })...
    = note: ...does not necessarily outlive the static lifetime
 
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements
+error: implementation of `Foo` is not general enough
   --> $DIR/auto-trait-regions.rs:49:5
    |
 LL |     assert_foo(gen);
    |     ^^^^^^^^^^
    |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U47, name: BrAnon(2) })...
-   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U47, name: BrAnon(1) })...
-   = note: ...so that the types are compatible:
-           expected Foo
-              found Foo
+   = note: `A<'0, '1>` must implement `Foo` for any two lifetimes `'0` and `'1`
+   = note: but `A<'_, '2>` only implements `Foo` for some lifetime `'2`
 
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'b` due to conflicting requirements
-  --> $DIR/auto-trait-regions.rs:49:5
-   |
-LL |     assert_foo(gen);
-   |     ^^^^^^^^^^
-   |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U51, name: BrAnon(2) })...
-   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U51, name: BrAnon(1) })...
-   = note: ...so that the types are compatible:
-           expected Foo
-              found Foo
+error: aborting due to 3 previous errors
 
-error: aborting due to 4 previous errors
-
-Some errors occurred: E0308, E0495.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0308`.

@@ -34,67 +34,36 @@ LL | |     // ok for UintStruct, but not IntStruct
 LL | | }
    | |_^
 
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+error: implementation of `TheTrait` is not general enough
   --> $DIR/associated-types-eq-hr.rs:91:5
    |
 LL |     tuple_one::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:20), 'x) })...
-   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:21), 'y) })...
-   = note: ...so that the types are compatible:
-           expected TheTrait<(&'x isize, &'y isize)>
-              found TheTrait<(&isize, &isize)>
+   = note: Due to a where-clause on `tuple_one`,
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>` for any two lifetimes `'0` and `'1`
+   = note: but `Tuple` only implements `TheTrait<(&'2 isize, &'2 isize)>` for some lifetime `'2`
 
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/associated-types-eq-hr.rs:91:5
-   |
-LL |     tuple_one::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U2, name: BrNamed(crate0:DefIndex(1:20), 'x) })...
-   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U2, name: BrNamed(crate0:DefIndex(1:21), 'y) })...
-   = note: ...so that the types are compatible:
-           expected TheTrait<(&'x isize, &'y isize)>
-              found TheTrait<(&isize, &isize)>
-
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/associated-types-eq-hr.rs:97:5
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:96:5
    |
 LL |     tuple_two::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^
    |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:23), 'x) })...
-   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:24), 'y) })...
-   = note: ...so that the types are compatible:
-           expected TheTrait<(&'x isize, &'y isize)>
-              found TheTrait<(&isize, &isize)>
+   = note: Due to a where-clause on `tuple_two`,
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>` for any two lifetimes `'0` and `'1`
+   = note: but `Tuple` only implements `TheTrait<(&'2 isize, &'2 isize)>` for some lifetime `'2`
 
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/associated-types-eq-hr.rs:97:5
-   |
-LL |     tuple_two::<Tuple>();
-   |     ^^^^^^^^^^^^^^^^^^
-   |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U2, name: BrNamed(crate0:DefIndex(1:23), 'x) })...
-   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U2, name: BrNamed(crate0:DefIndex(1:24), 'y) })...
-   = note: ...so that the types are compatible:
-           expected TheTrait<(&'x isize, &'y isize)>
-              found TheTrait<(&isize, &isize)>
-
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
-  --> $DIR/associated-types-eq-hr.rs:107:5
+error: implementation of `TheTrait` is not general enough
+  --> $DIR/associated-types-eq-hr.rs:105:5
    |
 LL |     tuple_four::<Tuple>();
    |     ^^^^^^^^^^^^^^^^^^^
    |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:28), 'x) })...
-   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:29), 'y) })...
-   = note: ...so that the types are compatible:
-           expected TheTrait<(&'x isize, &'y isize)>
-              found TheTrait<(&isize, &isize)>
+   = note: Due to a where-clause on `tuple_four`,
+   = note: `Tuple` must implement `TheTrait<(&'0 isize, &'1 isize)>` for any two lifetimes `'0` and `'1`
+   = note: but `Tuple` only implements `TheTrait<(&'2 isize, &'2 isize)>` for some lifetime `'2`
 
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 
-Some errors occurred: E0271, E0495.
-For more information about an error, try `rustc --explain E0271`.
+For more information about this error, try `rustc --explain E0271`.

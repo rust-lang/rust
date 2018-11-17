@@ -1,15 +1,12 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-conflate-regions.rs:28:10
    |
 LL | fn b() { want_foo2::<SomeStruct>(); } //~ ERROR
    |          ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:11), 'a) })...
-   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:12), 'b) })...
-   = note: ...so that the types are compatible:
-           expected Foo<(&'a isize, &'b isize)>
-              found Foo<(&isize, &isize)>
+   = note: Due to a where-clause on `want_foo2`,
+   = note: `SomeStruct` must implement `Foo<(&'0 isize, &'1 isize)>` for any two lifetimes `'0` and `'1`
+   = note: but `SomeStruct` only implements `Foo<(&'2 isize, &'2 isize)>` for some lifetime `'2`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.
