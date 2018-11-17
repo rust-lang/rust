@@ -481,7 +481,8 @@ mod tests {
             let (a, b) = ($a, $b);
             if a != b {
                 let (a, b) = if a > b {(a, b)} else {(b, a)};
-                assert!(a - Duration::new(0, 100) <= b);
+                assert!(a - Duration::new(0, 100) <= b,
+                        "{:?} is not almost equal to {:?}", a, b);
             }
         })
     }
@@ -503,7 +504,10 @@ mod tests {
     fn instant_math() {
         let a = Instant::now();
         let b = Instant::now();
+        println!("a: {:?}", a);
+        println!("b: {:?}", b);
         let dur = b.duration_since(a);
+        println!("dur: {:?}", dur);
         assert_almost_eq!(b - dur, a);
         assert_almost_eq!(a + dur, b);
 
