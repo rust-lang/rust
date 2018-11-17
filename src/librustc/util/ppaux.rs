@@ -43,6 +43,13 @@ pub struct RegionHighlightMode {
     /// y: &'a u32)` and we want to give a name to the region of the
     /// reference `x`.
     highlight_bound_region: Option<(ty::BoundRegion, usize)>,
+
+    /// If enabled, when printing a "placeholder" (what we get when
+    /// substituting a universally quantified region as in `for<'a> T:
+    /// Foo<'a>`), print out instead `'N`.
+    ///
+    /// (Unlike other modes, we can highlight more than one placeholder at a time.)
+    highlight_placeholders: [Option<(ty::PlaceholderRegion, usize)>; 2],
 }
 
 thread_local! {
@@ -53,10 +60,12 @@ thread_local! {
 }
 
 impl RegionHighlightMode {
+    /// Read and return current region highlight settings (accesses thread-local state).a
     pub fn get() -> Self {
         REGION_HIGHLIGHT_MODE.with(|c| c.get())
     }
 
+    /// Internal helper to update current settings during the execution of `op`.
     fn set<R>(
         old_mode: Self,
         new_mode: Self,
@@ -70,6 +79,9 @@ impl RegionHighlightMode {
         })
     }
 
+    /// During the execution of `op`, highlight the region inference
+    /// vairable `vid` as `'N`.  We can only highlight one region vid
+    /// at a time.
     pub fn highlighting_region_vid<R>(vid: RegionVid, number: usize, op: impl FnOnce() -> R) -> R {
         let old_mode = Self::get();
         assert!(old_mode.highlight_region_vid.is_none());
@@ -101,6 +113,52 @@ impl RegionHighlightMode {
             },
             op,
         )
+    }
+
+    /// During the execution of `op`, highlight the given placeholders
+    /// with the given numbers. Unlike other modes: non-highlighted
+    /// placeholders are printed as `'_` (where they might normally print
+    /// differently. This may want to be tweaked; but we do it for two reasons
+    ///
+    /// (a) to draw attention to the placeholders we are trying to highlight
+    /// (b) because placeholder names can come from other scopes than the one
+    ///     in which the error occurred, so that can be misleading.
+    ///
+    /// We can highlight up to two placeholders at a time.
+    pub fn highlighting_placeholder<R>(
+        placeholder: ty::PlaceholderRegion,
+        number: usize,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        let old_mode = Self::get();
+        let mut new_mode = old_mode;
+        let first_avail_slot = new_mode.highlight_placeholders.iter_mut()
+            .filter(|s| s.is_none())
+            .next()
+            .unwrap_or_else(|| {
+                panic!(
+                    "can only highlight {} placeholders at a time",
+                    old_mode.highlight_placeholders.len(),
+                )
+            });
+        *first_avail_slot = Some((placeholder, number));
+        Self::set(old_mode, new_mode, op)
+    }
+
+    /// Returns true if any placeholders are highlighted.
+    pub fn any_placeholders_highlighted(&self) -> bool {
+        self.highlight_placeholders.iter().any(|p| p.is_some())
+    }
+
+    /// Returns `Some(N)` if the placeholder `p` is highlighted to print as `'N`.
+    pub fn placeholder_highlight(&self, p: ty::PlaceholderRegion) -> Option<usize> {
+        self.highlight_placeholders
+            .iter()
+            .filter_map(|h| match h {
+                &Some((h, n)) if h == p => Some(n),
+                _ => None,
+            })
+            .next()
     }
 }
 
@@ -803,6 +861,25 @@ define_print! {
 }
 
 define_print! {
+    () ty::PlaceholderRegion, (self, f, cx) {
+        display {
+            if cx.is_verbose {
+                return self.print_debug(f, cx);
+            }
+
+            let highlight = RegionHighlightMode::get();
+            if let Some(counter) = highlight.placeholder_highlight(*self) {
+                write!(f, "'{}", counter)
+            } else if highlight.any_placeholders_highlighted() {
+                write!(f, "'_")
+            } else {
+                write!(f, "{}", self.name)
+            }
+        }
+    }
+}
+
+define_print! {
     () ty::RegionKind, (self, f, cx) {
         display {
             if cx.is_verbose {
@@ -818,9 +895,11 @@ define_print! {
                     write!(f, "{}", data.name)
                 }
                 ty::ReLateBound(_, br) |
-                ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
-                ty::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
+                ty::ReFree(ty::FreeRegion { bound_region: br, .. }) => {
                     write!(f, "{}", br)
+                }
+                ty::RePlaceholder(p) => {
+                    write!(f, "{}", p)
                 }
                 ty::ReScope(scope) if cx.identify_regions => {
                     match scope.data {
