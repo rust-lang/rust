@@ -26,7 +26,7 @@ use syntax_pos::{BytePos, Mark, Span, DUMMY_SP};
 use ext::base;
 use ext::tt::{macro_parser, quoted};
 use parse::Directory;
-use parse::token::{self, Token};
+use parse::token::{self, DelimToken, Token};
 use print::pprust;
 use serialize::{Decoder, Decodable, Encoder, Encodable};
 use util::RcVec;
@@ -38,7 +38,7 @@ use std::{fmt, iter, mem};
 #[derive(Clone, PartialEq, RustcEncodable, RustcDecodable, Debug)]
 pub struct Delimited {
     /// The type of delimiter
-    pub delim: token::DelimToken,
+    pub delim: DelimToken,
     /// The delimited sequence of token trees
     pub tts: ThinTokenStream,
 }
@@ -368,8 +368,30 @@ impl TokenStream {
     // This is otherwise the same as `eq_unspanned`, only recursing with a
     // different method.
     pub fn probably_equal_for_proc_macro(&self, other: &TokenStream) -> bool {
-        let mut t1 = self.trees();
-        let mut t2 = other.trees();
+        // When checking for `probably_eq`, we ignore certain tokens that aren't
+        // preserved in the AST. Because they are not preserved, the pretty
+        // printer arbitrarily adds or removes them when printing as token
+        // streams, making a comparison between a token stream generated from an
+        // AST and a token stream which was parsed into an AST more reliable.
+        fn semantic_tree(tree: &TokenTree) -> bool {
+            match tree {
+                // The pretty printer tends to add trailing commas to
+                // everything, and in particular, after struct fields.
+                | TokenTree::Token(_, Token::Comma)
+                // The pretty printer emits `NoDelim` as whitespace.
+                | TokenTree::Token(_, Token::OpenDelim(DelimToken::NoDelim))
+                | TokenTree::Token(_, Token::CloseDelim(DelimToken::NoDelim))
+                // The pretty printer collapses many semicolons into one.
+                | TokenTree::Token(_, Token::Semi)
+                // The pretty printer collapses whitespace arbitrarily and can
+                // introduce whitespace from `NoDelim`.
+                | TokenTree::Token(_, Token::Whitespace) => false,
+                _ => true
+            }
+        }
+
+        let mut t1 = self.trees().filter(semantic_tree);
+        let mut t2 = other.trees().filter(semantic_tree);
         for (t1, t2) in t1.by_ref().zip(t2.by_ref()) {
             if !t1.probably_equal_for_proc_macro(&t2) {
                 return false;
