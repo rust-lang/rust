@@ -351,8 +351,17 @@ where
         // Offset may need adjustment for unsized fields
         let (meta, offset) = if field_layout.is_unsized() {
             // re-use parent metadata to determine dynamic field layout
-            let (_, align) = self.size_and_align_of(base.meta, field_layout)?
-                .expect("Fields cannot be extern types");
+            let align = match self.size_and_align_of(base.meta, field_layout)? {
+                Some((_, align)) => align,
+                None if offset == Size::ZERO =>
+                    // An extern type at offset 0, we fall back to its static alignment.
+                    // FIXME: Once we have made decisions for how to handle size and alignment
+                    // of `extern type`, this should be adapted.  It is just a temporary hack
+                    // to get some code to work that probably ought to work.
+                    field_layout.align,
+                None =>
+                    bug!("Cannot compute offset for extern type field at non-0 offset"),
+            };
             (base.meta, offset.abi_align(align))
         } else {
             // base.meta could be present; we might be accessing a sized field of an unsized
