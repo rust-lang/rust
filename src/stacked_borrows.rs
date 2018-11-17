@@ -661,14 +661,14 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             // Primitives of reference type, that is the one thing we are interested in.
             fn visit_primitive(&mut self, place: MPlaceTy<'tcx, Borrow>) -> EvalResult<'tcx>
             {
-                match place.layout.ty.sty {
-                    ty::Ref(_, _, mutbl) => {
-                        let val = self.ecx.read_immediate(place.into())?;
-                        let val = self.ecx.retag_reference(val, mutbl)?;
-                        self.ecx.write_immediate(val, place.into())?;
-                    }
-                    _ => {}, // nothing to do
-                }
+                let mutbl = match place.layout.ty.sty {
+                    ty::Ref(_, _, mutbl) => mutbl,
+                    ty::Adt(..) if place.layout.ty.is_box() => MutMutable,
+                    _ => return Ok(()), // nothing to do
+                };
+                let val = self.ecx.read_immediate(place.into())?;
+                let val = self.ecx.retag_reference(val, mutbl)?;
+                self.ecx.write_immediate(val, place.into())?;
                 Ok(())
             }
         }
