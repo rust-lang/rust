@@ -18,7 +18,9 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
 ) {
     match mono_item {
         MonoItem::Fn(inst) => {
-            let _inst_guard = PrintOnPanic(|| format!("{:?}", inst));
+            let _inst_guard = PrintOnPanic(|| {
+                format!("{:?} {}", inst, tcx.symbol_name(inst).as_str())
+            });
             let _mir_guard = PrintOnPanic(|| {
                 match inst.def {
                     InstanceDef::Item(_)
@@ -761,14 +763,7 @@ macro_rules! binop_match {
         assert_eq!($fx.tcx.types.bool, $ret_ty);
         let ret_layout = $fx.layout_of($ret_ty);
 
-        // TODO HACK no encoding for icmp.i8
-        use crate::common::clif_intcast;
-        let (lhs, rhs) = (
-            clif_intcast($fx, $lhs, types::I64, $signed),
-            clif_intcast($fx, $rhs, types::I64, $signed),
-        );
-        let b = $fx.bcx.ins().icmp(IntCC::$cc, lhs, rhs);
-
+        let b = $fx.bcx.ins().icmp(IntCC::$cc, $lhs, $rhs);
         CValue::ByVal($fx.bcx.ins().bint(types::I8, b), ret_layout)
     }};
     (@single $fx:expr, $bug_fmt:expr, $var:expr, $signed:expr, $lhs:expr, $rhs:expr, $ret_ty:expr, fcmp($cc:ident)) => {{

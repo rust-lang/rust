@@ -1,4 +1,4 @@
-#![feature(no_core, lang_items, intrinsics, unboxed_closures)]
+#![feature(no_core, lang_items, intrinsics, unboxed_closures, type_ascription)]
 #![no_core]
 #![allow(dead_code)]
 
@@ -246,7 +246,7 @@ pub struct Box<T: ?Sized>(*mut T);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Box<U>> for Box<T> {}
 
-static mut MY_TINY_HEAP: [u8; 16] = [0; 16];
+static mut MY_TINY_HEAP: [u8; 16] = [0xff; 16];
 
 #[lang = "exchange_malloc"]
 unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
