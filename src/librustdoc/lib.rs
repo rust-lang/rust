@@ -25,6 +25,7 @@
 #![feature(crate_visibility_modifier)]
 #![feature(const_fn)]
 #![feature(drain_filter)]
+#![feature(inner_deref)]
 
 #![recursion_limit="256"]
 

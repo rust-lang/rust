@@ -440,8 +440,9 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
 /// Used when rendering a `ResolvedPath` structure. This invokes the `path`
 /// rendering function with the necessary arguments for linking to a local path.
 fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
-                 print_all: bool, use_absolute: bool) -> fmt::Result {
+                 print_all: bool, use_absolute: bool, rename: Option<&str>) -> fmt::Result {
     let last = path.segments.last().unwrap();
+    let last_name = rename.unwrap_or(&last.name);
 
     if print_all {
         for seg in &path.segments[..path.segments.len() - 1] {
@@ -449,19 +450,19 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
         }
     }
     if w.alternate() {
-        write!(w, "{:#}{:#}", HRef::new(did, &last.name), last.args)?;
+        write!(w, "{:#}{:#}", HRef::new(did, last_name), last.args)?;
     } else {
         let path = if use_absolute {
             match href(did) {
                 Some((_, _, fqp)) => {
                     format!("{}::{}",
                             fqp[..fqp.len() - 1].join("::"),
-                            HRef::new(did, fqp.last().unwrap()))
+                            HRef::new(did, rename.or(fqp.last().map(|n| &**n)).unwrap()))
                 }
-                None => HRef::new(did, &last.name).to_string(),
+                None => HRef::new(did, last_name).to_string(),
             }
         } else {
-            HRef::new(did, &last.name).to_string()
+            HRef::new(did, last_name).to_string()
         };
         write!(w, "{}{}", path, last.args)?;
     }
@@ -547,7 +548,14 @@ impl<'a> fmt::Display for HRef<'a> {
     }
 }
 
-fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt::Result {
+/// Writes the given type into the given formatter, optionally printing its full path or using the
+/// given name instead.
+fn fmt_type(
+    t: &clean::Type,
+    f: &mut fmt::Formatter,
+    use_absolute: bool,
+    rename: Option<&str>,
+) -> fmt::Result {
     match *t {
         clean::Generic(ref name) => {
             f.write_str(name)
@@ -557,7 +565,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
                 f.write_str("dyn ")?;
             }
             // Paths like T::Output and Self::Output should be rendered with all segments
-            resolved_path(f, did, path, is_generic, use_absolute)?;
+            resolved_path(f, did, path, is_generic, use_absolute, rename)?;
             tybounds(f, typarams)
         }
         clean::Infer => write!(f, "_"),
@@ -657,17 +665,17 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
                 }
                 clean::ResolvedPath { typarams: Some(ref v), .. } if !v.is_empty() => {
                     write!(f, "{}{}{}(", amp, lt, m)?;
-                    fmt_type(&ty, f, use_absolute)?;
+                    fmt_type(&ty, f, use_absolute, rename)?;
                     write!(f, ")")
                 }
                 clean::Generic(..) => {
                     primitive_link(f, PrimitiveType::Reference,
                                    &format!("{}{}{}", amp, lt, m))?;
-                    fmt_type(&ty, f, use_absolute)
+                    fmt_type(&ty, f, use_absolute, rename)
                 }
                 _ => {
                     write!(f, "{}{}{}", amp, lt, m)?;
-                    fmt_type(&ty, f, use_absolute)
+                    fmt_type(&ty, f, use_absolute, rename)
                 }
             }
         }
@@ -736,14 +744,15 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
 
 impl fmt::Display for clean::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt_type(self, f, false)
+        fmt_type(self, f, false, None)
     }
 }
 
 fn fmt_impl(i: &clean::Impl,
             f: &mut fmt::Formatter,
             link_trait: bool,
-            use_absolute: bool) -> fmt::Result {
+            use_absolute: bool,
+            rename: Option<&str>) -> fmt::Result {
     if f.alternate() {
         write!(f, "impl{:#} ", i.generics)?;
     } else {
@@ -771,9 +780,9 @@ fn fmt_impl(i: &clean::Impl,
     }
 
     if let Some(ref ty) = i.blanket_impl {
-        fmt_type(ty, f, use_absolute)?;
+        fmt_type(ty, f, use_absolute, rename)?;
     } else {
-        fmt_type(&i.for_, f, use_absolute)?;
+        fmt_type(&i.for_, f, use_absolute, rename)?;
     }
 
     fmt::Display::fmt(&WhereClause { gens: &i.generics, indent: 0, end_newline: true }, f)?;
@@ -782,15 +791,23 @@ fn fmt_impl(i: &clean::Impl,
 
 impl fmt::Display for clean::Impl {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt_impl(self, f, true, false)
+        fmt_impl(self, f, true, false, None)
     }
 }
 
 // The difference from above is that trait is not hyperlinked.
 pub fn fmt_impl_for_trait_page(i: &clean::Impl,
                                f: &mut fmt::Formatter,
-                               use_absolute: bool) -> fmt::Result {
-    fmt_impl(i, f, false, use_absolute)
+                               use_absolute: bool,
+                               rename: Option<&str>) -> fmt::Result {
+    fmt_impl(i, f, false, use_absolute, rename)
+}
+
+/// Renders an `impl` block signature, but with the `for` type renamed to the given name.
+pub fn fmt_impl_renamed(i: &clean::Impl,
+                        f: &mut fmt::Formatter,
+                        rename: Option<&str>) -> fmt::Result {
+    fmt_impl(i, f, true, false, rename)
 }
 
 impl fmt::Display for clean::Arguments {
@@ -946,7 +963,7 @@ impl<'a> fmt::Display for VisSpace<'a> {
                 {
                     f.write_str("in ")?;
                 }
-                resolved_path(f, did, path, true, false)?;
+                resolved_path(f, did, path, true, false, None)?;
                 f.write_str(") ")
             }
         }
@@ -1004,7 +1021,7 @@ impl fmt::Display for clean::Import {
 impl fmt::Display for clean::ImportSource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.did {
-            Some(did) => resolved_path(f, did, &self.path, true, false),
+            Some(did) => resolved_path(f, did, &self.path, true, false, None),
             _ => {
                 for (i, seg) in self.path.segments.iter().enumerate() {
                     if i > 0 {

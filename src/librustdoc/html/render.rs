@@ -73,7 +73,7 @@ use html::escape::Escape;
 use html::format::{AsyncSpace, ConstnessSpace};
 use html::format::{GenericBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
-use html::format::fmt_impl_for_trait_page;
+use html::format::{fmt_impl_for_trait_page, fmt_impl_renamed};
 use html::item_type::ItemType;
 use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine, ErrorCodes, IdMap};
 use html::{highlight, layout, static_files};
@@ -2796,7 +2796,7 @@ fn render_implementor(cx: &Context, implementor: &Impl, w: &mut fmt::Formatter,
         _ => false,
     };
     render_impl(w, cx, implementor, AssocItemLink::Anchor(None), RenderMode::Normal,
-                implementor.impl_item.stable_since(), false, Some(use_absolute))?;
+                implementor.impl_item.stable_since(), false, Some(use_absolute), None)?;
     Ok(())
 }
 
@@ -2806,8 +2806,9 @@ fn render_impls(cx: &Context, w: &mut fmt::Formatter,
     for i in traits {
         let did = i.trait_did().unwrap();
         let assoc_link = AssocItemLink::GotoSource(did, &i.inner_impl().provided_trait_methods);
-        render_impl(w, cx, i, assoc_link,
-                    RenderMode::Normal, containing_item.stable_since(), true, None)?;
+        let rename = containing_item.name.deref();
+        render_impl(w, cx, i, assoc_link, RenderMode::Normal,
+                    containing_item.stable_since(), true, None, rename)?;
     }
     Ok(())
 }
@@ -3065,7 +3066,7 @@ fn item_trait(
                 );
                 render_impl(w, cx, &implementor, assoc_link,
                             RenderMode::Normal, implementor.impl_item.stable_since(), false,
-                            None)?;
+                            None, None)?;
             }
         }
 
@@ -3713,9 +3714,10 @@ fn render_assoc_items(w: &mut fmt::Formatter,
                 RenderMode::ForDeref { mut_: deref_mut_ }
             }
         };
+        let rename = containing_item.name.deref();
         for i in &non_trait {
             render_impl(w, cx, i, AssocItemLink::Anchor(None), render_mode,
-                        containing_item.stable_since(), true, None)?;
+                        containing_item.stable_since(), true, None, rename)?;
         }
     }
     if let AssocItemRender::DerefFor { .. } = what {
@@ -3896,7 +3898,8 @@ fn spotlight_decl(decl: &clean::FnDecl) -> Result<String, fmt::Error> {
 
 fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLink,
                render_mode: RenderMode, outer_version: Option<&str>,
-               show_def_docs: bool, use_absolute: Option<bool>) -> fmt::Result {
+               show_def_docs: bool, use_absolute: Option<bool>, rename: Option<&str>,
+) -> fmt::Result {
     if render_mode == RenderMode::Normal {
         let id = cx.derive_id(match i.inner_impl().trait_ {
             Some(ref t) => format!("impl-{}", small_url_encode(&format!("{:#}", t))),
@@ -3905,7 +3908,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         if let Some(use_absolute) = use_absolute {
             write!(w, "<h3 id='{}' class='impl'><span class='in-band'><table class='table-display'>\
                        <tbody><tr><td><code>", id)?;
-            fmt_impl_for_trait_page(&i.inner_impl(), w, use_absolute)?;
+            fmt_impl_for_trait_page(&i.inner_impl(), w, use_absolute, rename)?;
             if show_def_docs {
                 for it in &i.inner_impl().items {
                     if let clean::TypedefItem(ref tydef, _) = it.inner {
@@ -3919,8 +3922,10 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             write!(w, "</code>")?;
         } else {
             write!(w, "<h3 id='{}' class='impl'><span class='in-band'><table class='table-display'>\
-                       <tbody><tr><td><code>{}</code>",
-                   id, i.inner_impl())?;
+                       <tbody><tr><td><code>",
+                   id)?;
+            fmt_impl_renamed(i.inner_impl(), w, rename)?;
+            write!(w, "</code>")?;
         }
         write!(w, "<a href='#{}' class='anchor'></a>", id)?;
         write!(w, "</span></td><td><span class='out-of-band'>")?;
