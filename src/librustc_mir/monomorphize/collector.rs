@@ -178,10 +178,6 @@
 //! Some things are not yet fully implemented in the current version of this
 //! module.
 //!
-//! ### Initializers of Constants and Statics
-//! Since no MIR is constructed yet for initializer expressions of constants and
-//! statics we cannot inspect these properly.
-//!
 //! ### Const Fns
 //! Ideally, no mono item should be generated for const fns unless there
 //! is a call to them that cannot be evaluated at compile time. At the moment
