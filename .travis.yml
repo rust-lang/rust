@@ -35,7 +35,7 @@ script:
 - set -e
 - |
   # Test and install plain miri
-  cargo build --release --all-features &&
+  cargo build --release --all-features --all-targets &&
   cargo test --release --all-features &&
   cargo install --all-features --force --path .
 - |
