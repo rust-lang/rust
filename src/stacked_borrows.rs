@@ -624,6 +624,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         // a `MemPlace`, so we have a fast path for reference types that
         // avoids allocating.
         match place.layout.ty.sty {
+            // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
+            // making it useless.
             ty::Ref(_, _, mutbl) => {
                 // fast path
                 let val = self.read_immediate(self.place_to_op(place)?)?;
@@ -657,6 +659,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             // Primitives of reference type, that is the one thing we are interested in.
             fn visit_primitive(&mut self, place: MPlaceTy<'tcx, Borrow>) -> EvalResult<'tcx>
             {
+                // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
+                // making it useless.
                 let mutbl = match place.layout.ty.sty {
                     ty::Ref(_, _, mutbl) => mutbl,
                     ty::Adt(..) if place.layout.ty.is_box() => MutMutable,
