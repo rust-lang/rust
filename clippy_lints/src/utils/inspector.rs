@@ -8,8 +8,6 @@
 // except according to those terms.
 
 
-#![allow(clippy::print_stdout, clippy::use_debug)]
-
 //! checks for attributes
 
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};

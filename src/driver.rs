@@ -27,7 +27,6 @@ use std::convert::TryInto;
 use std::path::Path;
 use std::process::{exit, Command};
 
-#[allow(clippy::print_stdout)]
 fn show_version() {
     println!(env!("CARGO_PKG_VERSION"));
 }

@@ -63,7 +63,6 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-    #[allow(clippy::similar_names)]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprKind::Match(ref op, ref arms, ref match_source) = expr.node {
             match match_source {

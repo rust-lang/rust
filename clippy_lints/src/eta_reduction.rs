@@ -15,7 +15,6 @@ use crate::rustc::hir::*;
 use crate::utils::{is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then};
 use crate::rustc_errors::Applicability;
 
-#[allow(missing_copy_implementations)]
 pub struct EtaPass;
 
 

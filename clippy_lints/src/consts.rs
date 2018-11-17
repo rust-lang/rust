@@ -293,7 +293,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                     instance,
                     promoted: None,
                 };
-                
+
                 let result = self.tcx.const_eval(self.param_env.and(gid)).ok()?;
                 let ret = miri_to_const(self.tcx, result);
                 if ret.is_some() {

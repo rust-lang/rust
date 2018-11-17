@@ -15,7 +15,7 @@
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(range_contains)]
-#![allow(clippy::shadow_reuse, clippy::missing_docs_in_private_items)]
+#![allow(clippy::missing_docs_in_private_items)]
 #![recursion_limit = "256"]
 #![feature(macro_at_most_once_rep)]
 
@@ -1005,7 +1005,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
 
 // only exists to let the dogfood integration test works.
 // Don't run clippy as an executable directly
-#[allow(dead_code, clippy::print_stdout)]
+#[allow(dead_code)]
 fn main() {
     panic!("Please use the cargo-clippy executable");
 }

@@ -116,7 +116,6 @@ const DROP_COPY_SUMMARY: &str = "calls to `std::mem::drop` with a value that imp
 const FORGET_COPY_SUMMARY: &str = "calls to `std::mem::forget` with a value that implements Copy. \
                                    Forgetting a copy leaves the original intact.";
 
-#[allow(missing_copy_implementations)]
 pub struct Pass;
 
 impl LintPass for Pass {

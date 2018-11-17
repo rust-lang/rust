@@ -34,7 +34,6 @@ use crate::utils::paths;
 use crate::consts::{constant, Constant};
 
 /// Handles all the linting of funky types
-#[allow(missing_copy_implementations)]
 pub struct TypePass;
 
 /// **What it does:** Checks for use of `Box<Vec<_>>` anywhere in the code.
@@ -371,7 +370,6 @@ fn is_any_trait(t: &hir::Ty) -> bool {
     false
 }
 
-#[allow(missing_copy_implementations)]
 pub struct LetPass;
 
 /// **What it does:** Checks for binding a unit value.
@@ -447,7 +445,6 @@ declare_clippy_lint! {
     "comparing unit values"
 }
 
-#[allow(missing_copy_implementations)]
 pub struct UnitCmp;
 
 impl LintPass for UnitCmp {
@@ -1142,7 +1139,6 @@ declare_clippy_lint! {
     "usage of very complex types that might be better factored into `type` definitions"
 }
 
-#[allow(missing_copy_implementations)]
 pub struct TypeComplexityPass {
     threshold: u64,
 }

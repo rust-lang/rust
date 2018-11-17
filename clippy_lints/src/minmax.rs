@@ -35,7 +35,6 @@ declare_clippy_lint! {
     "`min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant"
 }
 
-#[allow(missing_copy_implementations)]
 pub struct MinMaxPass;
 
 impl LintPass for MinMaxPass {
