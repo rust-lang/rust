@@ -1,7 +1,7 @@
 error[E0432]: unresolved import `foo`
   --> $DIR/local-path-suggestions-2018.rs:22:9
    |
-LL |     use foo::Bar;
+LL |     use foo::Bar; //~ ERROR unresolved import `foo`
    |         ^^^ did you mean `crate::foo`?
    |
    = note: `use` statements changed in Rust 2018; read more at <https://doc.rust-lang.org/edition-guide/rust-2018/module-system/path-clarity.html>
@@ -9,7 +9,7 @@ LL |     use foo::Bar;
 error[E0432]: unresolved import `foobar`
   --> $DIR/local-path-suggestions-2018.rs:31:5
    |
-LL | use foobar::Baz;
+LL | use foobar::Baz; //~ ERROR unresolved import `foobar`
    |     ^^^^^^ did you mean `baz::foobar`?
 
 error: aborting due to 2 previous errors
