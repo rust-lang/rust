@@ -1200,16 +1200,14 @@ impl<'a> MethodDef<'a> {
         let sp = trait_.span;
         let variants = &enum_def.variants;
 
-        let self_arg_names = self_args.iter()
-            .enumerate()
-            .map(|(arg_count, _self_arg)| {
-                if arg_count == 0 {
-                    "__self".to_string()
-                } else {
+        let self_arg_names = iter::once("__self".to_string()).chain(
+            self_args.iter()
+                .enumerate()
+                .skip(1)
+                .map(|(arg_count, _self_arg)|
                     format!("__arg_{}", arg_count)
-                }
-            })
-            .collect::<Vec<String>>();
+                )
+            ).collect::<Vec<String>>();
 
         let self_arg_idents = self_arg_names.iter()
             .map(|name| cx.ident_of(&name[..]))
@@ -1218,7 +1216,7 @@ impl<'a> MethodDef<'a> {
         // The `vi_idents` will be bound, solely in the catch-all, to
         // a series of let statements mapping each self_arg to an int
         // value corresponding to its discriminant.
-        let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
+        let vi_idents = self_arg_names.iter()
             .map(|name| {
                 let vi_suffix = format!("{}_vi", &name[..]);
                 cx.ident_of(&vi_suffix[..]).gensym()
