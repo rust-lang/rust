@@ -415,6 +415,79 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             let res = CValue::by_val(fx.bcx.ins().bitrev(arg), fx.layout_of(T));
             ret.write_cvalue(fx, res);
         };
+        bswap, <T> (v arg) {
+            // FIXME(CraneStation/cranelift#794) add bswap instruction to cranelift
+            fn swap(bcx: &mut FunctionBuilder, v: Value) -> Value {
+                match bcx.func.dfg.value_type(v) {
+                    types::I8 => v,
+
+                    // https://code.woboq.org/gcc/include/bits/byteswap.h.html
+                    types::I16 => {
+                        let tmp1 = bcx.ins().ishl_imm(v, 8);
+                        let n1 = bcx.ins().band_imm(tmp1, 0xFF00);
+
+                        let tmp2 = bcx.ins().ushr_imm(v, 8);
+                        let n2 = bcx.ins().band_imm(tmp2, 0x00FF);
+
+                        bcx.ins().bor(n1, n2)
+                    }
+                    types::I32 => {
+                        let tmp1 = bcx.ins().ishl_imm(v, 24);
+                        let n1 = bcx.ins().band_imm(tmp1, 0xFF00_0000);
+
+                        let tmp2 = bcx.ins().ishl_imm(v, 8);
+                        let n2 = bcx.ins().band_imm(tmp2, 0x00FF_0000);
+
+                        let tmp3 = bcx.ins().ushr_imm(v, 8);
+                        let n3 = bcx.ins().band_imm(tmp3, 0x0000_FF00);
+
+                        let tmp4 = bcx.ins().ushr_imm(v, 24);
+                        let n4 = bcx.ins().band_imm(tmp4, 0x0000_00FF);
+
+                        let or_tmp1 = bcx.ins().bor(n1, n2);
+                        let or_tmp2 = bcx.ins().bor(n3, n4);
+                        bcx.ins().bor(or_tmp1, or_tmp2)
+                    }
+                    types::I64 => {
+                        let tmp1 = bcx.ins().ishl_imm(v, 56);
+                        let n1 = bcx.ins().band_imm(tmp1, 0xFF00_0000_0000_0000u64 as i64);
+
+                        let tmp2 = bcx.ins().ishl_imm(v, 40);
+                        let n2 = bcx.ins().band_imm(tmp2, 0x00FF_0000_0000_0000u64 as i64);
+
+                        let tmp3 = bcx.ins().ishl_imm(v, 24);
+                        let n3 = bcx.ins().band_imm(tmp3, 0x0000_FF00_0000_0000u64 as i64);
+
+                        let tmp4 = bcx.ins().ishl_imm(v, 8);
+                        let n4 = bcx.ins().band_imm(tmp4, 0x0000_00FF_0000_0000u64 as i64);
+
+                        let tmp5 = bcx.ins().ushr_imm(v, 8);
+                        let n5 = bcx.ins().band_imm(tmp5, 0x0000_0000_FF00_0000u64 as i64);
+
+                        let tmp6 = bcx.ins().ushr_imm(v, 24);
+                        let n6 = bcx.ins().band_imm(tmp6, 0x0000_0000_00FF_0000u64 as i64);
+
+                        let tmp7 = bcx.ins().ushr_imm(v, 40);
+                        let n7 = bcx.ins().band_imm(tmp7, 0x0000_0000_0000_FF00u64 as i64);
+
+                        let tmp8 = bcx.ins().ushr_imm(v, 56);
+                        let n8 = bcx.ins().band_imm(tmp8, 0x0000_0000_0000_00FFu64 as i64);
+
+                        let or_tmp1 = bcx.ins().bor(n1, n2);
+                        let or_tmp2 = bcx.ins().bor(n3, n4);
+                        let or_tmp3 = bcx.ins().bor(n5, n6);
+                        let or_tmp4 = bcx.ins().bor(n7, n8);
+
+                        let or_tmp5 = bcx.ins().bor(or_tmp1, or_tmp2);
+                        let or_tmp6 = bcx.ins().bor(or_tmp3, or_tmp4);
+                        bcx.ins().bor(or_tmp5, or_tmp6)
+                    }
+                    ty => unimplemented!("bwap {}", ty),
+                }
+            };
+            let res = CValue::by_val(swap(&mut fx.bcx, arg), fx.layout_of(T));
+            ret.write_cvalue(fx, res);
+        };
         needs_drop, <T> () {
             let needs_drop = if T.needs_drop(fx.tcx, ParamEnv::reveal_all()) {
                 1

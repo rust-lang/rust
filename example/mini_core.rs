@@ -208,6 +208,16 @@ impl PartialEq for u32 {
     }
 }
 
+
+impl PartialEq for u64 {
+    fn eq(&self, other: &u64) -> bool {
+        (*self) == (*other)
+    }
+    fn ne(&self, other: &u64) -> bool {
+        (*self) != (*other)
+    }
+}
+
 impl PartialEq for usize {
     fn eq(&self, other: &usize) -> bool {
         (*self) == (*other)
@@ -375,6 +385,7 @@ pub mod intrinsics {
         pub fn ctlz_nonzero<T>(x: T) -> T;
         pub fn needs_drop<T>() -> bool;
         pub fn bitreverse<T>(x: T) -> T;
+        pub fn bswap<T>(x: T) -> T;
     }
 }
 

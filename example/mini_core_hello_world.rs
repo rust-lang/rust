@@ -139,6 +139,11 @@ fn main() {
 
         assert_eq!(intrinsics::bitreverse(0b10101000u8), 0b00010101u8);
 
+        assert_eq!(intrinsics::bswap(0xabu8), 0xabu8);
+        assert_eq!(intrinsics::bswap(0xddccu16), 0xccddu16);
+        assert_eq!(intrinsics::bswap(0xffee_ddccu32), 0xccdd_eeffu32);
+        assert_eq!(intrinsics::bswap(0x1234_5678_ffee_ddccu64), 0xccdd_eeff_7856_3412u64);
+
         assert_eq!(intrinsics::size_of_val(hello) as u8, 6);
 
         let chars = &['C', 'h', 'a', 'r', 's'];
