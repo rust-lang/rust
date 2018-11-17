@@ -21,17 +21,87 @@ use syntax::ast::CRATE_NODE_ID;
 use syntax::symbol::{Symbol, InternedString};
 use hir;
 
-thread_local! {
-    /// Mechanism for highlighting of specific regions for display in NLL region inference errors.
-    /// Contains region to highlight and counter for number to use when highlighting.
-    static HIGHLIGHT_REGION_FOR_REGIONVID: Cell<Option<(RegionVid, usize)>> = Cell::new(None)
+/// The "region highlights" are used to control region printing during
+/// specific error messages. When a "region highlight" is enabled, it
+/// gives an alternate way to print specific regions. For now, we
+/// always print those regions using a number, so something like `'0`.
+///
+/// Regions not selected by the region highlight mode are presently
+/// unaffected.
+#[derive(Copy, Clone, Default)]
+pub struct RegionHighlightMode {
+    /// If enabled, when we see the selected region inference
+    /// variable, use `"'N"`; otherwise, use an empty string `""`
+    /// (which is our ordinary behavior).
+    highlight_region_vid: Option<(RegionVid, usize)>,
+
+    /// If enabled, when printing a "free region" that originated from
+    /// the given `ty::BoundRegion`, print it as `'1`. Free regions that would ordinarily
+    /// have names print as normal.
+    ///
+    /// This is used when you have a signature like `fn foo(x: &u32,
+    /// y: &'a u32)` and we want to give a name to the region of the
+    /// reference `x`.
+    highlight_bound_region: Option<(ty::BoundRegion, usize)>,
 }
 
 thread_local! {
-    /// Mechanism for highlighting of specific regions for display in NLL's 'borrow does not live
-    /// long enough' errors. Contains a region to highlight and a counter to use.
-    static HIGHLIGHT_REGION_FOR_BOUND_REGION: Cell<Option<(ty::BoundRegion, usize)>> =
-        Cell::new(None)
+    /// Mechanism for highlighting of specific regions for display in NLL region inference errors.
+    /// Contains region to highlight and counter for number to use when highlighting.
+    static REGION_HIGHLIGHT_MODE: Cell<RegionHighlightMode> =
+        Cell::new(RegionHighlightMode::default())
+}
+
+impl RegionHighlightMode {
+    pub fn get() -> Self {
+        REGION_HIGHLIGHT_MODE.with(|c| c.get())
+    }
+
+    fn set<R>(
+        old_mode: Self,
+        new_mode: Self,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        REGION_HIGHLIGHT_MODE.with(|c| {
+            c.set(new_mode);
+            let result = op();
+            c.set(old_mode);
+            result
+        })
+    }
+
+    pub fn highlighting_region_vid<R>(vid: RegionVid, number: usize, op: impl FnOnce() -> R) -> R {
+        let old_mode = Self::get();
+        assert!(old_mode.highlight_region_vid.is_none());
+        Self::set(
+            old_mode,
+            Self {
+                highlight_region_vid: Some((vid, number)),
+                ..old_mode
+            },
+            op,
+        )
+    }
+
+    /// During the execution of `op`, highlight the given bound
+    /// region. We can only highlight one bound region at a time.  See
+    /// the field `highlight_bound_region` for more detailed notes.
+    pub fn highlighting_bound_region<R>(
+        br: ty::BoundRegion,
+        number: usize,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        let old_mode = Self::get();
+        assert!(old_mode.highlight_bound_region.is_none());
+        Self::set(
+            old_mode,
+            Self {
+                highlight_bound_region: Some((br, number)),
+                ..old_mode
+            },
+            op,
+        )
+    }
 }
 
 macro_rules! gen_display_debug_body {
@@ -553,42 +623,6 @@ pub fn parameterized<F: fmt::Write>(f: &mut F,
     PrintContext::new().parameterized(f, substs, did, projections)
 }
 
-fn get_highlight_region_for_regionvid() -> Option<(RegionVid, usize)> {
-    HIGHLIGHT_REGION_FOR_REGIONVID.with(|hr| hr.get())
-}
-
-pub fn with_highlight_region_for_regionvid<R>(
-    r: RegionVid,
-    counter: usize,
-    op: impl FnOnce() -> R
-) -> R {
-    HIGHLIGHT_REGION_FOR_REGIONVID.with(|hr| {
-        assert_eq!(hr.get(), None);
-        hr.set(Some((r, counter)));
-        let r = op();
-        hr.set(None);
-        r
-    })
-}
-
-fn get_highlight_region_for_bound_region() -> Option<(ty::BoundRegion, usize)> {
-    HIGHLIGHT_REGION_FOR_BOUND_REGION.with(|hr| hr.get())
-}
-
-pub fn with_highlight_region_for_bound_region<R>(
-    r: ty::BoundRegion,
-    counter: usize,
-    op: impl Fn() -> R
-) -> R {
-    HIGHLIGHT_REGION_FOR_BOUND_REGION.with(|hr| {
-        assert_eq!(hr.get(), None);
-        hr.set(Some((r, counter)));
-        let r = op();
-        hr.set(None);
-        r
-    })
-}
-
 impl<'a, T: Print> Print for &'a T {
     fn print<F: fmt::Write>(&self, f: &mut F, cx: &mut PrintContext) -> fmt::Result {
         (*self).print(f, cx)
@@ -740,7 +774,7 @@ define_print! {
                 return self.print_debug(f, cx);
             }
 
-            if let Some((region, counter)) = get_highlight_region_for_bound_region() {
+            if let Some((region, counter)) = RegionHighlightMode::get().highlight_bound_region {
                 if *self == region {
                     return match *self {
                         BrNamed(_, name) => write!(f, "{}", name),
@@ -807,7 +841,7 @@ define_print! {
                     }
                 }
                 ty::ReVar(region_vid) => {
-                    if get_highlight_region_for_regionvid().is_some() {
+                    if RegionHighlightMode::get().highlight_region_vid.is_some() {
                         write!(f, "{:?}", region_vid)
                     } else if cx.identify_regions {
                         write!(f, "'{}rv", region_vid.index())
@@ -944,7 +978,7 @@ impl fmt::Debug for ty::FloatVid {
 
 impl fmt::Debug for ty::RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some((region, counter)) = get_highlight_region_for_regionvid() {
+        if let Some((region, counter)) = RegionHighlightMode::get().highlight_region_vid {
             debug!("RegionVid.fmt: region={:?} self={:?} counter={:?}", region, self, counter);
             return if *self == region {
                 write!(f, "'{:?}", counter)

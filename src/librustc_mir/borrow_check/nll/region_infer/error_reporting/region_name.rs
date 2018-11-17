@@ -8,7 +8,7 @@ use rustc::infer::InferCtxt;
 use rustc::mir::Mir;
 use rustc::ty::subst::{Substs, UnpackedKind};
 use rustc::ty::{self, RegionKind, RegionVid, Ty, TyCtxt};
-use rustc::util::ppaux::with_highlight_region_for_regionvid;
+use rustc::util::ppaux::RegionHighlightMode;
 use rustc_errors::DiagnosticBuilder;
 use syntax::ast::{Name, DUMMY_NODE_ID};
 use syntax::symbol::keywords;
@@ -396,7 +396,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         argument_ty: Ty<'tcx>,
         counter: &mut usize,
     ) -> Option<RegionName> {
-        let type_name = with_highlight_region_for_regionvid(needle_fr, *counter, || {
+        let type_name = RegionHighlightMode::highlighting_region_vid(needle_fr, *counter, || {
             infcx.extract_type_name(&argument_ty)
         });
 
@@ -673,8 +673,9 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             return None;
         }
 
-        let type_name = with_highlight_region_for_regionvid(
-            fr, *counter, || infcx.extract_type_name(&return_ty));
+        let type_name = RegionHighlightMode::highlighting_region_vid(
+            fr, *counter, || infcx.extract_type_name(&return_ty),
+        );
 
         let mir_node_id = tcx.hir().as_local_node_id(mir_def_id).expect("non-local mir");
 
