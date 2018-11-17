@@ -885,7 +885,8 @@ for ty::steal::Steal<T>
 
 impl_stable_hash_for!(struct ty::ParamEnv<'tcx> {
     caller_bounds,
-    reveal
+    reveal,
+    def_id
 });
 
 impl_stable_hash_for!(enum traits::Reveal {

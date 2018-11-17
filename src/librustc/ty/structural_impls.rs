@@ -276,6 +276,7 @@ impl<'a, 'tcx> Lift<'tcx> for ty::ParamEnv<'a> {
             ty::ParamEnv {
                 reveal: self.reveal,
                 caller_bounds,
+                def_id: self.def_id,
             }
         })
     }
@@ -589,7 +590,7 @@ impl<'tcx, T:TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::Binder<T> {
 }
 
 BraceStructTypeFoldableImpl! {
-    impl<'tcx> TypeFoldable<'tcx> for ty::ParamEnv<'tcx> { reveal, caller_bounds }
+    impl<'tcx> TypeFoldable<'tcx> for ty::ParamEnv<'tcx> { reveal, caller_bounds, def_id }
 }
 
 impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::List<ty::ExistentialPredicate<'tcx>> {

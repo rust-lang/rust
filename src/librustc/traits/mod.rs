@@ -804,8 +804,11 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("normalize_param_env_or_error: elaborated-predicates={:?}",
            predicates);
 
-    let elaborated_env = ty::ParamEnv::new(tcx.intern_predicates(&predicates),
-                                           unnormalized_env.reveal);
+    let elaborated_env = ty::ParamEnv::new(
+        tcx.intern_predicates(&predicates),
+        unnormalized_env.reveal,
+        unnormalized_env.def_id
+    );
 
     // HACK: we are trying to normalize the param-env inside *itself*. The problem is that
     // normalization expects its param-env to be already normalized, which means we have
@@ -852,8 +855,11 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // predicates here anyway. Keeping them here anyway because it seems safer.
     let outlives_env: Vec<_> =
         non_outlives_predicates.iter().chain(&outlives_predicates).cloned().collect();
-    let outlives_env = ty::ParamEnv::new(tcx.intern_predicates(&outlives_env),
-                                         unnormalized_env.reveal);
+    let outlives_env = ty::ParamEnv::new(
+        tcx.intern_predicates(&outlives_env),
+        unnormalized_env.reveal,
+        None
+    );
     let outlives_predicates =
         match do_normalize_predicates(tcx, region_context, cause,
                                       outlives_env, outlives_predicates) {
@@ -869,7 +875,11 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let mut predicates = non_outlives_predicates;
     predicates.extend(outlives_predicates);
     debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
-    ty::ParamEnv::new(tcx.intern_predicates(&predicates), unnormalized_env.reveal)
+    ty::ParamEnv::new(
+        tcx.intern_predicates(&predicates),
+        unnormalized_env.reveal,
+        unnormalized_env.def_id
+    )
 }
 
 pub fn fully_normalize<'a, 'gcx, 'tcx, T>(
