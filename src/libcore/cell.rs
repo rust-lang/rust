@@ -1509,6 +1509,8 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn get(&self) -> *mut T {
+        // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
+        // #[repr(transparent)]
         self as *const UnsafeCell<T> as *const T as *mut T
     }
 }
