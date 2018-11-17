@@ -470,7 +470,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
     ///
     /// for `self: &'a mut Self`, this means `&'a mut Self: DispatchFromDyn<&'a mut U>`
     /// for `self: Rc<Self>`, this means `Rc<Self>: DispatchFromDyn<Rc<U>>`
-    /// for `self: Pin<Box<Self>>, this means `Pin<Box<Self>>: DispatchFromDyn<Pin<Box<U>>>`
+    /// for `self: Pin<Box<Self>>`, this means `Pin<Box<Self>>: DispatchFromDyn<Pin<Box<U>>>`
     //
     // FIXME(mikeyhew) when unsized receivers are implemented as part of unsized rvalues, add this
     // fallback query: `Receiver: Unsize<Receiver[Self => U]>` to support receivers like
