@@ -738,8 +738,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
                 WhereToResolve::ExternPrelude => {
                     if use_prelude {
-                        match self.extern_prelude_get(ident, !record_used,
-                                                      innermost_result.is_some()) {
+                        match self.extern_prelude_get(ident, !record_used) {
                             Some(binding) => Ok((binding, Flags::PRELUDE)),
                             None => Err(Determinacy::determined(
                                 self.graph_root.unresolved_invocations.borrow().is_empty()
@@ -906,7 +905,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 // but its `Def` should coincide with a crate passed with `--extern`
                 // (otherwise there would be ambiguity) and we can skip feature error in this case.
                 if ns != TypeNS || !use_prelude ||
-                   self.extern_prelude_get(ident, true, false).is_none() {
+                   self.extern_prelude_get(ident, true).is_none() {
                     let msg = "imports can only refer to extern crate names \
                                passed with `--extern` on stable channel";
                     let mut err = feature_err(&self.session.parse_sess, "uniform_paths",
