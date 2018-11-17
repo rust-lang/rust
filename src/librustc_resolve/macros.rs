@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
-use {CrateLint, DeterminacyExt, Resolver, ResolutionError};
+use {CrateLint, Resolver, ResolutionError, Weak};
 use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, ToNameBinding};
 use {is_known_tool, names_to_string, resolve_error};
 use ModuleOrUniformRoot;
@@ -688,10 +688,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                             };
                             Ok((binding, Flags::MODULE | misc_flags))
                         }
-                        Err(DeterminacyExt::Undetermined) =>
+                        Err((Determinacy::Undetermined, Weak::No)) =>
                             return Err(Determinacy::determined(force)),
-                        Err(DeterminacyExt::WeakUndetermined) => Err(Determinacy::Undetermined),
-                        Err(DeterminacyExt::Determined) => Err(Determinacy::Determined),
+                        Err((Determinacy::Undetermined, Weak::Yes)) =>
+                            Err(Determinacy::Undetermined),
+                        Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
                     }
                 }
                 WhereToResolve::MacroUsePrelude => {

@@ -97,19 +97,9 @@ fn is_known_tool(name: Name) -> bool {
     ["clippy", "rustfmt"].contains(&&*name.as_str())
 }
 
-enum DeterminacyExt {
-    Determined,
-    Undetermined,
-    WeakUndetermined,
-}
-
-impl DeterminacyExt {
-    fn to_determinacy(self) -> Determinacy {
-        match self {
-            DeterminacyExt::Determined => Determined,
-            DeterminacyExt::Undetermined | DeterminacyExt::WeakUndetermined => Undetermined,
-        }
-    }
+enum Weak {
+    Yes,
+    No,
 }
 
 /// A free importable items suggested in case of resolution failure.
@@ -2223,7 +2213,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
         let result = self.resolve_ident_in_module_unadjusted_ext(
             module, ident, ns, parent_scope, false, record_used, path_span,
-        ).map_err(DeterminacyExt::to_determinacy);
+        ).map_err(|(determinacy, _)| determinacy);
         self.current_module = orig_current_module;
         result
     }
