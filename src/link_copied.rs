@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 
 use cc::windows_registry;
+use log::info;
 
 use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind};
 use rustc::middle::dependency_format::Linkage;

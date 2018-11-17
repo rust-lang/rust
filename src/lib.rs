@@ -7,31 +7,16 @@
 )]
 #![allow(intra_doc_link_resolution_failure)]
 
-extern crate byteorder;
 extern crate syntax;
-#[macro_use]
 extern crate rustc;
 extern crate rustc_allocator;
 extern crate rustc_codegen_utils;
 extern crate rustc_incremental;
 extern crate rustc_mir;
 extern crate rustc_target;
-#[macro_use]
 extern crate rustc_data_structures;
 extern crate rustc_fs_util;
-#[macro_use]
 extern crate log;
-
-extern crate ar;
-#[macro_use]
-extern crate bitflags;
-extern crate faerie;
-//extern crate goblin;
-extern crate cranelift;
-extern crate cranelift_faerie;
-extern crate cranelift_module;
-extern crate cranelift_simplejit;
-extern crate target_lexicon;
 
 use std::any::Any;
 use std::fs::File;
@@ -84,6 +69,7 @@ mod prelude {
     pub use syntax::ast::{FloatTy, IntTy, UintTy};
     pub use syntax::source_map::DUMMY_SP;
 
+    pub use rustc::bug;
     pub use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
     pub use rustc::mir::{self, interpret::AllocId, *};
     pub use rustc::session::{
@@ -291,7 +277,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
     }
 
-    fn metadata_loader(&self) -> Box<MetadataLoader + Sync> {
+    fn metadata_loader(&self) -> Box<dyn MetadataLoader + Sync> {
         Box::new(crate::metadata::CraneliftMetadataLoader)
     }
 
@@ -308,8 +294,8 @@ impl CodegenBackend for CraneliftCodegenBackend {
     fn codegen_crate<'a, 'tcx>(
         &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        _rx: mpsc::Receiver<Box<Any + Send>>,
-    ) -> Box<Any> {
+        _rx: mpsc::Receiver<Box<dyn Any + Send>>,
+    ) -> Box<dyn Any> {
         if !tcx.sess.crate_types.get().contains(&CrateType::Executable)
             && std::env::var("SHOULD_RUN").is_ok()
         {
@@ -436,7 +422,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
     fn join_codegen_and_link(
         &self,
-        res: Box<Any>,
+        res: Box<dyn Any>,
         sess: &Session,
         _dep_graph: &DepGraph,
         outputs: &OutputFilenames,
@@ -512,6 +498,6 @@ fn save_incremental<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
 /// This is the entrypoint for a hot plugged rustc_codegen_cranelift
 #[no_mangle]
-pub fn __rustc_codegen_backend() -> Box<CodegenBackend> {
+pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     Box::new(CraneliftCodegenBackend)
 }

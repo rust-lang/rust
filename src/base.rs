@@ -74,7 +74,7 @@ fn trans_fn<'a, 'tcx: 'a>(
     // Step 3. Make FunctionBuilder
     let mut func = Function::with_name_signature(ExternalName::user(0, 0), sig);
     let mut func_ctx = FunctionBuilderContext::new();
-    let mut bcx: FunctionBuilder = FunctionBuilder::new(&mut func, &mut func_ctx);
+    let mut bcx = FunctionBuilder::new(&mut func, &mut func_ctx);
 
     // Step 4. Predefine ebb's
     let start_ebb = bcx.create_ebb();

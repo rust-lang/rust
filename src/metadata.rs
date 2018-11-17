@@ -1,5 +1,6 @@
 use rustc::middle::cstore::MetadataLoader;
 use rustc_data_structures::owning_ref::{self, OwningRef};
+use rustc_data_structures::rustc_erase_owner;
 use std::fs::File;
 use std::path::Path;
 

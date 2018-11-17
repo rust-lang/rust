@@ -63,7 +63,7 @@ pub fn codegen(module: &mut Module<impl Backend + 'static>, kind: AllocatorKind)
         ctx.func = Function::with_name_signature(ExternalName::user(0, 0), sig.clone());
         {
             let mut func_ctx = FunctionBuilderContext::new();
-            let mut bcx: FunctionBuilder = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
+            let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
 
             let ebb = bcx.create_ebb();
             bcx.switch_to_block(ebb);

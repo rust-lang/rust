@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 use rustc::mir::StatementKind::*;
 
-bitflags! {
+bitflags::bitflags! {
     pub struct Flags: u8 {
         const NOT_SSA = 0b00000001;
     }
