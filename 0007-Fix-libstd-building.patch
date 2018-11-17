@@ -1,20 +1,21 @@
-From 40c86527fe92b608a65cc1187901035ebc56b281 Mon Sep 17 00:00:00 2001
+From d8bb60cc115960702f73f83866cde65dcdcf1cb4 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Sat, 6 Oct 2018 13:21:15 +0200
+Date: Sat, 17 Nov 2018 11:08:10 +0100
 Subject: [PATCH] Fix libstd building
 
 ---
  src/libstd/lib.rs            |  6 ------
  src/libstd/net/ip.rs         | 20 --------------------
  src/libstd/num.rs            |  2 +-
+ src/libstd/panic.rs          |  6 ------
  src/libstd/primitive_docs.rs | 16 ----------------
- 4 files changed, 1 insertion(+), 43 deletions(-)
+ 5 files changed, 1 insertion(+), 49 deletions(-)
 
 diff --git a/src/libstd/lib.rs b/src/libstd/lib.rs
-index 4768e8b..c89f99a 100644
+index 6110b05..8b0c897 100644
 --- a/src/libstd/lib.rs
 +++ b/src/libstd/lib.rs
-@@ -257,7 +257,6 @@
+@@ -255,7 +255,6 @@
  #![feature(const_cstr_unchecked)]
  #![feature(core_intrinsics)]
  #![feature(dropck_eyepatch)]
@@ -22,7 +23,7 @@ index 4768e8b..c89f99a 100644
  #![feature(exact_size_is_empty)]
  #![feature(external_doc)]
  #![feature(fixed_size_array)]
-@@ -287,7 +286,6 @@
+@@ -286,7 +285,6 @@
  #![feature(rustc_attrs)]
  #![feature(rustc_const_unstable)]
  #![feature(std_internals)]
@@ -30,7 +31,7 @@ index 4768e8b..c89f99a 100644
  #![feature(shrink_to)]
  #![feature(slice_concat_ext)]
  #![feature(slice_internals)]
-@@ -410,8 +408,6 @@ pub use core::i16;
+@@ -402,8 +400,6 @@ pub use core::i16;
  pub use core::i32;
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::i64;
@@ -39,7 +40,7 @@ index 4768e8b..c89f99a 100644
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::usize;
  #[stable(feature = "rust1", since = "1.0.0")]
-@@ -444,8 +440,6 @@ pub use alloc_crate::string;
+@@ -436,8 +432,6 @@ pub use alloc_crate::string;
  pub use alloc_crate::vec;
  #[stable(feature = "rust1", since = "1.0.0")]
  pub use core::char;
@@ -49,10 +50,10 @@ index 4768e8b..c89f99a 100644
  pub use core::hint;
  
 diff --git a/src/libstd/net/ip.rs b/src/libstd/net/ip.rs
-index d45a66e..b25b862 100644
+index 8685cb7..c4bf4d2 100644
 --- a/src/libstd/net/ip.rs
 +++ b/src/libstd/net/ip.rs
-@@ -1393,26 +1393,6 @@ impl FromInner<c::in6_addr> for Ipv6Addr {
+@@ -1392,26 +1392,6 @@ impl FromInner<c::in6_addr> for Ipv6Addr {
      }
  }
  
@@ -92,8 +93,32 @@ index 3f90c1f..85aab83 100644
  
  #[cfg(test)] use fmt;
  #[cfg(test)] use ops::{Add, Sub, Mul, Div, Rem};
+diff --git a/src/libstd/panic.rs b/src/libstd/panic.rs
+index 4bc18a5..5c87035 100644
+--- a/src/libstd/panic.rs
++++ b/src/libstd/panic.rs
+@@ -264,9 +264,6 @@ impl RefUnwindSafe for atomic::AtomicI32 {}
+ #[cfg(target_has_atomic = "64")]
+ #[unstable(feature = "integer_atomics", issue = "32976")]
+ impl RefUnwindSafe for atomic::AtomicI64 {}
+-#[cfg(all(not(stage0), target_has_atomic = "128"))]
+-#[unstable(feature = "integer_atomics", issue = "32976")]
+-impl RefUnwindSafe for atomic::AtomicI128 {}
+ 
+ #[cfg(target_has_atomic = "ptr")]
+ #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
+@@ -283,9 +280,6 @@ impl RefUnwindSafe for atomic::AtomicU32 {}
+ #[cfg(target_has_atomic = "64")]
+ #[unstable(feature = "integer_atomics", issue = "32976")]
+ impl RefUnwindSafe for atomic::AtomicU64 {}
+-#[cfg(all(not(stage0), target_has_atomic = "128"))]
+-#[unstable(feature = "integer_atomics", issue = "32976")]
+-impl RefUnwindSafe for atomic::AtomicU128 {}
+ 
+ #[cfg(target_has_atomic = "8")]
+ #[stable(feature = "unwind_safe_atomic_refs", since = "1.14.0")]
 diff --git a/src/libstd/primitive_docs.rs b/src/libstd/primitive_docs.rs
-index 8d54728..c36893c 100644
+index c2a1612..99824c5 100644
 --- a/src/libstd/primitive_docs.rs
 +++ b/src/libstd/primitive_docs.rs
 @@ -809,14 +809,6 @@ mod prim_i32 { }
@@ -127,5 +152,5 @@ index 8d54728..c36893c 100644
  //
  /// The pointer-sized signed integer type.
 -- 
-2.17.1 (Apple Git-112)
+2.17.2 (Apple Git-113)
 

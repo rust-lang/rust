@@ -1,18 +1,18 @@
-From 96aefe8fdd28704d903d585f5be6a667d2485582 Mon Sep 17 00:00:00 2001
+From d1d5c0e5272a8c3f78e9c4eb97c38d8f5d5a6d87 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
-Date: Thu, 15 Nov 2018 11:41:06 +0100
+Date: Sat, 17 Nov 2018 11:13:19 +0100
 Subject: [PATCH] Replace some variadic function calls with unimplemented!()
 
 ---
  src/libstd/sys/unix/fd.rs     | 18 ++++++++++++++++++
- src/libstd/sys/unix/fs.rs     |  9 +++++++++
+ src/libstd/sys/unix/fs.rs     | 17 ++++++++++++++++-
  src/libstd/sys/unix/net.rs    |  3 +++
  src/libstd/sys/unix/rand.rs   |  3 +++
  src/libstd/sys/unix/thread.rs |  3 +++
- 5 files changed, 36 insertions(+)
+ 5 files changed, 43 insertions(+), 1 deletion(-)
 
 diff --git a/src/libstd/sys/unix/fd.rs b/src/libstd/sys/unix/fd.rs
-index af33d26..2433ae4 100644
+index 5a81d6d..919f9d1 100644
 --- a/src/libstd/sys/unix/fd.rs
 +++ b/src/libstd/sys/unix/fd.rs
 @@ -156,9 +156,12 @@ impl FileDesc {
@@ -99,7 +99,7 @@ index af33d26..2433ae4 100644
  }
  
 diff --git a/src/libstd/sys/unix/fs.rs b/src/libstd/sys/unix/fs.rs
-index add06ae..e0d3f84 100644
+index add06ae..1a392fc 100644
 --- a/src/libstd/sys/unix/fs.rs
 +++ b/src/libstd/sys/unix/fs.rs
 @@ -465,6 +465,7 @@ impl File {
@@ -119,7 +119,43 @@ index add06ae..e0d3f84 100644
      }
  
      pub fn file_attr(&self) -> io::Result<FileAttr> {
-@@ -667,6 +670,7 @@ impl fmt::Debug for File {
+@@ -535,6 +538,7 @@ impl File {
+     }
+ 
+     pub fn datasync(&self) -> io::Result<()> {
++        /*
+         cvt_r(|| unsafe { os_datasync(self.0.raw()) })?;
+         return Ok(());
+ 
+@@ -547,7 +551,9 @@ impl File {
+         #[cfg(not(any(target_os = "macos",
+                       target_os = "ios",
+                       target_os = "linux")))]
+-        unsafe fn os_datasync(fd: c_int) -> c_int { libc::fsync(fd) }
++        unsafe fn os_datasync(fd: c_int) -> c_int { libc::fsync(fd) }]
++        */
++        unimplemented!();
+     }
+ 
+     pub fn truncate(&self, size: u64) -> io::Result<()> {
+@@ -643,6 +649,7 @@ impl fmt::Debug for File {
+ 
+         #[cfg(target_os = "macos")]
+         fn get_path(fd: c_int) -> Option<PathBuf> {
++            /*
+             // FIXME: The use of PATH_MAX is generally not encouraged, but it
+             // is inevitable in this case because macOS defines `fcntl` with
+             // `F_GETPATH` in terms of `MAXPATHLEN`, and there are no
+@@ -657,6 +664,8 @@ impl fmt::Debug for File {
+             buf.truncate(l as usize);
+             buf.shrink_to_fit();
+             Some(PathBuf::from(OsString::from_vec(buf)))
++            */
++            unimplemented!();
+         }
+ 
+         #[cfg(not(any(target_os = "linux", target_os = "macos")))]
+@@ -667,6 +676,7 @@ impl fmt::Debug for File {
  
          #[cfg(any(target_os = "linux", target_os = "macos"))]
          fn get_mode(fd: c_int) -> Option<(bool, bool)> {
@@ -127,7 +163,7 @@ index add06ae..e0d3f84 100644
              let mode = unsafe { libc::fcntl(fd, libc::F_GETFL) };
              if mode == -1 {
                  return None;
-@@ -677,6 +681,8 @@ impl fmt::Debug for File {
+@@ -677,6 +687,8 @@ impl fmt::Debug for File {
                  libc::O_WRONLY => Some((false, true)),
                  _ => None
              }
@@ -136,7 +172,7 @@ index add06ae..e0d3f84 100644
          }
  
          #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-@@ -868,6 +874,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+@@ -868,6 +880,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
          len: libc::size_t,
          flags: libc::c_uint,
      ) -> libc::c_long {
@@ -144,7 +180,7 @@ index add06ae..e0d3f84 100644
          libc::syscall(
              libc::SYS_copy_file_range,
              fd_in,
-@@ -877,6 +884,8 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
+@@ -877,6 +890,8 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
              len,
              flags,
          )
@@ -207,5 +243,5 @@ index f3a45d2..1c2f0ce 100644
  
      #[cfg(any(target_os = "freebsd",
 -- 
-2.11.0
+2.17.2 (Apple Git-113)
 
