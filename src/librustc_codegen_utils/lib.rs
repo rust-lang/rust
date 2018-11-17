@@ -30,10 +30,8 @@ extern crate flate2;
 #[macro_use]
 extern crate log;
 
-extern crate serialize;
 #[macro_use]
 extern crate rustc;
-extern crate rustc_allocator;
 extern crate rustc_target;
 extern crate rustc_metadata;
 extern crate rustc_mir;
@@ -42,16 +40,10 @@ extern crate syntax;
 extern crate syntax_pos;
 #[macro_use] extern crate rustc_data_structures;
 
-use std::path::PathBuf;
-
-use rustc::session::Session;
 use rustc::ty::TyCtxt;
 
-pub mod command;
 pub mod link;
-pub mod linker;
 pub mod codegen_backend;
-pub mod symbol_export;
 pub mod symbol_names;
 pub mod symbol_names_test;
 
@@ -67,45 +59,6 @@ pub fn check_for_rustc_errors_attr(tcx: TyCtxt) {
             tcx.sess.span_fatal(span, "compilation successful");
         }
     }
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum ModuleKind {
-    Regular,
-    Metadata,
-    Allocator,
-}
-
-#[derive(Debug)]
-pub struct CompiledModule {
-    pub name: String,
-    pub kind: ModuleKind,
-    pub object: Option<PathBuf>,
-    pub bytecode: Option<PathBuf>,
-    pub bytecode_compressed: Option<PathBuf>,
-}
-
-pub fn find_library(name: &str, search_paths: &[PathBuf], sess: &Session)
-                    -> PathBuf {
-    // On Windows, static libraries sometimes show up as libfoo.a and other
-    // times show up as foo.lib
-    let oslibname = format!("{}{}{}",
-                            sess.target.target.options.staticlib_prefix,
-                            name,
-                            sess.target.target.options.staticlib_suffix);
-    let unixlibname = format!("lib{}.a", name);
-
-    for path in search_paths {
-        debug!("looking for {} inside {:?}", name, path);
-        let test = path.join(&oslibname);
-        if test.exists() { return test }
-        if oslibname != unixlibname {
-            let test = path.join(&unixlibname);
-            if test.exists() { return test }
-        }
-    }
-    sess.fatal(&format!("could not find native static library `{}`, \
-                         perhaps an -L flag is missing?", name));
 }
 
 __build_diagnostic_array! { librustc_codegen_utils, DIAGNOSTICS }

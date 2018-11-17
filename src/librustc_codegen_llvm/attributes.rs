@@ -21,6 +21,7 @@ use rustc::ty::query::Providers;
 use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::PanicStrategy;
+use rustc_codegen_ssa::traits::*;
 
 use attributes;
 use llvm::{self, Attribute};

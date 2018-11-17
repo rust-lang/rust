@@ -37,11 +37,10 @@
 #![feature(static_nobundle)]
 
 use back::write::create_target_machine;
-use rustc::dep_graph::WorkProduct;
 use syntax_pos::symbol::Symbol;
 
-#[macro_use] extern crate bitflags;
 extern crate flate2;
+#[macro_use] extern crate bitflags;
 extern crate libc;
 #[macro_use] extern crate rustc;
 extern crate jobserver;
@@ -56,6 +55,7 @@ extern crate rustc_incremental;
 extern crate rustc_llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_codegen_utils;
+extern crate rustc_codegen_ssa;
 extern crate rustc_fs_util;
 
 #[macro_use] extern crate log;
@@ -67,28 +67,30 @@ extern crate cc; // Used to locate MSVC
 extern crate tempfile;
 extern crate memmap;
 
-use back::bytecode::RLIB_BYTECODE_EXTENSION;
-
+use rustc_codegen_ssa::traits::*;
+use rustc_codegen_ssa::back::write::{CodegenContext, ModuleConfig};
+use rustc_codegen_ssa::back::lto::{SerializedModule, LtoModuleCodegen, ThinModule};
+use rustc_codegen_ssa::CompiledModule;
+use errors::{FatalError, Handler};
+use rustc::dep_graph::WorkProduct;
+use rustc::util::time_graph::Timeline;
+use syntax_pos::symbol::InternedString;
+use rustc::mir::mono::Stats;
 pub use llvm_util::target_features;
 use std::any::Any;
-use std::sync::mpsc;
-use rustc_data_structures::sync::Lrc;
+use std::sync::{mpsc, Arc};
 
 use rustc::dep_graph::DepGraph;
-use rustc::hir::def_id::CrateNum;
-use rustc::middle::cstore::MetadataLoader;
-use rustc::middle::cstore::{NativeLibrary, CrateSource, LibSource};
-use rustc::middle::lang_items::LangItem;
+use rustc::middle::allocator::AllocatorKind;
+use rustc::middle::cstore::{EncodedMetadata, MetadataLoader};
 use rustc::session::{Session, CompileIncomplete};
 use rustc::session::config::{OutputFilenames, OutputType, PrintRequest};
 use rustc::ty::{self, TyCtxt};
 use rustc::util::time_graph;
-use rustc::util::nodemap::{FxHashSet, FxHashMap};
 use rustc::util::profiling::ProfileCategory;
 use rustc_mir::monomorphize;
-use rustc_codegen_utils::{CompiledModule, ModuleKind};
+use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_data_structures::svh::Svh;
 
 mod diagnostics;
 
@@ -114,22 +116,110 @@ mod consts;
 mod context;
 mod debuginfo;
 mod declare;
-mod glue;
 mod intrinsic;
-pub mod llvm;
+
+// The following is a work around that replaces `pub mod llvm;` and that fixes issue 53912.
+#[path = "llvm/mod.rs"] mod llvm_; pub mod llvm { pub use super::llvm_::*; }
+
 mod llvm_util;
 mod metadata;
-mod meth;
-mod mir;
 mod mono_item;
 mod type_;
 mod type_of;
 mod value;
 
+#[derive(Clone)]
 pub struct LlvmCodegenBackend(());
 
-impl !Send for LlvmCodegenBackend {} // Llvm is on a per-thread basis
-impl !Sync for LlvmCodegenBackend {}
+impl ExtraBackendMethods for LlvmCodegenBackend {
+    fn new_metadata(&self, sess: &Session, mod_name: &str) -> ModuleLlvm {
+        ModuleLlvm::new(sess, mod_name)
+    }
+    fn write_metadata<'b, 'gcx>(
+        &self,
+        tcx: TyCtxt<'b, 'gcx, 'gcx>,
+        metadata: &ModuleLlvm
+    ) -> EncodedMetadata {
+        base::write_metadata(tcx, metadata)
+    }
+    fn codegen_allocator(&self, tcx: TyCtxt, mods: &ModuleLlvm, kind: AllocatorKind) {
+        unsafe { allocator::codegen(tcx, mods, kind) }
+    }
+    fn compile_codegen_unit<'a, 'tcx: 'a>(
+        &self,
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        cgu_name: InternedString,
+    ) -> Stats {
+        base::compile_codegen_unit(tcx, cgu_name)
+    }
+    fn target_machine_factory(
+        &self,
+        sess: &Session,
+        find_features: bool
+    ) -> Arc<dyn Fn() ->
+        Result<&'static mut llvm::TargetMachine, String> + Send + Sync> {
+        back::write::target_machine_factory(sess, find_features)
+    }
+    fn target_cpu<'b>(&self, sess: &'b Session) -> &'b str {
+        llvm_util::target_cpu(sess)
+    }
+}
+
+impl WriteBackendMethods for LlvmCodegenBackend {
+    type Module = ModuleLlvm;
+    type ModuleBuffer = back::lto::ModuleBuffer;
+    type Context = llvm::Context;
+    type TargetMachine = &'static mut llvm::TargetMachine;
+    type ThinData = back::lto::ThinData;
+    type ThinBuffer = back::lto::ThinBuffer;
+    fn print_pass_timings(&self) {
+            unsafe { llvm::LLVMRustPrintPassTimings(); }
+    }
+    fn run_lto(
+        cgcx: &CodegenContext<Self>,
+        modules: Vec<ModuleCodegen<Self::Module>>,
+        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
+        timeline: &mut Timeline
+    ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
+        back::lto::run(cgcx, modules, cached_modules, timeline)
+    }
+    unsafe fn optimize(
+        cgcx: &CodegenContext<Self>,
+        diag_handler: &Handler,
+        module: &ModuleCodegen<Self::Module>,
+        config: &ModuleConfig,
+        timeline: &mut Timeline
+    ) -> Result<(), FatalError> {
+        back::write::optimize(cgcx, diag_handler, module, config, timeline)
+    }
+    unsafe fn optimize_thin(
+        cgcx: &CodegenContext<Self>,
+        thin: &mut ThinModule<Self>,
+        timeline: &mut Timeline
+    ) -> Result<ModuleCodegen<Self::Module>, FatalError> {
+        back::lto::optimize_thin_module(thin, cgcx, timeline)
+    }
+    unsafe fn codegen(
+        cgcx: &CodegenContext<Self>,
+        diag_handler: &Handler,
+        module: ModuleCodegen<Self::Module>,
+        config: &ModuleConfig,
+        timeline: &mut Timeline
+    ) -> Result<CompiledModule, FatalError> {
+        back::write::codegen(cgcx, diag_handler, module, config, timeline)
+    }
+    fn run_lto_pass_manager(
+        cgcx: &CodegenContext<Self>,
+        module: &ModuleCodegen<Self::Module>,
+        config: &ModuleConfig,
+        thin: bool
+    ) {
+        back::lto::run_pass_manager(cgcx, module, config, thin)
+    }
+}
+
+unsafe impl Send for LlvmCodegenBackend {} // Llvm is on a per-thread basis
+unsafe impl Sync for LlvmCodegenBackend {}
 
 impl LlvmCodegenBackend {
     pub fn new() -> Box<dyn CodegenBackend> {
@@ -190,24 +280,24 @@ impl CodegenBackend for LlvmCodegenBackend {
     }
 
     fn provide(&self, providers: &mut ty::query::Providers) {
-        rustc_codegen_utils::symbol_export::provide(providers);
         rustc_codegen_utils::symbol_names::provide(providers);
-        base::provide_both(providers);
+        rustc_codegen_ssa::back::symbol_export::provide(providers);
+        rustc_codegen_ssa::base::provide_both(providers);
         attributes::provide(providers);
     }
 
     fn provide_extern(&self, providers: &mut ty::query::Providers) {
-        rustc_codegen_utils::symbol_export::provide_extern(providers);
-        base::provide_both(providers);
+        rustc_codegen_ssa::back::symbol_export::provide_extern(providers);
+        rustc_codegen_ssa::base::provide_both(providers);
         attributes::provide_extern(providers);
     }
 
-    fn codegen_crate<'a, 'tcx>(
+    fn codegen_crate<'b, 'tcx>(
         &self,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'b, 'tcx, 'tcx>,
         rx: mpsc::Receiver<Box<dyn Any + Send>>
     ) -> Box<dyn Any> {
-        box base::codegen_crate(tcx, rx)
+        box rustc_codegen_ssa::base::codegen_crate(LlvmCodegenBackend(()), tcx, rx)
     }
 
     fn join_codegen_and_link(
@@ -218,12 +308,13 @@ impl CodegenBackend for LlvmCodegenBackend {
         outputs: &OutputFilenames,
     ) -> Result<(), CompileIncomplete>{
         use rustc::util::common::time;
-        let (ongoing_codegen, work_products) =
-            ongoing_codegen.downcast::<::back::write::OngoingCodegen>()
+        let (codegen_results, work_products) =
+            ongoing_codegen.downcast::
+                <rustc_codegen_ssa::back::write::OngoingCodegen<LlvmCodegenBackend>>()
                 .expect("Expected LlvmCodegenBackend's OngoingCodegen, found Box<Any>")
                 .join(sess);
         if sess.opts.debugging_opts.incremental_info {
-            back::write::dump_incremental_data(&ongoing_codegen);
+            rustc_codegen_ssa::back::write::dump_incremental_data(&codegen_results);
         }
 
         time(sess,
@@ -241,14 +332,14 @@ impl CodegenBackend for LlvmCodegenBackend {
         // This should produce either a finished executable or library.
         sess.profiler(|p| p.start_activity(ProfileCategory::Linking));
         time(sess, "linking", || {
-            back::link::link_binary(sess, &ongoing_codegen,
-                                    outputs, &ongoing_codegen.crate_name.as_str());
+            back::link::link_binary(sess, &codegen_results,
+                                    outputs, &codegen_results.crate_name.as_str());
         });
         sess.profiler(|p| p.end_activity(ProfileCategory::Linking));
 
         // Now that we won't touch anything in the incremental compilation directory
         // any more, we can finalize it (which involves renaming it)
-        rustc_incremental::finalize_session_directory(sess, ongoing_codegen.crate_hash);
+        rustc_incremental::finalize_session_directory(sess, codegen_results.crate_hash);
 
         Ok(())
     }
@@ -260,57 +351,7 @@ pub fn __rustc_codegen_backend() -> Box<dyn CodegenBackend> {
     LlvmCodegenBackend::new()
 }
 
-struct ModuleCodegen {
-    /// The name of the module. When the crate may be saved between
-    /// compilations, incremental compilation requires that name be
-    /// unique amongst **all** crates.  Therefore, it should contain
-    /// something unique to this crate (e.g., a module path) as well
-    /// as the crate name and disambiguator.
-    /// We currently generate these names via CodegenUnit::build_cgu_name().
-    name: String,
-    module_llvm: ModuleLlvm,
-    kind: ModuleKind,
-}
-
-struct CachedModuleCodegen {
-    name: String,
-    source: WorkProduct,
-}
-
-impl ModuleCodegen {
-    fn into_compiled_module(self,
-                            emit_obj: bool,
-                            emit_bc: bool,
-                            emit_bc_compressed: bool,
-                            outputs: &OutputFilenames) -> CompiledModule {
-        let object = if emit_obj {
-            Some(outputs.temp_path(OutputType::Object, Some(&self.name)))
-        } else {
-            None
-        };
-        let bytecode = if emit_bc {
-            Some(outputs.temp_path(OutputType::Bitcode, Some(&self.name)))
-        } else {
-            None
-        };
-        let bytecode_compressed = if emit_bc_compressed {
-            Some(outputs.temp_path(OutputType::Bitcode, Some(&self.name))
-                        .with_extension(RLIB_BYTECODE_EXTENSION))
-        } else {
-            None
-        };
-
-        CompiledModule {
-            name: self.name.clone(),
-            kind: self.kind,
-            object,
-            bytecode,
-            bytecode_compressed,
-        }
-    }
-}
-
-struct ModuleLlvm {
+pub struct ModuleLlvm {
     llcx: &'static mut llvm::Context,
     llmod_raw: *const llvm::Module,
     tm: &'static mut llvm::TargetMachine,
@@ -347,37 +388,6 @@ impl Drop for ModuleLlvm {
             llvm::LLVMRustDisposeTargetMachine(&mut *(self.tm as *mut _));
         }
     }
-}
-
-struct CodegenResults {
-    crate_name: Symbol,
-    modules: Vec<CompiledModule>,
-    allocator_module: Option<CompiledModule>,
-    metadata_module: CompiledModule,
-    crate_hash: Svh,
-    metadata: rustc::middle::cstore::EncodedMetadata,
-    windows_subsystem: Option<String>,
-    linker_info: rustc_codegen_utils::linker::LinkerInfo,
-    crate_info: CrateInfo,
-}
-
-/// Misc info we load from metadata to persist beyond the tcx
-struct CrateInfo {
-    panic_runtime: Option<CrateNum>,
-    compiler_builtins: Option<CrateNum>,
-    profiler_runtime: Option<CrateNum>,
-    sanitizer_runtime: Option<CrateNum>,
-    is_no_builtins: FxHashSet<CrateNum>,
-    native_libraries: FxHashMap<CrateNum, Lrc<Vec<NativeLibrary>>>,
-    crate_name: FxHashMap<CrateNum, String>,
-    used_libraries: Lrc<Vec<NativeLibrary>>,
-    link_args: Lrc<Vec<String>>,
-    used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
-    used_crates_static: Vec<(CrateNum, LibSource)>,
-    used_crates_dynamic: Vec<(CrateNum, LibSource)>,
-    wasm_imports: FxHashMap<String, String>,
-    lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
-    missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
 }
 
 __build_diagnostic_array! { librustc_codegen_llvm, DIAGNOSTICS }

@@ -15,18 +15,14 @@
 //! closure.
 
 use attributes;
-use common::{self, CodegenCx};
-use consts;
-use declare;
 use llvm;
 use monomorphize::Instance;
-use type_of::LayoutLlvmExt;
+use context::CodegenCx;
 use value::Value;
+use rustc_codegen_ssa::traits::*;
 
-use rustc::hir::def_id::DefId;
-use rustc::ty::{self, TypeFoldable};
-use rustc::ty::layout::LayoutOf;
-use rustc::ty::subst::Substs;
+use rustc::ty::TypeFoldable;
+use rustc::ty::layout::{LayoutOf, HasTyCtxt};
 
 /// Codegens a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -39,7 +35,7 @@ pub fn get_fn(
     cx: &CodegenCx<'ll, 'tcx>,
     instance: Instance<'tcx>,
 ) -> &'ll Value {
-    let tcx = cx.tcx;
+    let tcx = cx.tcx();
 
     debug!("get_fn(instance={:?})", instance);
 
@@ -47,8 +43,8 @@ pub fn get_fn(
     assert!(!instance.substs.has_escaping_bound_vars());
     assert!(!instance.substs.has_param_types());
 
-    let sig = instance.fn_sig(cx.tcx);
-    if let Some(&llfn) = cx.instances.borrow().get(&instance) {
+    let sig = instance.fn_sig(cx.tcx());
+    if let Some(&llfn) = cx.instances().borrow().get(&instance) {
         return llfn;
     }
 
@@ -57,9 +53,9 @@ pub fn get_fn(
 
     // Create a fn pointer with the substituted signature.
     let fn_ptr_ty = tcx.mk_fn_ptr(sig);
-    let llptrty = cx.layout_of(fn_ptr_ty).llvm_type(cx);
+    let llptrty = cx.backend_type(cx.layout_of(fn_ptr_ty));
 
-    let llfn = if let Some(llfn) = declare::get_declared_value(cx, &sym) {
+    let llfn = if let Some(llfn) = cx.get_declared_value(&sym) {
         // This is subtle and surprising, but sometimes we have to bitcast
         // the resulting fn pointer.  The reason has to do with external
         // functions.  If you have two crates that both bind the same C
@@ -83,16 +79,16 @@ pub fn get_fn(
         // This can occur on either a crate-local or crate-external
         // reference. It also occurs when testing libcore and in some
         // other weird situations. Annoying.
-        if common::val_ty(llfn) != llptrty {
+        if cx.val_ty(llfn) != llptrty {
             debug!("get_fn: casting {:?} to {:?}", llfn, llptrty);
-            consts::ptrcast(llfn, llptrty)
+            cx.static_ptrcast(llfn, llptrty)
         } else {
             debug!("get_fn: not casting pointer!");
             llfn
         }
     } else {
-        let llfn = declare::declare_fn(cx, &sym, sig);
-        assert_eq!(common::val_ty(llfn), llptrty);
+        let llfn = cx.declare_fn(&sym, sig);
+        assert_eq!(cx.val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 
         if instance.def.is_inline(tcx) {
@@ -203,36 +199,4 @@ pub fn get_fn(
     cx.instances.borrow_mut().insert(instance, llfn);
 
     llfn
-}
-
-pub fn resolve_and_get_fn(
-    cx: &CodegenCx<'ll, 'tcx>,
-    def_id: DefId,
-    substs: &'tcx Substs<'tcx>,
-) -> &'ll Value {
-    get_fn(
-        cx,
-        ty::Instance::resolve(
-            cx.tcx,
-            ty::ParamEnv::reveal_all(),
-            def_id,
-            substs
-        ).unwrap()
-    )
-}
-
-pub fn resolve_and_get_fn_for_vtable(
-    cx: &CodegenCx<'ll, 'tcx>,
-    def_id: DefId,
-    substs: &'tcx Substs<'tcx>,
-) -> &'ll Value {
-    get_fn(
-        cx,
-        ty::Instance::resolve_for_vtable(
-            cx.tcx,
-            ty::ParamEnv::reveal_all(),
-            def_id,
-            substs
-        ).unwrap()
-    )
 }

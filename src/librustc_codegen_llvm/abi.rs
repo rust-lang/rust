@@ -9,18 +9,20 @@
 // except according to those terms.
 
 use llvm::{self, AttributePlace};
-use base;
-use builder::{Builder, MemFlags};
-use common::C_usize;
+use rustc_codegen_ssa::MemFlags;
+use builder::Builder;
 use context::CodegenCx;
-use mir::place::PlaceRef;
-use mir::operand::OperandValue;
+use rustc_codegen_ssa::mir::place::PlaceRef;
+use rustc_codegen_ssa::mir::operand::OperandValue;
 use type_::Type;
 use type_of::{LayoutLlvmExt, PointerKind};
 use value::Value;
+use rustc_target::abi::call::ArgType;
+
+use rustc_codegen_ssa::traits::*;
 
 use rustc_target::abi::{HasDataLayout, LayoutOf, Size, TyLayout, Abi as LayoutAbi};
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, Ty, Instance};
 use rustc::ty::layout;
 
 use libc::c_uint;
@@ -110,16 +112,16 @@ pub trait LlvmType {
 impl LlvmType for Reg {
     fn llvm_type(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
         match self.kind {
-            RegKind::Integer => Type::ix(cx, self.size.bits()),
+            RegKind::Integer => cx.type_ix(self.size.bits()),
             RegKind::Float => {
                 match self.size.bits() {
-                    32 => Type::f32(cx),
-                    64 => Type::f64(cx),
+                    32 => cx.type_f32(),
+                    64 => cx.type_f64(),
                     _ => bug!("unsupported float: {:?}", self)
                 }
             }
             RegKind::Vector => {
-                Type::vector(Type::i8(cx), self.size.bytes())
+                cx.type_vector(cx.type_i8(), self.size.bytes())
             }
         }
     }
@@ -143,7 +145,7 @@ impl LlvmType for CastTarget {
 
             // Simplify to array when all chunks are the same size and type
             if rem_bytes == 0 {
-                return Type::array(rest_ll_unit, rest_count);
+                return cx.type_array(rest_ll_unit, rest_count);
             }
         }
 
@@ -158,17 +160,27 @@ impl LlvmType for CastTarget {
         if rem_bytes != 0 {
             // Only integers can be really split further.
             assert_eq!(self.rest.unit.kind, RegKind::Integer);
-            args.push(Type::ix(cx, rem_bytes * 8));
+            args.push(cx.type_ix(rem_bytes * 8));
         }
 
-        Type::struct_(cx, &args, false)
+        cx.type_struct(&args, false)
     }
 }
 
 pub trait ArgTypeExt<'ll, 'tcx> {
     fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
-    fn store(&self, bx: &Builder<'_, 'll, 'tcx>, val: &'ll Value, dst: PlaceRef<'ll, 'tcx>);
-    fn store_fn_arg(&self, bx: &Builder<'_, 'll, 'tcx>, idx: &mut usize, dst: PlaceRef<'ll, 'tcx>);
+    fn store(
+        &self,
+        bx: &mut Builder<'_, 'll, 'tcx>,
+        val: &'ll Value,
+        dst: PlaceRef<'tcx, &'ll Value>,
+    );
+    fn store_fn_arg(
+        &self,
+        bx: &mut Builder<'_, 'll, 'tcx>,
+        idx: &mut usize,
+        dst: PlaceRef<'tcx, &'ll Value>,
+    );
 }
 
 impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
@@ -182,11 +194,15 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
     /// place for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
     /// or results of call/invoke instructions into their destinations.
-    fn store(&self, bx: &Builder<'_, 'll, 'tcx>, val: &'ll Value, dst: PlaceRef<'ll, 'tcx>) {
+    fn store(
+        &self,
+        bx: &mut Builder<'_, 'll, 'tcx>,
+        val: &'ll Value,
+        dst: PlaceRef<'tcx, &'ll Value>,
+    ) {
         if self.is_ignore() {
             return;
         }
-        let cx = bx.cx;
         if self.is_sized_indirect() {
             OperandValue::Ref(val, None, self.layout.align).store(bx, dst)
         } else if self.is_unsized_indirect() {
@@ -196,7 +212,8 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
-                let cast_dst = bx.pointercast(dst.llval, cast.llvm_type(cx).ptr_to());
+                let cast_ptr_llty = bx.cx().type_ptr_to(cast.llvm_type(bx.cx()));
+                let cast_dst = bx.pointercast(dst.llval, cast_ptr_llty);
                 bx.store(val, cast_dst, self.layout.align);
             } else {
                 // The actual return type is a struct, but the ABI
@@ -214,22 +231,23 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 //   bitcasting to the struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
-                let scratch_size = cast.size(cx);
-                let scratch_align = cast.align(cx);
-                let llscratch = bx.alloca(cast.llvm_type(cx), "abi_cast", scratch_align);
+                let scratch_size = cast.size(bx.cx());
+                let scratch_align = cast.align(bx.cx());
+                let llscratch = bx.alloca(cast.llvm_type(bx.cx()), "abi_cast", scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
 
                 // ...where we first store the value...
                 bx.store(val, llscratch, scratch_align);
 
                 // ...and then memcpy it to the intended destination.
-                base::call_memcpy(bx,
-                                  bx.pointercast(dst.llval, Type::i8p(cx)),
-                                  self.layout.align,
-                                  bx.pointercast(llscratch, Type::i8p(cx)),
-                                  scratch_align,
-                                  C_usize(cx, self.layout.size.bytes()),
-                                  MemFlags::empty());
+                bx.memcpy(
+                    dst.llval,
+                    self.layout.align,
+                    llscratch,
+                    scratch_align,
+                    bx.cx().const_usize(self.layout.size.bytes()),
+                    MemFlags::empty()
+                );
 
                 bx.lifetime_end(llscratch, scratch_size);
             }
@@ -238,7 +256,12 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn store_fn_arg(&self, bx: &Builder<'a, 'll, 'tcx>, idx: &mut usize, dst: PlaceRef<'ll, 'tcx>) {
+    fn store_fn_arg(
+        &self,
+        bx: &mut Builder<'a, 'll, 'tcx>,
+        idx: &mut usize,
+        dst: PlaceRef<'tcx, &'ll Value>,
+    ) {
         let mut next = || {
             let val = llvm::get_param(bx.llfn(), *idx as c_uint);
             *idx += 1;
@@ -256,6 +279,27 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 self.store(bx, next(), dst);
             }
         }
+    }
+}
+
+impl ArgTypeMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+    fn store_fn_arg(
+        &mut self,
+        ty: &ArgType<'tcx, Ty<'tcx>>,
+        idx: &mut usize, dst: PlaceRef<'tcx, Self::Value>
+    ) {
+        ty.store_fn_arg(self, idx, dst)
+    }
+    fn store_arg_ty(
+        &mut self,
+        ty: &ArgType<'tcx, Ty<'tcx>>,
+        val: &'ll Value,
+        dst: PlaceRef<'tcx, &'ll Value>
+    ) {
+        ty.store(self, val, dst)
+    }
+    fn memory_ty(&self, ty: &ArgType<'tcx, Ty<'tcx>>) -> &'ll Type {
+        ty.memory_ty(self.cx())
     }
 }
 
@@ -280,7 +324,7 @@ pub trait FnTypeExt<'tcx> {
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
     fn apply_attrs_llfn(&self, llfn: &'ll Value);
-    fn apply_attrs_callsite(&self, bx: &Builder<'a, 'll, 'tcx>, callsite: &'ll Value);
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value);
 }
 
 impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
@@ -614,14 +658,14 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         );
 
         let llreturn_ty = match self.ret.mode {
-            PassMode::Ignore => Type::void(cx),
+            PassMode::Ignore => cx.type_void(),
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 self.ret.layout.immediate_llvm_type(cx)
             }
             PassMode::Cast(cast) => cast.llvm_type(cx),
             PassMode::Indirect(..) => {
-                llargument_tys.push(self.ret.memory_ty(cx).ptr_to());
-                Type::void(cx)
+                llargument_tys.push(cx.type_ptr_to(self.ret.memory_ty(cx)));
+                cx.type_void()
             }
         };
 
@@ -647,15 +691,15 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
                     continue;
                 }
                 PassMode::Cast(cast) => cast.llvm_type(cx),
-                PassMode::Indirect(_, None) => arg.memory_ty(cx).ptr_to(),
+                PassMode::Indirect(_, None) => cx.type_ptr_to(arg.memory_ty(cx)),
             };
             llargument_tys.push(llarg_ty);
         }
 
         if self.variadic {
-            Type::variadic_func(&llargument_tys, llreturn_ty)
+            cx.type_variadic_func(&llargument_tys, llreturn_ty)
         } else {
-            Type::func(&llargument_tys, llreturn_ty)
+            cx.type_func(&llargument_tys, llreturn_ty)
         }
     }
 
@@ -717,7 +761,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         }
     }
 
-    fn apply_attrs_callsite(&self, bx: &Builder<'a, 'll, 'tcx>, callsite: &'ll Value) {
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value) {
         let mut i = 0;
         let mut apply = |attrs: &ArgAttributes| {
             attrs.apply_callsite(llvm::AttributePlace::Argument(i), callsite);
@@ -736,7 +780,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             // by the LLVM verifier.
             if let layout::Int(..) = scalar.value {
                 if !scalar.is_bool() {
-                    let range = scalar.valid_range_exclusive(bx.cx);
+                    let range = scalar.valid_range_exclusive(bx.cx());
                     if range.start != range.end {
                         bx.range_metadata(callsite, range);
                     }
@@ -767,5 +811,31 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
         if cconv != llvm::CCallConv {
             llvm::SetInstructionCallConv(callsite, cconv);
         }
+    }
+}
+
+impl AbiMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+    fn new_fn_type(&self, sig: ty::FnSig<'tcx>, extra_args: &[Ty<'tcx>]) -> FnType<'tcx, Ty<'tcx>> {
+        FnType::new(&self, sig, extra_args)
+    }
+    fn new_vtable(
+        &self,
+        sig: ty::FnSig<'tcx>,
+        extra_args: &[Ty<'tcx>]
+    ) -> FnType<'tcx, Ty<'tcx>> {
+        FnType::new_vtable(&self, sig, extra_args)
+    }
+    fn fn_type_of_instance(&self, instance: &Instance<'tcx>) -> FnType<'tcx, Ty<'tcx>> {
+        FnType::of_instance(&self, instance)
+    }
+}
+
+impl AbiBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+    fn apply_attrs_callsite(
+        &mut self,
+        ty: &FnType<'tcx, Ty<'tcx>>,
+        callsite: Self::Value
+    ) {
+        ty.apply_attrs_callsite(self, callsite)
     }
 }

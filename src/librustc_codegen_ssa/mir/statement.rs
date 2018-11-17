@@ -10,21 +10,21 @@
 
 use rustc::mir;
 
-use asm;
-use builder::Builder;
-
+use traits::BuilderMethods;
 use super::FunctionCx;
 use super::LocalRef;
 use super::OperandValue;
+use traits::*;
 
-impl FunctionCx<'a, 'll, 'tcx> {
-    pub fn codegen_statement(&mut self,
-                           bx: Builder<'a, 'll, 'tcx>,
-                           statement: &mir::Statement<'tcx>)
-                           -> Builder<'a, 'll, 'tcx> {
+impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
+    pub fn codegen_statement(
+        &mut self,
+        mut bx: Bx,
+        statement: &mir::Statement<'tcx>
+    ) -> Bx {
         debug!("codegen_statement(statement={:?})", statement);
 
-        self.set_debug_loc(&bx, statement.source_info);
+        self.set_debug_loc(&mut bx, statement.source_info);
         match statement.kind {
             mir::StatementKind::Assign(ref place, ref rvalue) => {
                 if let mir::Place::Local(index) = *place {
@@ -53,52 +53,52 @@ impl FunctionCx<'a, 'll, 'tcx> {
                         }
                     }
                 } else {
-                    let cg_dest = self.codegen_place(&bx, place);
+                    let cg_dest = self.codegen_place(&mut bx, place);
                     self.codegen_rvalue(bx, cg_dest, rvalue)
                 }
             }
             mir::StatementKind::SetDiscriminant{ref place, variant_index} => {
-                self.codegen_place(&bx, place)
-                    .codegen_set_discr(&bx, variant_index);
+                self.codegen_place(&mut bx, place)
+                    .codegen_set_discr(&mut bx, variant_index);
                 bx
             }
             mir::StatementKind::StorageLive(local) => {
                 if let LocalRef::Place(cg_place) = self.locals[local] {
-                    cg_place.storage_live(&bx);
+                    cg_place.storage_live(&mut bx);
                 } else if let LocalRef::UnsizedPlace(cg_indirect_place) = self.locals[local] {
-                    cg_indirect_place.storage_live(&bx);
+                    cg_indirect_place.storage_live(&mut bx);
                 }
                 bx
             }
             mir::StatementKind::StorageDead(local) => {
                 if let LocalRef::Place(cg_place) = self.locals[local] {
-                    cg_place.storage_dead(&bx);
+                    cg_place.storage_dead(&mut bx);
                 } else if let LocalRef::UnsizedPlace(cg_indirect_place) = self.locals[local] {
-                    cg_indirect_place.storage_dead(&bx);
+                    cg_indirect_place.storage_dead(&mut bx);
                 }
                 bx
             }
             mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {
                 let outputs = outputs.iter().map(|output| {
-                    self.codegen_place(&bx, output)
+                    self.codegen_place(&mut bx, output)
                 }).collect();
 
                 let input_vals = inputs.iter()
                     .fold(Vec::with_capacity(inputs.len()), |mut acc, (span, input)| {
-                        let op = self.codegen_operand(&bx, input);
+                        let op = self.codegen_operand(&mut bx, input);
                         if let OperandValue::Immediate(_) = op.val {
                             acc.push(op.immediate());
                         } else {
-                            span_err!(bx.sess(), span.to_owned(), E0669,
+                            span_err!(bx.cx().sess(), span.to_owned(), E0669,
                                      "invalid value for constraint in inline assembly");
                         }
                         acc
                 });
 
                 if input_vals.len() == inputs.len() {
-                    let res = asm::codegen_inline_asm(&bx, asm, outputs, input_vals);
+                    let res = bx.codegen_inline_asm(asm, outputs, input_vals);
                     if !res {
-                        span_err!(bx.sess(), statement.source_info.span, E0668,
+                        span_err!(bx.cx().sess(), statement.source_info.span, E0668,
                                   "malformed inline assembly");
                     }
                 }

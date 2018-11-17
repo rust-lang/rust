@@ -8,18 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use abi::{FnType, FnTypeExt};
+use rustc_target::abi::call::FnType;
 use callee;
-use common::*;
-use builder::Builder;
-use consts;
-use monomorphize;
-use type_::Type;
-use value::Value;
+use rustc_mir::monomorphize;
+
+use traits::*;
 
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::HasDataLayout;
-use debuginfo;
 
 #[derive(Copy, Clone, Debug)]
 pub struct VirtualIndex(u64);
@@ -28,33 +23,45 @@ pub const DESTRUCTOR: VirtualIndex = VirtualIndex(0);
 pub const SIZE: VirtualIndex = VirtualIndex(1);
 pub const ALIGN: VirtualIndex = VirtualIndex(2);
 
-impl<'a, 'tcx> VirtualIndex {
+impl<'a, 'tcx: 'a> VirtualIndex {
     pub fn from_index(index: usize) -> Self {
         VirtualIndex(index as u64 + 3)
     }
 
-    pub fn get_fn(self, bx: &Builder<'a, 'll, 'tcx>,
-                  llvtable: &'ll Value,
-                  fn_ty: &FnType<'tcx, Ty<'tcx>>) -> &'ll Value {
+    pub fn get_fn<Bx: BuilderMethods<'a, 'tcx>>(
+        self,
+        bx: &mut Bx,
+        llvtable: Bx::Value,
+        fn_ty: &FnType<'tcx, Ty<'tcx>>
+    ) -> Bx::Value {
         // Load the data pointer from the object.
         debug!("get_fn({:?}, {:?})", llvtable, self);
 
-        let llvtable = bx.pointercast(llvtable, fn_ty.ptr_to_llvm_type(bx.cx).ptr_to());
+        let llvtable = bx.pointercast(
+            llvtable,
+            bx.cx().type_ptr_to(bx.cx().fn_ptr_backend_type(fn_ty))
+        );
         let ptr_align = bx.tcx().data_layout.pointer_align;
-        let ptr = bx.load(bx.inbounds_gep(llvtable, &[C_usize(bx.cx, self.0)]), ptr_align);
+        let gep = bx.inbounds_gep(llvtable, &[bx.cx().const_usize(self.0)]);
+        let ptr = bx.load(gep, ptr_align);
         bx.nonnull_metadata(ptr);
         // Vtable loads are invariant
         bx.set_invariant_load(ptr);
         ptr
     }
 
-    pub fn get_usize(self, bx: &Builder<'a, 'll, 'tcx>, llvtable: &'ll Value) -> &'ll Value {
+    pub fn get_usize<Bx: BuilderMethods<'a, 'tcx>>(
+        self,
+        bx: &mut Bx,
+        llvtable: Bx::Value
+    ) -> Bx::Value {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
 
-        let llvtable = bx.pointercast(llvtable, Type::isize(bx.cx).ptr_to());
+        let llvtable = bx.pointercast(llvtable, bx.cx().type_ptr_to(bx.cx().type_isize()));
         let usize_align = bx.tcx().data_layout.pointer_align;
-        let ptr = bx.load(bx.inbounds_gep(llvtable, &[C_usize(bx.cx, self.0)]), usize_align);
+        let gep = bx.inbounds_gep(llvtable, &[bx.cx().const_usize(self.0)]);
+        let ptr = bx.load(gep, usize_align);
         // Vtable loads are invariant
         bx.set_invariant_load(ptr);
         ptr
@@ -69,22 +76,22 @@ impl<'a, 'tcx> VirtualIndex {
 /// The `trait_ref` encodes the erased self type. Hence if we are
 /// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T:Trait`.
-pub fn get_vtable(
-    cx: &CodegenCx<'ll, 'tcx>,
+pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
+    cx: &Cx,
     ty: Ty<'tcx>,
     trait_ref: ty::PolyExistentialTraitRef<'tcx>,
-) -> &'ll Value {
-    let tcx = cx.tcx;
+) -> Cx::Value {
+    let tcx = cx.tcx();
 
     debug!("get_vtable(ty={:?}, trait_ref={:?})", ty, trait_ref);
 
     // Check the cache.
-    if let Some(&val) = cx.vtables.borrow().get(&(ty, trait_ref)) {
+    if let Some(&val) = cx.vtables().borrow().get(&(ty, trait_ref)) {
         return val;
     }
 
     // Not in the cache. Build it.
-    let nullptr = C_null(Type::i8p(cx));
+    let nullptr = cx.const_null(cx.type_i8p());
 
     let methods = tcx.vtable_methods(trait_ref.with_self_ty(tcx, ty));
     let methods = methods.iter().cloned().map(|opt_mth| {
@@ -93,23 +100,23 @@ pub fn get_vtable(
         })
     });
 
-    let (size, align) = cx.size_and_align_of(ty);
+    let (size, align) = cx.layout_of(ty).size_and_align();
     // /////////////////////////////////////////////////////////////////////////////////////////////
     // If you touch this code, be sure to also make the corresponding changes to
     // `get_vtable` in rust_mir/interpret/traits.rs
     // /////////////////////////////////////////////////////////////////////////////////////////////
     let components: Vec<_> = [
-        callee::get_fn(cx, monomorphize::resolve_drop_in_place(cx.tcx, ty)),
-        C_usize(cx, size.bytes()),
-        C_usize(cx, align.abi())
+        cx.get_fn(monomorphize::resolve_drop_in_place(cx.tcx(), ty)),
+        cx.const_usize(size.bytes()),
+        cx.const_usize(align.abi())
     ].iter().cloned().chain(methods).collect();
 
-    let vtable_const = C_struct(cx, &components, false);
+    let vtable_const = cx.const_struct(&components, false);
     let align = cx.data_layout().pointer_align;
-    let vtable = consts::addr_of(cx, vtable_const, align, Some("vtable"));
+    let vtable = cx.static_addr_of(vtable_const, align, Some("vtable"));
 
-    debuginfo::create_vtable_metadata(cx, ty, vtable);
+    cx.create_vtable_metadata(ty, vtable);
 
-    cx.vtables.borrow_mut().insert((ty, trait_ref), vtable);
+    cx.vtables().borrow_mut().insert((ty, trait_ref), vtable);
     vtable
 }

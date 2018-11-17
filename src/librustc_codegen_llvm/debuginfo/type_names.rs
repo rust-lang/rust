@@ -14,6 +14,7 @@ use common::CodegenCx;
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
+use rustc_codegen_ssa::traits::*;
 
 use rustc::hir;
 
