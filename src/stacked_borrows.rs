@@ -623,18 +623,19 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         // We need a visitor to visit all references.  However, that requires
         // a `MemPlace`, so we have a fast path for reference types that
         // avoids allocating.
-        match place.layout.ty.sty {
-            // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
-            // making it useless.
-            ty::Ref(_, _, mutbl) => {
-                // fast path
-                let val = self.read_immediate(self.place_to_op(place)?)?;
-                let val = self.retag_reference(val, mutbl)?;
-                self.write_immediate(val, place)?;
-                return Ok(());
-            }
-            _ => {}, // handled with the general case below
-        };
+        // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
+        // making it useless.
+        if let Some(mutbl) = match place.layout.ty.sty {
+            ty::Ref(_, _, mutbl) => Some(mutbl),
+            ty::Adt(..) if place.layout.ty.is_box() => Some(MutMutable),
+            _ => None, // handled with the general case below
+        } {
+            // fast path
+            let val = self.read_immediate(self.place_to_op(place)?)?;
+            let val = self.retag_reference(val, mutbl)?;
+            self.write_immediate(val, place)?;
+            return Ok(());
+        }
         let place = self.force_allocation(place)?;
 
         let mut visitor = RetagVisitor { ecx: self };
