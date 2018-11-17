@@ -2364,6 +2364,36 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         });
     }
 
+    fn future_proof_import(&mut self, use_tree: &ast::UseTree) {
+        if !self.session.rust_2018() {
+            return;
+        }
+
+        let segments = &use_tree.prefix.segments;
+        if !segments.is_empty() {
+            let ident = segments[0].ident;
+            if ident.is_path_segment_keyword() {
+                return;
+            }
+
+            let nss = match use_tree.kind {
+                ast::UseTreeKind::Simple(..) if segments.len() == 1 => &[TypeNS, ValueNS][..],
+                _ => &[TypeNS],
+            };
+            for &ns in nss {
+                if let Some(LexicalScopeBinding::Def(..)) =
+                        self.resolve_ident_in_lexical_scope(ident, ns, None, use_tree.prefix.span) {
+                    let what = if ns == TypeNS { "type parameters" } else { "local variables" };
+                    self.session.span_err(ident.span, &format!("imports cannot refer to {}", what));
+                }
+            }
+        } else if let ast::UseTreeKind::Nested(use_trees) = &use_tree.kind {
+            for (use_tree, _) in use_trees {
+                self.future_proof_import(use_tree);
+            }
+        }
+    }
+
     fn resolve_item(&mut self, item: &Item) {
         let name = item.ident.name;
         debug!("(resolving item) resolving {}", name);
@@ -2457,7 +2487,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 });
             }
 
-            ItemKind::Use(..) | ItemKind::ExternCrate(..) |
+            ItemKind::Use(ref use_tree) => {
+                self.future_proof_import(use_tree);
+            }
+
+            ItemKind::ExternCrate(..) |
             ItemKind::MacroDef(..) | ItemKind::GlobalAsm(..) => {
                 // do nothing, these are just around to be encoded
             }
