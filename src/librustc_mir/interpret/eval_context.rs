@@ -492,23 +492,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
         );
-        match frame.return_to_block {
-            StackPopCleanup::Goto(block) => {
-                self.goto_block(block)?;
-            }
-            StackPopCleanup::None { cleanup } => {
-                if !cleanup {
-                    // Leak the locals. Also skip validation, this is only used by
-                    // static/const computation which does its own (stronger) final
-                    // validation.
-                    return Ok(());
-                }
-            }
-        }
-        // Deallocate all locals that are backed by an allocation.
-        for local in frame.locals {
-            self.deallocate_local(local)?;
-        }
         // Validate the return value.
         if let Some(return_place) = frame.return_place {
             if M::enforce_validity(self) {
@@ -529,6 +512,22 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         } else {
             // Uh, that shouldn't happen... the function did not intend to return
             return err!(Unreachable);
+        }
+        // Jump to new block -- *after* validation so that the spans make more sense.
+        match frame.return_to_block {
+            StackPopCleanup::Goto(block) => {
+                self.goto_block(block)?;
+            }
+            StackPopCleanup::None { cleanup } => {
+                if !cleanup {
+                    // Leak the locals.
+                    return Ok(());
+                }
+            }
+        }
+        // Deallocate all locals that are backed by an allocation.
+        for local in frame.locals {
+            self.deallocate_local(local)?;
         }
 
         if self.stack.len() > 1 { // FIXME should be "> 0", printing topmost frame crashes rustc...
