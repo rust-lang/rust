@@ -316,7 +316,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
 
             "memrchr" => {
                 let ptr = self.read_scalar(args[0])?.not_undef()?;
-                let ptr = ptr;
                 let val = self.read_scalar(args[1])?.to_bytes()? as u8;
                 let num = self.read_scalar(args[2])?.to_usize(self)?;
                 if let Some(idx) = self.memory().read_bytes(ptr, Size::from_bytes(num))?
@@ -331,7 +330,6 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
 
             "memchr" => {
                 let ptr = self.read_scalar(args[0])?.not_undef()?;
-                let ptr = ptr;
                 let val = self.read_scalar(args[1])?.to_bytes()? as u8;
                 let num = self.read_scalar(args[2])?.to_usize(self)?;
                 if let Some(idx) = self.memory().read_bytes(ptr, Size::from_bytes(num))?.iter().position(
