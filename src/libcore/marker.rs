@@ -605,7 +605,7 @@ unsafe impl<T: ?Sized> Freeze for *mut T {}
 unsafe impl<T: ?Sized> Freeze for &T {}
 unsafe impl<T: ?Sized> Freeze for &mut T {}
 
-/// Types which can be safely moved after being pinned.
+/// Types that can be safely moved after being pinned.
 ///
 /// Since Rust itself has no notion of immovable types, and will consider moves to always be safe,
 /// this trait cannot prevent types from moving by itself.
@@ -694,3 +694,13 @@ mod copy_impls {
     impl<T: ?Sized> Copy for &T {}
 
 }
+
+/// Captures a lifetime without doing anything with it.
+///
+/// This is useful in particular for functions returning opaque types
+/// (i.e. `impl Trait`) that do not mention lifetimes otherwise mentioned in
+/// the corresponding concrete type.
+#[unstable(feature = "captures_trait", issue = "56046")]
+trait Captures<'a> {}
+
+impl<T: ?Sized> Captures<'a> for T {}

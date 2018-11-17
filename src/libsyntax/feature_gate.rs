@@ -617,7 +617,7 @@ declare_features! (
     (accepted, match_beginning_vert, "1.25.0", Some(44101), None),
     // Nested groups in `use` (RFC 2128)
     (accepted, use_nested_groups, "1.25.0", Some(44494), None),
-    // a..=b and ..=b
+    // `a..=b` and `..=b`
     (accepted, inclusive_range_syntax, "1.26.0", Some(28237), None),
     // allow `..=` in patterns (RFC 1192)
     (accepted, dotdoteq_in_patterns, "1.26.0", Some(28237), None),
@@ -688,8 +688,8 @@ declare_features! (
     (accepted, min_const_fn, "1.31.0", Some(53555), None),
     // Scoped lints
     (accepted, tool_lints, "1.31.0", Some(44690), None),
-    // impl<I:Iterator> Iterator for &mut Iterator
-    // impl Debug for Foo<'_>
+    // `impl<I: Iterator> Iterator for &mut Iterator`
+    // `impl Debug for Foo<'_>`
     (accepted, impl_header_lifetime_elision, "1.31.0", Some(15872), None),
 );
 
@@ -1183,7 +1183,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                     cfg_fn!(custom_test_frameworks))),
 ];
 
-// cfg(...)'s that are feature gated
+// cfg's that are feature gated
 const GATED_CFGS: &[(&str, &str, fn(&Features) -> bool)] = &[
     // (name in cfg, feature, function to check if the feature is enabled)
     ("target_vendor", "cfg_target_vendor", cfg_fn!(cfg_target_vendor)),
