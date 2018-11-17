@@ -771,7 +771,7 @@ define_print! {
 define_print! {
     () ty::RegionKind, (self, f, cx) {
         display {
-            if cx.is_verbose || get_highlight_region_for_regionvid().is_some() {
+            if cx.is_verbose {
                 return self.print_debug(f, cx);
             }
 
@@ -806,11 +806,16 @@ define_print! {
                         ),
                     }
                 }
-                ty::ReVar(region_vid) if cx.identify_regions => {
-                    write!(f, "'{}rv", region_vid.index())
+                ty::ReVar(region_vid) => {
+                    if get_highlight_region_for_regionvid().is_some() {
+                        write!(f, "{:?}", region_vid)
+                    } else if cx.identify_regions {
+                        write!(f, "'{}rv", region_vid.index())
+                    } else {
+                        Ok(())
+                    }
                 }
                 ty::ReScope(_) |
-                ty::ReVar(_) |
                 ty::ReErased => Ok(()),
                 ty::ReStatic => write!(f, "'static"),
                 ty::ReEmpty => write!(f, "'<empty>"),
