@@ -59,6 +59,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
 
         let drop = ::monomorphize::resolve_drop_in_place(*tcx, ty);
         let drop = self.memory.create_fn_alloc(drop).with_default_tag();
+        // no need to do any alignment checks on the memory accesses below, because we know the
+        // allocation is correctly aligned as we created it above. Also we're only offsetting by
+        // multiples of `ptr_align`, which means that it will stay aligned to `ptr_align`.
         self.memory
             .get_mut(vtable.alloc_id)?
             .write_ptr_sized(tcx, vtable, Scalar::Ptr(drop).into())?;
