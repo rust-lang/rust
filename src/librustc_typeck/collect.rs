@@ -1608,10 +1608,21 @@ fn predicates_defined_on<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> Lrc<ty::GenericPredicates<'tcx>> {
+    debug!("predicates_defined_on({:?})", def_id);
     let mut result = tcx.explicit_predicates_of(def_id);
+    debug!(
+        "predicates_defined_on: explicit_predicates_of({:?}) = {:?}",
+        def_id,
+        result,
+    );
     let inferred_outlives = tcx.inferred_outlives_of(def_id);
     if !inferred_outlives.is_empty() {
         let span = tcx.def_span(def_id);
+        debug!(
+            "predicates_defined_on: inferred_outlives_of({:?}) = {:?}",
+            def_id,
+            inferred_outlives,
+        );
         Lrc::make_mut(&mut result)
             .predicates
             .extend(inferred_outlives.iter().map(|&p| (p, span)));
