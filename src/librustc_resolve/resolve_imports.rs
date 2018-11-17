@@ -192,6 +192,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                                       ident.name == keywords::SelfValue.name() {
                                 // FIXME: Implement these with renaming requirements so that e.g.
                                 // `use super;` doesn't work, but `use super as name;` does.
+                                // Fall through here to get an error from `early_resolve_...`.
                             }
                         }
 
@@ -940,7 +941,12 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                     }
                 }
                 Err(..) => {
-                    assert!(result[ns].get().is_err());
+                    // FIXME: This assert may fire if public glob is later shadowed by a private
+                    // single import (see test `issue-55884-2.rs`). In theory single imports should
+                    // always block globs, even if they are not yet resolved, so that this kind of
+                    // self-inconsistent resolution never happens.
+                    // Reenable the assert when the issue is fixed.
+                    // assert!(result[ns].get().is_err());
                 }
             }
         });

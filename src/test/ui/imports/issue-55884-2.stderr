@@ -1,0 +1,9 @@
+error[E0603]: struct `ParseOptions` is private
+  --> $DIR/issue-55884-2.rs:12:17
+   |
+LL | pub use parser::ParseOptions; //~ ERROR struct `ParseOptions` is private
+   |                 ^^^^^^^^^^^^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0603`.

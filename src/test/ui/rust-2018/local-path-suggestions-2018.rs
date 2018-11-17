@@ -19,7 +19,7 @@ mod foo {
 }
 
 mod bazz {
-    use foo::Bar;
+    use foo::Bar; //~ ERROR unresolved import `foo`
 
     fn baz() {
         let x: Bar = 22;
@@ -28,6 +28,6 @@ mod bazz {
 
 use foo::Bar;
 
-use foobar::Baz;
+use foobar::Baz; //~ ERROR unresolved import `foobar`
 
 fn main() { }
