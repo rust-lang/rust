@@ -52,7 +52,6 @@ declare_clippy_lint! {
     "`unimplemented!` should not be present in production code"
 }
 
-#[allow(missing_copy_implementations)]
 pub struct Pass;
 
 impl LintPass for Pass {

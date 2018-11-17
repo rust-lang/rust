@@ -41,12 +41,10 @@ it to allow or deny lints from the code, eg.:
     #[cfg_attr(feature = "cargo-clippy", allow(needless_lifetimes))]
 "#;
 
-#[allow(clippy::print_stdout)]
 fn show_help() {
     println!("{}", CARGO_CLIPPY_HELP);
 }
 
-#[allow(clippy::print_stdout)]
 fn show_version() {
     let version_info = rustc_tools_util::get_version_info!();
     println!("{}", version_info);

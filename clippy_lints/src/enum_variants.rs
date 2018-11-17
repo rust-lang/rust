@@ -156,8 +156,6 @@ fn partial_rmatch(post: &str, name: &str) -> usize {
         .count()
 }
 
-// FIXME: #600
-#[allow(clippy::while_let_on_iterator)]
 fn check_variant(
     cx: &EarlyContext<'_>,
     threshold: u64,
