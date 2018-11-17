@@ -1,9 +1,9 @@
 #![feature(test, rustc_private)]
 
 extern crate test;
-use test::Bencher;
+use crate::test::Bencher;
 mod helpers;
-use helpers::*;
+use crate::helpers::*;
 
 #[bench]
 fn noop(bencher: &mut Bencher) {

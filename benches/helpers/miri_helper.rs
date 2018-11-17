@@ -8,7 +8,7 @@ use self::miri::eval_main;
 use self::rustc_driver::{driver, Compilation};
 use std::cell::RefCell;
 use std::rc::Rc;
-use test::Bencher;
+use crate::test::Bencher;
 
 pub struct MiriCompilerCalls<'a>(Rc<RefCell<&'a mut Bencher>>);
 
@@ -50,7 +50,7 @@ pub fn run(filename: &str, bencher: &mut Bencher) {
         let entry_def_id = tcx.hir.local_def_id(entry_node_id);
 
         bencher.borrow_mut().iter(|| {
-            eval_main(tcx, entry_def_id, None);
+            eval_main(tcx, entry_def_id, false);
         });
 
         state.session.abort_if_errors();
