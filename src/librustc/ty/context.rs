@@ -789,7 +789,7 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
             pat_adjustments.hash_stable(hcx, hasher);
             hash_stable_hashmap(hcx, hasher, upvar_capture_map, |up_var_id, hcx| {
                 let ty::UpvarId {
-                    var_id,
+                    var_path,
                     closure_expr_id
                 } = *up_var_id;
 
@@ -798,14 +798,14 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for TypeckTables<'gcx> {
 
                 let var_owner_def_id = DefId {
                     krate: local_id_root.krate,
-                    index: var_id.owner,
+                    index: var_path.hir_id.owner,
                 };
                 let closure_def_id = DefId {
                     krate: local_id_root.krate,
                     index: closure_expr_id.to_def_id().index,
                 };
                 (hcx.def_path_hash(var_owner_def_id),
-                 var_id.local_id,
+                 var_path.hir_id.local_id,
                  hcx.def_path_hash(closure_def_id))
             });
 
