@@ -492,7 +492,7 @@ impl Rewrite for ast::GenericBound {
         match *self {
             ast::GenericBound::Trait(ref poly_trait_ref, trait_bound_modifier) => {
                 let snippet = context.snippet(self.span());
-                let has_paren = snippet.starts_with("(") && snippet.ends_with(")");
+                let has_paren = snippet.starts_with('(') && snippet.ends_with(')');
                 let rewrite = match trait_bound_modifier {
                     ast::TraitBoundModifier::None => poly_trait_ref.rewrite(context, shape),
                     ast::TraitBoundModifier::Maybe => poly_trait_ref

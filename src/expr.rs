@@ -1584,7 +1584,7 @@ fn rewrite_struct_lit<'a>(
         )?
     } else {
         let field_iter = fields
-            .into_iter()
+            .iter()
             .map(StructLitField::Regular)
             .chain(base.into_iter().map(StructLitField::Base));
 
