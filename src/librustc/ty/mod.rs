@@ -1998,6 +1998,12 @@ impl ReprOptions {
     pub fn inhibit_struct_field_reordering_opt(&self) -> bool {
         !(self.flags & ReprFlags::IS_UNOPTIMISABLE).is_empty() || (self.pack == 1)
     }
+
+    /// Returns true if this `#[repr()]` should inhibit union abi optimisations
+    pub fn inhibit_union_abi_opt(&self) -> bool {
+        self.c()
+    }
+
 }
 
 impl<'a, 'gcx, 'tcx> AdtDef {
