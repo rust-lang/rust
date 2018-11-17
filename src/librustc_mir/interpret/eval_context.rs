@@ -597,6 +597,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         } else {
             self.param_env
         };
+        // We use `const_eval_raw` here, and get an unvalidated result.  That is okay:
+        // Our result will later be validated anyway, and there seems no good reason
+        // to have to fail early here.  This is also more consistent with
+        // `Memory::get_static_alloc` which has to use `const_eval_raw` to avoid cycles.
         let val = self.tcx.const_eval_raw(param_env.and(gid)).map_err(|err| {
             match err {
                 ErrorHandled::Reported => EvalErrorKind::ReferencedConstant,
