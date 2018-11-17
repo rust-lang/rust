@@ -159,6 +159,19 @@ impl<Tag> MemPlace<Tag> {
             Some(meta) => Immediate::ScalarPair(self.ptr.into(), meta.into()),
         }
     }
+
+    pub fn offset(
+        self,
+        offset: Size,
+        meta: Option<Scalar<Tag>>,
+        cx: &impl HasDataLayout,
+    ) -> EvalResult<'tcx, Self> {
+        Ok(MemPlace {
+            ptr: self.ptr.ptr_offset(offset, cx)?,
+            align: self.align.restrict_for_offset(offset),
+            meta,
+        })
+    }
 }
 
 impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
@@ -172,6 +185,19 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
             ),
             layout
         }
+    }
+
+    pub fn offset(
+        self,
+        offset: Size,
+        meta: Option<Scalar<Tag>>,
+        layout: TyLayout<'tcx>,
+        cx: &impl HasDataLayout,
+    ) -> EvalResult<'tcx, Self> {
+        Ok(MPlaceTy {
+            mplace: self.mplace.offset(offset, meta, cx)?,
+            layout,
+        })
     }
 
     #[inline]
@@ -367,13 +393,9 @@ where
             (None, offset)
         };
 
-        let ptr = base.ptr.ptr_offset(offset, self)?;
-        let align = base.align
-            // We do not look at `base.layout.align` nor `field_layout.align`, unlike
-            // codegen -- mostly to see if we can get away with that
-            .restrict_for_offset(offset); // must be last thing that happens
-
-        Ok(MPlaceTy { mplace: MemPlace { ptr, align, meta }, layout: field_layout })
+        // We do not look at `base.layout.align` nor `field_layout.align`, unlike
+        // codegen -- mostly to see if we can get away with that
+        base.offset(offset, meta, field_layout, self)
     }
 
     // Iterates over all fields of an array. Much more efficient than doing the
@@ -391,14 +413,7 @@ where
         };
         let layout = base.layout.field(self, 0)?;
         let dl = &self.tcx.data_layout;
-        Ok((0..len).map(move |i| {
-            let ptr = base.ptr.ptr_offset(i * stride, dl)?;
-            let align = base.align.restrict_for_offset(i * stride);
-            Ok(MPlaceTy {
-                mplace: MemPlace { ptr, align, meta: None },
-                layout
-            })
-        }))
+        Ok((0..len).map(move |i| base.offset(i * stride, None, layout, dl)))
     }
 
     pub fn mplace_subslice(
@@ -417,8 +432,6 @@ where
                 stride * from,
             _ => bug!("Unexpected layout of index access: {:#?}", base.layout),
         };
-        let ptr = base.ptr.ptr_offset(from_offset, self)?;
-        let align = base.align.restrict_for_offset(from_offset);
 
         // Compute meta and new layout
         let inner_len = len - to - from;
@@ -435,11 +448,7 @@ where
                 bug!("cannot subslice non-array type: `{:?}`", base.layout.ty),
         };
         let layout = self.layout_of(ty)?;
-
-        Ok(MPlaceTy {
-            mplace: MemPlace { ptr, align, meta },
-            layout
-        })
+        base.offset(from_offset, meta, layout, self)
     }
 
     pub fn mplace_downcast(
