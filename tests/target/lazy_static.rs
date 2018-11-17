@@ -10,7 +10,7 @@ lazy_static! {
 // We need to be able to format `lazy_static!` without known syntax.
 lazy_static!(xxx, yyyy, zzzzz);
 
-lazy_static!{}
+lazy_static! {}
 
 // #2354
 lazy_static! {
