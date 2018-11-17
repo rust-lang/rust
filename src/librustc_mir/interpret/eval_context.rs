@@ -492,7 +492,24 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         let frame = self.stack.pop().expect(
             "tried to pop a stack frame, but there were none",
         );
-        // Validate the return value.
+        // Abort early if we do not want to clean up: We also avoid validation in that case,
+        // because this is CTFE and the final value will be thoroughly validated anyway.
+        match frame.return_to_block {
+            StackPopCleanup::Goto(_) => {},
+            StackPopCleanup::None { cleanup } => {
+                if !cleanup {
+                    assert!(self.stack.is_empty(), "only the topmost frame should ever be leaked");
+                    // Leak the locals, skip validation.
+                    return Ok(());
+                }
+            }
+        }
+        // Deallocate all locals that are backed by an allocation.
+        for local in frame.locals {
+            self.deallocate_local(local)?;
+        }
+        // Validate the return value. Do this after deallocating so that we catch dangling
+        // references.
         if let Some(return_place) = frame.return_place {
             if M::enforce_validity(self) {
                 // Data got changed, better make sure it matches the type!
@@ -518,16 +535,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             StackPopCleanup::Goto(block) => {
                 self.goto_block(block)?;
             }
-            StackPopCleanup::None { cleanup } => {
-                if !cleanup {
-                    // Leak the locals.
-                    return Ok(());
-                }
-            }
-        }
-        // Deallocate all locals that are backed by an allocation.
-        for local in frame.locals {
-            self.deallocate_local(local)?;
+            StackPopCleanup::None { .. } => {}
         }
 
         if self.stack.len() > 1 { // FIXME should be "> 0", printing topmost frame crashes rustc...
