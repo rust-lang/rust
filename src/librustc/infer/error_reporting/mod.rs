@@ -339,6 +339,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
 
                     RegionResolutionError::SubSupConflict(
+                        _,
                         var_origin,
                         sub_origin,
                         sub_r,
@@ -407,7 +408,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         errors.sort_by_key(|u| match *u {
             RegionResolutionError::ConcreteFailure(ref sro, _, _) => sro.span(),
             RegionResolutionError::GenericBoundFailure(ref sro, _, _) => sro.span(),
-            RegionResolutionError::SubSupConflict(ref rvo, _, _, _, _) => rvo.span(),
+            RegionResolutionError::SubSupConflict(_, ref rvo, _, _, _, _) => rvo.span(),
         });
         errors
     }

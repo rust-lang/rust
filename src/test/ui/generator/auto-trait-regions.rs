@@ -47,6 +47,5 @@ fn main() {
         assert_foo(a);
     };
     assert_foo(gen);
-    //~^ ERROR E0495
-    //~| ERROR E0495
+    //~^ ERROR not general enough
 }

@@ -73,12 +73,13 @@ pub enum RegionResolutionError<'tcx> {
     /// `a` (but none of the known bounds are sufficient).
     GenericBoundFailure(SubregionOrigin<'tcx>, GenericKind<'tcx>, Region<'tcx>),
 
-    /// `SubSupConflict(v, sub_origin, sub_r, sup_origin, sup_r)`:
+    /// `SubSupConflict(v, v_origin, sub_origin, sub_r, sup_origin, sup_r)`:
     ///
-    /// Could not infer a value for `v` because `sub_r <= v` (due to
-    /// `sub_origin`) but `v <= sup_r` (due to `sup_origin`) and
+    /// Could not infer a value for `v` (which has origin `v_origin`)
+    /// because `sub_r <= v` (due to `sub_origin`) but `v <= sup_r` (due to `sup_origin`) and
     /// `sub_r <= sup_r` does not hold.
     SubSupConflict(
+        RegionVid,
         RegionVariableOrigin,
         SubregionOrigin<'tcx>,
         Region<'tcx>,
@@ -596,6 +597,7 @@ impl<'cx, 'gcx, 'tcx> LexicalResolver<'cx, 'gcx, 'tcx> {
                         origin, node_idx, lower_bound.region, upper_bound.region
                     );
                     errors.push(RegionResolutionError::SubSupConflict(
+                        node_idx,
                         origin,
                         lower_bound.origin.clone(),
                         lower_bound.region,
