@@ -370,8 +370,10 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
     }
 
     pub fn write_cvalue(self, fx: &mut FunctionCx<'a, 'tcx, impl Backend>, from: CValue<'tcx>) {
-        match (&self.layout().ty.sty, &from.layout().ty.sty) {
-            (ty::Ref(_, t, dest_mut), ty::Ref(_, u, src_mut))
+        let from_ty = from.layout().ty;
+        let to_ty = self.layout().ty;
+        match (&from_ty.sty, &to_ty.sty) {
+            (ty::Ref(_, t, src_mut), ty::Ref(_, u, dest_mut))
                 if (if *dest_mut != crate::rustc::hir::Mutability::MutImmutable
                     && src_mut != dest_mut
                 {
@@ -385,13 +387,26 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                 // &mut T -> &T is allowed
                 // &'a T -> &'b T is allowed
             }
+            (ty::FnPtr(_), ty::FnPtr(_)) => {
+                let from_sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &from_ty.fn_sig(fx.tcx));
+                let to_sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &to_ty.fn_sig(fx.tcx));
+                assert_eq!(
+                    from_sig,
+                    to_sig,
+                    "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
+                    from_sig,
+                    to_sig,
+                    fx,
+                );
+                // fn(&T) -> for<'l> fn(&'l T) is allowed
+            }
             _ => {
                 assert_eq!(
-                    self.layout().ty,
-                    from.layout().ty,
-                    "Can't write value of incompatible type to place {:?} {:?}\n\n{:#?}",
-                    self.layout().ty.sty,
-                    from.layout().ty.sty,
+                    from_ty,
+                    to_ty,
+                    "Can't write value with incompatible type {:?} to place with type {:?}\n\n{:#?}",
+                    from_ty.sty,
+                    to_ty.sty,
                     fx,
                 );
             }
