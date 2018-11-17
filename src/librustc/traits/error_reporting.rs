@@ -1097,7 +1097,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             //
             // move |_| { ... }
             // ^^^^^-- prefix
-            let prefix_span = self.tcx.sess.source_map().span_until_char(found_span, '|');
+            let prefix_span = self.tcx.sess.source_map().span_until_non_whitespace(found_span);
             // move |_| { ... }
             //      ^^^-- pipe_span
             let pipe_span = if let Some(span) = found_span.trim_start(prefix_span) {
