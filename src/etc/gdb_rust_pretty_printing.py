@@ -18,6 +18,8 @@ import debugger_pretty_printers_common as rustpp
 if sys.version_info[0] >= 3:
     xrange = range
 
+rust_enabled = 'set language rust' in gdb.execute('complete set language ru', to_string = True)
+
 #===============================================================================
 # GDB Pretty Printing Module for Rust
 #===============================================================================
@@ -99,26 +101,8 @@ def rust_pretty_printer_lookup_function(gdb_val):
     val = GdbValue(gdb_val)
     type_kind = val.type.get_type_kind()
 
-    if type_kind == rustpp.TYPE_KIND_EMPTY:
-        return RustEmptyPrinter(val)
-
-    if type_kind == rustpp.TYPE_KIND_REGULAR_STRUCT:
-        return RustStructPrinter(val,
-                                 omit_first_field = False,
-                                 omit_type_name = False,
-                                 is_tuple_like = False)
-
-    if type_kind == rustpp.TYPE_KIND_STRUCT_VARIANT:
-        return RustStructPrinter(val,
-                                 omit_first_field = True,
-                                 omit_type_name = False,
-                                 is_tuple_like = False)
-
     if type_kind == rustpp.TYPE_KIND_SLICE:
         return RustSlicePrinter(val)
-
-    if type_kind == rustpp.TYPE_KIND_STR_SLICE:
-        return RustStringSlicePrinter(val)
 
     if type_kind == rustpp.TYPE_KIND_STD_VEC:
         return RustStdVecPrinter(val)
@@ -137,6 +121,29 @@ def rust_pretty_printer_lookup_function(gdb_val):
 
     if type_kind == rustpp.TYPE_KIND_OS_STRING:
         return RustOsStringPrinter(val)
+
+    # Checks after this point should only be for "compiler" types --
+    # things that gdb's Rust language support knows about.
+    if rust_enabled:
+        return None
+
+    if type_kind == rustpp.TYPE_KIND_EMPTY:
+        return RustEmptyPrinter(val)
+
+    if type_kind == rustpp.TYPE_KIND_REGULAR_STRUCT:
+        return RustStructPrinter(val,
+                                 omit_first_field = False,
+                                 omit_type_name = False,
+                                 is_tuple_like = False)
+
+    if type_kind == rustpp.TYPE_KIND_STRUCT_VARIANT:
+        return RustStructPrinter(val,
+                                 omit_first_field = True,
+                                 omit_type_name = False,
+                                 is_tuple_like = False)
+
+    if type_kind == rustpp.TYPE_KIND_STR_SLICE:
+        return RustStringSlicePrinter(val)
 
     if type_kind == rustpp.TYPE_KIND_TUPLE:
         return RustStructPrinter(val,
