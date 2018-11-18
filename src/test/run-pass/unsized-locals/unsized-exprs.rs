@@ -34,4 +34,5 @@ fn main() {
     udrop::<[u8]>((*foo()));
     udrop::<[u8]>((*tfoo()).1);
     *afoo() + 42;
+    udrop as fn([u8]);
 }
