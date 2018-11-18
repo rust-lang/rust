@@ -155,8 +155,6 @@ pub fn from_fn_attrs(
     let codegen_fn_attrs = id.map(|id| cx.tcx.codegen_fn_attrs(id))
         .unwrap_or_else(|| CodegenFnAttrs::new());
 
-    inline(cx, llfn, codegen_fn_attrs.inline);
-
     match codegen_fn_attrs.optimize {
         OptimizeAttr::None => {
             match cx.tcx.sess.opts.optimize {
@@ -173,7 +171,7 @@ pub fn from_fn_attrs(
                 OptLevel::No => {
                     llvm::Attribute::MinSize.unapply_llfn(Function, llfn);
                     llvm::Attribute::OptimizeForSize.unapply_llfn(Function, llfn);
-                    llvm::Attribute::OptimizeNone.apply_llfn(Function, llfn);
+                    llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
                 }
                 _ => {}
             }
@@ -189,6 +187,8 @@ pub fn from_fn_attrs(
             llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
         }
     }
+
+    inline(cx, llfn, codegen_fn_attrs.inline);
 
     // The `uwtable` attribute according to LLVM is:
     //

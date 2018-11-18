@@ -65,7 +65,7 @@ fn declare_raw_fn(
         }
     }
 
-    // FIXME(opt): this is kinda duplicated with similar code in attributes::from_fm_attrs…
+    // FIXME(opt): this is kinda duplicated with similar code in attributes::from_fn_attrs…
     match cx.tcx.sess.opts.optimize {
         OptLevel::Size => {
             llvm::Attribute::MinSize.unapply_llfn(Function, llfn);
@@ -80,7 +80,7 @@ fn declare_raw_fn(
         OptLevel::No => {
             llvm::Attribute::MinSize.unapply_llfn(Function, llfn);
             llvm::Attribute::OptimizeForSize.unapply_llfn(Function, llfn);
-            llvm::Attribute::OptimizeNone.apply_llfn(Function, llfn);
+            llvm::Attribute::OptimizeNone.unapply_llfn(Function, llfn);
         }
         _ => {}
     }

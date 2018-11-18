@@ -1,49 +1,50 @@
 // revisions: NO-OPT SIZE-OPT SPEED-OPT
-// [NO-OPT]compile-flags: -Copt-level=0
-// [SIZE-OPT]compile-flags: -Copt-level=s
-// [SPEED-OPT]compile-flags: -Copt-level=3
+//[NO-OPT] compile-flags: -Copt-level=0 -Ccodegen-units=1
+//[SIZE-OPT] compile-flags: -Copt-level=s -Ccodegen-units=1
+//[SPEED-OPT] compile-flags: -Copt-level=3 -Ccodegen-units=1
 
 #![feature(optimize_attribute)]
 #![crate_type="rlib"]
 
-// NO-OPT: Function Attrs:{{.*}}optnone
-// NO-OPT-NOT: {{optsize|minsize}}
-// NO-OPT-NEXT: @nothing
+// CHECK-LABEL: define i32 @nothing
+// CHECK-SAME: [[NOTHING_ATTRS:#[0-9]+]]
 // NO-OPT: ret i32 %1
-//
-// SIZE-OPT: Function Attrs:{{.*}}optsize
-// SIZE-OPT-NOT: {{minsize|optnone}}
-// SIZE-OPT-NEXT: @nothing
-// SIZE-OPT-NEXT: start
-// SIZE-OPT-NEXT: ret i32 4
-//
-// SPEED-OPT: Function Attrs:
-// SPEED-OPT-NOT: {{minsize|optnone|optsize}}
-// SPEED-OPT-NEXT: @nothing
-// SPEED-OPT-NEXT: start
-// SPEED-OPT-NEXT: ret i32 4
+// SIZE-OPT: ret i32 4
+// SPEEC-OPT: ret i32 4
 #[no_mangle]
 pub fn nothing() -> i32 {
     2 + 2
 }
 
-// CHECK: Function Attrs:{{.*}} minsize{{.*}}optsize
-// CHECK-NEXT: @size
-// CHECK-NEXT: start
-// CHECK-NEXT: ret i32 4
+// CHECK-LABEL: define i32 @size
+// CHECK-SAME: [[SIZE_ATTRS:#[0-9]+]]
+// NO-OPT: ret i32 %1
+// SIZE-OPT: ret i32 6
+// SPEED-OPT: ret i32 6
 #[optimize(size)]
 #[no_mangle]
 pub fn size() -> i32 {
-    2 + 2
+    3 + 3
 }
 
-// CHECK: Function Attrs:
-// CHECK-NOT: {{minsize|optsize|optnone}}
-// CHECK-NEXT: @speed
-// CHECK-NEXT: start
-// CHECK-NEXT: ret i32 4
+// CHECK-LABEL: define i32 @speed
+// NO-OPT-SAME: [[NOTHING_ATTRS]]
+// SPEED-OPT-SAME: [[NOTHING_ATTRS]]
+// SIZE-OPT-SAME: [[SPEED_ATTRS:#[0-9]+]]
+// NO-OPT: ret i32 %1
+// SIZE-OPT: ret i32 8
+// SPEED-OPT: ret i32 8
 #[optimize(speed)]
 #[no_mangle]
 pub fn speed() -> i32 {
-    2 + 2
+    4 + 4
 }
+
+// NO-OPT-DAG: attributes [[SIZE_ATTRS]] = {{.*}}minsize{{.*}}optsize{{.*}}
+// SPEED-OPT-DAG: attributes [[SIZE_ATTRS]] = {{.*}}minsize{{.*}}optsize{{.*}}
+// SIZE-OPT-DAG: attributes [[NOTHING_ATTRS]] = {{.*}}optsize{{.*}}
+// SIZE-OPT-DAG: attributes [[SIZE_ATTRS]] = {{.*}}minsize{{.*}}optsize{{.*}}
+
+// SIZE-OPT: attributes [[SPEED_ATTRS]]
+// SIZE-OPT-NOT: minsize
+// SIZE-OPT-NOT: optsize

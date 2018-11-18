@@ -552,9 +552,10 @@ impl<'test> TestCx<'test> {
             .args(&["--target", &self.config.target])
             .arg("-L")
             .arg(&aux_dir)
-            .args(self.split_maybe_args(&self.config.target_rustcflags))
             .args(&self.props.compile_flags)
             .envs(self.props.exec_env.clone());
+        self.maybe_add_external_args(&mut rustc,
+                                     self.split_maybe_args(&self.config.target_rustcflags));
 
         let src = match read_from {
             ReadFrom::Stdin(src) => Some(src),
@@ -587,6 +588,15 @@ impl<'test> TestCx<'test> {
         }
     }
 
+    fn set_revision_flags(&self, cmd: &mut Command) {
+        if let Some(revision) = self.revision {
+            // Normalize revisions to be lowercase and replace `-`s with `_`s.
+            // Otherwise the `--cfg` flag is not valid.
+            let normalized_revision = revision.to_lowercase().replace("-", "_");
+            cmd.args(&["--cfg", &normalized_revision]);
+        }
+    }
+
     fn typecheck_source(&self, src: String) -> ProcRes {
         let mut rustc = Command::new(&self.config.rustc_path);
 
@@ -612,12 +622,9 @@ impl<'test> TestCx<'test> {
             .arg(&self.config.build_base)
             .arg("-L")
             .arg(aux_dir);
-
-        if let Some(revision) = self.revision {
-            rustc.args(&["--cfg", revision]);
-        }
-
-        rustc.args(self.split_maybe_args(&self.config.target_rustcflags));
+        self.set_revision_flags(&mut rustc);
+        self.maybe_add_external_args(&mut rustc,
+                                     self.split_maybe_args(&self.config.target_rustcflags));
         rustc.args(&self.props.compile_flags);
 
         self.compose_and_run_compiler(rustc, Some(src))
@@ -1117,6 +1124,35 @@ impl<'test> TestCx<'test> {
             .collect::<Vec<String>>();
 
         Some(new_options.join(" "))
+    }
+
+    fn maybe_add_external_args(&self, cmd: &mut Command, args: Vec<String>) {
+        // Filter out the arguments that should not be added by runtest here.
+        //
+        // Notable use-cases are: do not add our optimisation flag if
+        // `compile-flags: -Copt-level=x` and similar for debug-info level as well.
+        const OPT_FLAGS: &[&str] = &["-O", "-Copt-level=", /*-C<space>*/"opt-level="];
+        const DEBUG_FLAGS: &[&str] = &["-g", "-Cdebuginfo=", /*-C<space>*/"debuginfo="];
+
+        // FIXME: ideally we would "just" check the `cmd` itself, but it does not allow inspecting
+        // its arguments. They need to be collected separately. For now I cannot be bothered to
+        // implement this the "right" way.
+        let have_opt_flag = self.props.compile_flags.iter().any(|arg| {
+            OPT_FLAGS.iter().any(|f| arg.starts_with(f))
+        });
+        let have_debug_flag = self.props.compile_flags.iter().any(|arg| {
+            DEBUG_FLAGS.iter().any(|f| arg.starts_with(f))
+        });
+
+        for arg in args {
+            if OPT_FLAGS.iter().any(|f| arg.starts_with(f)) && have_opt_flag {
+                continue;
+            }
+            if DEBUG_FLAGS.iter().any(|f| arg.starts_with(f)) && have_debug_flag {
+                continue;
+            }
+            cmd.arg(arg);
+        }
     }
 
     fn check_debugger_output(&self, debugger_run_result: &ProcRes, check_lines: &[String]) {
@@ -1707,10 +1743,7 @@ impl<'test> TestCx<'test> {
 
             rustc.arg(&format!("--target={}", target));
         }
-
-        if let Some(revision) = self.revision {
-            rustc.args(&["--cfg", revision]);
-        }
+        self.set_revision_flags(&mut rustc);
 
         if !is_rustdoc {
             if let Some(ref incremental_dir) = self.props.incremental_dir {
@@ -1810,9 +1843,11 @@ impl<'test> TestCx<'test> {
         }
 
         if self.props.force_host {
-            rustc.args(self.split_maybe_args(&self.config.host_rustcflags));
+            self.maybe_add_external_args(&mut rustc,
+                                         self.split_maybe_args(&self.config.host_rustcflags));
         } else {
-            rustc.args(self.split_maybe_args(&self.config.target_rustcflags));
+            self.maybe_add_external_args(&mut rustc,
+                                         self.split_maybe_args(&self.config.target_rustcflags));
             if !is_rustdoc {
                 if let Some(ref linker) = self.config.linker {
                     rustc.arg(format!("-Clinker={}", linker));
@@ -2065,12 +2100,19 @@ impl<'test> TestCx<'test> {
             .arg("--input-file")
             .arg(irfile)
             .arg(&self.testpaths.file);
+        // It would be more appropriate to make most of the arguments configurable through
+        // a comment-attribute similar to `compile-flags`. For example, --check-prefixes is a very
+        // useful flag.
+        //
+        // For now, though…
+        if let Some(rev) = self.revision {
+            let prefixes = format!("CHECK,{}", rev);
+            filecheck.args(&["--check-prefixes", &prefixes]);
+        }
         self.compose_and_run(filecheck, "", None, None)
     }
 
     fn run_codegen_test(&self) {
-        assert!(self.revision.is_none(), "revisions not relevant here");
-
         if self.config.llvm_filecheck.is_none() {
             self.fatal("missing --llvm-filecheck");
         }

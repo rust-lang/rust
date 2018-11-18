@@ -542,6 +542,8 @@ fn iter_header(testfile: &Path, cfg: Option<&str>, it: &mut dyn FnMut(&str)) {
         "#"
     };
 
+    // FIXME: would be nice to allow some whitespace between comment and brace :)
+    // It took me like 2 days to debug why compile-flags weren’t taken into account for my test :)
     let comment_with_brace = comment.to_string() + "[";
 
     let rdr = BufReader::new(File::open(testfile).unwrap());
