@@ -947,7 +947,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
     /// Transform a `PolyTraitRef` into a `PolyExistentialTraitRef` by
     /// removing the dummy `Self` type (`TRAIT_OBJECT_DUMMY_SELF`).
     fn trait_ref_to_existential(&self, trait_ref: ty::TraitRef<'tcx>)
-                                -> ty::ExistentialTraitRef<'tcx> {
+                                -> ty::ExistentialTraitRef<'tcx>
+    {
         assert_eq!(trait_ref.self_ty().sty, TRAIT_OBJECT_DUMMY_SELF);
         ty::ExistentialTraitRef::erase_self_ty(self.tcx(), trait_ref)
     }
@@ -987,14 +988,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         let expanded_traits = traits::expand_trait_refs(tcx, bound_trait_refs);
         let (auto_traits, regular_traits): (Vec<_>, Vec<_>) =
-            expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref.def_id()));
+            expanded_traits.partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
         if regular_traits.len() > 1 {
             let extra_trait = &regular_traits[1];
-            let mut err = struct_span_err!(tcx.sess, extra_trait.top_level_span, E0225,
+            let mut err = struct_span_err!(tcx.sess, extra_trait.bottom().1, E0225,
                 "only auto traits can be used as additional traits in a trait object");
-            err.span_label(extra_trait.span, "non-auto additional trait");
-            if extra_trait.span != extra_trait.top_level_span {
-                err.span_label(extra_trait.top_level_span, "expanded from this alias");
+            err.span_label(extra_trait.top().1, "non-auto additional trait");
+            if extra_trait.items.len() > 2 {
+                for (_, sp) in extra_trait.items[1..(extra_trait.items.len() - 1)].iter().rev() {
+                    err.span_label(*sp, "referenced by this alias");
+                }
             }
             err.emit();
         }
@@ -1142,14 +1145,14 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         // Dedup auto traits so that e.g. `dyn Trait + Send + Send` is the same as
         // `dyn Trait + Send`. Skip the first auto trait if it is the principal trait.
         let auto_traits_start_index =
-            if auto_traits.first().map_or(false, |i| i.trait_ref == principal) {
+            if auto_traits.first().map_or(false, |i| i.trait_ref() == &principal) {
                 1
             } else {
                 0
             };
         let mut auto_traits: Vec<_> =
             auto_traits[auto_traits_start_index..].into_iter()
-                                                  .map(|i| i.trait_ref.def_id())
+                                                  .map(|i| i.trait_ref().def_id())
                                                   .collect();
         auto_traits.sort();
         auto_traits.dedup();

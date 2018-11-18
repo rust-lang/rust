@@ -1,5 +1,6 @@
 use hir;
 use hir::def_id::DefId;
+use smallvec::SmallVec;
 use syntax_pos::Span;
 use traits::specialize::specialization_graph::NodeItem;
 use ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
@@ -272,10 +273,36 @@ pub struct TraitRefExpander<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
 #[derive(Debug, Clone)]
 pub struct TraitRefExpansionInfo<'tcx> {
-    pub top_level_trait_ref: ty::PolyTraitRef<'tcx>,
-    pub top_level_span: Span,
-    pub trait_ref: ty::PolyTraitRef<'tcx>,
-    pub span: Span,
+    pub items: SmallVec<[(ty::PolyTraitRef<'tcx>, Span); 4]>,
+}
+
+impl<'tcx> TraitRefExpansionInfo<'tcx> {
+    fn new(trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> TraitRefExpansionInfo<'tcx> {
+        TraitRefExpansionInfo {
+            items: smallvec![(trait_ref, span)]
+        }
+    }
+
+    fn push(&self, trait_ref: ty::PolyTraitRef<'tcx>, span: Span) -> TraitRefExpansionInfo<'tcx> {
+        let mut items = self.items.clone();
+        items.push((trait_ref, span));
+
+        TraitRefExpansionInfo {
+            items
+        }
+    }
+
+    pub fn trait_ref(&self) -> &ty::PolyTraitRef<'tcx> {
+        &self.top().0
+    }
+
+    pub fn top(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
+        self.items.last().unwrap()
+    }
+
+    pub fn bottom(&self) -> &(ty::PolyTraitRef<'tcx>, Span) {
+        self.items.first().unwrap()
+    }
 }
 
 pub fn expand_trait_refs<'cx, 'gcx, 'tcx>(
@@ -283,16 +310,11 @@ pub fn expand_trait_refs<'cx, 'gcx, 'tcx>(
     trait_refs: impl IntoIterator<Item = (ty::PolyTraitRef<'tcx>, Span)>
 ) -> TraitRefExpander<'cx, 'gcx, 'tcx> {
     let mut visited = PredicateSet::new(tcx);
-    let mut items: Vec<_> =
-        trait_refs.into_iter()
-        .map(|(tr, sp)| TraitRefExpansionInfo {
-            top_level_trait_ref: tr.clone(),
-            top_level_span: sp,
-            trait_ref: tr,
-            span: sp,
-        })
+    let mut items: Vec<_> = trait_refs
+        .into_iter()
+        .map(|(tr, sp)| TraitRefExpansionInfo::new(tr, sp))
         .collect();
-    items.retain(|item| visited.insert(&item.trait_ref.to_predicate()));
+    items.retain(|i| visited.insert(&i.trait_ref().to_predicate()));
     TraitRefExpander { stack: items, visited: visited, }
 }
 
@@ -300,35 +322,30 @@ impl<'cx, 'gcx, 'tcx> TraitRefExpander<'cx, 'gcx, 'tcx> {
     // Returns `true` if `item` refers to a trait.
     fn push(&mut self, item: &TraitRefExpansionInfo<'tcx>) -> bool {
         let tcx = self.visited.tcx;
+        let trait_ref = item.trait_ref();
 
-        if !ty::is_trait_alias(tcx, item.trait_ref.def_id()) {
+        if !ty::is_trait_alias(tcx, trait_ref.def_id()) {
             return true;
         }
 
         // Get predicates declared on the trait.
-        let predicates = tcx.super_predicates_of(item.trait_ref.def_id());
+        let predicates = tcx.super_predicates_of(trait_ref.def_id());
 
         let mut items: Vec<_> = predicates.predicates
             .iter()
             .rev()
             .filter_map(|(pred, sp)| {
-                pred.subst_supertrait(tcx, &item.trait_ref)
+                pred.subst_supertrait(tcx, &trait_ref)
                     .to_opt_poly_trait_ref()
-                    .map(|trait_ref|
-                        TraitRefExpansionInfo {
-                            trait_ref,
-                            span: *sp,
-                            ..*item
-                        }
-                    )
+                    .map(|tr| item.push(tr, *sp))
             })
             .collect();
 
         debug!("expand_trait_refs: trait_ref={:?} items={:?}",
-                item.trait_ref, items);
+                trait_ref, items);
 
         // Only keep those items that we haven't already seen.
-        items.retain(|i| self.visited.insert(&i.trait_ref.to_predicate()));
+        items.retain(|i| self.visited.insert(&i.trait_ref().to_predicate()));
 
         self.stack.extend(items);
         false
