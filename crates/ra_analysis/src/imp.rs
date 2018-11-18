@@ -621,7 +621,7 @@ fn resolve_local_name(
     name_ref: ast::NameRef,
 ) -> Option<(SmolStr, TextRange)> {
     let fn_def = name_ref.syntax().ancestors().find_map(ast::FnDef::cast)?;
-    let fn_id = FnId::new(file_id, fn_def);
+    let fn_id = FnId::get(db, file_id, fn_def);
     let scopes = db.fn_scopes(fn_id);
     let scope_entry = crate::descriptors::function::resolve_local_name(name_ref, &scopes)?;
     let syntax = db.resolve_syntax_ptr(scope_entry.ptr().into_global(file_id));

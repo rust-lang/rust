@@ -58,6 +58,15 @@ enum ModuleSourceNode {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub(crate) struct ModuleId(u32);
 
+impl crate::loc2id::NumericId for ModuleId {
+    fn from_u32(id: u32) -> Self {
+        ModuleId(id)
+    }
+    fn to_u32(self) -> u32 {
+        self.0
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(crate) struct LinkId(u32);
 

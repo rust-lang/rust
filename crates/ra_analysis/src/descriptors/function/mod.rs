@@ -8,17 +8,18 @@ use ra_syntax::{
     TextRange, TextUnit,
 };
 
-use crate::{syntax_ptr::SyntaxPtr, FileId};
+use crate::{
+    syntax_ptr::SyntaxPtr, FileId,
+    loc2id::IdDatabase,
+};
 
 pub(crate) use self::scope::{resolve_local_name, FnScopes};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct FnId(SyntaxPtr);
+pub(crate) use crate::loc2id::FnId;
 
 impl FnId {
-    pub(crate) fn new(file_id: FileId, fn_def: ast::FnDef) -> FnId {
+    pub(crate) fn get(db: &impl IdDatabase, file_id: FileId, fn_def: ast::FnDef) -> FnId {
         let ptr = SyntaxPtr::new(file_id, fn_def.syntax());
-        FnId(ptr)
+        db.id_maps().fn_id(ptr)
     }
 }
 
