@@ -144,6 +144,11 @@ impl<K: Ord, V> SortedMap<K, V> {
     }
 
     #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    #[inline]
     pub fn range<R>(&self, range: R) -> &[(K, V)]
         where R: RangeBounds<K>
     {
