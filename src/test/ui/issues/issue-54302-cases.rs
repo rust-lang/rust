@@ -61,25 +61,25 @@ impl<T> RefFoo<T> for T where for<'a> &'a T: Foo<'static, T> {
 fn coerce_lifetime1(a: &u32) -> &'static u32
 {
     <u32 as RefFoo<u32>>::ref_foo(a)
-    //~^ ERROR cannot infer
+    //~^ ERROR not general enough
 }
 
 fn coerce_lifetime2(a: &i32) -> &'static i32
 {
     <i32 as RefFoo<i32>>::ref_foo(a)
-    //~^ ERROR cannot infer
+    //~^ ERROR not general enough
 }
 
 fn coerce_lifetime3(a: &u64) -> &'static u64
 {
     <u64 as RefFoo<u64>>::ref_foo(a)
-    //~^ ERROR cannot infer
+    //~^ ERROR not general enough
 }
 
 fn coerce_lifetime4(a: &i64) -> &'static i64
 {
     <i64 as RefFoo<i64>>::ref_foo(a)
-    //~^ ERROR cannot infer
+    //~^ ERROR not general enough
 }
 
 fn main() {}

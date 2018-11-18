@@ -24,4 +24,10 @@ fn give_static() {
     want_hrtb::<StaticInt>() //~ ERROR
 }
 
+// AnyInt implements Foo<&'a isize> for any 'a, so it is a match.
+impl<'a> Foo<&'a isize> for &'a u32 { }
+fn give_some<'a>() {
+    want_hrtb::<&'a u32>() //~ ERROR
+}
+
 fn main() { }
