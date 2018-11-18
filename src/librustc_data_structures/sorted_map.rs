@@ -25,11 +25,10 @@ use std::ops::{RangeBounds, Bound, Index, IndexMut};
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Default, Debug, RustcEncodable,
          RustcDecodable)]
 pub struct SortedMap<K: Ord, V> {
-    data: Vec<(K,V)>
+    data: Vec<(K, V)>
 }
 
 impl<K: Ord, V> SortedMap<K, V> {
-
     #[inline]
     pub fn new() -> SortedMap<K, V> {
         SortedMap {
@@ -128,13 +127,13 @@ impl<K: Ord, V> SortedMap<K, V> {
 
     /// Iterate over the keys, sorted
     #[inline]
-    pub fn keys(&self) -> impl Iterator<Item=&K> + ExactSizeIterator {
+    pub fn keys(&self) -> impl Iterator<Item = &K> + ExactSizeIterator {
         self.data.iter().map(|&(ref k, _)| k)
     }
 
     /// Iterate over values, sorted by key
     #[inline]
-    pub fn values(&self) -> impl Iterator<Item=&V> + ExactSizeIterator {
+    pub fn values(&self) -> impl Iterator<Item = &V> + ExactSizeIterator {
         self.data.iter().map(|&(_, ref v)| v)
     }
 
@@ -266,6 +265,7 @@ impl<K: Ord, V> SortedMap<K, V> {
 impl<K: Ord, V> IntoIterator for SortedMap<K, V> {
     type Item = (K, V);
     type IntoIter = ::std::vec::IntoIter<(K, V)>;
+
     fn into_iter(self) -> Self::IntoIter {
         self.data.into_iter()
     }
@@ -294,10 +294,12 @@ impl<'a, K, Q, V> IndexMut<&'a Q> for SortedMap<K, V>
 impl<K: Ord, V> FromIterator<(K, V)> for SortedMap<K, V> {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         let mut data: Vec<(K, V)> = iter.into_iter().collect();
+
         data.sort_unstable_by(|&(ref k1, _), &(ref k2, _)| k1.cmp(k2));
         data.dedup_by(|&mut (ref k1, _), &mut (ref k2, _)| {
             k1.cmp(k2) == Ordering::Equal
         });
+
         SortedMap {
             data
         }
