@@ -10,6 +10,7 @@ extern crate rustc_hash;
 extern crate salsa;
 
 mod db;
+mod loc2id;
 mod input;
 mod imp;
 mod completion;

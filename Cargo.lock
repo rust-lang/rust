@@ -600,6 +600,7 @@ version = "0.1.0"
 dependencies = [
  "fst 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "ra_editor 0.1.0",
  "ra_syntax 0.1.0",
  "rayon 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",

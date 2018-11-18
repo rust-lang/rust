@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use parking_lot::Mutex;
+
 use ra_editor::LineIndex;
 use ra_syntax::{SourceFileNode, SyntaxNode};
 use salsa::{self, Database};
@@ -9,15 +11,19 @@ use crate::{
     descriptors::{
         DescriptorDatabase, FnScopesQuery, FnSyntaxQuery, ModuleScopeQuery, ModuleTreeQuery,
         SubmodulesQuery,
+        module::{ModuleSource, ModuleId},
     },
+    input::SourceRootId,
     symbol_index::SymbolIndex,
     syntax_ptr::SyntaxPtr,
+    loc2id::Loc2IdMap,
     Cancelable, Canceled, FileId,
 };
 
 #[derive(Debug)]
 pub(crate) struct RootDatabase {
     runtime: salsa::Runtime<RootDatabase>,
+    loc2id: Arc<Mutex<Loc2IdMap<(SourceRootId, ModuleSource), ModuleId>>>,
 }
 
 impl salsa::Database for RootDatabase {
@@ -30,6 +36,7 @@ impl Default for RootDatabase {
     fn default() -> RootDatabase {
         let mut db = RootDatabase {
             runtime: Default::default(),
+            loc2id: Default::default(),
         };
         db.query_mut(crate::input::SourceRootQuery)
             .set(crate::input::WORKSPACE, Default::default());
@@ -53,6 +60,7 @@ impl salsa::ParallelDatabase for RootDatabase {
     fn snapshot(&self) -> salsa::Snapshot<RootDatabase> {
         salsa::Snapshot::new(RootDatabase {
             runtime: self.runtime.snapshot(self),
+            loc2id: Arc::clone(&self.loc2id),
         })
     }
 }
