@@ -8,9 +8,9 @@ use crate::descriptors::{
 };
 
 /// Resolve `FnId` to the corresponding `SyntaxNode`
-/// TODO: this should return something more type-safe then `SyntaxNode`
 pub(crate) fn fn_syntax(db: &impl DescriptorDatabase, fn_id: FnId) -> FnDefNode {
-    let syntax = db.resolve_syntax_ptr(fn_id.0);
+    let ptr = db.id_maps().fn_ptr(fn_id);
+    let syntax = db.resolve_syntax_ptr(ptr);
     FnDef::cast(syntax.borrowed()).unwrap().owned()
 }
 

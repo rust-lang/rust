@@ -1,6 +1,15 @@
-use std::hash::Hash;
+use parking_lot::Mutex;
+
+use std::{
+    hash::Hash,
+    sync::Arc,
+};
 
 use rustc_hash::FxHashMap;
+
+use crate::{
+    syntax_ptr::SyntaxPtr,
+};
 
 /// There are two principle ways to refer to things:
 ///   - by their locatinon (module in foo/bar/baz.rs at line 42)
@@ -53,12 +62,47 @@ where
         id
     }
 
-    pub fn id2loc(&self, id: &ID) -> L {
-        self.id2loc[id].clone()
+    pub fn id2loc(&self, id: ID) -> L {
+        self.id2loc[&id].clone()
     }
 }
 
 pub(crate) trait NumericId: Clone + Eq + Hash {
     fn from_u32(id: u32) -> Self;
     fn to_u32(self) -> u32;
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct FnId(u32);
+
+impl NumericId for FnId {
+    fn from_u32(id: u32) -> FnId {
+        FnId(id)
+    }
+    fn to_u32(self) -> u32 {
+        self.0
+    }
+}
+
+pub(crate) trait IdDatabase: salsa::Database {
+    fn id_maps(&self) -> &IdMaps;
+}
+
+#[derive(Debug, Default, Clone)]
+pub(crate) struct IdMaps {
+    inner: Arc<IdMapsInner>,
+}
+
+impl IdMaps {
+    pub(crate) fn fn_id(&self, ptr: SyntaxPtr) -> FnId {
+        self.inner.fns.lock().loc2id(&ptr)
+    }
+    pub(crate) fn fn_ptr(&self, fn_id: FnId) -> SyntaxPtr {
+        self.inner.fns.lock().id2loc(fn_id)
+    }
+}
+
+#[derive(Debug, Default)]
+struct IdMapsInner {
+    fns: Mutex<Loc2IdMap<SyntaxPtr, FnId>>,
 }
