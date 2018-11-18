@@ -15,7 +15,7 @@ use ty::{Ty, layout};
 use ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
 
-use super::{Pointer, Scalar};
+use super::{Pointer, InboundsCheck, ScalarMaybeUndef};
 
 use backtrace::Backtrace;
 
@@ -240,10 +240,10 @@ pub enum EvalErrorKind<'tcx, O> {
     InvalidMemoryAccess,
     InvalidFunctionPointer,
     InvalidBool,
-    InvalidDiscriminant(Scalar),
+    InvalidDiscriminant(ScalarMaybeUndef),
     PointerOutOfBounds {
         ptr: Pointer,
-        access: bool,
+        check: InboundsCheck,
         allocation_size: Size,
     },
     InvalidNullPointerUsage,
@@ -457,9 +457,13 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::EvalErrorKind::*;
         match *self {
-            PointerOutOfBounds { ptr, access, allocation_size } => {
-                write!(f, "{} at offset {}, outside bounds of allocation {} which has size {}",
-                       if access { "memory access" } else { "pointer computed" },
+            PointerOutOfBounds { ptr, check, allocation_size } => {
+                write!(f, "Pointer must be in-bounds{} at offset {}, but is outside bounds of \
+                           allocation {} which has size {}",
+                       match check {
+                           InboundsCheck::Live => " and live",
+                           InboundsCheck::MaybeDead => "",
+                       },
                        ptr.offset.bytes(), ptr.alloc_id, allocation_size.bytes())
             },
             ValidationFailure(ref err) => {
