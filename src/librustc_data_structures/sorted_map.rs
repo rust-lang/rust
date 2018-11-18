@@ -82,7 +82,10 @@ impl<K: Ord, V> SortedMap<K, V> {
     }
 
     #[inline]
-    pub fn get(&self, key: &K) -> Option<&V> {
+    pub fn get<Q>(&self, key: &Q) -> Option<&V>
+        where K: Borrow<Q>,
+              Q: Ord + ?Sized
+    {
         match self.lookup_index_for(key) {
             Ok(index) => {
                 unsafe {
@@ -96,7 +99,10 @@ impl<K: Ord, V> SortedMap<K, V> {
     }
 
     #[inline]
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+    pub fn get_mut<Q>(&mut self, key: &Q) -> Option<&mut V>
+        where K: Borrow<Q>,
+              Q: Ord + ?Sized
+    {
         match self.lookup_index_for(key) {
             Ok(index) => {
                 unsafe {
@@ -207,8 +213,11 @@ impl<K: Ord, V> SortedMap<K, V> {
 
     /// Looks up the key in `self.data` via `slice::binary_search()`.
     #[inline(always)]
-    fn lookup_index_for(&self, key: &K) -> Result<usize, usize> {
-        self.data.binary_search_by(|&(ref x, _)| x.cmp(key))
+    fn lookup_index_for<Q>(&self, key: &Q) -> Result<usize, usize>
+        where K: Borrow<Q>,
+              Q: Ord + ?Sized
+    {
+        self.data.binary_search_by(|&(ref x, _)| x.borrow().cmp(key))
     }
 
     #[inline]
@@ -257,18 +266,23 @@ impl<K: Ord, V> IntoIterator for SortedMap<K, V> {
     }
 }
 
-impl<K: Ord, V, Q: Borrow<K>> Index<Q> for SortedMap<K, V> {
+impl<'a, K, Q, V> Index<&'a Q> for SortedMap<K, V>
+    where K: Ord + Borrow<Q>,
+          Q: Ord + ?Sized
+{
     type Output = V;
-    fn index(&self, index: Q) -> &Self::Output {
-        let k: &K = index.borrow();
-        self.get(k).unwrap()
+
+    fn index(&self, key: &Q) -> &Self::Output {
+        self.get(key).expect("no entry found for key")
     }
 }
 
-impl<K: Ord, V, Q: Borrow<K>> IndexMut<Q> for SortedMap<K, V> {
-    fn index_mut(&mut self, index: Q) -> &mut Self::Output {
-        let k: &K = index.borrow();
-        self.get_mut(k).unwrap()
+impl<'a, K, Q, V> IndexMut<&'a Q> for SortedMap<K, V>
+    where K: Ord + Borrow<Q>,
+          Q: Ord + ?Sized
+{
+    fn index_mut(&mut self, key: &Q) -> &mut Self::Output {
+        self.get_mut(key).expect("no entry found for key")
     }
 }
 
