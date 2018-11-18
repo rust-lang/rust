@@ -1,22 +1,14 @@
-error[E0161]: cannot move a value of type X: the size of X cannot be statically determined
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/issue-30355.rs:15:6
    |
 LL |     &X(*Y)
-   |      ^^^^^
-
-error[E0161]: cannot move a value of type [u8]: the size of [u8] cannot be statically determined
-  --> $DIR/issue-30355.rs:15:8
+   |      ^ doesn't have a size known at compile-time
    |
-LL |     &X(*Y)
-   |        ^^
+   = help: the trait `std::marker::Sized` is not implemented for `[u8]`
+   = note: to learn more, visit <https://doc.rust-lang.org/book/second-edition/ch19-04-advanced-types.html#dynamically-sized-types-and-the-sized-trait>
+   = note: all function arguments must have a statically known size
+   = help: unsized locals are gated as an unstable feature
 
-error[E0507]: cannot move out of borrowed content
-  --> $DIR/issue-30355.rs:15:8
-   |
-LL |     &X(*Y)
-   |        ^^ cannot move out of borrowed content
+error: aborting due to previous error
 
-error: aborting due to 3 previous errors
-
-Some errors occurred: E0161, E0507.
-For more information about an error, try `rustc --explain E0161`.
+For more information about this error, try `rustc --explain E0277`.

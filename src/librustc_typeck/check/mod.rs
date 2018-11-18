@@ -3956,6 +3956,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     tcx.types.err
                 };
 
+                if let ty::FnDef(..) = ty.sty {
+                    let fn_sig = ty.fn_sig(tcx);
+                    if !tcx.features().unsized_locals {
+                        // We want to remove some Sized bounds from std functions,
+                        // but don't want to expose the removal to stable Rust.
+                        // i.e. we don't want to allow
+                        //
+                        // ```rust
+                        // drop as fn(str);
+                        // ```
+                        //
+                        // to work in stable even if the Sized bound on `drop` is relaxed.
+                        for i in 0..fn_sig.inputs().skip_binder().len() {
+                            let input = tcx.erase_late_bound_regions(&fn_sig.input(i));
+                            self.require_type_is_sized_deferred(input, expr.span,
+                                                                traits::SizedArgumentType);
+                        }
+                    }
+                    // Here we want to prevent struct constructors from returning unsized types.
+                    // There were two cases this happened: fn pointer coercion in stable
+                    // and usual function call in presense of unsized_locals.
+                    let output = tcx.erase_late_bound_regions(&fn_sig.output());
+                    self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
+                }
+
                 // We always require that the type provided as the value for
                 // a type parameter outlives the moment of instantiation.
                 let substs = self.tables.borrow().node_substs(expr.hir_id);

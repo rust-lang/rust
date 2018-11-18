@@ -21,6 +21,4 @@ impl std::ops::Add<i32> for A<[u8]> {
 fn main() {
     udrop::<[u8]>(foo()[..]);
     //~^ERROR cannot move out of indexed content
-    // FIXME: should be error
-    udrop::<A<[u8]>>(A(*foo()));
 }
