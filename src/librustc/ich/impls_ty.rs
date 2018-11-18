@@ -216,7 +216,9 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::adjustment::AutoBorrow
     }
 }
 
-impl_stable_hash_for!(struct ty::UpvarId { var_id, closure_expr_id });
+impl_stable_hash_for!(struct ty::UpvarPath { hir_id });
+
+impl_stable_hash_for!(struct ty::UpvarId { var_path, closure_expr_id });
 
 impl_stable_hash_for!(enum ty::BorrowKind {
     ImmBorrow,
