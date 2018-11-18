@@ -4816,6 +4816,21 @@ type, it's not allowed to override anything in those implementations, as it
 would be ambiguous which override should actually be used.
 "##,
 
+
+E0720: r##"
+An `impl Trait` type expands to a recursive type.
+
+An `impl Trait` type must be expandable to a concrete type that contains no
+`impl Trait` types. For example the following example tries to create an
+`impl Trait` type `T` that is equal to `[T, T]`:
+
+```compile_fail,E0720
+fn make_recursive_type() -> impl Sized {
+    [make_recursive_type(), make_recursive_type()]
+}
+```
+"##,
+
 }
 
 register_diagnostics! {

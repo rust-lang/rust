@@ -1,7 +1,19 @@
-error[E0275]: overflow evaluating the requirement `impl Quux`
+error[E0720]: opaque type expands to a recursive type
+  --> $DIR/infinite-impl-trait-issue-38064.rs:8:13
    |
-   = help: consider adding a `#![recursion_limit="128"]` attribute to your crate
+LL | fn foo() -> impl Quux { //~ opaque type expands to a recursive type
+   |             ^^^^^^^^^ expands to self-referential type
+   |
+   = note: expanded type is `foo::Foo<bar::Bar<impl Quux>>`
 
-error: aborting due to previous error
+error[E0720]: opaque type expands to a recursive type
+  --> $DIR/infinite-impl-trait-issue-38064.rs:14:13
+   |
+LL | fn bar() -> impl Quux { //~ opaque type expands to a recursive type
+   |             ^^^^^^^^^ expands to self-referential type
+   |
+   = note: expanded type is `bar::Bar<foo::Foo<impl Quux>>`
 
-For more information about this error, try `rustc --explain E0275`.
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0720`.

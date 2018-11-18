@@ -7,7 +7,7 @@ use hir::{self, Node};
 use ich::NodeIdHashingMode;
 use traits::{self, ObligationCause};
 use ty::{self, Ty, TyCtxt, GenericParamDefKind, TypeFoldable};
-use ty::subst::{Substs, UnpackedKind};
+use ty::subst::{Subst, Substs, UnpackedKind};
 use ty::query::TyCtxtAt;
 use ty::TyKind::*;
 use ty::layout::{Integer, IntegerExt};
@@ -15,7 +15,7 @@ use util::common::ErrorReported;
 use middle::lang_items;
 
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use std::{cmp, fmt};
 use syntax::ast;
 use syntax::attr::{self, SignedInt, UnsignedInt};
@@ -616,6 +616,76 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }),
                 _ => None
             }
+        }
+    }
+
+    /// Expands the given impl trait type, stopping if the type is recursive.
+    pub fn try_expand_impl_trait_type(
+        self,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>,
+    ) -> Result<Ty<'tcx>, Ty<'tcx>> {
+        use crate::ty::fold::TypeFolder;
+
+        struct OpaqueTypeExpander<'a, 'gcx, 'tcx> {
+            // Contains the DefIds of the opaque types that are currently being
+            // expanded. When we expand an opaque type we insert the DefId of
+            // that type, and when we finish expanding that type we remove the
+            // its DefId.
+            seen_opaque_tys: FxHashSet<DefId>,
+            primary_def_id: DefId,
+            found_recursion: bool,
+            tcx: TyCtxt<'a, 'gcx, 'tcx>,
+        }
+
+        impl<'a, 'gcx, 'tcx> OpaqueTypeExpander<'a, 'gcx, 'tcx> {
+            fn expand_opaque_ty(
+                &mut self,
+                def_id: DefId,
+                substs: &'tcx Substs<'tcx>,
+            ) -> Option<Ty<'tcx>> {
+                if self.found_recursion {
+                    None
+                } else if self.seen_opaque_tys.insert(def_id) {
+                    let generic_ty = self.tcx.type_of(def_id);
+                    let concrete_ty = generic_ty.subst(self.tcx, substs);
+                    let expanded_ty = self.fold_ty(concrete_ty);
+                    self.seen_opaque_tys.remove(&def_id);
+                    Some(expanded_ty)
+                } else {
+                    // If another opaque type that we contain is recursive, then it
+                    // will report the error, so we don't have to.
+                    self.found_recursion = def_id == self.primary_def_id;
+                    None
+                }
+            }
+        }
+
+        impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpaqueTypeExpander<'a, 'gcx, 'tcx> {
+            fn tcx(&self) -> TyCtxt<'_, 'gcx, 'tcx> {
+                self.tcx
+            }
+
+            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+                if let ty::Opaque(def_id, substs) = t.sty {
+                    self.expand_opaque_ty(def_id, substs).unwrap_or(t)
+                } else {
+                    t.super_fold_with(self)
+                }
+            }
+        }
+
+        let mut visitor = OpaqueTypeExpander {
+            seen_opaque_tys: FxHashSet::default(),
+            primary_def_id: def_id,
+            found_recursion: false,
+            tcx: self,
+        };
+        let expanded_type = visitor.expand_opaque_ty(def_id, substs).unwrap();
+        if visitor.found_recursion {
+            Err(expanded_type)
+        } else {
+            Ok(expanded_type)
         }
     }
 }
