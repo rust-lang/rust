@@ -12,7 +12,6 @@
 //! allows bidirectional lookup; i.e. given a value, one can easily find the
 //! type, and vice versa.
 
-use edition::Edition;
 use hygiene::SyntaxContext;
 use {Span, DUMMY_SP, GLOBALS};
 
@@ -444,7 +443,7 @@ impl Ident {
     pub fn is_unused_keyword(self) -> bool {
         // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
         self.name >= keywords::Abstract.name() && self.name <= keywords::Yield.name() ||
-        self.name.is_unused_keyword_2018() && self.span.edition() == Edition::Edition2018
+        self.name.is_unused_keyword_2018() && self.span.rust_2018()
     }
 
     /// Returns `true` if the token is either a special identifier or a keyword.

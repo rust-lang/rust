@@ -14,7 +14,6 @@ use ty::{self, DefIdTree, Ty, TyCtxt};
 use middle::cstore::{ExternCrate, ExternCrateSource};
 use syntax::ast;
 use syntax::symbol::{keywords, LocalInternedString, Symbol};
-use syntax_pos::edition::Edition;
 
 use std::cell::Cell;
 use std::fmt::Debug;
@@ -140,7 +139,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         debug!("push_krate_path: name={:?}", name);
                         buffer.push(&name);
                     }
-                } else if self.sess.edition() == Edition::Edition2018 && !pushed_prelude_crate {
+                } else if self.sess.rust_2018() && !pushed_prelude_crate {
                     SHOULD_PREFIX_WITH_CRATE.with(|flag| {
                         // We only add the `crate::` keyword where appropriate. In particular,
                         // when we've not previously pushed a prelude crate to this path.
