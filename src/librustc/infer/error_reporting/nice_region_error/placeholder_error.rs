@@ -24,15 +24,15 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                     cause,
                     values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
                 }),
-                ty::RePlaceholder(sub_placeholder),
+                sub_placeholder @ ty::RePlaceholder(_),
                 _,
-                ty::RePlaceholder(sup_placeholder),
+                sup_placeholder @ ty::RePlaceholder(_),
             )) => if expected.def_id == found.def_id {
                 return Some(self.try_report_placeholders_trait(
-                    Some(*vid),
+                    Some(self.tcx.mk_region(ty::ReVar(*vid))),
                     cause,
-                    Some(*sub_placeholder),
-                    Some(*sup_placeholder),
+                    Some(sub_placeholder),
+                    Some(sup_placeholder),
                     expected.def_id,
                     expected.substs,
                     found.substs,
@@ -48,14 +48,14 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                     cause,
                     values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
                 }),
-                ty::RePlaceholder(sub_placeholder),
+                sub_placeholder @ ty::RePlaceholder(_),
                 _,
                 _,
             )) => if expected.def_id == found.def_id {
                 return Some(self.try_report_placeholders_trait(
-                    Some(*vid),
+                    Some(self.tcx.mk_region(ty::ReVar(*vid))),
                     cause,
-                    Some(*sub_placeholder),
+                    Some(sub_placeholder),
                     None,
                     expected.def_id,
                     expected.substs,
@@ -74,10 +74,10 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 }),
                 _,
                 _,
-                ty::RePlaceholder(sup_placeholder),
+                sup_placeholder @ ty::RePlaceholder(_),
             )) => if expected.def_id == found.def_id {
                 return Some(self.try_report_placeholders_trait(
-                    Some(*vid),
+                    Some(self.tcx.mk_region(ty::ReVar(*vid))),
                     cause,
                     None,
                     Some(*sup_placeholder),
@@ -106,10 +106,10 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
     //    = note: However, the type `T` only implements `...` for some specific lifetime `'2`.
     fn try_report_placeholders_trait(
         &self,
-        vid: Option<ty::RegionVid>,
+        vid: Option<ty::Region<'tcx>>,
         cause: &ObligationCause<'tcx>,
-        sub_placeholder: Option<ty::PlaceholderRegion>,
-        sup_placeholder: Option<ty::PlaceholderRegion>,
+        sub_placeholder: Option<ty::Region<'tcx>>,
+        sup_placeholder: Option<ty::Region<'tcx>>,
         trait_def_id: DefId,
         expected_substs: &'tcx Substs<'tcx>,
         actual_substs: &'tcx Substs<'tcx>,
@@ -152,120 +152,75 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
         let mut has_sup = None;
         let mut has_vid = None;
 
-        self.tcx
-            .for_each_free_region(&expected_trait_ref, |r| match r {
-                ty::RePlaceholder(p) => {
-                    if Some(*p) == sub_placeholder {
-                        if has_sub.is_none() {
-                            has_sub = Some(counter);
-                            counter += 1;
-                        }
-                    } else if Some(*p) == sup_placeholder {
-                        if has_sup.is_none() {
-                            has_sup = Some(counter);
-                            counter += 1;
-                        }
+        self.tcx.for_each_free_region(&expected_trait_ref, |r| {
+            if Some(r) == sub_placeholder && has_sub.is_none() {
+                has_sub = Some(counter);
+                counter += 1;
+            } else if Some(r) == sup_placeholder && has_sup.is_none() {
+                has_sup = Some(counter);
+                counter += 1;
+            }
+        });
+
+        self.tcx.for_each_free_region(&actual_trait_ref, |r| {
+            if Some(r) == vid && has_vid.is_none() {
+                has_vid = Some(counter);
+                counter += 1;
+            }
+        });
+
+        RegionHighlightMode::maybe_highlighting_region(sub_placeholder, has_sub, || {
+            RegionHighlightMode::maybe_highlighting_region(sup_placeholder, has_sup, || {
+                match (has_sub, has_sup) {
+                    (Some(n1), Some(n2)) => {
+                        err.note(&format!(
+                            "`{}` must implement `{}` \
+                             for any two lifetimes `'{}` and `'{}`",
+                            expected_trait_ref.self_ty(),
+                            expected_trait_ref,
+                            std::cmp::min(n1, n2),
+                            std::cmp::max(n1, n2),
+                        ));
+                    }
+                    (Some(n), _) | (_, Some(n)) => {
+                        err.note(&format!(
+                            "`{}` must implement `{}` \
+                             for any lifetime `'{}`",
+                            expected_trait_ref.self_ty(),
+                            expected_trait_ref,
+                            n,
+                        ));
+                    }
+                    (None, None) => {
+                        err.note(&format!(
+                            "`{}` must implement `{}`",
+                            expected_trait_ref.self_ty(),
+                            expected_trait_ref,
+                        ));
                     }
                 }
-                _ => {}
-            });
+            })
+        });
 
-        self.tcx
-            .for_each_free_region(&actual_trait_ref, |r| match r {
-                ty::ReVar(v) if Some(*v) == vid => {
-                    if has_vid.is_none() {
-                        has_vid = Some(counter);
-                        counter += 1;
-                    }
-                }
-                _ => {}
-            });
-
-        maybe_highlight(
-            sub_placeholder,
-            has_sub,
-            RegionHighlightMode::highlighting_placeholder,
-            || {
-                maybe_highlight(
-                    sup_placeholder,
-                    has_sup,
-                    RegionHighlightMode::highlighting_placeholder,
-                    || match (has_sub, has_sup) {
-                        (Some(n1), Some(n2)) => {
-                            err.note(&format!(
-                                "`{}` must implement `{}` \
-                                 for any two lifetimes `'{}` and `'{}`",
-                                expected_trait_ref.self_ty(),
-                                expected_trait_ref,
-                                std::cmp::min(n1, n2),
-                                std::cmp::max(n1, n2),
-                            ));
-                        }
-                        (Some(n), _) | (_, Some(n)) => {
-                            err.note(&format!(
-                                "`{}` must implement `{}` \
-                                 for any lifetime `'{}`",
-                                expected_trait_ref.self_ty(),
-                                expected_trait_ref,
-                                n,
-                            ));
-                        }
-                        (None, None) => {
-                            err.note(&format!(
-                                "`{}` must implement `{}`",
-                                expected_trait_ref.self_ty(),
-                                expected_trait_ref,
-                            ));
-                        }
-                    },
-                )
-            },
-        );
-
-        maybe_highlight(
-            vid,
-            has_vid,
-            RegionHighlightMode::highlighting_region_vid,
-            || match has_vid {
-                Some(n) => {
-                    err.note(&format!(
-                        "but `{}` only implements `{}` for some lifetime `'{}`",
-                        actual_trait_ref.self_ty(),
-                        actual_trait_ref,
-                        n
-                    ));
-                }
-                None => {
-                    err.note(&format!(
-                        "but `{}` only implements `{}`",
-                        actual_trait_ref.self_ty(),
-                        actual_trait_ref,
-                    ));
-                }
-            },
-        );
+        RegionHighlightMode::maybe_highlighting_region(vid, has_vid, || match has_vid {
+            Some(n) => {
+                err.note(&format!(
+                    "but `{}` only implements `{}` for some lifetime `'{}`",
+                    actual_trait_ref.self_ty(),
+                    actual_trait_ref,
+                    n
+                ));
+            }
+            None => {
+                err.note(&format!(
+                    "but `{}` only implements `{}`",
+                    actual_trait_ref.self_ty(),
+                    actual_trait_ref,
+                ));
+            }
+        });
 
         err.emit();
         ErrorReported
     }
-}
-
-/// If both `thing` and `counter` are `Some`, invoke
-/// `highlighting_func` with their contents (and the `op`). Else just
-/// invoke `op`.
-fn maybe_highlight<T, F, R>(
-    thing: Option<T>,
-    counter: Option<usize>,
-    highlighting_func: impl FnOnce(T, usize, F) -> R,
-    op: F,
-) -> R
-where
-    F: FnOnce() -> R,
-{
-    if let Some(thing) = thing {
-        if let Some(n) = counter {
-            return highlighting_func(thing, n, op);
-        }
-    }
-    op()
 }

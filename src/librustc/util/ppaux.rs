@@ -9,7 +9,7 @@ use ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
 use ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
 use ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
 use ty::{Placeholder, UnnormalizedProjection, Dynamic, Int, Uint, Infer};
-use ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
+use ty::{self, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
 use util::nodemap::FxHashSet;
 
 use std::cell::Cell;
@@ -30,10 +30,9 @@ use hir;
 /// unaffected.
 #[derive(Copy, Clone, Default)]
 pub struct RegionHighlightMode {
-    /// If enabled, when we see the selected region inference
-    /// variable, use `"'N"`; otherwise, use an empty string `""`
-    /// (which is our ordinary behavior).
-    highlight_region_vid: Option<(RegionVid, usize)>,
+    /// If enabled, when we see the selected region, use `"'N"`
+    /// instead of the ordinary behavior.
+    highlight_regions: [Option<(ty::RegionKind, usize)>; 3],
 
     /// If enabled, when printing a "free region" that originated from
     /// the given `ty::BoundRegion`, print it as `'1`. Free regions that would ordinarily
@@ -43,13 +42,6 @@ pub struct RegionHighlightMode {
     /// y: &'a u32)` and we want to give a name to the region of the
     /// reference `x`.
     highlight_bound_region: Option<(ty::BoundRegion, usize)>,
-
-    /// If enabled, when printing a "placeholder" (what we get when
-    /// substituting a universally quantified region as in `for<'a> T:
-    /// Foo<'a>`), print out instead `'N`.
-    ///
-    /// (Unlike other modes, we can highlight more than one placeholder at a time.)
-    highlight_placeholders: [Option<(ty::PlaceholderRegion, usize)>; 2],
 }
 
 thread_local! {
@@ -79,20 +71,72 @@ impl RegionHighlightMode {
         })
     }
 
+    /// If `region` and `number` are both `Some`, invoke
+    /// `highlighting_region`. Otherwise, just invoke `op` directly.
+    pub fn maybe_highlighting_region<R>(
+        region: Option<ty::Region<'_>>,
+        number: Option<usize>,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        if let Some(k) = region {
+            if let Some(n) = number {
+                return Self::highlighting_region(k, n, op);
+            }
+        }
+
+        op()
+    }
+
     /// During the execution of `op`, highlight the region inference
     /// vairable `vid` as `'N`.  We can only highlight one region vid
     /// at a time.
-    pub fn highlighting_region_vid<R>(vid: RegionVid, number: usize, op: impl FnOnce() -> R) -> R {
+    pub fn highlighting_region<R>(region: ty::Region<'_>, number: usize, op: impl FnOnce() -> R) -> R {
         let old_mode = Self::get();
-        assert!(old_mode.highlight_region_vid.is_none());
-        Self::set(
-            old_mode,
-            Self {
-                highlight_region_vid: Some((vid, number)),
-                ..old_mode
-            },
-            op,
-        )
+        let mut new_mode = old_mode;
+        let first_avail_slot = new_mode.highlight_regions.iter_mut()
+            .filter(|s| s.is_none())
+            .next()
+            .unwrap_or_else(|| {
+                panic!(
+                    "can only highlight {} placeholders at a time",
+                    old_mode.highlight_regions.len(),
+                )
+            });
+        *first_avail_slot = Some((*region, number));
+        Self::set(old_mode, new_mode, op)
+    }
+
+    /// Convenience wrapper for `highlighting_region`
+    pub fn highlighting_region_vid<R>(
+        vid: ty::RegionVid,
+        number: usize,
+        op: impl FnOnce() -> R,
+    ) -> R {
+        Self::highlighting_region(&ty::ReVar(vid), number, op)
+    }
+
+    /// Returns true if any placeholders are highlighted.
+    fn any_region_vids_highlighted(&self) -> bool {
+        Self::get()
+            .highlight_regions
+            .iter()
+            .any(|h| match h {
+                Some((ty::ReVar(_), _)) => true,
+                _ => false,
+            })
+    }
+
+    /// Returns `Some(n)` with the number to use for the given region,
+    /// if any.
+    fn region_highlighted(&self, region: ty::Region<'_>) -> Option<usize> {
+        Self::get()
+            .highlight_regions
+            .iter()
+            .filter_map(|h| match h {
+                Some((r, n)) if r == region => Some(*n),
+                _ => None,
+            })
+            .next()
     }
 
     /// During the execution of `op`, highlight the given bound
@@ -115,50 +159,20 @@ impl RegionHighlightMode {
         )
     }
 
-    /// During the execution of `op`, highlight the given placeholders
-    /// with the given numbers. Unlike other modes: non-highlighted
-    /// placeholders are printed as `'_` (where they might normally print
-    /// differently. This may want to be tweaked; but we do it for two reasons
-    ///
-    /// (a) to draw attention to the placeholders we are trying to highlight
-    /// (b) because placeholder names can come from other scopes than the one
-    ///     in which the error occurred, so that can be misleading.
-    ///
-    /// We can highlight up to two placeholders at a time.
-    pub fn highlighting_placeholder<R>(
-        placeholder: ty::PlaceholderRegion,
-        number: usize,
-        op: impl FnOnce() -> R,
-    ) -> R {
-        let old_mode = Self::get();
-        let mut new_mode = old_mode;
-        let first_avail_slot = new_mode.highlight_placeholders.iter_mut()
-            .filter(|s| s.is_none())
-            .next()
-            .unwrap_or_else(|| {
-                panic!(
-                    "can only highlight {} placeholders at a time",
-                    old_mode.highlight_placeholders.len(),
-                )
-            });
-        *first_avail_slot = Some((placeholder, number));
-        Self::set(old_mode, new_mode, op)
-    }
-
     /// Returns true if any placeholders are highlighted.
     pub fn any_placeholders_highlighted(&self) -> bool {
-        self.highlight_placeholders.iter().any(|p| p.is_some())
+        Self::get()
+            .highlight_regions
+            .iter()
+            .any(|h| match h {
+                Some((ty::RePlaceholder(_), _)) => true,
+                _ => false,
+            })
     }
 
     /// Returns `Some(N)` if the placeholder `p` is highlighted to print as `'N`.
     pub fn placeholder_highlight(&self, p: ty::PlaceholderRegion) -> Option<usize> {
-        self.highlight_placeholders
-            .iter()
-            .filter_map(|h| match h {
-                &Some((h, n)) if h == p => Some(n),
-                _ => None,
-            })
-            .next()
+        self.region_highlighted(&ty::RePlaceholder(p))
     }
 }
 
@@ -886,6 +900,11 @@ define_print! {
                 return self.print_debug(f, cx);
             }
 
+            // Watch out for region highlights.
+            if let Some(n) = RegionHighlightMode::get().region_highlighted(self) {
+                return write!(f, "'{:?}", n);
+            }
+
             // These printouts are concise.  They do not contain all the information
             // the user might want to diagnose an error, but there is basically no way
             // to fit that into a short string.  Hence the recommendation to use
@@ -920,7 +939,7 @@ define_print! {
                     }
                 }
                 ty::ReVar(region_vid) => {
-                    if RegionHighlightMode::get().highlight_region_vid.is_some() {
+                    if RegionHighlightMode::get().any_region_vids_highlighted() {
                         write!(f, "{:?}", region_vid)
                     } else if cx.identify_regions {
                         write!(f, "'{}rv", region_vid.index())
@@ -1057,12 +1076,11 @@ impl fmt::Debug for ty::FloatVid {
 
 impl fmt::Debug for ty::RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if let Some((region, counter)) = RegionHighlightMode::get().highlight_region_vid {
-            debug!("RegionVid.fmt: region={:?} self={:?} counter={:?}", region, self, counter);
-            return if *self == region {
-                write!(f, "'{:?}", counter)
+        if RegionHighlightMode::get().any_region_vids_highlighted() {
+            if let Some(counter) = RegionHighlightMode::get().region_highlighted(&ty::ReVar(*self)) {
+                return write!(f, "'{:?}", counter);
             } else {
-                write!(f, "'_")
+                return write!(f, "'_");
             }
         }
 
