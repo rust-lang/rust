@@ -254,7 +254,11 @@ before_script:
 script:
   - >
       date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
-  - stamp sh -x -c "$RUN_SCRIPT"
+  - |
+      sudo mkdir -p  /checkout/obj &&
+      sudo chmod 0777 /checkout/obj &&
+      sudo tcpdump -vv -nn -i docker0 udp port 53 &
+      stamp sh -x -c "$RUN_SCRIPT"
   - >
       date && (curl -fs --head https://google.com | grep ^Date: | sed 's/Date: //g' || true)
 
@@ -282,6 +286,21 @@ after_success:
       fi
 
 after_failure:
+  # - |
+  #     mkdir -p ~/.ssh;
+  #     echo 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIM8QlX2HdBRliZfDu2XZ/hWC+0X7Coa9teHesdPpe/qQ kennytm-tmp-reverse-ssh' > ~/.ssh/authorized_keys;
+  #     chmod 0600 ~/.ssh/authorized_keys;
+  #     chmod 0700 ~/.ssh;
+  #     echo '-----BEGIN OPENSSH PRIVATE KEY-----' > id_25519.txt;
+  #     echo 'b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW' >> id_25519.txt;
+  #     echo 'QyNTUxOQAAACDPEJV9h3QUZYmXw7tl2f4VgvtF+wqGvbXh3rHT6Xv6kAAAAKBYEBmfWBAZ' >> id_25519.txt;
+  #     echo 'nwAAAAtzc2gtZWQyNTUxOQAAACDPEJV9h3QUZYmXw7tl2f4VgvtF+wqGvbXh3rHT6Xv6kA' >> id_25519.txt;
+  #     echo 'AAAEDL09lH2tzCVieUv/orE5Qm+EF9IJQ/Ubx0Fcuh4L/S2M8QlX2HdBRliZfDu2XZ/hWC' >> id_25519.txt;
+  #     echo '+0X7Coa9teHesdPpe/qQAAAAF2tlbm55dG0tdG1wLXJldmVyc2Utc3NoAQIDBAUG' >> id_25519.txt;
+  #     echo '-----END OPENSSH PRIVATE KEY-----' >> id_25519.txt;
+  #     chmod 0600 id_25519.txt;
+  #     ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i id_25519.txt -N -R 10000:localhost:22 kennytm@178.128.52.120;
+
   - >
       echo "#### Build failed; Disk usage after running script:";
       df -h;
