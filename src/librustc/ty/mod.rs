@@ -49,7 +49,6 @@ use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use rustc_data_structures::sync::{self, Lrc, ParallelIterator, par_iter};
 use std::slice;
-use std::vec::IntoIter;
 use std::{mem, ptr};
 use syntax::ast::{self, DUMMY_NODE_ID, Name, Ident, NodeId};
 use syntax::attr;
@@ -1343,49 +1342,88 @@ impl<'tcx> ToPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
     }
 }
 
+// A custom iterator used by Predicate::walk_tys.
+enum WalkTysIter<'tcx, I, J, K>
+    where I: Iterator<Item = Ty<'tcx>>,
+          J: Iterator<Item = Ty<'tcx>>,
+          K: Iterator<Item = Ty<'tcx>>
+{
+    None,
+    One(Ty<'tcx>),
+    Two(Ty<'tcx>, Ty<'tcx>),
+    Types(I),
+    InputTypes(J),
+    ProjectionTypes(K)
+}
+
+impl<'tcx, I, J, K> Iterator for WalkTysIter<'tcx, I, J, K>
+    where I: Iterator<Item = Ty<'tcx>>,
+          J: Iterator<Item = Ty<'tcx>>,
+          K: Iterator<Item = Ty<'tcx>>
+{
+    type Item = Ty<'tcx>;
+
+    fn next(&mut self) -> Option<Ty<'tcx>> {
+        match *self {
+            WalkTysIter::None => None,
+            WalkTysIter::One(item) => {
+                *self = WalkTysIter::None;
+                Some(item)
+            },
+            WalkTysIter::Two(item1, item2) => {
+                *self = WalkTysIter::One(item2);
+                Some(item1)
+            },
+            WalkTysIter::Types(ref mut iter) => {
+                iter.next()
+            },
+            WalkTysIter::InputTypes(ref mut iter) => {
+                iter.next()
+            },
+            WalkTysIter::ProjectionTypes(ref mut iter) => {
+                iter.next()
+            }
+        }
+    }
+}
+
 impl<'tcx> Predicate<'tcx> {
     /// Iterates over the types in this predicate. Note that in all
     /// cases this is skipping over a binder, so late-bound regions
     /// with depth 0 are bound by the predicate.
-    pub fn walk_tys(&self) -> IntoIter<Ty<'tcx>> {
-        let vec: Vec<_> = match *self {
+    pub fn walk_tys(&'a self) -> impl Iterator<Item = Ty<'tcx>> + 'a {
+        match *self {
             ty::Predicate::Trait(ref data) => {
-                data.skip_binder().input_types().collect()
+                WalkTysIter::InputTypes(data.skip_binder().input_types())
             }
             ty::Predicate::Subtype(binder) => {
                 let SubtypePredicate { a, b, a_is_expected: _ } = binder.skip_binder();
-                vec![a, b]
+                WalkTysIter::Two(a, b)
             }
             ty::Predicate::TypeOutlives(binder) => {
-                vec![binder.skip_binder().0]
+                WalkTysIter::One(binder.skip_binder().0)
             }
             ty::Predicate::RegionOutlives(..) => {
-                vec![]
+                WalkTysIter::None
             }
             ty::Predicate::Projection(ref data) => {
                 let inner = data.skip_binder();
-                inner.projection_ty.substs.types().chain(Some(inner.ty)).collect()
+                WalkTysIter::ProjectionTypes(
+                    inner.projection_ty.substs.types().chain(Some(inner.ty)))
             }
             ty::Predicate::WellFormed(data) => {
-                vec![data]
+                WalkTysIter::One(data)
             }
             ty::Predicate::ObjectSafe(_trait_def_id) => {
-                vec![]
+                WalkTysIter::None
             }
             ty::Predicate::ClosureKind(_closure_def_id, closure_substs, _kind) => {
-                closure_substs.substs.types().collect()
+                WalkTysIter::Types(closure_substs.substs.types())
             }
             ty::Predicate::ConstEvaluatable(_, substs) => {
-                substs.types().collect()
+                WalkTysIter::Types(substs.types())
             }
-        };
-
-        // FIXME: The only reason to collect into a vector here is that I was
-        // too lazy to make the full (somewhat complicated) iterator
-        // type that would be needed here. But I wanted this fn to
-        // return an iterator conceptually, rather than a `Vec`, so as
-        // to be closer to `Ty::walk`.
-        vec.into_iter()
+        }
     }
 
     pub fn to_opt_poly_trait_ref(&self) -> Option<PolyTraitRef<'tcx>> {
