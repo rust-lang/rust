@@ -10,7 +10,7 @@
 
 use std::borrow::Borrow;
 use std::cmp::Ordering;
-use std::convert::From;
+use std::iter::FromIterator;
 use std::mem;
 use std::ops::{RangeBounds, Bound, Index, IndexMut};
 
@@ -272,9 +272,9 @@ impl<K: Ord, V, Q: Borrow<K>> IndexMut<Q> for SortedMap<K, V> {
     }
 }
 
-impl<K: Ord, V, I: Iterator<Item=(K, V)>> From<I> for SortedMap<K, V> {
-    fn from(data: I) -> Self {
-        let mut data: Vec<(K, V)> = data.collect();
+impl<K: Ord, V> FromIterator<(K, V)> for SortedMap<K, V> {
+    fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
+        let mut data: Vec<(K, V)> = iter.into_iter().collect();
         data.sort_unstable_by(|&(ref k1, _), &(ref k2, _)| k1.cmp(k2));
         data.dedup_by(|&mut (ref k1, _), &mut (ref k2, _)| {
             k1.cmp(k2) == Ordering::Equal
