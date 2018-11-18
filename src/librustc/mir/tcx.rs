@@ -334,6 +334,29 @@ impl<'tcx> NeoPlace<'tcx> {
             }
         }
     }
+
+    // Generate types of sub-places
+    //
+    // Base.[a, b]
+    // ^^^^-- base_ty
+    // ^^^^^^^-- elem1_ty
+    // ^^^^^^^^^^--elem2_ty
+    //
+    // [base_ty, elem1_ty, elem2_ty]
+    pub fn place_tys<'cx, 'gcx>(
+        &self,
+        mir: &'cx Mir<'tcx>,
+        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    ) -> Vec<PlaceTy<'tcx>> {
+        let mut base_ty = PlaceTy::from(self.base.ty(mir));
+        let mut place_tys: Vec<PlaceTy<'tcx>> = vec![base_ty];
+        for elem in self.elems.iter() {
+            let elem_ty = base_ty.projection_ty(tcx, elem);
+            place_tys.push(elem_ty);
+            base_ty = elem_ty;
+        }
+        place_tys
+    }
 }
 
 pub enum RvalueInitializationState {

@@ -2129,7 +2129,7 @@ impl<'tcx> NeoPlace<'tcx> {
         self,
         tcx: TyCtxt<'_, '_, 'tcx>,
         adt_def: &'tcx AdtDef,
-        variant_index: usize,
+        variant_index: VariantIdx,
     ) -> Self {
         self.elem(tcx, ProjectionElem::Downcast(adt_def, variant_index))
     }
@@ -3619,7 +3619,9 @@ where
     V: TypeFoldable<'tcx>,
     T: TypeFoldable<'tcx>,
 {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+    default fn super_fold_with<'gcx: 'tcx, F>(&self, folder: &mut F) -> Self
+        where F: TypeFolder<'gcx, 'tcx>
+    {
         use self::ProjectionElem::*;
         match self {
             Deref => Deref,
@@ -3629,7 +3631,7 @@ where
         }
     }
 
-    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
+    default fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
         use self::ProjectionElem::*;
         match self {
             Field(_, ty) => ty.visit_with(visitor),

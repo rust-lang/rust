@@ -8,6 +8,13 @@ use rustc::mir::visit::{
 };
 use rustc::mir::{self, Location, Mir, Local};
 use rustc::ty::{RegionVid, TyCtxt};
+<<<<<<< HEAD
+||||||| merged common ancestors
+use rustc::mir::PlaceBase;
+use rustc::ty::{RegionVid, TyCtxt};
+=======
+use rustc::mir::PlaceBase;
+>>>>>>> generate tys of sub-places
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::bit_set::BitSet;

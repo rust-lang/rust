@@ -788,7 +788,6 @@ macro_rules! make_mir_visitor {
                     for elem in elems.iter().cloned().rev() {
                         self.visit_projection_elem(
                             &$($mutability)* elem.clone(),
-                            context,
                             location
                         );
                     }

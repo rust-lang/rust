@@ -1096,7 +1096,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         );
 
         let annotated_type = self.mir.user_type_annotations[user_ty.base].inferred_ty;
-        let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
+        let mut curr_projected_ty = PlaceTy::from(annotated_type);
 
         let tcx = self.infcx.tcx;
 
