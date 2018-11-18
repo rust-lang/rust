@@ -34,13 +34,13 @@ fn extend_vector() {
 fn mixed_extend_resize_vector() {
     // Mismatching len
     let mut mismatching_len = Vec::with_capacity(30);
+    mismatching_len.extend(repeat(0).take(40));
 
     // Slow initialization
     let mut resized_vec = Vec::with_capacity(30);
-    let mut extend_vec = Vec::with_capacity(30);
-
     resized_vec.resize(30, 0);
-    mismatching_len.extend(repeat(0).take(40));
+
+    let mut extend_vec = Vec::with_capacity(30);
     extend_vec.extend(repeat(0).take(30));
 }
 
@@ -69,4 +69,15 @@ fn unsafe_vector() {
     unsafe {
         unsafe_vec.set_len(200);
     }
+}
+
+fn do_stuff(vec: &mut Vec<u8>) {
+
+}
+
+fn extend_vector_with_manipulations_between() {
+    let len = 300;
+    let mut vec1:Vec<u8> = Vec::with_capacity(len);
+    do_stuff(&mut vec1);
+    vec1.extend(repeat(0).take(len));
 }

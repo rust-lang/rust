@@ -7,7 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::rustc::hir::intravisit::{walk_expr, walk_stmt, walk_block, NestedVisitorMap, Visitor};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, Lint};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::hir::*;
@@ -353,20 +353,41 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
-    fn visit_expr(&mut self, expr: &'tcx Expr) {
-        // Stop the search if we already found a slow zero-filling initialization
-        if self.slow_expression.is_some() {
-            return
-        }
+    fn visit_stmt(&mut self, stmt: &'tcx Stmt) {
+        if self.initialization_found {
+            match stmt.node {
+                StmtKind::Expr(ref expr, _) |
+                StmtKind::Semi(ref expr, _) => {
+                    self.search_slow_extend_filling(expr);
+                    self.search_slow_resize_filling(expr);
+                    self.search_unsafe_set_len(expr);
+                },
+                _ => (),
+            }
 
+            self.initialization_found = false;
+        } else {
+            walk_stmt(self, stmt);
+        }
+    }
+
+    fn visit_block(&mut self, block: &'tcx Block) {
+        if self.initialization_found {
+            if let Some(ref s) = block.stmts.get(0) {
+                self.visit_stmt( s)
+            }
+
+            self.initialization_found = false;
+        } else {
+            walk_block(self, block);
+        }
+    }
+
+    fn visit_expr(&mut self, expr: &'tcx Expr) {
         // Skip all the expressions previous to the vector initialization
         if self.vec_alloc.allocation_expr.id == expr.id {
             self.initialization_found = true;
         }
-        
-        self.search_slow_extend_filling(expr);
-        self.search_slow_resize_filling(expr);
-        self.search_unsafe_set_len(expr);
 
         walk_expr(self, expr);
     }

@@ -17,20 +17,18 @@ error: slow zero-filling initialization
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:42:5
+  --> $DIR/slow_vector_initialization.rs:41:5
    |
-39 |     let mut resized_vec = Vec::with_capacity(30);
+40 |     let mut resized_vec = Vec::with_capacity(30);
    |                           ---------------------- help: consider replace allocation with: `vec![0; 30]`
-...
-42 |     resized_vec.resize(30, 0);
+41 |     resized_vec.resize(30, 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
   --> $DIR/slow_vector_initialization.rs:44:5
    |
-40 |     let mut extend_vec = Vec::with_capacity(30);
+43 |     let mut extend_vec = Vec::with_capacity(30);
    |                          ---------------------- help: consider replace allocation with: `vec![0; 30]`
-...
 44 |     extend_vec.extend(repeat(0).take(30));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
