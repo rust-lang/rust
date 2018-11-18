@@ -19,28 +19,21 @@ matrix:
   include:
     - os: linux
       <<: *rust_build
-    # - language: rust
-    #   rust: nightly
-    #   before_script:
-    #     - rustup component add clippy-preview
-    #     - rustup component add rustfmt-preview
-    #   script:
-    #     - cargo fmt --all -- --check || true
-    #     - cargo clippy
     - language: node_js
       node_js: node
       before_script: false
       script:
         - cd editors/code && npm ci && npm run travis
 
-  allow_failures:
     - os: windows
       if: branch = master
       before_script:
         - dos2unix ./crates/ra_syntax/tests/data/parser/**/*.txt
         - dos2unix ./crates/ra_syntax/tests/data/parser/**/*.rs
       <<: *rust_build
-    - rust nightly
+
+  allow_failures:
+    - os: windows
 
 branches:
   only:
