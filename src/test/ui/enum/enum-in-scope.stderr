@@ -2,7 +2,7 @@ error[E0530]: let bindings cannot shadow tuple structs
   --> $DIR/enum-in-scope.rs:14:9
    |
 LL | struct hello(isize);
-   | -------------------- a tuple struct `hello` is defined here
+   | -------------------- the tuple struct `hello` is defined here
 ...
 LL |     let hello = 0; //~ERROR let bindings cannot shadow tuple structs
    |         ^^^^^ cannot be named the same as a tuple struct

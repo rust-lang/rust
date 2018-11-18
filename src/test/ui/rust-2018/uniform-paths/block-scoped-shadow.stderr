@@ -1,45 +1,57 @@
-error: `Foo` import is ambiguous
-  --> $DIR/block-scoped-shadow.rs:21:9
+error[E0659]: `Foo` is ambiguous (name vs any other name during import resolution)
+  --> $DIR/block-scoped-shadow.rs:19:9
    |
-LL | enum Foo { A, B }
-   | ----------------- can refer to `self::Foo`
-...
-LL |     enum Foo {}
-   |     ----------- shadowed by block-scoped `Foo`
 LL |     use Foo::*;
-   |         ^^^
+   |         ^^^ ambiguous name
    |
-   = help: write `self::Foo` explicitly instead
-   = note: relative `use` paths enabled by `#![feature(uniform_paths)]`
+note: `Foo` could refer to the enum defined here
+  --> $DIR/block-scoped-shadow.rs:18:5
+   |
+LL |     enum Foo { A, B }
+   |     ^^^^^^^^^^^^^^^^^
+note: `Foo` could also refer to the enum defined here
+  --> $DIR/block-scoped-shadow.rs:13:1
+   |
+LL | enum Foo {}
+   | ^^^^^^^^^^^
+   = help: use `self::Foo` to refer to this enum unambiguously
 
-error: `std` import is ambiguous
-  --> $DIR/block-scoped-shadow.rs:28:9
+error[E0659]: `std` is ambiguous (name vs any other name during import resolution)
+  --> $DIR/block-scoped-shadow.rs:26:9
    |
-LL | struct std;
-   | ----------- can refer to `self::std`
-...
-LL |     enum std {}
-   |     ----------- shadowed by block-scoped `std`
 LL |     use std as foo;
-   |         ^^^ can refer to external crate `::std`
+   |         ^^^ ambiguous name
    |
-   = help: write `::std` or `self::std` explicitly instead
-   = note: relative `use` paths enabled by `#![feature(uniform_paths)]`
-
-error: `std` import is ambiguous
-  --> $DIR/block-scoped-shadow.rs:28:9
+note: `std` could refer to the enum defined here
+  --> $DIR/block-scoped-shadow.rs:25:5
+   |
+LL |     enum std {}
+   |     ^^^^^^^^^^^
+note: `std` could also refer to the struct defined here
+  --> $DIR/block-scoped-shadow.rs:15:1
    |
 LL | struct std;
-   | ----------- can refer to `self::std`
-...
+   | ^^^^^^^^^^^
+   = help: use `self::std` to refer to this struct unambiguously
+
+error[E0659]: `std` is ambiguous (name vs any other name during import resolution)
+  --> $DIR/block-scoped-shadow.rs:26:9
+   |
+LL |     use std as foo;
+   |         ^^^ ambiguous name
+   |
+note: `std` could refer to the function defined here
+  --> $DIR/block-scoped-shadow.rs:24:5
+   |
 LL |     fn std() {}
-   |     ----------- shadowed by block-scoped `std`
-LL |     enum std {}
-LL |     use std as foo;
-   |         ^^^
+   |     ^^^^^^^^^^^
+note: `std` could also refer to the unit struct defined here
+  --> $DIR/block-scoped-shadow.rs:15:1
    |
-   = help: write `self::std` explicitly instead
-   = note: relative `use` paths enabled by `#![feature(uniform_paths)]`
+LL | struct std;
+   | ^^^^^^^^^^^
+   = help: use `self::std` to refer to this unit struct unambiguously
 
 error: aborting due to 3 previous errors
 
+For more information about this error, try `rustc --explain E0659`.

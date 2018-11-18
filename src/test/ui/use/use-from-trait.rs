@@ -18,11 +18,11 @@ use Trait::C;
 
 use Foo::new;
 //~^ ERROR unresolved import `Foo` [E0432]
-//~| Not a module `Foo`
+//~| not a module `Foo`
 
 use Foo::C2;
 //~^ ERROR unresolved import `Foo` [E0432]
-//~| Not a module `Foo`
+//~| not a module `Foo`
 
 pub trait Trait {
     fn foo();

@@ -2,7 +2,7 @@ error[E0432]: unresolved import `foobar`
   --> $DIR/local-path-suggestions-2015.rs:34:5
    |
 LL | use foobar::Baz;
-   |     ^^^^^^ Did you mean `aux_baz::foobar`?
+   |     ^^^^^^ did you mean `aux_baz::foobar`?
 
 error: aborting due to previous error
 

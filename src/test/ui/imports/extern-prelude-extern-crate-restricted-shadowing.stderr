@@ -1,10 +1,11 @@
-error[E0659]: `Vec` is ambiguous
+error[E0659]: `Vec` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:15:9
    |
 LL |         Vec::panic!(); //~ ERROR `Vec` is ambiguous
    |         ^^^ ambiguous name
    |
-note: `Vec` could refer to the name defined here
+   = note: `Vec` could refer to a struct from prelude
+note: `Vec` could also refer to the extern crate imported here
   --> $DIR/extern-prelude-extern-crate-restricted-shadowing.rs:7:9
    |
 LL |         extern crate std as Vec;
@@ -12,8 +13,6 @@ LL |         extern crate std as Vec;
 ...
 LL | define_vec!();
    | -------------- in this macro invocation
-note: `Vec` could also refer to the name defined here
-   = note: macro-expanded items do not shadow when used in a macro invocation path
 
 error: aborting due to previous error
 
