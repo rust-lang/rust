@@ -1622,7 +1622,7 @@ fn test_range_step() {
 fn test_step_by_skip() {
     assert_eq!((0..640).step_by(128).skip(1).collect::<Vec<_>>(), [128, 256, 384, 512]);
     assert_eq!((0..=50).step_by(10).nth(3), Some(30));
-    assert_eq!((250..=255u8).step_by(10).nth(3), Some(230));
+    assert_eq!((200..=255u8).step_by(10).nth(3), Some(230));
 }
 
 #[test]
