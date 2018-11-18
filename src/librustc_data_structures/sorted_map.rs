@@ -260,6 +260,14 @@ impl<K: Ord, V> SortedMap<K, V> {
 
         (start, end)
     }
+
+    #[inline]
+    pub fn contains_key<Q>(&self, key: &Q) -> bool
+        where K: Borrow<Q>,
+              Q: Ord + ?Sized
+    {
+        self.get(key).is_some()
+    }
 }
 
 impl<K: Ord, V> IntoIterator for SortedMap<K, V> {
