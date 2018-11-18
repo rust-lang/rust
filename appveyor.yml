@@ -38,9 +38,9 @@ test_script:
     - set RUSTFLAGS=-g
     - set RUST_BACKTRACE=1
     - cargo build --release --all-targets --all-features
-    - cargo test --release
+    - cargo test --release --all-features
     - set MIRI_SYSROOT=%USERPROFILE%\.xargo\HOST
-    - cargo test --release
+    - cargo test --release --all-features
 
 notifications:
     - provider: Email
