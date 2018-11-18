@@ -28,10 +28,58 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 _,
                 ty::RePlaceholder(sup_placeholder),
             )) => if expected.def_id == found.def_id {
-                return Some(self.try_report_two_placeholders_trait(
+                return Some(self.try_report_placeholders_trait(
                     Some(*vid),
                     cause,
                     Some(*sub_placeholder),
+                    Some(*sup_placeholder),
+                    expected.def_id,
+                    expected.substs,
+                    found.substs,
+                ));
+            } else {
+                // I actually can't see why this would be the case ever.
+            },
+
+            Some(RegionResolutionError::SubSupConflict(
+                vid,
+                _,
+                SubregionOrigin::Subtype(TypeTrace {
+                    cause,
+                    values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
+                }),
+                ty::RePlaceholder(sub_placeholder),
+                _,
+                _,
+            )) => if expected.def_id == found.def_id {
+                return Some(self.try_report_placeholders_trait(
+                    Some(*vid),
+                    cause,
+                    Some(*sub_placeholder),
+                    None,
+                    expected.def_id,
+                    expected.substs,
+                    found.substs,
+                ));
+            } else {
+                // I actually can't see why this would be the case ever.
+            },
+
+            Some(RegionResolutionError::SubSupConflict(
+                vid,
+                _,
+                SubregionOrigin::Subtype(TypeTrace {
+                    cause,
+                    values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
+                }),
+                _,
+                _,
+                ty::RePlaceholder(sup_placeholder),
+            )) => if expected.def_id == found.def_id {
+                return Some(self.try_report_placeholders_trait(
+                    Some(*vid),
+                    cause,
+                    None,
                     Some(*sup_placeholder),
                     expected.def_id,
                     expected.substs,
@@ -56,7 +104,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
     //    = note: Due to a where-clause on the function `all`,
     //    = note: `T` must implement `...` for any two lifetimes `'1` and `'2`.
     //    = note: However, the type `T` only implements `...` for some specific lifetime `'2`.
-    fn try_report_two_placeholders_trait(
+    fn try_report_placeholders_trait(
         &self,
         vid: Option<ty::RegionVid>,
         cause: &ObligationCause<'tcx>,
