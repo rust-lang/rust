@@ -1305,6 +1305,27 @@ fn check_union<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     check_packed(tcx, span, def_id);
 }
 
+fn check_opaque<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+    substs: &'tcx Substs<'tcx>,
+    span: Span,
+) {
+    if let Err(partially_expanded_type) = tcx.try_expand_impl_trait_type(def_id, substs) {
+        let mut err = struct_span_err!(
+            tcx.sess, span, E0720,
+            "opaque type expands to a recursive type",
+        );
+        err.span_label(span, "expands to self-referential type");
+        if let ty::Opaque(..) = partially_expanded_type.sty {
+            err.note("type resolves to itself");
+        } else {
+            err.note(&format!("expanded type is `{}`", partially_expanded_type));
+        }
+        err.emit();
+    }
+}
+
 pub fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item) {
     debug!(
         "check_item_type(it.id={}, it.name={})",
@@ -1351,7 +1372,16 @@ pub fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Ite
         hir::ItemKind::Union(..) => {
             check_union(tcx, it.id, it.span);
         }
-        hir::ItemKind::Existential(..) | hir::ItemKind::Ty(..) => {
+        hir::ItemKind::Existential(..) => {
+            let def_id = tcx.hir().local_def_id(it.id);
+            let pty_ty = tcx.type_of(def_id);
+            let generics = tcx.generics_of(def_id);
+
+            check_bounds_are_used(tcx, &generics, pty_ty);
+            let substs = Substs::identity_for_item(tcx, def_id);
+            check_opaque(tcx, def_id, substs, it.span);
+        }
+        hir::ItemKind::Ty(..) => {
             let def_id = tcx.hir().local_def_id(it.id);
             let pty_ty = tcx.type_of(def_id);
             let generics = tcx.generics_of(def_id);
