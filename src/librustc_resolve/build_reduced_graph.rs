@@ -133,14 +133,17 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // The root is prepended lazily, when the first non-empty prefix or terminating glob
         // appears, so imports in braced groups can have roots prepended independently.
         let is_glob = if let ast::UseTreeKind::Glob = use_tree.kind { true } else { false };
-        let crate_root = if !self.session.rust_2018() &&
-                prefix_iter.peek().map_or(is_glob, |seg| !seg.ident.is_path_segment_keyword()) {
-            Some(Segment::from_ident(Ident::new(
-                keywords::CrateRoot.name(), use_tree.prefix.span.shrink_to_lo()
-            )))
-        } else {
-            None
-        };
+        let crate_root = match prefix_iter.peek() {
+            Some(seg) if !seg.ident.is_path_segment_keyword() && seg.ident.span.rust_2015() => {
+                Some(seg.ident.span.ctxt())
+            }
+            None if is_glob && use_tree.span.rust_2015() => {
+                Some(use_tree.span.ctxt())
+            }
+            _ => None,
+        }.map(|ctxt| Segment::from_ident(Ident::new(
+            keywords::CrateRoot.name(), use_tree.prefix.span.shrink_to_lo().with_ctxt(ctxt)
+        )));
 
         let prefix = crate_root.into_iter().chain(prefix_iter).collect::<Vec<_>>();
         debug!("build_reduced_graph_for_use_tree: prefix={:?}", prefix);

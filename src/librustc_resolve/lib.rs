@@ -2354,14 +2354,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     }
 
     fn future_proof_import(&mut self, use_tree: &ast::UseTree) {
-        if !self.session.rust_2018() {
-            return;
-        }
-
         let segments = &use_tree.prefix.segments;
         if !segments.is_empty() {
             let ident = segments[0].ident;
-            if ident.is_path_segment_keyword() {
+            if ident.is_path_segment_keyword() || ident.span.rust_2015() {
                 return;
             }
 
@@ -3181,10 +3177,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
             // Try to lookup the name in more relaxed fashion for better error reporting.
             let ident = path.last().unwrap().ident;
-            let candidates = this.lookup_import_candidates(ident.name, ns, is_expected);
+            let candidates = this.lookup_import_candidates(ident, ns, is_expected);
             if candidates.is_empty() && is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
                 let enum_candidates =
-                    this.lookup_import_candidates(ident.name, ns, is_enum_variant);
+                    this.lookup_import_candidates(ident, ns, is_enum_variant);
                 let mut enum_candidates = enum_candidates.iter()
                     .map(|suggestion| import_candidate_to_paths(&suggestion)).collect::<Vec<_>>();
                 enum_candidates.sort();
@@ -3772,7 +3768,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         continue;
                     }
                     if name == keywords::Extern.name() ||
-                       name == keywords::CrateRoot.name() && self.session.rust_2018() {
+                       name == keywords::CrateRoot.name() && ident.span.rust_2018() {
                         module =
                             Some(ModuleOrUniformRoot::UniformRoot(UniformRootKind::ExternPrelude));
                         continue;
@@ -3875,7 +3871,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     let msg = if module_def == self.graph_root.def() {
                         let is_mod = |def| match def { Def::Mod(..) => true, _ => false };
                         let mut candidates =
-                            self.lookup_import_candidates(name, TypeNS, is_mod);
+                            self.lookup_import_candidates(ident, TypeNS, is_mod);
                         candidates.sort_by_cached_key(|c| {
                             (c.path.segments.len(), c.path.to_string())
                         });
@@ -3911,11 +3907,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         path_span: Span,
         second_binding: Option<&NameBinding>,
     ) {
-        // In the 2018 edition this lint is a hard error, so nothing to do
-        if self.session.rust_2018() {
-            return
-        }
-
         let (diag_id, diag_span) = match crate_lint {
             CrateLint::No => return,
             CrateLint::SimplePath(id) => (id, path_span),
@@ -3924,8 +3915,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         };
 
         let first_name = match path.get(0) {
-            Some(ident) => ident.ident.name,
-            None => return,
+            // In the 2018 edition this lint is a hard error, so nothing to do
+            Some(seg) if seg.ident.span.rust_2015() => seg.ident.name,
+            _ => return,
         };
 
         // We're only interested in `use` paths which should start with
@@ -4507,7 +4499,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     }
 
     fn lookup_import_candidates_from_module<FilterFn>(&mut self,
-                                          lookup_name: Name,
+                                          lookup_ident: Ident,
                                           namespace: Namespace,
                                           start_module: &'a ModuleData<'a>,
                                           crate_name: Ident,
@@ -4534,11 +4526,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 if !name_binding.is_importable() { return; }
 
                 // collect results based on the filter function
-                if ident.name == lookup_name && ns == namespace {
+                if ident.name == lookup_ident.name && ns == namespace {
                     if filter_fn(name_binding.def()) {
                         // create the path
                         let mut segms = path_segments.clone();
-                        if self.session.rust_2018() {
+                        if lookup_ident.span.rust_2018() {
                             // crate-local absolute paths start with `crate::` in edition 2018
                             // FIXME: may also be stabilized for Rust 2015 (Issues #45477, #44660)
                             segms.insert(
@@ -4572,7 +4564,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
                     let is_extern_crate_that_also_appears_in_prelude =
                         name_binding.is_extern_crate() &&
-                        self.session.rust_2018();
+                        lookup_ident.span.rust_2018();
 
                     let is_visible_to_user =
                         !in_module_is_extern || name_binding.vis == ty::Visibility::Public;
@@ -4599,16 +4591,16 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     /// NOTE: The method does not look into imports, but this is not a problem,
     /// since we report the definitions (thus, the de-aliased imports).
     fn lookup_import_candidates<FilterFn>(&mut self,
-                                          lookup_name: Name,
+                                          lookup_ident: Ident,
                                           namespace: Namespace,
                                           filter_fn: FilterFn)
                                           -> Vec<ImportSuggestion>
         where FilterFn: Fn(Def) -> bool
     {
         let mut suggestions = self.lookup_import_candidates_from_module(
-            lookup_name, namespace, self.graph_root, keywords::Crate.ident(), &filter_fn);
+            lookup_ident, namespace, self.graph_root, keywords::Crate.ident(), &filter_fn);
 
-        if self.session.rust_2018() {
+        if lookup_ident.span.rust_2018() {
             let extern_prelude_names = self.extern_prelude.clone();
             for (ident, _) in extern_prelude_names.into_iter() {
                 if let Some(crate_id) = self.crate_loader.maybe_process_path_extern(ident.name,
@@ -4620,7 +4612,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     self.populate_module_if_necessary(&crate_root);
 
                     suggestions.extend(self.lookup_import_candidates_from_module(
-                        lookup_name, namespace, crate_root, ident, &filter_fn));
+                        lookup_ident, namespace, crate_root, ident, &filter_fn));
                 }
             }
         }
@@ -4712,19 +4704,26 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
                 // For visibilities we are not ready to provide correct implementation of "uniform
                 // paths" right now, so on 2018 edition we only allow module-relative paths for now.
-                let first_ident = path.segments[0].ident;
-                if self.session.rust_2018() && !first_ident.is_path_segment_keyword() {
+                // On 2015 edition visibilities are resolved as crate-relative by default,
+                // so we are prepending a root segment if necessary.
+                let ident = path.segments.get(0).expect("empty path in visibility").ident;
+                let crate_root = if ident.is_path_segment_keyword() {
+                    None
+                } else if ident.span.rust_2018() {
                     let msg = "relative paths are not supported in visibilities on 2018 edition";
-                    self.session.struct_span_err(first_ident.span, msg)
+                    self.session.struct_span_err(ident.span, msg)
                                 .span_suggestion(path.span, "try", format!("crate::{}", path))
                                 .emit();
                     return ty::Visibility::Public;
-                }
-                // On 2015 visibilities are resolved as crate-relative by default,
-                // add starting root segment if necessary.
-                let segments = path.make_root().iter().chain(path.segments.iter())
-                    .map(|seg| Segment { ident: seg.ident, id: Some(seg.id) })
-                    .collect::<Vec<_>>();
+                } else {
+                    let ctxt = ident.span.ctxt();
+                    Some(Segment::from_ident(Ident::new(
+                        keywords::CrateRoot.name(), path.span.shrink_to_lo().with_ctxt(ctxt)
+                    )))
+                };
+
+                let segments = crate_root.into_iter()
+                    .chain(path.segments.iter().map(|seg| seg.into())).collect::<Vec<_>>();
                 let def = self.smart_resolve_path_fragment(
                     id,
                     None,
@@ -4837,7 +4836,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 help_msgs.push(format!("consider adding an explicit import of \
                                         `{ident}` to disambiguate", ident = ident))
             }
-            if b.is_extern_crate() && self.session.rust_2018() {
+            if b.is_extern_crate() && ident.span.rust_2018() {
                 help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously",
                                        ident = ident, thing = b.descr()))
             }

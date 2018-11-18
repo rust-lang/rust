@@ -605,6 +605,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         assert!(force || !record_used); // `record_used` implies `force`
         assert!(macro_kind.is_none() || !is_import); // `is_import` implies no macro kind
+        let rust_2015 = ident.span.rust_2015();
         ident = ident.modern();
 
         // Make sure `self`, `super` etc produce an error when passed to here.
@@ -696,7 +697,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                 }
                 WhereToResolve::MacroUsePrelude => {
-                    if use_prelude || self.session.rust_2015() {
+                    if use_prelude || rust_2015 {
                         match self.macro_use_prelude.get(&ident.name).cloned() {
                             Some(binding) =>
                                 Ok((binding, Flags::PRELUDE | Flags::MISC_FROM_PRELUDE)),
@@ -725,7 +726,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                 }
                 WhereToResolve::LegacyPluginHelpers => {
-                    if (use_prelude || self.session.rust_2015()) &&
+                    if (use_prelude || rust_2015) &&
                        self.session.plugin_attributes.borrow().iter()
                                                      .any(|(name, _)| ident.name == &**name) {
                         let binding = (Def::NonMacroAttr(NonMacroAttrKind::LegacyPluginHelper),

@@ -33,7 +33,8 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             (Some(fst), Some(snd)) if fst.ident.name == keywords::CrateRoot.name() &&
                                       !snd.ident.is_path_segment_keyword() => {}
             // `ident::...` on 2018
-            (Some(fst), _) if self.session.rust_2018() && !fst.ident.is_path_segment_keyword() => {
+            (Some(fst), _) if fst.ident.span.rust_2018() &&
+                              !fst.ident.is_path_segment_keyword() => {
                 // Insert a placeholder that's later replaced by `self`/`super`/etc.
                 path.insert(0, Segment::from_ident(keywords::Invalid.ident()));
             }
@@ -141,7 +142,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'b>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
-        if !self.session.rust_2018() {
+        if path[1].ident.span.rust_2015() {
             return None;
         }
 
