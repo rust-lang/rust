@@ -5,7 +5,9 @@ LL | struct G;
    | --------- `G` defined here
 ...
 LL |     let g = G(); //~ ERROR: expected function, found `G`
-   |             ^^^ not a function
+   |             ^--
+   |             |
+   |             call expression requires function
 
 error: aborting due to previous error
 

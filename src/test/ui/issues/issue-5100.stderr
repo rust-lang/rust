@@ -47,9 +47,9 @@ error[E0618]: expected function, found `(char, char)`
   --> $DIR/issue-5100.rs:58:14
    |
 LL |       let v = [('a', 'b')   //~ ERROR expected function, found `(char, char)`
-   |  ______________^
+   |  ______________-^^^^^^^^^
 LL | |              ('c', 'd'),
-   | |_______________________^ not a function
+   | |_______________________- call expression requires function
 
 error[E0308]: mismatched types
   --> $DIR/issue-5100.rs:65:19

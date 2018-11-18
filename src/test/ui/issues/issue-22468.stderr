@@ -4,7 +4,9 @@ error[E0618]: expected function, found `&str`
 LL |     let foo = "bar";
    |         --- `&str` defined here
 LL |     let x = foo("baz");
-   |             ^^^^^^^^^^ not a function
+   |             ^^^-------
+   |             |
+   |             call expression requires function
 
 error: aborting due to previous error
 
