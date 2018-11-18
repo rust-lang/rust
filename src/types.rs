@@ -289,6 +289,19 @@ where
 {
     debug!("format_function_type {:#?}", shape);
 
+    let ty_shape = match context.config.indent_style() {
+        // 4 = " -> "
+        IndentStyle::Block => shape.offset_left(4)?,
+        IndentStyle::Visual => shape.block_left(4)?,
+    };
+    let output = match *output {
+        FunctionRetTy::Ty(ref ty) => {
+            let type_str = ty.rewrite(context, ty_shape)?;
+            format!(" -> {}", type_str)
+        }
+        FunctionRetTy::Default(..) => String::new(),
+    };
+
     // Code for handling variadics is somewhat duplicated for items, but they
     // are different enough to need some serious refactoring to share code.
     enum ArgumentKind<T>
@@ -307,19 +320,18 @@ where
         None
     };
 
-    // 2 for ()
-    let budget = shape.width.checked_sub(2)?;
-    // 1 for (
-    let offset = match context.config.indent_style() {
-        IndentStyle::Block => {
-            shape
-                .block()
-                .block_indent(context.config.tab_spaces())
-                .indent
-        }
-        IndentStyle::Visual => shape.indent + 1,
+    let list_shape = if context.use_block_indent() {
+        Shape::indented(
+            shape.block().indent.block_indent(context.config),
+            context.config,
+        )
+    } else {
+        // 2 for ()
+        let budget = shape.width.checked_sub(2)?;
+        // 1 for (
+        let offset = shape.indent + 1;
+        Shape::legacy(budget, offset)
     };
-    let list_shape = Shape::legacy(budget, offset);
     let list_lo = context.snippet_provider.span_after(span, "(");
     let items = itemize_list(
         context.snippet_provider,
@@ -345,12 +357,18 @@ where
 
     let item_vec: Vec<_> = items.collect();
 
-    let tactic = definitive_tactic(
-        &*item_vec,
-        ListTactic::HorizontalVertical,
-        Separator::Comma,
-        budget,
-    );
+    // If the return type is multi-lined, then force to use multiple lines for
+    // arguments as well.
+    let tactic = if output.contains('\n') {
+        DefinitiveListTactic::Vertical
+    } else {
+        definitive_tactic(
+            &*item_vec,
+            ListTactic::HorizontalVertical,
+            Separator::Comma,
+            shape.width.saturating_sub(2 + output.len()),
+        )
+    };
     let trailing_separator = if !context.use_block_indent() || variadic {
         SeparatorTactic::Never
     } else {
@@ -364,27 +382,12 @@ where
         .preserve_newline(true);
     let list_str = write_list(&item_vec, &fmt)?;
 
-    let ty_shape = match context.config.indent_style() {
-        // 4 = " -> "
-        IndentStyle::Block => shape.offset_left(4)?,
-        IndentStyle::Visual => shape.block_left(4)?,
-    };
-    let output = match *output {
-        FunctionRetTy::Ty(ref ty) => {
-            let type_str = ty.rewrite(context, ty_shape)?;
-            format!(" -> {}", type_str)
-        }
-        FunctionRetTy::Default(..) => String::new(),
-    };
-
-    let args = if (!list_str.contains('\n') || list_str.is_empty()) && !output.contains('\n')
-        || !context.use_block_indent()
-    {
+    let args = if tactic == DefinitiveListTactic::Horizontal || !context.use_block_indent() {
         format!("({})", list_str)
     } else {
         format!(
             "({}{}{})",
-            offset.to_string_with_newline(context.config),
+            list_shape.indent.to_string_with_newline(context.config),
             list_str,
             shape.block().indent.to_string_with_newline(context.config),
         )
@@ -395,7 +398,7 @@ where
         Some(format!(
             "{}\n{}{}",
             args,
-            offset.to_string(context.config),
+            list_shape.indent.to_string(context.config),
             output.trim_left()
         ))
     }

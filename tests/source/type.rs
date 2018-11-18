@@ -129,3 +129,9 @@ fn issue3139() {
         json!(  { "test": None  ::  <i32> }  )
     );
 }
+
+// #3180
+fn foo(a: SomeLongComplexType, b: SomeOtherLongComplexType) -> Box<Future<Item = AnotherLongType, Error = ALongErrorType>> {
+}
+
+type MyFn = fn(a: SomeLongComplexType, b: SomeOtherLongComplexType,) -> Box<Future<Item = AnotherLongType, Error = ALongErrorType>>;

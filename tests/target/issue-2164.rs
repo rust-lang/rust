@@ -56,8 +56,10 @@ pub struct emacs_env_25 {
         ) -> emacs_value,
     >,
     pub intern: ::std::option::Option<
-        unsafe extern "C" fn(env: *mut emacs_env, symbol_name: *const ::libc::c_char)
-            -> emacs_value,
+        unsafe extern "C" fn(
+            env: *mut emacs_env,
+            symbol_name: *const ::libc::c_char,
+        ) -> emacs_value,
     >,
     pub type_of: ::std::option::Option<
         unsafe extern "C" fn(env: *mut emacs_env, value: emacs_value) -> emacs_value,
@@ -87,15 +89,16 @@ pub struct emacs_env_25 {
         ) -> bool,
     >,
     pub make_string: ::std::option::Option<
-        unsafe extern "C" fn(env: *mut emacs_env, contents: *const ::libc::c_char, length: isize)
-            -> emacs_value,
+        unsafe extern "C" fn(
+            env: *mut emacs_env,
+            contents: *const ::libc::c_char,
+            length: isize,
+        ) -> emacs_value,
     >,
     pub make_user_ptr: ::std::option::Option<
         unsafe extern "C" fn(
             env: *mut emacs_env,
-            fin: ::std::option::Option<
-                unsafe extern "C" fn(arg1: *mut ::libc::c_void),
-            >,
+            fin: ::std::option::Option<unsafe extern "C" fn(arg1: *mut ::libc::c_void)>,
             ptr: *mut ::libc::c_void,
         ) -> emacs_value,
     >,
@@ -107,7 +110,9 @@ pub struct emacs_env_25 {
     >,
     pub get_user_finalizer: ::std::option::Option<
         unsafe extern "C" fn(
-            arg1: *mut ::libc::c_void, env: *mut emacs_env, uptr: emacs_value
+            arg1: *mut ::libc::c_void,
+            env: *mut emacs_env,
+            uptr: emacs_value,
         ) -> ::std::option::Option<
             unsafe extern "C" fn(arg1: *mut ::libc::c_void, env: *mut emacs_env, uptr: emacs_value),
         >,
@@ -116,9 +121,7 @@ pub struct emacs_env_25 {
         unsafe extern "C" fn(
             env: *mut emacs_env,
             uptr: emacs_value,
-            fin: ::std::option::Option<
-                unsafe extern "C" fn(arg1: *mut ::libc::c_void),
-            >,
+            fin: ::std::option::Option<unsafe extern "C" fn(arg1: *mut ::libc::c_void)>,
         ),
     >,
     pub vec_get: ::std::option::Option<
