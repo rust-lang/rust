@@ -11,7 +11,6 @@
 use {CrateLint, PathResult, Segment};
 use macros::ParentScope;
 
-use syntax::ast::Ident;
 use syntax::symbol::keywords;
 use syntax_pos::Span;
 
@@ -31,12 +30,12 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
         match (path.get(0), path.get(1)) {
             // `{{root}}::ident::...` on both editions.
             // On 2015 `{{root}}` is usually added implicitly.
-            (Some(fst), Some(snd)) if fst.name == keywords::CrateRoot.name() &&
-                                      !snd.is_path_segment_keyword() => {}
+            (Some(fst), Some(snd)) if fst.ident.name == keywords::CrateRoot.name() &&
+                                      !snd.ident.is_path_segment_keyword() => {}
             // `ident::...` on 2018
-            (Some(fst), _) if self.session.rust_2018() && !fst.is_path_segment_keyword() => {
+            (Some(fst), _) if self.session.rust_2018() && !fst.ident.is_path_segment_keyword() => {
                 // Insert a placeholder that's later replaced by `self`/`super`/etc.
-                path.insert(0, keywords::Invalid.ident());
+                path.insert(0, Segment::from_ident(keywords::Invalid.ident()));
             }
             _ => return None,
         }

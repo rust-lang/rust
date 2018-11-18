@@ -1747,8 +1747,8 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         let segments = &path.segments;
         let path = Segment::from_path(&path);
         // FIXME (Manishearth): Intra doc links won't get warned of epoch changes
-        match self.resolve_path_without_parent_scope(&path, Some(namespace), true, span,
-                                                     CrateLint::No) {
+        let def = match self.resolve_path_without_parent_scope(&path, Some(namespace), true,
+                                                               span, CrateLint::No) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
                 module.def().unwrap(),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>

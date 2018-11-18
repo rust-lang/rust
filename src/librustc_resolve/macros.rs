@@ -9,9 +9,9 @@
 // except according to those terms.
 
 use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
-use {CrateLint, Resolver, ResolutionError, Weak};
+use {CrateLint, Resolver, ResolutionError, Segment, Weak};
 use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, ToNameBinding};
-use {is_known_tool, names_to_string, resolve_error};
+use {is_known_tool, resolve_error};
 use ModuleOrUniformRoot;
 use Namespace::{self, *};
 use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
@@ -946,7 +946,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
 
-        let check_consistency = |this: &mut Self, path: &[Ident], span,
+        let check_consistency = |this: &mut Self, path: &[Segment], span,
                                  kind: MacroKind, initial_def, def| {
             if let Some(initial_def) = initial_def {
                 if def != initial_def && def != Def::Err && this.ambiguity_errors.is_empty() {
@@ -965,7 +965,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 // less informative error if the privacy error is reported elsewhere.
                 if this.privacy_errors.is_empty() {
                     let msg = format!("cannot determine resolution for the {} `{}`",
-                                        kind.descr(), names_to_string(path));
+                                        kind.descr(), Segment::names_to_string(path));
                     let msg_note = "import resolution is stuck, try simplifying macro imports";
                     this.session.struct_span_err(span, &msg).note(msg_note).emit();
                 }
@@ -1007,7 +1007,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         initial_binding.def_ignoring_ambiguity()
                     });
                     let def = binding.def_ignoring_ambiguity();
-                    check_consistency(self, &[ident], ident.span, kind, initial_def, def);
+                    let seg = Segment::from_ident(ident);
+                    check_consistency(self, &[seg], ident.span, kind, initial_def, def);
                 }
                 Err(..) => {
                     assert!(initial_binding.is_none());

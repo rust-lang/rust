@@ -126,7 +126,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                parent_prefix, use_tree, nested);
 
         let mut prefix_iter = parent_prefix.iter().cloned()
-            .chain(use_tree.prefix.segments.iter().map(|seg| seg.ident)).peekable();
+            .chain(use_tree.prefix.segments.iter().map(|seg| seg.into())).peekable();
 
         // On 2015 edition imports are resolved as crate-relative by default,
         // so prefixes are prepended with crate root segment if necessary.
@@ -134,8 +134,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // appears, so imports in braced groups can have roots prepended independently.
         let is_glob = if let ast::UseTreeKind::Glob = use_tree.kind { true } else { false };
         let crate_root = if !self.session.rust_2018() &&
-                prefix_iter.peek().map_or(is_glob, |ident| !ident.is_path_segment_keyword()) {
-            Some(Ident::new(keywords::CrateRoot.name(), use_tree.prefix.span.shrink_to_lo()))
+                prefix_iter.peek().map_or(is_glob, |seg| !seg.ident.is_path_segment_keyword()) {
+            Some(Segment::from_ident(Ident::new(
+                keywords::CrateRoot.name(), use_tree.prefix.span.shrink_to_lo()
+            )))
         } else {
             None
         };
