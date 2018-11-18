@@ -14,7 +14,6 @@ use std::mem;
 use syntax::source_map::{self, Span, DUMMY_SP};
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::Def;
-use rustc::hir::map::definitions::DefPathData;
 use rustc::mir;
 use rustc::ty::layout::{
     self, Size, Align, HasDataLayout, LayoutOf, TyLayout
@@ -654,11 +653,10 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         }
     }
 
-    pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> Vec<FrameInfo> {
+    pub fn generate_stacktrace(&self, explicit_span: Option<Span>) -> Vec<FrameInfo<'tcx>> {
         let mut last_span = None;
         let mut frames = Vec::new();
-        // skip 1 because the last frame is just the environment of the constant
-        for &Frame { instance, span, mir, block, stmt, .. } in self.stack().iter().skip(1).rev() {
+        for &Frame { instance, span, mir, block, stmt, .. } in self.stack().iter().rev() {
             // make sure we don't emit frames that are duplicates of the previous
             if explicit_span == Some(span) {
                 last_span = Some(span);
@@ -671,13 +669,6 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             } else {
                 last_span = Some(span);
             }
-            let location = if self.tcx.def_key(instance.def_id()).disambiguated_data.data
-                == DefPathData::ClosureExpr
-            {
-                "closure".to_owned()
-            } else {
-                instance.to_string()
-            };
             let block = &mir.basic_blocks()[block];
             let source_info = if stmt < block.statements.len() {
                 block.statements[stmt].source_info
@@ -688,7 +679,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
                 mir::ClearCrossCrate::Set(ref ivs) => Some(ivs[source_info.scope].lint_root),
                 mir::ClearCrossCrate::Clear => None,
             };
-            frames.push(FrameInfo { span, location, lint_root });
+            frames.push(FrameInfo { call_site: span, instance, lint_root });
         }
         trace!("generate stacktrace: {:#?}, {:?}", frames, explicit_span);
         frames

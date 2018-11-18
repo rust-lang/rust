@@ -389,10 +389,10 @@ impl_stable_hash_for!(enum mir::interpret::ErrorHandled {
     TooGeneric
 });
 
-impl_stable_hash_for!(struct mir::interpret::FrameInfo {
-    span,
+impl_stable_hash_for!(struct mir::interpret::FrameInfo<'tcx> {
+    call_site,
     lint_root,
-    location
+    instance
 });
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });
