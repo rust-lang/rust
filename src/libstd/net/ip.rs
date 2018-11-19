@@ -1950,8 +1950,8 @@ mod tests {
 
         //     address                unspec loopbk global multicast doc
         check4(&[0, 0, 0, 0],         true,  false, false,  false,   false);
-        check4(&[0, 0, 0, 1],         false, false, true,   false,   false);
-        check4(&[0, 1, 0, 0],         false, false, true,   false,   false);
+        check4(&[0, 0, 0, 1],         false, false, false,  false,   false);
+        check4(&[0, 1, 0, 0],         false, false, false,  false,   false);
         check4(&[10, 9, 8, 7],        false, false, false,  false,   false);
         check4(&[127, 1, 2, 3],       false, true,  false,  false,   false);
         check4(&[172, 31, 254, 253],  false, false, false,  false,   false);
@@ -2007,8 +2007,8 @@ mod tests {
 
         //    address                unspec loopbk privt  linloc global multicast brdcast doc
         check(&[0, 0, 0, 0],         true,  false, false, false, false,  false,    false,  false);
-        check(&[0, 0, 0, 1],         false, false, false, false, true,   false,    false,  false);
-        check(&[0, 1, 0, 0],         false, false, false, false, true,   false,    false,  false);
+        check(&[0, 0, 0, 1],         false, false, false, false, false,  false,    false,  false);
+        check(&[0, 1, 0, 0],         false, false, false, false, false,  false,    false,  false);
         check(&[10, 9, 8, 7],        false, false, true,  false, false,  false,    false,  false);
         check(&[127, 1, 2, 3],       false, true,  false, false, false,  false,    false,  false);
         check(&[172, 31, 254, 253],  false, false, true,  false, false,  false,    false,  false);
