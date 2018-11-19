@@ -249,7 +249,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 match dest {
                     Place::Local(index) => break *index,
                     Place::Projection(proj) => dest = &proj.base,
-                    Place::Promoted(..) | Place::Static(..) => {
+                    Place::Promoted(..) => bug!("promoteds don't exist yet during promotion"),
+                    Place::Static(..) => {
                         // Catch more errors in the destination.
                         self.visit_place(
                             dest,
@@ -495,6 +496,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 // Only allow statics (not consts) to refer to other statics.
                 if self.mode == Mode::Static || self.mode == Mode::StaticMut {
                     if context.is_mutating_use() {
+                        // this is not strictly necessary as miri will also bail out
+                        // For interior mutability we can't really catch this statically as that
+                        // goes through raw pointers and intermediate temporaries, so miri has
+                        // to catch this anyway
                         self.tcx.sess.span_err(
                             self.span,
                             "cannot mutate statics in the initializer of another static",

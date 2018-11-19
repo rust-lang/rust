@@ -423,6 +423,7 @@ impl_stable_hash_for!(
         CalledClosureAsFunction,
         VtableForArgumentlessMethod,
         ModifiedConstantMemory,
+        ModifiedStatic,
         AssumptionNotHeld,
         InlineAsm,
         ReallocateNonBasePtr,

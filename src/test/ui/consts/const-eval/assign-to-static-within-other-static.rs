@@ -16,20 +16,9 @@
 
 use std::cell::UnsafeCell;
 
-struct Foo(UnsafeCell<u32>);
-
-unsafe impl Send for Foo {}
-unsafe impl Sync for Foo {}
-
-static FOO: Foo = Foo(UnsafeCell::new(42));
-
-static BAR: () = unsafe {
-    *FOO.0.get() = 5;
-};
-
-static mut FOO2: u32 = 42;
-static BOO2: () = unsafe {
-    FOO2 = 5;
+static mut FOO: u32 = 42;
+static BOO: () = unsafe {
+    FOO = 5; //~ ERROR cannot mutate statics in the initializer of another static
 };
 
 fn main() {}

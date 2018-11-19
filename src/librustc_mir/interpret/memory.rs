@@ -423,10 +423,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             if alloc.mutability == Mutability::Immutable {
                 return err!(ModifiedConstantMemory);
             }
-            let kind = M::STATIC_KIND.expect(
-                "An allocation is being mutated but the machine does not expect that to happen"
-            );
-            Ok((MemoryKind::Machine(kind), alloc.into_owned()))
+            match M::STATIC_KIND {
+                Some(kind) => Ok((MemoryKind::Machine(kind), alloc.into_owned())),
+                None => err!(ModifiedStatic),
+            }
         });
         // Unpack the error type manually because type inference doesn't
         // work otherwise (and we cannot help it because `impl Trait`)

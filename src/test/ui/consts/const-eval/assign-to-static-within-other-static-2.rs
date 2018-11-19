@@ -8,15 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// New test for #53818: modifying static memory at compile-time is not allowed.
+// The test should never compile successfully
+
+#![feature(const_raw_ptr_deref)]
 #![feature(const_let)]
 
-pub static mut A: u32 = 0;
-pub static mut B: () = unsafe { A = 1; };
-//~^ ERROR cannot mutate statics in the initializer of another static
+use std::cell::UnsafeCell;
 
-pub static mut C: u32 = unsafe { C = 1; 0 };
-//~^ ERROR cannot mutate statics in the initializer of another static
+struct Foo(UnsafeCell<u32>);
 
-pub static D: u32 = D;
+unsafe impl Send for Foo {}
+unsafe impl Sync for Foo {}
+
+static FOO: Foo = Foo(UnsafeCell::new(42));
+
+static BAR: () = unsafe {
+    *FOO.0.get() = 5; //~ ERROR could not evaluate static initializer
+};
 
 fn main() {}
