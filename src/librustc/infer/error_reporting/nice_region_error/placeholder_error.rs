@@ -95,7 +95,7 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 ty::RePlaceholder(_),
             )) => {
                 // I actually can't see why this would be the case ever.
-            },
+            }
 
             Some(RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(TypeTrace {
@@ -219,6 +219,10 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
             }
         });
 
+        let self_ty_has_vid = self
+            .tcx
+            .any_free_region_meets(&actual_trait_ref.self_ty(), |r| Some(r) == vid);
+
         RegionHighlightMode::maybe_highlighting_region(sub_placeholder, has_sub, || {
             RegionHighlightMode::maybe_highlighting_region(sup_placeholder, has_sup, || {
                 match (has_sub, has_sup) {
@@ -254,12 +258,21 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
 
         RegionHighlightMode::maybe_highlighting_region(vid, has_vid, || match has_vid {
             Some(n) => {
-                err.note(&format!(
-                    "but `{}` only implements `{}` for some lifetime `'{}`",
-                    actual_trait_ref.self_ty(),
-                    actual_trait_ref,
-                    n
-                ));
+                if self_ty_has_vid {
+                    err.note(&format!(
+                        "but `{}` only implements `{}` for the lifetime `'{}`",
+                        actual_trait_ref.self_ty(),
+                        actual_trait_ref,
+                        n
+                    ));
+                } else {
+                    err.note(&format!(
+                        "but `{}` only implements `{}` for some lifetime `'{}`",
+                        actual_trait_ref.self_ty(),
+                        actual_trait_ref,
+                        n
+                    ));
+                }
             }
             None => {
                 err.note(&format!(

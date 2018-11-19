@@ -6,7 +6,7 @@ LL |     foo(&X); //~ ERROR implementation of `Bar` is not general enough
    |
    = note: Due to a where-clause on `foo`,
    = note: `&'0 _` must implement `Bar` for any lifetime `'0`
-   = note: but `&'1 u32` only implements `Bar` for some lifetime `'1`
+   = note: but `&'1 u32` only implements `Bar` for the lifetime `'1`
 
 error: aborting due to previous error
 

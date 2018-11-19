@@ -5,7 +5,7 @@ LL |     <u32 as RefFoo<u32>>::ref_foo(a)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `&'0 u32` must implement `Foo<'static, u32>` for any lifetime `'0`
-   = note: but `&'1 _` only implements `Foo<'_, _>` for some lifetime `'1`
+   = note: but `&'1 _` only implements `Foo<'_, _>` for the lifetime `'1`
 
 error: implementation of `Foo` is not general enough
   --> $DIR/issue-54302-cases.rs:69:5
@@ -14,7 +14,7 @@ LL |     <i32 as RefFoo<i32>>::ref_foo(a)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `&'0 i32` must implement `Foo<'static, i32>` for any lifetime `'0`
-   = note: but `&'1 _` only implements `Foo<'_, _>` for some lifetime `'1`
+   = note: but `&'1 _` only implements `Foo<'_, _>` for the lifetime `'1`
 
 error: implementation of `Foo` is not general enough
   --> $DIR/issue-54302-cases.rs:75:5
@@ -23,7 +23,7 @@ LL |     <u64 as RefFoo<u64>>::ref_foo(a)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `&'0 u64` must implement `Foo<'static, u64>` for any lifetime `'0`
-   = note: but `&'1 _` only implements `Foo<'_, _>` for some lifetime `'1`
+   = note: but `&'1 _` only implements `Foo<'_, _>` for the lifetime `'1`
 
 error: implementation of `Foo` is not general enough
   --> $DIR/issue-54302-cases.rs:81:5
@@ -32,7 +32,7 @@ LL |     <i64 as RefFoo<i64>>::ref_foo(a)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `&'0 i64` must implement `Foo<'static, i64>` for any lifetime `'0`
-   = note: but `&'1 _` only implements `Foo<'_, _>` for some lifetime `'1`
+   = note: but `&'1 _` only implements `Foo<'_, _>` for the lifetime `'1`
 
 error: aborting due to 4 previous errors
 
