@@ -317,9 +317,6 @@ impl<'tcx> NeoPlace<'tcx> {
         tcx: TyCtxt<'cx, 'gcx, 'tcx>,
         elem_index: usize,
     ) -> Self {
-        // only works for place with projections
-        assert!(!self.elems.is_empty());
-
         if elem_index < 1 {
             // Base.[a]
             //       ^-- elems[0]
@@ -333,6 +330,20 @@ impl<'tcx> NeoPlace<'tcx> {
                 elems: tcx.mk_place_elems(self.elems[..elem_index].iter()),
             }
         }
+    }
+
+    pub fn prefixes<'cx, 'gcx>(
+        &self,
+        tcx: TyCtxt<'cx, 'gcx, 'tcx>,
+    ) -> Vec<Self> {
+        // only works for place with projections
+        assert!(!self.elems.is_empty());
+
+        self.elems
+            .iter()
+            .enumerate()
+            .map(|(elem_index, _)| self.prefix(tcx, elem_index))
+            .collect::<Vec<NeoPlace<'tcx>>>()
     }
 
     // Generate types of sub-places
