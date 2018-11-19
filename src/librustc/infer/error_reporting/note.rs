@@ -442,4 +442,24 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             }
         }
     }
+
+    pub(super) fn report_placeholder_failure(
+        &self,
+        region_scope_tree: &region::ScopeTree,
+        placeholder_origin: SubregionOrigin<'tcx>,
+        sub: Region<'tcx>,
+        sup: Region<'tcx>,
+    ) -> DiagnosticBuilder<'tcx> {
+        // I can't think how to do better than this right now. -nikomatsakis
+        match placeholder_origin {
+            infer::Subtype(trace) => {
+                let terr = TypeError::RegionsPlaceholderMismatch;
+                self.report_and_explain_type_error(trace, &terr)
+            }
+
+            _ => {
+                self.report_concrete_failure(region_scope_tree, placeholder_origin, sub, sup)
+            }
+        }
+    }
 }

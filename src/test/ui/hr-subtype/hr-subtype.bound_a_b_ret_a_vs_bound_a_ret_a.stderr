@@ -1,19 +1,16 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter 'a in generic type due to conflicting requirements
+error[E0308]: mismatched types
   --> $DIR/hr-subtype.rs:39:26
    |
 LL |               gimme::<$t1>(None::<$t2>);
-   |                            ^^^^^^^^^^^
+   |                            ^^^^^^^^^^^ one type is more general than the other
 ...
 LL | / check! { bound_a_b_ret_a_vs_bound_a_ret_a: (for<'a,'b> fn(&'a u32, &'b u32) -> &'a u32,
 LL | |                                             for<'a>    fn(&'a u32, &'a u32) -> &'a u32) }
    | |_________________________________________________________________________________________- in this macro invocation
    |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:26), 'b) })...
-   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:25), 'a) })...
-   = note: ...so that the expression is assignable:
-           expected std::option::Option<for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32>
-              found std::option::Option<for<'a> fn(&'a u32, &'a u32) -> &'a u32>
+   = note: expected type `std::option::Option<for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32>`
+              found type `std::option::Option<for<'a> fn(&'a u32, &'a u32) -> &'a u32>`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0308`.

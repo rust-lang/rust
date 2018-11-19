@@ -19,5 +19,5 @@ fn main() {
     //     yielding `fn(&!b u32)`, in a fresh universe U1
     //   - So we get `?a = !b` but the universe U0 assigned to `?a` cannot name `!b`.
 
-    let _: for<'b> fn(&'b u32) = foo(); //~ ERROR cannot infer
+    let _: for<'b> fn(&'b u32) = foo(); //~ ERROR mismatched types
 }

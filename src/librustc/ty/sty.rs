@@ -1396,6 +1396,13 @@ impl RegionKind {
         }
     }
 
+    pub fn is_placeholder(&self) -> bool {
+        match *self {
+            ty::RePlaceholder(..) => true,
+            _ => false,
+        }
+    }
+
     pub fn bound_at_or_above_binder(&self, index: DebruijnIndex) -> bool {
         match *self {
             ty::ReLateBound(debruijn, _) => debruijn >= index,

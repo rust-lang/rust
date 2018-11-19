@@ -2,62 +2,20 @@ error[E0308]: mismatched types
   --> $DIR/hrtb-higher-ranker-supertraits.rs:18:5
    |
 LL |     want_foo_for_any_tcx(f); //~ ERROR E0308
-   |     ^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |     ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
    |
    = note: expected type `for<'tcx> Foo<'tcx>`
               found type `Foo<'x>`
-   = note: lifetime RePlaceholder(Placeholder { universe: U4, name: BrNamed(crate0:DefIndex(1:15), 'tcx) })...
-note: ...does not necessarily outlive the lifetime 'x as defined on the function body at 14:26
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:14:26
-   |
-LL | fn want_foo_for_some_tcx<'x,F>(f: &'x F)
-   |                          ^^
 
 error[E0308]: mismatched types
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:18:5
-   |
-LL |     want_foo_for_any_tcx(f); //~ ERROR E0308
-   |     ^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
-   |
-   = note: expected type `for<'tcx> Foo<'tcx>`
-              found type `Foo<'x>`
-note: the lifetime 'x as defined on the function body at 14:26...
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:14:26
-   |
-LL | fn want_foo_for_some_tcx<'x,F>(f: &'x F)
-   |                          ^^
-   = note: ...does not necessarily outlive lifetime RePlaceholder(Placeholder { universe: U4, name: BrNamed(crate0:DefIndex(1:15), 'tcx) })
-
-error[E0308]: mismatched types
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:36:5
+  --> $DIR/hrtb-higher-ranker-supertraits.rs:35:5
    |
 LL |     want_bar_for_any_ccx(b); //~ ERROR E0308
-   |     ^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |     ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
    |
    = note: expected type `for<'ccx> Bar<'ccx>`
               found type `Bar<'x>`
-   = note: lifetime RePlaceholder(Placeholder { universe: U8, name: BrNamed(crate0:DefIndex(1:19), 'ccx) })...
-note: ...does not necessarily outlive the lifetime 'x as defined on the function body at 29:26
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:29:26
-   |
-LL | fn want_bar_for_some_ccx<'x,B>(b: &B)
-   |                          ^^
 
-error[E0308]: mismatched types
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:36:5
-   |
-LL |     want_bar_for_any_ccx(b); //~ ERROR E0308
-   |     ^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
-   |
-   = note: expected type `for<'ccx> Bar<'ccx>`
-              found type `Bar<'x>`
-note: the lifetime 'x as defined on the function body at 29:26...
-  --> $DIR/hrtb-higher-ranker-supertraits.rs:29:26
-   |
-LL | fn want_bar_for_some_ccx<'x,B>(b: &B)
-   |                          ^^
-   = note: ...does not necessarily outlive lifetime RePlaceholder(Placeholder { universe: U8, name: BrNamed(crate0:DefIndex(1:19), 'ccx) })
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

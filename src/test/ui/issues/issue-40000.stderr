@@ -1,26 +1,12 @@
-error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+error[E0308]: mismatched types
   --> $DIR/issue-40000.rs:6:9
    |
-LL |     foo(bar); //~ ERROR E0495
-   |         ^^^
+LL |     foo(bar); //~ ERROR E0308
+   |         ^^^ one type is more general than the other
    |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U8, name: BrAnon(0) })...
-   = note: ...so that the types are compatible:
-           expected dyn for<'r> std::ops::Fn(&'r i32)
-              found dyn std::ops::Fn(&i32)
-note: but, the lifetime must be valid for the block suffix following statement 2 at 5:5...
-  --> $DIR/issue-40000.rs:5:5
-   |
-LL | /     let bar = Box::new(|x: &i32| {}) as Box<Fn(_)>;
-LL | |     foo(bar); //~ ERROR E0495
-LL | | }
-   | |_^
-note: ...so that variable is valid at time of its declaration
-  --> $DIR/issue-40000.rs:5:9
-   |
-LL |     let bar = Box::new(|x: &i32| {}) as Box<Fn(_)>;
-   |         ^^^
+   = note: expected type `dyn for<'r> std::ops::Fn(&'r i32)`
+              found type `dyn std::ops::Fn(&i32)`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0308`.

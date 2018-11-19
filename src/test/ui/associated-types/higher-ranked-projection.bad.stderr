@@ -1,24 +1,12 @@
-error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+error[E0308]: mismatched types
   --> $DIR/higher-ranked-projection.rs:25:5
    |
 LL |     foo(());
-   |     ^^^
+   |     ^^^ one type is more general than the other
    |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U2, name: BrNamed(crate0:DefIndex(1:12), 'a) })...
-   = note: ...so that the types are compatible:
-           expected Mirror
-              found Mirror
-note: but, the lifetime must be valid for the expression at 25:5...
-  --> $DIR/higher-ranked-projection.rs:25:5
-   |
-LL |     foo(());
-   |     ^^^
-note: ...so type `fn(()) {foo::<&(), ()>}` of expression is valid during the expression
-  --> $DIR/higher-ranked-projection.rs:25:5
-   |
-LL |     foo(());
-   |     ^^^
+   = note: expected type `Mirror`
+              found type `Mirror`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0308`.

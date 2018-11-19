@@ -26,63 +26,21 @@ error[E0308]: mismatched types
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
 LL |     baz(f); //~ ERROR mismatched types
-   |     ^^^ lifetime mismatch
+   |     ^^^ one type is more general than the other
    |
    = note: expected type `for<'r> std::ops::Fn<(*mut &'r u32,)>`
               found type `std::ops::Fn<(*mut &'a u32,)>`
-   = note: lifetime RePlaceholder(Placeholder { universe: U2, name: BrAnon(0) })...
-note: ...does not necessarily outlive the lifetime 'a as defined on the function body at 9:10
-  --> $DIR/closure-arg-type-mismatch.rs:9:10
-   |
-LL | fn _test<'a>(f: fn(*mut &'a u32)) {
-   |          ^^
 
 error[E0308]: mismatched types
   --> $DIR/closure-arg-type-mismatch.rs:10:5
    |
 LL |     baz(f); //~ ERROR mismatched types
-   |     ^^^ lifetime mismatch
+   |     ^^^ one type is more general than the other
    |
    = note: expected type `std::ops::FnOnce<(*mut &u32,)>`
               found type `std::ops::FnOnce<(*mut &'a u32,)>`
-   = note: lifetime RePlaceholder(Placeholder { universe: U3, name: BrAnon(0) })...
-note: ...does not necessarily outlive the lifetime 'a as defined on the function body at 9:10
-  --> $DIR/closure-arg-type-mismatch.rs:9:10
-   |
-LL | fn _test<'a>(f: fn(*mut &'a u32)) {
-   |          ^^
 
-error[E0308]: mismatched types
-  --> $DIR/closure-arg-type-mismatch.rs:10:5
-   |
-LL |     baz(f); //~ ERROR mismatched types
-   |     ^^^ lifetime mismatch
-   |
-   = note: expected type `for<'r> std::ops::Fn<(*mut &'r u32,)>`
-              found type `std::ops::Fn<(*mut &'a u32,)>`
-note: the lifetime 'a as defined on the function body at 9:10...
-  --> $DIR/closure-arg-type-mismatch.rs:9:10
-   |
-LL | fn _test<'a>(f: fn(*mut &'a u32)) {
-   |          ^^
-   = note: ...does not necessarily outlive lifetime RePlaceholder(Placeholder { universe: U2, name: BrAnon(0) })
-
-error[E0308]: mismatched types
-  --> $DIR/closure-arg-type-mismatch.rs:10:5
-   |
-LL |     baz(f); //~ ERROR mismatched types
-   |     ^^^ lifetime mismatch
-   |
-   = note: expected type `std::ops::FnOnce<(*mut &u32,)>`
-              found type `std::ops::FnOnce<(*mut &'a u32,)>`
-note: the lifetime 'a as defined on the function body at 9:10...
-  --> $DIR/closure-arg-type-mismatch.rs:9:10
-   |
-LL | fn _test<'a>(f: fn(*mut &'a u32)) {
-   |          ^^
-   = note: ...does not necessarily outlive lifetime RePlaceholder(Placeholder { universe: U3, name: BrAnon(0) })
-
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 
 Some errors occurred: E0308, E0631.
 For more information about an error, try `rustc --explain E0308`.

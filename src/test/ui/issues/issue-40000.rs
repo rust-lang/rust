@@ -3,5 +3,5 @@ fn main() {
 
     fn foo(x: Box<Fn(&i32)>) {}
     let bar = Box::new(|x: &i32| {}) as Box<Fn(_)>;
-    foo(bar); //~ ERROR E0495
+    foo(bar); //~ ERROR E0308
 }
