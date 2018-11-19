@@ -19,7 +19,7 @@ use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::{parse, parse_failure_msg};
 use ext::tt::quoted;
 use ext::tt::transcribe::transcribe;
-use feature_gate::{self, emit_feature_err, Features, GateIssue};
+use feature_gate::Features;
 use parse::{Directory, ParseSess};
 use parse::parser::Parser;
 use parse::token::{self, NtTT};
@@ -1027,26 +1027,21 @@ fn has_legal_fragment_specifier(sess: &ParseSess,
     Ok(())
 }
 
-fn is_legal_fragment_specifier(sess: &ParseSess,
-                               features: &Features,
-                               attrs: &[ast::Attribute],
+fn is_legal_fragment_specifier(_sess: &ParseSess,
+                               _features: &Features,
+                               _attrs: &[ast::Attribute],
                                frag_name: &str,
-                               frag_span: Span) -> bool {
+                               _frag_span: Span) -> bool {
+    /*
+     * If new fragmnet specifiers are invented in nightly, `_sess`,
+     * `_features`, `_attrs`, and `_frag_span` will be useful for
+     * here for checking against feature gates. See past versions of
+     * this function.
+     */
     match frag_name {
         "item" | "block" | "stmt" | "expr" | "pat" | "lifetime" |
-        "path" | "ty" | "ident" | "meta" | "tt" | "vis" | "" => true,
-        "literal" => {
-            if !features.macro_literal_matcher &&
-               !attr::contains_name(attrs, "allow_internal_unstable") {
-                let explain = feature_gate::EXPLAIN_LITERAL_MATCHER;
-                emit_feature_err(sess,
-                                 "macro_literal_matcher",
-                                 frag_span,
-                                 GateIssue::Language,
-                                 explain);
-            }
-            true
-        },
+        "path" | "ty" | "ident" | "meta" | "tt" | "vis" | "literal" |
+        "" => true,
         _ => false,
     }
 }
