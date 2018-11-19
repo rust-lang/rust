@@ -532,6 +532,40 @@ impl Ipv4Addr {
         !self.is_broadcast() && !self.is_documentation() && !self.is_unspecified()
     }
 
+    /// Returns [`true`] if this address is part of `192.0.0.0/24`, which is reserved to
+    /// IANA for IETF protocol assignments, as documented in [IETF RFC 6890].
+    ///
+    /// Note that parts of this block are in use:
+    ///
+    /// - `192.0.0.8/32` is the "IPv4 dummy address" (see [IETF RFC 7600])
+    /// - `192.0.0.9/32` is the "Port Control Protocol Anycast" (see [IETF RFC 7723])
+    /// - `192.0.0.10/32` is used for NAT traversal (see [IETF RFC 8155])
+    ///
+    /// [IETF RFC 6890]: https://tools.ietf.org/html/rfc6890
+    /// [IETF RFC 7600]: https://tools.ietf.org/html/rfc7600
+    /// [IETF RFC 7723]: https://tools.ietf.org/html/rfc7723
+    /// [IETF RFC 8155]: https://tools.ietf.org/html/rfc8155
+    /// [`true`]: ../../std/primitive.bool.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    /// use std::net::Ipv4Addr;
+    ///
+    /// fn main() {
+    ///     assert_eq!(Ipv4Addr::new(192, 0, 0, 0).is_ietf_protocol_assignment(), true);
+    ///     assert_eq!(Ipv4Addr::new(192, 0, 0, 8).is_ietf_protocol_assignment(), true);
+    ///     assert_eq!(Ipv4Addr::new(192, 0, 0, 9).is_ietf_protocol_assignment(), true);
+    ///     assert_eq!(Ipv4Addr::new(192, 0, 0, 255).is_ietf_protocol_assignment(), true);
+    ///     assert_eq!(Ipv4Addr::new(192, 0, 1, 0).is_ietf_protocol_assignment(), false);
+    ///     assert_eq!(Ipv4Addr::new(191, 255, 255, 255).is_ietf_protocol_assignment(), false);
+    /// }
+    /// ```
+    pub fn is_ietf_protocol_assignment(&self) -> bool {
+        self.octets()[0] == 192 && self.octets()[1] == 0 && self.octets()[2] == 0
+    }
+
     /// Returns [`true`] if this address part of the `198.18.0.0/15` range, which is reserved for
     /// network devices benchmarking. This range is defined in [IETF RFC 2544] as `192.18.0.0`
     /// through `198.19.255.255` but [errata 423] corrects it to `198.18.0.0/15`.
