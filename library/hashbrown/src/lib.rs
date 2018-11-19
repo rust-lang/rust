@@ -17,39 +17,50 @@
 #![warn(missing_docs)]
 
 #[cfg(feature = "nightly")]
+#[cfg_attr(test, macro_use)]
 extern crate alloc;
 extern crate byteorder;
+#[cfg(feature = "rayon")]
+extern crate rayon;
 extern crate scopeguard;
 #[cfg(feature = "serde")]
 extern crate serde;
 #[cfg(not(feature = "nightly"))]
+#[cfg_attr(test, macro_use)]
 extern crate std as alloc;
 
+mod external_trait_impls;
 mod fx;
 mod map;
 mod raw;
 mod set;
 
-#[cfg(feature = "serde")]
-mod size_hint {
-    use core::cmp;
-
-    /// This presumably exists to prevent denial of service attacks.
-    ///
-    /// Original discussion: https://github.com/serde-rs/serde/issues/1114.
-    #[inline]
-    pub(crate) fn cautious(hint: Option<usize>) -> usize {
-        cmp::min(hint.unwrap_or(0), 4096)
-    }
-}
-
 pub mod hash_map {
     //! A hash map implemented with quadratic probing and SIMD lookup.
     pub use map::*;
+    #[cfg(feature = "rayon")]
+    /// [rayon]-based parallel iterator types for hash maps.
+    /// You will rarely need to interact with it directly unless you have need
+    /// to name one of the iterator types.
+    ///
+    /// [rayon]: https://docs.rs/rayon/1.0/rayon
+    pub mod rayon {
+        pub use external_trait_impls::rayon::map::*;
+    }
 }
 pub mod hash_set {
     //! A hash set implemented as a `HashMap` where the value is `()`.
     pub use set::*;
+    #[cfg(feature = "rayon")]
+    /// [rayon]-based parallel iterator types for hash sets.
+    /// You will rarely need to interact with it directly unless you have need
+    /// to name one of the iterator types.
+    ///
+    /// [rayon]: https://docs.rs/rayon/1.0/rayon
+    pub mod rayon {
+        pub use external_trait_impls::rayon::set::*;
+    }
 }
+
 pub use map::HashMap;
 pub use set::HashSet;

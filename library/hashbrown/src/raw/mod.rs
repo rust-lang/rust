@@ -322,6 +322,15 @@ impl<T> RawTable<T> {
         self.ctrl.as_ptr().add(index)
     }
 
+    pub(crate) fn is_empty_bucket_at(&self, index: usize) -> bool {
+        let ctrl = unsafe { *self.ctrl(index) };
+        ctrl == EMPTY
+    }
+
+    pub(crate) unsafe fn set_empty_bucket(&self, bucket: &Bucket<T>) {
+        *self.ctrl(self.bucket_index(bucket)) = EMPTY;
+    }
+
     /// Returns a pointer to an element in the table.
     #[inline]
     pub unsafe fn bucket(&self, index: usize) -> Bucket<T> {
@@ -696,9 +705,13 @@ impl<T> RawTable<T> {
         self.items
     }
 
+    pub(crate) unsafe fn set_len(&mut self, items: usize) {
+        self.items = items;
+    }
+
     /// Returns the number of buckets in the table.
     #[inline]
-    fn buckets(&self) -> usize {
+    pub(crate) fn buckets(&self) -> usize {
         self.bucket_mask + 1
     }
 
