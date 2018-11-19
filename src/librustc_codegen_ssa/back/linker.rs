@@ -1050,6 +1050,10 @@ impl<'a> Linker for WasmLd<'a> {
 }
 
 fn exported_symbols(tcx: TyCtxt, crate_type: CrateType) -> Vec<String> {
+    if let Some(ref exports) = tcx.sess.target.target.options.override_export_symbols {
+        return exports.clone()
+    }
+
     let mut symbols = Vec::new();
 
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
