@@ -22,8 +22,6 @@ use std::any::Any;
 use std::fs::File;
 use std::sync::mpsc;
 
-use syntax::symbol::Symbol;
-
 use rustc::dep_graph::DepGraph;
 use rustc::middle::cstore::MetadataLoader;
 use rustc::session::{
@@ -78,7 +76,7 @@ mod prelude {
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
         TypeAndMut, TypeFoldable,
     };
-    pub use rustc_codegen_ssa::{CompiledModule, ModuleKind};
+    pub use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
     pub use rustc_data_structures::{
         fx::{FxHashMap, FxHashSet},
         indexed_vec::Idx,
@@ -100,7 +98,7 @@ mod prelude {
     pub use crate::common::*;
     pub use crate::trap::*;
     pub use crate::unimpl::{unimpl, with_unimpl_span};
-    pub use crate::{Caches, CodegenResults};
+    pub use crate::Caches;
 }
 
 pub struct Caches<'tcx> {
@@ -118,15 +116,6 @@ impl<'tcx> Caches<'tcx> {
 }
 
 struct CraneliftCodegenBackend;
-
-pub struct CodegenResults {
-    modules: Vec<CompiledModule>,
-    allocator_module: Option<CompiledModule>,
-    metadata: Vec<u8>,
-    crate_name: Symbol,
-    crate_info: CrateInfo,
-    linker_info: LinkerInfo,
-}
 
 impl CodegenBackend for CraneliftCodegenBackend {
     fn init(&self, sess: &Session) {
@@ -280,10 +269,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
             std::fs::write(&tmp_file, obj).unwrap();
 
             return Box::new(CodegenResults {
-                metadata: metadata.raw_data,
                 crate_name: tcx.crate_name(LOCAL_CRATE),
-                crate_info: CrateInfo::new(tcx),
-                linker_info: LinkerInfo::new(tcx),
                 modules: vec![CompiledModule {
                     name: "dummy_name".to_string(),
                     kind: ModuleKind::Regular,
@@ -292,6 +278,18 @@ impl CodegenBackend for CraneliftCodegenBackend {
                     bytecode_compressed: None,
                 }],
                 allocator_module: None,
+                metadata_module: CompiledModule {
+                    name: "dummy_metadata".to_string(),
+                    kind: ModuleKind::Metadata,
+                    object: None,
+                    bytecode: None,
+                    bytecode_compressed: None,
+                },
+                crate_hash: tcx.crate_hash(LOCAL_CRATE),
+                metadata,
+                windows_subsystem: None, // Windows is not yet supported
+                linker_info: LinkerInfo::new(tcx),
+                crate_info: CrateInfo::new(tcx),
             });
         }
     }

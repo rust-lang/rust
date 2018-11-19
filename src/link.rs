@@ -42,9 +42,9 @@ pub(crate) fn link_rlib(sess: &Session, res: &CodegenResults, output_name: PathB
         .append(
             &ar::Header::new(
                 crate::metadata::METADATA_FILENAME.as_bytes().to_vec(),
-                res.metadata.len() as u64,
+                res.metadata.raw_data.len() as u64,
             ),
-            ::std::io::Cursor::new(res.metadata.clone()),
+            ::std::io::Cursor::new(res.metadata.raw_data.clone()),
         )
         .unwrap();
 
