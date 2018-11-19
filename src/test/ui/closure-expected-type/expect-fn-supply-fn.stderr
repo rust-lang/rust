@@ -40,57 +40,29 @@ error[E0308]: mismatched types
   --> $DIR/expect-fn-supply-fn.rs:30:52
    |
 LL |     with_closure_expecting_fn_with_free_region(|x: fn(&u32), y| {});
-   |                                                    ^^^^^^^^ lifetime mismatch
+   |                                                    ^^^^^^^^ one type is more general than the other
    |
    = note: expected type `fn(&u32)`
               found type `for<'r> fn(&'r u32)`
-   = note: lifetime RePlaceholder(Placeholder { universe: U2, name: BrAnon(0) })...
-note: ...does not necessarily outlive the anonymous lifetime #2 defined on the body at 30:48
-  --> $DIR/expect-fn-supply-fn.rs:30:48
-   |
-LL |     with_closure_expecting_fn_with_free_region(|x: fn(&u32), y| {});
-   |                                                ^^^^^^^^^^^^^^^^^^^
 
 error[E0308]: mismatched types
   --> $DIR/expect-fn-supply-fn.rs:37:53
    |
 LL |     with_closure_expecting_fn_with_bound_region(|x: fn(&'x u32), y| {});
-   |                                                     ^^^^^^^^^^^ lifetime mismatch
+   |                                                     ^^^^^^^^^^^ one type is more general than the other
    |
    = note: expected type `for<'r> fn(&'r u32)`
               found type `fn(&'x u32)`
-   = note: lifetime RePlaceholder(Placeholder { universe: U3, name: BrAnon(0) })...
-note: ...does not necessarily outlive the lifetime 'x as defined on the function body at 34:37
-  --> $DIR/expect-fn-supply-fn.rs:34:37
-   |
-LL | fn expect_bound_supply_free_from_fn<'x>(x: &'x u32) {
-   |                                     ^^
 
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter in function call due to conflicting requirements
+error[E0308]: mismatched types
   --> $DIR/expect-fn-supply-fn.rs:46:53
    |
 LL |     with_closure_expecting_fn_with_bound_region(|x: Foo<'_>, y| {
-   |                                                     ^^^^^^^
+   |                                                     ^^^^^^^ one type is more general than the other
    |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U3, name: BrAnon(0) })...
-   = note: ...so that the types are compatible:
-           expected for<'r> fn(&'r u32)
-              found fn(&u32)
-note: but, the lifetime must be valid for the expression at 46:65...
-  --> $DIR/expect-fn-supply-fn.rs:46:65
-   |
-LL |       with_closure_expecting_fn_with_bound_region(|x: Foo<'_>, y| {
-   |  _________________________________________________________________^
-LL | |     //~^ ERROR cannot infer
-LL | |     });
-   | |_____^
-note: ...so that the type `fn(&u32)` will meet its required lifetime bounds
-  --> $DIR/expect-fn-supply-fn.rs:46:53
-   |
-LL |     with_closure_expecting_fn_with_bound_region(|x: Foo<'_>, y| {
-   |                                                     ^^^^^^^
+   = note: expected type `for<'r> fn(&'r u32)`
+              found type `fn(&u32)`
 
 error: aborting due to 5 previous errors
 
-Some errors occurred: E0308, E0495.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0308`.

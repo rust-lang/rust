@@ -1,19 +1,16 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter 'a in generic type due to conflicting requirements
+error[E0308]: mismatched types
   --> $DIR/old-lub-glb-object.rs:10:13
    |
-LL |       let z = match 22 { //~ ERROR cannot infer
+LL |       let z = match 22 { //~ ERROR E0308
    |  _____________^
 LL | |         0 => x,
 LL | |         _ => y,
 LL | |     };
-   | |_____^
+   | |_____^ one type is more general than the other
    |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U5, name: BrNamed(crate0:DefIndex(1:11), 'a) })...
-   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U5, name: BrNamed(crate0:DefIndex(1:12), 'b) })...
-   = note: ...so that the types are compatible:
-           expected dyn for<'a, 'b> Foo<&'a u8, &'b u8>
-              found dyn for<'a> Foo<&'a u8, &'a u8>
+   = note: expected type `dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
+              found type `dyn for<'a> Foo<&'a u8, &'a u8>`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0308`.

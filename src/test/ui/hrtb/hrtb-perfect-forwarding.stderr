@@ -1,22 +1,12 @@
-error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
+error[E0308]: mismatched types
   --> $DIR/hrtb-perfect-forwarding.rs:46:5
    |
-LL |     foo_hrtb_bar_not(&mut t); //~ ERROR E0495
-   |     ^^^^^^^^^^^^^^^^
+LL |     foo_hrtb_bar_not(&mut t); //~ ERROR E0308
+   |     ^^^^^^^^^^^^^^^^ one type is more general than the other
    |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U2, name: BrNamed(crate0:DefIndex(1:23), 'a) })...
-   = note: ...so that the types are compatible:
-           expected Foo<&'a isize>
-              found Foo<&isize>
-note: but, the lifetime must be valid for the lifetime 'b as defined on the function body at 39:21...
-  --> $DIR/hrtb-perfect-forwarding.rs:39:21
-   |
-LL | fn foo_hrtb_bar_not<'b,T>(mut t: T)
-   |                     ^^
-   = note: ...so that the types are compatible:
-           expected Bar<&isize>
-              found Bar<&'b isize>
+   = note: expected type `Foo<&'a isize>`
+              found type `Foo<&isize>`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0308`.

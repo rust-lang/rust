@@ -27,19 +27,16 @@ LL | fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
 LL |     a(x, y, z); //~ ERROR lifetime mismatch [E0623]
    |       ^ ...but data from `y` flows into `x` here
 
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+error[E0308]: mismatched types
   --> $DIR/region-multiple-lifetime-bounds-on-fns-where-clause.rs:22:56
    |
-LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a; //~ ERROR E0495
-   |                                                        ^
+LL |     let _: fn(&mut &isize, &mut &isize, &mut &isize) = a; //~ ERROR E0308
+   |                                                        ^ one type is more general than the other
    |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U1, name: BrAnon(1) })...
-   = note: ...but the lifetime must also be valid for lifetime RePlaceholder(Placeholder { universe: U1, name: BrAnon(1) })...
-   = note: ...so that the expression is assignable:
-           expected for<'r, 's, 't0, 't1, 't2, 't3> fn(&'r mut &'s isize, &'t0 mut &'t1 isize, &'t2 mut &'t3 isize)
-              found for<'r, 's, 't0> fn(&'r mut &isize, &'s mut &isize, &'t0 mut &isize)
+   = note: expected type `for<'r, 's, 't0, 't1, 't2, 't3> fn(&'r mut &'s isize, &'t0 mut &'t1 isize, &'t2 mut &'t3 isize)`
+              found type `for<'r, 's, 't0> fn(&'r mut &isize, &'s mut &isize, &'t0 mut &isize)`
 
 error: aborting due to 4 previous errors
 
-Some errors occurred: E0495, E0623.
-For more information about an error, try `rustc --explain E0495`.
+Some errors occurred: E0308, E0623.
+For more information about an error, try `rustc --explain E0308`.

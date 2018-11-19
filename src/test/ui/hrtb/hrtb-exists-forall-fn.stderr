@@ -1,24 +1,12 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+error[E0308]: mismatched types
   --> $DIR/hrtb-exists-forall-fn.rs:22:34
    |
-LL |     let _: for<'b> fn(&'b u32) = foo(); //~ ERROR cannot infer
-   |                                  ^^^
+LL |     let _: for<'b> fn(&'b u32) = foo(); //~ ERROR mismatched types
+   |                                  ^^^^^ one type is more general than the other
    |
-   = note: first, the lifetime cannot outlive lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:11), 'b) })...
-   = note: ...so that the expression is assignable:
-           expected for<'b> fn(&'b u32)
-              found fn(&u32)
-note: but, the lifetime must be valid for the call at 22:34...
-  --> $DIR/hrtb-exists-forall-fn.rs:22:34
-   |
-LL |     let _: for<'b> fn(&'b u32) = foo(); //~ ERROR cannot infer
-   |                                  ^^^^^
-note: ...so type `fn(&u32)` of expression is valid during the expression
-  --> $DIR/hrtb-exists-forall-fn.rs:22:34
-   |
-LL |     let _: for<'b> fn(&'b u32) = foo(); //~ ERROR cannot infer
-   |                                  ^^^^^
+   = note: expected type `for<'b> fn(&'b u32)`
+              found type `fn(&u32)`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0308`.

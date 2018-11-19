@@ -44,7 +44,7 @@ fn expect_bound_supply_free_from_closure() {
     // the argument level.
     type Foo<'a> = fn(&'a u32);
     with_closure_expecting_fn_with_bound_region(|x: Foo<'_>, y| {
-    //~^ ERROR cannot infer
+    //~^ ERROR mismatched types
     });
 }
 
