@@ -1,13 +1,12 @@
-error[E0308]: mismatched types
+error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-just-for-static.rs:24:5
    |
 LL |     want_hrtb::<StaticInt>() //~ ERROR
-   |     ^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |     ^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected type `Foo<&'a isize>`
-              found type `Foo<&'static isize>`
-   = note: lifetime RePlaceholder(Placeholder { universe: U1, name: BrNamed(crate0:DefIndex(1:11), 'a) })...
-   = note: ...does not necessarily outlive the static lifetime
+   = note: Due to a where-clause on `want_hrtb`,
+   = note: `StaticInt` must implement `Foo<&'0 isize>` for any lifetime `'0`
+   = note: but `StaticInt` only implements `Foo<&'1 isize>` for some lifetime `'1`
 
 error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-just-for-static.rs:30:5
@@ -21,4 +20,3 @@ LL |     want_hrtb::<&'a u32>() //~ ERROR
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
