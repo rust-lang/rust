@@ -652,8 +652,10 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
     /// Checks whether values of this type `T` implement the `Freeze`
     /// trait -- frozen types are those that do not contain a
     /// `UnsafeCell` anywhere.  This is a language concept used to
-    /// determine how to handle `static` values, the trait itself is
-    /// not exposed to end users.
+    /// distinguish "true immutability", which is relevant to
+    /// optimization as well as the rules around static values. Note
+    /// that the `Freeze` trait is not exposed to end users and is
+    /// effectively an implementation detail.
     pub fn is_freeze(&'tcx self,
                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
                      param_env: ty::ParamEnv<'tcx>,
