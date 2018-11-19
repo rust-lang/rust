@@ -412,6 +412,8 @@ supported_targets! {
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
 
     ("aarch64-unknown-none", aarch64_unknown_none),
+
+    ("x86_64-fortanix-unknown-sgx", x86_64_fortanix_unknown_sgx),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
