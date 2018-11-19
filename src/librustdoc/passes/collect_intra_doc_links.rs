@@ -527,7 +527,7 @@ fn resolution_failure(
                 doc_comment_padding +
                     // Each subsequent leading whitespace and `///`
                     code_dox.lines().skip(1).take(line_offset - 1).fold(0, |sum, line| {
-                        sum + doc_comment_padding + line.len() - line.trim().len()
+                        sum + doc_comment_padding + line.len() - line.trim_start().len()
                     })
             };
 

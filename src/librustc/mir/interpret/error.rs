@@ -10,20 +10,20 @@
 
 use std::{fmt, env};
 
+use hir::map::definitions::DefPathData;
 use mir;
-use ty::{Ty, layout};
+use ty::{self, Ty, layout};
 use ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
 
-use super::{Pointer, Scalar};
+use super::{Pointer, InboundsCheck, ScalarMaybeUndef};
 
 use backtrace::Backtrace;
 
-use ty;
 use ty::query::TyCtxtAt;
 use errors::DiagnosticBuilder;
 
-use syntax_pos::Span;
+use syntax_pos::{Pos, Span};
 use syntax::ast;
 use syntax::symbol::Symbol;
 
@@ -52,14 +52,33 @@ pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
 pub struct ConstEvalErr<'tcx> {
     pub span: Span,
     pub error: ::mir::interpret::EvalErrorKind<'tcx, u64>,
-    pub stacktrace: Vec<FrameInfo>,
+    pub stacktrace: Vec<FrameInfo<'tcx>>,
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct FrameInfo {
-    pub span: Span,
-    pub location: String,
+pub struct FrameInfo<'tcx> {
+    pub call_site: Span, // this span is in the caller!
+    pub instance: ty::Instance<'tcx>,
     pub lint_root: Option<ast::NodeId>,
+}
+
+impl<'tcx> fmt::Display for FrameInfo<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        ty::tls::with(|tcx| {
+            if tcx.def_key(self.instance.def_id()).disambiguated_data.data
+                == DefPathData::ClosureExpr
+            {
+                write!(f, "inside call to closure")?;
+            } else {
+                write!(f, "inside call to `{}`", self.instance)?;
+            }
+            if !self.call_site.is_dummy() {
+                let lo = tcx.sess.source_map().lookup_char_pos_adj(self.call_site.lo());
+                write!(f, " at {}:{}:{}", lo.filename, lo.line, lo.col.to_usize() + 1)?;
+            }
+            Ok(())
+        })
+    }
 }
 
 impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
@@ -135,8 +154,13 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             struct_error(tcx, message)
         };
         err.span_label(self.span, self.error.to_string());
-        for FrameInfo { span, location, .. } in &self.stacktrace {
-            err.span_label(*span, format!("inside call to `{}`", location));
+        // Skip the last, which is just the environment of the constant.  The stacktrace
+        // is sometimes empty because we create "fake" eval contexts in CTFE to do work
+        // on constant values.
+        if self.stacktrace.len() > 0 {
+            for frame_info in &self.stacktrace[..self.stacktrace.len()-1] {
+                err.span_label(frame_info.call_site, frame_info.to_string());
+            }
         }
         Ok(err)
     }
@@ -172,16 +196,23 @@ fn print_backtrace(backtrace: &mut Backtrace) -> String {
     write!(trace_text, "backtrace frames: {}\n", backtrace.frames().len()).unwrap();
     'frames: for (i, frame) in backtrace.frames().iter().enumerate() {
         if frame.symbols().is_empty() {
-            write!(trace_text, "{}: no symbols\n", i).unwrap();
+            write!(trace_text, "  {}: no symbols\n", i).unwrap();
         }
+        let mut first = true;
         for symbol in frame.symbols() {
-            write!(trace_text, "{}: ", i).unwrap();
+            if first {
+                write!(trace_text, "  {}: ", i).unwrap();
+                first = false;
+            } else {
+                let len = i.to_string().len();
+                write!(trace_text, "  {}  ", " ".repeat(len)).unwrap();
+            }
             if let Some(name) = symbol.name() {
                 write!(trace_text, "{}\n", name).unwrap();
             } else {
                 write!(trace_text, "<unknown>\n").unwrap();
             }
-            write!(trace_text, "\tat ").unwrap();
+            write!(trace_text, "           at ").unwrap();
             if let Some(file_path) = symbol.filename() {
                 write!(trace_text, "{}", file_path.display()).unwrap();
             } else {
@@ -240,10 +271,10 @@ pub enum EvalErrorKind<'tcx, O> {
     InvalidMemoryAccess,
     InvalidFunctionPointer,
     InvalidBool,
-    InvalidDiscriminant(Scalar),
+    InvalidDiscriminant(ScalarMaybeUndef),
     PointerOutOfBounds {
         ptr: Pointer,
-        access: bool,
+        check: InboundsCheck,
         allocation_size: Size,
     },
     InvalidNullPointerUsage,
@@ -457,9 +488,13 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use self::EvalErrorKind::*;
         match *self {
-            PointerOutOfBounds { ptr, access, allocation_size } => {
-                write!(f, "{} at offset {}, outside bounds of allocation {} which has size {}",
-                       if access { "memory access" } else { "pointer computed" },
+            PointerOutOfBounds { ptr, check, allocation_size } => {
+                write!(f, "Pointer must be in-bounds{} at offset {}, but is outside bounds of \
+                           allocation {} which has size {}",
+                       match check {
+                           InboundsCheck::Live => " and live",
+                           InboundsCheck::MaybeDead => "",
+                       },
                        ptr.offset.bytes(), ptr.alloc_id, allocation_size.bytes())
             },
             ValidationFailure(ref err) => {

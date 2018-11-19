@@ -1062,8 +1062,7 @@ impl<'a> LoweringContext<'a> {
         attrs
             .iter()
             .map(|a| self.lower_attr(a))
-            .collect::<Vec<_>>()
-            .into()
+            .collect()
     }
 
     fn lower_attr(&mut self, attr: &Attribute) -> Attribute {

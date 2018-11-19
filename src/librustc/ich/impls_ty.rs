@@ -216,7 +216,9 @@ impl<'gcx> HashStable<StableHashingContext<'gcx>> for ty::adjustment::AutoBorrow
     }
 }
 
-impl_stable_hash_for!(struct ty::UpvarId { var_id, closure_expr_id });
+impl_stable_hash_for!(struct ty::UpvarPath { hir_id });
+
+impl_stable_hash_for!(struct ty::UpvarId { var_path, closure_expr_id });
 
 impl_stable_hash_for!(enum ty::BorrowKind {
     ImmBorrow,
@@ -387,10 +389,10 @@ impl_stable_hash_for!(enum mir::interpret::ErrorHandled {
     TooGeneric
 });
 
-impl_stable_hash_for!(struct mir::interpret::FrameInfo {
-    span,
+impl_stable_hash_for!(struct mir::interpret::FrameInfo<'tcx> {
+    call_site,
     lint_root,
-    location
+    instance
 });
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });
@@ -451,7 +453,7 @@ impl_stable_hash_for!(
         FunctionRetMismatch(a, b),
         NoMirFor(s),
         UnterminatedCString(ptr),
-        PointerOutOfBounds { ptr, access, allocation_size },
+        PointerOutOfBounds { ptr, check, allocation_size },
         InvalidBoolOp(bop),
         Unimplemented(s),
         BoundsCheck { len, index },
@@ -470,6 +472,11 @@ impl_stable_hash_for!(
         Overflow(op),
     }
 );
+
+impl_stable_hash_for!(enum mir::interpret::InboundsCheck {
+    Live,
+    MaybeDead
+});
 
 impl_stable_hash_for!(enum mir::interpret::Lock {
     NoLock,

@@ -17,11 +17,11 @@ use rustc::ty::layout::{self, Size, Align, TyLayout, LayoutOf, VariantIdx};
 use rustc::ty;
 use rustc_data_structures::fx::FxHashSet;
 use rustc::mir::interpret::{
-    Scalar, AllocType, EvalResult, EvalErrorKind,
+    Scalar, AllocType, EvalResult, EvalErrorKind, InboundsCheck,
 };
 
 use super::{
-    OpTy, MPlaceTy, ImmTy, Machine, EvalContext, ValueVisitor
+    OpTy, MPlaceTy, Machine, EvalContext, ValueVisitor
 };
 
 macro_rules! validation_failure {
@@ -274,15 +274,16 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                     ),
                 EvalErrorKind::ReadPointerAsBytes =>
                     validation_failure!(
-                        "a pointer", self.path, "plain bytes"
+                        "a pointer", self.path, "plain (non-pointer) bytes"
                     ),
                 _ => Err(err),
             }
         }
     }
 
-    fn visit_primitive(&mut self, value: ImmTy<'tcx, M::PointerTag>) -> EvalResult<'tcx>
+    fn visit_primitive(&mut self, value: OpTy<'tcx, M::PointerTag>) -> EvalResult<'tcx>
     {
+        let value = self.ecx.read_immediate(value)?;
         // Go over all the primitive types
         let ty = value.layout.ty;
         match ty.sty {
@@ -304,7 +305,7 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                 if self.const_mode {
                     // Integers/floats in CTFE: Must be scalar bits, pointers are dangerous
                     try_validation!(value.to_bits(size),
-                        value, self.path, "initialized plain bits");
+                        value, self.path, "initialized plain (non-pointer) bytes");
                 } else {
                     // At run-time, for now, we accept *anything* for these types, including
                     // undef. We should fix that, but let's start low.
@@ -394,7 +395,8 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                         }
                         // Maintain the invariant that the place we are checking is
                         // already verified to be in-bounds.
-                        try_validation!(self.ecx.memory.check_bounds(ptr, size, false),
+                        try_validation!(
+                            self.ecx.memory.check_bounds(ptr, size, InboundsCheck::Live),
                             "dangling (not entirely in bounds) reference", self.path);
                     }
                     // Check if we have encountered this pointer+layout combination

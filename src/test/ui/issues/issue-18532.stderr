@@ -2,7 +2,9 @@ error[E0618]: expected function, found `!`
   --> $DIR/issue-18532.rs:16:5
    |
 LL |     (return)((),()); //~ ERROR expected function, found `!`
-   |     ^^^^^^^^^^^^^^^ not a function
+   |     ^^^^^^^^-------
+   |     |
+   |     call expression requires function
 
 error: aborting due to previous error
 

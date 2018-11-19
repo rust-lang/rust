@@ -1890,7 +1890,6 @@ mod tests {
             missing_fragment_specifiers: Lock::new(FxHashSet::default()),
             raw_identifier_spans: Lock::new(Vec::new()),
             registered_diagnostics: Lock::new(ErrorMap::new()),
-            non_modrs_mods: Lock::new(vec![]),
             buffered_lints: Lock::new(vec![]),
         }
     }

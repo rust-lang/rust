@@ -664,7 +664,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
             let var_hir_id = tcx.hir.node_to_hir_id(var_id);
             let closure_expr_id = tcx.hir.local_def_id(fn_id);
             let capture = hir.tables().upvar_capture(ty::UpvarId {
-                var_id: var_hir_id,
+                var_path: ty::UpvarPath {hir_id: var_hir_id},
                 closure_expr_id: LocalDefId::from_def_id(closure_expr_id),
             });
             let by_ref = match capture {

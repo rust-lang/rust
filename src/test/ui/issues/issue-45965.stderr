@@ -2,7 +2,9 @@ error[E0618]: expected function, found `{float}`
   --> $DIR/issue-45965.rs:12:30
    |
 LL |     let a = |r: f64| if r != 0.0(r != 0.0) { 1.0 } else { 0.0 };
-   |                              ^^^^^^^^^^^^^ not a function
+   |                              ^^^----------
+   |                              |
+   |                              call expression requires function
 
 error: aborting due to previous error
 

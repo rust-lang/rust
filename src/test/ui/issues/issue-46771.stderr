@@ -4,7 +4,9 @@ error[E0618]: expected function, found `main::Foo`
 LL |     struct Foo;
    |     ----------- `main::Foo` defined here
 LL |     (1 .. 2).find(|_| Foo(0) == 0); //~ ERROR expected function, found `main::Foo`
-   |                       ^^^^^^ not a function
+   |                       ^^^---
+   |                       |
+   |                       call expression requires function
 
 error: aborting due to previous error
 
