@@ -1,19 +1,20 @@
-error[E0659]: `helper` is ambiguous
+error[E0659]: `helper` is ambiguous (derive helper attribute vs any other name)
   --> $DIR/helper-attr-blocked-by-import-ambig.rs:10:3
    |
 LL | #[helper] //~ ERROR `helper` is ambiguous
    |   ^^^^^^ ambiguous name
    |
-note: `helper` could refer to the name defined here
+note: `helper` could refer to the derive helper attribute defined here
   --> $DIR/helper-attr-blocked-by-import-ambig.rs:9:10
    |
 LL | #[derive(WithHelper)]
    |          ^^^^^^^^^^
-note: `helper` could also refer to the name imported here
+note: `helper` could also refer to the attribute macro imported here
   --> $DIR/helper-attr-blocked-by-import-ambig.rs:7:5
    |
 LL | use plugin::helper;
    |     ^^^^^^^^^^^^^^
+   = help: use `self::helper` to refer to this attribute macro unambiguously
 
 error: aborting due to previous error
 

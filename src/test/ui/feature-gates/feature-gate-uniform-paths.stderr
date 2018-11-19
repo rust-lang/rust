@@ -1,9 +1,62 @@
-error[E0432]: unresolved import `bar`
-  --> $DIR/feature-gate-uniform-paths.rs:12:13
+error[E0658]: imports can only refer to extern crate names passed with `--extern` on stable channel (see issue #53130)
+  --> $DIR/feature-gate-uniform-paths.rs:14:13
    |
-LL |     pub use bar::Bar;
-   |             ^^^ Did you mean `self::bar`?
+LL |       pub use bar::Bar; //~ ERROR imports can only refer to extern crate names
+   |               ^^^
+LL | 
+LL | /     pub mod bar {
+LL | |         pub struct Bar;
+LL | |     }
+   | |_____- not an extern crate passed with `--extern`
+   |
+   = help: add #![feature(uniform_paths)] to the crate attributes to enable
+note: this import refers to the module defined here
+  --> $DIR/feature-gate-uniform-paths.rs:16:5
+   |
+LL | /     pub mod bar {
+LL | |         pub struct Bar;
+LL | |     }
+   | |_____^
 
-error: aborting due to previous error
+error[E0658]: imports can only refer to extern crate names passed with `--extern` on stable channel (see issue #53130)
+  --> $DIR/feature-gate-uniform-paths.rs:21:5
+   |
+LL | use inline; //~ ERROR imports can only refer to extern crate names
+   |     ^^^^^^ not an extern crate passed with `--extern`
+   |
+   = help: add #![feature(uniform_paths)] to the crate attributes to enable
+note: this import refers to the built-in attribute imported here
+  --> $DIR/feature-gate-uniform-paths.rs:21:5
+   |
+LL | use inline; //~ ERROR imports can only refer to extern crate names
+   |     ^^^^^^
 
-For more information about this error, try `rustc --explain E0432`.
+error[E0658]: imports can only refer to extern crate names passed with `--extern` on stable channel (see issue #53130)
+  --> $DIR/feature-gate-uniform-paths.rs:23:5
+   |
+LL | use Vec; //~ ERROR imports can only refer to extern crate names
+   |     ^^^ not an extern crate passed with `--extern`
+   |
+   = help: add #![feature(uniform_paths)] to the crate attributes to enable
+note: this import refers to the struct imported here
+  --> $DIR/feature-gate-uniform-paths.rs:23:5
+   |
+LL | use Vec; //~ ERROR imports can only refer to extern crate names
+   |     ^^^
+
+error[E0658]: imports can only refer to extern crate names passed with `--extern` on stable channel (see issue #53130)
+  --> $DIR/feature-gate-uniform-paths.rs:25:5
+   |
+LL | use vec; //~ ERROR imports can only refer to extern crate names
+   |     ^^^ not an extern crate passed with `--extern`
+   |
+   = help: add #![feature(uniform_paths)] to the crate attributes to enable
+note: this import refers to the macro imported here
+  --> $DIR/feature-gate-uniform-paths.rs:25:5
+   |
+LL | use vec; //~ ERROR imports can only refer to extern crate names
+   |     ^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

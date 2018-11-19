@@ -12,5 +12,5 @@
 
 fn main() {
     let s = extern::xcrate::S;
-    //~^ ERROR failed to resolve. Could not find `xcrate` in `extern`
+    //~^ ERROR failed to resolve: could not find `xcrate` in `extern`
 }

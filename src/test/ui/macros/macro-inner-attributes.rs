@@ -25,6 +25,6 @@ test!(b,
 #[qux]
 fn main() {
     a::bar();
-    //~^ ERROR failed to resolve. Use of undeclared type or module `a`
+    //~^ ERROR failed to resolve: use of undeclared type or module `a`
     b::bar();
 }

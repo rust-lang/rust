@@ -225,8 +225,8 @@ pub struct DefId {
 
 impl fmt::Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "DefId({:?}/{}:{}",
-               self.krate.index(),
+        write!(f, "DefId({}/{}:{}",
+               self.krate,
                self.index.address_space().index(),
                self.index.as_array_index())?;
 

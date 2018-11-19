@@ -1,38 +1,38 @@
-error[E0659]: `m` is ambiguous
+error[E0659]: `m` is ambiguous (glob import vs macro-expanded name in the same module during import/macro resolution)
   --> $DIR/macros.rs:26:5
    |
 LL |     m! { //~ ERROR ambiguous
    |     ^ ambiguous name
    |
-note: `m` could refer to the name imported here
+note: `m` could refer to the macro imported here
   --> $DIR/macros.rs:27:13
    |
 LL |         use foo::m;
    |             ^^^^^^
-note: `m` could also refer to the name imported here
+note: `m` could also refer to the macro imported here
   --> $DIR/macros.rs:25:9
    |
 LL |     use two_macros::*;
    |         ^^^^^^^^^^^^^
-   = note: macro-expanded macro imports do not shadow
+   = help: consider adding an explicit import of `m` to disambiguate
 
-error[E0659]: `m` is ambiguous
+error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name from outer scope during import/macro resolution)
   --> $DIR/macros.rs:39:9
    |
 LL |         m! { //~ ERROR ambiguous
    |         ^ ambiguous name
    |
-note: `m` could refer to the name imported here
+note: `m` could refer to the macro imported here
   --> $DIR/macros.rs:40:17
    |
 LL |             use two_macros::n as m;
    |                 ^^^^^^^^^^^^^^^^^^
-note: `m` could also refer to the name imported here
+note: `m` could also refer to the macro imported here
   --> $DIR/macros.rs:32:9
    |
 LL |     use two_macros::m;
    |         ^^^^^^^^^^^^^
-   = note: macro-expanded macro imports do not shadow
+   = help: use `self::m` to refer to this macro unambiguously
 
 error: aborting due to 2 previous errors
 

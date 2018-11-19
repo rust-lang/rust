@@ -97,6 +97,11 @@ fn is_known_tool(name: Name) -> bool {
     ["clippy", "rustfmt"].contains(&&*name.as_str())
 }
 
+enum Weak {
+    Yes,
+    No,
+}
+
 /// A free importable items suggested in case of resolution failure.
 struct ImportSuggestion {
     path: Path,
@@ -371,7 +376,7 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
         }
         ResolutionError::FailedToResolve(msg) => {
             let mut err = struct_span_err!(resolver.session, span, E0433,
-                                           "failed to resolve. {}", msg);
+                                           "failed to resolve: {}", msg);
             err.span_label(span, msg);
             err
         }
@@ -391,14 +396,13 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             err
         }
         ResolutionError::BindingShadowsSomethingUnacceptable(what_binding, name, binding) => {
-            let shadows_what = PathResolution::new(binding.def()).kind_name();
-            let mut err = struct_span_err!(resolver.session,
-                                           span,
-                                           E0530,
-                                           "{}s cannot shadow {}s", what_binding, shadows_what);
-            err.span_label(span, format!("cannot be named the same as a {}", shadows_what));
+            let shadows_what = binding.descr();
+            let mut err = struct_span_err!(resolver.session, span, E0530, "{}s cannot shadow {}s",
+                                           what_binding, shadows_what);
+            err.span_label(span, format!("cannot be named the same as {} {}",
+                                         binding.article(), shadows_what));
             let participle = if binding.is_import() { "imported" } else { "defined" };
-            let msg = format!("a {} `{}` is {} here", shadows_what, name, participle);
+            let msg = format!("the {} `{}` is {} here", shadows_what, name, participle);
             err.span_label(binding.span, msg);
             err
         }
@@ -993,15 +997,34 @@ impl<'a> LexicalScopeBinding<'a> {
     }
 }
 
+
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum UniformRootKind {
+    CurrentScope,
+    ExternPrelude,
+}
+
 #[derive(Copy, Clone, Debug)]
-pub enum ModuleOrUniformRoot<'a> {
+enum ModuleOrUniformRoot<'a> {
     /// Regular module.
     Module(Module<'a>),
 
-    /// The `{{root}}` (`CrateRoot` aka "global") / `extern` initial segment
-    /// in which external crates resolve, and also `crate` (only in `{{root}}`,
-    /// but *not* `extern`), in the Rust 2018 edition.
-    UniformRoot(Name),
+    /// This "virtual module" denotes either resolution in extern prelude
+    /// for paths starting with `::` on 2018 edition or `extern::`,
+    /// or resolution in current scope for single-segment imports.
+    UniformRoot(UniformRootKind),
+}
+
+impl<'a> PartialEq for ModuleOrUniformRoot<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        match (*self, *other) {
+            (ModuleOrUniformRoot::Module(lhs), ModuleOrUniformRoot::Module(rhs)) =>
+                ptr::eq(lhs, rhs),
+            (ModuleOrUniformRoot::UniformRoot(lhs), ModuleOrUniformRoot::UniformRoot(rhs)) =>
+                lhs == rhs,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -1045,9 +1068,10 @@ pub struct ModuleData<'a> {
     normal_ancestor_id: DefId,
 
     resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
-    legacy_macro_resolutions: RefCell<Vec<(Ident, MacroKind, ParentScope<'a>,
-                                           Option<&'a NameBinding<'a>>)>>,
-    macro_resolutions: RefCell<Vec<(Vec<Segment>, ParentScope<'a>, Span)>>,
+    single_segment_macro_resolutions: RefCell<Vec<(Ident, MacroKind, ParentScope<'a>,
+                                                   Option<&'a NameBinding<'a>>)>>,
+    multi_segment_macro_resolutions: RefCell<Vec<(Vec<Segment>, Span, MacroKind, ParentScope<'a>,
+                                                  Option<Def>)>>,
     builtin_attrs: RefCell<Vec<(Ident, ParentScope<'a>)>>,
 
     // Macro invocations that can expand into items in this module.
@@ -1085,8 +1109,8 @@ impl<'a> ModuleData<'a> {
             kind,
             normal_ancestor_id,
             resolutions: Default::default(),
-            legacy_macro_resolutions: RefCell::new(Vec::new()),
-            macro_resolutions: RefCell::new(Vec::new()),
+            single_segment_macro_resolutions: RefCell::new(Vec::new()),
+            multi_segment_macro_resolutions: RefCell::new(Vec::new()),
             builtin_attrs: RefCell::new(Vec::new()),
             unresolved_invocations: Default::default(),
             no_implicit_prelude: false,
@@ -1195,6 +1219,7 @@ enum NameBindingKind<'a> {
         used: Cell<bool>,
     },
     Ambiguity {
+        kind: AmbiguityKind,
         b1: &'a NameBinding<'a>,
         b2: &'a NameBinding<'a>,
     }
@@ -1212,10 +1237,61 @@ struct UseError<'a> {
     better: bool,
 }
 
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum AmbiguityKind {
+    Import,
+    BuiltinAttr,
+    DeriveHelper,
+    LegacyHelperVsPrelude,
+    LegacyVsModern,
+    GlobVsOuter,
+    GlobVsGlob,
+    GlobVsExpanded,
+    MoreExpandedVsOuter,
+}
+
+impl AmbiguityKind {
+    fn descr(self) -> &'static str {
+        match self {
+            AmbiguityKind::Import =>
+                "name vs any other name during import resolution",
+            AmbiguityKind::BuiltinAttr =>
+                "built-in attribute vs any other name",
+            AmbiguityKind::DeriveHelper =>
+                "derive helper attribute vs any other name",
+            AmbiguityKind::LegacyHelperVsPrelude =>
+                "legacy plugin helper attribute vs name from prelude",
+            AmbiguityKind::LegacyVsModern =>
+                "`macro_rules` vs non-`macro_rules` from other module",
+            AmbiguityKind::GlobVsOuter =>
+                "glob import vs any other name from outer scope during import/macro resolution",
+            AmbiguityKind::GlobVsGlob =>
+                "glob import vs glob import in the same module",
+            AmbiguityKind::GlobVsExpanded =>
+                "glob import vs macro-expanded name in the same \
+                 module during import/macro resolution",
+            AmbiguityKind::MoreExpandedVsOuter =>
+                "macro-expanded name vs less macro-expanded name \
+                 from outer scope during import/macro resolution",
+        }
+    }
+}
+
+/// Miscellaneous bits of metadata for better ambiguity error reporting.
+#[derive(Clone, Copy, PartialEq)]
+enum AmbiguityErrorMisc {
+    SuggestSelf,
+    FromPrelude,
+    None,
+}
+
 struct AmbiguityError<'a> {
+    kind: AmbiguityKind,
     ident: Ident,
     b1: &'a NameBinding<'a>,
     b2: &'a NameBinding<'a>,
+    misc1: AmbiguityErrorMisc,
+    misc2: AmbiguityErrorMisc,
 }
 
 impl<'a> NameBinding<'a> {
@@ -1268,6 +1344,9 @@ impl<'a> NameBinding<'a> {
                     subclass: ImportDirectiveSubclass::ExternCrate { .. }, ..
                 }, ..
             } => true,
+            NameBindingKind::Module(
+                &ModuleData { kind: ModuleKind::Def(Def::Mod(def_id), _), .. }
+            ) => def_id.index == CRATE_DEF_INDEX,
             _ => false,
         }
     }
@@ -1311,6 +1390,10 @@ impl<'a> NameBinding<'a> {
 
     fn descr(&self) -> &'static str {
         if self.is_extern_crate() { "extern crate" } else { self.def().kind_name() }
+    }
+
+    fn article(&self) -> &'static str {
+        if self.is_extern_crate() { "an" } else { self.def().article() }
     }
 
     // Suppose that we resolved macro invocation with `invoc_parent_expansion` to binding `binding`
@@ -1422,6 +1505,9 @@ pub struct Resolver<'a, 'b: 'a> {
 
     /// The current self item if inside an ADT (used for better errors).
     current_self_item: Option<NodeId>,
+
+    /// FIXME: Refactor things so that this is passed through arguments and not resolver.
+    last_import_segment: bool,
 
     /// The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
@@ -1661,8 +1747,8 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
         let segments = &path.segments;
         let path = Segment::from_path(&path);
         // FIXME (Manishearth): Intra doc links won't get warned of epoch changes
-        let def = match self.resolve_path_without_parent_scope(None, &path, Some(namespace),
-                                                               true, span, CrateLint::No) {
+        let def = match self.resolve_path_without_parent_scope(&path, Some(namespace), true,
+                                                               span, CrateLint::No) {
             PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
                 module.def().unwrap(),
             PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
@@ -1772,6 +1858,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             current_trait_ref: None,
             current_self_type: None,
             current_self_item: None,
+            last_import_segment: false,
 
             primitive_type_table: PrimitiveTypeTable::new(),
 
@@ -1873,23 +1960,35 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         self.arenas.alloc_module(module)
     }
 
-    fn record_use(&mut self, ident: Ident, ns: Namespace, binding: &'a NameBinding<'a>)
-                  -> bool /* true if an error was reported */ {
-        match binding.kind {
-            NameBindingKind::Import { directive, binding, ref used }
-                    if !used.get() => {
+    fn record_use(&mut self, ident: Ident, ns: Namespace,
+                  used_binding: &'a NameBinding<'a>, is_lexical_scope: bool) {
+        match used_binding.kind {
+            NameBindingKind::Import { directive, binding, ref used } if !used.get() => {
+                // Avoid marking `extern crate` items that refer to a name from extern prelude,
+                // but not introduce it, as used if they are accessed from lexical scope.
+                if is_lexical_scope {
+                    if let Some(entry) = self.extern_prelude.get(&ident.modern()) {
+                        if let Some(crate_item) = entry.extern_crate_item {
+                            if ptr::eq(used_binding, crate_item) && !entry.introduced_by_item {
+                                return;
+                            }
+                        }
+                    }
+                }
                 used.set(true);
                 directive.used.set(true);
                 self.used_imports.insert((directive.id, ns));
                 self.add_to_glob_map(directive.id, ident);
-                self.record_use(ident, ns, binding)
+                self.record_use(ident, ns, binding, false);
             }
-            NameBindingKind::Import { .. } => false,
-            NameBindingKind::Ambiguity { b1, b2 } => {
-                self.ambiguity_errors.push(AmbiguityError { ident, b1, b2 });
-                true
+            NameBindingKind::Ambiguity { kind, b1, b2 } => {
+                self.ambiguity_errors.push(AmbiguityError {
+                    kind, ident, b1, b2,
+                    misc1: AmbiguityErrorMisc::None,
+                    misc2: AmbiguityErrorMisc::None,
+                });
             }
-            _ => false
+            _ => {}
         }
     }
 
@@ -1960,7 +2059,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
-                false,
                 record_used,
                 path_span,
             );
@@ -1991,7 +2089,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
-                false,
                 record_used,
                 path_span,
             );
@@ -2024,7 +2121,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             }
             if ns == TypeNS && is_known_tool(ident.name) {
                 let binding = (Def::ToolMod, ty::Visibility::Public,
-                               ident.span, Mark::root()).to_name_binding(self.arenas);
+                               DUMMY_SP, Mark::root()).to_name_binding(self.arenas);
                 return Some(LexicalScopeBinding::Item(binding));
             }
             if let Some(prelude) = self.prelude {
@@ -2032,7 +2129,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     ModuleOrUniformRoot::Module(prelude),
                     ident,
                     ns,
-                    false,
                     false,
                     path_span,
                 ) {
@@ -2093,23 +2189,31 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         None
     }
 
-    fn resolve_ident_in_module(&mut self,
-                               module: ModuleOrUniformRoot<'a>,
-                               mut ident: Ident,
-                               ns: Namespace,
-                               record_used: bool,
-                               span: Span)
-                               -> Result<&'a NameBinding<'a>, Determinacy> {
+    fn resolve_ident_in_module(
+        &mut self,
+        module: ModuleOrUniformRoot<'a>,
+        mut ident: Ident,
+        ns: Namespace,
+        parent_scope: Option<&ParentScope<'a>>,
+        record_used: bool,
+        path_span: Span
+    ) -> Result<&'a NameBinding<'a>, Determinacy> {
         ident.span = ident.span.modern();
         let orig_current_module = self.current_module;
-        if let ModuleOrUniformRoot::Module(module) = module {
-            if let Some(def) = ident.span.adjust(module.expansion) {
-                self.current_module = self.macro_def_scope(def);
+        match module {
+            ModuleOrUniformRoot::Module(module) => {
+                if let Some(def) = ident.span.adjust(module.expansion) {
+                    self.current_module = self.macro_def_scope(def);
+                }
             }
+            ModuleOrUniformRoot::UniformRoot(UniformRootKind::ExternPrelude) => {
+                ident.span.adjust(Mark::root());
+            }
+            _ => {}
         }
-        let result = self.resolve_ident_in_module_unadjusted(
-            module, ident, ns, false, record_used, span,
-        );
+        let result = self.resolve_ident_in_module_unadjusted_ext(
+            module, ident, ns, parent_scope, false, record_used, path_span,
+        ).map_err(|(determinacy, _)| determinacy);
         self.current_module = orig_current_module;
         result
     }
@@ -2250,6 +2354,36 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         });
     }
 
+    fn future_proof_import(&mut self, use_tree: &ast::UseTree) {
+        if !self.session.rust_2018() {
+            return;
+        }
+
+        let segments = &use_tree.prefix.segments;
+        if !segments.is_empty() {
+            let ident = segments[0].ident;
+            if ident.is_path_segment_keyword() {
+                return;
+            }
+
+            let nss = match use_tree.kind {
+                ast::UseTreeKind::Simple(..) if segments.len() == 1 => &[TypeNS, ValueNS][..],
+                _ => &[TypeNS],
+            };
+            for &ns in nss {
+                if let Some(LexicalScopeBinding::Def(..)) =
+                        self.resolve_ident_in_lexical_scope(ident, ns, None, use_tree.prefix.span) {
+                    let what = if ns == TypeNS { "type parameters" } else { "local variables" };
+                    self.session.span_err(ident.span, &format!("imports cannot refer to {}", what));
+                }
+            }
+        } else if let ast::UseTreeKind::Nested(use_trees) = &use_tree.kind {
+            for (use_tree, _) in use_trees {
+                self.future_proof_import(use_tree);
+            }
+        }
+    }
+
     fn resolve_item(&mut self, item: &Item) {
         let name = item.ident.name;
         debug!("(resolving item) resolving {}", name);
@@ -2343,7 +2477,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 });
             }
 
-            ItemKind::Use(..) | ItemKind::ExternCrate(..) |
+            ItemKind::Use(ref use_tree) => {
+                self.future_proof_import(use_tree);
+            }
+
+            ItemKind::ExternCrate(..) |
             ItemKind::MacroDef(..) | ItemKind::GlobalAsm(..) => {
                 // do nothing, these are just around to be encoded
             }
@@ -2466,7 +2604,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 let span = trait_ref.path.span;
                 if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
                     self.resolve_path_without_parent_scope(
-                        None,
                         &path,
                         Some(TypeNS),
                         false,
@@ -2607,6 +2744,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
+                None,
                 false,
                 span,
             ).is_err() {
@@ -2863,7 +3001,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             Def::Const(..) if is_syntactic_ambiguity => {
                                 // Disambiguate in favor of a unit struct/variant
                                 // or constant pattern.
-                                self.record_use(ident, ValueNS, binding.unwrap());
+                                self.record_use(ident, ValueNS, binding.unwrap(), false);
                                 Some(PathResolution::new(def))
                             }
                             Def::StructCtor(..) | Def::VariantCtor(..) |
@@ -2991,7 +3129,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 } else {
                     let mod_path = &path[..path.len() - 1];
                     let mod_prefix = match this.resolve_path_without_parent_scope(
-                        None, mod_path, Some(TypeNS), false, span, CrateLint::No
+                        mod_path, Some(TypeNS), false, span, CrateLint::No
                     ) {
                         PathResult::Module(ModuleOrUniformRoot::Module(module)) =>
                             module.def(),
@@ -3480,7 +3618,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
 
         let result = match self.resolve_path_without_parent_scope(
-            None,
             &path,
             Some(ns),
             true,
@@ -3527,7 +3664,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
            path[0].ident.name != keywords::DollarCrate.name() {
             let unqualified_result = {
                 match self.resolve_path_without_parent_scope(
-                    None,
                     &[*path.last().unwrap()],
                     Some(ns),
                     false,
@@ -3551,9 +3687,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
     fn resolve_path_without_parent_scope(
         &mut self,
-        base_module: Option<ModuleOrUniformRoot<'a>>,
         path: &[Segment],
-        opt_ns: Option<Namespace>, // `None` indicates a module path
+        opt_ns: Option<Namespace>, // `None` indicates a module path in import
         record_used: bool,
         path_span: Span,
         crate_lint: CrateLint,
@@ -3562,21 +3697,19 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         // other paths will do okay with parent module alone.
         assert!(opt_ns != None && opt_ns != Some(MacroNS));
         let parent_scope = ParentScope { module: self.current_module, ..self.dummy_parent_scope() };
-        self.resolve_path(base_module, path, opt_ns, &parent_scope,
-                          record_used, path_span, crate_lint)
+        self.resolve_path(path, opt_ns, &parent_scope, record_used, path_span, crate_lint)
     }
 
     fn resolve_path(
         &mut self,
-        base_module: Option<ModuleOrUniformRoot<'a>>,
         path: &[Segment],
-        opt_ns: Option<Namespace>, // `None` indicates a module path
+        opt_ns: Option<Namespace>, // `None` indicates a module path in import
         parent_scope: &ParentScope<'a>,
         record_used: bool,
         path_span: Span,
         crate_lint: CrateLint,
     ) -> PathResult<'a> {
-        let mut module = base_module;
+        let mut module = None;
         let mut allow_super = true;
         let mut second_binding = None;
         self.current_module = parent_scope.module;
@@ -3629,7 +3762,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             continue;
                         }
                     }
-                    let msg = "There are too many initial `super`s.".to_string();
+                    let msg = "there are too many initial `super`s.".to_string();
                     return PathResult::Failed(ident.span, msg, false);
                 }
                 if i == 0 {
@@ -3640,9 +3773,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         continue;
                     }
                     if name == keywords::Extern.name() ||
-                       name == keywords::CrateRoot.name() &&
-                       self.session.rust_2018() {
-                        module = Some(ModuleOrUniformRoot::UniformRoot(name));
+                       name == keywords::CrateRoot.name() && self.session.rust_2018() {
+                        module =
+                            Some(ModuleOrUniformRoot::UniformRoot(UniformRootKind::ExternPrelude));
                         continue;
                     }
                     if name == keywords::CrateRoot.name() ||
@@ -3672,11 +3805,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             }
 
             let binding = if let Some(module) = module {
-                self.resolve_ident_in_module(module, ident, ns, record_used, path_span)
-            } else if opt_ns == Some(MacroNS) {
+                self.resolve_ident_in_module(module, ident, ns, None, record_used, path_span)
+            } else if opt_ns.is_none() || opt_ns == Some(MacroNS) {
                 assert!(ns == TypeNS);
-                self.early_resolve_ident_in_lexical_scope(ident, ns, None, parent_scope,
-                                                          record_used, record_used, path_span)
+                self.early_resolve_ident_in_lexical_scope(ident, ns, None, opt_ns.is_none(),
+                                                          parent_scope, record_used, record_used,
+                                                          path_span)
             } else {
                 let record_used_id =
                     if record_used { crate_lint.node_id().or(Some(CRATE_NODE_ID)) } else { None };
@@ -3691,7 +3825,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             def, path.len() - 1
                         ));
                     }
-                    _ => Err(if record_used { Determined } else { Undetermined }),
+                    _ => Err(Determinacy::determined(record_used)),
                 }
             };
 
@@ -3722,7 +3856,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                         ));
                     } else {
                         return PathResult::Failed(ident.span,
-                                                  format!("Not a module `{}`", ident),
+                                                  format!("not a module `{}`", ident),
                                                   is_last);
                     }
                 }
@@ -3747,14 +3881,14 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                             (c.path.segments.len(), c.path.to_string())
                         });
                         if let Some(candidate) = candidates.get(0) {
-                            format!("Did you mean `{}`?", candidate.path)
+                            format!("did you mean `{}`?", candidate.path)
                         } else {
-                            format!("Maybe a missing `extern crate {};`?", ident)
+                            format!("maybe a missing `extern crate {};`?", ident)
                         }
                     } else if i == 0 {
-                        format!("Use of undeclared type or module `{}`", ident)
+                        format!("use of undeclared type or module `{}`", ident)
                     } else {
-                        format!("Could not find `{}` in `{}`", ident, path[i - 1].ident)
+                        format!("could not find `{}` in `{}`", ident, path[i - 1].ident)
                     };
                     return PathResult::Failed(ident.span, msg, is_last);
                 }
@@ -3763,9 +3897,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         self.lint_if_path_starts_with_module(crate_lint, path, path_span, second_binding);
 
-        PathResult::Module(module.unwrap_or_else(|| {
-            span_bug!(path_span, "resolve_path: empty(?) path {:?} has no module", path);
-        }))
+        PathResult::Module(match module {
+            Some(module) => module,
+            None if path.is_empty() =>
+                ModuleOrUniformRoot::UniformRoot(UniformRootKind::CurrentScope),
+            _ => span_bug!(path_span, "resolve_path: non-empty path `{:?}` has no module", path),
+        })
     }
 
     fn lint_if_path_starts_with_module(
@@ -3975,6 +4112,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     ModuleOrUniformRoot::Module(module),
                     ident,
                     ns,
+                    None,
                     false,
                     module.span,
                 ) {
@@ -4050,7 +4188,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             // Search in module.
             let mod_path = &path[..path.len() - 1];
             if let PathResult::Module(module) = self.resolve_path_without_parent_scope(
-                None, mod_path, Some(TypeNS), false, span, CrateLint::No
+                mod_path, Some(TypeNS), false, span, CrateLint::No
             ) {
                 if let ModuleOrUniformRoot::Module(module) = module {
                     add_module_candidates(module, &mut names);
@@ -4297,6 +4435,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
+                None,
                 false,
                 module.span,
             ).is_ok() {
@@ -4351,7 +4490,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 ModuleOrUniformRoot::Module(module),
                 ident,
                 ns,
-                false,
                 false,
                 module.span,
             ).is_ok() {
@@ -4634,43 +4772,88 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
     }
 
-    fn report_ambiguity_error(&self, ident: Ident, b1: &NameBinding, b2: &NameBinding) {
-        let participle = |is_import: bool| if is_import { "imported" } else { "defined" };
-        let msg1 =
-            format!("`{}` could refer to the name {} here", ident, participle(b1.is_import()));
-        let msg2 =
-            format!("`{}` could also refer to the name {} here", ident, participle(b2.is_import()));
-        let note = if b1.expansion != Mark::root() {
-            Some(if let Def::Macro(..) = b1.def() {
-                format!("macro-expanded {} do not shadow",
-                        if b1.is_import() { "macro imports" } else { "macros" })
+    fn binding_description(&self, b: &NameBinding, ident: Ident, from_prelude: bool) -> String {
+        if b.span.is_dummy() {
+            let add_built_in = match b.def() {
+                // These already contain the "built-in" prefix or look bad with it.
+                Def::NonMacroAttr(..) | Def::PrimTy(..) | Def::ToolMod => false,
+                _ => true,
+            };
+            let (built_in, from) = if from_prelude {
+                ("", " from prelude")
+            } else if b.is_extern_crate() && !b.is_import() &&
+                        self.session.opts.externs.get(&ident.as_str()).is_some() {
+                ("", " passed with `--extern`")
+            } else if add_built_in {
+                (" built-in", "")
             } else {
-                format!("macro-expanded {} do not shadow when used in a macro invocation path",
-                        if b1.is_import() { "imports" } else { "items" })
-            })
-        } else if b1.is_glob_import() {
-            Some(format!("consider adding an explicit import of `{}` to disambiguate", ident))
+                ("", "")
+            };
+
+            let article = if built_in.is_empty() { b.article() } else { "a" };
+            format!("{a}{built_in} {thing}{from}",
+                    a = article, thing = b.descr(), built_in = built_in, from = from)
         } else {
-            None
+            let introduced = if b.is_import() { "imported" } else { "defined" };
+            format!("the {thing} {introduced} here",
+                    thing = b.descr(), introduced = introduced)
+        }
+    }
+
+    fn report_ambiguity_error(&self, ambiguity_error: &AmbiguityError) {
+        let AmbiguityError { kind, ident, b1, b2, misc1, misc2 } = *ambiguity_error;
+        let (b1, b2, misc1, misc2, swapped) = if b2.span.is_dummy() && !b1.span.is_dummy() {
+            // We have to print the span-less alternative first, otherwise formatting looks bad.
+            (b2, b1, misc2, misc1, true)
+        } else {
+            (b1, b2, misc1, misc2, false)
         };
 
-        let mut err = struct_span_err!(self.session, ident.span, E0659, "`{}` is ambiguous", ident);
+        let mut err = struct_span_err!(self.session, ident.span, E0659,
+                                       "`{ident}` is ambiguous ({why})",
+                                       ident = ident, why = kind.descr());
         err.span_label(ident.span, "ambiguous name");
-        err.span_note(b1.span, &msg1);
-        match b2.def() {
-            Def::Macro(..) if b2.span.is_dummy() =>
-                err.note(&format!("`{}` is also a builtin macro", ident)),
-            _ => err.span_note(b2.span, &msg2),
+
+        let mut could_refer_to = |b: &NameBinding, misc: AmbiguityErrorMisc, also: &str| {
+            let what = self.binding_description(b, ident, misc == AmbiguityErrorMisc::FromPrelude);
+            let note_msg = format!("`{ident}` could{also} refer to {what}",
+                                   ident = ident, also = also, what = what);
+
+            let mut help_msgs = Vec::new();
+            if b.is_glob_import() && (kind == AmbiguityKind::GlobVsGlob ||
+                                      kind == AmbiguityKind::GlobVsExpanded ||
+                                      kind == AmbiguityKind::GlobVsOuter &&
+                                      swapped != also.is_empty()) {
+                help_msgs.push(format!("consider adding an explicit import of \
+                                        `{ident}` to disambiguate", ident = ident))
+            }
+            if b.is_extern_crate() && self.session.rust_2018() {
+                help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously",
+                                       ident = ident, thing = b.descr()))
+            }
+            if misc == AmbiguityErrorMisc::SuggestSelf {
+                help_msgs.push(format!("use `self::{ident}` to refer to this {thing} unambiguously",
+                                       ident = ident, thing = b.descr()))
+            }
+
+            if b.span.is_dummy() {
+                err.note(&note_msg);
+            } else {
+                err.span_note(b.span, &note_msg);
+            }
+            for (i, help_msg) in help_msgs.iter().enumerate() {
+                let or = if i == 0 { "" } else { "or " };
+                err.help(&format!("{}{}", or, help_msg));
+            }
         };
-        if let Some(note) = note {
-            err.note(&note);
-        }
+
+        could_refer_to(b1, misc1, "");
+        could_refer_to(b2, misc2, " also");
         err.emit();
     }
 
     fn report_errors(&mut self, krate: &Crate) {
         self.report_with_use_injections(krate);
-        let mut reported_spans = FxHashSet::default();
 
         for &(span_use, span_def) in &self.macro_expanded_macro_export_errors {
             let msg = "macro-expanded `macro_export` macros from the current crate \
@@ -4683,12 +4866,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             );
         }
 
-        for &AmbiguityError { ident, b1, b2 } in &self.ambiguity_errors {
-            if reported_spans.insert(ident.span) {
-                self.report_ambiguity_error(ident, b1, b2);
-            }
+        for ambiguity_error in &self.ambiguity_errors {
+            self.report_ambiguity_error(ambiguity_error);
         }
 
+        let mut reported_spans = FxHashSet::default();
         for &PrivacyError(dedup_span, ident, binding) in &self.privacy_errors {
             if reported_spans.insert(dedup_span) {
                 span_err!(self.session, ident.span, E0603, "{} `{}` is private",
@@ -4842,6 +5024,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
     fn extern_prelude_get(&mut self, ident: Ident, speculative: bool, skip_feature_gate: bool)
                           -> Option<&'a NameBinding<'a>> {
+        if ident.is_path_segment_keyword() {
+            // Make sure `self`, `super` etc produce an error when passed to here.
+            return None;
+        }
         self.extern_prelude.get(&ident.modern()).cloned().and_then(|entry| {
             if let Some(binding) = entry.extern_crate_item {
                 if !speculative && !skip_feature_gate && entry.introduced_by_item &&
@@ -4863,7 +5049,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 };
                 let crate_root = self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
                 self.populate_module_if_necessary(&crate_root);
-                Some((crate_root, ty::Visibility::Public, ident.span, Mark::root())
+                Some((crate_root, ty::Visibility::Public, DUMMY_SP, Mark::root())
                     .to_name_binding(self.arenas))
             }
         })

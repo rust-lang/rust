@@ -16,6 +16,6 @@ fn main() {
     fn std() {}
     enum std {}
     use std as foo;
-    //~^ ERROR `std` import is ambiguous
-    //~| ERROR `std` import is ambiguous
+    //~^ ERROR `std` is ambiguous
+    //~| ERROR `std` is ambiguous
 }

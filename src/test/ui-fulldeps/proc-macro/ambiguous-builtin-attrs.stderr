@@ -1,98 +1,78 @@
-error[E0659]: `repr` is ambiguous
-  --> $DIR/ambiguous-builtin-attrs.rs:9:3
-   |
-LL | #[repr(C)] //~ ERROR `repr` is ambiguous
-   |   ^^^^ ambiguous name
-   |
-note: `repr` could refer to the name imported here
-  --> $DIR/ambiguous-builtin-attrs.rs:7:5
-   |
-LL | use builtin_attrs::*;
-   |     ^^^^^^^^^^^^^^^^
-note: `repr` could also refer to the name defined here
-  --> $DIR/ambiguous-builtin-attrs.rs:9:3
-   |
-LL | #[repr(C)] //~ ERROR `repr` is ambiguous
-   |   ^^^^
-   = note: consider adding an explicit import of `repr` to disambiguate
-
-error[E0659]: `repr` is ambiguous
-  --> $DIR/ambiguous-builtin-attrs.rs:11:19
-   |
-LL | #[cfg_attr(all(), repr(C))] //~ ERROR `repr` is ambiguous
-   |                   ^^^^ ambiguous name
-   |
-note: `repr` could refer to the name imported here
-  --> $DIR/ambiguous-builtin-attrs.rs:7:5
-   |
-LL | use builtin_attrs::*;
-   |     ^^^^^^^^^^^^^^^^
-note: `repr` could also refer to the name defined here
-  --> $DIR/ambiguous-builtin-attrs.rs:11:19
-   |
-LL | #[cfg_attr(all(), repr(C))] //~ ERROR `repr` is ambiguous
-   |                   ^^^^
-   = note: consider adding an explicit import of `repr` to disambiguate
-
-error[E0659]: `repr` is ambiguous
-  --> $DIR/ambiguous-builtin-attrs.rs:20:34
-   |
-LL | fn non_macro_expanded_location<#[repr(C)] T>() { //~ ERROR `repr` is ambiguous
-   |                                  ^^^^ ambiguous name
-   |
-note: `repr` could refer to the name imported here
-  --> $DIR/ambiguous-builtin-attrs.rs:7:5
-   |
-LL | use builtin_attrs::*;
-   |     ^^^^^^^^^^^^^^^^
-note: `repr` could also refer to the name defined here
-  --> $DIR/ambiguous-builtin-attrs.rs:20:34
-   |
-LL | fn non_macro_expanded_location<#[repr(C)] T>() { //~ ERROR `repr` is ambiguous
-   |                                  ^^^^
-   = note: consider adding an explicit import of `repr` to disambiguate
-
-error[E0659]: `repr` is ambiguous
-  --> $DIR/ambiguous-builtin-attrs.rs:22:11
-   |
-LL |         #[repr(C)] //~ ERROR `repr` is ambiguous
-   |           ^^^^ ambiguous name
-   |
-note: `repr` could refer to the name imported here
-  --> $DIR/ambiguous-builtin-attrs.rs:7:5
-   |
-LL | use builtin_attrs::*;
-   |     ^^^^^^^^^^^^^^^^
-note: `repr` could also refer to the name defined here
-  --> $DIR/ambiguous-builtin-attrs.rs:22:11
-   |
-LL |         #[repr(C)] //~ ERROR `repr` is ambiguous
-   |           ^^^^
-   = note: consider adding an explicit import of `repr` to disambiguate
-
-error[E0659]: `feature` is ambiguous
-  --> $DIR/ambiguous-builtin-attrs.rs:3:4
-   |
-LL | #![feature(decl_macro)] //~ ERROR `feature` is ambiguous
-   |    ^^^^^^^ ambiguous name
-   |
-note: `feature` could refer to the name imported here
-  --> $DIR/ambiguous-builtin-attrs.rs:7:5
-   |
-LL | use builtin_attrs::*;
-   |     ^^^^^^^^^^^^^^^^
-note: `feature` could also refer to the name defined here
-  --> $DIR/ambiguous-builtin-attrs.rs:3:4
-   |
-LL | #![feature(decl_macro)] //~ ERROR `feature` is ambiguous
-   |    ^^^^^^^
-   = note: consider adding an explicit import of `feature` to disambiguate
-
 error[E0425]: cannot find value `NonExistent` in this scope
   --> $DIR/ambiguous-builtin-attrs.rs:30:5
    |
 LL |     NonExistent; //~ ERROR cannot find value `NonExistent` in this scope
    |     ^^^^^^^^^^^ not found in this scope
+
+error[E0659]: `repr` is ambiguous (built-in attribute vs any other name)
+  --> $DIR/ambiguous-builtin-attrs.rs:9:3
+   |
+LL | #[repr(C)] //~ ERROR `repr` is ambiguous
+   |   ^^^^ ambiguous name
+   |
+   = note: `repr` could refer to a built-in attribute
+note: `repr` could also refer to the attribute macro imported here
+  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+   |
+LL | use builtin_attrs::*;
+   |     ^^^^^^^^^^^^^^^^
+   = help: use `self::repr` to refer to this attribute macro unambiguously
+
+error[E0659]: `repr` is ambiguous (built-in attribute vs any other name)
+  --> $DIR/ambiguous-builtin-attrs.rs:11:19
+   |
+LL | #[cfg_attr(all(), repr(C))] //~ ERROR `repr` is ambiguous
+   |                   ^^^^ ambiguous name
+   |
+   = note: `repr` could refer to a built-in attribute
+note: `repr` could also refer to the attribute macro imported here
+  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+   |
+LL | use builtin_attrs::*;
+   |     ^^^^^^^^^^^^^^^^
+   = help: use `self::repr` to refer to this attribute macro unambiguously
+
+error[E0659]: `repr` is ambiguous (built-in attribute vs any other name)
+  --> $DIR/ambiguous-builtin-attrs.rs:20:34
+   |
+LL | fn non_macro_expanded_location<#[repr(C)] T>() { //~ ERROR `repr` is ambiguous
+   |                                  ^^^^ ambiguous name
+   |
+   = note: `repr` could refer to a built-in attribute
+note: `repr` could also refer to the attribute macro imported here
+  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+   |
+LL | use builtin_attrs::*;
+   |     ^^^^^^^^^^^^^^^^
+   = help: use `self::repr` to refer to this attribute macro unambiguously
+
+error[E0659]: `repr` is ambiguous (built-in attribute vs any other name)
+  --> $DIR/ambiguous-builtin-attrs.rs:22:11
+   |
+LL |         #[repr(C)] //~ ERROR `repr` is ambiguous
+   |           ^^^^ ambiguous name
+   |
+   = note: `repr` could refer to a built-in attribute
+note: `repr` could also refer to the attribute macro imported here
+  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+   |
+LL | use builtin_attrs::*;
+   |     ^^^^^^^^^^^^^^^^
+   = help: use `self::repr` to refer to this attribute macro unambiguously
+
+error[E0659]: `feature` is ambiguous (built-in attribute vs any other name)
+  --> $DIR/ambiguous-builtin-attrs.rs:3:4
+   |
+LL | #![feature(decl_macro)] //~ ERROR `feature` is ambiguous
+   |    ^^^^^^^ ambiguous name
+   |
+   = note: `feature` could refer to a built-in attribute
+note: `feature` could also refer to the attribute macro imported here
+  --> $DIR/ambiguous-builtin-attrs.rs:7:5
+   |
+LL | use builtin_attrs::*;
+   |     ^^^^^^^^^^^^^^^^
+   = help: use `self::feature` to refer to this attribute macro unambiguously
 
 error: aborting due to 6 previous errors
 

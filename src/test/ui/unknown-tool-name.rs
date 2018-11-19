@@ -8,5 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[foo::bar] //~ ERROR failed to resolve. Use of undeclared type or module `foo`
+#[foo::bar] //~ ERROR failed to resolve: use of undeclared type or module `foo`
 fn main() {}

@@ -10,22 +10,20 @@
 
 // edition:2018
 
-#![feature(uniform_paths)]
-
-enum Foo { A, B }
+enum Foo {}
 
 struct std;
 
 fn main() {
-    enum Foo {}
+    enum Foo { A, B }
     use Foo::*;
-    //~^ ERROR `Foo` import is ambiguous
+    //~^ ERROR `Foo` is ambiguous
 
     let _ = (A, B);
 
     fn std() {}
     enum std {}
     use std as foo;
-    //~^ ERROR `std` import is ambiguous
-    //~| ERROR `std` import is ambiguous
+    //~^ ERROR `std` is ambiguous
+    //~| ERROR `std` is ambiguous
 }

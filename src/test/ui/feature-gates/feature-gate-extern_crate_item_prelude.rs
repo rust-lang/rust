@@ -1,6 +1,6 @@
 // edition:2018
 
-#![feature(alloc)]
+#![feature(alloc, underscore_imports)]
 
 extern crate alloc;
 
@@ -23,7 +23,7 @@ mod absolute {
 }
 
 mod import_in_scope {
-    use alloc;
+    use alloc as _;
     //~^ ERROR use of extern prelude names introduced with `extern crate` items is unstable
     use alloc::boxed;
     //~^ ERROR use of extern prelude names introduced with `extern crate` items is unstable

@@ -1,0 +1,23 @@
+error[E0659]: `sub` is ambiguous (name vs any other name during import resolution)
+  --> $DIR/block-scoped-shadow-nested.rs:18:13
+   |
+LL |         use sub::bar; //~ ERROR `sub` is ambiguous
+   |             ^^^ ambiguous name
+   |
+note: `sub` could refer to the module imported here
+  --> $DIR/block-scoped-shadow-nested.rs:16:9
+   |
+LL |     use my::sub;
+   |         ^^^^^^^
+note: `sub` could also refer to the module defined here
+  --> $DIR/block-scoped-shadow-nested.rs:11:1
+   |
+LL | / mod sub {
+LL | |     pub fn bar() {}
+LL | | }
+   | |_^
+   = help: use `self::sub` to refer to this module unambiguously
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.
