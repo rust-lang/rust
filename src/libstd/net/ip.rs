@@ -502,12 +502,19 @@ impl Ipv4Addr {
     ///
     /// The following return false:
     ///
-    /// - private address (10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16)
-    /// - the loopback address (127.0.0.0/8)
-    /// - the link-local address (169.254.0.0/16)
-    /// - the broadcast address (255.255.255.255/32)
-    /// - test addresses used for documentation (192.0.2.0/24, 198.51.100.0/24 and 203.0.113.0/24)
-    /// - the unspecified address (0.0.0.0)
+    /// - private addresses (see [`is_private()`](#method.is_private))
+    /// - the loopback address (see [`is_loopback()`](#method.is_loopback))
+    /// - the link-local address (see [`is_link_local()`](#method.is_link_local))
+    /// - the broadcast address (see [`is_broadcast()`](#method.is_broadcast))
+    /// - addresses used for documentation (see [`is_documentation()`](#method.is_documentation))
+    /// - the unspecified address (see [`is_unspecified()`](#method.is_unspecified)), and the whole
+    ///   0.0.0.0/8 block
+    /// - addresses reserved for future protocols (see
+    /// [`is_ietf_protocol_assignment()`](#method.is_ietf_protocol_assignment), except
+    /// `192.0.0.9/32` and `192.0.0.10/32` which are globally routable
+    /// - addresses reserved for future use (see [`is_reserved()`](#method.is_reserved())
+    /// - addresses reserved for networking devices benchmarking (see
+    /// [`is_benchmarking`](#method.is_benchmarking))
     ///
     /// [ipv4-sr]: https://www.iana.org/assignments/iana-ipv4-special-registry/iana-ipv4-special-registry.xhtml
     /// [`true`]: ../../std/primitive.bool.html
@@ -520,16 +527,65 @@ impl Ipv4Addr {
     /// use std::net::Ipv4Addr;
     ///
     /// fn main() {
+    ///     // private addresses are not global
     ///     assert_eq!(Ipv4Addr::new(10, 254, 0, 0).is_global(), false);
     ///     assert_eq!(Ipv4Addr::new(192, 168, 10, 65).is_global(), false);
     ///     assert_eq!(Ipv4Addr::new(172, 16, 10, 65).is_global(), false);
+    ///
+    ///     // the 0.0.0.0/8 block is not global
+    ///     assert_eq!(Ipv4Addr::new(0, 1, 2, 3).is_global(), false);
+    ///     // in particular, the unspecified address is not global
     ///     assert_eq!(Ipv4Addr::new(0, 0, 0, 0).is_global(), false);
+    ///
+    ///     // the loopback address is not global
+    ///     assert_eq!(Ipv4Addr::new(127, 0, 0, 1).is_global(), false);
+    ///
+    ///     // link local addresses are not global
+    ///     assert_eq!(Ipv4Addr::new(169, 254, 45, 1).is_global(), false);
+    ///
+    ///     // the broadcast address is not global
+    ///     assert_eq!(Ipv4Addr::new(255, 255, 255, 255).is_global(), false);
+    ///
+    ///     // the broadcast address is not global
+    ///     assert_eq!(Ipv4Addr::new(192, 0, 2, 255).is_global(), false);
+    ///     assert_eq!(Ipv4Addr::new(198, 51, 100, 65).is_global(), false);
+    ///     assert_eq!(Ipv4Addr::new(203, 0, 113, 6).is_global(), false);
+    ///
+    ///     // shared addresses are not global
+    ///     assert_eq!(Ipv4Addr::new(100, 100, 0, 0).is_global(), false);
+    ///
+    ///     // addresses reserved for protocol assignment are not global
+    ///     assert_eq!(Ipv4Addr::new(192, 0, 0, 0).is_global(), false);
+    ///     assert_eq!(Ipv4Addr::new(192, 0, 0, 255).is_global(), false);
+    ///
+    ///     // addresses reserved for future use are not global
+    ///     assert_eq!(Ipv4Addr::new(250, 10, 20, 30).is_global(), false);
+    ///
+    ///     // addresses reserved for network devices benchmarking are not global
+    ///     assert_eq!(Ipv4Addr::new(198, 18, 0, 0).is_global(), false);
+    ///
+    ///     // All the other addresses are global
+    ///     assert_eq!(Ipv4Addr::new(1, 1, 1, 1).is_global(), true);
     ///     assert_eq!(Ipv4Addr::new(80, 9, 12, 3).is_global(), true);
     /// }
     /// ```
     pub fn is_global(&self) -> bool {
-        !self.is_private() && !self.is_loopback() && !self.is_link_local() &&
-        !self.is_broadcast() && !self.is_documentation() && !self.is_unspecified()
+        // check if this address is 192.0.0.9 or 192.0.0.10. These addresses are the only two
+        // globally routable addresses in the 192.0.0.0/24 range.
+        if u32::from(*self) == 0xc0000009 || u32::from(*self) == 0xc000000a {
+            return true;
+        }
+        !self.is_private()
+            && !self.is_loopback()
+            && !self.is_link_local()
+            && !self.is_broadcast()
+            && !self.is_documentation()
+            && !self.is_shared()
+            && !self.is_ietf_protocol_assignment()
+            && !self.is_reserved()
+            && !self.is_benchmarking()
+            // Make sure the address is not in 0.0.0.0/8
+            && self.octets()[0] != 0
     }
 
     /// Returns [`true`] if this address is part of the Shared Address Space defined in
