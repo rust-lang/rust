@@ -68,7 +68,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
                 ty::Adt(def, _) => check_must_use(cx, def.did, s.span, "", ""),
                 ty::Opaque(def, _) => {
                     let mut must_use = false;
-                    for (predicate, _) in cx.tcx.predicates_of(def).predicates {
+                    for (predicate, _) in &cx.tcx.predicates_of(def).predicates {
                         if let ty::Predicate::Trait(ref poly_trait_predicate) = predicate {
                             let trait_ref = poly_trait_predicate.skip_binder().trait_ref;
                             if check_must_use(cx, trait_ref.def_id, s.span, "implementer of ", "") {
