@@ -1027,12 +1027,22 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xfe00) == 0xfc00
     }
 
-    /// Returns [`true`] if the address is unicast and link-local (fe80::/10).
+    /// Returns [`true`] if the address is a unicast link-local address (`fe80::/64`).
     ///
-    /// This property is defined in [IETF RFC 4291].
+    /// A common mis-conception is to think that "unicast link-local addresses start with
+    /// `fe80::`", but the [IETF RFC 4291] actually defines a stricter format for these addresses:
     ///
-    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
-    /// [`true`]: ../../std/primitive.bool.html
+    /// ```no_rust
+    /// |   10     |
+    /// |  bits    |         54 bits         |          64 bits           |
+    /// +----------+-------------------------+----------------------------+
+    /// |1111111010|           0             |       interface ID         |
+    /// +----------+-------------------------+----------------------------+
+    /// ```
+    ///
+    /// This method validates the format defined in the RFC and won't recognize the following
+    /// addresses such as `fe80:0:0:1::` or `fe81::` as unicast link-local addresses for example.
+    /// If you need a less strict validation use [`is_unicast_link_local()`] instead.
     ///
     /// # Examples
     ///
@@ -1042,11 +1052,91 @@ impl Ipv6Addr {
     /// use std::net::Ipv6Addr;
     ///
     /// fn main() {
-    ///     assert_eq!(Ipv6Addr::new(0, 0, 0, 0, 0, 0xffff, 0xc00a, 0x2ff).is_unicast_link_local(),
-    ///                false);
-    ///     assert_eq!(Ipv6Addr::new(0xfe8a, 0, 0, 0, 0, 0, 0, 0).is_unicast_link_local(), true);
+    ///     let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
+    ///     assert!(ip.is_unicast_link_local_strict());
+    ///
+    ///     let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff);
+    ///     assert!(ip.is_unicast_link_local_strict());
+    ///
+    ///     let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
+    ///     assert!(!ip.is_unicast_link_local_strict());
+    ///     assert!(ip.is_unicast_link_local());
+    ///
+    ///     let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
+    ///     assert!(!ip.is_unicast_link_local_strict());
+    ///     assert!(ip.is_unicast_link_local());
     /// }
     /// ```
+    ///
+    /// # See also
+    ///
+    /// - [IETF RFC 4291 section 2.5.6]
+    /// - [RFC 4291 errata 4406]
+    ///
+    /// [IETF RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
+    /// [`true`]: ../../std/primitive.bool.html
+    /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
+    /// [`is_unicast_link_local()`](#method.is_unicast_link_local)
+    ///
+    pub fn is_unicast_link_local_strict(&self) -> bool {
+        (self.segments()[0] & 0xffff) == 0xfe80
+            && (self.segments()[1] & 0xffff) == 0
+            && (self.segments()[2] & 0xffff) == 0
+            && (self.segments()[3] & 0xffff) == 0
+    }
+
+    /// Returns [`true`] if the address is a unicast link-local address (`fe80::/10`).
+    ///
+    /// This method returns [`true`] for addresses in the range reserved by [RFC 4291 section 2.4],
+    /// i.e. addresses with the following format:
+    ///
+    /// ```no_rust
+    /// |   10     |
+    /// |  bits    |         54 bits         |          64 bits           |
+    /// +----------+-------------------------+----------------------------+
+    /// |1111111010|    arbitratry value     |       interface ID         |
+    /// +----------+-------------------------+----------------------------+
+    /// ```
+    ///
+    /// As a result, this method consider addresses such as `fe80:0:0:1::` or `fe81::` to be
+    /// unicast link-local addresses, whereas [`is_unicast_link_local_strict()`] does not. If you
+    /// need a strict validation fully compliant with the RFC, use
+    /// [`is_unicast_link_local_strict()`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ip)]
+    ///
+    /// use std::net::Ipv6Addr;
+    ///
+    /// fn main() {
+    ///     let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0, 0, 0, 0);
+    ///     assert!(ip.is_unicast_link_local());
+    ///
+    ///     let ip = Ipv6Addr::new(0xfe80, 0, 0, 0, 0xffff, 0xffff, 0xffff, 0xffff);
+    ///     assert!(ip.is_unicast_link_local());
+    ///
+    ///     let ip = Ipv6Addr::new(0xfe80, 0, 0, 1, 0, 0, 0, 0);
+    ///     assert!(ip.is_unicast_link_local());
+    ///     assert!(!ip.is_unicast_link_local_strict());
+    ///
+    ///     let ip = Ipv6Addr::new(0xfe81, 0, 0, 0, 0, 0, 0, 0);
+    ///     assert!(ip.is_unicast_link_local());
+    ///     assert!(!ip.is_unicast_link_local_strict());
+    /// }
+    /// ```
+    ///
+    /// # See also
+    ///
+    /// - [IETF RFC 4291 section 2.4]
+    /// - [RFC 4291 errata 4406]
+    ///
+    /// [IETF RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
+    /// [`true`]: ../../std/primitive.bool.html
+    /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
+    /// [`is_unicast_link_local_strict()`](#method.is_unicast_link_local_strict)
+    ///
     pub fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }
