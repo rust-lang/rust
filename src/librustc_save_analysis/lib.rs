@@ -688,11 +688,24 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    pub fn get_path_data(&self, _id: NodeId, path: &ast::Path) -> Option<Ref> {
-        path.segments.last().and_then(|seg| self.get_path_segment_data(seg))
+    pub fn get_path_data(&self, id: NodeId, path: &ast::Path) -> Option<Ref> {
+        path.segments
+            .last()
+            .and_then(|seg| {
+                self.get_path_segment_data(seg)
+                    .or_else(|| self.get_path_segment_data_with_id(seg, id))
+            })
     }
 
     pub fn get_path_segment_data(&self, path_seg: &ast::PathSegment) -> Option<Ref> {
+        self.get_path_segment_data_with_id(path_seg, path_seg.id)
+    }
+
+    fn get_path_segment_data_with_id(
+        &self,
+        path_seg: &ast::PathSegment,
+        id: NodeId,
+    ) -> Option<Ref> {
         // Returns true if the path is function type sugar, e.g., `Fn(A) -> B`.
         fn fn_type(seg: &ast::PathSegment) -> bool {
             if let Some(ref generic_args) = seg.args {
@@ -703,11 +716,11 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             false
         }
 
-        if path_seg.id == DUMMY_NODE_ID {
+        if id == DUMMY_NODE_ID {
             return None;
         }
 
-        let def = self.get_path_def(path_seg.id);
+        let def = self.get_path_def(id);
         let span = path_seg.ident.span;
         filter!(self.span_utils, span);
         let span = self.span_from_span(span);
