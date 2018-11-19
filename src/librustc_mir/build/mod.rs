@@ -32,7 +32,6 @@ use syntax::ast;
 use syntax::attr::{self, UnwindAttr};
 use syntax::symbol::keywords;
 use syntax_pos::Span;
-use rustc_serialize::{Decodable, Decoder};
 use transform::MirSource;
 use util as mir_util;
 

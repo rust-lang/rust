@@ -15,7 +15,6 @@ use rustc::mir::{Local, Location, Mir};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::vec_linked_list as vll;
 use util::liveness::{categorize, DefUse, LiveVariableMap};
-use rustc_serialize::{Decodable, Decoder};
 
 /// A map that cross references each local with the locations where it
 /// is defined (assigned), used, or dropped. Used during liveness

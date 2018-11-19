@@ -28,7 +28,6 @@ use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 use ty::TyCtxt;
 use ty::query::Providers;
-use serialize::{Decodable, Decoder};
 
 use hir;
 use hir::Node;

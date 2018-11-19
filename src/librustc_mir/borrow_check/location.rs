@@ -10,7 +10,6 @@
 
 use rustc::mir::{BasicBlock, Location, Mir};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_serialize::{Decodable, Decoder};
 
 /// Maps between a MIR Location, which identifies a particular
 /// statement within a basic block, to a "rich location", which

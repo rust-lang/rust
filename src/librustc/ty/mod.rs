@@ -41,7 +41,7 @@ use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 use arena::SyncDroplessArena;
 use session::DataTypeKind;
 
-use serialize::{self, Encodable, Encoder, Decodable, Decoder};
+use serialize::{self, Encodable, Encoder};
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;

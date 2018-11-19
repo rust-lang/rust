@@ -29,7 +29,7 @@ use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
 use syntax::symbol::{keywords, InternedString};
 
-use serialize::{self, Decodable, Decoder};
+use serialize;
 
 use hir;
 

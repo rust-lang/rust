@@ -17,7 +17,6 @@ use std::fmt;
 use std::ops::{Add, Deref, Sub, Mul, AddAssign, Range, RangeInclusive};
 
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc_serialize::{Decodable, Decoder};
 
 pub mod call;
 

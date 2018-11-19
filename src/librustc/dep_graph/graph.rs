@@ -18,7 +18,6 @@ use std::env;
 use std::hash::Hash;
 use ty::{self, TyCtxt};
 use util::common::{ProfileQueriesMsg, profq_msg};
-use serialize::{Decodable, Decoder};
 
 use ich::{StableHashingContext, StableHashingContextProvider, Fingerprint};
 

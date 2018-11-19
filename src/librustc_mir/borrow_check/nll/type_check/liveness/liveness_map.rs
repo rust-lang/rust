@@ -23,7 +23,6 @@ use rustc::ty::{RegionVid, TyCtxt};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use util::liveness::LiveVariableMap;
-use rustc_serialize::{Decodable, Decoder};
 
 /// Map between Local and LiveVar indices: the purpose of this
 /// map is to define the subset of local variables for which we need

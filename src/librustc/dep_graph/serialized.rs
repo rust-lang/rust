@@ -13,7 +13,6 @@
 use dep_graph::DepNode;
 use ich::Fingerprint;
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-use serialize::{Decodable, Decoder};
 
 newtype_index! {
     pub struct SerializedDepNodeIndex { .. }

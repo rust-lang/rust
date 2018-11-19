@@ -340,11 +340,7 @@ macro_rules! newtype_index {
             @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
-        impl Decodable for $type {
-            fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-                d.read_u32().into()
-            }
-        }
+        newtype_index!(@decodable $type);
     );
 
     // The case where no derives are added, but encodable is overridden. Don't
@@ -377,9 +373,21 @@ macro_rules! newtype_index {
             @vis          [$v]
             @debug_format [$debug_format]
                           $($tokens)*);
-        impl Decodable for $type {
-            fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
-                d.read_u32().map(Self::from)
+        newtype_index!(@decodable $type);
+    );
+
+    (@decodable $type:ident) => (
+        impl $type {
+            fn __decodable__impl__hack() {
+                mod __more_hacks_because__self_doesnt_work_in_functions {
+                    extern crate serialize;
+                    use self::serialize::{Decodable, Decoder};
+                    impl Decodable for super::$type {
+                        fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+                            d.read_u32().map(Self::from)
+                        }
+                    }
+                }
             }
         }
     );
