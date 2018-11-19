@@ -1104,12 +1104,20 @@ impl Ipv6Addr {
     ///
     /// - the loopback address
     /// - the link-local addresses
-    /// - the (deprecated) site-local addresses
     /// - unique local addresses
     /// - the unspecified address
     /// - the address range reserved for documentation
     ///
+    /// This method returns [`true`] for site-local addresses as per [RFC 4291 section 2.5.7]
+    ///
+    /// ```no_rust
+    /// The special behavior of [the site-local unicast] prefix defined in [RFC3513] must no longer
+    /// be supported in new implementations (i.e., new implementations must treat this prefix as
+    /// Global Unicast).
+    /// ```
+    ///
     /// [`true`]: ../../std/primitive.bool.html
+    /// [RFC 4291 section 2.5.7]: https://tools.ietf.org/html/rfc4291#section-2.5.7
     ///
     /// # Examples
     ///
@@ -1126,9 +1134,11 @@ impl Ipv6Addr {
     /// ```
     pub fn is_unicast_global(&self) -> bool {
         !self.is_multicast()
-            && !self.is_loopback() && !self.is_unicast_link_local()
-            && !self.is_unicast_site_local() && !self.is_unique_local()
-            && !self.is_unspecified() && !self.is_documentation()
+            && !self.is_loopback()
+            && !self.is_unicast_link_local()
+            && !self.is_unique_local()
+            && !self.is_unspecified()
+            && !self.is_documentation()
     }
 
     /// Returns the address's multicast scope if the address is multicast.
