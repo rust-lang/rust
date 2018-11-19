@@ -1003,7 +1003,7 @@ impl Ipv6Addr {
         }
     }
 
-    /// Returns [`true`] if this is a unique local address (fc00::/7).
+    /// Returns [`true`] if this is a unique local address (`fc00::/7`).
     ///
     /// This property is defined in [IETF RFC 4193].
     ///
