@@ -421,7 +421,7 @@ pub fn rewrite_macro_inner(
             // anything in between the braces (for now).
             let snippet = context.snippet(mac.span);
             let macro_raw = snippet.split_at(snippet.find('!')? + 1).1.trim_start();
-            match trim_left_preserve_layout(macro_raw, &shape.indent, &context.config) {
+            match trim_left_preserve_layout(macro_raw, shape.indent, &context.config) {
                 Some(macro_body) => Some(format!("{} {}", macro_name, macro_body)),
                 None => Some(format!("{} {}", macro_name, macro_raw)),
             }

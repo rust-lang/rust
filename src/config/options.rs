@@ -447,7 +447,7 @@ pub trait CliOptions {
 }
 
 /// The edition of the compiler (RFC 2052)
-configuration_option_enum!{ Edition:
+configuration_option_enum! { Edition:
     Edition2015: 2015,
     Edition2018: 2018,
 }
