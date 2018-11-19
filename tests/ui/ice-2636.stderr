@@ -1,0 +1,16 @@
+error: you don't need to add `&` to both the expression and the patterns
+  --> $DIR/ice-2636.rs:21:9
+   |
+21 | /         match $foo {
+22 | |             $ ( & $t => $ord,
+23 | |             )*
+24 | |         };
+   | |_________^
+...
+30 |       test_hash!(&a, A => 0, B => 1, C => 2);
+   |       --------------------------------------- in this macro invocation
+   |
+   = note: `-D clippy::match-ref-pats` implied by `-D warnings`
+
+error: aborting due to previous error
+
