@@ -2064,6 +2064,7 @@ dependencies = [
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
+ "rustc_codegen_ssa 0.0.0",
  "rustc_driver 0.0.0",
  "rustc_target 0.0.0",
 ]
@@ -2246,7 +2247,6 @@ dependencies = [
  "rustc-rayon 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_allocator 0.0.0",
  "rustc_borrowck 0.0.0",
- "rustc_codegen_ssa 0.0.0",
  "rustc_codegen_utils 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
