@@ -489,7 +489,7 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
             debug!("ENTERING({}) {}", self.cur_frame(), self.frame().instance);
         }
 
-        if self.stack.len() > self.tcx.sess.const_eval_stack_frame_limit {
+        if self.stack.len() > self.tcx.sess.const_eval_stack_frame_limit.get() {
             err!(StackFrameLimitReached)
         } else {
             Ok(())
