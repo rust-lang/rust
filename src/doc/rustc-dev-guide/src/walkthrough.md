@@ -228,9 +228,34 @@ members.
 For the `?` macro feature, we went through a few different iterations after the
 original implementation: [1][impl2], [2][impl3], [3][impl4].
 
-TODO
-
+Along the way, we decided that `?` should not take a separator, which was
+previously an unresolved question listed in the RFC. We also changed the
+disambiguation strategy: we decided to remove the ability to use `?` as a
+separator token for other repetition operators (e.g. `+` or `*`). However,
+since this was a breaking change, we decided to do it over an edition boundary.
+Thus, the new feature can be enabled only in edition 2018. These deviations
+from the original RFC required [another
+FCP](https://github.com/rust-lang/rust/issues/51934).
 
 ## Stabilization
 
-TODO
+Finally, after the feature had baked for a while on nightly, a language team member
+[moved to stabilize it][stabilizefcp].
+
+[stabilizefcp]: https://github.com/rust-lang/rust/issues/48075#issuecomment-433177613
+
+A _stabilization report_ needs to be written that includes
+
+- brief description of the behavior and any deviations from the RFC
+- which edition(s) are affected and how
+- links to a few tests to show the interesting aspects
+
+The stabilization report for our feature is [here][stabrep].
+
+[stabrep]: https://github.com/rust-lang/rust/issues/48075#issuecomment-433243048
+
+After this, a PR is made to remove the feature gate, enabling the feature by
+default (on the 2018 edition). A note is added to the [Release notes][relnotes]
+about the feature.
+
+[relnotes]: https://github.com/rust-lang/rust/blob/master/RELEASES.md
