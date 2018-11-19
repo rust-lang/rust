@@ -89,6 +89,56 @@ impl NiceRegionError<'me, 'gcx, 'tcx> {
                 // I actually can't see why this would be the case ever.
             },
 
+            Some(RegionResolutionError::ConcreteFailure(
+                SubregionOrigin::Subtype(TypeTrace { .. }),
+                ty::RePlaceholder(_),
+                ty::RePlaceholder(_),
+            )) => {
+                // I actually can't see why this would be the case ever.
+            },
+
+            Some(RegionResolutionError::ConcreteFailure(
+                SubregionOrigin::Subtype(TypeTrace {
+                    cause,
+                    values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
+                }),
+                sub_region,
+                sup_region @ ty::RePlaceholder(_),
+            )) => if expected.def_id == found.def_id {
+                return Some(self.try_report_placeholders_trait(
+                    Some(sub_region),
+                    cause,
+                    None,
+                    Some(*sup_region),
+                    expected.def_id,
+                    expected.substs,
+                    found.substs,
+                ));
+            } else {
+                // I actually can't see why this would be the case ever.
+            },
+
+            Some(RegionResolutionError::ConcreteFailure(
+                SubregionOrigin::Subtype(TypeTrace {
+                    cause,
+                    values: ValuePairs::TraitRefs(ExpectedFound { expected, found }),
+                }),
+                sub_region @ ty::RePlaceholder(_),
+                sup_region,
+            )) => if expected.def_id == found.def_id {
+                return Some(self.try_report_placeholders_trait(
+                    Some(sup_region),
+                    cause,
+                    None,
+                    Some(*sub_region),
+                    expected.def_id,
+                    expected.substs,
+                    found.substs,
+                ));
+            } else {
+                // I actually can't see why this would be the case ever.
+            },
+
             _ => {}
         }
 

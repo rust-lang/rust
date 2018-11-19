@@ -28,8 +28,7 @@ fn main() {
         assert_foo(x);
     };
     assert_foo(gen);
-    //~^ ERROR mismatched types
-    //~| ERROR mismatched types
+    //~^ ERROR implementation of `Foo` is not general enough
 
     // Allow impls which matches any lifetime
     let x = &OnlyFooIfRef(No);
