@@ -2903,7 +2903,7 @@ impl<T: ?Sized> NonNull<T> {
     #[inline]
     pub fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
-            Some(NonNull { pointer: unsafe { NonZero(ptr as _) } })
+            Some(unsafe { Self::new_unchecked(ptr) })
         } else {
             None
         }
