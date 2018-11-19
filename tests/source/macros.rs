@@ -4,7 +4,7 @@ itemmacro!(this, is.now() .formatted(yay));
 
 itemmacro!(really, long.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbb() .is.formatted());
 
-itemmacro!{this, is.bracket().formatted()}
+itemmacro!{this, is.brace().formatted()}
 
 peg_file!   modname  ("mygrammarfile.rustpeg");
 
@@ -106,6 +106,7 @@ fn main() {
 
 impl X {
     empty_invoc!{}
+    empty_invoc! {}
 }
 
 fn issue_1279() {

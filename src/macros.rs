@@ -256,7 +256,7 @@ pub fn rewrite_macro_inner(
             }
             DelimToken::Paren => Some(format!("{}()", macro_name)),
             DelimToken::Bracket => Some(format!("{}[]", macro_name)),
-            DelimToken::Brace => Some(format!("{}{{}}", macro_name)),
+            DelimToken::Brace => Some(format!("{} {{}}", macro_name)),
             _ => unreachable!(),
         };
     }
@@ -416,8 +416,15 @@ pub fn rewrite_macro_inner(
             }
         }
         DelimToken::Brace => {
-            // Skip macro invocations with braces, for now.
-            trim_left_preserve_layout(context.snippet(mac.span), shape.indent, &context.config)
+            // For macro invocations with braces, always put a space between
+            // the `macro_name!` and `{ /* macro_body */ }` but skip modifying
+            // anything in between the braces (for now).
+            let snippet = context.snippet(mac.span);
+            let macro_raw = snippet.split_at(snippet.find('!')? + 1).1.trim_start();
+            match trim_left_preserve_layout(macro_raw, &shape.indent, &context.config) {
+                Some(macro_body) => Some(format!("{} {}", macro_name, macro_body)),
+                None => Some(format!("{} {}", macro_name, macro_raw)),
+            }
         }
         _ => unreachable!(),
     }

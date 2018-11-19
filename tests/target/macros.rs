@@ -9,7 +9,7 @@ itemmacro!(
         .formatted()
 );
 
-itemmacro!{this, is.bracket().formatted()}
+itemmacro! {this, is.brace().formatted()}
 
 peg_file! modname("mygrammarfile.rustpeg");
 
@@ -94,7 +94,7 @@ fn main() {
 
     foo(makro!(1, 3));
 
-    hamkaas!{ () };
+    hamkaas! { () };
 
     macrowithbraces! {dont,    format, me}
 
@@ -104,11 +104,11 @@ fn main() {
 
     some_macro![];
 
-    some_macro!{
+    some_macro! {
         // comment
     };
 
-    some_macro!{
+    some_macro! {
         // comment
     };
 
@@ -131,7 +131,8 @@ fn main() {
 }
 
 impl X {
-    empty_invoc!{}
+    empty_invoc! {}
+    empty_invoc! {}
 }
 
 fn issue_1279() {
@@ -949,7 +950,7 @@ macro_rules! m {
     };
 }
 fn foo() {
-    f!{r#"
+    f! {r#"
             test
        "#};
 }

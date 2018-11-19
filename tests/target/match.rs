@@ -204,19 +204,19 @@ fn issue355() {
             vec![3; 4]
         }
         // Funky bracketing styles
-        t => println!{"a", b},
+        t => println! {"a", b},
         u => vec![1, 2],
         v => vec![3; 4],
         w => println!["a", b],
         x => vec![1, 2],
         y => vec![3; 4],
         // Brackets with comments
-        tc => println!{"a", b}, // comment
-        uc => vec![1, 2],       // comment
-        vc => vec![3; 4],       // comment
-        wc => println!["a", b], // comment
-        xc => vec![1, 2],       // comment
-        yc => vec![3; 4],       // comment
+        tc => println! {"a", b}, // comment
+        uc => vec![1, 2],        // comment
+        vc => vec![3; 4],        // comment
+        wc => println!["a", b],  // comment
+        xc => vec![1, 2],        // comment
+        yc => vec![3; 4],        // comment
         yd => looooooooooooooooooooooooooooooooooooooooooooooooooooooooong_func(
             aaaaaaaaaa, bbbbbbbbbb, cccccccccc, dddddddddd,
         ),

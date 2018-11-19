@@ -31,7 +31,7 @@ macro_rules! impl_from_vector {
         }
         */
 
-        test_if!{
+        test_if! {
             $test_tt:
             interpolate_idents! {
                 mod [$id _from_ $source] {
