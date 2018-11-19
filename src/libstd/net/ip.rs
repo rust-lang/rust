@@ -1051,10 +1051,19 @@ impl Ipv6Addr {
         (self.segments()[0] & 0xffc0) == 0xfe80
     }
 
-    /// Returns [`true`] if this is a deprecated unicast site-local address
-    /// (fec0::/10).
+    /// Returns [`true`] if this is a deprecated unicast site-local address (fec0::/10). The
+    /// unicast site-local address format is defined in [RFC 4291 section 2.5.7] as:
+    ///
+    /// ```no_rust
+    /// |   10     |
+    /// |  bits    |         54 bits         |         64 bits            |
+    /// +----------+-------------------------+----------------------------+
+    /// |1111111011|        subnet ID        |       interface ID         |
+    /// +----------+-------------------------+----------------------------+
+    /// ```
     ///
     /// [`true`]: ../../std/primitive.bool.html
+    /// [RFC 4291 section 2.5.7]: https://tools.ietf.org/html/rfc4291#section-2.5.7
     ///
     /// # Examples
     ///
