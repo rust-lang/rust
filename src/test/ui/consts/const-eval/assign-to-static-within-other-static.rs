@@ -23,15 +23,13 @@ unsafe impl Sync for Foo {}
 
 static FOO: Foo = Foo(UnsafeCell::new(42));
 
-fn foo() {}
-
 static BAR: () = unsafe {
     *FOO.0.get() = 5;
-
-    foo();
-    //~^ ERROR calls in statics are limited to constant functions, tuple structs and tuple variants
 };
 
-fn main() {
-    println!("{}", unsafe { *FOO.0.get() });
-}
+static mut FOO2: u32 = 42;
+static BOO2: () = unsafe {
+    FOO2 = 5;
+};
+
+fn main() {}

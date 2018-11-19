@@ -243,13 +243,29 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             return;
         }
 
+        if self.tcx.features().const_let {
+            let mut dest = dest;
+            let index = loop {
+                match dest {
+                    Place::Local(index) => break *index,
+                    Place::Projection(proj) => dest = &proj.base,
+                    Place::Promoted(..) | Place::Static(..) => {
+                        // Catch more errors in the destination.
+                        self.visit_place(
+                            dest,
+                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            location
+                        );
+                        return;
+                    }
+                }
+            };
+            debug!("store to var {:?}", index);
+            self.local_qualif[index] = Some(self.qualif);
+            return;
+        }
+
         match *dest {
-            Place::Local(index) if (self.mir.local_kind(index) == LocalKind::Var ||
-                                   self.mir.local_kind(index) == LocalKind::Arg) &&
-                                   self.tcx.sess.features_untracked().const_let => {
-                debug!("store to var {:?}", index);
-                self.local_qualif[index] = Some(self.qualif);
-            }
             Place::Local(index) if self.mir.local_kind(index) == LocalKind::Temp ||
                                    self.mir.local_kind(index) == LocalKind::ReturnPointer => {
                 debug!("store to {:?} (temp or return pointer)", index);
@@ -478,6 +494,12 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 // Only allow statics (not consts) to refer to other statics.
                 if self.mode == Mode::Static || self.mode == Mode::StaticMut {
+                    if context.is_mutating_use() {
+                        self.tcx.sess.span_err(
+                            self.span,
+                            "cannot mutate statics in the initializer of another static",
+                        );
+                    }
                     return;
                 }
                 self.add(Qualif::NOT_CONST);

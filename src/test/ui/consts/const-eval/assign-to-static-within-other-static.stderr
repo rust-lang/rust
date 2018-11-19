@@ -1,0 +1,8 @@
+error: cannot mutate statics in the initializer of another static
+  --> $DIR/assign-to-static-within-other-static.rs:32:5
+   |
+LL |     FOO2 = 5;
+   |     ^^^^^^^^
+
+error: aborting due to previous error
+
