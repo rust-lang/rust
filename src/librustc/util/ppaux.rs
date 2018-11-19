@@ -90,7 +90,11 @@ impl RegionHighlightMode {
     /// During the execution of `op`, highlight the region inference
     /// vairable `vid` as `'N`.  We can only highlight one region vid
     /// at a time.
-    pub fn highlighting_region<R>(region: ty::Region<'_>, number: usize, op: impl FnOnce() -> R) -> R {
+    pub fn highlighting_region<R>(
+        region: ty::Region<'_>,
+        number: usize,
+        op: impl FnOnce() -> R,
+    ) -> R {
         let old_mode = Self::get();
         let mut new_mode = old_mode;
         let first_avail_slot = new_mode.highlight_regions.iter_mut()
@@ -1076,12 +1080,10 @@ impl fmt::Debug for ty::FloatVid {
 
 impl fmt::Debug for ty::RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if RegionHighlightMode::get().any_region_vids_highlighted() {
-            if let Some(counter) = RegionHighlightMode::get().region_highlighted(&ty::ReVar(*self)) {
-                return write!(f, "'{:?}", counter);
-            } else {
-                return write!(f, "'_");
-            }
+        if let Some(counter) = RegionHighlightMode::get().region_highlighted(&ty::ReVar(*self)) {
+            return write!(f, "'{:?}", counter);
+        } else if RegionHighlightMode::get().any_region_vids_highlighted() {
+            return write!(f, "'_");
         }
 
         write!(f, "'_#{}r", self.index())
