@@ -43,5 +43,5 @@ pub mod memory;
 #[cfg_attr(test, assert_instr(unreachable))]
 #[inline]
 pub unsafe fn unreachable() -> ! {
-    ::_core::intrinsics::abort()
+    ::intrinsics::abort()
 }

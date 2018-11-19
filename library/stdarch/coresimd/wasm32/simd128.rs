@@ -632,12 +632,7 @@ impl v128 {
             c: [ImmByte; 16],
         }
         // FIXME: https://github.com/rust-lang/rust/issues/53193
-        const C: [ImmByte; 16] = unsafe {
-            U {
-                v: ::_core::u128::MAX,
-            }
-            .c
-        };
+        const C: [ImmByte; 16] = unsafe { U { v: ::u128::MAX }.c };
         Self::xor(v128::const_(C), a)
     }
 
@@ -664,7 +659,7 @@ impl v128 {
     // #[target_feature(enable = "simd128")]
     // FIXME: #[cfg_attr(test, assert_instr($id.load))]
     pub unsafe fn load(m: *const v128) -> v128 {
-        ::_core::ptr::read(m)
+        ::ptr::read(m)
     }
 
     /// Store a `v128` vector to the given heap address.
@@ -672,7 +667,7 @@ impl v128 {
     // #[target_feature(enable = "simd128")]
     // FIXME: #[cfg_attr(test, assert_instr($id.store))]
     pub unsafe fn store(m: *mut v128, a: v128) {
-        ::_core::ptr::write(m, a)
+        ::ptr::write(m, a)
     }
 }
 

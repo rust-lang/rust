@@ -520,5 +520,5 @@ use stdsimd_test::assert_instr;
 #[cfg_attr(test, assert_instr(ud2))]
 #[inline]
 pub unsafe fn ud2() -> ! {
-    ::_core::intrinsics::abort()
+    ::intrinsics::abort()
 }

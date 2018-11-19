@@ -22,5 +22,5 @@ use stdsimd_test::assert_instr;
 #[cfg_attr(test, assert_instr(brk))]
 #[inline]
 pub unsafe fn brk() -> ! {
-    ::_core::intrinsics::abort()
+    ::intrinsics::abort()
 }

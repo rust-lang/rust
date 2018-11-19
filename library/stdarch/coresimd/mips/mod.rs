@@ -10,5 +10,5 @@ use stdsimd_test::assert_instr;
 #[cfg_attr(test, assert_instr(break))]
 #[inline]
 pub unsafe fn break_() -> ! {
-    ::_core::intrinsics::abort()
+    ::intrinsics::abort()
 }

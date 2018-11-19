@@ -55,5 +55,5 @@ use stdsimd_test::assert_instr;
 #[cfg_attr(test, assert_instr(udf))]
 #[inline]
 pub unsafe fn udf() -> ! {
-    ::_core::intrinsics::abort()
+    ::intrinsics::abort()
 }
