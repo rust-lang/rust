@@ -2,7 +2,6 @@
 
 #[macro_use] extern crate rustc_data_structures;
 extern crate rustc_serialize;
-use rustc_serialize::{Decodable, Decoder};
 
 use rustc_data_structures::indexed_vec::Idx;
 

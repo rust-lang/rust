@@ -50,6 +50,9 @@ const unsafe fn foo30_3(x: *mut usize) -> usize { *x } //~ ERROR not allowed in 
 const unsafe fn foo30_4(x: *mut usize) -> &'static usize { &*x } //~ ERROR not allowed in const fn
 //~^ dereferencing raw pointers in constant functions
 
+const fn foo30_5(x: *mut usize) -> &'static usize { unsafe { &*x } } //~ ERROR not allowed
+//~^ dereferencing raw pointers in constant functions
+
 fn main() {}
 
 const unsafe fn no_union() {

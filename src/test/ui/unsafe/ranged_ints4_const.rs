@@ -7,13 +7,13 @@ fn main() {}
 
 const fn foo() -> NonZero<u32> {
     let mut x = unsafe { NonZero(1) };
-    x.0 = 0; //~ ERROR statements in constant functions are unstable
+    x.0 = 0;
     //~^ ERROR mutation of layout constrained field is unsafe
     x
 }
 
 const fn bar() -> NonZero<u32> {
     let mut x = unsafe { NonZero(1) };
-    unsafe { x.0 = 0 }; //~ ERROR statements in constant functions are unstable
+    unsafe { x.0 = 0 }; // this is UB
     x
 }

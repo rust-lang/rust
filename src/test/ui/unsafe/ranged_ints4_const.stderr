@@ -1,28 +1,11 @@
-error[E0658]: statements in constant functions are unstable (see issue #48821)
-  --> $DIR/ranged_ints4_const.rs:10:5
-   |
-LL |     x.0 = 0; //~ ERROR statements in constant functions are unstable
-   |     ^^^^^^^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
-
-error[E0658]: statements in constant functions are unstable (see issue #48821)
-  --> $DIR/ranged_ints4_const.rs:17:14
-   |
-LL |     unsafe { x.0 = 0 }; //~ ERROR statements in constant functions are unstable
-   |              ^^^^^^^
-   |
-   = help: add #![feature(const_let)] to the crate attributes to enable
-
 error[E0133]: mutation of layout constrained field is unsafe and requires unsafe function or block
   --> $DIR/ranged_ints4_const.rs:10:5
    |
-LL |     x.0 = 0; //~ ERROR statements in constant functions are unstable
+LL |     x.0 = 0;
    |     ^^^^^^^ mutation of layout constrained field
    |
    = note: mutating layout constrained fields cannot statically be checked for valid values
 
-error: aborting due to 3 previous errors
+error: aborting due to previous error
 
-Some errors occurred: E0133, E0658.
-For more information about an error, try `rustc --explain E0133`.
+For more information about this error, try `rustc --explain E0133`.
