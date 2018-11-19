@@ -120,7 +120,6 @@ impl<'tcx> Caches<'tcx> {
 struct CraneliftCodegenBackend;
 
 pub struct CodegenResults {
-    artifact: faerie::Artifact,
     modules: Vec<CompiledModule>,
     allocator_module: Option<CompiledModule>,
     metadata: Vec<u8>,
@@ -281,19 +280,17 @@ impl CodegenBackend for CraneliftCodegenBackend {
             std::fs::write(&tmp_file, obj).unwrap();
 
             return Box::new(CodegenResults {
-                artifact,
                 metadata: metadata.raw_data,
                 crate_name: tcx.crate_name(LOCAL_CRATE),
                 crate_info: CrateInfo::new(tcx),
                 linker_info: LinkerInfo::new(tcx),
                 modules: vec![CompiledModule {
-                    name: "dummy".to_string(),
+                    name: "dummy_name".to_string(),
                     kind: ModuleKind::Regular,
                     object: Some(tmp_file),
                     bytecode: None,
                     bytecode_compressed: None,
                 }],
-                //modules: vec![],
                 allocator_module: None,
             });
         }

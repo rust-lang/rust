@@ -23,13 +23,17 @@ pub(crate) fn link_rlib(sess: &Session, res: &CodegenResults, output_name: PathB
     let mut builder = ar::Builder::new(file);
 
     // Add main object file
-    let obj = res.artifact.emit().unwrap();
-    builder
-        .append(
-            &ar::Header::new(b"data.o".to_vec(), obj.len() as u64),
-            ::std::io::Cursor::new(obj),
-        )
-        .unwrap();
+    for module in &res.modules {
+        if let Some(ref object_path) = module.object {
+            let object = File::open(object_path).expect("Someone deleted our object file");
+            let object_len = object.metadata().unwrap().len();
+            builder.append(
+                &ar::Header::new((module.name.to_string() +  RUST_CGU_EXT).into_bytes(), object_len),
+                object,
+            )
+            .unwrap();
+        }
+    }
 
     // Non object files need to be added after object files, because ranlib will
     // try to read the native architecture from the first file, even if it isn't
@@ -62,10 +66,6 @@ pub(crate) fn link_bin(sess: &Session, codegen_results: &CodegenResults, out_fil
         Ok(tmpdir) => tmpdir,
         Err(err) => sess.fatal(&format!("couldn't create a temp dir: {}", err)),
     };
-
-    // TODO: link executable
-    let obj = codegen_results.artifact.emit().unwrap();
-    std::fs::write(tmpdir.path().join("out".to_string() + RUST_CGU_EXT), obj).unwrap();
 
     let (linker, flavor) = linker_and_flavor(sess);
     let (pname, mut cmd) = get_linker(sess, &linker, flavor);
