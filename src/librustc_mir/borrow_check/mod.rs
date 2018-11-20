@@ -1381,7 +1381,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn check_for_local_borrow(&mut self, borrow: &BorrowData<'tcx>, yield_span: Span) {
         debug!("check_for_local_borrow({:?})", borrow);
 
-        if borrow_of_local_data(&borrow.borrowed_place) {
+        let neo_place = self.infcx.tcx
+            .as_new_place(&borrow.borrowed_place);
+        if borrow_of_local_data(&neo_place) {
             let err = self.infcx.tcx
                 .cannot_borrow_across_generator_yield(
                     self.retrieve_borrow_spans(borrow).var_or_use(),

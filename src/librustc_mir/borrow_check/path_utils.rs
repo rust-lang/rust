@@ -1,10 +1,11 @@
-use borrow_check::borrow_set::{BorrowSet, BorrowData, TwoPhaseActivation};
+use borrow_check::borrow_set::{BorrowData, BorrowSet, TwoPhaseActivation};
 use borrow_check::places_conflict;
-use borrow_check::Context;
 use borrow_check::AccessDepth;
+use borrow_check::Context;
 use dataflow::indexes::BorrowIndex;
 use rustc::mir::{BasicBlock, Location, Mir, Place};
-use rustc::mir::{ProjectionElem, BorrowKind};
+use rustc::mir::{BorrowKind, ProjectionElem};
+use rustc::mir::{NeoPlace, PlaceBase};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::graph::dominators::Dominators;
 
@@ -13,11 +14,10 @@ use rustc_data_structures::graph::dominators::Dominators;
 /// Activation phases.
 pub(super) fn allow_two_phase_borrow<'a, 'tcx, 'gcx: 'tcx>(
     tcx: &TyCtxt<'a, 'gcx, 'tcx>,
-    kind: BorrowKind
+    kind: BorrowKind,
 ) -> bool {
     tcx.two_phase_borrows()
-        && (kind.allows_two_phase_borrow()
-            || tcx.sess.opts.debugging_opts.two_phase_beyond_autoref)
+        && (kind.allows_two_phase_borrow() || tcx.sess.opts.debugging_opts.two_phase_beyond_autoref)
 }
 
 /// Control for the path borrow checking code
@@ -28,7 +28,7 @@ pub(super) enum Control {
 }
 
 /// Encapsulates the idea of iterating over every borrow that involves a particular path
-pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
+pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S>(
     s: &mut S,
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     mir: &Mir<'tcx>,
@@ -39,7 +39,7 @@ pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
     mut op: F,
 ) where
     F: FnMut(&mut S, BorrowIndex, &BorrowData<'tcx>) -> Control,
-    I: Iterator<Item=BorrowIndex>
+    I: Iterator<Item = BorrowIndex>,
 {
     let (access, place) = access_place;
 
@@ -75,9 +75,12 @@ pub(super) fn each_borrow_involving_path<'a, 'tcx, 'gcx: 'tcx, F, I, S> (
 pub(super) fn is_active<'tcx>(
     dominators: &Dominators<BasicBlock>,
     borrow_data: &BorrowData<'tcx>,
-    location: Location
+    location: Location,
 ) -> bool {
-    debug!("is_active(borrow_data={:?}, location={:?})", borrow_data, location);
+    debug!(
+        "is_active(borrow_data={:?}, location={:?})",
+        borrow_data, location
+    );
 
     let activation_location = match borrow_data.activation_location {
         // If this is not a 2-phase borrow, it is always active.
@@ -136,24 +139,28 @@ pub(super) fn is_active<'tcx>(
 
 /// Determines if a given borrow is borrowing local data
 /// This is called for all Yield statements on movable generators
-pub(super) fn borrow_of_local_data<'tcx>(place: &Place<'tcx>) -> bool {
-    match place {
-        Place::Promoted(_) |
-        Place::Static(..) => false,
-        Place::Local(..) => true,
-        Place::Projection(box proj) => {
-            match proj.elem {
-                // Reborrow of already borrowed data is ignored
-                // Any errors will be caught on the initial borrow
-                ProjectionElem::Deref => false,
+pub(super) fn borrow_of_local_data<'tcx>(place: &NeoPlace<'tcx>) -> bool {
+    let mut borrow_of_local_data = match place.base {
+        PlaceBase::Promoted(_) | PlaceBase::Static(..) => false,
+        PlaceBase::Local(..) => true,
+    };
 
-                // For interior references and downcasts, find out if the base is local
-                ProjectionElem::Field(..)
-                    | ProjectionElem::Index(..)
-                    | ProjectionElem::ConstantIndex { .. }
-                | ProjectionElem::Subslice { .. }
-                | ProjectionElem::Downcast(..) => borrow_of_local_data(&proj.base),
+    for elem in place.elems.iter().rev() {
+        match elem {
+            // Reborrow of already borrowed data is ignored
+            // Any errors will be caught on the initial borrow
+            ProjectionElem::Deref => {
+                borrow_of_local_data = false;
+                break;
             }
+
+            // For interior references and downcasts, find out if the base is local
+            ProjectionElem::Field(..)
+            | ProjectionElem::Index(..)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Downcast(..) => {}
         }
     }
+    borrow_of_local_data
 }
