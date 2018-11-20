@@ -1033,9 +1033,9 @@ fn is_legal_fragment_specifier(_sess: &ParseSess,
                                frag_name: &str,
                                _frag_span: Span) -> bool {
     /*
-     * If new fragmnet specifiers are invented in nightly, `_sess`,
-     * `_features`, `_attrs`, and `_frag_span` will be useful for
-     * here for checking against feature gates. See past versions of
+     * If new fragment specifiers are invented in nightly, `_sess`,
+     * `_features`, `_attrs`, and `_frag_span` will be useful here
+     * for checking against feature gates. See past versions of
      * this function.
      */
     match frag_name {

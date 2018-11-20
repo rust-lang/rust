@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // run-pass
-#![cfg_attr(stage0, feature(macro_literal_matcher))]
 
 macro_rules! mtester {
     ($l:literal) => {
