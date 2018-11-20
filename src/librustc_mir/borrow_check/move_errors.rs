@@ -111,39 +111,42 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                 // If that ever stops being the case, then the ever initialized
                 // flow could be used.
                 if let Some(StatementKind::Assign(
-                    Place::Local(local),
+                    place,
                     box Rvalue::Use(Operand::Move(move_from)),
                 )) = self.mir.basic_blocks()[location.block]
                     .statements
                     .get(location.statement_index)
                     .map(|stmt| &stmt.kind)
                 {
-                    let local_decl = &self.mir.local_decls[*local];
-                    // opt_match_place is the
-                    // match_span is the span of the expression being matched on
-                    // match *x.y { ... }        match_place is Some(*x.y)
-                    //       ^^^^                match_span is the span of *x.y
-                    //
-                    // opt_match_place is None for let [mut] x = ... statements,
-                    // whether or not the right-hand side is a place expression
-                    if let Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
-                        opt_match_place: Some((ref opt_match_place, match_span)),
-                        binding_mode: _,
-                        opt_ty_info: _,
-                        pat_span: _,
-                    }))) = local_decl.is_user_variable
-                    {
-                        self.append_binding_error(
-                            grouped_errors,
-                            kind,
-                            original_path,
-                            move_from,
-                            *local,
-                            opt_match_place,
-                            match_span,
-                            stmt_source_info.span,
-                        );
-                        return;
+                    let neo_place = self.infcx.tcx.as_new_place(&place);
+                    if let Some(PlaceBase::Local(local)) = neo_place.as_place_base() {
+                        let local_decl = &self.mir.local_decls[*local];
+                        // opt_match_place is the
+                        // match_span is the span of the expression being matched on
+                        // match *x.y { ... }        match_place is Some(*x.y)
+                        //       ^^^^                match_span is the span of *x.y
+                        //
+                        // opt_match_place is None for let [mut] x = ... statements,
+                        // whether or not the right-hand side is a place expression
+                        if let Some(ClearCrossCrate::Set(BindingForm::Var(VarBindingForm {
+                            opt_match_place: Some((ref opt_match_place, match_span)),
+                            binding_mode: _,
+                            opt_ty_info: _,
+                            pat_span: _,
+                        }))) = local_decl.is_user_variable
+                        {
+                            self.append_binding_error(
+                                grouped_errors,
+                                kind,
+                                original_path,
+                                move_from,
+                                *local,
+                                opt_match_place,
+                                match_span,
+                                stmt_source_info.span,
+                            );
+                            return;
+                        }
                     }
                 }
                 grouped_errors.push(GroupedMoveError::OtherIllegalMove {
@@ -269,12 +272,15 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                         // Inspect the type of the content behind the
                         // borrow to provide feedback about why this
                         // was a move rather than a copy.
-                        let ty = place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                        let neo_place = self.infcx.tcx.as_new_place(&place);
+                        let ty = neo_place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+
                         let is_upvar_field_projection =
                             self.prefixes(&original_path, PrefixSet::All)
                             .map(|p| self.infcx.tcx.as_new_place(&p))
                             .any(|p| p.is_upvar_field_projection(self.mir, &self.infcx.tcx)
-                                 .is_some());
+                                 .is_some()
+                        );
                         debug!("report: ty={:?}", ty);
                         match ty.sty {
                             ty::Array(..) | ty::Slice(..) =>
@@ -354,52 +360,54 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         err: &mut DiagnosticBuilder<'a>,
         span: Span,
     ) {
-        let snippet = self.infcx.tcx.sess.source_map().span_to_snippet(span).unwrap();
-        match error {
-            GroupedMoveError::MovesFromPlace {
-                mut binds_to,
-                move_from,
-                ..
-            } => {
-                let try_remove_deref = match move_from {
-                    Place::Projection(box PlaceProjection {
-                        elem: ProjectionElem::Deref,
-                        ..
-                    }) => true,
-                    _ => false,
-                };
-                if try_remove_deref && snippet.starts_with('*') {
-                    // The snippet doesn't start with `*` in (e.g.) index
-                    // expressions `a[b]`, which roughly desugar to
-                    // `*Index::index(&a, b)` or
-                    // `*IndexMut::index_mut(&mut a, b)`.
-                    err.span_suggestion(
-                        span,
-                        "consider removing the `*`",
-                        snippet[1..].to_owned(),
-                        Applicability::Unspecified,
-                    );
-                } else {
-                    err.span_suggestion(
-                        span,
-                        "consider borrowing here",
-                        format!("&{}", snippet),
-                        Applicability::Unspecified,
-                    );
-                }
+        if let Ok(snippet) = self.infcx.tcx.sess
+            .source_map().span_to_snippet(span) {
+            match error {
+                GroupedMoveError::MovesFromPlace {
+                    mut binds_to,
+                    move_from,
+                    ..
+                } => {
+                    let try_remove_deref = match move_from {
+                        Place::Projection(box PlaceProjection {
+                            elem: ProjectionElem::Deref,
+                            ..
+                        }) => true,
+                        _ => false,
+                    };
+                    if try_remove_deref && snippet.starts_with('*') {
+                        // The snippet doesn't start with `*` in (e.g.) index
+                        // expressions `a[b]`, which roughly desugar to
+                        // `*Index::index(&a, b)` or
+                        // `*IndexMut::index_mut(&mut a, b)`.
+                        err.span_suggestion(
+                            span,
+                            "consider removing the `*`",
+                            snippet[1..].to_owned(),
+                            Applicability::Unspecified,
+                        );
+                    } else {
+                        err.span_suggestion(
+                            span,
+                            "consider borrowing here",
+                            format!("&{}", snippet),
+                            Applicability::Unspecified,
+                        );
+                    }
 
-                binds_to.sort();
-                binds_to.dedup();
-                self.add_move_error_details(err, &binds_to);
+                    binds_to.sort();
+                    binds_to.dedup();
+                    self.add_move_error_details(err, &binds_to);
+                }
+                GroupedMoveError::MovesFromValue { mut binds_to, .. } => {
+                    binds_to.sort();
+                    binds_to.dedup();
+                    self.add_move_error_suggestions(err, &binds_to);
+                    self.add_move_error_details(err, &binds_to);
+                }
+                // No binding. Nothing to suggest.
+                GroupedMoveError::OtherIllegalMove { .. } => (),
             }
-            GroupedMoveError::MovesFromValue { mut binds_to, .. } => {
-                binds_to.sort();
-                binds_to.dedup();
-                self.add_move_error_suggestions(err, &binds_to);
-                self.add_move_error_details(err, &binds_to);
-            }
-            // No binding. Nothing to suggest.
-            GroupedMoveError::OtherIllegalMove { .. } => (),
         }
     }
 
@@ -417,27 +425,28 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     ..
                 }))
             ) = bind_to.is_user_variable {
-                let pat_snippet = self.infcx.tcx.sess.source_map()
-                    .span_to_snippet(pat_span)
-                    .unwrap();
-                if pat_snippet.starts_with('&') {
-                    let pat_snippet = pat_snippet[1..].trim_start();
-                    let suggestion;
-                    let to_remove;
-                    if pat_snippet.starts_with("mut")
-                        && pat_snippet["mut".len()..].starts_with(Pattern_White_Space)
-                    {
-                        suggestion = pat_snippet["mut".len()..].trim_start();
-                        to_remove = "&mut";
-                    } else {
-                        suggestion = pat_snippet;
-                        to_remove = "&";
+                if let Ok(pat_snippet) = self.infcx.tcx.sess
+                    .source_map()
+                    .span_to_snippet(pat_span) {
+                    if pat_snippet.starts_with('&') {
+                        let pat_snippet = pat_snippet[1..].trim_start();
+                        let suggestion;
+                        let to_remove;
+                        if pat_snippet.starts_with("mut")
+                            && pat_snippet["mut".len()..].starts_with(Pattern_White_Space)
+                        {
+                            suggestion = pat_snippet["mut".len()..].trim_start();
+                            to_remove = "&mut";
+                        } else {
+                            suggestion = pat_snippet;
+                            to_remove = "&";
+                        }
+                        suggestions.push((
+                            pat_span,
+                            to_remove,
+                            suggestion.to_owned(),
+                        ));
                     }
-                    suggestions.push((
-                        pat_span,
-                        to_remove,
-                        suggestion.to_owned(),
-                    ));
                 }
             }
         }
@@ -536,7 +545,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                     // We're only interested in assignments (in particular, where the
                     // assignment came from - was it an `Rc` or `Arc`?).
                     if let StatementKind::Assign(_, box Rvalue::Ref(_, _, source)) = &stmt.kind {
-                        let ty = source.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                        let neo_place = self.infcx.tcx.as_new_place(source);
+                        let ty = neo_place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
                         let ty = match ty.sty {
                             ty::TyKind::Ref(_, ty, _) => ty,
                             _ => ty,
@@ -560,8 +570,8 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
                             Operand::Copy(place) | Operand::Move(place) => place,
                             _ => continue,
                         };
-
-                        let ty = source.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
+                        let neo_place = self.infcx.tcx.as_new_place(&source);
+                        let ty = neo_place.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx);
                         let ty = match ty.sty {
                             ty::TyKind::Ref(_, ty, _) => ty,
                             _ => ty,
@@ -583,11 +593,14 @@ impl<'a, 'gcx, 'tcx> MirBorrowckCtxt<'a, 'gcx, 'tcx> {
         // If we didn't find an `Arc` or an `Rc`, then check specifically for
         // a dereference of a place that has the type of a raw pointer.
         // We can't use `place.ty(..).to_ty(..)` here as that strips away the raw pointer.
-        if let Place::Projection(box Projection {
-            base,
-            elem: ProjectionElem::Deref,
-        }) = place {
-            if base.ty(self.mir, self.infcx.tcx).to_ty(self.infcx.tcx).is_unsafe_ptr() {
+        let neo_place = self.infcx.tcx.as_new_place(&place);
+        let place_tys = neo_place.place_tys(&self.mir, self.infcx.tcx);
+        if let Some(&ProjectionElem::Deref) = neo_place.elems.last() {
+            // Given place
+            // base.[a, b, c]
+            //             ^-- deref
+            // ^^^^^^^^^^
+            if place_tys[place_tys.len() - 2].to_ty(self.infcx.tcx).is_unsafe_ptr() {
                 return BorrowedContentSource::DerefRawPointer;
             }
         }
