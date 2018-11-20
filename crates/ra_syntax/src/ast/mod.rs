@@ -315,6 +315,12 @@ impl<'a> PathSegment<'a> {
     }
 }
 
+impl<'a> UseTree<'a> {
+    pub fn has_star(self) -> bool {
+        self.syntax().children().any(|it| it.kind() == STAR)
+    }
+}
+
 impl<'a> UseTreeList<'a> {
     pub fn parent_use_tree(self) -> UseTree<'a> {
         self.syntax()
