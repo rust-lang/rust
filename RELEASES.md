@@ -45,6 +45,8 @@ Stabilized APIs
 Cargo
 -----
 - [Cargo will now download crates in parallel using HTTP/2.][cargo/6005]
+- [You can now rename packages in your Cargo.toml][cargo/6319] We have a guide
+  on [how to use the `package` key in your dependencies.][cargo-rename-reference]
 
 [52813]: https://github.com/rust-lang/rust/pull/52813/
 [53218]: https://github.com/rust-lang/rust/pull/53218/
@@ -68,6 +70,8 @@ Cargo
 [`slice::rchunks_mut`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rchunks_mut
 [`slice::rchunks`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rchunks
 [cargo/6005]: https://github.com/rust-lang/cargo/pull/6005/
+[cargo/6319]: https://github.com/rust-lang/cargo/pull/6319/
+[cargo-rename-reference]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
 [const-reference]: https://doc.rust-lang.org/reference/items/functions.html#const-functions
 
 
