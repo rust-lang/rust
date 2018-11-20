@@ -1546,10 +1546,10 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// Checks whether a type is definitely uninhabited. This is
     /// conservative: for some types that are uninhabited we return `false`,
     /// but we only return `true` for types that are definitely uninhabited.
-    /// `ty.conservative_is_uninhabited` implies that any value of type `ty`
+    /// `ty.conservative_is_privately_uninhabited` implies that any value of type `ty`
     /// will be `Abi::Uninhabited`. (Note that uninhabited types may have nonzero
     /// size, to account for partial initialisation. See #49298 for details.)
-    pub fn conservative_is_uninhabited(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+    pub fn conservative_is_privately_uninhabited(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         // FIXME(varkor): we can make this less conversative by substituting concrete
         // type arguments.
         match self.sty {
@@ -1565,16 +1565,16 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                 //     one uninhabited field.
                 def.variants.iter().all(|var| {
                     var.fields.iter().any(|field| {
-                        tcx.type_of(field.did).conservative_is_uninhabited(tcx)
+                        tcx.type_of(field.did).conservative_is_privately_uninhabited(tcx)
                     })
                 })
             }
-            ty::Tuple(tys) => tys.iter().any(|ty| ty.conservative_is_uninhabited(tcx)),
+            ty::Tuple(tys) => tys.iter().any(|ty| ty.conservative_is_privately_uninhabited(tcx)),
             ty::Array(ty, len) => {
                 match len.assert_usize(tcx) {
                     // If the array is definitely non-empty, it's uninhabited if
                     // the type of its elements is uninhabited.
-                    Some(n) if n != 0 => ty.conservative_is_uninhabited(tcx),
+                    Some(n) if n != 0 => ty.conservative_is_privately_uninhabited(tcx),
                     _ => false
                 }
             }

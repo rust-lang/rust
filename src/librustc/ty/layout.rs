@@ -194,7 +194,7 @@ fn layout_raw<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let layout = cx.layout_raw_uncached(ty);
             // Type-level uninhabitedness should always imply ABI uninhabitedness.
             if let Ok(layout) = layout {
-                if ty.conservative_is_uninhabited(tcx) {
+                if ty.conservative_is_privately_uninhabited(tcx) {
                     assert!(layout.abi.is_uninhabited());
                 }
             }
@@ -557,7 +557,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let size = element.size.checked_mul(count, dl)
                     .ok_or(LayoutError::SizeOverflow(ty))?;
 
-                let abi = if count != 0 && ty.conservative_is_uninhabited(tcx) {
+                let abi = if count != 0 && ty.conservative_is_privately_uninhabited(tcx) {
                     Abi::Uninhabited
                 } else {
                     Abi::Aggregate { sized: true }

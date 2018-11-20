@@ -330,11 +330,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             func: fun,
                             args,
                             cleanup: Some(cleanup),
-                            destination: if expr.ty.conservative_is_uninhabited(this.hir.tcx()) {
-                                None
-                            } else {
-                                Some((destination.clone(), success))
-                            },
+                            destination:
+                                if expr.ty.conservative_is_privately_uninhabited(this.hir.tcx()) {
+                                    None
+                                } else {
+                                    Some((destination.clone(), success))
+                                },
                             from_hir_call,
                         },
                     );
@@ -419,8 +420,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 });
 
                 let rvalue = unpack!(block = this.as_local_rvalue(block, expr));
-                this.cfg
-                    .push_assign(block, source_info, destination, rvalue);
+                this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
             }
         };
