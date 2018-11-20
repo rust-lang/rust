@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 
 use ra_syntax::{
     SmolStr, SyntaxKind,
-    ast::{self, NameOwner}
+    ast::{self, NameOwner, AstNode}
 };
 
 use crate::{
@@ -28,7 +28,7 @@ struct InputModuleItems {
 #[derive(Debug, Clone)]
 struct Path {
     kind: PathKind,
-    segments: Vec<SmolStr>,
+    segments: Vec<(LocalSyntaxPtr, SmolStr)>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -150,7 +150,8 @@ fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
                 kind: PathKind::Abs,
                 segments: Vec::with_capacity(1),
             });
-            res.segments.push(name.text());
+            let ptr = LocalSyntaxPtr::new(name.syntax());
+            res.segments.push((ptr, name.text()));
             res
         }
         ast::PathSegmentKind::CrateKw => {
