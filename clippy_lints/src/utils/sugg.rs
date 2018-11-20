@@ -96,6 +96,15 @@ impl<'a> Sugg<'a> {
         Self::hir_opt(cx, expr).unwrap_or_else(|| Sugg::NonParen(Cow::Borrowed(default)))
     }
 
+    pub fn hir_with_applicability(cx: &LateContext<'_, '_>, expr: &hir::Expr, default: &'a str, applicability: &mut Applicability) -> Self {
+        Self::hir_opt(cx, expr).unwrap_or_else(|| {
+            if *applicability == Applicability::MachineApplicable {
+                *applicability = Applicability::HasPlaceholders;
+            }
+            Sugg::NonParen(Cow::Borrowed(default))
+        })
+    }
+
     /// Prepare a suggestion from an expression.
     pub fn ast(cx: &EarlyContext<'_>, expr: &ast::Expr, default: &'a str) -> Self {
         use crate::syntax::ast::RangeLimits;

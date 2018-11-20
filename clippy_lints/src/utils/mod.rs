@@ -7,44 +7,48 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::reexport::*;
-use matches::matches;
-use if_chain::if_chain;
 use crate::rustc::hir;
-use crate::rustc::hir::*;
-use crate::rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use crate::rustc::hir::def::Def;
+use crate::rustc::hir::def_id::{DefId, CRATE_DEF_INDEX};
 use crate::rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use crate::rustc::hir::Node;
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, Level, Lint, LintContext};
 use crate::rustc::session::Session;
 use crate::rustc::traits;
-use crate::rustc::ty::{self, Binder, Ty, TyCtxt, layout::{self, IntegerExt}, subst::Kind};
+use crate::rustc::ty::{
+    self,
+    layout::{self, IntegerExt},
+    subst::Kind,
+    Binder, Ty, TyCtxt,
+};
 use crate::rustc_errors::{Applicability, CodeSuggestion, Substitution, SubstitutionPart};
+use crate::syntax::ast::{self, LitKind};
+use crate::syntax::attr;
+use crate::syntax::errors::DiagnosticBuilder;
+use crate::syntax::source_map::{Span, DUMMY_SP};
+use crate::syntax::symbol::{keywords, Symbol};
+use if_chain::if_chain;
+use matches::matches;
 use std::borrow::Cow;
 use std::env;
 use std::mem;
-use std::str::FromStr;
 use std::rc::Rc;
-use crate::syntax::ast::{self, LitKind};
-use crate::syntax::attr;
-use crate::syntax::source_map::{Span, DUMMY_SP};
-use crate::syntax::errors::DiagnosticBuilder;
-use crate::syntax::symbol::{keywords, Symbol};
+use std::str::FromStr;
 
 pub mod camel_case;
 
+pub mod author;
 pub mod comparisons;
 pub mod conf;
 pub mod constants;
 mod hir_utils;
-pub mod paths;
-pub mod sugg;
 pub mod inspector;
 pub mod internal_lints;
-pub mod author;
+pub mod paths;
 pub mod ptr;
+pub mod sugg;
 pub mod usage;
 pub use self::hir_utils::{SpanlessEq, SpanlessHash};
 
@@ -101,11 +105,7 @@ pub fn match_def_path(tcx: TyCtxt<'_, '_, '_>, def_id: DefId, path: &[&str]) -> 
 
     tcx.push_item_path(&mut apb, def_id, false);
 
-    apb.names.len() == path.len()
-        && apb.names
-            .into_iter()
-            .zip(path.iter())
-            .all(|(a, &b)| *a == *b)
+    apb.names.len() == path.len() && apb.names.into_iter().zip(path.iter()).all(|(a, &b)| *a == *b)
 }
 
 /// Check if type is struct, enum or union type with given def path.
@@ -137,12 +137,9 @@ pub fn match_var(expr: &Expr, var: Name) -> bool {
     false
 }
 
-
 pub fn last_path_segment(path: &QPath) -> &PathSegment {
     match *path {
-        QPath::Resolved(_, ref path) => path.segments
-            .last()
-            .expect("A path must have at least one segment"),
+        QPath::Resolved(_, ref path) => path.segments.last().expect("A path must have at least one segment"),
         QPath::TypeRelative(_, ref seg) => seg,
     }
 }
@@ -166,7 +163,8 @@ pub fn match_qpath(path: &QPath, segments: &[&str]) -> bool {
         QPath::Resolved(_, ref path) => match_path(path, segments),
         QPath::TypeRelative(ref ty, ref segment) => match ty.node {
             TyKind::Path(ref inner_path) => {
-                !segments.is_empty() && match_qpath(inner_path, &segments[..(segments.len() - 1)])
+                !segments.is_empty()
+                    && match_qpath(inner_path, &segments[..(segments.len() - 1)])
                     && segment.ident.name == segments[segments.len() - 1]
             },
             _ => false,
@@ -199,9 +197,7 @@ pub fn match_path_ast(path: &ast::Path, segments: &[&str]) -> bool {
 /// Get the definition associated to a path.
 pub fn path_to_def(cx: &LateContext<'_, '_>, path: &[&str]) -> Option<def::Def> {
     let crates = cx.tcx.crates();
-    let krate = crates
-        .iter()
-        .find(|&&krate| cx.tcx.crate_name(krate) == path[0]);
+    let krate = crates.iter().find(|&&krate| cx.tcx.crate_name(krate) == path[0]);
     if let Some(krate) = krate {
         let krate = DefId {
             krate: *krate,
@@ -254,10 +250,17 @@ pub fn implements_trait<'a, 'tcx>(
     ty_params: &[Kind<'tcx>],
 ) -> bool {
     let ty = cx.tcx.erase_regions(&ty);
-    let obligation =
-        cx.tcx
-            .predicate_for_trait_def(cx.param_env, traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
-    cx.tcx.infer_ctxt().enter(|infcx| infcx.predicate_must_hold(&obligation))
+    let obligation = cx.tcx.predicate_for_trait_def(
+        cx.param_env,
+        traits::ObligationCause::dummy(),
+        trait_id,
+        0,
+        ty,
+        ty_params,
+    );
+    cx.tcx
+        .infer_ctxt()
+        .enter(|infcx| infcx.predicate_must_hold(&obligation))
 }
 
 /// Check whether this type implements Drop.
@@ -326,14 +329,14 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
     Some(matched)
 }
 
-
 /// Get the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_, '_>, expr: &Expr) -> Option<Name> {
     let parent_id = cx.tcx.hir.get_parent(expr.id);
     match cx.tcx.hir.find(parent_id) {
         Some(Node::Item(&Item { ref name, .. })) => Some(*name),
-        Some(Node::TraitItem(&TraitItem { ident, .. })) |
-        Some(Node::ImplItem(&ImplItem { ident, .. })) => Some(ident.name),
+        Some(Node::TraitItem(&TraitItem { ident, .. })) | Some(Node::ImplItem(&ImplItem { ident, .. })) => {
+            Some(ident.name)
+        },
         _ => None,
     }
 }
@@ -366,14 +369,10 @@ impl<'tcx> Visitor<'tcx> for ContainsName {
 
 /// check if an `Expr` contains a certain name
 pub fn contains_name(name: Name, expr: &Expr) -> bool {
-    let mut cn = ContainsName {
-        name,
-        result: false,
-    };
+    let mut cn = ContainsName { name, result: false };
     cn.visit_expr(expr);
     cn.result
 }
-
 
 /// Convert a span to a code snippet if available, otherwise use default.
 ///
@@ -383,6 +382,31 @@ pub fn contains_name(name: Name, expr: &Expr) -> bool {
 /// ```
 pub fn snippet<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
     snippet_opt(cx, span).map_or_else(|| Cow::Borrowed(default), From::from)
+}
+
+pub fn snippet_with_applicability<'a, 'b, T: LintContext<'b>>(
+    cx: &T,
+    span: Span,
+    default: &'a str,
+    applicability: &mut Applicability,
+) -> Cow<'a, str> {
+    snippet_opt(cx, span).map_or_else(
+        || {
+            // If the applicability is already `HasPlaceholders` or `MaybeIncorrect` don't change it.
+            // Also `Unspecified` shouldn't be changed
+            // Only if the applicability level is originally `MachineApplicable` and the default value
+            // has to be used change it to `HasPlaceholders`
+            if *applicability == Applicability::MachineApplicable {
+                if in_macro(span) {
+                    *applicability = Applicability::MaybeIncorrect;
+                } else {
+                    *applicability = Applicability::HasPlaceholders;
+                }
+            }
+            Cow::Borrowed(default)
+        },
+        From::from,
+    )
 }
 
 /// Same as `snippet`, but should only be used when it's clear that the input span is
@@ -431,8 +455,7 @@ pub fn expr_block<'a, 'b, T: LintContext<'b>>(
     let string = option.unwrap_or_default();
     if in_macro(expr.span) {
         Cow::Owned(format!("{{ {} }}", snippet_with_macro_callsite(cx, expr.span, default)))
-    }
-    else if let ExprKind::Block(_, _) = expr.node {
+    } else if let ExprKind::Block(_, _) = expr.node {
         Cow::Owned(format!("{}{}", code, string))
     } else if string.is_empty() {
         Cow::Owned(format!("{{ {} }}", code))
@@ -450,19 +473,15 @@ pub fn trim_multiline(s: Cow<'_, str>, ignore_first: bool) -> Cow<'_, str> {
 }
 
 fn trim_multiline_inner(s: Cow<'_, str>, ignore_first: bool, ch: char) -> Cow<'_, str> {
-    let x = s.lines()
+    let x = s
+        .lines()
         .skip(ignore_first as usize)
         .filter_map(|l| {
             if l.is_empty() {
                 None
             } else {
                 // ignore empty lines
-                Some(
-                    l.char_indices()
-                        .find(|&(_, x)| x != ch)
-                        .unwrap_or((l.len(), ch))
-                        .0,
-                )
+                Some(l.char_indices().find(|&(_, x)| x != ch).unwrap_or((l.len(), ch)).0)
             }
         })
         .min()
@@ -505,7 +524,8 @@ pub fn get_parent_expr<'c>(cx: &'c LateContext<'_, '_>, e: &Expr) -> Option<&'c 
 
 pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeId) -> Option<&'tcx Block> {
     let map = &cx.tcx.hir;
-    let enclosing_node = map.get_enclosing_scope(node)
+    let enclosing_node = map
+        .get_enclosing_scope(node)
         .and_then(|enclosing_id| map.find(enclosing_id));
     if let Some(node) = enclosing_node {
         match node {
@@ -513,7 +533,8 @@ pub fn get_enclosing_block<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, node: NodeI
             Node::Item(&Item {
                 node: ItemKind::Fn(_, _, _, eid),
                 ..
-            }) | Node::ImplItem(&ImplItem {
+            })
+            | Node::ImplItem(&ImplItem {
                 node: ImplItemKind::Method(_, eid),
                 ..
             }) => match cx.tcx.hir.body(eid).value.node {
@@ -617,7 +638,8 @@ pub fn span_lint_node_and_then(
 /// Add a span lint with a suggestion on how to fix it.
 ///
 /// These suggestions can be parsed by rustfix to allow it to automatically fix your code.
-/// In the example below, `help` is `"try"` and `sugg` is the suggested replacement `".any(|x| x > 2)"`.
+/// In the example below, `help` is `"try"` and `sugg` is the suggested replacement `".any(|x| x >
+/// 2)"`.
 ///
 /// ```ignore
 /// error: This `.fold` can be more succinctly expressed as `.any`
@@ -652,18 +674,12 @@ where
     I: IntoIterator<Item = (Span, String)>,
 {
     let sugg = CodeSuggestion {
-        substitutions: vec![
-            Substitution {
-                parts: sugg.into_iter()
-                    .map(|(span, snippet)| {
-                        SubstitutionPart {
-                            snippet,
-                            span,
-                        }
-                    })
-                    .collect(),
-            }
-        ],
+        substitutions: vec![Substitution {
+            parts: sugg
+                .into_iter()
+                .map(|(span, snippet)| SubstitutionPart { snippet, span })
+                .collect(),
+        }],
         msg: help_msg,
         show_code_when_inline: true,
         applicability: Applicability::Unspecified,
@@ -729,9 +745,7 @@ impl LimitStack {
         Self { stack: vec![limit] }
     }
     pub fn limit(&self) -> u64 {
-        *self.stack
-            .last()
-            .expect("there should always be a value in the stack")
+        *self.stack.last().expect("there should always be a value in the stack")
     }
     pub fn push_attrs(&mut self, sess: &Session, attrs: &[ast::Attribute], name: &'static str) {
         let stack = &mut self.stack;
@@ -744,10 +758,11 @@ impl LimitStack {
 }
 
 pub fn get_attr<'a>(attrs: &'a [ast::Attribute], name: &'static str) -> impl Iterator<Item = &'a ast::Attribute> {
-    attrs.iter().filter(move |attr|
-        attr.path.segments.len() == 2 &&
-        attr.path.segments[0].ident.to_string() == "clippy" &&
-        attr.path.segments[1].ident.to_string() == name)
+    attrs.iter().filter(move |attr| {
+        attr.path.segments.len() == 2
+            && attr.path.segments[0].ident.to_string() == "clippy"
+            && attr.path.segments[1].ident.to_string() == name
+    })
 }
 
 fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'static str, mut f: F) {
@@ -769,7 +784,8 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
 /// See also `is_direct_expn_of`.
 pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     loop {
-        let span_name_span = span.ctxt()
+        let span_name_span = span
+            .ctxt()
             .outer()
             .expn_info()
             .map(|ei| (ei.format.name(), ei.call_site));
@@ -792,7 +808,8 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 /// `bar!` by
 /// `is_direct_expn_of`.
 pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
-    let span_name_span = span.ctxt()
+    let span_name_span = span
+        .ctxt()
         .outer()
         .expn_info()
         .map(|ei| (ei.format.name(), ei.call_site));
@@ -855,23 +872,23 @@ pub fn is_refutable(cx: &LateContext<'_, '_>, pat: &Pat) -> bool {
         PatKind::Lit(..) | PatKind::Range(..) => true,
         PatKind::Path(ref qpath) => is_enum_variant(cx, qpath, pat.hir_id),
         PatKind::Tuple(ref pats, _) => are_refutable(cx, pats.iter().map(|pat| &**pat)),
-        PatKind::Struct(ref qpath, ref fields, _) => if is_enum_variant(cx, qpath, pat.hir_id) {
-            true
-        } else {
-            are_refutable(cx, fields.iter().map(|field| &*field.node.pat))
+        PatKind::Struct(ref qpath, ref fields, _) => {
+            if is_enum_variant(cx, qpath, pat.hir_id) {
+                true
+            } else {
+                are_refutable(cx, fields.iter().map(|field| &*field.node.pat))
+            }
         },
-        PatKind::TupleStruct(ref qpath, ref pats, _) => if is_enum_variant(cx, qpath, pat.hir_id) {
-            true
-        } else {
-            are_refutable(cx, pats.iter().map(|pat| &**pat))
+        PatKind::TupleStruct(ref qpath, ref pats, _) => {
+            if is_enum_variant(cx, qpath, pat.hir_id) {
+                true
+            } else {
+                are_refutable(cx, pats.iter().map(|pat| &**pat))
+            }
         },
-        PatKind::Slice(ref head, ref middle, ref tail) => are_refutable(
-            cx,
-            head.iter()
-                .chain(middle)
-                .chain(tail.iter())
-                .map(|pat| &**pat),
-        ),
+        PatKind::Slice(ref head, ref middle, ref tail) => {
+            are_refutable(cx, head.iter().chain(middle).chain(tail.iter()).map(|pat| &**pat))
+        },
     }
 }
 
@@ -903,32 +920,37 @@ pub fn remove_blocks(expr: &Expr) -> &Expr {
 
 pub fn opt_def_id(def: Def) -> Option<DefId> {
     match def {
-        Def::Fn(id) |
-        Def::Mod(id) |
-        Def::Static(id, _) |
-        Def::Variant(id) |
-        Def::VariantCtor(id, ..) |
-        Def::Enum(id) |
-        Def::TyAlias(id) |
-        Def::AssociatedTy(id) |
-        Def::TyParam(id) |
-        Def::ForeignTy(id) |
-        Def::Struct(id) |
-        Def::StructCtor(id, ..) |
-        Def::Union(id) |
-        Def::Trait(id) |
-        Def::TraitAlias(id) |
-        Def::Method(id) |
-        Def::Const(id) |
-        Def::AssociatedConst(id) |
-        Def::Macro(id, ..) |
-        Def::Existential(id) |
-        Def::AssociatedExistential(id) |
-        Def::SelfCtor(id)
-        => Some(id),
+        Def::Fn(id)
+        | Def::Mod(id)
+        | Def::Static(id, _)
+        | Def::Variant(id)
+        | Def::VariantCtor(id, ..)
+        | Def::Enum(id)
+        | Def::TyAlias(id)
+        | Def::AssociatedTy(id)
+        | Def::TyParam(id)
+        | Def::ForeignTy(id)
+        | Def::Struct(id)
+        | Def::StructCtor(id, ..)
+        | Def::Union(id)
+        | Def::Trait(id)
+        | Def::TraitAlias(id)
+        | Def::Method(id)
+        | Def::Const(id)
+        | Def::AssociatedConst(id)
+        | Def::Macro(id, ..)
+        | Def::Existential(id)
+        | Def::AssociatedExistential(id)
+        | Def::SelfCtor(id) => Some(id),
 
-        Def::Upvar(..) | Def::Local(_) | Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) |
-        Def::ToolMod | Def::NonMacroAttr{..} | Def::Err => None,
+        Def::Upvar(..)
+        | Def::Local(_)
+        | Def::Label(..)
+        | Def::PrimTy(..)
+        | Def::SelfTy(..)
+        | Def::ToolMod
+        | Def::NonMacroAttr { .. }
+        | Def::Err => None,
     }
 }
 
@@ -1019,7 +1041,9 @@ pub fn get_arg_name(pat: &Pat) -> Option<ast::Name> {
 }
 
 pub fn int_bits(tcx: TyCtxt<'_, '_, '_>, ity: ast::IntTy) -> u64 {
-    layout::Integer::from_attr(&tcx, attr::IntType::SignedInt(ity)).size().bits()
+    layout::Integer::from_attr(&tcx, attr::IntType::SignedInt(ity))
+        .size()
+        .bits()
 }
 
 #[allow(clippy::cast_possible_wrap)]
@@ -1038,7 +1062,9 @@ pub fn unsext(tcx: TyCtxt<'_, '_, '_>, u: i128, ity: ast::IntTy) -> u128 {
 
 /// clip unused bytes
 pub fn clip(tcx: TyCtxt<'_, '_, '_>, u: u128, ity: ast::UintTy) -> u128 {
-    let bits = layout::Integer::from_attr(&tcx, attr::IntType::UnsignedInt(ity)).size().bits();
+    let bits = layout::Integer::from_attr(&tcx, attr::IntType::UnsignedInt(ity))
+        .size()
+        .bits();
     let amt = 128 - bits;
     (u << amt) >> amt
 }
