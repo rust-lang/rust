@@ -5,7 +5,7 @@ use rustc::hir::{Mutability, MutMutable, MutImmutable};
 
 use crate::{
     EvalResult, EvalErrorKind, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
-    MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra,
+    MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra, InboundsCheck,
     Pointer, MemPlace, Scalar, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
@@ -523,7 +523,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         }
 
         // Get the allocation
-        self.memory().check_bounds(ptr, size, false)?;
+        self.memory().check_bounds(ptr, size, InboundsCheck::Live)?;
         let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
         // If we got here, we do some checking, *but* we leave the tag unchanged.
         if let Borrow::Shr(Some(_)) = ptr.tag {
@@ -566,7 +566,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             ptr, place.layout.ty, new_bor);
 
         // Get the allocation.  It might not be mutable, so we cannot use `get_mut`.
-        self.memory().check_bounds(ptr, size, false)?;
+        self.memory().check_bounds(ptr, size, InboundsCheck::Live)?;
         let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
         // Update the stacks.
         if let Borrow::Shr(Some(_)) = new_bor {
