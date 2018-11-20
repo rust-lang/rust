@@ -136,7 +136,50 @@ impl InputModuleItems {
 }
 
 fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
-    prefix
+    let prefix = if let Some(qual) = path.qualifier() {
+        Some(convert_path(prefix, qual)?)
+    } else {
+        None
+    };
+    let segment = path.segment()?;
+    let res = match segment.kind()? {
+        ast::PathSegmentKind::Name(name) => {
+            let mut res = prefix.unwrap_or_else(|| Path {
+                kind: PathKind::Abs,
+                segments: Vec::with_capacity(1),
+            });
+            res.segments.push(name.text());
+            res
+        }
+        ast::PathSegmentKind::CrateKw => {
+            if prefix.is_some() {
+                return None;
+            }
+            Path {
+                kind: PathKind::Crate,
+                segments: Vec::new(),
+            }
+        }
+        ast::PathSegmentKind::SelfKw => {
+            if prefix.is_some() {
+                return None;
+            }
+            Path {
+                kind: PathKind::Self_,
+                segments: Vec::new(),
+            }
+        }
+        ast::PathSegmentKind::SuperKw => {
+            if prefix.is_some() {
+                return None;
+            }
+            Path {
+                kind: PathKind::Super,
+                segments: Vec::new(),
+            }
+        }
+    };
+    Some(res)
 }
 
 impl ModuleItem {
