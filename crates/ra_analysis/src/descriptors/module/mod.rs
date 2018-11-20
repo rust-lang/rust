@@ -103,9 +103,11 @@ impl ModuleDescriptor {
 
     /// The root of the tree this module is part of
     pub fn crate_root(&self) -> ModuleDescriptor {
-        generate(Some(self.clone()), |it| it.parent())
-            .last()
-            .unwrap()
+        let root_id = self.module_id.crate_root(&self.tree);
+        ModuleDescriptor {
+            module_id: root_id,
+            ..self.clone()
+        }
     }
 
     /// `name` is `None` for the crate's root module
@@ -204,6 +206,11 @@ impl ModuleId {
     fn parent(self, tree: &ModuleTree) -> Option<ModuleId> {
         let link = self.parent_link(tree)?;
         Some(tree.link(link).owner)
+    }
+    fn crate_root(self, tree: &ModuleTree) -> ModuleId {
+        generate(Some(self), move |it| it.parent(tree))
+            .last()
+            .unwrap()
     }
     fn child(self, tree: &ModuleTree, name: &str) -> Option<ModuleId> {
         let link = tree

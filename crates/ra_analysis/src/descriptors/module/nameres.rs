@@ -52,8 +52,16 @@ struct ItemMap {
 
 #[derive(Debug, Default)]
 struct ModuleItems {
-    items: FxHashMap<SmolStr, DefId>,
+    items: FxHashMap<SmolStr, Resolution>,
     import_resolutions: FxHashMap<LocalSyntaxPtr, DefId>,
+}
+
+/// Resolution is basically `DefId` atm, but it should account for stuff like
+/// multiple namespaces, ambiguity and errors.
+#[derive(Debug, Clone)]
+struct Resolution {
+    /// None for unresolved
+    def_id: Option<DefId>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -221,21 +229,26 @@ where
 {
     fn resolve(&mut self) {
         for (&module_id, items) in self.input.iter() {
-            self.populate_module(
-                module_id,
-                items,
-            )
+            self.populate_module(module_id, items)
+        }
+
+        for &module_id in self.input.keys() {
+            self.resolve_imports(module_id);
         }
     }
 
-    fn populate_module(
-        &mut self,
-        module_id: ModuleId,
-        input: &InputModuleItems,
-    ) {
+    fn populate_module(&mut self, module_id: ModuleId, input: &InputModuleItems) {
         let file_id = module_id.source(&self.module_tree).file_id();
 
         let mut module_items = ModuleItems::default();
+
+        for import in input.imports.iter() {
+            if let Some((_, name)) = import.segments.last() {
+                module_items
+                    .items
+                    .insert(name.clone(), Resolution { def_id: None });
+            }
+        }
 
         for item in input.items.iter() {
             if item.kind == MODULE {
@@ -245,7 +258,10 @@ where
             let ptr = item.ptr.into_global(file_id);
             let def_loc = DefLoc::Item { ptr };
             let def_id = self.db.id_maps().def_id(def_loc);
-            module_items.items.insert(item.name.clone(), def_id);
+            let resolution = Resolution {
+                def_id: Some(def_id),
+            };
+            module_items.items.insert(item.name.clone(), resolution);
         }
 
         for (name, mod_id) in module_id.children(&self.module_tree) {
@@ -254,11 +270,69 @@ where
                 source_root: self.source_root,
             };
             let def_id = self.db.id_maps().def_id(def_loc);
-            module_items.items.insert(name, def_id);
+            let resolution = Resolution {
+                def_id: Some(def_id),
+            };
+            module_items.items.insert(name, resolution);
         }
 
         self.result.per_module.insert(module_id, module_items);
     }
+
+    fn resolve_imports(&mut self, module_id: ModuleId) {
+        for import in self.input[&module_id].imports.iter() {
+            self.resolve_import(module_id, import);
+        }
+    }
+
+    fn resolve_import(&mut self, module_id: ModuleId, import: &Path) {
+        let mut curr = match import.kind {
+            // TODO: handle extern crates
+            PathKind::Abs => return,
+            PathKind::Self_ => module_id,
+            PathKind::Super => {
+                match module_id.parent(&self.module_tree) {
+                    Some(it) => it,
+                    // TODO: error
+                    None => return,
+                }
+            }
+            PathKind::Crate => module_id.crate_root(&self.module_tree),
+        };
+
+        for (i, (ptr, name)) in import.segments.iter().enumerate() {
+            let is_last = i == import.segments.len() - 1;
+
+            let def_id = match self.result.per_module[&curr].items.get(name) {
+                None => return,
+                Some(res) => match res.def_id {
+                    Some(it) => it,
+                    None => return,
+                },
+            };
+
+            self.update(module_id, |items| {
+                items.import_resolutions.insert(*ptr, def_id);
+            });
+
+            if !is_last {
+                curr = match self.db.id_maps().def_loc(def_id) {
+                    DefLoc::Module { id, .. } => id,
+                    _ => return,
+                }
+            } else {
+                self.update(module_id, |items| {
+                    let res = Resolution {
+                        def_id: Some(def_id),
+                    };
+                    items.items.insert(name.clone(), res);
+                })
+            }
+        }
+    }
+
+    fn update(&mut self, module_id: ModuleId, f: impl FnOnce(&mut ModuleItems)) {
+        let module_items = self.result.per_module.get_mut(&module_id).unwrap();
+        f(module_items)
+    }
 }
-
-
