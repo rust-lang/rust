@@ -1,15 +1,89 @@
 pub(super) mod imp;
 pub(crate) mod scope;
 
+use std::sync::Arc;
+
+use ra_editor::find_node_at_offset;
+
 use ra_syntax::{
     ast::{self, AstNode, NameOwner},
     SmolStr, SyntaxNode, SyntaxNodeRef,
 };
 use relative_path::RelativePathBuf;
 
-use crate::{db::SyntaxDatabase, syntax_ptr::SyntaxPtr, FileId};
+use crate::{
+    db::SyntaxDatabase, syntax_ptr::SyntaxPtr, FileId, FilePosition, Cancelable,
+    descriptors::DescriptorDatabase,
+};
 
 pub(crate) use self::scope::ModuleScope;
+
+/// `ModuleDescriptor` is API entry point to get all the information
+/// about a particular module.
+#[derive(Debug, Clone)]
+pub(crate) struct ModuleDescriptor {
+    tree: Arc<ModuleTree>,
+    module_id: ModuleId,
+}
+
+impl ModuleDescriptor {
+    /// Lookup `ModuleDescriptor` by position in the source code. Note that this
+    /// is inherently lossy transformation: in general, a single source might
+    /// correspond to several modules.
+    pub fn guess_from_position(
+        db: &impl DescriptorDatabase,
+        position: FilePosition,
+    ) -> Cancelable<Option<ModuleDescriptor>> {
+        let source_root = db.file_source_root(position.file_id);
+        let module_tree = db.module_tree(source_root)?;
+        let file = db.file_syntax(position.file_id);
+        let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset)
+        {
+            Some(m) if !m.has_semi() => ModuleSource::new_inline(position.file_id, m),
+            _ => ModuleSource::SourceFile(position.file_id),
+        };
+        let res = match module_tree.any_module_for_source(module_source) {
+            None => None,
+            Some(module_id) => Some(ModuleDescriptor {
+                tree: module_tree,
+                module_id,
+            }),
+        };
+        Ok(res)
+    }
+
+    /// Returns `mod foo;` or `mod foo {}` node whihc declared this module.
+    /// Returns `None` for the root module
+    pub fn parent_link_source(
+        &self,
+        db: &impl DescriptorDatabase,
+    ) -> Option<(FileId, ast::ModuleNode)> {
+        let link = self.module_id.parent_link(&self.tree)?;
+        let file_id = link.owner(&self.tree).source(&self.tree).file_id();
+        let src = link.bind_source(&self.tree, db);
+        Some((file_id, src))
+    }
+
+    pub fn parent(&self) -> Option<ModuleDescriptor> {
+        let parent_id = self.module_id.parent(&self.tree)?;
+        Some(ModuleDescriptor {
+            tree: Arc::clone(&self.tree),
+            module_id: parent_id,
+        })
+    }
+    /// `name` is `None` for the crate's root module
+    pub fn name(&self) -> Option<SmolStr> {
+        let link = self.module_id.parent_link(&self.tree)?;
+        Some(link.name(&self.tree))
+    }
+    pub fn child(&self, name: &str) -> Option<ModuleDescriptor> {
+        let child_id = self.module_id.child(&self.tree, name)?;
+        Some(ModuleDescriptor {
+            tree: Arc::clone(&self.tree),
+            module_id: child_id,
+        })
+    }
+}
 
 /// Phisically, rust source is organized as a set of files, but logically it is
 /// organized as a tree of modules. Usually, a single file corresponds to a
@@ -135,6 +209,9 @@ impl ModuleId {
 impl LinkId {
     pub(crate) fn owner(self, tree: &ModuleTree) -> ModuleId {
         tree.link(self).owner
+    }
+    pub(crate) fn name(self, tree: &ModuleTree) -> SmolStr {
+        tree.link(self).name.clone()
     }
     pub(crate) fn bind_source<'a>(
         self,

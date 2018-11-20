@@ -21,7 +21,7 @@ use crate::{
     db::{self, FileSyntaxQuery, SyntaxDatabase},
     descriptors::{
         function::{FnDescriptor, FnId},
-        module::{ModuleSource, ModuleTree, Problem},
+        module::{ModuleDescriptor, ModuleSource, ModuleTree, Problem},
         DeclarationDescriptor, DescriptorDatabase,
     },
     input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
@@ -221,34 +221,22 @@ impl AnalysisImpl {
         self.db.module_tree(source_root)
     }
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        let module_tree = self.module_tree(position.file_id)?;
-        let file = self.db.file_syntax(position.file_id);
-        let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset)
-        {
-            Some(m) if !m.has_semi() => ModuleSource::new_inline(position.file_id, m),
-            _ => ModuleSource::SourceFile(position.file_id),
+        let descr = match ModuleDescriptor::guess_from_position(&*self.db, position)? {
+            None => return Ok(Vec::new()),
+            Some(it) => it,
         };
-
-        let res = module_tree
-            .modules_for_source(module_source)
-            .into_iter()
-            .filter_map(|module_id| {
-                let link = module_id.parent_link(&module_tree)?;
-                let file_id = link.owner(&module_tree).source(&module_tree).file_id();
-                let decl = link.bind_source(&module_tree, &*self.db);
-                let decl = decl.borrowed();
-
-                let decl_name = decl.name().unwrap();
-
-                let sym = FileSymbol {
-                    name: decl_name.text(),
-                    node_range: decl_name.syntax().range(),
-                    kind: MODULE,
-                };
-                Some((file_id, sym))
-            })
-            .collect();
-        Ok(res)
+        let (file_id, decl) = match descr.parent_link_source(&*self.db) {
+            None => return Ok(Vec::new()),
+            Some(it) => it,
+        };
+        let decl = decl.borrowed();
+        let decl_name = decl.name().unwrap();
+        let sym = FileSymbol {
+            name: decl_name.text(),
+            node_range: decl_name.syntax().range(),
+            kind: MODULE,
+        };
+        Ok(vec![(file_id, sym)])
     }
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
         let module_tree = self.module_tree(file_id)?;
