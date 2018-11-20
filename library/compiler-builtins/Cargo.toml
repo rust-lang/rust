@@ -6,6 +6,11 @@ version = "0.1.0"
 [lib]
 test = false
 
+[dependencies]
+# For more information on this dependency see rust-lang/rust's
+# `src/tools/rustc-std-workspace` folder
+core = { version = "1.0.0", optional = true, package = 'rustc-std-workspace-core' }
+
 [build-dependencies]
 cc = { optional = true, version = "1.0" }
 
@@ -31,6 +36,9 @@ mangled-names = []
 
 # Don't generate lang items for i128 intrisnics and such
 no-lang-items = []
+
+# Only used in the compiler's build system
+rustc-dep-of-std = ['c', 'compiler-builtins', 'core']
 
 [[example]]
 name = "intrinsics"
