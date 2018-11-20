@@ -1786,8 +1786,8 @@ impl From<[u16; 8]> for IpAddr {
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
     use crate::net::*;
-    use crate::net::Ipv6MulticastScope::*;
     use crate::net::test::{tsa, sa6, sa4};
+    use crate::str::FromStr;
 
     #[test]
     fn test_from_str_ipv4() {
@@ -1951,164 +1951,402 @@ mod tests {
 
     #[test]
     fn ip_properties() {
-        fn check4(octets: &[u8; 4], unspec: bool, loopback: bool,
-                  global: bool, multicast: bool, documentation: bool) {
-            let ip = IpAddr::V4(Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3]));
-            assert_eq!(ip.is_unspecified(), unspec);
-            assert_eq!(ip.is_loopback(), loopback);
-            assert_eq!(ip.is_global(), global);
-            assert_eq!(ip.is_multicast(), multicast);
-            assert_eq!(ip.is_documentation(), documentation);
+        macro_rules! ip {
+            ($s:expr) => {
+                IpAddr::from_str($s).unwrap()
+            }
         }
 
-        fn check6(str_addr: &str, unspec: bool, loopback: bool,
-                  global: bool, u_doc: bool, mcast: bool) {
-            let ip = IpAddr::V6(str_addr.parse().unwrap());
-            assert_eq!(ip.is_unspecified(), unspec);
-            assert_eq!(ip.is_loopback(), loopback);
-            assert_eq!(ip.is_global(), global);
-            assert_eq!(ip.is_documentation(), u_doc);
-            assert_eq!(ip.is_multicast(), mcast);
+        macro_rules! check {
+            ($s:expr) => {
+                check!($s, 0);
+            };
+
+            ($s:expr, $mask:expr) => {{
+                let unspec: u8 = 1 << 0;
+                let loopback: u8 = 1 << 1;
+                let global: u8 = 1 << 2;
+                let multicast: u8 = 1 << 3;
+                let doc: u8 = 1 << 4;
+
+                if ($mask & unspec) == unspec {
+                    assert!(ip!($s).is_unspecified());
+                } else {
+                    assert!(!ip!($s).is_unspecified());
+                }
+
+                if ($mask & loopback) == loopback {
+                    assert!(ip!($s).is_loopback());
+                } else {
+                    assert!(!ip!($s).is_loopback());
+                }
+
+                if ($mask & global) == global {
+                    assert!(ip!($s).is_global());
+                } else {
+                    assert!(!ip!($s).is_global());
+                }
+
+                if ($mask & multicast) == multicast {
+                    assert!(ip!($s).is_multicast());
+                } else {
+                    assert!(!ip!($s).is_multicast());
+                }
+
+                if ($mask & doc) == doc {
+                    assert!(ip!($s).is_documentation());
+                } else {
+                    assert!(!ip!($s).is_documentation());
+                }
+            }}
         }
 
-        //     address                unspec loopbk global multicast doc
-        check4(&[0, 0, 0, 0],         true,  false, false,  false,   false);
-        check4(&[0, 0, 0, 1],         false, false, true,   false,   false);
-        check4(&[0, 1, 0, 0],         false, false, true,   false,   false);
-        check4(&[10, 9, 8, 7],        false, false, false,  false,   false);
-        check4(&[127, 1, 2, 3],       false, true,  false,  false,   false);
-        check4(&[172, 31, 254, 253],  false, false, false,  false,   false);
-        check4(&[169, 254, 253, 242], false, false, false,  false,   false);
-        check4(&[192, 0, 2, 183],     false, false, false,  false,   true);
-        check4(&[192, 1, 2, 183],     false, false, true,   false,   false);
-        check4(&[192, 168, 254, 253], false, false, false,  false,   false);
-        check4(&[198, 51, 100, 0],    false, false, false,  false,   true);
-        check4(&[203, 0, 113, 0],     false, false, false,  false,   true);
-        check4(&[203, 2, 113, 0],     false, false, true,   false,   false);
-        check4(&[224, 0, 0, 0],       false, false, true,   true,    false);
-        check4(&[239, 255, 255, 255], false, false, true,   true,    false);
-        check4(&[255, 255, 255, 255], false, false, false,  false,   false);
+        let unspec: u8 = 1 << 0;
+        let loopback: u8 = 1 << 1;
+        let global: u8 = 1 << 2;
+        let multicast: u8 = 1 << 3;
+        let doc: u8 = 1 << 4;
 
-        //     address                            unspec loopbk global doc    mcast
-        check6("::",                              true,  false, false, false, false);
-        check6("::1",                             false, true,  false, false, false);
-        check6("::0.0.0.2",                       false, false, true,  false, false);
-        check6("1::",                             false, false, true,  false, false);
-        check6("fc00::",                          false, false, false, false, false);
-        check6("fdff:ffff::",                     false, false, false, false, false);
-        check6("fe80:ffff::",                     false, false, false, false, false);
-        check6("febf:ffff::",                     false, false, false, false, false);
-        check6("fec0::",                          false, false, false, false, false);
-        check6("ff01::",                          false, false, false, false, true);
-        check6("ff02::",                          false, false, false, false, true);
-        check6("ff03::",                          false, false, false, false, true);
-        check6("ff04::",                          false, false, false, false, true);
-        check6("ff05::",                          false, false, false, false, true);
-        check6("ff08::",                          false, false, false, false, true);
-        check6("ff0e::",                          false, false, true,  false, true);
-        check6("2001:db8:85a3::8a2e:370:7334",    false, false, false, true,  false);
-        check6("102:304:506:708:90a:b0c:d0e:f10", false, false, true,  false, false);
+        check!("0.0.0.0", unspec);
+        check!("0.0.0.1", global);
+        check!("0.1.0.0", global);
+        check!("10.9.8.7");
+        check!("127.1.2.3", loopback);
+        check!("172.31.254.253");
+        check!("169.254.253.242");
+        check!("192.0.2.183", doc);
+        check!("192.1.2.183", global);
+        check!("192.168.254.253");
+        check!("198.51.100.0", doc);
+        check!("203.0.113.0", doc);
+        check!("203.2.113.0", global);
+        check!("224.0.0.0", global|multicast);
+        check!("239.255.255.255", global|multicast);
+        check!("255.255.255.255");
+
+        check!("::", unspec);
+        check!("::1", loopback);
+        check!("::0.0.0.2", global);
+        check!("1::", global);
+        check!("fc00::");
+        check!("fdff:ffff::");
+        check!("fe80:ffff::");
+        check!("febf:ffff::");
+        check!("fec0::");
+        check!("ff01::", multicast);
+        check!("ff02::", multicast);
+        check!("ff03::", multicast);
+        check!("ff04::", multicast);
+        check!("ff05::", multicast);
+        check!("ff08::", multicast);
+        check!("ff0e::", global|multicast);
+        check!("2001:db8:85a3::8a2e:370:7334", doc);
+        check!("102:304:506:708:90a:b0c:d0e:f10", global);
     }
 
     #[test]
     fn ipv4_properties() {
-        fn check(octets: &[u8; 4], unspec: bool, loopback: bool,
-                 private: bool, link_local: bool, global: bool,
-                 multicast: bool, broadcast: bool, documentation: bool) {
-            let ip = Ipv4Addr::new(octets[0], octets[1], octets[2], octets[3]);
-            assert_eq!(octets, &ip.octets());
-
-            assert_eq!(ip.is_unspecified(), unspec);
-            assert_eq!(ip.is_loopback(), loopback);
-            assert_eq!(ip.is_private(), private);
-            assert_eq!(ip.is_link_local(), link_local);
-            assert_eq!(ip.is_global(), global);
-            assert_eq!(ip.is_multicast(), multicast);
-            assert_eq!(ip.is_broadcast(), broadcast);
-            assert_eq!(ip.is_documentation(), documentation);
+        macro_rules! ip {
+            ($s:expr) => {
+                Ipv4Addr::from_str($s).unwrap()
+            }
         }
 
-        //    address                unspec loopbk privt  linloc global multicast brdcast doc
-        check(&[0, 0, 0, 0],         true,  false, false, false, false,  false,    false,  false);
-        check(&[0, 0, 0, 1],         false, false, false, false, true,   false,    false,  false);
-        check(&[0, 1, 0, 0],         false, false, false, false, true,   false,    false,  false);
-        check(&[10, 9, 8, 7],        false, false, true,  false, false,  false,    false,  false);
-        check(&[127, 1, 2, 3],       false, true,  false, false, false,  false,    false,  false);
-        check(&[172, 31, 254, 253],  false, false, true,  false, false,  false,    false,  false);
-        check(&[169, 254, 253, 242], false, false, false, true,  false,  false,    false,  false);
-        check(&[192, 0, 2, 183],     false, false, false, false, false,  false,    false,  true);
-        check(&[192, 1, 2, 183],     false, false, false, false, true,   false,    false,  false);
-        check(&[192, 168, 254, 253], false, false, true,  false, false,  false,    false,  false);
-        check(&[198, 51, 100, 0],    false, false, false, false, false,  false,    false,  true);
-        check(&[203, 0, 113, 0],     false, false, false, false, false,  false,    false,  true);
-        check(&[203, 2, 113, 0],     false, false, false, false, true,   false,    false,  false);
-        check(&[224, 0, 0, 0],       false, false, false, false, true,   true,     false,  false);
-        check(&[239, 255, 255, 255], false, false, false, false, true,   true,     false,  false);
-        check(&[255, 255, 255, 255], false, false, false, false, false,  false,    true,   false);
+        macro_rules! check {
+            ($s:expr) => {
+                check!($s, 0);
+            };
+
+            ($s:expr, $mask:expr) => {{
+                let unspec: u8 = 1 << 0;
+                let loopback: u8 = 1 << 1;
+                let private: u8 = 1 << 2;
+                let link_local: u8 = 1 << 3;
+                let global: u8 = 1 << 4;
+                let multicast: u8 = 1 << 5;
+                let broadcast: u8 = 1 << 6;
+                let documentation: u8 = 1 << 7;
+
+                if ($mask & unspec) == unspec {
+                    assert!(ip!($s).is_unspecified());
+                } else {
+                    assert!(!ip!($s).is_unspecified());
+                }
+
+                if ($mask & loopback) == loopback {
+                    assert!(ip!($s).is_loopback());
+                } else {
+                    assert!(!ip!($s).is_loopback());
+                }
+
+                if ($mask & private) == private {
+                    assert!(ip!($s).is_private());
+                } else {
+                    assert!(!ip!($s).is_private());
+                }
+
+                if ($mask & link_local) == link_local {
+                    assert!(ip!($s).is_link_local());
+                } else {
+                    assert!(!ip!($s).is_link_local());
+                }
+
+                if ($mask & global) == global {
+                    assert!(ip!($s).is_global());
+                } else {
+                    assert!(!ip!($s).is_global());
+                }
+
+                if ($mask & multicast) == multicast {
+                    assert!(ip!($s).is_multicast());
+                } else {
+                    assert!(!ip!($s).is_multicast());
+                }
+
+                if ($mask & broadcast) == broadcast {
+                    assert!(ip!($s).is_broadcast());
+                } else {
+                    assert!(!ip!($s).is_broadcast());
+                }
+
+                if ($mask & documentation) == documentation {
+                    assert!(ip!($s).is_documentation());
+                } else {
+                    assert!(!ip!($s).is_documentation());
+                }
+            }}
+        }
+
+        let unspec: u8 = 1 << 0;
+        let loopback: u8 = 1 << 1;
+        let private: u8 = 1 << 2;
+        let link_local: u8 = 1 << 3;
+        let global: u8 = 1 << 4;
+        let multicast: u8 = 1 << 5;
+        let broadcast: u8 = 1 << 6;
+        let documentation: u8 = 1 << 7;
+
+        check!("0.0.0.0", unspec);
+        check!("0.0.0.1", global);
+        check!("0.1.0.0", global);
+        check!("10.9.8.7", private);
+        check!("127.1.2.3", loopback);
+        check!("172.31.254.253", private);
+        check!("169.254.253.242", link_local);
+        check!("192.0.2.183", documentation);
+        check!("192.1.2.183", global);
+        check!("192.168.254.253", private);
+        check!("198.51.100.0", documentation);
+        check!("203.0.113.0", documentation);
+        check!("203.2.113.0", global);
+        check!("224.0.0.0", global|multicast);
+        check!("239.255.255.255", global|multicast);
+        check!("255.255.255.255", broadcast);
     }
 
     #[test]
     fn ipv6_properties() {
-        fn check(str_addr: &str, octets: &[u8; 16], unspec: bool, loopback: bool,
-                 unique_local: bool, global: bool,
-                 u_link_local: bool, u_site_local: bool, u_global: bool, u_doc: bool,
-                 m_scope: Option<Ipv6MulticastScope>) {
-            let ip: Ipv6Addr = str_addr.parse().unwrap();
-            assert_eq!(str_addr, ip.to_string());
-            assert_eq!(&ip.octets(), octets);
-            assert_eq!(Ipv6Addr::from(*octets), ip);
-
-            assert_eq!(ip.is_unspecified(), unspec);
-            assert_eq!(ip.is_loopback(), loopback);
-            assert_eq!(ip.is_unique_local(), unique_local);
-            assert_eq!(ip.is_global(), global);
-            assert_eq!(ip.is_unicast_link_local(), u_link_local);
-            assert_eq!(ip.is_unicast_site_local(), u_site_local);
-            assert_eq!(ip.is_unicast_global(), u_global);
-            assert_eq!(ip.is_documentation(), u_doc);
-            assert_eq!(ip.multicast_scope(), m_scope);
-            assert_eq!(ip.is_multicast(), m_scope.is_some());
+        macro_rules! ip {
+            ($s:expr) => {
+                Ipv6Addr::from_str($s).unwrap()
+            }
         }
 
-        //    unspec loopbk uniqlo global unill  unisl  uniglo doc    mscope
-        check("::", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              true,  false, false, false, false, false, false, false, None);
-        check("::1", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-              false, true,  false, false, false, false, false, false, None);
-        check("::0.0.0.2", &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
-              false, false, false, true,  false, false, true,  false, None);
-        check("1::", &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              false, false, false, true,  false, false, true,  false, None);
-        check("fc00::", &[0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              false, false, true,  false, false, false, false, false, None);
-        check("fdff:ffff::", &[0xfd, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              false, false, true,  false, false, false, false, false, None);
-        check("fe80:ffff::", &[0xfe, 0x80, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              false, false, false, false, true,  false, false, false, None);
-        check("febf:ffff::", &[0xfe, 0xbf, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              false, false, false, false, true,  false, false, false, None);
-        check("fec0::", &[0xfe, 0xc0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              false, false, false, false, false, true,  false, false, None);
-        check("ff01::", &[0xff, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              false, false, false, false, false, false, false, false, Some(InterfaceLocal));
-        check("ff02::", &[0xff, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              false, false, false, false, false, false, false, false, Some(LinkLocal));
-        check("ff03::", &[0xff, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              false, false, false, false, false, false, false, false, Some(RealmLocal));
-        check("ff04::", &[0xff, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              false, false, false, false, false, false, false, false, Some(AdminLocal));
-        check("ff05::", &[0xff, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              false, false, false, false, false, false, false, false, Some(SiteLocal));
-        check("ff08::", &[0xff, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              false, false, false, false, false, false, false, false, Some(OrganizationLocal));
-        check("ff0e::", &[0xff, 0xe, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-              false, false, false, true,  false, false, false, false, Some(Global));
-        check("2001:db8:85a3::8a2e:370:7334",
-              &[0x20, 1, 0xd, 0xb8, 0x85, 0xa3, 0, 0, 0, 0, 0x8a, 0x2e, 3, 0x70, 0x73, 0x34],
-              false, false, false, false, false, false, false, true, None);
-        check("102:304:506:708:90a:b0c:d0e:f10",
-              &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-              false, false, false, true,  false, false, true,  false, None);
+        macro_rules! check {
+            ($s:expr, &[$($octet:expr),*], $mask:expr) => {
+                assert_eq!($s, ip!($s).to_string());
+                let octets = &[$($octet),*];
+                assert_eq!(&ip!($s).octets(), octets);
+                assert_eq!(Ipv6Addr::from(*octets), ip!($s));
+
+                let unspecified: u16 = 1 << 0;
+                let loopback: u16 = 1 << 1;
+                let unique_local: u16 = 1 << 2;
+                let global: u16 = 1 << 3;
+                let unicast_link_local: u16 = 1 << 4;
+                let unicast_site_local: u16 = 1 << 5;
+                let unicast_global: u16 = 1 << 6;
+                let documentation: u16 = 1 << 7;
+                let multicast_interface_local: u16 = 1 << 8;
+                let multicast_link_local: u16 = 1 << 9;
+                let multicast_realm_local: u16 = 1 << 10;
+                let multicast_admin_local: u16 = 1 << 11;
+                let multicast_site_local: u16 = 1 << 12;
+                let multicast_organization_local: u16 = 1 << 13;
+                let multicast_global: u16 = 1 << 14;
+                let multicast: u16 = multicast_interface_local
+                    | multicast_admin_local
+                    | multicast_global
+                    | multicast_link_local
+                    | multicast_realm_local
+                    | multicast_site_local
+                    | multicast_organization_local;
+
+                if ($mask & unspecified) == unspecified {
+                    assert!(ip!($s).is_unspecified());
+                } else {
+                    assert!(!ip!($s).is_unspecified());
+                }
+                if ($mask & loopback) == loopback {
+                    assert!(ip!($s).is_loopback());
+                } else {
+                    assert!(!ip!($s).is_loopback());
+                }
+                if ($mask & unique_local) == unique_local {
+                    assert!(ip!($s).is_unique_local());
+                } else {
+                    assert!(!ip!($s).is_unique_local());
+                }
+                if ($mask & global) == global {
+                    assert!(ip!($s).is_global());
+                } else {
+                    assert!(!ip!($s).is_global());
+                }
+                if ($mask & unicast_link_local) == unicast_link_local {
+                    assert!(ip!($s).is_unicast_link_local());
+                } else {
+                    assert!(!ip!($s).is_unicast_link_local());
+                }
+                if ($mask & unicast_site_local) == unicast_site_local {
+                    assert!(ip!($s).is_unicast_site_local());
+                } else {
+                    assert!(!ip!($s).is_unicast_site_local());
+                }
+                if ($mask & unicast_global) == unicast_global {
+                    assert!(ip!($s).is_unicast_global());
+                } else {
+                    assert!(!ip!($s).is_unicast_global());
+                }
+                if ($mask & documentation) == documentation {
+                    assert!(ip!($s).is_documentation());
+                } else {
+                    assert!(!ip!($s).is_documentation());
+                }
+                if ($mask & multicast) != 0 {
+                    assert!(ip!($s).multicast_scope().is_some());
+                    assert!(ip!($s).is_multicast());
+                } else {
+                    assert!(ip!($s).multicast_scope().is_none());
+                    assert!(!ip!($s).is_multicast());
+                }
+                if ($mask & multicast_interface_local) == multicast_interface_local {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::InterfaceLocal);
+                }
+                if ($mask & multicast_link_local) == multicast_link_local {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::LinkLocal);
+                }
+                if ($mask & multicast_realm_local) == multicast_realm_local {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::RealmLocal);
+                }
+                if ($mask & multicast_admin_local) == multicast_admin_local {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::AdminLocal);
+                }
+                if ($mask & multicast_site_local) == multicast_site_local {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::SiteLocal);
+                }
+                if ($mask & multicast_organization_local) == multicast_organization_local {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::OrganizationLocal);
+                }
+                if ($mask & multicast_global) == multicast_global {
+                    assert_eq!(ip!($s).multicast_scope().unwrap(),
+                               Ipv6MulticastScope::Global);
+                }
+            }
+        }
+
+        let unspecified: u16 = 1 << 0;
+        let loopback: u16 = 1 << 1;
+        let unique_local: u16 = 1 << 2;
+        let global: u16 = 1 << 3;
+        let unicast_link_local: u16 = 1 << 4;
+        let unicast_site_local: u16 = 1 << 5;
+        let unicast_global: u16 = 1 << 6;
+        let documentation: u16 = 1 << 7;
+        let multicast_interface_local: u16 = 1 << 8;
+        let multicast_link_local: u16 = 1 << 9;
+        let multicast_realm_local: u16 = 1 << 10;
+        let multicast_admin_local: u16 = 1 << 11;
+        let multicast_site_local: u16 = 1 << 12;
+        let multicast_organization_local: u16 = 1 << 13;
+        let multicast_global: u16 = 1 << 14;
+
+        check!("::",
+               &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               unspecified);
+
+        check!("::1",
+               &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+               loopback);
+
+        check!("::0.0.0.2",
+               &[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+               global | unicast_global);
+
+        check!("1::",
+               &[0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               global | unicast_global);
+
+        check!("fc00::",
+               &[0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               unique_local);
+
+        check!("fdff:ffff::",
+               &[0xfd, 0xff, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               unique_local);
+
+        check!("fe80:ffff::",
+               &[0xfe, 0x80, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               unicast_link_local);
+
+        check!("febf:ffff::",
+               &[0xfe, 0xbf, 0xff, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               unicast_link_local);
+
+        check!("fec0::",
+               &[0xfe, 0xc0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               unicast_site_local);
+
+        check!("ff01::",
+               &[0xff, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               multicast_interface_local);
+
+        check!("ff02::",
+               &[0xff, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               multicast_link_local);
+
+        check!("ff03::",
+               &[0xff, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               multicast_realm_local);
+
+        check!("ff04::",
+               &[0xff, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               multicast_admin_local);
+
+        check!("ff05::",
+               &[0xff, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               multicast_site_local);
+
+        check!("ff08::",
+               &[0xff, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               multicast_organization_local);
+
+        check!("ff0e::",
+               &[0xff, 0xe, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               multicast_global | global);
+
+        check!("2001:db8:85a3::8a2e:370:7334",
+               &[0x20, 1, 0xd, 0xb8, 0x85, 0xa3, 0, 0, 0, 0, 0x8a, 0x2e, 3, 0x70, 0x73, 0x34],
+               documentation);
+
+        check!("102:304:506:708:90a:b0c:d0e:f10",
+               &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+               global| unicast_global);
     }
 
     #[test]
