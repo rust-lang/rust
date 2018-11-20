@@ -266,7 +266,6 @@ impl AnalysisImpl {
         &self,
         position: FilePosition,
     ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        let module_tree = self.module_tree(position.file_id)?;
         let file = self.db.file_syntax(position.file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
@@ -292,25 +291,23 @@ impl AnalysisImpl {
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, position.offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
-                    let file_ids = self.resolve_module(&*module_tree, position.file_id, module);
-
-                    let res = file_ids
-                        .into_iter()
-                        .map(|id| {
-                            let name = module
-                                .name()
-                                .map(|n| n.text())
-                                .unwrap_or_else(|| SmolStr::new(""));
-                            let symbol = FileSymbol {
-                                name,
-                                node_range: TextRange::offset_len(0.into(), 0.into()),
-                                kind: MODULE,
-                            };
-                            (id, symbol)
-                        })
-                        .collect();
-
-                    return Ok(res);
+                    let parent_module =
+                        ModuleDescriptor::guess_from_file_id(&*self.db, position.file_id)?;
+                    let child_name = module.name();
+                    match (parent_module, child_name) {
+                        (Some(parent_module), Some(child_name)) => {
+                            if let Some(child) = parent_module.child(&child_name.text()) {
+                                let file_id = child.source().file_id();
+                                let symbol = FileSymbol {
+                                    name: child_name.text(),
+                                    node_range: TextRange::offset_len(0.into(), 0.into()),
+                                    kind: MODULE,
+                                };
+                                return Ok(vec![(file_id, symbol)]);
+                            }
+                        }
+                        _ => (),
+                    }
                 }
             }
         }
@@ -518,27 +515,6 @@ impl AnalysisImpl {
         query.exact();
         query.limit(4);
         self.world_symbols(query)
-    }
-
-    fn resolve_module(
-        &self,
-        module_tree: &ModuleTree,
-        file_id: FileId,
-        module: ast::Module,
-    ) -> Vec<FileId> {
-        let name = match module.name() {
-            Some(name) => name.text(),
-            None => return Vec::new(),
-        };
-        let module_id = match module_tree.any_module_for_source(ModuleSource::SourceFile(file_id)) {
-            Some(id) => id,
-            None => return Vec::new(),
-        };
-        module_id
-            .child(module_tree, name.as_str())
-            .and_then(|it| it.source(&module_tree).as_file())
-            .into_iter()
-            .collect()
     }
 }
 

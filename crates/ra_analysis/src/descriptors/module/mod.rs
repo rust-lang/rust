@@ -165,15 +165,6 @@ enum ModuleSourceNode {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub(crate) struct ModuleId(u32);
 
-impl crate::loc2id::NumericId for ModuleId {
-    fn from_u32(id: u32) -> Self {
-        ModuleId(id)
-    }
-    fn to_u32(self) -> u32 {
-        self.0
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 struct LinkId(u32);
 
@@ -189,13 +180,13 @@ pub enum Problem {
 }
 
 impl ModuleId {
-    pub(crate) fn source(self, tree: &ModuleTree) -> ModuleSource {
+    fn source(self, tree: &ModuleTree) -> ModuleSource {
         tree.module(self).source
     }
     fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
         tree.module(self).parent
     }
-    pub(crate) fn parent(self, tree: &ModuleTree) -> Option<ModuleId> {
+    fn parent(self, tree: &ModuleTree) -> Option<ModuleId> {
         let link = self.parent_link(tree)?;
         Some(tree.link(link).owner)
     }
