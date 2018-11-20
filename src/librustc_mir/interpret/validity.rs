@@ -312,20 +312,25 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                 }
             }
             ty::RawPtr(..) => {
-                // No undef allowed here.  Eventually this should be consistent with
-                // the integer types.
-                let _ptr = try_validation!(value.to_scalar_ptr(),
-                    "undefined address in pointer", self.path);
-                let _meta = try_validation!(value.to_meta(),
-                    "uninitialized data in fat pointer metadata", self.path);
+                if self.const_mode {
+                    // No undef allowed here.  Eventually this should be consistent with
+                    // the integer types.
+                    let _ptr = try_validation!(value.to_scalar_ptr(),
+                        "undefined address in raw pointer", self.path);
+                    let _meta = try_validation!(value.to_meta(),
+                        "uninitialized data in raw fat pointer metadata", self.path);
+                } else {
+                    // To avoid breaking existing code, we need to accept
+                    // undef here.
+                }
             }
             _ if ty.is_box() || ty.is_region_ptr() => {
                 // Handle fat pointers.
                 // Check metadata early, for better diagnostics
                 let ptr = try_validation!(value.to_scalar_ptr(),
-                    "undefined address in pointer", self.path);
+                    "undefined address in box pointer", self.path);
                 let meta = try_validation!(value.to_meta(),
-                    "uninitialized data in fat pointer metadata", self.path);
+                    "uninitialized data in box fat pointer metadata", self.path);
                 let layout = self.ecx.layout_of(value.layout.ty.builtin_deref(true).unwrap().ty)?;
                 if layout.is_unsized() {
                     let tail = self.ecx.tcx.struct_tail(layout.ty);
