@@ -16,7 +16,7 @@
 use macros::{InvocationData, ParentScope, LegacyScope};
 use resolve_imports::ImportDirective;
 use resolve_imports::ImportDirectiveSubclass::{self, GlobImport, SingleImport};
-use {Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, ToNameBinding};
+use {Module, ModuleData, ModuleKind, NameBinding, NameBindingKind, Segment, ToNameBinding};
 use {ModuleOrUniformRoot, PerNS, Resolver, ResolverArenas, ExternPreludeEntry};
 use Namespace::{self, TypeNS, ValueNS, MacroNS};
 use {resolve_error, resolve_struct_error, ResolutionError};
@@ -114,7 +114,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // This particular use tree
         use_tree: &ast::UseTree,
         id: NodeId,
-        parent_prefix: &[Ident],
+        parent_prefix: &[Segment],
         nested: bool,
         // The whole `use` item
         parent_scope: ParentScope<'a>,
@@ -126,7 +126,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                parent_prefix, use_tree, nested);
 
         let mut prefix_iter = parent_prefix.iter().cloned()
-            .chain(use_tree.prefix.segments.iter().map(|seg| seg.ident)).peekable();
+            .chain(use_tree.prefix.segments.iter().map(|seg| seg.into())).peekable();
 
         // On 2015 edition imports are resolved as crate-relative by default,
         // so prefixes are prepended with crate root segment if necessary.
@@ -134,8 +134,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         // appears, so imports in braced groups can have roots prepended independently.
         let is_glob = if let ast::UseTreeKind::Glob = use_tree.kind { true } else { false };
         let crate_root = if !self.session.rust_2018() &&
-                prefix_iter.peek().map_or(is_glob, |ident| !ident.is_path_segment_keyword()) {
-            Some(Ident::new(keywords::CrateRoot.name(), use_tree.prefix.span.shrink_to_lo()))
+            prefix_iter.peek().map_or(is_glob, |seg| !seg.ident.is_path_segment_keyword())
+        {
+            Some(Segment::from_ident(Ident::new(
+                keywords::CrateRoot.name(),
+                use_tree.prefix.span.shrink_to_lo(),
+            )))
         } else {
             None
         };
@@ -143,9 +147,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let prefix = crate_root.into_iter().chain(prefix_iter).collect::<Vec<_>>();
         debug!("build_reduced_graph_for_use_tree: prefix={:?}", prefix);
 
-        let empty_for_self = |prefix: &[Ident]| {
+        let empty_for_self = |prefix: &[Segment]| {
             prefix.is_empty() ||
-            prefix.len() == 1 && prefix[0].name == keywords::CrateRoot.name()
+                prefix.len() == 1 && prefix[0].ident.name == keywords::CrateRoot.name()
         };
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename, ..) => {
@@ -156,7 +160,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                 if nested {
                     // Correctly handle `self`
-                    if source.name == keywords::SelfValue.name() {
+                    if source.ident.name == keywords::SelfValue.name() {
                         type_ns_only = true;
 
                         if empty_for_self(&module_path) {
@@ -172,20 +176,20 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         // Replace `use foo::self;` with `use foo;`
                         source = module_path.pop().unwrap();
                         if rename.is_none() {
-                            ident = source;
+                            ident = source.ident;
                         }
                     }
                 } else {
                     // Disallow `self`
-                    if source.name == keywords::SelfValue.name() {
+                    if source.ident.name == keywords::SelfValue.name() {
                         resolve_error(self,
                                       use_tree.span,
                                       ResolutionError::SelfImportsOnlyAllowedWithin);
                     }
 
                     // Disallow `use $crate;`
-                    if source.name == keywords::DollarCrate.name() && module_path.is_empty() {
-                        let crate_root = self.resolve_crate_root(source);
+                    if source.ident.name == keywords::DollarCrate.name() && module_path.is_empty() {
+                        let crate_root = self.resolve_crate_root(source.ident);
                         let crate_name = match crate_root.kind {
                             ModuleKind::Def(_, name) => name,
                             ModuleKind::Block(..) => unreachable!(),
@@ -195,11 +199,14 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         // while the current crate doesn't have a valid `crate_name`.
                         if crate_name != keywords::Invalid.name() {
                             // `crate_name` should not be interpreted as relative.
-                            module_path.push(Ident {
-                                name: keywords::CrateRoot.name(),
-                                span: source.span,
+                            module_path.push(Segment {
+                                ident: Ident {
+                                    name: keywords::CrateRoot.name(),
+                                    span: source.ident.span,
+                                },
+                                id: Some(self.session.next_node_id()),
                             });
-                            source.name = crate_name;
+                            source.ident.name = crate_name;
                         }
                         if rename.is_none() {
                             ident.name = crate_name;
@@ -220,7 +227,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                 let subclass = SingleImport {
                     target: ident,
-                    source,
+                    source: source.ident,
                     result: PerNS {
                         type_ns: Cell::new(Err(Undetermined)),
                         value_ns: Cell::new(Err(Undetermined)),
@@ -291,7 +298,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 // `a::b::c::{self as _}`, so that their prefixes are correctly
                 // resolved and checked for privacy/stability/etc.
                 if items.is_empty() && !empty_for_self(&prefix) {
-                    let new_span = prefix[prefix.len() - 1].span;
+                    let new_span = prefix[prefix.len() - 1].ident.span;
                     let tree = ast::UseTree {
                         prefix: ast::Path::from_ident(
                             Ident::new(keywords::SelfValue.name(), new_span)

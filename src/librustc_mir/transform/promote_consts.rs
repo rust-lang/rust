@@ -23,7 +23,7 @@
 //! move analysis runs after promotion on broken MIR.
 
 use rustc::mir::*;
-use rustc::mir::visit::{PlaceContext, MutVisitor, Visitor};
+use rustc::mir::visit::{PlaceContext, MutatingUseContext, MutVisitor, Visitor};
 use rustc::mir::traversal::ReversePostorder;
 use rustc::ty::TyCtxt;
 use syntax_pos::Span;
@@ -53,6 +53,7 @@ pub enum TempState {
 
 impl TempState {
     pub fn is_promotable(&self) -> bool {
+        debug!("is_promotable: self={:?}", self);
         if let TempState::Defined { uses, .. } = *self {
             uses > 0
         } else {
@@ -88,6 +89,7 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
                    &index: &Local,
                    context: PlaceContext<'tcx>,
                    location: Location) {
+        debug!("visit_local: index={:?} context={:?} location={:?}", index, context, location);
         // We're only interested in temporaries
         if self.mir.local_kind(index) != LocalKind::Temp {
             return;
@@ -95,17 +97,22 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
 
         // Ignore drops, if the temp gets promoted,
         // then it's constant and thus drop is noop.
-        // Storage live ranges are also irrelevant.
-        if context.is_drop() || context.is_storage_marker() {
+        // Non-uses are also irrelevent.
+        if context.is_drop() || !context.is_use() {
+            debug!(
+                "visit_local: context.is_drop={:?} context.is_use={:?}",
+                context.is_drop(), context.is_use(),
+            );
             return;
         }
 
         let temp = &mut self.temps[index];
+        debug!("visit_local: temp={:?}", temp);
         if *temp == TempState::Undefined {
             match context {
-                PlaceContext::Store |
-                PlaceContext::AsmOutput |
-                PlaceContext::Call => {
+                PlaceContext::MutatingUse(MutatingUseContext::Store) |
+                PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) |
+                PlaceContext::MutatingUse(MutatingUseContext::Call) => {
                     *temp = TempState::Defined {
                         location,
                         uses: 0
@@ -117,10 +124,8 @@ impl<'tcx> Visitor<'tcx> for TempCollector<'tcx> {
         } else if let TempState::Defined { ref mut uses, .. } = *temp {
             // We always allow borrows, even mutable ones, as we need
             // to promote mutable borrows of some ZSTs e.g. `&mut []`.
-            let allowed_use = match context {
-                PlaceContext::Borrow {..} => true,
-                _ => context.is_nonmutating_use()
-            };
+            let allowed_use = context.is_borrow() || context.is_nonmutating_use();
+            debug!("visit_local: allowed_use={:?}", allowed_use);
             if allowed_use {
                 *uses += 1;
                 return;

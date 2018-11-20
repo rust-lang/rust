@@ -48,27 +48,27 @@ fn main() {
 //         StorageLive(_1);
 //         _1 = Test { x: const 0i32 };
 //         StorageLive(_2);
-//         Validate(Suspend(ReScope(Remainder { block: ItemLocalId(20), first_statement_index: 3 })), [_1: Test]);
+//         Validate(Suspend(ReScope(Remainder { block: ItemLocalId(24), first_statement_index: 3 })), [_1: Test]);
 //         _2 = &ReErased _1;
-//         Validate(Acquire, [(*_2): Test/ReScope(Remainder { block: ItemLocalId(20), first_statement_index: 3 }) (imm)]);
+//         Validate(Acquire, [(*_2): Test/ReScope(Remainder { block: ItemLocalId(24), first_statement_index: 3 }) (imm)]);
 //         StorageLive(_4);
 //         StorageLive(_5);
-//         Validate(Suspend(ReScope(Node(ItemLocalId(18)))), [((*_2).0: i32): i32/ReScope(Remainder { block: ItemLocalId(20), first_statement_index: 3 }) (imm)]);
+//         Validate(Suspend(ReScope(Node(ItemLocalId(22)))), [((*_2).0: i32): i32/ReScope(Remainder { block: ItemLocalId(24), first_statement_index: 3 }) (imm)]);
 //         _5 = &ReErased ((*_2).0: i32);
-//         Validate(Acquire, [(*_5): i32/ReScope(Node(ItemLocalId(18))) (imm)]);
-//         Validate(Suspend(ReScope(Node(ItemLocalId(18)))), [(*_5): i32/ReScope(Node(ItemLocalId(18))) (imm)]);
+//         Validate(Acquire, [(*_5): i32/ReScope(Node(ItemLocalId(22))) (imm)]);
+//         Validate(Suspend(ReScope(Node(ItemLocalId(22)))), [(*_5): i32/ReScope(Node(ItemLocalId(22))) (imm)]);
 //         _4 = &ReErased (*_5);
-//         Validate(Acquire, [(*_4): i32/ReScope(Node(ItemLocalId(18))) (imm)]);
-//         Validate(Release, [_3: (), _4: &ReScope(Node(ItemLocalId(18))) i32]);
+//         Validate(Acquire, [(*_4): i32/ReScope(Node(ItemLocalId(22))) (imm)]);
+//         Validate(Release, [_3: (), _4: &ReScope(Node(ItemLocalId(22))) i32]);
 //         _3 = const foo(move _4) -> bb1;
 //     }
 //     bb1: {
 //         Validate(Acquire, [_3: ()]);
-//         EndRegion(ReScope(Node(ItemLocalId(18))));
+//         EndRegion(ReScope(Node(ItemLocalId(22))));
 //         StorageDead(_4);
 //         StorageDead(_5);
 //         _0 = ();
-//         EndRegion(ReScope(Remainder { block: ItemLocalId(20), first_statement_index: 3 }));
+//         EndRegion(ReScope(Remainder { block: ItemLocalId(24), first_statement_index: 3 }));
 //         StorageDead(_2);
 //         StorageDead(_1);
 //         return;

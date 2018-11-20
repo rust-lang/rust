@@ -8,22 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
-// run-rustfix
+// Tests that paths in `pub(...)` don't fail HIR verification.
 
-#![warn(ellipsis_inclusive_range_patterns)]
+#![allow(unused_imports)]
+#![allow(dead_code)]
 
-fn main() {
-    let despondency = 2;
-    match despondency {
-        1...2 => {}
-        //~^ WARN `...` range patterns are deprecated
-        _ => {}
-    }
+pub(self) use self::my_mod::Foo;
 
-    match &despondency {
-        &1...2 => {}
-        //~^ WARN `...` range patterns are deprecated
-        _ => {}
-    }
+mod my_mod {
+    pub(super) use self::Foo as Bar;
+    pub(in super::my_mod) use self::Foo as Baz;
+
+    pub struct Foo;
 }
+
+fn main() {}

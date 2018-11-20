@@ -186,6 +186,8 @@ impl<'a, 'tcx, 'rcx, 'cstore> DocContext<'a, 'tcx, 'rcx, 'cstore> {
 
         segments.push(hir::PathSegment::new(
             real_name.unwrap_or(last.ident),
+            None,
+            None,
             self.generics_to_path_params(generics.clone()),
             false,
         ));

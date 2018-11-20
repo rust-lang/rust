@@ -74,6 +74,9 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         let infcx = self.fields.infcx;
         let a = infcx.type_variables.borrow_mut().replace_if_possible(a);
         let b = infcx.type_variables.borrow_mut().replace_if_possible(b);
+
+        debug!("{}.tys: replacements ({:?}, {:?})", self.tag(), a, b);
+
         match (&a.sty, &b.sty) {
             (&ty::Infer(TyVar(a_id)), &ty::Infer(TyVar(b_id))) => {
                 infcx.type_variables.borrow_mut().equate(a_id, b_id);

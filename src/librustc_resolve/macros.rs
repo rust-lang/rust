@@ -10,8 +10,8 @@
 
 use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
 use {CrateLint, Resolver, ResolutionError, Weak};
-use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, ToNameBinding};
-use {is_known_tool, names_to_string, resolve_error};
+use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
+use {is_known_tool, resolve_error};
 use ModuleOrUniformRoot;
 use Namespace::{self, *};
 use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
@@ -470,13 +470,14 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         force: bool,
     ) -> Result<Def, Determinacy> {
         let path_span = path.span;
-        let mut path = path.segments.iter().map(|s| s.ident).collect::<Vec<_>>();
+        let mut path = Segment::from_path(path);
 
         // Possibly apply the macro helper hack
         if kind == MacroKind::Bang && path.len() == 1 &&
-           path[0].span.ctxt().outer().expn_info().map_or(false, |info| info.local_inner_macros) {
-            let root = Ident::new(keywords::DollarCrate.name(), path[0].span);
-            path.insert(0, root);
+           path[0].ident.span.ctxt().outer().expn_info()
+               .map_or(false, |info| info.local_inner_macros) {
+            let root = Ident::new(keywords::DollarCrate.name(), path[0].ident.span);
+            path.insert(0, Segment::from_ident(root));
         }
 
         if path.len() > 1 {
@@ -501,7 +502,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             def
         } else {
             let binding = self.early_resolve_ident_in_lexical_scope(
-                path[0], MacroNS, Some(kind), false, parent_scope, false, force, path_span
+                path[0].ident, MacroNS, Some(kind), false, parent_scope, false, force, path_span
             );
             match binding {
                 Ok(..) => {}
@@ -511,7 +512,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
             if trace {
                 parent_scope.module.single_segment_macro_resolutions.borrow_mut()
-                    .push((path[0], kind, parent_scope.clone(), binding.ok()));
+                    .push((path[0].ident, kind, parent_scope.clone(), binding.ok()));
             }
 
             binding.map(|binding| binding.def_ignoring_ambiguity())
@@ -737,8 +738,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
                 WhereToResolve::ExternPrelude => {
                     if use_prelude {
-                        match self.extern_prelude_get(ident, !record_used,
-                                                      innermost_result.is_some()) {
+                        match self.extern_prelude_get(ident, !record_used) {
                             Some(binding) => Ok((binding, Flags::PRELUDE)),
                             None => Err(Determinacy::determined(
                                 self.graph_root.unresolved_invocations.borrow().is_empty()
@@ -905,7 +905,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 // but its `Def` should coincide with a crate passed with `--extern`
                 // (otherwise there would be ambiguity) and we can skip feature error in this case.
                 if ns != TypeNS || !use_prelude ||
-                   self.extern_prelude_get(ident, true, false).is_none() {
+                   self.extern_prelude_get(ident, true).is_none() {
                     let msg = "imports can only refer to extern crate names \
                                passed with `--extern` on stable channel";
                     let mut err = feature_err(&self.session.parse_sess, "uniform_paths",
@@ -945,7 +945,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     pub fn finalize_current_module_macro_resolutions(&mut self) {
         let module = self.current_module;
 
-        let check_consistency = |this: &mut Self, path: &[Ident], span,
+        let check_consistency = |this: &mut Self, path: &[Segment], span,
                                  kind: MacroKind, initial_def, def| {
             if let Some(initial_def) = initial_def {
                 if def != initial_def && def != Def::Err && this.ambiguity_errors.is_empty() {
@@ -964,7 +964,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 // less informative error if the privacy error is reported elsewhere.
                 if this.privacy_errors.is_empty() {
                     let msg = format!("cannot determine resolution for the {} `{}`",
-                                        kind.descr(), names_to_string(path));
+                                        kind.descr(), Segment::names_to_string(path));
                     let msg_note = "import resolution is stuck, try simplifying macro imports";
                     this.session.struct_span_err(span, &msg).note(msg_note).emit();
                 }
@@ -973,7 +973,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         let macro_resolutions =
             mem::replace(&mut *module.multi_segment_macro_resolutions.borrow_mut(), Vec::new());
-        for (path, path_span, kind, parent_scope, initial_def) in macro_resolutions {
+        for (mut path, path_span, kind, parent_scope, initial_def) in macro_resolutions {
+            // FIXME: Path resolution will ICE if segment IDs present.
+            for seg in &mut path { seg.id = None; }
             match self.resolve_path(&path, Some(MacroNS), &parent_scope,
                                     true, path_span, CrateLint::No) {
                 PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
@@ -1004,7 +1006,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         initial_binding.def_ignoring_ambiguity()
                     });
                     let def = binding.def_ignoring_ambiguity();
-                    check_consistency(self, &[ident], ident.span, kind, initial_def, def);
+                    let seg = Segment::from_ident(ident);
+                    check_consistency(self, &[seg], ident.span, kind, initial_def, def);
                 }
                 Err(..) => {
                     assert!(initial_binding.is_none());
@@ -1050,7 +1053,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
             };
             let ident = Ident::new(Symbol::intern(name), span);
-            self.lookup_typo_candidate(&[ident], MacroNS, is_macro, span)
+            self.lookup_typo_candidate(&[Segment::from_ident(ident)], MacroNS, is_macro, span)
         });
 
         if let Some(suggestion) = suggestion {

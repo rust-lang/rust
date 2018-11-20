@@ -1591,6 +1591,7 @@ fn predicates_defined_on<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
 ) -> ty::GenericPredicates<'tcx> {
+    debug!("predicates_defined_on({:?})", def_id);
     let explicit = tcx.explicit_predicates_of(def_id);
     let span = tcx.def_span(def_id);
     let predicates = explicit.predicates.into_iter().chain(

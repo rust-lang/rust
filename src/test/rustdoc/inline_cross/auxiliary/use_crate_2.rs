@@ -8,22 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-pass
-// run-rustfix
-
-#![warn(ellipsis_inclusive_range_patterns)]
-
-fn main() {
-    let despondency = 2;
-    match despondency {
-        1...2 => {}
-        //~^ WARN `...` range patterns are deprecated
-        _ => {}
-    }
-
-    match &despondency {
-        &1...2 => {}
-        //~^ WARN `...` range patterns are deprecated
-        _ => {}
-    }
-}
+pub struct SomethingElse;

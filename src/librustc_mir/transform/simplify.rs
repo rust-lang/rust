@@ -331,8 +331,10 @@ struct DeclMarker {
 
 impl<'tcx> Visitor<'tcx> for DeclMarker {
     fn visit_local(&mut self, local: &Local, ctx: PlaceContext<'tcx>, _: Location) {
-        // ignore these altogether, they get removed along with their otherwise unused decls.
-        if ctx != PlaceContext::StorageLive && ctx != PlaceContext::StorageDead {
+        // Ignore storage markers altogether, they get removed along with their otherwise unused
+        // decls.
+        // FIXME: Extend this to all non-uses.
+        if !ctx.is_storage_marker() {
             self.locals.insert(*local);
         }
     }

@@ -15,7 +15,7 @@ use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::mir::{self, Location, TerminatorKind};
-use rustc::mir::visit::{Visitor, PlaceContext};
+use rustc::mir::visit::{Visitor, PlaceContext, MutatingUseContext, NonMutatingUseContext};
 use rustc::mir::traversal;
 use rustc::ty;
 use rustc::ty::layout::LayoutOf;
@@ -116,7 +116,11 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
                 self.not_ssa(index);
             }
         } else {
-            self.visit_place(place, PlaceContext::Store, location);
+            self.visit_place(
+                place,
+                PlaceContext::MutatingUse(MutatingUseContext::Store),
+                location
+            );
         }
 
         self.visit_rvalue(rvalue, location);
@@ -142,7 +146,11 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
                 // is not guaranteed to be statically dominated by the
                 // definition of x, so x must always be in an alloca.
                 if let mir::Operand::Move(ref place) = args[0] {
-                    self.visit_place(place, PlaceContext::Drop, location);
+                    self.visit_place(
+                        place,
+                        PlaceContext::MutatingUse(MutatingUseContext::Drop),
+                        location
+                    );
                 }
             }
         }
@@ -160,7 +168,8 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
         if let mir::Place::Projection(ref proj) = *place {
             // Allow uses of projections that are ZSTs or from scalar fields.
             let is_consume = match context {
-                PlaceContext::Copy | PlaceContext::Move => true,
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => true,
                 _ => false
             };
             if is_consume {
@@ -190,7 +199,11 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
 
             // A deref projection only reads the pointer, never needs the place.
             if let mir::ProjectionElem::Deref = proj.elem {
-                return self.visit_place(&proj.base, PlaceContext::Copy, location);
+                return self.visit_place(
+                    &proj.base,
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
+                    location
+                );
             }
         }
 
@@ -202,16 +215,14 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
                    context: PlaceContext<'tcx>,
                    location: Location) {
         match context {
-            PlaceContext::Call => {
+            PlaceContext::MutatingUse(MutatingUseContext::Call) => {
                 self.assign(local, location);
             }
 
-            PlaceContext::StorageLive |
-            PlaceContext::StorageDead |
-            PlaceContext::Validate => {}
+            PlaceContext::NonUse(_) => {}
 
-            PlaceContext::Copy |
-            PlaceContext::Move => {
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
                 // Reads from uninitialized variables (e.g. in dead code, after
                 // optimizations) require locals to be in (uninitialized) memory.
                 // NB: there can be uninitialized reads of a local visited after
@@ -227,15 +238,19 @@ impl Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'll, 'tcx> {
                 }
             }
 
-            PlaceContext::Inspect |
-            PlaceContext::Store |
-            PlaceContext::AsmOutput |
-            PlaceContext::Borrow { .. } |
-            PlaceContext::Projection(..) => {
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect) |
+            PlaceContext::MutatingUse(MutatingUseContext::Store) |
+            PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) |
+            PlaceContext::MutatingUse(MutatingUseContext::Borrow(..)) |
+            PlaceContext::MutatingUse(MutatingUseContext::Projection) |
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(..)) |
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow(..)) |
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(..)) |
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::Projection) => {
                 self.not_ssa(local);
             }
 
-            PlaceContext::Drop => {
+            PlaceContext::MutatingUse(MutatingUseContext::Drop) => {
                 let ty = mir::Place::Local(local).ty(self.fx.mir, self.fx.cx.tcx);
                 let ty = self.fx.monomorphize(&ty.to_ty(self.fx.cx.tcx));
 
