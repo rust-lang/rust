@@ -7,6 +7,7 @@ use ra_syntax::{
 };
 
 use crate::{
+    loc2id::DefId,
     descriptors::module::ModuleId,
     syntax_ptr::LocalSyntaxPtr,
 };
@@ -45,7 +46,8 @@ struct ItemMap {
 
 #[derive(Debug)]
 struct ModuleItems {
-    items: FxHashMap<SmolStr, PerNs<ModuleItem>>,
+    items: FxHashMap<SmolStr, PerNs<DefId>>,
+    import_resolutions: FxHashMap<LocalSyntaxPtr, DefId>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -195,5 +197,16 @@ impl ModuleItem {
             vis,
         };
         Some(res)
+    }
+}
+
+struct Resolver {
+    input: FxHashMap<ModuleId, InputModuleItems>,
+    result: ModuleItems,
+}
+
+impl Resolver {
+    fn resolve(&mut self){
+
     }
 }
