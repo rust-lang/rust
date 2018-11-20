@@ -214,6 +214,13 @@ impl ModuleId {
             .find(|it| it.name == name)?;
         Some(*link.points_to.first()?)
     }
+    fn children<'a>(self, tree: &'a ModuleTree) -> impl Iterator<Item = (SmolStr, ModuleId)> + 'a {
+        tree.module(self).children.iter().filter_map(move |&it| {
+            let link = tree.link(it);
+            let module = *link.points_to.first()?;
+            Some((link.name.clone(), module))
+        })
+    }
     fn problems(self, tree: &ModuleTree, db: &impl SyntaxDatabase) -> Vec<(SyntaxNode, Problem)> {
         tree.module(self)
             .children

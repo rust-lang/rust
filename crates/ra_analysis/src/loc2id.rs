@@ -96,14 +96,14 @@ pub(crate) struct DefId(u32);
 impl_numeric_id!(DefId);
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-enum DefLoc {
+pub(crate) enum DefLoc {
     Module {
         id: ModuleId,
         source_root: SourceRootId,
     },
     Item {
         ptr: SyntaxPtr,
-    }
+    },
 }
 
 pub(crate) trait IdDatabase: salsa::Database {
@@ -121,6 +121,13 @@ impl IdMaps {
     }
     pub(crate) fn fn_ptr(&self, fn_id: FnId) -> SyntaxPtr {
         self.inner.fns.lock().id2loc(fn_id)
+    }
+
+    pub(crate) fn def_id(&self, loc: DefLoc) -> DefId {
+        self.inner.defs.lock().loc2id(&loc)
+    }
+    pub(crate) fn def_loc(&self, def_id: DefId) -> DefLoc {
+        self.inner.defs.lock().id2loc(def_id)
     }
 }
 

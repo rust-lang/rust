@@ -1,15 +1,21 @@
 //! Name resolution algorithm
+use std::sync::Arc;
+
 use rustc_hash::FxHashMap;
 
 use ra_syntax::{
-    SmolStr, SyntaxKind,
+    SmolStr, SyntaxKind::{self, *},
     ast::{self, NameOwner, AstNode}
 };
 
 use crate::{
-    loc2id::DefId,
-    descriptors::module::ModuleId,
-    syntax_ptr::LocalSyntaxPtr,
+    loc2id::{DefId, DefLoc},
+    descriptors::{
+        DescriptorDatabase,
+        module::{ModuleId, ModuleTree},
+    },
+    syntax_ptr::{LocalSyntaxPtr, SyntaxPtr},
+    input::SourceRootId,
 };
 
 /// A set of items and imports declared inside a module, without relation to
@@ -44,9 +50,9 @@ struct ItemMap {
     per_module: FxHashMap<ModuleId, ModuleItems>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 struct ModuleItems {
-    items: FxHashMap<SmolStr, PerNs<DefId>>,
+    items: FxHashMap<SmolStr, DefId>,
     import_resolutions: FxHashMap<LocalSyntaxPtr, DefId>,
 }
 
@@ -201,13 +207,61 @@ impl ModuleItem {
     }
 }
 
-struct Resolver {
+struct Resolver<'a, DB> {
+    db: &'a DB,
+    source_root: SourceRootId,
+    module_tree: Arc<ModuleTree>,
     input: FxHashMap<ModuleId, InputModuleItems>,
-    result: ModuleItems,
+    result: ItemMap,
 }
 
-impl Resolver {
-    fn resolve(&mut self){
-
+impl<'a, DB> Resolver<'a, DB>
+where
+    DB: DescriptorDatabase,
+{
+    fn resolve(&mut self) {
+        for (&module_id, items) in self.input.iter() {
+            populate_module(
+                self.db,
+                self.source_root,
+                &*self.module_tree,
+                &mut self.result,
+                module_id,
+                items,
+            )
+        }
     }
+}
+
+fn populate_module(
+    db: &impl DescriptorDatabase,
+    source_root: SourceRootId,
+    module_tree: &ModuleTree,
+    item_map: &mut ItemMap,
+    module_id: ModuleId,
+    input: &InputModuleItems,
+) {
+    let file_id = module_id.source(module_tree).file_id();
+
+    let mut module_items = ModuleItems::default();
+
+    for item in input.items.iter() {
+        if item.kind == MODULE {
+            // handle submodules separatelly
+            continue;
+        }
+        let ptr = item.ptr.into_global(file_id);
+        let def_loc = DefLoc::Item { ptr };
+        let def_id = db.id_maps().def_id(def_loc);
+        module_items.items.insert(item.name.clone(), def_id);
+    }
+
+    for (name, mod_id) in module_id.children(module_tree) {
+        let def_loc = DefLoc::Module {
+            id: mod_id,
+            source_root,
+        };
+    }
+
+    item_map.per_module.insert(module_id, module_items);
 }
