@@ -85,10 +85,10 @@ salsa::database_storage! {
         }
         impl DescriptorDatabase {
             fn module_tree() for ModuleTreeQuery;
-            fn module_descriptor() for SubmodulesQuery;
             fn module_scope() for ModuleScopeQuery;
-            fn fn_syntax() for FnSyntaxQuery;
             fn fn_scopes() for FnScopesQuery;
+            fn _fn_syntax() for FnSyntaxQuery;
+            fn _submodules() for SubmodulesQuery;
         }
     }
 }

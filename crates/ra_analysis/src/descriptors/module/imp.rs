@@ -155,7 +155,7 @@ fn build_subtree(
         parent,
         children: Vec::new(),
     });
-    for sub in db.submodules(source)?.iter() {
+    for sub in db._submodules(source)?.iter() {
         let link = tree.push_link(LinkData {
             name: sub.name().clone(),
             owner: id,
