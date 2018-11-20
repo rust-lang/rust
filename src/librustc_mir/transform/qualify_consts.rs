@@ -247,11 +247,16 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             let mut dest = dest;
             let index = loop {
                 match dest {
+                    // with `const_let` active, we treat all locals equal
                     Place::Local(index) => break *index,
+                    // projections are transparent for assignments
+                    // we qualify the entire destination at once, even if just a field would have
+                    // stricter qualification
                     Place::Projection(proj) => dest = &proj.base,
                     Place::Promoted(..) => bug!("promoteds don't exist yet during promotion"),
                     Place::Static(..) => {
-                        // Catch more errors in the destination.
+                        // Catch more errors in the destination. `visit_place` also checks that we
+                        // do not try to access statics from constants or try to mutate statics
                         self.visit_place(
                             dest,
                             PlaceContext::MutatingUse(MutatingUseContext::Store),
