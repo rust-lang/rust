@@ -16,10 +16,10 @@ a set of region constraints, which we'll ignore in this introduction.
 
 There are often many, or even infinitely many, solutions to a query. For
 example, say we want to prove that `exists<T> { Vec<T>: Debug }` for _some_
-type `?T`. Our solver should be capable of iterating over each answer one at
-a time, say `?T = u32`, then `?T = i32`, and so on, rather than iterating
-over every type in the type system. If we need more answers, we can request
-more until we are done. This is similar to how Prolog works.
+type `?T`. Our solver should be capable of yielding one answer at a time, say
+`?T = u32`, then `?T = i32`, and so on, rather than iterating over every type
+in the type system. If we need more answers, we can request more until we are
+done. This is similar to how Prolog works.
 
 *See also: [The traditional, interactive Prolog query][pq]*
 
@@ -27,32 +27,34 @@ more until we are done. This is similar to how Prolog works.
 
 ### Breadth-first
 
-`Vec<?T>: Debug` is true if `?T: Debug`. This leads to a cycle: `[Vec<u32> ,
+`Vec<?T>: Debug` is true if `?T: Debug`. This leads to a cycle: `[Vec<u32>,
 Vec<Vec<u32>>, Vec<Vec<Vec<u32>>>]`, and so on all implement `Debug`. Our
 solver ought to be breadth first and consider answers like `[Vec<u32>: Debug,
 Vec<i32>: Debug, ...]` before it recurses, or we may never find the answer
 we're looking for.
 
-### Cache friendly
+### Cachable
 
 To speed up compilation, we need to cache results, including partial results
 left over from past solver queries.
 
 ## Description of how it works
 
-The basis of the solver is the `Forest` type. A *forest* stores a
+The basis of the solver is the [`Forest`] type. A *forest* stores a
 collection of *tables* as well as a *stack*. Each *table* represents
 the stored results of a particular query that is being performed, as
 well as the various *strands*, which are basically suspended
 computations that may be used to find more answers. Tables are
 interdependent: solving one query may require solving others.
 
+[`Forest`]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/forest/struct.Forest.html
+
 ### Walkthrough
 
 Perhaps the easiest way to explain how the solver works is to walk
 through an example. Let's imagine that we have the following program:
 
-```rust
+```rust,ignore
 trait Debug { }
 
 struct u32 { }
@@ -65,19 +67,22 @@ struct Vec<T> { }
 impl<T: Debug> Debug for Vec<T> { }
 ```
 
-Now imagine that we want to find answers for the query `exists<T> {
-Rc<T>: Debug }`. The first step would be to u-canonicalize this query; this
-is the act of giving canonical names to all the unbound inference variables based on the 
-order of their left-most appearance, as well as canonicalizing the universes of any
-universally bound names (e.g., the `T` in `forall<T> { ... }`). In this case, there are no
-universally bound names, but the canonical form Q of the query might look something like:
+Now imagine that we want to find answers for the query `exists<T> { Rc<T>:
+Debug }`. The first step would be to u-canonicalize this query; this is the
+act of giving canonical names to all the unbound inference variables based on
+the order of their left-most appearance, as well as canonicalizing the
+universes of any universally bound names (e.g., the `T` in `forall<T> { ...
+}`). In this case, there are no universally bound names, but the canonical
+form Q of the query might look something like:
 
-    Rc<?0>: Debug
-    
+```text
+Rc<?0>: Debug
+```
+
 where `?0` is a variable in the root universe U0. We would then go and
-look for a table with this as the key: since the forest is empty, this
-lookup will fail, and we will create a new table T0, corresponding to
-the u-canonical goal Q.
+look for a table with this canonical query as the key: since the forest is
+empty, this lookup will fail, and we will create a new table T0,
+corresponding to the u-canonical goal Q.
 
 **Ignoring negative reasoning and regions.** To start, we'll ignore
 the possibility of negative goals like `not { Foo }`. We'll phase them
@@ -93,7 +98,7 @@ where-clauses that are in scope. In the case of our example, there
 would be three clauses, each coming from the program. Using a
 Prolog-like notation, these look like:
 
-```
+```text
 (u32: Debug).
 (Rc<T>: Debug) :- (T: Debug).
 (Vec<T>: Debug) :- (T: Debug).
@@ -105,9 +110,9 @@ clauses are inapplicable because `u32` and `Vec<?0>` cannot be unified
 with `Rc<?0>`. The second clause, however, will work.
 
 **What is a strand?** Let's talk a bit more about what a strand *is*. In the code, a strand
-is the combination of an inference table, an X-clause, and (possibly)
+is the combination of an inference table, an _X-clause_, and (possibly)
 a selected subgoal from that X-clause. But what is an X-clause
-(`ExClause`, in the code)? An X-clause pulls together a few things:
+([`ExClause`], in the code)? An X-clause pulls together a few things:
 
 - The current state of the goal we are trying to prove;
 - A set of subgoals that have yet to be proven;
@@ -118,7 +123,9 @@ The general form of an X-clause is written much like a Prolog clause,
 but with somewhat different semantics. Since we're ignoring delayed
 literals and region constraints, an X-clause just looks like this:
 
-    G :- L
+```text
+G :- L
+```
     
 where G is a goal and L is a set of subgoals that must be proven.
 (The L stands for *literal* -- when we address negative reasoning, a
@@ -128,7 +135,9 @@ that if we are able to prove L then the goal G can be considered true.
 In the case of our example, we would wind up creating one strand, with
 an X-clause like so:
 
-    (Rc<?T>: Debug) :- (?T: Debug)
+```text
+(Rc<?T>: Debug) :- (?T: Debug)
+```
 
 Here, the `?T` refers to one of the inference variables created in the
 inference table that accompanies the strand. (I'll use named variables
@@ -141,36 +150,44 @@ is the subgoal after the turnstile (`:-`) that we are currently trying
 to prove in this strand. Initally, when a strand is first created,
 there is no selected subgoal.
 
+[`ExClause`]: https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/struct.ExClause.html
+
 **Activating a strand.** Now that we have created the table T0 and
-initialized it with strands, we have to actually try and produce an
-answer. We do this by invoking the `ensure_answer` operation on the
-table: specifically, we say `ensure_answer(T0, A0)`, meaning "ensure
-that there is a 0th answer".
+initialized it with strands, we have to actually try and produce an answer.
+We do this by invoking the [`ensure_root_answer`] operation on the table:
+specifically, we say `ensure_root_answer(T0, A0)`, meaning "ensure that there
+is a 0th answer A0 to query T0".
 
-Remember that tables store not only strands, but also a vector of
-cached answers. The first thing that `ensure_answer` does is to check
-whether answer 0 is in this vector. If so, we can just return
-immediately.  In this case, the vector will be empty, and hence that
-does not apply (this becomes important for cyclic checks later on).
+Remember that tables store not only strands, but also a vector of cached
+answers. The first thing that [`ensure_root_answer`] does is to check whether
+answer A0 is in this vector. If so, we can just return immediately. In this
+case, the vector will be empty, and hence that does not apply (this becomes
+important for cyclic checks later on).
 
-When there is no cached answer, `ensure_answer` will try to produce
-one.  It does this by selecting a strand from the set of active
-strands -- the strands are stored in a `VecDeque` and hence processed
-in a round-robin fashion. Right now, we have only one strand, storing
-the following X-clause with no selected subgoal:
+When there is no cached answer, [`ensure_root_answer`] will try to produce one.
+It does this by selecting a strand from the set of active strands -- the
+strands are stored in a `VecDeque` and hence processed in a round-robin
+fashion. Right now, we have only one strand, storing the following X-clause
+with no selected subgoal:
 
-    (Rc<?T>: Debug) :- (?T: Debug)
+```text
+(Rc<?T>: Debug) :- (?T: Debug)
+```
 
 When we activate the strand, we see that we have no selected subgoal,
 and so we first pick one of the subgoals to process. Here, there is only
 one (`?T: Debug`), so that becomes the selected subgoal, changing
 the state of the strand to:
 
-    (Rc<?T>: Debug) :- selected(?T: Debug, A0)
+```text
+(Rc<?T>: Debug) :- selected(?T: Debug, A0)
+```
     
 Here, we write `selected(L, An)` to indicate that (a) the literal `L`
 is the selected subgoal and (b) which answer `An` we are looking for. We
 start out looking for `A0`.
+
+[`ensure_root_answer`]:  https://rust-lang-nursery.github.io/chalk/doc/chalk_engine/forest/struct.Forest.html#method.ensure_root_answer
 
 **Processing the selected subgoal.** Next, we have to try and find an
 answer to this selected goal. To do that, we will u-canonicalize it
@@ -189,7 +206,7 @@ will be:
 We can thus summarize the state of the whole forest at this point as
 follows:
 
-```
+```text
 Table T0 [Rc<?0>: Debug]
   Strands:
     (Rc<?T>: Debug) :- selected(?T: Debug, A0)
@@ -215,7 +232,7 @@ answer). The strand is then removed from the list of strands.
 
 The state of table T1 is therefore:
 
-```
+```text
 Table T1 [?0: Debug]
   Answers:
     A0 = [?0 = u32]
@@ -227,8 +244,10 @@ Table T1 [?0: Debug]
 Note that I am writing out the answer A0 as a substitution that can be
 applied to the table goal; actually, in the code, the goals for each
 X-clause are also represented as substitutions, but in this exposition
-I've chosen to write them as full goals, following NFTD.
-   
+I've chosen to write them as full goals, following [NFTD].
+
+[NFTD]: ./bibliography.html#slg
+
 Since we now have an answer, `ensure_answer(T1, A0)` will return `Ok`
 to the table T0, indicating that answer A0 is available. T0 now has
 the job of incorporating that result into its active strand. It does
@@ -236,7 +255,7 @@ this in two ways. First, it creates a new strand that is looking for
 the next possible answer of T1. Next, it incorpoates the answer from
 A0 and removes the subgoal. The resulting state of table T0 is:
 
-```
+```text
 Table T0 [Rc<?0>: Debug]
   Strands:
     (Rc<?T>: Debug) :- selected(?T: Debug, A1)
@@ -250,7 +269,7 @@ then be returned up to our caller, and the whole forest goes quiescent
 at this point (remember, we only do enough work to generate *one*
 answer). The ending state of the forest at this point will be:
 
-```
+```text
 Table T0 [Rc<?0>: Debug]
   Answer:
     A0 = [?0 = u32]
