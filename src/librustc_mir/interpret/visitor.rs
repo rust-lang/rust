@@ -158,7 +158,9 @@ macro_rules! make_value_visitor {
             ) -> EvalResult<'tcx> {
                 self.walk_aggregate(v, fields)
             }
-            /// Called each time we recurse down to a field, passing in old and new value.
+
+            /// Called each time we recurse down to a field of a "product-like" aggregate
+            /// (structs, tuples, arrays and the like, but not enums), passing in old and new value.
             /// This gives the visitor the chance to track the stack of nested fields that
             /// we are descending through.
             #[inline(always)]
@@ -171,6 +173,19 @@ macro_rules! make_value_visitor {
                 self.visit_value(new_val)
             }
 
+            /// Called for recursing into the field of a generator.  These are not known to be
+            /// initialized, so we treat them like unions.
+            #[inline(always)]
+            fn visit_generator_field(
+                &mut self,
+                _old_val: Self::V,
+                _field: usize,
+                new_val: Self::V,
+            ) -> EvalResult<'tcx> {
+                self.visit_union(new_val)
+            }
+
+            /// Called when recursing into an enum variant.
             #[inline(always)]
             fn visit_variant(
                 &mut self,
@@ -300,7 +315,12 @@ macro_rules! make_value_visitor {
                         match v.layout().ty.sty {
                             ty::Generator(..) => {
                                 let field = v.project_field(self.ecx(), 0)?;
-                                self.visit_aggregate(v, std::iter::once(Ok(field)))
+                                self.visit_aggregate(v, std::iter::once(Ok(field)))?;
+                                for i in 1..offsets.len() {
+                                    let field = v.project_field(self.ecx(), i as u64)?;
+                                    self.visit_generator_field(v, i, field)?;
+                                }
+                                Ok(())
                             }
                             _ => {
                                 // FIXME: We collect in a vec because otherwise there are lifetime
