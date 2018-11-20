@@ -43,7 +43,8 @@ pub use self::FulfillmentErrorCode::*;
 pub use self::Vtable::*;
 pub use self::ObligationCauseCode::*;
 
-pub use self::coherence::{orphan_check, overlapping_impls, OrphanCheckErr, OverlapResult};
+pub use self::coherence::{add_placeholder_note, orphan_check, overlapping_impls};
+pub use self::coherence::{OrphanCheckErr, OverlapResult};
 pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
 pub use self::project::MismatchedProjectionTypes;
 pub use self::project::{normalize, normalize_projection_type, poly_project_and_unify_type};

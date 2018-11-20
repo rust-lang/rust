@@ -6,6 +6,8 @@ LL | impl TheTrait for for<'a,'b> fn(&'a u8, &'b u8) -> &'a u8 {
 ...
 LL | impl TheTrait for for<'a> fn(&'a u8, &'a u8) -> &'a u8 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8`
+   |
+   = note: this behavior recently changed as a result of a bug fix; see #XXX for details
 
 error: aborting due to previous error
 

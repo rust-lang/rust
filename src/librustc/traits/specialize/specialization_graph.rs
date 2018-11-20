@@ -164,6 +164,7 @@ impl<'a, 'gcx, 'tcx> Children {
                         None
                     },
                     intercrate_ambiguity_causes: overlap.intercrate_ambiguity_causes,
+                    involves_placeholder: overlap.involves_placeholder,
                 }
             };
 

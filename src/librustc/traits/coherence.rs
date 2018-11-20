@@ -4,6 +4,7 @@
 //! [trait-resolution]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
 //! [trait-specialization]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
 
+use infer::CombinedSnapshot;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use syntax_pos::DUMMY_SP;
 use traits::{self, Normalized, SelectionContext, Obligation, ObligationCause};
@@ -33,6 +34,17 @@ pub enum Conflict {
 pub struct OverlapResult<'tcx> {
     pub impl_header: ty::ImplHeader<'tcx>,
     pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
+
+    /// True if the overlap might've been permitted before the shift
+    /// to universes.
+    pub involves_placeholder: bool,
+}
+
+pub fn add_placeholder_note(err: &mut ::errors::DiagnosticBuilder<'_>) {
+    err.note(&format!(
+        "this behavior recently changed as a result of a bug fix; \
+         see rust-lang/rust#56105 for details"
+    ));
 }
 
 /// If there are types that satisfy both impls, invokes `on_overlap`
@@ -104,13 +116,22 @@ fn with_fresh_ty_vars<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, '
 
 /// Can both impl `a` and impl `b` be satisfied by a common type (including
 /// `where` clauses)? If so, returns an `ImplHeader` that unifies the two impls.
-fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
-                            a_def_id: DefId,
-                            b_def_id: DefId)
-                            -> Option<OverlapResult<'tcx>>
-{
+fn overlap<'cx, 'gcx, 'tcx>(
+    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+    a_def_id: DefId,
+    b_def_id: DefId,
+) -> Option<OverlapResult<'tcx>> {
     debug!("overlap(a_def_id={:?}, b_def_id={:?})", a_def_id, b_def_id);
 
+    selcx.infcx().probe(|snapshot| overlap_within_probe(selcx, a_def_id, b_def_id, snapshot))
+}
+
+fn overlap_within_probe(
+    selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
+    a_def_id: DefId,
+    b_def_id: DefId,
+    snapshot: &CombinedSnapshot<'_, 'tcx>,
+) -> Option<OverlapResult<'tcx>> {
     // For the purposes of this check, we don't bring any placeholder
     // types into scope; instead, we replace the generic types with
     // fresh type variables, and hence we do our evaluations in an
@@ -158,7 +179,13 @@ fn overlap<'cx, 'gcx, 'tcx>(selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     let impl_header = selcx.infcx().resolve_type_vars_if_possible(&a_impl_header);
     let intercrate_ambiguity_causes = selcx.take_intercrate_ambiguity_causes();
     debug!("overlap: intercrate_ambiguity_causes={:#?}", intercrate_ambiguity_causes);
-    Some(OverlapResult { impl_header, intercrate_ambiguity_causes })
+
+    let involves_placeholder = match selcx.infcx().region_constraints_added_in_snapshot(snapshot) {
+        Some(true) => true,
+        _ => false,
+    };
+
+    Some(OverlapResult { impl_header, intercrate_ambiguity_causes, involves_placeholder })
 }
 
 pub fn trait_ref_is_knowable<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
