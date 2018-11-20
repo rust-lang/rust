@@ -142,6 +142,7 @@ macro_rules! make_value_visitor {
                 self.walk_value(v)
             }
             /// Visit the given value as a union.  No automatic recursion can happen here.
+            /// Also called for the fields of a generator, which may or may not be initialized.
             #[inline(always)]
             fn visit_union(&mut self, _v: Self::V) -> EvalResult<'tcx>
             {
@@ -291,17 +292,28 @@ macro_rules! make_value_visitor {
                         // use that as an unambiguous signal for detecting primitives.  Make sure
                         // we did not miss any primitive.
                         debug_assert!(fields > 0);
-                        self.visit_union(v)?;
+                        self.visit_union(v)
                     },
                     layout::FieldPlacement::Arbitrary { ref offsets, .. } => {
-                        // FIXME: We collect in a vec because otherwise there are lifetime errors:
-                        // Projecting to a field needs (mutable!) access to `ecx`.
-                        let fields: Vec<EvalResult<'tcx, Self::V>> =
-                            (0..offsets.len()).map(|i| {
-                                v.project_field(self.ecx(), i as u64)
-                            })
-                            .collect();
-                        self.visit_aggregate(v, fields.into_iter())?;
+                        // Special handling needed for generators: All but the first field
+                        // (which is the state) are actually implicitly `MaybeUninit`, i.e.,
+                        // they may or may not be initialized, so we cannot visit them.
+                        match v.layout().ty.sty {
+                            ty::Generator(..) => {
+                                let field = v.project_field(self.ecx(), 0)?;
+                                self.visit_aggregate(v, std::iter::once(Ok(field)))
+                            }
+                            _ => {
+                                // FIXME: We collect in a vec because otherwise there are lifetime
+                                // errors: Projecting to a field needs access to `ecx`.
+                                let fields: Vec<EvalResult<'tcx, Self::V>> =
+                                    (0..offsets.len()).map(|i| {
+                                        v.project_field(self.ecx(), i as u64)
+                                    })
+                                    .collect();
+                                self.visit_aggregate(v, fields.into_iter())
+                            }
+                        }
                     },
                     layout::FieldPlacement::Array { .. } => {
                         // Let's get an mplace first.
@@ -317,10 +329,9 @@ macro_rules! make_value_visitor {
                             .map(|f| f.and_then(|f| {
                                 Ok(Value::from_mem_place(f))
                             }));
-                        self.visit_aggregate(v, iter)?;
+                        self.visit_aggregate(v, iter)
                     }
                 }
-                Ok(())
             }
         }
     }
