@@ -146,7 +146,7 @@ pub(crate) struct ModuleTree {
 }
 
 impl ModuleTree {
-    pub(crate) fn modules_for_source(&self, source: ModuleSource) -> Vec<ModuleId> {
+    fn modules_for_source(&self, source: ModuleSource) -> Vec<ModuleId> {
         self.mods
             .iter()
             .enumerate()
@@ -155,7 +155,7 @@ impl ModuleTree {
             .collect()
     }
 
-    pub(crate) fn any_module_for_source(&self, source: ModuleSource) -> Option<ModuleId> {
+    fn any_module_for_source(&self, source: ModuleSource) -> Option<ModuleId> {
         self.modules_for_source(source).pop()
     }
 }
@@ -261,7 +261,7 @@ struct ModuleData {
 }
 
 impl ModuleSource {
-    pub(crate) fn new_inline(file_id: FileId, module: ast::Module) -> ModuleSource {
+    fn new_inline(file_id: FileId, module: ast::Module) -> ModuleSource {
         assert!(!module.has_semi());
         let ptr = SyntaxPtr::new(file_id, module.syntax());
         ModuleSource::Module(ptr)
