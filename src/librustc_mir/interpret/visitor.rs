@@ -142,7 +142,6 @@ macro_rules! make_value_visitor {
                 self.walk_value(v)
             }
             /// Visit the given value as a union.  No automatic recursion can happen here.
-            /// Also called for the fields of a generator, which may or may not be initialized.
             #[inline(always)]
             fn visit_union(&mut self, _v: Self::V) -> EvalResult<'tcx>
             {
