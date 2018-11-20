@@ -57,23 +57,14 @@ pub struct Allocation<Tag=(),Extra=()> {
 impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {
     /// Check if the pointer is "in-bounds". Notice that a pointer pointing at the end
     /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
-    /// in-bounds!  This follows C's/LLVM's rules.  `check` indicates whether we
-    /// additionally require the pointer to be pointing to a *live* (still allocated)
-    /// allocation.
+    /// in-bounds!  This follows C's/LLVM's rules.
     /// If you want to check bounds before doing a memory access, better use `check_bounds`.
     pub fn check_bounds_ptr(
         &self,
         ptr: Pointer<Tag>,
     ) -> EvalResult<'tcx> {
         let allocation_size = self.bytes.len() as u64;
-        if ptr.offset.bytes() > allocation_size {
-            return err!(PointerOutOfBounds {
-                ptr: ptr.erase_tag(),
-                check: InboundsCheck::Live,
-                allocation_size: Size::from_bytes(allocation_size),
-            });
-        }
-        Ok(())
+        ptr.check_in_alloc(Size::from_bytes(allocation_size), InboundsCheck::Live)
     }
 
     /// Check if the memory range beginning at `ptr` and of size `Size` is "in-bounds".

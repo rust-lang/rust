@@ -19,7 +19,7 @@ use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerEx
 use rustc::mir::interpret::{
     GlobalId, AllocId,
     ConstValue, Pointer, Scalar,
-    EvalResult, EvalErrorKind, InboundsCheck,
+    EvalResult, EvalErrorKind,
 };
 use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
 pub use rustc::mir::interpret::ScalarMaybeUndef;
@@ -647,7 +647,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) => {
                         // The niche must be just 0 (which an inbounds pointer value never is)
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
-                            self.memory.check_bounds_ptr(ptr, InboundsCheck::MaybeDead).is_ok();
+                            self.memory.check_bounds_ptr_maybe_dead(ptr).is_ok();
                         if !ptr_valid {
                             return err!(InvalidDiscriminant(raw_discr.erase_tag()));
                         }

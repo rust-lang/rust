@@ -28,9 +28,9 @@ use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use syntax::ast::Mutability;
 
 use super::{
-    Pointer, AllocId, Allocation, GlobalId, AllocationExtra, InboundsCheck,
+    Pointer, AllocId, Allocation, GlobalId, AllocationExtra,
     EvalResult, Scalar, EvalErrorKind, AllocType, PointerArithmetic,
-    Machine, AllocMap, MayLeak, ErrorHandled, AllocationExtra,
+    Machine, AllocMap, MayLeak, ErrorHandled, InboundsCheck,
 };
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
@@ -251,9 +251,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             Scalar::Ptr(ptr) => {
                 // check this is not NULL -- which we can ensure only if this is in-bounds
                 // of some (potentially dead) allocation.
-                self.check_bounds_ptr(ptr, InboundsCheck::MaybeDead)?;
-                // data required for alignment check
-                let (_, align) = self.get_size_and_align(ptr.alloc_id);
+                let align = self.check_bounds_ptr_maybe_dead(ptr)?;
                 (ptr.offset.bytes(), align)
             }
             Scalar::Bits { bits, size } => {
@@ -283,6 +281,23 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
                 required: required_align,
             })
         }
+    }
+
+    /// Check if the pointer is "in-bounds". Notice that a pointer pointing at the end
+    /// of an allocation (i.e., at the first *inaccessible* location) *is* considered
+    /// in-bounds!  This follows C's/LLVM's rules.
+    /// This function also works for deallocated allocations.
+    /// Use `.get(ptr.alloc_id)?.check_bounds_ptr(ptr)` if you want to force the allocation
+    /// to still be live.
+    /// If you want to check bounds before doing a memory access, better first obtain
+    /// an `Allocation` and call `check_bounds`.
+    pub fn check_bounds_ptr_maybe_dead(
+        &self,
+        ptr: Pointer<M::PointerTag>,
+    ) -> EvalResult<'tcx, Align> {
+        let (allocation_size, align) = self.get_size_and_align(ptr.alloc_id);
+        ptr.check_in_alloc(allocation_size, InboundsCheck::MaybeDead)?;
+        Ok(align)
     }
 }
 
