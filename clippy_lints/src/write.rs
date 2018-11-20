@@ -8,13 +8,14 @@
 // except according to those terms.
 
 
-use crate::utils::{snippet, span_lint, span_lint_and_sugg};
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use std::borrow::Cow;
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::*;
 use crate::syntax::parse::{parser, token};
 use crate::syntax::tokenstream::{ThinTokenStream, TokenStream};
+use crate::utils::{snippet, span_lint, span_lint_and_sugg};
+use std::borrow::Cow;
 
 /// **What it does:** This lint warns when you use `println!("")` to
 /// print a newline.
@@ -199,6 +200,7 @@ impl EarlyLintPass for Pass {
                         "using `println!(\"\")`",
                         "replace it with",
                         "println!()".to_string(),
+                        Applicability::Unspecified,
                     );
                 }
             }
@@ -248,6 +250,7 @@ impl EarlyLintPass for Pass {
                         format!("using `writeln!({}, \"\")`", suggestion).as_str(),
                         "replace it with",
                         format!("writeln!({})", suggestion),
+                        Applicability::Unspecified,
                     );
                 }
             }

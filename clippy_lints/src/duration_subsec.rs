@@ -11,8 +11,9 @@
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
+use crate::rustc_errors::Applicability;
 use crate::syntax::source_map::Spanned;
+use if_chain::if_chain;
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
@@ -67,6 +68,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DurationSubsec {
                     &format!("Calling `{}()` is more concise than this calculation", suggested_fn),
                     "try",
                     format!("{}.{}()", snippet(cx, args[0].span, "_"), suggested_fn),
+                    Applicability::Unspecified,
                 );
             }
         }

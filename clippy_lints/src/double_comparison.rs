@@ -13,6 +13,7 @@
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::source_map::Span;
 
 use crate::utils::{snippet, span_lint_and_sugg, SpanlessEq};
@@ -73,9 +74,15 @@ impl<'a, 'tcx> Pass {
                 let lhs_str = snippet(cx, llhs.span, "");
                 let rhs_str = snippet(cx, lrhs.span, "");
                 let sugg = format!("{} {} {}", lhs_str, stringify!($op), rhs_str);
-                span_lint_and_sugg(cx, DOUBLE_COMPARISONS, span,
-                                   "This binary expression can be simplified",
-                                   "try", sugg);
+                span_lint_and_sugg(
+                    cx,
+                    DOUBLE_COMPARISONS,
+                    span,
+                    "This binary expression can be simplified",
+                    "try",
+                    sugg,
+                    Applicability::Unspecified,
+                );
             }}
         }
         match (op, lkind, rkind) {

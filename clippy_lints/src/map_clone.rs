@@ -11,15 +11,12 @@
 use crate::rustc::hir;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
+use crate::syntax::ast::Ident;
 use crate::syntax::source_map::Span;
 use crate::utils::paths;
-use crate::utils::{
-    in_macro, match_trait_method, match_type,
-    remove_blocks, snippet,
-    span_lint_and_sugg,
-};
+use crate::utils::{in_macro, match_trait_method, match_type, remove_blocks, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
-use crate::syntax::ast::Ident;
 
 #[derive(Clone)]
 pub struct Pass;
@@ -102,6 +99,7 @@ fn lint(cx: &LateContext<'_, '_>, replace: Span, root: Span, name: Ident, path: 
                 "You are using an explicit closure for cloning elements",
                 "Consider calling the dedicated `cloned` method",
                 format!("{}.cloned()", snippet(cx, root, "..")),
+                Applicability::Unspecified,
             )
         }
     }

@@ -12,6 +12,7 @@ use super::utils::{get_arg_name, match_var, remove_blocks, snippet, span_lint_an
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use if_chain::if_chain;
 
 /// **What it does:** Checks for matches being used to destructure a single-variant enum
@@ -84,6 +85,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         snippet(cx, local.pat.span, ".."),
                         snippet(cx, target.span, ".."),
                     ),
+                    Applicability::Unspecified,
                 );
             }
         }

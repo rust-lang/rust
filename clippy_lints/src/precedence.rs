@@ -10,6 +10,7 @@
 
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::*;
 use crate::syntax::source_map::Spanned;
 use crate::utils::{in_macro, snippet, span_lint_and_sugg};
@@ -61,6 +62,7 @@ impl EarlyLintPass for Precedence {
                     "operator precedence can trip the unwary",
                     "consider parenthesizing your expression",
                     sugg,
+                    Applicability::Unspecified,
                 );
             };
 
@@ -112,6 +114,7 @@ impl EarlyLintPass for Precedence {
                                     "unary minus has lower precedence than method call",
                                     "consider adding parentheses to clarify your intent",
                                     format!("-({})", snippet(cx, rhs.span, "..")),
+                                    Applicability::Unspecified,
                                 );
                             },
                             _ => (),

@@ -8,10 +8,11 @@
 // except according to those terms.
 
 
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::hir::def::Def;
 use crate::rustc::hir::{BinOpKind, BlockCheckMode, Expr, ExprKind, Stmt, StmtKind, UnsafeSource};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::utils::{has_drop, in_macro, snippet_opt, span_lint, span_lint_and_sugg};
 use std::ops::Deref;
 
@@ -131,6 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     "statement can be reduced",
                     "replace it with",
                     snippet,
+                    Applicability::Unspecified,
                 );
             }
         }

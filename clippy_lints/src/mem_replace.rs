@@ -11,6 +11,7 @@
 use crate::rustc::hir::{Expr, ExprKind, MutMutable, QPath};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::utils::{match_def_path, match_qpath, opt_def_id, paths, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
 
@@ -85,7 +86,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemReplace {
                     expr.span,
                     "replacing an `Option` with `None`",
                     "consider `Option::take()` instead",
-                    format!("{}.take()", snippet(cx, replaced_path.span, ""))
+                    format!("{}.take()", snippet(cx, replaced_path.span, "")),
+                    Applicability::Unspecified,
                 );
             }
         }

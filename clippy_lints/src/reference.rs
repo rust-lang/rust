@@ -8,11 +8,12 @@
 // except according to those terms.
 
 
-use crate::syntax::ast::{Expr, ExprKind, UnOp};
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
+use crate::rustc_errors::Applicability;
+use crate::syntax::ast::{Expr, ExprKind, UnOp};
 use crate::utils::{snippet, span_lint_and_sugg};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for usage of `*&` and `*&mut` in expressions.
 ///
@@ -61,6 +62,7 @@ impl EarlyLintPass for Pass {
                     "immediately dereferencing a reference",
                     "try this",
                     format!("{}", snippet(cx, addrof_target.span, "_")),
+                    Applicability::Unspecified,
                 );
             }
         }
@@ -110,7 +112,8 @@ impl EarlyLintPass for DerefPass {
                         "{}.{}",
                         snippet(cx, inner.span, "_"),
                         snippet(cx, field_name.span, "_")
-                    )
+                    ),
+                    Applicability::Unspecified,
                 );
             }
         }

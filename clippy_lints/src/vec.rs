@@ -8,14 +8,15 @@
 // except according to those terms.
 
 
+use crate::consts::constant;
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
 use crate::rustc::ty::{self, Ty};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::source_map::Span;
 use crate::utils::{higher, is_copy, snippet, span_lint_and_sugg};
-use crate::consts::constant;
+use if_chain::if_chain;
 
 /// **What it does:** Checks for usage of `&vec![..]` when using `&[..]` would
 /// be possible.
@@ -100,6 +101,7 @@ fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecA
         "useless use of `vec!`",
         "you can use a slice directly",
         snippet,
+        Applicability::Unspecified,
     );
 }
 

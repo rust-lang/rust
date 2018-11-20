@@ -10,15 +10,16 @@
 
 use crate::rustc::hir;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
 use crate::rustc::ty::TyKind;
-use std::f32;
-use std::f64;
-use std::fmt;
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::*;
 use crate::syntax_pos::symbol::Symbol;
 use crate::utils::span_lint_and_sugg;
+use if_chain::if_chain;
+use std::f32;
+use std::f64;
+use std::fmt;
 
 /// **What it does:** Checks for float literals with a precision greater
 /// than that supported by the underlying type
@@ -68,6 +69,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
                     "float has excessive precision",
                     "consider changing the type or truncating it to",
                     sugg,
+                    Applicability::Unspecified,
                 );
             }
         }

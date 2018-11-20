@@ -12,6 +12,7 @@
 
 use crate::rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::*;
 use crate::syntax_pos;
 use crate::utils::{snippet_opt, span_lint_and_sugg};
@@ -300,6 +301,7 @@ impl WarningType {
                 "mistyped literal suffix",
                 "did you mean to write",
                 grouping_hint.to_string(),
+                Applicability::Unspecified,
             ),
             WarningType::UnreadableLiteral => span_lint_and_sugg(
                 cx,
@@ -308,6 +310,7 @@ impl WarningType {
                 "long literal lacking separators",
                 "consider",
                 grouping_hint.to_owned(),
+                Applicability::Unspecified,
             ),
             WarningType::LargeDigitGroups => span_lint_and_sugg(
                 cx,
@@ -316,6 +319,7 @@ impl WarningType {
                 "digit groups should be smaller",
                 "consider",
                 grouping_hint.to_owned(),
+                Applicability::Unspecified,
             ),
             WarningType::InconsistentDigitGrouping => span_lint_and_sugg(
                 cx,
@@ -324,6 +328,7 @@ impl WarningType {
                 "digits grouped inconsistently by underscores",
                 "consider",
                 grouping_hint.to_owned(),
+                Applicability::Unspecified,
             ),
             WarningType::DecimalRepresentation => span_lint_and_sugg(
                 cx,
@@ -332,6 +337,7 @@ impl WarningType {
                 "integer literal has a better hexadecimal representation",
                 "consider",
                 grouping_hint.to_owned(),
+                Applicability::Unspecified,
             ),
         };
     }

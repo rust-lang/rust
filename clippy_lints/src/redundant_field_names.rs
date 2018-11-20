@@ -10,6 +10,7 @@
 
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::*;
 use crate::utils::{span_lint_and_sugg};
 
@@ -58,13 +59,14 @@ impl EarlyLintPass for RedundantFieldNames {
                 }
                 if let ExprKind::Path(None, path) = &field.expr.node {
                     if path.segments.len() == 1 && path.segments[0].ident == field.ident {
-                        span_lint_and_sugg (
+                        span_lint_and_sugg(
                             cx,
                             REDUNDANT_FIELD_NAMES,
                             field.span,
                             "redundant field names in struct initialization",
                             "replace it with",
-                            field.ident.to_string()
+                            field.ident.to_string(),
+                            Applicability::Unspecified,
                         );
                     }
                 }

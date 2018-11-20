@@ -8,12 +8,13 @@
 // except according to those terms.
 
 
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
 use crate::rustc::hir;
 use crate::rustc::hir::def::Def;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::utils::{match_def_path, span_lint_and_sugg};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for usage of `ATOMIC_X_INIT`, `ONCE_INIT`, and
 /// `uX/iX::MIN/MAX`.
@@ -61,6 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ReplaceConsts {
                             &format!("using `{}`", const_path.last().expect("empty path")),
                             "try this",
                             repl_snip.to_string(),
+                            Applicability::Unspecified,
                         );
                         return;
                     }

@@ -10,28 +10,31 @@
 
 #![allow(clippy::default_hash_types)]
 
+use crate::consts::{constant, Constant};
 use crate::reexport::*;
 use crate::rustc::hir;
-use crate::rustc::hir::*;
 use crate::rustc::hir::intravisit::{walk_body, walk_expr, walk_ty, FnKind, NestedVisitorMap, Visitor};
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::rustc::ty::{self, Ty, TyCtxt, TypeckTables};
+use crate::rustc::hir::*;
+use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use crate::rustc::ty::layout::LayoutOf;
+use crate::rustc::ty::{self, Ty, TyCtxt, TypeckTables};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
+use crate::rustc_target::spec::abi::Abi;
 use crate::rustc_typeck::hir_ty_to_ty;
+use crate::syntax::ast::{FloatTy, IntTy, UintTy};
+use crate::syntax::errors::DiagnosticBuilder;
+use crate::syntax::source_map::Span;
+use crate::utils::paths;
+use crate::utils::{
+    clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
+    match_def_path, match_path, match_type, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
+    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
+};
+use if_chain::if_chain;
+use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
-use std::borrow::Cow;
-use crate::syntax::ast::{FloatTy, IntTy, UintTy};
-use crate::syntax::source_map::Span;
-use crate::syntax::errors::DiagnosticBuilder;
-use crate::rustc_target::spec::abi::Abi;
-use crate::utils::{comparisons, differing_macro_contexts, higher, in_constant, in_macro, last_path_segment, match_def_path, match_path,
-            match_type, multispan_sugg, opt_def_id, same_tys, snippet, snippet_opt, span_help_and_lint, span_lint,
-            span_lint_and_sugg, span_lint_and_then, clip, unsext, sext, int_bits};
-use crate::utils::paths;
-use crate::consts::{constant, Constant};
 
 /// Handles all the linting of funky types
 pub struct TypePass;
@@ -338,12 +341,14 @@ fn check_ty_rptr(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool, lt:
                     } else {
                         ""
                     };
-                    span_lint_and_sugg(cx,
+                    span_lint_and_sugg(
+                        cx,
                         BORROWED_BOX,
                         ast_ty.span,
                         "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
                         "try",
-                        format!("&{}{}{}", ltopt, mutopt, &snippet(cx, inner.span, ".."))
+                        format!("&{}{}{}", ltopt, mutopt, &snippet(cx, inner.span, "..")),
+                        Applicability::Unspecified,
                     );
                     return; // don't recurse into the type
                 }
@@ -537,6 +542,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
                                         "passing a unit value to a function",
                                         "if you intended to pass a unit value, use a unit literal instead",
                                         "()".to_string(),
+                                        Applicability::Unspecified,
                                     );
                                 }
                             }
@@ -874,6 +880,7 @@ fn span_lossless_lint(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_fro
         &format!("casting {} to {} may become silently lossy if types change", cast_from, cast_to),
         "try",
         format!("{}::from({})", cast_to, sugg),
+        Applicability::Unspecified,
     );
 }
 
@@ -1103,7 +1110,8 @@ fn lint_fn_to_numeric_cast(cx: &LateContext<'_, '_>, expr: &Expr, cast_expr: &Ex
                     expr.span,
                     &format!("casting function pointer `{}` to `{}`, which truncates the value", from_snippet, cast_to),
                     "try",
-                    format!("{} as usize", from_snippet)
+                    format!("{} as usize", from_snippet),
+                    Applicability::Unspecified,
                 );
 
             } else if cast_to.sty != ty::Uint(UintTy::Usize) {
@@ -1113,7 +1121,8 @@ fn lint_fn_to_numeric_cast(cx: &LateContext<'_, '_>, expr: &Expr, cast_expr: &Ex
                     expr.span,
                     &format!("casting function pointer `{}` to `{}`", from_snippet, cast_to),
                     "try",
-                    format!("{} as usize", from_snippet)
+                    format!("{} as usize", from_snippet),
+                    Applicability::Unspecified,
                 );
             }
         },

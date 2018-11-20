@@ -11,9 +11,10 @@
 use crate::rustc::hir::def_id::DefId;
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_data_structures::fx::FxHashSet;
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::{Lit, LitKind, Name};
 use crate::syntax::source_map::{Span, Spanned};
 use crate::utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_sugg, walk_ptrs_ty};
@@ -242,6 +243,7 @@ fn check_len(cx: &LateContext<'_, '_>, span: Span, method_name: Name, args: &[Ex
                 &format!("length comparison to {}", if compare_to == 0 { "zero" } else { "one" }),
                 "using `is_empty` is clearer and more explicit",
                 format!("{}{}.is_empty()", op, snippet(cx, args[0].span, "_")),
+                Applicability::Unspecified,
             );
         }
     }

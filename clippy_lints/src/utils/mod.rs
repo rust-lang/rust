@@ -657,9 +657,10 @@ pub fn span_lint_and_sugg<'a, 'tcx: 'a, T: LintContext<'tcx>>(
     msg: &str,
     help: &str,
     sugg: String,
+    applicability: Applicability,
 ) {
     span_lint_and_then(cx, lint, sp, msg, |db| {
-        db.span_suggestion_with_applicability(sp, help, sugg, Applicability::Unspecified);
+        db.span_suggestion_with_applicability(sp, help, sugg, applicability);
     });
 }
 

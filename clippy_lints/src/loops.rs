@@ -512,6 +512,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                         snippet(cx, arms[0].pats[0].span, ".."),
                                         snippet(cx, matchexpr.span, "..")
                                     ),
+                                    Applicability::Unspecified,
                                 );
                             }
                         },
@@ -549,6 +550,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         "this loop could be written as a `for` loop",
                         "try",
                         format!("for {} in {} {{ .. }}", loop_var, iterator),
+                        Applicability::Unspecified,
                     );
                 }
             }
@@ -1027,6 +1029,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
                     "it looks like you're manually copying between slices",
                     "try replacing the loop by",
                     big_sugg,
+                    Applicability::Unspecified,
                 );
             }
         }
@@ -1316,6 +1319,7 @@ fn lint_iter_method(cx: &LateContext<'_, '_>, args: &[Expr], arg: &Expr, method_
          iteration methods",
         "to write this more concisely, try",
         format!("&{}{}", muta, object),
+        Applicability::Unspecified,
     )
 }
 
@@ -1354,6 +1358,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
                          iteration methods`",
                         "to write this more concisely, try",
                         object.to_string(),
+                        Applicability::Unspecified,
                     );
                 }
             } else if method_name == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {

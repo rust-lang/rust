@@ -12,6 +12,7 @@
 
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, in_external_macro, LintContext};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::*;
 
 use crate::utils::span_lint_and_sugg;
@@ -72,7 +73,8 @@ impl EarlyLintPass for ElseIfWithoutElse {
                     els.span,
                     "if expression with an `else if`, but without a final `else`",
                     "add an `else` block here",
-                    String::new()
+                    String::new(),
+                    Applicability::Unspecified,
                 );
             }
 

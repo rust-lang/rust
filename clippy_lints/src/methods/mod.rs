@@ -1042,6 +1042,7 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
                             &format!("use of `{}` followed by a call to `{}`", name, path),
                             "try this",
                             format!("{}.unwrap_or_default()", snippet(cx, self_expr.span, "_")),
+                            Applicability::Unspecified,
                         );
                         return true;
                     }
@@ -1111,6 +1112,7 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
             &format!("use of `{}` followed by a function call", name),
             "try this",
             format!("{}_{}({})", name, suffix, sugg),
+            Applicability::Unspecified,
         );
     }
 
@@ -1224,6 +1226,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
                 &format!("use of `{}` followed by a function call", name),
                 "try this",
                 format!("unwrap_or_else({} panic!({}))", closure, sugg),
+                Applicability::Unspecified,
             );
 
             return;
@@ -1238,6 +1241,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
             &format!("use of `{}` followed by a function call", name),
             "try this",
             format!("unwrap_or_else({} {{ let msg = {}; panic!(msg) }}))", closure, sugg),
+            Applicability::Unspecified,
         );
     }
 
@@ -1354,6 +1358,7 @@ fn lint_clone_on_ref_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::
             "using '.clone()' on a ref-counted pointer",
             "try this",
             format!("{}::<{}>::clone(&{})", caller_type, subst.type_at(0), snippet(cx, arg.span, "_")),
+            Applicability::Unspecified,
         );
     }
 }
@@ -1384,6 +1389,7 @@ fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::E
                 ref_str,
                 snippet(cx, target.span, "_")
             ),
+            Applicability::Unspecified,
         );
     }
 }
@@ -1482,6 +1488,7 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
                     "this `.fold` can be written more succinctly using another method",
                     "try",
                     sugg,
+                    Applicability::Unspecified,
                 );
             }
         }
@@ -1589,6 +1596,7 @@ fn lint_get_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, get_args: &[hir::
             snippet(cx, get_args[0].span, "_"),
             get_args_str
         ),
+        Applicability::Unspecified,
     );
 }
 
@@ -2010,16 +2018,19 @@ fn lint_chars_cmp(
                 return false;
             }
 
-            span_lint_and_sugg(cx,
-                               lint,
-                               info.expr.span,
-                               &format!("you should use the `{}` method", suggest),
-                               "like this",
-                               format!("{}{}.{}({})",
-                                       if info.eq { "" } else { "!" },
-                                       snippet(cx, args[0][0].span, "_"),
-                                       suggest,
-                                       snippet(cx, arg_char[0].span, "_")));
+            span_lint_and_sugg(
+                cx,
+                lint,
+                info.expr.span,
+                &format!("you should use the `{}` method", suggest),
+                "like this",
+                format!("{}{}.{}({})",
+                        if info.eq { "" } else { "!" },
+                        snippet(cx, args[0][0].span, "_"),
+                        suggest,
+                        snippet(cx, arg_char[0].span, "_")),
+                Applicability::Unspecified,
+            );
 
             return true;
         }
@@ -2065,7 +2076,8 @@ fn lint_chars_cmp_with_unwrap<'a, 'tcx>(
                         if info.eq { "" } else { "!" },
                         snippet(cx, args[0][0].span, "_"),
                         suggest,
-                        c)
+                        c),
+                Applicability::Unspecified,
             );
 
             return true;
@@ -2105,6 +2117,7 @@ fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, _expr: &'tcx h
                 "single-character string constant used as pattern",
                 "try using a char instead",
                 hint,
+                Applicability::Unspecified,
             );
         }
     }
@@ -2129,6 +2142,7 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr, call_name: &str, as_re
                 &format!("this call to `{}` does nothing", call_name),
                 "try this",
                 snippet(cx, recvr.span, "_").into_owned(),
+                Applicability::Unspecified,
             );
         }
     }
@@ -2194,6 +2208,7 @@ fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: ty::T
             ),
             "call directly",
             method_name.to_owned(),
+            Applicability::Unspecified,
         );
     }
 }

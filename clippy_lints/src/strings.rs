@@ -10,6 +10,7 @@
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::source_map::Spanned;
 use crate::utils::SpanlessEq;
 use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
@@ -185,6 +186,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
                                 "calling `as_bytes()` on `include_str!(..)`",
                                 "consider using `include_bytes!(..)` instead",
                                 snippet(cx, args[0].span, r#""foo""#).replacen("include_str", "include_bytes", 1),
+                                Applicability::Unspecified,
                             );
                         } else if callsite == expanded
                             && lit_content.as_str().chars().all(|c| c.is_ascii())
@@ -197,6 +199,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
                                 "calling `as_bytes()` on a string literal",
                                 "consider using a byte string literal instead",
                                 format!("b{}", snippet(cx, args[0].span, r#""foo""#)),
+                                Applicability::Unspecified,
                             );
                         }
                     }

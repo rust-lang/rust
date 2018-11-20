@@ -268,8 +268,9 @@ fn report_single_match_single_pattern(cx: &LateContext<'_, '_>, ex: &Expr, arms:
             snippet(cx, arms[0].pats[0].span, ".."),
             snippet(cx, ex.span, ".."),
             expr_block(cx, &arms[0].body, None, ".."),
-            els_str
+            els_str,
         ),
+        Applicability::Unspecified,
     );
 }
 
@@ -483,7 +484,8 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
                 expr.span,
                 &format!("use {}() instead", suggestion),
                 "try this",
-                format!("{}.{}()", snippet(cx, ex.span, "_"), suggestion)
+                format!("{}.{}()", snippet(cx, ex.span, "_"), suggestion),
+                Applicability::Unspecified,
             )
         }
     }
