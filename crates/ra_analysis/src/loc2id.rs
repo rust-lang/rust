@@ -89,10 +89,6 @@ macro_rules! impl_numeric_id {
 pub(crate) struct FnId(u32);
 impl_numeric_id!(FnId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct ModId(u32);
-impl_numeric_id!(ModId);
-
 pub(crate) trait IdDatabase: salsa::Database {
     fn id_maps(&self) -> &IdMaps;
 }

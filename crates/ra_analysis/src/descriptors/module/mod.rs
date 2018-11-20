@@ -213,11 +213,7 @@ impl ModuleId {
             .find(|it| it.name == name)?;
         Some(*link.points_to.first()?)
     }
-    fn problems(
-        self,
-        tree: &ModuleTree,
-        db: &impl SyntaxDatabase,
-    ) -> Vec<(SyntaxNode, Problem)> {
+    fn problems(self, tree: &ModuleTree, db: &impl SyntaxDatabase) -> Vec<(SyntaxNode, Problem)> {
         tree.module(self)
             .children
             .iter()
