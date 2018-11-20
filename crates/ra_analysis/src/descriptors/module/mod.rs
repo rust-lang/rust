@@ -142,7 +142,7 @@ impl crate::loc2id::NumericId for ModuleId {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub(crate) struct LinkId(u32);
+struct LinkId(u32);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Problem {
@@ -159,7 +159,7 @@ impl ModuleId {
     pub(crate) fn source(self, tree: &ModuleTree) -> ModuleSource {
         tree.module(self).source
     }
-    pub(crate) fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
+    fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
         tree.module(self).parent
     }
     pub(crate) fn parent(self, tree: &ModuleTree) -> Option<ModuleId> {
@@ -207,17 +207,13 @@ impl ModuleId {
 }
 
 impl LinkId {
-    pub(crate) fn owner(self, tree: &ModuleTree) -> ModuleId {
+    fn owner(self, tree: &ModuleTree) -> ModuleId {
         tree.link(self).owner
     }
-    pub(crate) fn name(self, tree: &ModuleTree) -> SmolStr {
+    fn name(self, tree: &ModuleTree) -> SmolStr {
         tree.link(self).name.clone()
     }
-    pub(crate) fn bind_source<'a>(
-        self,
-        tree: &ModuleTree,
-        db: &impl SyntaxDatabase,
-    ) -> ast::ModuleNode {
+    fn bind_source<'a>(self, tree: &ModuleTree, db: &impl SyntaxDatabase) -> ast::ModuleNode {
         let owner = self.owner(tree);
         match owner.source(tree).resolve(db) {
             ModuleSourceNode::SourceFile(root) => {
