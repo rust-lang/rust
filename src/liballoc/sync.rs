@@ -24,7 +24,7 @@ use core::fmt;
 use core::cmp::Ordering;
 use core::intrinsics::abort;
 use core::mem::{self, align_of_val, size_of_val};
-use core::ops::Deref;
+use core::ops::{Deref, Receiver};
 use core::ops::{CoerceUnsized, DispatchFromDyn};
 use core::pin::Pin;
 use core::ptr::{self, NonNull};
@@ -766,6 +766,9 @@ impl<T: ?Sized> Deref for Arc<T> {
         &self.inner().data
     }
 }
+
+#[unstable(feature = "receiver_trait", issue = "0")]
+impl<T: ?Sized> Receiver for Arc<T> {}
 
 impl<T: Clone> Arc<T> {
     /// Makes a mutable reference into the given `Arc`.
