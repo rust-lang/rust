@@ -20,19 +20,19 @@ use crate::{
 
 salsa::query_group! {
     pub(crate) trait DescriptorDatabase: SyntaxDatabase + IdDatabase {
-        fn module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
-            type ModuleTreeQuery;
-            use fn module::imp::module_tree;
-        }
-        fn module_scope(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleScope>> {
-            type ModuleScopeQuery;
-            use fn module::imp::module_scope;
-        }
         fn fn_scopes(fn_id: FnId) -> Arc<FnScopes> {
             type FnScopesQuery;
             use fn function::imp::fn_scopes;
         }
 
+        fn _module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
+            type ModuleTreeQuery;
+            use fn module::imp::module_tree;
+        }
+        fn _module_scope(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleScope>> {
+            type ModuleScopeQuery;
+            use fn module::imp::module_scope;
+        }
         fn _fn_syntax(fn_id: FnId) -> FnDefNode {
             type FnSyntaxQuery;
             // Don't retain syntax trees in memory

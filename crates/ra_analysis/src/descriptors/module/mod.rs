@@ -8,7 +8,7 @@ use ra_editor::find_node_at_offset;
 use ra_syntax::{
     algo::generate,
     ast::{self, AstNode, NameOwner},
-    SmolStr, SyntaxNode, SyntaxNodeRef,
+    SmolStr, SyntaxNode,
 };
 use relative_path::RelativePathBuf;
 
@@ -62,7 +62,7 @@ impl ModuleDescriptor {
         module_source: ModuleSource,
     ) -> Cancelable<Option<ModuleDescriptor>> {
         let source_root_id = db.file_source_root(file_id);
-        let module_tree = db.module_tree(source_root_id)?;
+        let module_tree = db._module_tree(source_root_id)?;
 
         let res = match module_tree.any_module_for_source(module_source) {
             None => None,
@@ -124,7 +124,11 @@ impl ModuleDescriptor {
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
     pub fn scope(&self, db: &impl DescriptorDatabase) -> Cancelable<Arc<ModuleScope>> {
-        db.module_scope(self.source_root_id, self.module_id)
+        db._module_scope(self.source_root_id, self.module_id)
+    }
+
+    pub fn problems(&self, db: &impl DescriptorDatabase) -> Vec<(SyntaxNode, Problem)> {
+        self.module_id.problems(&self.tree, db)
     }
 }
 
@@ -209,7 +213,7 @@ impl ModuleId {
             .find(|it| it.name == name)?;
         Some(*link.points_to.first()?)
     }
-    pub(crate) fn problems(
+    fn problems(
         self,
         tree: &ModuleTree,
         db: &impl SyntaxDatabase,

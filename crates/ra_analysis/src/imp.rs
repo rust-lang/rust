@@ -21,7 +21,7 @@ use crate::{
     db::{self, FileSyntaxQuery, SyntaxDatabase},
     descriptors::{
         function::{FnDescriptor, FnId},
-        module::{ModuleDescriptor, ModuleSource, ModuleTree, Problem},
+        module::{ModuleDescriptor, Problem},
         DeclarationDescriptor, DescriptorDatabase,
     },
     input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
@@ -216,10 +216,6 @@ impl AnalysisImpl {
             .sweep(salsa::SweepStrategy::default().discard_values());
         Ok(query.search(&buf))
     }
-    fn module_tree(&self, file_id: FileId) -> Cancelable<Arc<ModuleTree>> {
-        let source_root = self.db.file_source_root(file_id);
-        self.db.module_tree(source_root)
-    }
     /// This return `Vec`: a module may be inclucded from several places.
     /// We don't handle this case yet though, so the Vec has length at most one.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
@@ -354,7 +350,6 @@ impl AnalysisImpl {
     }
 
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        let module_tree = self.module_tree(file_id)?;
         let syntax = self.db.file_syntax(file_id);
 
         let mut res = ra_editor::diagnostics(&syntax)
@@ -365,8 +360,8 @@ impl AnalysisImpl {
                 fix: None,
             })
             .collect::<Vec<_>>();
-        if let Some(m) = module_tree.any_module_for_source(ModuleSource::SourceFile(file_id)) {
-            for (name_node, problem) in m.problems(&module_tree, &*self.db) {
+        if let Some(m) = ModuleDescriptor::guess_from_file_id(&*self.db, file_id)? {
+            for (name_node, problem) in m.problems(&*self.db) {
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
                         let create_file = FileSystemEdit::CreateFile {

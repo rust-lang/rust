@@ -86,7 +86,7 @@ pub(crate) fn module_scope(
     source_root_id: SourceRootId,
     module_id: ModuleId,
 ) -> Cancelable<Arc<ModuleScope>> {
-    let tree = db.module_tree(source_root_id)?;
+    let tree = db._module_tree(source_root_id)?;
     let source = module_id.source(&tree).resolve(db);
     let res = match source {
         ModuleSourceNode::SourceFile(it) => ModuleScope::new(it.borrowed().items()),
