@@ -21,7 +21,7 @@ use crate::{
     db::{self, FileSyntaxQuery, SyntaxDatabase},
     descriptors::{
         function::{FnDescriptor, FnId},
-        module::{ModuleSource, ModuleTree, Problem},
+        module::{ModuleDescriptor, Problem},
         DeclarationDescriptor, DescriptorDatabase,
     },
     input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
@@ -216,52 +216,41 @@ impl AnalysisImpl {
             .sweep(salsa::SweepStrategy::default().discard_values());
         Ok(query.search(&buf))
     }
-    fn module_tree(&self, file_id: FileId) -> Cancelable<Arc<ModuleTree>> {
-        let source_root = self.db.file_source_root(file_id);
-        self.db.module_tree(source_root)
-    }
+    /// This return `Vec`: a module may be included from several places. We
+    /// don't handle this case yet though, so the Vec has length at most one.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        let module_tree = self.module_tree(position.file_id)?;
-        let file = self.db.file_syntax(position.file_id);
-        let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset)
-        {
-            Some(m) if !m.has_semi() => ModuleSource::new_inline(position.file_id, m),
-            _ => ModuleSource::SourceFile(position.file_id),
+        let descr = match ModuleDescriptor::guess_from_position(&*self.db, position)? {
+            None => return Ok(Vec::new()),
+            Some(it) => it,
         };
-
-        let res = module_tree
-            .modules_for_source(module_source)
-            .into_iter()
-            .filter_map(|module_id| {
-                let link = module_id.parent_link(&module_tree)?;
-                let file_id = link.owner(&module_tree).source(&module_tree).file_id();
-                let decl = link.bind_source(&module_tree, &*self.db);
-                let decl = decl.borrowed();
-
-                let decl_name = decl.name().unwrap();
-
-                let sym = FileSymbol {
-                    name: decl_name.text(),
-                    node_range: decl_name.syntax().range(),
-                    kind: MODULE,
-                };
-                Some((file_id, sym))
-            })
-            .collect();
-        Ok(res)
+        let (file_id, decl) = match descr.parent_link_source(&*self.db) {
+            None => return Ok(Vec::new()),
+            Some(it) => it,
+        };
+        let decl = decl.borrowed();
+        let decl_name = decl.name().unwrap();
+        let sym = FileSymbol {
+            name: decl_name.text(),
+            node_range: decl_name.syntax().range(),
+            kind: MODULE,
+        };
+        Ok(vec![(file_id, sym)])
     }
+    /// Returns `Vec` for the same reason as `parent_module`
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        let module_tree = self.module_tree(file_id)?;
-        let crate_graph = self.db.crate_graph();
-        let res = module_tree
-            .modules_for_source(ModuleSource::SourceFile(file_id))
-            .into_iter()
-            .map(|it| it.root(&module_tree))
-            .filter_map(|it| it.source(&module_tree).as_file())
-            .filter_map(|it| crate_graph.crate_id_for_crate_root(it))
-            .collect();
+        let descr = match ModuleDescriptor::guess_from_file_id(&*self.db, file_id)? {
+            None => return Ok(Vec::new()),
+            Some(it) => it,
+        };
+        let root = descr.crate_root();
+        let file_id = root
+            .source()
+            .as_file()
+            .expect("root module always has a file as a source");
 
-        Ok(res)
+        let crate_graph = self.db.crate_graph();
+        let crate_id = crate_graph.crate_id_for_crate_root(file_id);
+        Ok(crate_id.into_iter().collect())
     }
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
         self.db.crate_graph().crate_roots[&crate_id]
@@ -273,7 +262,6 @@ impl AnalysisImpl {
         &self,
         position: FilePosition,
     ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        let module_tree = self.module_tree(position.file_id)?;
         let file = self.db.file_syntax(position.file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
@@ -299,25 +287,23 @@ impl AnalysisImpl {
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, position.offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
-                    let file_ids = self.resolve_module(&*module_tree, position.file_id, module);
-
-                    let res = file_ids
-                        .into_iter()
-                        .map(|id| {
-                            let name = module
-                                .name()
-                                .map(|n| n.text())
-                                .unwrap_or_else(|| SmolStr::new(""));
-                            let symbol = FileSymbol {
-                                name,
-                                node_range: TextRange::offset_len(0.into(), 0.into()),
-                                kind: MODULE,
-                            };
-                            (id, symbol)
-                        })
-                        .collect();
-
-                    return Ok(res);
+                    let parent_module =
+                        ModuleDescriptor::guess_from_file_id(&*self.db, position.file_id)?;
+                    let child_name = module.name();
+                    match (parent_module, child_name) {
+                        (Some(parent_module), Some(child_name)) => {
+                            if let Some(child) = parent_module.child(&child_name.text()) {
+                                let file_id = child.source().file_id();
+                                let symbol = FileSymbol {
+                                    name: child_name.text(),
+                                    node_range: TextRange::offset_len(0.into(), 0.into()),
+                                    kind: MODULE,
+                                };
+                                return Ok(vec![(file_id, symbol)]);
+                            }
+                        }
+                        _ => (),
+                    }
                 }
             }
         }
@@ -364,7 +350,6 @@ impl AnalysisImpl {
     }
 
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        let module_tree = self.module_tree(file_id)?;
         let syntax = self.db.file_syntax(file_id);
 
         let mut res = ra_editor::diagnostics(&syntax)
@@ -375,8 +360,8 @@ impl AnalysisImpl {
                 fix: None,
             })
             .collect::<Vec<_>>();
-        if let Some(m) = module_tree.any_module_for_source(ModuleSource::SourceFile(file_id)) {
-            for (name_node, problem) in m.problems(&module_tree, &*self.db) {
+        if let Some(m) = ModuleDescriptor::guess_from_file_id(&*self.db, file_id)? {
+            for (name_node, problem) in m.problems(&*self.db) {
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
                         let create_file = FileSystemEdit::CreateFile {
@@ -525,27 +510,6 @@ impl AnalysisImpl {
         query.exact();
         query.limit(4);
         self.world_symbols(query)
-    }
-
-    fn resolve_module(
-        &self,
-        module_tree: &ModuleTree,
-        file_id: FileId,
-        module: ast::Module,
-    ) -> Vec<FileId> {
-        let name = match module.name() {
-            Some(name) => name.text(),
-            None => return Vec::new(),
-        };
-        let module_id = match module_tree.any_module_for_source(ModuleSource::SourceFile(file_id)) {
-            Some(id) => id,
-            None => return Vec::new(),
-        };
-        module_id
-            .child(module_tree, name.as_str())
-            .and_then(|it| it.source(&module_tree).as_file())
-            .into_iter()
-            .collect()
     }
 }
 

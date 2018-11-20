@@ -72,17 +72,22 @@ pub(crate) trait NumericId: Clone + Eq + Hash {
     fn to_u32(self) -> u32;
 }
 
+macro_rules! impl_numeric_id {
+    ($id:ident) => {
+        impl NumericId for $id {
+            fn from_u32(id: u32) -> Self {
+                $id(id)
+            }
+            fn to_u32(self) -> u32 {
+                self.0
+            }
+        }
+    };
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct FnId(u32);
-
-impl NumericId for FnId {
-    fn from_u32(id: u32) -> FnId {
-        FnId(id)
-    }
-    fn to_u32(self) -> u32 {
-        self.0
-    }
-}
+impl_numeric_id!(FnId);
 
 pub(crate) trait IdDatabase: salsa::Database {
     fn id_maps(&self) -> &IdMaps;

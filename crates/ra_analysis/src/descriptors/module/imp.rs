@@ -86,7 +86,7 @@ pub(crate) fn module_scope(
     source_root_id: SourceRootId,
     module_id: ModuleId,
 ) -> Cancelable<Arc<ModuleScope>> {
-    let tree = db.module_tree(source_root_id)?;
+    let tree = db._module_tree(source_root_id)?;
     let source = module_id.source(&tree).resolve(db);
     let res = match source {
         ModuleSourceNode::SourceFile(it) => ModuleScope::new(it.borrowed().items()),
@@ -155,7 +155,7 @@ fn build_subtree(
         parent,
         children: Vec::new(),
     });
-    for sub in db.submodules(source)?.iter() {
+    for sub in db._submodules(source)?.iter() {
         let link = tree.push_link(LinkData {
             name: sub.name().clone(),
             owner: id,

@@ -20,27 +20,28 @@ use crate::{
 
 salsa::query_group! {
     pub(crate) trait DescriptorDatabase: SyntaxDatabase + IdDatabase {
-        fn module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
+        fn fn_scopes(fn_id: FnId) -> Arc<FnScopes> {
+            type FnScopesQuery;
+            use fn function::imp::fn_scopes;
+        }
+
+        fn _module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
             type ModuleTreeQuery;
             use fn module::imp::module_tree;
         }
-        fn submodules(source: ModuleSource) -> Cancelable<Arc<Vec<module::imp::Submodule>>> {
-            type SubmodulesQuery;
-            use fn module::imp::submodules;
-        }
-        fn module_scope(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleScope>> {
+        fn _module_scope(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<ModuleScope>> {
             type ModuleScopeQuery;
             use fn module::imp::module_scope;
         }
-        fn fn_syntax(fn_id: FnId) -> FnDefNode {
+        fn _fn_syntax(fn_id: FnId) -> FnDefNode {
             type FnSyntaxQuery;
             // Don't retain syntax trees in memory
             storage volatile;
             use fn function::imp::fn_syntax;
         }
-        fn fn_scopes(fn_id: FnId) -> Arc<FnScopes> {
-            type FnScopesQuery;
-            use fn function::imp::fn_scopes;
+        fn _submodules(source: ModuleSource) -> Cancelable<Arc<Vec<module::imp::Submodule>>> {
+            type SubmodulesQuery;
+            use fn module::imp::submodules;
         }
     }
 }

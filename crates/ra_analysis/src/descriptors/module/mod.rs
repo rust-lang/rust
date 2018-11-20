@@ -1,15 +1,136 @@
 pub(super) mod imp;
 pub(crate) mod scope;
 
+use std::sync::Arc;
+
+use ra_editor::find_node_at_offset;
+
 use ra_syntax::{
+    algo::generate,
     ast::{self, AstNode, NameOwner},
-    SmolStr, SyntaxNode, SyntaxNodeRef,
+    SmolStr, SyntaxNode,
 };
 use relative_path::RelativePathBuf;
 
-use crate::{db::SyntaxDatabase, syntax_ptr::SyntaxPtr, FileId};
+use crate::{
+    db::SyntaxDatabase, syntax_ptr::SyntaxPtr, FileId, FilePosition, Cancelable,
+    descriptors::DescriptorDatabase,
+    input::SourceRootId
+};
 
 pub(crate) use self::scope::ModuleScope;
+
+/// `ModuleDescriptor` is API entry point to get all the information
+/// about a particular module.
+#[derive(Debug, Clone)]
+pub(crate) struct ModuleDescriptor {
+    tree: Arc<ModuleTree>,
+    source_root_id: SourceRootId,
+    module_id: ModuleId,
+}
+
+impl ModuleDescriptor {
+    /// Lookup `ModuleDescriptor` by `FileId`. Note that this is inherently
+    /// lossy transformation: in general, a single source might correspond to
+    /// several modules.
+    pub fn guess_from_file_id(
+        db: &impl DescriptorDatabase,
+        file_id: FileId,
+    ) -> Cancelable<Option<ModuleDescriptor>> {
+        ModuleDescriptor::guess_from_source(db, file_id, ModuleSource::SourceFile(file_id))
+    }
+
+    /// Lookup `ModuleDescriptor` by position in the source code. Note that this
+    /// is inherently lossy transformation: in general, a single source might
+    /// correspond to several modules.
+    pub fn guess_from_position(
+        db: &impl DescriptorDatabase,
+        position: FilePosition,
+    ) -> Cancelable<Option<ModuleDescriptor>> {
+        let file = db.file_syntax(position.file_id);
+        let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset)
+        {
+            Some(m) if !m.has_semi() => ModuleSource::new_inline(position.file_id, m),
+            _ => ModuleSource::SourceFile(position.file_id),
+        };
+        ModuleDescriptor::guess_from_source(db, position.file_id, module_source)
+    }
+
+    fn guess_from_source(
+        db: &impl DescriptorDatabase,
+        file_id: FileId,
+        module_source: ModuleSource,
+    ) -> Cancelable<Option<ModuleDescriptor>> {
+        let source_root_id = db.file_source_root(file_id);
+        let module_tree = db._module_tree(source_root_id)?;
+
+        let res = match module_tree.any_module_for_source(module_source) {
+            None => None,
+            Some(module_id) => Some(ModuleDescriptor {
+                tree: module_tree,
+                source_root_id,
+                module_id,
+            }),
+        };
+        Ok(res)
+    }
+
+    /// Returns `mod foo;` or `mod foo {}` node whihc declared this module.
+    /// Returns `None` for the root module
+    pub fn parent_link_source(
+        &self,
+        db: &impl DescriptorDatabase,
+    ) -> Option<(FileId, ast::ModuleNode)> {
+        let link = self.module_id.parent_link(&self.tree)?;
+        let file_id = link.owner(&self.tree).source(&self.tree).file_id();
+        let src = link.bind_source(&self.tree, db);
+        Some((file_id, src))
+    }
+
+    pub fn source(&self) -> ModuleSource {
+        self.module_id.source(&self.tree)
+    }
+
+    /// Parent module. Returns `None` if this is a root module.
+    pub fn parent(&self) -> Option<ModuleDescriptor> {
+        let parent_id = self.module_id.parent(&self.tree)?;
+        Some(ModuleDescriptor {
+            module_id: parent_id,
+            ..self.clone()
+        })
+    }
+
+    /// The root of the tree this module is part of
+    pub fn crate_root(&self) -> ModuleDescriptor {
+        generate(Some(self.clone()), |it| it.parent())
+            .last()
+            .unwrap()
+    }
+
+    /// `name` is `None` for the crate's root module
+    pub fn name(&self) -> Option<SmolStr> {
+        let link = self.module_id.parent_link(&self.tree)?;
+        Some(link.name(&self.tree))
+    }
+
+    /// Finds a child module with the specified name.
+    pub fn child(&self, name: &str) -> Option<ModuleDescriptor> {
+        let child_id = self.module_id.child(&self.tree, name)?;
+        Some(ModuleDescriptor {
+            module_id: child_id,
+            ..self.clone()
+        })
+    }
+
+    /// Returns a `ModuleScope`: a set of items, visible in this module.
+    pub fn scope(&self, db: &impl DescriptorDatabase) -> Cancelable<Arc<ModuleScope>> {
+        db._module_scope(self.source_root_id, self.module_id)
+    }
+
+    pub fn problems(&self, db: &impl DescriptorDatabase) -> Vec<(SyntaxNode, Problem)> {
+        self.module_id.problems(&self.tree, db)
+    }
+}
 
 /// Phisically, rust source is organized as a set of files, but logically it is
 /// organized as a tree of modules. Usually, a single file corresponds to a
@@ -25,7 +146,7 @@ pub(crate) struct ModuleTree {
 }
 
 impl ModuleTree {
-    pub(crate) fn modules_for_source(&self, source: ModuleSource) -> Vec<ModuleId> {
+    fn modules_for_source(&self, source: ModuleSource) -> Vec<ModuleId> {
         self.mods
             .iter()
             .enumerate()
@@ -34,7 +155,7 @@ impl ModuleTree {
             .collect()
     }
 
-    pub(crate) fn any_module_for_source(&self, source: ModuleSource) -> Option<ModuleId> {
+    fn any_module_for_source(&self, source: ModuleSource) -> Option<ModuleId> {
         self.modules_for_source(source).pop()
     }
 }
@@ -58,17 +179,8 @@ enum ModuleSourceNode {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub(crate) struct ModuleId(u32);
 
-impl crate::loc2id::NumericId for ModuleId {
-    fn from_u32(id: u32) -> Self {
-        ModuleId(id)
-    }
-    fn to_u32(self) -> u32 {
-        self.0
-    }
-}
-
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-pub(crate) struct LinkId(u32);
+struct LinkId(u32);
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Problem {
@@ -82,30 +194,17 @@ pub enum Problem {
 }
 
 impl ModuleId {
-    pub(crate) fn source(self, tree: &ModuleTree) -> ModuleSource {
+    fn source(self, tree: &ModuleTree) -> ModuleSource {
         tree.module(self).source
     }
-    pub(crate) fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
+    fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
         tree.module(self).parent
     }
-    pub(crate) fn parent(self, tree: &ModuleTree) -> Option<ModuleId> {
+    fn parent(self, tree: &ModuleTree) -> Option<ModuleId> {
         let link = self.parent_link(tree)?;
         Some(tree.link(link).owner)
     }
-    pub(crate) fn root(self, tree: &ModuleTree) -> ModuleId {
-        let mut curr = self;
-        let mut i = 0;
-        while let Some(next) = curr.parent(tree) {
-            curr = next;
-            i += 1;
-            // simplistic cycle detection
-            if i > 100 {
-                return self;
-            }
-        }
-        curr
-    }
-    pub(crate) fn child(self, tree: &ModuleTree, name: &str) -> Option<ModuleId> {
+    fn child(self, tree: &ModuleTree, name: &str) -> Option<ModuleId> {
         let link = tree
             .module(self)
             .children
@@ -114,11 +213,7 @@ impl ModuleId {
             .find(|it| it.name == name)?;
         Some(*link.points_to.first()?)
     }
-    pub(crate) fn problems(
-        self,
-        tree: &ModuleTree,
-        db: &impl SyntaxDatabase,
-    ) -> Vec<(SyntaxNode, Problem)> {
+    fn problems(self, tree: &ModuleTree, db: &impl SyntaxDatabase) -> Vec<(SyntaxNode, Problem)> {
         tree.module(self)
             .children
             .iter()
@@ -133,14 +228,13 @@ impl ModuleId {
 }
 
 impl LinkId {
-    pub(crate) fn owner(self, tree: &ModuleTree) -> ModuleId {
+    fn owner(self, tree: &ModuleTree) -> ModuleId {
         tree.link(self).owner
     }
-    pub(crate) fn bind_source<'a>(
-        self,
-        tree: &ModuleTree,
-        db: &impl SyntaxDatabase,
-    ) -> ast::ModuleNode {
+    fn name(self, tree: &ModuleTree) -> SmolStr {
+        tree.link(self).name.clone()
+    }
+    fn bind_source<'a>(self, tree: &ModuleTree, db: &impl SyntaxDatabase) -> ast::ModuleNode {
         let owner = self.owner(tree);
         match owner.source(tree).resolve(db) {
             ModuleSourceNode::SourceFile(root) => {
@@ -163,17 +257,7 @@ struct ModuleData {
 }
 
 impl ModuleSource {
-    pub(crate) fn for_node(file_id: FileId, node: SyntaxNodeRef) -> ModuleSource {
-        for node in node.ancestors() {
-            if let Some(m) = ast::Module::cast(node) {
-                if !m.has_semi() {
-                    return ModuleSource::new_inline(file_id, m);
-                }
-            }
-        }
-        ModuleSource::SourceFile(file_id)
-    }
-    pub(crate) fn new_inline(file_id: FileId, module: ast::Module) -> ModuleSource {
+    fn new_inline(file_id: FileId, module: ast::Module) -> ModuleSource {
         assert!(!module.has_semi());
         let ptr = SyntaxPtr::new(file_id, module.syntax());
         ModuleSource::Module(ptr)
