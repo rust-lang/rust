@@ -901,6 +901,13 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             Operand::Move(self.place.clone().field(field, field_ty))
         }).collect();
 
+        // We effectively transmute a `Box<T>` to a `Unique<T>` in passing it to
+        // `box_free`.  To make this work, we have to make the destination accessible
+        // for raw pointers.
+        let escape_stmt = Statement {
+            source_info: self.source_info,
+            kind: StatementKind::EscapeToRaw(Operand::Copy(self.place.clone())),
+        };
         let call = TerminatorKind::Call {
             func: Operand::function_handle(tcx, free_func, substs, self.source_info.span),
             args: args,
@@ -908,7 +915,14 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             cleanup: None,
             from_hir_call: false,
         }; // FIXME(#43234)
-        let free_block = self.new_block(unwind, call);
+
+        let free_block = self.elaborator.patch().new_block(BasicBlockData {
+            statements: vec![escape_stmt],
+            terminator: Some(Terminator {
+                source_info: self.source_info, kind: call
+            }),
+            is_cleanup: unwind.is_cleanup()
+        });
 
         let block_start = Location { block: free_block, statement_index: 0 };
         self.elaborator.clear_drop_flag(block_start, self.path, DropFlagMode::Shallow);
