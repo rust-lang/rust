@@ -128,6 +128,16 @@ pub enum Constraint<'tcx> {
     RegSubReg(Region<'tcx>, Region<'tcx>),
 }
 
+impl Constraint<'_> {
+    pub fn involves_placeholders(&self) -> bool {
+        match self {
+            Constraint::VarSubVar(_, _) => false,
+            Constraint::VarSubReg(_, r) | Constraint::RegSubVar(r, _) => r.is_placeholder(),
+            Constraint::RegSubReg(r, s) => r.is_placeholder() || s.is_placeholder(),
+        }
+    }
+}
+
 /// VerifyGenericBound(T, _, R, RS): The parameter type `T` (or
 /// associated type) must outlive the region `R`. `T` is known to
 /// outlive `RS`. Therefore verify that `R <= RS[i]` for some
@@ -324,6 +334,8 @@ impl TaintDirections {
     }
 }
 
+pub struct ConstraintInfo {}
+
 impl<'tcx> RegionConstraintCollector<'tcx> {
     pub fn new() -> Self {
         Self::default()
@@ -485,7 +497,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     ) -> RegionVid {
         let vid = self.var_infos.push(RegionVariableInfo { origin, universe });
 
-        let u_vid = self.unification_table
+        let u_vid = self
+            .unification_table
             .new_key(unify_key::RegionVidKey { min_vid: vid });
         assert_eq!(vid, u_vid);
         if self.in_snapshot() {
@@ -517,7 +530,8 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
         assert!(self.in_snapshot());
 
-        let constraints_to_kill: Vec<usize> = self.undo_log
+        let constraints_to_kill: Vec<usize> = self
+            .undo_log
             .iter()
             .enumerate()
             .rev()
@@ -820,17 +834,18 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             .filter_map(|&elt| match elt {
                 AddVar(vid) => Some(vid),
                 _ => None,
-            })
-            .collect()
+            }).collect()
     }
 
-    pub fn region_constraints_added_in_snapshot(&self, mark: &RegionSnapshot) -> bool {
+    /// See [`RegionInference::region_constraints_added_in_snapshot`]
+    pub fn region_constraints_added_in_snapshot(&self, mark: &RegionSnapshot) -> Option<bool> {
         self.undo_log[mark.length..]
             .iter()
-            .any(|&elt| match elt {
-                AddConstraint(_) => true,
-                _ => false,
-            })
+            .map(|&elt| match elt {
+                AddConstraint(constraint) => Some(constraint.involves_placeholders()),
+                _ => None,
+            }).max()
+            .unwrap_or(None)
     }
 }
 

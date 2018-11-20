@@ -867,10 +867,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         r
     }
 
+    /// Scan the constraints produced since `snapshot` began and returns:
+    ///
+    /// - None -- if none of them involve "region outlives" constraints
+    /// - Some(true) -- if there are `'a: 'b` constraints where `'a` or `'b` is a placehodler
+    /// - Some(false) -- if there are `'a: 'b` constraints but none involve placeholders
     pub fn region_constraints_added_in_snapshot(
         &self,
         snapshot: &CombinedSnapshot<'a, 'tcx>,
-    ) -> bool {
+    ) -> Option<bool> {
         self.borrow_region_constraints().region_constraints_added_in_snapshot(
             &snapshot.region_constraints_snapshot,
         )

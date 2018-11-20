@@ -639,10 +639,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     ) -> Result<EvaluationResult, OverflowError> {
         self.infcx.probe(|snapshot| -> Result<EvaluationResult, OverflowError> {
             let result = op(self)?;
-            if !self.infcx.region_constraints_added_in_snapshot(snapshot) {
-                Ok(result)
-            } else {
-                Ok(result.max(EvaluatedToOkModuloRegions))
+            match self.infcx.region_constraints_added_in_snapshot(snapshot) {
+                None => Ok(result),
+                Some(_) => Ok(result.max(EvaluatedToOkModuloRegions)),
             }
         })
     }
