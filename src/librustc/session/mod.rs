@@ -19,8 +19,8 @@ use lint;
 use lint::builtin::BuiltinLintDiagnostics;
 use middle::allocator::AllocatorKind;
 use middle::dependency_format;
-use session::search_paths::PathKind;
 use session::config::{OutputType, Lto};
+use session::search_paths::{PathKind, SearchPath};
 use util::nodemap::{FxHashMap, FxHashSet};
 use util::common::{duration_to_secs_str, ErrorReported};
 use util::common::ProfileQueriesMsg;
@@ -64,6 +64,9 @@ pub struct Session {
     pub target: config::Config,
     pub host: Target,
     pub opts: config::Options,
+    pub host_tlib_path: SearchPath,
+    /// This is `None` if the host and target are the same.
+    pub target_tlib_path: Option<SearchPath>,
     pub parse_sess: ParseSess,
     /// For a library crate, this is always none
     pub entry_fn: Once<Option<(NodeId, Span, config::EntryFnType)>>,
@@ -699,6 +702,8 @@ impl Session {
             &self.sysroot,
             self.opts.target_triple.triple(),
             &self.opts.search_paths,
+            // target_tlib_path==None means it's the same as host_tlib_path.
+            self.target_tlib_path.as_ref().unwrap_or(&self.host_tlib_path),
             kind,
         )
     }
@@ -707,6 +712,7 @@ impl Session {
             &self.sysroot,
             config::host_triple(),
             &self.opts.search_paths,
+            &self.host_tlib_path,
             kind,
         )
     }
@@ -1106,6 +1112,15 @@ pub fn build_session_(
         None => filesearch::get_or_default_sysroot(),
     };
 
+    let host_triple = config::host_triple();
+    let target_triple = sopts.target_triple.triple();
+    let host_tlib_path = SearchPath::from_sysroot_and_triple(&sysroot, host_triple);
+    let target_tlib_path = if host_triple == target_triple {
+        None
+    } else {
+        Some(SearchPath::from_sysroot_and_triple(&sysroot, target_triple))
+    };
+
     let file_path_mapping = sopts.file_path_mapping();
 
     let local_crate_source_file =
@@ -1134,6 +1149,8 @@ pub fn build_session_(
         target: target_cfg,
         host,
         opts: sopts,
+        host_tlib_path,
+        target_tlib_path,
         parse_sess: p_s,
         // For a library crate, this is always none
         entry_fn: Once::new(),

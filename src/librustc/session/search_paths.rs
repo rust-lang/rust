@@ -16,6 +16,7 @@ use session::filesearch::make_target_lib_path;
 pub struct SearchPath {
     pub kind: PathKind,
     pub dir: PathBuf,
+    pub files: Vec<PathBuf>,
 }
 
 #[derive(Eq, PartialEq, Clone, Copy, Debug, PartialOrd, Ord, Hash)]
@@ -65,7 +66,18 @@ impl SearchPath {
     }
 
     fn new(kind: PathKind, dir: PathBuf) -> Self {
-        SearchPath { kind, dir }
+        // Get the files within the directory.
+        let files = match std::fs::read_dir(&dir) {
+            Ok(files) => {
+                files.filter_map(|p| {
+                    p.ok().map(|s| s.path())
+                })
+                .collect::<Vec<_>>()
+            }
+            Err(..) => vec![],
+        };
+
+        SearchPath { kind, dir, files }
     }
 }
 
