@@ -220,6 +220,8 @@ impl AnalysisImpl {
         let source_root = self.db.file_source_root(file_id);
         self.db.module_tree(source_root)
     }
+    /// This return `Vec`: a module may be inclucded from several places.
+    /// We don't handle this case yet though, so the Vec has length at most one.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let descr = match ModuleDescriptor::guess_from_position(&*self.db, position)? {
             None => return Ok(Vec::new()),
@@ -238,18 +240,21 @@ impl AnalysisImpl {
         };
         Ok(vec![(file_id, sym)])
     }
+    /// Returns `Vec` for the same reason as `parent_module`
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        let module_tree = self.module_tree(file_id)?;
-        let crate_graph = self.db.crate_graph();
-        let res = module_tree
-            .modules_for_source(ModuleSource::SourceFile(file_id))
-            .into_iter()
-            .map(|it| it.root(&module_tree))
-            .filter_map(|it| it.source(&module_tree).as_file())
-            .filter_map(|it| crate_graph.crate_id_for_crate_root(it))
-            .collect();
+        let descr = match ModuleDescriptor::guess_from_file_id(&*self.db, file_id)? {
+            None => return Ok(Vec::new()),
+            Some(it) => it,
+        };
+        let root = descr.crate_root();
+        let file_id = root
+            .source()
+            .as_file()
+            .expect("root module always has a file as a source");
 
-        Ok(res)
+        let crate_graph = self.db.crate_graph();
+        let crate_id = crate_graph.crate_id_for_crate_root(file_id);
+        Ok(crate_id.into_iter().collect())
     }
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
         self.db.crate_graph().crate_roots[&crate_id]

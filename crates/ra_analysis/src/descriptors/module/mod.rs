@@ -6,6 +6,7 @@ use std::sync::Arc;
 use ra_editor::find_node_at_offset;
 
 use ra_syntax::{
+    algo::generate,
     ast::{self, AstNode, NameOwner},
     SmolStr, SyntaxNode, SyntaxNodeRef,
 };
@@ -27,6 +28,16 @@ pub(crate) struct ModuleDescriptor {
 }
 
 impl ModuleDescriptor {
+    /// Lookup `ModuleDescriptor` by `FileId`. Note that this is inherently
+    /// lossy transformation: in general, a single source might correspond to
+    /// several modules.
+    pub fn guess_from_file_id(
+        db: &impl DescriptorDatabase,
+        file_id: FileId,
+    ) -> Cancelable<Option<ModuleDescriptor>> {
+        ModuleDescriptor::guess_from_source(db, file_id, ModuleSource::SourceFile(file_id))
+    }
+
     /// Lookup `ModuleDescriptor` by position in the source code. Note that this
     /// is inherently lossy transformation: in general, a single source might
     /// correspond to several modules.
@@ -34,14 +45,23 @@ impl ModuleDescriptor {
         db: &impl DescriptorDatabase,
         position: FilePosition,
     ) -> Cancelable<Option<ModuleDescriptor>> {
-        let source_root = db.file_source_root(position.file_id);
-        let module_tree = db.module_tree(source_root)?;
         let file = db.file_syntax(position.file_id);
         let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset)
         {
             Some(m) if !m.has_semi() => ModuleSource::new_inline(position.file_id, m),
             _ => ModuleSource::SourceFile(position.file_id),
         };
+        ModuleDescriptor::guess_from_source(db, position.file_id, module_source)
+    }
+
+    fn guess_from_source(
+        db: &impl DescriptorDatabase,
+        file_id: FileId,
+        module_source: ModuleSource,
+    ) -> Cancelable<Option<ModuleDescriptor>> {
+        let source_root = db.file_source_root(file_id);
+        let module_tree = db.module_tree(source_root)?;
+
         let res = match module_tree.any_module_for_source(module_source) {
             None => None,
             Some(module_id) => Some(ModuleDescriptor {
@@ -64,6 +84,11 @@ impl ModuleDescriptor {
         Some((file_id, src))
     }
 
+    pub fn source(&self) -> ModuleSource {
+        self.module_id.source(&self.tree)
+    }
+
+    /// Parent module. Returns `None` if this is a root module.
     pub fn parent(&self) -> Option<ModuleDescriptor> {
         let parent_id = self.module_id.parent(&self.tree)?;
         Some(ModuleDescriptor {
@@ -71,6 +96,14 @@ impl ModuleDescriptor {
             module_id: parent_id,
         })
     }
+
+    /// The root of the tree this module is part of
+    pub fn crate_root(&self) -> ModuleDescriptor {
+        generate(Some(self.clone()), |it| it.parent())
+            .last()
+            .unwrap()
+    }
+
     /// `name` is `None` for the crate's root module
     pub fn name(&self) -> Option<SmolStr> {
         let link = self.module_id.parent_link(&self.tree)?;
