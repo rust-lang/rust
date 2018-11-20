@@ -55,7 +55,7 @@ pub struct Allocation<Tag=(),Extra=()> {
 
 
 pub trait AllocationExtra<Tag, MemoryExtra>: ::std::fmt::Debug + Clone {
-    /// Hook to initialize the extra data when an allocation gets crated.
+    /// Hook to initialize the extra data when an allocation gets created.
     fn memory_allocated(
         _size: Size,
         _memory_extra: &MemoryExtra
