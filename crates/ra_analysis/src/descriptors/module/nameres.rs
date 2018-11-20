@@ -209,9 +209,9 @@ impl ModuleItem {
 
 struct Resolver<'a, DB> {
     db: &'a DB,
+    input: &'a FxHashMap<ModuleId, InputModuleItems>,
     source_root: SourceRootId,
     module_tree: Arc<ModuleTree>,
-    input: FxHashMap<ModuleId, InputModuleItems>,
     result: ItemMap,
 }
 
@@ -221,47 +221,44 @@ where
 {
     fn resolve(&mut self) {
         for (&module_id, items) in self.input.iter() {
-            populate_module(
-                self.db,
-                self.source_root,
-                &*self.module_tree,
-                &mut self.result,
+            self.populate_module(
                 module_id,
                 items,
             )
         }
     }
-}
 
-fn populate_module(
-    db: &impl DescriptorDatabase,
-    source_root: SourceRootId,
-    module_tree: &ModuleTree,
-    item_map: &mut ItemMap,
-    module_id: ModuleId,
-    input: &InputModuleItems,
-) {
-    let file_id = module_id.source(module_tree).file_id();
+    fn populate_module(
+        &mut self,
+        module_id: ModuleId,
+        input: &InputModuleItems,
+    ) {
+        let file_id = module_id.source(&self.module_tree).file_id();
 
-    let mut module_items = ModuleItems::default();
+        let mut module_items = ModuleItems::default();
 
-    for item in input.items.iter() {
-        if item.kind == MODULE {
-            // handle submodules separatelly
-            continue;
+        for item in input.items.iter() {
+            if item.kind == MODULE {
+                // handle submodules separatelly
+                continue;
+            }
+            let ptr = item.ptr.into_global(file_id);
+            let def_loc = DefLoc::Item { ptr };
+            let def_id = self.db.id_maps().def_id(def_loc);
+            module_items.items.insert(item.name.clone(), def_id);
         }
-        let ptr = item.ptr.into_global(file_id);
-        let def_loc = DefLoc::Item { ptr };
-        let def_id = db.id_maps().def_id(def_loc);
-        module_items.items.insert(item.name.clone(), def_id);
-    }
 
-    for (name, mod_id) in module_id.children(module_tree) {
-        let def_loc = DefLoc::Module {
-            id: mod_id,
-            source_root,
-        };
-    }
+        for (name, mod_id) in module_id.children(&self.module_tree) {
+            let def_loc = DefLoc::Module {
+                id: mod_id,
+                source_root: self.source_root,
+            };
+            let def_id = self.db.id_maps().def_id(def_loc);
+            module_items.items.insert(name, def_id);
+        }
 
-    item_map.per_module.insert(module_id, module_items);
+        self.result.per_module.insert(module_id, module_items);
+    }
 }
+
+
