@@ -634,7 +634,7 @@ impl<T: Clone> Rc<T> {
 impl Rc<dyn Any> {
     #[inline]
     #[stable(feature = "rc_downcast", since = "1.29.0")]
-    /// Attempt to downcast the `Rc<Any>` to a concrete type.
+    /// Attempt to downcast the `Rc<dyn Any>` to a concrete type.
     ///
     /// # Examples
     ///
@@ -642,7 +642,7 @@ impl Rc<dyn Any> {
     /// use std::any::Any;
     /// use std::rc::Rc;
     ///
-    /// fn print_if_string(value: Rc<Any>) {
+    /// fn print_if_string(value: Rc<dyn Any>) {
     ///     if let Ok(string) = value.downcast::<String>() {
     ///         println!("String ({}): {}", string.len(), string);
     ///     }

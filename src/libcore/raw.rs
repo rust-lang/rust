@@ -21,7 +21,7 @@
 /// The representation of a trait object like `&SomeTrait`.
 ///
 /// This struct has the same layout as types like `&SomeTrait` and
-/// `Box<AnotherTrait>`. The [Trait Objects chapter of the
+/// `Box<dyn AnotherTrait>`. The [Trait Objects chapter of the
 /// Book][moreinfo] contains more details about the precise nature of
 /// these internals.
 ///
