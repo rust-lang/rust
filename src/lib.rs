@@ -320,8 +320,6 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             // Uses mem::uninitialized
             ("std::ptr::read", ""),
             ("std::sys::windows::mutex::Mutex::", ""),
-            // Should directly take a raw reference
-            ("<std::cell::UnsafeCell<T>>", "::get"),
         ];
         for frame in ecx.stack().iter()
             .rev().take(3)
