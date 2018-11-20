@@ -976,7 +976,7 @@ fn copy_or_move<'a, 'gcx, 'tcx>(mc: &mc::MemCategorizationContext<'a, 'gcx, 'tcx
                                 move_reason: MoveReason)
                                 -> ConsumeMode
 {
-    if mc.type_moves_by_default(param_env, cmt.ty, cmt.span) {
+    if !mc.type_is_copy_modulo_regions(param_env, cmt.ty, cmt.span) {
         Move(move_reason)
     } else {
         Copy

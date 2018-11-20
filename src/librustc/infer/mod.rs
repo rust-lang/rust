@@ -1400,18 +1400,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .verify_generic_bound(origin, kind, a, bound);
     }
 
-    pub fn type_moves_by_default(
+    pub fn type_is_copy_modulo_regions(
         &self,
         param_env: ty::ParamEnv<'tcx>,
         ty: Ty<'tcx>,
         span: Span,
     ) -> bool {
         let ty = self.resolve_type_vars_if_possible(&ty);
+
         // Even if the type may have no inference variables, during
         // type-checking closure types are in local tables only.
         if !self.in_progress_tables.is_some() || !ty.has_closure_types() {
             if let Some((param_env, ty)) = self.tcx.lift_to_global(&(param_env, ty)) {
-                return ty.moves_by_default(self.tcx.global_tcx(), param_env, span);
+                return ty.is_copy_modulo_regions(self.tcx.global_tcx(), param_env, span);
             }
         }
 
@@ -1421,7 +1422,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         // rightly refuses to work with inference variables, but
         // moves_by_default has a cache, which we want to use in other
         // cases.
-        !traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id, span)
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, copy_def_id, span)
     }
 
     /// Obtains the latest type of the given closure; this may be a

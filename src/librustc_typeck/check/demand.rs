@@ -353,9 +353,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                         // Maybe add `*`? Only if `T: Copy`.
                         _ => {
-                            if !self.infcx.type_moves_by_default(self.param_env,
-                                                                checked,
-                                                                sp) {
+                            if self.infcx.type_is_copy_modulo_regions(self.param_env,
+                                                                      checked,
+                                                                      sp) {
                                 // do not suggest if the span comes from a macro (#52783)
                                 if let (Ok(code),
                                         true) = (cm.span_to_snippet(sp), sp == expr.span) {
