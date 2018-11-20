@@ -62,6 +62,7 @@ fn compile_fail(sysroot: &Path, path: &str, target: &str, host: &str, need_fullm
     let mut flags = Vec::new();
     flags.push(format!("--sysroot {}", sysroot.display()));
     flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
+    flags.push("--edition 2018".to_owned());
     if opt {
         // Optimizing too aggressivley makes UB detection harder, but test at least
         // the default value.
@@ -98,6 +99,7 @@ fn miri_pass(sysroot: &Path, path: &str, target: &str, host: &str, need_fullmir:
     let mut flags = Vec::new();
     flags.push(format!("--sysroot {}", sysroot.display()));
     flags.push("-Dwarnings -Dunused".to_owned()); // overwrite the -Aunused in compiletest-rs
+    flags.push("--edition 2018".to_owned());
     if opt {
         // FIXME: We use opt level 1 because MIR inlining defeats the validation
         // whitelist.

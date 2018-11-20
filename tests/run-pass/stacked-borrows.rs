@@ -68,13 +68,11 @@ fn mut_shr_raw() {
 // That should work.
 fn mut_raw_then_mut_shr() {
     let mut x = 2;
-    {
-        let xref = &mut x;
-        let xraw = &mut *xref as *mut _;
-        let xshr = &*xref;
-        assert_eq!(*xshr, 2);
-        unsafe { *xraw = 4; }
-    }
+    let xref = &mut x;
+    let xraw = &mut *xref as *mut _;
+    let xshr = &*xref;
+    assert_eq!(*xshr, 2);
+    unsafe { *xraw = 4; }
     assert_eq!(x, 4);
 }
 
