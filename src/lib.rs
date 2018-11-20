@@ -23,7 +23,7 @@ use rustc::hir::{self, def_id::DefId};
 use rustc::mir;
 
 use syntax::attr;
-
+use syntax::source_map::DUMMY_SP;
 
 pub use rustc_mir::interpret::*;
 pub use rustc_mir::interpret::{self, AllocMap, PlaceTy}; // resolve ambiguity
@@ -113,7 +113,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         // Push our stack frame
         ecx.push_stack_frame(
             start_instance,
-            start_mir.span,
+            DUMMY_SP, // there is no call site, we want no span
             start_mir,
             Some(ret_ptr.into()),
             StackPopCleanup::None { cleanup: true },
@@ -146,7 +146,7 @@ pub fn create_ecx<'a, 'mir: 'a, 'tcx: 'mir>(
         let ret_place = MPlaceTy::dangling(ecx.layout_of(tcx.mk_unit())?, &ecx).into();
         ecx.push_stack_frame(
             main_instance,
-            main_mir.span,
+            DUMMY_SP, // there is no call site, we want no span
             main_mir,
             Some(ret_place),
             StackPopCleanup::None { cleanup: true },
@@ -185,7 +185,7 @@ pub fn eval_main<'a, 'tcx: 'a>(
     match res {
         Ok(()) => {
             let leaks = ecx.memory().leak_report();
-            // Disable the leak test on some platforms where we likely do not
+            // Disable the leak test on some platforms where we do not
             // correctly implement TLS destructors.
             let target_os = ecx.tcx.tcx.sess.target.target.target_os.to_lowercase();
             let ignore_leaks = target_os == "windows" || target_os == "macos";
@@ -208,8 +208,16 @@ pub fn eval_main<'a, 'tcx: 'a>(
                 let mut err = struct_error(ecx.tcx.tcx.at(span), msg.as_str());
                 let frames = ecx.generate_stacktrace(None);
                 err.span_label(span, e);
-                for FrameInfo { span, location, .. } in frames {
-                    err.span_note(span, &format!("inside call to `{}`", location));
+                // we iterate with indices because we need to look at the next frame (the caller)
+                for idx in 0..frames.len() {
+                    let frame_info = &frames[idx];
+                    let call_site_is_local = frames.get(idx+1).map_or(false,
+                        |caller_info| caller_info.instance.def_id().is_local());
+                    if call_site_is_local {
+                        err.span_note(frame_info.call_site, &frame_info.to_string());
+                    } else {
+                        err.note(&frame_info.to_string());
+                    }
                 }
                 err.emit();
             } else {
@@ -312,8 +320,6 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             // Uses mem::uninitialized
             ("std::ptr::read", ""),
             ("std::sys::windows::mutex::Mutex::", ""),
-            // Should directly take a raw reference
-            ("<std::cell::UnsafeCell<T>>", "::get"),
         ];
         for frame in ecx.stack().iter()
             .rev().take(3)
@@ -461,9 +467,9 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             // No tracking
             Ok(place.ptr)
         } else {
-            let ptr = place.ptr.to_ptr()?; // assert this is not a scalar
-            let tag = ecx.tag_dereference(place, size, mutability.into())?;
-            Ok(Scalar::Ptr(Pointer::new_with_tag(ptr.alloc_id, ptr.offset, tag)))
+            ecx.ptr_dereference(place, size, mutability.into())?;
+            // We never change the pointer
+            Ok(place.ptr)
         }
     }
 

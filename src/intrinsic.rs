@@ -154,12 +154,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 let count = self.read_scalar(args[2])?.to_usize(self)?;
                 let elem_align = elem_layout.align;
                 // erase tags: this is a raw ptr operation
-                let src = self.read_scalar(args[0])?.not_undef()?.erase_tag();
-                let dest = self.read_scalar(args[1])?.not_undef()?.erase_tag();
+                let src = self.read_scalar(args[0])?.not_undef()?;
+                let dest = self.read_scalar(args[1])?.not_undef()?;
                 self.memory_mut().copy(
-                    src.with_default_tag(),
+                    src,
                     elem_align,
-                    dest.with_default_tag(),
+                    dest,
                     elem_align,
                     Size::from_bytes(count * elem_size),
                     intrinsic_name.ends_with("_nonoverlapping"),
@@ -436,7 +436,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 let ty = substs.type_at(0);
                 let ty_layout = self.layout_of(ty)?;
                 let val_byte = self.read_scalar(args[1])?.to_u8()?;
-                let ptr = self.read_scalar(args[0])?.not_undef()?.erase_tag().with_default_tag();
+                let ptr = self.read_scalar(args[0])?.not_undef()?;
                 let count = self.read_scalar(args[2])?.to_usize(self)?;
                 self.memory().check_align(ptr, ty_layout.align)?;
                 self.memory_mut().write_repeat(ptr, val_byte, ty_layout.size * count)?;

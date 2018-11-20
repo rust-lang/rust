@@ -37,7 +37,7 @@ build: false
 test_script:
     - set RUSTFLAGS=-g
     - set RUST_BACKTRACE=1
-    - cargo build --release --all-targets --all-features
+    - cargo build --release --all-features --all-targets
     - cargo test --release --all-features
     - set MIRI_SYSROOT=%USERPROFILE%\.xargo\HOST
     - cargo test --release --all-features

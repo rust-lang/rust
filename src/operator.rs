@@ -142,8 +142,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                     // allocations sit right next to each other.  The C/C++ standards are
                     // somewhat fuzzy about this case, so I think for now this check is
                     // "good enough".
-                    self.memory().check_bounds_ptr(left, false)?;
-                    self.memory().check_bounds_ptr(right, false)?;
+                    // We require liveness, as dead allocations can of course overlap.
+                    self.memory().check_bounds_ptr(left, InboundsCheck::Live)?;
+                    self.memory().check_bounds_ptr(right, InboundsCheck::Live)?;
                     // Two live in-bounds pointers, we can compare across allocations
                     left == right
                 }
@@ -153,15 +154,17 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             (Scalar::Bits { bits, size }, Scalar::Ptr(ptr)) => {
                 assert_eq!(size as u64, self.pointer_size().bytes());
                 let bits = bits as u64;
-                let (alloc_size, alloc_align) = self.memory().get_size_and_align(ptr.alloc_id);
 
                 // Case I: Comparing with NULL
                 if bits == 0 {
                     // Test if the ptr is in-bounds. Then it cannot be NULL.
-                    if ptr.offset <= alloc_size {
+                    if self.memory().check_bounds_ptr(ptr, InboundsCheck::MaybeDead).is_ok() {
                         return Ok(false);
                     }
                 }
+
+                let (alloc_size, alloc_align) = self.memory().get_size_and_align(ptr.alloc_id);
+
                 // Case II: Alignment gives it away
                 if ptr.offset.bytes() % alloc_align.abi() == 0 {
                     // The offset maintains the allocation alignment, so we know `base+offset`
@@ -293,11 +296,11 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         let offset = offset.checked_mul(pointee_size).ok_or_else(|| EvalErrorKind::Overflow(mir::BinOp::Mul))?;
         // Now let's see what kind of pointer this is
         if let Scalar::Ptr(ptr) = ptr {
-            // Both old and new pointer must be in-bounds.
+            // Both old and new pointer must be in-bounds of a *live* allocation.
             // (Of the same allocation, but that part is trivial with our representation.)
-            self.memory().check_bounds_ptr(ptr, false)?;
+            self.memory().check_bounds_ptr(ptr, InboundsCheck::Live)?;
             let ptr = ptr.signed_offset(offset, self)?;
-            self.memory().check_bounds_ptr(ptr, false)?;
+            self.memory().check_bounds_ptr(ptr, InboundsCheck::Live)?;
             Ok(Scalar::Ptr(ptr))
         } else {
             // An integer pointer. They can only be offset by 0, and we pretend there

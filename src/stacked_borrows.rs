@@ -4,8 +4,8 @@ use rustc::ty::{self, layout::Size};
 use rustc::hir::{Mutability, MutMutable, MutImmutable};
 
 use crate::{
-    EvalResult, EvalErrorKind, MiriEvalContext, HelpersEvalContextExt,
-    MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra,
+    EvalResult, EvalErrorKind, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
+    MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra, InboundsCheck,
     Pointer, MemPlace, Scalar, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
@@ -303,6 +303,9 @@ impl<'tcx> Stacks {
         trace!("{} access of tag {:?}: {:?}, size {}",
             if is_write { "read" } else { "write" },
             ptr.tag, ptr, size.bytes());
+        // Even reads can have a side-effect, by invalidating other references.
+        // This is fundamentally necessary since `&mut` asserts that there
+        // are no accesses through other references, not even reads.
         let mut stacks = self.stacks.borrow_mut();
         for stack in stacks.iter_mut(ptr.offset, size) {
             stack.access(ptr.tag, is_write)?;
@@ -311,6 +314,7 @@ impl<'tcx> Stacks {
     }
 
     /// Reborrow the given pointer to the new tag for the given kind of reference.
+    /// This works on `&self` because we might encounter references to constant memory.
     fn reborrow(
         &self,
         ptr: Pointer<Borrow>,
@@ -401,12 +405,12 @@ impl<'tcx> Stacks {
 
 
 pub trait EvalContextExt<'tcx> {
-    fn tag_dereference(
+    fn ptr_dereference(
         &self,
         place: MPlaceTy<'tcx, Borrow>,
         size: Size,
         mutability: Option<Mutability>,
-    ) -> EvalResult<'tcx, Borrow>;
+    ) -> EvalResult<'tcx>;
 
     fn tag_new_allocation(
         &mut self,
@@ -414,8 +418,16 @@ pub trait EvalContextExt<'tcx> {
         kind: MemoryKind<MiriMemoryKind>,
     ) -> Borrow;
 
-    /// Retag an indidual pointer, returning the retagged version.
+    /// Reborrow the given place, returning the newly tagged ptr to it.
     fn reborrow(
+        &mut self,
+        place: MPlaceTy<'tcx, Borrow>,
+        size: Size,
+        new_bor: Borrow
+    ) -> EvalResult<'tcx, Pointer<Borrow>>;
+
+    /// Retag an indidual pointer, returning the retagged version.
+    fn retag_reference(
         &mut self,
         ptr: ImmTy<'tcx, Borrow>,
         mutbl: Mutability,
@@ -468,13 +480,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
     ///
     /// Note that this does NOT mean that all this memory will actually get accessed/referenced!
     /// We could be in the middle of `&(*var).1`.
-    fn tag_dereference(
+    fn ptr_dereference(
         &self,
         place: MPlaceTy<'tcx, Borrow>,
         size: Size,
         mutability: Option<Mutability>,
-    ) -> EvalResult<'tcx, Borrow> {
-        trace!("tag_dereference: Accessing {} reference for {:?} (pointee {})",
+    ) -> EvalResult<'tcx> {
+        trace!("ptr_dereference: Accessing {} reference for {:?} (pointee {})",
             if let Some(mutability) = mutability { format!("{:?}", mutability) } else { format!("raw") },
             place.ptr, place.layout.ty);
         let ptr = place.ptr.to_ptr()?;
@@ -485,12 +497,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         // That can transmute a raw ptr to a (shared/mut) ref, and a mut ref to a shared one.
         match (mutability, ptr.tag) {
             (None, _) => {
-                // Don't use the tag, this is a raw access!  They should happen tagless.
-                // This is needed for `*mut` to make any sense: Writes *do* enforce the
-                // `Uniq` tag to be up top, but we must make sure raw writes do not do that.
-                // This does mean, however, that `&*foo` is *not* a NOP *if* `foo` is a raw ptr.
-                // Also don't do any further validation, this is raw after all.
-                return Ok(Borrow::default());
+                // No further validation on raw accesses.
+                return Ok(());
             }
             (Some(MutMutable), Borrow::Uniq(_)) |
             (Some(MutImmutable), Borrow::Shr(_)) => {
@@ -515,7 +523,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         }
 
         // Get the allocation
-        self.memory().check_bounds(ptr, size, false)?;
+        self.memory().check_bounds(ptr, size, InboundsCheck::Live)?;
         let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
         // If we got here, we do some checking, *but* we leave the tag unchanged.
         if let Borrow::Shr(Some(_)) = ptr.tag {
@@ -531,27 +539,51 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             alloc.extra.deref(ptr, size, kind)?;
         }
 
-        // All is good, and do not change the tag
-        Ok(ptr.tag)
+        // All is good
+        Ok(())
     }
 
     /// The given place may henceforth be accessed through raw pointers.
+    #[inline(always)]
     fn escape_to_raw(
         &mut self,
         place: MPlaceTy<'tcx, Borrow>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        trace!("escape_to_raw: {:?} is now accessible by raw pointers", *place);
-        // Get the allocation
-        let ptr = place.ptr.to_ptr()?;
-        self.memory().check_bounds(ptr, size, false)?; // `ptr_dereference` wouldn't do any checks if this is a raw ptr
-        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
-        // Re-borrow to raw.  This is a NOP for shared borrows, but we do not know the borrow
-        // type here and that's also okay.  Freezing does not matter here.
-        alloc.extra.reborrow(ptr, size, Borrow::default(), RefKind::Raw)
+        self.reborrow(place, size, Borrow::default())?;
+        Ok(())
     }
 
     fn reborrow(
+        &mut self,
+        place: MPlaceTy<'tcx, Borrow>,
+        size: Size,
+        new_bor: Borrow
+    ) -> EvalResult<'tcx, Pointer<Borrow>> {
+        let ptr = place.ptr.to_ptr()?;
+        let new_ptr = Pointer::new_with_tag(ptr.alloc_id, ptr.offset, new_bor);
+        trace!("reborrow: Creating new reference for {:?} (pointee {}): {:?}",
+            ptr, place.layout.ty, new_bor);
+
+        // Get the allocation.  It might not be mutable, so we cannot use `get_mut`.
+        self.memory().check_bounds(ptr, size, InboundsCheck::Live)?;
+        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
+        // Update the stacks.
+        if let Borrow::Shr(Some(_)) = new_bor {
+            // Reference that cares about freezing. We need a frozen-sensitive reborrow.
+            self.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
+                let kind = if frozen { RefKind::Frozen } else { RefKind::Raw };
+                alloc.extra.reborrow(cur_ptr, size, new_bor, kind)
+            })?;
+        } else {
+            // Just treat this as one big chunk.
+            let kind = if new_bor.is_unique() { RefKind::Unique } else { RefKind::Raw };
+            alloc.extra.reborrow(ptr, size, new_bor, kind)?;
+        }
+        Ok(new_ptr)
+    }
+
+    fn retag_reference(
         &mut self,
         val: ImmTy<'tcx, Borrow>,
         mutbl: Mutability,
@@ -566,33 +598,17 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             return Ok(*val);
         }
 
-        // Prepare to re-borrow this place.
-        let ptr = place.ptr.to_ptr()?;
+        // Compute new borrow.
         let time = self.machine.stacked_borrows.increment_clock();
         let new_bor = match mutbl {
             MutMutable => Borrow::Uniq(time),
             MutImmutable => Borrow::Shr(Some(time)),
         };
-        trace!("reborrow: Creating new {:?} reference for {:?} (pointee {}): {:?}",
-            mutbl, ptr, place.layout.ty, new_bor);
 
-        // Get the allocation.  It might not be mutable, so we cannot use `get_mut`.
-        self.memory().check_bounds(ptr, size, false)?;
-        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
-        // Update the stacks.
-        if mutbl == MutImmutable {
-            // Shared reference. We need a frozen-sensitive reborrow.
-            self.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
-                let kind = if frozen { RefKind::Frozen } else { RefKind::Raw };
-                alloc.extra.reborrow(cur_ptr, size, new_bor, kind)
-            })?;
-        } else {
-            // Mutable reference. Just treat this as one big chunk.
-            alloc.extra.reborrow(ptr, size, new_bor, RefKind::Unique)?;
-        }
+        // Reborrow.
+        let new_ptr = self.reborrow(place, size, new_bor)?;
 
         // Return new ptr
-        let new_ptr = Pointer::new_with_tag(ptr.alloc_id, ptr.offset, new_bor);
         let new_place = MemPlace { ptr: Scalar::Ptr(new_ptr), ..*place };
         Ok(new_place.to_ref())
     }
@@ -602,17 +618,62 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         _fn_entry: bool,
         place: PlaceTy<'tcx, Borrow>
     ) -> EvalResult<'tcx> {
-        // For now, we only retag if the toplevel type is a reference.
-        // TODO: Recurse into structs and enums, sharing code with validation.
         // TODO: Honor `fn_entry`.
-        let mutbl = match place.layout.ty.sty {
-            ty::Ref(_, _, mutbl) => mutbl, // go ahead
-            _ => return Ok(()), // do nothing, for now
-        };
-        // Retag the pointer and write it back.
-        let val = self.read_immediate(self.place_to_op(place)?)?;
-        let val = self.reborrow(val, mutbl)?;
-        self.write_immediate(val, place)?;
+
+        // We need a visitor to visit all references.  However, that requires
+        // a `MemPlace`, so we have a fast path for reference types that
+        // avoids allocating.
+        // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
+        // making it useless.
+        if let Some(mutbl) = match place.layout.ty.sty {
+            ty::Ref(_, _, mutbl) => Some(mutbl),
+            ty::Adt(..) if place.layout.ty.is_box() => Some(MutMutable),
+            _ => None, // handled with the general case below
+        } {
+            // fast path
+            let val = self.read_immediate(self.place_to_op(place)?)?;
+            let val = self.retag_reference(val, mutbl)?;
+            self.write_immediate(val, place)?;
+            return Ok(());
+        }
+        let place = self.force_allocation(place)?;
+
+        let mut visitor = RetagVisitor { ecx: self };
+        visitor.visit_value(place)?;
+
+        // The actual visitor
+        struct RetagVisitor<'ecx, 'a, 'mir, 'tcx> {
+            ecx: &'ecx mut MiriEvalContext<'a, 'mir, 'tcx>,
+        }
+        impl<'ecx, 'a, 'mir, 'tcx>
+            MutValueVisitor<'a, 'mir, 'tcx, Evaluator<'tcx>>
+        for
+            RetagVisitor<'ecx, 'a, 'mir, 'tcx>
+        {
+            type V = MPlaceTy<'tcx, Borrow>;
+
+            #[inline(always)]
+            fn ecx(&mut self) -> &mut MiriEvalContext<'a, 'mir, 'tcx> {
+                &mut self.ecx
+            }
+
+            // Primitives of reference type, that is the one thing we are interested in.
+            fn visit_primitive(&mut self, place: MPlaceTy<'tcx, Borrow>) -> EvalResult<'tcx>
+            {
+                // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
+                // making it useless.
+                let mutbl = match place.layout.ty.sty {
+                    ty::Ref(_, _, mutbl) => mutbl,
+                    ty::Adt(..) if place.layout.ty.is_box() => MutMutable,
+                    _ => return Ok(()), // nothing to do
+                };
+                let val = self.ecx.read_immediate(place.into())?;
+                let val = self.ecx.retag_reference(val, mutbl)?;
+                self.ecx.write_immediate(val, place.into())?;
+                Ok(())
+            }
+        }
+
         Ok(())
     }
 }
