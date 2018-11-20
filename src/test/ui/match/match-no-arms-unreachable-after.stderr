@@ -1,5 +1,5 @@
 error: unreachable statement
-  --> $DIR/match-no-arms-unreachable-after.rs:8:5
+  --> $DIR/match-no-arms-unreachable-after.rs:12:5
    |
 LL |     let x = 2; //~ ERROR unreachable
    |     ^^^^^^^^^^

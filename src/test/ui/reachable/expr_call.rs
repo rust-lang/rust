@@ -4,9 +4,9 @@
 #![allow(dead_code)]
 #![deny(unreachable_code)]
 
-fn foo(x: !, y: usize) { }
+fn foo(x: (), y: usize) {}
 
-fn bar(x: !) { }
+fn bar(x: ()) {}
 
 fn a() {
     // the `22` is unreachable:

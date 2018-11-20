@@ -1,16 +1,16 @@
 // run-pass
 #![allow(dead_code)]
+#![allow(unused_variables)]
 // pretty-expanded FIXME #23616
-#![allow(non_camel_case_types)]
 
-enum what { }
+enum Void {}
 
-fn what_to_string(x: what) -> String
-{
-    match x {
-    }
+fn void() -> Void {
+    unimplemented!()
 }
 
-pub fn main()
-{
+fn void_to_string() -> String {
+    match void() {}
 }
+
+pub fn main() {}

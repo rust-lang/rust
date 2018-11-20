@@ -1,14 +1,16 @@
 // run-pass
 #![allow(dead_code)]
 #![allow(unused_variables)]
-// pretty-expanded FIXME #23616
+#![allow(unreachable_code)]
 
-enum Foo { }
+enum Foo {}
 
 impl Drop for Foo {
     fn drop(&mut self) { }
 }
 
-fn foo(x: Foo) { }
+fn foo() {
+    let _x: Foo = unimplemented!();
+}
 
 fn main() { }

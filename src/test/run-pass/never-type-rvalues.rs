@@ -2,6 +2,7 @@
 #![allow(dead_code)]
 #![allow(path_statements)]
 #![allow(unreachable_patterns)]
+#![allow(unreachable_code)]
 
 fn never_direct(x: !) {
     x;

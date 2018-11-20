@@ -1,13 +1,17 @@
+#![feature(never_type)]
+
 #![deny(unreachable_code)]
 #![allow(dead_code)]
 
-#![feature(never_type)]
+fn never() -> ! {
+    unimplemented!()
+}
 
-fn foo(x: !) -> bool {
+fn foo() -> bool {
     // Explicit matches on the never type are unwarned.
-    match x {}
+    match never() {}
     // But matches in unreachable code are warned.
-    match x {} //~ ERROR unreachable expression
+    match never() {} //~ ERROR unreachable expression
 }
 
 fn bar() {

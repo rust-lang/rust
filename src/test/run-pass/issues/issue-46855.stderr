@@ -1,0 +1,18 @@
+warning: functions with parameters of uninhabited types are uncallable
+  --> $DIR/issue-46855.rs:15:1
+   |
+LL | fn foo(xs: [(Never, u32); 1]) -> u32 { xs[0].1 }
+   | ^^^^^^^--^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        |
+   |        this parameter has an uninhabited type
+   |
+   = note: #[warn(unreachable_code)] on by default
+
+warning: functions with parameters of uninhabited types are uncallable
+  --> $DIR/issue-46855.rs:17:1
+   |
+LL | fn bar([(_, x)]: [(Never, u32); 1]) -> u32 { x }
+   | ^^^^^^^--------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |        |
+   |        this parameter has an uninhabited type
+

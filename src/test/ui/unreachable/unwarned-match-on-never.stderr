@@ -1,23 +1,23 @@
 error: unreachable expression
-  --> $DIR/unwarned-match-on-never.rs:10:5
+  --> $DIR/unwarned-match-on-never.rs:14:5
    |
-LL |     match x {} //~ ERROR unreachable expression
-   |     ^^^^^^^^^^
+LL |     match never() {} //~ ERROR unreachable expression
+   |     ^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/unwarned-match-on-never.rs:1:9
+  --> $DIR/unwarned-match-on-never.rs:3:9
    |
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
 error: unreachable arm
-  --> $DIR/unwarned-match-on-never.rs:15:15
+  --> $DIR/unwarned-match-on-never.rs:19:15
    |
 LL |         () => () //~ ERROR unreachable arm
    |               ^^
 
 error: unreachable expression
-  --> $DIR/unwarned-match-on-never.rs:21:5
+  --> $DIR/unwarned-match-on-never.rs:25:5
    |
 LL | /     match () { //~ ERROR unreachable expression
 LL | |         () => (),

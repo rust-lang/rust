@@ -3,10 +3,13 @@
 
 enum Void { }
 
-fn foo(v: Void) {
-    match v { }
+fn bar() -> Void {
+    unreachable!()
+}
+
+fn foo() {
+    match bar() { }
     let x = 2; //~ ERROR unreachable
 }
 
-fn main() {
-}
+fn main() {}
