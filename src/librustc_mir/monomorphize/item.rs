@@ -8,12 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Walks the crate looking for items/impl-items/trait-items that have
-//! either a `rustc_symbol_name` or `rustc_item_path` attribute and
-//! generates an error giving, respectively, the symbol name or
-//! item-path. This is used for unit testing the code that generates
-//! paths etc in all kinds of annoying scenarios.
-
 use monomorphize::Instance;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
