@@ -13,11 +13,11 @@
 use std::ops::{GeneratorState, Generator};
 
 fn finish<T>(mut amt: usize, mut t: T) -> T::Return
-    where T: Generator<Yield = ()>
+    where T: Generator<Yield = usize>
 {
     loop {
         match unsafe { t.resume() } {
-            GeneratorState::Yielded(()) => amt -= 1,
+            GeneratorState::Yielded(y) => amt -= y,
             GeneratorState::Complete(ret) => {
                 assert_eq!(amt, 0);
                 return ret
@@ -28,38 +28,50 @@ fn finish<T>(mut amt: usize, mut t: T) -> T::Return
 }
 
 fn main() {
-    finish(1, || yield);
+    finish(1, || yield 1);
     finish(3, || {
         let mut x = 0;
-        yield;
+        yield 1;
         x += 1;
-        yield;
+        yield 1;
         x += 1;
-        yield;
+        yield 1;
         assert_eq!(x, 2);
     });
-    finish(8, || {
-        for _ in 0..8 {
-            yield;
+    finish(7*8/2, || {
+        for i in 0..8 {
+            yield i;
         }
     });
     finish(1, || {
         if true {
-            yield;
+            yield 1;
         } else {
         }
     });
     finish(1, || {
         if false {
         } else {
-            yield;
+            yield 1;
         }
     });
     finish(2, || {
-        if { yield; false } {
-            yield;
+        if { yield 1; false } {
+            yield 1;
             panic!()
         }
-        yield
+        yield 1;
     });
+    // also test a self-referential generator
+    assert_eq!(
+        finish(5, || {
+            let mut x = Box::new(5);
+            let y = &mut *x;
+            *y = 5;
+            yield *y;
+            *y = 10;
+            *x
+        }),
+        10
+    );
 }
