@@ -9,14 +9,16 @@
 // except according to those terms.
 
 //ignore-windows: Uses POSIX APIs
-#![feature(libc)]
+
+#![feature(libc, extern_crate_item_prelude)]
+#![allow(unused_extern_crates)] // rustc bug https://github.com/rust-lang/rust/issues/56098
 
 extern crate libc;
+
 use std::ffi::CString;
 
 mod mlibc {
     use libc::{c_char, size_t};
-
     extern {
         #[link_name = "strlen"]
         pub fn my_strlen(str: *const c_char) -> size_t;

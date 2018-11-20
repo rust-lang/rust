@@ -1,6 +1,5 @@
 #![feature(slice_internals)]
 
-extern crate core;
 use core::slice::memchr::{memchr, memrchr};
 
 // test fallback implementations on all platforms
