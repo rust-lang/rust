@@ -216,8 +216,8 @@ impl AnalysisImpl {
             .sweep(salsa::SweepStrategy::default().discard_values());
         Ok(query.search(&buf))
     }
-    /// This return `Vec`: a module may be inclucded from several places.
-    /// We don't handle this case yet though, so the Vec has length at most one.
+    /// This return `Vec`: a module may be included from several places. We
+    /// don't handle this case yet though, so the Vec has length at most one.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
         let descr = match ModuleDescriptor::guess_from_position(&*self.db, position)? {
             None => return Ok(Vec::new()),
