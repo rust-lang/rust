@@ -10,7 +10,7 @@
 
 // Helper definition for test/run-pass/check-static-recursion-foreign.rs.
 
-#![feature(libc)]
+#![feature(rustc_private)]
 
 #![crate_name = "check_static_recursion_foreign_helper"]
 #![crate_type = "lib"]

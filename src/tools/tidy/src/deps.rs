@@ -53,6 +53,7 @@ const EXCEPTIONS: &[&str] = &[
     "bytesize",           // Apache-2.0, cargo
     "im-rc",              // MPL-2.0+, cargo
     "adler32",            // BSD-3-Clause AND Zlib, cargo dep that isn't used
+    "fortanix-sgx-abi",   // MPL-2.0+, libstd but only for sgx target
 ];
 
 /// Which crates to check against the whitelist?

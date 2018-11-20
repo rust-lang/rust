@@ -12,7 +12,7 @@
 // ignore-cloudabi can't run commands
 // ignore-emscripten can't run commands
 
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 

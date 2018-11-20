@@ -16,7 +16,7 @@
 // ignore-wasm32-bare no libc
 // ignore-windows
 
-#![feature(libc)]
+#![feature(rustc_private)]
 extern crate libc;
 
 use libc::*;

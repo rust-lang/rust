@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![deny(improper_ctypes)]
-#![feature(libc)]
+#![feature(rustc_private)]
 
 #![allow(private_in_public)]
 

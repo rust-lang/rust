@@ -10,7 +10,7 @@
 
 #![crate_name="externcallback"]
 #![crate_type = "lib"]
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 

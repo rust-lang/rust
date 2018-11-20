@@ -16,7 +16,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(custom_attribute, libc)]
+#![feature(custom_attribute, rustc_private)]
 
 extern crate check_static_recursion_foreign_helper;
 extern crate libc;

@@ -1134,10 +1134,10 @@ impl Build {
             let krate = &self.crates[&krate];
             if krate.is_local(self) {
                 ret.push(krate);
-                for dep in &krate.deps {
-                    if visited.insert(dep) && dep != "build_helper" {
-                        list.push(*dep);
-                    }
+            }
+            for dep in &krate.deps {
+                if visited.insert(dep) && dep != "build_helper" {
+                    list.push(*dep);
                 }
             }
         }

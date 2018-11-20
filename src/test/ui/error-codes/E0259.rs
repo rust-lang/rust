@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(alloc, libc)]
+#![feature(alloc, rustc_private)]
 #![allow(unused_extern_crates)]
 
 extern crate alloc;

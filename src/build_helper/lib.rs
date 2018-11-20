@@ -224,14 +224,12 @@ impl Drop for NativeLibBoilerplate {
 // Timestamps are created automatically when the result of `native_lib_boilerplate` goes out
 // of scope, so all the build actions should be completed until then.
 pub fn native_lib_boilerplate(
-    src_name: &str,
+    src_dir: &Path,
     out_name: &str,
     link_name: &str,
     search_subdir: &str,
 ) -> Result<NativeLibBoilerplate, ()> {
-    let current_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let src_dir = current_dir.join("..").join(src_name);
-    rerun_if_changed_anything_in_dir(&src_dir);
+    rerun_if_changed_anything_in_dir(src_dir);
 
     let out_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or_else(||
         env::var_os("OUT_DIR").unwrap());
@@ -248,9 +246,9 @@ pub fn native_lib_boilerplate(
     );
 
     let timestamp = out_dir.join("rustbuild.timestamp");
-    if !up_to_date(Path::new("build.rs"), &timestamp) || !up_to_date(&src_dir, &timestamp) {
+    if !up_to_date(Path::new("build.rs"), &timestamp) || !up_to_date(src_dir, &timestamp) {
         Ok(NativeLibBoilerplate {
-            src_dir: src_dir,
+            src_dir: src_dir.to_path_buf(),
             out_dir: out_dir,
         })
     } else {
@@ -279,8 +277,11 @@ pub fn sanitizer_lib_boilerplate(sanitizer_name: &str)
     } else {
         format!("static={}", link_name)
     };
+    // The source for `compiler-rt` comes from the `compiler-builtins` crate, so
+    // load our env var set by cargo to find the source code.
+    let dir = env::var_os("DEP_COMPILER_RT_COMPILER_RT").unwrap();
     let lib = native_lib_boilerplate(
-        "libcompiler_builtins/compiler-rt",
+        dir.as_ref(),
         sanitizer_name,
         &to_link,
         search_path,

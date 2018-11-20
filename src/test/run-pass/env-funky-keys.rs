@@ -16,7 +16,7 @@
 // ignore-emscripten no execve
 // no-prefer-dynamic
 
-#![feature(libc)]
+#![feature(rustc_private)]
 
 extern crate libc;
 
