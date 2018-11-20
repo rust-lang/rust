@@ -112,10 +112,10 @@
 //!
 //!     // next() is the only required method
 //!     fn next(&mut self) -> Option<usize> {
-//!         // increment our count. This is why we started at zero.
+//!         // Increment our count. This is why we started at zero.
 //!         self.count += 1;
 //!
-//!         // check to see if we've finished counting or not.
+//!         // Check to see if we've finished counting or not.
 //!         if self.count < 6 {
 //!             Some(self.count)
 //!         } else {

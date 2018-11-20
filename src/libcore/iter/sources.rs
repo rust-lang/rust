@@ -415,10 +415,10 @@ pub fn once<T>(value: T) -> Once<T> {
 /// ```
 /// #![feature(iter_unfold)]
 /// let counter = std::iter::unfold(0, |count| {
-///     // increment our count. This is why we started at zero.
+///     // Increment our count. This is why we started at zero.
 ///     *count += 1;
 ///
-///     // check to see if we've finished counting or not.
+///     // Check to see if we've finished counting or not.
 ///     if *count < 6 {
 ///         Some(*count)
 ///     } else {
