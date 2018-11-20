@@ -9,6 +9,7 @@ use ra_syntax::{
 };
 
 use crate::{
+    Cancelable,
     loc2id::{DefId, DefLoc},
     descriptors::{
         DescriptorDatabase,
@@ -45,12 +46,21 @@ enum PathKind {
     Crate,
 }
 
-#[derive(Debug)]
-struct ItemMap {
+pub(crate) fn item_map(
+    db: &impl DescriptorDatabase,
+    source_root: SourceRootId,
+) -> Cancelable<Arc<ItemMap>> {
+    unimplemented!()
+}
+
+/// Item map is the result of the name resolution. Item map contains, for each
+/// module, the set of visible items.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct ItemMap {
     per_module: FxHashMap<ModuleId, ModuleItems>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq, Eq)]
 struct ModuleItems {
     items: FxHashMap<SmolStr, Resolution>,
     import_resolutions: FxHashMap<LocalSyntaxPtr, DefId>,
@@ -58,7 +68,7 @@ struct ModuleItems {
 
 /// Resolution is basically `DefId` atm, but it should account for stuff like
 /// multiple namespaces, ambiguity and errors.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Resolution {
     /// None for unresolved
     def_id: Option<DefId>,

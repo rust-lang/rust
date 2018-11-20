@@ -11,7 +11,7 @@ use ra_syntax::{
 use crate::{
     db::SyntaxDatabase,
     descriptors::function::{resolve_local_name, FnId, FnScopes},
-    descriptors::module::{ModuleId, ModuleScope, ModuleTree, ModuleSource},
+    descriptors::module::{ModuleId, ModuleScope, ModuleTree, ModuleSource, nameres::ItemMap},
     input::SourceRootId,
     loc2id::IdDatabase,
     syntax_ptr::LocalSyntaxPtr,
@@ -25,6 +25,10 @@ salsa::query_group! {
             use fn function::imp::fn_scopes;
         }
 
+        fn _item_map(source_root_id: SourceRootId) -> Cancelable<Arc<ItemMap>> {
+            type ItemMapQuery;
+            use fn module::nameres::item_map;
+        }
         fn _module_tree(source_root_id: SourceRootId) -> Cancelable<Arc<ModuleTree>> {
             type ModuleTreeQuery;
             use fn module::imp::module_tree;

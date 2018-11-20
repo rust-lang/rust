@@ -8,7 +8,7 @@ use crate::{
     db,
     descriptors::{
         DescriptorDatabase, FnScopesQuery, FnSyntaxQuery, ModuleScopeQuery, ModuleTreeQuery,
-        SubmodulesQuery,
+        SubmodulesQuery, ItemMapQuery,
     },
     symbol_index::SymbolIndex,
     syntax_ptr::SyntaxPtr,
@@ -85,8 +85,9 @@ salsa::database_storage! {
         }
         impl DescriptorDatabase {
             fn module_tree() for ModuleTreeQuery;
-            fn module_scope() for ModuleScopeQuery;
             fn fn_scopes() for FnScopesQuery;
+            fn _item_map() for ItemMapQuery;
+            fn _module_scope() for ModuleScopeQuery;
             fn _fn_syntax() for FnSyntaxQuery;
             fn _submodules() for SubmodulesQuery;
         }

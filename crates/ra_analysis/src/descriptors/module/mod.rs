@@ -1,6 +1,6 @@
 pub(super) mod imp;
 mod scope;
-mod nameres;
+pub(super) mod nameres;
 
 use std::sync::Arc;
 
