@@ -1,5 +1,3 @@
-// error-pattern: mutable reference with frozen tag
-
 mod safe {
     use std::slice::from_raw_parts_mut;
 
@@ -12,10 +10,8 @@ mod safe {
 
 fn main() {
     let v = vec![0,1,2];
-    let _v1 = safe::as_mut_slice(&v);
-/*
-    let v2 = safe::as_mut_slice(&v);
+    let v1 = safe::as_mut_slice(&v);
+    let _v2 = safe::as_mut_slice(&v);
     v1[1] = 5;
-    v1[1] = 6;
-*/
+    //~^ ERROR does not exist on the stack
 }
