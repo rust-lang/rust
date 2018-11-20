@@ -1,7 +1,7 @@
 
 use cell::RefCell;
 use cmp;
-use fs::File;
+use fs::{File, Metadata};
 use io::{self, Error, ErrorKind, Read, Write};
 use libc;
 use mem;
@@ -160,27 +160,26 @@ fn copy_range(infd: &File, outfd: &File, uspace: bool, len: u64) -> io::Result<u
     Ok(written)
 }
 
-fn next_sparse_segments(fd: &File, pos: u64) -> io::Result<(u64, u64)> {
+fn next_sparse_segments(fd: &File, pos: u64, len: u64) -> io::Result<(u64, u64)> {
     let next_data = match lseek(fd, pos as i64, Wence::Data)? {
         SeekOff::Offset(off) => off,
-        SeekOff::EOF => fd.metadata()?.len()
+        SeekOff::EOF => len
     };
     let next_hole = match lseek(fd, next_data as i64, Wence::Hole)? {
         SeekOff::Offset(off) => off,
-        SeekOff::EOF => fd.metadata()?.len()
+        SeekOff::EOF => len
     };
 
     Ok((next_data, next_hole))
 }
 
-fn copy_sparse(infd: &File, outfd: &File, uspace: bool) -> io::Result<u64> {
-    let len = infd.metadata()?.len();
+fn copy_sparse(infd: &File, outfd: &File, uspace: bool, len: u64) -> io::Result<u64> {
     allocate_file(&outfd, len)?;
 
     let mut pos = 0;
 
     while pos < len {
-        let (next_data, next_hole) = next_sparse_segments(infd, pos)?;
+        let (next_data, next_hole) = next_sparse_segments(infd, pos, len)?;
         lseek(infd, next_data as i64, Wence::Set)?;
         lseek(outfd, next_data as i64, Wence::Set)?;
 
@@ -192,11 +191,9 @@ fn copy_sparse(infd: &File, outfd: &File, uspace: bool) -> io::Result<u64> {
 }
 
 
-fn copy_parms(infd: &File, outfd: &File) -> io::Result<(bool, bool)> {
-    let in_stat = infd.metadata()?;
-    let out_stat = outfd.metadata()?;
-    let is_sparse = in_stat.st_blocks() < in_stat.st_size() / in_stat.st_blksize();
-    let is_xmount = in_stat.st_dev() != out_stat.st_dev();
+fn copy_parms(in_meta: &Metadata, out_meta: &Metadata) -> io::Result<(bool, bool)> {
+    let is_sparse = in_meta.st_blocks() < in_meta.st_size() / in_meta.st_blksize();
+    let is_xmount = in_meta.st_dev() != out_meta.st_dev();
     Ok((is_sparse, is_xmount))
 }
 
@@ -209,18 +206,21 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 
     let infd = File::open(from)?;
     let outfd = File::create(to)?;
-    let (is_sparse, is_xmount) = copy_parms(&infd, &outfd)?;
+    let in_meta = infd.metadata()?;
+    let out_meta = outfd.metadata()?;
+
+    let (is_sparse, is_xmount) = copy_parms(&in_meta, &out_meta)?;
     let uspace = is_xmount;
 
+        let len = in_meta.len();
     let total = if is_sparse {
-        copy_sparse(&infd, &outfd, uspace)?
+        copy_sparse(&infd, &outfd, uspace, len)?
 
     } else {
-        let len = infd.metadata()?.len();
         copy_range(&infd, &outfd, uspace, len)?
     };
 
-    outfd.set_permissions(infd.metadata()?.permissions())?;
+    outfd.set_permissions(in_meta.permissions())?;
     Ok(total)
 }
 
