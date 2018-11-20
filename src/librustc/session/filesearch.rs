@@ -12,7 +12,6 @@
 
 pub use self::FileMatch::*;
 
-use rustc_data_structures::fx::FxHashSet;
 use std::borrow::Cow;
 use std::env;
 use std::fs;
@@ -31,8 +30,9 @@ pub enum FileMatch {
 
 pub struct FileSearch<'a> {
     pub sysroot: &'a Path,
-    pub search_paths: &'a [SearchPath],
     pub triple: &'a str,
+    pub search_paths: &'a [SearchPath],
+    pub tlib_path: &'a SearchPath,
     pub kind: PathKind,
 }
 
@@ -40,20 +40,12 @@ impl<'a> FileSearch<'a> {
     pub fn for_each_lib_search_path<F>(&self, mut f: F) where
         F: FnMut(&SearchPath)
     {
-        let mut visited_dirs = FxHashSet::default();
-        visited_dirs.reserve(self.search_paths.len() + 1);
         let iter = self.search_paths.iter().filter(|sp| sp.kind.matches(self.kind));
         for search_path in iter {
             f(search_path);
-            visited_dirs.insert(search_path.dir.to_path_buf());
         }
 
-        debug!("filesearch: searching lib path");
-        let tlib_path = make_target_lib_path(self.sysroot,
-                                             self.triple);
-        if !visited_dirs.contains(&tlib_path) {
-            f(&SearchPath { kind: PathKind::All, dir: tlib_path });
-        }
+        f(self.tlib_path);
     }
 
     pub fn get_lib_path(&self) -> PathBuf {
@@ -65,12 +57,6 @@ impl<'a> FileSearch<'a> {
     {
         self.for_each_lib_search_path(|search_path| {
             debug!("searching {}", search_path.dir.display());
-            let files = match fs::read_dir(&search_path.dir) {
-                Ok(files) => files,
-                Err(..) => return,
-            };
-            let files = files.filter_map(|p| p.ok().map(|s| s.path()))
-                             .collect::<Vec<_>>();
             fn is_rlib(p: &Path) -> bool {
                 p.extension() == Some("rlib".as_ref())
             }
@@ -78,8 +64,8 @@ impl<'a> FileSearch<'a> {
             // an rlib and a dylib we only read one of the files of
             // metadata, so in the name of speed, bring all rlib files to
             // the front of the search list.
-            let files1 = files.iter().filter(|p| is_rlib(p));
-            let files2 = files.iter().filter(|p| !is_rlib(p));
+            let files1 = search_path.files.iter().filter(|p| is_rlib(p));
+            let files2 = search_path.files.iter().filter(|p| !is_rlib(p));
             for path in files1.chain(files2) {
                 debug!("testing {}", path.display());
                 let maybe_picked = pick(path, search_path.kind);
@@ -98,12 +84,15 @@ impl<'a> FileSearch<'a> {
     pub fn new(sysroot: &'a Path,
                triple: &'a str,
                search_paths: &'a Vec<SearchPath>,
-               kind: PathKind) -> FileSearch<'a> {
+               tlib_path: &'a SearchPath,
+               kind: PathKind)
+               -> FileSearch<'a> {
         debug!("using sysroot = {}, triple = {}", sysroot.display(), triple);
         FileSearch {
             sysroot,
-            search_paths,
             triple,
+            search_paths,
+            tlib_path,
             kind,
         }
     }
@@ -137,8 +126,7 @@ pub fn relative_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf 
     p
 }
 
-pub fn make_target_lib_path(sysroot: &Path,
-                        target_triple: &str) -> PathBuf {
+pub fn make_target_lib_path(sysroot: &Path, target_triple: &str) -> PathBuf {
     sysroot.join(&relative_target_lib_path(sysroot, target_triple))
 }
 
