@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use crate::borrow_check::borrow_set::BorrowData;
 use crate::borrow_check::error_reporting::UseSpans;
 use crate::borrow_check::nll::ConstraintDescription;
@@ -9,6 +11,7 @@ use rustc::mir::{
     Place, Projection, ProjectionElem, Rvalue, Statement, StatementKind,
     TerminatorKind
 };
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagnosticBuilder;
 use syntax_pos::Span;
 
@@ -220,7 +223,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let spans = self.move_spans(&Place::Local(local), location)
                     .or_else(|| self.borrow_spans(span, location));
 
-                if self.is_borrow_location_in_loop(context.loc) {
+                let borrow_location = context.loc;
+                if self.is_use_in_later_iteration_of_loop(borrow_location, location) {
                     let later_use = self.later_use_kind(borrow, spans, location);
                     BorrowExplanation::UsedLaterInLoop(later_use.0, later_use.1)
                 } else {
@@ -285,74 +289,137 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         }
     }
 
-    /// Checks if a borrow location is within a loop.
-    fn is_borrow_location_in_loop(
+    /// true if `borrow_location` can reach `use_location` by going through a loop and
+    /// `use_location` is also inside of that loop
+    fn is_use_in_later_iteration_of_loop(
         &self,
         borrow_location: Location,
+        use_location: Location,
     ) -> bool {
-        let mut visited_locations = Vec::new();
-        let mut pending_locations = vec![ borrow_location ];
-        debug!("is_in_loop: borrow_location={:?}", borrow_location);
+        let back_edge = self.reach_through_backedge(borrow_location, use_location);
+        back_edge.map_or(false, |back_edge| {
+            self.can_reach_head_of_loop(use_location, back_edge)
+        })
+    }
 
-        while let Some(location) = pending_locations.pop() {
-            debug!("is_in_loop: location={:?} pending_locations={:?} visited_locations={:?}",
-                   location, pending_locations, visited_locations);
-            if location == borrow_location && visited_locations.contains(&borrow_location) {
-                // We've managed to return to where we started (and this isn't the start of the
-                // search).
-                debug!("is_in_loop: found!");
-                return true;
+    /// Returns the outmost back edge if `from` location can reach `to` location passing through
+    /// that back edge
+    fn reach_through_backedge(&self, from: Location, to: Location) -> Option<Location> {
+        let mut visited_locations = FxHashSet::default();
+        let mut pending_locations = VecDeque::new();
+        visited_locations.insert(from);
+        pending_locations.push_back(from);
+        debug!("reach_through_backedge: from={:?} to={:?}", from, to,);
+
+        let mut outmost_back_edge = None;
+        while let Some(location) = pending_locations.pop_front() {
+            debug!(
+                "reach_through_backedge: location={:?} outmost_back_edge={:?}
+                   pending_locations={:?} visited_locations={:?}",
+                location, outmost_back_edge, pending_locations, visited_locations
+            );
+
+            if location == to && outmost_back_edge.is_some() {
+                // We've managed to reach the use location
+                debug!("reach_through_backedge: found!");
+                return outmost_back_edge;
             }
-
-            // Skip locations we've been.
-            if visited_locations.contains(&location) { continue; }
 
             let block = &self.mir.basic_blocks()[location.block];
-            if location.statement_index ==  block.statements.len() {
-                // Add start location of the next blocks to pending locations.
-                match block.terminator().kind {
-                    TerminatorKind::Goto { target } => {
-                        pending_locations.push(target.start_location());
-                    },
-                    TerminatorKind::SwitchInt { ref targets, .. } => {
-                        pending_locations.extend(
-                            targets.into_iter().map(|target| target.start_location()));
-                    },
-                    TerminatorKind::Drop { target, unwind, .. } |
-                    TerminatorKind::DropAndReplace { target, unwind, .. } |
-                    TerminatorKind::Assert { target, cleanup: unwind, .. } |
-                    TerminatorKind::Yield { resume: target, drop: unwind, .. } |
-                    TerminatorKind::FalseUnwind { real_target: target, unwind, .. } => {
-                        pending_locations.push(target.start_location());
-                        if let Some(unwind) = unwind {
-                            pending_locations.push(unwind.start_location());
-                        }
-                    },
-                    TerminatorKind::Call { ref destination, cleanup, .. } => {
-                        if let Some((_, destination)) = destination {
-                            pending_locations.push(destination.start_location());
-                        }
-                        if let Some(cleanup) = cleanup {
-                            pending_locations.push(cleanup.start_location());
-                        }
-                    },
-                    TerminatorKind::FalseEdges { real_target, ref imaginary_targets, .. } => {
-                        pending_locations.push(real_target.start_location());
-                        pending_locations.extend(
-                            imaginary_targets.into_iter().map(|target| target.start_location()));
-                    },
-                    _ => {},
+
+            if location.statement_index < block.statements.len() {
+                let successor = location.successor_within_block();
+                if visited_locations.insert(successor) {
+                    pending_locations.push_back(successor);
                 }
             } else {
-                // Add the next statement to pending locations.
-                pending_locations.push(location.successor_within_block());
-            }
+                pending_locations.extend(
+                    block
+                        .terminator()
+                        .successors()
+                        .map(|bb| Location {
+                            statement_index: 0,
+                            block: *bb,
+                        })
+                        .filter(|s| visited_locations.insert(*s))
+                        .map(|s| {
+                            if self.is_back_edge(location, s) {
+                                match outmost_back_edge {
+                                    None => {
+                                        outmost_back_edge = Some(location);
+                                    }
 
-            // Keep track of where we have visited.
-            visited_locations.push(location);
+                                    Some(back_edge)
+                                        if location.dominates(back_edge, &self.dominators) =>
+                                    {
+                                        outmost_back_edge = Some(location);
+                                    }
+
+                                    Some(_) => {}
+                                }
+                            }
+
+                            s
+                        }),
+                );
+            }
+        }
+
+        None
+    }
+
+    /// true if `from` location can reach `loop_head` location and `loop_head` dominates all the
+    /// intermediate nodes
+    fn can_reach_head_of_loop(&self, from: Location, loop_head: Location) -> bool {
+        self.find_loop_head_dfs(from, loop_head, &mut FxHashSet::default())
+    }
+
+    fn find_loop_head_dfs(
+        &self,
+        from: Location,
+        loop_head: Location,
+        visited_locations: &mut FxHashSet<Location>,
+    ) -> bool {
+        visited_locations.insert(from);
+
+        if from == loop_head {
+            return true;
+        }
+
+        if loop_head.dominates(from, &self.dominators) {
+            let block = &self.mir.basic_blocks()[from.block];
+
+            if from.statement_index < block.statements.len() {
+                let successor = from.successor_within_block();
+
+                if !visited_locations.contains(&successor)
+                    && self.find_loop_head_dfs(successor, loop_head, visited_locations)
+                {
+                    return true;
+                }
+            } else {
+                for bb in block.terminator().successors() {
+                    let successor = Location {
+                        statement_index: 0,
+                        block: *bb,
+                    };
+
+                    if !visited_locations.contains(&successor)
+                        && self.find_loop_head_dfs(successor, loop_head, visited_locations)
+                    {
+                        return true;
+                    }
+                }
+            }
         }
 
         false
+    }
+
+    /// True if an edge `source -> target` is a backedge -- in other words, if the target
+    /// dominates the source.
+    fn is_back_edge(&self, source: Location, target: Location) -> bool {
+        target.dominates(source, &self.mir.dominators())
     }
 
     /// Determine how the borrow was later used.
