@@ -15,6 +15,7 @@ use relative_path::RelativePathBuf;
 use crate::{
     db::SyntaxDatabase, syntax_ptr::SyntaxPtr, FileId, FilePosition, Cancelable,
     descriptors::DescriptorDatabase,
+    input::SourceRootId
 };
 
 pub(crate) use self::scope::ModuleScope;
@@ -24,6 +25,7 @@ pub(crate) use self::scope::ModuleScope;
 #[derive(Debug, Clone)]
 pub(crate) struct ModuleDescriptor {
     tree: Arc<ModuleTree>,
+    source_root_id: SourceRootId,
     module_id: ModuleId,
 }
 
@@ -59,13 +61,14 @@ impl ModuleDescriptor {
         file_id: FileId,
         module_source: ModuleSource,
     ) -> Cancelable<Option<ModuleDescriptor>> {
-        let source_root = db.file_source_root(file_id);
-        let module_tree = db.module_tree(source_root)?;
+        let source_root_id = db.file_source_root(file_id);
+        let module_tree = db.module_tree(source_root_id)?;
 
         let res = match module_tree.any_module_for_source(module_source) {
             None => None,
             Some(module_id) => Some(ModuleDescriptor {
                 tree: module_tree,
+                source_root_id,
                 module_id,
             }),
         };
@@ -92,8 +95,8 @@ impl ModuleDescriptor {
     pub fn parent(&self) -> Option<ModuleDescriptor> {
         let parent_id = self.module_id.parent(&self.tree)?;
         Some(ModuleDescriptor {
-            tree: Arc::clone(&self.tree),
             module_id: parent_id,
+            ..self.clone()
         })
     }
 
@@ -109,12 +112,19 @@ impl ModuleDescriptor {
         let link = self.module_id.parent_link(&self.tree)?;
         Some(link.name(&self.tree))
     }
+
+    /// Finds a child module with the specified name.
     pub fn child(&self, name: &str) -> Option<ModuleDescriptor> {
         let child_id = self.module_id.child(&self.tree, name)?;
         Some(ModuleDescriptor {
-            tree: Arc::clone(&self.tree),
             module_id: child_id,
+            ..self.clone()
         })
+    }
+
+    /// Returns a `ModuleScope`: a set of items, visible in this module.
+    pub fn scope(&self, db: &impl DescriptorDatabase) -> Cancelable<Arc<ModuleScope>> {
+        db.module_scope(self.source_root_id, self.module_id)
     }
 }
 
@@ -190,20 +200,7 @@ impl ModuleId {
         let link = self.parent_link(tree)?;
         Some(tree.link(link).owner)
     }
-    pub(crate) fn root(self, tree: &ModuleTree) -> ModuleId {
-        let mut curr = self;
-        let mut i = 0;
-        while let Some(next) = curr.parent(tree) {
-            curr = next;
-            i += 1;
-            // simplistic cycle detection
-            if i > 100 {
-                return self;
-            }
-        }
-        curr
-    }
-    pub(crate) fn child(self, tree: &ModuleTree, name: &str) -> Option<ModuleId> {
+    fn child(self, tree: &ModuleTree, name: &str) -> Option<ModuleId> {
         let link = tree
             .module(self)
             .children
@@ -260,16 +257,6 @@ struct ModuleData {
 }
 
 impl ModuleSource {
-    pub(crate) fn for_node(file_id: FileId, node: SyntaxNodeRef) -> ModuleSource {
-        for node in node.ancestors() {
-            if let Some(m) = ast::Module::cast(node) {
-                if !m.has_semi() {
-                    return ModuleSource::new_inline(file_id, m);
-                }
-            }
-        }
-        ModuleSource::SourceFile(file_id)
-    }
     pub(crate) fn new_inline(file_id: FileId, module: ast::Module) -> ModuleSource {
         assert!(!module.has_semi());
         let ptr = SyntaxPtr::new(file_id, module.syntax());

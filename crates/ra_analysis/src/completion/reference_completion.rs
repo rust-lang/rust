@@ -9,20 +9,16 @@ use ra_syntax::{
 
 use crate::{
     db::RootDatabase,
-    input::{SourceRootId},
     completion::CompletionItem,
-    descriptors::module::{ModuleId, ModuleTree},
+    descriptors::module::{ModuleDescriptor},
     descriptors::function::FnScopes,
-    descriptors::DescriptorDatabase,
     Cancelable
 };
 
 pub(super) fn completions(
     acc: &mut Vec<CompletionItem>,
     db: &RootDatabase,
-    source_root_id: SourceRootId,
-    module_tree: &ModuleTree,
-    module_id: ModuleId,
+    module: &ModuleDescriptor,
     file: &SourceFileNode,
     name_ref: ast::NameRef,
 ) -> Cancelable<()> {
@@ -40,7 +36,7 @@ pub(super) fn completions(
                 complete_expr_snippets(acc);
             }
 
-            let module_scope = db.module_scope(source_root_id, module_id)?;
+            let module_scope = module.scope(db)?;
             acc.extend(
                 module_scope
                     .entries()
@@ -56,9 +52,7 @@ pub(super) fn completions(
                     }),
             );
         }
-        NameRefKind::CratePath(path) => {
-            complete_path(acc, db, source_root_id, module_tree, module_id, path)?
-        }
+        NameRefKind::CratePath(path) => complete_path(acc, db, module, path)?,
         NameRefKind::BareIdentInMod => {
             let name_range = name_ref.syntax().range();
             let top_node = name_ref
@@ -171,16 +165,14 @@ fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<Completi
 fn complete_path(
     acc: &mut Vec<CompletionItem>,
     db: &RootDatabase,
-    source_root_id: SourceRootId,
-    module_tree: &ModuleTree,
-    module_id: ModuleId,
+    module: &ModuleDescriptor,
     crate_path: Vec<ast::NameRef>,
 ) -> Cancelable<()> {
-    let target_module_id = match find_target_module(module_tree, module_id, crate_path) {
+    let target_module = match find_target_module(module, crate_path) {
         None => return Ok(()),
         Some(it) => it,
     };
-    let module_scope = db.module_scope(source_root_id, target_module_id)?;
+    let module_scope = target_module.scope(db)?;
     let completions = module_scope.entries().iter().map(|entry| CompletionItem {
         label: entry.name().to_string(),
         lookup: None,
@@ -191,14 +183,13 @@ fn complete_path(
 }
 
 fn find_target_module(
-    module_tree: &ModuleTree,
-    module_id: ModuleId,
+    module: &ModuleDescriptor,
     mut crate_path: Vec<ast::NameRef>,
-) -> Option<ModuleId> {
+) -> Option<ModuleDescriptor> {
     crate_path.pop();
-    let mut target_module = module_id.root(&module_tree);
+    let mut target_module = module.crate_root();
     for name in crate_path {
-        target_module = target_module.child(module_tree, name.text().as_str())?;
+        target_module = target_module.child(name.text().as_str())?;
     }
     Some(target_module)
 }
