@@ -1238,11 +1238,13 @@ impl Ipv6Addr {
     ///
     /// - [IETF RFC 4291 section 2.5.6]
     /// - [RFC 4291 errata 4406]
+    /// - [`is_unicast_link_local()`]
     ///
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
     /// [IETF RFC 4291 section 2.5.6]: https://tools.ietf.org/html/rfc4291#section-2.5.6
     /// [`true`]: ../../std/primitive.bool.html
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
-    /// [`is_unicast_link_local()`](#method.is_unicast_link_local)
+    /// [`is_unicast_link_local()`]: ../../std/net/struct.Ipv6Addr.html#method.is_unicast_link_local
     ///
     pub fn is_unicast_link_local_strict(&self) -> bool {
         (self.segments()[0] & 0xffff) == 0xfe80
@@ -1301,7 +1303,7 @@ impl Ipv6Addr {
     /// [IETF RFC 4291 section 2.4]: https://tools.ietf.org/html/rfc4291#section-2.4
     /// [`true`]: ../../std/primitive.bool.html
     /// [RFC 4291 errata 4406]: https://www.rfc-editor.org/errata/eid4406
-    /// [`is_unicast_link_local_strict()`](#method.is_unicast_link_local_strict)
+    /// [`is_unicast_link_local_strict()`]: ../../std/net/struct.Ipv6Addr.html#method.is_unicast_link_local_strict
     ///
     pub fn is_unicast_link_local(&self) -> bool {
         (self.segments()[0] & 0xffc0) == 0xfe80
