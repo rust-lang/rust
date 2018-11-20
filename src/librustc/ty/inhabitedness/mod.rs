@@ -169,6 +169,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
     {
         let is_enum = match adt_kind {
             // For now, `union`s are never considered uninhabited.
+            // The precise semantics of inhabitedness with respect to unions is currently undecided.
             AdtKind::Union => return DefIdForest::empty(),
             AdtKind::Enum => true,
             AdtKind::Struct => false,
@@ -267,6 +268,8 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             // References to uninitialised memory is valid for any type, including
             // uninhabited types, in unsafe code, so we treat all references as
             // inhabited.
+            // The precise semantics of inhabitedness with respect to references is currently
+            // undecided.
             Ref(..) => DefIdForest::empty(),
 
             _ => DefIdForest::empty(),
