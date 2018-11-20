@@ -107,7 +107,7 @@ pub struct Session {
     pub type_length_limit: Once<usize>,
 
     /// The maximum number of stackframes allowed in const eval
-    pub const_eval_stack_frame_limit: OneThread<Cell<usize>>,
+    pub const_eval_stack_frame_limit: LockCell<usize>,
 
     /// The metadata::creader module may inject an allocator/panic_runtime
     /// dependency if it didn't already find one, and this tracks what was
@@ -1159,7 +1159,7 @@ pub fn build_session_(
         features: Once::new(),
         recursion_limit: Once::new(),
         type_length_limit: Once::new(),
-        const_eval_stack_frame_limit: OneThread::new(Cell::new(100)),
+        const_eval_stack_frame_limit: LockCell::new(100),
         next_node_id: OneThread::new(Cell::new(NodeId::from_u32(1))),
         allocator_kind: Once::new(),
         injected_panic_runtime: Once::new(),
