@@ -8,7 +8,7 @@ mod rusti {
 
 pub fn main() {
     unsafe {
-        use rusti::*;
+        use crate::rusti::*;
 
         cttz_nonzero(0u8); //~ ERROR constant evaluation error: cttz_nonzero called on 0
     }

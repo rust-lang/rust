@@ -23,7 +23,7 @@ mod rusti {
 
 pub fn main() {
     unsafe {
-        use rusti::*;
+        use crate::rusti::*;
 
         assert_eq!(ctpop(0u8), 0); assert_eq!(ctpop(0i8), 0);
         assert_eq!(ctpop(0u16), 0); assert_eq!(ctpop(0i16), 0);
