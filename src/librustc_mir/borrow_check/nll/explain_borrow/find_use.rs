@@ -65,10 +65,7 @@ impl<'cx, 'gcx, 'tcx> UseFinder<'cx, 'gcx, 'tcx> {
 
                 None => {
                     if p.statement_index < block_data.statements.len() {
-                        queue.push_back(Location {
-                            statement_index: p.statement_index + 1,
-                            ..p
-                        });
+                        queue.push_back(p.successor_within_block());
                     } else {
                         queue.extend(
                             block_data
