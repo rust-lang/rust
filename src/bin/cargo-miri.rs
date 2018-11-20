@@ -46,11 +46,15 @@ fn main() {
     }
 
     if let Some("miri") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
-        // this arm is when `cargo miri` is called
+        // this arm is when `cargo miri` is called.  We call `cargo rustc` for
+        // each applicable target, but with the RUSTC env var set to the `cargo-miri`
+        // binary so that we come back in the other branch, and dispatch
+        // the invocations to rustc and miri, respectively.
 
         let test = std::env::args().nth(2).map_or(false, |text| text == "test");
         let skip = if test { 3 } else { 2 };
 
+        // We need to get the manifest, and then the metadata, to enumerate targets.
         let manifest_path_arg = std::env::args().skip(skip).find(|val| {
             val.starts_with("--manifest-path=")
         });
@@ -92,6 +96,9 @@ fn main() {
             })
             .expect("could not find matching package");
         let package = metadata.packages.remove(package_index);
+
+        // Finally we got the metadata, iterate all targets and see for which ones
+        // we do anything.
         for target in package.targets {
             let args = std::env::args().skip(skip);
             let kind = target.kind.get(0).expect(
@@ -139,7 +146,8 @@ fn main() {
             }
         }
     } else {
-        // this arm is executed when cargo-miri runs `cargo rustc` with the `RUSTC` env var set to itself
+        // This arm is executed when cargo-miri runs `cargo rustc` with the `RUSTC` env var set to itself:
+        // Dependencies get dispatched to rustc, the final test/binary to miri.
 
         let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
         let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));

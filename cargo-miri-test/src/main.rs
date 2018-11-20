@@ -1,5 +1,3 @@
-extern crate byteorder;
-
 use byteorder::{BigEndian, ByteOrder};
 
 fn main() {
