@@ -16,12 +16,12 @@ enum Enum {
     A = 0,
 }
 union TransmuteEnum {
-    a: &'static u8,
-    out: Enum,
+    in1: &'static u8,
+    out1: Enum,
 }
 
 // A pointer is guaranteed non-null
-const BAD_ENUM: Enum = unsafe { TransmuteEnum { a: &1 }.out };
+const BAD_ENUM: Enum = unsafe { TransmuteEnum { in1: &1 }.out1 };
 //~^ ERROR is undefined behavior
 
 // (Potentially) invalid enum discriminant
@@ -48,8 +48,8 @@ const BAD_ENUM3: Enum2 = unsafe { TransmuteEnum2 { in2: &0 }.out1 };
 const BAD_ENUM4: Wrap<Enum2> = unsafe { TransmuteEnum2 { in2: &0 }.out2 };
 //~^ ERROR is undefined behavior
 
-// Undef enum discriminant. In an arry to avoid `Scalar` layout.
-const BAD_ENUM_UNDEF: [Enum2; 2] = [unsafe { TransmuteEnum2 { in3: () }.out1 }; 2];
+// Undef enum discriminant.
+const BAD_ENUM_UNDEF : Enum2 = unsafe { TransmuteEnum2 { in3: () }.out1 };
 //~^ ERROR is undefined behavior
 
 // Pointer value in an enum with a niche that is not just 0.

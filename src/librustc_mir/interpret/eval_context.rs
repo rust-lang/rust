@@ -588,18 +588,26 @@ impl<'a, 'mir, 'tcx: 'mir, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tc
         Ok(())
     }
 
-    pub fn const_eval(&self, gid: GlobalId<'tcx>) -> EvalResult<'tcx, &'tcx ty::Const<'tcx>> {
+    pub fn const_eval_raw(
+        &self,
+        gid: GlobalId<'tcx>,
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
         let param_env = if self.tcx.is_static(gid.instance.def_id()).is_some() {
             ty::ParamEnv::reveal_all()
         } else {
             self.param_env
         };
-        self.tcx.const_eval(param_env.and(gid)).map_err(|err| {
+        // We use `const_eval_raw` here, and get an unvalidated result.  That is okay:
+        // Our result will later be validated anyway, and there seems no good reason
+        // to have to fail early here.  This is also more consistent with
+        // `Memory::get_static_alloc` which has to use `const_eval_raw` to avoid cycles.
+        let val = self.tcx.const_eval_raw(param_env.and(gid)).map_err(|err| {
             match err {
-                ErrorHandled::Reported => EvalErrorKind::ReferencedConstant.into(),
-                ErrorHandled::TooGeneric => EvalErrorKind::TooGeneric.into(),
+                ErrorHandled::Reported => EvalErrorKind::ReferencedConstant,
+                ErrorHandled::TooGeneric => EvalErrorKind::TooGeneric,
             }
-        })
+        })?;
+        self.raw_const_to_mplace(val)
     }
 
     pub fn dump_place(&self, place: Place<M::PointerTag>) {

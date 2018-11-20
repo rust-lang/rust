@@ -10,11 +10,19 @@
 
 use std::fmt;
 
-use ty::layout::{HasDataLayout, Size};
-use ty::subst::Substs;
-use hir::def_id::DefId;
+use crate::ty::{Ty, subst::Substs, layout::{HasDataLayout, Size}};
+use crate::hir::def_id::DefId;
 
 use super::{EvalResult, Pointer, PointerArithmetic, Allocation, AllocId, sign_extend, truncate};
+
+/// Represents the result of a raw const operation, pre-validation.
+#[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Hash)]
+pub struct RawConst<'tcx> {
+    // the value lives here, at offset 0, and that allocation definitely is a `AllocType::Memory`
+    // (so you can use `AllocMap::unwrap_memory`).
+    pub alloc_id: AllocId,
+    pub ty: Ty<'tcx>,
+}
 
 /// Represents a constant value in Rust. Scalar and ScalarPair are optimizations which
 /// matches the LocalValue optimizations for easy conversions between Value and ConstValue.
@@ -23,6 +31,7 @@ pub enum ConstValue<'tcx> {
     /// Never returned from the `const_eval` query, but the HIR contains these frequently in order
     /// to allow HIR creation to happen for everything before needing to be able to run constant
     /// evaluation
+    /// FIXME: The query should then return a type that does not even have this variant.
     Unevaluated(DefId, &'tcx Substs<'tcx>),
 
     /// Used only for types with layout::abi::Scalar ABI and ZSTs

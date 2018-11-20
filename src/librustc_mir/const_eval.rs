@@ -31,8 +31,8 @@ use rustc::util::common::ErrorReported;
 use syntax::ast::Mutability;
 use syntax::source_map::{Span, DUMMY_SP};
 
-use interpret::{self,
-    PlaceTy, MemPlace, OpTy, Operand, Immediate, Scalar, ConstValue, Pointer,
+use crate::interpret::{self,
+    PlaceTy, MPlaceTy, MemPlace, OpTy, Operand, Immediate, Scalar, RawConst, ConstValue, Pointer,
     EvalResult, EvalError, EvalErrorKind, GlobalId, EvalContext, StackPopCleanup,
     Allocation, AllocId, MemoryKind,
     snapshot, RefTracking,
@@ -94,11 +94,12 @@ pub(crate) fn eval_promoted<'a, 'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: &'mir mir::Mir<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, OpTy<'tcx>> {
+) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
     let mut ecx = mk_borrowck_eval_cx(tcx, cid.instance, mir, DUMMY_SP).unwrap();
     eval_body_using_ecx(&mut ecx, cid, Some(mir), param_env)
 }
 
+// FIXME: These two conversion functions are bad hacks.  We should just always use allocations.
 pub fn op_to_const<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     op: OpTy<'tcx>,
@@ -144,13 +145,20 @@ pub fn op_to_const<'tcx>(
     };
     Ok(ty::Const::from_const_value(ecx.tcx.tcx, val, op.layout.ty))
 }
+pub fn const_to_op<'tcx>(
+    ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
+    cnst: &ty::Const<'tcx>,
+) -> EvalResult<'tcx, OpTy<'tcx>> {
+    let op = ecx.const_value_to_op(cnst.val)?;
+    Ok(OpTy { op, layout: ecx.layout_of(cnst.ty)? })
+}
 
 fn eval_body_and_ecx<'a, 'mir, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> (EvalResult<'tcx, OpTy<'tcx>>, CompileTimeEvalContext<'a, 'mir, 'tcx>) {
+) -> (EvalResult<'tcx, MPlaceTy<'tcx>>, CompileTimeEvalContext<'a, 'mir, 'tcx>) {
     // we start out with the best span we have
     // and try improving it down the road when more information is available
     let span = tcx.def_span(cid.instance.def_id());
@@ -166,7 +174,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     cid: GlobalId<'tcx>,
     mir: Option<&'mir mir::Mir<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
-) -> EvalResult<'tcx, OpTy<'tcx>> {
+) -> EvalResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, param_env);
     let tcx = ecx.tcx.tcx;
     let mut mir = match mir {
@@ -206,7 +214,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     ecx.memory.intern_static(ret.ptr.to_ptr()?.alloc_id, mutability)?;
 
     debug!("eval_body_using_ecx done: {:?}", *ret);
-    Ok(ret.into())
+    Ok(ret)
 }
 
 impl<'tcx> Into<EvalError<'tcx>> for ConstEvalError {
@@ -494,7 +502,7 @@ pub fn const_field<'a, 'tcx>(
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
     let result = (|| {
         // get the operand again
-        let op = ecx.const_to_op(value)?;
+        let op = const_to_op(&ecx, value)?;
         // downcast
         let down = match variant {
             None => op,
@@ -521,7 +529,7 @@ pub fn const_variant_index<'a, 'tcx>(
 ) -> EvalResult<'tcx, VariantIdx> {
     trace!("const_variant_index: {:?}, {:?}", instance, val);
     let ecx = mk_eval_cx(tcx, instance, param_env).unwrap();
-    let op = ecx.const_to_op(val)?;
+    let op = const_to_op(&ecx, val)?;
     Ok(ecx.read_discriminant(op)?.1)
 }
 
@@ -534,15 +542,17 @@ pub fn error_to_const_error<'a, 'mir, 'tcx>(
     ConstEvalErr { error: error.kind, stacktrace, span: ecx.tcx.span }
 }
 
-fn validate_const<'a, 'tcx>(
+fn validate_and_turn_into_const<'a, 'tcx>(
     tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-    constant: &'tcx ty::Const<'tcx>,
+    constant: RawConst<'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
 ) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
     let cid = key.value;
     let ecx = mk_eval_cx(tcx, cid.instance, key.param_env).unwrap();
     let val = (|| {
-        let op = ecx.const_to_op(constant)?;
+        let op = ecx.raw_const_to_mplace(constant)?.into();
+        // FIXME: Once the visitor infrastructure landed, change validation to
+        // work directly on `MPlaceTy`.
         let mut ref_tracking = RefTracking::new(op);
         while let Some((op, path)) = ref_tracking.todo.pop() {
             ecx.validate_operand(
@@ -552,7 +562,10 @@ fn validate_const<'a, 'tcx>(
                 /* const_mode */ true,
             )?;
         }
-        Ok(constant)
+        // Now that we validated, turn this into a proper constant
+        let def_id = cid.instance.def.def_id();
+        let normalize = tcx.is_static(def_id).is_none() && cid.promoted.is_none();
+        op_to_const(&ecx, op, normalize)
     })();
 
     val.map_err(|error| {
@@ -591,14 +604,14 @@ pub fn const_eval_provider<'a, 'tcx>(
         }
     }
     tcx.const_eval_raw(key).and_then(|val| {
-        validate_const(tcx, val, key)
+        validate_and_turn_into_const(tcx, val, key)
     })
 }
 
 pub fn const_eval_raw_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     key: ty::ParamEnvAnd<'tcx, GlobalId<'tcx>>,
-) -> ::rustc::mir::interpret::ConstEvalResult<'tcx> {
+) -> ::rustc::mir::interpret::ConstEvalRawResult<'tcx> {
     // Because the constant is computed twice (once per value of `Reveal`), we are at risk of
     // reporting the same error twice here. To resolve this, we check whether we can evaluate the
     // constant in the more restrictive `Reveal::UserFacing`, which most likely already was
@@ -648,16 +661,11 @@ pub fn const_eval_raw_provider<'a, 'tcx>(
     };
 
     let (res, ecx) = eval_body_and_ecx(tcx, cid, None, key.param_env);
-    res.and_then(|op| {
-        let normalize = tcx.is_static(def_id).is_none() && cid.promoted.is_none();
-        if !normalize {
-            // Sanity check: These must always be a MemPlace
-            match op.op {
-                Operand::Indirect(_) => { /* all is good */ },
-                Operand::Immediate(_) => bug!("const eval gave us an Immediate"),
-            }
-        }
-        op_to_const(&ecx, op, normalize)
+    res.and_then(|place| {
+        Ok(RawConst {
+            alloc_id: place.to_ptr().expect("we allocated this ptr!").alloc_id,
+            ty: place.layout.ty
+        })
     }).map_err(|error| {
         let err = error_to_const_error(&ecx, error);
         // errors in statics are always emitted as fatal errors

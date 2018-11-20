@@ -20,12 +20,10 @@ use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::{self, Size, Align, LayoutOf, TyLayout, HasDataLayout, VariantIdx};
 
-use rustc::mir::interpret::{
-    GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic
-};
 use super::{
+    GlobalId, AllocId, Allocation, Scalar, EvalResult, Pointer, PointerArithmetic,
     EvalContext, Machine, AllocMap, AllocationExtra,
-    Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind
+    RawConst, Immediate, ImmTy, ScalarMaybeUndef, Operand, OpTy, MemoryKind
 };
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -555,16 +553,10 @@ where
         Ok(match *mir_place {
             Promoted(ref promoted) => {
                 let instance = self.frame().instance;
-                let op = self.global_to_op(GlobalId {
+                self.const_eval_raw(GlobalId {
                     instance,
                     promoted: Some(promoted.0),
-                })?;
-                let mplace = op.to_mem_place(); // these are always in memory
-                let ty = self.monomorphize(promoted.1, self.substs());
-                MPlaceTy {
-                    mplace,
-                    layout: self.layout_of(ty)?,
-                }
+                })?
             }
 
             Static(ref static_) => {
@@ -979,6 +971,19 @@ where
                 *self.stack[frame].locals[local].access()?
         };
         Ok(OpTy { op, layout: place.layout })
+    }
+
+    pub fn raw_const_to_mplace(
+        &self,
+        raw: RawConst<'tcx>,
+    ) -> EvalResult<'tcx, MPlaceTy<'tcx, M::PointerTag>> {
+        // This must be an allocation in `tcx`
+        assert!(self.tcx.alloc_map.lock().get(raw.alloc_id).is_some());
+        let layout = self.layout_of(raw.ty)?;
+        Ok(MPlaceTy::from_aligned_ptr(
+            Pointer::new(raw.alloc_id, Size::ZERO).with_default_tag(),
+            layout,
+        ))
     }
 
     /// Turn a place with a `dyn Trait` type into a place with the actual dynamic type.

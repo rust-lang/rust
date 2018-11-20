@@ -317,6 +317,10 @@ impl_stable_hash_for!(
         ByRef(id, alloc, offset),
     }
 );
+impl_stable_hash_for!(struct ::mir::interpret::RawConst<'tcx> {
+    alloc_id,
+    ty,
+});
 
 impl_stable_hash_for! {
     impl<Tag> for struct mir::interpret::Pointer<Tag> {
