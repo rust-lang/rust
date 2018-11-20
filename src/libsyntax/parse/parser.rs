@@ -1828,7 +1828,7 @@ impl<'a> Parser<'a> {
             let mut err = self.struct_span_err(self.prev_span,
                 "unexpected `self` argument in function");
             err.span_label(self.prev_span,
-                "`self` is only valid as the first argument of a trait function");
+                "`self` is only valid as the first argument of an associated function");
             return Err(err);
         }
 
