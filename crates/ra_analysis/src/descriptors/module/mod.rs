@@ -1,5 +1,5 @@
 pub(super) mod imp;
-pub(crate) mod scope;
+mod scope;
 
 use std::sync::Arc;
 
