@@ -382,7 +382,7 @@ define_queries! { <'tcx>
         /// might want to use `reveal_all()` method to change modes.
         [] fn param_env: ParamEnv(DefId) -> ty::ParamEnv<'tcx>,
 
-        /// Trait selection queries. These are best used by invoking `ty.moves_by_default()`,
+        /// Trait selection queries. These are best used by invoking `ty.is_copy_modulo_regions()`,
         /// `ty.is_copy()`, etc, since that will prune the environment where possible.
         [] fn is_copy_raw: is_copy_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
         [] fn is_sized_raw: is_sized_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
