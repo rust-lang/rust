@@ -1,4 +1,4 @@
-#![feature(rustc_private, extern_crate_item_prelude)]
+#![feature(rustc_private)]
 
 #![cfg_attr(feature = "cargo-clippy", allow(cast_lossless))]
 

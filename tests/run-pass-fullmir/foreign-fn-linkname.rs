@@ -10,7 +10,7 @@
 
 //ignore-windows: Uses POSIX APIs
 
-#![feature(libc, extern_crate_item_prelude)]
+#![feature(libc)]
 #![allow(unused_extern_crates)] // rustc bug https://github.com/rust-lang/rust/issues/56098
 
 extern crate libc;

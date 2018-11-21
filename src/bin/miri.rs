@@ -1,4 +1,4 @@
-#![feature(rustc_private, extern_crate_item_prelude)]
+#![feature(rustc_private)]
 
 extern crate getopts;
 extern crate miri;
