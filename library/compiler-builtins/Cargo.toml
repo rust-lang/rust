@@ -46,3 +46,9 @@ required-features = ["c", "compiler-builtins"]
 
 [workspace]
 members = ["testcrate"]
+
+[profile.release]
+panic = 'abort'
+
+[profile.dev]
+panic = 'abort'
