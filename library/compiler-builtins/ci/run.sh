@@ -64,18 +64,7 @@ case $1 in
         ;;
 esac
 
-case "$TRAVIS_OS_NAME" in
-    osx)
-        # NOTE OSx's nm doesn't accept the `--defined-only` or provide an equivalent.
-        # Use GNU nm instead
-        NM=gnm
-        brew update
-        brew install binutils
-        ;;
-    *)
-        NM=nm
-        ;;
-esac
+NM=nm
 
 if [ -d /target ]; then
     path=/target/${1}/debug/deps/libcompiler_builtins-*.rlib
