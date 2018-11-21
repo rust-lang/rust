@@ -469,10 +469,9 @@ impl<'a, 'mir, 'tcx: 'mir + 'a> EvalContextExt<'tcx, 'mir> for super::MiriEvalCo
                             instance,
                             promoted: None,
                         };
-                        let const_val = self.const_eval(cid)?;
-                        let value = const_val.unwrap_bits(
-                            self.tcx.tcx,
-                            ty::ParamEnv::empty().and(self.tcx.types.i32)) as i32;
+                        let const_val = self.const_eval_raw(cid)?;
+                        let const_val = self.read_scalar(const_val.into())?;
+                        let value = const_val.to_i32()?;
                         if value == name {
                             result = Some(path_value);
                             break;

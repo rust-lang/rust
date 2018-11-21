@@ -25,5 +25,5 @@ fn unknown_code_2() { unsafe {
 } }
 
 fn main() {
-    assert_eq!(demo_mut_advanced_unique(&mut 0), 5);
+    demo_mut_advanced_unique(&mut 0);
 }
