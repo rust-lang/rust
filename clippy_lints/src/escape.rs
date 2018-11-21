@@ -87,7 +87,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
         let mut v = EscapeDelegate {
             cx,
-            set: NodeSet(),
+            set: NodeSet::default(),
             too_large_for_stack: self.too_large_for_stack,
         };
 
