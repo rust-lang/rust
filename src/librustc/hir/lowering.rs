@@ -3139,12 +3139,8 @@ impl<'a> LoweringContext<'a> {
                     });
                 }
 
-                // Privatize the degenerate import base, used only to check
-                // the stability of `use a::{};`, to avoid it showing up as
-                // a re-export by accident when `pub`, e.g. in documentation.
                 let def = self.expect_full_def_from_use(id).next().unwrap_or(Def::Err);
                 let path = P(self.lower_path_extra(def, &prefix, ParamMode::Explicit, None));
-                *vis = respan(prefix.span.shrink_to_lo(), hir::VisibilityKind::Inherited);
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
         }
