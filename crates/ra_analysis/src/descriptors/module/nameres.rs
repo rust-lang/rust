@@ -1,5 +1,8 @@
 //! Name resolution algorithm
-use std::sync::Arc;
+use std::{
+    sync::Arc,
+    time::Instant,
+};
 
 use rustc_hash::FxHashMap;
 
@@ -74,6 +77,7 @@ pub(crate) fn item_map(
     db: &impl DescriptorDatabase,
     source_root: SourceRootId,
 ) -> Cancelable<Arc<ItemMap>> {
+    let start = Instant::now();
     let module_tree = db._module_tree(source_root)?;
     let input = module_tree
         .modules()
@@ -92,6 +96,8 @@ pub(crate) fn item_map(
     };
     resolver.resolve()?;
     let res = resolver.result;
+    let elapsed = start.elapsed();
+    log::info!("item_map: {:?}", elapsed);
     Ok(Arc::new(res))
 }
 
