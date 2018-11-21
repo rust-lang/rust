@@ -148,12 +148,7 @@ pub fn find_node_at_offset<'a, N: AstNode<'a>>(
     syntax: SyntaxNodeRef<'a>,
     offset: TextUnit,
 ) -> Option<N> {
-    let leaves = find_leaf_at_offset(syntax, offset);
-    let leaf = leaves
-        .clone()
-        .find(|leaf| !leaf.kind().is_trivia())
-        .or_else(|| leaves.right_biased())?;
-    leaf.ancestors().filter_map(N::cast).next()
+    find_leaf_at_offset(syntax, offset).find_map(|leaf| leaf.ancestors().find_map(N::cast))
 }
 
 #[cfg(test)]

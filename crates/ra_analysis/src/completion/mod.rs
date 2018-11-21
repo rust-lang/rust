@@ -224,7 +224,7 @@ mod tests {
     fn test_completion_self_path() {
         check_scope_completion(
             r"
-            use self::m::B<|>;
+            use self::m::<|>;
 
             mod m {
                 struct Bar;

@@ -110,6 +110,7 @@ impl ModuleDescriptor {
     }
 
     /// `name` is `None` for the crate's root module
+    #[allow(unused)]
     pub fn name(&self) -> Option<SmolStr> {
         let link = self.module_id.parent_link(&self.tree)?;
         Some(link.name(&self.tree))

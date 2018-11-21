@@ -78,7 +78,7 @@ fn path_segment(p: &mut Parser, mode: Mode, first: bool) {
             // use crate::foo;
             SELF_KW | SUPER_KW | CRATE_KW => p.bump(),
             _ => {
-                p.err_and_bump("expected identifier");
+                p.err_recover("expected identifier", items::ITEM_RECOVERY_SET);
             }
         };
     }
