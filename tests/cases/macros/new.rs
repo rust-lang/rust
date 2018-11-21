@@ -1,4 +1,4 @@
-#![feature(decl_macro, use_extern_macros)]
+#![feature(decl_macro)]
 pub struct Item;
 
 pub macro foo() { Item }
