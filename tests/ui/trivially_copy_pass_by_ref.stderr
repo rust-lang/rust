@@ -78,5 +78,17 @@ error: this argument is passed by reference, but would be more efficient if pass
 84 |     fn bad2(x: &u32, y: &Foo, z: &Baz) {
    |                                  ^^^^ help: consider passing by value instead: `Baz`
 
-error: aborting due to 13 previous errors
+error: this argument is passed by reference, but would be more efficient if passed by value
+  --> $DIR/trivially_copy_pass_by_ref.rs:89:34
+   |
+89 |     fn trait_method(&self, _foo: &Foo);
+   |                                  ^^^^ help: consider passing by value instead: `Foo`
+
+error: this argument is passed by reference, but would be more efficient if passed by value
+  --> $DIR/trivially_copy_pass_by_ref.rs:93:37
+   |
+93 |     fn trait_method2(&self, _color: &Color);
+   |                                     ^^^^^^ help: consider passing by value instead: `Color`
+
+error: aborting due to 15 previous errors
 
