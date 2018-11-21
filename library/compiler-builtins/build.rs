@@ -17,9 +17,9 @@ fn main() {
         return;
     }
 
-    // Forcibly enable memory intrinsics on wasm32 as we don't have a libc to
+    // Forcibly enable memory intrinsics on wasm32 & SGX as we don't have a libc to
     // provide them.
-    if target.contains("wasm32") {
+    if target.contains("wasm32") || target.contains("sgx") {
         println!("cargo:rustc-cfg=feature=\"mem\"");
     }
 
