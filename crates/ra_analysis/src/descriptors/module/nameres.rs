@@ -358,7 +358,8 @@ where
 #[cfg(test)]
 mod tests {
     use crate::{
-        mock_analysis::analysis_and_position,
+        AnalysisChange,
+        mock_analysis::{MockAnalysis, analysis_and_position},
         descriptors::{DescriptorDatabase, module::ModuleDescriptor},
         input::FilesDatabase,
 };
@@ -395,5 +396,66 @@ mod tests {
         let name = SmolStr::from("Baz");
         let resolution = &item_map.per_module[&module_id].items[&name];
         assert!(resolution.def_id.is_some());
+    }
+
+    #[test]
+    fn typing_inside_a_function_should_not_invalidate_item_map() {
+        let mock_analysis = MockAnalysis::with_files(
+            "
+            //- /lib.rs
+            mod foo;
+
+            use crate::foo::bar::Baz;
+
+            fn foo() -> i32 {
+                1 + 1
+            }
+            //- /foo/mod.rs
+            pub mod bar;
+
+            //- /foo/bar.rs
+            pub struct Baz;
+        ",
+        );
+
+        let file_id = mock_analysis.id_of("/lib.rs");
+        let mut host = mock_analysis.analysis_host();
+
+        let source_root = host.analysis().imp.db.file_source_root(file_id);
+
+        {
+            let db = host.analysis().imp.db;
+            let events = db.log_executed(|| {
+                db._item_map(source_root).unwrap();
+            });
+            assert!(format!("{:?}", events).contains("_item_map"))
+        }
+
+        let mut change = AnalysisChange::new();
+
+        change.change_file(
+            file_id,
+            "
+            mod foo;
+
+            use crate::foo::bar::Baz;
+
+            fn foo() -> i32 { 92 }
+        "
+            .to_string(),
+        );
+
+        host.apply_change(change);
+
+        {
+            let db = host.analysis().imp.db;
+            let events = db.log_executed(|| {
+                db._item_map(source_root).unwrap();
+            });
+            // assert!(
+            //     !format!("{:?}", events).contains("_item_map"),
+            //     "{:#?}", events
+            // )
+        }
     }
 }

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use parking_lot::Mutex;
 use ra_editor::LineIndex;
 use ra_syntax::{SourceFileNode, SyntaxNode};
 use salsa::{self, Database};
@@ -18,6 +19,11 @@ use crate::{
 
 #[derive(Debug)]
 pub(crate) struct RootDatabase {
+    #[cfg(test)]
+    events: Mutex<Option<Vec<salsa::Event<RootDatabase>>>>,
+    #[cfg(not(test))]
+    events: (),
+
     runtime: salsa::Runtime<RootDatabase>,
     id_maps: IdMaps,
 }
@@ -26,11 +32,22 @@ impl salsa::Database for RootDatabase {
     fn salsa_runtime(&self) -> &salsa::Runtime<RootDatabase> {
         &self.runtime
     }
+
+    fn salsa_event(&self, event: impl Fn() -> salsa::Event<RootDatabase>) {
+        #[cfg(test)]
+        {
+            let mut events = self.events.lock();
+            if let Some(events) = &mut *events {
+                events.push(event());
+            }
+        }
+    }
 }
 
 impl Default for RootDatabase {
     fn default() -> RootDatabase {
         let mut db = RootDatabase {
+            events: Default::default(),
             runtime: salsa::Runtime::default(),
             id_maps: IdMaps::default(),
         };
@@ -55,6 +72,7 @@ pub(crate) fn check_canceled(db: &impl salsa::Database) -> Cancelable<()> {
 impl salsa::ParallelDatabase for RootDatabase {
     fn snapshot(&self) -> salsa::Snapshot<RootDatabase> {
         salsa::Snapshot::new(RootDatabase {
+            events: Default::default(),
             runtime: self.runtime.snapshot(self),
             id_maps: self.id_maps.clone(),
         })
@@ -64,6 +82,29 @@ impl salsa::ParallelDatabase for RootDatabase {
 impl IdDatabase for RootDatabase {
     fn id_maps(&self) -> &IdMaps {
         &self.id_maps
+    }
+}
+
+#[cfg(test)]
+impl RootDatabase {
+    pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event<RootDatabase>> {
+        *self.events.lock() = Some(Vec::new());
+        f();
+        let events = self.events.lock().take().unwrap();
+        events
+    }
+
+    pub(crate) fn log_executed(&self, f: impl FnOnce()) -> Vec<String> {
+        let events = self.log(f);
+        events
+            .into_iter()
+            .filter_map(|e| match e.kind {
+                // This pretty horrible, but `Debug` is the only way to inspect
+                // QueryDescriptor at the moment.
+                salsa::EventKind::WillExecute { descriptor } => Some(format!("{:?}", descriptor)),
+                _ => None,
+            })
+            .collect()
     }
 }
 
