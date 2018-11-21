@@ -7,7 +7,7 @@ export RUST_BACKTRACE=full
 #export RUST_TEST_NOCAPTURE=1
 
 cargo build
-cargo test --verbose
+cargo test --verbose -- --nocapture
 
 # install
 mkdir -p ~/rust/cargo/bin

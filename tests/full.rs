@@ -1,8 +1,6 @@
-#[cfg(not(target_os = "windows"))]
 mod full {
     use std::env;
     use std::fs::File;
-    use std::os::unix::io::{AsRawFd, FromRawFd};
     use std::path::{Path, PathBuf};
     use std::process::{Command, Stdio};
 
@@ -32,21 +30,22 @@ mod full {
             crate_name = crate_name
         );
 
-        eprintln!("prog:\n{}", prog);
-
-        let base_out_file = Path::new("tests/full_cases")
+        let out_file = Path::new("tests/full_cases")
             .join(format!("{}-{}-{}", crate_name, old_version, new_version));
 
-        let out_file = if cfg!(target_os = "macos") {
-            let p: PathBuf = format!("{}.osx", base_out_file.display()).into();
-            if p.exists() {
-                p
-            } else {
-                base_out_file
-            }
+        // Choose solution depending on the platform
+        let file_ext = if cfg!(target_os = "macos") {
+            "osx"
+        } else if cfg!(target_os = "linux") {
+            "linux"
+        } else if cfg!(all(target_os = "windows", target_env = "msvc")) {
+            "windows_msvc"
         } else {
-            base_out_file
+            eprintln!("full tests are not available in this target");
+            return;
         };
+
+        let out_file: PathBuf = format!("{}.{}", out_file.display(), file_ext).into();
         assert!(out_file.exists());
 
         if let Some(path) = env::var_os("PATH") {
@@ -70,8 +69,18 @@ mod full {
             .expect("could not run awk");
 
         let (err_pipe, out_pipe) = if let Some(ref stdin) = awk_child.stdin {
-            let fd = stdin.as_raw_fd();
-            unsafe { (Stdio::from_raw_fd(fd), Stdio::from_raw_fd(fd)) }
+            #[cfg(unix)]
+            {
+                use std::os::unix::io::{AsRawFd, FromRawFd};
+                let fd = stdin.as_raw_fd();
+                unsafe { (Stdio::from_raw_fd(fd), Stdio::from_raw_fd(fd)) }
+            }
+            #[cfg(windows)]
+            {
+                use std::os::windows::io::{AsRawHandle, FromRawHandle};
+                let fd = stdin.as_raw_handle();
+                unsafe { (Stdio::from_raw_handle(fd), Stdio::from_raw_handle(fd)) }
+            }
         } else {
             panic!("could not pipe to awk");
         };
@@ -99,7 +108,7 @@ mod full {
         assert!(success, "awk");
 
         success &= Command::new("git")
-            .args(&["diff", "--exit-code", out_file])
+            .args(&["diff", "--ignore-space-at-eol", "--exit-code", out_file])
             .env("PAGER", "")
             .status()
             .expect("could not run git diff")

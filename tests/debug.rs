@@ -1,8 +1,4 @@
-use std::env;
-use std::fs::File;
-use std::io::Write;
-use std::os::unix::fs::PermissionsExt;
-use std::path::Path;
+use std::{env, fs::File, io::Write, path::Path};
 
 #[test]
 fn debug() {
@@ -10,14 +6,18 @@ fn debug() {
         let mut dump =
             File::create(Path::new("tests/debug.sh")).expect("could not create dump file");
 
-        let metadata = dump
-            .metadata()
-            .expect("could not access dump file metadata");
-        let mut permissions = metadata.permissions();
-        permissions.set_mode(0o755);
-        let _ = dump.set_permissions(permissions);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let metadata = dump
+                .metadata()
+                .expect("could not access dump file metadata");
+            let mut permissions = metadata.permissions();
+            permissions.set_mode(0o755);
+            let _ = dump.set_permissions(permissions);
+        }
 
-        let _ = writeln!(dump, r#"#!/bin/sh
+        let _ = writeln!(dump, r#"#!/usr/bin/env sh
 export PATH=./target/debug:$PATH
 export LD_LIBRARY_PATH={}
 export RUST_BACKTRACE=full

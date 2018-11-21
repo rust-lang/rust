@@ -13,6 +13,8 @@ matrix:
       os: osx
       osx_image: xcode10
       env: RUST_BACKTRACE=full
+    - name: "windows"
+      os: windows
 
     # Tools:
     - name: "rustfmt"

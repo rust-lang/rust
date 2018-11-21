@@ -1,24 +1,22 @@
-#[cfg(not(target_os = "windows"))]
 mod features {
-    use std::env;
-    use std::fs::File;
-    use std::os::unix::io::{AsRawFd, FromRawFd};
-    use std::path::Path;
-    use std::process::{Command, Stdio};
+    use std::{
+        env, fs, io,
+        path::Path,
+        process::{Command, Stdio},
+    };
 
     fn test_example(path: &Path) {
         let mut success = true;
 
-        let current_dir = env::current_dir().expect("could not determine current dir");
-        let subst = format!("s#{}#$REPO_PATH#g", current_dir.to_str().unwrap());
-
         let out_file = path.join("stdout");
-
         let old_rlib = path.join("libold.rlib").to_str().unwrap().to_owned();
         let new_rlib = path.join("libnew.rlib").to_str().unwrap().to_owned();
 
         {
-            let stdout = File::create(&out_file).expect("could not create `stdout` file");
+            let stdout = fs::File::create(&out_file).expect("could not create `stdout` file");
+            let stderr = stdout
+                .try_clone()
+                .expect("could not create `stderr` file by cloning `stdout`");
 
             success &= Command::new("rustc")
                 .args(&["--crate-type=lib", "-o", &old_rlib])
@@ -42,52 +40,79 @@ mod features {
 
             assert!(success, "couldn't compile new");
 
-            let mut sed_child = Command::new("sed")
-                .arg(&subst)
-                .stdin(Stdio::piped())
-                .stdout(stdout)
-                .spawn()
-                .expect("could not run sed");
-
-            let (err_pipe, out_pipe) = if let Some(ref stdin) = sed_child.stdin {
-                let fd = stdin.as_raw_fd();
-                unsafe { (Stdio::from_raw_fd(fd), Stdio::from_raw_fd(fd)) }
-            } else {
-                panic!("could not pipe to sed");
-            };
-
-            success &= Command::new("./target/debug/rust-semverver")
-                .args(&[
-                    "--crate-type=lib",
-                    "-Zverbose",
-                    "--extern",
-                    &format!("old={}", old_rlib),
-                    "--extern",
-                    &format!("new={}", new_rlib),
-                    "tests/helper/test.rs",
-                ])
-                .env("RUST_BACKTRACE", "full")
-                .env("RUST_SEMVER_CRATE_VERSION", "1.0.0")
-                .stdin(Stdio::null())
-                .stdout(out_pipe)
-                .stderr(err_pipe)
-                .status()
-                .expect("could not run rust-semverver")
-                .success();
+            success &= Command::new(
+                Path::new(".")
+                    .join("target")
+                    .join("debug")
+                    .join("rust-semverver")
+                    .to_str()
+                    .unwrap(),
+            )
+            .args(&[
+                "--crate-type=lib",
+                "-Zverbose",
+                "--extern",
+                &format!("old={}", old_rlib),
+                "--extern",
+                &format!("new={}", new_rlib),
+                Path::new("tests")
+                    .join("helper")
+                    .join("test.rs")
+                    .to_str()
+                    .unwrap(),
+            ])
+            .env("RUST_BACKTRACE", "full")
+            .env("RUST_SEMVER_CRATE_VERSION", "1.0.0")
+            .stdin(Stdio::null())
+            .stdout(Stdio::from(stdout))
+            .stderr(Stdio::from(stderr))
+            .status()
+            .expect("could not run rust-semverver")
+            .success();
 
             assert!(success, "rust-semverver");
 
-            success &= sed_child
-                .wait()
-                .expect("could not wait for sed child")
-                .success();
+            {
+                // replace root path with with $REPO_PATH
+                use self::io::{Read, Write};
+                let current_dir = env::current_dir().expect("could not determine current dir");
+                let mut contents = {
+                    let mut f = fs::File::open(&out_file).expect("file not found");
+                    let mut contents = String::new();
+                    f.read_to_string(&mut contents)
+                        .expect("something went wrong reading the file");
+                    contents
+                };
+
+                contents = contents.replace(current_dir.to_str().unwrap(), "$REPO_PATH");
+
+                if cfg!(target_os = "windows") {
+                    let mut lines = Vec::new();
+
+                    for line in contents.lines() {
+                        if line.contains("$REPO_PATH") {
+                            lines.push(line.replace('\\', "/"));
+                        } else {
+                            lines.push(line.to_owned());
+                        }
+                    }
+                    lines.push(String::new());
+                    contents = lines.join("\r\n");
+                }
+
+                let mut file = fs::File::create(&out_file).expect("cannot create file");
+                file.write_all(contents.as_bytes())
+                    .expect("cannot write to file");
+            }
         }
 
-        assert!(success, "sed");
-
-        eprintln!("path: {}", out_file.to_str().unwrap());
         success &= Command::new("git")
-            .args(&["diff", "--exit-code", out_file.to_str().unwrap()])
+            .args(&[
+                "diff",
+                "--ignore-space-at-eol",
+                "--exit-code",
+                out_file.to_str().unwrap(),
+            ])
             .env("PAGER", "")
             .status()
             .expect("could not run git diff")
@@ -105,7 +130,7 @@ mod features {
         ($name:ident) => {
             #[test]
             fn $name() {
-                let path = Path::new("tests/cases").join(stringify!($name));
+                let path = Path::new("tests").join("cases").join(stringify!($name));
                 test_example(&path);
             }
         };

@@ -25,7 +25,10 @@ use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_driver::{driver, Compilation, CompilerCalls, RustcDefaultCalls};
 use rustc_metadata::cstore::CStore;
 use semverver::semcheck::run_analysis;
-use std::{path::PathBuf, process::Command};
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 use syntax::{ast, source_map::Pos};
 
 /// After the typechecker has finished it's work, perform our checks.
@@ -174,8 +177,8 @@ fn main() {
 
     let home = option_env!("RUSTUP_HOME");
     let toolchain = option_env!("RUSTUP_TOOLCHAIN");
-    let sys_root = if let (Some(home), Some(toolchain)) = (home, toolchain) {
-        format!("{}/toolchains/{}", home, toolchain)
+    let sys_root: PathBuf = if let (Some(home), Some(toolchain)) = (home, toolchain) {
+        Path::new(home).join("toolchains").join(toolchain)
     } else {
         option_env!("SYSROOT")
             .map(|s| s.to_owned())
@@ -188,15 +191,22 @@ fn main() {
                     .map(|s| s.trim().to_owned())
             })
             .expect("need to specify SYSROOT env var during compilation, or use rustup")
+            .into()
     };
 
-    let result = rustc_driver::run(|| {
+    assert!(
+        sys_root.exists(),
+        "sysroot \"{}\" does not exist",
+        sys_root.display()
+    );
+
+    let result = rustc_driver::run(move || {
         let args: Vec<String> = if std::env::args().any(|s| s == "--sysroot") {
             std::env::args().collect()
         } else {
             std::env::args()
                 .chain(Some("--sysroot".to_owned()))
-                .chain(Some(sys_root))
+                .chain(Some(sys_root.to_str().unwrap().to_owned()))
                 .collect()
         };
 
