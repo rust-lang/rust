@@ -53,8 +53,6 @@ impl<'a> FileSearch<'a> {
         if !visited_dirs.contains(&tlib_path) {
             f(&tlib_path, PathKind::All);
         }
-
-        visited_dirs.insert(tlib_path);
     }
 
     pub fn get_lib_path(&self) -> PathBuf {
