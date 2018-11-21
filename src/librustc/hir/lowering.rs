@@ -2752,7 +2752,7 @@ impl<'a> LoweringContext<'a> {
         id: NodeId,
         name: &mut Name,
         attrs: &hir::HirVec<Attribute>,
-        vis: &mut hir::Visibility,
+        vis: &hir::Visibility,
         i: &ItemKind,
     ) -> hir::ItemKind {
         match *i {
@@ -2955,7 +2955,7 @@ impl<'a> LoweringContext<'a> {
         tree: &UseTree,
         prefix: &Path,
         id: NodeId,
-        vis: &mut hir::Visibility,
+        vis: &hir::Visibility,
         name: &mut Name,
         attrs: &hir::HirVec<Attribute>,
     ) -> hir::ItemKind {
@@ -3086,7 +3086,7 @@ impl<'a> LoweringContext<'a> {
                         hir_id: new_hir_id,
                     } = self.lower_node_id(id);
 
-                    let mut vis = vis.clone();
+                    let vis = vis.clone();
                     let mut name = name.clone();
                     let mut prefix = prefix.clone();
 
@@ -3104,7 +3104,7 @@ impl<'a> LoweringContext<'a> {
                         let item = this.lower_use_tree(use_tree,
                                                        &prefix,
                                                        new_id,
-                                                       &mut vis,
+                                                       &vis,
                                                        &mut name,
                                                        attrs);
 
@@ -3384,7 +3384,7 @@ impl<'a> LoweringContext<'a> {
 
     pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item> {
         let mut name = i.ident.name;
-        let mut vis = self.lower_visibility(&i.vis, None);
+        let vis = self.lower_visibility(&i.vis, None);
         let attrs = self.lower_attrs(&i.attrs);
         if let ItemKind::MacroDef(ref def) = i.node {
             if !def.legacy || attr::contains_name(&i.attrs, "macro_export") ||
@@ -3403,7 +3403,7 @@ impl<'a> LoweringContext<'a> {
             return None;
         }
 
-        let node = self.lower_item_kind(i.id, &mut name, &attrs, &mut vis, &i.node);
+        let node = self.lower_item_kind(i.id, &mut name, &attrs, &vis, &i.node);
 
         let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
 
