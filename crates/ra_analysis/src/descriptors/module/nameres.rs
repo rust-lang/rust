@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 
 use ra_syntax::{
     SmolStr, SyntaxKind::{self, *},
-    ast::{self, NameOwner, AstNode}
+    ast::{self, NameOwner, AstNode, ModuleItemOwner}
 };
 
 use crate::{
@@ -13,9 +13,9 @@ use crate::{
     loc2id::{DefId, DefLoc},
     descriptors::{
         DescriptorDatabase,
-        module::{ModuleId, ModuleTree},
+        module::{ModuleId, ModuleTree, ModuleSourceNode},
     },
-    syntax_ptr::{LocalSyntaxPtr, SyntaxPtr},
+    syntax_ptr::{LocalSyntaxPtr},
     input::SourceRootId,
 };
 
@@ -25,20 +25,20 @@ use crate::{
 /// This stands in-between raw syntax and name resolution and alow us to avoid
 /// recomputing name res: if `InputModuleItems` are the same, we can avoid
 /// running name resolution.
-#[derive(Debug, Default)]
-struct InputModuleItems {
+#[derive(Debug, Default, PartialEq, Eq)]
+pub(crate) struct InputModuleItems {
     items: Vec<ModuleItem>,
     glob_imports: Vec<Path>,
     imports: Vec<Path>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Path {
     kind: PathKind,
     segments: Vec<(LocalSyntaxPtr, SmolStr)>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum PathKind {
     Abs,
     Self_,
@@ -46,16 +46,58 @@ enum PathKind {
     Crate,
 }
 
+pub(crate) fn input_module_items(
+    db: &impl DescriptorDatabase,
+    source_root: SourceRootId,
+    module_id: ModuleId,
+) -> Cancelable<Arc<InputModuleItems>> {
+    let module_tree = db._module_tree(source_root)?;
+    let source = module_id.source(&module_tree);
+    let res = match source.resolve(db) {
+        ModuleSourceNode::SourceFile(it) => {
+            let items = it.borrowed().items();
+            InputModuleItems::new(items)
+        }
+        ModuleSourceNode::Module(it) => {
+            let items = it
+                .borrowed()
+                .item_list()
+                .into_iter()
+                .flat_map(|it| it.items());
+            InputModuleItems::new(items)
+        }
+    };
+    Ok(Arc::new(res))
+}
+
 pub(crate) fn item_map(
     db: &impl DescriptorDatabase,
     source_root: SourceRootId,
 ) -> Cancelable<Arc<ItemMap>> {
-    unimplemented!()
+    let module_tree = db._module_tree(source_root)?;
+    let input = module_tree
+        .modules()
+        .map(|id| {
+            let items = db._input_module_items(source_root, id)?;
+            Ok((id, items))
+        })
+        .collect::<Cancelable<FxHashMap<_, _>>>()?;
+
+    let mut resolver = Resolver {
+        db: db,
+        input: &input,
+        source_root,
+        module_tree,
+        result: ItemMap::default(),
+    };
+    resolver.resolve()?;
+    let res = resolver.result;
+    Ok(Arc::new(res))
 }
 
 /// Item map is the result of the name resolution. Item map contains, for each
 /// module, the set of visible items.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub(crate) struct ItemMap {
     per_module: FxHashMap<ModuleId, ModuleItems>,
 }
@@ -86,7 +128,7 @@ struct PerNs<T> {
     values: Option<T>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 struct ModuleItem {
     ptr: LocalSyntaxPtr,
     name: SmolStr,
@@ -94,7 +136,7 @@ struct ModuleItem {
     vis: Vis,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum Vis {
     Priv,
     Other,
@@ -116,11 +158,13 @@ impl InputModuleItems {
             ast::ModuleItem::FnDef(it) => self.items.push(ModuleItem::new(it)?),
             ast::ModuleItem::TraitDef(it) => self.items.push(ModuleItem::new(it)?),
             ast::ModuleItem::TypeDef(it) => self.items.push(ModuleItem::new(it)?),
-            ast::ModuleItem::ImplItem(it) => {
+            ast::ModuleItem::ImplItem(_) => {
                 // impls don't define items
             }
             ast::ModuleItem::UseItem(it) => self.add_use_item(it),
-            ast::ModuleItem::ExternCrateItem(it) => (),
+            ast::ModuleItem::ExternCrateItem(_) => {
+                // TODO
+            }
             ast::ModuleItem::ConstDef(it) => self.items.push(ModuleItem::new(it)?),
             ast::ModuleItem::StaticDef(it) => self.items.push(ModuleItem::new(it)?),
             ast::ModuleItem::Module(it) => self.items.push(ModuleItem::new(it)?),
@@ -227,7 +271,7 @@ impl ModuleItem {
 
 struct Resolver<'a, DB> {
     db: &'a DB,
-    input: &'a FxHashMap<ModuleId, InputModuleItems>,
+    input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
     source_root: SourceRootId,
     module_tree: Arc<ModuleTree>,
     result: ItemMap,
@@ -237,14 +281,16 @@ impl<'a, DB> Resolver<'a, DB>
 where
     DB: DescriptorDatabase,
 {
-    fn resolve(&mut self) {
+    fn resolve(&mut self) -> Cancelable<()> {
         for (&module_id, items) in self.input.iter() {
             self.populate_module(module_id, items)
         }
 
         for &module_id in self.input.keys() {
+            crate::db::check_canceled(self.db)?;
             self.resolve_imports(module_id);
         }
+        Ok(())
     }
 
     fn populate_module(&mut self, module_id: ModuleId, input: &InputModuleItems) {
@@ -344,5 +390,48 @@ where
     fn update(&mut self, module_id: ModuleId, f: impl FnOnce(&mut ModuleItems)) {
         let module_items = self.result.per_module.get_mut(&module_id).unwrap();
         f(module_items)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        mock_analysis::analysis_and_position,
+        descriptors::{DescriptorDatabase, module::ModuleDescriptor},
+        input::FilesDatabase,
+};
+    use super::*;
+
+    fn item_map(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
+        let (analysis, pos) = analysis_and_position(fixture);
+        let db = analysis.imp.db;
+        let source_root = db.file_source_root(pos.file_id);
+        let descr = ModuleDescriptor::guess_from_position(&*db, pos)
+            .unwrap()
+            .unwrap();
+        let module_id = descr.module_id;
+        (db._item_map(source_root).unwrap(), module_id)
+    }
+
+    #[test]
+    fn test_item_map() {
+        let (item_map, module_id) = item_map(
+            "
+            //- /lib.rs
+            mod foo;
+
+            use crate::foo::bar::Baz;
+            <|>
+
+            //- /foo/mod.rs
+            pub mod bar;
+
+            //- /foo/bar.rs
+            pub struct Baz;
+        ",
+        );
+        let name = SmolStr::from("Baz");
+        let resolution = &item_map.per_module[&module_id].items[&name];
+        assert!(resolution.def_id.is_some());
     }
 }

@@ -149,6 +149,13 @@ pub(crate) struct ModuleTree {
 }
 
 impl ModuleTree {
+    fn modules<'a>(&'a self) -> impl Iterator<Item = ModuleId> + 'a {
+        self.mods
+            .iter()
+            .enumerate()
+            .map(|(idx, _)| ModuleId(idx as u32))
+    }
+
     fn modules_for_source(&self, source: ModuleSource) -> Vec<ModuleId> {
         self.mods
             .iter()
