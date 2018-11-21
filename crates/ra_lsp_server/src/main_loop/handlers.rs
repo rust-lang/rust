@@ -9,7 +9,7 @@ use languageserver_types::{
     WorkspaceEdit, ParameterInformation, SignatureInformation, Hover, HoverContents,
 };
 use ra_analysis::{FileId, FoldKind, Query, RunnableKind, FilePosition};
-use ra_syntax::text_utils::contains_offset_nonstrict;
+use ra_syntax::{TextUnit, text_utils::contains_offset_nonstrict};
 use rustc_hash::FxHashMap;
 use serde_json::to_value;
 
@@ -381,6 +381,28 @@ pub fn handle_completion(
         let offset = params.position.conv_with(&line_index);
         FilePosition { file_id, offset }
     };
+    let completion_triggered_after_single_colon = {
+        let mut res = false;
+        if let Some(ctx) = params.context {
+            if ctx.trigger_character.unwrap_or(String::new()) == ":" {
+                let source_file = world.analysis().file_syntax(position.file_id);
+                let syntax = source_file.syntax();
+                let text = syntax.text();
+                if let Some(next_char) = text.char_at(position.offset) {
+                    let diff = TextUnit::of_char(next_char) + TextUnit::of_char(':');
+                    let prev_char = position.offset - diff;
+                    if text.char_at(prev_char) != Some(':') {
+                        res = true;
+                    }
+                }
+            }
+        }
+        res
+    };
+    if completion_triggered_after_single_colon {
+        return Ok(None);
+    }
+
     let items = match world.analysis().completions(position)? {
         None => return Ok(None),
         Some(items) => items,
