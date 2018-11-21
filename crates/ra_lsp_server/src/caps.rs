@@ -19,7 +19,7 @@ pub fn server_capabilities() -> ServerCapabilities {
         hover_provider: Some(true),
         completion_provider: Some(CompletionOptions {
             resolve_provider: None,
-            trigger_characters: None,
+            trigger_characters: Some(vec![":".to_string()]),
         }),
         signature_help_provider: Some(SignatureHelpOptions {
             trigger_characters: Some(vec!["(".to_string(), ",".to_string(), ")".to_string()]),
