@@ -1,3 +1,5 @@
+#![allow(type_alias_bounds)]
+
 pub type A = u16;
 pub type B<'a, 'b : 'a, T> = (&'a T, &'b T);
 pub type C<T> = T;
