@@ -152,12 +152,12 @@ Manually testing against an example file is useful if you have added some
 local modifications, run `env CLIPPY_TESTS=true cargo run --bin clippy-driver -- -L ./target/debug input.rs`
 from the working copy root.
 
-### Running Clippy Against Clippy
+### Linting Clippy with your changes locally
 
-Clippy CI runs all lints defined in the version of the Clippy being tested pass
-(that is, don’t report any suggestions). You can avoid prolonging the CI
-feedback cycle for PRs you submit by running these lints yourself ahead of time
-and addressing any issues found:
+Clippy CI only passes if all lints defined in the version of the Clippy being
+tested pass (that is, don’t report any suggestions). You can avoid prolonging
+the CI feedback cycle for PRs you submit by running these lints yourself ahead
+of time and addressing any issues found:
 
 ```
 cargo build
