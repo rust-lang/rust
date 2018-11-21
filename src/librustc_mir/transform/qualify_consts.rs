@@ -252,7 +252,16 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                     // projections are transparent for assignments
                     // we qualify the entire destination at once, even if just a field would have
                     // stricter qualification
-                    Place::Projection(proj) => dest = &proj.base,
+                    Place::Projection(proj) => {
+                        // Catch more errors in the destination. `visit_place` also checks various
+                        // projection rules like union field access and raw pointer deref
+                        self.visit_place(
+                            dest,
+                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            location
+                        );
+                        dest = &proj.base;
+                    },
                     Place::Promoted(..) => bug!("promoteds don't exist yet during promotion"),
                     Place::Static(..) => {
                         // Catch more errors in the destination. `visit_place` also checks that we
