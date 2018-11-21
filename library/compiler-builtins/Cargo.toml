@@ -2,6 +2,15 @@
 authors = ["Jorge Aparicio <japaricious@gmail.com>"]
 name = "compiler_builtins"
 version = "0.1.0"
+license = "MIT/Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/rust-lang-nursery/compiler-builtins"
+homepage = "https://github.com/rust-lang-nursery/compiler-builtins"
+documentation = "https://docs.rs/compiler_builtins"
+description = """
+Compiler intrinsics used by the Rust compiler. Also available for other targets
+if necessary!
+"""
 
 [lib]
 test = false
