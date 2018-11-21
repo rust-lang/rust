@@ -153,7 +153,7 @@ impl<'tcx> Stack {
     fn deref(&self, bor: Borrow, kind: RefKind) -> Result<Option<usize>, String> {
         // Exclude unique ref with frozen tag.
         if let (RefKind::Unique, Borrow::Shr(Some(_))) = (kind, bor) {
-            return Err(format!("Encountered mutable reference with frozen tag"));
+            return Err(format!("Encountered mutable reference with frozen tag ({:?})", bor));
         }
         // Checks related to freezing
         match bor {
