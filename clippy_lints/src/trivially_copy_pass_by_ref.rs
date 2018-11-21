@@ -118,7 +118,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
         for (input, &ty) in decl.inputs.iter().zip(sig.inputs()) {
             // All spans generated from a proc-macro invocation are the same...
             match span {
-                Some(s) if  s == input.span => return,
+                Some(s) if s == input.span => return,
                 _ => (),
             }
 
