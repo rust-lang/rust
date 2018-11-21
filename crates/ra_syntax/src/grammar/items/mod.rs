@@ -29,7 +29,7 @@ pub(super) enum ItemFlavor {
     Trait,
 }
 
-const ITEM_RECOVERY_SET: TokenSet = token_set![
+pub(super) const ITEM_RECOVERY_SET: TokenSet = token_set![
     FN_KW, STRUCT_KW, ENUM_KW, IMPL_KW, TRAIT_KW, CONST_KW, STATIC_KW, LET_KW, MOD_KW, PUB_KW,
     CRATE_KW
 ];

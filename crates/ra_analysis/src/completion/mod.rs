@@ -221,6 +221,20 @@ mod tests {
     }
 
     #[test]
+    fn test_completion_self_path() {
+        check_scope_completion(
+            r"
+            use self::m::<|>;
+
+            mod m {
+                struct Bar;
+            }
+            ",
+            r#"[CompletionItem { label: "Bar", lookup: None, snippet: None }]"#,
+        );
+    }
+
+    #[test]
     fn test_completion_mod_scope_nested() {
         check_scope_completion(
             r"

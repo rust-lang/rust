@@ -14,11 +14,11 @@ use relative_path::RelativePathBuf;
 
 use crate::{
     db::SyntaxDatabase, syntax_ptr::SyntaxPtr, FileId, FilePosition, Cancelable,
-    descriptors::DescriptorDatabase,
+    descriptors::{Path, PathKind, DescriptorDatabase},
     input::SourceRootId
 };
 
-pub(crate) use self::{nameres::ModuleScope};
+pub(crate) use self::nameres::ModuleScope;
 
 /// `ModuleDescriptor` is API entry point to get all the information
 /// about a particular module.
@@ -110,6 +110,7 @@ impl ModuleDescriptor {
     }
 
     /// `name` is `None` for the crate's root module
+    #[allow(unused)]
     pub fn name(&self) -> Option<SmolStr> {
         let link = self.module_id.parent_link(&self.tree)?;
         Some(link.name(&self.tree))
@@ -129,6 +130,19 @@ impl ModuleDescriptor {
         let item_map = db._item_map(self.source_root_id)?;
         let res = item_map.per_module[&self.module_id].clone();
         Ok(res)
+    }
+
+    pub(crate) fn resolve_path(&self, path: Path) -> Option<ModuleDescriptor> {
+        let mut curr = match path.kind {
+            PathKind::Crate => self.crate_root(),
+            PathKind::Self_ | PathKind::Plain => self.clone(),
+            PathKind::Super => self.parent()?,
+        };
+        let segments = path.segments;
+        for name in segments {
+            curr = curr.child(&name)?;
+        }
+        Some(curr)
     }
 
     pub fn problems(&self, db: &impl DescriptorDatabase) -> Vec<(SyntaxNode, Problem)> {

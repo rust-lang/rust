@@ -10,8 +10,11 @@ use ra_syntax::{
 use crate::{
     db::RootDatabase,
     completion::CompletionItem,
-    descriptors::module::{ModuleDescriptor},
-    descriptors::function::FnScopes,
+    descriptors::{
+        module::{ModuleDescriptor},
+        function::FnScopes,
+        Path,
+    },
     Cancelable
 };
 
@@ -55,7 +58,7 @@ pub(super) fn completions(
                     }),
             );
         }
-        NameRefKind::CratePath(path) => complete_path(acc, db, module, path)?,
+        NameRefKind::Path(path) => complete_path(acc, db, module, path)?,
         NameRefKind::BareIdentInMod => {
             let name_range = name_ref.syntax().range();
             let top_node = name_ref
@@ -79,8 +82,8 @@ enum NameRefKind<'a> {
     LocalRef {
         enclosing_fn: Option<ast::FnDef<'a>>,
     },
-    /// NameRef is the last segment in crate:: path
-    CratePath(Vec<ast::NameRef<'a>>),
+    /// NameRef is the last segment in some path
+    Path(Path),
     /// NameRef is bare identifier at the module's root.
     /// Used for keyword completion
     BareIdentInMod,
@@ -102,8 +105,10 @@ fn classify_name_ref(name_ref: ast::NameRef) -> Option<NameRefKind> {
     let parent = name_ref.syntax().parent()?;
     if let Some(segment) = ast::PathSegment::cast(parent) {
         let path = segment.parent_path();
-        if let Some(crate_path) = crate_path(path) {
-            return Some(NameRefKind::CratePath(crate_path));
+        if let Some(path) = Path::from_ast(path) {
+            if !path.is_ident() {
+                return Some(NameRefKind::Path(path));
+            }
         }
         if path.qualifier().is_none() {
             let enclosing_fn = name_ref
@@ -115,32 +120,6 @@ fn classify_name_ref(name_ref: ast::NameRef) -> Option<NameRefKind> {
         }
     }
     None
-}
-
-fn crate_path(mut path: ast::Path) -> Option<Vec<ast::NameRef>> {
-    let mut res = Vec::new();
-    loop {
-        let segment = path.segment()?;
-        match segment.kind()? {
-            ast::PathSegmentKind::Name(name) => res.push(name),
-            ast::PathSegmentKind::CrateKw => break,
-            ast::PathSegmentKind::SelfKw | ast::PathSegmentKind::SuperKw => return None,
-        }
-        path = qualifier(path)?;
-    }
-    res.reverse();
-    return Some(res);
-
-    fn qualifier(path: ast::Path) -> Option<ast::Path> {
-        if let Some(q) = path.qualifier() {
-            return Some(q);
-        }
-        // TODO: this bottom up traversal is not too precise.
-        // Should we handle do a top-down analysiss, recording results?
-        let use_tree_list = path.syntax().ancestors().find_map(ast::UseTreeList::cast)?;
-        let use_tree = use_tree_list.parent_use_tree();
-        use_tree.path()
-    }
 }
 
 fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<CompletionItem>) {
@@ -169,9 +148,13 @@ fn complete_path(
     acc: &mut Vec<CompletionItem>,
     db: &RootDatabase,
     module: &ModuleDescriptor,
-    crate_path: Vec<ast::NameRef>,
+    mut path: Path,
 ) -> Cancelable<()> {
-    let target_module = match find_target_module(module, crate_path) {
+    if path.segments.is_empty() {
+        return Ok(());
+    }
+    path.segments.pop();
+    let target_module = match module.resolve_path(path) {
         None => return Ok(()),
         Some(it) => it,
     };
@@ -186,18 +169,6 @@ fn complete_path(
         });
     acc.extend(completions);
     Ok(())
-}
-
-fn find_target_module(
-    module: &ModuleDescriptor,
-    mut crate_path: Vec<ast::NameRef>,
-) -> Option<ModuleDescriptor> {
-    crate_path.pop();
-    let mut target_module = module.crate_root();
-    for name in crate_path {
-        target_module = target_module.child(name.text().as_str())?;
-    }
-    Some(target_module)
 }
 
 fn complete_mod_item_snippets(acc: &mut Vec<CompletionItem>) {

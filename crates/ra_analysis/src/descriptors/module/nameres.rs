@@ -1,4 +1,19 @@
-//! Name resolution algorithm
+//! Name resolution algorithm. The end result of the algorithm is `ItemMap`: a
+//! map with maps each module to it's scope: the set of items, visible in the
+//! module. That is, we only resolve imports here, name resolution of item
+//! bodies will be done in a separate step.
+//!
+//! Like Rustc, we use an interative per-crate algorithm: we start with scopes
+//! containing only directly defined items, and then iteratively resolve
+//! imports.
+//!
+//! To make this work nicely in the IDE scenarios, we place `InputModuleItems`
+//! in between raw syntax and name resolution. `InputModuleItems` are computed
+//! using only the module's syntax, and it is all directly defined items plus
+//! imports. The plain is to make `InputModuleItems` independent of local
+//! modifications (that is, typing inside a function shold not change IMIs),
+//! such that the results of name resolution can be preserved unless the module
+//! structure itself is modified.
 use std::{
     sync::Arc,
     time::Instant,
@@ -8,13 +23,14 @@ use rustc_hash::FxHashMap;
 
 use ra_syntax::{
     SmolStr, SyntaxKind::{self, *},
-    ast::{self, AstNode, ModuleItemOwner}
+    ast::{self, ModuleItemOwner}
 };
 
 use crate::{
     Cancelable,
     loc2id::{DefId, DefLoc},
     descriptors::{
+        Path, PathKind,
         DescriptorDatabase,
         module::{ModuleId, ModuleTree, ModuleSourceNode},
     },
@@ -32,7 +48,6 @@ pub(crate) struct ItemMap {
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub(crate) struct ModuleScope {
     pub(crate) items: FxHashMap<SmolStr, Resolution>,
-    pub(crate) import_resolutions: FxHashMap<LocalSyntaxPtr, DefId>,
 }
 
 /// A set of items and imports declared inside a module, without relation to
@@ -44,22 +59,20 @@ pub(crate) struct ModuleScope {
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(crate) struct InputModuleItems {
     items: Vec<ModuleItem>,
-    glob_imports: Vec<Path>,
-    imports: Vec<Path>,
+    imports: Vec<Import>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Path {
-    kind: PathKind,
-    segments: Vec<(LocalSyntaxPtr, SmolStr)>,
+struct Import {
+    path: Path,
+    kind: ImportKind,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PathKind {
-    Abs,
-    Self_,
-    Super,
-    Crate,
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ImportKind {
+    Glob,
+    // TODO: make offset independent
+    Named(LocalSyntaxPtr),
 }
 
 pub(crate) fn input_module_items(
@@ -182,84 +195,14 @@ impl InputModuleItems {
     }
 
     fn add_use_item(&mut self, item: ast::UseItem) {
-        if let Some(tree) = item.use_tree() {
-            self.add_use_tree(None, tree);
-        }
-    }
-
-    fn add_use_tree(&mut self, prefix: Option<Path>, tree: ast::UseTree) {
-        if let Some(use_tree_list) = tree.use_tree_list() {
-            let prefix = match tree.path() {
-                None => prefix,
-                Some(path) => match convert_path(prefix, path) {
-                    Some(it) => Some(it),
-                    None => return, // TODO: report errors somewhere
-                },
+        Path::expand_use_item(item, |path, ptr| {
+            let kind = match ptr {
+                None => ImportKind::Glob,
+                Some(ptr) => ImportKind::Named(ptr),
             };
-            for tree in use_tree_list.use_trees() {
-                self.add_use_tree(prefix.clone(), tree);
-            }
-        } else {
-            if let Some(path) = tree.path() {
-                if let Some(path) = convert_path(prefix, path) {
-                    if tree.has_star() {
-                        &mut self.glob_imports
-                    } else {
-                        &mut self.imports
-                    }
-                    .push(path);
-                }
-            }
-        }
+            self.imports.push(Import { kind, path })
+        })
     }
-}
-
-fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
-    let prefix = if let Some(qual) = path.qualifier() {
-        Some(convert_path(prefix, qual)?)
-    } else {
-        None
-    };
-    let segment = path.segment()?;
-    let res = match segment.kind()? {
-        ast::PathSegmentKind::Name(name) => {
-            let mut res = prefix.unwrap_or_else(|| Path {
-                kind: PathKind::Abs,
-                segments: Vec::with_capacity(1),
-            });
-            let ptr = LocalSyntaxPtr::new(name.syntax());
-            res.segments.push((ptr, name.text()));
-            res
-        }
-        ast::PathSegmentKind::CrateKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            Path {
-                kind: PathKind::Crate,
-                segments: Vec::new(),
-            }
-        }
-        ast::PathSegmentKind::SelfKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            Path {
-                kind: PathKind::Self_,
-                segments: Vec::new(),
-            }
-        }
-        ast::PathSegmentKind::SuperKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            Path {
-                kind: PathKind::Super,
-                segments: Vec::new(),
-            }
-        }
-    };
-    Some(res)
 }
 
 impl ModuleItem {
@@ -308,14 +251,16 @@ where
         let mut module_items = ModuleScope::default();
 
         for import in input.imports.iter() {
-            if let Some((ptr, name)) = import.segments.last() {
-                module_items.items.insert(
-                    name.clone(),
-                    Resolution {
-                        def_id: None,
-                        import_name: Some(*ptr),
-                    },
-                );
+            if let Some(name) = import.path.segments.iter().last() {
+                if let ImportKind::Named(ptr) = import.kind {
+                    module_items.items.insert(
+                        name.clone(),
+                        Resolution {
+                            def_id: None,
+                            import_name: Some(ptr),
+                        },
+                    );
+                }
             }
         }
 
@@ -356,10 +301,15 @@ where
         }
     }
 
-    fn resolve_import(&mut self, module_id: ModuleId, import: &Path) {
-        let mut curr = match import.kind {
+    fn resolve_import(&mut self, module_id: ModuleId, import: &Import) {
+        let ptr = match import.kind {
+            ImportKind::Glob => return,
+            ImportKind::Named(ptr) => ptr,
+        };
+
+        let mut curr = match import.path.kind {
             // TODO: handle extern crates
-            PathKind::Abs => return,
+            PathKind::Plain => return,
             PathKind::Self_ => module_id,
             PathKind::Super => {
                 match module_id.parent(&self.module_tree) {
@@ -371,8 +321,8 @@ where
             PathKind::Crate => module_id.crate_root(&self.module_tree),
         };
 
-        for (i, (ptr, name)) in import.segments.iter().enumerate() {
-            let is_last = i == import.segments.len() - 1;
+        for (i, name) in import.path.segments.iter().enumerate() {
+            let is_last = i == import.path.segments.len() - 1;
 
             let def_id = match self.result.per_module[&curr].items.get(name) {
                 None => return,
@@ -381,10 +331,6 @@ where
                     None => return,
                 },
             };
-
-            self.update(module_id, |items| {
-                items.import_resolutions.insert(*ptr, def_id);
-            });
 
             if !is_last {
                 curr = match self.db.id_maps().def_loc(def_id) {
@@ -395,7 +341,7 @@ where
                 self.update(module_id, |items| {
                     let res = Resolution {
                         def_id: Some(def_id),
-                        import_name: Some(*ptr),
+                        import_name: Some(ptr),
                     };
                     items.items.insert(name.clone(), res);
                 })

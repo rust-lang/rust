@@ -1,10 +1,11 @@
 pub(crate) mod function;
 pub(crate) mod module;
+mod path;
 
 use std::sync::Arc;
 
 use ra_syntax::{
-    ast::{self, AstNode, FnDefNode},
+    ast::{self, FnDefNode, AstNode},
     TextRange,
 };
 
@@ -17,6 +18,8 @@ use crate::{
     syntax_ptr::LocalSyntaxPtr,
     Cancelable,
 };
+
+pub(crate) use self::path::{Path, PathKind};
 
 salsa::query_group! {
     pub(crate) trait DescriptorDatabase: SyntaxDatabase + IdDatabase {
