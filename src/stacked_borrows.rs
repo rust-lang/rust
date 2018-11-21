@@ -151,11 +151,9 @@ impl<'tcx> Stack {
     /// Returns the index of the item we matched, `None` if it was the frozen one.
     /// `kind` indicates which kind of reference is being dereferenced.
     fn deref(&self, bor: Borrow, kind: RefKind) -> Result<Option<usize>, String> {
-        // Exclude unique ref and frozen tag.
-        match (kind, bor) {
-            (RefKind::Unique, Borrow::Shr(Some(_))) =>
-                return Err(format!("Encountered mutable reference with frozen tag")),
-            _ => {}
+        // Exclude unique ref with frozen tag.
+        if let (RefKind::Unique, Borrow::Shr(Some(_))) = (kind, bor) {
+            return Err(format!("Encountered mutable reference with frozen tag"));
         }
         // Checks related to freezing
         match bor {
