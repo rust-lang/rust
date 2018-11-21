@@ -1136,7 +1136,15 @@ impl UnreachablePub {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnreachablePub {
     fn check_item(&mut self, cx: &LateContext, item: &hir::Item) {
-        self.perform_lint(cx, "item", item.id, &item.vis, item.span, true);
+        match item.node {
+            hir::ItemKind::Use(_, hir::UseKind::ListStem) => {
+                // Hack: ignore these `use foo::{}` remnants which are just a figment
+                // our IR.
+            }
+            _ => {
+                self.perform_lint(cx, "item", item.id, &item.vis, item.span, true);
+            }
+        }
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext, foreign_item: &hir::ForeignItem) {
