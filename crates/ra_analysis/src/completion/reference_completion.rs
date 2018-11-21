@@ -13,7 +13,7 @@ use crate::{
     descriptors::{
         module::{ModuleDescriptor},
         function::FnScopes,
-        Path, PathKind,
+        Path,
     },
     Cancelable
 };
@@ -148,9 +148,13 @@ fn complete_path(
     acc: &mut Vec<CompletionItem>,
     db: &RootDatabase,
     module: &ModuleDescriptor,
-    path: Path,
+    mut path: Path,
 ) -> Cancelable<()> {
-    let target_module = match find_target_module(module, path) {
+    if path.segments.is_empty() {
+        return Ok(());
+    }
+    path.segments.pop();
+    let target_module = match module.resolve_path(path) {
         None => return Ok(()),
         Some(it) => it,
     };
@@ -165,19 +169,6 @@ fn complete_path(
         });
     acc.extend(completions);
     Ok(())
-}
-
-fn find_target_module(module: &ModuleDescriptor, path: Path) -> Option<ModuleDescriptor> {
-    if path.kind != PathKind::Crate {
-        return None;
-    }
-    let mut segments = path.segments;
-    segments.pop();
-    let mut target_module = module.crate_root();
-    for name in segments {
-        target_module = target_module.child(&name)?;
-    }
-    Some(target_module)
 }
 
 fn complete_mod_item_snippets(acc: &mut Vec<CompletionItem>) {
