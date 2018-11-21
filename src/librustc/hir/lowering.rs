@@ -1867,6 +1867,10 @@ impl<'a> LoweringContext<'a> {
         } else {
             self.lower_node_id(segment.id)
         };
+        debug!(
+            "lower_path_segment: ident={:?} original-id={:?} new-id={:?}",
+            segment.ident, segment.id, id,
+        );
 
         hir::PathSegment::new(
             segment.ident,
@@ -2953,6 +2957,9 @@ impl<'a> LoweringContext<'a> {
         name: &mut Name,
         attrs: &hir::HirVec<Attribute>,
     ) -> hir::ItemKind {
+        debug!("lower_use_tree(tree={:?})", tree);
+        debug!("lower_use_tree: vis = {:?}", vis);
+
         let path = &tree.prefix;
         let segments = prefix
             .segments
@@ -4538,6 +4545,7 @@ impl<'a> LoweringContext<'a> {
             VisibilityKind::Public => hir::VisibilityKind::Public,
             VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
             VisibilityKind::Restricted { ref path, id } => {
+                debug!("lower_visibility: restricted path id = {:?}", id);
                 let lowered_id = if let Some(owner) = explicit_owner {
                     self.lower_node_id_with_owner(id, owner)
                 } else {
