@@ -154,7 +154,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
     ) {
         for item in trait_items {
             match item.kind {
-                AssociatedItemKind::Method{ has_self: _ } => self.check_trait_method(cx, item),
+                AssociatedItemKind::Method{..} => self.check_trait_method(cx, item),
                 _ => (),
             }
         }
