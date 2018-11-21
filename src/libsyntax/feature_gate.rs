@@ -499,9 +499,6 @@ declare_features! (
     // Allows `const _: TYPE = VALUE`
     (active, underscore_const_names, "1.31.0", Some(54912), None),
 
-    // `extern crate foo as bar;` puts `bar` into extern prelude.
-    (active, extern_crate_item_prelude, "1.31.0", Some(55599), None),
-
     // `reason = ` in lint attributes and `expect` lint attribute
     (active, lint_reasons, "1.31.0", Some(54503), None),
 );
@@ -691,6 +688,8 @@ declare_features! (
     // impl<I:Iterator> Iterator for &mut Iterator
     // impl Debug for Foo<'_>
     (accepted, impl_header_lifetime_elision, "1.31.0", Some(15872), None),
+    // `extern crate foo as bar;` puts `bar` into extern prelude.
+    (accepted, extern_crate_item_prelude, "1.31.0", Some(55599), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must

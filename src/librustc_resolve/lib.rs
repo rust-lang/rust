@@ -58,7 +58,6 @@ use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::base::MacroKind;
-use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::symbol::{Symbol, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -2115,7 +2114,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         if !module.no_implicit_prelude {
             if ns == TypeNS {
-                if let Some(binding) = self.extern_prelude_get(ident, !record_used, false) {
+                if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
                     return Some(LexicalScopeBinding::Item(binding));
                 }
             }
@@ -5022,7 +5021,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         self.name_already_seen.insert(name, span);
     }
 
-    fn extern_prelude_get(&mut self, ident: Ident, speculative: bool, skip_feature_gate: bool)
+    fn extern_prelude_get(&mut self, ident: Ident, speculative: bool)
                           -> Option<&'a NameBinding<'a>> {
         if ident.is_path_segment_keyword() {
             // Make sure `self`, `super` etc produce an error when passed to here.
@@ -5030,13 +5029,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
         self.extern_prelude.get(&ident.modern()).cloned().and_then(|entry| {
             if let Some(binding) = entry.extern_crate_item {
-                if !speculative && !skip_feature_gate && entry.introduced_by_item &&
-                   !self.session.features_untracked().extern_crate_item_prelude {
-                    emit_feature_err(&self.session.parse_sess, "extern_crate_item_prelude",
-                                     ident.span, GateIssue::Language,
-                                     "use of extern prelude names introduced \
-                                      with `extern crate` items is unstable");
-                }
                 Some(binding)
             } else {
                 let crate_id = if !speculative {

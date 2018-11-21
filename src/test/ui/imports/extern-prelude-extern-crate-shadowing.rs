@@ -1,11 +1,11 @@
 // compile-pass
 // aux-build:two_macros.rs
 
-extern crate two_macros;
+extern crate two_macros as core;
 
 mod m {
     fn check() {
-        two_macros::m!(); // OK
+        core::m!(); // OK
     }
 }
 
