@@ -5,10 +5,9 @@ mod features {
         process::{Command, Stdio},
     };
 
-    fn test_example(path: &Path) {
+    fn test_example(path: &Path, out_file: &Path) {
         let mut success = true;
 
-        let out_file = path.join("stdout");
         let old_rlib = path.join("libold.rlib").to_str().unwrap().to_owned();
         let new_rlib = path.join("libnew.rlib").to_str().unwrap().to_owned();
 
@@ -78,6 +77,10 @@ mod features {
                 cmd.args(target_args);
             }
 
+            if out_file.to_str().unwrap().contains("stdout_api_guidelines") {
+                cmd.env("RUST_SEMVER_API_GUIDELINES", "true");
+            }
+
             success &= cmd
                 .status()
                 .expect("could not run rust-semverver")
@@ -144,7 +147,12 @@ mod features {
             #[test]
             fn $name() {
                 let path = Path::new("tests").join("cases").join(stringify!($name));
-                test_example(&path);
+                test_example(&path, &path.join("stdout"));
+
+                if path.join("stdout_api_guidelines").exists() {
+                    eprintln!("api-guidelines");
+                    test_example(&path, &path.join("stdout_api_guidelines"));
+                }
             }
         };
         ($($name:ident),*) => {
