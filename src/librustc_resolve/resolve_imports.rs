@@ -842,12 +842,14 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 module
             }
             PathResult::Failed(span, msg, false) => {
-                assert!(directive.imported_module.get().is_none());
+                assert!(!self.ambiguity_errors.is_empty() ||
+                        directive.imported_module.get().is_none());
                 resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 return None;
             }
             PathResult::Failed(span, msg, true) => {
-                assert!(directive.imported_module.get().is_none());
+                assert!(!self.ambiguity_errors.is_empty() ||
+                        directive.imported_module.get().is_none());
                 return if let Some((suggested_path, note)) = self.make_path_suggestion(
                     span, directive.module_path.clone(), &directive.parent_scope
                 ) {
