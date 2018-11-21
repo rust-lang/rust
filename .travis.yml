@@ -1,33 +1,23 @@
 language: rust
-
 rust: nightly
+sudo: false
 
-os:
-  - linux
-# coming soon:
-# - osx
+matrix:
+  fast_finish: true
+  include:
+    # Targets
+    - name: "linux"
+      os: linux
+      env: RUST_BACKTRACE=full
+    - name: "osx"
+      os: osx
+      osx_image: xcode10
+      env: RUST_BACKTRACE=full
 
-env:
-  global:
-    - RUST_BACKTRACE=full
+    # Tools:
+    - name: "Shellcheck"
+      script:
+        - shellcheck --version
+        - shellcheck ci/*.sh
 
-script:
-  - |
-    set -e
-    if [ "$TRAVIS_OS_NAME" == "osx" ]; then
-      # test output for a different libc is expected to be different
-      mv tests/full_cases/libc-0.2.28-0.2.31.osx tests/full_cases/libc-0.2.28-0.2.31
-    fi
-
-    cargo build
-    cargo test --verbose
-
-    # install
-    mkdir -p ~/rust/cargo/bin
-    cp target/debug/cargo-semver ~/rust/cargo/bin
-    cp target/debug/rust-semverver ~/rust/cargo/bin
-
-    # become semververver
-    eval "current_version=$(grep -e '^version = .*$' Cargo.toml | cut -d ' ' -f 3)"
-    PATH=~/rust/cargo/bin:$PATH cargo semver | tee semver_out
-    (head -n 1 semver_out | grep "\-> $current_version") || (echo "versioning mismatch" && return 1)
+script: sh ci/run.sh
