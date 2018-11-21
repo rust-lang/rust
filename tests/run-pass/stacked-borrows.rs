@@ -7,6 +7,7 @@ fn main() {
     mut_shr_raw();
     mut_raw_then_mut_shr();
     mut_raw_mut();
+    partially_invalidate_mut();
 }
 
 // Deref a raw ptr to access a field of a large struct, where the field
@@ -96,4 +97,13 @@ fn mut_raw_mut() {
         // we cannot use xref2; see `compile-fail/stacked-borows/illegal_read4.rs`
     }
     assert_eq!(x, 4);
+}
+
+fn partially_invalidate_mut() {
+    let data = &mut (0u8, 0u8);
+    let reborrow = &mut *data as *mut (u8, u8);
+    let shard = unsafe { &mut (*reborrow).0 };
+    data.1 += 1; // the deref overlaps with `shard`, but that is okay; the access does not overlap.
+    *shard += 1; // so we can still use `shard`.
+    assert_eq!(*data, (1, 1));
 }
