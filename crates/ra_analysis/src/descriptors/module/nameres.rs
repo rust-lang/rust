@@ -22,6 +22,19 @@ use crate::{
     input::SourceRootId,
 };
 
+/// Item map is the result of the name resolution. Item map contains, for each
+/// module, the set of visible items.
+#[derive(Default, Debug, PartialEq, Eq)]
+pub(crate) struct ItemMap {
+    per_module: FxHashMap<ModuleId, ModuleItems>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+struct ModuleItems {
+    items: FxHashMap<SmolStr, Resolution>,
+    import_resolutions: FxHashMap<LocalSyntaxPtr, DefId>,
+}
+
 /// A set of items and imports declared inside a module, without relation to
 /// other modules.
 ///
@@ -99,19 +112,6 @@ pub(crate) fn item_map(
     let elapsed = start.elapsed();
     log::info!("item_map: {:?}", elapsed);
     Ok(Arc::new(res))
-}
-
-/// Item map is the result of the name resolution. Item map contains, for each
-/// module, the set of visible items.
-#[derive(Default, Debug, PartialEq, Eq)]
-pub(crate) struct ItemMap {
-    per_module: FxHashMap<ModuleId, ModuleItems>,
-}
-
-#[derive(Debug, Default, PartialEq, Eq)]
-struct ModuleItems {
-    items: FxHashMap<SmolStr, Resolution>,
-    import_resolutions: FxHashMap<LocalSyntaxPtr, DefId>,
 }
 
 /// Resolution is basically `DefId` atm, but it should account for stuff like
