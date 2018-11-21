@@ -1,5 +1,5 @@
 pub(super) mod imp;
-pub(crate) mod scope;
+pub(super) mod nameres;
 
 use std::sync::Arc;
 
@@ -18,7 +18,7 @@ use crate::{
     input::SourceRootId
 };
 
-pub(crate) use self::scope::ModuleScope;
+pub(crate) use self::{nameres::ModuleScope};
 
 /// `ModuleDescriptor` is API entry point to get all the information
 /// about a particular module.
@@ -102,9 +102,11 @@ impl ModuleDescriptor {
 
     /// The root of the tree this module is part of
     pub fn crate_root(&self) -> ModuleDescriptor {
-        generate(Some(self.clone()), |it| it.parent())
-            .last()
-            .unwrap()
+        let root_id = self.module_id.crate_root(&self.tree);
+        ModuleDescriptor {
+            module_id: root_id,
+            ..self.clone()
+        }
     }
 
     /// `name` is `None` for the crate's root module
@@ -123,8 +125,10 @@ impl ModuleDescriptor {
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub fn scope(&self, db: &impl DescriptorDatabase) -> Cancelable<Arc<ModuleScope>> {
-        db._module_scope(self.source_root_id, self.module_id)
+    pub(crate) fn scope(&self, db: &impl DescriptorDatabase) -> Cancelable<ModuleScope> {
+        let item_map = db._item_map(self.source_root_id)?;
+        let res = item_map.per_module[&self.module_id].clone();
+        Ok(res)
     }
 
     pub fn problems(&self, db: &impl DescriptorDatabase) -> Vec<(SyntaxNode, Problem)> {
@@ -146,6 +150,13 @@ pub(crate) struct ModuleTree {
 }
 
 impl ModuleTree {
+    fn modules<'a>(&'a self) -> impl Iterator<Item = ModuleId> + 'a {
+        self.mods
+            .iter()
+            .enumerate()
+            .map(|(idx, _)| ModuleId(idx as u32))
+    }
+
     fn modules_for_source(&self, source: ModuleSource) -> Vec<ModuleId> {
         self.mods
             .iter()
@@ -204,6 +215,11 @@ impl ModuleId {
         let link = self.parent_link(tree)?;
         Some(tree.link(link).owner)
     }
+    fn crate_root(self, tree: &ModuleTree) -> ModuleId {
+        generate(Some(self), move |it| it.parent(tree))
+            .last()
+            .unwrap()
+    }
     fn child(self, tree: &ModuleTree, name: &str) -> Option<ModuleId> {
         let link = tree
             .module(self)
@@ -212,6 +228,13 @@ impl ModuleId {
             .map(|&it| tree.link(it))
             .find(|it| it.name == name)?;
         Some(*link.points_to.first()?)
+    }
+    fn children<'a>(self, tree: &'a ModuleTree) -> impl Iterator<Item = (SmolStr, ModuleId)> + 'a {
+        tree.module(self).children.iter().filter_map(move |&it| {
+            let link = tree.link(it);
+            let module = *link.points_to.first()?;
+            Some((link.name.clone(), module))
+        })
     }
     fn problems(self, tree: &ModuleTree, db: &impl SyntaxDatabase) -> Vec<(SyntaxNode, Problem)> {
         tree.module(self)

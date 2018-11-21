@@ -39,14 +39,17 @@ pub(super) fn completions(
             let module_scope = module.scope(db)?;
             acc.extend(
                 module_scope
-                    .entries()
+                    .items
                     .iter()
-                    .filter(|entry| {
+                    .filter(|(_name, res)| {
                         // Don't expose this item
-                        !entry.ptr().range().is_subrange(&name_ref.syntax().range())
+                        match res.import_name {
+                            None => true,
+                            Some(ptr) => !ptr.range().is_subrange(&name_ref.syntax().range()),
+                        }
                     })
-                    .map(|entry| CompletionItem {
-                        label: entry.name().to_string(),
+                    .map(|(name, _res)| CompletionItem {
+                        label: name.to_string(),
                         lookup: None,
                         snippet: None,
                     }),
@@ -173,11 +176,14 @@ fn complete_path(
         Some(it) => it,
     };
     let module_scope = target_module.scope(db)?;
-    let completions = module_scope.entries().iter().map(|entry| CompletionItem {
-        label: entry.name().to_string(),
-        lookup: None,
-        snippet: None,
-    });
+    let completions = module_scope
+        .items
+        .iter()
+        .map(|(name, _res)| CompletionItem {
+            label: name.to_string(),
+            lookup: None,
+            snippet: None,
+        });
     acc.extend(completions);
     Ok(())
 }

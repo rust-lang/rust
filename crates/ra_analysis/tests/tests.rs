@@ -447,8 +447,8 @@ fn test_complete_crate_path() {
     );
     let completions = analysis.completions(position).unwrap().unwrap();
     assert_eq_dbg(
-        r#"[CompletionItem { label: "foo", lookup: None, snippet: None },
-            CompletionItem { label: "Spam", lookup: None, snippet: None }]"#,
+        r#"[CompletionItem { label: "Spam", lookup: None, snippet: None },
+            CompletionItem { label: "foo", lookup: None, snippet: None }]"#,
         &completions,
     );
 }
@@ -466,8 +466,8 @@ fn test_complete_crate_path_with_braces() {
     );
     let completions = analysis.completions(position).unwrap().unwrap();
     assert_eq_dbg(
-        r#"[CompletionItem { label: "foo", lookup: None, snippet: None },
-            CompletionItem { label: "Spam", lookup: None, snippet: None }]"#,
+        r#"[CompletionItem { label: "Spam", lookup: None, snippet: None },
+            CompletionItem { label: "foo", lookup: None, snippet: None }]"#,
         &completions,
     );
 }

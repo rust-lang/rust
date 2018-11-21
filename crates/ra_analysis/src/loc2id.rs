@@ -8,7 +8,9 @@ use std::{
 use rustc_hash::FxHashMap;
 
 use crate::{
+    descriptors::module::ModuleId,
     syntax_ptr::SyntaxPtr,
+    input::SourceRootId,
 };
 
 /// There are two principle ways to refer to things:
@@ -89,6 +91,21 @@ macro_rules! impl_numeric_id {
 pub(crate) struct FnId(u32);
 impl_numeric_id!(FnId);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct DefId(u32);
+impl_numeric_id!(DefId);
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub(crate) enum DefLoc {
+    Module {
+        id: ModuleId,
+        source_root: SourceRootId,
+    },
+    Item {
+        ptr: SyntaxPtr,
+    },
+}
+
 pub(crate) trait IdDatabase: salsa::Database {
     fn id_maps(&self) -> &IdMaps;
 }
@@ -105,9 +122,17 @@ impl IdMaps {
     pub(crate) fn fn_ptr(&self, fn_id: FnId) -> SyntaxPtr {
         self.inner.fns.lock().id2loc(fn_id)
     }
+
+    pub(crate) fn def_id(&self, loc: DefLoc) -> DefId {
+        self.inner.defs.lock().loc2id(&loc)
+    }
+    pub(crate) fn def_loc(&self, def_id: DefId) -> DefLoc {
+        self.inner.defs.lock().id2loc(def_id)
+    }
 }
 
 #[derive(Debug, Default)]
 struct IdMapsInner {
     fns: Mutex<Loc2IdMap<SyntaxPtr, FnId>>,
+    defs: Mutex<Loc2IdMap<DefLoc, DefId>>,
 }
