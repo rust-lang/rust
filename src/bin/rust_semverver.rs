@@ -6,9 +6,9 @@ extern crate getopts;
 #[macro_use]
 extern crate log;
 extern crate rustc;
+extern crate rustc_codegen_utils;
 extern crate rustc_driver;
 extern crate rustc_errors;
-extern crate rustc_codegen_utils;
 extern crate rustc_metadata;
 extern crate semverver;
 extern crate syntax;
@@ -16,12 +16,12 @@ extern crate syntax;
 use semverver::semcheck::run_analysis;
 
 use rustc::hir::def_id::*;
-use rustc_metadata::cstore::CStore;
-use rustc::session::{config, Session};
-use rustc::session::config::{Input, ErrorOutputType};
 use rustc::middle::cstore::ExternCrate;
+use rustc::session::config::{ErrorOutputType, Input};
+use rustc::session::{config, Session};
+use rustc_metadata::cstore::CStore;
 
-use rustc_driver::{driver, CompilerCalls, RustcDefaultCalls, Compilation};
+use rustc_driver::{driver, Compilation, CompilerCalls, RustcDefaultCalls};
 
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
@@ -49,8 +49,9 @@ fn callback(state: &driver::CompileState, version: &str, verbose: bool) {
             };
 
             match *tcx.extern_crate(def_id) {
-                Some(ExternCrate { span, direct: true, ..}) if span.data().lo.to_usize() > 0 =>
-                    Some((span.data().lo.to_usize(), def_id)),
+                Some(ExternCrate {
+                    span, direct: true, ..
+                }) if span.data().lo.to_usize() > 0 => Some((span.data().lo.to_usize(), def_id)),
                 _ => None,
             }
         })
@@ -101,55 +102,58 @@ impl SemVerVerCompilerCalls {
 }
 
 impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
-    fn early_callback(&mut self,
-                      matches: &getopts::Matches,
-                      sopts: &config::Options,
-                      cfg: &ast::CrateConfig,
-                      descriptions: &rustc_errors::registry::Registry,
-                      output: ErrorOutputType)
-                      -> Compilation {
+    fn early_callback(
+        &mut self,
+        matches: &getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        descriptions: &rustc_errors::registry::Registry,
+        output: ErrorOutputType,
+    ) -> Compilation {
         debug!("running rust-semverver early_callback");
         self.default
             .early_callback(matches, sopts, cfg, descriptions, output)
     }
 
-    fn no_input(&mut self,
-                matches: &getopts::Matches,
-                sopts: &config::Options,
-                cfg: &ast::CrateConfig,
-                odir: &Option<PathBuf>,
-                ofile: &Option<PathBuf>,
-                descriptions: &rustc_errors::registry::Registry)
-                -> Option<(Input, Option<PathBuf>)> {
+    fn no_input(
+        &mut self,
+        matches: &getopts::Matches,
+        sopts: &config::Options,
+        cfg: &ast::CrateConfig,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>,
+        descriptions: &rustc_errors::registry::Registry,
+    ) -> Option<(Input, Option<PathBuf>)> {
         debug!("running rust-semverver no_input");
         self.default
             .no_input(matches, sopts, cfg, odir, ofile, descriptions)
     }
 
-    fn late_callback(&mut self,
-                     trans_crate: &CodegenBackend,
-                     matches: &getopts::Matches,
-                     sess: &Session,
-                     cstore: &CStore,
-                     input: &Input,
-                     odir: &Option<PathBuf>,
-                     ofile: &Option<PathBuf>)
-                     -> Compilation {
+    fn late_callback(
+        &mut self,
+        trans_crate: &CodegenBackend,
+        matches: &getopts::Matches,
+        sess: &Session,
+        cstore: &CStore,
+        input: &Input,
+        odir: &Option<PathBuf>,
+        ofile: &Option<PathBuf>,
+    ) -> Compilation {
         debug!("running rust-semverver late_callback");
         self.default
             .late_callback(trans_crate, matches, sess, cstore, input, odir, ofile)
     }
 
-    fn build_controller(self: Box<SemVerVerCompilerCalls>,
-                        sess: &Session,
-                        matches: &getopts::Matches)
-                        -> driver::CompileController<'a> {
+    fn build_controller(
+        self: Box<SemVerVerCompilerCalls>,
+        sess: &Session,
+        matches: &getopts::Matches,
+    ) -> driver::CompileController<'a> {
         let default = self.get_default();
         let version = self.get_version().clone();
         let SemVerVerCompilerCalls { verbose, .. } = *self;
         let mut controller = CompilerCalls::build_controller(default, sess, matches);
-        let old_callback =
-            std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
+        let old_callback = std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
 
         controller.after_analysis.callback = box move |state| {
             debug!("running rust-semverver after_analysis callback");

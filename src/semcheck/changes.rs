@@ -11,13 +11,13 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::session::Session;
-use rustc::ty::Predicate;
 use rustc::ty::error::TypeError;
+use rustc::ty::Predicate;
 
 use semver::Version;
 
-use std::collections::{BTreeSet, BTreeMap, HashMap};
 use std::cmp::Ordering;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt;
 
 use syntax::symbol::Symbol;
@@ -79,9 +79,7 @@ impl<'a> fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Name::Symbol(name) => write!(f, "`{}`", name),
-            Name::ImplDesc(ref desc) => {
-                write!(f, "`{}`", desc)
-            },
+            Name::ImplDesc(ref desc) => write!(f, "`{}`", desc),
         }
     }
 }
@@ -237,7 +235,10 @@ pub enum ChangeType<'tcx> {
     /// The style could have been changed from a tuple variant/struct to a regular
     /// struct/struct variant or vice versa. Whether all fields were private prior to the change
     /// is also recorded.
-    VariantStyleChanged { now_struct: bool, total_private: bool },
+    VariantStyleChanged {
+        now_struct: bool,
+        total_private: bool,
+    },
     /// A function has changed it's constness.
     FnConstChanged { now_const: bool },
     /// A method either gained or lost a `self` parameter.
@@ -257,7 +258,10 @@ pub enum ChangeType<'tcx> {
     /// This includes information on whether the affected item is a trait definition, since
     /// removing trait bounds on those is *breaking* (as it invalidates the assumption that a
     /// supertrait is implemented for each type implementing the traits).
-    BoundsLoosened { pred: Predicate<'tcx>, trait_def: bool },
+    BoundsLoosened {
+        pred: Predicate<'tcx>,
+        trait_def: bool,
+    },
     /// A trait impl has been specialized or removed for some type(s).
     TraitImplTightened,
     /// A trait impl has been generalized or newly added for some type(s).
@@ -318,134 +322,185 @@ impl<'tcx> ChangeType<'tcx> {
     /// Get a detailed explanation of a change, and why it is categorized as-is.
     fn explanation(&self) -> &'static str {
         match *self {
-            ItemMadePublic =>
-"Adding an item to a module's public interface is generally a non-breaking
+            ItemMadePublic => {
+                "Adding an item to a module's public interface is generally a non-breaking
 change, except in the special case of wildcard imports in user code, where
 they can cause nameclashes. Thus, the change is classified as \"technically
-breaking\".",
-            ItemMadePrivate =>
-"Removing an item from a module's public interface is a breaking change.",
-            KindDifference =>
-"Changing the \"kind\" of an item between versions is a breaking change,
+breaking\"."
+            }
+            ItemMadePrivate => {
+                "Removing an item from a module's public interface is a breaking change."
+            }
+            KindDifference => {
+                "Changing the \"kind\" of an item between versions is a breaking change,
 because the usage of the old and new version of the item need not be
-compatible.",
-            StaticMutabilityChanged { now_mut: true } =>
-"Making a static item mutable is a non-breaking change, because any (old)
-user code is guaranteed to use them in a read-only fashion.",
-            StaticMutabilityChanged { now_mut: false } =>
-"Making a static item immutable is a breaking change, because any (old)
-user code that tries to mutate them will break.",
-            VarianceLoosened =>
-"The variance of a type or region parameter in an item loosens iff <TODO>.",
-            VarianceTightened =>
-"The variance of a type or region parameter in an item tightens iff <TODO>.",
-            VarianceChanged { .. } =>
-"Switching the variance of a type or region parameter is breaking, if it goes
-from covariant to contravariant, or vice-versa.",
-            RegionParameterAdded =>
-"Adding a new region parameter is a breaking change, because it can break
+compatible."
+            }
+            StaticMutabilityChanged { now_mut: true } => {
+                "Making a static item mutable is a non-breaking change, because any (old)
+user code is guaranteed to use them in a read-only fashion."
+            }
+            StaticMutabilityChanged { now_mut: false } => {
+                "Making a static item immutable is a breaking change, because any (old)
+user code that tries to mutate them will break."
+            }
+            VarianceLoosened => {
+                "The variance of a type or region parameter in an item loosens iff <TODO>."
+            }
+            VarianceTightened => {
+                "The variance of a type or region parameter in an item tightens iff <TODO>."
+            }
+            VarianceChanged { .. } => {
+                "Switching the variance of a type or region parameter is breaking, if it goes
+from covariant to contravariant, or vice-versa."
+            }
+            RegionParameterAdded => {
+                "Adding a new region parameter is a breaking change, because it can break
 explicit type annotations, as well as prevent region inference working as
-before.",
-            RegionParameterRemoved =>
-"Removing a region parameter is a breaking change, because it can break
+before."
+            }
+            RegionParameterRemoved => {
+                "Removing a region parameter is a breaking change, because it can break
 explicit type annotations, well as prevent region inference working as
-before.",
-            TypeParameterAdded { defaulted: true } =>
-"Adding a new defaulted type parameter is a non-breaking change, because
+before."
+            }
+            TypeParameterAdded { defaulted: true } => {
+                "Adding a new defaulted type parameter is a non-breaking change, because
 all old references to the item are still valid, provided that no type
-errors appear.",
-            TypeParameterAdded { defaulted: false } =>
-"Adding a new non-defaulted type parameter is a breaking change, because
+errors appear."
+            }
+            TypeParameterAdded { defaulted: false } => {
+                "Adding a new non-defaulted type parameter is a breaking change, because
 old references to the item become invalid in cases where the type parameter
-can't be inferred.",
-            TypeParameterRemoved { .. } =>
-"Removing any type parameter, defaulted or not, is a breaking change,
+can't be inferred."
+            }
+            TypeParameterRemoved { .. } => {
+                "Removing any type parameter, defaulted or not, is a breaking change,
 because old references to the item are become invalid if the type parameter
-is instantiated in a manner not compatible with the new type of the item.",
-            VariantAdded =>
-"Adding a new enum variant is a breaking change, because a match expression
-on said enum can become non-exhaustive.",
-            VariantRemoved =>
-"Removing an enum variant is a braking change, because every old reference
-to the removed variant is rendered invalid.",
-            VariantFieldAdded { public: _, total_public: _ } =>
-"Adding a field to an enum variant is breaking, as matches on the variant are
+is instantiated in a manner not compatible with the new type of the item."
+            }
+            VariantAdded => {
+                "Adding a new enum variant is a breaking change, because a match expression
+on said enum can become non-exhaustive."
+            }
+            VariantRemoved => {
+                "Removing an enum variant is a braking change, because every old reference
+to the removed variant is rendered invalid."
+            }
+            VariantFieldAdded {
+                public: _,
+                total_public: _,
+            } => {
+                "Adding a field to an enum variant is breaking, as matches on the variant are
 invalidated. In case of structs, this only holds for public fields, or the
-first private field being added.",
-            VariantFieldRemoved { public: _, total_public: _ } =>
-"Removing a field from an enum variant is breaking, as matches on the variant
-are invalidated. In case of structs, this only holds for public fields.",
-            VariantStyleChanged { .. } =>
-"Changing the style of a variant is a breaking change, since most old
+first private field being added."
+            }
+            VariantFieldRemoved {
+                public: _,
+                total_public: _,
+            } => {
+                "Removing a field from an enum variant is breaking, as matches on the variant
+are invalidated. In case of structs, this only holds for public fields."
+            }
+            VariantStyleChanged { .. } => {
+                "Changing the style of a variant is a breaking change, since most old
 references to it are rendered invalid: pattern matches and value
-construction needs to use the other constructor syntax, respectively.",
-            FnConstChanged { now_const: true } =>
-"Making a function const is a non-breaking change, because a const function
-can appear anywhere a regular function is expected.",
-            FnConstChanged { now_const: false } =>
-"Making a const function non-const is a breaking change, because values
+construction needs to use the other constructor syntax, respectively."
+            }
+            FnConstChanged { now_const: true } => {
+                "Making a function const is a non-breaking change, because a const function
+can appear anywhere a regular function is expected."
+            }
+            FnConstChanged { now_const: false } => {
+                "Making a const function non-const is a breaking change, because values
 assigned to constants can't be determined by expressions containing
-non-const functions.",
-            MethodSelfChanged { now_self: true } =>
-"Adding a self parameter to a method is a breaking change in some specific
+non-const functions."
+            }
+            MethodSelfChanged { now_self: true } => {
+                "Adding a self parameter to a method is a breaking change in some specific
 situations: When user code implements it's own trait on the type the
 method is implemented on, the new method could cause a nameclash with a
 trait method, thus breaking user code. Because this is a rather special
-case, this change is classified as \"technically breaking\".",
-            MethodSelfChanged { now_self: false } =>
-"Removing a self parameter from a method is a breaking change, because
-all method invocations using the method syntax become invalid.",
-            TraitItemAdded { defaulted: true, .. } =>
-"Adding a new defaulted trait item is a breaking change in some specific
+case, this change is classified as \"technically breaking\"."
+            }
+            MethodSelfChanged { now_self: false } => {
+                "Removing a self parameter from a method is a breaking change, because
+all method invocations using the method syntax become invalid."
+            }
+            TraitItemAdded {
+                defaulted: true, ..
+            } => {
+                "Adding a new defaulted trait item is a breaking change in some specific
 situations: The new trait item could cause a name clash with traits
 defined in user code. Because this is a rather special case, this change
-is classified as \"technically breaking\".",
-            TraitItemAdded { sealed_trait: true, .. } =>
-"Adding a new trait item is a non-breaking change, when user code can't
+is classified as \"technically breaking\"."
+            }
+            TraitItemAdded {
+                sealed_trait: true, ..
+            } => {
+                "Adding a new trait item is a non-breaking change, when user code can't
 provide implementations of the trait, i.e. if the trait is sealed by
-inheriting from an unnamable (crate-local) item.",
-            TraitItemAdded { .. } => // neither defaulted or sealed
-"Adding a new non-defaulted trait item is a breaking change, because all
-implementations of the trait in user code become invalid.",
-            TraitItemRemoved { .. } =>
-"Removing a trait item is a breaking change, because all old references
-to the item become invalid.",
-            TraitUnsafetyChanged { .. } =>
-"Changing the unsafety of a trait is a breaking change, because all
-implementations become invalid.",
-            TypeChanged { .. } =>
-"Changing the type of an item is a breaking change, because user code
-using the item becomes type-incorrect.",
-            BoundsTightened { .. } =>
-"Tightening the bounds of a lifetime or type parameter is a breaking
+inheriting from an unnamable (crate-local) item."
+            }
+            TraitItemAdded { .. } =>
+            // neither defaulted or sealed
+            {
+                "Adding a new non-defaulted trait item is a breaking change, because all
+implementations of the trait in user code become invalid."
+            }
+            TraitItemRemoved { .. } => {
+                "Removing a trait item is a breaking change, because all old references
+to the item become invalid."
+            }
+            TraitUnsafetyChanged { .. } => {
+                "Changing the unsafety of a trait is a breaking change, because all
+implementations become invalid."
+            }
+            TypeChanged { .. } => {
+                "Changing the type of an item is a breaking change, because user code
+using the item becomes type-incorrect."
+            }
+            BoundsTightened { .. } => {
+                "Tightening the bounds of a lifetime or type parameter is a breaking
 change, because all old references instantiating the parameter with a
-type or lifetime not fulfilling the bound are rendered invalid.",
-            BoundsLoosened { trait_def: true, .. } =>
-"Loosening the bounds of a lifetime or type parameter in a trait
+type or lifetime not fulfilling the bound are rendered invalid."
+            }
+            BoundsLoosened {
+                trait_def: true, ..
+            } => {
+                "Loosening the bounds of a lifetime or type parameter in a trait
 definition is a breaking change, because the assumption in user code
 that the bound in question hold is violated, potentially invalidating
-trait implementation or usage.",
-            BoundsLoosened { trait_def: false, .. } =>
-"Loosening the bounds of a lifetime or type parameter in a non-trait
+trait implementation or usage."
+            }
+            BoundsLoosened {
+                trait_def: false, ..
+            } => {
+                "Loosening the bounds of a lifetime or type parameter in a non-trait
 definition is a non-breaking change, because all old references to the
-item would remain valid.",
-            TraitImplTightened =>
-"Effectively removing a trait implementation for a (possibly
+item would remain valid."
+            }
+            TraitImplTightened => {
+                "Effectively removing a trait implementation for a (possibly
 parametrized) type is a breaking change, as all old references to trait
-methods on the type become invalid.",
-            TraitImplLoosened =>
-"Effectively adding a trait implementation for a (possibly
+methods on the type become invalid."
+            }
+            TraitImplLoosened => {
+                "Effectively adding a trait implementation for a (possibly
 parametrized) type is a breaking change in some specific situations,
 as name clashes with other trait implementations in user code can be
-caused.",
-            AssociatedItemAdded =>
-"Adding a new item to an inherent impl is a breaking change in some
+caused."
+            }
+            AssociatedItemAdded => {
+                "Adding a new item to an inherent impl is a breaking change in some
 specific situations, for example if this causes name clashes with a trait
 method. This is rare enough to only be considered \"technically
-breaking\".",
-            AssociatedItemRemoved =>
-"Removing an item from an inherent impl is a breaking change, as all old
-references to it become invalid.",
+breaking\"."
+            }
+            AssociatedItemRemoved => {
+                "Removing an item from an inherent impl is a breaking change, as all old
+references to it become invalid."
+            }
             Unknown => "No explanation for unknown changes.",
         }
     }
@@ -461,10 +516,12 @@ impl<'a> fmt::Display for ChangeType<'a> {
             StaticMutabilityChanged { now_mut: false } => "static item made immutable",
             VarianceLoosened => "variance loosened",
             VarianceTightened => "variance tightened",
-            VarianceChanged { now_contravariant: true } =>
-                "variance changed from co- to contravariant",
-            VarianceChanged { now_contravariant: false } =>
-                "variance changed from contra- to covariant",
+            VarianceChanged {
+                now_contravariant: true,
+            } => "variance changed from co- to contravariant",
+            VarianceChanged {
+                now_contravariant: false,
+            } => "variance changed from contra- to covariant",
             RegionParameterAdded => "region parameter added",
             RegionParameterRemoved => "region parameter removed",
             TypeParameterAdded { defaulted: true } => "defaulted type parameter added",
@@ -473,38 +530,65 @@ impl<'a> fmt::Display for ChangeType<'a> {
             TypeParameterRemoved { defaulted: false } => "type parameter removed",
             VariantAdded => "enum variant added",
             VariantRemoved => "enum variant removed",
-            VariantFieldAdded { public: true, total_public: true } =>
-                "public variant field added to variant with no private fields",
-            VariantFieldAdded { public: true, total_public: false } =>
-                "public variant field added to variant with private fields",
-            VariantFieldAdded { public: false, total_public: true } =>
-                "variant field added to variant with no private fields",
-            VariantFieldAdded { public: false, total_public: false } =>
-                "variant field added to variant with private fields",
-            VariantFieldRemoved { public: true, total_public: true } =>
-                "public variant field removed from variant with no private fields",
-            VariantFieldRemoved { public: true, total_public: false } =>
-                "public variant field removed from variant with private fields",
-            VariantFieldRemoved { public: false, total_public: true } =>
-                "variant field removed from variant with no private fields",
-            VariantFieldRemoved { public: false, total_public: false } =>
-                "variant field removed from variant with private fields",
-            VariantStyleChanged { now_struct: true, total_private: true } =>
-                "variant with no public fields changed to a struct variant",
-            VariantStyleChanged { now_struct: true, total_private: false } =>
-                "variant changed to a struct variant",
-            VariantStyleChanged { now_struct: false, total_private: true } =>
-                "variant with no public fields changed to a tuple variant",
-            VariantStyleChanged { now_struct: false, total_private: false } =>
-                "variant changed to a tuple variant",
+            VariantFieldAdded {
+                public: true,
+                total_public: true,
+            } => "public variant field added to variant with no private fields",
+            VariantFieldAdded {
+                public: true,
+                total_public: false,
+            } => "public variant field added to variant with private fields",
+            VariantFieldAdded {
+                public: false,
+                total_public: true,
+            } => "variant field added to variant with no private fields",
+            VariantFieldAdded {
+                public: false,
+                total_public: false,
+            } => "variant field added to variant with private fields",
+            VariantFieldRemoved {
+                public: true,
+                total_public: true,
+            } => "public variant field removed from variant with no private fields",
+            VariantFieldRemoved {
+                public: true,
+                total_public: false,
+            } => "public variant field removed from variant with private fields",
+            VariantFieldRemoved {
+                public: false,
+                total_public: true,
+            } => "variant field removed from variant with no private fields",
+            VariantFieldRemoved {
+                public: false,
+                total_public: false,
+            } => "variant field removed from variant with private fields",
+            VariantStyleChanged {
+                now_struct: true,
+                total_private: true,
+            } => "variant with no public fields changed to a struct variant",
+            VariantStyleChanged {
+                now_struct: true,
+                total_private: false,
+            } => "variant changed to a struct variant",
+            VariantStyleChanged {
+                now_struct: false,
+                total_private: true,
+            } => "variant with no public fields changed to a tuple variant",
+            VariantStyleChanged {
+                now_struct: false,
+                total_private: false,
+            } => "variant changed to a tuple variant",
             FnConstChanged { now_const: true } => "fn item made const",
             FnConstChanged { now_const: false } => "fn item made non-const",
             MethodSelfChanged { now_self: true } => "added self-argument to method",
             MethodSelfChanged { now_self: false } => "removed self-argument from method",
-            TraitItemAdded { defaulted: true, .. } =>
-                "added defaulted item to trait",
-            TraitItemAdded { defaulted: false, sealed_trait: true } =>
-                "added item to sealed trait",
+            TraitItemAdded {
+                defaulted: true, ..
+            } => "added defaulted item to trait",
+            TraitItemAdded {
+                defaulted: false,
+                sealed_trait: true,
+            } => "added item to sealed trait",
             TraitItemAdded { .. } => "added item to trait",
             TraitItemRemoved { defaulted: true } => "removed defaulted item from trait",
             TraitItemRemoved { defaulted: false } => "removed item from trait",
@@ -512,12 +596,16 @@ impl<'a> fmt::Display for ChangeType<'a> {
             TraitUnsafetyChanged { now_unsafe: false } => "trait no longer unsafe",
             TypeChanged { ref error } => return write!(f, "type error: {}", error),
             BoundsTightened { ref pred } => return write!(f, "added bound: `{}`", pred),
-            BoundsLoosened { ref pred, trait_def } =>
+            BoundsLoosened {
+                ref pred,
+                trait_def,
+            } => {
                 if trait_def {
-                    return write!(f, "removed bound on trait definition: `{}`", pred)
+                    return write!(f, "removed bound on trait definition: `{}`", pred);
                 } else {
-                    return write!(f, "removed bound: `{}`", pred)
-                },
+                    return write!(f, "removed bound: `{}`", pred);
+                }
+            }
             TraitImplTightened => "trait impl specialized or removed",
             TraitImplLoosened => "trait impl generalized or newly added",
             AssociatedItemAdded => "added item in inherent impl",
@@ -542,7 +630,7 @@ pub struct Change<'tcx> {
     /// The new definition span of the item.
     new_span: Span,
     /// Whether to output changes. Used to distinguish all-private items.
-    output: bool
+    output: bool,
 }
 
 impl<'tcx> Change<'tcx> {
@@ -575,37 +663,37 @@ impl<'tcx> Change<'tcx> {
     fn trait_item_breaking(&self) -> bool {
         for change in &self.changes {
             match change.0 {
-                ItemMadePrivate |
-                KindDifference |
-                RegionParameterRemoved |
-                TypeParameterRemoved { .. } |
-                VariantAdded |
-                VariantRemoved |
-                VariantFieldAdded { .. } |
-                VariantFieldRemoved { .. } |
-                VariantStyleChanged { .. } |
-                TypeChanged { .. } |
-                FnConstChanged { now_const: false } |
-                MethodSelfChanged { now_self: false } |
-                Unknown => return true,
-                StaticMutabilityChanged { .. } |
-                RegionParameterAdded |
-                MethodSelfChanged { now_self: true } |
-                TraitItemAdded { .. } |
-                TraitItemRemoved { .. } |
-                ItemMadePublic |
-                VarianceLoosened |
-                VarianceTightened |
-                VarianceChanged { .. } |
-                TypeParameterAdded { .. } |
-                TraitUnsafetyChanged { .. } |
-                FnConstChanged { now_const: true } |
-                BoundsTightened { .. } |
-                BoundsLoosened { .. } |
-                TraitImplTightened |
-                TraitImplLoosened |
-                AssociatedItemAdded |
-                AssociatedItemRemoved => (),
+                ItemMadePrivate
+                | KindDifference
+                | RegionParameterRemoved
+                | TypeParameterRemoved { .. }
+                | VariantAdded
+                | VariantRemoved
+                | VariantFieldAdded { .. }
+                | VariantFieldRemoved { .. }
+                | VariantStyleChanged { .. }
+                | TypeChanged { .. }
+                | FnConstChanged { now_const: false }
+                | MethodSelfChanged { now_self: false }
+                | Unknown => return true,
+                StaticMutabilityChanged { .. }
+                | RegionParameterAdded
+                | MethodSelfChanged { now_self: true }
+                | TraitItemAdded { .. }
+                | TraitItemRemoved { .. }
+                | ItemMadePublic
+                | VarianceLoosened
+                | VarianceTightened
+                | VarianceChanged { .. }
+                | TypeParameterAdded { .. }
+                | TraitUnsafetyChanged { .. }
+                | FnConstChanged { now_const: true }
+                | BoundsTightened { .. }
+                | BoundsLoosened { .. }
+                | TraitImplTightened
+                | TraitImplLoosened
+                | AssociatedItemAdded
+                | AssociatedItemRemoved => (),
             }
         }
 
@@ -647,9 +735,10 @@ impl<'tcx> Change<'tcx> {
                 if cat == Breaking {
                     builder.span_warn(span, &sub_msg);
                 } else {
-                    builder.span_note(span, &sub_msg,);
+                    builder.span_note(span, &sub_msg);
                 }
-            } else if cat == Breaking { // change.1 == None from here on.
+            } else if cat == Breaking {
+                // change.1 == None from here on.
                 builder.warn(&sub_msg);
             } else {
                 builder.note(&sub_msg);
@@ -696,9 +785,7 @@ pub struct ChangeSet<'tcx> {
 impl<'tcx> ChangeSet<'tcx> {
     /// Add a new path change entry for the given item.
     pub fn new_path_change(&mut self, old: DefId, name: Symbol, def_span: Span) {
-        self.spans
-            .entry(def_span)
-            .or_insert_with(|| old);
+        self.spans.entry(def_span).or_insert_with(|| old);
         self.path_changes
             .entry(old)
             .or_insert_with(|| PathChange::new(name, def_span));
@@ -726,13 +813,15 @@ impl<'tcx> ChangeSet<'tcx> {
     }
 
     /// Add a new change entry for the given item pair.
-    pub fn new_change(&mut self,
-                      old_def_id: DefId,
-                      new_def_id: DefId,
-                      name: Symbol,
-                      old_span: Span,
-                      new_span: Span,
-                      output: bool) {
+    pub fn new_change(
+        &mut self,
+        old_def_id: DefId,
+        new_def_id: DefId,
+        name: Symbol,
+        old_span: Span,
+        new_span: Span,
+        output: bool,
+    ) {
         let change = Change::new(Name::Symbol(name), new_span, output);
 
         self.spans.insert(old_span, old_def_id);
@@ -741,10 +830,7 @@ impl<'tcx> ChangeSet<'tcx> {
     }
 
     /// Add a new change entry for the given trait impl.
-    pub fn new_change_impl(&mut self,
-                           def_id: DefId,
-                           desc: String,
-                           span: Span) {
+    pub fn new_change_impl(&mut self, def_id: DefId, desc: String, span: Span) {
         let change = Change::new(Name::ImplDesc(desc), span, true);
 
         self.spans.insert(span, def_id);
@@ -770,17 +856,15 @@ impl<'tcx> ChangeSet<'tcx> {
     /// Set up reporting for the changes associated with a given `DefId`.
     pub fn set_output(&mut self, old: DefId) {
         let max = &mut self.max;
-        self.changes
-            .get_mut(&old)
-            .map(|change| {
-                let cat = change.to_category();
+        self.changes.get_mut(&old).map(|change| {
+            let cat = change.to_category();
 
-                if cat > *max {
-                    *max = cat;
-                }
+            if cat > *max {
+                *max = cat;
+            }
 
-                change.output = true
-            });
+            change.output = true
+        });
     }
 
     /// Check whether an item with the given id has undergone breaking changes.
@@ -816,7 +900,10 @@ impl<'tcx> ChangeSet<'tcx> {
                 }
             }
 
-            println!("version bump: {} -> ({}) -> {}", version, self.max, new_version);
+            println!(
+                "version bump: {} -> ({}) -> {}",
+                version, self.max, new_version
+            );
         } else {
             println!("max change: {}, could not parse {}", self.max, version);
         }
@@ -835,16 +922,16 @@ impl<'tcx> ChangeSet<'tcx> {
 
 #[cfg(test)]
 pub mod tests {
-    use quickcheck::*;
     pub use super::*;
+    use quickcheck::*;
 
     use rustc::hir::def_id::DefId;
 
     use std::cmp::{max, min};
 
-    use syntax_pos::BytePos;
     use syntax_pos::hygiene::SyntaxContext;
     use syntax_pos::symbol::Interner;
+    use syntax_pos::BytePos;
 
     /// A wrapper for `Span` that can be randomly generated.
     #[derive(Clone, Debug)]
@@ -876,7 +963,7 @@ pub mod tests {
 
     impl Arbitrary for DefId_ {
         fn arbitrary<G: Gen>(g: &mut G) -> DefId_ {
-            use rustc::hir::def_id::{DefId, CrateNum, DefIndex};
+            use rustc::hir::def_id::{CrateNum, DefId, DefIndex};
 
             let a: u32 = Arbitrary::arbitrary(g);
             let b: u32 = Arbitrary::arbitrary(g);
@@ -895,18 +982,42 @@ pub mod tests {
         KindDifference,
         RegionParameterAdded,
         RegionParameterRemoved,
-        TypeParameterAdded { defaulted: bool },
-        TypeParameterRemoved { defaulted: bool },
+        TypeParameterAdded {
+            defaulted: bool,
+        },
+        TypeParameterRemoved {
+            defaulted: bool,
+        },
         VariantAdded,
         VariantRemoved,
-        VariantFieldAdded { public: bool, total_public: bool },
-        VariantFieldRemoved { public: bool, total_public: bool },
-        VariantStyleChanged { now_struct: bool, total_private: bool },
-        FnConstChanged { now_const: bool },
-        MethodSelfChanged { now_self: bool },
-        TraitItemAdded { defaulted: bool, sealed_trait: bool },
-        TraitItemRemoved { defaulted: bool },
-        TraitUnsafetyChanged { now_unsafe: bool },
+        VariantFieldAdded {
+            public: bool,
+            total_public: bool,
+        },
+        VariantFieldRemoved {
+            public: bool,
+            total_public: bool,
+        },
+        VariantStyleChanged {
+            now_struct: bool,
+            total_private: bool,
+        },
+        FnConstChanged {
+            now_const: bool,
+        },
+        MethodSelfChanged {
+            now_self: bool,
+        },
+        TraitItemAdded {
+            defaulted: bool,
+            sealed_trait: bool,
+        },
+        TraitItemRemoved {
+            defaulted: bool,
+        },
+        TraitUnsafetyChanged {
+            now_unsafe: bool,
+        },
         Unknown,
     }
 
@@ -918,28 +1029,46 @@ pub mod tests {
                 ChangeType_::KindDifference => KindDifference,
                 ChangeType_::RegionParameterAdded => RegionParameterAdded,
                 ChangeType_::RegionParameterRemoved => RegionParameterRemoved,
-                ChangeType_::TypeParameterAdded { defaulted } =>
-                    TypeParameterAdded { defaulted },
-                ChangeType_::TypeParameterRemoved { defaulted } =>
-                    TypeParameterRemoved { defaulted },
+                ChangeType_::TypeParameterAdded { defaulted } => TypeParameterAdded { defaulted },
+                ChangeType_::TypeParameterRemoved { defaulted } => {
+                    TypeParameterRemoved { defaulted }
+                }
                 ChangeType_::VariantAdded => VariantAdded,
                 ChangeType_::VariantRemoved => VariantRemoved,
-                ChangeType_::VariantFieldAdded { public, total_public } =>
-                    VariantFieldAdded { public, total_public },
-                ChangeType_::VariantFieldRemoved { public, total_public } =>
-                    VariantFieldRemoved { public, total_public },
-                ChangeType_::VariantStyleChanged { now_struct, total_private } =>
-                    VariantStyleChanged { now_struct, total_private },
-                ChangeType_::FnConstChanged { now_const } =>
-                    FnConstChanged { now_const },
-                ChangeType_::MethodSelfChanged { now_self } =>
-                    MethodSelfChanged { now_self },
-                ChangeType_::TraitItemAdded { defaulted, sealed_trait } =>
-                    TraitItemAdded { defaulted, sealed_trait },
-                ChangeType_::TraitItemRemoved { defaulted } =>
-                    TraitItemRemoved { defaulted },
-                ChangeType_::TraitUnsafetyChanged { now_unsafe } =>
-                    TraitUnsafetyChanged { now_unsafe },
+                ChangeType_::VariantFieldAdded {
+                    public,
+                    total_public,
+                } => VariantFieldAdded {
+                    public,
+                    total_public,
+                },
+                ChangeType_::VariantFieldRemoved {
+                    public,
+                    total_public,
+                } => VariantFieldRemoved {
+                    public,
+                    total_public,
+                },
+                ChangeType_::VariantStyleChanged {
+                    now_struct,
+                    total_private,
+                } => VariantStyleChanged {
+                    now_struct,
+                    total_private,
+                },
+                ChangeType_::FnConstChanged { now_const } => FnConstChanged { now_const },
+                ChangeType_::MethodSelfChanged { now_self } => MethodSelfChanged { now_self },
+                ChangeType_::TraitItemAdded {
+                    defaulted,
+                    sealed_trait,
+                } => TraitItemAdded {
+                    defaulted,
+                    sealed_trait,
+                },
+                ChangeType_::TraitItemRemoved { defaulted } => TraitItemRemoved { defaulted },
+                ChangeType_::TraitUnsafetyChanged { now_unsafe } => {
+                    TraitUnsafetyChanged { now_unsafe }
+                }
                 ChangeType_::Unknown => Unknown,
             }
         }
@@ -948,39 +1077,64 @@ pub mod tests {
     impl Arbitrary for ChangeType_ {
         fn arbitrary<G: Gen>(g: &mut G) -> ChangeType_ {
             use self::ChangeType_::*;
-            use ::rand::Rng;
+            use rand::Rng;
 
             let b1 = Arbitrary::arbitrary(g);
             let b2 = Arbitrary::arbitrary(g);
 
-            g.choose(&[ItemMadePublic,
-                       ItemMadePrivate,
-                       KindDifference,
-                       RegionParameterAdded,
-                       RegionParameterRemoved,
-                       TypeParameterAdded { defaulted: b1 },
-                       TypeParameterRemoved { defaulted: b1 },
-                       VariantAdded,
-                       VariantRemoved,
-                       VariantFieldAdded { public: b1, total_public: b2 },
-                       VariantFieldRemoved { public: b1, total_public: b2 },
-                       VariantStyleChanged { now_struct: b1, total_private: b2 },
-                       FnConstChanged { now_const: b1 },
-                       MethodSelfChanged { now_self: b1 },
-                       TraitItemAdded { defaulted: b1, sealed_trait: b2 },
-                       TraitItemRemoved { defaulted: b1 },
-                       TraitUnsafetyChanged { now_unsafe: b1 },
-                       Unknown]).unwrap().clone()
+            g.choose(&[
+                ItemMadePublic,
+                ItemMadePrivate,
+                KindDifference,
+                RegionParameterAdded,
+                RegionParameterRemoved,
+                TypeParameterAdded { defaulted: b1 },
+                TypeParameterRemoved { defaulted: b1 },
+                VariantAdded,
+                VariantRemoved,
+                VariantFieldAdded {
+                    public: b1,
+                    total_public: b2,
+                },
+                VariantFieldRemoved {
+                    public: b1,
+                    total_public: b2,
+                },
+                VariantStyleChanged {
+                    now_struct: b1,
+                    total_private: b2,
+                },
+                FnConstChanged { now_const: b1 },
+                MethodSelfChanged { now_self: b1 },
+                TraitItemAdded {
+                    defaulted: b1,
+                    sealed_trait: b2,
+                },
+                TraitItemRemoved { defaulted: b1 },
+                TraitUnsafetyChanged { now_unsafe: b1 },
+                Unknown,
+            ])
+            .unwrap()
+            .clone()
         }
     }
 
     /// A wrapper type used to construct `Change`s.
-    pub type Change_ = (DefId_, DefId_, Span_, Span_, bool, Vec<(ChangeType_, Option<Span_>)>);
+    pub type Change_ = (
+        DefId_,
+        DefId_,
+        Span_,
+        Span_,
+        bool,
+        Vec<(ChangeType_, Option<Span_>)>,
+    );
 
     /// Construct `Change`s from things that can be generated.
-    fn build_change<'a>(s1: Span, output: bool, changes: Vec<(ChangeType_, Option<Span_>)>)
-        -> Change<'a>
-    {
+    fn build_change<'a>(
+        s1: Span,
+        output: bool,
+        changes: Vec<(ChangeType_, Option<Span_>)>,
+    ) -> Change<'a> {
         let mut interner = Interner::default();
         let mut change = Change::new(Name::Symbol(interner.intern("test")), s1, output);
 

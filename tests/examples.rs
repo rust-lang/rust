@@ -57,10 +57,15 @@ mod features {
             };
 
             success &= Command::new("./target/debug/rust-semverver")
-                .args(&["--crate-type=lib", "-Zverbose",
-                        "--extern", &format!("old={}", old_rlib),
-                        "--extern", &format!("new={}", new_rlib),
-                        "tests/helper/test.rs"])
+                .args(&[
+                    "--crate-type=lib",
+                    "-Zverbose",
+                    "--extern",
+                    &format!("old={}", old_rlib),
+                    "--extern",
+                    &format!("new={}", new_rlib),
+                    "tests/helper/test.rs",
+                ])
                 .env("RUST_BACKTRACE", "full")
                 .env("RUST_SEMVER_CRATE_VERSION", "1.0.0")
                 .stdin(Stdio::null())
@@ -72,7 +77,10 @@ mod features {
 
             assert!(success, "rust-semverver");
 
-            success &= sed_child.wait().expect("could not wait for sed child").success();
+            success &= sed_child
+                .wait()
+                .expect("could not wait for sed child")
+                .success();
         }
 
         assert!(success, "sed");

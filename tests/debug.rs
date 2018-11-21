@@ -10,7 +10,9 @@ fn debug() {
         let mut dump =
             File::create(Path::new("tests/debug.sh")).expect("could not create dump file");
 
-        let metadata = dump.metadata().expect("could not access dump file metadata");
+        let metadata = dump
+            .metadata()
+            .expect("could not access dump file metadata");
         let mut permissions = metadata.permissions();
         permissions.set_mode(0o755);
         let _ = dump.set_permissions(permissions);

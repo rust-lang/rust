@@ -99,7 +99,8 @@ impl IdMapping {
 
         assert!(self.in_old_crate(old_def_id));
 
-        self.trait_item_mapping.insert(old_def_id, (old, new, old_trait));
+        self.trait_item_mapping
+            .insert(old_def_id, (old, new, old_trait));
         self.reverse_mapping.insert(new.def_id(), old_def_id);
     }
 
@@ -110,11 +111,13 @@ impl IdMapping {
 
     /// Add any other item's old and new `DefId`s.
     pub fn add_internal_item(&mut self, old: DefId, new: DefId) {
-        assert!(!self.internal_mapping.contains_key(&old),
-                "bug: overwriting {:?} => {:?} with {:?}!",
-                old,
-                self.internal_mapping[&old],
-                new);
+        assert!(
+            !self.internal_mapping.contains_key(&old),
+            "bug: overwriting {:?} => {:?} with {:?}!",
+            old,
+            self.internal_mapping[&old],
+            new
+        );
         assert!(self.in_old_crate(old));
         assert!(self.in_new_crate(new));
 
@@ -149,20 +152,25 @@ impl IdMapping {
 
     /// Check whether a `DefId` represents a non-mapped defaulted type parameter.
     pub fn is_non_mapped_defaulted_type_param(&self, def_id: &DefId) -> bool {
-        self.non_mapped_items.contains(def_id) &&
-            self.type_params.get(def_id).map_or(false, |def| match def.kind {
-                GenericParamDefKind::Type { has_default, .. } => has_default,
-                _ => unreachable!(),
-            })
+        self.non_mapped_items.contains(def_id)
+            && self
+                .type_params
+                .get(def_id)
+                .map_or(false, |def| match def.kind {
+                    GenericParamDefKind::Type { has_default, .. } => has_default,
+                    _ => unreachable!(),
+                })
     }
 
     /// Record an item from an inherent impl.
-    pub fn add_inherent_item(&mut self,
-                             parent_def_id: DefId,
-                             kind: AssociatedKind,
-                             name: Name,
-                             impl_def_id: DefId,
-                             item_def_id: DefId) {
+    pub fn add_inherent_item(
+        &mut self,
+        parent_def_id: DefId,
+        kind: AssociatedKind,
+        name: Name,
+        impl_def_id: DefId,
+        item_def_id: DefId,
+    ) {
         self.inherent_items
             .entry(InherentEntry {
                 parent_def_id: parent_def_id,
@@ -174,11 +182,8 @@ impl IdMapping {
     }
 
     /// Get the impl data for an inherent item.
-    pub fn get_inherent_impls(&self, inherent_entry: &InherentEntry)
-        -> Option<&InherentImplSet>
-    {
-        self.inherent_items
-            .get(inherent_entry)
+    pub fn get_inherent_impls(&self, inherent_entry: &InherentEntry) -> Option<&InherentImplSet> {
+        self.inherent_items.get(inherent_entry)
     }
 
     /// Get the new `DefId` associated with the given old one.
@@ -205,9 +210,7 @@ impl IdMapping {
         assert!(!self.in_old_crate(new));
 
         if self.in_new_crate(new) {
-            self.reverse_mapping
-                .get(&new)
-                .cloned()
+            self.reverse_mapping.get(&new).cloned()
         } else {
             Some(new)
         }
@@ -225,9 +228,9 @@ impl IdMapping {
 
     /// Check whether an old `DefId` is present in the mappings.
     pub fn contains_old_id(&self, old: DefId) -> bool {
-        self.toplevel_mapping.contains_key(&old) ||
-            self.trait_item_mapping.contains_key(&old) ||
-            self.internal_mapping.contains_key(&old)
+        self.toplevel_mapping.contains_key(&old)
+            || self.trait_item_mapping.contains_key(&old)
+            || self.internal_mapping.contains_key(&old)
     }
 
     /// Check whether a new `DefId` is present in the mappings.
@@ -252,18 +255,19 @@ impl IdMapping {
     }
 
     /// Iterate over the item pairs of all children of a given item.
-    pub fn children_of<'a>(&'a self, parent: DefId)
-        -> Option<impl Iterator<Item = (DefId, DefId)> + 'a>
-    {
+    pub fn children_of<'a>(
+        &'a self,
+        parent: DefId,
+    ) -> Option<impl Iterator<Item = (DefId, DefId)> + 'a> {
         self.child_mapping
             .get(&parent)
             .map(|m| m.iter().map(move |old| (*old, self.internal_mapping[old])))
     }
 
     /// Iterate over all items in inherent impls.
-    pub fn inherent_impls<'a>(&'a self)
-        -> impl Iterator<Item = (&'a InherentEntry, &'a InherentImplSet)>
-    {
+    pub fn inherent_impls<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = (&'a InherentEntry, &'a InherentImplSet)> {
         self.inherent_items.iter()
     }
 
@@ -360,9 +364,7 @@ impl NameMapping {
     }
 
     /// Drain the item pairs being stored.
-    pub fn drain<'a>(&'a mut self)
-        -> impl Iterator<Item = (Option<Export>, Option<Export>)> + 'a
-    {
+    pub fn drain<'a>(&'a mut self) -> impl Iterator<Item = (Option<Export>, Option<Export>)> + 'a {
         self.type_map
             .drain()
             .chain(self.value_map.drain())

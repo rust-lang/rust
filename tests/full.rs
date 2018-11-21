@@ -9,7 +9,8 @@ mod full {
     fn test_full(crate_name: &str, old_version: &str, new_version: &str) {
         let mut success = true;
 
-        let prog = format!(r#"
+        let prog = format!(
+            r#"
     # wait for the actual output
     /^version bump/ {{
         doprint = 1;
@@ -27,16 +28,22 @@ mod full {
         # sanitize paths
         gsub(/-->.*{crate_name}/, "--> {crate_name}", $0);
         print;
-    }}{crate_name}{crate_name}"#, crate_name = crate_name);
+    }}{crate_name}{crate_name}"#,
+            crate_name = crate_name
+        );
 
-        eprintln!("prog:\n{}",prog);
+        eprintln!("prog:\n{}", prog);
 
         let base_out_file = Path::new("tests/full_cases")
             .join(format!("{}-{}-{}", crate_name, old_version, new_version));
 
         let out_file = if cfg!(target_os = "macos") {
             let p: PathBuf = format!("{}.osx", base_out_file.display()).into();
-            if p.exists() { p } else { base_out_file }
+            if p.exists() {
+                p
+            } else {
+                base_out_file
+            }
         } else {
             base_out_file
         };
@@ -84,19 +91,21 @@ mod full {
 
         assert!(success, "cargo semver");
 
-        success &= awk_child.wait().expect("could not wait for awk child").success();
+        success &= awk_child
+            .wait()
+            .expect("could not wait for awk child")
+            .success();
 
         assert!(success, "awk");
 
         success &= Command::new("git")
             .args(&["diff", "--exit-code", out_file])
-                    .env("PAGER", "")
-                    .status()
-                    .expect("could not run git diff")
-                    .success();
+            .env("PAGER", "")
+            .status()
+            .expect("could not run git diff")
+            .success();
 
         assert!(success, "git");
-
     }
 
     macro_rules! full_test {
@@ -105,7 +114,7 @@ mod full {
             fn $name() {
                 test_full($crate_name, $old_version, $new_version);
             }
-        }
+        };
     }
 
     full_test!(log, "log", "0.3.4", "0.3.8");

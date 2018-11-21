@@ -5,12 +5,13 @@
 
 use rustc::hir::def_id::DefId;
 use rustc::infer::InferCtxt;
-use rustc::traits::{FulfillmentContext, FulfillmentError,
-                    Obligation, ObligationCause, TraitEngine};
-use rustc::ty::{GenericParamDefKind, ParamEnv, Predicate, TraitRef, Ty, TyCtxt};
+use rustc::traits::{
+    FulfillmentContext, FulfillmentError, Obligation, ObligationCause, TraitEngine,
+};
 use rustc::ty::error::TypeError;
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::subst::{Kind, Substs};
+use rustc::ty::{GenericParamDefKind, ParamEnv, Predicate, TraitRef, Ty, TyCtxt};
 
 use semcheck::changes::ChangeSet;
 use semcheck::mapping::IdMapping;
@@ -42,21 +43,23 @@ impl<'a, 'gcx, 'tcx> BoundContext<'a, 'gcx, 'tcx> {
 
         let cause = ObligationCause::dummy();
         let mut selcx = SelectionContext::new(self.infcx);
-        let predicates =
-            self.infcx
-                .tcx
-                .predicates_of(checked_def_id)
-                .instantiate(self.infcx.tcx, substs);
+        let predicates = self
+            .infcx
+            .tcx
+            .predicates_of(checked_def_id)
+            .instantiate(self.infcx.tcx, substs);
         let Normalized { value, obligations } =
             normalize(&mut selcx, self.given_param_env, cause.clone(), &predicates);
 
         for obligation in obligations {
-            self.fulfill_cx.register_predicate_obligation(self.infcx, obligation);
+            self.fulfill_cx
+                .register_predicate_obligation(self.infcx, obligation);
         }
 
         for predicate in value.predicates {
             let obligation = Obligation::new(cause.clone(), self.given_param_env, predicate);
-            self.fulfill_cx.register_predicate_obligation(self.infcx, obligation);
+            self.fulfill_cx
+                .register_predicate_obligation(self.infcx, obligation);
         }
     }
 
@@ -67,9 +70,9 @@ impl<'a, 'gcx, 'tcx> BoundContext<'a, 'gcx, 'tcx> {
         let predicate = Predicate::Trait(Binder::bind(TraitPredicate {
             trait_ref: checked_trait_ref,
         }));
-        let obligation =
-            Obligation::new(ObligationCause::dummy(), self.given_param_env, predicate);
-        self.fulfill_cx.register_predicate_obligation(self.infcx, obligation);
+        let obligation = Obligation::new(ObligationCause::dummy(), self.given_param_env, predicate);
+        self.fulfill_cx
+            .register_predicate_obligation(self.infcx, obligation);
     }
 
     /// Return inference errors, if any.
@@ -101,37 +104,47 @@ pub struct TypeComparisonContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     /// Construct a new context where the original item is old.
-    pub fn target_new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                      id_mapping: &'a IdMapping,
-                      checking_trait_def: bool) -> Self {
+    pub fn target_new(
+        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+        id_mapping: &'a IdMapping,
+        checking_trait_def: bool,
+    ) -> Self {
         let forward_trans = TranslationContext::target_new(infcx.tcx, id_mapping, false);
         let backward_trans = TranslationContext::target_old(infcx.tcx, id_mapping, false);
-        TypeComparisonContext::from_trans(infcx,
-                                          id_mapping,
-                                          forward_trans,
-                                          backward_trans,
-                                          checking_trait_def)
+        TypeComparisonContext::from_trans(
+            infcx,
+            id_mapping,
+            forward_trans,
+            backward_trans,
+            checking_trait_def,
+        )
     }
 
     /// Construct a new context where the original item is new.
-    pub fn target_old(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                      id_mapping: &'a IdMapping,
-                      checking_trait_def: bool) -> Self {
+    pub fn target_old(
+        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+        id_mapping: &'a IdMapping,
+        checking_trait_def: bool,
+    ) -> Self {
         let forward_trans = TranslationContext::target_old(infcx.tcx, id_mapping, false);
         let backward_trans = TranslationContext::target_new(infcx.tcx, id_mapping, false);
-        TypeComparisonContext::from_trans(infcx,
-                                          id_mapping,
-                                          forward_trans,
-                                          backward_trans,
-                                          checking_trait_def)
+        TypeComparisonContext::from_trans(
+            infcx,
+            id_mapping,
+            forward_trans,
+            backward_trans,
+            checking_trait_def,
+        )
     }
 
     /// Construct a new context given a pair of translation contexts.
-    fn from_trans(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
-                  id_mapping: &'a IdMapping,
-                  forward_trans: TranslationContext<'a, 'gcx, 'tcx>,
-                  backward_trans: TranslationContext<'a, 'gcx, 'tcx>,
-                  checking_trait_def: bool) -> Self {
+    fn from_trans(
+        infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+        id_mapping: &'a IdMapping,
+        forward_trans: TranslationContext<'a, 'gcx, 'tcx>,
+        backward_trans: TranslationContext<'a, 'gcx, 'tcx>,
+        checking_trait_def: bool,
+    ) -> Self {
         TypeComparisonContext {
             infcx: infcx,
             id_mapping: id_mapping,
@@ -150,7 +163,8 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         let has_self = self.infcx.tcx.generics_of(target_def_id).has_self;
 
         Substs::for_item(self.infcx.tcx, target_def_id, |def, _| {
-            if def.index == 0 && has_self { // `Self` is special
+            if def.index == 0 && has_self {
+                // `Self` is special
                 self.infcx.tcx.mk_param_from_def(def)
             } else {
                 self.infcx.var_for_def(DUMMY_SP, def)
@@ -162,42 +176,46 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     pub fn compute_target_default_substs(&self, target_def_id: DefId) -> &Substs<'tcx> {
         use rustc::ty::ReEarlyBound;
 
-        Substs::for_item(self.infcx.tcx, target_def_id, |def, _| {
-            match def.kind {
-                GenericParamDefKind::Lifetime => {
-                    Kind::from(
-                        self.infcx
-                            .tcx
-                            .mk_region(ReEarlyBound(def.to_early_bound_region_data())))
-                },
-                GenericParamDefKind::Type { .. } => {
-                    if self.id_mapping.is_non_mapped_defaulted_type_param(&def.def_id) {
-                        Kind::from(self.infcx.tcx.type_of(def.def_id))
-                    } else {
-                        self.infcx.tcx.mk_param_from_def(def)
-                    }
-                },
+        Substs::for_item(self.infcx.tcx, target_def_id, |def, _| match def.kind {
+            GenericParamDefKind::Lifetime => Kind::from(
+                self.infcx
+                    .tcx
+                    .mk_region(ReEarlyBound(def.to_early_bound_region_data())),
+            ),
+            GenericParamDefKind::Type { .. } => {
+                if self
+                    .id_mapping
+                    .is_non_mapped_defaulted_type_param(&def.def_id)
+                {
+                    Kind::from(self.infcx.tcx.type_of(def.def_id))
+                } else {
+                    self.infcx.tcx.mk_param_from_def(def)
+                }
             }
         })
     }
 
     /// Check for type mismatches in a pair of items.
-    pub fn check_type_error<'b, 'tcx2>(&self,
-                                       lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
-                                       target_def_id: DefId,
-                                       target_param_env: ParamEnv<'tcx>,
-                                       orig: Ty<'tcx>,
-                                       target: Ty<'tcx>) -> Option<TypeError<'tcx2>> {
-        use rustc::infer::{InferOk, SuppressRegionErrors};
+    pub fn check_type_error<'b, 'tcx2>(
+        &self,
+        lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
+        target_def_id: DefId,
+        target_param_env: ParamEnv<'tcx>,
+        orig: Ty<'tcx>,
+        target: Ty<'tcx>,
+    ) -> Option<TypeError<'tcx2>> {
         use rustc::infer::outlives::env::OutlivesEnvironment;
+        use rustc::infer::{InferOk, SuppressRegionErrors};
         use rustc::middle::region::ScopeTree;
         use rustc::ty::Lift;
 
-        let error =
-            self.infcx
-                .at(&ObligationCause::dummy(), target_param_env)
-                .eq(orig, target)
-                .map(|InferOk { obligations: o, .. }| { assert_eq!(o, vec![]); });
+        let error = self
+            .infcx
+            .at(&ObligationCause::dummy(), target_param_env)
+            .eq(orig, target)
+            .map(|InferOk { obligations: o, .. }| {
+                assert_eq!(o, vec![]);
+            });
 
         if let Err(err) = error {
             let scope_tree = ScopeTree::default();
@@ -214,17 +232,19 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
             //      self.relate_regions(r_b, r_a);
             //  }
 
-            self.infcx.resolve_regions_and_report_errors(target_def_id,
-                                                         &scope_tree,
-                                                         &outlives_env,
-                                                         SuppressRegionErrors::default());
+            self.infcx.resolve_regions_and_report_errors(
+                target_def_id,
+                &scope_tree,
+                &outlives_env,
+                SuppressRegionErrors::default(),
+            );
 
-            let err =
-                self.infcx
-                    .resolve_type_vars_if_possible(&err)
-                    .fold_with(&mut self.folder.clone())
-                    .lift_to_tcx(lift_tcx)
-                    .unwrap();
+            let err = self
+                .infcx
+                .resolve_type_vars_if_possible(&err)
+                .fold_with(&mut self.folder.clone())
+                .lift_to_tcx(lift_tcx)
+                .unwrap();
 
             Some(err)
         } else {
@@ -233,43 +253,46 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
     }
 
     /// Check for trait bound mismatches in a pair of items.
-    pub fn check_bounds_error<'b, 'tcx2>(&self,
-                                         lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
-                                         orig_param_env: ParamEnv<'tcx>,
-                                         target_def_id: DefId,
-                                         target_substs: &Substs<'tcx>)
-        -> Option<Vec<Predicate<'tcx2>>>
-    {
+    pub fn check_bounds_error<'b, 'tcx2>(
+        &self,
+        lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
+        orig_param_env: ParamEnv<'tcx>,
+        target_def_id: DefId,
+        target_substs: &Substs<'tcx>,
+    ) -> Option<Vec<Predicate<'tcx2>>> {
         use rustc::ty::Lift;
-        debug!("check_bounds_error: orig env: {:?}, target did: {:?}, target substs: {:?}",
-               orig_param_env,
-               target_def_id,
-               target_substs);
+        debug!(
+            "check_bounds_error: orig env: {:?}, target did: {:?}, target substs: {:?}",
+            orig_param_env, target_def_id, target_substs
+        );
 
         let mut bound_cx = BoundContext::new(self.infcx, orig_param_env);
         bound_cx.register(target_def_id, target_substs);
 
-        bound_cx
-            .get_errors()
-            .map(|errors| errors
+        bound_cx.get_errors().map(|errors| {
+            errors
                 .iter()
-                .map(|err|
-                     self.infcx
-                         .resolve_type_vars_if_possible(&err.obligation.predicate)
-                         .fold_with(&mut self.folder.clone())
-                         .lift_to_tcx(lift_tcx)
-                         .unwrap())
-                .collect())
+                .map(|err| {
+                    self.infcx
+                        .resolve_type_vars_if_possible(&err.obligation.predicate)
+                        .fold_with(&mut self.folder.clone())
+                        .lift_to_tcx(lift_tcx)
+                        .unwrap()
+                })
+                .collect()
+        })
     }
 
     /// Check the bounds on an item in both directions and register changes found.
-    pub fn check_bounds_bidirectional<'b, 'tcx2>(&self,
-                                                 changes: &mut ChangeSet<'tcx2>,
-                                                 lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
-                                                 orig_def_id: DefId,
-                                                 target_def_id: DefId,
-                                                 orig_substs: &Substs<'tcx>,
-                                                 target_substs: &Substs<'tcx>) {
+    pub fn check_bounds_bidirectional<'b, 'tcx2>(
+        &self,
+        changes: &mut ChangeSet<'tcx2>,
+        lift_tcx: TyCtxt<'b, 'tcx2, 'tcx2>,
+        orig_def_id: DefId,
+        target_def_id: DefId,
+        orig_substs: &Substs<'tcx>,
+        target_substs: &Substs<'tcx>,
+    ) {
         use semcheck::changes::ChangeType::{BoundsLoosened, BoundsTightened};
 
         let tcx = self.infcx.tcx;
@@ -288,9 +311,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
             self.check_bounds_error(lift_tcx, orig_param_env, target_def_id, target_substs)
         {
             for err in errors {
-                let err_type = BoundsTightened {
-                    pred: err,
-                };
+                let err_type = BoundsTightened { pred: err };
 
                 changes.add_change(err_type, orig_def_id, None);
             }
