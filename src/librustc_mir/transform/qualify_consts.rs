@@ -277,9 +277,12 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             };
             debug!("store to var {:?}", index);
             match &mut self.local_qualif[index] {
-                // update
+                // this is overly restrictive, because even full assignments do not clear the qualif
+                // While we could special case full assignments, this would be inconsistent with
+                // aggregates where we overwrite all fields via assignments, which would not get
+                // that feature.
                 Some(ref mut qualif) => *qualif = *qualif | self.qualif,
-                // or insert
+                // insert new qualification
                 qualif @ None => *qualif = Some(self.qualif),
             }
             return;
