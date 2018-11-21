@@ -396,10 +396,10 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt<'_, '_, '_>,
         debug!("orphan_check_trait_ref: no local type");
         Err(OrphanCheckErr::NoLocalInputType)
     } else {
-        // First, create an ordered iterator over all the type parameters to the trait, with the self
-        // type appearing first.
-        // Find the first input type that either references a type parameter OR
-        // some local type.
+        // First, create an ordered iterator over all the type
+        // parameters to the trait, with the self type appearing
+        // first.  Find the first input type that either references a
+        // type parameter OR some local type.
         for input_ty in trait_ref.input_types() {
             if ty_is_local(tcx, input_ty, in_crate) {
                 debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
