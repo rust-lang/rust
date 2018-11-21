@@ -1163,7 +1163,10 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 None => continue,
             };
 
-            if binding.is_import() || binding.is_macro_def() {
+            // Filter away "empty import canaries".
+            let is_non_canary_import =
+                binding.is_import() && binding.vis != ty::Visibility::Invisible;
+            if is_non_canary_import || binding.is_macro_def() {
                 let def = binding.def();
                 if def != Def::Err {
                     if let Some(def_id) = def.opt_def_id() {
