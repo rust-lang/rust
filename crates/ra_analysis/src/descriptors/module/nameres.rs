@@ -43,14 +43,26 @@ pub(crate) struct ModuleScope {
 #[derive(Debug, Default, PartialEq, Eq)]
 pub(crate) struct InputModuleItems {
     items: Vec<ModuleItem>,
-    glob_imports: Vec<Path>,
-    imports: Vec<Path>,
+    imports: Vec<Import>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Import {
+    path: Path,
+    kind: ImportKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ImportKind {
+    Glob,
+    // TODO: make offset independent
+    Named(LocalSyntaxPtr),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Path {
     kind: PathKind,
-    segments: Vec<(LocalSyntaxPtr, SmolStr)>,
+    segments: Vec<SmolStr>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -199,14 +211,15 @@ impl InputModuleItems {
                 self.add_use_tree(prefix.clone(), tree);
             }
         } else {
-            if let Some(path) = tree.path() {
-                if let Some(path) = convert_path(prefix, path) {
-                    if tree.has_star() {
-                        &mut self.glob_imports
+            if let Some(ast_path) = tree.path() {
+                if let Some(path) = convert_path(prefix, ast_path) {
+                    let kind = if tree.has_star() {
+                        ImportKind::Glob
                     } else {
-                        &mut self.imports
-                    }
-                    .push(path);
+                        let ptr = LocalSyntaxPtr::new(ast_path.segment().unwrap().syntax());
+                        ImportKind::Named(ptr)
+                    };
+                    self.imports.push(Import { kind, path })
                 }
             }
         }
@@ -226,8 +239,7 @@ fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
                 kind: PathKind::Abs,
                 segments: Vec::with_capacity(1),
             });
-            let ptr = LocalSyntaxPtr::new(name.syntax());
-            res.segments.push((ptr, name.text()));
+            res.segments.push(name.text());
             res
         }
         ast::PathSegmentKind::CrateKw => {
@@ -307,14 +319,16 @@ where
         let mut module_items = ModuleScope::default();
 
         for import in input.imports.iter() {
-            if let Some((ptr, name)) = import.segments.last() {
-                module_items.items.insert(
-                    name.clone(),
-                    Resolution {
-                        def_id: None,
-                        import_name: Some(*ptr),
-                    },
-                );
+            if let Some(name) = import.path.segments.iter().last() {
+                if let ImportKind::Named(ptr) = import.kind {
+                    module_items.items.insert(
+                        name.clone(),
+                        Resolution {
+                            def_id: None,
+                            import_name: Some(ptr),
+                        },
+                    );
+                }
             }
         }
 
@@ -355,8 +369,13 @@ where
         }
     }
 
-    fn resolve_import(&mut self, module_id: ModuleId, import: &Path) {
-        let mut curr = match import.kind {
+    fn resolve_import(&mut self, module_id: ModuleId, import: &Import) {
+        let ptr = match import.kind {
+            ImportKind::Glob => return,
+            ImportKind::Named(ptr) => ptr,
+        };
+
+        let mut curr = match import.path.kind {
             // TODO: handle extern crates
             PathKind::Abs => return,
             PathKind::Self_ => module_id,
@@ -370,8 +389,8 @@ where
             PathKind::Crate => module_id.crate_root(&self.module_tree),
         };
 
-        for (i, (ptr, name)) in import.segments.iter().enumerate() {
-            let is_last = i == import.segments.len() - 1;
+        for (i, name) in import.path.segments.iter().enumerate() {
+            let is_last = i == import.path.segments.len() - 1;
 
             let def_id = match self.result.per_module[&curr].items.get(name) {
                 None => return,
@@ -390,7 +409,7 @@ where
                 self.update(module_id, |items| {
                     let res = Resolution {
                         def_id: Some(def_id),
-                        import_name: Some(*ptr),
+                        import_name: Some(ptr),
                     };
                     items.items.insert(name.clone(), res);
                 })
