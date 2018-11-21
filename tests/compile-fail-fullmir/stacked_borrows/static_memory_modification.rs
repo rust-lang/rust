@@ -1,6 +1,3 @@
-// FIXME still considering whether we are okay with this not being an error
-// ignore-test
-
 static X: usize = 5;
 
 #[allow(mutable_transmutes)]
