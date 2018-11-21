@@ -30,7 +30,7 @@ crates-io = "0.17"
 env_logger = "0.5"
 log = "0.4"
 semver = "0.9"
-rand = "0.5"
+rand = "0.6"
 
 [dev-dependencies]
 quickcheck = "0.7"
