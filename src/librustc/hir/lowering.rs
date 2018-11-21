@@ -3029,12 +3029,7 @@ impl<'a> LoweringContext<'a> {
                             hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
                             hir::VisibilityKind::Restricted { ref path, id: _, hir_id: _ } => {
                                 let id = this.next_id();
-                                let mut path = path.clone();
-                                for seg in path.segments.iter_mut() {
-                                    if seg.id.is_some() {
-                                        seg.id = Some(this.next_id().node_id);
-                                    }
-                                }
+                                let path = this.renumber_segment_ids(path);
                                 hir::VisibilityKind::Restricted {
                                     path,
                                     id: id.node_id,
@@ -3119,8 +3114,9 @@ impl<'a> LoweringContext<'a> {
                             hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
                             hir::VisibilityKind::Restricted { ref path, id: _, hir_id: _ } => {
                                 let id = this.next_id();
+                                let path = this.renumber_segment_ids(path);
                                 hir::VisibilityKind::Restricted {
-                                    path: path.clone(),
+                                    path: path,
                                     id: id.node_id,
                                     hir_id: id.hir_id,
                                 }
@@ -3152,6 +3148,20 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
         }
+    }
+
+    /// Paths like the visibility path in `pub(super) use foo::{bar, baz}` are repeated
+    /// many times in the HIR tree; for each occurrence, we need to assign distinct
+    /// node-ids. (See e.g. #56128.)
+    fn renumber_segment_ids(&mut self, path: &P<hir::Path>) -> P<hir::Path> {
+        debug!("renumber_segment_ids(path = {:?})", path);
+        let mut path = path.clone();
+        for seg in path.segments.iter_mut() {
+            if seg.id.is_some() {
+                seg.id = Some(self.next_id().node_id);
+            }
+        }
+        path
     }
 
     fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {
