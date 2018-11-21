@@ -15,6 +15,7 @@ use crate::{
     Cancelable,
     loc2id::{DefId, DefLoc},
     descriptors::{
+        Path, PathKind,
         DescriptorDatabase,
         module::{ModuleId, ModuleTree, ModuleSourceNode},
     },
@@ -57,20 +58,6 @@ enum ImportKind {
     Glob,
     // TODO: make offset independent
     Named(LocalSyntaxPtr),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct Path {
-    kind: PathKind,
-    segments: Vec<SmolStr>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum PathKind {
-    Abs,
-    Self_,
-    Super,
-    Crate,
 }
 
 pub(crate) fn input_module_items(
