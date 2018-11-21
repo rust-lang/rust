@@ -152,6 +152,18 @@ Manually testing against an example file is useful if you have added some
 local modifications, run `env CLIPPY_TESTS=true cargo run --bin clippy-driver -- -L ./target/debug input.rs`
 from the working copy root.
 
+### Running Clippy Against Clippy
+
+Clippy CI runs all lints defined in the version of the Clippy being tested pass
+(that is, don’t report any suggestions). You can avoid prolonging the CI
+feedback cycle for PRs you submit by running these lints yourself ahead of time
+and addressing any issues found:
+
+```
+cargo build
+`pwd`/target/debug/cargo-clippy clippy --all-targets --all-features -- -D clippy::all -D clippy::internal -D clippy::pedantic
+```
+
 ### How Clippy works
 
 Clippy is a [rustc compiler plugin][compiler_plugin]. The main entry point is at [`src/lib.rs`][main_entry]. In there, the lint registration is delegated to the [`clippy_lints`][lint_crate] crate.
