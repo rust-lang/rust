@@ -144,6 +144,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => {}
         }
 
+        // Now, we look for the implementation of a Fn trait on the object's type.
+        // We first do it with the explicit instruction to look for an impl of
+        // `Fn<Tuple>`, with the tuple `Tuple` having an arity corresponding
+        // to the number of call parameters.
+        // If that fails (or_else branch), we try again without specifying the
+        // shape of the tuple (hence the None). This allows to detect an Fn trait
+        // is implemented, and use this information for diagnostic.
         self.try_overloaded_call_traits(call_expr, adjusted_ty, Some(arg_exprs))
             .or_else(|| self.try_overloaded_call_traits(call_expr, adjusted_ty, None))
             .map(|(autoref, method)| {
