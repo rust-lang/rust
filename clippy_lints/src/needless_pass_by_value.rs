@@ -54,7 +54,7 @@ use crate::rustc_errors::Applicability;
 /// ```
 declare_clippy_lint! {
     pub NEEDLESS_PASS_BY_VALUE,
-    style,
+    pedantic,
     "functions taking arguments by value, but not consuming them in its body"
 }
 
