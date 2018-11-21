@@ -11,6 +11,16 @@ description = """
 Compiler intrinsics used by the Rust compiler. Also available for other targets
 if necessary!
 """
+include = [
+  '/Cargo.toml',
+  '/build.rs',
+  '/src/*',
+  '/examples/*',
+  '/LICENSE.txt',
+  '/README.md',
+  '/compiler-rt/*',
+  '/libm/src/math/*',
+]
 links = 'compiler-rt'
 
 [lib]
