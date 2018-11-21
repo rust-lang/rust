@@ -4,6 +4,9 @@ fn main() {
     println!("cargo:rerun-if-changed=build.rs");
 
     let target = env::var("TARGET").unwrap();
+    let cwd = env::current_dir().unwrap();
+
+    println!("cargo:compiler-rt={}", cwd.join("compiler-rt").display());
 
     // Emscripten's runtime includes all the builtins
     if target.contains("emscripten") {

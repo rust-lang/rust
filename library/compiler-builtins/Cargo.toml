@@ -11,6 +11,7 @@ description = """
 Compiler intrinsics used by the Rust compiler. Also available for other targets
 if necessary!
 """
+links = 'compiler-rt'
 
 [lib]
 test = false
