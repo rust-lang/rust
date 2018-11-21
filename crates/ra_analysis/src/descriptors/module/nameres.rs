@@ -32,7 +32,6 @@ pub(crate) struct ItemMap {
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub(crate) struct ModuleScope {
     pub(crate) items: FxHashMap<SmolStr, Resolution>,
-    pub(crate) import_resolutions: FxHashMap<LocalSyntaxPtr, DefId>,
 }
 
 /// A set of items and imports declared inside a module, without relation to
@@ -381,10 +380,6 @@ where
                     None => return,
                 },
             };
-
-            self.update(module_id, |items| {
-                items.import_resolutions.insert(*ptr, def_id);
-            });
 
             if !is_last {
                 curr = match self.db.id_maps().def_loc(def_id) {
