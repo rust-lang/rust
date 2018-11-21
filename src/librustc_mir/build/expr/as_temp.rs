@@ -85,9 +85,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         unpack!(block = this.into(&Place::Local(temp), block, expr));
 
-        // In constants, temp_lifetime is None. We should not need to drop
-        // anything because no values with a destructor can be created in
-        // a constant at this time, even if the type may need dropping.
+        // In constants, temp_lifetime is None. We do not drop anything because
+        // values with a destructor will simply be leaked in constants.
         if let Some(temp_lifetime) = temp_lifetime {
             this.schedule_drop_storage_and_value(
                 expr_span,
