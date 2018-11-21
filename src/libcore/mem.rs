@@ -132,7 +132,6 @@ pub use intrinsics::transmute;
 /// [uninit]: fn.uninitialized.html
 /// [clone]: ../clone/trait.Clone.html
 /// [swap]: fn.swap.html
-/// [FFI]: ../../book/first-edition/ffi.html
 /// [box]: ../../std/boxed/struct.Box.html
 /// [leak]: ../../std/boxed/struct.Box.html#method.leak
 /// [into_raw]: ../../std/boxed/struct.Box.html#method.into_raw
@@ -479,7 +478,7 @@ pub const fn needs_drop<T>() -> bool {
 ///
 /// This has the same effect as allocating space with
 /// [`mem::uninitialized`][uninit] and then zeroing it out. It is useful for
-/// [FFI] sometimes, but should generally be avoided.
+/// FFI sometimes, but should generally be avoided.
 ///
 /// There is no guarantee that an all-zero byte-pattern represents a valid value of
 /// some type `T`. If `T` has a destructor and the value is destroyed (due to
@@ -490,7 +489,6 @@ pub const fn needs_drop<T>() -> bool {
 /// many of the same caveats.
 ///
 /// [uninit]: fn.uninitialized.html
-/// [FFI]: ../../book/first-edition/ffi.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Examples
@@ -514,10 +512,8 @@ pub unsafe fn zeroed<T>() -> T {
 /// **This is incredibly dangerous and should not be done lightly. Deeply
 /// consider initializing your memory with a default value instead.**
 ///
-/// This is useful for [FFI] functions and initializing arrays sometimes,
+/// This is useful for FFI functions and initializing arrays sometimes,
 /// but should generally be avoided.
-///
-/// [FFI]: ../../book/first-edition/ffi.html
 ///
 /// # Undefined behavior
 ///
@@ -689,10 +685,9 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// While this does call the argument's implementation of [`Drop`][drop],
 /// it will not release any borrows, as borrows are based on lexical scope.
 ///
-/// This effectively does nothing for
-/// [types which implement `Copy`](../../book/first-edition/ownership.html#copy-types),
-/// e.g. integers. Such values are copied and _then_ moved into the function,
-/// so the value persists after this function call.
+/// This effectively does nothing for types which implement `Copy`, e.g.
+/// integers. Such values are copied and _then_ moved into the function, so the
+/// value persists after this function call.
 ///
 /// This function is not magic; it is literally defined as
 ///
