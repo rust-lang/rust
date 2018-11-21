@@ -11,7 +11,7 @@ pub fn foo() -> impl Generator<Yield = (), Return = ()> {
     }
 }
 
-pub fn bar<T: Unpin + 'static>(t: T) -> Box<Generator<Yield = T, Return = ()> + Unpin> {
+pub fn bar<T: 'static>(t: T) -> Box<Generator<Yield = T, Return = ()> + Unpin> {
     Box::new(|| {
         yield t;
     })
