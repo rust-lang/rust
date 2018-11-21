@@ -1409,7 +1409,7 @@ impl From<Box<Path>> for PathBuf {
 impl From<PathBuf> for Box<Path> {
     /// Converts a `PathBuf` into a `Box<Path>`
     ///
-    /// This conversion currently should not allocate memory, 
+    /// This conversion currently should not allocate memory,
     // but this behavior is not guaranteed on all platforms or in all future versions.
     fn from(p: PathBuf) -> Box<Path> {
         p.into_boxed_path()
