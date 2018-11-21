@@ -23,7 +23,7 @@ use rustc_hash::FxHashMap;
 
 use ra_syntax::{
     SmolStr, SyntaxKind::{self, *},
-    ast::{self, AstNode, ModuleItemOwner}
+    ast::{self, ModuleItemOwner}
 };
 
 use crate::{
@@ -309,7 +309,7 @@ where
 
         let mut curr = match import.path.kind {
             // TODO: handle extern crates
-            PathKind::Abs => return,
+            PathKind::Plain => return,
             PathKind::Self_ => module_id,
             PathKind::Super => {
                 match module_id.parent(&self.module_tree) {

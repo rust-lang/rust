@@ -5,7 +5,7 @@ mod path;
 use std::sync::Arc;
 
 use ra_syntax::{
-    ast::{self, FnDefNode},
+    ast::{self, FnDefNode, AstNode},
     TextRange,
 };
 

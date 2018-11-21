@@ -10,13 +10,14 @@ pub(crate) struct Path {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum PathKind {
-    Abs,
+    Plain,
     Self_,
     Super,
     Crate,
 }
 
 impl Path {
+    /// Calls `cb` with all paths, represented by this use item.
     pub(crate) fn expand_use_item(
         item: ast::UseItem,
         mut cb: impl FnMut(Path, Option<LocalSyntaxPtr>),
@@ -24,6 +25,52 @@ impl Path {
         if let Some(tree) = item.use_tree() {
             expand_use_tree(None, tree, &mut cb);
         }
+    }
+
+    /// Converts an `ast::Path` to `Path`. Works with use trees.
+    pub(crate) fn from_ast(mut path: ast::Path) -> Option<Path> {
+        let mut kind = PathKind::Plain;
+        let mut segments = Vec::new();
+        loop {
+            let segment = path.segment()?;
+            match segment.kind()? {
+                ast::PathSegmentKind::Name(name) => segments.push(name.text()),
+                ast::PathSegmentKind::CrateKw => {
+                    kind = PathKind::Crate;
+                    break;
+                }
+                ast::PathSegmentKind::SelfKw => {
+                    kind = PathKind::Self_;
+                    break;
+                }
+                ast::PathSegmentKind::SuperKw => {
+                    kind = PathKind::Super;
+                    break;
+                }
+            }
+            path = match qualifier(path) {
+                Some(it) => it,
+                None => break,
+            };
+        }
+        segments.reverse();
+        return Some(Path { kind, segments });
+
+        fn qualifier(path: ast::Path) -> Option<ast::Path> {
+            if let Some(q) = path.qualifier() {
+                return Some(q);
+            }
+            // TODO: this bottom up traversal is not too precise.
+            // Should we handle do a top-down analysiss, recording results?
+            let use_tree_list = path.syntax().ancestors().find_map(ast::UseTreeList::cast)?;
+            let use_tree = use_tree_list.parent_use_tree();
+            use_tree.path()
+        }
+    }
+
+    /// `true` is this path is a single identifier, like `foo`
+    pub(crate) fn is_ident(&self) -> bool {
+        self.kind == PathKind::Plain && self.segments.len() == 1
     }
 }
 
@@ -68,7 +115,7 @@ fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
     let res = match segment.kind()? {
         ast::PathSegmentKind::Name(name) => {
             let mut res = prefix.unwrap_or_else(|| Path {
-                kind: PathKind::Abs,
+                kind: PathKind::Plain,
                 segments: Vec::with_capacity(1),
             });
             res.segments.push(name.text());
