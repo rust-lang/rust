@@ -15,7 +15,7 @@
 
 extern crate panic_handler;
 
-#[cfg(not(thumb))]
+#[cfg(all(not(thumb), not(windows)))]
 #[link(name = "c")]
 extern {}
 
