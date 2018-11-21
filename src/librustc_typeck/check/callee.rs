@@ -145,6 +145,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         self.try_overloaded_call_traits(call_expr, adjusted_ty, Some(arg_exprs))
+            .or_else(|| self.try_overloaded_call_traits(call_expr, adjusted_ty, None))
             .map(|(autoref, method)| {
                 let mut adjustments = autoderef.adjust_steps(self, Needs::None);
                 adjustments.extend(autoref);
