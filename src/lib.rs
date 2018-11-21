@@ -76,13 +76,15 @@ mod prelude {
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
         TypeAndMut, TypeFoldable,
     };
-    pub use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
     pub use rustc_data_structures::{
         fx::{FxHashMap, FxHashSet},
         indexed_vec::Idx,
         sync::Lrc,
     };
     pub use rustc_mir::monomorphize::{collector, MonoItem};
+
+    pub use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
+    pub use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 
     pub use cranelift::codegen::ir::{
         condcodes::IntCC, function::Function, ExternalName, FuncRef, Inst, StackSlot,

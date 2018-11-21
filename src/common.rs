@@ -1,5 +1,6 @@
 use std::fmt;
 
+use rustc_codegen_ssa::traits::BackendTypes;
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use cranelift_module::Module;
@@ -665,6 +666,15 @@ impl<'a, 'tcx, B: Backend + 'a> HasTargetSpec for FunctionCx<'a, 'tcx, B> {
     fn target_spec(&self) -> &Target {
         &self.tcx.sess.target.target
     }
+}
+
+impl<'a, 'tcx, B: Backend> BackendTypes for FunctionCx<'a, 'tcx, B> {
+    type Value = Value;
+    type BasicBlock = Ebb;
+    type Type = Type;
+    type Context = !;
+    type Funclet = !;
+    type DIScope = !;
 }
 
 impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
