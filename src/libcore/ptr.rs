@@ -2731,6 +2731,7 @@ impl<T: Sized> Unique<T> {
     /// sentinel value. Types that lazily allocate must track initialization by
     /// some other means.
     // FIXME: rename to dangling() to match NonNull?
+    #[inline]
     pub const fn empty() -> Self {
         unsafe {
             Unique::new_unchecked(mem::align_of::<T>() as *mut T)
@@ -2745,11 +2746,13 @@ impl<T: ?Sized> Unique<T> {
     /// # Safety
     ///
     /// `ptr` must be non-null.
+    #[inline]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         Unique { pointer: NonZero(ptr as _), _marker: PhantomData }
     }
 
     /// Creates a new `Unique` if `ptr` is non-null.
+    #[inline]
     pub fn new(ptr: *mut T) -> Option<Self> {
         if !ptr.is_null() {
             Some(Unique { pointer: NonZero(ptr as _), _marker: PhantomData })
@@ -2759,6 +2762,7 @@ impl<T: ?Sized> Unique<T> {
     }
 
     /// Acquires the underlying `*mut` pointer.
+    #[inline]
     pub fn as_ptr(self) -> *mut T {
         self.pointer.0 as *mut T
     }
@@ -2768,8 +2772,9 @@ impl<T: ?Sized> Unique<T> {
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
     /// (unbound) lifetime is needed, use `&*my_ptr.as_ptr()`.
+    #[inline]
     pub unsafe fn as_ref(&self) -> &T {
-        &*self.as_ptr()
+        &*self.pointer.0
     }
 
     /// Mutably dereferences the content.
@@ -2777,6 +2782,7 @@ impl<T: ?Sized> Unique<T> {
     /// The resulting lifetime is bound to self so this behaves "as if"
     /// it were actually an instance of T that is getting borrowed. If a longer
     /// (unbound) lifetime is needed, use `&mut *my_ptr.as_ptr()`.
+    #[inline]
     pub unsafe fn as_mut(&mut self) -> &mut T {
         &mut *self.as_ptr()
     }
@@ -2784,6 +2790,7 @@ impl<T: ?Sized> Unique<T> {
 
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<T: ?Sized> Clone for Unique<T> {
+    #[inline]
     fn clone(&self) -> Self {
         *self
     }
@@ -2814,6 +2821,7 @@ impl<'a, T: ?Sized> From<&'a mut T> for Unique<T> {
 
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
+    #[inline]
     fn from(reference: &'a T) -> Self {
         Unique { pointer: NonZero(reference as _), _marker: PhantomData }
     }
@@ -2821,6 +2829,7 @@ impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
 
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<'a, T: ?Sized> From<NonNull<T>> for Unique<T> {
+    #[inline]
     fn from(p: NonNull<T>) -> Self {
         Unique { pointer: p.pointer, _marker: PhantomData }
     }
@@ -2943,6 +2952,7 @@ impl<T: ?Sized> NonNull<T> {
 
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> Clone for NonNull<T> {
+    #[inline]
     fn clone(&self) -> Self {
         *self
     }

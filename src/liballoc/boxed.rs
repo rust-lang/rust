@@ -211,7 +211,16 @@ impl<T: ?Sized> Box<T> {
     pub fn into_unique(b: Box<T>) -> Unique<T> {
         let unique = b.0;
         mem::forget(b);
-        unique
+        // `b`, being a `Box`, has a `Uniq` tag.  We want to return a raw pointer,
+        // with a raw tag.  This means we have to make sure the pointer is
+        // considered to "escape-to-raw".  We do that by going through a reference,
+        // cast to a raw pointer.
+        // This is only needed because `Box` is treated specially by the memory model,
+        // and gets a unique tag.
+        unsafe {
+            let raw = unique.as_ref() as *const T;
+            Unique::new_unchecked(raw as *mut T)
+        }
     }
 
     /// Consumes and leaks the `Box`, returning a mutable reference,
