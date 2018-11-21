@@ -153,9 +153,8 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
         trait_items: &[TraitItemRef]
     ) {
         for item in trait_items {
-            match item.kind {
-                AssociatedItemKind::Method{..} => self.check_trait_method(cx, item),
-                _ => (),
+            if let AssociatedItemKind::Method{..} = item.kind {
+                self.check_trait_method(cx, item);
             }
         }
     }
@@ -172,9 +171,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
         if in_macro(item.span) {
             return;
         }
-        match item.node {
-            ItemKind::Trait(_, _, _, _, ref trait_items) => self.check_trait_items(cx, trait_items),
-            _ => (),
+        if let ItemKind::Trait(_, _, _, _, ref trait_items) = item.node {
+            self.check_trait_items(cx, trait_items);
         }
     }
 
