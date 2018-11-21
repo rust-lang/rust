@@ -15,6 +15,9 @@ matrix:
       env: RUST_BACKTRACE=full
 
     # Tools:
+    - name: "rustfmt"
+      install: rustup component add rustfmt-preview
+      script: cargo fmt --all -- --check
     - name: "Shellcheck"
       script:
         - shellcheck --version
