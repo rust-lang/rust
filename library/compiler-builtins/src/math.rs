@@ -51,6 +51,19 @@ no_mangle! {
     fn fmodf(x: f32, y: f32) -> f32;
     fn fma(x: f64, y: f64, z: f64) -> f64;
     fn fmaf(x: f32, y: f32, z: f32) -> f32;
+    fn acosf(n: f32) -> f32;
+    fn asinf(n: f32) -> f32;
+    fn atan2f(a: f32, b: f32) -> f32;
+    fn atanf(n: f32) -> f32;
+    fn cbrtf(n: f32) -> f32;
+    fn coshf(n: f32) -> f32;
+    fn expm1f(n: f32) -> f32;
+    fn fdimf(a: f32, b: f32) -> f32;
+    fn hypotf(x: f32, y: f32) -> f32;
+    fn log1pf(n: f32) -> f32;
+    fn sinhf(n: f32) -> f32;
+    fn tanf(n: f32) -> f32;
+    fn tanhf(n: f32) -> f32;
 }
 
 // only for the thumb*-none-eabi* targets
