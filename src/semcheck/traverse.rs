@@ -9,21 +9,24 @@
 //! that have been matched. Trait and inherent impls can't be matched by name, and are processed
 //! in a fourth pass that uses trait bounds to find matching impls.
 
-use rustc::hir::def::{CtorKind, Def, Export};
-use rustc::hir::def_id::DefId;
-use rustc::ty::subst::{Subst, Substs};
-use rustc::ty::Visibility;
-use rustc::ty::Visibility::Public;
-use rustc::ty::{AssociatedItem, GenericParamDef, GenericParamDefKind, Generics, Ty, TyCtxt};
-
-use semcheck::changes::ChangeSet;
-use semcheck::changes::ChangeType;
-use semcheck::changes::ChangeType::*;
-use semcheck::mapping::{IdMapping, NameMapping};
-use semcheck::mismatch::MismatchRelation;
-use semcheck::translate::TranslationContext;
-use semcheck::typeck::{BoundContext, TypeComparisonContext};
-
+use rustc::{
+    hir::{
+        def::{CtorKind, Def, Export},
+        def_id::DefId,
+    },
+    ty::{
+        subst::{Subst, Substs},
+        AssociatedItem, GenericParamDef, GenericParamDefKind, Generics, Ty, TyCtxt, Visibility,
+        Visibility::Public,
+    },
+};
+use semcheck::{
+    changes::{ChangeSet, ChangeType},
+    mapping::{IdMapping, NameMapping},
+    mismatch::MismatchRelation,
+    translate::TranslationContext,
+    typeck::{BoundContext, TypeComparisonContext},
+};
 use std::collections::{BTreeMap, HashSet, VecDeque};
 
 /// The main entry point to our analysis passes.
@@ -34,7 +37,7 @@ pub fn run_analysis<'a, 'tcx>(
     old: DefId,
     new: DefId,
 ) -> ChangeSet<'tcx> {
-    let mut changes = Default::default();
+    let mut changes = ChangeSet::default();
     let mut id_mapping = IdMapping::new(old.krate, new.krate);
 
     // first pass
@@ -71,6 +74,7 @@ pub fn run_analysis<'a, 'tcx>(
 /// Traverse the two root modules in an interleaved manner, matching up pairs of modules
 /// from the two crate versions and compare for changes. Matching children get processed
 /// in the same fashion.
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::cyclomatic_complexity))]
 fn diff_structure<'a, 'tcx>(
     changes: &mut ChangeSet,
     id_mapping: &mut IdMapping,
@@ -131,9 +135,9 @@ fn diff_structure<'a, 'tcx>(
                                 // this seemingly overly complex condition is needed to handle
                                 // `Restricted` visibility correctly.
                                 if o_vis == Public && n_vis != Public {
-                                    changes.add_change(ItemMadePrivate, o_def_id, None);
+                                    changes.add_change(ChangeType::ItemMadePrivate, o_def_id, None);
                                 } else if o_vis != Public && n_vis == Public {
-                                    changes.add_change(ItemMadePublic, o_def_id, None);
+                                    changes.add_change(ChangeType::ItemMadePublic, o_def_id, None);
                                 }
                             }
 
@@ -161,9 +165,9 @@ fn diff_structure<'a, 'tcx>(
                         );
 
                         if o_vis == Public && n_vis != Public {
-                            changes.add_change(ItemMadePrivate, o_def_id, None);
+                            changes.add_change(ChangeType::ItemMadePrivate, o_def_id, None);
                         } else if o_vis != Public && n_vis == Public {
-                            changes.add_change(ItemMadePublic, o_def_id, None);
+                            changes.add_change(ChangeType::ItemMadePublic, o_def_id, None);
                         }
 
                         match (o.def, n.def) {
@@ -192,7 +196,8 @@ fn diff_structure<'a, 'tcx>(
                             // statics are subject to mutability comparison
                             (Static(_, old_mut), Static(_, new_mut)) => {
                                 if old_mut != new_mut {
-                                    let change_type = StaticMutabilityChanged { now_mut: new_mut };
+                                    let change_type =
+                                        ChangeType::StaticMutabilityChanged { now_mut: new_mut };
 
                                     changes.add_change(change_type, o_def_id, None);
                                 }
@@ -240,7 +245,7 @@ fn diff_structure<'a, 'tcx>(
                             // a non-matching item pair - register the change and abort further
                             // analysis of it
                             _ => {
-                                changes.add_change(KindDifference, o_def_id, None);
+                                changes.add_change(ChangeType::KindDifference, o_def_id, None);
                             }
                         }
                     }
@@ -317,7 +322,7 @@ fn diff_fn<'a, 'tcx>(changes: &mut ChangeSet, tcx: TyCtxt<'a, 'tcx, 'tcx>, old: 
 
     if old_const != new_const {
         changes.add_change(
-            FnConstChanged {
+            ChangeType::FnConstChanged {
                 now_const: new_const,
             },
             old_def_id,
@@ -335,7 +340,7 @@ fn diff_method<'a, 'tcx>(
 ) {
     if old.method_has_self_argument != new.method_has_self_argument {
         changes.add_change(
-            MethodSelfChanged {
+            ChangeType::MethodSelfChanged {
                 now_self: new.method_has_self_argument,
             },
             old.def_id,
@@ -347,9 +352,9 @@ fn diff_method<'a, 'tcx>(
     let new_pub = new.vis == Public;
 
     if old_pub && !new_pub {
-        changes.add_change(ItemMadePrivate, old.def_id, None);
+        changes.add_change(ChangeType::ItemMadePrivate, old.def_id, None);
     } else if !old_pub && new_pub {
-        changes.add_change(ItemMadePublic, old.def_id, None);
+        changes.add_change(ChangeType::ItemMadePublic, old.def_id, None);
     }
 
     diff_fn(
@@ -411,9 +416,9 @@ fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, o
                 }
 
                 if old.ctor_kind != new.ctor_kind {
-                    let c = VariantStyleChanged {
+                    let c = ChangeType::VariantStyleChanged {
                         now_struct: new.ctor_kind == CtorKind::Fictive,
-                        total_private: total_private,
+                        total_private,
                     };
                     changes.add_change(c, old_def_id, Some(tcx.def_span(new.did)));
 
@@ -427,29 +432,29 @@ fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, o
                                 id_mapping.add_subitem(old_def_id, o.did, n.did);
                             } else if o.vis != Public && n.vis == Public {
                                 changes.add_change(
-                                    ItemMadePublic,
+                                    ChangeType::ItemMadePublic,
                                     old_def_id,
                                     Some(tcx.def_span(n.did)),
                                 );
                             } else if o.vis == Public && n.vis != Public {
                                 changes.add_change(
-                                    ItemMadePrivate,
+                                    ChangeType::ItemMadePrivate,
                                     old_def_id,
                                     Some(tcx.def_span(n.did)),
                                 );
                             }
                         }
                         (Some(o), None) => {
-                            let c = VariantFieldRemoved {
+                            let c = ChangeType::VariantFieldRemoved {
                                 public: o.vis == Public,
-                                total_public: total_public,
+                                total_public,
                             };
                             changes.add_change(c, old_def_id, Some(tcx.def_span(o.did)));
                         }
                         (None, Some(n)) => {
-                            let c = VariantFieldAdded {
+                            let c = ChangeType::VariantFieldAdded {
                                 public: n.vis == Public,
-                                total_public: total_public,
+                                total_public,
                             };
                             changes.add_change(c, old_def_id, Some(tcx.def_span(n.did)));
                         }
@@ -460,10 +465,18 @@ fn diff_adts(changes: &mut ChangeSet, id_mapping: &mut IdMapping, tcx: TyCtxt, o
                 fields.clear();
             }
             (Some(old), None) => {
-                changes.add_change(VariantRemoved, old_def_id, Some(tcx.def_span(old.did)));
+                changes.add_change(
+                    ChangeType::VariantRemoved,
+                    old_def_id,
+                    Some(tcx.def_span(old.did)),
+                );
             }
             (None, Some(new)) => {
-                changes.add_change(VariantAdded, old_def_id, Some(tcx.def_span(new.did)));
+                changes.add_change(
+                    ChangeType::VariantAdded,
+                    old_def_id,
+                    Some(tcx.def_span(new.did)),
+                );
             }
             (None, None) => unreachable!(),
         }
@@ -521,7 +534,7 @@ fn diff_traits<'a, 'tcx>(
     let new_unsafety = tcx.trait_def(new).unsafety;
 
     if old_unsafety != new_unsafety {
-        let change_type = TraitUnsafetyChanged {
+        let change_type = ChangeType::TraitUnsafetyChanged {
             now_unsafe: new_unsafety == Unsafe,
         };
 
@@ -532,23 +545,20 @@ fn diff_traits<'a, 'tcx>(
     let old_param_env = tcx.param_env(old);
 
     for bound in old_param_env.caller_bounds {
-        match *bound {
-            Predicate::Trait(pred) => {
-                let trait_ref = pred.skip_binder().trait_ref;
+        if let Predicate::Trait(pred) = *bound {
+            let trait_ref = pred.skip_binder().trait_ref;
 
-                debug!("trait_ref substs (old): {:?}", trait_ref.substs);
+            debug!("trait_ref substs (old): {:?}", trait_ref.substs);
 
-                if id_mapping.is_private_trait(&trait_ref.def_id) && trait_ref.substs.len() == 1 {
-                    if let Type(&TyS {
-                        sty: TyKind::Param(ParamTy { idx: 0, .. }),
-                        ..
-                    }) = trait_ref.substs[0].unpack()
-                    {
-                        old_sealed = true;
-                    }
+            if id_mapping.is_private_trait(trait_ref.def_id) && trait_ref.substs.len() == 1 {
+                if let Type(&TyS {
+                    sty: TyKind::Param(ParamTy { idx: 0, .. }),
+                    ..
+                }) = trait_ref.substs[0].unpack()
+                {
+                    old_sealed = true;
                 }
             }
-            _ => (),
         }
     }
 
@@ -586,14 +596,14 @@ fn diff_traits<'a, 'tcx>(
                 diff_method(changes, tcx, old_item, new_item);
             }
             (Some((_, old_item)), None) => {
-                let change_type = TraitItemRemoved {
+                let change_type = ChangeType::TraitItemRemoved {
                     defaulted: old_item.defaultness.has_value(),
                 };
                 changes.add_change(change_type, old, Some(tcx.def_span(old_item.def_id)));
                 id_mapping.add_non_mapped(old_item.def_id);
             }
             (None, Some((_, new_item))) => {
-                let change_type = TraitItemAdded {
+                let change_type = ChangeType::TraitItemAdded {
                     defaulted: new_item.defaultness.has_value(),
                     sealed_trait: old_sealed,
                 };
@@ -618,24 +628,44 @@ fn diff_generics(
     use rustc::ty::Variance::*;
     use std::cmp::max;
 
-    debug!("diff_generics: old: {:?}, new: {:?}", old, new);
-
     fn diff_variance<'tcx>(old_var: Variance, new_var: Variance) -> Option<ChangeType<'tcx>> {
         match (old_var, new_var) {
             (Covariant, Covariant)
             | (Invariant, Invariant)
             | (Contravariant, Contravariant)
             | (Bivariant, Bivariant) => None,
-            (Invariant, _) | (_, Bivariant) => Some(VarianceLoosened),
-            (_, Invariant) | (Bivariant, _) => Some(VarianceTightened),
-            (Covariant, Contravariant) => Some(VarianceChanged {
+            (Invariant, _) | (_, Bivariant) => Some(ChangeType::VarianceLoosened),
+            (_, Invariant) | (Bivariant, _) => Some(ChangeType::VarianceTightened),
+            (Covariant, Contravariant) => Some(ChangeType::VarianceChanged {
                 now_contravariant: true,
             }),
-            (Contravariant, Covariant) => Some(VarianceChanged {
+            (Contravariant, Covariant) => Some(ChangeType::VarianceChanged {
                 now_contravariant: false,
             }),
         }
     }
+
+    // guarantee that the return value's kind is `GenericParamDefKind::Lifetime`
+    fn get_region_from_params(gen: &Generics, idx: usize) -> Option<&GenericParamDef> {
+        let param = gen.params.get(idx)?;
+
+        match param.kind {
+            GenericParamDefKind::Lifetime => Some(param),
+            _ => None,
+        }
+    }
+
+    // guarantee that the return value's kind is `GenericParamDefKind::Type`
+    fn get_type_from_params(gen: &Generics, idx: usize) -> Option<&GenericParamDef> {
+        let param = &gen.params.get(idx)?;
+
+        match param.kind {
+            GenericParamDefKind::Type { .. } => Some(param),
+            _ => None,
+        }
+    }
+
+    debug!("diff_generics: old: {:?}, new: {:?}", old, new);
 
     let mut found = Vec::new();
 
@@ -648,16 +678,6 @@ fn diff_generics(
     let old_count = old_gen.own_counts();
     let new_count = new_gen.own_counts();
 
-    // guarantee that the return value's kind is `GenericParamDefKind::Lifetime`
-    fn get_region_from_params(gen: &Generics, idx: usize) -> Option<&GenericParamDef> {
-        let param = gen.params.get(idx)?;
-
-        match param.kind {
-            GenericParamDefKind::Lifetime => Some(param),
-            _ => None,
-        }
-    }
-
     for i in 0..max(old_count.lifetimes, new_count.lifetimes) {
         match (
             get_region_from_params(old_gen, i),
@@ -666,28 +686,20 @@ fn diff_generics(
             (Some(old_region), Some(new_region)) => {
                 // type aliases don't have inferred variance, so we have to ignore that.
                 if let (Some(old_var), Some(new_var)) = (old_var.get(i), new_var.get(i)) {
-                    diff_variance(*old_var, *new_var).map(|t| found.push(t));
+                    if let Some(t) = diff_variance(*old_var, *new_var) {
+                        found.push(t)
+                    };
                 }
 
                 id_mapping.add_internal_item(old_region.def_id, new_region.def_id);
             }
             (Some(_), None) => {
-                found.push(RegionParameterRemoved);
+                found.push(ChangeType::RegionParameterRemoved);
             }
             (None, Some(_)) => {
-                found.push(RegionParameterAdded);
+                found.push(ChangeType::RegionParameterAdded);
             }
             (None, None) => unreachable!(),
-        }
-    }
-
-    // guarantee that the return value's kind is `GenericParamDefKind::Type`
-    fn get_type_from_params(gen: &Generics, idx: usize) -> Option<&GenericParamDef> {
-        let param = &gen.params.get(idx)?;
-
-        match param.kind {
-            GenericParamDefKind::Type { .. } => Some(param),
-            _ => None,
         }
     }
 
@@ -702,7 +714,9 @@ fn diff_generics(
                     old_var.get(old_count.lifetimes + i),
                     new_var.get(new_count.lifetimes + i),
                 ) {
-                    diff_variance(*old_var, *new_var).map(|t| found.push(t));
+                    if let Some(t) = diff_variance(*old_var, *new_var) {
+                        found.push(t)
+                    };
                 }
 
                 let old_default = match old_type.kind {
@@ -715,11 +729,11 @@ fn diff_generics(
                 };
 
                 if old_default && !new_default {
-                    found.push(TypeParameterRemoved { defaulted: true });
-                    found.push(TypeParameterAdded { defaulted: false });
+                    found.push(ChangeType::TypeParameterRemoved { defaulted: true });
+                    found.push(ChangeType::TypeParameterAdded { defaulted: false });
                 } else if !old_default && new_default {
-                    found.push(TypeParameterRemoved { defaulted: false });
-                    found.push(TypeParameterAdded { defaulted: true });
+                    found.push(ChangeType::TypeParameterRemoved { defaulted: false });
+                    found.push(ChangeType::TypeParameterAdded { defaulted: true });
                 }
 
                 debug!(
@@ -737,7 +751,7 @@ fn diff_generics(
                     _ => unreachable!(),
                 };
 
-                found.push(TypeParameterRemoved {
+                found.push(ChangeType::TypeParameterRemoved {
                     defaulted: old_default,
                 });
                 id_mapping.add_type_param(old_type);
@@ -749,7 +763,7 @@ fn diff_generics(
                     _ => unreachable!(),
                 };
 
-                found.push(TypeParameterAdded {
+                found.push(ChangeType::TypeParameterAdded {
                     defaulted: new_default || is_fn,
                 });
                 id_mapping.add_type_param(new_type);
@@ -783,7 +797,7 @@ fn diff_types<'a, 'tcx>(
     // bail out of analysis of already broken items
     if changes.item_breaking(old_def_id)
         || id_mapping
-            .get_trait_def(&old_def_id)
+            .get_trait_def(old_def_id)
             .map_or(false, |did| changes.trait_item_breaking(did))
     {
         return;
@@ -874,7 +888,7 @@ fn cmp_types<'a, 'tcx>(
         if let Some(err) =
             compcx.check_type_error(tcx, target_def_id, target_param_env, orig, target)
         {
-            changes.add_change(TypeChanged { error: err }, orig_def_id, None);
+            changes.add_change(ChangeType::TypeChanged { error: err }, orig_def_id, None);
         } else {
             // check the bounds if no type error has been found
             compcx.check_bounds_bidirectional(
@@ -936,9 +950,9 @@ fn diff_inherent_impls<'a, 'tcx>(
     for (orig_item, orig_impls) in id_mapping.inherent_impls() {
         // determine where the item comes from
         let (forward_trans, err_type) = if id_mapping.in_old_crate(orig_item.parent_def_id) {
-            (&to_new, AssociatedItemRemoved)
+            (&to_new, ChangeType::AssociatedItemRemoved)
         } else if id_mapping.in_new_crate(orig_item.parent_def_id) {
-            (&to_old, AssociatedItemAdded)
+            (&to_old, ChangeType::AssociatedItemAdded)
         } else {
             unreachable!()
         };
@@ -1007,9 +1021,10 @@ fn diff_trait_impls<'a, 'tcx>(
     id_mapping: &IdMapping,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 ) {
+    use rustc::hir::def::Def;
+
     debug!("diffing trait impls");
 
-    use rustc::hir::def::Def;
     let to_new = TranslationContext::target_new(tcx, id_mapping, false);
     let to_old = TranslationContext::target_old(tcx, id_mapping, false);
 
@@ -1037,7 +1052,7 @@ fn diff_trait_impls<'a, 'tcx>(
                 tcx.item_path_str(*old_impl_def_id),
                 tcx.def_span(*old_impl_def_id),
             );
-            changes.add_change(TraitImplTightened, *old_impl_def_id, None);
+            changes.add_change(ChangeType::TraitImplTightened, *old_impl_def_id, None);
         }
     }
 
@@ -1065,7 +1080,7 @@ fn diff_trait_impls<'a, 'tcx>(
                 tcx.item_path_str(*new_impl_def_id),
                 tcx.def_span(*new_impl_def_id),
             );
-            changes.add_change(TraitImplLoosened, *new_impl_def_id, None);
+            changes.add_change(ChangeType::TraitImplLoosened, *new_impl_def_id, None);
         }
     }
 }
@@ -1178,7 +1193,11 @@ fn match_inherent_impl<'a, 'tcx>(
             compcx.check_type_error(tcx, target_item_def_id, target_param_env, orig, target);
 
         if let Some(err) = error {
-            changes.add_change(TypeChanged { error: err }, orig_item_def_id, None);
+            changes.add_change(
+                ChangeType::TypeChanged { error: err },
+                orig_item_def_id,
+                None,
+            );
         } else {
             // check the bounds if no type error has been found
             compcx.check_bounds_bidirectional(

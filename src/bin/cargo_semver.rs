@@ -8,24 +8,23 @@ extern crate getopts;
 #[macro_use]
 extern crate log;
 
+use cargo::{
+    core::{compiler::CompileMode, Package, PackageId, Source, SourceId, Workspace},
+    exit_with_error,
+    ops::{compile, CompileOptions},
+    util::{
+        config::Config, important_paths::find_root_manifest_for_wd, CargoError, CargoResult,
+        CliError,
+    },
+};
 use crates_io::{Crate, Registry};
-
-use cargo::core::compiler::CompileMode;
-use cargo::core::{Package, PackageId, Source, SourceId, Workspace};
-use cargo::exit_with_error;
-use cargo::ops::{compile, CompileOptions};
-use cargo::util::config::Config;
-use cargo::util::important_paths::find_root_manifest_for_wd;
-use cargo::util::{CargoError, CargoResult, CliError};
-
 use getopts::{Matches, Options};
-
-use std::env;
-use std::error;
-use std::fmt;
-use std::io::Write;
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::{
+    env, error, fmt,
+    io::Write,
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
 /// Very simple error representation.
 #[derive(Debug)]
@@ -90,9 +89,9 @@ impl<'a> SourceInfo<'a> {
 
         debug!("source id loaded: {:?}", source_id);
 
-        Ok(SourceInfo {
+        Ok(Self {
             id: source_id,
-            source: source,
+            source,
         })
     }
 }
@@ -117,7 +116,7 @@ impl<'a> WorkInfo<'a> {
         let workspace = Workspace::new(&manifest_path, config)?;
         let package = workspace.load(&manifest_path)?;
 
-        Ok(WorkInfo { package, workspace })
+        Ok(Self { package, workspace })
     }
 
     /// Construct a package/workspace pair by fetching the package of a specified name and
@@ -134,10 +133,7 @@ impl<'a> WorkInfo<'a> {
         let package = source.source.download(&package_id)?;
         let workspace = Workspace::ephemeral(package.clone(), config, None, false)?;
 
-        Ok(WorkInfo {
-            package: package,
-            workspace: workspace,
-        })
+        Ok(Self { package, workspace })
     }
 
     /// Obtain the paths to the produced rlib and the dependency output directory.
@@ -174,7 +170,6 @@ impl<'a> WorkInfo<'a> {
 /// and/or defaults, and dispatch the actual analysis.
 // TODO: possibly reduce the complexity by finding where some info can be taken from directly
 fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()> {
-    debug!("running cargo-semver");
     fn parse_arg(opt: &str) -> CargoResult<NameAndVersion> {
         let mut split = opt.split(':');
         let name = if let Some(n) = split.next() {
@@ -192,11 +187,10 @@ fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()>
             return Err(Error("spec has to be of form `name:version`".to_owned()).into());
         }
 
-        Ok(NameAndVersion {
-            name: name,
-            version: version,
-        })
+        Ok(NameAndVersion { name, version })
     }
+
+    debug!("running cargo-semver");
 
     let mut source = SourceInfo::new(config)?;
 

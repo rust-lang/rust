@@ -1,15 +1,16 @@
 //! The translation machinery used to lift items into the context of the other crate for
 //! comparison and inference.
 
-use rustc::hir::def_id::DefId;
-use rustc::infer::InferCtxt;
-use rustc::ty::fold::{BottomUpFolder, TypeFoldable, TypeFolder};
-use rustc::ty::subst::Kind;
-use rustc::ty::subst::Substs;
-use rustc::ty::{GenericParamDefKind, ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt};
-
+use rustc::{
+    hir::def_id::DefId,
+    infer::InferCtxt,
+    ty::{
+        fold::{BottomUpFolder, TypeFoldable, TypeFolder},
+        subst::{Kind, Substs},
+        GenericParamDefKind, ParamEnv, Predicate, Region, TraitRef, Ty, TyCtxt,
+    },
+};
 use semcheck::mapping::{IdMapping, InherentEntry};
-
 use std::collections::HashMap;
 
 /// The context in which `DefId` translation happens.
@@ -34,9 +35,9 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         translate_params: bool,
     ) -> TranslationContext<'a, 'gcx, 'tcx> {
         TranslationContext {
-            tcx: tcx,
-            id_mapping: id_mapping,
-            translate_params: translate_params,
+            tcx,
+            id_mapping,
+            translate_params,
             needs_translation: IdMapping::in_old_crate,
             translate_orig: IdMapping::get_new_id,
         }
@@ -49,9 +50,9 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         translate_params: bool,
     ) -> TranslationContext<'a, 'gcx, 'tcx> {
         TranslationContext {
-            tcx: tcx,
-            id_mapping: id_mapping,
-            translate_params: translate_params,
+            tcx,
+            id_mapping,
+            translate_params,
             needs_translation: IdMapping::in_new_crate,
             translate_orig: IdMapping::get_old_id,
         }
@@ -63,24 +64,18 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         let orig_generics = self.tcx.generics_of(orig_def_id);
 
         for param in &orig_generics.params {
-            match param.kind {
-                GenericParamDefKind::Type { .. } => {
-                    index_map.insert(param.index, param.def_id);
-                }
-                _ => (),
-            };
+            if let GenericParamDefKind::Type { .. } = param.kind {
+                index_map.insert(param.index, param.def_id);
+            }
         }
 
         if let Some(did) = orig_generics.parent {
             let parent_generics = self.tcx.generics_of(did);
 
             for param in &parent_generics.params {
-                match param.kind {
-                    GenericParamDefKind::Type { .. } => {
-                        index_map.insert(param.index, param.def_id);
-                    }
-                    _ => (),
-                };
+                if let GenericParamDefKind::Type { .. } = param.kind {
+                    index_map.insert(param.index, param.def_id);
+                }
             }
         }
 
@@ -107,14 +102,14 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
         orig_def_id: DefId,
         orig_substs: &Substs<'tcx>,
     ) -> Option<(DefId, &'tcx Substs<'tcx>)> {
+        use rustc::ty::subst::UnpackedKind;
+        use rustc::ty::ReEarlyBound;
+        use std::cell::Cell;
+
         debug!(
             "translating w/ substs: did: {:?}, substs: {:?}",
             orig_def_id, orig_substs
         );
-
-        use rustc::ty::subst::UnpackedKind;
-        use rustc::ty::ReEarlyBound;
-        use std::cell::Cell;
 
         let target_def_id = (self.translate_orig)(self.id_mapping, orig_def_id);
 
@@ -144,7 +139,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                             self.translate(index_map, &Kind::from(type_))
                         } else if self
                             .id_mapping
-                            .is_non_mapped_defaulted_type_param(&def.def_id)
+                            .is_non_mapped_defaulted_type_param(def.def_id)
                         {
                             Kind::from(self.tcx.type_of(def.def_id))
                         } else if self.tcx.generics_of(target_def_id).has_self && def.index == 0 {
@@ -253,7 +248,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
                                                 item_def_id: target_def_id,
                                                 // TODO: should be it's own method in rustc
                                                 substs: self.tcx.intern_substs(&target_substs[1..]),
-                                                ty: ty,
+                                                ty,
                                             })
                                         } else {
                                             success.set(false);
@@ -505,7 +500,7 @@ impl<'a, 'gcx, 'tcx> TranslationContext<'a, 'gcx, 'tcx> {
     pub fn translate_inherent_entry(&self, orig_entry: &InherentEntry) -> Option<InherentEntry> {
         (self.translate_orig)(self.id_mapping, orig_entry.parent_def_id).map(|parent_def_id| {
             InherentEntry {
-                parent_def_id: parent_def_id,
+                parent_def_id,
                 kind: orig_entry.kind,
                 name: orig_entry.name,
             }
@@ -530,7 +525,7 @@ pub struct InferenceCleanupFolder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> InferenceCleanupFolder<'a, 'gcx, 'tcx> {
     /// Construct a new folder.
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>) -> Self {
-        InferenceCleanupFolder { infcx: infcx }
+        InferenceCleanupFolder { infcx }
     }
 }
 

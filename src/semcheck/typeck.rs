@@ -3,19 +3,22 @@
 //! Multiple context structures are provided that modularize the needed functionality to allow
 //! for code reuse across analysis steps.
 
-use rustc::hir::def_id::DefId;
-use rustc::infer::InferCtxt;
-use rustc::traits::{
-    FulfillmentContext, FulfillmentError, Obligation, ObligationCause, TraitEngine,
+use rustc::{
+    hir::def_id::DefId,
+    infer::InferCtxt,
+    traits::{FulfillmentContext, FulfillmentError, Obligation, ObligationCause, TraitEngine},
+    ty::{
+        error::TypeError,
+        fold::TypeFoldable,
+        subst::{Kind, Substs},
+        GenericParamDefKind, ParamEnv, Predicate, TraitRef, Ty, TyCtxt,
+    },
 };
-use rustc::ty::error::TypeError;
-use rustc::ty::fold::TypeFoldable;
-use rustc::ty::subst::{Kind, Substs};
-use rustc::ty::{GenericParamDefKind, ParamEnv, Predicate, TraitRef, Ty, TyCtxt};
-
-use semcheck::changes::ChangeSet;
-use semcheck::mapping::IdMapping;
-use semcheck::translate::{InferenceCleanupFolder, TranslationContext};
+use semcheck::{
+    changes::ChangeSet,
+    mapping::IdMapping,
+    translate::{InferenceCleanupFolder, TranslationContext},
+};
 
 /// The context in which bounds analysis happens.
 pub struct BoundContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
@@ -31,9 +34,9 @@ impl<'a, 'gcx, 'tcx> BoundContext<'a, 'gcx, 'tcx> {
     /// Construct a new bound context.
     pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>, given_param_env: ParamEnv<'tcx>) -> Self {
         BoundContext {
-            infcx: infcx,
+            infcx,
             fulfill_cx: FulfillmentContext::new(),
-            given_param_env: given_param_env,
+            given_param_env,
         }
     }
 
@@ -146,12 +149,12 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
         checking_trait_def: bool,
     ) -> Self {
         TypeComparisonContext {
-            infcx: infcx,
-            id_mapping: id_mapping,
+            infcx,
+            id_mapping,
             folder: InferenceCleanupFolder::new(infcx),
-            forward_trans: forward_trans,
-            backward_trans: backward_trans,
-            checking_trait_def: checking_trait_def,
+            forward_trans,
+            backward_trans,
+            checking_trait_def,
         }
     }
 
@@ -185,7 +188,7 @@ impl<'a, 'gcx, 'tcx> TypeComparisonContext<'a, 'gcx, 'tcx> {
             GenericParamDefKind::Type { .. } => {
                 if self
                     .id_mapping
-                    .is_non_mapped_defaulted_type_param(&def.def_id)
+                    .is_non_mapped_defaulted_type_param(def.def_id)
                 {
                     Kind::from(self.infcx.tcx.type_of(def.def_id))
                 } else {

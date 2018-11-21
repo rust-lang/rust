@@ -13,23 +13,20 @@ extern crate rustc_metadata;
 extern crate semverver;
 extern crate syntax;
 
-use semverver::semcheck::run_analysis;
-
-use rustc::hir::def_id::*;
-use rustc::middle::cstore::ExternCrate;
-use rustc::session::config::{ErrorOutputType, Input};
-use rustc::session::{config, Session};
-use rustc_metadata::cstore::CStore;
-
-use rustc_driver::{driver, Compilation, CompilerCalls, RustcDefaultCalls};
-
+use rustc::{
+    hir::def_id::*,
+    middle::cstore::ExternCrate,
+    session::{
+        config::{self, ErrorOutputType, Input},
+        Session,
+    },
+};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-
-use std::path::PathBuf;
-use std::process::Command;
-
-use syntax::ast;
-use syntax::source_map::Pos;
+use rustc_driver::{driver, Compilation, CompilerCalls, RustcDefaultCalls};
+use rustc_metadata::cstore::CStore;
+use semverver::semcheck::run_analysis;
+use std::{path::PathBuf, process::Command};
+use syntax::{ast, source_map::Pos};
 
 /// After the typechecker has finished it's work, perform our checks.
 fn callback(state: &driver::CompileState, version: &str, verbose: bool) {
@@ -59,16 +56,13 @@ fn callback(state: &driver::CompileState, version: &str, verbose: bool) {
 
     crates.sort_by_key(|&(span_lo, _)| span_lo);
 
-    match crates.as_slice() {
-        &[(_, old_def_id), (_, new_def_id)] => {
-            debug!("running semver analysis");
-            let changes = run_analysis(tcx, old_def_id, new_def_id);
+    if let [(_, old_def_id), (_, new_def_id)] = *crates.as_slice() {
+        debug!("running semver analysis");
+        let changes = run_analysis(tcx, old_def_id, new_def_id);
 
-            changes.output(tcx.sess, version, verbose);
-        }
-        _ => {
-            tcx.sess.err("could not find crate old and new crates");
-        }
+        changes.output(tcx.sess, version, verbose);
+    } else {
+        tcx.sess.err("could not find crate old and new crates");
     }
 }
 
@@ -84,8 +78,8 @@ struct SemVerVerCompilerCalls {
 
 impl SemVerVerCompilerCalls {
     /// Construct a new compilation wrapper, given a version string.
-    pub fn new(version: String, verbose: bool) -> Box<SemVerVerCompilerCalls> {
-        Box::new(SemVerVerCompilerCalls {
+    pub fn new(version: String, verbose: bool) -> Box<Self> {
+        Box::new(Self {
             default: Box::new(RustcDefaultCalls),
             version,
             verbose,
@@ -145,13 +139,13 @@ impl<'a> CompilerCalls<'a> for SemVerVerCompilerCalls {
     }
 
     fn build_controller(
-        self: Box<SemVerVerCompilerCalls>,
+        self: Box<Self>,
         sess: &Session,
         matches: &getopts::Matches,
     ) -> driver::CompileController<'a> {
         let default = self.get_default();
         let version = self.get_version().clone();
-        let SemVerVerCompilerCalls { verbose, .. } = *self;
+        let Self { verbose, .. } = *self;
         let mut controller = CompilerCalls::build_controller(default, sess, matches);
         let old_callback = std::mem::replace(&mut controller.after_analysis.callback, box |_| {});
 
@@ -218,5 +212,6 @@ fn main() {
         rustc_driver::run_compiler(&args, cc, None, None)
     });
 
+    #[cfg_attr(feature = "cargo-clippy", allow(clippy::cast_possible_truncation))]
     std::process::exit(result as i32);
 }

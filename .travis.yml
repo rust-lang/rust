@@ -18,6 +18,11 @@ matrix:
     - name: "rustfmt"
       install: rustup component add rustfmt-preview
       script: cargo fmt --all -- --check
+    - name: "clippy"
+      script: |
+        if rustup component add clippy-preview; then
+            cargo clippy --all -- -D clippy::pedantic
+        fi
     - name: "Shellcheck"
       script:
         - shellcheck --version

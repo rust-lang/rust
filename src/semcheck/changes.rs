@@ -9,19 +9,18 @@
 //! complicated by the fact that we still group changes by the item they refer to, even if it's
 //! path changes.
 
-use rustc::hir::def_id::DefId;
-use rustc::session::Session;
-use rustc::ty::error::TypeError;
-use rustc::ty::Predicate;
-
+use rustc::{
+    hir::def_id::DefId,
+    session::Session,
+    ty::{error::TypeError, Predicate},
+};
 use semver::Version;
-
-use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::fmt;
-
+use std::{
+    cmp::Ordering,
+    collections::{BTreeMap, BTreeSet, HashMap},
+    fmt,
+};
 use syntax::symbol::Symbol;
-
 use syntax_pos::Span;
 
 /// The categories we use when analyzing changes between crate versions.
@@ -47,7 +46,7 @@ pub enum ChangeCategory {
 pub use self::ChangeCategory::*;
 
 impl<'a> Default for ChangeCategory {
-    fn default() -> ChangeCategory {
+    fn default() -> Self {
         Patch
     }
 }
@@ -102,10 +101,10 @@ pub struct PathChange {
 
 impl PathChange {
     /// Construct a new empty path change record for an item.
-    fn new(name: Symbol, def_span: Span) -> PathChange {
-        PathChange {
-            name: name,
-            def_span: def_span,
+    fn new(name: Symbol, def_span: Span) -> Self {
+        Self {
+            name,
+            def_span,
             additions: BTreeSet::new(),
             removals: BTreeSet::new(),
         }
@@ -124,10 +123,10 @@ impl PathChange {
     pub fn to_category(&self) -> ChangeCategory {
         if !self.removals.is_empty() {
             Breaking
-        } else if !self.additions.is_empty() {
-            TechnicallyBreaking
-        } else {
+        } else if self.additions.is_empty() {
             Patch
+        } else {
+            TechnicallyBreaking
         }
     }
 
@@ -171,7 +170,7 @@ impl PathChange {
 }
 
 impl PartialEq for PathChange {
-    fn eq(&self, other: &PathChange) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.span() == other.span()
     }
 }
@@ -179,13 +178,13 @@ impl PartialEq for PathChange {
 impl Eq for PathChange {}
 
 impl PartialOrd for PathChange {
-    fn partial_cmp(&self, other: &PathChange) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         self.span().partial_cmp(other.span())
     }
 }
 
 impl Ord for PathChange {
-    fn cmp(&self, other: &PathChange) -> Ordering {
+    fn cmp(&self, other: &Self) -> Ordering {
         self.span().cmp(other.span())
     }
 }
@@ -387,18 +386,12 @@ on said enum can become non-exhaustive."
                 "Removing an enum variant is a braking change, because every old reference
 to the removed variant is rendered invalid."
             }
-            VariantFieldAdded {
-                public: _,
-                total_public: _,
-            } => {
+            VariantFieldAdded { .. } => {
                 "Adding a field to an enum variant is breaking, as matches on the variant are
 invalidated. In case of structs, this only holds for public fields, or the
 first private field being added."
             }
-            VariantFieldRemoved {
-                public: _,
-                total_public: _,
-            } => {
+            VariantFieldRemoved { .. } => {
                 "Removing a field from an enum variant is breaking, as matches on the variant
 are invalidated. In case of structs, this only holds for public fields."
             }
@@ -639,9 +632,9 @@ impl<'tcx> Change<'tcx> {
         Change {
             changes: Vec::new(),
             max: ChangeCategory::default(),
-            name: name,
+            name,
             new_span: span,
-            output: output,
+            output,
         }
     }
 
@@ -856,15 +849,15 @@ impl<'tcx> ChangeSet<'tcx> {
     /// Set up reporting for the changes associated with a given `DefId`.
     pub fn set_output(&mut self, old: DefId) {
         let max = &mut self.max;
-        self.changes.get_mut(&old).map(|change| {
+        if let Some(change) = self.changes.get_mut(&old) {
             let cat = change.to_category();
 
             if cat > *max {
                 *max = cat;
             }
 
-            change.output = true
-        });
+            change.output = true;
+        }
     }
 
     /// Check whether an item with the given id has undergone breaking changes.
@@ -874,8 +867,7 @@ impl<'tcx> ChangeSet<'tcx> {
         // we only care about items that were present in both versions.
         self.changes
             .get(&old)
-            .map(|change| change.to_category() == Breaking)
-            .unwrap_or(false)
+            .map_or(false, |change| change.to_category() == Breaking)
     }
 
     /// Check whether a trait item contains breaking changes preventing further analysis of it's
@@ -883,8 +875,7 @@ impl<'tcx> ChangeSet<'tcx> {
     pub fn trait_item_breaking(&self, old: DefId) -> bool {
         self.changes
             .get(&old)
-            .map(|change| change.trait_item_breaking())
-            .unwrap_or(false)
+            .map_or(false, |change| change.trait_item_breaking())
     }
 
     /// Format the contents of a change set for user output.

@@ -4,15 +4,17 @@
 //! are treated as renamed instances of the same item (as long as they are both unknown to us at
 //! the time of analysis). Thus, we may match them up to avoid some false positives.
 
-use rustc::hir::def_id::DefId;
-use rustc::ty;
-use rustc::ty::relate::{Relate, RelateResult, TypeRelation};
-use rustc::ty::subst::Substs;
-use rustc::ty::Visibility::Public;
-use rustc::ty::{Ty, TyCtxt};
-
+use rustc::{
+    hir::def_id::DefId,
+    ty::{
+        self,
+        relate::{Relate, RelateResult, TypeRelation},
+        subst::Substs,
+        Ty, TyCtxt,
+        Visibility::Public,
+    },
+};
 use semcheck::mapping::IdMapping;
-
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// A relation searching for items appearing at the same spot in a type.
@@ -20,6 +22,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 /// Keeps track of item pairs found that way that correspond to item matchings not yet known.
 /// This allows to match up some items that aren't exported, and which possibly even differ in
 /// their names across versions.
+#[cfg_attr(feature = "cargo-clippy", allow(clippy::stutter))]
 pub struct MismatchRelation<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// The type context used.
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
@@ -36,12 +39,12 @@ pub struct MismatchRelation<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 impl<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> MismatchRelation<'a, 'gcx, 'tcx> {
     /// Construct a new mismtach type relation.
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, id_mapping: &'a mut IdMapping) -> Self {
-        MismatchRelation {
-            tcx: tcx,
+        Self {
+            tcx,
             item_queue: id_mapping.toplevel_queue(),
-            id_mapping: id_mapping,
-            current_old_types: Default::default(),
-            current_new_types: Default::default(),
+            id_mapping,
+            current_old_types: HashSet::default(),
+            current_new_types: HashSet::default(),
         }
     }
 
