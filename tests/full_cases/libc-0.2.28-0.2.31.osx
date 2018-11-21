@@ -1,0 +1,2371 @@
+version bump: 0.2.28 -> (breaking) -> 0.2.29
+error: path changes to `fexecve`
+   --> libc-0.2.28/src/unix/mod.rs:452:5
+    |
+452 | /     pub fn fexecve(fd: ::c_int, argv: *const *const c_char,
+453 | |                    envp: *const *const c_char)
+454 | |                    -> ::c_int;
+    | |______________________________^
+    |
+warning: removed path (breaking)
+   --> libc-0.2.28/src/lib.rs:275:17
+    |
+275 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `INADDR_LOOPBACK`
+   --> libc-0.2.31/src/unix/mod.rs:227:1
+    |
+227 | pub const INADDR_LOOPBACK: in_addr_t = 2130706433;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `INADDR_ANY`
+   --> libc-0.2.31/src/unix/mod.rs:228:1
+    |
+228 | pub const INADDR_ANY: in_addr_t = 0;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `INADDR_BROADCAST`
+   --> libc-0.2.31/src/unix/mod.rs:229:1
+    |
+229 | pub const INADDR_BROADCAST: in_addr_t = 4294967295;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `INADDR_NONE`
+   --> libc-0.2.31/src/unix/mod.rs:230:1
+    |
+230 | pub const INADDR_NONE: in_addr_t = 4294967295;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `getgrgid_r`
+   --> libc-0.2.31/src/unix/bsd/mod.rs:463:5
+    |
+463 | /     pub fn getgrgid_r(uid: ::uid_t,
+464 | |                       grp: *mut ::group,
+465 | |                       buf: *mut ::c_char,
+466 | |                       buflen: ::size_t,
+467 | |                       result: *mut *mut ::group) -> ::c_int;
+    | |____________________________________________________________^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `getgrnam_r`
+   --> libc-0.2.31/src/unix/bsd/mod.rs:476:5
+    |
+476 | /     pub fn getgrnam_r(name: *const ::c_char,
+477 | |                       grp: *mut ::group,
+478 | |                       buf: *mut ::c_char,
+479 | |                       buflen: ::size_t,
+480 | |                       result: *mut *mut ::group) -> ::c_int;
+    | |____________________________________________________________^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_FIXED`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:604:1
+    |
+604 | pub const VM_FLAGS_FIXED: ::c_int = 0x0000;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_ANYWHERE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:605:1
+    |
+605 | pub const VM_FLAGS_ANYWHERE: ::c_int = 0x0001;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_PURGABLE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:606:1
+    |
+606 | pub const VM_FLAGS_PURGABLE: ::c_int = 0x0002;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_RANDOM_ADDR`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:607:1
+    |
+607 | pub const VM_FLAGS_RANDOM_ADDR: ::c_int = 0x0008;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_NO_CACHE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:608:1
+    |
+608 | pub const VM_FLAGS_NO_CACHE: ::c_int = 0x0010;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_RESILIENT_CODESIGN`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:609:1
+    |
+609 | pub const VM_FLAGS_RESILIENT_CODESIGN: ::c_int = 0x0020;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_RESILIENT_MEDIA`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:610:1
+    |
+610 | pub const VM_FLAGS_RESILIENT_MEDIA: ::c_int = 0x0040;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_OVERWRITE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:611:1
+    |
+611 | pub const VM_FLAGS_OVERWRITE: ::c_int = 0x4000;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_SUPERPAGE_MASK`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:612:1
+    |
+612 | pub const VM_FLAGS_SUPERPAGE_MASK: ::c_int = 0x70000;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_RETURN_DATA_ADDR`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:613:1
+    |
+613 | pub const VM_FLAGS_RETURN_DATA_ADDR: ::c_int = 0x100000;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_RETURN_4K_DATA_ADDR`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:614:1
+    |
+614 | pub const VM_FLAGS_RETURN_4K_DATA_ADDR: ::c_int = 0x800000;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_ALIAS_MASK`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:615:1
+    |
+615 | pub const VM_FLAGS_ALIAS_MASK: ::c_int = 0xFF000000;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_USER_ALLOCATE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:616:1
+    |
+616 | / pub const VM_FLAGS_USER_ALLOCATE: ::c_int = VM_FLAGS_FIXED | VM_FLAGS_ANYWHERE |
+617 | |                                             VM_FLAGS_PURGABLE |
+618 | |                                             VM_FLAGS_RANDOM_ADDR |
+619 | |                                             VM_FLAGS_NO_CACHE |
+620 | |                                             VM_FLAGS_OVERWRITE |
+621 | |                                             VM_FLAGS_SUPERPAGE_MASK |
+622 | |                                             VM_FLAGS_ALIAS_MASK;
+    | |________________________________________________________________^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_USER_MAP`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:623:1
+    |
+623 | / pub const VM_FLAGS_USER_MAP: ::c_int = VM_FLAGS_USER_ALLOCATE |
+624 | |                                        VM_FLAGS_RETURN_4K_DATA_ADDR |
+625 | |                                        VM_FLAGS_RETURN_DATA_ADDR;
+    | |_________________________________________________________________^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_USER_REMAP`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:626:1
+    |
+626 | / pub const VM_FLAGS_USER_REMAP: ::c_int = VM_FLAGS_FIXED | VM_FLAGS_ANYWHERE |
+627 | |                                         VM_FLAGS_RANDOM_ADDR |
+628 | |                                         VM_FLAGS_OVERWRITE |
+629 | |                                         VM_FLAGS_RETURN_DATA_ADDR |
+630 | |                                         VM_FLAGS_RESILIENT_CODESIGN;
+    | |____________________________________________________________________^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_SUPERPAGE_SHIFT`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:632:1
+    |
+632 | pub const VM_FLAGS_SUPERPAGE_SHIFT: ::c_int = 16;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `SUPERPAGE_NONE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:633:1
+    |
+633 | pub const SUPERPAGE_NONE: ::c_int = 0;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `SUPERPAGE_SIZE_ANY`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:634:1
+    |
+634 | pub const SUPERPAGE_SIZE_ANY: ::c_int = 1;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_SUPERPAGE_NONE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:635:1
+    |
+635 | / pub const VM_FLAGS_SUPERPAGE_NONE: ::c_int = SUPERPAGE_NONE <<
+636 | |                                              VM_FLAGS_SUPERPAGE_SHIFT;
+    | |______________________________________________________________________^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_SUPERPAGE_SIZE_ANY`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:637:1
+    |
+637 | / pub const VM_FLAGS_SUPERPAGE_SIZE_ANY: ::c_int = SUPERPAGE_SIZE_ANY <<
+638 | |                                                  VM_FLAGS_SUPERPAGE_SHIFT;
+    | |__________________________________________________________________________^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `SUPERPAGE_SIZE_2MB`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:639:1
+    |
+639 | pub const SUPERPAGE_SIZE_2MB: ::c_int = 2;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_FLAGS_SUPERPAGE_SIZE_2MB`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:640:1
+    |
+640 | / pub const VM_FLAGS_SUPERPAGE_SIZE_2MB: ::c_int = SUPERPAGE_SIZE_2MB <<
+641 | |                                                  VM_FLAGS_SUPERPAGE_SHIFT;
+    | |__________________________________________________________________________^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_MALLOC`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:643:1
+    |
+643 | pub const VM_MEMORY_MALLOC: ::c_int = 1;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_MALLOC_SMALL`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:644:1
+    |
+644 | pub const VM_MEMORY_MALLOC_SMALL: ::c_int = 2;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_MALLOC_LARGE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:645:1
+    |
+645 | pub const VM_MEMORY_MALLOC_LARGE: ::c_int = 3;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_MALLOC_HUGE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:646:1
+    |
+646 | pub const VM_MEMORY_MALLOC_HUGE: ::c_int = 4;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_SBRK`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:647:1
+    |
+647 | pub const VM_MEMORY_SBRK: ::c_int = 5;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_REALLOC`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:648:1
+    |
+648 | pub const VM_MEMORY_REALLOC: ::c_int = 6;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_MALLOC_TINY`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:649:1
+    |
+649 | pub const VM_MEMORY_MALLOC_TINY: ::c_int = 7;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_MALLOC_LARGE_REUSABLE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:650:1
+    |
+650 | pub const VM_MEMORY_MALLOC_LARGE_REUSABLE: ::c_int = 8;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_MALLOC_LARGE_REUSED`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:651:1
+    |
+651 | pub const VM_MEMORY_MALLOC_LARGE_REUSED: ::c_int = 9;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_ANALYSIS_TOOL`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:652:1
+    |
+652 | pub const VM_MEMORY_ANALYSIS_TOOL: ::c_int = 10;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_MALLOC_NANO`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:653:1
+    |
+653 | pub const VM_MEMORY_MALLOC_NANO: ::c_int = 11;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_MACH_MSG`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:654:1
+    |
+654 | pub const VM_MEMORY_MACH_MSG: ::c_int = 20;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_IOKIT`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:655:1
+    |
+655 | pub const VM_MEMORY_IOKIT: ::c_int = 21;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_STACK`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:656:1
+    |
+656 | pub const VM_MEMORY_STACK: ::c_int = 30;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_GUARD`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:657:1
+    |
+657 | pub const VM_MEMORY_GUARD: ::c_int = 31;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_SHARED_PMAP`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:658:1
+    |
+658 | pub const VM_MEMORY_SHARED_PMAP: ::c_int = 32;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_DYLIB`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:659:1
+    |
+659 | pub const VM_MEMORY_DYLIB: ::c_int = 33;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_OBJC_DISPATCHERS`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:660:1
+    |
+660 | pub const VM_MEMORY_OBJC_DISPATCHERS: ::c_int = 34;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_UNSHARED_PMAP`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:661:1
+    |
+661 | pub const VM_MEMORY_UNSHARED_PMAP: ::c_int = 35;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_APPKIT`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:662:1
+    |
+662 | pub const VM_MEMORY_APPKIT: ::c_int = 40;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_FOUNDATION`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:663:1
+    |
+663 | pub const VM_MEMORY_FOUNDATION: ::c_int = 41;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_COREGRAPHICS`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:664:1
+    |
+664 | pub const VM_MEMORY_COREGRAPHICS: ::c_int = 42;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_CORESERVICES`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:665:1
+    |
+665 | pub const VM_MEMORY_CORESERVICES: ::c_int = 43;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_CARBON`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:666:1
+    |
+666 | pub const VM_MEMORY_CARBON: ::c_int = VM_MEMORY_CORESERVICES;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_JAVA`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:667:1
+    |
+667 | pub const VM_MEMORY_JAVA: ::c_int = 44;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_COREDATA`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:668:1
+    |
+668 | pub const VM_MEMORY_COREDATA: ::c_int = 45;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_COREDATA_OBJECTIDS`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:669:1
+    |
+669 | pub const VM_MEMORY_COREDATA_OBJECTIDS: ::c_int = 46;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_ATS`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:670:1
+    |
+670 | pub const VM_MEMORY_ATS: ::c_int = 50;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_LAYERKIT`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:671:1
+    |
+671 | pub const VM_MEMORY_LAYERKIT: ::c_int = 51;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_CGIMAGE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:672:1
+    |
+672 | pub const VM_MEMORY_CGIMAGE: ::c_int = 52;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_TCMALLOC`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:673:1
+    |
+673 | pub const VM_MEMORY_TCMALLOC: ::c_int = 53;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_COREGRAPHICS_DATA`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:674:1
+    |
+674 | pub const VM_MEMORY_COREGRAPHICS_DATA: ::c_int = 54;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_COREGRAPHICS_SHARED`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:675:1
+    |
+675 | pub const VM_MEMORY_COREGRAPHICS_SHARED: ::c_int = 55;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_COREGRAPHICS_FRAMEBUFFERS`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:676:1
+    |
+676 | pub const VM_MEMORY_COREGRAPHICS_FRAMEBUFFERS: ::c_int = 56;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_COREGRAPHICS_BACKINGSTORES`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:677:1
+    |
+677 | pub const VM_MEMORY_COREGRAPHICS_BACKINGSTORES: ::c_int = 57;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_COREGRAPHICS_XALLOC`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:678:1
+    |
+678 | pub const VM_MEMORY_COREGRAPHICS_XALLOC: ::c_int = 58;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_COREGRAPHICS_MISC`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:679:1
+    |
+679 | pub const VM_MEMORY_COREGRAPHICS_MISC: ::c_int = VM_MEMORY_COREGRAPHICS;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_DYLD`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:680:1
+    |
+680 | pub const VM_MEMORY_DYLD: ::c_int = 60;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_DYLD_MALLOC`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:681:1
+    |
+681 | pub const VM_MEMORY_DYLD_MALLOC: ::c_int = 61;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_SQLITE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:682:1
+    |
+682 | pub const VM_MEMORY_SQLITE: ::c_int = 62;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_JAVASCRIPT_CORE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:683:1
+    |
+683 | pub const VM_MEMORY_JAVASCRIPT_CORE: ::c_int = 63;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_JAVASCRIPT_JIT_EXECUTABLE_ALLOCATOR`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:684:1
+    |
+684 | pub const VM_MEMORY_JAVASCRIPT_JIT_EXECUTABLE_ALLOCATOR: ::c_int = 64;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_JAVASCRIPT_JIT_REGISTER_FILE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:685:1
+    |
+685 | pub const VM_MEMORY_JAVASCRIPT_JIT_REGISTER_FILE: ::c_int = 65;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_GLSL`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:686:1
+    |
+686 | pub const VM_MEMORY_GLSL: ::c_int = 66;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_OPENCL`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:687:1
+    |
+687 | pub const VM_MEMORY_OPENCL: ::c_int = 67;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_COREIMAGE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:688:1
+    |
+688 | pub const VM_MEMORY_COREIMAGE: ::c_int = 68;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_WEBCORE_PURGEABLE_BUFFERS`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:689:1
+    |
+689 | pub const VM_MEMORY_WEBCORE_PURGEABLE_BUFFERS: ::c_int = 69;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_IMAGEIO`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:690:1
+    |
+690 | pub const VM_MEMORY_IMAGEIO: ::c_int = 70;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_COREPROFILE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:691:1
+    |
+691 | pub const VM_MEMORY_COREPROFILE: ::c_int = 71;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_ASSETSD`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:692:1
+    |
+692 | pub const VM_MEMORY_ASSETSD: ::c_int = 72;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_OS_ALLOC_ONCE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:693:1
+    |
+693 | pub const VM_MEMORY_OS_ALLOC_ONCE: ::c_int = 73;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_LIBDISPATCH`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:694:1
+    |
+694 | pub const VM_MEMORY_LIBDISPATCH: ::c_int = 74;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_ACCELERATE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:695:1
+    |
+695 | pub const VM_MEMORY_ACCELERATE: ::c_int = 75;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_COREUI`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:696:1
+    |
+696 | pub const VM_MEMORY_COREUI: ::c_int = 76;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_COREUIFILE`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:697:1
+    |
+697 | pub const VM_MEMORY_COREUIFILE: ::c_int = 77;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_GENEALOGY`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:698:1
+    |
+698 | pub const VM_MEMORY_GENEALOGY: ::c_int = 78;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_RAWCAMERA`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:699:1
+    |
+699 | pub const VM_MEMORY_RAWCAMERA: ::c_int = 79;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_CORPSEINFO`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:700:1
+    |
+700 | pub const VM_MEMORY_CORPSEINFO: ::c_int = 80;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_ASL`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:701:1
+    |
+701 | pub const VM_MEMORY_ASL: ::c_int = 81;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_SWIFT_RUNTIME`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:702:1
+    |
+702 | pub const VM_MEMORY_SWIFT_RUNTIME: ::c_int = 82;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_SWIFT_METADATA`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:703:1
+    |
+703 | pub const VM_MEMORY_SWIFT_METADATA: ::c_int = 83;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_DHMM`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:704:1
+    |
+704 | pub const VM_MEMORY_DHMM: ::c_int = 84;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_SCENEKIT`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:705:1
+    |
+705 | pub const VM_MEMORY_SCENEKIT: ::c_int = 86;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_SKYWALK`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:706:1
+    |
+706 | pub const VM_MEMORY_SKYWALK: ::c_int = 87;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_APPLICATION_SPECIFIC_1`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:707:1
+    |
+707 | pub const VM_MEMORY_APPLICATION_SPECIFIC_1: ::c_int = 240;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `VM_MEMORY_APPLICATION_SPECIFIC_16`
+   --> libc-0.2.31/src/unix/bsd/apple/mod.rs:708:1
+    |
+708 | pub const VM_MEMORY_APPLICATION_SPECIFIC_16: ::c_int = 255;
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+note: added path (technically breaking)
+   --> libc-0.2.31/src/lib.rs:284:17
+    |
+284 |         pub use unix::*;
+    |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_HOPOPTS`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1049:1
+     |
+1049 | pub const IPPROTO_HOPOPTS: ::c_int = 0;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_IGMP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1052:1
+     |
+1052 | pub const IPPROTO_IGMP: ::c_int = 2;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_GGP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1054:1
+     |
+1054 | pub const IPPROTO_GGP: ::c_int = 3;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_IPIP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1056:1
+     |
+1056 | pub const IPPROTO_IPIP: ::c_int = 4;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_ST`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1059:1
+     |
+1059 | pub const IPPROTO_ST: ::c_int = 7;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_EGP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1061:1
+     |
+1061 | pub const IPPROTO_EGP: ::c_int = 8;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_PIGP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1063:1
+     |
+1063 | pub const IPPROTO_PIGP: ::c_int = 9;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_RCCMON`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1065:1
+     |
+1065 | pub const IPPROTO_RCCMON: ::c_int = 10;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_NVPII`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1067:1
+     |
+1067 | pub const IPPROTO_NVPII: ::c_int = 11;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_PUP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1069:1
+     |
+1069 | pub const IPPROTO_PUP: ::c_int = 12;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_ARGUS`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1071:1
+     |
+1071 | pub const IPPROTO_ARGUS: ::c_int = 13;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_EMCON`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1073:1
+     |
+1073 | pub const IPPROTO_EMCON: ::c_int = 14;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_XNET`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1075:1
+     |
+1075 | pub const IPPROTO_XNET: ::c_int = 15;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_CHAOS`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1077:1
+     |
+1077 | pub const IPPROTO_CHAOS: ::c_int = 16;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_MUX`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1080:1
+     |
+1080 | pub const IPPROTO_MUX: ::c_int = 18;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_MEAS`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1082:1
+     |
+1082 | pub const IPPROTO_MEAS: ::c_int = 19;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_HMP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1084:1
+     |
+1084 | pub const IPPROTO_HMP: ::c_int = 20;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_PRM`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1086:1
+     |
+1086 | pub const IPPROTO_PRM: ::c_int = 21;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_IDP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1088:1
+     |
+1088 | pub const IPPROTO_IDP: ::c_int = 22;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_TRUNK1`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1090:1
+     |
+1090 | pub const IPPROTO_TRUNK1: ::c_int = 23;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_TRUNK2`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1092:1
+     |
+1092 | pub const IPPROTO_TRUNK2: ::c_int = 24;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_LEAF1`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1094:1
+     |
+1094 | pub const IPPROTO_LEAF1: ::c_int = 25;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_LEAF2`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1096:1
+     |
+1096 | pub const IPPROTO_LEAF2: ::c_int = 26;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_RDP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1098:1
+     |
+1098 | pub const IPPROTO_RDP: ::c_int = 27;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_IRTP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1100:1
+     |
+1100 | pub const IPPROTO_IRTP: ::c_int = 28;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_TP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1102:1
+     |
+1102 | pub const IPPROTO_TP: ::c_int = 29;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_BLT`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1104:1
+     |
+1104 | pub const IPPROTO_BLT: ::c_int = 30;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_NSP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1106:1
+     |
+1106 | pub const IPPROTO_NSP: ::c_int = 31;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_INP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1108:1
+     |
+1108 | pub const IPPROTO_INP: ::c_int = 32;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_SEP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1110:1
+     |
+1110 | pub const IPPROTO_SEP: ::c_int = 33;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_3PC`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1112:1
+     |
+1112 | pub const IPPROTO_3PC: ::c_int = 34;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_IDPR`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1114:1
+     |
+1114 | pub const IPPROTO_IDPR: ::c_int = 35;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_XTP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1116:1
+     |
+1116 | pub const IPPROTO_XTP: ::c_int = 36;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_DDP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1118:1
+     |
+1118 | pub const IPPROTO_DDP: ::c_int = 37;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_CMTP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1120:1
+     |
+1120 | pub const IPPROTO_CMTP: ::c_int = 38;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_TPXX`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1122:1
+     |
+1122 | pub const IPPROTO_TPXX: ::c_int = 39;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_IL`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1124:1
+     |
+1124 | pub const IPPROTO_IL: ::c_int = 40;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_SDRP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1127:1
+     |
+1127 | pub const IPPROTO_SDRP: ::c_int = 42;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_ROUTING`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1129:1
+     |
+1129 | pub const IPPROTO_ROUTING: ::c_int = 43;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_FRAGMENT`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1131:1
+     |
+1131 | pub const IPPROTO_FRAGMENT: ::c_int = 44;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_IDRP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1133:1
+     |
+1133 | pub const IPPROTO_IDRP: ::c_int = 45;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_RSVP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1135:1
+     |
+1135 | pub const IPPROTO_RSVP: ::c_int = 46;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_GRE`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1137:1
+     |
+1137 | pub const IPPROTO_GRE: ::c_int = 47;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_MHRP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1139:1
+     |
+1139 | pub const IPPROTO_MHRP: ::c_int = 48;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_BHA`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1141:1
+     |
+1141 | pub const IPPROTO_BHA: ::c_int = 49;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_ESP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1143:1
+     |
+1143 | pub const IPPROTO_ESP: ::c_int = 50;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_AH`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1145:1
+     |
+1145 | pub const IPPROTO_AH: ::c_int = 51;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_INLSP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1147:1
+     |
+1147 | pub const IPPROTO_INLSP: ::c_int = 52;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_SWIPE`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1149:1
+     |
+1149 | pub const IPPROTO_SWIPE: ::c_int = 53;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_NHRP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1151:1
+     |
+1151 | pub const IPPROTO_NHRP: ::c_int = 54;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_NONE`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1155:1
+     |
+1155 | pub const IPPROTO_NONE: ::c_int = 59;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_DSTOPTS`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1157:1
+     |
+1157 | pub const IPPROTO_DSTOPTS: ::c_int = 60;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_AHIP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1159:1
+     |
+1159 | pub const IPPROTO_AHIP: ::c_int = 61;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_CFTP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1161:1
+     |
+1161 | pub const IPPROTO_CFTP: ::c_int = 62;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_HELLO`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1163:1
+     |
+1163 | pub const IPPROTO_HELLO: ::c_int = 63;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_SATEXPAK`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1165:1
+     |
+1165 | pub const IPPROTO_SATEXPAK: ::c_int = 64;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_KRYPTOLAN`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1167:1
+     |
+1167 | pub const IPPROTO_KRYPTOLAN: ::c_int = 65;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_RVD`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1169:1
+     |
+1169 | pub const IPPROTO_RVD: ::c_int = 66;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_IPPC`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1171:1
+     |
+1171 | pub const IPPROTO_IPPC: ::c_int = 67;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_ADFS`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1173:1
+     |
+1173 | pub const IPPROTO_ADFS: ::c_int = 68;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_SATMON`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1175:1
+     |
+1175 | pub const IPPROTO_SATMON: ::c_int = 69;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_VISA`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1177:1
+     |
+1177 | pub const IPPROTO_VISA: ::c_int = 70;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_IPCV`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1179:1
+     |
+1179 | pub const IPPROTO_IPCV: ::c_int = 71;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_CPNX`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1181:1
+     |
+1181 | pub const IPPROTO_CPNX: ::c_int = 72;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_CPHB`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1183:1
+     |
+1183 | pub const IPPROTO_CPHB: ::c_int = 73;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_WSN`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1185:1
+     |
+1185 | pub const IPPROTO_WSN: ::c_int = 74;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_PVP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1187:1
+     |
+1187 | pub const IPPROTO_PVP: ::c_int = 75;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_BRSATMON`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1189:1
+     |
+1189 | pub const IPPROTO_BRSATMON: ::c_int = 76;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_ND`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1191:1
+     |
+1191 | pub const IPPROTO_ND: ::c_int = 77;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_WBMON`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1193:1
+     |
+1193 | pub const IPPROTO_WBMON: ::c_int = 78;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_WBEXPAK`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1195:1
+     |
+1195 | pub const IPPROTO_WBEXPAK: ::c_int = 79;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_EON`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1197:1
+     |
+1197 | pub const IPPROTO_EON: ::c_int = 80;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_VMTP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1199:1
+     |
+1199 | pub const IPPROTO_VMTP: ::c_int = 81;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_SVMTP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1201:1
+     |
+1201 | pub const IPPROTO_SVMTP: ::c_int = 82;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_VINES`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1203:1
+     |
+1203 | pub const IPPROTO_VINES: ::c_int = 83;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_TTP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1205:1
+     |
+1205 | pub const IPPROTO_TTP: ::c_int = 84;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_IGP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1207:1
+     |
+1207 | pub const IPPROTO_IGP: ::c_int = 85;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_DGP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1209:1
+     |
+1209 | pub const IPPROTO_DGP: ::c_int = 86;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_TCF`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1211:1
+     |
+1211 | pub const IPPROTO_TCF: ::c_int = 87;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_IGRP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1213:1
+     |
+1213 | pub const IPPROTO_IGRP: ::c_int = 88;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_OSPFIGP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1215:1
+     |
+1215 | pub const IPPROTO_OSPFIGP: ::c_int = 89;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_SRPC`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1217:1
+     |
+1217 | pub const IPPROTO_SRPC: ::c_int = 90;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_LARP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1219:1
+     |
+1219 | pub const IPPROTO_LARP: ::c_int = 91;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_MTP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1221:1
+     |
+1221 | pub const IPPROTO_MTP: ::c_int = 92;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_AX25`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1223:1
+     |
+1223 | pub const IPPROTO_AX25: ::c_int = 93;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_IPEIP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1225:1
+     |
+1225 | pub const IPPROTO_IPEIP: ::c_int = 94;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_MICP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1227:1
+     |
+1227 | pub const IPPROTO_MICP: ::c_int = 95;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_SCCSP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1229:1
+     |
+1229 | pub const IPPROTO_SCCSP: ::c_int = 96;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_ETHERIP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1231:1
+     |
+1231 | pub const IPPROTO_ETHERIP: ::c_int = 97;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_ENCAP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1233:1
+     |
+1233 | pub const IPPROTO_ENCAP: ::c_int = 98;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_APES`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1235:1
+     |
+1235 | pub const IPPROTO_APES: ::c_int = 99;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_GMTP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1237:1
+     |
+1237 | pub const IPPROTO_GMTP: ::c_int = 100;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_PIM`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1241:1
+     |
+1241 | pub const IPPROTO_PIM: ::c_int = 103;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_IPCOMP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1243:1
+     |
+1243 | pub const IPPROTO_IPCOMP: ::c_int = 108;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_PGM`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1245:1
+     |
+1245 | pub const IPPROTO_PGM: ::c_int = 113;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_SCTP`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1247:1
+     |
+1247 | pub const IPPROTO_SCTP: ::c_int = 132;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_DIVERT`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1252:1
+     |
+1252 | pub const IPPROTO_DIVERT: ::c_int = 254;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_MAX`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1255:1
+     |
+1255 | pub const IPPROTO_MAX: ::c_int = 256;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `IPPROTO_DONE`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:1257:1
+     |
+1257 | pub const IPPROTO_DONE: ::c_int = 257;
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+warning: path changes to `getgrouplist`
+    --> libc-0.2.31/src/unix/bsd/apple/mod.rs:2122:5
+     |
+2122 | /     pub fn getgrouplist(name: *const ::c_char,
+2123 | |                         basegid: ::c_int,
+2124 | |                         groups: *mut ::c_int,
+2125 | |                         ngroups: *mut ::c_int) -> ::c_int;
+     | |__________________________________________________________^
+     |
+note: added path (technically breaking)
+    --> libc-0.2.31/src/lib.rs:284:17
+     |
+284  |         pub use unix::*;
+     |                 ^^^^^^^
+
+error: aborting due to previous error
+
