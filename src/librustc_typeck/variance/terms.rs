@@ -81,7 +81,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     let mut terms_cx = TermsContext {
         tcx,
         arena,
-        inferred_starts: NodeMap(),
+        inferred_starts: Default::default(),
         inferred_terms: vec![],
 
         lang_items: lang_items(tcx),

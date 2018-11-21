@@ -3183,7 +3183,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 /// rather, you should request the vector for a specific type via
 /// `tcx.inherent_impls(def_id)` so as to minimize your dependencies
 /// (constructing this map requires touching the entire crate).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Lrc<Vec<DefId>>>,
 }

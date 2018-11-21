@@ -64,7 +64,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
-        return Lrc::new(DefIdMap())
+        return Default::default();
     }
 
     // Check to see if this crate is a "special runtime crate". These
@@ -299,7 +299,7 @@ fn upstream_monomorphizations_provider<'a, 'tcx>(
 
     let cnums = tcx.all_crate_nums(LOCAL_CRATE);
 
-    let mut instances: DefIdMap<FxHashMap<_, _>> = DefIdMap();
+    let mut instances: DefIdMap<FxHashMap<_, _>> = Default::default();
 
     let cnum_stable_ids: IndexVec<CrateNum, Fingerprint> = {
         let mut cnum_stable_ids = IndexVec::from_elem_n(Fingerprint::ZERO,

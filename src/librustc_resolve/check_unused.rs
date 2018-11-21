@@ -162,7 +162,7 @@ pub fn check_crate(resolver: &mut Resolver, krate: &ast::Crate) {
 
     let mut visitor = UnusedImportCheckVisitor {
         resolver,
-        unused_imports: NodeMap(),
+        unused_imports: Default::default(),
         base_id: ast::DUMMY_NODE_ID,
         item_span: DUMMY_SP,
     };

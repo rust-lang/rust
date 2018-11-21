@@ -8,6 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use rustc_hash::FxHashMap;
-pub use rustc_hash::FxHashSet;
-pub use rustc_hash::FxHasher;
+pub use rustc_hash::{FxHasher, FxHashMap, FxHashSet};

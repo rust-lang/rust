@@ -29,6 +29,7 @@ use std::{cmp, fmt, mem, u32};
 
 mod taint;
 
+#[derive(Default)]
 pub struct RegionConstraintCollector<'tcx> {
     /// For each `RegionVid`, the corresponding `RegionVariableOrigin`.
     var_infos: IndexVec<RegionVid, RegionVariableInfo>,
@@ -341,17 +342,8 @@ impl TaintDirections {
 }
 
 impl<'tcx> RegionConstraintCollector<'tcx> {
-    pub fn new() -> RegionConstraintCollector<'tcx> {
-        RegionConstraintCollector {
-            var_infos: VarInfos::default(),
-            data: RegionConstraintData::default(),
-            lubs: Default::default(),
-            glbs: Default::default(),
-            bound_count: 0,
-            undo_log: Vec::new(),
-            unification_table: ut::UnificationTable::new(),
-            any_unifications: false,
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn num_region_vars(&self) -> usize {

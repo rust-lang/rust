@@ -106,7 +106,7 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
             created_files: Default::default(),
             created_enum_disr_types: Default::default(),
             type_map: Default::default(),
-            namespace_map: RefCell::new(DefIdMap()),
+            namespace_map: RefCell::new(Default::default()),
             composite_types_completed: Default::default(),
         }
     }

@@ -1761,7 +1761,7 @@ fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             tcx,
             access_levels: &visitor.access_levels,
             in_variant: false,
-            old_error_set: NodeSet(),
+            old_error_set: Default::default(),
         };
         intravisit::walk_crate(&mut visitor, krate);
 

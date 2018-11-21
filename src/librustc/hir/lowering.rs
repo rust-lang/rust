@@ -244,9 +244,9 @@ pub fn lower_crate(
         loop_scopes: Vec::new(),
         is_in_loop_condition: false,
         anonymous_lifetime_mode: AnonymousLifetimeMode::PassThrough,
-        type_def_lifetime_params: DefIdMap(),
+        type_def_lifetime_params: Default::default(),
         current_hir_id_owner: vec![(CRATE_DEF_INDEX, 0)],
-        item_local_id_counters: NodeMap(),
+        item_local_id_counters: Default::default(),
         node_id_to_hir_id: IndexVec::new(),
         is_generator: false,
         is_in_trait_impl: false,
@@ -1168,7 +1168,7 @@ impl<'a> LoweringContext<'a> {
                             hir::TyKind::BareFn(P(hir::BareFnTy {
                                 generic_params: this.lower_generic_params(
                                     &f.generic_params,
-                                    &NodeMap(),
+                                    &NodeMap::default(),
                                     ImplTraitContext::disallowed(),
                                 ),
                                 unsafety: this.lower_unsafety(f.unsafety),
@@ -2467,7 +2467,7 @@ impl<'a> LoweringContext<'a> {
         // FIXME: This could probably be done with less rightward drift. Also looks like two control
         //        paths where report_error is called are also the only paths that advance to after
         //        the match statement, so the error reporting could probably just be moved there.
-        let mut add_bounds: NodeMap<Vec<_>> = NodeMap();
+        let mut add_bounds: NodeMap<Vec<_>> = Default::default();
         for pred in &generics.where_clause.predicates {
             if let WherePredicate::BoundPredicate(ref bound_pred) = *pred {
                 'next_bound: for bound in &bound_pred.bounds {
@@ -2552,7 +2552,7 @@ impl<'a> LoweringContext<'a> {
                         hir::WherePredicate::BoundPredicate(hir::WhereBoundPredicate {
                             bound_generic_params: this.lower_generic_params(
                                 bound_generic_params,
-                                &NodeMap(),
+                                &NodeMap::default(),
                                 ImplTraitContext::disallowed(),
                             ),
                             bounded_ty: this.lower_ty(bounded_ty, ImplTraitContext::disallowed()),
@@ -2636,8 +2636,11 @@ impl<'a> LoweringContext<'a> {
         p: &PolyTraitRef,
         mut itctx: ImplTraitContext<'_>,
     ) -> hir::PolyTraitRef {
-        let bound_generic_params =
-            self.lower_generic_params(&p.bound_generic_params, &NodeMap(), itctx.reborrow());
+        let bound_generic_params = self.lower_generic_params(
+            &p.bound_generic_params,
+            &NodeMap::default(),
+            itctx.reborrow(),
+        );
         let trait_ref = self.with_parent_impl_lifetime_defs(
             &bound_generic_params,
             |this| this.lower_trait_ref(&p.trait_ref, itctx),

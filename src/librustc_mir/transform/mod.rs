@@ -72,7 +72,7 @@ fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
                       -> Lrc<DefIdSet> {
     assert_eq!(krate, LOCAL_CRATE);
 
-    let mut set = DefIdSet();
+    let mut set = DefIdSet::default();
 
     // All body-owners have MIR associated with them.
     set.extend(tcx.body_owners());
