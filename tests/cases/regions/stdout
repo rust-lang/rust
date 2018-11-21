@@ -1,48 +1,48 @@
 version bump: 1.0.0 -> (breaking) -> 2.0.0
 error: breaking changes in `D`
- --> $REPO_PATH/tests/cases/regions/new.rs:7:1
+ --> $REPO_PATH/tests/cases/regions/new.rs:9:1
   |
-7 | pub type D<T: IntoIterator> = <T as IntoIterator>::IntoIter;
+9 | pub type D<T: IntoIterator> = <T as IntoIterator>::IntoIter;
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
   = warning: type error: expected std::iter::IntoIterator::Item, found std::iter::IntoIterator::IntoIter (breaking)
 
 error: breaking changes in `E`
- --> $REPO_PATH/tests/cases/regions/new.rs:9:1
-  |
-9 | pub type E<T: IntoIterator> = T;
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |
-  = warning: type error: expected associated type, found type parameter (breaking)
-
-error: breaking changes in `abc`
   --> $REPO_PATH/tests/cases/regions/new.rs:11:1
    |
-11 | pub fn abc(_: &bool) { }
+11 | pub type E<T: IntoIterator> = T;
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: type error: expected associated type, found type parameter (breaking)
+
+error: breaking changes in `abc`
+  --> $REPO_PATH/tests/cases/regions/new.rs:13:1
+   |
+13 | pub fn abc(_: &bool) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: type error: expected bool, found reference (breaking)
 
 error: breaking changes in `def`
-  --> $REPO_PATH/tests/cases/regions/new.rs:13:1
+  --> $REPO_PATH/tests/cases/regions/new.rs:15:1
    |
-13 | pub fn def(_: bool) { }
+15 | pub fn def(_: bool) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: type error: expected reference, found bool (breaking)
 
 error: breaking changes in `efg`
-  --> $REPO_PATH/tests/cases/regions/new.rs:15:1
+  --> $REPO_PATH/tests/cases/regions/new.rs:17:1
    |
-15 | pub fn efg(_: &str) { }
+17 | pub fn efg(_: &str) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: type error: expected bound lifetime parameterBrAnon(0), found concrete lifetime (breaking)
 
 error: breaking changes in `fgh`
-  --> $REPO_PATH/tests/cases/regions/new.rs:17:1
+  --> $REPO_PATH/tests/cases/regions/new.rs:19:1
    |
-17 | pub fn fgh(_: &'static str) { }
+19 | pub fn fgh(_: &'static str) { }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: type error: expected bound lifetime parameterBrAnon(0), found concrete lifetime (breaking)

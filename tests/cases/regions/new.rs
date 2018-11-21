@@ -1,3 +1,5 @@
+#![allow(type_alias_bounds)]
+
 pub type A = fn(&bool);
 
 pub type B = for<'a> fn(&'a bool);
