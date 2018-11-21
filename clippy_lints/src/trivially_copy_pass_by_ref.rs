@@ -18,12 +18,13 @@ use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use crate::rustc::ty::TyKind;
+use crate::rustc::ty::FnSig;
 use crate::rustc::session::config::Config as SessionConfig;
 use crate::rustc_target::spec::abi::Abi;
 use crate::rustc_target::abi::LayoutOf;
 use crate::syntax::ast::NodeId;
 use crate::syntax_pos::Span;
-use crate::utils::{in_macro, is_copy, is_self, span_lint_and_sugg, snippet};
+use crate::utils::{in_macro, is_copy, is_self_ty, span_lint_and_sugg, snippet};
 
 /// **What it does:** Checks for functions taking arguments by reference, where
 /// the argument type is `Copy` and small enough to be more efficient to always
@@ -67,7 +68,7 @@ pub struct TriviallyCopyPassByRef {
     limit: u64,
 }
 
-impl TriviallyCopyPassByRef {
+impl<'a, 'tcx> TriviallyCopyPassByRef {
     pub fn new(limit: Option<u64>, target: &SessionConfig) -> Self {
         let limit = limit.unwrap_or_else(|| {
             let bit_width = target.usize_ty.bit_width().expect("usize should have a width") as u64;
@@ -80,6 +81,84 @@ impl TriviallyCopyPassByRef {
         });
         Self { limit }
     }
+
+    fn check_trait_method(
+        &mut self,
+        cx: &LateContext<'_, 'tcx>,
+        item: &TraitItemRef
+    ) {
+        let method_def_id = cx.tcx.hir.local_def_id(item.id.node_id);
+        let method_sig = cx.tcx.fn_sig(method_def_id);
+        let method_sig = cx.tcx.erase_late_bound_regions(&method_sig);
+
+        let decl = match cx.tcx.hir.fn_decl(item.id.node_id) {
+            Some(b) => b,
+            None => return,
+        };
+
+        self.check_poly_fn(cx, &decl, &method_sig, None);
+    }
+
+    fn check_poly_fn(
+        &mut self,
+        cx: &LateContext<'_, 'tcx>,
+        decl: &FnDecl,
+        sig: &FnSig<'tcx>,
+        span: Option<Span>,
+    ) {
+        // Use lifetimes to determine if we're returning a reference to the
+        // argument. In that case we can't switch to pass-by-value as the
+        // argument will not live long enough.
+        let output_lts = match sig.output().sty {
+            TyKind::Ref(output_lt, _, _) => vec![output_lt],
+            TyKind::Adt(_, substs) => substs.regions().collect(),
+            _ => vec![],
+        };
+
+        for (input, &ty) in decl.inputs.iter().zip(sig.inputs()) {
+            // All spans generated from a proc-macro invocation are the same...
+            match span {
+                Some(s) if  s == input.span => return,
+                _ => (),
+            }
+
+            if_chain! {
+                if let TyKind::Ref(input_lt, ty, Mutability::MutImmutable) = ty.sty;
+                if !output_lts.contains(&input_lt);
+                if is_copy(cx, ty);
+                if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
+                if size <= self.limit;
+                if let hir::TyKind::Rptr(_, MutTy { ty: ref decl_ty, .. }) = input.node;
+                then {
+                    let value_type = if is_self_ty(decl_ty) {
+                        "self".into()
+                    } else {
+                        snippet(cx, decl_ty.span, "_").into()
+                    };
+                    span_lint_and_sugg(
+                        cx,
+                        TRIVIALLY_COPY_PASS_BY_REF,
+                        input.span,
+                        "this argument is passed by reference, but would be more efficient if passed by value",
+                        "consider passing by value instead",
+                        value_type);
+                }
+            }
+        }
+    }
+
+    fn check_trait_items(
+        &mut self,
+        cx: &LateContext<'_, '_>,
+        trait_items: &[TraitItemRef]
+    ) {
+        for item in trait_items {
+            match item.kind {
+                AssociatedItemKind::Method{ has_self: _ } => self.check_trait_method(cx, item),
+                _ => (),
+            }
+        }
+    }
 }
 
 impl LintPass for TriviallyCopyPassByRef {
@@ -89,12 +168,22 @@ impl LintPass for TriviallyCopyPassByRef {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
+    fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
+        if in_macro(item.span) {
+            return;
+        }
+        match item.node {
+            ItemKind::Trait(_, _, _, _, ref trait_items) => self.check_trait_items(cx, trait_items),
+            _ => (),
+        }
+    }
+
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,
         kind: FnKind<'tcx>,
         decl: &'tcx FnDecl,
-        body: &'tcx Body,
+        _body: &'tcx Body,
         span: Span,
         node_id: NodeId,
     ) {
@@ -131,43 +220,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TriviallyCopyPassByRef {
         let fn_sig = cx.tcx.fn_sig(fn_def_id);
         let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);
 
-        // Use lifetimes to determine if we're returning a reference to the
-        // argument. In that case we can't switch to pass-by-value as the
-        // argument will not live long enough.
-        let output_lts = match fn_sig.output().sty {
-            TyKind::Ref(output_lt, _, _) => vec![output_lt],
-            TyKind::Adt(_, substs) => substs.regions().collect(),
-            _ => vec![],
-        };
-
-        for ((input, &ty), arg) in decl.inputs.iter().zip(fn_sig.inputs()).zip(&body.arguments) {
-            // All spans generated from a proc-macro invocation are the same...
-            if span == input.span {
-                return;
-            }
-
-            if_chain! {
-                if let TyKind::Ref(input_lt, ty, Mutability::MutImmutable) = ty.sty;
-                if !output_lts.contains(&input_lt);
-                if is_copy(cx, ty);
-                if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes());
-                if size <= self.limit;
-                if let hir::TyKind::Rptr(_, MutTy { ty: ref decl_ty, .. }) = input.node;
-                then {
-                    let value_type = if is_self(arg) {
-                        "self".into()
-                    } else {
-                        snippet(cx, decl_ty.span, "_").into()
-                    };
-                    span_lint_and_sugg(
-                        cx,
-                        TRIVIALLY_COPY_PASS_BY_REF,
-                        input.span,
-                        "this argument is passed by reference, but would be more efficient if passed by value",
-                        "consider passing by value instead",
-                        value_type);
-                }
-            }
-        }
+        self.check_poly_fn(cx, decl, &fn_sig, Some(span));
     }
 }
