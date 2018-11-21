@@ -1077,12 +1077,12 @@ pub mod tests {
     impl Arbitrary for ChangeType_ {
         fn arbitrary<G: Gen>(g: &mut G) -> ChangeType_ {
             use self::ChangeType_::*;
-            use rand::Rng;
+            use rand::seq::SliceRandom;
 
             let b1 = Arbitrary::arbitrary(g);
             let b2 = Arbitrary::arbitrary(g);
 
-            g.choose(&[
+            [
                 ItemMadePublic,
                 ItemMadePrivate,
                 KindDifference,
@@ -1113,7 +1113,8 @@ pub mod tests {
                 TraitItemRemoved { defaulted: b1 },
                 TraitUnsafetyChanged { now_unsafe: b1 },
                 Unknown,
-            ])
+            ]
+            .choose(g)
             .unwrap()
             .clone()
         }
