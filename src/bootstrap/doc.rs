@@ -260,22 +260,31 @@ impl Step for TheBook {
         let compiler = self.compiler;
         let target = self.target;
         let name = self.name;
-        // build book first edition
+
+        // build book
         builder.ensure(Rustbook {
             target,
-            name: INTERNER.intern_string(format!("{}/first-edition", name)),
+            name: INTERNER.intern_string(name.to_string()),
         });
 
-        // build book second edition
+        // building older edition redirects
+
+        let source_name = format!("{}/first-edition", name);
         builder.ensure(Rustbook {
             target,
-            name: INTERNER.intern_string(format!("{}/second-edition", name)),
+            name: INTERNER.intern_string(source_name),
         });
 
-        // build book 2018 edition
+        let source_name = format!("{}/second-edition", name);
         builder.ensure(Rustbook {
             target,
-            name: INTERNER.intern_string(format!("{}/2018-edition", name)),
+            name: INTERNER.intern_string(source_name),
+        });
+
+        let source_name = format!("{}/2018-edition", name);
+        builder.ensure(Rustbook {
+            target,
+            name: INTERNER.intern_string(source_name),
         });
 
         // build the version info page and CSS
@@ -283,11 +292,6 @@ impl Step for TheBook {
             compiler,
             target,
         });
-
-        // build the index page
-        let index = format!("{}/index.md", name);
-        builder.info(&format!("Documenting book index ({})", target));
-        invoke_rustdoc(builder, compiler, target, &index);
 
         // build the redirect pages
         builder.info(&format!("Documenting book redirect pages ({})", target));

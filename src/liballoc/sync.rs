@@ -120,8 +120,8 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 ///
 /// `Arc<T>` automatically dereferences to `T` (via the [`Deref`][deref] trait),
 /// so you can call `T`'s methods on a value of type `Arc<T>`. To avoid name
-/// clashes with `T`'s methods, the methods of `Arc<T>` itself are [associated
-/// functions][assoc], called using function-like syntax:
+/// clashes with `T`'s methods, the methods of `Arc<T>` itself are associated
+/// functions, called using function-like syntax:
 ///
 /// ```
 /// use std::sync::Arc;
@@ -146,7 +146,6 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// [downgrade]: struct.Arc.html#method.downgrade
 /// [upgrade]: struct.Weak.html#method.upgrade
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
-/// [assoc]: ../../book/first-edition/method-syntax.html#associated-functions
 /// [`RefCell<T>`]: ../../std/cell/struct.RefCell.html
 /// [`std::sync`]: ../../std/sync/index.html
 /// [`Arc::clone(&from)`]: #method.clone
