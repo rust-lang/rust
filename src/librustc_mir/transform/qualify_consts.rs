@@ -267,7 +267,12 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 }
             };
             debug!("store to var {:?}", index);
-            self.local_qualif[index] = Some(self.qualif);
+            match &mut self.local_qualif[index] {
+                // update
+                Some(ref mut qualif) => *qualif = *qualif | self.qualif,
+                // or insert
+                qualif @ None => *qualif = Some(self.qualif),
+            }
             return;
         }
 
