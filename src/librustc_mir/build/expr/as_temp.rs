@@ -85,8 +85,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         unpack!(block = this.into(&Place::Local(temp), block, expr));
 
-        // In constants, temp_lifetime is None. We do not drop anything because
-        // values with a destructor will simply be leaked in constants.
+        // In constants, temp_lifetime is None for temporaries that live for the
+        // entire constant. Thus we do not drop these temporaries and simply leak them.
+        // Anything with a shorter lifetime (e.g the `&foo()` in `bar(&foo())` or anything
+        // within a block will keep the regular drops just like runtime code.
         if let Some(temp_lifetime) = temp_lifetime {
             this.schedule_drop_storage_and_value(
                 expr_span,
