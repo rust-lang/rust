@@ -108,6 +108,15 @@ struct Qualifier<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     promotion_candidates: Vec<Candidate>
 }
 
+macro_rules! unleash_miri {
+    ($this:expr) => {{
+        if $this.tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+            $this.tcx.sess.span_warn($this.span, "skipping const checks");
+            return;
+        }
+    }}
+}
+
 impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            def_id: DefId,
@@ -147,6 +156,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     // categories, but enabling full miri would make that
     // slightly pointless (even with feature-gating).
     fn not_const(&mut self) {
+        unleash_miri!(self);
         self.add(Qualif::NOT_CONST);
         if self.mode != Mode::Fn {
             let mut err = struct_span_err!(
@@ -419,6 +429,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
                     return;
                 }
+                unleash_miri!(self);
                 self.add(Qualif::NOT_CONST);
 
                 if self.mode != Mode::Fn {
@@ -618,6 +629,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
 
                     if forbidden_mut {
+                        unleash_miri!(self);
                         self.add(Qualif::NOT_CONST);
                         if self.mode != Mode::Fn {
                             let mut err = struct_span_err!(self.tcx.sess,  self.span, E0017,
@@ -660,6 +672,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 debug!("visit_rvalue: forbidden_mut={:?}", forbidden_mut);
                 if forbidden_mut {
+                    unleash_miri!(self);
                     self.add(Qualif::NOT_CONST);
                 } else {
                     // We might have a candidate for promotion.
@@ -700,6 +713,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 match (cast_in, cast_out) {
                     (CastTy::Ptr(_), CastTy::Int(_)) |
                     (CastTy::FnPtr, CastTy::Int(_)) => {
+                        unleash_miri!(self);
                         if let Mode::Fn = self.mode {
                             // in normal functions, mark such casts as not promotable
                             self.add(Qualif::NOT_CONST);
@@ -727,6 +741,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             op == BinOp::Ge || op == BinOp::Gt ||
                             op == BinOp::Offset);
 
+                    unleash_miri!(self);
                     if let Mode::Fn = self.mode {
                         // raw pointer operations are not allowed inside promoteds
                         self.add(Qualif::NOT_CONST);
@@ -745,6 +760,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             }
 
             Rvalue::NullaryOp(NullOp::Box, _) => {
+                unleash_miri!(self);
                 self.add(Qualif::NOT_CONST);
                 if self.mode != Mode::Fn {
                     let mut err = struct_span_err!(self.tcx.sess, self.span, E0010,
@@ -861,7 +877,13 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             } else {
                                 // stable const fns or unstable const fns with their feature gate
                                 // active
-                                if self.tcx.is_const_fn(def_id) {
+                                let unleash_miri = self
+                                    .tcx
+                                    .sess
+                                    .opts
+                                    .debugging_opts
+                                    .unleash_the_miri_inside_of_you;
+                                if self.tcx.is_const_fn(def_id) || unleash_miri {
                                     is_const_fn = true;
                                 } else if self.is_const_panic_fn(def_id) {
                                     // Check the const_panic feature gate.
@@ -1030,6 +1052,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
             // Deny *any* live drops anywhere other than functions.
             if self.mode != Mode::Fn {
+                unleash_miri!(self);
                 // HACK(eddyb): emulate a bit of dataflow analysis,
                 // conservatively, that drop elaboration will do.
                 let needs_drop = if let Place::Local(local) = *place {
@@ -1175,7 +1198,9 @@ impl MirPass for QualifyAndPromoteConstants {
             let (temps, candidates) = {
                 let mut qualifier = Qualifier::new(tcx, def_id, mir, mode);
                 if mode == Mode::ConstFn {
-                    if tcx.is_min_const_fn(def_id) {
+                    if tcx.sess.opts.debugging_opts.unleash_the_miri_inside_of_you {
+                        qualifier.qualify_const();
+                    } else if tcx.is_min_const_fn(def_id) {
                         // enforce `min_const_fn` for stable const fns
                         use super::qualify_min_const_fn::is_min_const_fn;
                         if let Err((span, err)) = is_min_const_fn(tcx, def_id, mir) {
