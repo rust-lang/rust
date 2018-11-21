@@ -673,19 +673,27 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         fn_entry: bool,
         place: PlaceTy<'tcx, Borrow>
     ) -> EvalResult<'tcx> {
+        // Determine mutability and whether to add a barrier.
+        // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
+        // making it useless.
+        fn qualify(ty: ty::Ty<'_>, fn_entry: bool) -> Option<(Mutability, bool)> {
+            match ty.sty {
+                // References are simple
+                ty::Ref(_, _, mutbl) => Some((mutbl, fn_entry)),
+                // Boxes do not get a barrier: Barriers reflect that references outlive the call
+                // they were passed in to; that's just not the case for boxes.
+                ty::Adt(..) if ty.is_box() => Some((MutMutable, false)),
+                _ => None,
+            }
+        }
+
         // We need a visitor to visit all references.  However, that requires
         // a `MemPlace`, so we have a fast path for reference types that
         // avoids allocating.
-        // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
-        // making it useless.
-        if let Some(mutbl) = match place.layout.ty.sty {
-            ty::Ref(_, _, mutbl) => Some(mutbl),
-            ty::Adt(..) if place.layout.ty.is_box() => Some(MutMutable),
-            _ => None, // handled with the general case below
-        } {
+        if let Some((mutbl, barrier)) = qualify(place.layout.ty, fn_entry) {
             // fast path
             let val = self.read_immediate(self.place_to_op(place)?)?;
-            let val = self.retag_reference(val, mutbl, fn_entry)?;
+            let val = self.retag_reference(val, mutbl, barrier)?;
             self.write_immediate(val, place)?;
             return Ok(());
         }
@@ -716,14 +724,11 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             {
                 // Cannot use `builtin_deref` because that reports *immutable* for `Box`,
                 // making it useless.
-                let mutbl = match place.layout.ty.sty {
-                    ty::Ref(_, _, mutbl) => mutbl,
-                    ty::Adt(..) if place.layout.ty.is_box() => MutMutable,
-                    _ => return Ok(()), // nothing to do
-                };
-                let val = self.ecx.read_immediate(place.into())?;
-                let val = self.ecx.retag_reference(val, mutbl, self.fn_entry)?;
-                self.ecx.write_immediate(val, place.into())?;
+                if let Some((mutbl, barrier)) = qualify(place.layout.ty, self.fn_entry) {
+                    let val = self.ecx.read_immediate(place.into())?;
+                    let val = self.ecx.retag_reference(val, mutbl, barrier)?;
+                    self.ecx.write_immediate(val, place.into())?;
+                }
                 Ok(())
             }
         }

@@ -8,7 +8,7 @@ fn demo_mut_advanced_unique(mut our: Box<i32>) -> i32 {
   unknown_code_2();
 
   // We know this will return 5
-  *our
+  *our //~ ERROR does not exist on the stack
 }
 
 // Now comes the evil context
@@ -21,7 +21,7 @@ fn unknown_code_1(x: &i32) { unsafe {
 } }
 
 fn unknown_code_2() { unsafe {
-    *LEAK = 7; //~ ERROR barrier
+    *LEAK = 7;
 } }
 
 fn main() {
