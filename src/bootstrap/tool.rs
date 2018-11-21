@@ -22,6 +22,7 @@ use util::{exe, add_lib_path};
 use compile;
 use native;
 use channel::GitInfo;
+use channel;
 use cache::Interned;
 use toolstate::ToolState;
 
@@ -240,6 +241,7 @@ pub fn prepare_tool_cargo(
 
     cargo.env("CFG_RELEASE_CHANNEL", &builder.config.channel);
     cargo.env("CFG_VERSION", builder.rust_version());
+    cargo.env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM);
 
     let info = GitInfo::new(&builder.config, &dir);
     if let Some(sha) = info.sha() {
