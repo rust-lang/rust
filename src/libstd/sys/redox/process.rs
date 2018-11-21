@@ -126,7 +126,7 @@ impl Command {
         self.gid = Some(id);
     }
 
-    pub fn before_exec(&mut self,
+    pub unsafe fn before_exec(&mut self,
                        f: Box<dyn FnMut() -> io::Result<()> + Send + Sync>) {
         self.closures.push(f);
     }

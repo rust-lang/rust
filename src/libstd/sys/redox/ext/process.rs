@@ -59,7 +59,7 @@ pub trait CommandExt {
     /// working directory have successfully been changed, so output to these
     /// locations may not appear where intended.
     #[stable(feature = "process_exec", since = "1.15.0")]
-    fn before_exec<F>(&mut self, f: F) -> &mut process::Command
+    unsafe fn before_exec<F>(&mut self, f: F) -> &mut process::Command
         where F: FnMut() -> io::Result<()> + Send + Sync + 'static;
 
     /// Performs all the required setup by this `Command`, followed by calling
@@ -97,7 +97,7 @@ impl CommandExt for process::Command {
         self
     }
 
-    fn before_exec<F>(&mut self, f: F) -> &mut process::Command
+    unsafe fn before_exec<F>(&mut self, f: F) -> &mut process::Command
         where F: FnMut() -> io::Result<()> + Send + Sync + 'static
     {
         self.as_inner_mut().before_exec(Box::new(f));
