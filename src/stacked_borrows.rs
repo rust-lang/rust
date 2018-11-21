@@ -90,6 +90,14 @@ pub enum RefKind {
     Raw,
 }
 
+/// What kind of access is being performed?
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+pub enum AccessKind {
+    Read,
+    Write,
+    Dealloc,
+}
+
 /// Extra global state in the memory, available to the memory access hooks
 #[derive(Debug)]
 pub struct BarrierTracking {
@@ -221,13 +229,13 @@ impl<'tcx> Stack {
     fn access(
         &mut self,
         bor: Borrow,
-        is_write: bool,
+        kind: AccessKind,
         barrier_tracking: &BarrierTracking,
     ) -> EvalResult<'tcx> {
         // Check if we can match the frozen "item".
         // Not possible on writes!
         if self.is_frozen() {
-            if !is_write {
+            if kind == AccessKind::Read {
                 // When we are frozen, we just accept all reads.  No harm in this.
                 // The deref already checked that `Uniq` items are in the stack, and that
                 // the location is frozen if it should be.
@@ -247,26 +255,41 @@ impl<'tcx> Stack {
                     )))
                 }
                 (BorStackItem::Uniq(itm_t), Borrow::Uniq(bor_t)) if itm_t == bor_t => {
-                    // Found matching unique item.
-                    return Ok(())
+                    // Found matching unique item.  Continue after the match.
                 }
-                (BorStackItem::Shr, _) if !is_write => {
+                (BorStackItem::Shr, _) if kind == AccessKind::Read => {
                     // When reading, everything can use a shared item!
                     // We do not want to do this when writing: Writing to an `&mut`
                     // should reaffirm its exclusivity (i.e., make sure it is
-                    // on top of the stack).
-                    return Ok(())
+                    // on top of the stack).  Continue after the match.
                 }
                 (BorStackItem::Shr, Borrow::Shr(_)) => {
-                    // Found matching shared item.
-                    return Ok(())
+                    // Found matching shared item.  Continue after the match.
                 }
                 _ => {
-                    // Pop this.  This ensures U2.
+                    // Pop this, go on.  This ensures U2.
                     let itm = self.borrows.pop().unwrap();
                     trace!("access: Popping {:?}", itm);
+                    continue
                 }
             }
+            // If we got here, we found a matching item.  Congratulations!
+            // However, we are not done yet: If this access is deallocating, we must make sure
+            // there are no active barriers remaining on the stack.
+            if kind == AccessKind::Dealloc {
+                for &itm in self.borrows.iter().rev() {
+                    match itm {
+                        BorStackItem::FnBarrier(call) if barrier_tracking.is_active(call) => {
+                            return err!(MachineError(format!(
+                                "Deallocating with active barrier ({})", call
+                            )))
+                        }
+                        _ => {},
+                    }
+                }
+            }
+            // NOW we are done.
+            return Ok(())
         }
         // If we got here, we did not find our item.
         err!(MachineError(format!(
@@ -352,18 +375,16 @@ impl<'tcx> Stacks {
         &self,
         ptr: Pointer<Borrow>,
         size: Size,
-        is_write: bool,
-        barrier_tracking: &BarrierTracking,
+        kind: AccessKind,
     ) -> EvalResult<'tcx> {
-        trace!("{} access of tag {:?}: {:?}, size {}",
-            if is_write { "read" } else { "write" },
-            ptr.tag, ptr, size.bytes());
+        trace!("{:?} access of tag {:?}: {:?}, size {}", kind, ptr.tag, ptr, size.bytes());
         // Even reads can have a side-effect, by invalidating other references.
         // This is fundamentally necessary since `&mut` asserts that there
         // are no accesses through other references, not even reads.
+        let barrier_tracking = self.barrier_tracking.borrow();
         let mut stacks = self.stacks.borrow_mut();
         for stack in stacks.iter_mut(ptr.offset, size) {
-            stack.access(ptr.tag, is_write, barrier_tracking)?;
+            stack.access(ptr.tag, kind, &*barrier_tracking)?;
         }
         Ok(())
     }
@@ -377,7 +398,6 @@ impl<'tcx> Stacks {
         mut barrier: Option<CallId>,
         new_bor: Borrow,
         new_kind: RefKind,
-        barrier_tracking: &BarrierTracking,
     ) -> EvalResult<'tcx> {
         assert_eq!(new_bor.is_unique(), new_kind == RefKind::Unique);
         trace!("reborrow for tag {:?} to {:?} as {:?}: {:?}, size {}",
@@ -385,8 +405,17 @@ impl<'tcx> Stacks {
         if new_kind == RefKind::Raw {
             // No barrier for raw, including `&UnsafeCell`.  They can rightfully
             // alias with `&mut`.
+            // FIXME: This means that the `dereferencable` attribute on non-frozen shared
+            // references is incorrect!  They are dereferencable when the function is
+            // called, but might become non-dereferencable during the coruse of execution.
+            // Also see [1], [2].
+            //
+            // [1]: <https://internals.rust-lang.org/t/
+            //       is-it-possible-to-be-memory-safe-with-deallocated-self/8457/8>,
+            // [2]: <https://lists.llvm.org/pipermail/llvm-dev/2018-July/124555.html>
             barrier = None;
         }
+        let barrier_tracking = self.barrier_tracking.borrow();
         let mut stacks = self.stacks.borrow_mut();
         for stack in stacks.iter_mut(ptr.offset, size) {
             // Access source `ptr`, create new ref.
@@ -410,7 +439,12 @@ impl<'tcx> Stacks {
                 continue;
             }
             // We need to do some actual work.
-            stack.access(ptr.tag, new_kind == RefKind::Unique, barrier_tracking)?;
+            let access_kind = if new_kind == RefKind::Unique {
+                AccessKind::Write
+            } else {
+                AccessKind::Read
+            };
+            stack.access(ptr.tag, access_kind, &*barrier_tracking)?;
             if let Some(call) = barrier {
                 stack.barrier(call);
             }
@@ -440,7 +474,7 @@ impl AllocationExtra<Borrow, MemoryState> for Stacks {
         ptr: Pointer<Borrow>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        alloc.extra.access(ptr, size, /*is_write*/false, &*alloc.extra.barrier_tracking.borrow())
+        alloc.extra.access(ptr, size, AccessKind::Read)
     }
 
     #[inline(always)]
@@ -449,7 +483,7 @@ impl AllocationExtra<Borrow, MemoryState> for Stacks {
         ptr: Pointer<Borrow>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        alloc.extra.access(ptr, size, /*is_write*/true, &*alloc.extra.barrier_tracking.borrow())
+        alloc.extra.access(ptr, size, AccessKind::Write)
     }
 
     #[inline(always)]
@@ -458,9 +492,7 @@ impl AllocationExtra<Borrow, MemoryState> for Stacks {
         ptr: Pointer<Borrow>,
         size: Size,
     ) -> EvalResult<'tcx> {
-        // This is like mutating
-        alloc.extra.access(ptr, size, /*is_write*/true, &*alloc.extra.barrier_tracking.borrow())
-        // FIXME: Error out of there are any barriers?
+        alloc.extra.access(ptr, size, AccessKind::Dealloc)
     }
 }
 
@@ -627,12 +659,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             // Reference that cares about freezing. We need a frozen-sensitive reborrow.
             self.visit_freeze_sensitive(place, size, |cur_ptr, size, frozen| {
                 let kind = if frozen { RefKind::Frozen } else { RefKind::Raw };
-                alloc.extra.reborrow(cur_ptr, size, barrier, new_bor, kind, &*self.memory().extra.borrow())
+                alloc.extra.reborrow(cur_ptr, size, barrier, new_bor, kind)
             })?;
         } else {
             // Just treat this as one big chunk.
             let kind = if new_bor.is_unique() { RefKind::Unique } else { RefKind::Raw };
-            alloc.extra.reborrow(ptr, size, barrier, new_bor, kind, &*self.memory().extra.borrow())?;
+            alloc.extra.reborrow(ptr, size, barrier, new_bor, kind)?;
         }
         Ok(new_ptr)
     }
