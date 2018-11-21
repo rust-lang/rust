@@ -195,84 +195,14 @@ impl InputModuleItems {
     }
 
     fn add_use_item(&mut self, item: ast::UseItem) {
-        if let Some(tree) = item.use_tree() {
-            self.add_use_tree(None, tree);
-        }
-    }
-
-    fn add_use_tree(&mut self, prefix: Option<Path>, tree: ast::UseTree) {
-        if let Some(use_tree_list) = tree.use_tree_list() {
-            let prefix = match tree.path() {
-                None => prefix,
-                Some(path) => match convert_path(prefix, path) {
-                    Some(it) => Some(it),
-                    None => return, // TODO: report errors somewhere
-                },
+        Path::expand_use_item(item, |path, ptr| {
+            let kind = match ptr {
+                None => ImportKind::Glob,
+                Some(ptr) => ImportKind::Named(ptr),
             };
-            for tree in use_tree_list.use_trees() {
-                self.add_use_tree(prefix.clone(), tree);
-            }
-        } else {
-            if let Some(ast_path) = tree.path() {
-                if let Some(path) = convert_path(prefix, ast_path) {
-                    let kind = if tree.has_star() {
-                        ImportKind::Glob
-                    } else {
-                        let ptr = LocalSyntaxPtr::new(ast_path.segment().unwrap().syntax());
-                        ImportKind::Named(ptr)
-                    };
-                    self.imports.push(Import { kind, path })
-                }
-            }
-        }
+            self.imports.push(Import { kind, path })
+        })
     }
-}
-
-fn convert_path(prefix: Option<Path>, path: ast::Path) -> Option<Path> {
-    let prefix = if let Some(qual) = path.qualifier() {
-        Some(convert_path(prefix, qual)?)
-    } else {
-        None
-    };
-    let segment = path.segment()?;
-    let res = match segment.kind()? {
-        ast::PathSegmentKind::Name(name) => {
-            let mut res = prefix.unwrap_or_else(|| Path {
-                kind: PathKind::Abs,
-                segments: Vec::with_capacity(1),
-            });
-            res.segments.push(name.text());
-            res
-        }
-        ast::PathSegmentKind::CrateKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            Path {
-                kind: PathKind::Crate,
-                segments: Vec::new(),
-            }
-        }
-        ast::PathSegmentKind::SelfKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            Path {
-                kind: PathKind::Self_,
-                segments: Vec::new(),
-            }
-        }
-        ast::PathSegmentKind::SuperKw => {
-            if prefix.is_some() {
-                return None;
-            }
-            Path {
-                kind: PathKind::Super,
-                segments: Vec::new(),
-            }
-        }
-    };
-    Some(res)
 }
 
 impl ModuleItem {

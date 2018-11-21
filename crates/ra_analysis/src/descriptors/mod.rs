@@ -1,11 +1,12 @@
 pub(crate) mod function;
 pub(crate) mod module;
+mod path;
 
 use std::sync::Arc;
 
 use ra_syntax::{
-    ast::{self, AstNode, FnDefNode},
-    TextRange, SmolStr,
+    ast::{self, FnDefNode},
+    TextRange,
 };
 
 use crate::{
@@ -17,6 +18,8 @@ use crate::{
     syntax_ptr::LocalSyntaxPtr,
     Cancelable,
 };
+
+pub(crate) use self::path::{Path, PathKind};
 
 salsa::query_group! {
     pub(crate) trait DescriptorDatabase: SyntaxDatabase + IdDatabase {
@@ -48,20 +51,6 @@ salsa::query_group! {
             use fn module::imp::submodules;
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Path {
-    kind: PathKind,
-    segments: Vec<SmolStr>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum PathKind {
-    Abs,
-    Self_,
-    Super,
-    Crate,
 }
 
 #[derive(Debug)]
