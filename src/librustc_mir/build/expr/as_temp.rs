@@ -86,7 +86,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         unpack!(block = this.into(&Place::Local(temp), block, expr));
 
         // In constants, temp_lifetime is None for temporaries that live for the
-        // entire constant. Thus we do not drop these temporaries and simply leak them.
+        // 'static lifetime. Thus we do not drop these temporaries and simply leak them.
+        // This is equivalent to what `let x = &foo();` does in functions. The temporary
+        // is lifted to their surrounding scope. In a function that means the temporary lives
+        // until just before the function returns. In constants that means it outlives the
+        // constant's initialization value computation. Anything outliving a constant
+        // must have the `'static` lifetime and live forever.
         // Anything with a shorter lifetime (e.g the `&foo()` in `bar(&foo())` or anything
         // within a block will keep the regular drops just like runtime code.
         if let Some(temp_lifetime) = temp_lifetime {
