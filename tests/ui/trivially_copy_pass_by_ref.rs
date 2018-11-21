@@ -18,6 +18,11 @@ struct Foo(u32);
 #[derive(Copy, Clone)]
 struct Bar([u8; 24]);
 
+#[derive(Copy, Clone)]
+pub struct Color {
+    pub r: u8, pub g: u8, pub b: u8, pub a: u8,
+}
+
 struct FooRef<'a> {
     foo: &'a Foo,
 }
@@ -77,6 +82,20 @@ impl Bar {
     }
 
     fn bad2(x: &u32, y: &Foo, z: &Baz) {
+    }
+}
+
+trait MyTrait {
+    fn trait_method(&self, _foo: &Foo);
+}
+
+pub trait MyTrait2 {
+    fn trait_method2(&self, _color: &Color);
+}
+
+impl MyTrait for Foo {
+    fn trait_method(&self, _foo: &Foo) {
+        unimplemented!()
     }
 }
 
