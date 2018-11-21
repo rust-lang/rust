@@ -332,10 +332,7 @@ fn maybe_redirect(source: &str) -> Option<String> {
     const REDIRECT: &'static str = "<p>Redirecting to <a href=";
 
     let mut lines = source.lines();
-    let redirect_line = match lines.nth(6) {
-        Some(l) => l,
-        None => return None,
-    };
+    let redirect_line = lines.nth(6)?;
 
     redirect_line.find(REDIRECT).map(|i| {
         let rest = &redirect_line[(i + REDIRECT.len() + 1)..];

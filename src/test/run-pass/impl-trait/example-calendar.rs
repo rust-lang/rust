@@ -753,10 +753,7 @@ where It: Iterator {
     type Item = Vec<It::Item>;
 
     fn next(&mut self) -> Option<Vec<It::Item>> {
-        let first = match self.it.next() {
-            Some(e) => e,
-            None => return None
-        };
+        let first = self.it.next()?;
 
         let mut result = Vec::with_capacity(self.n);
         result.push(first);

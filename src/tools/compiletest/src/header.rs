@@ -684,14 +684,8 @@ impl Config {
 
     fn parse_custom_normalization(&self, mut line: &str, prefix: &str) -> Option<(String, String)> {
         if self.parse_cfg_name_directive(line, prefix) == ParsedNameDirective::Match {
-            let from = match parse_normalization_string(&mut line) {
-                Some(s) => s,
-                None => return None,
-            };
-            let to = match parse_normalization_string(&mut line) {
-                Some(s) => s,
-                None => return None,
-            };
+            let from = parse_normalization_string(&mut line)?;
+            let to = parse_normalization_string(&mut line)?;
             Some((from, to))
         } else {
             None
@@ -850,14 +844,8 @@ fn expand_variables(mut value: String, config: &Config) -> String {
 /// ```
 fn parse_normalization_string(line: &mut &str) -> Option<String> {
     // FIXME support escapes in strings.
-    let begin = match line.find('"') {
-        Some(i) => i + 1,
-        None => return None,
-    };
-    let end = match line[begin..].find('"') {
-        Some(i) => i + begin,
-        None => return None,
-    };
+    let begin = line.find('"')? + 1;
+    let end = line[begin..].find('"')? + begin;
     let result = line[begin..end].to_owned();
     *line = &line[end + 1..];
     Some(result)

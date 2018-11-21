@@ -91,10 +91,7 @@ pub fn parse_prefix<'a>(path: &'a OsStr) -> Option<Prefix> {
     }
 
     fn parse_two_comps(mut path: &[u8], f: fn(u8) -> bool) -> Option<(&[u8], &[u8])> {
-        let first = match path.iter().position(|x| f(*x)) {
-            None => return None,
-            Some(x) => &path[..x],
-        };
+        let first = &path[..path.iter().position(|x| f(*x))?];
         path = &path[(first.len() + 1)..];
         let idx = path.iter().position(|x| f(*x));
         let second = &path[..idx.unwrap_or(path.len())];
