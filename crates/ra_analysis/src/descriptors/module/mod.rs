@@ -1,5 +1,4 @@
 pub(super) mod imp;
-mod scope;
 pub(super) mod nameres;
 
 use std::sync::Arc;
@@ -19,7 +18,7 @@ use crate::{
     input::SourceRootId
 };
 
-pub(crate) use self::scope::ModuleScope;
+pub(crate) use self::{nameres::ModuleScope};
 
 /// `ModuleDescriptor` is API entry point to get all the information
 /// about a particular module.
@@ -126,8 +125,10 @@ impl ModuleDescriptor {
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub fn scope(&self, db: &impl DescriptorDatabase) -> Cancelable<Arc<ModuleScope>> {
-        db._module_scope(self.source_root_id, self.module_id)
+    pub(crate) fn scope(&self, db: &impl DescriptorDatabase) -> Cancelable<ModuleScope> {
+        let item_map = db._item_map(self.source_root_id)?;
+        let res = item_map.per_module[&self.module_id].clone();
+        Ok(res)
     }
 
     pub fn problems(&self, db: &impl DescriptorDatabase) -> Vec<(SyntaxNode, Problem)> {

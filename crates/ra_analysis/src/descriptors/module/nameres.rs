@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 
 use ra_syntax::{
     SmolStr, SyntaxKind::{self, *},
-    ast::{self, NameOwner, AstNode, ModuleItemOwner}
+    ast::{self, AstNode, ModuleItemOwner}
 };
 
 use crate::{
@@ -26,13 +26,13 @@ use crate::{
 /// module, the set of visible items.
 #[derive(Default, Debug, PartialEq, Eq)]
 pub(crate) struct ItemMap {
-    per_module: FxHashMap<ModuleId, ModuleItems>,
+    pub(crate) per_module: FxHashMap<ModuleId, ModuleScope>,
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
-struct ModuleItems {
-    items: FxHashMap<SmolStr, Resolution>,
-    import_resolutions: FxHashMap<LocalSyntaxPtr, DefId>,
+#[derive(Debug, Default, PartialEq, Eq, Clone)]
+pub(crate) struct ModuleScope {
+    pub(crate) items: FxHashMap<SmolStr, Resolution>,
+    pub(crate) import_resolutions: FxHashMap<LocalSyntaxPtr, DefId>,
 }
 
 /// A set of items and imports declared inside a module, without relation to
@@ -117,22 +117,25 @@ pub(crate) fn item_map(
 /// Resolution is basically `DefId` atm, but it should account for stuff like
 /// multiple namespaces, ambiguity and errors.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Resolution {
+pub(crate) struct Resolution {
     /// None for unresolved
-    def_id: Option<DefId>,
+    pub(crate) def_id: Option<DefId>,
+    /// ident by whitch this is imported into local scope.
+    /// TODO: make this offset-independent.
+    pub(crate) import_name: Option<LocalSyntaxPtr>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum Namespace {
-    Types,
-    Values,
-}
+// #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+// enum Namespace {
+//     Types,
+//     Values,
+// }
 
-#[derive(Debug)]
-struct PerNs<T> {
-    types: Option<T>,
-    values: Option<T>,
-}
+// #[derive(Debug)]
+// struct PerNs<T> {
+//     types: Option<T>,
+//     values: Option<T>,
+// }
 
 #[derive(Debug, PartialEq, Eq)]
 struct ModuleItem {
@@ -144,7 +147,7 @@ struct ModuleItem {
 
 #[derive(Debug, PartialEq, Eq)]
 enum Vis {
-    Priv,
+    // Priv,
     Other,
 }
 
@@ -302,13 +305,17 @@ where
     fn populate_module(&mut self, module_id: ModuleId, input: &InputModuleItems) {
         let file_id = module_id.source(&self.module_tree).file_id();
 
-        let mut module_items = ModuleItems::default();
+        let mut module_items = ModuleScope::default();
 
         for import in input.imports.iter() {
-            if let Some((_, name)) = import.segments.last() {
-                module_items
-                    .items
-                    .insert(name.clone(), Resolution { def_id: None });
+            if let Some((ptr, name)) = import.segments.last() {
+                module_items.items.insert(
+                    name.clone(),
+                    Resolution {
+                        def_id: None,
+                        import_name: Some(*ptr),
+                    },
+                );
             }
         }
 
@@ -322,6 +329,7 @@ where
             let def_id = self.db.id_maps().def_id(def_loc);
             let resolution = Resolution {
                 def_id: Some(def_id),
+                import_name: None,
             };
             module_items.items.insert(item.name.clone(), resolution);
         }
@@ -334,6 +342,7 @@ where
             let def_id = self.db.id_maps().def_id(def_loc);
             let resolution = Resolution {
                 def_id: Some(def_id),
+                import_name: None,
             };
             module_items.items.insert(name, resolution);
         }
@@ -386,6 +395,7 @@ where
                 self.update(module_id, |items| {
                     let res = Resolution {
                         def_id: Some(def_id),
+                        import_name: Some(*ptr),
                     };
                     items.items.insert(name.clone(), res);
                 })
@@ -393,7 +403,7 @@ where
         }
     }
 
-    fn update(&mut self, module_id: ModuleId, f: impl FnOnce(&mut ModuleItems)) {
+    fn update(&mut self, module_id: ModuleId, f: impl FnOnce(&mut ModuleScope)) {
         let module_items = self.result.per_module.get_mut(&module_id).unwrap();
         f(module_items)
     }

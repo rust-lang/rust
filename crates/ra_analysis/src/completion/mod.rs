@@ -204,9 +204,9 @@ mod tests {
                 <|>
             }
             ",
-            r#"[CompletionItem { label: "Foo", lookup: None, snippet: None },
-                   CompletionItem { label: "Baz", lookup: None, snippet: None },
-                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#,
+            r#"[CompletionItem { label: "quux", lookup: None, snippet: None },
+                CompletionItem { label: "Foo", lookup: None, snippet: None },
+                CompletionItem { label: "Baz", lookup: None, snippet: None }]"#,
         );
     }
 
@@ -230,8 +230,8 @@ mod tests {
                 fn quux() { <|> }
             }
             ",
-            r#"[CompletionItem { label: "Bar", lookup: None, snippet: None },
-                   CompletionItem { label: "quux", lookup: None, snippet: None }]"#,
+            r#"[CompletionItem { label: "quux", lookup: None, snippet: None },
+                CompletionItem { label: "Bar", lookup: None, snippet: None }]"#,
         );
     }
 

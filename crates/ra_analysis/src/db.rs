@@ -7,7 +7,7 @@ use salsa::{self, Database};
 use crate::{
     db,
     descriptors::{
-        DescriptorDatabase, FnScopesQuery, FnSyntaxQuery, ModuleScopeQuery, ModuleTreeQuery,
+        DescriptorDatabase, FnScopesQuery, FnSyntaxQuery, ModuleTreeQuery,
         SubmodulesQuery, ItemMapQuery, InputModuleItemsQuery,
     },
     symbol_index::SymbolIndex,
@@ -88,7 +88,6 @@ salsa::database_storage! {
             fn fn_scopes() for FnScopesQuery;
             fn _input_module_items() for InputModuleItemsQuery;
             fn _item_map() for ItemMapQuery;
-            fn _module_scope() for ModuleScopeQuery;
             fn _fn_syntax() for FnSyntaxQuery;
             fn _submodules() for SubmodulesQuery;
         }

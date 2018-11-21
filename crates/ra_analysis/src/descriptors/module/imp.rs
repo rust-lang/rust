@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ra_syntax::{
-    ast::{self, ModuleItemOwner, NameOwner},
+    ast::{self, NameOwner},
     SmolStr,
 };
 use relative_path::RelativePathBuf;
@@ -15,7 +15,7 @@ use crate::{
 };
 
 use super::{
-    LinkData, LinkId, ModuleData, ModuleId, ModuleScope, ModuleSource, ModuleSourceNode,
+    LinkData, LinkId, ModuleData, ModuleId, ModuleSource, ModuleSourceNode,
     ModuleTree, Problem,
 };
 
@@ -79,23 +79,6 @@ pub(crate) fn modules<'a>(
             let name = module.name()?.text();
             Some((name, module))
         })
-}
-
-pub(crate) fn module_scope(
-    db: &impl DescriptorDatabase,
-    source_root_id: SourceRootId,
-    module_id: ModuleId,
-) -> Cancelable<Arc<ModuleScope>> {
-    let tree = db._module_tree(source_root_id)?;
-    let source = module_id.source(&tree).resolve(db);
-    let res = match source {
-        ModuleSourceNode::SourceFile(it) => ModuleScope::new(it.borrowed().items()),
-        ModuleSourceNode::Module(it) => match it.borrowed().item_list() {
-            Some(items) => ModuleScope::new(items.items()),
-            None => ModuleScope::new(std::iter::empty()),
-        },
-    };
-    Ok(Arc::new(res))
 }
 
 pub(crate) fn module_tree(
