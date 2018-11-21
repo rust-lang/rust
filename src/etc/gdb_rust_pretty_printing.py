@@ -304,6 +304,32 @@ class RustStdVecDequePrinter(object):
             yield (str(index), (gdb_ptr + index).dereference())
 
 
+# Yield each key (and optionally value) from a BoxedNode.
+def children_of_node(boxed_node, height, want_values):
+    ptr = boxed_node['ptr']['pointer']
+    # This is written oddly because we don't want to rely on the field name being `__0`.
+    node_ptr = ptr[ptr.type.fields()[0]]
+    if height > 0:
+        type_name = str(node_ptr.type.target()).replace('LeafNode', 'InternalNode')
+        node_type = gdb.lookup_type(type_name)
+        node_ptr = node_ptr.cast(node_type.pointer())
+        leaf = node_ptr['data']
+    else:
+        leaf = node_ptr.dereference()
+    keys = leaf['keys']['value']['value']
+    if want_values:
+        values = leaf['vals']['value']['value']
+    length = int(leaf['len'])
+    for i in xrange(0, length + 1):
+        if height > 0:
+            for child in children_of_node(node_ptr['edges'][i], height - 1, want_values):
+                yield child
+        if i < length:
+            if want_values:
+                yield (keys[i], values[i])
+            else:
+                yield keys[i]
+
 class RustStdBTreeSetPrinter(object):
     def __init__(self, val):
         self.__val = val
@@ -313,21 +339,16 @@ class RustStdBTreeSetPrinter(object):
         return "array"
 
     def to_string(self):
-        (length, data_ptr) = \
-            rustpp.extract_length_and_ptr_from_std_btreeset(self.__val)
         return (self.__val.type.get_unqualified_type_name() +
-                ("(len: %i)" % length))
+                ("(len: %i)" % self.__val.get_wrapped_value()['map']['length']))
 
     def children(self):
-        (length, data_ptr) = \
-            rustpp.extract_length_and_ptr_from_std_btreeset(self.__val)
-        leaf_node = GdbValue(data_ptr.get_wrapped_value().dereference())
-        maybe_uninit_keys = leaf_node.get_child_at_index(3)
-        manually_drop_keys = maybe_uninit_keys.get_child_at_index(1)
-        keys = manually_drop_keys.get_child_at_index(0)
-        gdb_ptr = keys.get_wrapped_value()
-        for index in xrange(length):
-            yield (str(index), gdb_ptr[index])
+        root = self.__val.get_wrapped_value()['map']['root']
+        node_ptr = root['node']
+        i = 0
+        for child in children_of_node(node_ptr, root['height'], False):
+            yield (str(i), child)
+            i = i + 1
 
 
 class RustStdBTreeMapPrinter(object):
@@ -339,26 +360,17 @@ class RustStdBTreeMapPrinter(object):
         return "map"
 
     def to_string(self):
-        (length, data_ptr) = \
-            rustpp.extract_length_and_ptr_from_std_btreemap(self.__val)
         return (self.__val.type.get_unqualified_type_name() +
-                ("(len: %i)" % length))
+                ("(len: %i)" % self.__val.get_wrapped_value()['length']))
 
     def children(self):
-        (length, data_ptr) = \
-            rustpp.extract_length_and_ptr_from_std_btreemap(self.__val)
-        leaf_node = GdbValue(data_ptr.get_wrapped_value().dereference())
-        maybe_uninit_keys = leaf_node.get_child_at_index(3)
-        manually_drop_keys = maybe_uninit_keys.get_child_at_index(1)
-        keys = manually_drop_keys.get_child_at_index(0)
-        keys_ptr = keys.get_wrapped_value()
-        maybe_uninit_vals = leaf_node.get_child_at_index(4)
-        manually_drop_vals = maybe_uninit_vals.get_child_at_index(1)
-        vals = manually_drop_vals.get_child_at_index(0)
-        vals_ptr = vals.get_wrapped_value()
-        for index in xrange(length):
-            yield (str(index), keys_ptr[index])
-            yield (str(index), vals_ptr[index])
+        root = self.__val.get_wrapped_value()['root']
+        node_ptr = root['node']
+        i = 0
+        for child in children_of_node(node_ptr, root['height'], True):
+            yield (str(i), child[0])
+            yield (str(i), child[1])
+            i = i + 1
 
 
 class RustStdStringPrinter(object):
