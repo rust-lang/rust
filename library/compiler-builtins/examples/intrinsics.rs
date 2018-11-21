@@ -11,7 +11,6 @@
 #![feature(lang_items)]
 #![feature(start)]
 #![feature(allocator_api)]
-#![cfg_attr(windows, feature(panic_unwind))]
 #![no_std]
 
 extern crate panic_handler;
