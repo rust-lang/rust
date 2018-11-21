@@ -12,18 +12,50 @@ fn dogfood() {
     if option_env!("RUSTC_TEST_SUITE").is_some() || cfg!(windows) {
         return;
     }
-    let root_dir = std::env::current_dir().unwrap();
-    for d in &[".", "clippy_lints", "rustc_tools_util", "clippy_dev"] {
+    let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let clippy_cmd = std::path::Path::new(&root_dir).join("target/debug/cargo-clippy");
+
+    println!("{:?}", clippy_cmd);
+    let output = std::process::Command::new(clippy_cmd)
+        .arg("clippy")
+        .arg("--all-targets")
+        .arg("--all-features")
+        .arg("--")
+        .args(&["-D", "clippy::all"])
+        .args(&["-D", "clippy::internal"])
+        .args(&["-D", "clippy::pedantic"])
+        .output()
+        .unwrap();
+    println!("status: {}", output.status);
+    println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+    println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+
+    assert!(output.status.success());
+}
+
+#[test]
+fn dogfood_tests() {
+    if option_env!("RUSTC_TEST_SUITE").is_some() || cfg!(windows) {
+        return;
+    }
+    let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+    for d in &[
+        "clippy_workspace_tests",
+        "clippy_workspace_tests/src",
+        "clippy_workspace_tests/subcrate",
+        "clippy_workspace_tests/subcrate/src",
+        "clippy_dev",
+        "rustc_tools_util",
+    ] {
+        let clippy_cmd = std::path::Path::new(&root_dir)
+            .join("target/debug/cargo-clippy");
         std::env::set_current_dir(root_dir.join(d)).unwrap();
-        let output = std::process::Command::new("cargo")
-            .arg("run")
-            .arg("--bin")
-            .arg("cargo-clippy")
-            .arg("--all-features")
-            .arg("--manifest-path")
-            .arg(root_dir.join("Cargo.toml"))
-            .args(&["--", "-W clippy::internal -W clippy::pedantic"])
-            .env("CLIPPY_DOGFOOD", "true")
+        let output = std::process::Command::new(clippy_cmd)
+            .arg("clippy")
+            .arg("--")
+            .args(&["-D", "clippy::all"])
+            .args(&["-D", "clippy::pedantic"])
             .output()
             .unwrap();
         println!("status: {}", output.status);
@@ -32,4 +64,5 @@ fn dogfood() {
 
         assert!(output.status.success());
     }
+    std::env::set_current_dir(root_dir).unwrap();
 }
