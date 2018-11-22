@@ -802,7 +802,7 @@ macro_rules! options {
         pub const parse_opt_uint: Option<&'static str> =
             Some("a number");
         pub const parse_panic_strategy: Option<&'static str> =
-            Some("either `panic` or `abort`");
+            Some("either `unwind` or `abort`");
         pub const parse_relro_level: Option<&'static str> =
             Some("one of: `full`, `partial`, or `off`");
         pub const parse_sanitizer: Option<&'static str> =
