@@ -678,7 +678,7 @@ impl<'a> Context<'a> {
             // candidates are all canonicalized, so we canonicalize the sysroot
             // as well.
             if let Some((ref prev, _)) = ret {
-                let sysroot = self.sess.sysroot();
+                let sysroot = &self.sess.sysroot;
                 let sysroot = sysroot.canonicalize()
                                      .unwrap_or_else(|_| sysroot.to_path_buf());
                 if prev.starts_with(&sysroot) {
