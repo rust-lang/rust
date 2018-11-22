@@ -28,7 +28,7 @@ serde = "1.0"
 serde_derive = "1.0"
 toml = "0.4"
 unicode-normalization = "0.1"
-pulldown-cmark = "0.1"
+pulldown-cmark = "0.2"
 url = "1.7.0"
 if_chain = "0.1.3"
 smallvec = { version = "0.6.5", features = ["union"] }
