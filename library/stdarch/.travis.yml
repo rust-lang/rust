@@ -108,6 +108,8 @@ matrix:
         - shellcheck --version
         - shellcheck ci/*.sh
   allow_failures:
+    # FIXME: https://github.com/rust-lang/rust/issues/56153
+    - env: TARGET=x86_64-pc-windows-gnu STDSIMD_DISABLE_ASSERT_INSTR=1
     - env: TARGET=i686-pc-windows-gnu
 
 install: rustup target add $TARGET
