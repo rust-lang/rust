@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2018 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-C panic=foo
-// error-pattern:either `unwind` or `abort` was expected
+#![deny(private_doc_tests)]
 
-fn main() {}
+mod foo {
+    /// private doc test
+    ///
+    /// ```
+    /// assert!(false);
+    /// ```
+    fn bar() {}
+}
