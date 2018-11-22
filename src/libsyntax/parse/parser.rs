@@ -1824,6 +1824,14 @@ impl<'a> Parser<'a> {
     fn parse_arg_general(&mut self, require_name: bool) -> PResult<'a, Arg> {
         maybe_whole!(self, NtArg, |x| x);
 
+        if let Ok(Some(_)) = self.parse_self_arg() {
+            let mut err = self.struct_span_err(self.prev_span,
+                "unexpected `self` argument in function");
+            err.span_label(self.prev_span,
+                "`self` is only valid as the first argument of an associated function");
+            return Err(err);
+        }
+
         let (pat, ty) = if require_name || self.is_named_argument() {
             debug!("parse_arg_general parse_pat (require_name:{})",
                    require_name);
@@ -5385,11 +5393,12 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_args(&mut self, named_args: bool, allow_variadic: bool)
                      -> PResult<'a, (Vec<Arg> , bool)> {
+        self.expect(&token::OpenDelim(token::Paren))?;
+
         let sp = self.span;
         let mut variadic = false;
         let args: Vec<Option<Arg>> =
-            self.parse_unspanned_seq(
-                &token::OpenDelim(token::Paren),
+            self.parse_seq_to_before_end(
                 &token::CloseDelim(token::Paren),
                 SeqSep::trailing_allowed(token::Comma),
                 |p| {
@@ -5435,6 +5444,8 @@ impl<'a> Parser<'a> {
                     }
                 }
             )?;
+
+        self.eat(&token::CloseDelim(token::Paren));
 
         let args: Vec<_> = args.into_iter().filter_map(|x| x).collect();
 
