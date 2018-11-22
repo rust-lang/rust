@@ -1166,7 +1166,6 @@ fn quoted_tt_to_string(tt: &quoted::TokenTree) -> String {
         quoted::TokenTree::Token(_, ref tok) => ::print::pprust::token_to_string(tok),
         quoted::TokenTree::MetaVar(_, name) => format!("${}", name),
         quoted::TokenTree::MetaVarDecl(_, name, kind) => format!("${}:{}", name, kind),
-        _ => panic!("unexpected quoted::TokenTree::{{Sequence or Delimited}} \
-                     in follow set checker"),
+        ref tt => panic!("unexpected {:?} in follow set checker", tt),
     }
 }
