@@ -1019,19 +1019,17 @@ impl<T> VecDeque<T> {
         // the drain is complete and the Drain destructor is run.
         self.head = drain_tail;
 
-        // `deque` and `ring` overlap in what they point to, so we must make sure
-        // that `ring` is "derived-from" `deque`, or else even just creating ring
-        // from `self` already invalidates `deque`.
-        let deque = NonNull::from(&mut *self);
-
         Drain {
-            deque,
+            deque: NonNull::from(&mut *self),
             after_tail: drain_head,
             after_head: head,
             iter: Iter {
                 tail: drain_tail,
                 head: drain_head,
-                ring: unsafe { (&mut *deque.as_ptr()).buffer_as_mut_slice() },
+                // Crucially, we only create shared references from `self` here and read from
+                // it.  We do not write to `self` nor reborrow to a mutable reference.
+                // Hence the raw pointer we created above, for `deque`, remains valid.
+                ring: unsafe { self.buffer_as_slice() },
             },
         }
     }
