@@ -2,14 +2,14 @@ We are currently in the process of discussing Clippy 1.0 via the RFC process in 
 
 # Clippy
 
-[![Build Status](https://travis-ci.org/rust-lang-nursery/rust-clippy.svg?branch=master)](https://travis-ci.org/rust-lang-nursery/rust-clippy)
+[![Build Status](https://travis-ci.org/rust-lang/rust-clippy.svg?branch=master)](https://travis-ci.org/rust-lang/rust-clippy)
 [![Windows Build status](https://ci.appveyor.com/api/projects/status/id677xpw1dguo7iw?svg=true)](https://ci.appveyor.com/project/rust-lang-libs/rust-clippy)
 [![Current Version](https://meritbadge.herokuapp.com/clippy)](https://crates.io/crates/clippy)
 [![License: MIT/Apache-2.0](https://img.shields.io/crates/l/clippy.svg)](#license)
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
 
-[There are 288 lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)
+[There are 288 lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)
 
 We have a bunch of lint categories to allow you to choose how much Clippy is supposed to ~~annoy~~ help you:
 
@@ -22,7 +22,7 @@ We have a bunch of lint categories to allow you to choose how much Clippy is sup
 * `clippy::cargo` (checks against the cargo manifest)
 * **`clippy::correctness`** (code that is just outright wrong or very very useless)
 
-More to come, please [file an issue](https://github.com/rust-lang-nursery/rust-clippy/issues) if you have ideas!
+More to come, please [file an issue](https://github.com/rust-lang/rust-clippy/issues) if you have ideas!
 
 Only the following of those categories are enabled by default:
 
@@ -84,7 +84,7 @@ in your code, you can use:
 cargo run --bin cargo-clippy --manifest-path=path_to_clippys_Cargo.toml
 ```
 
-*[Note](https://github.com/rust-lang-nursery/rust-clippy/wiki#a-word-of-warning):*
+*[Note](https://github.com/rust-lang/rust-clippy/wiki#a-word-of-warning):*
 Be sure that Clippy was compiled with the same version of rustc that cargo invokes here!
 
 ### Travis CI

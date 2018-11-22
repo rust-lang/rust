@@ -6,4 +6,4 @@ rustup component add clippy-preview
 
 on a Rust version 1.29 or later. You may need to run `rustup self update` if it complains about a missing clippy binary.
 
-See [the homepage](https://github.com/rust-lang-nursery/rust-clippy/#clippy) for more information
+See [the homepage](https://github.com/rust-lang/rust-clippy/#clippy) for more information

@@ -177,7 +177,7 @@ declare_clippy_lint! {
 ///
 /// **Known problems:** This lint doesn't detect crate level inner attributes, because they get
 /// processed before the PreExpansionPass lints get executed. See
-/// [#3123](https://github.com/rust-lang-nursery/rust-clippy/pull/3123#issuecomment-422321765)
+/// [#3123](https://github.com/rust-lang/rust-clippy/pull/3123#issuecomment-422321765)
 ///
 /// **Example:**
 ///
@@ -537,4 +537,3 @@ impl EarlyLintPass for CfgAttrPass {
         }
     }
 }
-

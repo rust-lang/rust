@@ -12,7 +12,7 @@
 
 /// Should not trigger an ICE in `SpanlessEq` / `consts::constant`
 ///
-/// Issue: https://github.com/rust-lang-nursery/rust-clippy/issues/1782
+/// Issue: https://github.com/rust-lang/rust-clippy/issues/1782
 
 use std::{mem, ptr};
 

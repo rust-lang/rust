@@ -68,7 +68,7 @@ fn methods_with_negation() {
     let _ = !c ^ c || !a.is_some();
 }
 
-// Simplified versions of https://github.com/rust-lang-nursery/rust-clippy/issues/2638
+// Simplified versions of https://github.com/rust-lang/rust-clippy/issues/2638
 // clippy::nonminimal_bool should only check the built-in Result and Some type, not
 // any other types like the following.
 enum CustomResultOk<E> { Ok, Err(E) }

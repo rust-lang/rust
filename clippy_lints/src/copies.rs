@@ -80,7 +80,7 @@ declare_clippy_lint! {
 ///
 /// **Known problems:** False positive possible with order dependent `match`
 /// (see issue
-/// [#860](https://github.com/rust-lang-nursery/rust-clippy/issues/860)).
+/// [#860](https://github.com/rust-lang/rust-clippy/issues/860)).
 ///
 /// **Example:**
 /// ```rust,ignore
