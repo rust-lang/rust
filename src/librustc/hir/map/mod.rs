@@ -1032,14 +1032,14 @@ pub fn map_crate<'hir>(sess: &::session::Session,
         let mut collector = NodeCollector::root(&forest.krate,
                                                 &forest.dep_graph,
                                                 &definitions,
-                                                hcx);
+                                                hcx,
+                                                sess.source_map());
         intravisit::walk_crate(&mut collector, &forest.krate);
 
         let crate_disambiguator = sess.local_crate_disambiguator();
         let cmdline_args = sess.opts.dep_tracking_hash();
         collector.finalize_and_compute_crate_hash(crate_disambiguator,
                                                   cstore,
-                                                  sess.source_map(),
                                                   cmdline_args)
     };
 

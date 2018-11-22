@@ -1866,6 +1866,10 @@ impl<'a> LoweringContext<'a> {
         } else {
             self.lower_node_id(segment.id)
         };
+        debug!(
+            "lower_path_segment: ident={:?} original-id={:?} new-id={:?}",
+            segment.ident, segment.id, id,
+        );
 
         hir::PathSegment::new(
             segment.ident,
@@ -2955,6 +2959,9 @@ impl<'a> LoweringContext<'a> {
         name: &mut Name,
         attrs: &hir::HirVec<Attribute>,
     ) -> hir::ItemKind {
+        debug!("lower_use_tree(tree={:?})", tree);
+        debug!("lower_use_tree: vis = {:?}", vis);
+
         let path = &tree.prefix;
         let segments = prefix
             .segments
@@ -3022,12 +3029,7 @@ impl<'a> LoweringContext<'a> {
                             hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
                             hir::VisibilityKind::Restricted { ref path, id: _, hir_id: _ } => {
                                 let id = this.next_id();
-                                let mut path = path.clone();
-                                for seg in path.segments.iter_mut() {
-                                    if seg.id.is_some() {
-                                        seg.id = Some(this.next_id().node_id);
-                                    }
-                                }
+                                let path = this.renumber_segment_ids(path);
                                 hir::VisibilityKind::Restricted {
                                     path,
                                     id: id.node_id,
@@ -3068,7 +3070,29 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
             }
             UseTreeKind::Nested(ref trees) => {
-                // Nested imports are desugared into simple imports.
+                // Nested imports are desugared into simple
+                // imports. So if we start with
+                //
+                // ```
+                // pub(x) use foo::{a, b};
+                // ```
+                //
+                // we will create three items:
+                //
+                // ```
+                // pub(x) use foo::a;
+                // pub(x) use foo::b;
+                // pub(x) use foo::{}; // <-- this is called the `ListStem`
+                // ```
+                //
+                // The first two are produced by recursively invoking
+                // `lower_use_tree` (and indeed there may be things
+                // like `use foo::{a::{b, c}}` and so forth).  They
+                // wind up being directly added to
+                // `self.items`. However, the structure of this
+                // function also requires us to return one item, and
+                // for that we return the `{}` import (called the
+                // "`ListStem`").
 
                 let prefix = Path {
                     segments,
@@ -3112,8 +3136,9 @@ impl<'a> LoweringContext<'a> {
                             hir::VisibilityKind::Inherited => hir::VisibilityKind::Inherited,
                             hir::VisibilityKind::Restricted { ref path, id: _, hir_id: _ } => {
                                 let id = this.next_id();
+                                let path = this.renumber_segment_ids(path);
                                 hir::VisibilityKind::Restricted {
-                                    path: path.clone(),
+                                    path: path,
                                     id: id.node_id,
                                     hir_id: id.hir_id,
                                 }
@@ -3136,15 +3161,46 @@ impl<'a> LoweringContext<'a> {
                     });
                 }
 
-                // Privatize the degenerate import base, used only to check
-                // the stability of `use a::{};`, to avoid it showing up as
-                // a re-export by accident when `pub`, e.g. in documentation.
+                // Subtle and a bit hacky: we lower the privacy level
+                // of the list stem to "private" most of the time, but
+                // not for "restricted" paths. The key thing is that
+                // we don't want it to stay as `pub` (with no caveats)
+                // because that affects rustdoc and also the lints
+                // about `pub` items. But we can't *always* make it
+                // private -- particularly not for restricted paths --
+                // because it contains node-ids that would then be
+                // unused, failing the check that HirIds are "densely
+                // assigned".
+                match vis.node {
+                    hir::VisibilityKind::Public |
+                    hir::VisibilityKind::Crate(_) |
+                    hir::VisibilityKind::Inherited => {
+                        *vis = respan(prefix.span.shrink_to_lo(), hir::VisibilityKind::Inherited);
+                    }
+                    hir::VisibilityKind::Restricted { .. } => {
+                        // do nothing here, as described in the comment on the match
+                    }
+                }
+
                 let def = self.expect_full_def_from_use(id).next().unwrap_or(Def::Err);
                 let path = P(self.lower_path_extra(def, &prefix, ParamMode::Explicit, None));
-                *vis = respan(prefix.span.shrink_to_lo(), hir::VisibilityKind::Inherited);
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
         }
+    }
+
+    /// Paths like the visibility path in `pub(super) use foo::{bar, baz}` are repeated
+    /// many times in the HIR tree; for each occurrence, we need to assign distinct
+    /// node-ids. (See e.g. #56128.)
+    fn renumber_segment_ids(&mut self, path: &P<hir::Path>) -> P<hir::Path> {
+        debug!("renumber_segment_ids(path = {:?})", path);
+        let mut path = path.clone();
+        for seg in path.segments.iter_mut() {
+            if seg.id.is_some() {
+                seg.id = Some(self.next_id().node_id);
+            }
+        }
+        path
     }
 
     fn lower_trait_item(&mut self, i: &TraitItem) -> hir::TraitItem {
@@ -4540,6 +4596,7 @@ impl<'a> LoweringContext<'a> {
             VisibilityKind::Public => hir::VisibilityKind::Public,
             VisibilityKind::Crate(sugar) => hir::VisibilityKind::Crate(sugar),
             VisibilityKind::Restricted { ref path, id } => {
+                debug!("lower_visibility: restricted path id = {:?}", id);
                 let lowered_id = if let Some(owner) = explicit_owner {
                     self.lower_node_id_with_owner(id, owner)
                 } else {
