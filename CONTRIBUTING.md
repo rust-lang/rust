@@ -35,27 +35,27 @@ High level approach:
 
 All issues on Clippy are mentored, if you want help with a bug just ask @Manishearth, @llogiq, @mcarton or @oli-obk.
 
-Some issues are easier than others. The [`good first issue`](https://github.com/rust-lang-nursery/rust-clippy/labels/good%20first%20issue)
+Some issues are easier than others. The [`good first issue`](https://github.com/rust-lang/rust-clippy/labels/good%20first%20issue)
 label can be used to find the easy issues. If you want to work on an issue, please leave a comment
 so that we can assign it to you!
 
-Issues marked [`T-AST`](https://github.com/rust-lang-nursery/rust-clippy/labels/T-AST) involve simple
+Issues marked [`T-AST`](https://github.com/rust-lang/rust-clippy/labels/T-AST) involve simple
 matching of the syntax tree structure, and are generally easier than
-[`T-middle`](https://github.com/rust-lang-nursery/rust-clippy/labels/T-middle) issues, which involve types
+[`T-middle`](https://github.com/rust-lang/rust-clippy/labels/T-middle) issues, which involve types
 and resolved paths.
 
-[`T-AST`](https://github.com/rust-lang-nursery/rust-clippy/labels/T-AST) issues will generally need you to match against a predefined syntax structure. To figure out
+[`T-AST`](https://github.com/rust-lang/rust-clippy/labels/T-AST) issues will generally need you to match against a predefined syntax structure. To figure out
 how this syntax structure is encoded in the AST, it is recommended to run `rustc -Z ast-json` on an
 example of the structure and compare with the
 [nodes in the AST docs](https://doc.rust-lang.org/nightly/nightly-rustc/syntax/ast). Usually
 the lint will end up to be a nested series of matches and ifs,
-[like so](https://github.com/rust-lang-nursery/rust-clippy/blob/de5ccdfab68a5e37689f3c950ed1532ba9d652a0/src/misc.rs#L34).
+[like so](https://github.com/rust-lang/rust-clippy/blob/de5ccdfab68a5e37689f3c950ed1532ba9d652a0/src/misc.rs#L34).
 
-[`E-medium`](https://github.com/rust-lang-nursery/rust-clippy/labels/E-medium) issues are generally
+[`E-medium`](https://github.com/rust-lang/rust-clippy/labels/E-medium) issues are generally
 pretty easy too, though it's recommended you work on an E-easy issue first. They are mostly classified
 as `E-medium`, since they might be somewhat involved code wise, but not difficult per-se.
 
-[`T-middle`](https://github.com/rust-lang-nursery/rust-clippy/labels/T-middle) issues can
+[`T-middle`](https://github.com/rust-lang/rust-clippy/labels/T-middle) issues can
 be more involved and require verifying types. The
 [`ty`](https://doc.rust-lang.org/nightly/nightly-rustc/rustc/ty) module contains a
 lot of methods that are useful, though one of the most useful would be `expr_ty` (gives the type of
@@ -152,6 +152,18 @@ Manually testing against an example file is useful if you have added some
 local modifications, run `env CLIPPY_TESTS=true cargo run --bin clippy-driver -- -L ./target/debug input.rs`
 from the working copy root.
 
+### Linting Clippy with your changes locally
+
+Clippy CI only passes if all lints defined in the version of the Clippy being
+tested pass (that is, don’t report any suggestions). You can avoid prolonging
+the CI feedback cycle for PRs you submit by running these lints yourself ahead
+of time and addressing any issues found:
+
+```
+cargo build
+`pwd`/target/debug/cargo-clippy clippy --all-targets --all-features -- -D clippy::all -D clippy::internal -D clippy::pedantic
+```
+
 ### How Clippy works
 
 Clippy is a [rustc compiler plugin][compiler_plugin]. The main entry point is at [`src/lib.rs`][main_entry]. In there, the lint registration is delegated to the [`clippy_lints`][lint_crate] crate.
@@ -237,10 +249,10 @@ All code in this repository is under the [Mozilla Public License, 2.0](https://w
 
 <!-- adapted from https://github.com/servo/servo/blob/master/CONTRIBUTING.md -->
 
-[main_entry]: https://github.com/rust-lang-nursery/rust-clippy/blob/c5b39a5917ffc0f1349b6e414fa3b874fdcf8429/src/lib.rs#L14
-[lint_crate]: https://github.com/rust-lang-nursery/rust-clippy/tree/c5b39a5917ffc0f1349b6e414fa3b874fdcf8429/clippy_lints/src
-[lint_crate_entry]: https://github.com/rust-lang-nursery/rust-clippy/blob/c5b39a5917ffc0f1349b6e414fa3b874fdcf8429/clippy_lints/src/lib.rs
-[else_if_without_else]: https://github.com/rust-lang-nursery/rust-clippy/blob/c5b39a5917ffc0f1349b6e414fa3b874fdcf8429/clippy_lints/src/else_if_without_else.rs
+[main_entry]: https://github.com/rust-lang/rust-clippy/blob/c5b39a5917ffc0f1349b6e414fa3b874fdcf8429/src/lib.rs#L14
+[lint_crate]: https://github.com/rust-lang/rust-clippy/tree/c5b39a5917ffc0f1349b6e414fa3b874fdcf8429/clippy_lints/src
+[lint_crate_entry]: https://github.com/rust-lang/rust-clippy/blob/c5b39a5917ffc0f1349b6e414fa3b874fdcf8429/clippy_lints/src/lib.rs
+[else_if_without_else]: https://github.com/rust-lang/rust-clippy/blob/c5b39a5917ffc0f1349b6e414fa3b874fdcf8429/clippy_lints/src/else_if_without_else.rs
 [compiler_plugin]: https://doc.rust-lang.org/unstable-book/language-features/plugin.html#lint-plugins
 [plugin_registry]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_plugin/registry/struct.Registry.html
 [reg_early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_plugin/registry/struct.Registry.html#method.register_early_lint_pass

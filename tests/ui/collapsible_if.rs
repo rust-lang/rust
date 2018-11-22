@@ -153,7 +153,7 @@ fn main() {
     }
 
 
-    // The following tests check for the fix of https://github.com/rust-lang-nursery/rust-clippy/issues/798
+    // The following tests check for the fix of https://github.com/rust-lang/rust-clippy/issues/798
     if x == "hello" {// Not collapsible
         if y == "world" {
             println!("Hello world!");

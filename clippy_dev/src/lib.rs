@@ -32,7 +32,7 @@ lazy_static! {
         "(?P<desc>(?:[^"\\]+|\\(?s).(?-s))*)"\s*[})]
     "#).unwrap();
     static ref NL_ESCAPE_RE: Regex = Regex::new(r#"\\\n\s*"#).unwrap();
-    pub static ref DOCS_LINK: String = "https://rust-lang-nursery.github.io/rust-clippy/master/index.html".to_string();
+    pub static ref DOCS_LINK: String = "https://rust-lang.github.io/rust-clippy/master/index.html".to_string();
 }
 
 /// Lint data parsed from the Clippy source code.

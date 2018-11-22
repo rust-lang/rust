@@ -31,7 +31,7 @@ use cargo_metadata;
 /// name = "clippy"
 /// version = "0.0.212"
 /// description = "A bunch of helpful lints to avoid common pitfalls in Rust"
-/// repository = "https://github.com/rust-lang-nursery/rust-clippy"
+/// repository = "https://github.com/rust-lang/rust-clippy"
 /// readme = "README.md"
 /// license = "MIT/Apache-2.0"
 /// keywords = ["clippy", "lint", "plugin"]
