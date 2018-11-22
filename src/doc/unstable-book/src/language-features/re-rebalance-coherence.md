@@ -6,7 +6,7 @@ The tracking issue for this feature is: [#55437]
 
 ------------------------
 
-The `re_rebalance_coherence` feature tweaks the rules which trait
+The `re_rebalance_coherence` feature tweaks the rules regarding which trait
 impls are allowed in crates.
 The following rule is used:
 
