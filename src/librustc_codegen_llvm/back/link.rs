@@ -213,8 +213,8 @@ fn link_binary_output(sess: &Session,
 
 fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
     let mut search = Vec::new();
-    sess.target_filesearch(PathKind::Native).for_each_lib_search_path(|path, _| {
-        search.push(path.to_path_buf());
+    sess.target_filesearch(PathKind::Native).for_each_lib_search_path(|search_path| {
+        search.push(search_path.dir.to_path_buf());
     });
 
     search
@@ -1067,10 +1067,10 @@ fn link_args(cmd: &mut dyn Linker,
 fn add_local_native_libraries(cmd: &mut dyn Linker,
                               sess: &Session,
                               codegen_results: &CodegenResults) {
-    sess.target_filesearch(PathKind::All).for_each_lib_search_path(|path, k| {
-        match k {
-            PathKind::Framework => { cmd.framework_path(path); }
-            _ => { cmd.include_path(&fix_windows_verbatim_for_gcc(path)); }
+    sess.target_filesearch(PathKind::All).for_each_lib_search_path(|search_path| {
+        match search_path.kind {
+            PathKind::Framework => { cmd.framework_path(&search_path.dir); }
+            _ => { cmd.include_path(&fix_windows_verbatim_for_gcc(&search_path.dir)); }
         }
     });
 
