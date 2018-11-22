@@ -413,9 +413,9 @@ pub fn snippet_block<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'
 
 /// Returns a new Span that covers the full last line of the given Span
 pub fn last_line_of_span<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Span {
-    let file_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
-    let line_no = file_map_and_line.line;
-    let line_start = &file_map_and_line.sf.lines[line_no];
+    let source_map_and_line = cx.sess().source_map().lookup_line(span.lo()).unwrap();
+    let line_no = source_map_and_line.line;
+    let line_start = &source_map_and_line.sf.lines[line_no];
     Span::new(*line_start, span.hi(), span.ctxt())
 }
 
