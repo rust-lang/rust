@@ -4,7 +4,7 @@ use rustc::infer::InferCtxt;
 use rustc::hir::def_id::DefId;
 use rustc::mir::ProjectionKind;
 use rustc::mir::tcx::PlaceTy;
-use rustc::traits::query::type_op::ascribe_user_type::AscribeUserType;
+use rustc::traits::query::type_op::ascribe_user_type::{AscribeUserType, AscribeUserTypeWellFormed};
 use rustc::traits::query::type_op::eq::Eq;
 use rustc::traits::query::type_op::normalize::Normalize;
 use rustc::traits::query::type_op::prove_predicate::ProvePredicate;
@@ -17,6 +17,7 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::{Kind, Subst, UserSubsts, UserSelfTy};
 use rustc::ty::{
     FnSig, Lift, ParamEnv, ParamEnvAnd, PolyFnSig, Predicate, Ty, TyCtxt, TypeFoldable, Variance,
+    UserTypeAnnotation,
 };
 use rustc_data_structures::sync::Lrc;
 use std::fmt;
@@ -26,6 +27,7 @@ use syntax_pos::DUMMY_SP;
 crate fn provide(p: &mut Providers) {
     *p = Providers {
         type_op_ascribe_user_type,
+        type_op_ascribe_user_type_well_formed,
         type_op_eq,
         type_op_prove_predicate,
         type_op_subtype,
@@ -48,13 +50,35 @@ fn type_op_ascribe_user_type<'tcx>(
             ) = key.into_parts();
 
             debug!(
-                "type_op_user_type_relation: mir_ty={:?} variance={:?} def_id={:?} \
+                "type_op_ascribe_user_type: mir_ty={:?} variance={:?} def_id={:?} \
                  user_substs={:?} projs={:?}",
                 mir_ty, variance, def_id, user_substs, projs
             );
 
             let mut cx = AscribeUserTypeCx { infcx, param_env, fulfill_cx };
             cx.relate_mir_and_user_ty(mir_ty, variance, def_id, user_substs, projs)?;
+
+            Ok(())
+        })
+}
+
+fn type_op_ascribe_user_type_well_formed<'tcx>(
+    tcx: TyCtxt<'_, 'tcx, 'tcx>,
+    canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, AscribeUserTypeWellFormed<'tcx>>>,
+) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, ()>>>, NoSolution> {
+    tcx.infer_ctxt()
+        .enter_canonical_trait_query(&canonicalized, |infcx, fulfill_cx, key| {
+            let (
+                param_env, AscribeUserTypeWellFormed { user_type_annotation }
+            ) = key.into_parts();
+
+            debug!(
+                "type_op_ascribe_user_type_well_formed: user_type_annotation={:?}",
+                user_type_annotation,
+            );
+
+            let mut cx = AscribeUserTypeCx { infcx, param_env, fulfill_cx };
+            cx.well_formed(user_type_annotation)?;
 
             Ok(())
         })
@@ -109,6 +133,56 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
         value.subst(self.tcx(), substs)
     }
 
+    fn well_formed(
+        &mut self,
+        type_annotation: UserTypeAnnotation<'tcx>
+    ) -> Result<(), NoSolution> {
+        match type_annotation {
+            UserTypeAnnotation::Ty(ty) => {
+                self.prove_predicate(Predicate::WellFormed(ty));
+                Ok(())
+            },
+            UserTypeAnnotation::TypeOf(did, user_substs) => {
+                let UserSubsts {
+                    user_self_ty,
+                    substs,
+                } = user_substs;
+
+                let ty = self.tcx().type_of(did);
+                let ty = self.subst(ty, substs);
+                debug!("relate_type_and_user_type: ty of def-id is {:?}", ty);
+                let ty = self.normalize(ty);
+
+                if let Some(UserSelfTy {
+                    impl_def_id,
+                    self_ty,
+                }) = user_self_ty {
+                    let impl_self_ty = self.tcx().type_of(impl_def_id);
+                    let impl_self_ty = self.subst(impl_self_ty, &substs);
+                    let impl_self_ty = self.normalize(impl_self_ty);
+
+                    self.relate(self_ty, Variance::Invariant, impl_self_ty)?;
+
+                    self.prove_predicate(Predicate::WellFormed(impl_self_ty));
+                }
+
+                // In addition to proving the predicates, we have to
+                // prove that `ty` is well-formed -- this is because
+                // the WF of `ty` is predicated on the substs being
+                // well-formed, and we haven't proven *that*. We don't
+                // want to prove the WF of types from  `substs` directly because they
+                // haven't been normalized.
+                //
+                // FIXME(nmatsakis): Well, perhaps we should normalize
+                // them?  This would only be relevant if some input
+                // type were ill-formed but did not appear in `ty`,
+                // which...could happen with normalization...
+                self.prove_predicate(Predicate::WellFormed(ty));
+                Ok(())
+            },
+        }
+    }
+
     fn relate_mir_and_user_ty(
         &mut self,
         mir_ty: Ty<'tcx>,
@@ -118,7 +192,7 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
         projs: &[ProjectionKind<'tcx>],
     ) -> Result<(), NoSolution> {
         let UserSubsts {
-            user_self_ty,
+            user_self_ty: _,
             substs,
         } = user_substs;
         let tcx = self.tcx();
@@ -158,19 +232,6 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
             self.relate(mir_ty, variance, ty)?;
         }
 
-        if let Some(UserSelfTy {
-            impl_def_id,
-            self_ty,
-        }) = user_self_ty {
-            let impl_self_ty = self.tcx().type_of(impl_def_id);
-            let impl_self_ty = self.subst(impl_self_ty, &substs);
-            let impl_self_ty = self.normalize(impl_self_ty);
-
-            self.relate(self_ty, Variance::Invariant, impl_self_ty)?;
-
-            self.prove_predicate(Predicate::WellFormed(impl_self_ty));
-        }
-
         // Prove the predicates coming along with `def_id`.
         //
         // Also, normalize the `instantiated_predicates`
@@ -183,19 +244,6 @@ impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
             let instantiated_predicate = self.normalize(instantiated_predicate);
             self.prove_predicate(instantiated_predicate);
         }
-
-        // In addition to proving the predicates, we have to
-        // prove that `ty` is well-formed -- this is because
-        // the WF of `ty` is predicated on the substs being
-        // well-formed, and we haven't proven *that*. We don't
-        // want to prove the WF of types from  `substs` directly because they
-        // haven't been normalized.
-        //
-        // FIXME(nmatsakis): Well, perhaps we should normalize
-        // them?  This would only be relevant if some input
-        // type were ill-formed but did not appear in `ty`,
-        // which...could happen with normalization...
-        self.prove_predicate(Predicate::WellFormed(ty));
 
         Ok(())
     }

@@ -28,6 +28,10 @@ pub type CanonicalPredicateGoal<'tcx> =
 pub type CanonicalTypeOpAscribeUserTypeGoal<'tcx> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::ascribe_user_type::AscribeUserType<'tcx>>>;
 
+pub type CanonicalTypeOpAscribeUserTypeWellFormedGoal<'tcx> =
+    Canonical<'tcx, ty::ParamEnvAnd<'tcx,
+        type_op::ascribe_user_type::AscribeUserTypeWellFormed<'tcx>>>;
+
 pub type CanonicalTypeOpEqGoal<'tcx> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::eq::Eq<'tcx>>>;
 

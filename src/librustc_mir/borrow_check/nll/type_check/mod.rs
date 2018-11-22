@@ -916,6 +916,28 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         );
     }
 
+    /// Check that user type annotations are well formed.
+    fn check_user_type_annotations_are_well_formed(&mut self) {
+        for index in self.mir.user_type_annotations.indices() {
+            let (span, _) = &self.mir.user_type_annotations[index];
+            let type_annotation = self.instantiated_type_annotations[&index];
+            if let Err(terr) = self.fully_perform_op(
+                Locations::All(*span),
+                ConstraintCategory::Assignment,
+                self.param_env.and(type_op::ascribe_user_type::AscribeUserTypeWellFormed::new(
+                    type_annotation,
+                )),
+            ) {
+                span_mirbug!(
+                    self,
+                    type_annotation,
+                    "bad user type annotation: {:?}",
+                    terr,
+                );
+            }
+        }
+    }
+
     /// Given some operation `op` that manipulates types, proves
     /// predicates, or otherwise uses the inference context, executes
     /// `op` and then executes all the further obligations that `op`
@@ -2389,6 +2411,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             self.check_terminator(mir, block_data.terminator(), location);
             self.check_iscleanup(mir, block_data);
         }
+
+        self.check_user_type_annotations_are_well_formed();
     }
 
     fn normalize<T>(&mut self, value: T, location: impl NormalizeLocation) -> T
