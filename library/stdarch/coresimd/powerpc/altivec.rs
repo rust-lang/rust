@@ -526,19 +526,19 @@ mod sealed {
         }
     }
 
-    vector_perm!{ vector_signed_char }
-    vector_perm!{ vector_unsigned_char }
-    vector_perm!{ vector_bool_char }
+    vector_perm! { vector_signed_char }
+    vector_perm! { vector_unsigned_char }
+    vector_perm! { vector_bool_char }
 
-    vector_perm!{ vector_signed_short }
-    vector_perm!{ vector_unsigned_short }
-    vector_perm!{ vector_bool_short }
+    vector_perm! { vector_signed_short }
+    vector_perm! { vector_unsigned_short }
+    vector_perm! { vector_bool_short }
 
-    vector_perm!{ vector_signed_int }
-    vector_perm!{ vector_unsigned_int }
-    vector_perm!{ vector_bool_int }
+    vector_perm! { vector_signed_int }
+    vector_perm! { vector_unsigned_int }
+    vector_perm! { vector_bool_int }
 
-    vector_perm!{ vector_float }
+    vector_perm! { vector_float }
 
     pub trait VectorAdd<Other> {
         type Result;
@@ -1085,14 +1085,14 @@ mod tests {
         }
     }
 
-    test_vec_perm!{test_vec_perm_u8x16,
+    test_vec_perm! {test_vec_perm_u8x16,
     u8x16, vector_unsigned_char,
     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
     [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115],
     [0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13,
      0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
     [0, 1, 100, 101, 2, 3, 102, 103, 4, 5, 104, 105, 6, 7, 106, 107]}
-    test_vec_perm!{test_vec_perm_i8x16,
+    test_vec_perm! {test_vec_perm_i8x16,
     i8x16, vector_signed_char,
     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
     [100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115],
@@ -1100,28 +1100,28 @@ mod tests {
      0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
     [0, 1, 100, 101, 2, 3, 102, 103, 4, 5, 104, 105, 6, 7, 106, 107]}
 
-    test_vec_perm!{test_vec_perm_m8x16,
+    test_vec_perm! {test_vec_perm_m8x16,
     m8x16, vector_bool_char,
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],
     [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true],
     [0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13,
      0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
     [false, false, true, true, false, false, true, true, false, false, true, true, false, false, true, true]}
-    test_vec_perm!{test_vec_perm_u16x8,
+    test_vec_perm! {test_vec_perm_u16x8,
     u16x8, vector_unsigned_short,
     [0, 1, 2, 3, 4, 5, 6, 7],
     [10, 11, 12, 13, 14, 15, 16, 17],
     [0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13,
      0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
     [0, 10, 1, 11, 2, 12, 3, 13]}
-    test_vec_perm!{test_vec_perm_i16x8,
+    test_vec_perm! {test_vec_perm_i16x8,
     i16x8, vector_signed_short,
     [0, 1, 2, 3, 4, 5, 6, 7],
     [10, 11, 12, 13, 14, 15, 16, 17],
     [0x00, 0x01, 0x10, 0x11, 0x02, 0x03, 0x12, 0x13,
      0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
     [0, 10, 1, 11, 2, 12, 3, 13]}
-    test_vec_perm!{test_vec_perm_m16x8,
+    test_vec_perm! {test_vec_perm_m16x8,
     m16x8, vector_bool_short,
     [false, false, false, false, false, false, false, false],
     [true, true, true, true, true, true, true, true],
@@ -1129,28 +1129,28 @@ mod tests {
      0x04, 0x05, 0x14, 0x15, 0x06, 0x07, 0x16, 0x17],
     [false, true, false, true, false, true, false, true]}
 
-    test_vec_perm!{test_vec_perm_u32x4,
+    test_vec_perm! {test_vec_perm_u32x4,
     u32x4, vector_unsigned_int,
     [0, 1, 2, 3],
     [10, 11, 12, 13],
     [0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x13,
      0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17],
     [0, 10, 1, 11]}
-    test_vec_perm!{test_vec_perm_i32x4,
+    test_vec_perm! {test_vec_perm_i32x4,
     i32x4, vector_signed_int,
     [0, 1, 2, 3],
     [10, 11, 12, 13],
     [0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x13,
      0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17],
     [0, 10, 1, 11]}
-    test_vec_perm!{test_vec_perm_m32x4,
+    test_vec_perm! {test_vec_perm_m32x4,
     m32x4, vector_bool_int,
     [false, false, false, false],
     [true, true, true, true],
     [0x00, 0x01, 0x02, 0x03, 0x10, 0x11, 0x12, 0x13,
      0x04, 0x05, 0x06, 0x07, 0x14, 0x15, 0x16, 0x17],
     [false, true, false, true]}
-    test_vec_perm!{test_vec_perm_f32x4,
+    test_vec_perm! {test_vec_perm_f32x4,
     f32x4, vector_float,
     [0.0, 1.0, 2.0, 3.0],
     [1.0, 1.1, 1.2, 1.3],

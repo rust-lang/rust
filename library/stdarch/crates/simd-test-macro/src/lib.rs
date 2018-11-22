@@ -91,7 +91,7 @@ pub fn simd_test(
         };
         q.to_tokens(&mut cfg_target_features);
     }
-    let q = quote!{ true };
+    let q = quote! { true };
     q.to_tokens(&mut cfg_target_features);
 
     let test_norun = std::env::var("STDSIMD_TEST_NORUN").is_ok();

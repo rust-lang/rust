@@ -218,7 +218,7 @@ mod tests {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
-    
+
         _xsave(a.ptr(), m);
         _xrstor(a.ptr(), m);
         _xsave(b.ptr(), m);
@@ -246,7 +246,7 @@ mod tests {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
-    
+
         _xsaveopt(a.ptr(), m);
         _xrstor(a.ptr(), m);
         _xsaveopt(b.ptr(), m);
@@ -275,7 +275,7 @@ mod tests {
         let m = 0xFFFFFFFFFFFFFFFF_u64; //< all registers
         let mut a = XsaveArea::new();
         let mut b = XsaveArea::new();
-    
+
         _xsaves(a.ptr(), m);
         _xrstors(a.ptr(), m);
         _xsaves(b.ptr(), m);
