@@ -196,6 +196,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 // that will take care to make it UB to leave the range, just
                 // like for transmute).
                 caller.value == callee.value,
+            (layout::Abi::ScalarPair(ref caller1, ref caller2),
+             layout::Abi::ScalarPair(ref callee1, ref callee2)) =>
+                caller1.value == callee1.value && caller2.value == callee2.value,
             // Be conservative
             _ => false
         }
