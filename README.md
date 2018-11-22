@@ -117,7 +117,7 @@ blacklisted-names = ["toto", "tata", "titi"]
 cyclomatic-complexity-threshold = 30
 ```
 
-See the [list of lints](https://rust-lang-nursery.github.io/rust-clippy/master/index.html) for more information about which lints can be configured and the
+See the [list of lints](https://rust-lang.github.io/rust-clippy/master/index.html) for more information about which lints can be configured and the
 meaning of the variables.
 
 To deactivate the “for further information visit *lint-link*” message you can
