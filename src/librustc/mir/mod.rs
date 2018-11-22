@@ -1748,6 +1748,8 @@ pub enum StatementKind<'tcx> {
     /// (e.g. inspecting constants and discriminant values), and the
     /// kind of pattern it comes from. This is in order to adapt potential
     /// error messages to these specific patterns.
+    ///
+    /// Note that this also is emitted for regular `let` bindings to aid destructuring diagnostics
     FakeRead(FakeReadCause, Place<'tcx>),
 
     /// Write the discriminant for a variant to the enum Place.

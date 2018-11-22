@@ -243,7 +243,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             return;
         }
 
-        if self.tcx.features().const_let {
+        if self.const_let_allowed() {
             let mut dest = dest;
             let index = loop {
                 match dest {
@@ -320,6 +320,10 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
         }
     }
 
+    fn const_let_allowed(&self) -> bool {
+        self.tcx.features().const_let || self.mode == Mode::ConstFn
+    }
+
     /// Qualify a whole const, static initializer or const fn.
     fn qualify_const(&mut self) -> (Qualif, Lrc<BitSet<Local>>) {
         debug!("qualifying {} {:?}", self.mode, self.def_id);
@@ -357,7 +361,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::FalseUnwind { .. } => None,
 
                 TerminatorKind::Return => {
-                    if !self.tcx.features().const_let {
+                    if !self.const_let_allowed() {
                         // Check for unused values. This usually means
                         // there are extra statements in the AST.
                         for temp in mir.temps_iter() {
@@ -464,7 +468,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             LocalKind::ReturnPointer => {
                 self.not_const();
             }
-            LocalKind::Var if !self.tcx.features().const_let => {
+            LocalKind::Var if !self.const_let_allowed() => {
                 if self.mode != Mode::Fn {
                     emit_feature_err(&self.tcx.sess.parse_sess, "const_let",
                                     self.span, GateIssue::Language,
@@ -1153,48 +1157,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     location: Location) {
         debug!("visit_assign: dest={:?} rvalue={:?} location={:?}", dest, rvalue, location);
         self.visit_rvalue(rvalue, location);
-
-        // Check the allowed const fn argument forms.
-        if let (Mode::ConstFn, &Place::Local(index)) = (self.mode, dest) {
-            if self.mir.local_kind(index) == LocalKind::Var &&
-               self.const_fn_arg_vars.insert(index) &&
-               !self.tcx.features().const_let {
-
-                // Direct use of an argument is permitted.
-                match *rvalue {
-                    Rvalue::Use(Operand::Copy(Place::Local(local))) |
-                    Rvalue::Use(Operand::Move(Place::Local(local))) => {
-                        if self.mir.local_kind(local) == LocalKind::Arg {
-                            return;
-                        }
-                    }
-                    _ => {}
-                }
-
-                // Avoid a generic error for other uses of arguments.
-                if self.qualif.contains(Qualif::FN_ARGUMENT) {
-                    let decl = &self.mir.local_decls[index];
-                    let mut err = feature_err(
-                        &self.tcx.sess.parse_sess,
-                        "const_let",
-                        decl.source_info.span,
-                        GateIssue::Language,
-                        "arguments of constant functions can only be immutable by-value bindings"
-                    );
-                    if self.tcx.sess.teach(&err.get_code().unwrap()) {
-                        err.note("Constant functions are not allowed to mutate anything. Thus, \
-                                  binding to an argument with a mutable pattern is not allowed.");
-                        err.note("Remove any mutable bindings from the argument list to fix this \
-                                  error. In case you need to mutate the argument, try lazily \
-                                  initializing a global variable instead of using a const fn, or \
-                                  refactoring the code to a functional style to avoid mutation if \
-                                  possible.");
-                    }
-                    err.emit();
-                    return;
-                }
-            }
-        }
 
         self.assign(dest, location);
     }

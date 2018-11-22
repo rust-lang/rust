@@ -64,12 +64,6 @@ pub fn is_min_const_fn(
         }
     }
 
-    for local in mir.vars_iter() {
-        return Err((
-            mir.local_decls[local].source_info.span,
-            "local variables in const fn are unstable".into(),
-        ));
-    }
     for local in &mir.local_decls {
         check_ty(tcx, local.ty, local.source_info.span)?;
     }
@@ -229,7 +223,7 @@ fn check_statement(
             check_rvalue(tcx, mir, rval, span)
         }
 
-        StatementKind::FakeRead(..) => Err((span, "match in const fn is unstable".into())),
+        StatementKind::FakeRead(_, place) => check_place(tcx, mir, place, span, PlaceMode::Read),
 
         // just an assignment
         StatementKind::SetDiscriminant { .. } => Ok(()),
@@ -270,15 +264,8 @@ fn check_place(
     mode: PlaceMode,
 ) -> McfResult {
     match place {
-        Place::Local(l) => match mode {
-            PlaceMode::Assign => match mir.local_kind(*l) {
-                LocalKind::Temp | LocalKind::ReturnPointer => Ok(()),
-                LocalKind::Arg | LocalKind::Var => {
-                    Err((span, "assignments in const fn are unstable".into()))
-                }
-            },
-            PlaceMode::Read => Ok(()),
-        },
+        // assignments to locals, arguments, temporaries or the return slot are fine
+        Place::Local(_) => Ok(()),
         // promoteds are always fine, they are essentially constants
         Place::Promoted(_) => Ok(()),
         Place::Static(_) => Err((span, "cannot access `static` items in const fn".into())),
