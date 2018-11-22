@@ -3070,7 +3070,29 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemKind::Use(path, hir::UseKind::Glob)
             }
             UseTreeKind::Nested(ref trees) => {
-                // Nested imports are desugared into simple imports.
+                // Nested imports are desugared into simple
+                // imports. So if we start with
+                //
+                // ```
+                // pub(x) use foo::{a, b};
+                // ```
+                //
+                // we will create three items:
+                //
+                // ```
+                // pub(x) use foo::a;
+                // pub(x) use foo::b;
+                // pub(x) use foo::{}; // <-- this is called the `ListStem`
+                // ```
+                //
+                // The first two are produced by recursively invoking
+                // `lower_use_tree` (and indeed there may be things
+                // like `use foo::{a::{b, c}}` and so forth).  They
+                // wind up being directly added to
+                // `self.items`. However, the structure of this
+                // function also requires us to return one item, and
+                // for that we return the `{}` import (called the
+                // "`ListStem`").
 
                 let prefix = Path {
                     segments,
