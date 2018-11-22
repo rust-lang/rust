@@ -260,8 +260,13 @@ pub fn prepare_tool_cargo(
 }
 
 macro_rules! tool {
-    ($($name:ident, $path:expr, $tool_name:expr, $mode:expr
-        $(,llvm_tools = $llvm:expr)* $(,is_external_tool = $external:expr)*;)+) => {
+    ($(
+        $name:ident, $path:expr, $tool_name:expr, $mode:expr
+        $(,llvm_tools = $llvm:expr)*
+        $(,is_external_tool = $external:expr)*
+        $(,cargo_test_root = $cargo_test_root:expr)*
+        ;
+    )+) => {
         #[derive(Copy, PartialEq, Eq, Clone)]
         pub enum Tool {
             $(
@@ -281,6 +286,15 @@ macro_rules! tool {
             pub fn uses_llvm_tools(&self) -> bool {
                 match self {
                     $(Tool::$name => false $(|| $llvm)*,)+
+                }
+            }
+
+            /// Whether this tool requires may run Cargo for test crates,
+            /// which currently needs setting the environment variable
+            /// `__CARGO_TEST_ROOT` to separate it from the workspace.
+            pub fn needs_cargo_test_root(&self) -> bool {
+                match self {
+                    $(Tool::$name => false $(|| $cargo_test_root)*,)+
                 }
             }
         }
@@ -358,8 +372,9 @@ tool!(
     UnstableBookGen, "src/tools/unstable-book-gen", "unstable-book-gen", Mode::ToolBootstrap;
     Tidy, "src/tools/tidy", "tidy", Mode::ToolBootstrap;
     Linkchecker, "src/tools/linkchecker", "linkchecker", Mode::ToolBootstrap;
-    CargoTest, "src/tools/cargotest", "cargotest", Mode::ToolBootstrap;
-    Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolBootstrap, llvm_tools = true;
+    CargoTest, "src/tools/cargotest", "cargotest", Mode::ToolBootstrap, cargo_test_root = true;
+    Compiletest, "src/tools/compiletest", "compiletest", Mode::ToolBootstrap,
+        llvm_tools = true, cargo_test_root = true;
     BuildManifest, "src/tools/build-manifest", "build-manifest", Mode::ToolBootstrap;
     RemoteTestClient, "src/tools/remote-test-client", "remote-test-client", Mode::ToolBootstrap;
     RustInstaller, "src/tools/rust-installer", "fabricate", Mode::ToolBootstrap,
@@ -676,6 +691,11 @@ impl<'a> Builder<'a> {
                     cmd.env("PATH", new_path);
                 }
             }
+        }
+
+        // Set `__CARGO_TEST_ROOT` to the build directory if needed.
+        if tool.needs_cargo_test_root() {
+            cmd.env("__CARGO_TEST_ROOT", &self.config.out);
         }
 
         add_lib_path(lib_paths, cmd);

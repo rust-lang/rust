@@ -494,16 +494,11 @@ the version in `Cargo.lock`, so the build can no longer continue.
 To resolve this, we need to update `Cargo.lock`. Luckily, cargo provides a
 command to do this easily.
 
-First, go into the `src/` directory since that is where `Cargo.toml` is in
-the rust repository. Then run, `cargo update -p rustfmt-nightly` to solve
-the problem.
-
 ```
-$ cd src
 $ cargo update -p rustfmt-nightly
 ```
 
-This should change the version listed in `src/Cargo.lock` to the new version you updated
+This should change the version listed in `Cargo.lock` to the new version you updated
 the submodule to. Running `./x.py build` should work now.
 
 ## Writing Documentation

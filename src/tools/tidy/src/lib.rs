@@ -64,7 +64,6 @@ fn filter_dirs(path: &Path) -> bool {
         "src/librustc_data_structures/owning_ref",
         "src/compiler-rt",
         "src/liblibc",
-        "src/vendor",
         "src/rt/hoedown",
         "src/tools/cargo",
         "src/tools/clang",
@@ -78,6 +77,7 @@ fn filter_dirs(path: &Path) -> bool {
         "src/target",
         "src/stdsimd",
         "target",
+        "vendor",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }
