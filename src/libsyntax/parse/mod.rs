@@ -85,14 +85,15 @@ impl ParseSess {
         &self.source_map
     }
 
-    pub fn buffer_lint<S: Into<MultiSpan>>(&self,
+    pub fn buffer_lint<S: Into<MultiSpan>>(
+        &self,
         lint_id: BufferedEarlyLintId,
         span: S,
         id: NodeId,
         msg: &str,
     ) {
         self.buffered_lints.with_lock(|buffered_lints| {
-            buffered_lints.push(BufferedEarlyLint{
+            buffered_lints.push(BufferedEarlyLint {
                 span: span.into(),
                 id,
                 msg: msg.into(),

@@ -38,7 +38,7 @@ use hir::def_id::{CrateNum, LOCAL_CRATE};
 use hir::intravisit;
 use hir;
 use lint::builtin::BuiltinLintDiagnostics;
-use lint::builtin::parser::QUESTION_MARK_MACRO_SEP;
+use lint::builtin::parser::{QUESTION_MARK_MACRO_SEP, INCORRECT_MACRO_FRAGMENT_REPETITION};
 use session::{Session, DiagnosticMessageId};
 use std::{hash, ptr};
 use syntax::ast;
@@ -89,9 +89,12 @@ pub struct Lint {
 
 impl Lint {
     /// Returns the `rust::lint::Lint` for a `syntax::early_buffered_lints::BufferedEarlyLintId`.
-    pub fn from_parser_lint_id(lint_id: BufferedEarlyLintId) -> &'static Self {
-        match lint_id {
+    pub fn from_parser_lint_id(lint_id: &BufferedEarlyLintId) -> &'static Self {
+        match *lint_id {
             BufferedEarlyLintId::QuestionMarkMacroSep => QUESTION_MARK_MACRO_SEP,
+            BufferedEarlyLintId::IncorrectMacroFragmentRepetition {
+                ..
+            } => INCORRECT_MACRO_FRAGMENT_REPETITION,
         }
     }
 
@@ -105,6 +108,25 @@ impl Lint {
             .filter(|(e, _)| *e <= session.edition())
             .map(|(_, l)| l)
             .unwrap_or(self.default_level)
+    }
+
+    pub fn builtin_diagnostic(lint_id: BufferedEarlyLintId) -> BuiltinLintDiagnostics {
+        match lint_id {
+            BufferedEarlyLintId::IncorrectMacroFragmentRepetition {
+                span,
+                token_span,
+                sugg_span,
+                frag,
+                possible,
+            } => BuiltinLintDiagnostics::IncorrectMacroFragmentRepetition {
+                span,
+                token_span,
+                sugg_span,
+                frag,
+                possible,
+            },
+            _ => BuiltinLintDiagnostics::Normal,
+        }
     }
 }
 

@@ -1092,9 +1092,10 @@ where
     // Add all buffered lints from the `ParseSess` to the `Session`.
     sess.parse_sess.buffered_lints.with_lock(|buffered_lints| {
         info!("{} parse sess buffered_lints", buffered_lints.len());
-        for BufferedEarlyLint{id, span, msg, lint_id} in buffered_lints.drain(..) {
-            let lint = lint::Lint::from_parser_lint_id(lint_id);
-            sess.buffer_lint(lint, id, span, &msg);
+        for BufferedEarlyLint {id, span, msg, lint_id} in buffered_lints.drain(..) {
+            let lint = lint::Lint::from_parser_lint_id(&lint_id);
+            let diag = lint::Lint::builtin_diagnostic(lint_id);
+            sess.buffer_lint_with_diagnostic(lint, id, span, &msg, diag);
         }
     });
 

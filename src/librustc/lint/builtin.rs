@@ -363,6 +363,12 @@ pub mod parser {
         Allow,
         "detects the use of `?` as a macro separator"
     }
+
+    declare_lint! {
+        pub INCORRECT_MACRO_FRAGMENT_REPETITION,
+        Warn,
+        "detects incorrect macro fragment follow due to repetition"
+    }
 }
 
 /// Does nothing as a lint pass, but registers some `Lint`s
@@ -443,6 +449,13 @@ pub enum BuiltinLintDiagnostics {
     MacroExpandedMacroExportsAccessedByAbsolutePaths(Span),
     ElidedLifetimesInPaths(usize, Span, bool, Span, String),
     UnknownCrateTypes(Span, String, String),
+    IncorrectMacroFragmentRepetition {
+        span: Span,
+        token_span: Span,
+        sugg_span: Span,
+        frag: String,
+        possible: Vec<String>,
+    }
 }
 
 impl BuiltinLintDiagnostics {
@@ -528,6 +541,73 @@ impl BuiltinLintDiagnostics {
                     sugg,
                     Applicability::MaybeIncorrect
                 );
+            }
+            BuiltinLintDiagnostics::IncorrectMacroFragmentRepetition {
+                span,
+                token_span,
+                sugg_span,
+                frag,
+                possible,
+            } => {
+                if span == token_span {
+                    db.span_label(
+                        span,
+                        "this fragment is followed by itself without a valid separator",
+                    );
+                } else {
+                    db.span_label(
+                        span,
+                        "this fragment is followed by the first fragment in this repetition \
+                         without a valid separator",
+                    );
+                    db.span_label(
+                        token_span,
+                        "this is the first fragment in the evaluated repetition",
+                    );
+                }
+                let msg = "allowed there are: ";
+                let sugg_msg = "add a valid separator for the repetition to be unambiguous";
+                match &possible[..] {
+                    &[] => {}
+                    &[ref t] => {
+                        db.note(&format!("only {} is allowed after `{}` fragments", t, frag));
+                        if t.starts_with('`') && t.ends_with('`') {
+                            db.span_suggestion_with_applicability(
+                                sugg_span,
+                                &format!("{}, for example", sugg_msg),
+                                (&t[1..t.len()-1]).to_owned(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        } else {
+                            db.note(sugg_msg);
+                        }
+                    }
+                    _ => {
+                        db.note(&format!(
+                            "{}{} or {}",
+                            msg,
+                            possible[..possible.len() - 1].iter().map(|s| s.to_owned())
+                                .collect::<Vec<_>>().join(", "),
+                            possible[possible.len() - 1],
+                        ));
+                        let mut note = true;
+                        for t in &possible {
+                            if t.starts_with('`') && t.ends_with('`') {
+                                db.span_suggestion_with_applicability(
+                                    sugg_span,
+                                    &format!("{}, for example", sugg_msg),
+                                    (&t[1..t.len()-1]).to_owned(),
+                                    Applicability::MaybeIncorrect,
+                                );
+                                note = false;
+                                break;
+                            }
+                        }
+                        if note {
+                            db.note(sugg_msg);
+                        }
+                    }
+                }
             }
         }
     }

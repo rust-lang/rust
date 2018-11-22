@@ -14,13 +14,20 @@
 //! redundant. Later, these types can be converted to types for use by the rest of the compiler.
 
 use syntax::ast::NodeId;
-use syntax_pos::MultiSpan;
+use syntax_pos::{MultiSpan, Span};
 
 /// Since we cannot import `LintId`s from `rustc::lint`, we define some Ids here which can later be
 /// passed to `rustc::lint::Lint::from_parser_lint_id` to get a `rustc::lint::Lint`.
 pub enum BufferedEarlyLintId {
     /// Usage of `?` as a macro separator is deprecated.
     QuestionMarkMacroSep,
+    IncorrectMacroFragmentRepetition {
+        span: Span,
+        token_span: Span,
+        sugg_span: Span,
+        frag: String,
+        possible: Vec<String>,
+    }
 }
 
 /// Stores buffered lint info which can later be passed to `librustc`.

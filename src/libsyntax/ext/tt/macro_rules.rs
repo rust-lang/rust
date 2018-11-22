@@ -10,6 +10,7 @@
 
 use {ast, attr};
 use syntax_pos::{Span, DUMMY_SP};
+use early_buffered_lints::BufferedEarlyLintId;
 use edition::Edition;
 use errors::FatalError;
 use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
@@ -812,14 +813,23 @@ fn check_matcher_core(sess: &ParseSess,
                         match is_in_follow(tok, &frag_spec.as_str()) {
                             IsInFollow::Invalid(..) | IsInFollow::Yes => {}  // handled elsewhere
                             IsInFollow::No(possible) => {
-                                let tok_sp = tok.span();
-                                let next = if *sp == tok_sp {
+                                let token_span = tok.span();
+                                let next = if *sp == token_span {
                                     "itself".to_owned()
                                 } else {
                                     quoted_tt_to_string(tok)
                                 };
-                                let mut err = sess.span_diagnostic.struct_span_warn(
+                                let sugg_span = sess.source_map().next_point(delim_sp.close);
+                                sess.buffer_lint(
+                                    BufferedEarlyLintId::IncorrectMacroFragmentRepetition {
+                                        span: *sp,
+                                        token_span: tok.span(),
+                                        sugg_span,
+                                        frag: frag_spec.to_string(),
+                                        possible: possible.into_iter().map(String::from).collect(),
+                                    },
                                     *sp,
+                                    ast::CRATE_NODE_ID,
                                     &format!(
                                         "`${name}:{frag}` is followed (through repetition) by \
                                          {next}, which is not allowed for `{frag}` fragments",
@@ -828,67 +838,6 @@ fn check_matcher_core(sess: &ParseSess,
                                         next=next,
                                     ),
                                 );
-                                if *sp == tok_sp {
-                                    err.span_label(
-                                        *sp,
-                                        "this fragment is followed by itself without a valid \
-                                         separator",
-                                    );
-                                } else {
-                                    err.span_label(
-                                        *sp,
-                                        "this fragment is followed by the first fragment in this \
-                                         repetition without a valid separator",
-                                    );
-                                    err.span_label(
-                                        tok_sp,
-                                        "this is the first fragment in the evaluated repetition",
-                                    );
-                                }
-                                let sugg_span = sess.source_map().next_point(delim_sp.close);
-                                let msg = "allowed there are: ";
-                                let sugg_msg =
-                                    "add a valid separator for the repetition to be unambiguous";
-                                match &possible[..] {
-                                    &[] => {}
-                                    &[t] => {
-                                        err.note(&format!(
-                                            "only {} is allowed after `{}` fragments",
-                                            t,
-                                            frag_spec,
-                                        ));
-                                        if t.starts_with('`') && t.ends_with('`') {
-                                            err.span_suggestion_with_applicability(
-                                                sugg_span,
-                                                &format!("{}, for example", sugg_msg),
-                                                (&t[1..t.len()-1]).to_owned(),
-                                                Applicability::MaybeIncorrect,
-                                            );
-                                        } else {
-                                            err.note(sugg_msg);
-                                        }
-                                    }
-                                    ts => {
-                                        err.note(&format!(
-                                            "{}{} or {}",
-                                            msg,
-                                            ts[..ts.len() - 1].iter().map(|s| *s)
-                                                .collect::<Vec<_>>().join(", "),
-                                            ts[ts.len() - 1],
-                                        ));
-                                        if ts[0].starts_with('`') && ts[0].ends_with('`') {
-                                            err.span_suggestion_with_applicability(
-                                                sugg_span,
-                                                &format!("{}, for example", sugg_msg),
-                                                (&ts[0][1..ts[0].len()-1]).to_owned(),
-                                                Applicability::MaybeIncorrect,
-                                            );
-                                        } else {
-                                            err.note(sugg_msg);
-                                        }
-                                    }
-                                }
-                                err.emit();
                             }
                         }
                     }

@@ -3977,8 +3977,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             }
         }
 
-        let diag = lint::builtin::BuiltinLintDiagnostics
-            ::AbsPathWithModule(diag_span);
+        let diag = lint::builtin::BuiltinLintDiagnostics::AbsPathWithModule(diag_span);
         self.session.buffer_lint_with_diagnostic(
             lint::builtin::ABSOLUTE_PATHS_NOT_STARTING_WITH_CRATE,
             diag_id, diag_span,

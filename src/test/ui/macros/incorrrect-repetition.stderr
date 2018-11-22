@@ -6,6 +6,7 @@ LL |     ($($i:ident $e:expr)*) => {}
    |        |
    |        this is the first fragment in the evaluated repetition
    |
+   = note: #[warn(incorrect_macro_fragment_repetition)] on by default
    = note: allowed there are: `;`, `=>` or `,`
 help: add a valid separator for the repetition to be unambiguous, for example
    |
