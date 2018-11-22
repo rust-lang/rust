@@ -2815,14 +2815,14 @@ impl<T: ?Sized> fmt::Pointer for Unique<T> {
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<'a, T: ?Sized> From<&'a mut T> for Unique<T> {
     fn from(reference: &'a mut T) -> Self {
-        Unique { pointer: unsafe { NonZero(reference as _) }, _marker: PhantomData }
+        Unique { pointer: unsafe { NonZero(reference as *mut T) }, _marker: PhantomData }
     }
 }
 
 #[unstable(feature = "ptr_internals", issue = "0")]
 impl<'a, T: ?Sized> From<&'a T> for Unique<T> {
     fn from(reference: &'a T) -> Self {
-        Unique { pointer: unsafe { NonZero(reference as _) }, _marker: PhantomData }
+        Unique { pointer: unsafe { NonZero(reference as *const T) }, _marker: PhantomData }
     }
 }
 
@@ -3025,7 +3025,7 @@ impl<T: ?Sized> From<Unique<T>> for NonNull<T> {
 impl<'a, T: ?Sized> From<&'a mut T> for NonNull<T> {
     #[inline]
     fn from(reference: &'a mut T) -> Self {
-        NonNull { pointer: unsafe { NonZero(reference as _) } }
+        NonNull { pointer: unsafe { NonZero(reference as *mut T) } }
     }
 }
 
@@ -3033,6 +3033,6 @@ impl<'a, T: ?Sized> From<&'a mut T> for NonNull<T> {
 impl<'a, T: ?Sized> From<&'a T> for NonNull<T> {
     #[inline]
     fn from(reference: &'a T) -> Self {
-        NonNull { pointer: unsafe { NonZero(reference as _) } }
+        NonNull { pointer: unsafe { NonZero(reference as *const T) } }
     }
 }
