@@ -2847,7 +2847,8 @@ pub unsafe fn _mm_castsi128_ps(a: __m128i) -> __m128 {
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_undefined_pd() -> __m128d {
-    _mm_set1_pd(mem::uninitialized())
+    // FIXME: this function should return MaybeUninit<__m128d>
+    mem::MaybeUninit::<__m128d>::uninitialized().into_inner()
 }
 
 /// Return vector of type __m128i with undefined elements.
@@ -2857,7 +2858,8 @@ pub unsafe fn _mm_undefined_pd() -> __m128d {
 #[target_feature(enable = "sse2")]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_undefined_si128() -> __m128i {
-    _mm_set1_epi8(mem::uninitialized())
+    // FIXME: this function should return MaybeUninit<__m128i>
+    mem::MaybeUninit::<__m128i>::uninitialized().into_inner()
 }
 
 /// The resulting `__m128d` element is composed by the low-order values of

@@ -2875,7 +2875,8 @@ pub unsafe fn _mm256_zextpd128_pd256(a: __m128d) -> __m256d {
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_undefined_ps() -> __m256 {
-    _mm256_set1_ps(mem::uninitialized())
+    // FIXME: this function should return MaybeUninit<__m256>
+    mem::MaybeUninit::<__m256>::uninitialized().into_inner()
 }
 
 /// Return vector of type `__m256d` with undefined elements.
@@ -2886,7 +2887,8 @@ pub unsafe fn _mm256_undefined_ps() -> __m256 {
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_undefined_pd() -> __m256d {
-    _mm256_set1_pd(mem::uninitialized())
+    // FIXME: this function should return MaybeUninit<__m256d>
+    mem::MaybeUninit::<__m256d>::uninitialized().into_inner()
 }
 
 /// Return vector of type __m256i with undefined elements.
@@ -2897,7 +2899,8 @@ pub unsafe fn _mm256_undefined_pd() -> __m256d {
 // This intrinsic has no corresponding instruction.
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm256_undefined_si256() -> __m256i {
-    _mm256_set1_epi8(mem::uninitialized())
+    // FIXME: this function should return MaybeUninit<__m256i>
+    mem::MaybeUninit::<__m256i>::uninitialized().into_inner()
 }
 
 /// Set packed __m256 returned vector with the supplied values.

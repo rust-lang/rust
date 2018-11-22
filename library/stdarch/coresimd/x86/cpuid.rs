@@ -2,8 +2,6 @@
 
 #![cfg_attr(feature = "cargo-clippy", allow(clippy::stutter))]
 
-use mem;
-
 #[cfg(test)]
 use stdsimd_test::assert_instr;
 
@@ -53,20 +51,26 @@ pub struct CpuidResult {
 #[cfg_attr(test, assert_instr(cpuid))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn __cpuid_count(leaf: u32, sub_leaf: u32) -> CpuidResult {
-    let mut r = mem::uninitialized::<CpuidResult>();
-    if cfg!(target_arch = "x86") {
+    let eax;
+    let ebx;
+    let ecx;
+    let edx;
+    #[cfg(target_arch = "x86")]
+    {
         asm!("cpuid"
-             : "={eax}"(r.eax), "={ebx}"(r.ebx), "={ecx}"(r.ecx), "={edx}"(r.edx)
+             : "={eax}"(eax), "={ebx}"(ebx), "={ecx}"(ecx), "={edx}"(edx)
              : "{eax}"(leaf), "{ecx}"(sub_leaf)
              : :);
-    } else {
+    }
+    #[cfg(target_arch = "x86_64")]
+    {
         // x86-64 uses %rbx as the base register, so preserve it.
         asm!("cpuid\n"
-             : "={eax}"(r.eax), "={ebx}"(r.ebx), "={ecx}"(r.ecx), "={edx}"(r.edx)
+             : "={eax}"(eax), "={ebx}"(ebx), "={ecx}"(ecx), "={edx}"(edx)
              : "{eax}"(leaf), "{ecx}"(sub_leaf)
              : "rbx" :);
     }
-    r
+    CpuidResult { eax, ebx, ecx, edx }
 }
 
 /// See [`__cpuid_count`](fn.__cpuid_count.html).
