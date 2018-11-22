@@ -2752,7 +2752,7 @@ impl<'a> LoweringContext<'a> {
         id: NodeId,
         name: &mut Name,
         attrs: &hir::HirVec<Attribute>,
-        vis: &hir::Visibility,
+        vis: &mut hir::Visibility,
         i: &ItemKind,
     ) -> hir::ItemKind {
         match *i {
@@ -2955,7 +2955,7 @@ impl<'a> LoweringContext<'a> {
         tree: &UseTree,
         prefix: &Path,
         id: NodeId,
-        vis: &hir::Visibility,
+        vis: &mut hir::Visibility,
         name: &mut Name,
         attrs: &hir::HirVec<Attribute>,
     ) -> hir::ItemKind {
@@ -3086,7 +3086,7 @@ impl<'a> LoweringContext<'a> {
                         hir_id: new_hir_id,
                     } = self.lower_node_id(id);
 
-                    let vis = vis.clone();
+                    let mut vis = vis.clone();
                     let mut name = name.clone();
                     let mut prefix = prefix.clone();
 
@@ -3104,7 +3104,7 @@ impl<'a> LoweringContext<'a> {
                         let item = this.lower_use_tree(use_tree,
                                                        &prefix,
                                                        new_id,
-                                                       &vis,
+                                                       &mut vis,
                                                        &mut name,
                                                        attrs);
 
@@ -3137,6 +3137,27 @@ impl<'a> LoweringContext<'a> {
                             },
                         );
                     });
+                }
+
+                // Subtle and a bit hacky: we lower the privacy level
+                // of the list stem to "private" most of the time, but
+                // not for "restricted" paths. The key thing is that
+                // we don't want it to stay as `pub` (with no caveats)
+                // because that affects rustdoc and also the lints
+                // about `pub` items. But we can't *always* make it
+                // private -- particularly not for restricted paths --
+                // because it contains node-ids that would then be
+                // unused, failing the check that HirIds are "densely
+                // assigned".
+                match vis.node {
+                    hir::VisibilityKind::Public |
+                    hir::VisibilityKind::Crate(_) |
+                    hir::VisibilityKind::Inherited => {
+                        *vis = respan(prefix.span.shrink_to_lo(), hir::VisibilityKind::Inherited);
+                    }
+                    hir::VisibilityKind::Restricted { .. } => {
+                        // do nothing here, as described in the comment on the match
+                    }
                 }
 
                 let def = self.expect_full_def_from_use(id).next().unwrap_or(Def::Err);
@@ -3384,7 +3405,7 @@ impl<'a> LoweringContext<'a> {
 
     pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item> {
         let mut name = i.ident.name;
-        let vis = self.lower_visibility(&i.vis, None);
+        let mut vis = self.lower_visibility(&i.vis, None);
         let attrs = self.lower_attrs(&i.attrs);
         if let ItemKind::MacroDef(ref def) = i.node {
             if !def.legacy || attr::contains_name(&i.attrs, "macro_export") ||
@@ -3403,7 +3424,7 @@ impl<'a> LoweringContext<'a> {
             return None;
         }
 
-        let node = self.lower_item_kind(i.id, &mut name, &attrs, &vis, &i.node);
+        let node = self.lower_item_kind(i.id, &mut name, &attrs, &mut vis, &i.node);
 
         let LoweredNodeId { node_id, hir_id } = self.lower_node_id(i.id);
 
