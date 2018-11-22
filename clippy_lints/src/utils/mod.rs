@@ -539,8 +539,11 @@ impl<'a> DiagnosticWrapper<'a> {
     fn docs_link(&mut self, lint: &'static Lint) {
         if env::var("CLIPPY_DISABLE_DOCS_LINKS").is_err() {
             self.0.help(&format!(
-                "for further information visit https://rust-lang.github.io/rust-clippy/v{}/index.html#{}",
-                env!("CARGO_PKG_VERSION"),
+                "for further information visit https://rust-lang.github.io/rust-clippy/{}/index.html#{}",
+                &option_env!("RUST_RELEASE_NUM").map_or("master".to_string(), |n| {
+                    // extract just major + minor version and ignore patch versions
+                    format!("rust-{}", n.rsplitn(2, '.').nth(1).unwrap())
+                }),
                 lint.name_lower().replacen("clippy::", "", 1)
             ));
         }
