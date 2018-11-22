@@ -806,9 +806,13 @@ const NOTIFIED: usize = 2;
 /// In other words, each [`Thread`] acts a bit like a spinlock that can be
 /// locked and unlocked using `park` and `unpark`.
 ///
+/// Notice that it would be a valid (but inefficient) implementation to make both [`park`] and
+/// [`unpark`] NOPs that return immediately.  Being unblocked does not imply
+/// any synchronization with someone that unparked this thread, it could also be spurious.
+///
 /// The API is typically used by acquiring a handle to the current thread,
 /// placing that handle in a shared data structure so that other threads can
-/// find it, and then `park`ing. When some desired condition is met, another
+/// find it, and then `park`ing in a loop. When some desired condition is met, another
 /// thread calls [`unpark`] on the handle.
 ///
 /// The motivation for this design is twofold:
@@ -829,6 +833,7 @@ const NOTIFIED: usize = 2;
 ///     .spawn(|| {
 ///         println!("Parking thread");
 ///         thread::park();
+///         // We *could* get here spuriously, i.e., way before the 10ms below are over!
 ///         println!("Thread unparked");
 ///     })
 ///     .unwrap();
