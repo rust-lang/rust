@@ -1532,7 +1532,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
 /// `u8`.
 ///
 /// **Known problems:**
-/// https://github.com/rust-lang-nursery/rust-clippy/issues/886
+/// https://github.com/rust-lang/rust-clippy/issues/886
 ///
 /// **Example:**
 /// ```rust

@@ -12,7 +12,7 @@
 
 /// Should not trigger an ICE in `SpanlessHash` / `consts::constant`
 ///
-/// Issue: https://github.com/rust-lang-nursery/rust-clippy/issues/2594
+/// Issue: https://github.com/rust-lang/rust-clippy/issues/2594
 
 fn spanless_hash_ice() {
     let txt = "something";

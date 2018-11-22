@@ -12,7 +12,7 @@
 
 use std::collections::HashSet;
 
-// See https://github.com/rust-lang-nursery/rust-clippy/issues/2774
+// See https://github.com/rust-lang/rust-clippy/issues/2774
 
 #[derive(Eq, PartialEq, Debug, Hash)]
 pub struct Bar {

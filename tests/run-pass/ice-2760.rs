@@ -17,7 +17,7 @@
 //
 //      error[E0277]: the trait bound `T: Foo` is not satisfied
 //
-// See https://github.com/rust-lang-nursery/rust-clippy/issues/2760
+// See https://github.com/rust-lang/rust-clippy/issues/2760
 
 trait Foo {
     type Bar;

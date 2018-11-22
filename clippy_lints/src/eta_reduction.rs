@@ -28,7 +28,7 @@ pub struct EtaPass;
 /// **Known problems:** If creating the closure inside the closure has a side-
 /// effect then moving the closure creation out will change when that side-
 /// effect runs.
-/// See https://github.com/rust-lang-nursery/rust-clippy/issues/1439 for more
+/// See https://github.com/rust-lang/rust-clippy/issues/1439 for more
 /// details.
 ///
 /// **Example:**

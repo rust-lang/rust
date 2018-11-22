@@ -82,13 +82,13 @@ fn update_lints(update_mode: &UpdateMode) {
 
     let mut file_change = replace_region_in_file(
         "../README.md",
-        r#"\[There are \d+ lints included in this crate!\]\(https://rust-lang-nursery.github.io/rust-clippy/master/index.html\)"#,
+        r#"\[There are \d+ lints included in this crate!\]\(https://rust-lang.github.io/rust-clippy/master/index.html\)"#,
         "",
         true,
         update_mode == &UpdateMode::Change,
         || {
             vec![
-                format!("[There are {} lints included in this crate!](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)", lint_count)
+                format!("[There are {} lints included in this crate!](https://rust-lang.github.io/rust-clippy/master/index.html)", lint_count)
             ]
         }
     ).changed;

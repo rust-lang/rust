@@ -25,7 +25,7 @@ fn main() {
     // should have done this but produced an ICE
     //
     // We may not want to suggest changing these anyway
-    // See: https://github.com/rust-lang-nursery/rust-clippy/issues/650#issuecomment-184328984
+    // See: https://github.com/rust-lang/rust-clippy/issues/650#issuecomment-184328984
     x.split("ß");
     x.split("ℝ");
     x.split("💣");

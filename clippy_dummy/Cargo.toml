@@ -7,7 +7,7 @@ readme = "crates-readme.md"
 description = "A bunch of helpful lints to avoid common pitfalls in Rust."
 build = 'build.rs'
 
-repository = "https://github.com/rust-lang-nursery/rust-clippy"
+repository = "https://github.com/rust-lang/rust-clippy"
 
 license = "MIT/Apache-2.0"
 keywords = ["clippy", "lint", "plugin"]
