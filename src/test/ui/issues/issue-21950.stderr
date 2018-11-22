@@ -11,11 +11,6 @@ error[E0191]: the value of the associated type `Output` (from the trait `std::op
    |
 LL |             &Add;
    |              ^^^ associated type `Output` must be specified
-   | 
-  ::: $SRC_DIR/libcore/ops/arith.rs:LL:COL
-   |
-LL |     type Output;
-   |     ------------ `Output` defined here
 
 error: aborting due to 2 previous errors
 

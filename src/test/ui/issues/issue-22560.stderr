@@ -29,11 +29,6 @@ LL | |             //~^ ERROR E0393
 LL | |             //~| ERROR E0191
 LL | |             Sub;
    | |_______________^ associated type `Output` must be specified
-   | 
-  ::: $SRC_DIR/libcore/ops/arith.rs:LL:COL
-   |
-LL |       type Output;
-   |       ------------ `Output` defined here
 
 error: aborting due to 4 previous errors
 

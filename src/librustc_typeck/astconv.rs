@@ -1068,10 +1068,12 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                     span,
                     format!("associated type `{}` must be specified", assoc_item.ident),
                 );
-                err.span_label(
-                    tcx.def_span(*item_def_id),
-                    format!("`{}` defined here", assoc_item.ident),
-                );
+                if item_def_id.is_local() {
+                    err.span_label(
+                        tcx.def_span(*item_def_id),
+                        format!("`{}` defined here", assoc_item.ident),
+                    );
+                }
                 if suggest {
                     if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(
                         potential_assoc_types_spans[i],
