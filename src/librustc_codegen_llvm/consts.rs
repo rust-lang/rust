@@ -94,7 +94,7 @@ fn set_global_alignment(cx: &CodegenCx<'ll, '_>,
     // Note: GCC and Clang also allow `__attribute__((aligned))` on variables,
     // which can force it to be smaller.  Rust doesn't support this yet.
     if let Some(min) = cx.sess().target.target.options.min_global_align {
-        match ty::layout::Align::from_bits(min, min) {
+        match Align::from_bits(min) {
             Ok(min) => align = align.max(min),
             Err(err) => {
                 cx.sess().err(&format!("invalid minimum global alignment: {}", err));
@@ -102,7 +102,7 @@ fn set_global_alignment(cx: &CodegenCx<'ll, '_>,
         }
     }
     unsafe {
-        llvm::LLVMSetAlignment(gv, align.abi() as u32);
+        llvm::LLVMSetAlignment(gv, align.bytes() as u32);
     }
 }
 
@@ -219,7 +219,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             unsafe {
                 // Upgrade the alignment in cases where the same constant is used with different
                 // alignment requirements
-                let llalign = align.abi() as u32;
+                let llalign = align.bytes() as u32;
                 if llalign > llvm::LLVMGetAlignment(gv) {
                     llvm::LLVMSetAlignment(gv, llalign);
                 }

@@ -129,7 +129,7 @@ pub fn op_to_const<'tcx>(
             assert!(meta.is_none());
             let ptr = ptr.to_ptr()?;
             let alloc = ecx.memory.get(ptr.alloc_id)?;
-            assert!(alloc.align.abi() >= align.abi());
+            assert!(alloc.align >= align);
             assert!(alloc.bytes.len() as u64 - ptr.offset.bytes() >= op.layout.size.bytes());
             let mut alloc = alloc.clone();
             alloc.align = align;

@@ -118,9 +118,9 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>)
                 // We only care about aligned doubles
                 if let abi::Abi::Scalar(ref scalar) = field.abi {
                     if let abi::Float(abi::FloatTy::F64) = scalar.value {
-                        if offset.is_abi_aligned(dl.f64_align) {
+                        if offset.is_aligned(dl.f64_align.abi) {
                             // Insert enough integers to cover [last_offset, offset)
-                            assert!(last_offset.is_abi_aligned(dl.f64_align));
+                            assert!(last_offset.is_aligned(dl.f64_align.abi));
                             for _ in 0..((offset - last_offset).bits() / 64)
                                 .min((prefix.len() - prefix_index) as u64) {
 

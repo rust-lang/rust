@@ -41,7 +41,7 @@ fn classify_arg<'a, Ty, C>(cx: &C, arg: &ArgType<'a, Ty>)
         where Ty: TyLayoutMethods<'a, C> + Copy,
             C: LayoutOf<Ty = Ty, TyLayout = TyLayout<'a, Ty>> + HasDataLayout
     {
-        if !off.is_abi_aligned(layout.align) {
+        if !off.is_aligned(layout.align.abi) {
             if !layout.is_zst() {
                 return Err(Memory);
             }

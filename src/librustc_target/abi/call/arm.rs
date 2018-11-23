@@ -93,7 +93,7 @@ fn classify_arg_ty<'a, Ty, C>(cx: &C, arg: &mut ArgType<'a, Ty>, vfp: bool)
         }
     }
 
-    let align = arg.layout.align.abi();
+    let align = arg.layout.align.abi.bytes();
     let total = arg.layout.size;
     arg.cast_to(Uniform {
         unit: if align <= 4 { Reg::i32() } else { Reg::i64() },

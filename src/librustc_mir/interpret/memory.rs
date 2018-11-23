@@ -268,18 +268,18 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             }
         };
         // Check alignment
-        if alloc_align.abi() < required_align.abi() {
+        if alloc_align.bytes() < required_align.bytes() {
             return err!(AlignmentCheckFailed {
                 has: alloc_align,
                 required: required_align,
             });
         }
-        if offset % required_align.abi() == 0 {
+        if offset % required_align.bytes() == 0 {
             Ok(())
         } else {
-            let has = offset % required_align.abi();
+            let has = offset % required_align.bytes();
             err!(AlignmentCheckFailed {
-                has: Align::from_bytes(has, has).unwrap(),
+                has: Align::from_bytes(has).unwrap(),
                 required: required_align,
             })
         }
@@ -449,14 +449,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         }
         // Could also be a fn ptr or extern static
         match self.tcx.alloc_map.lock().get(id) {
-            Some(AllocType::Function(..)) => (Size::ZERO, Align::from_bytes(1, 1).unwrap()),
+            Some(AllocType::Function(..)) => (Size::ZERO, Align::from_bytes(1).unwrap()),
             Some(AllocType::Static(did)) => {
                 // The only way `get` couldn't have worked here is if this is an extern static
                 assert!(self.tcx.is_foreign_item(did));
                 // Use size and align of the type
                 let ty = self.tcx.type_of(did);
                 let layout = self.tcx.layout_of(ParamEnv::empty().and(ty)).unwrap();
-                (layout.size, layout.align)
+                (layout.size, layout.align.abi)
             }
             _ => {
                 // Must be a deallocated pointer
@@ -521,7 +521,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             "{}({} bytes, alignment {}){}",
             msg,
             alloc.bytes.len(),
-            alloc.align.abi(),
+            alloc.align.bytes(),
             extra
         );
 
@@ -863,7 +863,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         allow_ptr_and_undef: bool,
     ) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-        let align = Align::from_bytes(1, 1).unwrap();
+        let align = Align::from_bytes(1).unwrap();
         if size.bytes() == 0 {
             self.check_align(ptr, align)?;
             return Ok(());
@@ -881,7 +881,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn read_bytes(&self, ptr: Scalar<M::PointerTag>, size: Size) -> EvalResult<'tcx, &[u8]> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-        let align = Align::from_bytes(1, 1).unwrap();
+        let align = Align::from_bytes(1).unwrap();
         if size.bytes() == 0 {
             self.check_align(ptr, align)?;
             return Ok(&[]);
@@ -891,7 +891,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
 
     pub fn write_bytes(&mut self, ptr: Scalar<M::PointerTag>, src: &[u8]) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-        let align = Align::from_bytes(1, 1).unwrap();
+        let align = Align::from_bytes(1).unwrap();
         if src.is_empty() {
             self.check_align(ptr, align)?;
             return Ok(());
@@ -908,7 +908,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
         count: Size
     ) -> EvalResult<'tcx> {
         // Empty accesses don't need to be valid pointers, but they should still be non-NULL
-        let align = Align::from_bytes(1, 1).unwrap();
+        let align = Align::from_bytes(1).unwrap();
         if count.bytes() == 0 {
             self.check_align(ptr, align)?;
             return Ok(());
@@ -1035,7 +1035,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
             16 => layout::I128,
             _ => bug!("bad integer size: {}", size.bytes()),
         };
-        ity.align(self)
+        ity.align(self).abi
     }
 }
 

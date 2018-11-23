@@ -285,7 +285,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let (a, b) = (&a.value, &b.value);
                 let (a_size, b_size) = (a.size(self), b.size(self));
                 let a_ptr = ptr;
-                let b_offset = a_size.abi_align(b.align(self));
+                let b_offset = a_size.align_to(b.align(self).abi);
                 assert!(b_offset.bytes() > 0); // we later use the offset to test which field to use
                 let b_ptr = ptr.offset(b_offset, self)?.into();
                 let a_val = self.memory.read_scalar(a_ptr, ptr_align, a_size)?;

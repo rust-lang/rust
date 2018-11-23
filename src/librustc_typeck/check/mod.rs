@@ -1779,7 +1779,7 @@ fn check_transparent<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: De
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir.span_if_local(field.did).unwrap();
         let zst = layout.map(|layout| layout.is_zst()).unwrap_or(false);
-        let align1 = layout.map(|layout| layout.align.abi() == 1).unwrap_or(false);
+        let align1 = layout.map(|layout| layout.align.abi.bytes() == 1).unwrap_or(false);
         (span, zst, align1)
     });
 

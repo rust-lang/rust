@@ -127,7 +127,7 @@ impl<Tag> MemPlace<Tag> {
     /// Produces a Place that will error if attempted to be read from or written to
     #[inline(always)]
     pub fn null(cx: &impl HasDataLayout) -> Self {
-        Self::from_scalar_ptr(Scalar::ptr_null(cx), Align::from_bytes(1, 1).unwrap())
+        Self::from_scalar_ptr(Scalar::ptr_null(cx), Align::from_bytes(1).unwrap())
     }
 
     #[inline(always)]
@@ -167,8 +167,8 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
     pub fn dangling(layout: TyLayout<'tcx>, cx: &impl HasDataLayout) -> Self {
         MPlaceTy {
             mplace: MemPlace::from_scalar_ptr(
-                Scalar::from_uint(layout.align.abi(), cx.pointer_size()),
-                layout.align
+                Scalar::from_uint(layout.align.abi.bytes(), cx.pointer_size()),
+                layout.align.abi
             ),
             layout
         }
@@ -176,7 +176,7 @@ impl<'tcx, Tag> MPlaceTy<'tcx, Tag> {
 
     #[inline]
     fn from_aligned_ptr(ptr: Pointer<Tag>, layout: TyLayout<'tcx>) -> Self {
-        MPlaceTy { mplace: MemPlace::from_ptr(ptr, layout.align), layout }
+        MPlaceTy { mplace: MemPlace::from_ptr(ptr, layout.align.abi), layout }
     }
 
     #[inline]
@@ -287,7 +287,7 @@ where
 
         let mplace = MemPlace {
             ptr: val.to_scalar_ptr()?,
-            align: layout.align,
+            align: layout.align.abi,
             meta: val.to_meta()?,
         };
         Ok(MPlaceTy { mplace, layout })
@@ -356,11 +356,11 @@ where
                     // FIXME: Once we have made decisions for how to handle size and alignment
                     // of `extern type`, this should be adapted.  It is just a temporary hack
                     // to get some code to work that probably ought to work.
-                    field_layout.align,
+                    field_layout.align.abi,
                 None =>
                     bug!("Cannot compute offset for extern type field at non-0 offset"),
             };
-            (base.meta, offset.abi_align(align))
+            (base.meta, offset.align_to(align))
         } else {
             // base.meta could be present; we might be accessing a sized field of an unsized
             // struct.
@@ -730,7 +730,7 @@ where
                 }
 
                 self.memory.write_scalar(
-                    ptr, ptr_align.min(dest.layout.align), scalar, dest.layout.size
+                    ptr, ptr_align.min(dest.layout.align.abi), scalar, dest.layout.size
                 )
             }
             Immediate::ScalarPair(a_val, b_val) => {
@@ -740,8 +740,8 @@ where
                               dest.layout)
                 };
                 let (a_size, b_size) = (a.size(self), b.size(self));
-                let (a_align, b_align) = (a.align(self), b.align(self));
-                let b_offset = a_size.abi_align(b_align);
+                let (a_align, b_align) = (a.align(self).abi, b.align(self).abi);
+                let b_offset = a_size.align_to(b_align);
                 let b_ptr = ptr.offset(b_offset, self)?.into();
 
                 // It is tempting to verify `b_offset` against `layout.fields.offset(1)`,
@@ -899,7 +899,7 @@ where
             // FIXME: What should we do here? We should definitely also tag!
             Ok(MPlaceTy::dangling(layout, self))
         } else {
-            let ptr = self.memory.allocate(layout.size, layout.align, kind)?;
+            let ptr = self.memory.allocate(layout.size, layout.align.abi, kind)?;
             let ptr = M::tag_new_allocation(self, ptr, kind)?;
             Ok(MPlaceTy::from_aligned_ptr(ptr, layout))
         }
@@ -998,7 +998,8 @@ where
         if cfg!(debug_assertions) {
             let (size, align) = self.read_size_and_align_from_vtable(vtable)?;
             assert_eq!(size, layout.size);
-            assert_eq!(align.abi(), layout.align.abi()); // only ABI alignment is preserved
+            // only ABI alignment is preserved
+            assert_eq!(align, layout.align.abi);
         }
 
         let mplace = MPlaceTy {

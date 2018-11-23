@@ -201,7 +201,7 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         cx.sess().opts.optimize != config::OptLevel::No,
                         DIFlags::FlagZero,
                         argument_index,
-                        align.abi() as u32,
+                        align.bytes() as u32,
                     )
                 };
                 source_loc::set_debug_location(self,

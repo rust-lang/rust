@@ -152,7 +152,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
             llval: llptr,
             llextra,
             layout,
-            align: layout.align,
+            align: layout.align.abi,
         }
     }
 
@@ -228,7 +228,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
                     OperandValue::Immediate(a_llval)
                 } else {
                     assert_eq!(offset, a.value.size(bx.cx())
-                        .abi_align(b.value.align(bx.cx())));
+                        .align_to(b.value.align(bx.cx()).abi));
                     assert_eq!(field.size, b.value.size(bx.cx()));
                     OperandValue::Immediate(b_llval)
                 }
@@ -348,8 +348,8 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
             };
 
         // FIXME: choose an appropriate alignment, or use dynamic align somehow
-        let max_align = Align::from_bits(128, 128).unwrap();
-        let min_align = Align::from_bits(8, 8).unwrap();
+        let max_align = Align::from_bits(128).unwrap();
+        let min_align = Align::from_bits(8).unwrap();
 
         // Allocate an appropriate region on the stack, and copy the value into it
         let (llsize, _) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
@@ -470,7 +470,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.load_operand(PlaceRef::new_sized(
                             bx.cx().const_undef(bx.cx().type_ptr_to(bx.cx().backend_type(layout))),
                             layout,
-                            layout.align,
+                            layout.align.abi,
                         ))
                     })
             }
