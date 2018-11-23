@@ -3237,7 +3237,17 @@ impl<'a> Resolver<'a> {
                     err.span_suggestions_with_applicability(
                         span,
                         &msg,
-                        enum_candidates.into_iter().map(|(_variant, enum_ty)| enum_ty),
+                        enum_candidates.into_iter()
+                            .map(|(_variant_path, enum_ty_path)| enum_ty_path)
+                            // variants reëxported in prelude doesn't mean `prelude::v1` is the
+                            // type name! FIXME: is there a more principled way to do this that
+                            // would work for other reëxports?
+                            .filter(|enum_ty_path| enum_ty_path != "std::prelude::v1")
+                            // also say `Option` rather than `std::prelude::v1::Option`
+                            .map(|enum_ty_path| {
+                                // FIXME #56861: DRYer prelude filtering
+                                enum_ty_path.trim_start_matches("std::prelude::v1::").to_owned()
+                            }),
                         Applicability::MachineApplicable,
                     );
                 }
