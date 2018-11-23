@@ -1,0 +1,14 @@
+error: mutable references in const fn are unstable
+  --> $DIR/mutable_borrow.rs:3:9
+   |
+LL |     let b = &mut a; //~ ERROR mutable references in const fn are unstable
+   |         ^
+
+error: mutable references in const fn are unstable
+  --> $DIR/mutable_borrow.rs:12:13
+   |
+LL |         let b = &mut a; //~ ERROR mutable references in const fn are unstable
+   |             ^
+
+error: aborting due to 2 previous errors
+
