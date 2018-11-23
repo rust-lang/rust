@@ -49,7 +49,7 @@ fn assemble_clauses_from_assoc_ty_values<'tcx>(
 }
 
 
-fn program_clauses_for_raw_ptr<'tcx>(
+fn wf_clause_for_raw_ptr<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     mutbl: hir::Mutability
 ) -> Clauses<'tcx> {
@@ -66,7 +66,7 @@ fn program_clauses_for_raw_ptr<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-fn program_clauses_for_fn_ptr<'tcx>(
+fn wf_clause_for_fn_ptr<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     arity_and_output: usize,
     variadic: bool,
@@ -87,7 +87,7 @@ fn program_clauses_for_fn_ptr<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-fn program_clauses_for_slice<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
+fn wf_clause_for_slice<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
     let ty = generic_types::bound(tcx, 0);
     let slice_ty = tcx.mk_slice(ty);
 
@@ -116,7 +116,7 @@ fn program_clauses_for_slice<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tc
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-fn program_clauses_for_array<'tcx>(
+fn wf_clause_for_array<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     length: &'tcx ty::Const<'tcx>
 ) -> Clauses<'tcx> {
@@ -148,7 +148,7 @@ fn program_clauses_for_array<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-fn program_clauses_for_tuple<'tcx>(
+fn wf_clause_for_tuple<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     arity: usize
 ) -> Clauses<'tcx> {
@@ -189,7 +189,7 @@ fn program_clauses_for_tuple<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-fn program_clauses_for_ref<'tcx>(
+fn wf_clause_for_ref<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     mutbl: hir::Mutability
 ) -> Clauses<'tcx> {
@@ -202,13 +202,16 @@ fn program_clauses_for_ref<'tcx>(
         mutbl,
     });
 
-    let outlives: DomainGoal = ty::OutlivesPredicate(ty, region).lower();
+    let _outlives: DomainGoal = ty::OutlivesPredicate(ty, region).lower();
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(ref_ty)),
-        hypotheses: tcx.mk_goals(
-            iter::once(tcx.mk_goal(outlives.into_goal()))
-        ),
-        category: ProgramClauseCategory::ImpliedBound,
+        hypotheses: ty::List::empty(),
+
+        // FIXME: restore this later once we get better at handling regions
+        // hypotheses: tcx.mk_goals(
+        //     iter::once(tcx.mk_goal(outlives.into_goal()))
+        // ),
+        category: ProgramClauseCategory::WellFormed,
     };
     let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
 
@@ -323,6 +326,8 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                     ty::Float(..) |
                     ty::Str |
                     ty::Param(..) |
+                    ty::Placeholder(..) |
+                    ty::Error |
                     ty::Never => {
                         let wf_clause = ProgramClause {
                             goal: DomainGoal::WellFormed(WellFormed::Ty(ty)),
@@ -335,12 +340,12 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                     }
 
                     // Always WF (recall that we do not check for parameters to be WF).
-                    ty::RawPtr(ptr) => program_clauses_for_raw_ptr(self.infcx.tcx, ptr.mutbl),
+                    ty::RawPtr(ptr) => wf_clause_for_raw_ptr(self.infcx.tcx, ptr.mutbl),
 
                     // Always WF (recall that we do not check for parameters to be WF).
                     ty::FnPtr(fn_ptr) => {
                         let fn_ptr = fn_ptr.skip_binder();
-                        program_clauses_for_fn_ptr(
+                        wf_clause_for_fn_ptr(
                             self.infcx.tcx,
                             fn_ptr.inputs_and_output.len(),
                             fn_ptr.variadic,
@@ -350,19 +355,19 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                     }
 
                     // WF if inner type is `Sized`.
-                    ty::Slice(..) => program_clauses_for_slice(self.infcx.tcx),
+                    ty::Slice(..) => wf_clause_for_slice(self.infcx.tcx),
 
                     // WF if inner type is `Sized`.
-                    ty::Array(_, length) => program_clauses_for_array(self.infcx.tcx, length),
+                    ty::Array(_, length) => wf_clause_for_array(self.infcx.tcx, length),
 
                     // WF if all types but the last one are `Sized`.
-                    ty::Tuple(types) => program_clauses_for_tuple(
+                    ty::Tuple(types) => wf_clause_for_tuple(
                         self.infcx.tcx,
                         types.len()
                     ),
 
                     // WF if `sub_ty` outlives `region`.
-                    ty::Ref(_, _, mutbl) => program_clauses_for_ref(self.infcx.tcx, mutbl),
+                    ty::Ref(_, _, mutbl) => wf_clause_for_ref(self.infcx.tcx, mutbl),
 
                     ty::Dynamic(..) => {
                         // FIXME: no rules yet for trait objects
@@ -381,12 +386,24 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                         self.infcx.tcx.program_clauses_for(def_id)
                     }
 
+                    // Artificially trigger an ambiguity.
+                    ty::Infer(..) => {
+                        let tcx = self.infcx.tcx;
+                        let types = [tcx.types.i32, tcx.types.u32, tcx.types.f32, tcx.types.f64];
+                        let clauses = types.iter()
+                            .cloned()
+                            .map(|ty| ProgramClause {
+                                goal: DomainGoal::WellFormed(WellFormed::Ty(ty)),
+                                hypotheses: ty::List::empty(),
+                                category: ProgramClauseCategory::WellFormed,
+                            })
+                            .map(|clause| Clause::Implies(clause));
+                        tcx.mk_clauses(clauses)
+                    }
+
                     ty::GeneratorWitness(..) |
-                    ty::Placeholder(..) |
                     ty::UnnormalizedProjection(..) |
-                    ty::Infer(..) |
-                    ty::Bound(..) |
-                    ty::Error => {
+                    ty::Bound(..) => {
                         bug!("unexpected type {:?}", ty)
                     }
                 };
