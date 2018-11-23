@@ -2073,6 +2073,7 @@ dependencies = [
 name = "rustc-main"
 version = "0.0.0"
 dependencies = [
+ "rustc_codegen_ssa 0.0.0",
  "rustc_driver 0.0.0",
  "rustc_target 0.0.0",
 ]
@@ -2169,7 +2170,6 @@ dependencies = [
  "memmap 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-demangle 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "rustc_codegen_ssa 0.0.0",
  "rustc_llvm 0.0.0",
 ]
 
@@ -2177,10 +2177,27 @@ dependencies = [
 name = "rustc_codegen_ssa"
 version = "0.0.0"
 dependencies = [
+ "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jobserver 0.1.11 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.43 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "memmap 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc 0.0.0",
  "rustc-demangle 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc_allocator 0.0.0",
+ "rustc_apfloat 0.0.0",
+ "rustc_codegen_utils 0.0.0",
+ "rustc_data_structures 0.0.0",
+ "rustc_errors 0.0.0",
+ "rustc_fs_util 0.0.0",
+ "rustc_incremental 0.0.0",
+ "rustc_mir 0.0.0",
+ "rustc_target 0.0.0",
+ "serialize 0.0.0",
+ "syntax 0.0.0",
+ "syntax_pos 0.0.0",
 ]
 
 [[package]]
