@@ -1164,14 +1164,26 @@ where
     ) -> bool;
 }
 
-pub trait ExClauseLift<'tcx>
+pub trait ChalkContextLift<'tcx>
 where
     Self: chalk_engine::context::Context + Clone,
 {
     type LiftedExClause: Debug + 'tcx;
+    type LiftedDelayedLiteral: Debug + 'tcx;
+    type LiftedLiteral: Debug + 'tcx;
 
     fn lift_ex_clause_to_tcx<'a, 'gcx>(
         ex_clause: &chalk_engine::ExClause<Self>,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
     ) -> Option<Self::LiftedExClause>;
+
+    fn lift_delayed_literal_to_tcx<'a, 'gcx>(
+        ex_clause: &chalk_engine::DelayedLiteral<Self>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    ) -> Option<Self::LiftedDelayedLiteral>;
+
+    fn lift_literal_to_tcx<'a, 'gcx>(
+        ex_clause: &chalk_engine::Literal<Self>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    ) -> Option<Self::LiftedLiteral>;
 }

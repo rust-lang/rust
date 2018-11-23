@@ -21,7 +21,7 @@ use rustc::infer::canonical::{
 use rustc::traits::{
     DomainGoal,
     ExClauseFold,
-    ExClauseLift,
+    ChalkContextLift,
     Goal,
     GoalKind,
     Clause,
@@ -441,9 +441,12 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
 
     fn lift_delayed_literal(
         &self,
-        _value: DelayedLiteral<ChalkArenas<'tcx>>,
+        value: DelayedLiteral<ChalkArenas<'tcx>>,
     ) -> DelayedLiteral<ChalkArenas<'gcx>> {
-        panic!("lift")
+        match self.infcx.tcx.lift_to_global(&value) {
+            Some(literal) => literal,
+            None => bug!("cannot lift {:?}", value),
+        }
     }
 
     fn into_ex_clause(
@@ -478,14 +481,45 @@ impl Debug for ChalkInferenceContext<'cx, 'gcx, 'tcx> {
     }
 }
 
-impl ExClauseLift<'gcx> for ChalkArenas<'a> {
-    type LiftedExClause = ChalkExClause<'gcx>;
+impl ChalkContextLift<'tcx> for ChalkArenas<'a> {
+    type LiftedExClause = ChalkExClause<'tcx>;
+    type LiftedDelayedLiteral = DelayedLiteral<ChalkArenas<'tcx>>;
+    type LiftedLiteral = Literal<ChalkArenas<'tcx>>;
 
     fn lift_ex_clause_to_tcx(
-        _ex_clause: &ChalkExClause<'a>,
-        _tcx: TyCtxt<'_, '_, 'tcx>,
+        ex_clause: &ChalkExClause<'a>,
+        tcx: TyCtxt<'_, 'gcx, 'tcx>
     ) -> Option<Self::LiftedExClause> {
-        panic!()
+        Some(ChalkExClause {
+            subst: tcx.lift(&ex_clause.subst)?,
+            delayed_literals: tcx.lift(&ex_clause.delayed_literals)?,
+            constraints: tcx.lift(&ex_clause.constraints)?,
+            subgoals: tcx.lift(&ex_clause.subgoals)?,
+        })
+    }
+
+    fn lift_delayed_literal_to_tcx(
+        literal: &DelayedLiteral<ChalkArenas<'a>>,
+        tcx: TyCtxt<'_, 'gcx, 'tcx>
+    ) -> Option<Self::LiftedDelayedLiteral> {
+        Some(match literal {
+            DelayedLiteral::CannotProve(()) => DelayedLiteral::CannotProve(()),
+            DelayedLiteral::Negative(index) => DelayedLiteral::Negative(*index),
+            DelayedLiteral::Positive(index, subst) => DelayedLiteral::Positive(
+                *index,
+                tcx.lift(subst)?
+            )
+        })
+    }
+
+    fn lift_literal_to_tcx(
+        literal: &Literal<ChalkArenas<'a>>,
+        tcx: TyCtxt<'_, 'gcx, 'tcx>,
+    ) -> Option<Self::LiftedLiteral> {
+        Some(match literal {
+            Literal::Negative(goal) => Literal::Negative(tcx.lift(goal)?),
+            Literal::Positive(goal) =>  Literal::Positive(tcx.lift(goal)?),
+        })
     }
 }
 
