@@ -50,6 +50,7 @@ mod diagnostic;
 #[unstable(feature = "proc_macro_diagnostic", issue = "54140")]
 pub use diagnostic::{Diagnostic, Level, MultiSpan};
 
+use std::ops::{Bound, RangeBounds};
 use std::{ascii, fmt, iter};
 use std::path::PathBuf;
 use rustc_data_structures::sync::Lrc;
@@ -59,7 +60,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::parse::{self, token};
 use syntax::symbol::Symbol;
 use syntax::tokenstream::{self, DelimSpan};
-use syntax_pos::{Pos, FileName};
+use syntax_pos::{Pos, FileName, BytePos};
 
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens, or, more specifically, a sequence of token trees.
@@ -1167,6 +1168,50 @@ impl Literal {
     #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
     pub fn set_span(&mut self, span: Span) {
         self.span = span;
+    }
+
+    /// Returns a `Span` that is a subset of `self.span()` containing only the
+    /// source bytes in range `range`. Returns `None` if the would-be trimmed
+    /// span is outside the bounds of `self`.
+    // FIXME(SergioBenitez): check that the byte range starts and ends at a
+    // UTF-8 boundary of the source. otherwise, it's likely that a panic will
+    // occur elsewhere when the source text is printed.
+    // FIXME(SergioBenitez): there is no way for the user to know what
+    // `self.span()` actually maps to, so this method can currently only be
+    // called blindly. For example, `to_string()` for the character 'c' returns
+    // "'\u{63}'"; there is no way for the user to know whether the source text
+    // was 'c' or whether it was '\u{63}'.
+    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
+        let inner = self.span().0;
+        let length = inner.hi().to_usize() - inner.lo().to_usize();
+
+        let start = match range.start_bound() {
+            Bound::Included(&lo) => lo,
+            Bound::Excluded(&lo) => lo + 1,
+            Bound::Unbounded => 0,
+        };
+
+        let end = match range.end_bound() {
+            Bound::Included(&hi) => hi + 1,
+            Bound::Excluded(&hi) => hi,
+            Bound::Unbounded => length,
+        };
+
+        // Bounds check the values, preventing addition overflow and OOB spans.
+        if start > u32::max_value() as usize
+            || end > u32::max_value() as usize
+            || (u32::max_value() - start as u32) < inner.lo().to_u32()
+            || (u32::max_value() - end as u32) < inner.lo().to_u32()
+            || start >= end
+            || end > length
+        {
+            return None;
+        }
+
+        let new_lo = inner.lo() + BytePos::from_usize(start);
+        let new_hi = inner.lo() + BytePos::from_usize(end);
+        Some(Span(inner.with_lo(new_lo).with_hi(new_hi)))
     }
 }
 
