@@ -626,7 +626,7 @@ impl<'a, 'tcx> ClauseDumper<'a, 'tcx> {
 
             if attr.check_name("rustc_dump_env_program_clauses") {
                 let environment = self.tcx.environment(def_id);
-                clauses = Some(self.tcx.program_clauses_for_env(*environment.skip_binder()));
+                clauses = Some(self.tcx.program_clauses_for_env(environment));
             }
 
             if let Some(clauses) = clauses {

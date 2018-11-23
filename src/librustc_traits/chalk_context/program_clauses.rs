@@ -256,6 +256,8 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
     ) -> Vec<Clause<'tcx>> {
         use rustc::traits::WhereClause::*;
 
+        debug!("program_clauses(goal = {:?})", goal);
+
         let mut clauses = match goal {
             DomainGoal::Holds(Implemented(trait_predicate)) => {
                 // These come from:
@@ -345,20 +347,21 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                         self.infcx.tcx.program_clauses_for(data.item_def_id)
                     }
 
-                    // These types are always WF and non-parametric.
+                    // These types are always WF.
                     ty::Bool |
                     ty::Char |
                     ty::Int(..) |
                     ty::Uint(..) |
                     ty::Float(..) |
                     ty::Str |
+                    ty::Param(..) |
                     ty::Never => {
                         let wf_clause = ProgramClause {
                             goal: DomainGoal::WellFormed(WellFormed::Ty(ty)),
                             hypotheses: ty::List::empty(),
                             category: ProgramClauseCategory::WellFormed,
                         };
-                        let wf_clause = Clause::ForAll(ty::Binder::dummy(wf_clause));
+                        let wf_clause = Clause::Implies(wf_clause);
 
                         self.infcx.tcx.mk_clauses(iter::once(wf_clause))
                     }
@@ -415,7 +418,6 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                     ty::UnnormalizedProjection(..) |
                     ty::Infer(..) |
                     ty::Bound(..) |
-                    ty::Param(..) |
                     ty::Error => {
                         bug!("unexpected type {:?}", ty)
                     }
@@ -458,13 +460,18 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
             }
         };
 
+        debug!("program_clauses: clauses = {:?}", clauses);
+        debug!("program_clauses: adding clauses from environment = {:?}", environment);
+
         let environment = self.infcx.tcx.lift_to_global(environment)
             .expect("environment is not global");
-        clauses.extend(
-            self.infcx.tcx.program_clauses_for_env(environment)
-                .into_iter()
-                .cloned()
-        );
+
+        let env_clauses = self.infcx.tcx.program_clauses_for_env(environment);
+
+        debug!("program_clauses: env_clauses = {:?}", env_clauses);
+
+        clauses.extend(env_clauses.into_iter().cloned());
+        clauses.extend(environment.clauses.iter().cloned());
         clauses
     }
 }

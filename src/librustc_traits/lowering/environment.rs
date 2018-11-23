@@ -105,11 +105,11 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
             ty::Never |
             ty::Infer(..) |
             ty::Placeholder(..) |
+            ty::Param(..) |
             ty::Bound(..) => (),
 
             ty::GeneratorWitness(..) |
             ty::UnnormalizedProjection(..) |
-            ty::Param(..) |
             ty::Error => {
                 bug!("unexpected type {:?}", ty);
             }
@@ -192,17 +192,16 @@ crate fn program_clauses_for_env<'a, 'tcx>(
 crate fn environment<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId
-) -> ty::Binder<Environment<'tcx>> {
+) -> Environment<'tcx> {
     use super::{Lower, IntoFromEnvGoal};
     use rustc::hir::{Node, TraitItemKind, ImplItemKind, ItemKind, ForeignItemKind};
-    use rustc::ty::subst::{Subst, Substs};
+
+    debug!("environment(def_id = {:?})", def_id);
 
     // The environment of an impl Trait type is its defining function's environment.
     if let Some(parent) = ty::is_impl_trait_defn(tcx, def_id) {
         return environment(tcx, parent);
     }
-
-    let bound_vars = Substs::bound_vars_for_item(tcx, def_id);
 
     // Compute the bounds on `Self` and the type parameters.
     let ty::InstantiatedPredicates { predicates } = tcx.predicates_of(def_id)
@@ -210,7 +209,6 @@ crate fn environment<'a, 'tcx>(
 
     let clauses = predicates.into_iter()
         .map(|predicate| predicate.lower())
-        .map(|predicate| predicate.subst(tcx, bound_vars))
         .map(|domain_goal| domain_goal.map_bound(|bound| bound.into_from_env_goal()))
         .map(|domain_goal| domain_goal.map_bound(|bound| bound.into_program_clause()))
 
@@ -255,20 +253,18 @@ crate fn environment<'a, 'tcx>(
     // are well-formed.
     if is_impl {
         let trait_ref = tcx.impl_trait_ref(def_id)
-            .expect("not an impl")
-            .subst(tcx, bound_vars);
+            .expect("not an impl");
 
         input_tys.extend(
-            trait_ref.substs.types().flat_map(|ty| ty.walk())
+            trait_ref.input_types().flat_map(|ty| ty.walk())
         );
     }
 
     // In an fn, we assume that the arguments and all their constituents are
     // well-formed.
     if is_fn {
-        // `skip_binder` because we move region parameters to the root binder,
-        // restored in the return type of this query
-        let fn_sig = tcx.fn_sig(def_id).skip_binder().subst(tcx, bound_vars);
+        let fn_sig = tcx.fn_sig(def_id);
+        let fn_sig = tcx.liberate_late_bound_regions(def_id, &fn_sig);
 
         input_tys.extend(
             fn_sig.inputs().iter().flat_map(|ty| ty.walk())
@@ -277,17 +273,14 @@ crate fn environment<'a, 'tcx>(
 
     let clauses = clauses.chain(
         input_tys.into_iter()
-            // Filter out type parameters
-            .filter(|ty| match ty.sty {
-                ty::Bound(..) => false,
-                _ => true,
-            })
             .map(|ty| DomainGoal::FromEnv(FromEnv::Ty(ty)))
             .map(|domain_goal| domain_goal.into_program_clause())
             .map(Clause::Implies)
     );
 
-    ty::Binder::bind(Environment {
+    debug!("environment: clauses = {:?}", clauses);
+
+    Environment {
         clauses: tcx.mk_clauses(clauses),
-    })
+    }
 }
