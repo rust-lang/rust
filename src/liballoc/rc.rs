@@ -1187,8 +1187,9 @@ impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
 
 impl<T> Weak<T> {
     /// Constructs a new `Weak<T>`, without allocating any memory.
-    /// Calling [`upgrade`][Weak::upgrade] on the return value always gives [`None`].
+    /// Calling [`upgrade`] on the return value always gives [`None`].
     ///
+    /// [`upgrade`]: #method.upgrade
     /// [`None`]: ../../std/option/enum.Option.html
     ///
     /// # Examples
