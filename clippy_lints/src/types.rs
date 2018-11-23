@@ -1064,8 +1064,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
             if_chain!{
                 if let ty::RawPtr(from_ptr_ty) = &cast_from.sty;
                 if let ty::RawPtr(to_ptr_ty) = &cast_to.sty;
-                if let Some(from_align) = cx.layout_of(from_ptr_ty.ty).ok().map(|a| a.align.abi());
-                if let Some(to_align) = cx.layout_of(to_ptr_ty.ty).ok().map(|a| a.align.abi());
+                if let Some(from_align) = cx.layout_of(from_ptr_ty.ty).ok().map(|a| a.align.abi);
+                if let Some(to_align) = cx.layout_of(to_ptr_ty.ty).ok().map(|a| a.align.abi);
                 if from_align < to_align;
                 // with c_void, we inherently need to trust the user
                 if ! (
