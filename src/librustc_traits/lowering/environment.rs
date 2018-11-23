@@ -11,6 +11,7 @@ use rustc::ty::{self, TyCtxt, Ty};
 use rustc::hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashSet;
 use super::Lower;
+use crate::generic_types;
 use std::iter;
 
 struct ClauseVisitor<'set, 'a, 'tcx: 'a + 'set> {
@@ -38,20 +39,16 @@ impl ClauseVisitor<'set, 'a, 'tcx> {
             }
 
             // forall<'a, T> { `Outlives(T: 'a) :- FromEnv(&'a T)` }
-            ty::Ref(..) => {
-                use rustc::hir;
-
+            ty::Ref(_, _, mutbl) => {
                 let region = self.tcx.mk_region(
                     ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
                 );
-                let ty = self.tcx.mk_ty(
-                    ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(1).into())
-                );
-
+                let ty = generic_types::bound(self.tcx, 1);
                 let ref_ty = self.tcx.mk_ref(region, ty::TypeAndMut {
                     ty,
-                    mutbl: hir::Mutability::MutImmutable,
+                    mutbl,
                 });
+
                 let from_env = DomainGoal::FromEnv(FromEnv::Ty(ref_ty));
 
                 let clause = ProgramClause {

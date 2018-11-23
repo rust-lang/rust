@@ -15,6 +15,7 @@ use rustc::hir::def_id::DefId;
 use rustc_target::spec::abi;
 use super::ChalkInferenceContext;
 use crate::lowering::Lower;
+use crate::generic_types;
 use std::iter;
 
 fn assemble_clauses_from_impls<'tcx>(
@@ -47,24 +48,19 @@ fn assemble_clauses_from_assoc_ty_values<'tcx>(
     });
 }
 
-fn program_clauses_for_raw_ptr<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
-    let ty = ty::Bound(
-        ty::INNERMOST,
-        ty::BoundVar::from_u32(0).into()
-    );
-    let ty = tcx.mk_ty(ty);
 
-    let ptr_ty = tcx.mk_ptr(ty::TypeAndMut {
-        ty,
-        mutbl: hir::Mutability::MutImmutable,
-    });
+fn program_clauses_for_raw_ptr<'tcx>(
+    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    mutbl: hir::Mutability
+) -> Clauses<'tcx> {
+    let ptr_ty = generic_types::raw_ptr(tcx, mutbl);
 
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(ptr_ty)),
         hypotheses: ty::List::empty(),
         category: ProgramClauseCategory::WellFormed,
     };
-    let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
+    let wf_clause = Clause::Implies(wf_clause);
 
     // `forall<T> { WellFormed(*const T). }`
     tcx.mk_clauses(iter::once(wf_clause))
@@ -77,20 +73,7 @@ fn program_clauses_for_fn_ptr<'tcx>(
     unsafety: hir::Unsafety,
     abi: abi::Abi
 ) -> Clauses<'tcx> {
-    let inputs_and_output = tcx.mk_type_list(
-        (0..arity_and_output).into_iter()
-            .map(|i| ty::BoundVar::from(i))
-            // DebruijnIndex(1) because we are going to inject these in a `PolyFnSig`
-            .map(|var| tcx.mk_ty(ty::Bound(ty::DebruijnIndex::from(1usize), var.into())))
-    );
-
-    let fn_sig = ty::Binder::bind(ty::FnSig {
-        inputs_and_output,
-        variadic,
-        unsafety,
-        abi,
-    });
-    let fn_ptr = tcx.mk_fn_ptr(fn_sig);
+    let fn_ptr = generic_types::fn_ptr(tcx, arity_and_output, variadic, unsafety, abi);
 
     let wf_clause = ProgramClause {
         goal: DomainGoal::WellFormed(WellFormed::Ty(fn_ptr)),
@@ -105,12 +88,7 @@ fn program_clauses_for_fn_ptr<'tcx>(
 }
 
 fn program_clauses_for_slice<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
-    let ty = ty::Bound(
-        ty::INNERMOST,
-        ty::BoundVar::from_u32(0).into()
-    );
-    let ty = tcx.mk_ty(ty);
-
+    let ty = generic_types::bound(tcx, 0);
     let slice_ty = tcx.mk_slice(ty);
 
     let sized_trait = match tcx.lang_items().sized_trait() {
@@ -142,12 +120,7 @@ fn program_clauses_for_array<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     length: &'tcx ty::Const<'tcx>
 ) -> Clauses<'tcx> {
-    let ty = ty::Bound(
-        ty::INNERMOST,
-        ty::BoundVar::from_u32(0).into()
-    );
-    let ty = tcx.mk_ty(ty);
-
+    let ty = generic_types::bound(tcx, 0);
     let array_ty = tcx.mk_ty(ty::Array(ty, length));
 
     let sized_trait = match tcx.lang_items().sized_trait() {
@@ -179,12 +152,7 @@ fn program_clauses_for_tuple<'tcx>(
     tcx: ty::TyCtxt<'_, '_, 'tcx>,
     arity: usize
 ) -> Clauses<'tcx> {
-    let type_list = tcx.mk_type_list(
-        (0..arity).into_iter()
-            .map(|i| ty::BoundVar::from(i))
-            .map(|var| tcx.mk_ty(ty::Bound(ty::INNERMOST, var.into())))
-    );
-
+    let type_list = generic_types::type_list(tcx, arity);
     let tuple_ty = tcx.mk_ty(ty::Tuple(type_list));
 
     let sized_trait = match tcx.lang_items().sized_trait() {
@@ -221,17 +189,17 @@ fn program_clauses_for_tuple<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
-fn program_clauses_for_ref<'tcx>(tcx: ty::TyCtxt<'_, '_, 'tcx>) -> Clauses<'tcx> {
+fn program_clauses_for_ref<'tcx>(
+    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    mutbl: hir::Mutability
+) -> Clauses<'tcx> {
     let region = tcx.mk_region(
         ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
     );
-    let ty = tcx.mk_ty(
-        ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(1).into())
-    );
-
+    let ty = generic_types::bound(tcx, 1);
     let ref_ty = tcx.mk_ref(region, ty::TypeAndMut {
         ty,
-        mutbl: hir::Mutability::MutImmutable,
+        mutbl,
     });
 
     let outlives: DomainGoal = ty::OutlivesPredicate(ty, region).lower();
@@ -367,7 +335,7 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                     }
 
                     // Always WF (recall that we do not check for parameters to be WF).
-                    ty::RawPtr(..) => program_clauses_for_raw_ptr(self.infcx.tcx),
+                    ty::RawPtr(ptr) => program_clauses_for_raw_ptr(self.infcx.tcx, ptr.mutbl),
 
                     // Always WF (recall that we do not check for parameters to be WF).
                     ty::FnPtr(fn_ptr) => {
@@ -394,7 +362,7 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                     ),
 
                     // WF if `sub_ty` outlives `region`.
-                    ty::Ref(..) => program_clauses_for_ref(self.infcx.tcx),
+                    ty::Ref(_, _, mutbl) => program_clauses_for_ref(self.infcx.tcx, mutbl),
 
                     ty::Dynamic(..) => {
                         // FIXME: no rules yet for trait objects
