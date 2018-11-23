@@ -59,7 +59,10 @@ impl<'a> ParserAnyMacro<'a> {
                 }
                 let msg = &e.message[0];
                 e.message[0] = (
-                    msg.0.replace(", found `<eof>`", ", found the end of the macro arm"),
+                    format!(
+                        "macro expansion ends with an incomplete expression: {}",
+                        msg.0.replace(", found `<eof>`", ""),
+                    ),
                     msg.1,
                 );
             }

@@ -1,4 +1,4 @@
-error: expected expression, found the end of the macro arm
+error: macro expansion ends with an incomplete expression: expected expression
   --> $DIR/macro-in-expression-context-2.rs:5:16
    |
 LL | macro_rules! empty { () => () }
