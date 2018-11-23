@@ -7,8 +7,6 @@ os:
   - osx
   - windows
 
-sudo: false
-
 branches:
   # Don't build these branches
   except:
