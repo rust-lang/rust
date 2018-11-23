@@ -1714,6 +1714,10 @@ impl<'a, 'tcx> Lift<'tcx> for &'a List<Goal<'a>> {
         &self,
         tcx: TyCtxt<'b, 'gcx, 'tcx>,
     ) -> Option<&'tcx List<Goal<'tcx>>> {
+        if self.is_empty() {
+            return Some(List::empty());
+        }
+
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
@@ -1732,6 +1736,10 @@ impl<'a, 'tcx> Lift<'tcx> for &'a List<Clause<'a>> {
         &self,
         tcx: TyCtxt<'b, 'gcx, 'tcx>,
     ) -> Option<&'tcx List<Clause<'tcx>>> {
+        if self.is_empty() {
+            return Some(List::empty());
+        }
+
         if tcx.interners.arena.in_arena(*self as *const _) {
             return Some(unsafe { mem::transmute(*self) });
         }
