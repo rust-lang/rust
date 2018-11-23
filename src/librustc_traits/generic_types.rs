@@ -1,7 +1,9 @@
 //! Utilities for creating generic types with bound vars in place of parameter values.
 
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::subst::Substs;
 use rustc::hir;
+use rustc::hir::def_id::DefId;
 use rustc_target::spec::abi;
 
 crate fn bound(tcx: ty::TyCtxt<'_, '_, 'tcx>, index: u32) -> Ty<'tcx> {
@@ -50,7 +52,7 @@ crate fn type_list(tcx: ty::TyCtxt<'_, '_, 'tcx>, arity: usize) -> &'tcx ty::Lis
     )
 }
 
-crate fn _ref_ty(tcx: ty::TyCtxt<'_, '_, 'tcx>, mutbl: hir::Mutability) -> Ty<'tcx> {
+crate fn ref_ty(tcx: ty::TyCtxt<'_, '_, 'tcx>, mutbl: hir::Mutability) -> Ty<'tcx> {
     let region = tcx.mk_region(
         ty::ReLateBound(ty::INNERMOST, ty::BoundRegion::BrAnon(0))
     );
@@ -59,4 +61,20 @@ crate fn _ref_ty(tcx: ty::TyCtxt<'_, '_, 'tcx>, mutbl: hir::Mutability) -> Ty<'t
         ty: bound(tcx, 1),
         mutbl,
     })
+}
+
+crate fn fn_def(tcx: ty::TyCtxt<'_, '_, 'tcx>, def_id: DefId) -> Ty<'tcx> {
+    tcx.mk_ty(ty::FnDef(def_id, Substs::bound_vars_for_item(tcx, def_id)))
+}
+
+crate fn closure(tcx: ty::TyCtxt<'_, '_, 'tcx>, def_id: DefId) -> Ty<'tcx> {
+    tcx.mk_closure(def_id, ty::ClosureSubsts {
+        substs: Substs::bound_vars_for_item(tcx, def_id),
+    })
+}
+
+crate fn generator(tcx: ty::TyCtxt<'_, '_, 'tcx>, def_id: DefId) -> Ty<'tcx> {
+    tcx.mk_generator(def_id, ty::GeneratorSubsts {
+        substs: Substs::bound_vars_for_item(tcx, def_id),
+    }, hir::GeneratorMovability::Movable)
 }
