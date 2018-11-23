@@ -29,23 +29,19 @@ pub enum FileMatch {
 // A module for searching for libraries
 
 pub struct FileSearch<'a> {
-    pub sysroot: &'a Path,
-    pub triple: &'a str,
-    pub search_paths: &'a [SearchPath],
-    pub tlib_path: &'a SearchPath,
-    pub kind: PathKind,
+    sysroot: &'a Path,
+    triple: &'a str,
+    search_paths: &'a [SearchPath],
+    tlib_path: &'a SearchPath,
+    kind: PathKind,
 }
 
 impl<'a> FileSearch<'a> {
-    pub fn for_each_lib_search_path<F>(&self, mut f: F) where
-        F: FnMut(&SearchPath)
-    {
-        let iter = self.search_paths.iter().filter(|sp| sp.kind.matches(self.kind));
-        for search_path in iter {
-            f(search_path);
-        }
-
-        f(self.tlib_path);
+    pub fn search_paths(&self) -> impl Iterator<Item = &'a SearchPath> {
+        let kind = self.kind;
+        self.search_paths.iter()
+            .filter(move |sp| sp.kind.matches(kind))
+            .chain(std::iter::once(self.tlib_path))
     }
 
     pub fn get_lib_path(&self) -> PathBuf {
@@ -55,7 +51,7 @@ impl<'a> FileSearch<'a> {
     pub fn search<F>(&self, mut pick: F)
         where F: FnMut(&Path, PathKind) -> FileMatch
     {
-        self.for_each_lib_search_path(|search_path| {
+        for search_path in self.search_paths() {
             debug!("searching {}", search_path.dir.display());
             fn is_rlib(p: &Path) -> bool {
                 p.extension() == Some("rlib".as_ref())
@@ -78,7 +74,7 @@ impl<'a> FileSearch<'a> {
                     }
                 }
             }
-        });
+        }
     }
 
     pub fn new(sysroot: &'a Path,
@@ -97,13 +93,11 @@ impl<'a> FileSearch<'a> {
         }
     }
 
-    // Returns a list of directories where target-specific dylibs might be located.
-    pub fn get_dylib_search_paths(&self) -> Vec<PathBuf> {
-        let mut paths = Vec::new();
-        self.for_each_lib_search_path(|search_path| {
-            paths.push(search_path.dir.to_path_buf());
-        });
-        paths
+    // Returns just the directories within the search paths.
+    pub fn search_path_dirs(&self) -> Vec<PathBuf> {
+        self.search_paths()
+            .map(|sp| sp.dir.to_path_buf())
+            .collect()
     }
 
     // Returns a list of directories where target-specific tool binaries are located.

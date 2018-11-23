@@ -975,7 +975,7 @@ where
         let mut old_path = OsString::new();
         if cfg!(windows) {
             old_path = env::var_os("PATH").unwrap_or(old_path);
-            let mut new_path = sess.host_filesearch(PathKind::All).get_dylib_search_paths();
+            let mut new_path = sess.host_filesearch(PathKind::All).search_path_dirs();
             for path in env::split_paths(&old_path) {
                 if !new_path.contains(&path) {
                     new_path.push(path);
