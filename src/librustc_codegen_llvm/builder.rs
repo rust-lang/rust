@@ -58,7 +58,6 @@ impl BackendTypes for Builder<'_, 'll, 'tcx> {
     type Value = <CodegenCx<'ll, 'tcx> as BackendTypes>::Value;
     type BasicBlock = <CodegenCx<'ll, 'tcx> as BackendTypes>::BasicBlock;
     type Type = <CodegenCx<'ll, 'tcx> as BackendTypes>::Type;
-    type Context = <CodegenCx<'ll, 'tcx> as BackendTypes>::Context;
     type Funclet = <CodegenCx<'ll, 'tcx> as BackendTypes>::Funclet;
 
     type DIScope = <CodegenCx<'ll, 'tcx> as BackendTypes>::DIScope;

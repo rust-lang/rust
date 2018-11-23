@@ -41,11 +41,9 @@ pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
     fn type_func(&self, args: &[Self::Type], ret: Self::Type) -> Self::Type;
     fn type_variadic_func(&self, args: &[Self::Type], ret: Self::Type) -> Self::Type;
     fn type_struct(&self, els: &[Self::Type], packed: bool) -> Self::Type;
-    fn type_named_struct(&self, name: &str) -> Self::Type;
     fn type_array(&self, ty: Self::Type, len: u64) -> Self::Type;
     fn type_vector(&self, ty: Self::Type, len: u64) -> Self::Type;
     fn type_kind(&self, ty: Self::Type) -> TypeKind;
-    fn set_struct_body(&self, ty: Self::Type, els: &[Self::Type], packed: bool);
     fn type_ptr_to(&self, ty: Self::Type) -> Self::Type;
     fn element_type(&self, ty: Self::Type) -> Self::Type;
 
