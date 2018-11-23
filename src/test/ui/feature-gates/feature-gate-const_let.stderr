@@ -42,6 +42,50 @@ LL | | };
    |
    = help: add #![feature(const_let)] to the crate attributes to enable
 
-error: aborting due to 4 previous errors
+error[E0658]: let bindings in statics are unstable (see issue #48821)
+  --> $DIR/feature-gate-const_let.rs:25:13
+   |
+LL |     let x = 42;
+   |             ^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error[E0658]: statements in statics are unstable (see issue #48821)
+  --> $DIR/feature-gate-const_let.rs:25:13
+   |
+LL |     let x = 42;
+   |             ^^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error[E0658]: let bindings in statics are unstable (see issue #48821)
+  --> $DIR/feature-gate-const_let.rs:22:1
+   |
+LL | / static BAR: usize = {
+LL | |     //~^ ERROR statements in statics are unstable
+LL | |     //~| ERROR: let bindings in statics are unstable
+LL | |     let x = 42;
+...  |
+LL | |     42
+LL | | };
+   | |__^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error[E0658]: statements in statics are unstable (see issue #48821)
+  --> $DIR/feature-gate-const_let.rs:22:1
+   |
+LL | / static BAR: usize = {
+LL | |     //~^ ERROR statements in statics are unstable
+LL | |     //~| ERROR: let bindings in statics are unstable
+LL | |     let x = 42;
+...  |
+LL | |     42
+LL | | };
+   | |__^
+   |
+   = help: add #![feature(const_let)] to the crate attributes to enable
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

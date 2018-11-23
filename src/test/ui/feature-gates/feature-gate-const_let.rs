@@ -19,4 +19,13 @@ const FOO: usize = {
     42
 };
 
+static BAR: usize = {
+    //~^ ERROR statements in statics are unstable
+    //~| ERROR: let bindings in statics are unstable
+    let x = 42;
+    //~^ ERROR statements in statics are unstable
+    //~| ERROR: let bindings in statics are unstable
+    42
+};
+
 fn main() {}
