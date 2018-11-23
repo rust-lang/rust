@@ -78,3 +78,9 @@ pub union CUnionU128{a:u128}
 #[no_mangle]
 pub fn test_CUnionU128(_: CUnionU128) { loop {} }
 
+pub union UnionBool { b:bool }
+// CHECK: define zeroext i1 @test_UnionBool(i8 %b)
+#[no_mangle]
+pub fn test_UnionBool(b: UnionBool) -> bool { unsafe { b.b }  }
+// CHECK: %0 = trunc i8 %b to i1
+
