@@ -387,7 +387,7 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt<'_, '_, '_>,
             if ty_is_local(tcx, input_ty, in_crate) {
                 debug!("orphan_check_trait_ref: ty_is_local `{:?}`", input_ty);
                 return Ok(());
-            } else if is_uncovered_ty(input_ty) {
+            } else if let ty::Param(_) = input_ty.sty {
                 debug!("orphan_check_trait_ref: uncovered ty: `{:?}`", input_ty);
                 return Err(OrphanCheckErr::UncoveredTy(input_ty))
             }
@@ -432,46 +432,6 @@ fn orphan_check_trait_ref<'tcx>(tcx: TyCtxt<'_, '_, '_>,
         // If we exit above loop, never found a local type.
         debug!("orphan_check_trait_ref: no local type");
         Err(OrphanCheckErr::NoLocalInputType)
-    }
-}
-
-fn is_uncovered_ty(ty: Ty<'_>) -> bool {
-    match ty.sty {
-        ty::Bool |
-        ty::Char |
-        ty::Int(..) |
-        ty::Uint(..) |
-        ty::Float(..) |
-        ty::Str |
-        ty::FnDef(..) |
-        ty::FnPtr(_) |
-        ty::Array(..) |
-        ty::Slice(..) |
-        ty::RawPtr(..) |
-        ty::Ref(..) |
-        ty::Never |
-        ty::Tuple(..) |
-        ty::Bound(..) |
-        ty::Infer(..) |
-        ty::Adt(..) |
-        ty::Foreign(..) |
-        ty::Dynamic(..) |
-        ty::Error |
-        ty::Projection(..) => {
-            false
-        }
-
-        ty::Param(..)  => {
-            true
-        }
-
-        ty::UnnormalizedProjection(..) |
-        ty::Closure(..) |
-        ty::Generator(..) |
-        ty::GeneratorWitness(..) |
-        ty::Opaque(..) => {
-            bug!("is_uncovered_ty invoked on unexpected type: {:?}", ty)
-        }
     }
 }
 
