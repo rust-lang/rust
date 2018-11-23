@@ -106,7 +106,7 @@ impl<'a, 'tcx> CrateDebugContext<'a, 'tcx> {
             created_files: Default::default(),
             created_enum_disr_types: Default::default(),
             type_map: Default::default(),
-            namespace_map: RefCell::new(DefIdMap()),
+            namespace_map: RefCell::new(Default::default()),
             composite_types_completed: Default::default(),
         }
     }
@@ -201,7 +201,7 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
                         cx.sess().opts.optimize != config::OptLevel::No,
                         DIFlags::FlagZero,
                         argument_index,
-                        align.abi() as u32,
+                        align.bytes() as u32,
                     )
                 };
                 source_loc::set_debug_location(self,

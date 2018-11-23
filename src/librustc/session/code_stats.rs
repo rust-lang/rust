@@ -71,7 +71,7 @@ impl CodeStats {
         let info = TypeSizeInfo {
             kind,
             type_description: type_desc.to_string(),
-            align: align.abi(),
+            align: align.bytes(),
             overall_size: overall_size.bytes(),
             packed: packed,
             opt_discr_size: opt_discr_size.map(|s| s.bytes()),

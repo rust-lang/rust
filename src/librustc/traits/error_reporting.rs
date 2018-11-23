@@ -1092,13 +1092,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         if let Some(found_span) = found_span {
             err.span_label(found_span, format!("takes {}", found_str));
 
+            // move |_| { ... }
+            // ^^^^^^^^-- def_span
+            //
+            // move |_| { ... }
+            // ^^^^^-- prefix
+            let prefix_span = self.tcx.sess.source_map().span_until_non_whitespace(found_span);
+            // move |_| { ... }
+            //      ^^^-- pipe_span
+            let pipe_span = if let Some(span) = found_span.trim_start(prefix_span) {
+                span
+            } else {
+                found_span
+            };
+
             // Suggest to take and ignore the arguments with expected_args_length `_`s if
             // found arguments is empty (assume the user just wants to ignore args in this case).
             // For example, if `expected_args_length` is 2, suggest `|_, _|`.
             if found_args.is_empty() && is_closure {
                 let underscores = vec!["_"; expected_args.len()].join(", ");
                 err.span_suggestion_with_applicability(
-                    found_span,
+                    pipe_span,
                     &format!(
                         "consider changing the closure to take and ignore the expected argument{}",
                         if expected_args.len() < 2 {

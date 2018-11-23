@@ -185,7 +185,7 @@
 //! [slice]: primitive.slice.html
 //! [`atomic`]: sync/atomic/index.html
 //! [`collections`]: collections/index.html
-//! [`for`]: ../book/first-edition/loops.html#for
+//! [`for`]: ../book/ch03-05-control-flow.html#looping-through-a-collection-with-for
 //! [`format!`]: macro.format.html
 //! [`fs`]: fs/index.html
 //! [`io`]: io/index.html
@@ -200,14 +200,14 @@
 //! [`sync`]: sync/index.html
 //! [`thread`]: thread/index.html
 //! [`use std::env`]: env/index.html
-//! [`use`]: ../book/first-edition/crates-and-modules.html#importing-modules-with-use
-//! [crate root]: ../book/first-edition/crates-and-modules.html#basic-terminology-crates-and-modules
+//! [`use`]: ../book/ch07-02-modules-and-use-to-control-scope-and-privacy.html#the-use-keyword-to-bring-paths-into-a-scope
+//! [crate root]: ../book/ch07-01-packages-and-crates-for-making-libraries-and-executables.html
 //! [crates.io]: https://crates.io
-//! [deref-coercions]: ../book/second-edition/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
+//! [deref-coercions]: ../book/ch15-02-deref.html#implicit-deref-coercions-with-functions-and-methods
 //! [files]: fs/struct.File.html
 //! [multithreading]: thread/index.html
 //! [other]: #what-is-in-the-standard-library-documentation
-//! [primitive types]: ../book/first-edition/primitive-types.html
+//! [primitive types]: ../book/ch03-02-data-types.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",

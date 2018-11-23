@@ -104,7 +104,7 @@ impl<Tag, Extra: Default> Allocation<Tag, Extra> {
     }
 
     pub fn from_byte_aligned_bytes(slice: &[u8]) -> Self {
-        Allocation::from_bytes(slice, Align::from_bytes(1, 1).unwrap())
+        Allocation::from_bytes(slice, Align::from_bytes(1).unwrap())
     }
 
     pub fn undef(size: Size, align: Align) -> Self {

@@ -16,7 +16,7 @@ use ty::{self, Ty, layout};
 use ty::layout::{Size, Align, LayoutError};
 use rustc_target::spec::abi::Abi;
 
-use super::{Pointer, InboundsCheck, ScalarMaybeUndef};
+use super::{RawConst, Pointer, InboundsCheck, ScalarMaybeUndef};
 
 use backtrace::Backtrace;
 
@@ -46,6 +46,7 @@ impl ErrorHandled {
     }
 }
 
+pub type ConstEvalRawResult<'tcx> = Result<RawConst<'tcx>, ErrorHandled>;
 pub type ConstEvalResult<'tcx> = Result<&'tcx ty::Const<'tcx>, ErrorHandled>;
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
@@ -526,7 +527,7 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
                 write!(f, "tried to interpret an invalid 32-bit value as a char: {}", c),
             AlignmentCheckFailed { required, has } =>
                write!(f, "tried to access memory with alignment {}, but alignment {} is required",
-                      has.abi(), required.abi()),
+                      has.bytes(), required.bytes()),
             TypeNotPrimitive(ty) =>
                 write!(f, "expected primitive type, got {}", ty),
             Layout(ref err) =>
@@ -536,8 +537,9 @@ impl<'tcx, O: fmt::Debug> fmt::Debug for EvalErrorKind<'tcx, O> {
             MachineError(ref inner) =>
                 write!(f, "{}", inner),
             IncorrectAllocationInformation(size, size2, align, align2) =>
-                write!(f, "incorrect alloc info: expected size {} and align {}, got size {} and \
-                       align {}", size.bytes(), align.abi(), size2.bytes(), align2.abi()),
+                write!(f, "incorrect alloc info: expected size {} and align {}, \
+                           got size {} and align {}",
+                    size.bytes(), align.bytes(), size2.bytes(), align2.bytes()),
             Panic { ref msg, line, col, ref file } =>
                 write!(f, "the evaluated program panicked at '{}', {}:{}:{}", msg, file, line, col),
             InvalidDiscriminant(val) =>

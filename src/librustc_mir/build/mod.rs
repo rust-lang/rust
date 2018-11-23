@@ -829,7 +829,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 1,
             ),
             upvar_decls,
-            var_indices: NodeMap(),
+            var_indices: Default::default(),
             unit_temp: None,
             cached_resume_block: None,
             cached_return_block: None,

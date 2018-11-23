@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Check license of third-party deps by inspecting src/vendor
+//! Check license of third-party deps by inspecting vendor
 
 use std::collections::{BTreeSet, HashSet, HashMap};
 use std::fs::File;
@@ -203,7 +203,7 @@ impl<'a> From<CrateVersion<'a>> for Crate<'a> {
 /// Specifically, this checks that the license is correct.
 pub fn check(path: &Path, bad: &mut bool) {
     // Check licences
-    let path = path.join("vendor");
+    let path = path.join("../vendor");
     assert!(path.exists(), "vendor directory missing");
     let mut saw_dir = false;
     for dir in t!(path.read_dir()) {
@@ -215,7 +215,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             dir.path()
                 .to_str()
                 .unwrap()
-                .contains(&format!("src/vendor/{}", exception))
+                .contains(&format!("vendor/{}", exception))
         });
         if is_exception {
             continue;
@@ -304,7 +304,7 @@ fn get_deps(path: &Path, cargo: &Path) -> Resolve {
         .arg("--format-version")
         .arg("1")
         .arg("--manifest-path")
-        .arg(path.join("Cargo.toml"))
+        .arg(path.join("../Cargo.toml"))
         .output()
         .expect("Unable to run `cargo metadata`")
         .stdout;

@@ -425,8 +425,8 @@ fn resolve_lifetimes<'tcx>(
 fn krate<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> NamedRegionMap {
     let krate = tcx.hir.krate();
     let mut map = NamedRegionMap {
-        defs: NodeMap(),
-        late_bound: NodeSet(),
+        defs: Default::default(),
+        late_bound: Default::default(),
         object_lifetime_defaults: compute_object_lifetime_defaults(tcx),
     };
     {
@@ -437,8 +437,8 @@ fn krate<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> NamedRegionMap {
             trait_ref_hack: false,
             is_in_fn_syntax: false,
             labels_in_fn: vec![],
-            xcrate_object_lifetime_defaults: DefIdMap(),
-            lifetime_uses: &mut DefIdMap(),
+            xcrate_object_lifetime_defaults: Default::default(),
+            lifetime_uses: &mut Default::default(),
         };
         for (_, item) in &krate.items {
             visitor.visit_item(item);
@@ -1278,7 +1278,7 @@ fn extract_labels(ctxt: &mut LifetimeContext<'_, '_>, body: &hir::Body) {
 fn compute_object_lifetime_defaults(
     tcx: TyCtxt<'_, '_, '_>,
 ) -> NodeMap<Vec<ObjectLifetimeDefault>> {
-    let mut map = NodeMap();
+    let mut map = NodeMap::default();
     for item in tcx.hir.krate().items.values() {
         match item.node {
             hir::ItemKind::Struct(_, ref generics)
@@ -1432,7 +1432,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
         } = self;
         let labels_in_fn = replace(&mut self.labels_in_fn, vec![]);
         let xcrate_object_lifetime_defaults =
-            replace(&mut self.xcrate_object_lifetime_defaults, DefIdMap());
+            replace(&mut self.xcrate_object_lifetime_defaults, DefIdMap::default());
         let mut this = LifetimeContext {
             tcx: *tcx,
             map: map,
@@ -2741,9 +2741,7 @@ fn insert_late_bound_lifetimes(
         constrained_by_input.visit_ty(arg_ty);
     }
 
-    let mut appears_in_output = AllCollector {
-        regions: Default::default(),
-    };
+    let mut appears_in_output = AllCollector::default();
     intravisit::walk_fn_ret_ty(&mut appears_in_output, &decl.output);
 
     debug!(
@@ -2755,9 +2753,7 @@ fn insert_late_bound_lifetimes(
     //
     // Subtle point: because we disallow nested bindings, we can just
     // ignore binders here and scrape up all names we see.
-    let mut appears_in_where_clause = AllCollector {
-        regions: Default::default(),
-    };
+    let mut appears_in_where_clause = AllCollector::default();
     appears_in_where_clause.visit_generics(generics);
 
     for param in &generics.params {
@@ -2854,6 +2850,7 @@ fn insert_late_bound_lifetimes(
         }
     }
 
+    #[derive(Default)]
     struct AllCollector {
         regions: FxHashSet<hir::LifetimeName>,
     }

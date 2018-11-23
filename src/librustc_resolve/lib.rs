@@ -58,7 +58,6 @@ use syntax::ast::{self, Name, NodeId, Ident, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
 use syntax::ext::base::MacroKind;
-use syntax::feature_gate::{emit_feature_err, GateIssue};
 use syntax::symbol::{Symbol, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -1862,22 +1861,22 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
             primitive_type_table: PrimitiveTypeTable::new(),
 
-            def_map: NodeMap(),
-            import_map: NodeMap(),
-            freevars: NodeMap(),
-            freevars_seen: NodeMap(),
+            def_map: Default::default(),
+            import_map: Default::default(),
+            freevars: Default::default(),
+            freevars_seen: Default::default(),
             export_map: FxHashMap::default(),
-            trait_map: NodeMap(),
+            trait_map: Default::default(),
             module_map,
-            block_map: NodeMap(),
+            block_map: Default::default(),
             extern_module_map: FxHashMap::default(),
             binding_parent_modules: FxHashMap::default(),
 
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
-            glob_map: NodeMap(),
+            glob_map: Default::default(),
 
             used_imports: FxHashSet::default(),
-            maybe_unused_trait_imports: NodeSet(),
+            maybe_unused_trait_imports: Default::default(),
             maybe_unused_extern_crates: Vec::new(),
 
             unused_labels: FxHashMap::default(),
@@ -1907,7 +1906,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             name_already_seen: FxHashMap::default(),
             whitelisted_legacy_custom_derives: Vec::new(),
             potentially_unused_imports: Vec::new(),
-            struct_constructors: DefIdMap(),
+            struct_constructors: Default::default(),
             found_unresolved_macro: false,
             unused_macros: FxHashSet::default(),
             current_type_ascription: Vec::new(),
@@ -2115,7 +2114,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         if !module.no_implicit_prelude {
             if ns == TypeNS {
-                if let Some(binding) = self.extern_prelude_get(ident, !record_used, false) {
+                if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
                     return Some(LexicalScopeBinding::Item(binding));
                 }
             }
@@ -5022,7 +5021,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         self.name_already_seen.insert(name, span);
     }
 
-    fn extern_prelude_get(&mut self, ident: Ident, speculative: bool, skip_feature_gate: bool)
+    fn extern_prelude_get(&mut self, ident: Ident, speculative: bool)
                           -> Option<&'a NameBinding<'a>> {
         if ident.is_path_segment_keyword() {
             // Make sure `self`, `super` etc produce an error when passed to here.
@@ -5030,13 +5029,6 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         }
         self.extern_prelude.get(&ident.modern()).cloned().and_then(|entry| {
             if let Some(binding) = entry.extern_crate_item {
-                if !speculative && !skip_feature_gate && entry.introduced_by_item &&
-                   !self.session.features_untracked().extern_crate_item_prelude {
-                    emit_feature_err(&self.session.parse_sess, "extern_crate_item_prelude",
-                                     ident.span, GateIssue::Language,
-                                     "use of extern prelude names introduced \
-                                      with `extern crate` items is unstable");
-                }
                 Some(binding)
             } else {
                 let crate_id = if !speculative {

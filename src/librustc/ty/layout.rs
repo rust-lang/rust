@@ -226,9 +226,10 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             tcx.intern_layout(LayoutDetails::scalar(self, scalar_unit(value)))
         };
         let scalar_pair = |a: Scalar, b: Scalar| {
-            let align = a.value.align(dl).max(b.value.align(dl)).max(dl.aggregate_align);
-            let b_offset = a.value.size(dl).abi_align(b.value.align(dl));
-            let size = (b_offset + b.value.size(dl)).abi_align(align);
+            let b_align = b.value.align(dl);
+            let align = a.value.align(dl).max(b_align).max(dl.aggregate_align);
+            let b_offset = a.value.size(dl).align_to(b_align.abi);
+            let size = (b_offset + b.value.size(dl)).align_to(align.abi);
             LayoutDetails {
                 variants: Variants::Single { index: VariantIdx::new(0) },
                 fields: FieldPlacement::Arbitrary {
@@ -257,10 +258,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 bug!("struct cannot be packed and aligned");
             }
 
-            let pack = {
-                let pack = repr.pack as u64;
-                Align::from_bytes(pack, pack).unwrap()
-            };
+            let pack = Align::from_bytes(repr.pack as u64).unwrap();
 
             let mut align = if packed {
                 dl.i8_align
@@ -274,7 +272,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
             let mut optimize = !repr.inhibit_struct_field_reordering_opt();
             if let StructKind::Prefixed(_, align) = kind {
-                optimize &= align.abi() == 1;
+                optimize &= align.bytes() == 1;
             }
 
             if optimize {
@@ -285,7 +283,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 };
                 let optimizing = &mut inverse_memory_index[..end];
                 let field_align = |f: &TyLayout<'_>| {
-                    if packed { f.align.min(pack).abi() } else { f.align.abi() }
+                    if packed { f.align.abi.min(pack) } else { f.align.abi }
                 };
                 match kind {
                     StructKind::AlwaysSized |
@@ -312,13 +310,13 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             let mut offset = Size::ZERO;
 
             if let StructKind::Prefixed(prefix_size, prefix_align) = kind {
-                if packed {
-                    let prefix_align = prefix_align.min(pack);
-                    align = align.max(prefix_align);
+                let prefix_align = if packed {
+                    prefix_align.min(pack)
                 } else {
-                    align = align.max(prefix_align);
-                }
-                offset = prefix_size.abi_align(prefix_align);
+                    prefix_align
+                };
+                align = align.max(AbiAndPrefAlign::new(prefix_align));
+                offset = prefix_size.align_to(prefix_align);
             }
 
             for &i in &inverse_memory_index {
@@ -333,15 +331,13 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }
 
                 // Invariant: offset < dl.obj_size_bound() <= 1<<61
-                if packed {
-                    let field_pack = field.align.min(pack);
-                    offset = offset.abi_align(field_pack);
-                    align = align.max(field_pack);
-                }
-                else {
-                    offset = offset.abi_align(field.align);
-                    align = align.max(field.align);
-                }
+                let field_align = if packed {
+                    field.align.min(AbiAndPrefAlign::new(pack))
+                } else {
+                    field.align
+                };
+                offset = offset.align_to(field_align.abi);
+                align = align.max(field_align);
 
                 debug!("univariant offset: {:?} field: {:#?}", offset, field);
                 offsets[i as usize] = offset;
@@ -352,7 +348,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
 
             if repr.align > 0 {
                 let repr_align = repr.align as u64;
-                align = align.max(Align::from_bytes(repr_align, repr_align).unwrap());
+                align = align.max(AbiAndPrefAlign::new(Align::from_bytes(repr_align).unwrap()));
                 debug!("univariant repr_align: {:?}", repr_align);
             }
 
@@ -377,7 +373,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 memory_index = inverse_memory_index;
             }
 
-            let size = min_size.abi_align(align);
+            let size = min_size.align_to(align.abi);
             let mut abi = Abi::Aggregate { sized };
 
             // Unpack newtype ABIs and find scalar pairs.
@@ -394,7 +390,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         (Some((i, field)), None, None) => {
                             // Field fills the struct and it has a scalar or scalar pair ABI.
                             if offsets[i].bytes() == 0 &&
-                               align.abi() == field.align.abi() &&
+                               align.abi == field.align.abi &&
                                size == field.size {
                                 match field.abi {
                                     // For plain scalars, or vectors of them, we can't unpack
@@ -648,7 +644,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let size = element.size.checked_mul(count, dl)
                     .ok_or(LayoutError::SizeOverflow(ty))?;
                 let align = dl.vector_align(size);
-                let size = size.abi_align(align);
+                let size = size.align_to(align.abi);
 
                 tcx.intern_layout(LayoutDetails {
                     variants: Variants::Single { index: VariantIdx::new(0) },
@@ -680,10 +676,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         bug!("Union cannot be packed and aligned");
                     }
 
-                    let pack = {
-                        let pack = def.repr.pack as u64;
-                        Align::from_bytes(pack, pack).unwrap()
-                    };
+                    let pack = Align::from_bytes(def.repr.pack as u64).unwrap();
 
                     let mut align = if packed {
                         dl.i8_align
@@ -694,7 +687,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     if def.repr.align > 0 {
                         let repr_align = def.repr.align as u64;
                         align = align.max(
-                            Align::from_bytes(repr_align, repr_align).unwrap());
+                            AbiAndPrefAlign::new(Align::from_bytes(repr_align).unwrap()));
                     }
 
                     let optimize = !def.repr.inhibit_union_abi_opt();
@@ -704,12 +697,12 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     for field in &variants[index] {
                         assert!(!field.is_unsized());
 
-                        if packed {
-                            let field_pack = field.align.min(pack);
-                            align = align.max(field_pack);
+                        let field_align = if packed {
+                            field.align.min(AbiAndPrefAlign::new(pack))
                         } else {
-                            align = align.max(field.align);
-                        }
+                            field.align
+                        };
+                        align = align.max(field_align);
 
                         // If all non-ZST fields have the same ABI, forward this ABI
                         if optimize && !field.is_zst() {
@@ -749,7 +742,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                         fields: FieldPlacement::Union(variants[index].len()),
                         abi,
                         align,
-                        size: size.abi_align(align)
+                        size: size.align_to(align.abi)
                     }));
                 }
 
@@ -964,19 +957,19 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let mut size = Size::ZERO;
 
                 // We're interested in the smallest alignment, so start large.
-                let mut start_align = Align::from_bytes(256, 256).unwrap();
-                assert_eq!(Integer::for_abi_align(dl, start_align), None);
+                let mut start_align = Align::from_bytes(256).unwrap();
+                assert_eq!(Integer::for_align(dl, start_align), None);
 
                 // repr(C) on an enum tells us to make a (tag, union) layout,
                 // so we need to grow the prefix alignment to be at least
                 // the alignment of the union. (This value is used both for
                 // determining the alignment of the overall enum, and the
                 // determining the alignment of the payload after the tag.)
-                let mut prefix_align = min_ity.align(dl);
+                let mut prefix_align = min_ity.align(dl).abi;
                 if def.repr.c() {
                     for fields in &variants {
                         for field in fields {
-                            prefix_align = prefix_align.max(field.align);
+                            prefix_align = prefix_align.max(field.align.abi);
                         }
                     }
                 }
@@ -989,8 +982,8 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                     // Find the first field we can't move later
                     // to make room for a larger discriminant.
                     for field in st.fields.index_by_increasing_offset().map(|j| field_layouts[j]) {
-                        if !field.is_zst() || field.align.abi() != 1 {
-                            start_align = start_align.min(field.align);
+                        if !field.is_zst() || field.align.abi.bytes() != 1 {
+                            start_align = start_align.min(field.align.abi);
                             break;
                         }
                     }
@@ -1000,7 +993,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 }).collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
                 // Align the maximum variant size to the largest alignment.
-                size = size.abi_align(align);
+                size = size.align_to(align.abi);
 
                 if size.bytes() >= dl.obj_size_bound() {
                     return Err(LayoutError::SizeOverflow(ty));
@@ -1036,7 +1029,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 let mut ity = if def.repr.c() || def.repr.int.is_some() {
                     min_ity
                 } else {
-                    Integer::for_abi_align(dl, start_align).unwrap_or(min_ity)
+                    Integer::for_align(dl, start_align).unwrap_or(min_ity)
                 };
 
                 // If the alignment is not larger than the chosen discriminant size,
@@ -1204,7 +1197,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             let type_desc = format!("{:?}", layout.ty);
             self.tcx.sess.code_stats.borrow_mut().record_type_size(kind,
                                                                    type_desc,
-                                                                   layout.align,
+                                                                   layout.align.abi,
                                                                    layout.size,
                                                                    packed,
                                                                    opt_discr_size,
@@ -1251,7 +1244,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                             name: name.to_string(),
                             offset: offset.bytes(),
                             size: field_layout.size.bytes(),
-                            align: field_layout.align.abi(),
+                            align: field_layout.align.abi.bytes(),
                         }
                     }
                 }
@@ -1264,7 +1257,7 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
                 } else {
                     session::SizeKind::Exact
                 },
-                align: layout.align.abi(),
+                align: layout.align.abi.bytes(),
                 size: if min_size.bytes() == 0 {
                     layout.size.bytes()
                 } else {
@@ -1823,7 +1816,9 @@ impl<'a, 'tcx> LayoutCx<'tcx, TyCtxt<'a, 'tcx, 'tcx>> {
             Abi::ScalarPair(ref a, ref b) => {
                 // HACK(nox): We iter on `b` and then `a` because `max_by_key`
                 // returns the last maximum.
-                let niche = iter::once((b, a.value.size(self).abi_align(b.value.align(self))))
+                let niche = iter::once(
+                    (b, a.value.size(self).align_to(b.value.align(self).abi))
+                )
                     .chain(iter::once((a, Size::ZERO)))
                     .filter_map(|(scalar, offset)| scalar_niche(scalar, offset))
                     .max_by_key(|niche| niche.available);
@@ -1994,12 +1989,16 @@ impl_stable_hash_for!(enum ::ty::layout::Primitive {
     Pointer
 });
 
+impl_stable_hash_for!(struct ::ty::layout::AbiAndPrefAlign {
+    abi,
+    pref
+});
+
 impl<'gcx> HashStable<StableHashingContext<'gcx>> for Align {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'gcx>,
                                           hasher: &mut StableHasher<W>) {
-        self.abi().hash_stable(hcx, hasher);
-        self.pref().hash_stable(hcx, hasher);
+        self.bytes().hash_stable(hcx, hasher);
     }
 }
 

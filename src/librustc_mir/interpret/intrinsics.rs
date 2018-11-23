@@ -60,7 +60,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         match intrinsic_name {
             "min_align_of" => {
                 let elem_ty = substs.type_at(0);
-                let elem_align = self.layout_of(elem_ty)?.align.abi();
+                let elem_align = self.layout_of(elem_ty)?.align.abi.bytes();
                 let align_val = Scalar::from_uint(elem_align, dest.layout.size);
                 self.write_scalar(align_val, dest)?;
             }

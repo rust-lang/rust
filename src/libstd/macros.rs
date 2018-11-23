@@ -32,7 +32,7 @@
 ///
 /// [`Result`] enum is often a better solution for recovering from errors than
 /// using the `panic!` macro.  This macro should be used to avoid proceeding using
-/// incorrect values, such as from external sources.  Detailed information about
+/// incorrect values, such as from external sources. Detailed information about
 /// error handling is found in the [book].
 ///
 /// The multi-argument form of this macro panics with a string and has the
@@ -45,7 +45,7 @@
 /// [`Result`]: ../std/result/enum.Result.html
 /// [`format!`]: ../std/macro.format.html
 /// [`compile_error!`]: ../std/macro.compile_error.html
-/// [book]: ../book/second-edition/ch09-01-unrecoverable-errors-with-panic.html
+/// [book]: ../book/ch09-00-error-handling.html
 ///
 /// # Current implementation
 ///
@@ -839,8 +839,8 @@ mod builtin {
     /// boolean expression evaluation of configuration flags. This frequently
     /// leads to less duplicated code.
     ///
-    /// The syntax given to this macro is the same syntax as [the `cfg`
-    /// attribute](../book/first-edition/conditional-compilation.html).
+    /// The syntax given to this macro is the same syntax as the `cfg`
+    /// attribute.
     ///
     /// # Examples
     ///
@@ -915,7 +915,7 @@ mod builtin {
     /// Unsafe code relies on `assert!` to enforce run-time invariants that, if
     /// violated could lead to unsafety.
     ///
-    /// Other use-cases of `assert!` include [testing] and enforcing run-time
+    /// Other use-cases of `assert!` include testing and enforcing run-time
     /// invariants in safe code (whose violation cannot result in unsafety).
     ///
     /// # Custom Messages
@@ -926,7 +926,6 @@ mod builtin {
     ///
     /// [`panic!`]: macro.panic.html
     /// [`debug_assert!`]: macro.debug_assert.html
-    /// [testing]: ../book/second-edition/ch11-01-writing-tests.html#checking-results-with-the-assert-macro
     /// [`std::fmt`]: ../std/fmt/index.html
     ///
     /// # Examples

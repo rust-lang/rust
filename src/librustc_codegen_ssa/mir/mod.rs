@@ -304,7 +304,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 if local == mir::RETURN_PLACE && fx.fn_ty.ret.is_indirect() {
                     debug!("alloc: {:?} (return place) -> place", local);
                     let llretptr = fx.cx.get_param(llfn, 0);
-                    LocalRef::Place(PlaceRef::new_sized(llretptr, layout, layout.align))
+                    LocalRef::Place(PlaceRef::new_sized(llretptr, layout, layout.align.abi))
                 } else if memory_locals.contains(local) {
                     debug!("alloc: {:?} -> place", local);
                     if layout.is_unsized() {
@@ -555,7 +555,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             let llarg = bx.cx().get_param(bx.llfn(), llarg_idx as c_uint);
             bx.set_value_name(llarg, &name);
             llarg_idx += 1;
-            PlaceRef::new_sized(llarg, arg.layout, arg.layout.align)
+            PlaceRef::new_sized(llarg, arg.layout, arg.layout.align.abi)
         } else if arg.is_unsized_indirect() {
             // As the storage for the indirect argument lives during
             // the whole function call, we just copy the fat pointer.

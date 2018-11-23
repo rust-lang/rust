@@ -22,10 +22,10 @@ mod pointer;
 
 pub use self::error::{
     EvalError, EvalResult, EvalErrorKind, AssertMessage, ConstEvalErr, struct_error,
-    FrameInfo, ConstEvalResult, ErrorHandled,
+    FrameInfo, ConstEvalRawResult, ConstEvalResult, ErrorHandled,
 };
 
-pub use self::value::{Scalar, ConstValue, ScalarMaybeUndef};
+pub use self::value::{Scalar, ScalarMaybeUndef, RawConst, ConstValue};
 
 pub use self::allocation::{
     InboundsCheck, Allocation, AllocationExtra,

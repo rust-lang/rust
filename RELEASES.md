@@ -1,3 +1,80 @@
+Version 1.31.0 (2018-12-06)
+==========================
+
+Language
+--------
+- 🎉 [This version marks the release of the 2018 edition of Rust.][54057] 🎉 
+- [New lifetime elision rules now allow for eliding lifetimes in functions and
+  impl headers.][54778] E.g. `impl<'a> Reader for BufReader<'a> {}` can now be
+  `impl Reader for BufReader<'_> {}`. Lifetimes are still required to be defined
+  in structs.
+- [You can now define and use `const` functions.][54835] These are currently
+  a strict minimal subset of the [const fn RFC][RFC-911]. Refer to the
+  [language reference][const-reference] for what exactly is available.
+- [You can now use tool lints, which allow you to scope lints from external
+  tools using attributes.][54870] E.g. `#[allow(clippy::filter_map)]`.
+- [`#[no_mangle]` and `#[export_name]` attributes can now be located anywhere in
+  a crate, not just in exported functions.][54451]
+- [You can now use parentheses in pattern matches.][54497]
+
+Compiler
+--------
+- [Updated musl to 1.1.20][54430]
+
+Libraries
+---------
+- [You can now convert `num::NonZero*` types to their raw equivalvents using the
+  `From` trait.][54240] E.g. `u8` now implements `From<NonZeroU8>`.
+- [You can now convert a `&Option<T>` into `Option<&T>` and `&mut Option<T>`
+  into `Option<&mut T>` using the `From` trait.][53218]
+- [You can now multiply (`*`) a `time::Duration` by a `u32`.][52813]
+
+
+Stabilized APIs
+---------------
+- [`slice::align_to`]
+- [`slice::align_to_mut`]
+- [`slice::chunks_exact`]
+- [`slice::chunks_exact_mut`]
+- [`slice::rchunks`]
+- [`slice::rchunks_mut`]
+- [`slice::rchunks_exact`]
+- [`slice::rchunks_exact_mut`]
+- [`Option::replace`]
+
+Cargo
+-----
+- [Cargo will now download crates in parallel using HTTP/2.][cargo/6005]
+- [You can now rename packages in your Cargo.toml][cargo/6319] We have a guide
+  on [how to use the `package` key in your dependencies.][cargo-rename-reference]
+
+[52813]: https://github.com/rust-lang/rust/pull/52813/
+[53218]: https://github.com/rust-lang/rust/pull/53218/
+[53555]: https://github.com/rust-lang/rust/issues/53555/
+[54057]: https://github.com/rust-lang/rust/pull/54057/
+[54240]: https://github.com/rust-lang/rust/pull/54240/
+[54430]: https://github.com/rust-lang/rust/pull/54430/
+[54451]: https://github.com/rust-lang/rust/pull/54451/
+[54497]: https://github.com/rust-lang/rust/pull/54497/
+[54778]: https://github.com/rust-lang/rust/pull/54778/
+[54835]: https://github.com/rust-lang/rust/pull/54835/
+[54870]: https://github.com/rust-lang/rust/pull/54870/
+[RFC-911]: https://github.com/rust-lang/rfcs/pull/911
+[`Option::replace`]: https://doc.rust-lang.org/std/option/enum.Option.html#method.replace
+[`slice::align_to_mut`]: https://doc.rust-lang.org/std/primitive.slice.html#method.align_to_mut
+[`slice::align_to`]: https://doc.rust-lang.org/std/primitive.slice.html#method.align_to
+[`slice::chunks_exact_mut`]: https://doc.rust-lang.org/std/primitive.slice.html#method.chunks_exact_mut
+[`slice::chunks_exact`]: https://doc.rust-lang.org/std/primitive.slice.html#method.chunks_exact
+[`slice::rchunks_exact_mut`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rchunks_mut
+[`slice::rchunks_exact`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rchunks_exact
+[`slice::rchunks_mut`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rchunks_mut
+[`slice::rchunks`]: https://doc.rust-lang.org/std/primitive.slice.html#method.rchunks
+[cargo/6005]: https://github.com/rust-lang/cargo/pull/6005/
+[cargo/6319]: https://github.com/rust-lang/cargo/pull/6319/
+[cargo-rename-reference]: https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#renaming-dependencies-in-cargotoml
+[const-reference]: https://doc.rust-lang.org/reference/items/functions.html#const-functions
+
+
 Version 1.30.0 (2018-10-25)
 ==========================
 

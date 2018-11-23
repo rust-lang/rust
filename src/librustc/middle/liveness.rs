@@ -272,9 +272,9 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             tcx,
             num_live_nodes: 0,
             num_vars: 0,
-            live_node_map: HirIdMap(),
-            variable_map: HirIdMap(),
-            capture_info_map: NodeMap(),
+            live_node_map: HirIdMap::default(),
+            variable_map: HirIdMap::default(),
+            capture_info_map: Default::default(),
             var_kinds: Vec::new(),
             lnks: Vec::new(),
         }
@@ -397,7 +397,7 @@ fn visit_fn<'a, 'tcx: 'a>(ir: &mut IrMaps<'a, 'tcx>,
 fn add_from_pat<'a, 'tcx>(ir: &mut IrMaps<'a, 'tcx>, pat: &P<hir::Pat>) {
     // For struct patterns, take note of which fields used shorthand
     // (`x` rather than `x: x`).
-    let mut shorthand_field_ids = HirIdSet();
+    let mut shorthand_field_ids = HirIdSet::default();
     let mut pats = VecDeque::new();
     pats.push_back(pat);
     while let Some(pat) = pats.pop_front() {
@@ -691,8 +691,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             s: specials,
             successors: vec![invalid_node(); num_live_nodes],
             rwu_table: RWUTable::new(num_live_nodes * num_vars),
-            break_ln: NodeMap(),
-            cont_ln: NodeMap(),
+            break_ln: Default::default(),
+            cont_ln: Default::default(),
         }
     }
 

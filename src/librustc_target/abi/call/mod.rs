@@ -142,23 +142,23 @@ impl Reg {
         match self.kind {
             RegKind::Integer => {
                 match self.size.bits() {
-                    1 => dl.i1_align,
-                    2..=8 => dl.i8_align,
-                    9..=16 => dl.i16_align,
-                    17..=32 => dl.i32_align,
-                    33..=64 => dl.i64_align,
-                    65..=128 => dl.i128_align,
+                    1 => dl.i1_align.abi,
+                    2..=8 => dl.i8_align.abi,
+                    9..=16 => dl.i16_align.abi,
+                    17..=32 => dl.i32_align.abi,
+                    33..=64 => dl.i64_align.abi,
+                    65..=128 => dl.i128_align.abi,
                     _ => panic!("unsupported integer: {:?}", self)
                 }
             }
             RegKind::Float => {
                 match self.size.bits() {
-                    32 => dl.f32_align,
-                    64 => dl.f64_align,
+                    32 => dl.f32_align.abi,
+                    64 => dl.f64_align.abi,
                     _ => panic!("unsupported float: {:?}", self)
                 }
             }
-            RegKind::Vector => dl.vector_align(self.size)
+            RegKind::Vector => dl.vector_align(self.size).abi,
         }
     }
 }
@@ -227,13 +227,13 @@ impl CastTarget {
 
     pub fn size<C: HasDataLayout>(&self, cx: &C) -> Size {
         (self.prefix_chunk * self.prefix.iter().filter(|x| x.is_some()).count() as u64)
-             .abi_align(self.rest.align(cx)) + self.rest.total
+             .align_to(self.rest.align(cx)) + self.rest.total
     }
 
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         self.prefix.iter()
             .filter_map(|x| x.map(|kind| Reg { kind, size: self.prefix_chunk }.align(cx)))
-            .fold(cx.data_layout().aggregate_align.max(self.rest.align(cx)),
+            .fold(cx.data_layout().aggregate_align.abi.max(self.rest.align(cx)),
                 |acc, align| acc.max(align))
     }
 }
@@ -369,7 +369,7 @@ impl<'a, Ty> ArgType<'a, Ty> {
         attrs.pointee_size = self.layout.size;
         // FIXME(eddyb) We should be doing this, but at least on
         // i686-pc-windows-msvc, it results in wrong stack offsets.
-        // attrs.pointee_align = Some(self.layout.align);
+        // attrs.pointee_align = Some(self.layout.align.abi);
 
         let extra_attrs = if self.layout.is_unsized() {
             Some(ArgAttributes::new())

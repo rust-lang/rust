@@ -1149,7 +1149,7 @@ pub fn build_session_(
         local_crate_source_file,
         working_dir,
         lint_store: RwLock::new(lint::LintStore::new()),
-        buffered_lints: Lock::new(Some(lint::LintBuffer::new())),
+        buffered_lints: Lock::new(Some(Default::default())),
         one_time_diagnostics: Default::default(),
         plugin_llvm_passes: OneThread::new(RefCell::new(Vec::new())),
         plugin_attributes: OneThread::new(RefCell::new(Vec::new())),

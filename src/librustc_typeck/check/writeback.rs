@@ -56,7 +56,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let used_trait_imports = mem::replace(
             &mut self.tables.borrow_mut().used_trait_imports,
-            Lrc::new(DefIdSet()),
+            Lrc::new(DefIdSet::default()),
         );
         debug!(
             "used_trait_imports({:?}) = {:?}",

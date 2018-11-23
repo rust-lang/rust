@@ -15,10 +15,10 @@ use super::intrinsic::IntrinsicCallMethods;
 use super::type_::ArgTypeMethods;
 use super::HasCodegen;
 use common::{AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope};
-use std::ffi::CStr;
 use mir::operand::OperandRef;
 use mir::place::PlaceRef;
 use rustc::ty::layout::{Align, Size};
+use std::ffi::CStr;
 use MemFlags;
 
 use std::borrow::Cow;

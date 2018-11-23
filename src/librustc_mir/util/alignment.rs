@@ -30,7 +30,7 @@ pub fn is_disaligned<'a, 'tcx, L>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let ty = place.ty(local_decls, tcx).to_ty(tcx);
     match tcx.layout_raw(param_env.and(ty)) {
-        Ok(layout) if layout.align.abi() == 1 => {
+        Ok(layout) if layout.align.abi.bytes() == 1 => {
             // if the alignment is 1, the type can't be further
             // disaligned.
             debug!("is_disaligned({:?}) - align = 1", place);

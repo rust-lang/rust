@@ -11,10 +11,12 @@ LL |     bar: Bar<'a>,
    |              ^^ unexpected lifetime argument
 
 error[E0107]: wrong number of lifetime arguments: expected 1, found 3
-  --> $DIR/E0107.rs:27:11
+  --> $DIR/E0107.rs:27:19
    |
 LL |     foo2: Foo<'a, 'b, 'c>,
-   |           ^^^^^^^^^^^^^^^ 2 unexpected lifetime arguments
+   |                   ^^  ^^ unexpected lifetime argument
+   |                   |
+   |                   unexpected lifetime argument
 
 error: aborting due to 3 previous errors
 

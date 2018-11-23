@@ -643,11 +643,11 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
             },
             infcx,
             fulfillment_cx: RefCell::new(TraitEngine::new(tcx)),
-            locals: RefCell::new(NodeMap()),
-            deferred_call_resolutions: RefCell::new(DefIdMap()),
+            locals: RefCell::new(Default::default()),
+            deferred_call_resolutions: RefCell::new(Default::default()),
             deferred_cast_checks: RefCell::new(Vec::new()),
             deferred_generator_interiors: RefCell::new(Vec::new()),
-            opaque_types: RefCell::new(DefIdMap()),
+            opaque_types: RefCell::new(Default::default()),
             implicit_region_bound,
             body_id,
         }
@@ -1779,7 +1779,7 @@ fn check_transparent<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: De
         // We are currently checking the type this field came from, so it must be local
         let span = tcx.hir.span_if_local(field.did).unwrap();
         let zst = layout.map(|layout| layout.is_zst()).unwrap_or(false);
-        let align1 = layout.map(|layout| layout.align.abi() == 1).unwrap_or(false);
+        let align1 = layout.map(|layout| layout.align.abi.bytes() == 1).unwrap_or(false);
         (span, zst, align1)
     });
 
@@ -1986,7 +1986,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             has_errors: Cell::new(false),
             enclosing_breakables: RefCell::new(EnclosingBreakables {
                 stack: Vec::new(),
-                by_id: NodeMap(),
+                by_id: Default::default(),
             }),
             inh,
         }

@@ -166,8 +166,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 assert!(!restricted_shadowing);
                 match uniform_root_kind {
                     UniformRootKind::ExternPrelude => {
-                        return if let Some(binding) =
-                                self.extern_prelude_get(ident, !record_used, false) {
+                        return if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
                             Ok(binding)
                         } else if !self.graph_root.unresolved_invocations.borrow().is_empty() {
                             // Macro-expanded `extern crate` items can add names to extern prelude.
@@ -843,12 +842,14 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 module
             }
             PathResult::Failed(span, msg, false) => {
-                assert!(directive.imported_module.get().is_none());
+                assert!(!self.ambiguity_errors.is_empty() ||
+                        directive.imported_module.get().is_none());
                 resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 return None;
             }
             PathResult::Failed(span, msg, true) => {
-                assert!(directive.imported_module.get().is_none());
+                assert!(!self.ambiguity_errors.is_empty() ||
+                        directive.imported_module.get().is_none());
                 return if let Some((suggested_path, note)) = self.make_path_suggestion(
                     span, directive.module_path.clone(), &directive.parent_scope
                 ) {
@@ -1164,7 +1165,10 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                 None => continue,
             };
 
-            if binding.is_import() || binding.is_macro_def() {
+            // Filter away "empty import canaries".
+            let is_non_canary_import =
+                binding.is_import() && binding.vis != ty::Visibility::Invisible;
+            if is_non_canary_import || binding.is_macro_def() {
                 let def = binding.def();
                 if def != Def::Err {
                     if let Some(def_id) = def.opt_def_id() {

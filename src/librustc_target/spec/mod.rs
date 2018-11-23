@@ -414,6 +414,8 @@ supported_targets! {
     ("riscv32imac-unknown-none-elf", riscv32imac_unknown_none_elf),
 
     ("aarch64-unknown-none", aarch64_unknown_none),
+
+    ("x86_64-fortanix-unknown-sgx", x86_64_fortanix_unknown_sgx),
 }
 
 /// Everything `rustc` knows about how to compile for a specific target.
@@ -685,6 +687,10 @@ pub struct TargetOptions {
     /// target features. This is `true` by default, and `false` for targets like
     /// wasm32 where the whole program either has simd or not.
     pub simd_types_indirect: bool,
+
+    /// If set, have the linker export exactly these symbols, instead of using
+    /// the usual logic to figure this out from the crate itself.
+    pub override_export_symbols: Option<Vec<String>>
 }
 
 impl Default for TargetOptions {
@@ -765,6 +771,7 @@ impl Default for TargetOptions {
             emit_debug_gdb_scripts: true,
             requires_uwtable: false,
             simd_types_indirect: true,
+            override_export_symbols: None,
         }
     }
 }
@@ -897,6 +904,14 @@ impl Target {
                 obj.find(&name[..]).map(|o| o.as_array()
                     .map(|v| base.options.$key_name = v.iter()
                         .map(|a| a.as_string().unwrap().to_string()).collect()
+                        )
+                    );
+            } );
+            ($key_name:ident, opt_list) => ( {
+                let name = (stringify!($key_name)).replace("_", "-");
+                obj.find(&name[..]).map(|o| o.as_array()
+                    .map(|v| base.options.$key_name = Some(v.iter()
+                        .map(|a| a.as_string().unwrap().to_string()).collect())
                         )
                     );
             } );
@@ -1046,6 +1061,7 @@ impl Target {
         key!(emit_debug_gdb_scripts, bool);
         key!(requires_uwtable, bool);
         key!(simd_types_indirect, bool);
+        key!(override_export_symbols, opt_list);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -1255,6 +1271,7 @@ impl ToJson for Target {
         target_option_val!(emit_debug_gdb_scripts);
         target_option_val!(requires_uwtable);
         target_option_val!(simd_types_indirect);
+        target_option_val!(override_export_symbols);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

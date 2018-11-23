@@ -25,14 +25,12 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     t: Ty<'tcx>,
     info: Option<Bx::Value>
 ) -> (Bx::Value, Bx::Value) {
-    debug!("calculate size of DST: {}; with lost info: {:?}",
-           t, info);
-    if bx.cx().type_is_sized(t) {
-        let (size, align) = bx.cx().layout_of(t).size_and_align();
-        debug!("size_and_align_of_dst t={} info={:?} size: {:?} align: {:?}",
-               t, info, size, align);
-        let size = bx.cx().const_usize(size.bytes());
-        let align = bx.cx().const_usize(align.abi());
+    let layout = bx.cx().layout_of(t);
+    debug!("size_and_align_of_dst(ty={}, info={:?}): layout: {:?}",
+           t, info, layout);
+    if !layout.is_unsized() {
+        let size = bx.cx().const_usize(layout.size.bytes());
+        let align = bx.cx().const_usize(layout.align.abi.bytes());
         return (size, align);
     }
     match t.sty {
@@ -42,24 +40,22 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             (meth::SIZE.get_usize(bx, vtable), meth::ALIGN.get_usize(bx, vtable))
         }
         ty::Slice(_) | ty::Str => {
-            let unit = t.sequence_element_type(bx.tcx());
+            let unit = layout.field(bx.cx(), 0);
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
-            let (size, align) = bx.cx().layout_of(unit).size_and_align();
-            (bx.mul(info.unwrap(), bx.cx().const_usize(size.bytes())),
-             bx.cx().const_usize(align.abi()))
+            (bx.mul(info.unwrap(), bx.cx().const_usize(unit.size.bytes())),
+             bx.cx().const_usize(unit.align.abi.bytes()))
         }
         _ => {
             // First get the size of all statically known fields.
             // Don't use size_of because it also rounds up to alignment, which we
             // want to avoid, as the unsized field's alignment could be smaller.
             assert!(!t.is_simd());
-            let layout = bx.cx().layout_of(t);
             debug!("DST {} layout: {:?}", t, layout);
 
             let i = layout.fields.count() - 1;
             let sized_size = layout.fields.offset(i).bytes();
-            let sized_align = layout.align.abi();
+            let sized_align = layout.align.abi.bytes();
             debug!("DST {} statically sized prefix size: {} align: {}",
                    t, sized_size, sized_align);
             let sized_size = bx.cx().const_usize(sized_size);

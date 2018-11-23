@@ -25,7 +25,7 @@ pub const STRIP_HIDDEN: Pass =
 
 /// Strip items marked `#[doc(hidden)]`
 pub fn strip_hidden(krate: clean::Crate, _: &DocContext) -> clean::Crate {
-    let mut retained = DefIdSet();
+    let mut retained = DefIdSet::default();
 
     // strip all #[doc(hidden)] items
     let krate = {

@@ -1,8 +1,8 @@
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-enum.rs:24:1
    |
-LL | const BAD_ENUM: Enum = unsafe { TransmuteEnum { a: &1 }.out };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected a valid enum discriminant
+LL | const BAD_ENUM: Enum = unsafe { TransmuteEnum { in1: &1 }.out1 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered a pointer, but expected a valid enum discriminant
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 
@@ -33,8 +33,8 @@ LL | const BAD_ENUM4: Wrap<Enum2> = unsafe { TransmuteEnum2 { in2: &0 }.out2 };
 error[E0080]: it is undefined behavior to use this value
   --> $DIR/ub-enum.rs:52:1
    |
-LL | const BAD_ENUM_UNDEF: [Enum2; 2] = [unsafe { TransmuteEnum2 { in3: () }.out1 }; 2];
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes at [0], but expected a valid enum discriminant
+LL | const BAD_ENUM_UNDEF : Enum2 = unsafe { TransmuteEnum2 { in3: () }.out1 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type validation failed: encountered uninitialized bytes, but expected a valid enum discriminant
    |
    = note: The rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rust compiler repository if you believe it should not be considered undefined behavior
 

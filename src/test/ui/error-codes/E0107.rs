@@ -26,7 +26,8 @@ struct Baz<'a, 'b, 'c> {
     //~| unexpected lifetime argument
     foo2: Foo<'a, 'b, 'c>,
     //~^ ERROR E0107
-    //~| 2 unexpected lifetime arguments
+    //~| unexpected lifetime argument
+    //~| unexpected lifetime argument
 }
 
 fn main() {}

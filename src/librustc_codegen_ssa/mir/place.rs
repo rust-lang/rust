@@ -58,8 +58,8 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
     ) -> Self {
         debug!("alloca({:?}: {:?})", name, layout);
         assert!(!layout.is_unsized(), "tried to statically allocate unsized place");
-        let tmp = bx.alloca(bx.cx().backend_type(layout), name, layout.align);
-        Self::new_sized(tmp, layout, layout.align)
+        let tmp = bx.alloca(bx.cx().backend_type(layout), name, layout.align.abi);
+        Self::new_sized(tmp, layout, layout.align.abi)
     }
 
     /// Returns a place for an indirect reference to an unsized place.
@@ -109,7 +109,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                 self.llval
             } else if let layout::Abi::ScalarPair(ref a, ref b) = self.layout.abi {
                 // Offsets have to match either first or second field.
-                assert_eq!(offset, a.value.size(bx.cx()).abi_align(b.value.align(bx.cx())));
+                assert_eq!(offset, a.value.size(bx.cx()).align_to(b.value.align(bx.cx()).abi));
                 bx.struct_gep(self.llval, 1)
             } else {
                 bx.struct_gep(self.llval, bx.cx().backend_field_index(self.layout, ix))
@@ -143,7 +143,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                 if def.repr.packed() {
                     // FIXME(eddyb) generalize the adjustment when we
                     // start supporting packing to larger alignments.
-                    assert_eq!(self.layout.align.abi(), 1);
+                    assert_eq!(self.layout.align.abi.bytes(), 1);
                     return simple();
                 }
             }
@@ -308,9 +308,8 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
                         // Issue #34427: As workaround for LLVM bug on ARM,
                         // use memset of 0 before assigning niche value.
                         let fill_byte = bx.cx().const_u8(0);
-                        let (size, align) = self.layout.size_and_align();
-                        let size = bx.cx().const_usize(size.bytes());
-                        bx.memset(self.llval, fill_byte, size, align, MemFlags::empty());
+                        let size = bx.cx().const_usize(self.layout.size.bytes());
+                        bx.memset(self.llval, fill_byte, size, self.align, MemFlags::empty());
                     }
 
                     let niche = self.project_field(bx, 0);
@@ -419,13 +418,13 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let llval = bx.cx().const_undef(
                             bx.cx().type_ptr_to(bx.cx().backend_type(layout))
                         );
-                        PlaceRef::new_sized(llval, layout, layout.align)
+                        PlaceRef::new_sized(llval, layout, layout.align.abi)
                     }
                 }
             }
             mir::Place::Static(box mir::Static { def_id, ty }) => {
                 let layout = cx.layout_of(self.monomorphize(&ty));
-                PlaceRef::new_sized(cx.get_static(def_id), layout, layout.align)
+                PlaceRef::new_sized(cx.get_static(def_id), layout, layout.align.abi)
             },
             mir::Place::Projection(box mir::Projection {
                 ref base,

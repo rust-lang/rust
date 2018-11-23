@@ -280,7 +280,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 scratch.llval
                             }
                             Ref(llval, _, align) => {
-                                assert_eq!(align.abi(), op.layout.align.abi(),
+                                assert_eq!(align, op.layout.align.abi,
                                            "return place is unaligned!");
                                 llval
                             }
@@ -288,7 +288,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let addr = bx.pointercast(llslot, bx.cx().type_ptr_to(
                             bx.cx().cast_backend_type(&cast_ty)
                         ));
-                        bx.load(addr, self.fn_ty.ret.layout.align)
+                        bx.load(addr, self.fn_ty.ret.layout.align.abi)
                     }
                 };
                 bx.ret(llval);
@@ -386,9 +386,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let filename = bx.cx().const_str_slice(filename);
                 let line = bx.cx().const_u32(loc.line as u32);
                 let col = bx.cx().const_u32(loc.col.to_usize() as u32 + 1);
-                let align = tcx.data_layout.aggregate_align
-                    .max(tcx.data_layout.i32_align)
-                    .max(tcx.data_layout.pointer_align);
+                let align = tcx.data_layout.aggregate_align.abi
+                    .max(tcx.data_layout.i32_align.abi)
+                    .max(tcx.data_layout.pointer_align.abi);
 
                 // Put together the arguments to the panic entry point.
                 let (lang_item, args) = match *msg {
@@ -522,9 +522,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let filename = bx.cx().const_str_slice(filename);
                     let line = bx.cx().const_u32(loc.line as u32);
                     let col = bx.cx().const_u32(loc.col.to_usize() as u32 + 1);
-                    let align = tcx.data_layout.aggregate_align
-                        .max(tcx.data_layout.i32_align)
-                        .max(tcx.data_layout.pointer_align);
+                    let align = tcx.data_layout.aggregate_align.abi
+                        .max(tcx.data_layout.i32_align.abi)
+                        .max(tcx.data_layout.pointer_align.abi);
 
                     let str = format!(
                         "Attempted to instantiate uninhabited type {} using mem::{}",
@@ -800,12 +800,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         (scratch.llval, scratch.align, true)
                     }
                     _ => {
-                        (op.immediate_or_packed_pair(bx), arg.layout.align, false)
+                        (op.immediate_or_packed_pair(bx), arg.layout.align.abi, false)
                     }
                 }
             }
             Ref(llval, _, align) => {
-                if arg.is_indirect() && align.abi() < arg.layout.align.abi() {
+                if arg.is_indirect() && align < arg.layout.align.abi {
                     // `foo(packed.large_field)`. We can't pass the (unaligned) field directly. I
                     // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
                     // have scary latent bugs around.
@@ -826,7 +826,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let addr = bx.pointercast(llval, bx.cx().type_ptr_to(
                     bx.cx().cast_backend_type(&ty))
                 );
-                llval = bx.load(addr, align.min(arg.layout.align));
+                llval = bx.load(addr, align.min(arg.layout.align.abi));
             } else {
                 // We can't use `PlaceRef::load` here because the argument
                 // may have a type we don't treat as immediate, but the ABI
@@ -1006,7 +1006,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.codegen_place(bx, dest)
         };
         if fn_ret.is_indirect() {
-            if dest.align.abi() < dest.layout.align.abi() {
+            if dest.align < dest.layout.align.abi {
                 // Currently, MIR code generation does not create calls
                 // that store directly to fields of packed structs (in
                 // fact, the calls it creates write only to temps),
@@ -1062,7 +1062,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let src = self.codegen_operand(bx, src);
         let llty = bx.cx().backend_type(src.layout);
         let cast_ptr = bx.pointercast(dst.llval, bx.cx().type_ptr_to(llty));
-        let align = src.layout.align.min(dst.layout.align);
+        let align = src.layout.align.abi.min(dst.align);
         src.val.store(bx, PlaceRef::new_sized(cast_ptr, src.layout, align));
     }
 

@@ -24,7 +24,7 @@ use rustc::util::nodemap::DefIdSet;
 use rustc_data_structures::fx::FxHashMap;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut used_trait_imports = DefIdSet();
+    let mut used_trait_imports = DefIdSet::default();
     for &body_id in tcx.hir.krate().bodies.keys() {
         let item_def_id = tcx.hir.body_owner_def_id(body_id);
         let imports = tcx.used_trait_imports(item_def_id);

@@ -42,10 +42,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         let layout = self.layout_of(ty)?;
         assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
         let size = layout.size.bytes();
-        let align = layout.align.abi();
+        let align = layout.align.abi.bytes();
 
         let ptr_size = self.pointer_size();
-        let ptr_align = self.tcx.data_layout.pointer_align;
+        let ptr_align = self.tcx.data_layout.pointer_align.abi;
         // /////////////////////////////////////////////////////////////////////////////////////////
         // If you touch this code, be sure to also make the corresponding changes to
         // `get_vtable` in rust_codegen_llvm/meth.rs
@@ -87,7 +87,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         vtable: Pointer<M::PointerTag>,
     ) -> EvalResult<'tcx, (ty::Instance<'tcx>, ty::Ty<'tcx>)> {
         // we don't care about the pointee type, we just want a pointer
-        let pointer_align = self.tcx.data_layout.pointer_align;
+        let pointer_align = self.tcx.data_layout.pointer_align.abi;
         let drop_fn = self.memory.read_ptr_sized(vtable, pointer_align)?.to_ptr()?;
         let drop_instance = self.memory.get_fn(drop_fn)?;
         trace!("Found drop fn: {:?}", drop_instance);
@@ -103,13 +103,13 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
         vtable: Pointer<M::PointerTag>,
     ) -> EvalResult<'tcx, (Size, Align)> {
         let pointer_size = self.pointer_size();
-        let pointer_align = self.tcx.data_layout.pointer_align;
+        let pointer_align = self.tcx.data_layout.pointer_align.abi;
         let size = self.memory.read_ptr_sized(vtable.offset(pointer_size, self)?,pointer_align)?
             .to_bits(pointer_size)? as u64;
         let align = self.memory.read_ptr_sized(
             vtable.offset(pointer_size * 2, self)?,
             pointer_align
         )?.to_bits(pointer_size)? as u64;
-        Ok((Size::from_bytes(size), Align::from_bytes(align, align).unwrap()))
+        Ok((Size::from_bytes(size), Align::from_bytes(align).unwrap()))
     }
 }

@@ -314,7 +314,7 @@ pub fn collect_crate_mono_items<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         time(tcx.sess, "collecting mono items", || {
             par_iter(roots).for_each(|root| {
-                let mut recursion_depths = DefIdMap();
+                let mut recursion_depths = DefIdMap::default();
                 collect_items_rec(tcx,
                                 root,
                                 visited,

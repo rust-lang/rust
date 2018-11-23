@@ -401,7 +401,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             // cannot use the shim here, because that will only result in infinite recursion
             ty::InstanceDef::Virtual(_, idx) => {
                 let ptr_size = self.pointer_size();
-                let ptr_align = self.tcx.data_layout.pointer_align;
+                let ptr_align = self.tcx.data_layout.pointer_align.abi;
                 let ptr = self.deref_operand(args[0])?;
                 let vtable = ptr.vtable()?;
                 let fn_ptr = self.memory.read_ptr_sized(

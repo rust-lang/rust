@@ -357,7 +357,7 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         offset: Size,
     ) -> PlaceRef<'tcx, &'ll Value> {
         let init = const_alloc_to_llvm(self, alloc);
-        let base_addr = self.static_addr_of(init, layout.align, None);
+        let base_addr = self.static_addr_of(init, layout.align.abi, None);
 
         let llval = unsafe { llvm::LLVMConstInBoundsGEP(
             self.static_bitcast(base_addr, self.type_i8p()),

@@ -1,8 +1,11 @@
 error[E0191]: the value of the associated type `A` (from the trait `Foo`) must be specified
   --> $DIR/issue-19482.rs:20:12
    |
+LL |     type A;
+   |     ------- `A` defined here
+...
 LL | fn bar(x: &Foo) {}
-   |            ^^^ missing associated type `A` value
+   |            ^^^ associated type `A` must be specified
 
 error: aborting due to previous error
 
