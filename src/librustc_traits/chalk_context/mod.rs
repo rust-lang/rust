@@ -155,12 +155,29 @@ impl context::AggregateOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
 }
 
 impl context::ContextOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
-    /// True if this is a coinductive goal -- e.g., proving an auto trait.
+    /// True if this is a coinductive goal: basically proving that an auto trait
+    /// is implemented or proving that a trait reference is well-formed.
     fn is_coinductive(
         &self,
-        _goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>
+        goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>
     ) -> bool {
-        unimplemented!()
+        use rustc::traits::{WellFormed, WhereClause};
+
+        let mut goal = goal.value.goal;
+        loop {
+            match goal {
+                GoalKind::DomainGoal(domain_goal) => match domain_goal {
+                    DomainGoal::WellFormed(WellFormed::Trait(..)) => return true,
+                    DomainGoal::Holds(WhereClause::Implemented(trait_predicate)) => {
+                        return self.tcx.trait_is_auto(trait_predicate.def_id());
+                    }
+                    _ => return false,
+                }
+
+                GoalKind::Quantified(_, bound_goal) => goal = *bound_goal.skip_binder(),
+                _ => return false,
+            }
+        }
     }
 
     /// Create an inference table for processing a new goal and instantiate that goal
