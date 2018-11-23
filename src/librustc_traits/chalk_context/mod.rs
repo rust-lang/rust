@@ -547,9 +547,9 @@ impl ExClauseFold<'tcx> for ChalkArenas<'tcx> {
             subgoals,
         } = ex_clause;
         subst.visit_with(visitor)
-            && delayed_literals.visit_with(visitor)
-            && constraints.visit_with(visitor)
-            && subgoals.visit_with(visitor)
+            || delayed_literals.visit_with(visitor)
+            || constraints.visit_with(visitor)
+            || subgoals.visit_with(visitor)
     }
 }
 
