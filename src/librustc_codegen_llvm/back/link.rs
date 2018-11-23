@@ -19,7 +19,7 @@ use super::rpath::RPathConfig;
 use super::rpath;
 use metadata::METADATA_FILENAME;
 use rustc::session::config::{self, DebugInfo, OutputFilenames, OutputType, PrintRequest};
-use rustc::session::config::{RUST_CGU_EXT, Lto};
+use rustc::session::config::{RUST_CGU_EXT, Lto, Sanitizer};
 use rustc::session::filesearch;
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
@@ -490,6 +490,14 @@ fn link_natively(sess: &Session,
         cmd.args(args);
     }
     cmd.args(&sess.opts.debugging_opts.pre_link_arg);
+
+    if sess.target.target.options.is_like_fuchsia {
+        let prefix = match sess.opts.debugging_opts.sanitizer {
+            Some(Sanitizer::Address) => "asan/",
+            _ => "",
+        };
+        cmd.arg(format!("--dynamic-linker={}ld.so.1", prefix));
+    }
 
     let pre_link_objects = if crate_type == config::CrateType::Executable {
         &sess.target.target.options.pre_link_objects_exe

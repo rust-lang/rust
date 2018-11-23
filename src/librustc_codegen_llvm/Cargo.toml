@@ -13,7 +13,6 @@ test = false
 cc = "1.0.1"
 num_cpus = "1.0"
 rustc-demangle = "0.1.4"
-rustc_codegen_ssa = { path = "../librustc_codegen_ssa" }
 rustc_llvm = { path = "../librustc_llvm" }
 memmap = "0.6"
 

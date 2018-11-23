@@ -244,13 +244,24 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
         };
 
         // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
+        // Bools in union fields needs to be truncated.
+        let to_immediate_or_cast = |bx: &mut Bx, val, ty| {
+            if ty == bx.cx().type_i1() {
+                bx.trunc(val, ty)
+            } else {
+                bx.bitcast(val, ty)
+            }
+        };
+
         match val {
             OperandValue::Immediate(ref mut llval) => {
-                *llval = bx.bitcast(*llval, bx.cx().immediate_backend_type(field));
+                *llval = to_immediate_or_cast(bx, *llval, bx.cx().immediate_backend_type(field));
             }
             OperandValue::Pair(ref mut a, ref mut b) => {
-                *a = bx.bitcast(*a, bx.cx().scalar_pair_element_backend_type(field, 0, true));
-                *b = bx.bitcast(*b, bx.cx().scalar_pair_element_backend_type(field, 1, true));
+                *a = to_immediate_or_cast(bx, *a, bx.cx()
+                    .scalar_pair_element_backend_type(field, 0, true));
+                *b = to_immediate_or_cast(bx, *b, bx.cx()
+                    .scalar_pair_element_backend_type(field, 1, true));
             }
             OperandValue::Ref(..) => bug!()
         }

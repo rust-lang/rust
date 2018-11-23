@@ -93,15 +93,26 @@ macro_rules! define_categories {
                 $(
                     let (hits, total) = self.query_counts.$name;
 
+                    //normalize hits to 0%
+                    let hit_percent =
+                        if total > 0 {
+                            ((hits as f32) / (total as f32)) * 100.0
+                        } else {
+                            0.0
+                        };
+
                     json.push_str(&format!(
                         "{{ \"category\": {}, \"time_ms\": {},
-                            \"query_count\": {}, \"query_hits\": {} }}",
+                            \"query_count\": {}, \"query_hits\": {} }},",
                         stringify!($name),
                         self.times.$name / 1_000_000,
                         total,
-                        format!("{:.2}", (((hits as f32) / (total as f32)) * 100.0))
+                        format!("{:.2}", hit_percent)
                     ));
                 )*
+
+                //remove the trailing ',' character
+                json.pop();
 
                 json.push(']');
 

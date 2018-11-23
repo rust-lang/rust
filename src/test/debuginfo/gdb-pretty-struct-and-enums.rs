@@ -8,34 +8,34 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-bitrig
-// ignore-solaris
-// ignore-windows failing on win32 bot
-// ignore-freebsd: gdb package too new
 // ignore-tidy-linelength
 // ignore-lldb
 // ignore-android: FIXME(#10381)
+// min-gdb-version: 7.11
+
 // compile-flags:-g
 
 // gdb-command: run
 
 // gdb-command: print regular_struct
-// gdb-check:$1 = RegularStruct = {the_first_field = 101, the_second_field = 102.5, the_third_field = false}
+// gdbg-check:$1 = RegularStruct = {the_first_field = 101, the_second_field = 102.5, the_third_field = false}
+// gdbr-check:$1 = gdb_pretty_struct_and_enums::RegularStruct {the_first_field: 101, the_second_field: 102.5, the_third_field: false}
 
 // gdb-command: print empty_struct
-// gdb-check:$2 = EmptyStruct
+// gdbg-check:$2 = EmptyStruct
+// gdbr-check:$2 = gdb_pretty_struct_and_enums::EmptyStruct
 
 // gdb-command: print c_style_enum1
 // gdbg-check:$3 = CStyleEnumVar1
-// gdbr-check:$3 = gdb_pretty_struct_and_enums_pre_gdb_7_7::CStyleEnum::CStyleEnumVar1
+// gdbr-check:$3 = gdb_pretty_struct_and_enums::CStyleEnum::CStyleEnumVar1
 
 // gdb-command: print c_style_enum2
 // gdbg-check:$4 = CStyleEnumVar2
-// gdbr-check:$4 = gdb_pretty_struct_and_enums_pre_gdb_7_7::CStyleEnum::CStyleEnumVar2
+// gdbr-check:$4 = gdb_pretty_struct_and_enums::CStyleEnum::CStyleEnumVar2
 
 // gdb-command: print c_style_enum3
 // gdbg-check:$5 = CStyleEnumVar3
-// gdbr-check:$5 = gdb_pretty_struct_and_enums_pre_gdb_7_7::CStyleEnum::CStyleEnumVar3
+// gdbr-check:$5 = gdb_pretty_struct_and_enums::CStyleEnum::CStyleEnumVar3
 
 #![allow(dead_code, unused_variables)]
 

@@ -112,10 +112,10 @@
 //!
 //!     // next() is the only required method
 //!     fn next(&mut self) -> Option<usize> {
-//!         // increment our count. This is why we started at zero.
+//!         // Increment our count. This is why we started at zero.
 //!         self.count += 1;
 //!
-//!         // check to see if we've finished counting or not.
+//!         // Check to see if we've finished counting or not.
 //!         if self.count < 6 {
 //!             Some(self.count)
 //!         } else {
@@ -339,6 +339,8 @@ pub use self::sources::{RepeatWith, repeat_with};
 pub use self::sources::{Empty, empty};
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub use self::sources::{Once, once};
+#[unstable(feature = "iter_unfold", issue = "55977")]
+pub use self::sources::{Unfold, unfold, Successors, successors};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::traits::{FromIterator, IntoIterator, DoubleEndedIterator, Extend};
