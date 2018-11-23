@@ -280,7 +280,10 @@ fn wf_clause_for_tuple<'tcx>(
         Some(def_id) => def_id,
         None => return ty::List::empty(),
     };
-    let sized_implemented = type_list[0..arity - 1].iter()
+
+    // If `arity == 0` (i.e. the unit type) or `arity == 1`, this list of
+    // hypotheses is actually empty.
+    let sized_implemented = type_list[0 .. std::cmp::max(arity, 1) - 1].iter()
         .map(|ty| ty::TraitRef {
             def_id: sized_trait,
             substs: tcx.mk_substs_trait(*ty, ty::List::empty()),
