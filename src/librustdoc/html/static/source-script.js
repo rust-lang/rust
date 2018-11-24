@@ -82,12 +82,12 @@ function toggleSidebar() {
         sidebar.style.left = "";
         this.style.left = "";
         child.innerText = "<";
-        updateLocalStorage("rustdoc-source-sidebar-hidden", "false");
+        updateLocalStorage("rustdoc-source-sidebar-show", "true");
     } else {
         sidebar.style.left = "-300px";
         this.style.left = "0";
         child.innerText = ">";
-        updateLocalStorage("rustdoc-source-sidebar-hidden", "true");
+        updateLocalStorage("rustdoc-source-sidebar-show", "false");
     }
 }
 
@@ -101,11 +101,11 @@ function createSidebarToggle() {
 
     var inner2 = document.createElement("div");
     inner2.style.marginTop = "-2px";
-    if (getCurrentValue("rustdoc-source-sidebar-hidden") === "true") {
+    if (getCurrentValue("rustdoc-source-sidebar-show") === "true") {
+        inner2.innerText = "<";
+    } else {
         inner2.innerText = ">";
         sidebarToggle.style.left = "0";
-    } else {
-        inner2.innerText = "<";
     }
 
     inner1.appendChild(inner2);
@@ -124,7 +124,7 @@ function createSourceSidebar() {
 
     var sidebar = document.createElement("div");
     sidebar.id = "source-sidebar";
-    if (getCurrentValue("rustdoc-source-sidebar-hidden") === "true") {
+    if (getCurrentValue("rustdoc-source-sidebar-show") !== "true") {
         sidebar.style.left = "-300px";
     }
 
