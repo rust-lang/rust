@@ -27,10 +27,6 @@ h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.t
 	border-bottom-color: #d2d2d2;
 }
 
-.in-band {
-	background-color: #353535;
-}
-
 .invisible {
 	background: rgba(0, 0, 0, 0);
 }
