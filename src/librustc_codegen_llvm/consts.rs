@@ -177,10 +177,8 @@ impl CodegenCx<'ll, 'tcx> {
             llvm::LLVMConstBitCast(val, ty)
         }
     }
-}
 
-impl StaticMethods for CodegenCx<'ll, 'tcx> {
-    fn static_addr_of_mut(
+    crate fn static_addr_of_mut(
         &self,
         cv: &'ll Value,
         align: Align,
@@ -205,7 +203,9 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
             gv
         }
     }
+}
 
+impl StaticMethods for CodegenCx<'ll, 'tcx> {
     fn static_addr_of(
         &self,
         cv: &'ll Value,
