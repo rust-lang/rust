@@ -21,10 +21,10 @@ h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):no
 	color: #ddd;
 }
 h1.fqn {
-	border-bottom-color: #d2d2d2;
+	border-bottom-color: #515151;
 }
 h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
-	border-bottom-color: #d2d2d2;
+	border-bottom-color: #515151;
 }
 
 .invisible {
@@ -39,7 +39,7 @@ pre {
 }
 
 .sidebar {
-	background-color: #505050;
+	background-color: #444;
 }
 
 .sidebar .current {
@@ -75,7 +75,7 @@ pre {
 }
 
 .docblock h1, .docblock h2, .docblock h3, .docblock h4, .docblock h5 {
-	border-bottom-color: #DDD;
+	border-bottom-color: #515151;
 }
 
 .docblock table {
@@ -199,8 +199,8 @@ a.test-arrow {
 }
 
 #help > div {
-	background: #4d4d4d;
-	border-color: #bfbfbf;
+	background: #434343;
+	border-color: #5f5f5f;
 }
 
 .since {
