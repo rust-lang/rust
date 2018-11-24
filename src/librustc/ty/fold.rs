@@ -533,18 +533,25 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
               G: FnMut(ty::BoundTy) -> ty::Ty<'tcx>,
               T: TypeFoldable<'tcx>
     {
-        let mut map = BTreeMap::new();
+        use rustc_data_structures::fx::FxHashMap;
+
+        let mut region_map = BTreeMap::new();
+        let mut type_map = FxHashMap::default();
 
         if !value.has_escaping_bound_vars() {
-            (value.clone(), map)
+            (value.clone(), region_map)
         } else {
             let mut real_fld_r = |br| {
-                *map.entry(br).or_insert_with(|| fld_r(br))
+                *region_map.entry(br).or_insert_with(|| fld_r(br))
             };
 
-            let mut replacer = BoundVarReplacer::new(self, &mut real_fld_r, &mut fld_t);
+            let mut real_fld_t = |bound_ty| {
+                *type_map.entry(bound_ty).or_insert_with(|| fld_t(bound_ty))
+            };
+
+            let mut replacer = BoundVarReplacer::new(self, &mut real_fld_r, &mut real_fld_t);
             let result = value.fold_with(&mut replacer);
-            (result, map)
+            (result, region_map)
         }
     }
 
