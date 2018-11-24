@@ -1,4 +1,5 @@
 use cranelift::prelude::*;
+
 use cranelift::codegen::ir::TrapCode;
 
 /// Trap code: user0

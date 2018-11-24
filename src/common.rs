@@ -389,15 +389,18 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
                 // &'a T -> &'b T is allowed
             }
             (ty::FnPtr(_), ty::FnPtr(_)) => {
-                let from_sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &from_ty.fn_sig(fx.tcx));
-                let to_sig = fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), &to_ty.fn_sig(fx.tcx));
+                let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
+                    ParamEnv::reveal_all(),
+                    &from_ty.fn_sig(fx.tcx),
+                );
+                let to_sig = fx.tcx.normalize_erasing_late_bound_regions(
+                    ParamEnv::reveal_all(),
+                    &to_ty.fn_sig(fx.tcx),
+                );
                 assert_eq!(
-                    from_sig,
-                    to_sig,
+                    from_sig, to_sig,
                     "Can't write fn ptr with incompatible sig {:?} to place with sig {:?}\n\n{:#?}",
-                    from_sig,
-                    to_sig,
-                    fx,
+                    from_sig, to_sig, fx,
                 );
                 // fn(&T) -> for<'l> fn(&'l T) is allowed
             }
@@ -577,7 +580,11 @@ impl<'a, 'tcx: 'a> CPlace<'tcx> {
         }
     }
 
-    pub fn downcast_variant(self, fx: &FunctionCx<'a, 'tcx, impl Backend>, variant: VariantIdx) -> Self {
+    pub fn downcast_variant(
+        self,
+        fx: &FunctionCx<'a, 'tcx, impl Backend>,
+        variant: VariantIdx,
+    ) -> Self {
         let layout = self.layout().for_variant(fx, variant);
         self.unchecked_cast_to(layout)
     }

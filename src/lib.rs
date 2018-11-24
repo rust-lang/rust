@@ -1,22 +1,17 @@
-#![feature(
-    rustc_private,
-    macro_at_most_once_rep,
-    never_type,
-    decl_macro,
-)]
+#![feature(rustc_private, macro_at_most_once_rep, never_type, decl_macro)]
 #![allow(intra_doc_link_resolution_failure)]
 
-extern crate syntax;
+extern crate log;
 extern crate rustc;
 extern crate rustc_allocator;
 extern crate rustc_codegen_ssa;
 extern crate rustc_codegen_utils;
+extern crate rustc_data_structures;
+extern crate rustc_fs_util;
 extern crate rustc_incremental;
 extern crate rustc_mir;
 extern crate rustc_target;
-extern crate rustc_data_structures;
-extern crate rustc_fs_util;
-extern crate log;
+extern crate syntax;
 
 use std::any::Any;
 use std::fs::File;
@@ -29,10 +24,10 @@ use rustc::session::{
     CompileIncomplete,
 };
 use rustc::ty::query::Providers;
+use rustc_codegen_ssa::back::linker::LinkerInfo;
+use rustc_codegen_ssa::CrateInfo;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::out_filename;
-use rustc_codegen_ssa::CrateInfo;
-use rustc_codegen_ssa::back::linker::LinkerInfo;
 
 use cranelift::codegen::settings;
 use cranelift_faerie::*;
@@ -83,8 +78,8 @@ mod prelude {
     };
     pub use rustc_mir::monomorphize::{collector, MonoItem};
 
-    pub use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
     pub use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
+    pub use rustc_codegen_ssa::{CodegenResults, CompiledModule, ModuleKind};
 
     pub use cranelift::codegen::ir::{
         condcodes::IntCC, function::Function, ExternalName, FuncRef, Inst, StackSlot,
@@ -183,13 +178,14 @@ impl CodegenBackend for CraneliftCodegenBackend {
         match tcx.sess.opts.optimize {
             OptLevel::No => {
                 flags_builder.set("opt_level", "fastest").unwrap();
-            },
-            OptLevel::Less | OptLevel::Default => {},
+            }
+            OptLevel::Less | OptLevel::Default => {}
             OptLevel::Aggressive => {
                 flags_builder.set("opt_level", "best").unwrap();
-            },
+            }
             OptLevel::Size | OptLevel::SizeMin => {
-                tcx.sess.warn("Optimizing for size is not supported. Just ignoring the request");
+                tcx.sess
+                    .warn("Optimizing for size is not supported. Just ignoring the request");
             }
         }
 

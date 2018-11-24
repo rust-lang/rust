@@ -9,8 +9,8 @@ use rustc::session::config::{self, CrateType, DebugInfo, RUST_CGU_EXT};
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
 use rustc_codegen_ssa::back::command::Command;
-use rustc_codegen_ssa::back::linker::*;
 use rustc_codegen_ssa::back::link::*;
+use rustc_codegen_ssa::back::linker::*;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
 
@@ -27,11 +27,15 @@ pub(crate) fn link_rlib(sess: &Session, res: &CodegenResults, output_name: PathB
         if let Some(ref object_path) = module.object {
             let object = File::open(object_path).expect("Someone deleted our object file");
             let object_len = object.metadata().unwrap().len();
-            builder.append(
-                &ar::Header::new((module.name.to_string() +  RUST_CGU_EXT).into_bytes(), object_len),
-                object,
-            )
-            .unwrap();
+            builder
+                .append(
+                    &ar::Header::new(
+                        (module.name.to_string() + RUST_CGU_EXT).into_bytes(),
+                        object_len,
+                    ),
+                    object,
+                )
+                .unwrap();
         }
     }
 

@@ -18,9 +18,8 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
 ) {
     match mono_item {
         MonoItem::Fn(inst) => {
-            let _inst_guard = PrintOnPanic(|| {
-                format!("{:?} {}", inst, tcx.symbol_name(inst).as_str())
-            });
+            let _inst_guard =
+                PrintOnPanic(|| format!("{:?} {}", inst, tcx.symbol_name(inst).as_str()));
             let _mir_guard = PrintOnPanic(|| {
                 match inst.def {
                     InstanceDef::Item(_)
@@ -377,8 +376,9 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     if *variant_index != dataful_variant {
                         let niche = place.place_field(fx, mir::Field::new(0));
                         //let niche_llty = niche.layout.immediate_llvm_type(bx.cx);
-                        let niche_value = ((variant_index.as_u32() - niche_variants.start().as_u32()) as u128)
-                            .wrapping_add(niche_start);
+                        let niche_value =
+                            ((variant_index.as_u32() - niche_variants.start().as_u32()) as u128)
+                                .wrapping_add(niche_start);
                         // FIXME(eddyb) Check the actual primitive type here.
                         let niche_llval = if niche_value == 0 {
                             CValue::const_val(fx, niche.layout().ty, 0)
@@ -606,7 +606,10 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     let usize_type = fx.clif_type(fx.tcx.types.usize).unwrap();
                     let layout = fx.layout_of(content_ty);
                     let llsize = fx.bcx.ins().iconst(usize_type, layout.size.bytes() as i64);
-                    let llalign = fx.bcx.ins().iconst(usize_type, layout.align.abi.bytes() as i64);
+                    let llalign = fx
+                        .bcx
+                        .ins()
+                        .iconst(usize_type, layout.align.abi.bytes() as i64);
                     let box_layout = fx.layout_of(fx.tcx.mk_box(content_ty));
 
                     // Allocate space:
@@ -688,9 +691,12 @@ pub fn trans_get_discriminant<'a, 'tcx: 'a>(
     }
     match layout.variants {
         layout::Variants::Single { index } => {
-            let discr_val = layout.ty.ty_adt_def().map_or(index.as_u32() as u128, |def| {
-                def.discriminant_for_variant(fx.tcx, index).val
-            });
+            let discr_val = layout
+                .ty
+                .ty_adt_def()
+                .map_or(index.as_u32() as u128, |def| {
+                    def.discriminant_for_variant(fx.tcx, index).val
+                });
             return CValue::const_val(fx, dest_layout.ty, discr_val as u64 as i64);
         }
         layout::Variants::Tagged { .. } | layout::Variants::NicheFilling { .. } => {}

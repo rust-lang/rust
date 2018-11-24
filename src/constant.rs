@@ -133,13 +133,23 @@ fn trans_const_place<'a, 'tcx: 'a>(
             ty::ParamEnv::reveal_all(),
             TransPlaceInterpreter,
         );
-        ecx.push_stack_frame(fx.instance, DUMMY_SP, fx.mir, None, StackPopCleanup::None { cleanup: false }).unwrap();
-        let op = ecx.eval_operand(&Operand::Constant(Box::new(Constant {
-            span: DUMMY_SP,
-            ty: const_.ty,
-            user_ty: None,
-            literal: const_,
-        })), None)?;
+        ecx.push_stack_frame(
+            fx.instance,
+            DUMMY_SP,
+            fx.mir,
+            None,
+            StackPopCleanup::None { cleanup: false },
+        )
+        .unwrap();
+        let op = ecx.eval_operand(
+            &Operand::Constant(Box::new(Constant {
+                span: DUMMY_SP,
+                ty: const_.ty,
+                user_ty: None,
+                literal: const_,
+            })),
+            None,
+        )?;
         let ptr = ecx.allocate(op.layout, MemoryKind::Stack)?;
         ecx.copy_op(op, ptr.into())?;
         let alloc = ecx.memory().get(ptr.to_ptr()?.alloc_id)?;
