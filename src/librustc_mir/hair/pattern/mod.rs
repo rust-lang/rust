@@ -848,7 +848,28 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         };
                         match self.tcx.at(span).const_eval(self.param_env.and(cid)) {
                             Ok(value) => {
-                                return self.const_to_pat(instance, value, id, span)
+                                let pattern = self.const_to_pat(instance, value, id, span);
+                                if !is_associated_const {
+                                    return pattern;
+                                }
+
+                                let user_provided_types = self.tables().user_provided_types();
+                                return if let Some(u_ty) = user_provided_types.get(id) {
+                                    let user_ty = PatternTypeProjection::from_user_type(*u_ty);
+                                    Pattern {
+                                        span,
+                                        kind: Box::new(
+                                            PatternKind::AscribeUserType {
+                                                subpattern: pattern,
+                                                user_ty,
+                                                user_ty_span: span,
+                                            }
+                                        ),
+                                        ty: value.ty,
+                                    }
+                                } else {
+                                    pattern
+                                }
                             },
                             Err(_) => {
                                 self.tcx.sess.span_err(
@@ -938,7 +959,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         id: hir::HirId,
         span: Span,
     ) -> Pattern<'tcx> {
-        debug!("const_to_pat: cv={:#?}", cv);
+        debug!("const_to_pat: cv={:#?} id={:?}", cv, id);
         let adt_subpattern = |i, variant_opt| {
             let field = Field::new(i);
             let val = const_field(
@@ -956,6 +977,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                 }
             }).collect::<Vec<_>>()
         };
+        debug!("const_to_pat: cv.ty={:?} span={:?}", cv.ty, span);
         let kind = match cv.ty.sty {
             ty::Float(_) => {
                 let id = self.tcx.hir().hir_to_node_id(id);

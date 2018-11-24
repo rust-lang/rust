@@ -4584,6 +4584,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                        span: Span)
                                        -> (Def, Option<Ty<'tcx>>, &'b [hir::PathSegment])
     {
+        debug!("resolve_ty_and_def_ufcs: qpath={:?} node_id={:?} span={:?}", qpath, node_id, span);
         let (ty, qself, item_segment) = match *qpath {
             QPath::Resolved(ref opt_qself, ref path) => {
                 return (path.def,
@@ -5104,6 +5105,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::Method(def_id) |
             Def::AssociatedConst(def_id) => {
                 let container = tcx.associated_item(def_id).container;
+                debug!("instantiate_value_path: def={:?} container={:?}", def, container);
                 match container {
                     ty::TraitContainer(trait_did) => {
                         callee::check_legal_trait_for_method_call(tcx, span, trait_did)
