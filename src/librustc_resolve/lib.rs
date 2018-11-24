@@ -102,6 +102,12 @@ enum Weak {
     No,
 }
 
+enum ScopeSet {
+    Import(Namespace),
+    Macro(MacroKind),
+    Module,
+}
+
 /// A free importable items suggested in case of resolution failure.
 struct ImportSuggestion {
     path: Path,
@@ -997,22 +1003,19 @@ impl<'a> LexicalScopeBinding<'a> {
     }
 }
 
-
-#[derive(Clone, Copy, PartialEq, Debug)]
-enum UniformRootKind {
-    CurrentScope,
-    ExternPrelude,
-}
-
 #[derive(Copy, Clone, Debug)]
 enum ModuleOrUniformRoot<'a> {
     /// Regular module.
     Module(Module<'a>),
 
-    /// This "virtual module" denotes either resolution in extern prelude
-    /// for paths starting with `::` on 2018 edition or `extern::`,
-    /// or resolution in current scope for single-segment imports.
-    UniformRoot(UniformRootKind),
+    /// Virtual module that denotes resolution in extern prelude.
+    /// Used for paths starting with `::` on 2018 edition or `extern::`.
+    ExternPrelude,
+
+    /// Virtual module that denotes resolution in current scope.
+    /// Used only for resolving single-segment imports. The reason it exists is that import paths
+    /// are always split into two parts, the first of which should be some kind of module.
+    CurrentScope,
 }
 
 impl<'a> PartialEq for ModuleOrUniformRoot<'a> {
@@ -1020,8 +1023,8 @@ impl<'a> PartialEq for ModuleOrUniformRoot<'a> {
         match (*self, *other) {
             (ModuleOrUniformRoot::Module(lhs), ModuleOrUniformRoot::Module(rhs)) =>
                 ptr::eq(lhs, rhs),
-            (ModuleOrUniformRoot::UniformRoot(lhs), ModuleOrUniformRoot::UniformRoot(rhs)) =>
-                lhs == rhs,
+            (ModuleOrUniformRoot::ExternPrelude, ModuleOrUniformRoot::ExternPrelude) => true,
+            (ModuleOrUniformRoot::CurrentScope, ModuleOrUniformRoot::CurrentScope) => true,
             _ => false,
         }
     }
@@ -1758,8 +1761,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
                 error_callback(self, span, ResolutionError::FailedToResolve(msg));
                 Def::Err
             }
-            PathResult::Module(ModuleOrUniformRoot::UniformRoot(_)) |
-            PathResult::Indeterminate => unreachable!(),
+            PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
             PathResult::Failed(span, msg, _) => {
                 error_callback(self, span, ResolutionError::FailedToResolve(&msg));
                 Def::Err
@@ -2220,11 +2222,11 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     self.current_module = self.macro_def_scope(def);
                 }
             }
-            ModuleOrUniformRoot::UniformRoot(UniformRootKind::ExternPrelude) => {
+            ModuleOrUniformRoot::ExternPrelude => {
                 ident.span = ident.span.modern();
                 ident.span.adjust(Mark::root());
             }
-            ModuleOrUniformRoot::UniformRoot(UniformRootKind::CurrentScope) => {
+            ModuleOrUniformRoot::CurrentScope => {
                 // No adjustments
             }
         }
@@ -3667,8 +3669,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
                 err_path_resolution()
             }
-            PathResult::Module(ModuleOrUniformRoot::UniformRoot(_)) |
-            PathResult::Failed(..) => return None,
+            PathResult::Module(..) | PathResult::Failed(..) => return None,
             PathResult::Indeterminate => bug!("indetermined path result in resolve_qpath"),
         };
 
@@ -3787,8 +3788,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     }
                     if name == keywords::Extern.name() ||
                        name == keywords::CrateRoot.name() && ident.span.rust_2018() {
-                        module =
-                            Some(ModuleOrUniformRoot::UniformRoot(UniformRootKind::ExternPrelude));
+                        module = Some(ModuleOrUniformRoot::ExternPrelude);
                         continue;
                     }
                     if name == keywords::CrateRoot.name() ||
@@ -3821,9 +3821,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 self.resolve_ident_in_module(module, ident, ns, None, record_used, path_span)
             } else if opt_ns.is_none() || opt_ns == Some(MacroNS) {
                 assert!(ns == TypeNS);
-                self.early_resolve_ident_in_lexical_scope(ident, ns, None, opt_ns.is_none(),
-                                                          parent_scope, record_used, record_used,
-                                                          path_span)
+                let scopes = if opt_ns.is_none() { ScopeSet::Import(ns) } else { ScopeSet::Module };
+                self.early_resolve_ident_in_lexical_scope(ident, scopes, parent_scope, record_used,
+                                                          record_used, path_span)
             } else {
                 let record_used_id =
                     if record_used { crate_lint.node_id().or(Some(CRATE_NODE_ID)) } else { None };
@@ -3912,8 +3912,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         PathResult::Module(match module {
             Some(module) => module,
-            None if path.is_empty() =>
-                ModuleOrUniformRoot::UniformRoot(UniformRootKind::CurrentScope),
+            None if path.is_empty() => ModuleOrUniformRoot::CurrentScope,
             _ => span_bug!(path_span, "resolve_path: non-empty path `{:?}` has no module", path),
         })
     }

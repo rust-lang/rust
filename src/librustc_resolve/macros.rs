@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
-use {CrateLint, Resolver, ResolutionError, Segment, Weak};
-use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, ToNameBinding};
+use {CrateLint, Resolver, ResolutionError, ScopeSet, Weak};
+use {Module, ModuleKind, NameBinding, NameBindingKind, PathResult, Segment, ToNameBinding};
 use {is_known_tool, resolve_error};
 use ModuleOrUniformRoot;
-use Namespace::{self, *};
+use Namespace::*;
 use build_reduced_graph::{BuildReducedGraphVisitor, IsMacroExport};
 use resolve_imports::ImportResolver;
 use rustc::hir::def_id::{DefId, CRATE_DEF_INDEX, DefIndex,
@@ -502,7 +502,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             def
         } else {
             let binding = self.early_resolve_ident_in_lexical_scope(
-                path[0].ident, MacroNS, Some(kind), false, parent_scope, false, force, path_span
+                path[0].ident, ScopeSet::Macro(kind), parent_scope, false, force, path_span
             );
             match binding {
                 Ok(..) => {}
@@ -527,9 +527,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     crate fn early_resolve_ident_in_lexical_scope(
         &mut self,
         orig_ident: Ident,
-        ns: Namespace,
-        macro_kind: Option<MacroKind>,
-        is_import: bool,
+        scope_set: ScopeSet,
         parent_scope: &ParentScope<'a>,
         record_used: bool,
         force: bool,
@@ -605,8 +603,6 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         }
 
         assert!(force || !record_used); // `record_used` implies `force`
-        assert!(macro_kind.is_none() || !is_import); // `is_import` implies no macro kind
-        let rust_2015 = orig_ident.span.rust_2015();
         let mut ident = orig_ident.modern();
 
         // Make sure `self`, `super` etc produce an error when passed to here.
@@ -628,6 +624,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let mut innermost_result: Option<(&NameBinding, Flags)> = None;
 
         // Go through all the scopes and try to resolve the name.
+        let rust_2015 = orig_ident.span.rust_2015();
+        let (ns, macro_kind, is_import) = match scope_set {
+            ScopeSet::Import(ns) => (ns, None, true),
+            ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false),
+            ScopeSet::Module => (TypeNS, None, false),
+        };
         let mut where_to_resolve = match ns {
             _ if is_import && rust_2015 => WhereToResolve::CrateRoot,
             TypeNS | ValueNS => WhereToResolve::Module(parent_scope.module),
@@ -1041,7 +1043,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let macro_resolutions =
             mem::replace(&mut *module.single_segment_macro_resolutions.borrow_mut(), Vec::new());
         for (ident, kind, parent_scope, initial_binding) in macro_resolutions {
-            match self.early_resolve_ident_in_lexical_scope(ident, MacroNS, Some(kind), false,
+            match self.early_resolve_ident_in_lexical_scope(ident, ScopeSet::Macro(kind),
                                                             &parent_scope, true, true, ident.span) {
                 Ok(binding) => {
                     let initial_def = initial_binding.map(|initial_binding| {
@@ -1067,7 +1069,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let builtin_attrs = mem::replace(&mut *module.builtin_attrs.borrow_mut(), Vec::new());
         for (ident, parent_scope) in builtin_attrs {
             let _ = self.early_resolve_ident_in_lexical_scope(
-                ident, MacroNS, Some(MacroKind::Attr), false, &parent_scope, true, true, ident.span
+                ident, ScopeSet::Macro(MacroKind::Attr), &parent_scope, true, true, ident.span
             );
         }
     }
