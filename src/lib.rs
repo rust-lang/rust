@@ -397,7 +397,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
         // Second argument: align
         let arg = ecx.eval_place(&mir::Place::Local(args.next().unwrap()))?;
-        let align = layout.align.abi();
+        let align = layout.align.abi.bytes();
         ecx.write_scalar(Scalar::from_uint(align, arg.layout.size), arg)?;
 
         // No more arguments
@@ -419,7 +419,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             "__cxa_thread_atexit_impl" => {
                 // This should be all-zero, pointer-sized
                 let data = vec![0; tcx.data_layout.pointer_size.bytes() as usize];
-                Allocation::from_bytes(&data[..], tcx.data_layout.pointer_align)
+                Allocation::from_bytes(&data[..], tcx.data_layout.pointer_align.abi)
             }
             _ => return err!(Unimplemented(
                     format!("can't access foreign static: {}", link_name),
@@ -458,9 +458,9 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         place: MPlaceTy<'tcx, Borrow>,
         mutability: Option<hir::Mutability>,
     ) -> EvalResult<'tcx, Scalar<Borrow>> {
-        let (size, _) = ecx.size_and_align_of_mplace(place)?
+        let size = ecx.size_and_align_of_mplace(place)?.map(|(size, _)| size)
             // for extern types, just cover what we can
-            .unwrap_or_else(|| place.layout.size_and_align());
+            .unwrap_or_else(|| place.layout.size);
         if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag ||
             !Self::enforce_validity(ecx) || size == Size::ZERO
         {
@@ -498,9 +498,9 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         // This is deliberately NOT `deref_operand` as we do not want `tag_dereference`
         // to be called!  That would kill the original tag if we got a raw ptr.
         let place = ecx.ref_to_mplace(ecx.read_immediate(ptr)?)?;
-        let (size, _) = ecx.size_and_align_of_mplace(place)?
+        let size = ecx.size_and_align_of_mplace(place)?.map(|(size, _)| size)
             // for extern types, just cover what we can
-            .unwrap_or_else(|| place.layout.size_and_align());
+            .unwrap_or_else(|| place.layout.size);
         if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag ||
             !ecx.machine.validate || size == Size::ZERO
         {

@@ -166,12 +166,12 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 let (alloc_size, alloc_align) = self.memory().get_size_and_align(ptr.alloc_id);
 
                 // Case II: Alignment gives it away
-                if ptr.offset.bytes() % alloc_align.abi() == 0 {
+                if ptr.offset.bytes() % alloc_align.bytes() == 0 {
                     // The offset maintains the allocation alignment, so we know `base+offset`
                     // is aligned by `alloc_align`.
                     // FIXME: We could be even more general, e.g. offset 2 into a 4-aligned
                     // allocation cannot equal 3.
-                    if bits % alloc_align.abi() != 0 {
+                    if bits % alloc_align.bytes() != 0 {
                         // The integer is *not* aligned. So they cannot be equal.
                         return Ok(false);
                     }
@@ -226,7 +226,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 map_to_primval(left.overflowing_offset(Size::from_bytes(right as u64), self)),
 
             BitAnd if !signed => {
-                let ptr_base_align = self.memory().get(left.alloc_id)?.align.abi();
+                let ptr_base_align = self.memory().get(left.alloc_id)?.align.bytes();
                 let base_mask = {
                     // FIXME: Use interpret::truncate, once that takes a Size instead of a Layout
                     let shift = 128 - self.memory().pointer_size().bits();
@@ -259,7 +259,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             Rem if !signed => {
                 // Doing modulo a divisor of the alignment is allowed.
                 // (Intuition: Modulo a divisor leaks less information.)
-                let ptr_base_align = self.memory().get(left.alloc_id)?.align.abi();
+                let ptr_base_align = self.memory().get(left.alloc_id)?.align.bytes();
                 let right = right as u64;
                 let ptr_size = self.memory().pointer_size().bytes() as u8;
                 if right == 1 {

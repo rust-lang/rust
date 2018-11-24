@@ -130,9 +130,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for EvalContext<'a, 'mir, 'tcx, super:
                 unsafe_cell_action: |place| {
                     trace!("unsafe_cell_action on {:?}", place.ptr);
                     // We need a size to go on.
-                    let (unsafe_cell_size, _) = self.size_and_align_of_mplace(place)?
+                    let unsafe_cell_size = self.size_and_align_of_mplace(place)?
+                        .map(|(size, _)| size)
                         // for extern types, just cover what we can
-                        .unwrap_or_else(|| place.layout.size_and_align());
+                        .unwrap_or_else(|| place.layout.size);
                     // Now handle this `UnsafeCell`, unless it is empty.
                     if unsafe_cell_size != Size::ZERO {
                         unsafe_cell_action(place.ptr, unsafe_cell_size)

@@ -152,7 +152,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 let elem_layout = self.layout_of(elem_ty)?;
                 let elem_size = elem_layout.size.bytes();
                 let count = self.read_scalar(args[2])?.to_usize(self)?;
-                let elem_align = elem_layout.align;
+                let elem_align = elem_layout.align.abi;
                 // erase tags: this is a raw ptr operation
                 let src = self.read_scalar(args[0])?.not_undef()?;
                 let dest = self.read_scalar(args[1])?.not_undef()?;
@@ -272,7 +272,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
             "pref_align_of" => {
                 let ty = substs.type_at(0);
                 let layout = self.layout_of(ty)?;
-                let align = layout.align.pref();
+                let align = layout.align.pref.bytes();
                 let ptr_size = self.pointer_size();
                 let align_val = Scalar::from_uint(align as u128, ptr_size);
                 self.write_scalar(align_val, dest)?;
@@ -364,7 +364,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                     .expect("size_of_val called on extern type");
                 let ptr_size = self.pointer_size();
                 self.write_scalar(
-                    Scalar::from_uint(align.abi(), ptr_size),
+                    Scalar::from_uint(align.bytes(), ptr_size),
                     dest,
                 )?;
             }
@@ -438,7 +438,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 let val_byte = self.read_scalar(args[1])?.to_u8()?;
                 let ptr = self.read_scalar(args[0])?.not_undef()?;
                 let count = self.read_scalar(args[2])?.to_usize(self)?;
-                self.memory().check_align(ptr, ty_layout.align)?;
+                self.memory().check_align(ptr, ty_layout.align.abi)?;
                 self.memory_mut().write_repeat(ptr, val_byte, ty_layout.size * count)?;
             }
 
