@@ -17,7 +17,7 @@ mod check {
 
     fn check() {
         Path;
-        // LinkedList::<u8>::new(); // FIXME
+        LinkedList::<u8>::new();
     }
 }
 

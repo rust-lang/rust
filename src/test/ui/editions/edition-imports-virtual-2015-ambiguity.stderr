@@ -1,0 +1,21 @@
+error[E0659]: `Ambiguous` is ambiguous (name vs any other name during import resolution)
+  --> <::edition_imports_2015::gen_ambiguous macros>:1:15
+   |
+LL | (  ) => { use Ambiguous ; }
+   |               ^^^^^^^^^ ambiguous name
+   |
+note: `Ambiguous` could refer to the struct defined here
+  --> $DIR/edition-imports-virtual-2015-ambiguity.rs:8:1
+   |
+LL | pub struct Ambiguous {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^
+note: `Ambiguous` could also refer to the struct defined here
+  --> $DIR/edition-imports-virtual-2015-ambiguity.rs:11:5
+   |
+LL |     pub struct Ambiguous {}
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   = help: use `self::Ambiguous` to refer to this struct unambiguously
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0659`.
