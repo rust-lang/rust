@@ -186,8 +186,10 @@ mod tests {
 
     fn do_check<F>(before: &str, replace_with: &str, reparser: F)
     where
-        for<'a> F: Fn(SyntaxNodeRef<'a>, &AtomEdit)
-            -> Option<(SyntaxNodeRef<'a>, GreenNode, Vec<SyntaxError>)>,
+        for<'a> F: Fn(
+            SyntaxNodeRef<'a>,
+            &AtomEdit,
+        ) -> Option<(SyntaxNodeRef<'a>, GreenNode, Vec<SyntaxError>)>,
     {
         let (range, before) = extract_range(before);
         let after = replace_range(before.clone(), range, replace_with);

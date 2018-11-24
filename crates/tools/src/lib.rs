@@ -17,7 +17,7 @@ pub type Result<T> = ::std::result::Result<T, failure::Error>;
 pub const GRAMMAR: &str = "crates/ra_syntax/src/grammar.ron";
 pub const SYNTAX_KINDS: &str = "crates/ra_syntax/src/syntax_kinds/generated.rs.tera";
 pub const AST: &str = "crates/ra_syntax/src/ast/generated.rs.tera";
-const TOOLCHAIN: &str = "beta-2018-11-19";
+const TOOLCHAIN: &str = "beta-2018-11-24";
 
 #[derive(Debug)]
 pub struct Test {
