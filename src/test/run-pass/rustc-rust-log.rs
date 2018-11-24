@@ -16,6 +16,7 @@
 //
 // dont-check-compiler-stdout
 // dont-check-compiler-stderr
+// compile-flags: --error-format human
 
 // rustc-env:RUST_LOG=debug
 
