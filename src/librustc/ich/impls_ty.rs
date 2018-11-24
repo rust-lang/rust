@@ -1240,3 +1240,10 @@ impl_stable_hash_for!(
         clauses,
     }
 );
+
+impl_stable_hash_for!(
+    impl<'tcx, G> for struct traits::InEnvironment<'tcx, G> {
+        environment,
+        goal,
+    }
+);

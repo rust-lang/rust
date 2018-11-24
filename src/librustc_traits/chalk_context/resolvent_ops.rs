@@ -35,7 +35,9 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     ) -> Fallible<Canonical<'gcx, ChalkExClause<'gcx>>> {
         use chalk_engine::context::UnificationOps;
 
-        self.infcx.probe(|_| {
+        debug!("resolvent_clause(goal = {:?}, clause = {:?})", goal, clause);
+
+        let result = self.infcx.probe(|_| {
             let ProgramClause {
                 goal: consequence,
                 hypotheses,
@@ -70,7 +72,10 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
 
             let canonical_ex_clause = self.canonicalize_ex_clause(&ex_clause);
             Ok(canonical_ex_clause)
-        })
+        });
+
+        debug!("resolvent_clause: result = {:?}", result);
+        result
     }
 
     fn apply_answer_subst(
@@ -80,6 +85,12 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         answer_table_goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
         canonical_answer_subst: &Canonical<'gcx, ConstrainedSubst<'gcx>>,
     ) -> Fallible<ChalkExClause<'tcx>> {
+        debug!(
+            "apply_answer_subst(ex_clause = {:?}, selected_goal = {:?})",
+            self.infcx.resolve_type_vars_if_possible(&ex_clause),
+            self.infcx.resolve_type_vars_if_possible(selected_goal)
+        );
+
         let (answer_subst, _) = self.infcx.instantiate_canonical_with_fresh_inference_vars(
             DUMMY_SP,
             canonical_answer_subst
@@ -96,8 +107,12 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         substitutor.relate(&answer_table_goal.value, &selected_goal)
             .map_err(|_| NoSolution)?;
 
-        let mut ex_clause = substitutor.ex_clause;
-        ex_clause.constraints.extend(answer_subst.constraints);
+        let ex_clause = substitutor.ex_clause;
+
+        // FIXME: restore this later once we get better at handling regions
+        // ex_clause.constraints.extend(answer_subst.constraints);
+
+        debug!("apply_answer_subst: ex_clause = {:?}", ex_clause);
         Ok(ex_clause)
     }
 }
@@ -172,6 +187,7 @@ impl TypeRelation<'cx, 'gcx, 'tcx> for AnswerSubstitutor<'cx, 'gcx, 'tcx> {
 
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         let b = self.infcx.shallow_resolve(b);
+        debug!("AnswerSubstitutor::tys(a = {:?}, b = {:?})", a, b);
 
         if let &ty::Bound(debruijn, bound_ty) = &a.sty {
             // Free bound var

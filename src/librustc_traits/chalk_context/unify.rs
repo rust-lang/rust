@@ -16,6 +16,12 @@ crate fn unify<'me, 'gcx, 'tcx, T: Relate<'tcx>>(
     a: &T,
     b: &T
 ) -> RelateResult<'tcx, UnificationResult<'tcx>> {
+    debug!("unify(
+        a = {:?},
+        b = {:?},
+        environment = {:?},
+    )", a, b, environment);
+
     let mut delegate = ChalkTypeRelatingDelegate::new(
         infcx,
         environment
@@ -26,6 +32,8 @@ crate fn unify<'me, 'gcx, 'tcx, T: Relate<'tcx>>(
         &mut delegate,
         ty::Variance::Invariant
     ).relate(a, b)?;
+
+    debug!("unify: goals = {:?}, constraints = {:?}", delegate.goals, delegate.constraints);
 
     Ok(UnificationResult {
         goals: delegate.goals,

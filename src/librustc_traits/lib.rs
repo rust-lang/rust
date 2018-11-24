@@ -35,6 +35,7 @@ pub fn provide(p: &mut Providers) {
     evaluate_obligation::provide(p);
     implied_outlives_bounds::provide(p);
     lowering::provide(p);
+    chalk_context::provide(p);
     normalize_projection_ty::provide(p);
     normalize_erasing_regions::provide(p);
     type_op::provide(p);

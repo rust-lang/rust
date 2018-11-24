@@ -350,6 +350,9 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
         goal: &DomainGoal<'tcx>,
     ) -> Vec<Clause<'tcx>> {
         use rustc::traits::WhereClause::*;
+        use rustc::infer::canonical::OriginalQueryValues;
+
+        let goal = self.infcx.resolve_type_vars_if_possible(goal);
 
         debug!("program_clauses(goal = {:?})", goal);
 
@@ -582,10 +585,12 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
         debug!("program_clauses: clauses = {:?}", clauses);
         debug!("program_clauses: adding clauses from environment = {:?}", environment);
 
-        let environment = self.infcx.tcx.lift_to_global(environment)
-            .expect("environment is not global");
-
-        let env_clauses = self.infcx.tcx.program_clauses_for_env(environment);
+        let mut _orig_query_values = OriginalQueryValues::default();
+        let canonical_environment = self.infcx.canonicalize_query(
+            environment,
+            &mut _orig_query_values
+        ).value;
+        let env_clauses = self.infcx.tcx.program_clauses_for_env(canonical_environment);
 
         debug!("program_clauses: env_clauses = {:?}", env_clauses);
 

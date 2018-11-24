@@ -2,14 +2,15 @@ mod program_clauses;
 mod resolvent_ops;
 mod unify;
 
-use chalk_engine::fallible::{Fallible, NoSolution};
+use chalk_engine::fallible::Fallible;
 use chalk_engine::{
     context,
     hh::HhGoal,
     DelayedLiteral,
     Literal,
-    ExClause
+    ExClause,
 };
+use chalk_engine::forest::Forest;
 use rustc::infer::{InferCtxt, LateBoundRegionConversionTime};
 use rustc::infer::canonical::{
     Canonical,
@@ -19,6 +20,7 @@ use rustc::infer::canonical::{
     Certainty,
 };
 use rustc::traits::{
+    self,
     DomainGoal,
     ExClauseFold,
     ChalkContextLift,
@@ -28,10 +30,13 @@ use rustc::traits::{
     QuantifierKind,
     Environment,
     InEnvironment,
+    ChalkCanonicalGoal,
 };
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
+use rustc::ty::query::Providers;
 use rustc::ty::subst::{Kind, UnpackedKind};
+use rustc_data_structures::sync::Lrc;
 use syntax_pos::DUMMY_SP;
 
 use std::fmt::{self, Debug};
@@ -122,35 +127,50 @@ impl context::Context for ChalkArenas<'tcx> {
 impl context::AggregateOps<ChalkArenas<'gcx>> for ChalkContext<'cx, 'gcx> {
     fn make_solution(
         &self,
-        _root_goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
+        root_goal: &Canonical<'gcx, InEnvironment<'gcx, Goal<'gcx>>>,
         mut simplified_answers: impl context::AnswerStream<ChalkArenas<'gcx>>,
     ) -> Option<Canonical<'gcx, QueryResponse<'gcx, ()>>> {
         use chalk_engine::SimplifiedAnswer;
+
+        debug!("make_solution(root_goal = {:?})", root_goal);
 
         if simplified_answers.peek_answer().is_none() {
             return None;
         }
 
-        let SimplifiedAnswer { subst, ambiguous } = simplified_answers
+        let SimplifiedAnswer { subst: constrained_subst, ambiguous } = simplified_answers
             .next_answer()
             .unwrap();
 
+        debug!("make_solution: ambiguous flag = {}", ambiguous);
+
         let ambiguous = simplified_answers.peek_answer().is_some() || ambiguous;
 
-        Some(subst.unchecked_map(|subst| {
-            QueryResponse {
-                var_values: subst.subst,
-                region_constraints: subst.constraints
-                    .into_iter()
-                    .map(|c| ty::Binder::bind(c))
-                    .collect(),
-                certainty: match ambiguous {
-                    true => Certainty::Ambiguous,
-                    false => Certainty::Proven,
-                },
+        let solution = constrained_subst.unchecked_map(|cs| match ambiguous {
+            true => QueryResponse {
+                var_values: cs.subst.make_identity(self.tcx),
+                region_constraints: Vec::new(),
+                certainty: Certainty::Ambiguous,
                 value: (),
-            }
-        }))
+            },
+
+            false => QueryResponse {
+                var_values: cs.subst,
+                region_constraints: Vec::new(),
+
+                // FIXME: restore this later once we get better at handling regions
+                // region_constraints: cs.constraints
+                //     .into_iter()
+                //     .map(|c| ty::Binder::bind(c))
+                //     .collect(),
+                certainty: Certainty::Proven,
+                value: (),
+            },
+        });
+
+        debug!("make_solution: solution = {:?}", solution);
+
+        Some(solution)
     }
 }
 
@@ -334,16 +354,16 @@ impl context::TruncateOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
 {
     fn truncate_goal(
         &mut self,
-        subgoal: &InEnvironment<'tcx, Goal<'tcx>>,
+        _subgoal: &InEnvironment<'tcx, Goal<'tcx>>,
     ) -> Option<InEnvironment<'tcx, Goal<'tcx>>> {
-        Some(*subgoal) // FIXME we should truncate at some point!
+        None // FIXME we should truncate at some point!
     }
 
     fn truncate_answer(
         &mut self,
-        subst: &CanonicalVarValues<'tcx>,
+        _subst: &CanonicalVarValues<'tcx>,
     ) -> Option<CanonicalVarValues<'tcx>> {
-        Some(subst.clone()) // FIXME we should truncate at some point!
+        None // FIXME we should truncate at some point!
     }
 }
 
@@ -428,7 +448,7 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
         b: &Kind<'tcx>,
     ) -> Fallible<UnificationResult<'tcx>> {
         self.infcx.commit_if_ok(|_| {
-            unify(self.infcx, *environment, a, b).map_err(|_| NoSolution)
+            unify(self.infcx, *environment, a, b).map_err(|_| chalk_engine::fallible::NoSolution)
         })
     }
 
@@ -462,7 +482,10 @@ crate fn into_ex_clause(result: UnificationResult<'tcx>, ex_clause: &mut ChalkEx
     ex_clause.subgoals.extend(
         result.goals.into_iter().map(Literal::Positive)
     );
-    ex_clause.constraints.extend(result.constraints);
+
+    // FIXME: restore this later once we get better at handling regions
+    let _ = result.constraints.len(); // trick `-D dead-code`
+    // ex_clause.constraints.extend(result.constraints);
 }
 
 type ChalkHhGoal<'tcx> = HhGoal<ChalkArenas<'tcx>>;
@@ -624,4 +647,53 @@ impl<'tcx, 'gcx: 'tcx, T> Upcast<'tcx, 'gcx> for Canonical<'gcx, T>
             variables: self.variables,
         }
     }
+}
+
+crate fn provide(p: &mut Providers) {
+    *p = Providers {
+        evaluate_goal,
+        ..*p
+    };
+}
+
+crate fn evaluate_goal<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    goal: ChalkCanonicalGoal<'tcx>
+) -> Result<
+    Lrc<Canonical<'tcx, QueryResponse<'tcx, ()>>>,
+    traits::query::NoSolution
+> {
+    use crate::lowering::Lower;
+    use rustc::traits::WellFormed;
+
+    let goal = goal.unchecked_map(|goal| InEnvironment {
+        environment: goal.environment,
+        goal: match goal.goal {
+            ty::Predicate::WellFormed(ty) => tcx.mk_goal(
+                GoalKind::DomainGoal(DomainGoal::WellFormed(WellFormed::Ty(ty)))
+            ),
+
+            other => tcx.mk_goal(
+                GoalKind::from_poly_domain_goal(other.lower(), tcx)
+            ),
+        },
+    });
+
+
+    debug!("evaluate_goal(goal = {:?})", goal);
+
+    let context = ChalkContext {
+        _arenas: ChalkArenas {
+            _phantom: PhantomData,
+        },
+        tcx,
+    };
+
+    let mut forest = Forest::new(context);
+    let solution = forest.solve(&goal);
+
+    debug!("evaluate_goal: solution = {:?}", solution);
+
+    solution.map(|ok| Ok(Lrc::new(ok)))
+        .unwrap_or(Err(traits::query::NoSolution))
 }

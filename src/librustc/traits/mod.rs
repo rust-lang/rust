@@ -4,6 +4,7 @@
 
 #[allow(dead_code)]
 pub mod auto_trait;
+mod chalk_fulfill;
 mod coherence;
 pub mod error_reporting;
 mod engine;
@@ -60,6 +61,11 @@ pub use self::engine::{TraitEngine, TraitEngineExt};
 pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
 pub use self::util::{supertraits, supertrait_def_ids, transitive_bounds,
                      Supertraits, SupertraitDefIds};
+
+pub use self::chalk_fulfill::{
+    CanonicalGoal as ChalkCanonicalGoal,
+    FulfillmentContext as ChalkFulfillmentContext
+};
 
 pub use self::ObligationCauseCode::*;
 pub use self::FulfillmentErrorCode::*;
@@ -340,9 +346,9 @@ impl<'tcx> DomainGoal<'tcx> {
 }
 
 impl<'tcx> GoalKind<'tcx> {
-    pub fn from_poly_domain_goal<'a>(
+    pub fn from_poly_domain_goal<'a, 'gcx>(
         domain_goal: PolyDomainGoal<'tcx>,
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        tcx: TyCtxt<'a, 'gcx, 'tcx>,
     ) -> GoalKind<'tcx> {
         match domain_goal.no_bound_vars() {
             Some(p) => p.into_goal(),
