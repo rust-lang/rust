@@ -108,47 +108,45 @@ pre {
 	color: #eee !important;
 	background-color: #616161;
 }
-.content .highlighted a, .content .highlighted span { color: #eee !important; }
-.content .highlighted.trait { background-color: #013191; }
+.content .highlighted a, .content .highlighted span { color: #000 !important; }
+.content .highlighted.trait { background-color: #ffffff; }
 .content .highlighted.mod,
-.content .highlighted.externcrate { background-color: #afc6e4; }
-.content .highlighted.mod { background-color: #803a1b; }
-.content .highlighted.externcrate { background-color: #396bac; }
-.content .highlighted.enum { background-color: #5b4e68; }
-.content .highlighted.struct { background-color: #194e9f; }
-.content .highlighted.union { background-color: #b7bd49; }
+.content .highlighted.externcrate { background-color: #f9fbfd; }
+.content .highlighted.enum { background-color: #f2f7f2; }
+.content .highlighted.struct { background-color: #fbf2ef; }
+.content .highlighted.union { background-color: #d4d892; }
 .content .highlighted.fn,
 .content .highlighted.method,
-.content .highlighted.tymethod { background-color: #4950ed; }
-.content .highlighted.type { background-color: #38902c; }
-.content .highlighted.foreigntype { background-color: #b200d6; }
+.content .highlighted.tymethod { background-color: #efe9ea; }
+.content .highlighted.type { background-color: #fffaf4; }
+.content .highlighted.foreigntype { background-color: #ffffff; }
 .content .highlighted.attr,
 .content .highlighted.derive,
-.content .highlighted.macro { background-color: #217d1c; }
+.content .highlighted.macro { background-color: #daf6d9; }
 .content .highlighted.constant,
-.content .highlighted.static { background-color: #0063cc; }
-.content .highlighted.primitive { background-color: #00708a; }
-.content .highlighted.keyword { background-color: #884719; }
+.content .highlighted.static { background-color: #ffffff; }
+.content .highlighted.primitive { background-color: #fdffff; }
+.content .highlighted.keyword { background-color: #fcd0b0; }
 
-.content span.enum, .content a.enum, .block a.current.enum { color: #82b089; }
-.content span.struct, .content a.struct, .block a.current.struct { color: #2dbfb8; }
-.content span.type, .content a.type, .block a.current.type { color: #ff7f00; }
-.content span.foreigntype, .content a.foreigntype, .block a.current.foreigntype { color: #dd7de8; }
+.content span.enum, .content a.enum, .block a.current.enum { color: #83b28a; }
+.content span.struct, .content a.struct, .block a.current.struct { color: #cf86ba; }
+.content span.type, .content a.type, .block a.current.type { color: #ff8f1f; }
+.content span.foreigntype, .content a.foreigntype, .block a.current.foreigntype { color: #ee47ff; }
 .content span.attr, .content a.attr, .block a.current.attr,
 .content span.derive, .content a.derive, .block a.current.derive,
-.content span.macro, .content a.macro, .block a.current.macro { color: #09bd00; }
-.content span.union, .content a.union, .block a.current.union { color: #a6ae37; }
+.content span.macro, .content a.macro, .block a.current.macro { color: #0be400; }
+.content span.union, .content a.union, .block a.current.union { color: #bcc343; }
 .content span.constant, .content a.constant, .block a.current.constant,
-.content span.static, .content a.static, .block a.current.static { color: #82a5c9; }
-.content span.primitive, .content a.primitive, .block a.current.primitive { color: #43aec7; }
+.content span.static, .content a.static, .block a.current.static { color: #8aa0b8; }
+.content span.primitive, .content a.primitive, .block a.current.primitive { color: #57b7cd; }
 .content span.externcrate,
-.content span.mod, .content a.mod, .block a.current.mod { color: #bda000; }
-.content span.trait, .content a.trait, .block a.current.trait { color: #b78cf2; }
+.content span.mod, .content a.mod, .block a.current.mod { color: #91abce; }
+.content span.trait, .content a.trait, .block a.current.trait { color: #c6b7fa; }
 .content span.fn, .content a.fn, .block a.current.fn,
 .content span.method, .content a.method, .block a.current.method,
 .content span.tymethod, .content a.tymethod, .block a.current.tymethod,
-.content .fnname{ color: #2BAB63; }
-.content span.keyword, .content a.keyword, .block a.current.keyword { color: #de5249; }
+.content .fnname { color: #cda062; }
+.content span.keyword, .content a.keyword, .block a.current.keyword { color: #eda29d; }
 
 pre.rust .comment { color: #8d8d8b; }
 pre.rust .doccomment { color: #8ca375; }
@@ -169,7 +167,7 @@ a {
 
 .docblock:not(.type-decl) a:not(.srclink):not(.test-arrow),
 .docblock-short a:not(.srclink):not(.test-arrow), .stability a {
-	color: #D2991D;
+	color: #76a5d3;
 }
 
 a.test-arrow {
