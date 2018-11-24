@@ -526,7 +526,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     // `foo::bar!(); or `foo!();`) and also for import paths on 2018 edition.
     crate fn early_resolve_ident_in_lexical_scope(
         &mut self,
-        mut ident: Ident,
+        orig_ident: Ident,
         ns: Namespace,
         macro_kind: Option<MacroKind>,
         is_import: bool,
@@ -582,6 +582,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         enum WhereToResolve<'a> {
             DeriveHelpers,
             MacroRules(LegacyScope<'a>),
+            CrateRoot,
             Module(Module<'a>),
             MacroUsePrelude,
             BuiltinMacros,
@@ -605,8 +606,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         assert!(force || !record_used); // `record_used` implies `force`
         assert!(macro_kind.is_none() || !is_import); // `is_import` implies no macro kind
-        let rust_2015 = ident.span.rust_2015();
-        ident = ident.modern();
+        let rust_2015 = orig_ident.span.rust_2015();
+        let mut ident = orig_ident.modern();
 
         // Make sure `self`, `super` etc produce an error when passed to here.
         if ident.is_path_segment_keyword() {
@@ -627,10 +628,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         let mut innermost_result: Option<(&NameBinding, Flags)> = None;
 
         // Go through all the scopes and try to resolve the name.
-        let mut where_to_resolve = if ns == MacroNS {
-            WhereToResolve::DeriveHelpers
-        } else {
-            WhereToResolve::Module(parent_scope.module)
+        let mut where_to_resolve = match ns {
+            _ if is_import && rust_2015 => WhereToResolve::CrateRoot,
+            TypeNS | ValueNS => WhereToResolve::Module(parent_scope.module),
+            MacroNS => WhereToResolve::DeriveHelpers,
         };
         let mut use_prelude = !parent_scope.module.no_implicit_prelude;
         let mut determinacy = Determinacy::Determined;
@@ -667,6 +668,26 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     LegacyScope::Invocation(invoc) if invoc.output_legacy_scope.get().is_none() =>
                         Err(Determinacy::Undetermined),
                     _ => Err(Determinacy::Determined),
+                }
+                WhereToResolve::CrateRoot => {
+                    let root_ident = Ident::new(keywords::CrateRoot.name(), orig_ident.span);
+                    let root_module = self.resolve_crate_root(root_ident);
+                    let binding = self.resolve_ident_in_module_ext(
+                        ModuleOrUniformRoot::Module(root_module),
+                        orig_ident,
+                        ns,
+                        None,
+                        record_used,
+                        path_span,
+                    );
+                    match binding {
+                        Ok(binding) => Ok((binding, Flags::MODULE)),
+                        Err((Determinacy::Undetermined, Weak::No)) =>
+                            return Err(Determinacy::determined(force)),
+                        Err((Determinacy::Undetermined, Weak::Yes)) =>
+                            Err(Determinacy::Undetermined),
+                        Err((Determinacy::Determined, _)) => Err(Determinacy::Determined),
+                    }
                 }
                 WhereToResolve::Module(module) => {
                     let orig_current_module = mem::replace(&mut self.current_module, module);
@@ -816,7 +837,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                             } else if innermost_flags.contains(Flags::MACRO_RULES) &&
                                       flags.contains(Flags::MODULE) &&
                                       !self.disambiguate_legacy_vs_modern(innermost_binding,
-                                                                          binding) {
+                                                                          binding) ||
+                                      flags.contains(Flags::MACRO_RULES) &&
+                                      innermost_flags.contains(Flags::MODULE) &&
+                                      !self.disambiguate_legacy_vs_modern(binding,
+                                                                          innermost_binding) {
                                 Some(AmbiguityKind::LegacyVsModern)
                             } else if innermost_binding.is_glob_import() {
                                 Some(AmbiguityKind::GlobVsOuter)
@@ -867,6 +892,10 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     LegacyScope::Empty => WhereToResolve::Module(parent_scope.module),
                     LegacyScope::Uninitialized => unreachable!(),
                 }
+                WhereToResolve::CrateRoot => match ns {
+                    TypeNS | ValueNS => WhereToResolve::Module(parent_scope.module),
+                    MacroNS => WhereToResolve::DeriveHelpers,
+                }
                 WhereToResolve::Module(module) => {
                     match self.hygienic_lexical_parent(module, &mut ident.span) {
                         Some(parent_module) => WhereToResolve::Module(parent_module),
@@ -899,30 +928,43 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         // The first found solution was the only one, return it.
         if let Some((binding, flags)) = innermost_result {
-            if is_import && !self.session.features_untracked().uniform_paths {
-                // We get to here only if there's no ambiguity, in ambiguous cases an error will
-                // be reported anyway, so there's no reason to report an additional feature error.
-                // The `binding` can actually be introduced by something other than `--extern`,
-                // but its `Def` should coincide with a crate passed with `--extern`
-                // (otherwise there would be ambiguity) and we can skip feature error in this case.
-                if ns != TypeNS || !use_prelude ||
-                   self.extern_prelude_get(ident, true).is_none() {
-                    let msg = "imports can only refer to extern crate names \
-                               passed with `--extern` on stable channel";
-                    let mut err = feature_err(&self.session.parse_sess, "uniform_paths",
-                                              ident.span, GateIssue::Language, msg);
-
-                    let what = self.binding_description(binding, ident,
-                                                        flags.contains(Flags::MISC_FROM_PRELUDE));
-                    let note_msg = format!("this import refers to {what}", what = what);
-                    if binding.span.is_dummy() {
-                        err.note(&note_msg);
-                    } else {
-                        err.span_note(binding.span, &note_msg);
-                        err.span_label(binding.span, "not an extern crate passed with `--extern`");
-                    }
-                    err.emit();
+            // We get to here only if there's no ambiguity, in ambiguous cases an error will
+            // be reported anyway, so there's no reason to report an additional feature error.
+            // The `binding` can actually be introduced by something other than `--extern`,
+            // but its `Def` should coincide with a crate passed with `--extern`
+            // (otherwise there would be ambiguity) and we can skip feature error in this case.
+            'ok: {
+                if !is_import || self.session.features_untracked().uniform_paths {
+                    break 'ok;
                 }
+                if ns == TypeNS && use_prelude && self.extern_prelude_get(ident, true).is_some() {
+                    break 'ok;
+                }
+                if rust_2015 {
+                    let root_ident = Ident::new(keywords::CrateRoot.name(), orig_ident.span);
+                    let root_module = self.resolve_crate_root(root_ident);
+                    if self.resolve_ident_in_module_ext(ModuleOrUniformRoot::Module(root_module),
+                                                        orig_ident, ns, None, false, path_span)
+                                                        .is_ok() {
+                        break 'ok;
+                    }
+                }
+
+                let msg = "imports can only refer to extern crate names \
+                           passed with `--extern` on stable channel";
+                let mut err = feature_err(&self.session.parse_sess, "uniform_paths",
+                                          ident.span, GateIssue::Language, msg);
+
+                let what = self.binding_description(binding, ident,
+                                                    flags.contains(Flags::MISC_FROM_PRELUDE));
+                let note_msg = format!("this import refers to {what}", what = what);
+                if binding.span.is_dummy() {
+                    err.note(&note_msg);
+                } else {
+                    err.span_note(binding.span, &note_msg);
+                    err.span_label(binding.span, "not an extern crate passed with `--extern`");
+                }
+                err.emit();
             }
 
             return Ok(binding);

@@ -13,6 +13,7 @@
        html_root_url = "https://doc.rust-lang.org/nightly/")]
 
 #![feature(crate_visibility_modifier)]
+#![feature(label_break_value)]
 #![feature(nll)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(slice_sort_by_cached_key)]
@@ -2191,28 +2192,45 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
     fn resolve_ident_in_module(
         &mut self,
         module: ModuleOrUniformRoot<'a>,
-        mut ident: Ident,
+        ident: Ident,
         ns: Namespace,
         parent_scope: Option<&ParentScope<'a>>,
         record_used: bool,
         path_span: Span
     ) -> Result<&'a NameBinding<'a>, Determinacy> {
-        ident.span = ident.span.modern();
+        self.resolve_ident_in_module_ext(
+            module, ident, ns, parent_scope, record_used, path_span
+        ).map_err(|(determinacy, _)| determinacy)
+    }
+
+    fn resolve_ident_in_module_ext(
+        &mut self,
+        module: ModuleOrUniformRoot<'a>,
+        mut ident: Ident,
+        ns: Namespace,
+        parent_scope: Option<&ParentScope<'a>>,
+        record_used: bool,
+        path_span: Span
+    ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
         let orig_current_module = self.current_module;
         match module {
             ModuleOrUniformRoot::Module(module) => {
+                ident.span = ident.span.modern();
                 if let Some(def) = ident.span.adjust(module.expansion) {
                     self.current_module = self.macro_def_scope(def);
                 }
             }
             ModuleOrUniformRoot::UniformRoot(UniformRootKind::ExternPrelude) => {
+                ident.span = ident.span.modern();
                 ident.span.adjust(Mark::root());
             }
-            _ => {}
+            ModuleOrUniformRoot::UniformRoot(UniformRootKind::CurrentScope) => {
+                // No adjustments
+            }
         }
         let result = self.resolve_ident_in_module_unadjusted_ext(
             module, ident, ns, parent_scope, false, record_used, path_span,
-        ).map_err(|(determinacy, _)| determinacy);
+        );
         self.current_module = orig_current_module;
         result
     }
