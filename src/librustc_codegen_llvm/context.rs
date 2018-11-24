@@ -332,7 +332,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
-        get_fn(&&self,instance)
+        get_fn(self, instance)
     }
 
     fn get_param(&self, llfn: &'ll Value, index: c_uint) -> &'ll Value {
