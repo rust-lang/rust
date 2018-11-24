@@ -20,6 +20,8 @@ use rustc_target::abi::call::{ArgType, CastTarget, FnType, Reg};
 use std::cell::RefCell;
 use syntax::ast;
 
+// This depends on `Backend` and not `BackendTypes`, because consumers will probably want to use
+// `LayoutOf` or `HasTyCtxt`. This way, they don't have to add a constraint on it themselves.
 pub trait BaseTypeMethods<'tcx>: Backend<'tcx> {
     fn type_void(&self) -> Self::Type;
     fn type_metadata(&self) -> Self::Type;

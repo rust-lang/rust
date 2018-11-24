@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::HasCodegen;
+use super::BackendTypes;
 use mir::operand::OperandRef;
 use rustc::ty::Ty;
 use rustc_target::abi::call::FnType;
@@ -21,7 +21,7 @@ pub enum OverflowOp {
     Mul,
 }
 
-pub trait IntrinsicCallMethods<'tcx>: HasCodegen<'tcx> {
+pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
     /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
     /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
     /// add them to librustc_codegen_llvm/context.rs
