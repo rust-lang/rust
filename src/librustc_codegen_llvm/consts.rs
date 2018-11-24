@@ -171,16 +171,17 @@ pub fn ptrcast(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
     }
 }
 
-impl StaticMethods for CodegenCx<'ll, 'tcx> {
-
-    fn static_ptrcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        ptrcast(val, ty)
-    }
-
-    fn static_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+impl CodegenCx<'ll, 'tcx> {
+    crate fn static_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe {
             llvm::LLVMConstBitCast(val, ty)
         }
+    }
+}
+
+impl StaticMethods for CodegenCx<'ll, 'tcx> {
+    fn static_ptrcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+        ptrcast(val, ty)
     }
 
     fn static_addr_of_mut(
