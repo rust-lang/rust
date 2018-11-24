@@ -14,7 +14,6 @@
 
 #![feature(box_patterns)]
 #![feature(libc)]
-#![feature(macro_at_most_once_rep)]
 #![feature(nll)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]

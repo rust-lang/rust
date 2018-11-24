@@ -20,7 +20,6 @@
        test(attr(deny(warnings))))]
 
 #![feature(crate_visibility_modifier)]
-#![feature(macro_at_most_once_rep)]
 #![feature(nll)]
 #![feature(rustc_attrs)]
 #![feature(rustc_diagnostic_macros)]
