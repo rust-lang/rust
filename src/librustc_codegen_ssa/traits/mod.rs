@@ -40,11 +40,11 @@ mod write;
 pub use self::abi::{AbiBuilderMethods, AbiMethods};
 pub use self::asm::{AsmBuilderMethods, AsmMethods};
 pub use self::backend::{Backend, BackendTypes, ExtraBackendMethods};
-pub use self::builder::BuilderMethods;
+pub use self::builder::{BuilderMethods, OverflowOp};
 pub use self::consts::ConstMethods;
 pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoMethods};
 pub use self::declare::{DeclareMethods, PreDefineMethods};
-pub use self::intrinsic::{IntrinsicCallMethods, OverflowOp};
+pub use self::intrinsic::IntrinsicCallMethods;
 pub use self::misc::MiscMethods;
 pub use self::statics::StaticMethods;
 pub use self::type_::{

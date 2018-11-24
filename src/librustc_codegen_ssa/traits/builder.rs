@@ -17,6 +17,7 @@ use super::HasCodegen;
 use common::{AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope};
 use mir::operand::OperandRef;
 use mir::place::PlaceRef;
+use rustc::ty::Ty;
 use rustc::ty::layout::{Align, Size};
 use std::ffi::CStr;
 use MemFlags;
@@ -24,6 +25,13 @@ use MemFlags;
 use std::borrow::Cow;
 use std::ops::Range;
 use syntax::ast::AsmDialect;
+
+#[derive(Copy, Clone)]
+pub enum OverflowOp {
+    Add,
+    Sub,
+    Mul,
+}
 
 pub trait BuilderMethods<'a, 'tcx: 'a>:
     HasCodegen<'tcx>
@@ -96,6 +104,14 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn neg(&mut self, v: Self::Value) -> Self::Value;
     fn fneg(&mut self, v: Self::Value) -> Self::Value;
     fn not(&mut self, v: Self::Value) -> Self::Value;
+
+    fn checked_binop(
+        &mut self,
+        oop: OverflowOp,
+        ty: Ty,
+        lhs: Self::Value,
+        rhs: Self::Value,
+    ) -> (Self::Value, Self::Value);
 
     fn alloca(&mut self, ty: Self::Type, name: &str, align: Align) -> Self::Value;
     fn dynamic_alloca(&mut self, ty: Self::Type, name: &str, align: Align) -> Self::Value;

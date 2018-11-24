@@ -14,13 +14,6 @@ use rustc::ty::Ty;
 use rustc_target::abi::call::FnType;
 use syntax_pos::Span;
 
-#[derive(Copy, Clone)]
-pub enum OverflowOp {
-    Add,
-    Sub,
-    Mul,
-}
-
 pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
     /// Remember to add all intrinsics here, in librustc_typeck/check/mod.rs,
     /// and in libcore/intrinsics.rs; if you need access to any llvm intrinsics,
@@ -37,12 +30,4 @@ pub trait IntrinsicCallMethods<'tcx>: BackendTypes {
     fn abort(&mut self);
     fn assume(&mut self, val: Self::Value);
     fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value;
-
-    fn call_overflow_intrinsic(
-        &mut self,
-        oop: OverflowOp,
-        ty: Ty,
-        lhs: Self::Value,
-        rhs: Self::Value,
-    ) -> (Self::Value, Self::Value);
 }

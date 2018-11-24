@@ -693,7 +693,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::BinOp::Mul => OverflowOp::Mul,
                     _ => unreachable!()
                 };
-                bx.call_overflow_intrinsic(oop, input_ty, lhs, rhs)
+                bx.checked_binop(oop, input_ty, lhs, rhs)
             }
             mir::BinOp::Shl | mir::BinOp::Shr => {
                 let lhs_llty = bx.cx().val_ty(lhs);
