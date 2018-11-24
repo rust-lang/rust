@@ -8,8 +8,9 @@ use tempfile::Builder as TempFileBuilder;
 use rustc::session::config::{self, CrateType, DebugInfo, RUST_CGU_EXT};
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
-use rustc_codegen_utils::command::Command;
-use rustc_codegen_utils::linker::*;
+use rustc_codegen_ssa::back::command::Command;
+use rustc_codegen_ssa::back::linker::*;
+use rustc_codegen_ssa::back::link::*;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
 use rustc_target::spec::{LinkerFlavor, PanicStrategy, RelroLevel};
 

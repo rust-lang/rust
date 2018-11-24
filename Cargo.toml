@@ -25,7 +25,6 @@ faerie = "0.6.0"
 ar = "0.6.1"
 bitflags = "1.0.3"
 byteorder = "1.2.6"
-cc = "1.0.25"
 libc = "0.2.43"
 tempfile = "3.0.4"
 

@@ -2,7 +2,6 @@
     rustc_private,
     macro_at_most_once_rep,
     never_type,
-    extern_crate_item_prelude,
     decl_macro,
 )]
 #![allow(intra_doc_link_resolution_failure)]
@@ -10,6 +9,7 @@
 extern crate syntax;
 extern crate rustc;
 extern crate rustc_allocator;
+extern crate rustc_codegen_ssa;
 extern crate rustc_codegen_utils;
 extern crate rustc_incremental;
 extern crate rustc_mir;
@@ -25,19 +25,16 @@ use std::sync::mpsc;
 use syntax::symbol::Symbol;
 
 use rustc::dep_graph::DepGraph;
-use rustc::middle::cstore::{
-    self, CrateSource, LibSource, LinkagePreference, MetadataLoader, NativeLibrary,
-};
-use rustc::middle::lang_items::LangItem;
-use rustc::middle::weak_lang_items;
+use rustc::middle::cstore::MetadataLoader;
 use rustc::session::{
-    config::{self, OutputFilenames, OutputType},
+    config::{OutputFilenames, OutputType},
     CompileIncomplete,
 };
 use rustc::ty::query::Providers;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use rustc_codegen_utils::link::out_filename;
-use rustc_codegen_utils::linker::LinkerInfo;
+use rustc_codegen_ssa::CrateInfo;
+use rustc_codegen_ssa::back::linker::LinkerInfo;
 
 use cranelift::codegen::settings;
 use cranelift_faerie::*;
@@ -81,7 +78,7 @@ mod prelude {
         self, subst::Substs, FnSig, Instance, InstanceDef, ParamEnv, PolyFnSig, Ty, TyCtxt,
         TypeAndMut, TypeFoldable,
     };
-    pub use rustc_codegen_utils::{CompiledModule, ModuleKind};
+    pub use rustc_codegen_ssa::{CompiledModule, ModuleKind};
     pub use rustc_data_structures::{
         fx::{FxHashMap, FxHashSet},
         indexed_vec::Idx,
@@ -103,7 +100,7 @@ mod prelude {
     pub use crate::common::*;
     pub use crate::trap::*;
     pub use crate::unimpl::{unimpl, with_unimpl_span};
-    pub use crate::{Caches, CodegenResults, CrateInfo};
+    pub use crate::{Caches, CodegenResults};
 }
 
 pub struct Caches<'tcx> {
@@ -121,124 +118,6 @@ impl<'tcx> Caches<'tcx> {
 }
 
 struct CraneliftCodegenBackend;
-
-pub struct CrateInfo {
-    panic_runtime: Option<CrateNum>,
-    compiler_builtins: Option<CrateNum>,
-    profiler_runtime: Option<CrateNum>,
-    sanitizer_runtime: Option<CrateNum>,
-    is_no_builtins: FxHashSet<CrateNum>,
-    native_libraries: FxHashMap<CrateNum, Lrc<Vec<NativeLibrary>>>,
-    crate_name: FxHashMap<CrateNum, String>,
-    used_libraries: Lrc<Vec<NativeLibrary>>,
-    link_args: Lrc<Vec<String>>,
-    used_crate_source: FxHashMap<CrateNum, Lrc<CrateSource>>,
-    used_crates_static: Vec<(CrateNum, LibSource)>,
-    used_crates_dynamic: Vec<(CrateNum, LibSource)>,
-    wasm_imports: FxHashMap<String, String>,
-    lang_item_to_crate: FxHashMap<LangItem, CrateNum>,
-    missing_lang_items: FxHashMap<CrateNum, Vec<LangItem>>,
-}
-
-impl CrateInfo {
-    pub fn new(tcx: TyCtxt) -> CrateInfo {
-        let mut info = CrateInfo {
-            panic_runtime: None,
-            compiler_builtins: None,
-            profiler_runtime: None,
-            sanitizer_runtime: None,
-            is_no_builtins: Default::default(),
-            native_libraries: Default::default(),
-            used_libraries: tcx.native_libraries(LOCAL_CRATE),
-            link_args: tcx.link_args(LOCAL_CRATE),
-            crate_name: Default::default(),
-            used_crates_dynamic: cstore::used_crates(tcx, LinkagePreference::RequireDynamic),
-            used_crates_static: cstore::used_crates(tcx, LinkagePreference::RequireStatic),
-            used_crate_source: Default::default(),
-            wasm_imports: Default::default(),
-            lang_item_to_crate: Default::default(),
-            missing_lang_items: Default::default(),
-        };
-        let lang_items = tcx.lang_items();
-
-        let load_wasm_items = tcx
-            .sess
-            .crate_types
-            .borrow()
-            .iter()
-            .any(|c| *c != config::CrateType::Rlib)
-            && tcx.sess.opts.target_triple.triple() == "wasm32-unknown-unknown";
-
-        if load_wasm_items {
-            info.load_wasm_imports(tcx, LOCAL_CRATE);
-        }
-
-        let crates = tcx.crates();
-
-        let n_crates = crates.len();
-        info.native_libraries.reserve(n_crates);
-        info.crate_name.reserve(n_crates);
-        info.used_crate_source.reserve(n_crates);
-        info.missing_lang_items.reserve(n_crates);
-
-        for &cnum in crates.iter() {
-            info.native_libraries
-                .insert(cnum, tcx.native_libraries(cnum));
-            info.crate_name
-                .insert(cnum, tcx.crate_name(cnum).to_string());
-            info.used_crate_source
-                .insert(cnum, tcx.used_crate_source(cnum));
-            if tcx.is_panic_runtime(cnum) {
-                info.panic_runtime = Some(cnum);
-            }
-            if tcx.is_compiler_builtins(cnum) {
-                info.compiler_builtins = Some(cnum);
-            }
-            if tcx.is_profiler_runtime(cnum) {
-                info.profiler_runtime = Some(cnum);
-            }
-            if tcx.is_sanitizer_runtime(cnum) {
-                info.sanitizer_runtime = Some(cnum);
-            }
-            if tcx.is_no_builtins(cnum) {
-                info.is_no_builtins.insert(cnum);
-            }
-            if load_wasm_items {
-                info.load_wasm_imports(tcx, cnum);
-            }
-            let missing = tcx.missing_lang_items(cnum);
-            for &item in missing.iter() {
-                if let Ok(id) = lang_items.require(item) {
-                    info.lang_item_to_crate.insert(item, id.krate);
-                }
-            }
-
-            // No need to look for lang items that are whitelisted and don't
-            // actually need to exist.
-            let missing = missing
-                .iter()
-                .cloned()
-                .filter(|&l| !weak_lang_items::whitelisted(tcx, l))
-                .collect();
-            info.missing_lang_items.insert(cnum, missing);
-        }
-
-        return info;
-    }
-
-    fn load_wasm_imports(&mut self, tcx: TyCtxt, cnum: CrateNum) {
-        self.wasm_imports.extend(
-            tcx.wasm_import_module_map(cnum)
-                .iter()
-                .map(|(&id, module)| {
-                    let instance = Instance::mono(tcx, id);
-                    let import_name = tcx.symbol_name(instance);
-
-                    (import_name.to_string(), module.clone())
-                }),
-        );
-    }
-}
 
 pub struct CodegenResults {
     artifact: faerie::Artifact,
@@ -283,12 +162,12 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
     fn provide(&self, providers: &mut Providers) {
         rustc_codegen_utils::symbol_names::provide(providers);
-        rustc_codegen_utils::symbol_export::provide(providers);
+        rustc_codegen_ssa::back::symbol_export::provide(providers);
 
         providers.target_features_whitelist = |_tcx, _cnum| Lrc::new(Default::default());
     }
     fn provide_extern(&self, providers: &mut Providers) {
-        rustc_codegen_utils::symbol_export::provide_extern(providers);
+        rustc_codegen_ssa::back::symbol_export::provide_extern(providers);
     }
 
     fn codegen_crate<'a, 'tcx>(

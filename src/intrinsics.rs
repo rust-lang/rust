@@ -169,7 +169,7 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
             ret.write_cvalue(fx, CValue::ByVal(size, usize_layout));
         };
         min_align_of, <T> () {
-            let min_align = fx.layout_of(T).align.abi();
+            let min_align = fx.layout_of(T).align.abi.bytes();
             let min_align = CValue::const_val(fx, usize_layout.ty, min_align as i64);
             ret.write_cvalue(fx, min_align);
         };
@@ -179,9 +179,9 @@ pub fn codegen_intrinsic_call<'a, 'tcx: 'a>(
                 _ if !layout.is_unsized() => fx
                     .bcx
                     .ins()
-                    .iconst(fx.pointer_type, layout.align.abi() as i64),
+                    .iconst(fx.pointer_type, layout.align.abi.bytes() as i64),
                 ty::Slice(elem) => {
-                    let align = fx.layout_of(elem).align.abi() as i64;
+                    let align = fx.layout_of(elem).align.abi.bytes() as i64;
                     fx.bcx.ins().iconst(fx.pointer_type, align)
                 }
                 ty::Dynamic(..) => crate::vtable::min_align_of_obj(fx, ptr),

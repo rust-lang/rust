@@ -604,9 +604,9 @@ fn trans_stmt<'a, 'tcx: 'a>(
                     use rustc::middle::lang_items::ExchangeMallocFnLangItem;
 
                     let usize_type = fx.clif_type(fx.tcx.types.usize).unwrap();
-                    let (size, align) = fx.layout_of(content_ty).size_and_align();
-                    let llsize = fx.bcx.ins().iconst(usize_type, size.bytes() as i64);
-                    let llalign = fx.bcx.ins().iconst(usize_type, align.abi() as i64);
+                    let layout = fx.layout_of(content_ty);
+                    let llsize = fx.bcx.ins().iconst(usize_type, layout.size.bytes() as i64);
+                    let llalign = fx.bcx.ins().iconst(usize_type, layout.align.abi.bytes() as i64);
                     let box_layout = fx.layout_of(fx.tcx.mk_box(content_ty));
 
                     // Allocate space:

@@ -482,7 +482,6 @@ dependencies = [
  "ar 0.6.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "cranelift 0.23.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-faerie 0.23.0 (git+https://github.com/CraneStation/cranelift.git)",
  "cranelift-module 0.23.0 (git+https://github.com/CraneStation/cranelift.git)",

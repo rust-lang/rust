@@ -75,10 +75,6 @@ fn build_vtable<'a, 'tcx: 'a>(
     let tcx = fx.tcx;
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes() as usize;
 
-    let (size, align) = tcx
-        .layout_of(ParamEnv::reveal_all().and(ty))
-        .unwrap()
-        .size_and_align();
     let drop_in_place_fn = fx.get_function_id(
         crate::rustc_mir::monomorphize::resolve_drop_in_place(tcx, ty),
     );
@@ -101,8 +97,10 @@ fn build_vtable<'a, 'tcx: 'a>(
         .take(components.len() * usize_size)
         .collect::<Vec<u8>>()
         .into_boxed_slice();
-    write_usize(fx.tcx, &mut data, SIZE_INDEX, size.bytes());
-    write_usize(fx.tcx, &mut data, ALIGN_INDEX, align.abi());
+
+    let layout = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap();
+    write_usize(fx.tcx, &mut data, SIZE_INDEX, layout.size.bytes());
+    write_usize(fx.tcx, &mut data, ALIGN_INDEX, layout.align.abi.bytes());
     data_ctx.define(data);
 
     for (i, component) in components.into_iter().enumerate() {

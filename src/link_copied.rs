@@ -1,6 +1,5 @@
 //! All functions here are copied from https://github.com/rust-lang/rust/blob/942864a000efd74b73e36bda5606b2cdb55ecf39/src/librustc_codegen_llvm/back/link.rs
 
-use std::env;
 use std::fmt;
 use std::fs;
 use std::io;
@@ -8,7 +7,6 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Output, Stdio};
 
-use cc::windows_registry;
 use log::info;
 
 use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind};
@@ -17,11 +15,11 @@ use rustc::session::config::{self, OutputType, RUST_CGU_EXT};
 use rustc::session::search_paths::PathKind;
 use rustc::session::Session;
 use rustc::util::common::time;
-use rustc_codegen_utils::command::Command;
-use rustc_codegen_utils::linker::*;
+use rustc_codegen_ssa::back::command::Command;
+use rustc_codegen_ssa::back::linker::*;
+use rustc_codegen_ssa::back::link::*;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_fs_util::fix_windows_verbatim_for_gcc;
-use rustc_target::spec::LinkerFlavor;
 use syntax::attr;
 
 use crate::prelude::*;
@@ -50,125 +48,6 @@ fn archive_config<'a>(sess: &'a Session,
         src: input.map(|p| p.to_path_buf()),
         lib_search_paths: archive_search_paths(sess),
     }
-}
-
-// The third parameter is for env vars, used on windows to set up the
-// path for MSVC to find its DLLs, and gcc to find its bundled
-// toolchain
-pub fn get_linker(sess: &Session, linker: &Path, flavor: LinkerFlavor) -> (PathBuf, Command) {
-    let msvc_tool = windows_registry::find_tool(&sess.opts.target_triple.triple(), "link.exe");
-
-    // If our linker looks like a batch script on Windows then to execute this
-    // we'll need to spawn `cmd` explicitly. This is primarily done to handle
-    // emscripten where the linker is `emcc.bat` and needs to be spawned as
-    // `cmd /c emcc.bat ...`.
-    //
-    // This worked historically but is needed manually since #42436 (regression
-    // was tagged as #42791) and some more info can be found on #44443 for
-    // emscripten itself.
-    let mut cmd = match linker.to_str() {
-        Some(linker) if cfg!(windows) && linker.ends_with(".bat") => Command::bat_script(linker),
-        _ => match flavor {
-            LinkerFlavor::Lld(f) => Command::lld(linker, f),
-            LinkerFlavor::Msvc
-                if sess.opts.cg.linker.is_none() && sess.target.target.options.linker.is_none() =>
-            {
-                Command::new(msvc_tool.as_ref().map(|t| t.path()).unwrap_or(linker))
-            },
-            _ => Command::new(linker),
-        }
-    };
-
-    // The compiler's sysroot often has some bundled tools, so add it to the
-    // PATH for the child.
-    let mut new_path = sess.host_filesearch(PathKind::All)
-                           .get_tools_search_paths();
-    let mut msvc_changed_path = false;
-    if sess.target.target.options.is_like_msvc {
-        if let Some(ref tool) = msvc_tool {
-            cmd.args(tool.args());
-            for &(ref k, ref v) in tool.env() {
-                if k == "PATH" {
-                    new_path.extend(env::split_paths(v));
-                    msvc_changed_path = true;
-                } else {
-                    cmd.env(k, v);
-                }
-            }
-        }
-    }
-
-    if !msvc_changed_path {
-        if let Some(path) = env::var_os("PATH") {
-            new_path.extend(env::split_paths(&path));
-        }
-    }
-    cmd.env("PATH", env::join_paths(new_path).unwrap());
-
-    (linker.to_path_buf(), cmd)
-}
-
-pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
-    fn infer_from(
-        sess: &Session,
-        linker: Option<PathBuf>,
-        flavor: Option<LinkerFlavor>,
-    ) -> Option<(PathBuf, LinkerFlavor)> {
-        match (linker, flavor) {
-            (Some(linker), Some(flavor)) => Some((linker, flavor)),
-            // only the linker flavor is known; use the default linker for the selected flavor
-            (None, Some(flavor)) => Some((PathBuf::from(match flavor {
-                LinkerFlavor::Em  => if cfg!(windows) { "emcc.bat" } else { "emcc" },
-                LinkerFlavor::Gcc => "cc",
-                LinkerFlavor::Ld => "ld",
-                LinkerFlavor::Msvc => "link.exe",
-                LinkerFlavor::Lld(_) => "lld",
-            }), flavor)),
-            (Some(linker), None) => {
-                let stem = linker.file_stem().and_then(|stem| stem.to_str()).unwrap_or_else(|| {
-                    sess.fatal("couldn't extract file stem from specified linker");
-                }).to_owned();
-
-                let flavor = if stem == "emcc" {
-                    LinkerFlavor::Em
-                } else if stem == "gcc" || stem.ends_with("-gcc") {
-                    LinkerFlavor::Gcc
-                } else if stem == "ld" || stem == "ld.lld" || stem.ends_with("-ld") {
-                    LinkerFlavor::Ld
-                } else if stem == "link" || stem == "lld-link" {
-                    LinkerFlavor::Msvc
-                } else if stem == "lld" || stem == "rust-lld" {
-                    LinkerFlavor::Lld(sess.target.target.options.lld_flavor)
-                } else {
-                    // fall back to the value in the target spec
-                    sess.target.target.linker_flavor
-                };
-
-                Some((linker, flavor))
-            },
-            (None, None) => None,
-        }
-    }
-
-    // linker and linker flavor specified via command line have precedence over what the target
-    // specification specifies
-    if let Some(ret) = infer_from(
-        sess,
-        sess.opts.cg.linker.clone(),
-        sess.opts.debugging_opts.linker_flavor,
-    ) {
-        return ret;
-    }
-
-    if let Some(ret) = infer_from(
-        sess,
-        sess.target.target.options.linker.clone().map(PathBuf::from),
-        Some(sess.target.target.linker_flavor),
-    ) {
-        return ret;
-    }
-
-    bug!("Not enough information provided to determine how to invoke the linker");
 }
 
 pub fn exec_linker(sess: &Session, cmd: &mut Command, out_filename: &Path, tmpdir: &Path)
@@ -737,24 +616,6 @@ pub fn add_upstream_native_libraries(cmd: &mut dyn Linker,
             }
         }
     }
-}
-
-/// Returns a boolean indicating whether the specified crate should be ignored
-/// during LTO.
-///
-/// Crates ignored during LTO are not lumped together in the "massive object
-/// file" that we create and are linked in their normal rlib states. See
-/// comments below for what crates do not participate in LTO.
-///
-/// It's unusual for a crate to not participate in LTO. Typically only
-/// compiler-specific and unstable crates have a reason to not participate in
-/// LTO.
-fn ignored_for_lto(sess: &Session, info: &CrateInfo, cnum: CrateNum) -> bool {
-    // If our target enables builtin function lowering in LLVM then the
-    // crates providing these functions don't participate in LTO (e.g.
-    // no_builtins or compiler builtins crates).
-    !sess.target.target.options.no_builtins &&
-        (info.is_no_builtins.contains(&cnum) || info.compiler_builtins == Some(cnum))
 }
 
 fn relevant_lib(sess: &Session, lib: &NativeLibrary) -> bool {
