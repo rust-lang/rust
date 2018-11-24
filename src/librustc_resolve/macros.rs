@@ -625,13 +625,14 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         // Go through all the scopes and try to resolve the name.
         let rust_2015 = orig_ident.span.rust_2015();
-        let (ns, macro_kind, is_import) = match scope_set {
-            ScopeSet::Import(ns) => (ns, None, true),
-            ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false),
-            ScopeSet::Module => (TypeNS, None, false),
+        let (ns, macro_kind, is_import, is_absolute_path) = match scope_set {
+            ScopeSet::Import(ns) => (ns, None, true, false),
+            ScopeSet::AbsolutePath(ns) => (ns, None, false, true),
+            ScopeSet::Macro(macro_kind) => (MacroNS, Some(macro_kind), false, false),
+            ScopeSet::Module => (TypeNS, None, false, false),
         };
         let mut where_to_resolve = match ns {
-            _ if is_import && rust_2015 => WhereToResolve::CrateRoot,
+            _ if is_absolute_path || is_import && rust_2015 => WhereToResolve::CrateRoot,
             TypeNS | ValueNS => WhereToResolve::Module(parent_scope.module),
             MacroNS => WhereToResolve::DeriveHelpers,
         };
@@ -761,7 +762,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                 }
                 WhereToResolve::ExternPrelude => {
-                    if use_prelude {
+                    if use_prelude || is_absolute_path {
                         match self.extern_prelude_get(ident, !record_used) {
                             Some(binding) => Ok((binding, Flags::PRELUDE)),
                             None => Err(Determinacy::determined(
@@ -827,6 +828,8 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                             let ambiguity_error_kind = if is_import {
                                 Some(AmbiguityKind::Import)
+                            } else if is_absolute_path {
+                                Some(AmbiguityKind::AbsolutePath)
                             } else if innermost_def == builtin || def == builtin {
                                 Some(AmbiguityKind::BuiltinAttr)
                             } else if innermost_def == derive_helper || def == derive_helper {
@@ -894,10 +897,18 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     LegacyScope::Empty => WhereToResolve::Module(parent_scope.module),
                     LegacyScope::Uninitialized => unreachable!(),
                 }
-                WhereToResolve::CrateRoot => match ns {
+                WhereToResolve::CrateRoot if is_import => match ns {
                     TypeNS | ValueNS => WhereToResolve::Module(parent_scope.module),
                     MacroNS => WhereToResolve::DeriveHelpers,
                 }
+                WhereToResolve::CrateRoot if is_absolute_path => match ns {
+                    TypeNS => {
+                        ident.span.adjust(Mark::root());
+                        WhereToResolve::ExternPrelude
+                    }
+                    ValueNS | MacroNS => break,
+                }
+                WhereToResolve::CrateRoot => unreachable!(),
                 WhereToResolve::Module(module) => {
                     match self.hygienic_lexical_parent(module, &mut ident.span) {
                         Some(parent_module) => WhereToResolve::Module(parent_module),
@@ -915,6 +926,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 WhereToResolve::BuiltinMacros => WhereToResolve::BuiltinAttrs,
                 WhereToResolve::BuiltinAttrs => WhereToResolve::LegacyPluginHelpers,
                 WhereToResolve::LegacyPluginHelpers => break, // nowhere else to search
+                WhereToResolve::ExternPrelude if is_absolute_path => break,
                 WhereToResolve::ExternPrelude => WhereToResolve::ToolPrelude,
                 WhereToResolve::ToolPrelude => WhereToResolve::StdLibPrelude,
                 WhereToResolve::StdLibPrelude => match ns {

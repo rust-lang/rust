@@ -7,7 +7,7 @@ macro_rules! gen_imports { () => {
 
     fn check_absolute() {
         ::absolute::Path;
-        // ::std::collections::LinkedList::<u8>::new(); // FIXME
+        ::std::collections::LinkedList::<u8>::new();
     }
 }}
 
@@ -27,4 +27,5 @@ macro_rules! gen_gated { () => {
 #[macro_export]
 macro_rules! gen_ambiguous { () => {
     use Ambiguous;
+    type A = ::edition_imports_2015::Path;
 }}

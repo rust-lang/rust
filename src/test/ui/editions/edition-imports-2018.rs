@@ -1,4 +1,3 @@
-// compile-pass
 // edition:2018
 // aux-build:edition-imports-2015.rs
 
@@ -22,12 +21,7 @@ mod check {
 }
 
 mod check_glob {
-    gen_glob!(); // OK
-
-    fn check() {
-        import::Path;
-        absolute::Path;
-    }
+    gen_glob!(); //~ ERROR cannot glob-import all possible crates
 }
 
 fn main() {}
