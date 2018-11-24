@@ -1,9 +1,12 @@
 // edition:2018
+// compile-flags:--extern edition_imports_2015
 // aux-build:edition-imports-2015.rs
 // error-pattern: `Ambiguous` is ambiguous
+// error-pattern: `edition_imports_2015` is ambiguous
 
-#[macro_use]
-extern crate edition_imports_2015;
+mod edition_imports_2015 {
+    pub struct Path;
+}
 
 pub struct Ambiguous {}
 
@@ -11,7 +14,7 @@ mod check {
     pub struct Ambiguous {}
 
     fn check() {
-        gen_ambiguous!();
+        edition_imports_2015::gen_ambiguous!();
     }
 }
 

@@ -162,6 +162,15 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
     ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
         let module = match module {
             ModuleOrUniformRoot::Module(module) => module,
+            ModuleOrUniformRoot::CrateRootAndExternPrelude => {
+                assert!(!restricted_shadowing);
+                let parent_scope = self.dummy_parent_scope();
+                let binding = self.early_resolve_ident_in_lexical_scope(
+                    ident, ScopeSet::AbsolutePath(ns), &parent_scope,
+                    record_used, record_used, path_span,
+                );
+                return binding.map_err(|determinacy| (determinacy, Weak::No));
+            }
             ModuleOrUniformRoot::ExternPrelude => {
                 assert!(!restricted_shadowing);
                 return if let Some(binding) = self.extern_prelude_get(ident, !record_used) {

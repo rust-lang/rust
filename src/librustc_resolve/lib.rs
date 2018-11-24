@@ -104,6 +104,7 @@ enum Weak {
 
 enum ScopeSet {
     Import(Namespace),
+    AbsolutePath(Namespace),
     Macro(MacroKind),
     Module,
 }
@@ -1008,6 +1009,9 @@ enum ModuleOrUniformRoot<'a> {
     /// Regular module.
     Module(Module<'a>),
 
+    /// Virtual module that denotes resolution in crate root with fallback to extern prelude.
+    CrateRootAndExternPrelude,
+
     /// Virtual module that denotes resolution in extern prelude.
     /// Used for paths starting with `::` on 2018 edition or `extern::`.
     ExternPrelude,
@@ -1021,9 +1025,11 @@ enum ModuleOrUniformRoot<'a> {
 impl<'a> PartialEq for ModuleOrUniformRoot<'a> {
     fn eq(&self, other: &Self) -> bool {
         match (*self, *other) {
-            (ModuleOrUniformRoot::Module(lhs), ModuleOrUniformRoot::Module(rhs)) =>
-                ptr::eq(lhs, rhs),
-            (ModuleOrUniformRoot::ExternPrelude, ModuleOrUniformRoot::ExternPrelude) => true,
+            (ModuleOrUniformRoot::Module(lhs),
+             ModuleOrUniformRoot::Module(rhs)) => ptr::eq(lhs, rhs),
+            (ModuleOrUniformRoot::CrateRootAndExternPrelude,
+             ModuleOrUniformRoot::CrateRootAndExternPrelude) |
+            (ModuleOrUniformRoot::ExternPrelude, ModuleOrUniformRoot::ExternPrelude) |
             (ModuleOrUniformRoot::CurrentScope, ModuleOrUniformRoot::CurrentScope) => true,
             _ => false,
         }
@@ -1243,6 +1249,7 @@ struct UseError<'a> {
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum AmbiguityKind {
     Import,
+    AbsolutePath,
     BuiltinAttr,
     DeriveHelper,
     LegacyHelperVsPrelude,
@@ -1258,6 +1265,8 @@ impl AmbiguityKind {
         match self {
             AmbiguityKind::Import =>
                 "name vs any other name during import resolution",
+            AmbiguityKind::AbsolutePath =>
+                "name in the crate root vs extern crate during absolute path resolution",
             AmbiguityKind::BuiltinAttr =>
                 "built-in attribute vs any other name",
             AmbiguityKind::DeriveHelper =>
@@ -2226,6 +2235,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 ident.span = ident.span.modern();
                 ident.span.adjust(Mark::root());
             }
+            ModuleOrUniformRoot::CrateRootAndExternPrelude |
             ModuleOrUniformRoot::CurrentScope => {
                 // No adjustments
             }
@@ -3789,6 +3799,12 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                     if name == keywords::Extern.name() ||
                        name == keywords::CrateRoot.name() && ident.span.rust_2018() {
                         module = Some(ModuleOrUniformRoot::ExternPrelude);
+                        continue;
+                    }
+                    if name == keywords::CrateRoot.name() &&
+                       ident.span.rust_2015() && self.session.rust_2018() {
+                        // `::a::b` from 2015 macro on 2018 global edition
+                        module = Some(ModuleOrUniformRoot::CrateRootAndExternPrelude);
                         continue;
                     }
                     if name == keywords::CrateRoot.name() ||
