@@ -1350,22 +1350,6 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         self.call_lifetime_intrinsic("llvm.lifetime.end", ptr, size);
     }
 
-    fn call_lifetime_intrinsic(&mut self, intrinsic: &str, ptr: &'ll Value, size: Size) {
-        if self.cx.sess().opts.optimize == config::OptLevel::No {
-            return;
-        }
-
-        let size = size.bytes();
-        if size == 0 {
-            return;
-        }
-
-        let lifetime_intrinsic = self.cx.get_intrinsic(intrinsic);
-
-        let ptr = self.pointercast(ptr, self.cx.type_i8p());
-        self.call(lifetime_intrinsic, &[self.cx.const_u64(size), ptr], None);
-    }
-
     fn call(
         &mut self,
         llfn: &'ll Value,
@@ -1418,5 +1402,23 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn do_not_inline(&mut self, llret: &'ll Value) {
         llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
+    }
+}
+
+impl Builder<'a, 'll, 'tcx> {
+    fn call_lifetime_intrinsic(&mut self, intrinsic: &str, ptr: &'ll Value, size: Size) {
+        if self.cx.sess().opts.optimize == config::OptLevel::No {
+            return;
+        }
+
+        let size = size.bytes();
+        if size == 0 {
+            return;
+        }
+
+        let lifetime_intrinsic = self.cx.get_intrinsic(intrinsic);
+
+        let ptr = self.pointercast(ptr, self.cx.type_i8p());
+        self.call(lifetime_intrinsic, &[self.cx.const_u64(size), ptr], None);
     }
 }

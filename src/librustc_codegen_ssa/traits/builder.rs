@@ -297,18 +297,12 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     ) -> Cow<'b, [Self::Value]>
     where
         [Self::Value]: ToOwned;
-    fn lifetime_start(&mut self, ptr: Self::Value, size: Size);
-    fn lifetime_end(&mut self, ptr: Self::Value, size: Size);
 
-    /// If LLVM lifetime intrinsic support is enabled (i.e. optimizations
-    /// on), and `ptr` is nonzero-sized, then extracts the size of `ptr`
-    /// and the intrinsic for `lt` and passes them to `emit`, which is in
-    /// charge of generating code to call the passed intrinsic on whatever
-    /// block of generated code is targeted for the intrinsic.
-    ///
-    /// If LLVM lifetime intrinsic support is disabled (i.e.  optimizations
-    /// off) or `ptr` is zero-sized, then no-op (does not call `emit`).
-    fn call_lifetime_intrinsic(&mut self, intrinsic: &str, ptr: Self::Value, size: Size);
+    /// Called for `StorageLive`
+    fn lifetime_start(&mut self, ptr: Self::Value, size: Size);
+
+    /// Called for `StorageDead`
+    fn lifetime_end(&mut self, ptr: Self::Value, size: Size);
 
     fn call(
         &mut self,
