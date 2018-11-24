@@ -16,7 +16,9 @@ use syntax_pos::Span;
 
 #[derive(Copy, Clone)]
 pub enum OverflowOp {
-    Add, Sub, Mul
+    Add,
+    Sub,
+    Mul,
 }
 
 pub trait IntrinsicCallMethods<'tcx>: HasCodegen<'tcx> {

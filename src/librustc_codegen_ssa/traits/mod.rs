@@ -82,7 +82,8 @@ impl<'tcx, T> CodegenMethods<'tcx> for T where
         + DeclareMethods<'tcx>
         + AsmMethods<'tcx>
         + PreDefineMethods<'tcx>
-{}
+{
+}
 
 pub trait HasCodegen<'tcx>: Backend<'tcx> {
     type CodegenCx: CodegenMethods<'tcx>

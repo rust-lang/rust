@@ -38,7 +38,8 @@ pub trait Backend<'tcx>:
 
 impl<'tcx, T> Backend<'tcx> for T where
     Self: BackendTypes + HasTyCtxt<'tcx> + LayoutOf<Ty = Ty<'tcx>, TyLayout = TyLayout<'tcx>>
-{}
+{
+}
 
 pub trait ExtraBackendMethods: CodegenBackend + WriteBackendMethods + Sized + Send {
     fn new_metadata(&self, sess: &Session, mod_name: &str) -> Self::Module;
