@@ -8,14 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::Backend;
+use super::BackendTypes;
 use mir::place::PlaceRef;
 use rustc::mir::interpret::Allocation;
 use rustc::mir::interpret::Scalar;
 use rustc::ty::layout;
 use syntax::symbol::LocalInternedString;
 
-pub trait ConstMethods<'tcx>: Backend<'tcx> {
+pub trait ConstMethods<'tcx>: BackendTypes {
     // Constant constructors
 
     fn const_null(&self, t: Self::Type) -> Self::Value;

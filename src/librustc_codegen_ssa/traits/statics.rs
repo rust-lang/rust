@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::Backend;
+use super::BackendTypes;
 use rustc::hir::def_id::DefId;
 use rustc::ty::layout::Align;
 
-pub trait StaticMethods<'tcx>: Backend<'tcx> {
+pub trait StaticMethods: BackendTypes {
     fn static_ptrcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
     fn static_bitcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
     fn static_addr_of_mut(&self, cv: Self::Value, align: Align, kind: Option<&str>) -> Self::Value;

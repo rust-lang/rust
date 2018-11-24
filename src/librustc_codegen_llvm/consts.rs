@@ -171,7 +171,7 @@ pub fn ptrcast(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
     }
 }
 
-impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
+impl StaticMethods for CodegenCx<'ll, 'tcx> {
 
     fn static_ptrcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
         ptrcast(val, ty)
