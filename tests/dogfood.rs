@@ -18,10 +18,14 @@ fn dogfood() {
         return;
     }
     let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let clippy_cmd = std::path::Path::new(&root_dir).join("target/debug/cargo-clippy");
+    let clippy_cmd = std::path::Path::new(&root_dir)
+        .join("target")
+        .join(env!("PROFILE"))
+        .join("cargo-clippy");
 
     std::env::set_current_dir(root_dir).unwrap();
     let output = std::process::Command::new(clippy_cmd)
+        .env("CLIPPY_DOGFOOD", "1")
         .arg("clippy")
         .arg("--all-targets")
         .arg("--all-features")
@@ -43,6 +47,10 @@ fn dogfood_tests() {
         return;
     }
     let root_dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let clippy_cmd = std::path::Path::new(&root_dir)
+        .join("target")
+        .join(env!("PROFILE"))
+        .join("cargo-clippy");
 
     for d in &[
         "clippy_workspace_tests",
@@ -52,10 +60,9 @@ fn dogfood_tests() {
         "clippy_dev",
         "rustc_tools_util",
     ] {
-        let clippy_cmd = std::path::Path::new(&root_dir)
-            .join("target/debug/cargo-clippy");
         std::env::set_current_dir(root_dir.join(d)).unwrap();
-        let output = std::process::Command::new(clippy_cmd)
+        let output = std::process::Command::new(&clippy_cmd)
+            .env("CLIPPY_DOGFOOD", "1")
             .arg("clippy")
             .arg("--")
             .args(&["-D", "clippy::all"])
