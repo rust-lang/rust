@@ -1,17 +1,17 @@
 error: name `cfg` is reserved in macro namespace
-  --> $DIR/reserved-macro-names.rs:7:8
+  --> $DIR/reserved-macro-names.rs:10:8
    |
 LL | pub fn cfg(_: TokenStream, input: TokenStream) -> TokenStream {
    |        ^^^
 
 error: name `cfg_attr` is reserved in macro namespace
-  --> $DIR/reserved-macro-names.rs:13:8
+  --> $DIR/reserved-macro-names.rs:16:8
    |
 LL | pub fn cfg_attr(_: TokenStream, input: TokenStream) -> TokenStream {
    |        ^^^^^^^^
 
 error: name `derive` is reserved in macro namespace
-  --> $DIR/reserved-macro-names.rs:19:8
+  --> $DIR/reserved-macro-names.rs:22:8
    |
 LL | pub fn derive(_: TokenStream, input: TokenStream) -> TokenStream {
    |        ^^^^^^

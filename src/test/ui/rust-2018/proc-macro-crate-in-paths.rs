@@ -9,6 +9,8 @@
 // except according to those terms.
 
 // compile-pass
+// force-host
+// no-prefer-dynamic
 
 #![crate_type = "proc-macro"]
 #![deny(rust_2018_compatibility)]

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // run-pass
+// force-host
 // no-prefer-dynamic
 
 #![crate_type = "proc-macro"]

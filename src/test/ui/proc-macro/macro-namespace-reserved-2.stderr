@@ -1,53 +1,53 @@
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:34:5
+  --> $DIR/macro-namespace-reserved-2.rs:35:5
    |
 LL |     my_macro!(); //~ ERROR can't use a procedural macro from the same crate that defines it
    |     ^^^^^^^^
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:37:5
+  --> $DIR/macro-namespace-reserved-2.rs:38:5
    |
 LL |     my_macro_attr!(); //~ ERROR can't use a procedural macro from the same crate that defines it
    |     ^^^^^^^^^^^^^
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:40:5
+  --> $DIR/macro-namespace-reserved-2.rs:41:5
    |
 LL |     MyTrait!(); //~ ERROR can't use a procedural macro from the same crate that defines it
    |     ^^^^^^^
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:43:3
+  --> $DIR/macro-namespace-reserved-2.rs:44:3
    |
 LL | #[my_macro] //~ ERROR can't use a procedural macro from the same crate that defines it
    |   ^^^^^^^^
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:45:3
+  --> $DIR/macro-namespace-reserved-2.rs:46:3
    |
 LL | #[my_macro_attr] //~ ERROR can't use a procedural macro from the same crate that defines it
    |   ^^^^^^^^^^^^^
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:47:3
+  --> $DIR/macro-namespace-reserved-2.rs:48:3
    |
 LL | #[MyTrait] //~ ERROR can't use a procedural macro from the same crate that defines it
    |   ^^^^^^^
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:50:10
+  --> $DIR/macro-namespace-reserved-2.rs:51:10
    |
 LL | #[derive(my_macro)] //~ ERROR can't use a procedural macro from the same crate that defines it
    |          ^^^^^^^^
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:52:10
+  --> $DIR/macro-namespace-reserved-2.rs:53:10
    |
 LL | #[derive(my_macro_attr)] //~ ERROR can't use a procedural macro from the same crate that defines it
    |          ^^^^^^^^^^^^^
 
 error: can't use a procedural macro from the same crate that defines it
-  --> $DIR/macro-namespace-reserved-2.rs:54:10
+  --> $DIR/macro-namespace-reserved-2.rs:55:10
    |
 LL | #[derive(MyTrait)] //~ ERROR can't use a procedural macro from the same crate that defines it
    |          ^^^^^^^
