@@ -1,4 +1,3 @@
-#![feature(const_let)]
 #![feature(const_fn)]
 
 struct S {
@@ -8,6 +7,7 @@ struct S {
 impl S {
     const fn foo(&mut self, x: u32) {
         self.state = x;
+        //~^ ERROR constant function contains unimplemented expression
     }
 }
 

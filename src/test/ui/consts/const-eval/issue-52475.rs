@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_let)]
-
 fn main() {
     let _ = [(); {
         //~^ WARNING Constant evaluating a complex constant, this might take some time

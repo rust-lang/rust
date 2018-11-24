@@ -372,6 +372,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     // FIXME(eddyb) use logical ops in constants when
                     // they can handle that kind of control-flow.
                     (hir::BinOpKind::And, hir::Constness::Const) => {
+                        cx.const_can_have_let_mut_bindings = false;
                         ExprKind::Binary {
                             op: BinOp::BitAnd,
                             lhs: lhs.to_ref(),
@@ -379,6 +380,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         }
                     }
                     (hir::BinOpKind::Or, hir::Constness::Const) => {
+                        cx.const_can_have_let_mut_bindings = false;
                         ExprKind::Binary {
                             op: BinOp::BitOr,
                             lhs: lhs.to_ref(),

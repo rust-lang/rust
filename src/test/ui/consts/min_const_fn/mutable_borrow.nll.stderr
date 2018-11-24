@@ -34,18 +34,18 @@ error[E0019]: static contains unimplemented expression type
 LL |     *a = Some(Foo); //~ unimplemented expression type
    |     ^^
 
-error[E0597]: borrowed value does not live long enough
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/mutable_borrow.rs:37:22
    |
 LL |     let mut a = &mut None; //~ references in statics may only refer to immutable values
-   |                      ^^^^ temporary value does not live long enough
+   |                      ^^^^ creates a temporary which is freed while still in use
 ...
+LL |     a
+   |     - using this value as a static requires that borrow lasts for `'static`
 LL | };
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
+   | - temporary value is freed at the end of this statement
 
 error: aborting due to 7 previous errors
 
-Some errors occurred: E0017, E0019, E0597.
+Some errors occurred: E0017, E0019, E0716.
 For more information about an error, try `rustc --explain E0017`.

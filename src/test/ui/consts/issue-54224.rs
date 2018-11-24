@@ -1,6 +1,8 @@
+// compile-pass
+
 #![feature(nll)]
 
-const FOO: Option<&[[u8; 3]]> = Some(&[*b"foo"]); //~ ERROR temporary value dropped while borrowed
+const FOO: Option<&[[u8; 3]]> = Some(&[*b"foo"]);
 
 use std::borrow::Cow;
 
@@ -9,6 +11,5 @@ pub const Y: Cow<'static, [ [u8; 3] ]> = Cow::Borrowed(&[X]);
 
 
 pub const Z: Cow<'static, [ [u8; 3] ]> = Cow::Borrowed(&[*b"ABC"]);
-//~^ ERROR temporary value dropped while borrowed
 
 fn main() {}

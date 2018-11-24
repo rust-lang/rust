@@ -56,6 +56,9 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
     /// True if this constant/function needs overflow checks.
     check_overflow: bool,
+
+    /// See field with the same name on `Mir`
+    const_can_have_let_mut_bindings: bool,
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
@@ -96,9 +99,13 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             constness,
             body_owner_kind,
             check_overflow,
+            const_can_have_let_mut_bindings: true,
         }
     }
 
+    pub fn const_can_have_let_mut_bindings(&self) -> bool {
+        self.const_can_have_let_mut_bindings
+    }
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_let)]
-
 pub static mut A: u32 = 0;
 pub static mut B: () = unsafe { A = 1; };
 //~^ ERROR cannot mutate statics in the initializer of another static
