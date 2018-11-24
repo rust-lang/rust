@@ -314,6 +314,10 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             local_gen_sym_counter: Cell::new(0),
         }
     }
+
+    crate fn statics_to_rauw(&self) -> &RefCell<Vec<(&'ll Value, &'ll Value)>> {
+        &self.statics_to_rauw
+    }
 }
 
 impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
@@ -429,10 +433,6 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
     fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>> {
         &self.codegen_unit
-    }
-
-    fn statics_to_rauw(&self) -> &RefCell<Vec<(&'ll Value, &'ll Value)>> {
-        &self.statics_to_rauw
     }
 
     fn used_statics(&self) -> &RefCell<Vec<&'ll Value>> {

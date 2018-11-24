@@ -498,9 +498,4 @@ impl StaticMethods for CodegenCx<'ll, 'tcx> {
             }
         }
     }
-    unsafe fn static_replace_all_uses(&self, old_g: &'ll Value, new_g: &'ll Value) {
-        let bitcast = llvm::LLVMConstPointerCast(new_g, self.val_ty(old_g));
-        llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
-        llvm::LLVMDeleteGlobal(old_g);
-    }
 }
