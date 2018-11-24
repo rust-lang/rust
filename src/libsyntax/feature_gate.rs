@@ -393,9 +393,6 @@ declare_features! (
     // `extern` in paths
     (active, extern_in_paths, "1.23.0", Some(55600), None),
 
-    // Use `?` as the Kleene "at most one" operator
-    (active, macro_at_most_once_rep, "1.25.0", Some(48075), None),
-
     // Infer static outlives requirements; RFC 2093
     (active, infer_static_outlives_requirements, "1.26.0", Some(54185), None),
 
@@ -689,6 +686,8 @@ declare_features! (
     (accepted, extern_crate_item_prelude, "1.31.0", Some(55599), None),
     // Allows use of the :literal macro fragment specifier (RFC 1576)
     (accepted, macro_literal_matcher, "1.31.0", Some(35625), None),
+    // Use `?` as the Kleene "at most one" operator
+    (accepted, macro_at_most_once_rep, "1.32.0", Some(48075), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
