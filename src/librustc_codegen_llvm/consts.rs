@@ -180,10 +180,6 @@ impl CodegenCx<'ll, 'tcx> {
 }
 
 impl StaticMethods for CodegenCx<'ll, 'tcx> {
-    fn static_ptrcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        ptrcast(val, ty)
-    }
-
     fn static_addr_of_mut(
         &self,
         cv: &'ll Value,

@@ -192,7 +192,7 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
         (_, &ty::Dynamic(ref data, ..)) => {
             let vtable_ptr = cx.layout_of(cx.tcx().mk_mut_ptr(target))
                 .field(cx, FAT_PTR_EXTRA);
-            cx.static_ptrcast(meth::get_vtable(cx, source, data.principal()),
+            cx.const_ptrcast(meth::get_vtable(cx, source, data.principal()),
                             cx.backend_type(vtable_ptr))
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",

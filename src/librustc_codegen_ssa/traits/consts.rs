@@ -17,7 +17,6 @@ use syntax::symbol::LocalInternedString;
 
 pub trait ConstMethods<'tcx>: BackendTypes {
     // Constant constructors
-
     fn const_null(&self, t: Self::Type) -> Self::Value;
     fn const_undef(&self, t: Self::Type) -> Self::Value;
     fn const_int(&self, t: Self::Type, i: i64) -> Self::Value;
@@ -61,4 +60,6 @@ pub trait ConstMethods<'tcx>: BackendTypes {
         alloc: &Allocation,
         offset: layout::Size,
     ) -> PlaceRef<'tcx, Self::Value>;
+
+    fn const_ptrcast(&self, val: Self::Value, ty: Self::Type) -> Self::Value;
 }
