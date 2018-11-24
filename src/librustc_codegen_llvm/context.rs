@@ -470,8 +470,8 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl IntrinsicDeclarationMethods<'tcx> for CodegenCx<'b, 'tcx> {
-    fn get_intrinsic(&self, key: &str) -> &'b Value {
+impl CodegenCx<'b, 'tcx> {
+    crate fn get_intrinsic(&self, key: &str) -> &'b Value {
         if let Some(v) = self.intrinsics.borrow().get(key).cloned() {
             return v;
         }

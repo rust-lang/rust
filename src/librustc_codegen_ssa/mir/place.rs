@@ -413,8 +413,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // and compile-time agree on values
                         // With floats that won't always be true
                         // so we generate an abort
-                        let fnname = bx.cx().get_intrinsic(&("llvm.trap"));
-                        bx.call(fnname, &[], None);
+                        bx.abort();
                         let llval = bx.cx().const_undef(
                             bx.cx().type_ptr_to(bx.cx().backend_type(layout))
                         );

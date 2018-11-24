@@ -44,7 +44,7 @@ pub use self::builder::BuilderMethods;
 pub use self::consts::ConstMethods;
 pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoMethods};
 pub use self::declare::{DeclareMethods, PreDefineMethods};
-pub use self::intrinsic::{IntrinsicCallMethods, IntrinsicDeclarationMethods};
+pub use self::intrinsic::{IntrinsicCallMethods, OverflowOp};
 pub use self::misc::MiscMethods;
 pub use self::statics::StaticMethods;
 pub use self::type_::{
@@ -65,7 +65,6 @@ pub trait CodegenMethods<'tcx>:
     + StaticMethods
     + DebugInfoMethods<'tcx>
     + AbiMethods<'tcx>
-    + IntrinsicDeclarationMethods<'tcx>
     + DeclareMethods<'tcx>
     + AsmMethods<'tcx>
     + PreDefineMethods<'tcx>
@@ -80,7 +79,6 @@ impl<'tcx, T> CodegenMethods<'tcx> for T where
         + StaticMethods
         + DebugInfoMethods<'tcx>
         + AbiMethods<'tcx>
-        + IntrinsicDeclarationMethods<'tcx>
         + DeclareMethods<'tcx>
         + AsmMethods<'tcx>
         + PreDefineMethods<'tcx>

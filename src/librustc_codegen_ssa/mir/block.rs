@@ -195,9 +195,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::Abort => {
-                // Call core::intrinsics::abort()
-                let fnname = bx.cx().get_intrinsic(&("llvm.trap"));
-                bx.call(fnname, &[], None);
+                bx.abort();
                 bx.unreachable();
             }
 
@@ -364,8 +362,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
 
                 // Pass the condition through llvm.expect for branch hinting.
-                let expect = bx.cx().get_intrinsic(&"llvm.expect.i1");
-                let cond = bx.call(expect, &[cond, bx.cx().const_bool(expected)], None);
+                let cond = bx.expect(cond, expected);
 
                 // Create the failure block and the conditional branch to it.
                 let lltarget = llblock(self, target);

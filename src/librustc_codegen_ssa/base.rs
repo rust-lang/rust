@@ -366,14 +366,6 @@ pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
 }
 
-pub fn call_assume<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    val: Bx::Value
-) {
-    let assume_intrinsic = bx.cx().get_intrinsic("llvm.assume");
-    bx.call(assume_intrinsic, &[val], None);
-}
-
 pub fn from_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     val: Bx::Value

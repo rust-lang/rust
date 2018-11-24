@@ -763,6 +763,95 @@ impl IntrinsicCallMethods<'tcx> for Builder<'a, 'll, 'tcx> {
             }
         }
     }
+
+    fn abort(&mut self) {
+        let fnname = self.cx().get_intrinsic(&("llvm.trap"));
+        self.call(fnname, &[], None);
+    }
+
+    fn assume(&mut self, val: Self::Value) {
+        let assume_intrinsic = self.cx().get_intrinsic("llvm.assume");
+        self.call(assume_intrinsic, &[val], None);
+    }
+
+    fn expect(&mut self, cond: Self::Value, expected: bool) -> Self::Value {
+        let expect = self.cx().get_intrinsic(&"llvm.expect.i1");
+        self.call(expect, &[cond, self.cx().const_bool(expected)], None)
+    }
+
+    fn call_overflow_intrinsic(
+        &mut self,
+        oop: OverflowOp,
+        ty: Ty,
+        lhs: Self::Value,
+        rhs: Self::Value,
+    ) -> (Self::Value, Self::Value) {
+        use syntax::ast::IntTy::*;
+        use syntax::ast::UintTy::*;
+        use rustc::ty::{Int, Uint};
+
+        let new_sty = match ty.sty {
+            Int(Isize) => Int(self.tcx().sess.target.isize_ty),
+            Uint(Usize) => Uint(self.tcx().sess.target.usize_ty),
+            ref t @ Uint(_) | ref t @ Int(_) => t.clone(),
+            _ => panic!("tried to get overflow intrinsic for op applied to non-int type")
+        };
+
+        let name = match oop {
+            OverflowOp::Add => match new_sty {
+                Int(I8) => "llvm.sadd.with.overflow.i8",
+                Int(I16) => "llvm.sadd.with.overflow.i16",
+                Int(I32) => "llvm.sadd.with.overflow.i32",
+                Int(I64) => "llvm.sadd.with.overflow.i64",
+                Int(I128) => "llvm.sadd.with.overflow.i128",
+
+                Uint(U8) => "llvm.uadd.with.overflow.i8",
+                Uint(U16) => "llvm.uadd.with.overflow.i16",
+                Uint(U32) => "llvm.uadd.with.overflow.i32",
+                Uint(U64) => "llvm.uadd.with.overflow.i64",
+                Uint(U128) => "llvm.uadd.with.overflow.i128",
+
+                _ => unreachable!(),
+            },
+            OverflowOp::Sub => match new_sty {
+                Int(I8) => "llvm.ssub.with.overflow.i8",
+                Int(I16) => "llvm.ssub.with.overflow.i16",
+                Int(I32) => "llvm.ssub.with.overflow.i32",
+                Int(I64) => "llvm.ssub.with.overflow.i64",
+                Int(I128) => "llvm.ssub.with.overflow.i128",
+
+                Uint(U8) => "llvm.usub.with.overflow.i8",
+                Uint(U16) => "llvm.usub.with.overflow.i16",
+                Uint(U32) => "llvm.usub.with.overflow.i32",
+                Uint(U64) => "llvm.usub.with.overflow.i64",
+                Uint(U128) => "llvm.usub.with.overflow.i128",
+
+                _ => unreachable!(),
+            },
+            OverflowOp::Mul => match new_sty {
+                Int(I8) => "llvm.smul.with.overflow.i8",
+                Int(I16) => "llvm.smul.with.overflow.i16",
+                Int(I32) => "llvm.smul.with.overflow.i32",
+                Int(I64) => "llvm.smul.with.overflow.i64",
+                Int(I128) => "llvm.smul.with.overflow.i128",
+
+                Uint(U8) => "llvm.umul.with.overflow.i8",
+                Uint(U16) => "llvm.umul.with.overflow.i16",
+                Uint(U32) => "llvm.umul.with.overflow.i32",
+                Uint(U64) => "llvm.umul.with.overflow.i64",
+                Uint(U128) => "llvm.umul.with.overflow.i128",
+
+                _ => unreachable!(),
+            },
+        };
+
+        let intrinsic = self.cx().get_intrinsic(&name);
+        let res = self.call(intrinsic, &[lhs, rhs], None);
+        (
+            self.extract_value(res, 0),
+            self.extract_value(res, 1),
+        )
+    }
 }
 
 fn copy_intrinsic(
