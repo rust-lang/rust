@@ -172,7 +172,7 @@ pub fn ptrcast(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
 }
 
 impl CodegenCx<'ll, 'tcx> {
-    crate fn static_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+    crate fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe {
             llvm::LLVMConstBitCast(val, ty)
         }
