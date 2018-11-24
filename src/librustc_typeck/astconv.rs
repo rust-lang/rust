@@ -709,7 +709,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         }
     }
 
-    /// The given trait ref must actually be a trait.
+    /// The given trait-ref must actually be a trait.
     pub(super) fn instantiate_poly_trait_ref_inner(&self,
         trait_ref: &hir::TraitRef,
         self_ty: Ty<'tcx>,
@@ -979,9 +979,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
 
         for trait_bound in trait_bounds[1..].iter().rev() {
             // sanity check for non-principal trait bounds
-            let tr = self.instantiate_poly_trait_ref(trait_bound,
-                                                     dummy_self,
-                                                     &mut Vec::new());
+            let (tr, _) = self.instantiate_poly_trait_ref(trait_bound,
+                                                          dummy_self,
+                                                          &mut Vec::new());
             bound_trait_refs.push((tr, trait_bound.span));
         }
         bound_trait_refs.push((principal, trait_bounds[0].span));
@@ -1082,11 +1082,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             let mut potential_assoc_types_spans = vec![];
             if let Some(potential_assoc_types) = potential_assoc_types {
                 if potential_assoc_types.len() == associated_types.len() {
-                    // Only suggest when the amount of missing associated types is equals to the
+                    // Only suggest when the number of missing associated types equals the number of
                     // extra type arguments present, as that gives us a relatively high confidence
                     // that the user forgot to give the associtated type's name. The canonical
                     // example would be trying to use `Iterator<isize>` instead of
-                    // `Iterator<Item=isize>`.
+                    // `Iterator<Item = isize>`.
                     suggest = true;
                     potential_assoc_types_spans = potential_assoc_types;
                 }
