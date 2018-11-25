@@ -53,8 +53,13 @@ compiled the right way.
 
 ## Running Miri on your own project('s test suite)
 
-Install Miri as a cargo subcommand with `cargo +nightly install --path .`.  Be
-aware that if you used `rustup override set` to fix a particular Rust version
+Install Miri as a cargo subcommand:
+
+```sh
+cargo +nightly install --git https://github.com/solson/miri/
+```
+
+Be aware that if you used `rustup override set` to fix a particular Rust version
 for the miri directory, that will *not* apply to your own project directory!
 You have to use a consistent Rust version for building miri and your project for
 this to work, so remember to either always specify the nightly version manually,
