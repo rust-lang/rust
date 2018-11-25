@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Ensure that both `Box<Error + Send + Sync>` and `Box<Error>` can be obtained from `String`.
+// Ensure that both `Box<dyn Error + Send + Sync>` and `Box<dyn Error>` can be
+// obtained from `String`.
 
 use std::error::Error;
 

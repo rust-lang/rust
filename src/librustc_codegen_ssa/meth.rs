@@ -74,7 +74,7 @@ impl<'a, 'tcx: 'a> VirtualIndex {
 /// The vtables are cached instead of created on every call.
 ///
 /// The `trait_ref` encodes the erased self type. Hence if we are
-/// making an object `Foo<Trait>` from a value of type `Foo<T>`, then
+/// making an object `Foo<dyn Trait>` from a value of type `Foo<T>`, then
 /// `trait_ref` would map `T:Trait`.
 pub fn get_vtable<'tcx, Cx: CodegenMethods<'tcx>>(
     cx: &Cx,
