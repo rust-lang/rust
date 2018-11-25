@@ -9,6 +9,7 @@ extern crate relative_path;
 extern crate rustc_hash;
 extern crate salsa;
 
+mod arena;
 mod db;
 mod loc2id;
 mod input;

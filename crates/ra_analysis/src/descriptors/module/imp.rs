@@ -94,10 +94,7 @@ fn create_module_tree<'a>(
     db: &impl DescriptorDatabase,
     source_root: SourceRootId,
 ) -> Cancelable<ModuleTree> {
-    let mut tree = ModuleTree {
-        mods: Vec::new(),
-        links: Vec::new(),
-    };
+    let mut tree = ModuleTree::default();
 
     let mut roots = FxHashMap::default();
     let mut visited = FxHashSet::default();
@@ -154,7 +151,7 @@ fn build_subtree(
                     .into_iter()
                     .map(|file_id| match roots.remove(&file_id) {
                         Some(module_id) => {
-                            tree.module_mut(module_id).parent = Some(link);
+                            tree.mods[module_id].parent = Some(link);
                             Ok(module_id)
                         }
                         None => build_subtree(
@@ -184,8 +181,8 @@ fn build_subtree(
             }
         };
 
-        tree.link_mut(link).points_to = points_to;
-        tree.link_mut(link).problem = problem;
+        tree.links[link].points_to = points_to;
+        tree.links[link].problem = problem;
     }
     Ok(id)
 }

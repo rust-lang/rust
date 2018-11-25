@@ -1,5 +1,5 @@
 use std::sync::Arc;
-
+#[cfg(test)]
 use parking_lot::Mutex;
 use ra_editor::LineIndex;
 use ra_syntax::{SourceFileNode, SyntaxNode};
@@ -33,6 +33,7 @@ impl salsa::Database for RootDatabase {
         &self.runtime
     }
 
+    #[allow(unused)]
     fn salsa_event(&self, event: impl Fn() -> salsa::Event<RootDatabase>) {
         #[cfg(test)]
         {
