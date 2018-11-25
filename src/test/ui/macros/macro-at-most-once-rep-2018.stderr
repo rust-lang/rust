@@ -1,7 +1,7 @@
 error: the `?` macro repetition operator does not take a separator
   --> $DIR/macro-at-most-once-rep-2018.rs:20:10
    |
-LL |     ($(a),?) => {} //~ERROR the `?` macro repetition operator
+LL |     ($(a),?) => {}; //~ERROR the `?` macro repetition operator
    |          ^
 
 error: no rules expected the token `?`

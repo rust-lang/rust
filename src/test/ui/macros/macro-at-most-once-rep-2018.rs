@@ -39,7 +39,7 @@ pub fn main() {
     barplus!(a); //~ERROR unexpected end of macro invocation
     barplus!(a?); //~ ERROR no rules expected the token `?`
     barplus!(a?a); //~ ERROR no rules expected the token `?`
-    barplus!(a);
+    barplus!(a+);
     barplus!(+);
 
     barstar!(); //~ERROR unexpected end of macro invocation
