@@ -4710,7 +4710,18 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 ty::Visibility::Restricted(self.current_module.normal_ancestor_id)
             }
             ast::VisibilityKind::Restricted { ref path, id, .. } => {
-                // Visibilities are resolved as global by default, add starting root segment.
+                // For visibilities we are not ready to provide correct implementation of "uniform
+                // paths" right now, so on 2018 edition we only allow module-relative paths for now.
+                let first_ident = path.segments[0].ident;
+                if self.session.rust_2018() && !first_ident.is_path_segment_keyword() {
+                    let msg = "relative paths are not supported in visibilities on 2018 edition";
+                    self.session.struct_span_err(first_ident.span, msg)
+                                .span_suggestion(path.span, "try", format!("crate::{}", path))
+                                .emit();
+                    return ty::Visibility::Public;
+                }
+                // On 2015 visibilities are resolved as crate-relative by default,
+                // add starting root segment if necessary.
                 let segments = path.make_root().iter().chain(path.segments.iter())
                     .map(|seg| Segment { ident: seg.ident, id: Some(seg.id) })
                     .collect::<Vec<_>>();
@@ -4988,10 +4999,10 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                 err.span_suggestion_with_applicability(
                     binding.span,
                     &rename_msg,
-                    match (&directive.subclass, snippet.as_ref()) {
-                        (ImportDirectiveSubclass::SingleImport { .. }, "self") =>
+                    match directive.subclass {
+                        ImportDirectiveSubclass::SingleImport { type_ns_only: true, .. } =>
                             format!("self as {}", suggested_name),
-                        (ImportDirectiveSubclass::SingleImport { source, .. }, _) =>
+                        ImportDirectiveSubclass::SingleImport { source, .. } =>
                             format!(
                                 "{} as {}{}",
                                 &snippet[..((source.span.hi().0 - binding.span.lo().0) as usize)],
@@ -5002,13 +5013,13 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                     ""
                                 }
                             ),
-                        (ImportDirectiveSubclass::ExternCrate { source, target, .. }, _) =>
+                        ImportDirectiveSubclass::ExternCrate { source, target, .. } =>
                             format!(
                                 "extern crate {} as {};",
                                 source.unwrap_or(target.name),
                                 suggested_name,
                             ),
-                        (_, _) => unreachable!(),
+                        _ => unreachable!(),
                     },
                     Applicability::MaybeIncorrect,
                 );
