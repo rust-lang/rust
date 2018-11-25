@@ -11,7 +11,7 @@
 //! See README.md
 
 use self::CombineMapType::*;
-use self::UndoLogEntry::*;
+use self::UndoLog::*;
 
 use super::unify_key;
 use super::{MiscVariable, RegionVariableOrigin, SubregionOrigin};
@@ -52,14 +52,17 @@ pub struct RegionConstraintCollector<'tcx> {
 
     /// The undo log records actions that might later be undone.
     ///
-    /// Note: when the undo_log is empty, we are not actively
+    /// Note: `num_open_snapshots` is used to track if we are actively
     /// snapshotting. When the `start_snapshot()` method is called, we
-    /// push an OpenSnapshot entry onto the list to indicate that we
-    /// are now actively snapshotting. The reason for this is that
-    /// otherwise we end up adding entries for things like the lower
-    /// bound on a variable and so forth, which can never be rolled
-    /// back.
-    undo_log: Vec<UndoLogEntry<'tcx>>,
+    /// increment `num_open_snapshots` to indicate that we are now actively
+    /// snapshotting. The reason for this is that otherwise we end up adding
+    /// entries for things like the lower bound on a variable and so forth,
+    /// which can never be rolled back.
+    undo_log: Vec<UndoLog<'tcx>>,
+
+    /// The number of open snapshots, i.e. those that haven't been committed or
+    /// rolled back.
+    num_open_snapshots: usize,
 
     /// When we add a R1 == R2 constriant, we currently add (a) edges
     /// R1 <= R2 and R2 <= R1 and (b) we unify the two regions in this
@@ -254,15 +257,7 @@ struct TwoRegions<'tcx> {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-enum UndoLogEntry<'tcx> {
-    /// Pushed when we start a snapshot.
-    OpenSnapshot,
-
-    /// Replaces an `OpenSnapshot` when a snapshot is committed, but
-    /// that snapshot is not the root. If the root snapshot is
-    /// unrolled, all nested snapshots must be committed.
-    CommitedSnapshot,
-
+enum UndoLog<'tcx> {
     /// We added `RegionVid`
     AddVar(RegionVid),
 
@@ -387,6 +382,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
             glbs,
             bound_count: _,
             undo_log: _,
+            num_open_snapshots: _,
             unification_table,
             any_unifications,
         } = self;
@@ -415,13 +411,13 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     }
 
     fn in_snapshot(&self) -> bool {
-        !self.undo_log.is_empty()
+        self.num_open_snapshots > 0
     }
 
     pub fn start_snapshot(&mut self) -> RegionSnapshot {
         let length = self.undo_log.len();
         debug!("RegionConstraintCollector: start_snapshot({})", length);
-        self.undo_log.push(OpenSnapshot);
+        self.num_open_snapshots += 1;
         RegionSnapshot {
             length,
             region_snapshot: self.unification_table.snapshot(),
@@ -429,39 +425,46 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
         }
     }
 
+    fn assert_open_snapshot(&self, snapshot: &RegionSnapshot) {
+        assert!(self.undo_log.len() >= snapshot.length);
+        assert!(self.num_open_snapshots > 0);
+    }
+
     pub fn commit(&mut self, snapshot: RegionSnapshot) {
         debug!("RegionConstraintCollector: commit({})", snapshot.length);
-        assert!(self.undo_log.len() > snapshot.length);
-        assert!(self.undo_log[snapshot.length] == OpenSnapshot);
+        self.assert_open_snapshot(&snapshot);
 
-        if snapshot.length == 0 {
+        if self.num_open_snapshots == 1 {
+            // The root snapshot. It's safe to clear the undo log because
+            // there's no snapshot further out that we might need to roll back
+            // to.
+            assert!(snapshot.length == 0);
             self.undo_log.clear();
-        } else {
-            (*self.undo_log)[snapshot.length] = CommitedSnapshot;
         }
+
+        self.num_open_snapshots -= 1;
+
         self.unification_table.commit(snapshot.region_snapshot);
     }
 
     pub fn rollback_to(&mut self, snapshot: RegionSnapshot) {
         debug!("RegionConstraintCollector: rollback_to({:?})", snapshot);
-        assert!(self.undo_log.len() > snapshot.length);
-        assert!(self.undo_log[snapshot.length] == OpenSnapshot);
-        while self.undo_log.len() > snapshot.length + 1 {
+        self.assert_open_snapshot(&snapshot);
+
+        while self.undo_log.len() > snapshot.length {
             let undo_entry = self.undo_log.pop().unwrap();
             self.rollback_undo_entry(undo_entry);
         }
-        let c = self.undo_log.pop().unwrap();
-        assert!(c == OpenSnapshot);
+
+        self.num_open_snapshots -= 1;
+
         self.unification_table.rollback_to(snapshot.region_snapshot);
         self.any_unifications = snapshot.any_unifications;
     }
 
-    fn rollback_undo_entry(&mut self, undo_entry: UndoLogEntry<'tcx>) {
+    fn rollback_undo_entry(&mut self, undo_entry: UndoLog<'tcx>) {
         match undo_entry {
-            OpenSnapshot => {
-                panic!("Failure to observe stack discipline");
-            }
-            Purged | CommitedSnapshot => {
+            Purged => {
                 // nothing to do here
             }
             AddVar(vid) => {
@@ -521,15 +524,10 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
     /// in `skols`. This is used after a higher-ranked operation
     /// completes to remove all trace of the placeholder regions
     /// created in that time.
-    pub fn pop_placeholders(
-        &mut self,
-        placeholders: &FxHashSet<ty::Region<'tcx>>,
-        snapshot: &RegionSnapshot,
-    ) {
+    pub fn pop_placeholders(&mut self, placeholders: &FxHashSet<ty::Region<'tcx>>) {
         debug!("pop_placeholders(placeholders={:?})", placeholders);
 
         assert!(self.in_snapshot());
-        assert!(self.undo_log[snapshot.length] == OpenSnapshot);
 
         let constraints_to_kill: Vec<usize> = self.undo_log
             .iter()
@@ -548,7 +546,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
         fn kill_constraint<'tcx>(
             placeholders: &FxHashSet<ty::Region<'tcx>>,
-            undo_entry: &UndoLogEntry<'tcx>,
+            undo_entry: &UndoLog<'tcx>,
         ) -> bool {
             match undo_entry {
                 &AddConstraint(Constraint::VarSubVar(..)) => false,
@@ -562,7 +560,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
                 &AddCombination(_, ref two_regions) => {
                     placeholders.contains(&two_regions.a) || placeholders.contains(&two_regions.b)
                 }
-                &AddVar(..) | &OpenSnapshot | &Purged | &CommitedSnapshot => false,
+                &AddVar(..) | &Purged => false,
             }
         }
     }

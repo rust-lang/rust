@@ -790,7 +790,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         self.projection_cache
             .borrow_mut()
-            .commit(&projection_cache_snapshot);
+            .commit(projection_cache_snapshot);
         self.type_variables.borrow_mut().commit(type_snapshot);
         self.int_unification_table.borrow_mut().commit(int_snapshot);
         self.float_unification_table

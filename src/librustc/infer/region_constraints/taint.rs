@@ -29,7 +29,7 @@ impl<'tcx> TaintSet<'tcx> {
     pub(super) fn fixed_point(
         &mut self,
         tcx: TyCtxt<'_, '_, 'tcx>,
-        undo_log: &[UndoLogEntry<'tcx>],
+        undo_log: &[UndoLog<'tcx>],
         verifys: &[Verify<'tcx>],
     ) {
         let mut prev_len = 0;
@@ -65,8 +65,7 @@ impl<'tcx> TaintSet<'tcx> {
                             "we never add verifications while doing higher-ranked things",
                         )
                     }
-                    &Purged | &AddCombination(..) | &AddVar(..) | &OpenSnapshot
-                    | &CommitedSnapshot => {}
+                    &Purged | &AddCombination(..) | &AddVar(..) => {}
                 }
             }
         }

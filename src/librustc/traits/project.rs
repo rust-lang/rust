@@ -1652,15 +1652,15 @@ impl<'tcx> ProjectionCache<'tcx> {
     }
 
     pub fn rollback_to(&mut self, snapshot: ProjectionCacheSnapshot) {
-        self.map.rollback_to(&snapshot.snapshot);
+        self.map.rollback_to(snapshot.snapshot);
     }
 
     pub fn rollback_placeholder(&mut self, snapshot: &ProjectionCacheSnapshot) {
         self.map.partial_rollback(&snapshot.snapshot, &|k| k.ty.has_re_placeholders());
     }
 
-    pub fn commit(&mut self, snapshot: &ProjectionCacheSnapshot) {
-        self.map.commit(&snapshot.snapshot);
+    pub fn commit(&mut self, snapshot: ProjectionCacheSnapshot) {
+        self.map.commit(snapshot.snapshot);
     }
 
     /// Try to start normalize `key`; returns an error if
@@ -1714,12 +1714,8 @@ impl<'tcx> ProjectionCache<'tcx> {
     /// to be a NormalizedTy.
     pub fn complete_normalized(&mut self, key: ProjectionCacheKey<'tcx>, ty: &NormalizedTy<'tcx>) {
         // We want to insert `ty` with no obligations. If the existing value
-        // already has no obligations (as is common) we can use `insert_noop`
-        // to do a minimal amount of work -- the HashMap insertion is skipped,
-        // and minimal changes are made to the undo log.
-        if ty.obligations.is_empty() {
-            self.map.insert_noop();
-        } else {
+        // already has no obligations (as is common) we don't insert anything.
+        if !ty.obligations.is_empty() {
             self.map.insert(key, ProjectionCacheEntry::NormalizedTy(Normalized {
                 value: ty.value,
                 obligations: vec![]
