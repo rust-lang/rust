@@ -25,7 +25,21 @@ help: you can use `as` to change the binding name of the import
 LL | use foo::{self as other_foo};
    |           ^^^^^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error[E0252]: the name `A` is defined multiple times
+  --> $DIR/import-self.rs:23:11
+   |
+LL | use foo::A;
+   |     ------ previous import of the type `A` here
+LL | use foo::{self as A};
+   |           ^^^^^^^^^ `A` reimported here
+   |
+   = note: `A` must be defined only once in the type namespace of this module
+help: you can use `as` to change the binding name of the import
+   |
+LL | use foo::{self as OtherA};
+   |           ^^^^^^^^^^^^^^
 
-Some errors occurred: E0255, E0429.
-For more information about an error, try `rustc --explain E0255`.
+error: aborting due to 4 previous errors
+
+Some errors occurred: E0252, E0255, E0429.
+For more information about an error, try `rustc --explain E0252`.

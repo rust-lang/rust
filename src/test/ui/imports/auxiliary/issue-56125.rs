@@ -1,3 +1,5 @@
+pub mod issue_56125 {}
+
 pub mod last_segment {
     pub mod issue_56125 {}
 }
