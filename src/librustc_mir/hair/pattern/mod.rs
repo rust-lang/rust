@@ -79,11 +79,6 @@ impl<'tcx> PatternTypeProjections<'tcx> {
         PatternTypeProjections { contents: vec![] }
     }
 
-    pub(crate) fn ref_binding(&self) -> Self {
-        // FIXME(#55401): ignore for now
-        PatternTypeProjections { contents: vec![] }
-    }
-
     fn map_projs(&self,
                  mut f: impl FnMut(&PatternTypeProjection<'tcx>) -> PatternTypeProjection<'tcx>)
                  -> Self
@@ -803,7 +798,7 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
         };
 
         if let Some(user_ty) = self.user_substs_applied_to_ty_of_hir_id(hir_id) {
-            debug!("lower_variant_or_leaf: user_ty={:?} span={:?}", user_ty, span);
+            debug!("lower_variant_or_leaf: kind={:?} user_ty={:?} span={:?}", kind, user_ty, span);
             kind = PatternKind::AscribeUserType {
                 subpattern: Pattern {
                     span,

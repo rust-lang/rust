@@ -307,8 +307,20 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         self.sanitize_type(local_decl, local_decl.ty);
 
         for (user_ty, span) in local_decl.user_ty.projections_and_spans() {
+            let ty = if !local_decl.is_nonref_binding() {
+                // If we have a binding of the form `let ref x: T = ..` then remove the outermost
+                // reference so we can check the type annotation for the remaining type.
+                if let ty::Ref(_, rty, _) = local_decl.ty.sty {
+                    rty
+                } else {
+                    bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
+                }
+            } else {
+                local_decl.ty
+            };
+
             if let Err(terr) = self.cx.relate_type_and_user_type(
-                local_decl.ty,
+                ty,
                 ty::Variance::Invariant,
                 user_ty,
                 Locations::All(*span),

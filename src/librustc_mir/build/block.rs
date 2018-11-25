@@ -141,6 +141,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             None, remainder_span, lint_level, slice::from_ref(&pattern),
                             ArmHasGuard(false), None);
 
+                        debug!("ast_block_stmts: pattern={:?}", pattern);
                         this.visit_bindings(
                             &pattern,
                             &PatternTypeProjections::none(),
