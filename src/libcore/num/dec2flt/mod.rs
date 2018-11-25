@@ -122,10 +122,34 @@ macro_rules! from_str_float_impl {
             /// * '2.5E10', or equivalently, '2.5e10'
             /// * '2.5E-10'
             /// * '5.'
-            /// * '.5', or, equivalently,  '0.5'
+            /// * '.5', or, equivalently, '0.5'
             /// * 'inf', '-inf', 'NaN'
             ///
             /// Leading and trailing whitespace represent an error.
+            ///
+            /// # Grammar
+            ///
+            /// All strings that adhere to the following regular expression
+            /// will result in an [`Ok`] being returned:
+            ///
+            /// ```txt
+            /// (\+|-)?
+            /// (inf|
+            ///  NaN|
+            ///  ([0-9]+|
+            ///   [0-9]+\.[0-9]*|
+            ///   [0-9]*\.[0-9]+)
+            ///  ((e|E)
+            ///   (\+|-)?
+            ///   [0-9]+)?)
+            /// ```
+            ///
+            /// # Known bugs
+            ///
+            /// * [#31407]: Some strings that adhere to the regular expression
+            ///   above will incorrectly return an [`Err`].
+            ///
+            /// [#31407]: https://github.com/rust-lang/rust/issues/31407
             ///
             /// # Arguments
             ///
