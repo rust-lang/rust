@@ -19,4 +19,7 @@ use foo as self;
 
 use foo::self;
 
+use foo::A;
+use foo::{self as A};
+
 fn main() {}
