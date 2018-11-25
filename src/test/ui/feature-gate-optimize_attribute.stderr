@@ -1,0 +1,43 @@
+error[E0658]: #[optimize] attribute is an unstable feature (see issue #54882)
+  --> $DIR/feature-gate-optimize_attribute.rs:16:1
+   |
+LL | #[optimize(size)] //~ ERROR #54882
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(optimize_attribute)] to the crate attributes to enable
+
+error[E0658]: #[optimize] attribute is an unstable feature (see issue #54882)
+  --> $DIR/feature-gate-optimize_attribute.rs:19:1
+   |
+LL | #[optimize(speed)] //~ ERROR #54882
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(optimize_attribute)] to the crate attributes to enable
+
+error[E0658]: #[optimize] attribute is an unstable feature (see issue #54882)
+  --> $DIR/feature-gate-optimize_attribute.rs:22:1
+   |
+LL | #[optimize(banana)] //~ ERROR #54882
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(optimize_attribute)] to the crate attributes to enable
+
+error[E0658]: #[optimize] attribute is an unstable feature (see issue #54882)
+  --> $DIR/feature-gate-optimize_attribute.rs:13:1
+   |
+LL | #[optimize(size)] //~ ERROR #54882
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(optimize_attribute)] to the crate attributes to enable
+
+error[E0658]: #[optimize] attribute is an unstable feature (see issue #54882)
+  --> $DIR/feature-gate-optimize_attribute.rs:11:1
+   |
+LL | #![optimize(speed)] //~ ERROR #54882
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add #![feature(optimize_attribute)] to the crate attributes to enable
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0658`.
