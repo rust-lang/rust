@@ -5178,8 +5178,10 @@ impl<'a> Parser<'a> {
     /// Parses (possibly empty) list of lifetime and type parameters, possibly including
     /// trailing comma and erroneous trailing attributes.
     crate fn parse_generic_params(&mut self) -> PResult<'a, Vec<ast::GenericParam>> {
+        let mut lifetimes = Vec::new();
         let mut params = Vec::new();
-        let mut seen_ty_param = false;
+        let mut seen_ty_param: Option<Span> = None;
+        let mut last_comma_span = None;
         loop {
             let attrs = self.parse_outer_attributes()?;
             if self.check_lifetime() {
@@ -5190,25 +5192,48 @@ impl<'a> Parser<'a> {
                 } else {
                     Vec::new()
                 };
-                params.push(ast::GenericParam {
+                lifetimes.push(ast::GenericParam {
                     ident: lifetime.ident,
                     id: lifetime.id,
                     attrs: attrs.into(),
                     bounds,
                     kind: ast::GenericParamKind::Lifetime,
                 });
-                if seen_ty_param {
-                    self.span_err(self.prev_span,
-                        "lifetime parameters must be declared prior to type parameters");
+                if let Some(sp) = seen_ty_param {
+                    let param_span = self.prev_span;
+                    let ate_comma = self.eat(&token::Comma);
+                    let remove_sp = if ate_comma {
+                        param_span.until(self.span)
+                    } else {
+                        last_comma_span.unwrap_or(param_span).to(param_span)
+                    };
+                    let mut err = self.struct_span_err(
+                        self.prev_span,
+                        "lifetime parameters must be declared prior to type parameters",
+                    );
+                    if let Ok(snippet) = self.sess.source_map().span_to_snippet(param_span) {
+                        err.multipart_suggestion(
+                            "move the lifetime parameter prior to the first type parameter",
+                            vec![
+                                (remove_sp, String::new()),
+                                (sp.shrink_to_lo(), format!("{}, ", snippet)),
+                            ],
+                        );
+                    }
+                    err.emit();
+                    if ate_comma {
+                        last_comma_span = Some(self.prev_span);
+                        continue
+                    }
                 }
             } else if self.check_ident() {
                 // Parse type parameter.
                 params.push(self.parse_ty_param(attrs)?);
-                seen_ty_param = true;
+                seen_ty_param = Some(self.prev_span);
             } else {
                 // Check for trailing attributes and stop parsing.
                 if !attrs.is_empty() {
-                    let param_kind = if seen_ty_param { "type" } else { "lifetime" };
+                    let param_kind = if seen_ty_param.is_some() { "type" } else { "lifetime" };
                     self.span_err(attrs[0].span,
                         &format!("trailing attribute after {} parameters", param_kind));
                 }
@@ -5218,8 +5243,10 @@ impl<'a> Parser<'a> {
             if !self.eat(&token::Comma) {
                 break
             }
+            last_comma_span = Some(self.prev_span);
         }
-        Ok(params)
+        lifetimes.extend(params);  // ensure the correct order of lifetimes and type params
+        Ok(lifetimes)
     }
 
     /// Parse a set of optional generic type parameter declarations. Where
