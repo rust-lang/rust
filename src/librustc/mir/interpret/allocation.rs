@@ -172,9 +172,11 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         let offset = ptr.offset.bytes() as usize;
         match self.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
-                let size = Size::from_bytes((size + 1) as u64);
-                // Go through `get_bytes` for checks and AllocationExtra hooks
-                self.get_bytes(cx, ptr, size)
+                let size_with_null = Size::from_bytes((size + 1) as u64);
+                // Go through `get_bytes` for checks and AllocationExtra hooks.
+                // We read the null, so we include it in the requestm, but we want it removed
+                // from the result!
+                Ok(&self.get_bytes(cx, ptr, size_with_null)?[..size])
             }
             None => err!(UnterminatedCString(ptr.erase_tag())),
         }
