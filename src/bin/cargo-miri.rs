@@ -3,14 +3,19 @@
 extern crate cargo_metadata;
 
 use std::path::{PathBuf, Path};
-use std::io::Write;
+use std::io::{self, Write};
 use std::process::Command;
 
 
 const CARGO_MIRI_HELP: &str = r#"Interprets bin crates
 
 Usage:
-    cargo miri [options] [--] [<opts>...]
+    cargo miri [subcommand] [options] [--] [<opts>...]
+
+Subcommands:
+    run                      Run binaries (default)
+    test                     Run tests
+    setup                    Only perform automatic setup, but without asking questions (for getting a proper libstd)
 
 Common options:
     -h, --help               Print this message
@@ -27,7 +32,7 @@ it to configure the resource limits
 available resource limits are `memory_size`, `step_limit`, `stack_limit`
 "#;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum MiriCommand {
     Run,
     Test,
@@ -41,6 +46,11 @@ fn show_help() {
 fn show_version() {
     println!("miri {} ({} {})",
         env!("CARGO_PKG_VERSION"), env!("VERGEN_SHA_SHORT"), env!("VERGEN_COMMIT_DATE"));
+}
+
+fn show_error(msg: String) -> ! {
+    eprintln!("fatal error: {}", msg);
+    std::process::exit(1)
 }
 
 fn list_targets(mut args: impl Iterator<Item=String>) -> impl Iterator<Item=cargo_metadata::Target> {
@@ -91,6 +101,40 @@ fn list_targets(mut args: impl Iterator<Item=String>) -> impl Iterator<Item=carg
     package.targets.into_iter()
 }
 
+fn ask(question: &str) {
+    let mut buf = String::new();
+    print!("{} [Y/n] ", question);
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut buf).unwrap();
+    let answer = match buf.trim().to_lowercase().as_ref() {
+        "" | "y" | "yes" => true,
+        "n" | "no" => false,
+        a => show_error(format!("I do not understand `{}`", a))
+    };
+    if !answer {
+        show_error(format!("Aborting as per your request"))
+    }
+}
+
+/// Perform the setup requires to make `cargo miri` work: Getting a custom-built libstd. Then sets MIRI_SYSROOT.
+/// Skipped if MIRI_SYSROOT is already set, in that case we expect the user has done all this already.
+fn setup(ask_user: bool) {
+    if std::env::var("MIRI_SYSROOT").is_ok() {
+        return;
+    }
+
+    // First, we need xargo
+    if Command::new("xargo").arg("--version").output().is_err()
+    {
+        if ask_user {
+            ask("It seems you do not have xargo installed. I will run `cargo install xargo`. Proceed?");
+        }
+        if !Command::new("cargo").args(&["install", "xargo"]).status().unwrap().success() {
+            show_error(format!("Failed to install xargo"));
+        }
+    }
+}
+
 fn main() {
     // Check for version and help flags even when invoked as 'cargo-miri'
     if std::env::args().any(|a| a == "--help" || a == "-h") {
@@ -117,11 +161,15 @@ fn main() {
             None => (MiriCommand::Run, 2),
             // Unvalid command
             Some(s) => {
-                eprintln!("Unknown command `{}`", s);
-                std::process::exit(1)
+                show_error(format!("Unknown command `{}`", s))
             }
         };
 
+        // We always setup
+        let ask = subcommand != MiriCommand::Setup;
+        setup(ask);
+
+        // Now run the command.
         for target in list_targets(std::env::args().skip(skip)) {
             let args = std::env::args().skip(skip);
             let kind = target.kind.get(0).expect(
