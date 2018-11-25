@@ -42,7 +42,7 @@ use syntax_pos::{Span, DUMMY_SP};
 use errors::Applicability;
 
 use std::cell::Cell;
-use std::mem;
+use std::{mem, ptr};
 use rustc_data_structures::sync::Lrc;
 
 #[derive(Clone, Debug)]
@@ -594,11 +594,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         bitflags! {
             struct Flags: u8 {
-                const MACRO_RULES       = 1 << 0;
-                const MODULE            = 1 << 1;
-                const PRELUDE           = 1 << 2;
-                const MISC_SUGGEST_SELF = 1 << 3;
-                const MISC_FROM_PRELUDE = 1 << 4;
+                const MACRO_RULES        = 1 << 0;
+                const MODULE             = 1 << 1;
+                const PRELUDE            = 1 << 2;
+                const MISC_SUGGEST_CRATE = 1 << 3;
+                const MISC_SUGGEST_SELF  = 1 << 4;
+                const MISC_FROM_PRELUDE  = 1 << 5;
             }
         }
 
@@ -684,7 +685,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         path_span,
                     );
                     match binding {
-                        Ok(binding) => Ok((binding, Flags::MODULE)),
+                        Ok(binding) => Ok((binding, Flags::MODULE | Flags::MISC_SUGGEST_CRATE)),
                         Err((Determinacy::Undetermined, Weak::No)) =>
                             return Err(Determinacy::determined(force)),
                         Err((Determinacy::Undetermined, Weak::Yes)) =>
@@ -706,7 +707,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     self.current_module = orig_current_module;
                     match binding {
                         Ok(binding) => {
-                            let misc_flags = if module.is_normal() {
+                            let misc_flags = if ptr::eq(module, self.graph_root) {
+                                Flags::MISC_SUGGEST_CRATE
+                            } else if module.is_normal() {
                                 Flags::MISC_SUGGEST_SELF
                             } else {
                                 Flags::empty()
@@ -857,7 +860,9 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                 None
                             };
                             if let Some(kind) = ambiguity_error_kind {
-                                let misc = |f: Flags| if f.contains(Flags::MISC_SUGGEST_SELF) {
+                                let misc = |f: Flags| if f.contains(Flags::MISC_SUGGEST_CRATE) {
+                                    AmbiguityErrorMisc::SuggestCrate
+                                } else if f.contains(Flags::MISC_SUGGEST_SELF) {
                                     AmbiguityErrorMisc::SuggestSelf
                                 } else if f.contains(Flags::MISC_FROM_PRELUDE) {
                                     AmbiguityErrorMisc::FromPrelude
@@ -866,7 +871,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                                 };
                                 self.ambiguity_errors.push(AmbiguityError {
                                     kind,
-                                    ident,
+                                    ident: orig_ident,
                                     b1: innermost_binding,
                                     b2: binding,
                                     misc1: misc(innermost_flags),

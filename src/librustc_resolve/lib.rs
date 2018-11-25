@@ -1292,6 +1292,7 @@ impl AmbiguityKind {
 /// Miscellaneous bits of metadata for better ambiguity error reporting.
 #[derive(Clone, Copy, PartialEq)]
 enum AmbiguityErrorMisc {
+    SuggestCrate,
     SuggestSelf,
     FromPrelude,
     None,
@@ -4870,12 +4871,21 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
                                         `{ident}` to disambiguate", ident = ident))
             }
             if b.is_extern_crate() && ident.span.rust_2018() {
-                help_msgs.push(format!("use `::{ident}` to refer to this {thing} unambiguously",
-                                       ident = ident, thing = b.descr()))
+                help_msgs.push(format!(
+                    "use `::{ident}` to refer to this {thing} unambiguously",
+                    ident = ident, thing = b.descr(),
+                ))
             }
-            if misc == AmbiguityErrorMisc::SuggestSelf {
-                help_msgs.push(format!("use `self::{ident}` to refer to this {thing} unambiguously",
-                                       ident = ident, thing = b.descr()))
+            if misc == AmbiguityErrorMisc::SuggestCrate {
+                help_msgs.push(format!(
+                    "use `crate::{ident}` to refer to this {thing} unambiguously",
+                    ident = ident, thing = b.descr(),
+                ))
+            } else if misc == AmbiguityErrorMisc::SuggestSelf {
+                help_msgs.push(format!(
+                    "use `self::{ident}` to refer to this {thing} unambiguously",
+                    ident = ident, thing = b.descr(),
+                ))
             }
 
             if b.span.is_dummy() {
