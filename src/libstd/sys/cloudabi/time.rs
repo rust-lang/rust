@@ -19,10 +19,14 @@ pub struct Instant {
     t: abi::timestamp,
 }
 
-pub fn dur2intervals(dur: &Duration) -> abi::timestamp {
+fn checked_dur2intervals(dur: &Duration) -> Option<abi::timestamp> {
     dur.as_secs()
         .checked_mul(NSEC_PER_SEC)
         .and_then(|nanos| nanos.checked_add(dur.subsec_nanos() as abi::timestamp))
+}
+
+pub fn dur2intervals(dur: &Duration) -> abi::timestamp {
+    checked_dur2intervals(dur)
         .expect("overflow converting duration to nanoseconds")
 }
 
@@ -92,11 +96,14 @@ impl SystemTime {
     }
 
     pub fn add_duration(&self, other: &Duration) -> SystemTime {
-        SystemTime {
-            t: self.t
-                .checked_add(dur2intervals(other))
-                .expect("overflow when adding duration to instant"),
-        }
+        self.checked_add_duration(other)
+            .expect("overflow when adding duration to instant")
+    }
+
+    pub fn checked_add_duration(&self, other: &Duration) -> Option<SystemTime> {
+        checked_dur2intervals(other)
+            .and_then(|d| self.t.checked_add(d))
+            .map(|t| SystemTime {t})
     }
 
     pub fn sub_duration(&self, other: &Duration) -> SystemTime {

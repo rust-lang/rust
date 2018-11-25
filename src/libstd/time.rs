@@ -357,6 +357,14 @@ impl SystemTime {
     pub fn elapsed(&self) -> Result<Duration, SystemTimeError> {
         SystemTime::now().duration_since(*self)
     }
+
+    /// Returns `Some(t)` where `t` is the time `self + duration` if `t` can be represented as
+    /// `SystemTime` (which means it's inside the bounds of the underlying data structure), `None`
+    /// otherwise.
+    #[unstable(feature = "time_checked_add", issue = "55940")]
+    pub fn checked_add(&self, duration: Duration) -> Option<SystemTime> {
+        self.0.checked_add_duration(&duration).map(|t| SystemTime(t))
+    }
 }
 
 #[stable(feature = "time2", since = "1.8.0")]
@@ -561,6 +569,19 @@ mod tests {
         let one_second_from_epoch2 = UNIX_EPOCH + Duration::new(0, 500_000_000)
             + Duration::new(0, 500_000_000);
         assert_eq!(one_second_from_epoch, one_second_from_epoch2);
+
+        // checked_add_duration will not panic on overflow
+        let mut maybe_t = Some(SystemTime::UNIX_EPOCH);
+        let max_duration = Duration::from_secs(u64::max_value());
+        // in case `SystemTime` can store `>= UNIX_EPOCH + max_duration`.
+        for _ in 0..2 {
+            maybe_t = maybe_t.and_then(|t| t.checked_add(max_duration));
+        }
+        assert_eq!(maybe_t, None);
+
+        // checked_add_duration calculates the right time and will work for another year
+        let year = Duration::from_secs(60 * 60 * 24 * 365);
+        assert_eq!(a + year, a.checked_add(year).unwrap());
     }
 
     #[test]
