@@ -26,6 +26,7 @@ members = [
 ]
 exclude = [
   "src/tools/rls/test_data",
+  "build",
 ]
 
 # Curiously, LLVM 7.0 will segfault if compiled with opt-level=3
