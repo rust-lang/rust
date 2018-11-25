@@ -777,7 +777,7 @@ impl MirTypeckRegionConstraints<'tcx> {
     fn placeholder_region(
         &mut self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        placeholder: ty::Placeholder,
+        placeholder: ty::PlaceholderRegion,
     ) -> ty::Region<'tcx> {
         let placeholder_index = self.placeholder_indices.insert(placeholder);
         match self.placeholder_index_to_region.get(placeholder_index) {

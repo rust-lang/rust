@@ -95,7 +95,7 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// So e.g. if you have `for<'a> fn(..) <: for<'b> fn(..)`, then
     /// we will invoke this method to instantiate `'b` with a
     /// placeholder region.
-    fn next_placeholder_region(&mut self, placeholder: ty::Placeholder) -> ty::Region<'tcx>;
+    fn next_placeholder_region(&mut self, placeholder: ty::PlaceholderRegion) -> ty::Region<'tcx>;
 
     /// Creates a new existential region in the given universe. This
     /// is used when handling subtyping and type variables -- if we
@@ -176,7 +176,7 @@ where
                         universe
                     });
 
-                    let placeholder = ty::Placeholder { universe, name: br };
+                    let placeholder = ty::PlaceholderRegion { universe, name: br };
                     delegate.next_placeholder_region(placeholder)
                 } else {
                     delegate.next_existential_region_var()

@@ -102,14 +102,14 @@ pub trait TypeFoldable<'tcx>: fmt::Debug + Clone {
     fn needs_infer(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_INFER | TypeFlags::HAS_RE_INFER)
     }
-    fn has_skol(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_SKOL)
+    fn has_placeholders(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_PLACEHOLDER | TypeFlags::HAS_TY_PLACEHOLDER)
     }
     fn needs_subst(&self) -> bool {
         self.has_type_flags(TypeFlags::NEEDS_SUBST)
     }
-    fn has_re_skol(&self) -> bool {
-        self.has_type_flags(TypeFlags::HAS_RE_SKOL)
+    fn has_re_placeholders(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_RE_PLACEHOLDER)
     }
     fn has_closure_types(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_TY_CLOSURE)
@@ -460,8 +460,8 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for BoundVarReplacer<'a, 'gcx, 'tcx>
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.sty {
-            ty::Bound(bound_ty) => {
-                if bound_ty.index == self.current_index {
+            ty::Bound(debruijn, bound_ty) => {
+                if debruijn == self.current_index {
                     let fld_t = &mut self.fld_t;
                     let ty = fld_t(bound_ty);
                     ty::fold::shift_vars(
@@ -526,7 +526,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
               T: TypeFoldable<'tcx>
     {
         // identity for bound types
-        let fld_t = |bound_ty| self.mk_ty(ty::Bound(bound_ty));
+        let fld_t = |bound_ty| self.mk_ty(ty::Bound(ty::INNERMOST, bound_ty));
         self.replace_escaping_bound_vars(value.skip_binder(), fld_r, fld_t)
     }
 
@@ -722,16 +722,13 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
 
     fn fold_ty(&mut self, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
         match ty.sty {
-            ty::Bound(bound_ty) => {
-                if self.amount == 0 || bound_ty.index < self.current_index {
+            ty::Bound(debruijn, bound_ty) => {
+                if self.amount == 0 || debruijn < self.current_index {
                     ty
                 } else {
-                    let shifted = ty::BoundTy {
-                        index: bound_ty.index.shifted_in(self.amount),
-                        var: bound_ty.var,
-                        kind: bound_ty.kind,
-                    };
-                    self.tcx.mk_ty(ty::Bound(shifted))
+                    self.tcx.mk_ty(
+                        ty::Bound(debruijn.shifted_in(self.amount), bound_ty)
+                    )
                 }
             }
 

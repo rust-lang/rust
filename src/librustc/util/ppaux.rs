@@ -18,7 +18,7 @@ use ty::{Bool, Char, Adt};
 use ty::{Error, Str, Array, Slice, Float, FnDef, FnPtr};
 use ty::{Param, Bound, RawPtr, Ref, Never, Tuple};
 use ty::{Closure, Generator, GeneratorWitness, Foreign, Projection, Opaque};
-use ty::{UnnormalizedProjection, Dynamic, Int, Uint, Infer};
+use ty::{Placeholder, UnnormalizedProjection, Dynamic, Int, Uint, Infer};
 use ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, GenericParamCount, GenericParamDefKind};
 use util::nodemap::FxHashSet;
 
@@ -792,7 +792,7 @@ define_print! {
                 }
                 ty::ReLateBound(_, br) |
                 ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
-                ty::RePlaceholder(ty::Placeholder { name: br, .. }) => {
+                ty::RePlaceholder(ty::PlaceholderRegion { name: br, .. }) => {
                     write!(f, "{}", br)
                 }
                 ty::ReScope(scope) if cx.identify_regions => {
@@ -1110,13 +1110,13 @@ define_print! {
                 Infer(infer_ty) => write!(f, "{}", infer_ty),
                 Error => write!(f, "[type error]"),
                 Param(ref param_ty) => write!(f, "{}", param_ty),
-                Bound(bound_ty) => {
+                Bound(debruijn, bound_ty) => {
                     match bound_ty.kind {
                         ty::BoundTyKind::Anon => {
-                            if bound_ty.index == ty::INNERMOST {
+                            if debruijn == ty::INNERMOST {
                                 write!(f, "^{}", bound_ty.var.index())
                             } else {
-                                write!(f, "^{}_{}", bound_ty.index.index(), bound_ty.var.index())
+                                write!(f, "^{}_{}", debruijn.index(), bound_ty.var.index())
                             }
                         }
 
@@ -1143,6 +1143,9 @@ define_print! {
                     write!(f, "Unnormalized(")?;
                     data.print(f, cx)?;
                     write!(f, ")")
+                }
+                Placeholder(placeholder) => {
+                    write!(f, "Placeholder({:?})", placeholder)
                 }
                 Opaque(def_id, substs) => {
                     if cx.is_verbose {

@@ -1726,7 +1726,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let poly_trait_predicate = self.infcx()
             .resolve_type_vars_if_possible(&obligation.predicate);
         let (skol_trait_predicate, placeholder_map) = self.infcx()
-            .replace_late_bound_regions_with_placeholders(&poly_trait_predicate);
+            .replace_bound_vars_with_placeholders(&poly_trait_predicate);
         debug!(
             "match_projection_obligation_against_definition_bounds: \
              skol_trait_predicate={:?} placeholder_map={:?}",
@@ -2470,7 +2470,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::Infer(ty::TyVar(_)) => Ambiguous,
 
             ty::UnnormalizedProjection(..)
-            | ty::Bound(_)
+            | ty::Placeholder(..)
+            | ty::Bound(..)
             | ty::Infer(ty::FreshTy(_))
             | ty::Infer(ty::FreshIntTy(_))
             | ty::Infer(ty::FreshFloatTy(_)) => {
@@ -2555,7 +2556,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             ty::UnnormalizedProjection(..)
-            | ty::Bound(_)
+            | ty::Placeholder(..)
+            | ty::Bound(..)
             | ty::Infer(ty::FreshTy(_))
             | ty::Infer(ty::FreshIntTy(_))
             | ty::Infer(ty::FreshFloatTy(_)) => {
@@ -2594,11 +2596,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             | ty::Char => Vec::new(),
 
             ty::UnnormalizedProjection(..)
+            | ty::Placeholder(..)
             | ty::Dynamic(..)
             | ty::Param(..)
             | ty::Foreign(..)
             | ty::Projection(..)
-            | ty::Bound(_)
+            | ty::Bound(..)
             | ty::Infer(ty::TyVar(_))
             | ty::Infer(ty::FreshTy(_))
             | ty::Infer(ty::FreshIntTy(_))
@@ -2682,7 +2685,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
                 self.in_snapshot(|this, snapshot| {
                     let (skol_ty, placeholder_map) = this.infcx()
-                        .replace_late_bound_regions_with_placeholders(&ty);
+                        .replace_bound_vars_with_placeholders(&ty);
                     let Normalized {
                         value: normalized_ty,
                         mut obligations,
@@ -2916,7 +2919,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         let trait_obligations: Vec<PredicateObligation<'_>> = self.in_snapshot(|this, snapshot| {
             let poly_trait_ref = obligation.predicate.to_poly_trait_ref();
             let (trait_ref, placeholder_map) = this.infcx()
-                .replace_late_bound_regions_with_placeholders(&poly_trait_ref);
+                .replace_bound_vars_with_placeholders(&poly_trait_ref);
             let cause = obligation.derived_cause(ImplDerivedObligation);
             this.impl_or_trait_obligations(
                 cause,
@@ -3119,7 +3122,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
         self.in_snapshot(|this, snapshot| {
             let (predicate, placeholder_map) = this.infcx()
-                .replace_late_bound_regions_with_placeholders(&obligation.predicate);
+                .replace_bound_vars_with_placeholders(&obligation.predicate);
             let trait_ref = predicate.trait_ref;
             let trait_def_id = trait_ref.def_id;
             let substs = trait_ref.substs;
@@ -3582,7 +3585,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         }
 
         let (skol_obligation, placeholder_map) = self.infcx()
-            .replace_late_bound_regions_with_placeholders(&obligation.predicate);
+            .replace_bound_vars_with_placeholders(&obligation.predicate);
         let skol_obligation_trait_ref = skol_obligation.trait_ref;
 
         let impl_substs = self.infcx

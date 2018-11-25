@@ -435,21 +435,21 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             match result_value.unpack() {
                 UnpackedKind::Type(result_value) => {
                     // e.g., here `result_value` might be `?0` in the example above...
-                    if let ty::Bound(b) = result_value.sty {
+                    if let ty::Bound(debruijn, b) = result_value.sty {
                         // ...in which case we would set `canonical_vars[0]` to `Some(?U)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.
-                        assert_eq!(b.index, ty::INNERMOST);
+                        assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[b.var] = Some(*original_value);
                     }
                 }
                 UnpackedKind::Lifetime(result_value) => {
                     // e.g., here `result_value` might be `'?1` in the example above...
-                    if let &ty::RegionKind::ReLateBound(index, br) = result_value {
+                    if let &ty::RegionKind::ReLateBound(debruijn, br) = result_value {
                         // ... in which case we would set `canonical_vars[0]` to `Some('static)`.
 
                         // We only allow a `ty::INNERMOST` index in substitutions.
-                        assert_eq!(index, ty::INNERMOST);
+                        assert_eq!(debruijn, ty::INNERMOST);
                         opt_values[br.assert_bound_var()] = Some(*original_value);
                     }
                 }

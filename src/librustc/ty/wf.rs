@@ -259,6 +259,7 @@ impl<'a, 'gcx, 'tcx> WfPredicates<'a, 'gcx, 'tcx> {
                 ty::Never |
                 ty::Param(_) |
                 ty::Bound(..) |
+                ty::Placeholder(..) |
                 ty::Foreign(..) => {
                     // WfScalar, WfParameter, etc
                 }

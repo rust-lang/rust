@@ -115,7 +115,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn write_ty_to_tables(&mut self, hir_id: hir::HirId, ty: Ty<'gcx>) {
         debug!("write_ty_to_tables({:?}, {:?})", hir_id, ty);
-        assert!(!ty.needs_infer() && !ty.has_skol());
+        assert!(!ty.needs_infer() && !ty.has_placeholders());
         self.tables.node_types_mut().insert(hir_id, ty);
     }
 
@@ -580,7 +580,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         if let Some(substs) = self.fcx.tables.borrow().node_substs_opt(hir_id) {
             let substs = self.resolve(&substs, &span);
             debug!("write_substs_to_tcx({:?}, {:?})", hir_id, substs);
-            assert!(!substs.needs_infer() && !substs.has_skol());
+            assert!(!substs.needs_infer() && !substs.has_placeholders());
             self.tables.node_substs_mut().insert(hir_id, substs);
         }
 

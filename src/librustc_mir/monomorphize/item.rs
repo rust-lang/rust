@@ -378,6 +378,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             ty::Error |
             ty::Bound(..) |
             ty::Infer(_) |
+            ty::Placeholder(..) |
             ty::UnnormalizedProjection(..) |
             ty::Projection(..) |
             ty::Param(_) |

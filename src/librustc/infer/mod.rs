@@ -227,7 +227,7 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     universe: Cell<ty::UniverseIndex>,
 }
 
-/// A map returned by `replace_late_bound_regions_with_placeholders()`
+/// A map returned by `replace_bound_vars_with_placeholders()`
 /// indicating the placeholder region that each late-bound region was
 /// replaced with.
 pub type PlaceholderMap<'tcx> = BTreeMap<ty::BoundRegion, ty::Region<'tcx>>;
@@ -411,7 +411,7 @@ pub enum NLLRegionVariableOrigin {
 
     /// "Universal" instantiation of a higher-ranked region (e.g.,
     /// from a `for<'a> T` binder). Meant to represent "any region".
-    Placeholder(ty::Placeholder),
+    Placeholder(ty::PlaceholderRegion),
 
     Existential,
 }
@@ -935,7 +935,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     b,
                 },
                 placeholder_map,
-            ) = self.replace_late_bound_regions_with_placeholders(predicate);
+            ) = self.replace_bound_vars_with_placeholders(predicate);
 
             let cause_span = cause.span;
             let ok = self.at(cause, param_env).sub_exp(a_is_expected, a, b)?;
@@ -952,7 +952,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     ) -> UnitResult<'tcx> {
         self.commit_if_ok(|snapshot| {
             let (ty::OutlivesPredicate(r_a, r_b), placeholder_map) =
-                self.replace_late_bound_regions_with_placeholders(predicate);
+                self.replace_bound_vars_with_placeholders(predicate);
             let origin = SubregionOrigin::from_obligation_cause(cause, || {
                 RelateRegionParamBound(cause.span)
             });
@@ -970,6 +970,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub fn next_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
         self.tcx.mk_var(self.next_ty_var_id(false, origin))
+    }
+
+    pub fn next_ty_var_in_universe(
+        &self,
+        origin: TypeVariableOrigin,
+        universe: ty::UniverseIndex
+    ) -> Ty<'tcx> {
+        let vid = self.type_variables
+            .borrow_mut()
+            .new_var(universe, false, origin);
+        self.tcx.mk_var(vid)
     }
 
     pub fn next_diverging_ty_var(&self, origin: TypeVariableOrigin) -> Ty<'tcx> {
@@ -1224,6 +1235,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 .unwrap_or(typ),
 
             _ => typ,
+        }
+    }
+
+    /// If `TyVar(vid)` resolves to a type, return that type. Else, return the
+    /// universe index of `TyVar(vid)`.
+    pub fn probe_ty_var(&self, vid: TyVid) -> Result<Ty<'tcx>, ty::UniverseIndex> {
+        use self::type_variable::TypeVariableValue;
+
+        match self.type_variables.borrow_mut().probe(vid) {
+            TypeVariableValue::Known { value } => Ok(value),
+            TypeVariableValue::Unknown { universe } => Err(universe),
         }
     }
 

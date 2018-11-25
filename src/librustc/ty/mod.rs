@@ -432,7 +432,7 @@ bitflags! {
         const HAS_SELF           = 1 << 1;
         const HAS_TY_INFER       = 1 << 2;
         const HAS_RE_INFER       = 1 << 3;
-        const HAS_RE_SKOL        = 1 << 4;
+        const HAS_RE_PLACEHOLDER = 1 << 4;
 
         /// Does this have any `ReEarlyBound` regions? Used to
         /// determine whether substitition is required, since those
@@ -467,6 +467,8 @@ bitflags! {
         /// if a global bound is safe to evaluate.
         const HAS_RE_LATE_BOUND = 1 << 13;
 
+        const HAS_TY_PLACEHOLDER = 1 << 14;
+
         const NEEDS_SUBST        = TypeFlags::HAS_PARAMS.bits |
                                    TypeFlags::HAS_SELF.bits |
                                    TypeFlags::HAS_RE_EARLY_BOUND.bits;
@@ -478,7 +480,7 @@ bitflags! {
                                   TypeFlags::HAS_SELF.bits |
                                   TypeFlags::HAS_TY_INFER.bits |
                                   TypeFlags::HAS_RE_INFER.bits |
-                                  TypeFlags::HAS_RE_SKOL.bits |
+                                  TypeFlags::HAS_RE_PLACEHOLDER.bits |
                                   TypeFlags::HAS_RE_EARLY_BOUND.bits |
                                   TypeFlags::HAS_FREE_REGIONS.bits |
                                   TypeFlags::HAS_TY_ERR.bits |
@@ -486,7 +488,8 @@ bitflags! {
                                   TypeFlags::HAS_TY_CLOSURE.bits |
                                   TypeFlags::HAS_FREE_LOCAL_NAMES.bits |
                                   TypeFlags::KEEP_IN_LOCAL_TCX.bits |
-                                  TypeFlags::HAS_RE_LATE_BOUND.bits;
+                                  TypeFlags::HAS_RE_LATE_BOUND.bits |
+                                  TypeFlags::HAS_TY_PLACEHOLDER.bits;
     }
 }
 
@@ -1587,12 +1590,27 @@ impl UniverseIndex {
 /// universe are just two regions with an unknown relationship to one
 /// another.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, PartialOrd, Ord)]
-pub struct Placeholder {
+pub struct Placeholder<T> {
     pub universe: UniverseIndex,
-    pub name: BoundRegion,
+    pub name: T,
 }
 
-impl_stable_hash_for!(struct Placeholder { universe, name });
+impl<'a, 'gcx, T> HashStable<StableHashingContext<'a>> for Placeholder<T>
+    where T: HashStable<StableHashingContext<'a>>
+{
+    fn hash_stable<W: StableHasherResult>(
+        &self,
+        hcx: &mut StableHashingContext<'a>,
+        hasher: &mut StableHasher<W>
+    ) {
+        self.universe.hash_stable(hcx, hasher);
+        self.name.hash_stable(hcx, hasher);
+    }
+}
+
+pub type PlaceholderRegion = Placeholder<BoundRegion>;
+
+pub type PlaceholderType = Placeholder<BoundVar>;
 
 /// When type checking, we use the `ParamEnv` to track
 /// details about the set of where-clauses that are in scope at this
@@ -1674,7 +1692,7 @@ impl<'tcx> ParamEnv<'tcx> {
             }
 
             Reveal::All => {
-                if value.has_skol()
+                if value.has_placeholders()
                     || value.needs_infer()
                     || value.has_param_types()
                     || value.has_self_ty()
@@ -2430,6 +2448,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 }
             }
 
+            Placeholder(..) |
             Bound(..) |
             Infer(..) => {
                 bug!("unexpected type `{:?}` in sized_constraint_for_ty",

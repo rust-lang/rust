@@ -515,7 +515,8 @@ pub fn program_clauses_for_associated_type_def<'a, 'tcx>(
         .unwrap_or(0);
     // Add a new type param after the existing ones (`U` in the comment above).
     let ty_var = ty::Bound(
-        ty::BoundTy::new(ty::INNERMOST, ty::BoundVar::from_u32(offset + 1))
+        ty::INNERMOST,
+        ty::BoundVar::from_u32(offset + 1).into()
     );
 
     // `ProjectionEq(<Self as Trait<P1..Pn>>::AssocType<Pn+1..Pm> = U)`
