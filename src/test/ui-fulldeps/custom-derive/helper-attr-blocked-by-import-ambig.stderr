@@ -14,7 +14,7 @@ note: `helper` could also refer to the attribute macro imported here
    |
 LL | use plugin::helper;
    |     ^^^^^^^^^^^^^^
-   = help: use `self::helper` to refer to this attribute macro unambiguously
+   = help: use `crate::helper` to refer to this attribute macro unambiguously
 
 error: aborting due to previous error
 

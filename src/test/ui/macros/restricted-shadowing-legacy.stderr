@@ -3,6 +3,9 @@ error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name 
    |
 LL |             m!(); //~ ERROR `m` is ambiguous
    |             ^ ambiguous name
+...
+LL | include!();
+   | ----------- in this macro invocation
    |
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
@@ -26,6 +29,9 @@ error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name 
    |
 LL |         macro_rules! gen_invoc { () => { m!() } } //~ ERROR `m` is ambiguous
    |                                          ^ ambiguous name
+...
+LL | include!();
+   | ----------- in this macro invocation
    |
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
@@ -49,6 +55,9 @@ error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name 
    |
 LL |         m!(); //~ ERROR `m` is ambiguous
    |         ^ ambiguous name
+...
+LL | include!();
+   | ----------- in this macro invocation
    |
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
@@ -72,6 +81,9 @@ error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name 
    |
 LL |         m!(); //~ ERROR `m` is ambiguous
    |         ^ ambiguous name
+...
+LL | include!();
+   | ----------- in this macro invocation
    |
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
@@ -95,6 +107,9 @@ error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name 
    |
 LL |             m!(); //~ ERROR `m` is ambiguous
    |             ^ ambiguous name
+...
+LL | include!();
+   | ----------- in this macro invocation
    |
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
@@ -118,6 +133,9 @@ error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name 
    |
 LL |         macro_rules! gen_invoc { () => { m!() } } //~ ERROR `m` is ambiguous
    |                                          ^ ambiguous name
+...
+LL | include!();
+   | ----------- in this macro invocation
    |
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
@@ -141,6 +159,9 @@ error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name 
    |
 LL |         m!(); //~ ERROR `m` is ambiguous
    |         ^ ambiguous name
+...
+LL | include!();
+   | ----------- in this macro invocation
    |
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9
@@ -164,6 +185,9 @@ error[E0659]: `m` is ambiguous (macro-expanded name vs less macro-expanded name 
    |
 LL |         macro_rules! gen_invoc { () => { m!() } } //~ ERROR `m` is ambiguous
    |                                          ^ ambiguous name
+...
+LL | include!();
+   | ----------- in this macro invocation
    |
 note: `m` could refer to the macro defined here
   --> $DIR/restricted-shadowing-legacy.rs:88:9

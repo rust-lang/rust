@@ -13,7 +13,7 @@ LL | / mod std {
 LL | |     pub struct io;
 LL | | }
    | |_^
-   = help: use `self::std` to refer to this module unambiguously
+   = help: use `crate::std` to refer to this module unambiguously
 
 error: aborting due to previous error
 
