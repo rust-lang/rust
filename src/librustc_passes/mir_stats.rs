@@ -83,7 +83,6 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
         self.record(match statement.kind {
             StatementKind::Assign(..) => "StatementKind::Assign",
             StatementKind::FakeRead(..) => "StatementKind::FakeRead",
-            StatementKind::EndRegion(..) => "StatementKind::EndRegion",
             StatementKind::Retag { .. } => "StatementKind::Retag",
             StatementKind::EscapeToRaw { .. } => "StatementKind::EscapeToRaw",
             StatementKind::SetDiscriminant { .. } => "StatementKind::SetDiscriminant",

@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-// compile-flags: -Z emit-end-regions -Z borrowck=compare
+// compile-flags: -Z borrowck=compare
 
 fn dup(x: Box<isize>) -> Box<(Box<isize>,Box<isize>)> {
     box (x, x)

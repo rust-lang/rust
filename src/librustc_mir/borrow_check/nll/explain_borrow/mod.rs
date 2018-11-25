@@ -206,7 +206,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let mir = self.mir;
         let tcx = self.infcx.tcx;
 
-        let borrow_region_vid = regioncx.to_region_vid(borrow.region);
+        let borrow_region_vid = borrow.region;
         debug!(
             "explain_why_borrow_contains_point: borrow_region_vid={:?}",
             borrow_region_vid

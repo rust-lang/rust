@@ -132,8 +132,6 @@ impl<'cx, 'tcx, 'gcx> Visitor<'tcx> for InvalidationGenerator<'cx, 'tcx, 'gcx> {
                     self.consume_operand(context, input);
                 }
             }
-            // EndRegion matters to older NLL/MIR AST borrowck, not to alias NLL
-            StatementKind::EndRegion(..) |
             StatementKind::Nop |
             StatementKind::AscribeUserType(..) |
             StatementKind::Retag { .. } |

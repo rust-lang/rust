@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use borrow_check::place_ext::PlaceExt;
+use borrow_check::nll::ToRegionVid;
 use dataflow::indexes::BorrowIndex;
 use dataflow::move_paths::MoveData;
 use rustc::mir::traversal;
@@ -16,7 +17,7 @@ use rustc::mir::visit::{
     PlaceContext, Visitor, NonUseContext, MutatingUseContext, NonMutatingUseContext
 };
 use rustc::mir::{self, Location, Mir, Place, Local};
-use rustc::ty::{Region, TyCtxt};
+use rustc::ty::{RegionVid, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::bit_set::BitSet;
@@ -42,7 +43,7 @@ crate struct BorrowSet<'tcx> {
 
     /// Every borrow has a region; this maps each such regions back to
     /// its borrow-indexes.
-    crate region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
+    crate region_map: FxHashMap<RegionVid, FxHashSet<BorrowIndex>>,
 
     /// Map from local to all the borrows on that local
     crate local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
@@ -77,7 +78,7 @@ crate struct BorrowData<'tcx> {
     /// What kind of borrow this is
     crate kind: mir::BorrowKind,
     /// The region for which this borrow is live
-    crate region: Region<'tcx>,
+    crate region: RegionVid,
     /// Place from which we are borrowing
     crate borrowed_place: mir::Place<'tcx>,
     /// Place to which the borrow was stored
@@ -92,13 +93,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
             mir::BorrowKind::Unique => "uniq ",
             mir::BorrowKind::Mut { .. } => "mut ",
         };
-        let region = self.region.to_string();
-        let separator = if !region.is_empty() {
-            " "
-        } else {
-            ""
-        };
-        write!(w, "&{}{}{}{:?}", region, separator, kind, self.borrowed_place)
+        write!(w, "&{:?} {}{:?}", self.region, kind, self.borrowed_place)
     }
 }
 
@@ -189,7 +184,7 @@ struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,
     activation_map: FxHashMap<Location, Vec<BorrowIndex>>,
-    region_map: FxHashMap<Region<'tcx>, FxHashSet<BorrowIndex>>,
+    region_map: FxHashMap<RegionVid, FxHashSet<BorrowIndex>>,
     local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
 
     /// When we encounter a 2-phase borrow statement, it will always
@@ -219,6 +214,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
                 return;
             }
 
+            let region = region.to_region_vid();
+
             let borrow = BorrowData {
                 kind,
                 region,
@@ -230,7 +227,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
             let idx = self.idx_vec.push(borrow);
             self.location_map.insert(location, idx);
 
-            self.insert_as_pending_if_two_phase(location, &assigned_place, region, kind, idx);
+            self.insert_as_pending_if_two_phase(location, &assigned_place, kind, idx);
 
             self.region_map.entry(region).or_default().insert(idx);
             if let Some(local) = borrowed_place.root_local() {
@@ -314,7 +311,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
             let borrow_data = &self.idx_vec[borrow_index];
             assert_eq!(borrow_data.reserve_location, location);
             assert_eq!(borrow_data.kind, kind);
-            assert_eq!(borrow_data.region, region);
+            assert_eq!(borrow_data.region, region.to_region_vid());
             assert_eq!(borrow_data.borrowed_place, *place);
         }
 
@@ -347,13 +344,12 @@ impl<'a, 'gcx, 'tcx> GatherBorrows<'a, 'gcx, 'tcx> {
         &mut self,
         start_location: Location,
         assigned_place: &mir::Place<'tcx>,
-        region: Region<'tcx>,
         kind: mir::BorrowKind,
         borrow_index: BorrowIndex,
     ) {
         debug!(
-            "Borrows::insert_as_pending_if_two_phase({:?}, {:?}, {:?}, {:?})",
-            start_location, assigned_place, region, borrow_index,
+            "Borrows::insert_as_pending_if_two_phase({:?}, {:?}, {:?})",
+            start_location, assigned_place, borrow_index,
         );
 
         if !self.allow_two_phase_borrow(kind) {

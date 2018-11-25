@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // revisions: ast mir
-//[mir]compile-flags: -Z emit-end-regions -Z borrowck=mir
+//[mir]compile-flags: -Z borrowck=mir
 
 fn main() {
     let x = 0;

@@ -14,7 +14,6 @@ use borrow_check::nll::region_infer::RegionInferenceContext;
 use rustc::hir;
 use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
-use rustc::hir::map::definitions::DefPathData;
 use rustc::infer::InferCtxt;
 use rustc::lint::builtin::UNUSED_MUT;
 use rustc::middle::borrowck::SignalledError;
@@ -162,10 +161,6 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         move_data: move_data,
         param_env: param_env,
     };
-    let body_id = match tcx.def_key(def_id).disambiguated_data.data {
-        DefPathData::StructCtor | DefPathData::EnumVariant(_) => None,
-        _ => Some(tcx.hir.body_owned_by(id)),
-    };
 
     let dead_unwinds = BitSet::new_empty(mir.basic_blocks().len());
     let mut flow_inits = FlowAtLocation::new(do_dataflow(
@@ -212,7 +207,7 @@ fn do_mir_borrowck<'a, 'gcx, 'tcx>(
         id,
         &attributes,
         &dead_unwinds,
-        Borrows::new(tcx, mir, regioncx.clone(), def_id, body_id, &borrow_set),
+        Borrows::new(tcx, mir, regioncx.clone(), &borrow_set),
         |rs, i| DebugFormatted::new(&rs.location(i)),
     ));
     let flow_uninits = FlowAtLocation::new(do_dataflow(
@@ -591,10 +586,6 @@ impl<'cx, 'gcx, 'tcx> DataflowResultsConsumer<'cx, 'tcx> for MirBorrowckCtxt<'cx
                 for (_, input) in inputs.iter() {
                     self.consume_operand(context, (input, span), flow_state);
                 }
-            }
-            StatementKind::EndRegion(ref _rgn) => {
-                // ignored when consuming results (update to
-                // flow_state already handled).
             }
             StatementKind::Nop
             | StatementKind::AscribeUserType(..)

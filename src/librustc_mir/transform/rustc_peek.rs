@@ -161,7 +161,6 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             mir::StatementKind::StorageLive(_) |
             mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
-            mir::StatementKind::EndRegion(_) |
             mir::StatementKind::Retag { .. } |
             mir::StatementKind::EscapeToRaw { .. } |
             mir::StatementKind::AscribeUserType(..) |

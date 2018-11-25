@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -Z emit-end-regions -Z borrowck=compare
+// compile-flags: -Z borrowck=compare
 
 fn bar<'a>() -> &'a mut u32 {
     &mut 4

@@ -209,9 +209,6 @@ fn mir_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx Stea
 
     let mut mir = tcx.mir_built(def_id).steal();
     run_passes(tcx, &mut mir, def_id, MirPhase::Const, &[
-        // Remove all `EndRegion` statements that are not involved in borrows.
-        &cleanup_post_borrowck::CleanEndRegions,
-
         // What we need to do constant evaluation.
         &simplify::SimplifyCfg::new("initial"),
         &type_check::TypeckMir,

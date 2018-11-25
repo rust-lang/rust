@@ -1540,13 +1540,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Should we emit EndRegion MIR statements? These are consumed by
-    /// MIR borrowck, but not when NLL is used.
-    pub fn emit_end_regions(self) -> bool {
-        self.sess.opts.debugging_opts.emit_end_regions ||
-            self.use_mir_borrowck()
-    }
-
     #[inline]
     pub fn local_crate_exports_generics(self) -> bool {
         debug_assert!(self.sess.opts.share_generics());

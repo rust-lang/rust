@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//compile-flags: -Z emit-end-regions -Z borrowck=compare
+//compile-flags: -Z borrowck=compare
 
 fn foo(_x: u32) {
     _x = 4;

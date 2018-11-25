@@ -243,7 +243,6 @@ fn check_statement(
         | StatementKind::StorageDead(_)
         | StatementKind::Retag { .. }
         | StatementKind::EscapeToRaw { .. }
-        | StatementKind::EndRegion(_)
         | StatementKind::AscribeUserType(..)
         | StatementKind::Nop => Ok(()),
     }

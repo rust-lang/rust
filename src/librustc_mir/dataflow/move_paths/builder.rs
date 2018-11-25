@@ -301,7 +301,6 @@ impl<'b, 'a, 'gcx, 'tcx> Gatherer<'b, 'a, 'gcx, 'tcx> {
                 span_bug!(stmt.source_info.span,
                           "SetDiscriminant should not exist during borrowck");
             }
-            StatementKind::EndRegion(..) |
             StatementKind::Retag { .. } |
             StatementKind::EscapeToRaw { .. } |
             StatementKind::AscribeUserType(..) |

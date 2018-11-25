@@ -44,7 +44,7 @@ fn main() {
 //         falseUnwind -> [real: bb3, cleanup: bb4];
 //     }
 //     bb2: {
-//         goto -> bb29;
+//         goto -> bb20;
 //     }
 //     bb3: {
 //         StorageLive(_2);
@@ -90,58 +90,31 @@ fn main() {
 //         StorageDead(_3);
 //         StorageLive(_6);
 //         _6 = &_2;
-//         _5 = const std::mem::drop(move _6) -> [return: bb28, unwind: bb4];
+//         _5 = const std::mem::drop(move _6) -> [return: bb19, unwind: bb4];
 //     }
 //     bb15: {
+//         StorageDead(_3);
 //         goto -> bb16;
 //     }
 //     bb16: {
-//         goto -> bb17;
-//     }
-//     bb17: {
-//         goto -> bb18;
-//     }
-//     bb18: {
-//         goto -> bb19;
-//     }
-//     bb19: {
-//         goto -> bb20;
-//     }
-//     bb20: {
-//         StorageDead(_3);
-//         goto -> bb21;
-//     }
-//     bb21: {
-//         goto -> bb22;
-//     }
-//     bb22: {
 //         StorageDead(_2);
-//         goto -> bb23;
-//     }
-//     bb23: {
-//         goto -> bb24;
-//     }
-//     bb24: {
-//         goto -> bb25;
-//     }
-//     bb25: {
 //         goto -> bb2;
 //     }
-//     bb26: {
+//     bb17: {
 //         _4 = ();
 //         unreachable;
 //     }
-//     bb27: {
+//     bb18: {
 //         StorageDead(_4);
 //         goto -> bb14;
 //     }
-//     bb28: {
+//     bb19: {
 //         StorageDead(_6);
 //         _1 = ();
 //         StorageDead(_2);
 //         goto -> bb1;
 //     }
-//     bb29: {
+//     bb20: {
 //         return;
 //     }
 // }
