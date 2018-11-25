@@ -5,7 +5,7 @@ extern crate cargo_metadata;
 use std::path::{PathBuf, Path};
 use std::io::{self, Write};
 use std::process::Command;
-
+use std::fs::{self, File};
 
 const CARGO_MIRI_HELP: &str = r#"Interprets bin crates
 
@@ -133,6 +133,59 @@ fn setup(ask_user: bool) {
             show_error(format!("Failed to install xargo"));
         }
     }
+
+    // Then, we also need rust-src.  Let's see if it is already installed.
+    let sysroot = Command::new("rustc").args(&["--print", "sysroot"]).output().unwrap().stdout;
+    let sysroot = std::str::from_utf8(&sysroot[..]).unwrap();
+    let src = Path::new(sysroot.trim_end_matches('\n')).join("lib/rustlib/src");
+    if !src.exists() {
+        println!("Could not find {:?}", src);
+        if ask_user {
+            ask("It seems you do not have the rust-src component installed. I will run `rustup component add rust-src`. Proceed?");
+        }
+        if !Command::new("rustup").args(&["component", "add", "rust-src"]).status().unwrap().success() {
+            show_error(format!("Failed to install rust-src component"));
+        }
+    }
+
+    // Next, we need our own libstd. We will do this work in ~/.miri.
+    let dir = dirs::home_dir().unwrap().join(".miri");
+    if !dir.exists() {
+        fs::create_dir(&dir).unwrap();
+    }
+    // The interesting bit: Xargo.toml
+    File::create(dir.join("Xargo.toml")).unwrap()
+        .write_all(br#"
+[dependencies.std]
+features = ["panic_unwind", "backtrace"]
+
+[dependencies.test]
+stage = 1
+        "#).unwrap();
+    // The boring bits: A dummy project for xargo
+    File::create(dir.join("Cargo.toml")).unwrap()
+        .write_all(br#"
+[package]
+name = "miri-xargo"
+description = "A dummy project for building libstd with xargo."
+version = "0.0.0"
+
+[lib]
+path = "lib.rs"
+        "#).unwrap();
+    File::create(dir.join("lib.rs")).unwrap();
+    // Run xargo
+    if !Command::new("xargo").arg("build")
+        .current_dir(&dir)
+        .env("RUSTFLAGS", miri::miri_default_args().join(" "))
+        .env("XARGO_HOME", dir.to_str().unwrap())
+        .status().unwrap().success()
+    {
+        show_error(format!("Failed to run xargo"));
+    }
+
+    // That should be it!
+    std::env::set_var("MIRI_SYSROOT", dir.join("HOST"));
 }
 
 fn main() {
