@@ -4801,7 +4801,7 @@ impl ParseIntError {
                          for integer parsing",
                issue = "22639")]
     pub fn kind(&self) -> &IntErrorKind {
-        self.kind
+        &self.kind
     }
     #[unstable(feature = "int_error_internals",
                reason = "available through Error trait and this method should \
