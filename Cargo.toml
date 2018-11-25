@@ -42,6 +42,7 @@ log = "0.4"
 vergen = "3"
 
 [features]
+default = ["cargo_miri"]
 cargo_miri = ["cargo_metadata"]
 rustc_tests = []
 
