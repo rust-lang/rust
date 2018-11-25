@@ -4800,7 +4800,7 @@ impl ParseIntError {
                reason = "it can be useful to match errors when making error messages \
                          for integer parsing",
                issue = "22639")]
-    pub fn kind(self) -> IntErrorKind {
+    pub fn kind(&self) -> &IntErrorKind {
         self.kind
     }
     #[unstable(feature = "int_error_internals",
