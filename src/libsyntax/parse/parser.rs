@@ -5229,7 +5229,9 @@ impl<'a> Parser<'a> {
             } else if self.check_ident() {
                 // Parse type parameter.
                 params.push(self.parse_ty_param(attrs)?);
-                seen_ty_param = Some(self.prev_span);
+                if seen_ty_param.is_none() {
+                    seen_ty_param = Some(self.prev_span);
+                }
             } else {
                 // Check for trailing attributes and stop parsing.
                 if !attrs.is_empty() {

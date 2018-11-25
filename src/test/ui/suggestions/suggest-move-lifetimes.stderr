@@ -25,8 +25,8 @@ LL | struct C<T, U, 'a> {
    |                ^^
 help: move the lifetime parameter prior to the first type parameter
    |
-LL | struct C<T, 'a, U> {
-   |             ^^^ --
+LL | struct C<'a, T, U> {
+   |          ^^^    --
 
 error: aborting due to 3 previous errors
 
