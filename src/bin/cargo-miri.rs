@@ -128,6 +128,8 @@ fn setup(ask_user: bool) {
     {
         if ask_user {
             ask("It seems you do not have xargo installed. I will run `cargo install xargo`. Proceed?");
+        } else {
+            println!("Installing xargo: `cargo install xargo`");
         }
         if !Command::new("cargo").args(&["install", "xargo"]).status().unwrap().success() {
             show_error(format!("Failed to install xargo"));
@@ -141,6 +143,8 @@ fn setup(ask_user: bool) {
     if !src.exists() {
         if ask_user {
             ask("It seems you do not have the rust-src component installed. I will run `rustup component add rust-src`. Proceed?");
+        } else {
+            println!("Installing rust-src component: `rustup component add rust-src`");
         }
         if !Command::new("rustup").args(&["component", "add", "rust-src"]).status().unwrap().success() {
             show_error(format!("Failed to install rust-src component"));
