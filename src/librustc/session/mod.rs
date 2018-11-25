@@ -826,8 +826,10 @@ impl Session {
     }
 
     pub fn profiler<F: FnOnce(&mut SelfProfiler) -> ()>(&self, f: F) {
-        let mut profiler = self.self_profiling.borrow_mut();
-        f(&mut profiler);
+        if self.opts.debugging_opts.self_profile {
+            let mut profiler = self.self_profiling.borrow_mut();
+            f(&mut profiler);
+        }
     }
 
     pub fn print_profiler_results(&self) {
