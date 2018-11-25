@@ -19,7 +19,7 @@ use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerEx
 use rustc::mir::interpret::{
     GlobalId, AllocId,
     ConstValue, Pointer, Scalar,
-    EvalResult, EvalErrorKind, InboundsCheck,
+    EvalResult, EvalErrorKind,
 };
 use super::{EvalContext, Machine, MemPlace, MPlaceTy, MemoryKind};
 pub use rustc::mir::interpret::ScalarMaybeUndef;
@@ -275,10 +275,14 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             return Ok(Some(Immediate::Scalar(Scalar::zst().into())));
         }
 
+        // check for integer pointers before alignment to report better errors
         let ptr = ptr.to_ptr()?;
+        self.memory.check_align(ptr.into(), ptr_align)?;
         match mplace.layout.abi {
             layout::Abi::Scalar(..) => {
-                let scalar = self.memory.read_scalar(ptr, ptr_align, mplace.layout.size)?;
+                let scalar = self.memory
+                    .get(ptr.alloc_id)?
+                    .read_scalar(self, ptr, mplace.layout.size)?;
                 Ok(Some(Immediate::Scalar(scalar)))
             }
             layout::Abi::ScalarPair(ref a, ref b) => {
@@ -287,9 +291,15 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                 let a_ptr = ptr;
                 let b_offset = a_size.align_to(b.align(self).abi);
                 assert!(b_offset.bytes() > 0); // we later use the offset to test which field to use
-                let b_ptr = ptr.offset(b_offset, self)?.into();
-                let a_val = self.memory.read_scalar(a_ptr, ptr_align, a_size)?;
-                let b_val = self.memory.read_scalar(b_ptr, ptr_align, b_size)?;
+                let b_ptr = ptr.offset(b_offset, self)?;
+                let a_val = self.memory
+                    .get(ptr.alloc_id)?
+                    .read_scalar(self, a_ptr, a_size)?;
+                let b_align = ptr_align.restrict_for_offset(b_offset);
+                self.memory.check_align(b_ptr.into(), b_align)?;
+                let b_val = self.memory
+                    .get(ptr.alloc_id)?
+                    .read_scalar(self, b_ptr, b_size)?;
                 Ok(Some(Immediate::ScalarPair(a_val, b_val)))
             }
             _ => Ok(None),
@@ -637,7 +647,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     ScalarMaybeUndef::Scalar(Scalar::Ptr(ptr)) => {
                         // The niche must be just 0 (which an inbounds pointer value never is)
                         let ptr_valid = niche_start == 0 && variants_start == variants_end &&
-                            self.memory.check_bounds_ptr(ptr, InboundsCheck::MaybeDead).is_ok();
+                            self.memory.check_bounds_ptr_maybe_dead(ptr).is_ok();
                         if !ptr_valid {
                             return err!(InvalidDiscriminant(raw_discr.erase_tag()));
                         }
