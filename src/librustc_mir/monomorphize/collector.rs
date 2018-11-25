@@ -178,10 +178,6 @@
 //! Some things are not yet fully implemented in the current version of this
 //! module.
 //!
-//! ### Initializers of Constants and Statics
-//! Since no MIR is constructed yet for initializer expressions of constants and
-//! statics we cannot inspect these properly.
-//!
 //! ### Const Fns
 //! Ideally, no mono item should be generated for const fns unless there
 //! is a call to them that cannot be evaluated at compile time. At the moment
@@ -191,7 +187,6 @@
 use rustc::hir::{self, CodegenFnAttrFlags};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
-use rustc::hir::Node;
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::{AllocId, ConstValue};
 use rustc::middle::lang_items::{ExchangeMallocFnLangItem, StartFnLangItem};
@@ -741,27 +736,27 @@ fn should_monomorphize_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: 
         ty::InstanceDef::CloneShim(..) => return true
     };
 
-    return match tcx.hir.get_if_local(def_id) {
-        Some(Node::ForeignItem(..)) => {
-            false // foreign items are linked against, not codegened.
-        }
-        Some(_) => true,
-        None => {
-            if tcx.is_reachable_non_generic(def_id) ||
-                tcx.is_foreign_item(def_id) ||
-                is_available_upstream_generic(tcx, def_id, instance.substs)
-            {
-                // We can link to the item in question, no instance needed
-                // in this crate
-                false
-            } else {
-                if !tcx.is_mir_available(def_id) {
-                    bug!("Cannot create local mono-item for {:?}", def_id)
-                }
-                true
-            }
-        }
-    };
+    if tcx.is_foreign_item(def_id) {
+        // We can always link to foreign items
+        return false;
+    }
+
+    if def_id.is_local() {
+        // local items cannot be referred to locally without monomorphizing them locally
+        return true;
+    }
+
+    if tcx.is_reachable_non_generic(def_id) ||
+       is_available_upstream_generic(tcx, def_id, instance.substs) {
+        // We can link to the item in question, no instance needed
+        // in this crate
+        return false;
+    }
+
+    if !tcx.is_mir_available(def_id) {
+        bug!("Cannot create local mono-item for {:?}", def_id)
+    }
+    return true;
 
     fn is_available_upstream_generic<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                def_id: DefId,
