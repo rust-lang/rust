@@ -2388,6 +2388,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     pub fn to_ty_saving_user_provided_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
         let ty = self.to_ty(ast_ty);
+        debug!("to_ty_saving_user_provided_ty: ty={:?}", ty);
 
         // If the type given by the user has free regions, save it for
         // later, since NLL would like to enforce those. Also pass in
@@ -2398,6 +2399,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // already sufficiently enforced with erased regions. =)
         if ty.has_free_regions() || ty.has_projections() {
             let c_ty = self.infcx.canonicalize_response(&UserTypeAnnotation::Ty(ty));
+            debug!("to_ty_saving_user_provided_ty: c_ty={:?}", c_ty);
             self.tables.borrow_mut().user_provided_types_mut().insert(ast_ty.hir_id, c_ty);
         }
 
