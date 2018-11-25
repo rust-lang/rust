@@ -726,6 +726,21 @@ impl<T> RawTable<T> {
             _marker: PhantomData,
         }
     }
+
+    /// Converts the table into a raw allocation. The contents of the table
+    /// should be dropped using a `RawIter` before freeing the allocation.
+    #[inline]
+    pub fn into_alloc(self) -> Option<(NonNull<u8>, Layout)> {
+        let alloc = if self.bucket_mask != 0 {
+            let (layout, _) = calculate_layout::<T>(self.buckets())
+                .unwrap_or_else(|| unsafe { hint::unreachable_unchecked() });
+            Some((self.ctrl.cast(), layout))
+        } else {
+            None
+        };
+        mem::forget(self);
+        alloc
+    }
 }
 
 unsafe impl<T> Send for RawTable<T> where T: Send {}
@@ -803,15 +818,8 @@ impl<T> IntoIterator for RawTable<T> {
     #[inline]
     fn into_iter(self) -> RawIntoIter<T> {
         unsafe {
-            let alloc = if self.bucket_mask != 0 {
-                let (layout, _) = calculate_layout::<T>(self.buckets())
-                    .unwrap_or_else(|| hint::unreachable_unchecked());
-                Some((self.ctrl.cast(), layout))
-            } else {
-                None
-            };
             let iter = self.iter();
-            mem::forget(self);
+            let alloc = self.into_alloc();
             RawIntoIter { iter, alloc }
         }
     }
@@ -832,11 +840,7 @@ impl<T> RawIterRange<T> {
     ///
     /// The start offset must be aligned to the group width.
     #[inline]
-    unsafe fn new(
-        ctrl: *const u8,
-        data: *const T,
-        range: Range<usize>,
-    ) -> RawIterRange<T> {
+    unsafe fn new(ctrl: *const u8, data: *const T, range: Range<usize>) -> RawIterRange<T> {
         debug_assert_eq!(range.start % Group::WIDTH, 0);
         let ctrl = ctrl.add(range.start);
         let data = data.add(range.start);
