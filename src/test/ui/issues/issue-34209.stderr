@@ -1,9 +1,8 @@
-error[E0223]: ambiguous associated type
+error: no variant `B` on enum `S`
   --> $DIR/issue-34209.rs:17:9
    |
-LL |         S::B{ } => { },
-   |         ^^^^ help: use fully-qualified syntax: `<S as Trait>::B`
+LL |         S::B { } => { },
+   |         ^^^^ help: did you mean: `S::A`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0223`.
