@@ -14,8 +14,8 @@ enum S {
 
 fn bug(l: S) {
     match l {
-        S::B{ } => { },
-        //~^ ERROR ambiguous associated type
+        S::B { } => { },
+        //~^ ERROR no variant `B` on enum `S`
     }
 }
 

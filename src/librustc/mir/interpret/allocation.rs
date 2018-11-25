@@ -172,10 +172,11 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
         let offset = ptr.offset.bytes() as usize;
         match self.bytes[offset..].iter().position(|&c| c == 0) {
             Some(size) => {
-                let p1 = Size::from_bytes((size + 1) as u64);
-                self.check_relocations(cx, ptr, p1)?;
-                self.check_defined(ptr, p1)?;
-                Ok(&self.bytes[offset..offset + size])
+                let size_with_null = Size::from_bytes((size + 1) as u64);
+                // Go through `get_bytes` for checks and AllocationExtra hooks.
+                // We read the null, so we include it in the request, but we want it removed
+                // from the result!
+                Ok(&self.get_bytes(cx, ptr, size_with_null)?[..size])
             }
             None => err!(UnterminatedCString(ptr.erase_tag())),
         }
@@ -315,11 +316,9 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
             },
         };
 
-        {
-            let endian = cx.data_layout().endian;
-            let dst = self.get_bytes_mut(cx, ptr, type_size)?;
-            write_target_uint(endian, dst, bytes).unwrap();
-        }
+        let endian = cx.data_layout().endian;
+        let dst = self.get_bytes_mut(cx, ptr, type_size)?;
+        write_target_uint(endian, dst, bytes).unwrap();
 
         // See if we have to also write a relocation
         match val {

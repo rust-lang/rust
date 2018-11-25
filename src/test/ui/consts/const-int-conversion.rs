@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(reverse_bits, int_to_from_bytes)]
+#![feature(reverse_bits)]
 
 fn main() {
     let x: &'static i32 = &(5_i32.reverse_bits());

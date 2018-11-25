@@ -36,8 +36,9 @@ use lint;
 
 use std::iter;
 use syntax::ast;
-use syntax::ptr::P;
 use syntax::feature_gate::{GateIssue, emit_feature_err};
+use syntax::ptr::P;
+use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{DUMMY_SP, Span, MultiSpan};
 
 pub trait AstConv<'gcx, 'tcx> {
@@ -1302,6 +1303,32 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx>+'o {
                     Ok(bound) => bound,
                     Err(ErrorReported) => return (tcx.types.err, Def::Err),
                 }
+            }
+            (&ty::Adt(adt_def, _substs), Def::Enum(_did)) => {
+                let ty_str = ty.to_string();
+                // Incorrect enum variant
+                let mut err = tcx.sess.struct_span_err(
+                    span,
+                    &format!("no variant `{}` on enum `{}`", &assoc_name.as_str(), ty_str),
+                );
+                // Check if it was a typo
+                let input = adt_def.variants.iter().map(|variant| &variant.name);
+                if let Some(suggested_name) = find_best_match_for_name(
+                    input,
+                    &assoc_name.as_str(),
+                    None,
+                ) {
+                    err.span_suggestion_with_applicability(
+                        span,
+                        "did you mean",
+                        format!("{}::{}", ty_str, suggested_name.to_string()),
+                        Applicability::MaybeIncorrect,
+                    );
+                } else {
+                    err.span_label(span, "unknown variant");
+                }
+                err.emit();
+                return (tcx.types.err, Def::Err);
             }
             _ => {
                 // Don't print TyErr to the user.

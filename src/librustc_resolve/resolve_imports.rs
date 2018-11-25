@@ -864,7 +864,8 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             }
             PathResult::NonModule(path_res) if path_res.base_def() == Def::Err => {
                 // The error was already reported earlier.
-                assert!(directive.imported_module.get().is_none());
+                assert!(!self.ambiguity_errors.is_empty() ||
+                        directive.imported_module.get().is_none());
                 return None;
             }
             PathResult::Indeterminate | PathResult::NonModule(..) => unreachable!(),

@@ -208,6 +208,10 @@ pub struct Inherited<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
 
+    // Some additional `Sized` obligations badly affect type inference.
+    // These obligations are added in a later stage of typeck.
+    deferred_sized_obligations: RefCell<Vec<(Ty<'tcx>, Span, traits::ObligationCauseCode<'tcx>)>>,
+
     // When we process a call like `c()` where `c` is a closure type,
     // we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
     // `FnOnce` closure. In that case, we defer full resolution of the
@@ -644,6 +648,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
             infcx,
             fulfillment_cx: RefCell::new(TraitEngine::new(tcx)),
             locals: RefCell::new(Default::default()),
+            deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),
             deferred_cast_checks: RefCell::new(Vec::new()),
             deferred_generator_interiors: RefCell::new(Vec::new()),
@@ -907,6 +912,10 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         fcx.closure_analyze(body);
         assert!(fcx.deferred_call_resolutions.borrow().is_empty());
         fcx.resolve_generator_interiors(def_id);
+
+        for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
+            fcx.require_type_is_sized(ty, span, code);
+        }
         fcx.select_all_obligations_or_error();
 
         if fn_decl.is_some() {
@@ -2343,6 +2352,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     {
         let lang_item = self.tcx.require_lang_item(lang_items::SizedTraitLangItem);
         self.require_type_meets(ty, span, code, lang_item);
+    }
+
+    pub fn require_type_is_sized_deferred(&self,
+                                          ty: Ty<'tcx>,
+                                          span: Span,
+                                          code: traits::ObligationCauseCode<'tcx>)
+    {
+        self.deferred_sized_obligations.borrow_mut().push((ty, span, code));
     }
 
     pub fn register_bound(&self,
@@ -3938,6 +3955,31 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     self.set_tainted_by_errors();
                     tcx.types.err
                 };
+
+                if let ty::FnDef(..) = ty.sty {
+                    let fn_sig = ty.fn_sig(tcx);
+                    if !tcx.features().unsized_locals {
+                        // We want to remove some Sized bounds from std functions,
+                        // but don't want to expose the removal to stable Rust.
+                        // i.e. we don't want to allow
+                        //
+                        // ```rust
+                        // drop as fn(str);
+                        // ```
+                        //
+                        // to work in stable even if the Sized bound on `drop` is relaxed.
+                        for i in 0..fn_sig.inputs().skip_binder().len() {
+                            let input = tcx.erase_late_bound_regions(&fn_sig.input(i));
+                            self.require_type_is_sized_deferred(input, expr.span,
+                                                                traits::SizedArgumentType);
+                        }
+                    }
+                    // Here we want to prevent struct constructors from returning unsized types.
+                    // There were two cases this happened: fn pointer coercion in stable
+                    // and usual function call in presense of unsized_locals.
+                    let output = tcx.erase_late_bound_regions(&fn_sig.output());
+                    self.require_type_is_sized_deferred(output, expr.span, traits::SizedReturnType);
+                }
 
                 // We always require that the type provided as the value for
                 // a type parameter outlives the moment of instantiation.

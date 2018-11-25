@@ -436,9 +436,6 @@ declare_features! (
     // Allows irrefutable patterns in if-let and while-let statements (RFC 2086)
     (active, irrefutable_let_patterns, "1.27.0", Some(44495), None),
 
-    // Allows use of the :literal macro fragment specifier (RFC 1576)
-    (active, macro_literal_matcher, "1.27.0", Some(35625), None),
-
     // inconsistent bounds in where clauses
     (active, trivial_bounds, "1.28.0", Some(48214), None),
 
@@ -690,6 +687,8 @@ declare_features! (
     (accepted, impl_header_lifetime_elision, "1.31.0", Some(15872), None),
     // `extern crate foo as bar;` puts `bar` into extern prelude.
     (accepted, extern_crate_item_prelude, "1.31.0", Some(55599), None),
+    // Allows use of the :literal macro fragment specifier (RFC 1576)
+    (accepted, macro_literal_matcher, "1.31.0", Some(35625), None),
 );
 
 // If you change this, please modify src/doc/unstable-book as well. You must
@@ -1424,9 +1423,6 @@ pub const EXPLAIN_DEPR_CUSTOM_DERIVE: &'static str =
 
 pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
     "attributes of the form `#[derive_*]` are reserved for the compiler";
-
-pub const EXPLAIN_LITERAL_MATCHER: &'static str =
-    ":literal fragment specifier is experimental and subject to change";
 
 pub const EXPLAIN_UNSIZED_TUPLE_COERCION: &'static str =
     "unsized tuple coercion is not stable enough for use and is subject to change";
