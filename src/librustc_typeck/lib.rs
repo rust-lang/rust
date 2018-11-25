@@ -75,6 +75,7 @@ This API is completely unstable and subject to change.
 #![feature(box_syntax)]
 #![feature(crate_visibility_modifier)]
 #![feature(exhaustive_patterns)]
+#![feature(fn_traits)]
 #![feature(nll)]
 #![feature(quote)]
 #![feature(refcell_replace_swap)]
@@ -82,6 +83,7 @@ This API is completely unstable and subject to change.
 #![feature(slice_patterns)]
 #![feature(slice_sort_by_cached_key)]
 #![feature(never_type)]
+#![feature(unboxed_closures)]
 
 #![recursion_limit="256"]
 

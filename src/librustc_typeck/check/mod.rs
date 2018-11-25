@@ -113,8 +113,8 @@ use rustc::mir::interpret::{ConstValue, GlobalId};
 use rustc::ty::subst::{CanonicalUserSubsts, UnpackedKind, Subst, Substs,
                        UserSelfTy, UserSubsts};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, TraitEngine};
-use rustc::ty::{self, AdtKind, Ty, TyCtxt, GenericParamDefKind, Visibility, ToPredicate,
-                RegionKind};
+use rustc::ty::{self, AdtKind, Ty, TyCtxt, GenericParamDefKind, RegionKind, Visibility,
+                ToPolyTraitRef, ToPredicate};
 use rustc::ty::adjustment::{Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::query::Providers;
@@ -134,6 +134,7 @@ use std::collections::hash_map::Entry;
 use std::cmp;
 use std::fmt::Display;
 use std::iter;
+use std::vec;
 use std::mem::replace;
 use std::ops::{self, Deref};
 use std::slice;
@@ -2729,6 +2730,97 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   args_no_rcvr, method.sig.variadic, tuple_arguments,
                                   self.tcx.hir().span_if_local(method.def_id));
         method.sig.output()
+    }
+
+    fn self_type_matches_expected_vid(
+        &self,
+        trait_ref: ty::PolyTraitRef<'tcx>,
+        expected_vid: ty::TyVid,
+    ) -> bool {
+        let self_ty = self.shallow_resolve(trait_ref.self_ty());
+        debug!(
+            "self_type_matches_expected_vid(trait_ref={:?}, self_ty={:?}, expected_vid={:?})",
+            trait_ref, self_ty, expected_vid
+        );
+        match self_ty.sty {
+            ty::Infer(ty::TyVar(v)) => {
+                let root_vid = self.root_var(v);
+                debug!("self_type_matches_expected_vid - root_vid={:?}", root_vid);
+                if root_vid == expected_vid {
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false
+        }
+    }
+}
+
+/// FIXME: impl Trait why u give me lifetime errors?
+pub struct ObligationMapper<'a, 'gcx, 'tcx>(&'a FnCtxt<'a, 'gcx, 'tcx>, ty::TyVid);
+
+impl<'a, 'gcx, 'tcx> FnOnce<(traits::PredicateObligation<'tcx>,)>
+    for ObligationMapper<'a, 'gcx, 'tcx>
+{
+    type Output = Option<ty::PolyTraitRef<'tcx>>;
+
+    extern "rust-call" fn call_once(mut self, args: (traits::PredicateObligation<'tcx>,))
+                                    -> Self::Output {
+        self.call_mut(args)
+    }
+}
+
+impl<'a, 'gcx, 'tcx> FnMut<(traits::PredicateObligation<'tcx>,)>
+    for ObligationMapper<'a, 'gcx, 'tcx>
+{
+    extern "rust-call" fn call_mut(&mut self, args: (traits::PredicateObligation<'tcx>,))
+                                   -> Self::Output {
+        match args.0.predicate {
+            ty::Predicate::Projection(ref data) => Some(data.to_poly_trait_ref(self.0.tcx)),
+            ty::Predicate::Trait(ref data) => Some(data.to_poly_trait_ref()),
+            ty::Predicate::Subtype(..) => None,
+            ty::Predicate::RegionOutlives(..) => None,
+            ty::Predicate::TypeOutlives(..) => None,
+            ty::Predicate::WellFormed(..) => None,
+            ty::Predicate::ObjectSafe(..) => None,
+            ty::Predicate::ConstEvaluatable(..) => None,
+            // N.B., this predicate is created by breaking down a
+            // `ClosureType: FnFoo()` predicate, where
+            // `ClosureType` represents some `Closure`. It can't
+            // possibly be referring to the current closure,
+            // because we haven't produced the `Closure` for
+            // this closure yet; this is exactly why the other
+            // code is looking for a self type of a unresolved
+            // inference variable.
+            ty::Predicate::ClosureKind(..) => None,
+        }.filter(|tr| {
+            self.0.self_type_matches_expected_vid(*tr, self.1)
+        })
+    }
+}
+
+impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
+    fn obligations_for_self_ty<'b>(&'b self, self_ty: ty::TyVid)
+        -> iter::FilterMap<vec::IntoIter<traits::PredicateObligation<'tcx>>,
+                           ObligationMapper<'b, 'gcx, 'tcx>>
+    {
+        let ty_var_root = self.root_var(self_ty);
+        debug!("obligations_for_self_ty: self_ty={:?} ty_var_root={:?} pending_obligations={:?}",
+               self_ty, ty_var_root,
+               self.fulfillment_cx.borrow().pending_obligations());
+
+        self.fulfillment_cx
+            .borrow()
+            .pending_obligations()
+            .into_iter()
+            .filter_map(ObligationMapper(self, ty_var_root))
+    }
+
+    fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
+        self.obligations_for_self_ty(self_ty).any(|tr| {
+                Some(tr.def_id()) == self.tcx.lang_items().sized_trait()
+        })
     }
 
     /// Generic function that factors out common logic from function calls,

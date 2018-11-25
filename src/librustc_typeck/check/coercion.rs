@@ -579,7 +579,33 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             };
             match selcx.select(&obligation.with(trait_ref)) {
                 // Uncertain or unimplemented.
-                Ok(None) |
+                Ok(None) => {
+                    if trait_ref.def_id() == unsize_did {
+                        let trait_ref = self.resolve_type_vars_if_possible(&trait_ref);
+                        let self_ty = trait_ref.skip_binder().self_ty();
+                        let unsize_ty = trait_ref.skip_binder().input_types().nth(1).unwrap();
+                        debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_ref);
+                        match (&self_ty.sty, &unsize_ty.sty) {
+                            (ty::Infer(ty::TyVar(v)),
+                             ty::Dynamic(..)) if self.type_var_is_sized(*v) => {
+                                debug!("coerce_unsized: have sized infer {:?}", v);
+                                coercion.obligations.push(obligation);
+                                // `$0: Unsize<dyn Trait>` where we know that `$0: Sized`, try going
+                                // for unsizing.
+                            }
+                            _ => {
+                                // Some other case for `$0: Unsize<Something>`. Note that we
+                                // hit this case even if `Something` is a sized type, so just
+                                // don't do the coercion.
+                                debug!("coerce_unsized: ambiguous unsize");
+                                return Err(TypeError::Mismatch);
+                            }
+                        }
+                    } else {
+                        debug!("coerce_unsized: early return - ambiguous");
+                        return Err(TypeError::Mismatch);
+                    }
+                }
                 Err(traits::Unimplemented) => {
                     debug!("coerce_unsized: early return - can't prove obligation");
                     return Err(TypeError::Mismatch);
