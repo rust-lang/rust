@@ -314,11 +314,9 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
             },
         };
 
-        {
-            let endian = cx.data_layout().endian;
-            let dst = self.get_bytes_mut(cx, ptr, type_size)?;
-            write_target_uint(endian, dst, bytes).unwrap();
-        }
+        let endian = cx.data_layout().endian;
+        let dst = self.get_bytes_mut(cx, ptr, type_size)?;
+        write_target_uint(endian, dst, bytes).unwrap();
 
         // See if we have to also write a relocation
         match val {
