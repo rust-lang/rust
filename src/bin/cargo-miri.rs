@@ -174,7 +174,7 @@ path = "lib.rs"
         "#).unwrap();
     File::create(dir.join("lib.rs")).unwrap();
     // Run xargo
-    if !Command::new("xargo").arg("build")
+    if !Command::new("xargo").arg("build").arg("-q")
         .current_dir(&dir)
         .env("RUSTFLAGS", miri::miri_default_args().join(" "))
         .env("XARGO_HOME", dir.to_str().unwrap())
