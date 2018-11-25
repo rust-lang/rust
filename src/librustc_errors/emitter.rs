@@ -959,7 +959,7 @@ impl EmitterWriter {
             Style::MainHeaderMsg
         };
 
-        if msp.primary_spans().is_empty() && msp.span_labels().is_empty() && is_secondary
+        if !msp.has_primary_spans() && !msp.has_span_labels() && is_secondary
            && !self.short_message {
             // This is a secondary message with no span info
             for _ in 0..max_line_num_len {

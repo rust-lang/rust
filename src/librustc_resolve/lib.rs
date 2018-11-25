@@ -5013,11 +5013,7 @@ impl<'a> Resolver<'a> {
                 ))
             }
 
-            if b.span.is_dummy() {
-                err.note(&note_msg);
-            } else {
-                err.span_note(b.span, &note_msg);
-            }
+            err.span_note(b.span, &note_msg);
             for (i, help_msg) in help_msgs.iter().enumerate() {
                 let or = if i == 0 { "" } else { "or " };
                 err.help(&format!("{}{}", or, help_msg));
@@ -5132,10 +5128,10 @@ impl<'a> Resolver<'a> {
                           container));
 
         err.span_label(span, format!("`{}` re{} here", name, new_participle));
-        if !old_binding.span.is_dummy() {
-            err.span_label(self.session.source_map().def_span(old_binding.span),
-                           format!("previous {} of the {} `{}` here", old_noun, old_kind, name));
-        }
+        err.span_label(
+            self.session.source_map().def_span(old_binding.span),
+            format!("previous {} of the {} `{}` here", old_noun, old_kind, name),
+        );
 
         // See https://github.com/rust-lang/rust/issues/32354
         if old_binding.is_import() || new_binding.is_import() {
