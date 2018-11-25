@@ -2743,14 +2743,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             trait_ref, self_ty, expected_vid
         );
         match self_ty.sty {
-            ty::Infer(ty::TyVar(v)) => {
-                let root_vid = self.root_var(v);
-                debug!("self_type_matches_expected_vid - root_vid={:?}", root_vid);
-                if root_vid == expected_vid {
-                    true
-                } else {
-                    false
-                }
+            ty::Infer(ty::TyVar(found_vid)) => {
+                let found_vid = self.root_var(found_vid);
+                debug!("self_type_matches_expected_vid - found_vid={:?}", found_vid);
+                expected_vid == found_vid
             }
             _ => false
         }
