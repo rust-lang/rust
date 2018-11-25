@@ -174,7 +174,7 @@ impl<'tcx, Tag: Copy, Extra: AllocationExtra<Tag>> Allocation<Tag, Extra> {
             Some(size) => {
                 let size_with_null = Size::from_bytes((size + 1) as u64);
                 // Go through `get_bytes` for checks and AllocationExtra hooks.
-                // We read the null, so we include it in the requestm, but we want it removed
+                // We read the null, so we include it in the request, but we want it removed
                 // from the result!
                 Ok(&self.get_bytes(cx, ptr, size_with_null)?[..size])
             }
