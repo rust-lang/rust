@@ -6,15 +6,17 @@ use ra_syntax::{
     AstNode, SmolStr, SyntaxNodeRef,
 };
 
-use crate::syntax_ptr::LocalSyntaxPtr;
+use crate::{
+    syntax_ptr::LocalSyntaxPtr,
+    arena::{Arena, Id},
+};
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub(crate) struct ScopeId(u32);
+pub(crate) type ScopeId = Id<ScopeData>;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct FnScopes {
     pub(crate) self_param: Option<LocalSyntaxPtr>,
-    scopes: Vec<ScopeData>,
+    scopes: Arena<ScopeData>,
     scope_for: FxHashMap<LocalSyntaxPtr, ScopeId>,
 }
 
@@ -25,7 +27,7 @@ pub struct ScopeEntry {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-struct ScopeData {
+pub(crate) struct ScopeData {
     parent: Option<ScopeId>,
     entries: Vec<ScopeEntry>,
 }
@@ -37,7 +39,7 @@ impl FnScopes {
                 .param_list()
                 .and_then(|it| it.self_param())
                 .map(|it| LocalSyntaxPtr::new(it.syntax())),
-            scopes: Vec::new(),
+            scopes: Arena::default(),
             scope_for: FxHashMap::default(),
         };
         let root = scopes.root_scope();
@@ -48,26 +50,24 @@ impl FnScopes {
         scopes
     }
     pub(crate) fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
-        &self.get(scope).entries
+        &self.scopes[scope].entries
     }
     pub fn scope_chain<'a>(&'a self, node: SyntaxNodeRef) -> impl Iterator<Item = ScopeId> + 'a {
-        generate(self.scope_for(node), move |&scope| self.get(scope).parent)
+        generate(self.scope_for(node), move |&scope| {
+            self.scopes[scope].parent
+        })
     }
     fn root_scope(&mut self) -> ScopeId {
-        let res = ScopeId(self.scopes.len() as u32);
         self.scopes.push(ScopeData {
             parent: None,
             entries: vec![],
-        });
-        res
+        })
     }
     fn new_scope(&mut self, parent: ScopeId) -> ScopeId {
-        let res = ScopeId(self.scopes.len() as u32);
         self.scopes.push(ScopeData {
             parent: Some(parent),
             entries: vec![],
-        });
-        res
+        })
     }
     fn add_bindings(&mut self, scope: ScopeId, pat: ast::Pat) {
         let entries = pat
@@ -75,7 +75,7 @@ impl FnScopes {
             .descendants()
             .filter_map(ast::BindPat::cast)
             .filter_map(ScopeEntry::new);
-        self.get_mut(scope).entries.extend(entries);
+        self.scopes[scope].entries.extend(entries);
     }
     fn add_params_bindings(&mut self, scope: ScopeId, params: Option<ast::ParamList>) {
         params
@@ -92,12 +92,6 @@ impl FnScopes {
             .map(LocalSyntaxPtr::new)
             .filter_map(|it| self.scope_for.get(&it).map(|&scope| scope))
             .next()
-    }
-    fn get(&self, scope: ScopeId) -> &ScopeData {
-        &self.scopes[scope.0 as usize]
-    }
-    fn get_mut(&mut self, scope: ScopeId) -> &mut ScopeData {
-        &mut self.scopes[scope.0 as usize]
     }
 }
 

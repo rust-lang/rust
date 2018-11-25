@@ -15,7 +15,8 @@ use relative_path::RelativePathBuf;
 use crate::{
     db::SyntaxDatabase, syntax_ptr::SyntaxPtr, FileId, FilePosition, Cancelable,
     descriptors::{Path, PathKind, DescriptorDatabase},
-    input::SourceRootId
+    input::SourceRootId,
+    arena::{Arena, Id},
 };
 
 pub(crate) use self::nameres::ModuleScope;
@@ -157,26 +158,22 @@ impl ModuleDescriptor {
 /// Module encapsulate the logic of transitioning from the fuzzy world of files
 /// (which can have multiple parents) to the precise world of modules (which
 /// always have one parent).
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, PartialEq, Eq)]
 pub(crate) struct ModuleTree {
-    mods: Vec<ModuleData>,
-    links: Vec<LinkData>,
+    mods: Arena<ModuleData>,
+    links: Arena<LinkData>,
 }
 
 impl ModuleTree {
     fn modules<'a>(&'a self) -> impl Iterator<Item = ModuleId> + 'a {
-        self.mods
-            .iter()
-            .enumerate()
-            .map(|(idx, _)| ModuleId(idx as u32))
+        self.mods.keys()
     }
 
     fn modules_for_source(&self, source: ModuleSource) -> Vec<ModuleId> {
         self.mods
-            .iter()
-            .enumerate()
+            .items()
             .filter(|(_idx, it)| it.source == source)
-            .map(|(idx, _)| ModuleId(idx as u32))
+            .map(|(idx, _)| idx)
             .collect()
     }
 
@@ -201,11 +198,8 @@ enum ModuleSourceNode {
     Module(ast::ModuleNode),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
-pub(crate) struct ModuleId(u32);
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
-struct LinkId(u32);
+pub(crate) type ModuleId = Id<ModuleData>;
+type LinkId = Id<LinkData>;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Problem {
@@ -220,14 +214,14 @@ pub enum Problem {
 
 impl ModuleId {
     fn source(self, tree: &ModuleTree) -> ModuleSource {
-        tree.module(self).source
+        tree.mods[self].source
     }
     fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
-        tree.module(self).parent
+        tree.mods[self].parent
     }
     fn parent(self, tree: &ModuleTree) -> Option<ModuleId> {
         let link = self.parent_link(tree)?;
-        Some(tree.link(link).owner)
+        Some(tree.links[link].owner)
     }
     fn crate_root(self, tree: &ModuleTree) -> ModuleId {
         generate(Some(self), move |it| it.parent(tree))
@@ -235,27 +229,26 @@ impl ModuleId {
             .unwrap()
     }
     fn child(self, tree: &ModuleTree, name: &str) -> Option<ModuleId> {
-        let link = tree
-            .module(self)
+        let link = tree.mods[self]
             .children
             .iter()
-            .map(|&it| tree.link(it))
+            .map(|&it| &tree.links[it])
             .find(|it| it.name == name)?;
         Some(*link.points_to.first()?)
     }
     fn children<'a>(self, tree: &'a ModuleTree) -> impl Iterator<Item = (SmolStr, ModuleId)> + 'a {
-        tree.module(self).children.iter().filter_map(move |&it| {
-            let link = tree.link(it);
+        tree.mods[self].children.iter().filter_map(move |&it| {
+            let link = &tree.links[it];
             let module = *link.points_to.first()?;
             Some((link.name.clone(), module))
         })
     }
     fn problems(self, tree: &ModuleTree, db: &impl SyntaxDatabase) -> Vec<(SyntaxNode, Problem)> {
-        tree.module(self)
+        tree.mods[self]
             .children
             .iter()
             .filter_map(|&it| {
-                let p = tree.link(it).problem.clone()?;
+                let p = tree.links[it].problem.clone()?;
                 let s = it.bind_source(tree, db);
                 let s = s.borrowed().name().unwrap().syntax().owned();
                 Some((s, p))
@@ -266,17 +259,17 @@ impl ModuleId {
 
 impl LinkId {
     fn owner(self, tree: &ModuleTree) -> ModuleId {
-        tree.link(self).owner
+        tree.links[self].owner
     }
     fn name(self, tree: &ModuleTree) -> SmolStr {
-        tree.link(self).name.clone()
+        tree.links[self].name.clone()
     }
     fn bind_source<'a>(self, tree: &ModuleTree, db: &impl SyntaxDatabase) -> ast::ModuleNode {
         let owner = self.owner(tree);
         match owner.source(tree).resolve(db) {
             ModuleSourceNode::SourceFile(root) => {
                 let ast = imp::modules(root.borrowed())
-                    .find(|(name, _)| name == &tree.link(self).name)
+                    .find(|(name, _)| name == &tree.links[self].name)
                     .unwrap()
                     .1;
                 ast.owned()
@@ -287,7 +280,7 @@ impl LinkId {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-struct ModuleData {
+pub(crate) struct ModuleData {
     source: ModuleSource,
     parent: Option<LinkId>,
     children: Vec<LinkId>,
@@ -339,28 +332,13 @@ struct LinkData {
 }
 
 impl ModuleTree {
-    fn module(&self, id: ModuleId) -> &ModuleData {
-        &self.mods[id.0 as usize]
-    }
-    fn module_mut(&mut self, id: ModuleId) -> &mut ModuleData {
-        &mut self.mods[id.0 as usize]
-    }
-    fn link(&self, id: LinkId) -> &LinkData {
-        &self.links[id.0 as usize]
-    }
-    fn link_mut(&mut self, id: LinkId) -> &mut LinkData {
-        &mut self.links[id.0 as usize]
-    }
-
     fn push_mod(&mut self, data: ModuleData) -> ModuleId {
-        let id = ModuleId(self.mods.len() as u32);
-        self.mods.push(data);
-        id
+        self.mods.push(data)
     }
     fn push_link(&mut self, data: LinkData) -> LinkId {
-        let id = LinkId(self.links.len() as u32);
-        self.mods[data.owner.0 as usize].children.push(id);
-        self.links.push(data);
+        let owner = data.owner;
+        let id = self.links.push(data);
+        self.mods[owner].children.push(id);
         id
     }
 }
