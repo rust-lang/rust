@@ -116,6 +116,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
             Some(Def::Local(node_id)) | Some(Def::Upvar(node_id, ..)) => {
                 self.reachable_symbols.insert(node_id);
             }
+            Some(Def::Err) => {}  // #56202: calling `def.def_id()` would be an error
             Some(def) => {
                 let def_id = def.def_id();
                 if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
