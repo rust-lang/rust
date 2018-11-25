@@ -32,7 +32,10 @@ all:
 	mkdir -p $(WORK_DIR)
 	-cd $(WORK_DIR) && rm -rf $(CRATE)
 	cd $(WORK_DIR) && bash -x $(HERE)/../git_clone_sha1.sh $(CRATE) $(CRATE_URL) $(CRATE_SHA1)
-	cd $(WORK_DIR) && cd $(CRATE) && $(CARGO) build --target $(TARGET) -v
+	# HACK(eddyb) sets `RUSTC_BOOTSTRAP=1` so Cargo can accept nightly features.
+	# These come from the top-level Rust workspace, that this crate is not a
+	# member of, but Cargo tries to load the workspace `Cargo.toml` anyway.
+	cd $(WORK_DIR) && cd $(CRATE) && env RUSTC_BOOTSTRAP=1 $(CARGO) build --target $(TARGET) -v
 else
 
 all:

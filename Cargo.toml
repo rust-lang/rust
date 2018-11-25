@@ -26,6 +26,9 @@ members = [
 ]
 exclude = [
   "src/tools/rls/test_data",
+  "build",
+  # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
+  "obj",
 ]
 
 # Curiously, LLVM 7.0 will segfault if compiled with opt-level=3
