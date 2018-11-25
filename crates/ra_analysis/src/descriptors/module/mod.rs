@@ -166,12 +166,12 @@ pub(crate) struct ModuleTree {
 
 impl ModuleTree {
     fn modules<'a>(&'a self) -> impl Iterator<Item = ModuleId> + 'a {
-        self.mods.keys()
+        self.mods.iter().map(|(id, _)| id)
     }
 
     fn modules_for_source(&self, source: ModuleSource) -> Vec<ModuleId> {
         self.mods
-            .items()
+            .iter()
             .filter(|(_idx, it)| it.source == source)
             .map(|(idx, _)| idx)
             .collect()
@@ -333,11 +333,11 @@ struct LinkData {
 
 impl ModuleTree {
     fn push_mod(&mut self, data: ModuleData) -> ModuleId {
-        self.mods.push(data)
+        self.mods.alloc(data)
     }
     fn push_link(&mut self, data: LinkData) -> LinkId {
         let owner = data.owner;
-        let id = self.links.push(data);
+        let id = self.links.alloc(data);
         self.mods[owner].children.push(id);
         id
     }
