@@ -137,9 +137,8 @@ fn setup(ask_user: bool) {
     // Then, we also need rust-src.  Let's see if it is already installed.
     let sysroot = Command::new("rustc").args(&["--print", "sysroot"]).output().unwrap().stdout;
     let sysroot = std::str::from_utf8(&sysroot[..]).unwrap();
-    let src = Path::new(sysroot.trim_end_matches('\n')).join("lib/rustlib/src");
+    let src = Path::new(sysroot.trim_end_matches('\n')).join("lib").join("rustlib").join("src");
     if !src.exists() {
-        println!("Could not find {:?}", src);
         if ask_user {
             ask("It seems you do not have the rust-src component installed. I will run `rustup component add rust-src`. Proceed?");
         }

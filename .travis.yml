@@ -11,7 +11,7 @@ os:
 - osx
 
 before_script:
-# macOS weirdness (https://github.com/travis-ci/travis-ci/issues/6307)
+# macOS weirdness (https://github.com/travis-ci/travis-ci/issues/6307, https://github.com/travis-ci/travis-ci/issues/10165)
 - if [[ "$TRAVIS_OS_NAME" == osx ]]; then rvm get stable; fi
 # Compute the rust version we use. We do not use "language: rust" to have more control here.
 - |
@@ -37,11 +37,11 @@ script:
   cargo test --release --all-features &&
   cargo install --all-features --force --path .
 - |
-  # starting here, use MIR-full libstd
+  # Get ourselves a MIR-full libstd
   cargo miri setup &&
   export MIRI_SYSROOT=~/.miri/HOST
 - |
-  # run all tests with full mir
+  # Test miri with full MIR
   cargo test --release --all-features
 - |
   # Test cargo integration
