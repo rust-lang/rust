@@ -28,8 +28,6 @@ before_script:
 - rustup target add i686-unknown-linux-gnu
 - rustup target add i686-pc-windows-gnu
 - rustup target add i686-pc-windows-msvc
-- rustup component add rust-src
-- cargo install xargo || echo "Skipping xargo install"
 
 script:
 - set -e
@@ -39,9 +37,9 @@ script:
   cargo test --release --all-features &&
   cargo install --all-features --force --path .
 - |
-  # get ourselves a MIR-full libstd
-  xargo/build.sh &&
-  export MIRI_SYSROOT=~/.xargo/HOST
+  # starting here, use MIR-full libstd
+  cargo miri setup &&
+  export MIRI_SYSROOT=~/.miri/HOST
 - |
   # run all tests with full mir
   cargo test --release --all-features
