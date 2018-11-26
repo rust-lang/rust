@@ -1798,7 +1798,7 @@ mod tests {
             testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
-        run_test(&TestOpts::new(), false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx, /*concurrency*/false);
         let (_, res, _) = rx.recv().unwrap();
         assert!(res != TrOk);
     }
@@ -1816,7 +1816,7 @@ mod tests {
             testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
-        run_test(&TestOpts::new(), false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx, /*concurrency*/false);
         let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrIgnored);
     }
@@ -1836,7 +1836,7 @@ mod tests {
             testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
-        run_test(&TestOpts::new(), false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx, /*concurrency*/false);
         let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrOk);
     }
@@ -1856,7 +1856,7 @@ mod tests {
             testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
-        run_test(&TestOpts::new(), false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx, /*concurrency*/false);
         let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrOk);
     }
@@ -1878,7 +1878,7 @@ mod tests {
             testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
-        run_test(&TestOpts::new(), false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx, /*concurrency*/false);
         let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrFailedMsg(format!("{} '{}'", failed_msg, expected)));
     }
@@ -1896,7 +1896,7 @@ mod tests {
             testfn: DynTestFn(Box::new(f)),
         };
         let (tx, rx) = channel();
-        run_test(&TestOpts::new(), false, desc, tx);
+        run_test(&TestOpts::new(), false, desc, tx, /*concurrency*/false);
         let (_, res, _) = rx.recv().unwrap();
         assert!(res == TrFailed);
     }
