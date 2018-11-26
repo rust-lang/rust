@@ -18,10 +18,17 @@
         allocator_api,
         ptr_offset_from,
         test,
-        core_intrinsics
+        core_intrinsics,
+        dropck_eyepatch
     )
 )]
 #![warn(missing_docs)]
+
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+#[cfg(test)]
+extern crate rand;
 
 #[cfg(feature = "nightly")]
 #[cfg_attr(test, macro_use)]

@@ -467,7 +467,7 @@ impl<T> RawTable<T> {
     #[inline]
     pub fn shrink_to(&mut self, min_size: usize, hasher: impl Fn(&T) -> u64) {
         let min_size = usize::max(self.items, min_size);
-        if bucket_mask_to_capacity(self.bucket_mask) / 2 > min_size {
+        if bucket_mask_to_capacity(self.bucket_mask) >= min_size * 2 {
             self.resize(min_size, hasher);
         }
     }
@@ -664,7 +664,7 @@ impl<T> RawTable<T> {
 
     /// Searches for an element in the table.
     #[inline]
-    pub fn find(&self, hash: u64, eq: impl Fn(&T) -> bool) -> Option<Bucket<T>> {
+    pub fn find(&self, hash: u64, mut eq: impl FnMut(&T) -> bool) -> Option<Bucket<T>> {
         unsafe {
             for pos in self.probe_seq(hash) {
                 let group = Group::load(self.ctrl(pos));
@@ -702,7 +702,7 @@ impl<T> RawTable<T> {
 
     /// Returns the number of buckets in the table.
     #[inline]
-    fn buckets(&self) -> usize {
+    pub fn buckets(&self) -> usize {
         self.bucket_mask + 1
     }
 
