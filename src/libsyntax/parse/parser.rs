@@ -5247,9 +5247,10 @@ impl<'a> Parser<'a> {
                 "lifetime parameters must be declared prior to type parameters",
             );
             if !suggestions.is_empty() {
-                err.multipart_suggestion(
+                err.multipart_suggestion_with_applicability(
                     "move the lifetime parameter prior to the first type parameter",
                     suggestions,
+                    Applicability::MachineApplicable,
                 );
             }
             err.emit();
