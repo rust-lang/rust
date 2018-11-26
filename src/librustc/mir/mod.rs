@@ -153,7 +153,7 @@ pub struct Mir<'tcx> {
     /// `||` expression into `&` or `|` respectively. This is problematic because if we ever stop
     /// this conversion from happening and use short circuiting, we will cause the following code
     /// to change the value of `x`: `let mut x = 42; false && { x = 55; true };`
-    pub const_can_have_let_mut_bindings: bool,
+    pub control_flow_destroyed: bool,
 
     /// A span representing this MIR, for error reporting
     pub span: Span,
@@ -173,7 +173,7 @@ impl<'tcx> Mir<'tcx> {
         arg_count: usize,
         upvar_decls: Vec<UpvarDecl>,
         span: Span,
-        const_can_have_let_mut_bindings: bool,
+        control_flow_destroyed: bool,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place
         assert!(
@@ -198,7 +198,7 @@ impl<'tcx> Mir<'tcx> {
             spread_arg: None,
             span,
             cache: cache::Cache::new(),
-            const_can_have_let_mut_bindings,
+            control_flow_destroyed,
         }
     }
 
@@ -429,7 +429,7 @@ impl_stable_hash_for!(struct Mir<'tcx> {
     arg_count,
     upvar_decls,
     spread_arg,
-    const_can_have_let_mut_bindings,
+    control_flow_destroyed,
     span,
     cache
 });
@@ -2983,7 +2983,7 @@ BraceStructTypeFoldableImpl! {
         arg_count,
         upvar_decls,
         spread_arg,
-        const_can_have_let_mut_bindings,
+        control_flow_destroyed,
         span,
         cache,
     }

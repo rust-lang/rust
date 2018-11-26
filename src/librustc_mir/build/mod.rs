@@ -864,7 +864,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.arg_count,
             self.upvar_decls,
             self.fn_span,
-            self.hir.const_can_have_let_mut_bindings(),
+            self.hir.control_flow_destroyed(),
         )
     }
 

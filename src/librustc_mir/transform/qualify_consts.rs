@@ -1183,7 +1183,7 @@ impl MirPass for QualifyAndPromoteConstants {
             // Do the actual promotion, now that we know what's viable.
             promote_consts::promote_candidates(mir, tcx, temps, candidates);
         } else {
-            if !mir.const_can_have_let_mut_bindings {
+            if mir.control_flow_destroyed {
                 for local in mir.mut_vars_iter() {
                     let span = mir.local_decls[local].source_info.span;
                     tcx.sess.span_err(

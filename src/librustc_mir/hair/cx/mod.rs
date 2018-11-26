@@ -58,7 +58,7 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     check_overflow: bool,
 
     /// See field with the same name on `Mir`
-    const_can_have_let_mut_bindings: bool,
+    control_flow_destroyed: bool,
 }
 
 impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
@@ -99,12 +99,12 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
             constness,
             body_owner_kind,
             check_overflow,
-            const_can_have_let_mut_bindings: true,
+            control_flow_destroyed: false,
         }
     }
 
-    pub fn const_can_have_let_mut_bindings(&self) -> bool {
-        self.const_can_have_let_mut_bindings
+    pub fn control_flow_destroyed(&self) -> bool {
+        self.control_flow_destroyed
     }
 }
 
