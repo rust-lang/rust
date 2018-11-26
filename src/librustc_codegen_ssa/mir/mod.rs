@@ -673,7 +673,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             for (field, name, by_ref, ty) in extra_locals {
                 let byte_offset_of_var_in_env = closure_layout.fields.offset(field).bytes();
 
-                let ops = bx.debuginfo_upvar_decls_ops_sequence(byte_offset_of_var_in_env);
+                let ops = bx.debuginfo_upvar_ops_sequence(byte_offset_of_var_in_env);
 
                 // The environment and the capture can each be indirect.
                 let mut ops = if env_ref { &ops[..] } else { &ops[1..] };

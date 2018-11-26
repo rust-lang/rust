@@ -542,7 +542,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         finalize(self)
     }
 
-    fn debuginfo_upvar_decls_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> [i64; 4] {
+    fn debuginfo_upvar_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> [i64; 4] {
         unsafe {
             [llvm::LLVMRustDIBuilderCreateOpDeref(),
              llvm::LLVMRustDIBuilderCreateOpPlusUconst(),
