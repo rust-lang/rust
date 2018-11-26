@@ -5182,6 +5182,8 @@ impl<'a> Parser<'a> {
         let mut params = Vec::new();
         let mut seen_ty_param: Option<Span> = None;
         let mut last_comma_span = None;
+        let mut bad_lifetime_pos = vec![];
+        let mut suggestions = vec![];
         loop {
             let attrs = self.parse_outer_attributes()?;
             if self.check_lifetime() {
@@ -5207,20 +5209,12 @@ impl<'a> Parser<'a> {
                     } else {
                         last_comma_span.unwrap_or(param_span).to(param_span)
                     };
-                    let mut err = self.struct_span_err(
-                        self.prev_span,
-                        "lifetime parameters must be declared prior to type parameters",
-                    );
+                    bad_lifetime_pos.push(param_span);
+
                     if let Ok(snippet) = self.sess.source_map().span_to_snippet(param_span) {
-                        err.multipart_suggestion(
-                            "move the lifetime parameter prior to the first type parameter",
-                            vec![
-                                (remove_sp, String::new()),
-                                (sp.shrink_to_lo(), format!("{}, ", snippet)),
-                            ],
-                        );
+                        suggestions.push((remove_sp, String::new()));
+                        suggestions.push((sp.shrink_to_lo(), format!("{}, ", snippet)));
                     }
-                    err.emit();
                     if ate_comma {
                         last_comma_span = Some(self.prev_span);
                         continue
@@ -5246,6 +5240,19 @@ impl<'a> Parser<'a> {
                 break
             }
             last_comma_span = Some(self.prev_span);
+        }
+        if !bad_lifetime_pos.is_empty() {
+            let mut err = self.struct_span_err(
+                bad_lifetime_pos,
+                "lifetime parameters must be declared prior to type parameters",
+            );
+            if !suggestions.is_empty() {
+                err.multipart_suggestion(
+                    "move the lifetime parameter prior to the first type parameter",
+                    suggestions,
+                );
+            }
+            err.emit();
         }
         lifetimes.extend(params);  // ensure the correct order of lifetimes and type params
         Ok(lifetimes)

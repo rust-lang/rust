@@ -12,4 +12,10 @@ struct C<T, U, 'a> {
     u: U,
 }
 
+struct D<T, U, 'a, 'b, V, 'c> {
+    t: &'a T,
+    u: &'b U,
+    v: &'c V,
+}
+
 fn main() {}
