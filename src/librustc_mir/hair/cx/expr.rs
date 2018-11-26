@@ -23,6 +23,7 @@ use rustc::hir;
 use rustc::hir::def_id::LocalDefId;
 use rustc::mir::{BorrowKind};
 use syntax_pos::Span;
+use syntax::errors::Applicability;
 
 impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
     type Output = Expr<'tcx>;
@@ -373,6 +374,17 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     // they can handle that kind of control-flow.
                     (hir::BinOpKind::And, hir::Constness::Const) => {
                         cx.control_flow_destroyed = true;
+                        cx.tcx.sess.struct_span_warn(
+                            op.span,
+                            "boolean short circuiting operators in constants do
+                             not actually short circuit. Thus new const eval features
+                             are not accessible in constants."
+                        ).span_suggestion_with_applicability(
+                            op.span,
+                            "use a bit operator instead",
+                            "&".into(),
+                            Applicability::MachineApplicable,
+                        ).emit();
                         ExprKind::Binary {
                             op: BinOp::BitAnd,
                             lhs: lhs.to_ref(),
@@ -381,6 +393,17 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                     }
                     (hir::BinOpKind::Or, hir::Constness::Const) => {
                         cx.control_flow_destroyed = true;
+                        cx.tcx.sess.struct_span_warn(
+                            op.span,
+                            "boolean short circuiting operators in constants do
+                             not actually short circuit. Thus new const eval features
+                             are not accessible in constants."
+                        ).span_suggestion_with_applicability(
+                            op.span,
+                            "use a bit operator instead",
+                            "|".into(),
+                            Applicability::MachineApplicable,
+                        ).emit();
                         ExprKind::Binary {
                             op: BinOp::BitOr,
                             lhs: lhs.to_ref(),
