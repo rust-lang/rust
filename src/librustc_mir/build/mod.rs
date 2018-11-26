@@ -375,7 +375,7 @@ struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     var_indices: HirIdMap<LocalsForNode>,
     local_decls: IndexVec<Local, LocalDecl<'tcx>>,
     canonical_user_type_annotations: ty::CanonicalUserTypeAnnotations<'tcx>,
-    upvar_decls: Vec<UpvarDecl>,
+    __upvar_debuginfo_codegen_only_do_not_use: Vec<UpvarDebuginfo>,
     upvar_mutbls: Vec<Mutability>,
     unit_temp: Option<Place<'tcx>>,
 
@@ -631,7 +631,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     // closure and we stored in a map called upvar_list in TypeckTables indexed
     // with the closure's DefId. Here, we run through that vec of UpvarIds for
     // the given closure and use the necessary information to create UpvarDecl.
-    let upvar_decls: Vec<_> = hir_tables
+    let upvar_debuginfo: Vec<_> = hir_tables
         .upvar_list
         .get(&fn_def_id)
         .into_iter()
@@ -644,14 +644,14 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 ty::UpvarCapture::ByValue => false,
                 ty::UpvarCapture::ByRef(..) => true,
             };
-            let mut decl = UpvarDecl {
+            let mut debuginfo = UpvarDebuginfo {
                 debug_name: keywords::Invalid.name(),
                 by_ref,
             };
             let mut mutability = Mutability::Not;
             if let Some(Node::Binding(pat)) = tcx_hir.find(var_node_id) {
                 if let hir::PatKind::Binding(_, _, ident, _) = pat.node {
-                    decl.debug_name = ident.name;
+                    debuginfo.debug_name = ident.name;
                     if let Some(&bm) = hir.tables.pat_binding_modes().get(pat.hir_id) {
                         if bm == ty::BindByValue(hir::MutMutable) {
                             mutability = Mutability::Mut;
@@ -664,7 +664,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
                 }
             }
             upvar_mutbls.push(mutability);
-            decl
+            debuginfo
         })
         .collect();
 
@@ -674,7 +674,7 @@ fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
         safety,
         return_ty,
         return_ty_span,
-        upvar_decls,
+        upvar_debuginfo,
         upvar_mutbls);
 
     let call_site_scope = region::Scope {
@@ -778,7 +778,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
            safety: Safety,
            return_ty: Ty<'tcx>,
            return_span: Span,
-           upvar_decls: Vec<UpvarDecl>,
+           __upvar_debuginfo_codegen_only_do_not_use: Vec<UpvarDebuginfo>,
            upvar_mutbls: Vec<Mutability>)
            -> Builder<'a, 'gcx, 'tcx> {
         let lint_level = LintLevel::Explicit(hir.root_lint_level);
@@ -801,7 +801,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 1,
             ),
             canonical_user_type_annotations: IndexVec::new(),
-            upvar_decls,
+            __upvar_debuginfo_codegen_only_do_not_use,
             upvar_mutbls,
             var_indices: Default::default(),
             unit_temp: None,
@@ -837,7 +837,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.local_decls,
             self.canonical_user_type_annotations,
             self.arg_count,
-            self.upvar_decls,
+            self.__upvar_debuginfo_codegen_only_do_not_use,
             self.fn_span,
             self.hir.control_flow_destroyed(),
         )

@@ -146,7 +146,11 @@ pub struct Mir<'tcx> {
 
     /// Names and capture modes of all the closure upvars, assuming
     /// the first argument is either the closure or a reference to it.
-    pub upvar_decls: Vec<UpvarDecl>,
+    // NOTE(eddyb) This is *strictly* a temporary hack for codegen
+    // debuginfo generation, and will be removed at some point.
+    // Do **NOT** use it for anything else, upvar information should not be
+    // in the MIR, please rely on local crate HIR or other side-channels.
+    pub __upvar_debuginfo_codegen_only_do_not_use: Vec<UpvarDebuginfo>,
 
     /// Mark this MIR of a const context other than const functions as having converted a `&&` or
     /// `||` expression into `&` or `|` respectively. This is problematic because if we ever stop
@@ -173,7 +177,7 @@ impl<'tcx> Mir<'tcx> {
         local_decls: LocalDecls<'tcx>,
         user_type_annotations: CanonicalUserTypeAnnotations<'tcx>,
         arg_count: usize,
-        upvar_decls: Vec<UpvarDecl>,
+        __upvar_debuginfo_codegen_only_do_not_use: Vec<UpvarDebuginfo>,
         span: Span,
         control_flow_destroyed: Vec<(Span, String)>,
     ) -> Self {
@@ -197,7 +201,7 @@ impl<'tcx> Mir<'tcx> {
             local_decls,
             user_type_annotations,
             arg_count,
-            upvar_decls,
+            __upvar_debuginfo_codegen_only_do_not_use,
             spread_arg: None,
             span,
             cache: cache::Cache::new(),
@@ -431,7 +435,7 @@ impl_stable_hash_for!(struct Mir<'tcx> {
     local_decls,
     user_type_annotations,
     arg_count,
-    upvar_decls,
+    __upvar_debuginfo_codegen_only_do_not_use,
     spread_arg,
     control_flow_destroyed,
     span,
@@ -983,7 +987,7 @@ impl<'tcx> LocalDecl<'tcx> {
 
 /// A closure capture, with its name and mode.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable, HashStable)]
-pub struct UpvarDecl {
+pub struct UpvarDebuginfo {
     pub debug_name: Name,
 
     /// If true, the capture is behind a reference.
@@ -3151,7 +3155,7 @@ CloneTypeFoldableAndLiftImpls! {
     MirPhase,
     Mutability,
     SourceInfo,
-    UpvarDecl,
+    UpvarDebuginfo,
     FakeReadCause,
     RetagKind,
     SourceScope,
@@ -3173,7 +3177,7 @@ BraceStructTypeFoldableImpl! {
         local_decls,
         user_type_annotations,
         arg_count,
-        upvar_decls,
+        __upvar_debuginfo_codegen_only_do_not_use,
         spread_arg,
         control_flow_destroyed,
         span,
