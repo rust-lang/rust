@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![no_std]
+#![crate_type = "lib"]
+
 #[macro_use]
 extern crate foo;
 
 #[derive(A)]
 struct A;
-
-fn main() {
-    let _b = B;
-}
