@@ -168,9 +168,35 @@ fn main_loop_inner(
                     let workspaces = vec![ws];
                     feedback(internal_mode, "workspace loaded", msg_sender);
                     for ws in workspaces.iter() {
-                        for pkg in ws.packages().filter(|pkg| !pkg.is_member(ws)) {
-                            debug!("sending root, {}", pkg.root(ws).to_path_buf().display());
-                            fs_worker.send(pkg.root(ws).to_path_buf());
+                        // Add each library as constant input. If library is
+                        // within the workspace, don't treat it as a library.
+                        //
+                        // HACK: If source roots are nested, pick the outer one.
+
+                        let mut roots = ws
+                            .packages()
+                            .filter(|pkg| !pkg.is_member(ws))
+                            .filter_map(|pkg| {
+                                let root = pkg.root(ws).to_path_buf();
+                                if root.starts_with(&ws_root) {
+                                    None
+                                } else {
+                                    Some(root)
+                                }
+                            })
+                            .collect::<Vec<_>>();
+                        roots.sort_by_key(|it| it.as_os_str().len());
+                        let unique = roots
+                            .iter()
+                            .enumerate()
+                            .filter(|&(idx, long)| {
+                                !roots[..idx].iter().any(|short| long.starts_with(short))
+                            })
+                            .map(|(_idx, root)| root);
+
+                        for root in unique {
+                            debug!("sending root, {}", root.display());
+                            fs_worker.send(root.to_owned());
                         }
                     }
                     state.set_workspaces(workspaces);

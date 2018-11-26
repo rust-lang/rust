@@ -59,6 +59,9 @@ impl FileResolverImp {
     pub(crate) fn resolve(&self, file_id: FileId, path: &RelativePath) -> Option<FileId> {
         self.inner.resolve(file_id, path)
     }
+    pub(crate) fn debug_path(&self, file_id: FileId) -> Option<std::path::PathBuf> {
+        self.inner.debug_path(file_id)
+    }
     fn inner(&self) -> *const FileResolver {
         &*self.inner
     }
@@ -138,6 +141,11 @@ impl AnalysisHostImpl {
                 let mut files = FxHashSet::default();
                 for (file_id, text) in library.files {
                     files.insert(file_id);
+                    log::debug!(
+                        "library file: {:?} {:?}",
+                        file_id,
+                        library.file_resolver.debug_path(file_id)
+                    );
                     self.db
                         .query_mut(crate::input::FileSourceRootQuery)
                         .set_constant(file_id, source_root_id);

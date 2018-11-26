@@ -79,6 +79,10 @@ impl FileResolver for PathMap {
         let path = normalize(&path);
         self.get_id(&path)
     }
+
+    fn debug_path(&self, file_id: FileId) -> Option<PathBuf> {
+        Some(self.get_path(file_id).to_owned())
+    }
 }
 
 fn normalize(path: &Path) -> PathBuf {
