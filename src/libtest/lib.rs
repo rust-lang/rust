@@ -1150,7 +1150,7 @@ where
         while !remaining.is_empty() {
             let test = remaining.pop().unwrap();
             callback(TeWait(test.desc.clone()))?;
-            run_test(opts, !opts.run_tests, test, tx.clone());
+            run_test(opts, !opts.run_tests, test, tx.clone(), /*concurrency*/false);
             let (test, result, stdout) = rx.recv().unwrap();
             callback(TeResult(test, result, stdout))?;
         }
@@ -1161,7 +1161,7 @@ where
                 let timeout = Instant::now() + Duration::from_secs(TEST_WARN_TIMEOUT_S);
                 running_tests.insert(test.desc.clone(), timeout);
                 callback(TeWait(test.desc.clone()))?; //here no pad
-                run_test(opts, !opts.run_tests, test, tx.clone());
+                run_test(opts, !opts.run_tests, test, tx.clone(), /*concurrency*/true);
                 pending += 1;
             }
 
@@ -1193,7 +1193,7 @@ where
         // All benchmarks run at the end, in serial.
         for b in filtered_benchs {
             callback(TeWait(b.desc.clone()))?;
-            run_test(opts, false, b, tx.clone());
+            run_test(opts, false, b, tx.clone(), /*concurrency*/true);
             let (test, result, stdout) = rx.recv().unwrap();
             callback(TeResult(test, result, stdout))?;
         }
@@ -1395,6 +1395,7 @@ pub fn run_test(
     force_ignore: bool,
     test: TestDescAndFn,
     monitor_ch: Sender<MonitorMsg>,
+    concurrency: bool,
 ) {
     let TestDescAndFn { desc, testfn } = test;
 
@@ -1411,6 +1412,7 @@ pub fn run_test(
         monitor_ch: Sender<MonitorMsg>,
         nocapture: bool,
         testfn: Box<dyn FnBox() + Send>,
+        concurrency: bool,
     ) {
         // Buffer for capturing standard I/O
         let data = Arc::new(Mutex::new(Vec::new()));
@@ -1445,7 +1447,7 @@ pub fn run_test(
         // the test synchronously, regardless of the concurrency
         // level.
         let supports_threads = !cfg!(target_os = "emscripten") && !cfg!(target_arch = "wasm32");
-        if supports_threads {
+        if concurrency && supports_threads {
             let cfg = thread::Builder::new().name(name.as_slice().to_owned());
             cfg.spawn(runtest).unwrap();
         } else {
@@ -1466,13 +1468,14 @@ pub fn run_test(
         }
         DynTestFn(f) => {
             let cb = move || __rust_begin_short_backtrace(f);
-            run_test_inner(desc, monitor_ch, opts.nocapture, Box::new(cb))
+            run_test_inner(desc, monitor_ch, opts.nocapture, Box::new(cb), concurrency)
         }
         StaticTestFn(f) => run_test_inner(
             desc,
             monitor_ch,
             opts.nocapture,
             Box::new(move || __rust_begin_short_backtrace(f)),
+            concurrency,
         ),
     }
 }
