@@ -199,6 +199,7 @@ impl<'a, 'mir, 'tcx> ConstPropagator<'a, 'mir, 'tcx> {
                     | CalledClosureAsFunction
                     | VtableForArgumentlessMethod
                     | ModifiedConstantMemory
+                    | ModifiedStatic
                     | AssumptionNotHeld
                     // FIXME: should probably be removed and turned into a bug! call
                     | TypeNotPrimitive(_)

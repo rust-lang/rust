@@ -243,13 +243,52 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             return;
         }
 
-        match *dest {
-            Place::Local(index) if (self.mir.local_kind(index) == LocalKind::Var ||
-                                   self.mir.local_kind(index) == LocalKind::Arg) &&
-                                   self.tcx.sess.features_untracked().const_let => {
-                debug!("store to var {:?}", index);
-                self.local_qualif[index] = Some(self.qualif);
+        if self.tcx.features().const_let {
+            let mut dest = dest;
+            let index = loop {
+                match dest {
+                    // with `const_let` active, we treat all locals equal
+                    Place::Local(index) => break *index,
+                    // projections are transparent for assignments
+                    // we qualify the entire destination at once, even if just a field would have
+                    // stricter qualification
+                    Place::Projection(proj) => {
+                        // Catch more errors in the destination. `visit_place` also checks various
+                        // projection rules like union field access and raw pointer deref
+                        self.visit_place(
+                            dest,
+                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            location
+                        );
+                        dest = &proj.base;
+                    },
+                    Place::Promoted(..) => bug!("promoteds don't exist yet during promotion"),
+                    Place::Static(..) => {
+                        // Catch more errors in the destination. `visit_place` also checks that we
+                        // do not try to access statics from constants or try to mutate statics
+                        self.visit_place(
+                            dest,
+                            PlaceContext::MutatingUse(MutatingUseContext::Store),
+                            location
+                        );
+                        return;
+                    }
+                }
+            };
+            debug!("store to var {:?}", index);
+            match &mut self.local_qualif[index] {
+                // this is overly restrictive, because even full assignments do not clear the qualif
+                // While we could special case full assignments, this would be inconsistent with
+                // aggregates where we overwrite all fields via assignments, which would not get
+                // that feature.
+                Some(ref mut qualif) => *qualif = *qualif | self.qualif,
+                // insert new qualification
+                qualif @ None => *qualif = Some(self.qualif),
             }
+            return;
+        }
+
+        match *dest {
             Place::Local(index) if self.mir.local_kind(index) == LocalKind::Temp ||
                                    self.mir.local_kind(index) == LocalKind::ReturnPointer => {
                 debug!("store to {:?} (temp or return pointer)", index);
@@ -478,6 +517,16 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
 
                 // Only allow statics (not consts) to refer to other statics.
                 if self.mode == Mode::Static || self.mode == Mode::StaticMut {
+                    if context.is_mutating_use() {
+                        // this is not strictly necessary as miri will also bail out
+                        // For interior mutability we can't really catch this statically as that
+                        // goes through raw pointers and intermediate temporaries, so miri has
+                        // to catch this anyway
+                        self.tcx.sess.span_err(
+                            self.span,
+                            "cannot mutate statics in the initializer of another static",
+                        );
+                    }
                     return;
                 }
                 self.add(Qualif::NOT_CONST);

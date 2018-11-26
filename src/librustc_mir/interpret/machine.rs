@@ -89,7 +89,8 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
         Default +
         Clone;
 
-    /// The memory kind to use for copied statics -- or None if those are not supported.
+    /// The memory kind to use for copied statics -- or None if statics should not be mutated
+    /// and thus any such attempt will cause a `ModifiedStatic` error to be raised.
     /// Statics are copied under two circumstances: When they are mutated, and when
     /// `static_with_default_tag` or `find_foreign_static` (see below) returns an owned allocation
     /// that is added to the memory so that the work is not done twice.

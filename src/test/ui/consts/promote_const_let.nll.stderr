@@ -1,0 +1,14 @@
+error[E0597]: `y` does not live long enough
+  --> $DIR/promote_const_let.rs:6:9
+   |
+LL |     let x: &'static u32 = {
+   |            ------------ type annotation requires that `y` is borrowed for `'static`
+LL |         let y = 42;
+LL |         &y //~ ERROR does not live long enough
+   |         ^^ borrowed value does not live long enough
+LL |     };
+   |     - `y` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

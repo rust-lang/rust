@@ -308,6 +308,7 @@ pub enum EvalErrorKind<'tcx, O> {
     CalledClosureAsFunction,
     VtableForArgumentlessMethod,
     ModifiedConstantMemory,
+    ModifiedStatic,
     AssumptionNotHeld,
     InlineAsm,
     TypeNotPrimitive(Ty<'tcx>),
@@ -412,6 +413,8 @@ impl<'tcx, O> EvalErrorKind<'tcx, O> {
                 "tried to call a vtable function without arguments",
             ModifiedConstantMemory =>
                 "tried to modify constant memory",
+            ModifiedStatic =>
+                "tried to modify a static's initial value from another static's initializer",
             AssumptionNotHeld =>
                 "`assume` argument was false",
             InlineAsm =>
