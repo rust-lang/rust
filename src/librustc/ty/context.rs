@@ -876,7 +876,7 @@ pub struct FreeRegionInfo {
 /// various **compiler queries** that have been performed. See the
 /// [rustc guide] for more details.
 ///
-/// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/ty.html
+/// [rustc guide]: https://rust-lang.github.io/rustc-guide/ty.html
 #[derive(Copy, Clone)]
 pub struct TyCtxt<'a, 'gcx: 'tcx, 'tcx: 'a> {
     gcx: &'a GlobalCtxt<'gcx>,

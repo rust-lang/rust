@@ -14,7 +14,7 @@
 //! For more information about how MIR-based region-checking works,
 //! see the [rustc guide].
 //!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/mir/borrowck.html
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/borrowck.html
 
 use ich::{StableHashingContext, NodeIdHashingMode};
 use util::nodemap::{FxHashMap, FxHashSet};

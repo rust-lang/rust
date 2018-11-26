@@ -329,7 +329,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// For more information about how placeholders and HRTBs work, see
     /// the [rustc guide].
     ///
-    /// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/hrtb.html
+    /// [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/hrtb.html
     pub fn replace_bound_vars_with_placeholders<T>(
         &self,
         binder: &ty::Binder<T>
