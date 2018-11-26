@@ -5,7 +5,7 @@ use rustc::hir::{Mutability, MutMutable, MutImmutable};
 
 use crate::{
     EvalResult, EvalErrorKind, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
-    MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra, InboundsCheck,
+    MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra,
     Pointer, MemPlace, Scalar, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
@@ -500,8 +500,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         }
 
         // Get the allocation
-        self.memory().check_bounds(ptr, size, InboundsCheck::Live)?;
-        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
+        let alloc = self.memory().get(ptr.alloc_id)?;
+        alloc.check_bounds(self, ptr, size)?;
         // If we got here, we do some checking, *but* we leave the tag unchanged.
         if let Borrow::Shr(Some(_)) = ptr.tag {
             assert_eq!(mutability, Some(MutImmutable));
@@ -543,8 +543,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             ptr, place.layout.ty, new_bor);
 
         // Get the allocation.  It might not be mutable, so we cannot use `get_mut`.
-        self.memory().check_bounds(ptr, size, InboundsCheck::Live)?;
-        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
+        let alloc = self.memory().get(ptr.alloc_id)?;
+        alloc.check_bounds(self, ptr, size)?;
         // Update the stacks.
         if let Borrow::Shr(Some(_)) = new_bor {
             // Reference that cares about freezing. We need a frozen-sensitive reborrow.

@@ -28,7 +28,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
         if self.emulate_intrinsic(instance, args, dest)? {
             return Ok(());
         }
-
+        let tcx = &{self.tcx.tcx};
         let substs = instance.substs;
 
         // All these intrinsics take raw pointers, so if we access memory directly
@@ -248,6 +248,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 // FIXME: We do not properly validate in case of ZSTs and when doing it in memory!
                 // However, this only affects direct calls of the intrinsic; calls to the stable
                 // functions wrapping them do get their validation.
+                // FIXME: should we check that the destination pointer is aligned even for ZSTs?
                 if !dest.layout.is_zst() { // nothing to do for ZST
                     match dest.layout.abi {
                         layout::Abi::Scalar(ref s) => {
@@ -263,7 +264,9 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                             // Do it in memory
                             let mplace = self.force_allocation(dest)?;
                             assert!(mplace.meta.is_none());
-                            self.memory_mut().write_repeat(mplace.ptr, 0, dest.layout.size)?;
+                            // not a zst, must be valid pointer
+                            let ptr = mplace.ptr.to_ptr()?;
+                            self.memory_mut().get_mut(ptr.alloc_id)?.write_repeat(tcx, ptr, 0, dest.layout.size)?;
                         }
                     }
                 }
@@ -412,6 +415,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 // FIXME: We do not properly validate in case of ZSTs and when doing it in memory!
                 // However, this only affects direct calls of the intrinsic; calls to the stable
                 // functions wrapping them do get their validation.
+                // FIXME: should we check alignment for ZSTs?
                 if !dest.layout.is_zst() { // nothing to do for ZST
                     match dest.layout.abi {
                         layout::Abi::Scalar(..) => {
@@ -426,7 +430,10 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                             // Do it in memory
                             let mplace = self.force_allocation(dest)?;
                             assert!(mplace.meta.is_none());
-                            self.memory_mut().mark_definedness(mplace.ptr.to_ptr()?, dest.layout.size, false)?;
+                            let ptr = mplace.ptr.to_ptr()?;
+                            self.memory_mut()
+                                .get_mut(ptr.alloc_id)?
+                                .mark_definedness(ptr, dest.layout.size, false)?;
                         }
                     }
                 }
@@ -439,7 +446,13 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for super::MiriEvalContext<'a, 'mir, '
                 let ptr = self.read_scalar(args[0])?.not_undef()?;
                 let count = self.read_scalar(args[2])?.to_usize(self)?;
                 self.memory().check_align(ptr, ty_layout.align.abi)?;
-                self.memory_mut().write_repeat(ptr, val_byte, ty_layout.size * count)?;
+                let byte_count = ty_layout.size * count;
+                if byte_count.bytes() != 0 {
+                    let ptr = ptr.to_ptr()?;
+                    self.memory_mut()
+                        .get_mut(ptr.alloc_id)?
+                        .write_repeat(tcx, ptr, val_byte, byte_count)?;
+                }
             }
 
             name => return err!(Unimplemented(format!("unimplemented intrinsic: {}", name))),
