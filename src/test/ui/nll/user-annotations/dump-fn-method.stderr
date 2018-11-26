@@ -16,7 +16,7 @@ error: user substs: Canonical { max_universe: U0, variables: [], value: UserSubs
 LL |     let x = <u8 as Bazoom<u16>>::method::<u32>; //~ ERROR [u8, u16, u32]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: user substs: Canonical { max_universe: U1, variables: [CanonicalVarInfo { kind: Ty(General(U1)) }, CanonicalVarInfo { kind: Ty(General(U1)) }], value: UserSubsts { substs: [^0, ^1, u32], user_self_ty: None } }
+error: user substs: Canonical { max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }, CanonicalVarInfo { kind: Ty(General(U0)) }], value: UserSubsts { substs: [^0, ^1, u32], user_self_ty: None } }
   --> $DIR/dump-fn-method.rs:54:5
    |
 LL |     y.method::<u32>(44, 66); //~ ERROR [^0, ^1, u32]
