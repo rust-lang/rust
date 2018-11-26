@@ -621,19 +621,24 @@ impl<K, V, S> HashMap<K, V, S>
     /// assert_eq!(letters.get(&'y'), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn entry(&mut self, key: K) -> Entry<K, V, S> {
+    pub fn entry(&mut self, key: K) -> Entry<K, V> {
+        // Ideally we would put this in VacantEntry::insert, but Entry is not
+        // generic over the BuildHasher and adding a generic parameter would be
+        // a breaking change.
+        self.reserve(1);
+
         let hash = make_hash(&self.hash_builder, &key);
         if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
             Entry::Occupied(OccupiedEntry {
                 key: Some(key),
                 elem,
-                table: self,
+                table: &mut self.table,
             })
         } else {
             Entry::Vacant(VacantEntry {
                 hash,
                 key,
-                table: self,
+                table: &mut self.table,
             })
         }
     }
@@ -1740,20 +1745,20 @@ impl<'a, K, V, S> Debug for RawEntryBuilder<'a, K, V, S> {
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
 #[stable(feature = "rust1", since = "1.0.0")]
-pub enum Entry<'a, K: 'a, V: 'a, S: 'a> {
+pub enum Entry<'a, K: 'a, V: 'a> {
     /// An occupied entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Occupied(#[stable(feature = "rust1", since = "1.0.0")]
-             OccupiedEntry<'a, K, V, S>),
+             OccupiedEntry<'a, K, V>),
 
     /// A vacant entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Vacant(#[stable(feature = "rust1", since = "1.0.0")]
-           VacantEntry<'a, K, V, S>),
+           VacantEntry<'a, K, V>),
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a + Debug, S: BuildHasher> Debug for Entry<'a, K, V, S> {
+impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for Entry<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Vacant(ref v) => {
@@ -1775,31 +1780,29 @@ impl<'a, K: 'a + Debug, V: 'a + Debug, S: BuildHasher> Debug for Entry<'a, K, V,
 ///
 /// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct OccupiedEntry<'a, K: 'a, V: 'a, S: 'a> {
+pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     key: Option<K>,
     elem: Bucket<(K, V)>,
-    table: &'a mut HashMap<K, V, S>,
+    table: &'a mut RawTable<(K, V)>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<'a, K, V, S> Send for OccupiedEntry<'a, K, V, S>
+unsafe impl<'a, K, V> Send for OccupiedEntry<'a, K, V>
 where
     K: Send,
     V: Send,
-    S: Send,
 {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<'a, K, V, S> Sync for OccupiedEntry<'a, K, V, S>
+unsafe impl<'a, K, V> Sync for OccupiedEntry<'a, K, V>
 where
     K: Sync,
     V: Sync,
-    S: Sync,
 {
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a + Debug, S> Debug for OccupiedEntry<'a, K, V, S> {
+impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
             .field("key", self.key())
@@ -1813,14 +1816,14 @@ impl<'a, K: 'a + Debug, V: 'a + Debug, S> Debug for OccupiedEntry<'a, K, V, S> {
 ///
 /// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct VacantEntry<'a, K: 'a, V: 'a, S: 'a> {
+pub struct VacantEntry<'a, K: 'a, V: 'a> {
     hash: u64,
     key: K,
-    table: &'a mut HashMap<K, V, S>,
+    table: &'a mut RawTable<(K, V)>,
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a, S> Debug for VacantEntry<'a, K, V, S> {
+impl<'a, K: 'a + Debug, V: 'a> Debug for VacantEntry<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("VacantEntry")
             .field(self.key())
@@ -2097,7 +2100,7 @@ impl<'a, K, V> fmt::Debug for Drain<'a, K, V>
     }
 }
 
-impl<'a, K, V, S> Entry<'a, K, V, S> {
+impl<'a, K, V> Entry<'a, K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
@@ -2115,11 +2118,7 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
     /// *map.entry("poneyland").or_insert(10) *= 2;
     /// assert_eq!(map["poneyland"], 6);
     /// ```
-    pub fn or_insert(self, default: V) -> &'a mut V
-    where
-        K: Hash,
-        S: BuildHasher,
-    {
+    pub fn or_insert(self, default: V) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default),
@@ -2142,11 +2141,7 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
     ///
     /// assert_eq!(map["poneyland"], "hoho".to_string());
     /// ```
-    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V
-    where
-        K: Hash,
-        S: BuildHasher,
-    {
+    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default()),
@@ -2206,7 +2201,7 @@ impl<'a, K, V, S> Entry<'a, K, V, S> {
 
 }
 
-impl<'a, K, V: Default, S> Entry<'a, K, V, S> {
+impl<'a, K, V: Default> Entry<'a, K, V> {
     #[stable(feature = "entry_or_default", since = "1.28.0")]
     /// Ensures a value is in the entry by inserting the default value if empty,
     /// and returns a mutable reference to the value in the entry.
@@ -2223,11 +2218,7 @@ impl<'a, K, V: Default, S> Entry<'a, K, V, S> {
     /// assert_eq!(map["poneyland"], None);
     /// # }
     /// ```
-    pub fn or_default(self) -> &'a mut V
-    where
-        K: Hash,
-        S: BuildHasher,
-    {
+    pub fn or_default(self) -> &'a mut V {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(Default::default()),
@@ -2235,7 +2226,7 @@ impl<'a, K, V: Default, S> Entry<'a, K, V, S> {
     }
 }
 
-impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
+impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// Gets a reference to the key in the entry.
     ///
     /// # Examples
@@ -2273,7 +2264,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     #[stable(feature = "map_entry_recover_keys2", since = "1.12.0")]
     pub fn remove_entry(self) -> (K, V) {
         unsafe {
-            self.table.table.erase_no_drop(&self.elem);
+            self.table.erase_no_drop(&self.elem);
             self.elem.read()
         }
     }
@@ -2467,7 +2458,7 @@ impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     }
 }
 
-impl<'a, K: 'a, V: 'a, S: 'a> VacantEntry<'a, K, V, S> {
+impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the `VacantEntry`.
     ///
@@ -2520,15 +2511,8 @@ impl<'a, K: 'a, V: 'a, S: 'a> VacantEntry<'a, K, V, S> {
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(self, value: V) -> &'a mut V
-    where
-        K: Hash,
-        S: BuildHasher,
-    {
-        let hash_builder = &self.table.hash_builder;
-        let bucket = self.table.table.insert(self.hash, (self.key, value), |x| {
-            make_hash(hash_builder, &x.0)
-        });
+    pub fn insert(self, value: V) -> &'a mut V {
+        let bucket = self.table.insert_no_grow(self.hash, (self.key, value));
         unsafe { &mut bucket.as_mut().1 }
     }
 }

@@ -646,7 +646,16 @@ impl<T> RawTable<T> {
     #[inline]
     pub fn insert(&mut self, hash: u64, value: T, hasher: impl Fn(&T) -> u64) -> Bucket<T> {
         self.reserve(1, hasher);
+        self.insert_no_grow(hash, value)
+    }
 
+    /// Inserts a new element into the table, without growing the table.
+    ///
+    /// There must be enough space in the table to insert the new element.
+    ///
+    /// This does not check if the given element already exists in the table.
+    #[inline]
+    pub fn insert_no_grow(&mut self, hash: u64, value: T) -> Bucket<T> {
         unsafe {
             let index = self.find_insert_slot(hash);
             let bucket = self.bucket(index);
