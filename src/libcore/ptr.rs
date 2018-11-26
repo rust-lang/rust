@@ -2523,7 +2523,7 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 /// let five_ref = &five;
 ///
 /// let mut hasher = DefaultHasher::new();
-/// ptr::hash(five_ref, hasher);
+/// ptr::hash(five_ref, &mut hasher);
 /// println!("Hash is {:x}!", hasher.finish());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")] // FIXME: replace with ???
