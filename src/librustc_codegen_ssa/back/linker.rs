@@ -1037,6 +1037,17 @@ impl<'a> Linker for WasmLd<'a> {
         // indicative of bugs, let's prevent them.
         self.cmd.arg("--fatal-warnings");
 
+        // The symbol visibility story is a bit in flux right now with LLD.
+        // It's... not entirely clear to me what's going on, but this looks to
+        // make everything work when `export_symbols` isn't otherwise called for
+        // things like executables.
+        self.cmd.arg("--export-dynamic");
+
+        // LLD only implements C++-like demangling, which doesn't match our own
+        // mangling scheme. Tell LLD to not demangle anything and leave it up to
+        // us to demangle these symbols later.
+        self.cmd.arg("--no-demangle");
+
         ::std::mem::replace(&mut self.cmd, Command::new(""))
     }
 

@@ -708,7 +708,11 @@ extern "C" LLVMMetadataRef LLVMRustDIBuilderCreateStaticVariable(
   llvm::DIGlobalVariableExpression *VarExpr = Builder->createGlobalVariableExpression(
       unwrapDI<DIDescriptor>(Context), Name, LinkageName,
       unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
-      InitExpr, unwrapDIPtr<MDNode>(Decl), AlignInBits);
+      InitExpr, unwrapDIPtr<MDNode>(Decl),
+#if LLVM_VERSION_GE(8, 0)
+      /* templateParams */ nullptr,
+#endif
+      AlignInBits);
 
   InitVal->setMetadata("dbg", VarExpr);
 
