@@ -209,6 +209,9 @@ declare_features! (
     // Allows the definition of `const fn` functions with some advanced features.
     (active, const_fn, "1.2.0", Some(24111), None),
 
+    // Allows let bindings and destructuring in `const fn` functions and constants.
+    (active, const_let, "1.22.1", Some(48821), None),
+
     // Allows accessing fields of unions inside const fn.
     (active, const_fn_union, "1.27.0", Some(51909), None),
 

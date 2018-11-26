@@ -12,6 +12,7 @@
 // The test should never compile successfully
 
 #![feature(const_raw_ptr_deref)]
+#![feature(const_let)]
 
 use std::cell::UnsafeCell;
 

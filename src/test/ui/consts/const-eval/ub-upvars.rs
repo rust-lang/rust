@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_transmute)]
+#![feature(const_transmute,const_let)]
 #![allow(const_err)] // make sure we cannot allow away the errors tested here
 
 use std::mem;

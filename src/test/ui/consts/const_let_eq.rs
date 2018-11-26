@@ -1,3 +1,5 @@
+#![feature(const_let, const_fn)]
+
 // run-pass
 
 struct Foo<T>(T);

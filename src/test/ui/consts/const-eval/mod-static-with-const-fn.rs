@@ -12,6 +12,7 @@
 // The test should never compile successfully
 
 #![feature(const_raw_ptr_deref)]
+#![feature(const_let)]
 
 use std::cell::UnsafeCell;
 
@@ -26,7 +27,7 @@ fn foo() {}
 
 static BAR: () = unsafe {
     *FOO.0.get() = 5;
-    //~^ ERROR static contains unimplemented expression
+    //~^ contains unimplemented expression
 
     foo();
     //~^ ERROR calls in statics are limited to constant functions, tuple structs and tuple variants

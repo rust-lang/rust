@@ -21,6 +21,17 @@ LL | }
    | - temporary value is freed at the end of this statement
 
 error[E0716]: temporary value dropped while borrowed
+  --> $DIR/promoted_raw_ptr_ops.rs:17:28
+   |
+LL |     let z: &'static i32 = &(unsafe { *(42 as *const i32) }); //~ ERROR does not live long enough
+   |            ------------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            |
+   |            type annotation requires that borrow lasts for `'static`
+LL |     let a: &'static bool = &(main as fn() == main as fn()); //~ ERROR does not live long enough
+LL | }
+   | - temporary value is freed at the end of this statement
+
+error[E0716]: temporary value dropped while borrowed
   --> $DIR/promoted_raw_ptr_ops.rs:18:29
    |
 LL |     let a: &'static bool = &(main as fn() == main as fn()); //~ ERROR does not live long enough
@@ -30,6 +41,6 @@ LL |     let a: &'static bool = &(main as fn() == main as fn()); //~ ERROR does 
 LL | }
    | - temporary value is freed at the end of this statement
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0716`.

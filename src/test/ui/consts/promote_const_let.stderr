@@ -1,5 +1,5 @@
 error[E0597]: `y` does not live long enough
-  --> $DIR/promote_const_let.rs:4:10
+  --> $DIR/promote_const_let.rs:6:10
    |
 LL |         &y //~ ERROR does not live long enough
    |          ^ borrowed value does not live long enough

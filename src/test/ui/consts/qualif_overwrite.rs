@@ -1,3 +1,5 @@
+#![feature(const_let)]
+
 use std::cell::Cell;
 
 // this is overly conservative. The reset to `None` should clear `a` of all qualifications

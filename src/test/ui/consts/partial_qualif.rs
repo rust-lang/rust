@@ -1,3 +1,5 @@
+#![feature(const_let)]
+
 use std::cell::Cell;
 
 const FOO: &(Cell<usize>, bool) = {

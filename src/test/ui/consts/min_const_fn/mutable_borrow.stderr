@@ -1,51 +1,14 @@
-error: mutable references in const fn are unstable
-  --> $DIR/mutable_borrow.rs:3:9
+error: local variables in const fn are unstable
+  --> $DIR/mutable_borrow.rs:2:9
    |
-LL |     let b = &mut a; //~ ERROR mutable references in const fn are unstable
-   |         ^
+LL |     let mut a = 0; //~ ERROR local variables in const fn
+   |         ^^^^^
 
-error: mutable references in const fn are unstable
-  --> $DIR/mutable_borrow.rs:12:13
+error: local variables in const fn are unstable
+  --> $DIR/mutable_borrow.rs:11:13
    |
-LL |         let b = &mut a; //~ ERROR mutable references in const fn are unstable
-   |             ^
+LL |         let mut a = 0; //~ ERROR local variables in const fn
+   |             ^^^^^
 
-error[E0017]: references in statics may only refer to immutable values
-  --> $DIR/mutable_borrow.rs:19:13
-   |
-LL |     let b = &mut a; //~ references in statics may only refer to immutable
-   |             ^^^^^^ statics require immutable values
+error: aborting due to 2 previous errors
 
-error[E0017]: references in statics may only refer to immutable values
-  --> $DIR/mutable_borrow.rs:26:15
-   |
-LL |     { let b = &mut a; }  //~ references in statics may only refer to immutable
-   |               ^^^^^^ statics require immutable values
-
-error[E0017]: references in statics may only refer to immutable values
-  --> $DIR/mutable_borrow.rs:37:17
-   |
-LL |     let mut a = &mut None; //~ references in statics may only refer to immutable values
-   |                 ^^^^^^^^^ statics require immutable values
-
-error[E0019]: static contains unimplemented expression type
-  --> $DIR/mutable_borrow.rs:39:5
-   |
-LL |     *a = Some(Foo); //~ unimplemented expression type
-   |     ^^
-
-error[E0597]: borrowed value does not live long enough
-  --> $DIR/mutable_borrow.rs:37:22
-   |
-LL |     let mut a = &mut None; //~ references in statics may only refer to immutable values
-   |                      ^^^^ temporary value does not live long enough
-...
-LL | };
-   | - temporary value only lives until here
-   |
-   = note: borrowed value must be valid for the static lifetime...
-
-error: aborting due to 7 previous errors
-
-Some errors occurred: E0017, E0019, E0597.
-For more information about an error, try `rustc --explain E0017`.

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 const fn x() {
-    let t = true;
-    let x = || t; //~ ERROR function pointers in const fn are unstable
+    let t = true; //~ ERROR local variables in const fn
+    let x = || t;
 }
 
 fn main() {}

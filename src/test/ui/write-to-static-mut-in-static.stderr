@@ -1,11 +1,11 @@
 error: cannot mutate statics in the initializer of another static
-  --> $DIR/write-to-static-mut-in-static.rs:12:33
+  --> $DIR/write-to-static-mut-in-static.rs:14:33
    |
 LL | pub static mut B: () = unsafe { A = 1; };
    |                                 ^^^^^
 
 error: cannot mutate statics in the initializer of another static
-  --> $DIR/write-to-static-mut-in-static.rs:15:34
+  --> $DIR/write-to-static-mut-in-static.rs:17:34
    |
 LL | pub static mut C: u32 = unsafe { C = 1; 0 };
    |                                  ^^^^^

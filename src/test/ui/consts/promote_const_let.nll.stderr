@@ -1,5 +1,5 @@
 error[E0597]: `y` does not live long enough
-  --> $DIR/promote_const_let.rs:4:9
+  --> $DIR/promote_const_let.rs:6:9
    |
 LL |     let x: &'static u32 = {
    |            ------------ type annotation requires that `y` is borrowed for `'static`

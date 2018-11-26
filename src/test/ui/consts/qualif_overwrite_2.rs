@@ -1,3 +1,5 @@
+#![feature(const_let)]
+
 use std::cell::Cell;
 
 // const qualification is not smart enough to know about fields and always assumes that there might

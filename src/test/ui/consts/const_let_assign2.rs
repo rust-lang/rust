@@ -1,5 +1,8 @@
 // compile-pass
 
+#![feature(const_let)]
+#![feature(const_fn)]
+
 pub struct AA {
     pub data: [u8; 10],
 }

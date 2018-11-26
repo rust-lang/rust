@@ -12,6 +12,7 @@
 // The test should never compile successfully
 
 #![feature(const_raw_ptr_deref)]
+#![feature(const_let)]
 
 use std::cell::UnsafeCell;
 
@@ -23,7 +24,7 @@ unsafe impl Sync for Foo {}
 static FOO: Foo = Foo(UnsafeCell::new(42));
 
 static BAR: () = unsafe {
-    *FOO.0.get() = 5; //~ ERROR static contains unimplemented expression type
+    *FOO.0.get() = 5; //~ ERROR contains unimplemented expression type
 };
 
 fn main() {}

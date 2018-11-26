@@ -1,3 +1,5 @@
+#![feature(const_let)]
+
 fn main() {
     let x: &'static u32 = {
         let y = 42;

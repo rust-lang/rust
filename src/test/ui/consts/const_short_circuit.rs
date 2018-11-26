@@ -1,4 +1,4 @@
-#![feature(underscore_const_names)]
+#![feature(underscore_const_names, const_let)]
 
 const _: bool = false && false; //~ WARN boolean short circuiting operators in constants
 const _: bool = true && false; //~ WARN boolean short circuiting operators in constants
