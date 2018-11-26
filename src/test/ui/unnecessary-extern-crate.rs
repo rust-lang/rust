@@ -13,10 +13,10 @@
 #![deny(unused_extern_crates)]
 #![feature(alloc, test, libc, crate_visibility_modifier)]
 
-extern crate alloc;
+extern crate libc;
 //~^ ERROR unused extern crate
 //~| HELP remove
-extern crate alloc as x;
+extern crate libc as x;
 //~^ ERROR unused extern crate
 //~| HELP remove
 
@@ -27,22 +27,22 @@ extern crate test;
 
 pub extern crate test as y;
 
-pub extern crate libc;
+pub extern crate alloc;
 
-pub(crate) extern crate libc as a;
+pub(crate) extern crate alloc as a;
 
-crate extern crate libc as b;
+crate extern crate alloc as b;
 
 mod foo {
-    pub(in crate::foo) extern crate libc as c;
+    pub(in crate::foo) extern crate alloc as c;
 
-    pub(super) extern crate libc as d;
+    pub(super) extern crate alloc as d;
 
-    extern crate alloc;
+    extern crate libc;
     //~^ ERROR unused extern crate
     //~| HELP remove
 
-    extern crate alloc as x;
+    extern crate libc as x;
     //~^ ERROR unused extern crate
     //~| HELP remove
 
@@ -51,35 +51,31 @@ mod foo {
     pub extern crate test as y;
 
     mod bar {
-        extern crate alloc;
+        extern crate libc;
         //~^ ERROR unused extern crate
         //~| HELP remove
 
-        extern crate alloc as x;
+        extern crate libc as x;
         //~^ ERROR unused extern crate
         //~| HELP remove
 
-        pub(in crate::foo::bar) extern crate libc as e;
+        pub(in crate::foo::bar) extern crate alloc as e;
 
         fn dummy() {
-            unsafe {
-                e::getpid();
-            }
+            e::string::String::new();
         }
     }
 
     fn dummy() {
-        unsafe {
-            c::getpid();
-            d::getpid();
-        }
+        c::string::String::new();
+        d::string::String::new();
     }
 }
 
 
 fn main() {
-    unsafe { a::getpid(); }
-    unsafe { b::getpid(); }
+    a::string::String::new();
+    b::string::String::new();
 
     proc_macro::TokenStream::new();
 }
