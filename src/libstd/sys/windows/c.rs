@@ -37,6 +37,7 @@ pub type ULONG = c_ulong;
 pub type ULONGLONG = u64;
 #[cfg(target_arch = "x86_64")]
 pub type DWORDLONG = ULONGLONG;
+pub type NTSTATUS = LONG;
 
 pub type LPBOOL = *mut BOOL;
 pub type LPBYTE = *mut BYTE;
@@ -69,6 +70,8 @@ pub type PSRWLOCK = *mut SRWLOCK;
 pub type SOCKET = crate::os::windows::raw::SOCKET;
 pub type socklen_t = c_int;
 pub type ADDRESS_FAMILY = USHORT;
+
+pub type ACCESS_MASK = DWORD;
 
 pub const TRUE: BOOL = 1;
 pub const FALSE: BOOL = 0;
@@ -107,6 +110,9 @@ pub const FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
 pub const SECURITY_SQOS_PRESENT: DWORD = 0x00100000;
 
 pub const FIONBIO: c_ulong = 0x8004667e;
+
+pub const STATUS_SUCCESS: NTSTATUS = 0x00000000;
+pub const STATUS_TIMEOUT: NTSTATUS = 0x00000102;
 
 #[cfg(target_arch = "arm")]
 const ARM_MAX_BREAKPOINTS: usize = 8;
@@ -1131,6 +1137,7 @@ extern "system" {
                               lpFilename: LPWSTR,
                               nSize: DWORD)
                               -> DWORD;
+    pub fn GetModuleHandleA(lpModuleName: LPCSTR) -> HMODULE;
     pub fn CreateDirectoryW(lpPathName: LPCWSTR,
                             lpSecurityAttributes: LPSECURITY_ATTRIBUTES)
                             -> BOOL;
