@@ -653,7 +653,6 @@ fn trans_stmt<'a, 'tcx: 'a>(
         | StatementKind::StorageDead(_)
         | StatementKind::Nop
         | StatementKind::FakeRead(..)
-        | StatementKind::EndRegion(_)
         | StatementKind::Retag { .. }
         | StatementKind::AscribeUserType(..)
         | StatementKind::EscapeToRaw(..) => {}
