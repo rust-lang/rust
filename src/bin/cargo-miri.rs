@@ -160,7 +160,7 @@ fn setup(ask_user: bool) {
     File::create(dir.join("Xargo.toml")).unwrap()
         .write_all(br#"
 [dependencies.std]
-features = ["panic_unwind", "backtrace"]
+features = ["panic_unwind"]
 
 [dependencies.test]
 stage = 1
