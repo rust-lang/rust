@@ -1071,8 +1071,12 @@ pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F)
 where
     F: FnMut(TestEvent) -> io::Result<()>,
 {
-    use std::collections::HashMap;
+    use std::collections::{self, HashMap};
+    use std::hash::BuildHasherDefault;
     use std::sync::mpsc::RecvTimeoutError;
+    // Use a deterministic hasher
+    type TestMap =
+        HashMap<TestDesc, Instant, BuildHasherDefault<collections::hash_map::DefaultHasher>>;
 
     let tests_len = tests.len();
 
@@ -1111,9 +1115,9 @@ where
 
     let (tx, rx) = channel::<MonitorMsg>();
 
-    let mut running_tests: HashMap<TestDesc, Instant> = HashMap::new();
+    let mut running_tests: TestMap = HashMap::default();
 
-    fn get_timed_out_tests(running_tests: &mut HashMap<TestDesc, Instant>) -> Vec<TestDesc> {
+    fn get_timed_out_tests(running_tests: &mut TestMap) -> Vec<TestDesc> {
         let now = Instant::now();
         let timed_out = running_tests
             .iter()
@@ -1131,7 +1135,7 @@ where
         timed_out
     };
 
-    fn calc_timeout(running_tests: &HashMap<TestDesc, Instant>) -> Option<Duration> {
+    fn calc_timeout(running_tests: &TestMap) -> Option<Duration> {
         running_tests.values().min().map(|next_timeout| {
             let now = Instant::now();
             if *next_timeout >= now {
