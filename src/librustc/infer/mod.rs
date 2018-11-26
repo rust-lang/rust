@@ -1519,6 +1519,17 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.universe.set(u);
         u
     }
+
+    /// Creates `amount` new universes at once and returns all the created universes
+    /// in ascending order.
+    pub fn create_next_universes(&self, amount: u32) -> impl Iterator<Item = ty::UniverseIndex> {
+        let start = self.universe.get();
+        let end = start.advance_by(amount);
+        self.universe.set(end);
+
+        // Empty range if `amount == 0`
+        (start.next_universe() ..= end).into_iter()
+    }
 }
 
 impl<'a, 'gcx, 'tcx> TypeTrace<'tcx> {

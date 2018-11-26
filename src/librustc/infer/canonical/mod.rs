@@ -315,14 +315,11 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
         T: TypeFoldable<'tcx>,
     {
         // For each universe that is referred to in the incoming
-        // query, create a universe in our local inference context. In
-        // practice, as of this writing, all queries have no universes
-        // in them, so this code has no effect, but it is looking
-        // forward to the day when we *do* want to carry universes
-        // through into queries.
+        // query, create a universe in our local inference context.
         let universes: IndexVec<ty::UniverseIndex, _> = std::iter::once(ty::UniverseIndex::ROOT)
-            .chain((0..canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
-            .collect();
+            .chain(
+                self.create_next_universes(canonical.max_universe.as_u32())
+            ).collect();
 
         let canonical_inference_vars =
             self.instantiate_canonical_vars(span, canonical.variables, |ui| universes[ui]);

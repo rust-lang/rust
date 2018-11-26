@@ -1568,6 +1568,11 @@ impl UniverseIndex {
         UniverseIndex::from_u32(self.private.checked_add(1).unwrap())
     }
 
+    /// Increases the universe index by `amount`.
+    pub fn advance_by(self, amount: u32) -> UniverseIndex {
+        UniverseIndex::from_u32(self.private.checked_add(amount).unwrap())
+    }
+
     /// Returns `true` if `self` can name a name from `other` -- in other words,
     /// if the set of names in `self` is a superset of those in
     /// `other` (`self >= other`).
