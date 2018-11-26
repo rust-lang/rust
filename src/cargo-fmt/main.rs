@@ -322,7 +322,8 @@ fn run_rustfmt(
     fmt_args: &[String],
     verbosity: Verbosity,
 ) -> Result<i32, io::Error> {
-    let by_edition = targets
+    let default_edition = String::from("2015");
+    let mut by_edition = targets
         .iter()
         .inspect(|t| {
             if verbosity == Verbosity::Verbose {
@@ -334,6 +335,9 @@ fn run_rustfmt(
             h.entry(t.0).or_insert_with(Vec::new).push(t.1);
             h
         });
+    if by_edition.is_empty() {
+        by_edition.insert(&default_edition, Vec::new());
+    }
 
     for (edition, files) in by_edition {
         let stdout = if verbosity == Verbosity::Quiet {
