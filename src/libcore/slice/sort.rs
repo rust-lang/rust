@@ -17,7 +17,7 @@
 //! stable sorting implementation.
 
 use cmp;
-use mem;
+use mem::{self, MaybeUninit};
 use ptr;
 
 /// When dropped, copies from `src` into `dest`.
@@ -226,14 +226,14 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
     let mut block_l = BLOCK;
     let mut start_l = ptr::null_mut();
     let mut end_l = ptr::null_mut();
-    let mut offsets_l: [u8; BLOCK] = unsafe { mem::uninitialized() };
+    let mut offsets_l = MaybeUninit::<[u8; BLOCK]>::uninitialized();
 
     // The current block on the right side (from `r.sub(block_r)` to `r`).
     let mut r = unsafe { l.add(v.len()) };
     let mut block_r = BLOCK;
     let mut start_r = ptr::null_mut();
     let mut end_r = ptr::null_mut();
-    let mut offsets_r: [u8; BLOCK] = unsafe { mem::uninitialized() };
+    let mut offsets_r = MaybeUninit::<[u8; BLOCK]>::uninitialized();
 
     // FIXME: When we get VLAs, try creating one array of length `min(v.len(), 2 * BLOCK)` rather
     // than two fixed-size arrays of length `BLOCK`. VLAs might be more cache-efficient.
@@ -272,8 +272,8 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 
         if start_l == end_l {
             // Trace `block_l` elements from the left side.
-            start_l = offsets_l.as_mut_ptr();
-            end_l = offsets_l.as_mut_ptr();
+            start_l = offsets_l.as_mut_ptr() as *mut u8;
+            end_l = offsets_l.as_mut_ptr() as *mut u8;
             let mut elem = l;
 
             for i in 0..block_l {
@@ -288,8 +288,8 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
 
         if start_r == end_r {
             // Trace `block_r` elements from the right side.
-            start_r = offsets_r.as_mut_ptr();
-            end_r = offsets_r.as_mut_ptr();
+            start_r = offsets_r.as_mut_ptr() as *mut u8;
+            end_r = offsets_r.as_mut_ptr() as *mut u8;
             let mut elem = r;
 
             for i in 0..block_r {

@@ -950,7 +950,7 @@ impl<T> ManuallyDrop<T> {
     /// ManuallyDrop::new(Box::new(()));
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
-    #[inline]
+    #[inline(always)]
     pub const fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value }
     }
@@ -967,7 +967,7 @@ impl<T> ManuallyDrop<T> {
     /// let _: Box<()> = ManuallyDrop::into_inner(x); // This drops the `Box`.
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
-    #[inline]
+    #[inline(always)]
     pub const fn into_inner(slot: ManuallyDrop<T>) -> T {
         slot.value
     }
@@ -1015,7 +1015,7 @@ impl<T: ?Sized> ManuallyDrop<T> {
 #[stable(feature = "manually_drop", since = "1.20.0")]
 impl<T: ?Sized> Deref for ManuallyDrop<T> {
     type Target = T;
-    #[inline]
+    #[inline(always)]
     fn deref(&self) -> &T {
         &self.value
     }
@@ -1023,7 +1023,7 @@ impl<T: ?Sized> Deref for ManuallyDrop<T> {
 
 #[stable(feature = "manually_drop", since = "1.20.0")]
 impl<T: ?Sized> DerefMut for ManuallyDrop<T> {
-    #[inline]
+    #[inline(always)]
     fn deref_mut(&mut self) -> &mut T {
         &mut self.value
     }
@@ -1044,6 +1044,7 @@ impl<T> MaybeUninit<T> {
     /// Note that dropping a `MaybeUninit` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
     pub const fn new(val: T) -> MaybeUninit<T> {
         MaybeUninit { value: ManuallyDrop::new(val) }
     }
@@ -1053,6 +1054,7 @@ impl<T> MaybeUninit<T> {
     /// Note that dropping a `MaybeUninit` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
     pub const fn uninitialized() -> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
@@ -1066,6 +1068,7 @@ impl<T> MaybeUninit<T> {
     /// Note that dropping a `MaybeUninit` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline]
     pub fn zeroed() -> MaybeUninit<T> {
         let mut u = MaybeUninit::<T>::uninitialized();
         unsafe {
@@ -1076,6 +1079,7 @@ impl<T> MaybeUninit<T> {
 
     /// Set the value of the `MaybeUninit`. This overwrites any previous value without dropping it.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
     pub fn set(&mut self, val: T) {
         unsafe {
             self.value = ManuallyDrop::new(val);
@@ -1091,6 +1095,7 @@ impl<T> MaybeUninit<T> {
     /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
     /// state, otherwise this will immediately cause undefined behavior.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
     pub unsafe fn into_inner(self) -> T {
         ManuallyDrop::into_inner(self.value)
     }
@@ -1102,6 +1107,7 @@ impl<T> MaybeUninit<T> {
     /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
     /// state, otherwise this will immediately cause undefined behavior.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
     pub unsafe fn get_ref(&self) -> &T {
         &*self.value
     }
@@ -1113,6 +1119,7 @@ impl<T> MaybeUninit<T> {
     /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
     /// state, otherwise this will immediately cause undefined behavior.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
     pub unsafe fn get_mut(&mut self) -> &mut T {
         &mut *self.value
     }
@@ -1120,6 +1127,7 @@ impl<T> MaybeUninit<T> {
     /// Get a pointer to the contained value. Reading from this pointer will be undefined
     /// behavior unless the `MaybeUninit` is initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
     pub fn as_ptr(&self) -> *const T {
         unsafe { &*self.value as *const T }
     }
@@ -1127,6 +1135,7 @@ impl<T> MaybeUninit<T> {
     /// Get a mutable pointer to the contained value. Reading from this pointer will be undefined
     /// behavior unless the `MaybeUninit` is initialized.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
+    #[inline(always)]
     pub fn as_mut_ptr(&mut self) -> *mut T {
         unsafe { &mut *self.value as *mut T }
     }
