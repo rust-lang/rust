@@ -14,10 +14,7 @@ install:
 
 build: false
 
-test_script:
-  - set RUST_BACKTRACE=full
-  - cargo build
-# - cargo test --verbose
+test_script: C:\msys64\usr\bin\sh ci\run.sh
 
 notifications:
   - provider: Email
