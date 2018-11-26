@@ -55,7 +55,7 @@ fn foo_no_never() {
 
     let mut y : Option<S> = None;
     // assert types are equal
-    mem::replace(&mut x, &mut y);
+    mem::swap(&mut x, &mut y);
 }
 
 fn main() {
