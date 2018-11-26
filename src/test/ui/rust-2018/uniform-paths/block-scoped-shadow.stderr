@@ -14,7 +14,7 @@ note: `Foo` could also refer to the enum defined here
    |
 LL | enum Foo {}
    | ^^^^^^^^^^^
-   = help: use `self::Foo` to refer to this enum unambiguously
+   = help: use `crate::Foo` to refer to this enum unambiguously
 
 error[E0659]: `std` is ambiguous (name vs any other name during import resolution)
   --> $DIR/block-scoped-shadow.rs:26:9
@@ -32,7 +32,7 @@ note: `std` could also refer to the struct defined here
    |
 LL | struct std;
    | ^^^^^^^^^^^
-   = help: use `self::std` to refer to this struct unambiguously
+   = help: use `crate::std` to refer to this struct unambiguously
 
 error[E0659]: `std` is ambiguous (name vs any other name during import resolution)
   --> $DIR/block-scoped-shadow.rs:26:9
@@ -50,7 +50,7 @@ note: `std` could also refer to the unit struct defined here
    |
 LL | struct std;
    | ^^^^^^^^^^^
-   = help: use `self::std` to refer to this unit struct unambiguously
+   = help: use `crate::std` to refer to this unit struct unambiguously
 
 error: aborting due to 3 previous errors
 
