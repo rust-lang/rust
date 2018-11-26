@@ -4759,15 +4759,38 @@ pub struct ParseIntError {
     kind: IntErrorKind,
 }
 
+/// Enum to store the various types of errors that can cause parsing an integer to fail.
+#[unstable(feature = "int_error_matching",
+           reason = "it can be useful to match errors when making error messages \
+                     for integer parsing",
+           issue = "22639")]
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum IntErrorKind {
+#[non_exhaustive]
+pub enum IntErrorKind {
+    /// Value being parsed is empty.
+    ///
+    /// Among other causes, this variant will be constructed when parsing an empty string.
     Empty,
+    /// Contains an invalid digit.
+    ///
+    /// Among other causes, this variant will be constructed when parsing a string that
+    /// contains a letter.
     InvalidDigit,
+    /// Integer is too large to store in target integer type.
     Overflow,
+    /// Integer is too small to store in target integer type.
     Underflow,
 }
 
 impl ParseIntError {
+    /// Outputs the detailed cause of parsing an integer failing.
+    #[unstable(feature = "int_error_matching",
+               reason = "it can be useful to match errors when making error messages \
+                         for integer parsing",
+               issue = "22639")]
+    pub fn kind(&self) -> &IntErrorKind {
+        &self.kind
+    }
     #[unstable(feature = "int_error_internals",
                reason = "available through Error trait and this method should \
                          not be exposed publicly",
