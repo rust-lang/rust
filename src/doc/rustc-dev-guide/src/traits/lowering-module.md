@@ -63,4 +63,4 @@ error: aborting due to previous error
 [chalkify]: https://github.com/rust-lang/rust/tree/master/src/test/ui/chalkify
 [lower_impl]: https://github.com/rust-lang/rust/tree/master/src/test/ui/chalkify/lower_impl.rs
 [the stderr file]: https://github.com/rust-lang/rust/tree/master/src/test/ui/chalkify/lower_impl.stderr
-[ui test]: https://rust-lang-nursery.github.io/rustc-guide/tests/adding.html#guide-to-the-ui-tests
+[ui test]: ../tests/adding.html#guide-to-the-ui-tests
