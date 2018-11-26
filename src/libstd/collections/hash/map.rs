@@ -411,7 +411,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// map.try_reserve(10).expect("why is the test harness OOMing on 10 bytes?");
     /// ```
     #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
-    pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
+    pub fn try_reserve(&mut self, _additional: usize) -> Result<(), CollectionAllocErr> {
         unimplemented!()
     }
 
