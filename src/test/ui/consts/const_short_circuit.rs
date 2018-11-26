@@ -1,15 +1,15 @@
 #![feature(underscore_const_names, const_let)]
 
-const _: bool = false && false; //~ WARN boolean short circuiting operators in constants
-const _: bool = true && false; //~ WARN boolean short circuiting operators in constants
+const _: bool = false && false;
+const _: bool = true && false;
 const _: bool = {
-    let mut x = true && false; //~ WARN boolean short circuiting operators in constants
-    //~^ ERROR short circuiting operators do not actually short circuit in constant
+    let mut x = true && false;
+    //~^ ERROR new features like let bindings are not permitted
     x
 };
 const _: bool = {
-    let x = true && false; //~ WARN boolean short circuiting operators in constants
-    //~^ ERROR short circuiting operators do not actually short circuit in constant
+    let x = true && false;
+    //~^ ERROR new features like let bindings are not permitted
     x
 };
 

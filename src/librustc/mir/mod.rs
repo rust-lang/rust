@@ -153,7 +153,9 @@ pub struct Mir<'tcx> {
     /// `||` expression into `&` or `|` respectively. This is problematic because if we ever stop
     /// this conversion from happening and use short circuiting, we will cause the following code
     /// to change the value of `x`: `let mut x = 42; false && { x = 55; true };`
-    pub control_flow_destroyed: bool,
+    ///
+    /// List of places where control flow was destroyed. Used for error reporting.
+    pub control_flow_destroyed: Vec<(Span, String)>,
 
     /// A span representing this MIR, for error reporting
     pub span: Span,
@@ -173,7 +175,7 @@ impl<'tcx> Mir<'tcx> {
         arg_count: usize,
         upvar_decls: Vec<UpvarDecl>,
         span: Span,
-        control_flow_destroyed: bool,
+        control_flow_destroyed: Vec<(Span, String)>,
     ) -> Self {
         // We need `arg_count` locals, and one for the return place
         assert!(

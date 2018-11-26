@@ -220,7 +220,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         sig.inputs().len(),
         vec![],
         span,
-        true,
+        vec![],
     );
 
     if let Some(..) = ty {
@@ -389,7 +389,7 @@ impl<'a, 'tcx> CloneShimBuilder<'a, 'tcx> {
             self.sig.inputs().len(),
             vec![],
             self.span,
-            true,
+            vec![],
         )
     }
 
@@ -838,7 +838,7 @@ fn build_call_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         sig.inputs().len(),
         vec![],
         span,
-        true,
+        vec![],
     );
     if let Abi::RustCall = sig.abi {
         mir.spread_arg = Some(Local::new(sig.inputs().len()));
@@ -916,6 +916,6 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
         sig.inputs().len(),
         vec![],
         span,
-        true,
+        vec![],
     )
 }

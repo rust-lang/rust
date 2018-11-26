@@ -1335,17 +1335,32 @@ impl MirPass for QualifyAndPromoteConstants {
             // Do the actual promotion, now that we know what's viable.
             promote_consts::promote_candidates(mir, tcx, temps, candidates);
         } else {
-            if mir.control_flow_destroyed {
-                for local in mir.vars_iter() {
+            if !mir.control_flow_destroyed.is_empty() {
+                let mut locals = mir.vars_iter();
+                if let Some(local) = locals.next() {
                     let span = mir.local_decls[local].source_info.span;
-                    tcx.sess.span_err(
+                    let mut error = tcx.sess.struct_span_err(
                         span,
                         &format!(
-                            "short circuiting operators do not actually short circuit in {}. \
-                             Thus new features like let bindings are not permitted",
+                            "new features like let bindings are not permitted in {} \
+                            which also use short circuiting operators",
                             mode,
                         ),
                     );
+                    for (span, kind) in mir.control_flow_destroyed.iter() {
+                        error.span_note(
+                            *span,
+                            &format!("use of {} here", kind),
+                        );
+                    }
+                    for local in locals {
+                        let span = mir.local_decls[local].source_info.span;
+                        error.span_note(
+                            span,
+                            "more locals defined here",
+                        );
+                    }
+                    error.emit();
                 }
             }
             let promoted_temps = if mode == Mode::Const {
