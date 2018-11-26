@@ -4,5 +4,5 @@ fn main() {
     let x = x as *const i32;
     let x = x as u8; //~ ERROR a raw memory access tried to access part of a pointer value as raw bytes
     let x = x as *const i32;
-    let _ = unsafe { *x };
+    let _val = unsafe { *x };
 }

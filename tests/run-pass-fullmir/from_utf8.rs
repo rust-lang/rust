@@ -1,3 +1,3 @@
 fn main() {
-    let _ = ::std::str::from_utf8(b"a");
+    let _val = ::std::str::from_utf8(b"a");
 }

@@ -27,6 +27,6 @@ fn foo(i:isize, j: char) -> Foo {
 
 pub fn main() {
     let (tx, rx) = channel();
-    let _ = tx.send(foo(42, 'c'));
-    let _ = rx;
+    tx.send(foo(42, 'c')).unwrap();
+    let _val = rx;
 }
