@@ -312,6 +312,7 @@
 #![feature(non_exhaustive)]
 #![feature(alloc_layout_extra)]
 #![feature(maybe_uninit)]
+#![feature(ptr_offset_from)]
 #![cfg_attr(target_env = "sgx", feature(global_asm, range_contains, slice_index_methods,
                                         decl_macro, coerce_unsized))]
 

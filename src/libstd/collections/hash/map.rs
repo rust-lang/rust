@@ -9,222 +9,21 @@
 // except according to those terms.
 
 use self::Entry::*;
-use self::VacantEntryState::*;
 
 use intrinsics::unlikely;
 use collections::CollectionAllocErr;
 use cell::Cell;
 use borrow::Borrow;
-use cmp::max;
 use fmt::{self, Debug};
 #[allow(deprecated)]
 use hash::{Hash, Hasher, BuildHasher, SipHasher13};
 use iter::{FromIterator, FusedIterator};
-use mem::{self, replace};
-use ops::{Deref, DerefMut, Index};
+use marker::PhantomData;
+use mem;
+use ops::Index;
 use sys;
 
-use super::table::{self, Bucket, EmptyBucket, Fallibility, FullBucket, FullBucketMut, RawTable,
-                   SafeHash};
-use super::table::BucketState::{Empty, Full};
-use super::table::Fallibility::{Fallible, Infallible};
-
-const MIN_NONZERO_RAW_CAPACITY: usize = 32;     // must be a power of two
-
-/// The default behavior of HashMap implements a maximum load factor of 90.9%.
-#[derive(Clone)]
-struct DefaultResizePolicy;
-
-impl DefaultResizePolicy {
-    #[inline]
-    fn new() -> DefaultResizePolicy {
-        DefaultResizePolicy
-    }
-
-    /// A hash map's "capacity" is the number of elements it can hold without
-    /// being resized. Its "raw capacity" is the number of slots required to
-    /// provide that capacity, accounting for maximum loading. The raw capacity
-    /// is always zero or a power of two.
-    #[inline]
-    fn try_raw_capacity(&self, len: usize) -> Result<usize, CollectionAllocErr> {
-        if len == 0 {
-            Ok(0)
-        } else {
-            // 1. Account for loading: `raw_capacity >= len * 1.1`.
-            // 2. Ensure it is a power of two.
-            // 3. Ensure it is at least the minimum size.
-            let mut raw_cap = len.checked_mul(11)
-                .map(|l| l / 10)
-                .and_then(|l| l.checked_next_power_of_two())
-                .ok_or(CollectionAllocErr::CapacityOverflow)?;
-
-            raw_cap = max(MIN_NONZERO_RAW_CAPACITY, raw_cap);
-            Ok(raw_cap)
-        }
-    }
-
-    #[inline]
-    fn raw_capacity(&self, len: usize) -> usize {
-        self.try_raw_capacity(len).expect("raw_capacity overflow")
-    }
-
-    /// The capacity of the given raw capacity.
-    #[inline]
-    fn capacity(&self, raw_cap: usize) -> usize {
-        // This doesn't have to be checked for overflow since allocation size
-        // in bytes will overflow earlier than multiplication by 10.
-        //
-        // As per https://github.com/rust-lang/rust/pull/30991 this is updated
-        // to be: (raw_cap * den + den - 1) / num
-        (raw_cap * 10 + 10 - 1) / 11
-    }
-}
-
-// The main performance trick in this hashmap is called Robin Hood Hashing.
-// It gains its excellent performance from one essential operation:
-//
-//    If an insertion collides with an existing element, and that element's
-//    "probe distance" (how far away the element is from its ideal location)
-//    is higher than how far we've already probed, swap the elements.
-//
-// This massively lowers variance in probe distance, and allows us to get very
-// high load factors with good performance. The 90% load factor I use is rather
-// conservative.
-//
-// > Why a load factor of approximately 90%?
-//
-// In general, all the distances to initial buckets will converge on the mean.
-// At a load factor of α, the odds of finding the target bucket after k
-// probes is approximately 1-α^k. If we set this equal to 50% (since we converge
-// on the mean) and set k=8 (64-byte cache line / 8-byte hash), α=0.92. I round
-// this down to make the math easier on the CPU and avoid its FPU.
-// Since on average we start the probing in the middle of a cache line, this
-// strategy pulls in two cache lines of hashes on every lookup. I think that's
-// pretty good, but if you want to trade off some space, it could go down to one
-// cache line on average with an α of 0.84.
-//
-// > Wait, what? Where did you get 1-α^k from?
-//
-// On the first probe, your odds of a collision with an existing element is α.
-// The odds of doing this twice in a row is approximately α^2. For three times,
-// α^3, etc. Therefore, the odds of colliding k times is α^k. The odds of NOT
-// colliding after k tries is 1-α^k.
-//
-// The paper from 1986 cited below mentions an implementation which keeps track
-// of the distance-to-initial-bucket histogram. This approach is not suitable
-// for modern architectures because it requires maintaining an internal data
-// structure. This allows very good first guesses, but we are most concerned
-// with guessing entire cache lines, not individual indexes. Furthermore, array
-// accesses are no longer linear and in one direction, as we have now. There
-// is also memory and cache pressure that this would entail that would be very
-// difficult to properly see in a microbenchmark.
-//
-// ## Future Improvements (FIXME!)
-//
-// Allow the load factor to be changed dynamically and/or at initialization.
-//
-// Also, would it be possible for us to reuse storage when growing the
-// underlying table? This is exactly the use case for 'realloc', and may
-// be worth exploring.
-//
-// ## Future Optimizations (FIXME!)
-//
-// Another possible design choice that I made without any real reason is
-// parameterizing the raw table over keys and values. Technically, all we need
-// is the size and alignment of keys and values, and the code should be just as
-// efficient (well, we might need one for power-of-two size and one for not...).
-// This has the potential to reduce code bloat in rust executables, without
-// really losing anything except 4 words (key size, key alignment, val size,
-// val alignment) which can be passed in to every call of a `RawTable` function.
-// This would definitely be an avenue worth exploring if people start complaining
-// about the size of rust executables.
-//
-// Annotate exceedingly likely branches in `table::make_hash`
-// and `search_hashed` to reduce instruction cache pressure
-// and mispredictions once it becomes possible (blocked on issue #11092).
-//
-// Shrinking the table could simply reallocate in place after moving buckets
-// to the first half.
-//
-// The growth algorithm (fragment of the Proof of Correctness)
-// --------------------
-//
-// The growth algorithm is basically a fast path of the naive reinsertion-
-// during-resize algorithm. Other paths should never be taken.
-//
-// Consider growing a robin hood hashtable of capacity n. Normally, we do this
-// by allocating a new table of capacity `2n`, and then individually reinsert
-// each element in the old table into the new one. This guarantees that the
-// new table is a valid robin hood hashtable with all the desired statistical
-// properties. Remark that the order we reinsert the elements in should not
-// matter. For simplicity and efficiency, we will consider only linear
-// reinsertions, which consist of reinserting all elements in the old table
-// into the new one by increasing order of index. However we will not be
-// starting our reinsertions from index 0 in general. If we start from index
-// i, for the purpose of reinsertion we will consider all elements with real
-// index j < i to have virtual index n + j.
-//
-// Our hash generation scheme consists of generating a 64-bit hash and
-// truncating the most significant bits. When moving to the new table, we
-// simply introduce a new bit to the front of the hash. Therefore, if an
-// element has ideal index i in the old table, it can have one of two ideal
-// locations in the new table. If the new bit is 0, then the new ideal index
-// is i. If the new bit is 1, then the new ideal index is n + i. Intuitively,
-// we are producing two independent tables of size n, and for each element we
-// independently choose which table to insert it into with equal probability.
-// However, rather than wrapping around themselves on overflowing their
-// indexes, the first table overflows into the second, and the second into the
-// first. Visually, our new table will look something like:
-//
-// [yy_xxx_xxxx_xxx|xx_yyy_yyyy_yyy]
-//
-// Where x's are elements inserted into the first table, y's are elements
-// inserted into the second, and _'s are empty sections. We now define a few
-// key concepts that we will use later. Note that this is a very abstract
-// perspective of the table. A real resized table would be at least half
-// empty.
-//
-// Theorem: A linear robin hood reinsertion from the first ideal element
-// produces identical results to a linear naive reinsertion from the same
-// element.
-//
-// FIXME(Gankro, pczarn): review the proof and put it all in a separate README.md
-//
-// Adaptive early resizing
-// ----------------------
-// To protect against degenerate performance scenarios (including DOS attacks),
-// the implementation includes an adaptive behavior that can resize the map
-// early (before its capacity is exceeded) when suspiciously long probe sequences
-// are encountered.
-//
-// With this algorithm in place it would be possible to turn a CPU attack into
-// a memory attack due to the aggressive resizing. To prevent that the
-// adaptive behavior only triggers when the map is at least half full.
-// This reduces the effectiveness of the algorithm but also makes it completely safe.
-//
-// The previous safety measure also prevents degenerate interactions with
-// really bad quality hash algorithms that can make normal inputs look like a
-// DOS attack.
-//
-const DISPLACEMENT_THRESHOLD: usize = 128;
-//
-// The threshold of 128 is chosen to minimize the chance of exceeding it.
-// In particular, we want that chance to be less than 10^-8 with a load of 90%.
-// For displacement, the smallest constant that fits our needs is 90,
-// so we round that up to 128.
-//
-// At a load factor of α, the odds of finding the target bucket after exactly n
-// unsuccessful probes[1] are
-//
-// Pr_α{displacement = n} =
-// (1 - α) / α * ∑_{k≥1} e^(-kα) * (kα)^(k+n) / (k + n)! * (1 - kα / (k + n + 1))
-//
-// We use this formula to find the probability of triggering the adaptive behavior
-//
-// Pr_0.909{displacement > 128} = 1.601 * 10^-11
-//
-// 1. Alfredo Viola (2005). Distributional analysis of Robin Hood linear probing
-//    hashing with buckets.
+use super::raw::{Bucket, RawDrain, RawIntoIter, RawIter, RawTable};
 
 /// A hash map implemented with linear probing and Robin Hood bucket stealing.
 ///
@@ -417,274 +216,14 @@ pub struct HashMap<K, V, S = RandomState> {
     // All hashes are keyed on these values, to prevent hash collision attacks.
     hash_builder: S,
 
-    table: RawTable<K, V>,
-
-    resize_policy: DefaultResizePolicy,
+    table: RawTable<(K, V)>,
 }
 
-/// Search for a pre-hashed key.
-/// If you don't already know the hash, use search or search_mut instead
 #[inline]
-fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, is_match: F) -> InternalEntry<K, V, M>
-    where M: Deref<Target = RawTable<K, V>>,
-          F: FnMut(&K) -> bool
-{
-    // This is the only function where capacity can be zero. To avoid
-    // undefined behavior when Bucket::new gets the raw bucket in this
-    // case, immediately return the appropriate search result.
-    if table.capacity() == 0 {
-        return InternalEntry::TableIsEmpty;
-    }
-
-    search_hashed_nonempty(table, hash, is_match, true)
-}
-
-/// Search for a pre-hashed key when the hash map is known to be non-empty.
-#[inline]
-fn search_hashed_nonempty<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F,
-                                      compare_hashes: bool)
-    -> InternalEntry<K, V, M>
-    where M: Deref<Target = RawTable<K, V>>,
-          F: FnMut(&K) -> bool
-{
-    // Do not check the capacity as an extra branch could slow the lookup.
-
-    let size = table.size();
-    let mut probe = Bucket::new(table, hash);
-    let mut displacement = 0;
-
-    loop {
-        let full = match probe.peek() {
-            Empty(bucket) => {
-                // Found a hole!
-                return InternalEntry::Vacant {
-                    hash,
-                    elem: NoElem(bucket, displacement),
-                };
-            }
-            Full(bucket) => bucket,
-        };
-
-        let probe_displacement = full.displacement();
-
-        if probe_displacement < displacement {
-            // Found a luckier bucket than me.
-            // We can finish the search early if we hit any bucket
-            // with a lower distance to initial bucket than we've probed.
-            return InternalEntry::Vacant {
-                hash,
-                elem: NeqElem(full, probe_displacement),
-            };
-        }
-
-        // If the hash doesn't match, it can't be this one..
-        if !compare_hashes || hash == full.hash() {
-            // If the key doesn't match, it can't be this one..
-            if is_match(full.read().0) {
-                return InternalEntry::Occupied { elem: full };
-            }
-        }
-        displacement += 1;
-        probe = full.next();
-        debug_assert!(displacement <= size);
-    }
-}
-
-/// Same as `search_hashed_nonempty` but for mutable access.
-#[inline]
-fn search_hashed_nonempty_mut<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F,
-                                          compare_hashes: bool)
-    -> InternalEntry<K, V, M>
-    where M: DerefMut<Target = RawTable<K, V>>,
-          F: FnMut(&K) -> bool
-{
-    // Do not check the capacity as an extra branch could slow the lookup.
-
-    let size = table.size();
-    let mut probe = Bucket::new(table, hash);
-    let mut displacement = 0;
-
-    loop {
-        let mut full = match probe.peek() {
-            Empty(bucket) => {
-                // Found a hole!
-                return InternalEntry::Vacant {
-                    hash,
-                    elem: NoElem(bucket, displacement),
-                };
-            }
-            Full(bucket) => bucket,
-        };
-
-        let probe_displacement = full.displacement();
-
-        if probe_displacement < displacement {
-            // Found a luckier bucket than me.
-            // We can finish the search early if we hit any bucket
-            // with a lower distance to initial bucket than we've probed.
-            return InternalEntry::Vacant {
-                hash,
-                elem: NeqElem(full, probe_displacement),
-            };
-        }
-
-        // If the hash doesn't match, it can't be this one..
-        if hash == full.hash() || !compare_hashes {
-            // If the key doesn't match, it can't be this one..
-            if is_match(full.read_mut().0) {
-                return InternalEntry::Occupied { elem: full };
-            }
-        }
-        displacement += 1;
-        probe = full.next();
-        debug_assert!(displacement <= size);
-    }
-}
-
-fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>)
-    -> (K, V, &mut RawTable<K, V>)
-{
-    let (empty, retkey, retval) = starting_bucket.take();
-    let mut gap = match empty.gap_peek() {
-        Ok(b) => b,
-        Err(b) => return (retkey, retval, b.into_table()),
-    };
-
-    while gap.full().displacement() != 0 {
-        gap = match gap.shift() {
-            Ok(b) => b,
-            Err(b) => {
-                return (retkey, retval, b.into_table());
-            },
-        };
-    }
-
-    // Now we've done all our shifting. Return the value we grabbed earlier.
-    (retkey, retval, gap.into_table())
-}
-
-/// Perform robin hood bucket stealing at the given `bucket`. You must
-/// also pass that bucket's displacement so we don't have to recalculate it.
-///
-/// `hash`, `key`, and `val` are the elements to "robin hood" into the hashtable.
-fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
-                                mut displacement: usize,
-                                mut hash: SafeHash,
-                                mut key: K,
-                                mut val: V)
-                                -> FullBucketMut<'a, K, V> {
-    let size = bucket.table().size();
-    let raw_capacity = bucket.table().capacity();
-    // There can be at most `size - dib` buckets to displace, because
-    // in the worst case, there are `size` elements and we already are
-    // `displacement` buckets away from the initial one.
-    let idx_end = (bucket.index() + size - bucket.displacement()) % raw_capacity;
-    // Save the *starting point*.
-    let mut bucket = bucket.stash();
-
-    loop {
-        let (old_hash, old_key, old_val) = bucket.replace(hash, key, val);
-        hash = old_hash;
-        key = old_key;
-        val = old_val;
-
-        loop {
-            displacement += 1;
-            let probe = bucket.next();
-            debug_assert!(probe.index() != idx_end);
-
-            let full_bucket = match probe.peek() {
-                Empty(bucket) => {
-                    // Found a hole!
-                    let bucket = bucket.put(hash, key, val);
-                    // Now that it's stolen, just read the value's pointer
-                    // right out of the table! Go back to the *starting point*.
-                    //
-                    // This use of `into_table` is misleading. It turns the
-                    // bucket, which is a FullBucket on top of a
-                    // FullBucketMut, into just one FullBucketMut. The "table"
-                    // refers to the inner FullBucketMut in this context.
-                    return bucket.into_table();
-                }
-                Full(bucket) => bucket,
-            };
-
-            let probe_displacement = full_bucket.displacement();
-
-            bucket = full_bucket;
-
-            // Robin hood! Steal the spot.
-            if probe_displacement < displacement {
-                displacement = probe_displacement;
-                break;
-            }
-        }
-    }
-}
-
-impl<K, V, S> HashMap<K, V, S>
-    where K: Eq + Hash,
-          S: BuildHasher
-{
-    fn make_hash<X: ?Sized>(&self, x: &X) -> SafeHash
-        where X: Hash
-    {
-        table::make_hash(&self.hash_builder, x)
-    }
-
-    /// Search for a key, yielding the index if it's found in the hashtable.
-    /// If you already have the hash for the key lying around, or if you need an
-    /// InternalEntry, use search_hashed or search_hashed_nonempty.
-    #[inline]
-    fn search<'a, Q: ?Sized>(&'a self, q: &Q)
-        -> Option<FullBucket<K, V, &'a RawTable<K, V>>>
-        where K: Borrow<Q>,
-              Q: Eq + Hash
-    {
-        if self.is_empty() {
-            return None;
-        }
-
-        let hash = self.make_hash(q);
-        search_hashed_nonempty(&self.table, hash, |k| q.eq(k.borrow()), true)
-            .into_occupied_bucket()
-    }
-
-    #[inline]
-    fn search_mut<'a, Q: ?Sized>(&'a mut self, q: &Q)
-        -> Option<FullBucket<K, V, &'a mut RawTable<K, V>>>
-        where K: Borrow<Q>,
-              Q: Eq + Hash
-    {
-        if self.is_empty() {
-            return None;
-        }
-
-        let hash = self.make_hash(q);
-        search_hashed_nonempty(&mut self.table, hash, |k| q.eq(k.borrow()), true)
-            .into_occupied_bucket()
-    }
-
-    // The caller should ensure that invariants by Robin Hood Hashing hold
-    // and that there's space in the underlying table.
-    fn insert_hashed_ordered(&mut self, hash: SafeHash, k: K, v: V) {
-        let mut buckets = Bucket::new(&mut self.table, hash);
-        let start_index = buckets.index();
-
-        loop {
-            // We don't need to compare hashes for value swap.
-            // Not even DIBs for Robin Hood.
-            buckets = match buckets.peek() {
-                Empty(empty) => {
-                    empty.put(hash, k, v);
-                    return;
-                }
-                Full(b) => b.into_bucket(),
-            };
-            buckets.next();
-            debug_assert!(buckets.index() != start_index);
-        }
-    }
+fn make_hash<K: Hash + ?Sized>(hash_builder: &impl BuildHasher, val: &K) -> u64 {
+    let mut state = hash_builder.build_hasher();
+    val.hash(&mut state);
+    state.finish()
 }
 
 impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
@@ -752,8 +291,7 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn with_hasher(hash_builder: S) -> HashMap<K, V, S> {
         HashMap {
             hash_builder,
-            resize_policy: DefaultResizePolicy::new(),
-            table: RawTable::new(0),
+            table: RawTable::new(),
         }
     }
 
@@ -781,12 +319,9 @@ impl<K, V, S> HashMap<K, V, S>
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
     pub fn with_capacity_and_hasher(capacity: usize, hash_builder: S) -> HashMap<K, V, S> {
-        let resize_policy = DefaultResizePolicy::new();
-        let raw_cap = resize_policy.raw_capacity(capacity);
         HashMap {
             hash_builder,
-            resize_policy,
-            table: RawTable::new(raw_cap),
+            table: RawTable::with_capacity(capacity),
         }
     }
 
@@ -824,13 +359,13 @@ impl<K, V, S> HashMap<K, V, S>
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize {
-        self.resize_policy.capacity(self.raw_capacity())
+        self.table.capacity()
     }
 
-    /// Returns the hash map's raw capacity.
+    #[cfg(test)]
     #[inline]
     fn raw_capacity(&self) -> usize {
-        self.table.capacity()
+        self.table.buckets()
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted
@@ -853,11 +388,9 @@ impl<K, V, S> HashMap<K, V, S>
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
-        match self.reserve_internal(additional, Infallible) {
-            Err(CollectionAllocErr::CapacityOverflow) => panic!("capacity overflow"),
-            Err(CollectionAllocErr::AllocErr) => unreachable!(),
-            Ok(()) => { /* yay */ }
-        }
+        let hash_builder = &self.hash_builder;
+        self.table
+            .reserve(additional, |x| make_hash(hash_builder, &x.0));
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
@@ -879,90 +412,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[unstable(feature = "try_reserve", reason = "new API", issue="48043")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr> {
-        self.reserve_internal(additional, Fallible)
-    }
-
-    #[inline]
-    fn reserve_internal(&mut self, additional: usize, fallibility: Fallibility)
-        -> Result<(), CollectionAllocErr> {
-
-        let remaining = self.capacity() - self.len(); // this can't overflow
-        if remaining < additional {
-            let min_cap = self.len()
-                .checked_add(additional)
-                .ok_or(CollectionAllocErr::CapacityOverflow)?;
-            let raw_cap = self.resize_policy.try_raw_capacity(min_cap)?;
-            self.try_resize(raw_cap, fallibility)?;
-        } else if self.table.tag() && remaining <= self.len() {
-            // Probe sequence is too long and table is half full,
-            // resize early to reduce probing length.
-            let new_capacity = self.table.capacity() * 2;
-            self.try_resize(new_capacity, fallibility)?;
-        }
-        Ok(())
-    }
-
-    /// Resizes the internal vectors to a new capacity. It's your
-    /// responsibility to:
-    ///   1) Ensure `new_raw_cap` is enough for all the elements, accounting
-    ///      for the load factor.
-    ///   2) Ensure `new_raw_cap` is a power of two or zero.
-    #[inline(never)]
-    #[cold]
-    fn try_resize(
-        &mut self,
-        new_raw_cap: usize,
-        fallibility: Fallibility,
-    ) -> Result<(), CollectionAllocErr> {
-        assert!(self.table.size() <= new_raw_cap);
-        assert!(new_raw_cap.is_power_of_two() || new_raw_cap == 0);
-
-        let mut old_table = replace(
-            &mut self.table,
-            match fallibility {
-                Infallible => RawTable::new(new_raw_cap),
-                Fallible => RawTable::try_new(new_raw_cap)?,
-            }
-        );
-        let old_size = old_table.size();
-
-        if old_table.size() == 0 {
-            return Ok(());
-        }
-
-        let mut bucket = Bucket::head_bucket(&mut old_table);
-
-        // This is how the buckets might be laid out in memory:
-        // ($ marks an initialized bucket)
-        //  ________________
-        // |$$$_$$$$$$_$$$$$|
-        //
-        // But we've skipped the entire initial cluster of buckets
-        // and will continue iteration in this order:
-        //  ________________
-        //     |$$$$$$_$$$$$
-        //                  ^ wrap around once end is reached
-        //  ________________
-        //  $$$_____________|
-        //    ^ exit once table.size == 0
-        loop {
-            bucket = match bucket.peek() {
-                Full(bucket) => {
-                    let h = bucket.hash();
-                    let (b, k, v) = bucket.take();
-                    self.insert_hashed_ordered(h, k, v);
-                    if b.table().size() == 0 {
-                        break;
-                    }
-                    b.into_bucket()
-                }
-                Empty(b) => b.into_bucket(),
-            };
-            bucket.next();
-        }
-
-        assert_eq!(self.table.size(), old_size);
-        Ok(())
+        unimplemented!()
     }
 
     /// Shrinks the capacity of the map as much as possible. It will drop
@@ -983,18 +433,8 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
-        let new_raw_cap = self.resize_policy.raw_capacity(self.len());
-        if self.raw_capacity() != new_raw_cap {
-            let old_table = replace(&mut self.table, RawTable::new(new_raw_cap));
-            let old_size = old_table.size();
-
-            // Shrink the table. Naive algorithm for resizing:
-            for (h, k, v) in old_table.into_iter() {
-                self.insert_hashed_nocheck(h, k, v);
-            }
-
-            debug_assert_eq!(self.table.size(), old_size);
-        }
+        let hash_builder = &self.hash_builder;
+        self.table.shrink_to(0, |x| make_hash(hash_builder, &x.0));
     }
 
     /// Shrinks the capacity of the map with a lower limit. It will drop
@@ -1023,36 +463,9 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn shrink_to(&mut self, min_capacity: usize) {
         assert!(self.capacity() >= min_capacity, "Tried to shrink to a larger capacity");
 
-        let new_raw_cap = self.resize_policy.raw_capacity(max(self.len(), min_capacity));
-        if self.raw_capacity() != new_raw_cap {
-            let old_table = replace(&mut self.table, RawTable::new(new_raw_cap));
-            let old_size = old_table.size();
-
-            // Shrink the table. Naive algorithm for resizing:
-            for (h, k, v) in old_table.into_iter() {
-                self.insert_hashed_nocheck(h, k, v);
-            }
-
-            debug_assert_eq!(self.table.size(), old_size);
-        }
-    }
-
-    /// Insert a pre-hashed key-value pair, without first checking
-    /// that there's enough room in the buckets. Returns a reference to the
-    /// newly insert value.
-    ///
-    /// If the key already exists, the hashtable will be returned untouched
-    /// and a reference to the existing element will be returned.
-    fn insert_hashed_nocheck(&mut self, hash: SafeHash, k: K, v: V) -> Option<V> {
-        let entry = search_hashed(&mut self.table, hash, |key| *key == k).into_entry(k);
-        match entry {
-            Some(Occupied(mut elem)) => Some(elem.insert(v)),
-            Some(Vacant(elem)) => {
-                elem.insert(v);
-                None
-            }
-            None => unreachable!(),
-        }
+        let hash_builder = &self.hash_builder;
+        self.table
+            .shrink_to(min_capacity, |x| make_hash(hash_builder, &x.0));
     }
 
     /// An iterator visiting all keys in arbitrary order.
@@ -1145,7 +558,13 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<K, V> {
-        Iter { inner: self.table.iter() }
+        // Here we tie the lifetime of self to the iter.
+        unsafe {
+            Iter {
+                inner: self.table.iter(),
+                _marker: PhantomData,
+            }
+        }
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order,
@@ -1173,7 +592,13 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<K, V> {
-        IterMut { inner: self.table.iter_mut() }
+        // Here we tie the lifetime of self to the iter.
+        unsafe {
+            IterMut {
+                inner: self.table.iter(),
+                _marker: PhantomData,
+            }
+        }
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
@@ -1196,12 +621,21 @@ impl<K, V, S> HashMap<K, V, S>
     /// assert_eq!(letters.get(&'y'), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn entry(&mut self, key: K) -> Entry<K, V> {
-        // Gotta resize now.
-        self.reserve(1);
-        let hash = self.make_hash(&key);
-        search_hashed(&mut self.table, hash, |q| q.eq(&key))
-            .into_entry(key).expect("unreachable")
+    pub fn entry(&mut self, key: K) -> Entry<K, V, S> {
+        let hash = make_hash(&self.hash_builder, &key);
+        if let Some(elem) = self.table.find(hash, |q| q.0.eq(&key)) {
+            Entry::Occupied(OccupiedEntry {
+                key: Some(key),
+                elem,
+                table: self,
+            })
+        } else {
+            Entry::Vacant(VacantEntry {
+                hash,
+                key,
+                table: self,
+            })
+        }
     }
 
     /// Returns the number of elements in the map.
@@ -1218,7 +652,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
-        self.table.size()
+        self.table.len()
     }
 
     /// Returns true if the map contains no elements.
@@ -1261,7 +695,12 @@ impl<K, V, S> HashMap<K, V, S>
     #[inline]
     #[stable(feature = "drain", since = "1.6.0")]
     pub fn drain(&mut self) -> Drain<K, V> {
-        Drain { inner: self.table.drain() }
+        // Here we tie the lifetime of self to the iter.
+        unsafe {
+            Drain {
+                inner: self.table.drain(),
+            }
+        }
     }
 
     /// Clears the map, removing all key-value pairs. Keeps the allocated memory
@@ -1280,7 +719,7 @@ impl<K, V, S> HashMap<K, V, S>
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn clear(&mut self) {
-        self.drain();
+        self.table.clear();
     }
 
     /// Returns a reference to the value corresponding to the key.
@@ -1308,7 +747,7 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Hash + Eq
     {
-        self.search(k).map(|bucket| bucket.into_refs().1)
+        self.get_key_value(k).map(|(_, v)| v)
     }
 
     /// Returns the key-value pair corresponding to the supplied key.
@@ -1336,7 +775,13 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Hash + Eq
     {
-        self.search(k).map(|bucket| bucket.into_refs())
+        let hash = make_hash(&self.hash_builder, k);
+        self.table
+            .find(hash, |x| k.eq(x.0.borrow()))
+            .map(|item| unsafe {
+                let &(ref key, ref value) = item.as_ref();
+                (key, value)
+            })
     }
 
     /// Returns true if the map contains a value for the specified key.
@@ -1363,7 +808,7 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Hash + Eq
     {
-        self.search(k).is_some()
+        self.get(k).is_some()
     }
 
     /// Returns a mutable reference to the value corresponding to the key.
@@ -1392,7 +837,10 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Hash + Eq
     {
-        self.search_mut(k).map(|bucket| bucket.into_mut_refs().1)
+        let hash = make_hash(&self.hash_builder, k);
+        self.table
+            .find(hash, |x| k.eq(x.0.borrow()))
+            .map(|item| unsafe { &mut item.as_mut().1 })
     }
 
     /// Inserts a key-value pair into the map.
@@ -1422,9 +870,17 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
-        let hash = self.make_hash(&k);
-        self.reserve(1);
-        self.insert_hashed_nocheck(hash, k, v)
+        unsafe {
+            let hash = make_hash(&self.hash_builder, &k);
+            if let Some(item) = self.table.find(hash, |x| k.eq(&x.0)) {
+                Some(mem::replace(&mut item.as_mut().1, v))
+            } else {
+                let hash_builder = &self.hash_builder;
+                self.table
+                    .insert(hash, (k, v), |x| make_hash(hash_builder, &x.0));
+                None
+            }
+        }
     }
 
     /// Removes a key from the map, returning the value at the key if the key
@@ -1452,7 +908,7 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Hash + Eq
     {
-        self.search_mut(k).map(|bucket| pop_internal(bucket).1)
+        self.remove_entry(k).map(|(_, v)| v)
     }
 
     /// Removes a key from the map, returning the stored key and value if the
@@ -1482,11 +938,15 @@ impl<K, V, S> HashMap<K, V, S>
         where K: Borrow<Q>,
               Q: Hash + Eq
     {
-        self.search_mut(k)
-            .map(|bucket| {
-                let (k, v, _) = pop_internal(bucket);
-                (k, v)
-            })
+        unsafe {
+            let hash = make_hash(&self.hash_builder, &k);
+            if let Some(item) = self.table.find(hash, |x| k.eq(x.0.borrow())) {
+                self.table.erase_no_drop(&item);
+                Some(item.read())
+            } else {
+                None
+            }
+        }
     }
 
     /// Retains only the elements specified by the predicate.
@@ -1506,35 +966,16 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn retain<F>(&mut self, mut f: F)
         where F: FnMut(&K, &mut V) -> bool
     {
-        if self.table.size() == 0 {
-            return;
-        }
-        let mut elems_left = self.table.size();
-        let mut bucket = Bucket::head_bucket(&mut self.table);
-        bucket.prev();
-        let start_index = bucket.index();
-        while elems_left != 0 {
-            bucket = match bucket.peek() {
-                Full(mut full) => {
-                    elems_left -= 1;
-                    let should_remove = {
-                        let (k, v) = full.read_mut();
-                        !f(k, v)
-                    };
-                    if should_remove {
-                        let prev_raw = full.raw();
-                        let (_, _, t) = pop_internal(full);
-                        Bucket::new_from(prev_raw, t)
-                    } else {
-                        full.into_bucket()
-                    }
-                },
-                Empty(b) => {
-                    b.into_bucket()
+        // Here we only use `iter` as a temporary, preventing use-after-free
+        unsafe {
+            for item in self.table.iter() {
+                let &mut (ref key, ref mut value) = item.as_mut();
+                if !f(key, value) {
+                    // Erase the element from the table first since drop might panic.
+                    self.table.erase_no_drop(&item);
+                    item.drop();
                 }
-            };
-            bucket.prev();  // reverse iteration
-            debug_assert!(elems_left == 0 || bucket.index() != start_index);
+            }
         }
     }
 }
@@ -1675,14 +1116,18 @@ impl<'a, K, Q: ?Sized, V, S> Index<&'a Q> for HashMap<K, V, S>
 /// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a, V: 'a> {
-    inner: table::Iter<'a, K, V>,
+    inner: RawIter<(K, V)>,
+    _marker: PhantomData<&'a HashMap<K, V>>,
 }
 
 // FIXME(#26925) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Clone for Iter<'a, K, V> {
     fn clone(&self) -> Iter<'a, K, V> {
-        Iter { inner: self.inner.clone() }
+        Iter {
+            inner: self.inner.clone(),
+            _marker: PhantomData,
+        }
     }
 }
 
@@ -1704,7 +1149,19 @@ impl<'a, K: Debug, V: Debug> fmt::Debug for Iter<'a, K, V> {
 /// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, K: 'a, V: 'a> {
-    inner: table::IterMut<'a, K, V>,
+    inner: RawIter<(K, V)>,
+    _marker: PhantomData<&'a mut HashMap<K, V>>,
+}
+
+impl<'a, K, V> IterMut<'a, K, V> {
+    /// Returns a iterator of references over the remaining items.
+    #[inline]
+    pub(super) fn iter(&self) -> Iter<K, V> {
+        Iter {
+            inner: self.inner.clone(),
+            _marker: PhantomData,
+        }
+    }
 }
 
 /// An owning iterator over the entries of a `HashMap`.
@@ -1716,7 +1173,18 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 /// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
-    pub(super) inner: table::IntoIter<K, V>,
+    inner: RawIntoIter<(K, V)>,
+}
+
+impl<K, V> IntoIter<K, V> {
+    /// Returns a iterator of references over the remaining items.
+    #[inline]
+    pub(super) fn iter(&self) -> Iter<K, V> {
+        Iter {
+            inner: self.inner.iter(),
+            _marker: PhantomData,
+        }
+    }
 }
 
 /// An iterator over the keys of a `HashMap`.
@@ -1786,7 +1254,18 @@ impl<'a, K, V: Debug> fmt::Debug for Values<'a, K, V> {
 /// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, K: 'a, V: 'a> {
-    pub(super) inner: table::Drain<'a, K, V>,
+    pub(super) inner: RawDrain<'a, (K, V)>,
+}
+
+impl<'a, K, V> Drain<'a, K, V> {
+    /// Returns a iterator of references over the remaining items.
+    #[inline]
+    pub(super) fn iter(&self) -> Iter<K, V> {
+        Iter {
+            inner: self.inner.iter(),
+            _marker: PhantomData,
+        }
+    }
 }
 
 /// A mutable iterator over the values of a `HashMap`.
@@ -1799,47 +1278,6 @@ pub struct Drain<'a, K: 'a, V: 'a> {
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
-}
-
-enum InternalEntry<K, V, M> {
-    Occupied { elem: FullBucket<K, V, M> },
-    Vacant {
-        hash: SafeHash,
-        elem: VacantEntryState<K, V, M>,
-    },
-    TableIsEmpty,
-}
-
-impl<K, V, M> InternalEntry<K, V, M> {
-    #[inline]
-    fn into_occupied_bucket(self) -> Option<FullBucket<K, V, M>> {
-        match self {
-            InternalEntry::Occupied { elem } => Some(elem),
-            _ => None,
-        }
-    }
-}
-
-impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
-    #[inline]
-    fn into_entry(self, key: K) -> Option<Entry<'a, K, V>> {
-        match self {
-            InternalEntry::Occupied { elem } => {
-                Some(Occupied(OccupiedEntry {
-                    key: Some(key),
-                    elem,
-                }))
-            }
-            InternalEntry::Vacant { hash, elem } => {
-                Some(Vacant(VacantEntry {
-                    hash,
-                    key,
-                    elem,
-                }))
-            }
-            InternalEntry::TableIsEmpty => None,
-        }
-    }
 }
 
 /// A builder for computing where in a HashMap a key-value pair would be stored.
@@ -1876,7 +1314,8 @@ pub enum RawEntryMut<'a, K: 'a, V: 'a, S: 'a> {
 /// [`RawEntryMut`]: enum.RawEntryMut.html
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a> {
-    elem: FullBucket<K, V, &'a mut RawTable<K, V>>,
+    elem: Bucket<(K, V)>,
+    table: &'a mut RawTable<(K, V)>,
 }
 
 /// A view into a vacant entry in a `HashMap`.
@@ -1885,7 +1324,7 @@ pub struct RawOccupiedEntryMut<'a, K: 'a, V: 'a> {
 /// [`RawEntryMut`]: enum.RawEntryMut.html
 #[unstable(feature = "hash_raw_entry", issue = "56167")]
 pub struct RawVacantEntryMut<'a, K: 'a, V: 'a, S: 'a> {
-    elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
+    table: &'a mut RawTable<(K, V)>,
     hash_builder: &'a S,
 }
 
@@ -1924,26 +1363,18 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
         self.from_hash(hash, |q| q.borrow().eq(k))
     }
 
-    #[inline]
-    fn search<F>(self, hash: u64, is_match: F, compare_hashes: bool)  -> RawEntryMut<'a, K, V, S>
+    fn search<F>(self, hash: u64, mut is_match: F)  -> RawEntryMut<'a, K, V, S>
         where for<'b> F: FnMut(&'b K) -> bool,
     {
-        match search_hashed_nonempty_mut(&mut self.map.table,
-                                         SafeHash::new(hash),
-                                         is_match,
-                                         compare_hashes) {
-            InternalEntry::Occupied { elem } => {
-                RawEntryMut::Occupied(RawOccupiedEntryMut { elem })
-            }
-            InternalEntry::Vacant { elem, .. } => {
-                RawEntryMut::Vacant(RawVacantEntryMut {
-                    elem,
-                    hash_builder: &self.map.hash_builder,
-                })
-            }
-            InternalEntry::TableIsEmpty => {
-                unreachable!()
-            }
+        match self.map.table.find(hash, |(k, _)| is_match(k)) {
+            Some(elem) => RawEntryMut::Occupied(RawOccupiedEntryMut {
+                elem,
+                table: &mut self.map.table,
+            }),
+            None => RawEntryMut::Vacant(RawVacantEntryMut {
+                table: &mut self.map.table,
+                hash_builder: &self.map.hash_builder,
+            }),
         }
     }
     /// Create a `RawEntryMut` from the given hash.
@@ -1952,7 +1383,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>
         where for<'b> F: FnMut(&'b K) -> bool,
     {
-        self.search(hash, is_match, true)
+        self.search(hash, is_match)
     }
 
     /// Search possible locations for an element with hash `hash` until `is_match` returns true for
@@ -1962,7 +1393,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
     pub fn search_bucket<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>
         where for<'b> F: FnMut(&'b K) -> bool,
     {
-        self.search(hash, is_match, false)
+        self.search(hash, is_match)
     }
 }
 
@@ -1990,20 +1421,16 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S>
         self.from_hash(hash, |q| q.borrow().eq(k))
     }
 
-    fn search<F>(self, hash: u64, is_match: F, compare_hashes: bool) -> Option<(&'a K, &'a V)>
+    fn search<F>(self, hash: u64, mut is_match: F) -> Option<(&'a K, &'a V)>
         where F: FnMut(&K) -> bool
     {
-        if unsafe { unlikely(self.map.table.size() == 0) } {
-            return None;
-        }
-        match search_hashed_nonempty(&self.map.table,
-                                     SafeHash::new(hash),
-                                     is_match,
-                                     compare_hashes) {
-            InternalEntry::Occupied { elem } => Some(elem.into_refs()),
-            InternalEntry::Vacant { .. } => None,
-            InternalEntry::TableIsEmpty => unreachable!(),
-        }
+        self.map
+            .table
+            .find(hash, |(k, _)| is_match(k))
+            .map(|item| unsafe {
+                let &(ref key, ref value) = item.as_ref();
+                (key, value)
+            })
     }
 
     /// Access an entry by hash.
@@ -2011,7 +1438,7 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S>
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> Option<(&'a K, &'a V)>
         where F: FnMut(&K) -> bool
     {
-        self.search(hash, is_match, true)
+        self.search(hash, is_match)
     }
 
     /// Search possible locations for an element with hash `hash` until `is_match` returns true for
@@ -2021,7 +1448,7 @@ impl<'a, K, V, S> RawEntryBuilder<'a, K, V, S>
     pub fn search_bucket<F>(self, hash: u64, is_match: F) -> Option<(&'a K, &'a V)>
         where F: FnMut(&K) -> bool
     {
-        self.search(hash, is_match, false)
+        self.search(hash, is_match)
     }
 }
 
@@ -2130,58 +1557,67 @@ impl<'a, K, V> RawOccupiedEntryMut<'a, K, V> {
     /// Gets a reference to the key in the entry.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn key(&self) -> &K {
-        self.elem.read().0
+        unsafe { &self.elem.as_ref().0 }
     }
 
     /// Gets a mutable reference to the key in the entry.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn key_mut(&mut self) -> &mut K {
-        self.elem.read_mut().0
+        unsafe { &mut self.elem.as_mut().0 }
     }
 
     /// Converts the entry into a mutable reference to the key in the entry
     /// with a lifetime bound to the map itself.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn into_key(self) -> &'a mut K {
-        self.elem.into_mut_refs().0
+        unsafe { &mut self.elem.as_mut().0 }
     }
 
     /// Gets a reference to the value in the entry.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn get(&self) -> &V {
-        self.elem.read().1
+        unsafe { &self.elem.as_ref().1 }
     }
 
     /// Converts the OccupiedEntry into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn into_mut(self) -> &'a mut V {
-        self.elem.into_mut_refs().1
+        unsafe { &mut self.elem.as_mut().1 }
     }
 
     /// Gets a mutable reference to the value in the entry.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn get_mut(&mut self) -> &mut V {
-        self.elem.read_mut().1
+        unsafe { &mut self.elem.as_mut().1 }
     }
 
     /// Gets a reference to the key and value in the entry.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn get_key_value(&mut self) -> (&K, &V) {
-        self.elem.read()
+        unsafe {
+            let &(ref key, ref value) = self.elem.as_ref();
+            (key, value)
+        }
     }
 
     /// Gets a mutable reference to the key and value in the entry.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn get_key_value_mut(&mut self) -> (&mut K, &mut V) {
-        self.elem.read_mut()
+        unsafe {
+            let &mut (ref mut key, ref mut value) = self.elem.as_mut();
+            (key, value)
+        }
     }
 
     /// Converts the OccupiedEntry into a mutable reference to the key and value in the entry
     /// with a lifetime bound to the map itself.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn into_key_value(self) -> (&'a mut K, &'a mut V) {
-        self.elem.into_mut_refs()
+        unsafe {
+            let &mut (ref mut key, ref mut value) = self.elem.as_mut();
+            (key, value)
+        }
     }
 
     /// Sets the value of the entry, and returns the entry's old value.
@@ -2199,14 +1635,16 @@ impl<'a, K, V> RawOccupiedEntryMut<'a, K, V> {
     /// Takes the value out of the entry, and returns it.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn remove(self) -> V {
-        pop_internal(self.elem).1
+        self.remove_entry().1
     }
 
     /// Take the ownership of the key and value from the map.
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn remove_entry(self) -> (K, V) {
-        let (k, v, _) = pop_internal(self.elem);
-        (k, v)
+        unsafe {
+            self.table.erase_no_drop(&self.elem);
+            self.elem.read()
+        }
     }
 }
 
@@ -2227,23 +1665,19 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
     /// and returns a mutable reference to it.
     #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
-    pub fn insert_hashed_nocheck(self, hash: u64, key: K, value: V) -> (&'a mut K, &'a mut V) {
-        let hash = SafeHash::new(hash);
-        let b = match self.elem {
-            NeqElem(mut bucket, disp) => {
-                if disp >= DISPLACEMENT_THRESHOLD {
-                    bucket.table_mut().set_tag(true);
-                }
-                robin_hood(bucket, disp, hash, key, value)
-            },
-            NoElem(mut bucket, disp) => {
-                if disp >= DISPLACEMENT_THRESHOLD {
-                    bucket.table_mut().set_tag(true);
-                }
-                bucket.put(hash, key, value)
-            },
-        };
-        b.into_mut_refs()
+    pub fn insert_hashed_nocheck(self, hash: u64, key: K, value: V) -> (&'a mut K, &'a mut V)
+    where
+        K: Hash,
+        S: BuildHasher,
+    {
+        unsafe {
+            let hash_builder = self.hash_builder;
+            let elem = self
+                .table
+                .insert(hash, (key, value), |x| make_hash(hash_builder, &x.0));
+            let &mut (ref mut key, ref mut value) = elem.as_mut();
+            (key, value)
+        }
     }
 }
 
@@ -2306,20 +1740,20 @@ impl<'a, K, V, S> Debug for RawEntryBuilder<'a, K, V, S> {
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
 #[stable(feature = "rust1", since = "1.0.0")]
-pub enum Entry<'a, K: 'a, V: 'a> {
+pub enum Entry<'a, K: 'a, V: 'a, S: 'a> {
     /// An occupied entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Occupied(#[stable(feature = "rust1", since = "1.0.0")]
-             OccupiedEntry<'a, K, V>),
+             OccupiedEntry<'a, K, V, S>),
 
     /// A vacant entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Vacant(#[stable(feature = "rust1", since = "1.0.0")]
-           VacantEntry<'a, K, V>),
+           VacantEntry<'a, K, V, S>),
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for Entry<'a, K, V> {
+impl<'a, K: 'a + Debug, V: 'a + Debug, S: BuildHasher> Debug for Entry<'a, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Vacant(ref v) => {
@@ -2341,13 +1775,31 @@ impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for Entry<'a, K, V> {
 ///
 /// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
+pub struct OccupiedEntry<'a, K: 'a, V: 'a, S: 'a> {
     key: Option<K>,
-    elem: FullBucket<K, V, &'a mut RawTable<K, V>>,
+    elem: Bucket<(K, V)>,
+    table: &'a mut HashMap<K, V, S>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<'a, K, V, S> Send for OccupiedEntry<'a, K, V, S>
+where
+    K: Send,
+    V: Send,
+    S: Send,
+{
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<'a, K, V, S> Sync for OccupiedEntry<'a, K, V, S>
+where
+    K: Sync,
+    V: Sync,
+    S: Sync,
+{
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
+impl<'a, K: 'a + Debug, V: 'a + Debug, S> Debug for OccupiedEntry<'a, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
             .field("key", self.key())
@@ -2361,28 +1813,19 @@ impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
 ///
 /// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct VacantEntry<'a, K: 'a, V: 'a> {
-    hash: SafeHash,
+pub struct VacantEntry<'a, K: 'a, V: 'a, S: 'a> {
+    hash: u64,
     key: K,
-    elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
+    table: &'a mut HashMap<K, V, S>,
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
-impl<'a, K: 'a + Debug, V: 'a> Debug for VacantEntry<'a, K, V> {
+impl<'a, K: 'a + Debug, V: 'a, S> Debug for VacantEntry<'a, K, V, S> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("VacantEntry")
             .field(self.key())
             .finish()
     }
-}
-
-/// Possible states of a VacantEntry.
-enum VacantEntryState<K, V, M> {
-    /// The index is occupied, but the key to insert has precedence,
-    /// and will kick the current one out on insertion.
-    NeqElem(FullBucket<K, V, M>, usize),
-    /// The index is genuinely vacant.
-    NoElem(EmptyBucket<K, V, M>, usize),
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2447,7 +1890,10 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
 
     #[inline]
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
-        self.inner.next()
+        self.inner.next().map(|x| unsafe {
+            let r = x.as_ref();
+            (&r.0, &r.1)
+        })
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -2471,7 +1917,10 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
 
     #[inline]
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> {
-        self.inner.next()
+        self.inner.next().map(|x| unsafe {
+            let r = x.as_mut();
+            (&r.0, &mut r.1)
+        })
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -2495,7 +1944,7 @@ impl<'a, K, V> fmt::Debug for IterMut<'a, K, V>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
-            .entries(self.inner.iter())
+            .entries(self.iter())
             .finish()
     }
 }
@@ -2506,7 +1955,7 @@ impl<K, V> Iterator for IntoIter<K, V> {
 
     #[inline]
     fn next(&mut self) -> Option<(K, V)> {
-        self.inner.next().map(|(_, k, v)| (k, v))
+        self.inner.next()
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -2527,7 +1976,7 @@ impl<K, V> FusedIterator for IntoIter<K, V> {}
 impl<K: Debug, V: Debug> fmt::Debug for IntoIter<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
-            .entries(self.inner.iter())
+            .entries(self.iter())
             .finish()
     }
 }
@@ -2608,7 +2057,7 @@ impl<'a, K, V> fmt::Debug for ValuesMut<'a, K, V>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
-            .entries(self.inner.inner.iter())
+            .entries(self.inner.iter())
             .finish()
     }
 }
@@ -2619,7 +2068,7 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
 
     #[inline]
     fn next(&mut self) -> Option<(K, V)> {
-        self.inner.next().map(|(_, k, v)| (k, v))
+        self.inner.next()
     }
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -2643,12 +2092,12 @@ impl<'a, K, V> fmt::Debug for Drain<'a, K, V>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
-            .entries(self.inner.iter())
+            .entries(self.iter())
             .finish()
     }
 }
 
-impl<'a, K, V> Entry<'a, K, V> {
+impl<'a, K, V, S> Entry<'a, K, V, S> {
     #[stable(feature = "rust1", since = "1.0.0")]
     /// Ensures a value is in the entry by inserting the default if empty, and returns
     /// a mutable reference to the value in the entry.
@@ -2666,7 +2115,11 @@ impl<'a, K, V> Entry<'a, K, V> {
     /// *map.entry("poneyland").or_insert(10) *= 2;
     /// assert_eq!(map["poneyland"], 6);
     /// ```
-    pub fn or_insert(self, default: V) -> &'a mut V {
+    pub fn or_insert(self, default: V) -> &'a mut V
+    where
+        K: Hash,
+        S: BuildHasher,
+    {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default),
@@ -2689,7 +2142,11 @@ impl<'a, K, V> Entry<'a, K, V> {
     ///
     /// assert_eq!(map["poneyland"], "hoho".to_string());
     /// ```
-    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V {
+    pub fn or_insert_with<F: FnOnce() -> V>(self, default: F) -> &'a mut V
+    where
+        K: Hash,
+        S: BuildHasher,
+    {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(default()),
@@ -2749,7 +2206,7 @@ impl<'a, K, V> Entry<'a, K, V> {
 
 }
 
-impl<'a, K, V: Default> Entry<'a, K, V> {
+impl<'a, K, V: Default, S> Entry<'a, K, V, S> {
     #[stable(feature = "entry_or_default", since = "1.28.0")]
     /// Ensures a value is in the entry by inserting the default value if empty,
     /// and returns a mutable reference to the value in the entry.
@@ -2766,7 +2223,11 @@ impl<'a, K, V: Default> Entry<'a, K, V> {
     /// assert_eq!(map["poneyland"], None);
     /// # }
     /// ```
-    pub fn or_default(self) -> &'a mut V {
+    pub fn or_default(self) -> &'a mut V
+    where
+        K: Hash,
+        S: BuildHasher,
+    {
         match self {
             Occupied(entry) => entry.into_mut(),
             Vacant(entry) => entry.insert(Default::default()),
@@ -2774,7 +2235,7 @@ impl<'a, K, V: Default> Entry<'a, K, V> {
     }
 }
 
-impl<'a, K, V> OccupiedEntry<'a, K, V> {
+impl<'a, K, V, S> OccupiedEntry<'a, K, V, S> {
     /// Gets a reference to the key in the entry.
     ///
     /// # Examples
@@ -2788,7 +2249,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
-        self.elem.read().0
+        unsafe { &self.elem.as_ref().0 }
     }
 
     /// Take the ownership of the key and value from the map.
@@ -2811,8 +2272,10 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "map_entry_recover_keys2", since = "1.12.0")]
     pub fn remove_entry(self) -> (K, V) {
-        let (k, v, _) = pop_internal(self.elem);
-        (k, v)
+        unsafe {
+            self.table.table.erase_no_drop(&self.elem);
+            self.elem.read()
+        }
     }
 
     /// Gets a reference to the value in the entry.
@@ -2832,7 +2295,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> &V {
-        self.elem.read().1
+        unsafe { &self.elem.as_ref().1 }
     }
 
     /// Gets a mutable reference to the value in the entry.
@@ -2864,7 +2327,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut V {
-        self.elem.read_mut().1
+        unsafe { &mut self.elem.as_mut().1 }
     }
 
     /// Converts the OccupiedEntry into a mutable reference to the value in the entry
@@ -2892,7 +2355,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_mut(self) -> &'a mut V {
-        self.elem.into_mut_refs().1
+        unsafe { &mut self.elem.as_mut().1 }
     }
 
     /// Sets the value of the entry, and returns the entry's old value.
@@ -2938,14 +2401,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(self) -> V {
-        pop_internal(self.elem).1
-    }
-
-    /// Returns a key that was used for search.
-    ///
-    /// The key was retained for further use.
-    fn take_key(&mut self) -> Option<K> {
-        self.key.take()
+        self.remove_entry().1
     }
 
     /// Replaces the entry, returning the old key and value. The new key in the hash map will be
@@ -2970,11 +2426,11 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     ///
     /// ```
     #[unstable(feature = "map_entry_replace", issue = "44286")]
-    pub fn replace_entry(mut self, value: V) -> (K, V) {
-        let (old_key, old_value) = self.elem.read_mut();
+    pub fn replace_entry(self, value: V) -> (K, V) {
+        let entry = unsafe { self.elem.as_mut() };
 
-        let old_key = mem::replace(old_key, self.key.unwrap());
-        let old_value = mem::replace(old_value, value);
+        let old_key = mem::replace(&mut entry.0, self.key.unwrap());
+        let old_value = mem::replace(&mut entry.1, value);
 
         (old_key, old_value)
     }
@@ -3005,13 +2461,13 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// }
     /// ```
     #[unstable(feature = "map_entry_replace", issue = "44286")]
-    pub fn replace_key(mut self) -> K {
-        let (old_key, _) = self.elem.read_mut();
-        mem::replace(old_key, self.key.unwrap())
+    pub fn replace_key(self) -> K {
+        let entry = unsafe { self.elem.as_mut() };
+        mem::replace(&mut entry.0, self.key.unwrap())
     }
 }
 
-impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
+impl<'a, K: 'a, V: 'a, S: 'a> VacantEntry<'a, K, V, S> {
     /// Gets a reference to the key that would be used when inserting a value
     /// through the `VacantEntry`.
     ///
@@ -3064,22 +2520,16 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// assert_eq!(map["poneyland"], 37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(self, value: V) -> &'a mut V {
-        let b = match self.elem {
-            NeqElem(mut bucket, disp) => {
-                if disp >= DISPLACEMENT_THRESHOLD {
-                    bucket.table_mut().set_tag(true);
-                }
-                robin_hood(bucket, disp, self.hash, self.key, value)
-            },
-            NoElem(mut bucket, disp) => {
-                if disp >= DISPLACEMENT_THRESHOLD {
-                    bucket.table_mut().set_tag(true);
-                }
-                bucket.put(self.hash, self.key, value)
-            },
-        };
-        b.into_mut_refs().1
+    pub fn insert(self, value: V) -> &'a mut V
+    where
+        K: Hash,
+        S: BuildHasher,
+    {
+        let hash_builder = &self.table.hash_builder;
+        let bucket = self.table.table.insert(self.hash, (self.key, value), |x| {
+            make_hash(hash_builder, &x.0)
+        });
+        unsafe { &mut bucket.as_mut().1 }
     }
 }
 
@@ -3263,39 +2713,6 @@ impl Default for RandomState {
 impl fmt::Debug for RandomState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("RandomState { .. }")
-    }
-}
-
-impl<K, S, Q: ?Sized> super::Recover<Q> for HashMap<K, (), S>
-    where K: Eq + Hash + Borrow<Q>,
-          S: BuildHasher,
-          Q: Eq + Hash
-{
-    type Key = K;
-
-    #[inline]
-    fn get(&self, key: &Q) -> Option<&K> {
-        self.search(key).map(|bucket| bucket.into_refs().0)
-    }
-
-    fn take(&mut self, key: &Q) -> Option<K> {
-        self.search_mut(key).map(|bucket| pop_internal(bucket).0)
-    }
-
-    #[inline]
-    fn replace(&mut self, key: K) -> Option<K> {
-        self.reserve(1);
-
-        match self.entry(key) {
-            Occupied(mut occupied) => {
-                let key = occupied.take_key().unwrap();
-                Some(mem::replace(occupied.elem.read_mut().0, key))
-            }
-            Vacant(vacant) => {
-                vacant.insert(());
-                None
-            }
-        }
     }
 }
 
@@ -4208,6 +3625,7 @@ mod test_map {
         assert_eq!(map[&6], 60);
     }
 
+    #[cfg(adaptive_resize_not_implemented)]
     #[test]
     fn test_adaptive() {
         const TEST_LEN: usize = 5000;
@@ -4228,6 +3646,7 @@ mod test_map {
         panic!("Adaptive early resize failed");
     }
 
+    #[cfg(try_reserve_not_implemented)]
     #[test]
     fn test_try_reserve() {
 

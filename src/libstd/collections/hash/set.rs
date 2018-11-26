@@ -14,7 +14,6 @@ use hash::{Hash, BuildHasher};
 use iter::{Chain, FromIterator, FusedIterator};
 use ops::{BitOr, BitAnd, BitXor, Sub};
 
-use super::Recover;
 use super::map::{self, HashMap, Keys, RandomState};
 
 // Future Optimization (FIXME!)
@@ -572,7 +571,7 @@ impl<T, S> HashSet<T, S>
         where T: Borrow<Q>,
               Q: Hash + Eq
     {
-        Recover::get(&self.map, value)
+        self.map.get_key_value(value).map(|(k, _)| k)
     }
 
     /// Returns `true` if `self` has no elements in common with `other`.
@@ -684,7 +683,13 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[stable(feature = "set_recovery", since = "1.9.0")]
     pub fn replace(&mut self, value: T) -> Option<T> {
-        Recover::replace(&mut self.map, value)
+        match self.map.entry(value) {
+            map::Entry::Occupied(occupied) => Some(occupied.replace_key()),
+            map::Entry::Vacant(vacant) => {
+                vacant.insert(());
+                None
+            }
+        }
     }
 
     /// Removes a value from the set. Returns `true` if the value was
@@ -739,7 +744,7 @@ impl<T, S> HashSet<T, S>
         where T: Borrow<Q>,
               Q: Hash + Eq
     {
-        Recover::take(&mut self.map, value)
+        self.map.remove_entry(value).map(|(k, _)| k)
     }
 
     /// Retains only the elements specified by the predicate.
@@ -1159,7 +1164,6 @@ impl<K> FusedIterator for IntoIter<K> {}
 impl<K: fmt::Debug> fmt::Debug for IntoIter<K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entries_iter = self.iter
-            .inner
             .iter()
             .map(|(k, _)| k);
         f.debug_list().entries(entries_iter).finish()
@@ -1190,7 +1194,6 @@ impl<'a, K> FusedIterator for Drain<'a, K> {}
 impl<'a, K: fmt::Debug> fmt::Debug for Drain<'a, K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entries_iter = self.iter
-            .inner
             .iter()
             .map(|(k, _)| k);
         f.debug_list().entries(entries_iter).finish()
