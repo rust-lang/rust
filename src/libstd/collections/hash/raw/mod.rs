@@ -800,7 +800,7 @@ impl<T: Clone> Clone for RawTable<T> {
     }
 }
 
-impl<T> Drop for RawTable<T> {
+unsafe impl<#[may_dangle] T> Drop for RawTable<T> {
     #[inline]
     fn drop(&mut self) {
         if self.bucket_mask != 0 {
