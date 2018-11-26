@@ -16,7 +16,7 @@
 ///
 /// See also [the reference][reference-types] for a list of such types.
 ///
-/// [reference-types]: https://doc.rust-lang.org/reference.html#types
+/// [reference-types]: https://doc.rust-lang.org/reference/types.html
 pub const BUILTIN_TYPES: &[&str] = &[
     "i8",
     "u8",
@@ -26,6 +26,8 @@ pub const BUILTIN_TYPES: &[&str] = &[
     "u32",
     "i64",
     "u64",
+    "i128",
+    "u128",
     "isize",
     "usize",
     "f32",
