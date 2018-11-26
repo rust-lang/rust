@@ -423,7 +423,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             mir::Place::Static(box mir::Static { def_id, ty }) => {
                 let layout = cx.layout_of(self.monomorphize(&ty));
-                PlaceRef::new_sized(cx.get_static(def_id), layout, layout.align.abi)
+                PlaceRef::new_sized(bx.get_static(def_id), layout, layout.align.abi)
             },
             mir::Place::Projection(box mir::Projection {
                 ref base,

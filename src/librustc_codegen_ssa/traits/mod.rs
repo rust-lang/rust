@@ -46,7 +46,7 @@ pub use self::debuginfo::{DebugInfoBuilderMethods, DebugInfoMethods};
 pub use self::declare::{DeclareMethods, PreDefineMethods};
 pub use self::intrinsic::IntrinsicCallMethods;
 pub use self::misc::MiscMethods;
-pub use self::statics::StaticMethods;
+pub use self::statics::{StaticMethods, StaticBuilderMethods};
 pub use self::type_::{
     ArgTypeMethods, BaseTypeMethods, DerivedTypeMethods, LayoutTypeMethods, TypeMethods,
 };

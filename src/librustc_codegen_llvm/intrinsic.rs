@@ -915,7 +915,7 @@ fn codegen_msvc_try(
         catchswitch.add_handler(cs, catchpad.llbb());
 
         let tydesc = match bx.tcx().lang_items().msvc_try_filter() {
-            Some(did) => bx.cx().get_static(did),
+            Some(did) => bx.get_static(did),
             None => bug!("msvc_try_filter not defined"),
         };
         let funclet = catchpad.catch_pad(cs, &[tydesc, bx.const_i32(0), slot]);

@@ -20,6 +20,7 @@ use value::Value;
 use libc::{c_uint, c_char};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::{self, Align, Size, TyLayout};
+use rustc::hir::def_id::DefId;
 use rustc::session::config;
 use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_codegen_ssa::traits::*;
@@ -1483,6 +1484,12 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn do_not_inline(&mut self, llret: &'ll Value) {
         llvm::Attribute::NoInline.apply_callsite(llvm::AttributePlace::Function, llret);
+    }
+}
+
+impl StaticBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+    fn get_static(&self, def_id: DefId) -> &'ll Value {
+        self.cx().get_static(def_id)
     }
 }
 

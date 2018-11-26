@@ -13,7 +13,7 @@ use super::asm::AsmBuilderMethods;
 use super::debuginfo::DebugInfoBuilderMethods;
 use super::intrinsic::IntrinsicCallMethods;
 use super::type_::ArgTypeMethods;
-use super::HasCodegen;
+use super::{HasCodegen, StaticBuilderMethods};
 use common::{AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope};
 use mir::operand::OperandRef;
 use mir::place::PlaceRef;
@@ -40,6 +40,7 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     + AbiBuilderMethods<'tcx>
     + IntrinsicCallMethods<'tcx>
     + AsmBuilderMethods<'tcx>
+    + StaticBuilderMethods<'tcx>
 {
     fn new_block<'b>(cx: &'a Self::CodegenCx, llfn: Self::Value, name: &'b str) -> Self;
     fn with_cx(cx: &'a Self::CodegenCx) -> Self;
