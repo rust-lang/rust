@@ -1,0 +1,38 @@
+warning: boolean short circuiting operators in constants do not actually short circuit. Thus new const eval features are not accessible in constants.
+  --> $DIR/const_short_circuit.rs:3:23
+   |
+LL | const _: bool = false && false; //~ WARN boolean short circuiting operators in constants
+   |                       ^^ help: use a bit operator instead: `&`
+
+warning: boolean short circuiting operators in constants do not actually short circuit. Thus new const eval features are not accessible in constants.
+  --> $DIR/const_short_circuit.rs:4:22
+   |
+LL | const _: bool = true && false; //~ WARN boolean short circuiting operators in constants
+   |                      ^^ help: use a bit operator instead: `&`
+
+warning: boolean short circuiting operators in constants do not actually short circuit. Thus new const eval features are not accessible in constants.
+  --> $DIR/const_short_circuit.rs:6:22
+   |
+LL |     let mut x = true && false; //~ WARN boolean short circuiting operators in constants
+   |                      ^^ help: use a bit operator instead: `&`
+
+error: short circuiting operators do not actually short circuit in constant. Thus new features like let bindings are not permitted
+  --> $DIR/const_short_circuit.rs:6:9
+   |
+LL |     let mut x = true && false; //~ WARN boolean short circuiting operators in constants
+   |         ^^^^^
+
+warning: boolean short circuiting operators in constants do not actually short circuit. Thus new const eval features are not accessible in constants.
+  --> $DIR/const_short_circuit.rs:11:18
+   |
+LL |     let x = true && false; //~ WARN boolean short circuiting operators in constants
+   |                  ^^ help: use a bit operator instead: `&`
+
+error: short circuiting operators do not actually short circuit in constant. Thus new features like let bindings are not permitted
+  --> $DIR/const_short_circuit.rs:11:9
+   |
+LL |     let x = true && false; //~ WARN boolean short circuiting operators in constants
+   |         ^
+
+error: aborting due to 2 previous errors
+

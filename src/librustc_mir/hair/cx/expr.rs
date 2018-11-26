@@ -376,8 +376,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         cx.control_flow_destroyed = true;
                         cx.tcx.sess.struct_span_warn(
                             op.span,
-                            "boolean short circuiting operators in constants do
-                             not actually short circuit. Thus new const eval features
+                            "boolean short circuiting operators in constants do \
+                             not actually short circuit. Thus new const eval features \
                              are not accessible in constants."
                         ).span_suggestion_with_applicability(
                             op.span,
@@ -395,8 +395,8 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                         cx.control_flow_destroyed = true;
                         cx.tcx.sess.struct_span_warn(
                             op.span,
-                            "boolean short circuiting operators in constants do
-                             not actually short circuit. Thus new const eval features
+                            "boolean short circuiting operators in constants do \
+                             not actually short circuit. Thus new const eval features \
                              are not accessible in constants."
                         ).span_suggestion_with_applicability(
                             op.span,

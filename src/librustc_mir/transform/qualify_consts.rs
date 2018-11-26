@@ -1184,13 +1184,13 @@ impl MirPass for QualifyAndPromoteConstants {
             promote_consts::promote_candidates(mir, tcx, temps, candidates);
         } else {
             if mir.control_flow_destroyed {
-                for local in mir.mut_vars_iter() {
+                for local in mir.vars_iter() {
                     let span = mir.local_decls[local].source_info.span;
                     tcx.sess.span_err(
                         span,
                         &format!(
-                            "Cannot have both mutable bindings and \
-                            short circuiting operators in {}",
+                            "short circuiting operators do not actually short circuit in {}. \
+                             Thus new features like let bindings are not permitted",
                             mode,
                         ),
                     );
