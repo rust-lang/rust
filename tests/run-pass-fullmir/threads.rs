@@ -5,15 +5,15 @@ use std::sync;
 
 fn main() {
     let m = sync::Mutex::new(0);
-    let _ = m.lock();
+    drop(m.lock());
     drop(m);
 
     // We don't provide RwLock on Windows
     #[cfg(not(target_os = "windows"))]
     {
         let rw = sync::RwLock::new(0);
-        let _ = rw.read();
-        let _ = rw.write();
+        drop(rw.read());
+        drop(rw.write());
         drop(rw);
     }
 }

@@ -15,5 +15,5 @@ trait Foo {}
 impl Foo for [u8; 2] {}
 
 fn main() {
-    let _: Arc<Foo + Send> = Arc::new([3, 4]);
+    let _val: Arc<Foo + Send> = Arc::new([3, 4]);
 }
