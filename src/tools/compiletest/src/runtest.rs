@@ -1829,10 +1829,10 @@ impl<'test> TestCx<'test> {
             rustc.args(self.split_maybe_args(&self.config.host_rustcflags));
         } else {
             rustc.args(self.split_maybe_args(&self.config.target_rustcflags));
-        }
-        if !is_rustdoc {
-            if let Some(ref linker) = self.config.linker {
-                rustc.arg(format!("-Clinker={}", linker));
+            if !is_rustdoc {
+                if let Some(ref linker) = self.config.linker {
+                    rustc.arg(format!("-Clinker={}", linker));
+                }
             }
         }
 
