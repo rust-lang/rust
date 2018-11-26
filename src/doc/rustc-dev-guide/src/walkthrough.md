@@ -254,8 +254,16 @@ The stabilization report for our feature is [here][stabrep].
 
 [stabrep]: https://github.com/rust-lang/rust/issues/48075#issuecomment-433243048
 
-After this, a PR is made to remove the feature gate, enabling the feature by
+After this, [a PR is made][stab] to remove the feature gate, enabling the feature by
 default (on the 2018 edition). A note is added to the [Release notes][relnotes]
 about the feature.
+
+[stab]: https://github.com/rust-lang/rust/pull/56245
+
+TODO: currently, we have a [forge article][feature-stab] about stabilization, but
+we really ought to move that to the guide (in fact, we probably should have a whole
+chapter about feature gates and stabilization).
+
+[feature-stab]: https://forge.rust-lang.org/stabilization-guide.html
 
 [relnotes]: https://github.com/rust-lang/rust/blob/master/RELEASES.md
