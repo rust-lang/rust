@@ -108,6 +108,18 @@ script:
   # etc.
 ```
 
+It might happen that clippy is not available for a certain nightly release.
+In this case you can try to conditionally install clippy from the git repo.
+
+```yaml
+language: rust
+rust:
+  - nightly
+before_script:
+   - rustup component add clippy-preview --toolchain=nightly || cargo install --git https://github.com/rust-lang/rust-clippy/ --force clippy
+   # etc
+```
+
 ## Configuration
 
 Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`. It contains a basic `variable = value` mapping eg.
