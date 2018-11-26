@@ -5,7 +5,7 @@ use rustc::hir::{Mutability, MutMutable, MutImmutable};
 
 use crate::{
     EvalResult, EvalErrorKind, MiriEvalContext, HelpersEvalContextExt, Evaluator, MutValueVisitor,
-    MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra, InboundsCheck,
+    MemoryKind, MiriMemoryKind, RangeMap, AllocId, Allocation, AllocationExtra,
     Pointer, MemPlace, Scalar, Immediate, ImmTy, PlaceTy, MPlaceTy,
 };
 
@@ -151,6 +151,10 @@ impl<'tcx> Stack {
     /// Returns the index of the item we matched, `None` if it was the frozen one.
     /// `kind` indicates which kind of reference is being dereferenced.
     fn deref(&self, bor: Borrow, kind: RefKind) -> Result<Option<usize>, String> {
+        // Exclude unique ref with frozen tag.
+        if let (RefKind::Unique, Borrow::Shr(Some(_))) = (kind, bor) {
+            return Err(format!("Encountered mutable reference with frozen tag ({:?})", bor));
+        }
         // Checks related to freezing
         match bor {
             Borrow::Shr(Some(bor_t)) if kind == RefKind::Frozen => {
@@ -490,41 +494,14 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             if let Some(mutability) = mutability { format!("{:?}", mutability) } else { format!("raw") },
             place.ptr, place.layout.ty);
         let ptr = place.ptr.to_ptr()?;
-        // In principle we should not have to do anything here.  However, with transmutes involved,
-        // it can happen that the tag of `ptr` does not actually match `mutability`, and we
-        // should adjust for that.
-        // Notably, the compiler can introduce such transmutes by optimizing away `&[mut]*`.
-        // That can transmute a raw ptr to a (shared/mut) ref, and a mut ref to a shared one.
-        match (mutability, ptr.tag) {
-            (None, _) => {
-                // No further validation on raw accesses.
-                return Ok(());
-            }
-            (Some(MutMutable), Borrow::Uniq(_)) |
-            (Some(MutImmutable), Borrow::Shr(_)) => {
-                // Expected combinations.  Nothing to do.
-            }
-            (Some(MutMutable), Borrow::Shr(None)) => {
-                // Raw transmuted to mut ref.  This is something real unsafe code does.
-                // We cannot reborrow here because we do not want to mutate state on a deref.
-            }
-            (Some(MutImmutable), Borrow::Uniq(_)) => {
-                // A mut got transmuted to shr.  Can happen even from compiler transformations:
-                // `&*x` gets optimized to `x` even when `x` is a `&mut`.
-            }
-            (Some(MutMutable), Borrow::Shr(Some(_))) => {
-                // This is just invalid: A shr got transmuted to a mut.
-                // If we ever allow this, we have to consider what we do when a turn a
-                // `Raw`-tagged `&mut` into a raw pointer pointing to a frozen location.
-                // We probably do not want to allow that, but we have to allow
-                // turning a `Raw`-tagged `&` into a raw ptr to a frozen location.
-                return err!(MachineError(format!("Encountered mutable reference with frozen tag {:?}", ptr.tag)))
-            }
+        if mutability.is_none() {
+            // No further checks on raw derefs -- only the access itself will be checked.
+            return Ok(());
         }
 
         // Get the allocation
-        self.memory().check_bounds(ptr, size, InboundsCheck::Live)?;
-        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
+        let alloc = self.memory().get(ptr.alloc_id)?;
+        alloc.check_bounds(self, ptr, size)?;
         // If we got here, we do some checking, *but* we leave the tag unchanged.
         if let Borrow::Shr(Some(_)) = ptr.tag {
             assert_eq!(mutability, Some(MutImmutable));
@@ -566,8 +543,8 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
             ptr, place.layout.ty, new_bor);
 
         // Get the allocation.  It might not be mutable, so we cannot use `get_mut`.
-        self.memory().check_bounds(ptr, size, InboundsCheck::Live)?;
-        let alloc = self.memory().get(ptr.alloc_id).expect("We checked that the ptr is fine!");
+        let alloc = self.memory().get(ptr.alloc_id)?;
+        alloc.check_bounds(self, ptr, size)?;
         // Update the stacks.
         if let Borrow::Shr(Some(_)) = new_bor {
             // Reference that cares about freezing. We need a frozen-sensitive reborrow.
