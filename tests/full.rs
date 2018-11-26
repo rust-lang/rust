@@ -88,15 +88,20 @@ mod full {
         let old_version = format!("{}:{}", crate_name, old_version);
         let new_version = format!("{}:{}", crate_name, new_version);
 
-        success &= Command::new("./target/debug/cargo-semver")
-            .args(&["-S", &old_version, "-C", &new_version])
-            .env("RUST_BACKTRACE", "full")
-            .stdin(Stdio::null())
-            .stdout(out_pipe)
-            .stderr(err_pipe)
-            .status()
-            .expect("could not run cargo semver")
-            .success();
+        success &= {
+            let mut cmd = Command::new("./target/debug/cargo-semver");
+            cmd.args(&["-S", &old_version, "-C", &new_version])
+                .env("RUST_BACKTRACE", "full")
+                .stdin(Stdio::null())
+                .stdout(out_pipe)
+                .stderr(err_pipe);
+
+            if let Ok(target) = std::env::var("TEST_TARGET") {
+                cmd.args(&["--target", &target]);
+            }
+
+            cmd.status().expect("could not run cargo semver").success()
+        };
 
         assert!(success, "cargo semver");
 

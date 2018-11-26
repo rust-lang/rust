@@ -240,12 +240,19 @@ fn do_main(config: &Config, matches: &Matches, explain: bool) -> CargoResult<()>
 
     debug!("running rust-semverver on compiled crates");
 
-    let mut child = Command::new("rust-semverver")
+    let mut child = Command::new("rust-semverver");
+    child
         .arg("--crate-type=lib")
         .args(&["--extern", &*format!("old={}", stable_rlib.display())])
         .args(&[format!("-L{}", stable_deps_output.display())])
         .args(&["--extern", &*format!("new={}", current_rlib.display())])
-        .args(&[format!("-L{}", current_deps_output.display())])
+        .args(&[format!("-L{}", current_deps_output.display())]);
+
+    if let Some(target) = matches.opt_str("target") {
+        child.args(&["--target", &target]);
+    }
+
+    let mut child = child
         .arg("-")
         .stdin(Stdio::piped())
         .env("RUST_SEMVER_CRATE_VERSION", stable_version)
@@ -328,6 +335,7 @@ fn main() {
         "use a `name:version` string as current/new crate",
         "NAME:VERSION",
     );
+    opts.optopt("T", "target", "Build for the target triple", "<TRIPLE>");
 
     let config = match Config::default() {
         Ok(cfg) => cfg,
