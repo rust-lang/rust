@@ -102,7 +102,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                             format!("bytecount::count({}, {})",
                                     snippet_with_applicability(cx, haystack.span, "..", &mut applicability),
                                     snippet_with_applicability(cx, needle.span, "..", &mut applicability)),
-                            Applicability::Unspecified,
+                            applicability,
                         );
                     }
                 };
