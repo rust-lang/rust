@@ -7,11 +7,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // error-pattern:cargo-clippy
 #![feature(plugin_registrar)]
 #![feature(rustc_private)]
-
 #![allow(clippy::missing_docs_in_private_items)]
 #![warn(rust_2018_idioms)]
 
