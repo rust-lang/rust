@@ -37,9 +37,13 @@ script:
   cargo test --release --all-features &&
   cargo install --all-features --force --path .
 - |
-  # Get ourselves a MIR-full libstd
+  # Get ourselves a MIR-full libstd, and use it henceforth
   cargo miri setup &&
-  export MIRI_SYSROOT=~/.miri/HOST
+  if [ "$TRAVIS_OS_NAME" == osx ]; then
+    export MIRI_SYSROOT=~/Library/Caches/miri.miri.miri/HOST
+  else
+    export MIRI_SYSROOT=~/.cache/miri/HOST
+  fi
 - |
   # Test miri with full MIR
   cargo test --release --all-features

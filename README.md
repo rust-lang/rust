@@ -91,7 +91,7 @@ Miri builds and vice-versa.
 
 You may be running `cargo miri` with a different compiler version than the one
 used to build the custom libstd that Miri uses, and Miri failed to detect that.
-Try deleting `~/.miri`.
+Try deleting `~/.cache/miri`.
 
 ## Miri `-Z` flags
 
