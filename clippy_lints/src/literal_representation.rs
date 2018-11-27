@@ -301,7 +301,7 @@ impl WarningType {
                 "mistyped literal suffix",
                 "did you mean to write",
                 grouping_hint.to_string(),
-                Applicability::MachineApplicable,
+                Applicability::MaybeIncorrect,
             ),
             WarningType::UnreadableLiteral => span_lint_and_sugg(
                 cx,
