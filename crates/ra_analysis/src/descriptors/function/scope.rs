@@ -58,13 +58,13 @@ impl FnScopes {
         })
     }
     fn root_scope(&mut self) -> ScopeId {
-        self.scopes.push(ScopeData {
+        self.scopes.alloc(ScopeData {
             parent: None,
             entries: vec![],
         })
     }
     fn new_scope(&mut self, parent: ScopeId) -> ScopeId {
-        self.scopes.push(ScopeData {
+        self.scopes.alloc(ScopeData {
             parent: Some(parent),
             entries: vec![],
         })

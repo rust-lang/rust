@@ -4,7 +4,6 @@
 
 use std::{
     fmt,
-    ops::{Index, IndexMut},
     hash::{Hash, Hasher},
     marker::PhantomData,
 };
@@ -41,56 +40,27 @@ impl<T> Hash for Id<T> {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct Arena<T> {
-    data: Vec<T>,
+pub(crate) struct ArenaBehavior<T> {
+    _ty: PhantomData<T>,
 }
 
-impl<T> Default for Arena<T> {
-    fn default() -> Arena<T> {
-        Arena { data: Vec::new() }
+impl<T> id_arena::ArenaBehavior for ArenaBehavior<T> {
+    type Id = Id<T>;
+    fn new_arena_id() -> usize {
+        0
     }
-}
-
-impl<T> Arena<T> {
-    pub(crate) fn push(&mut self, value: T) -> Id<T> {
-        let id = self.data.len() as u32;
-        self.data.push(value);
+    fn new_id(_arena_id: usize, index: usize) -> Id<T> {
         Id {
-            idx: id as u32,
+            idx: index as u32,
             _ty: PhantomData,
         }
     }
-
-    pub(crate) fn keys<'a>(&'a self) -> impl Iterator<Item = Id<T>> + 'a {
-        (0..(self.data.len() as u32)).into_iter().map(|idx| Id {
-            idx,
-            _ty: PhantomData,
-        })
+    fn index(id: Id<T>) -> usize {
+        id.idx as usize
     }
-
-    pub(crate) fn items<'a>(&'a self) -> impl Iterator<Item = (Id<T>, &T)> + 'a {
-        self.data.iter().enumerate().map(|(idx, item)| {
-            let idx = idx as u32;
-            (
-                Id {
-                    idx,
-                    _ty: PhantomData,
-                },
-                item,
-            )
-        })
+    fn arena_id(_id: Id<T>) -> usize {
+        0
     }
 }
 
-impl<T> Index<Id<T>> for Arena<T> {
-    type Output = T;
-    fn index(&self, id: Id<T>) -> &T {
-        &self.data[id.idx as usize]
-    }
-}
-
-impl<T> IndexMut<Id<T>> for Arena<T> {
-    fn index_mut(&mut self, id: Id<T>) -> &mut T {
-        &mut self.data[id.idx as usize]
-    }
-}
+pub(crate) type Arena<T> = id_arena::Arena<T, ArenaBehavior<T>>;
