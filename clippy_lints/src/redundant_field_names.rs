@@ -66,7 +66,7 @@ impl EarlyLintPass for RedundantFieldNames {
                             "redundant field names in struct initialization",
                             "replace it with",
                             field.ident.to_string(),
-                            Applicability::Unspecified,
+                            Applicability::MachineApplicable,
                         );
                     }
                 }

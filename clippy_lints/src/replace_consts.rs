@@ -62,7 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ReplaceConsts {
                             &format!("using `{}`", const_path.last().expect("empty path")),
                             "try this",
                             repl_snip.to_string(),
-                            Applicability::Unspecified,
+                            Applicability::MachineApplicable,
                         );
                         return;
                     }

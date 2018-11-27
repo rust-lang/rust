@@ -12,7 +12,7 @@ use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::syntax::ast::{Expr, ExprKind, UnOp};
-use crate::utils::{snippet, span_lint_and_sugg};
+use crate::utils::{snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 
 /// **What it does:** Checks for usage of `*&` and `*&mut` in expressions.
@@ -55,14 +55,15 @@ impl EarlyLintPass for Pass {
             if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.node;
             if let ExprKind::AddrOf(_, ref addrof_target) = without_parens(deref_target).node;
             then {
+                let mut applicability = Applicability::MachineApplicable;
                 span_lint_and_sugg(
                     cx,
                     DEREF_ADDROF,
                     e.span,
                     "immediately dereferencing a reference",
                     "try this",
-                    format!("{}", snippet(cx, addrof_target.span, "_")),
-                    Applicability::Unspecified,
+                    format!("{}", snippet_with_applicability(cx, addrof_target.span, "_", &mut applicability)),
+                    applicability,
                 );
             }
         }
@@ -102,6 +103,7 @@ impl EarlyLintPass for DerefPass {
             if let ExprKind::Paren(ref parened) = object.node;
             if let ExprKind::AddrOf(_, ref inner) = parened.node;
             then {
+                let mut applicability = Applicability::MachineApplicable;
                 span_lint_and_sugg(
                     cx,
                     REF_IN_DEREF,
@@ -110,10 +112,10 @@ impl EarlyLintPass for DerefPass {
                     "try this",
                     format!(
                         "{}.{}",
-                        snippet(cx, inner.span, "_"),
-                        snippet(cx, field_name.span, "_")
+                        snippet_with_applicability(cx, inner.span, "_", &mut applicability),
+                        snippet_with_applicability(cx, field_name.span, "_", &mut applicability)
                     ),
-                    Applicability::Unspecified,
+                    applicability,
                 );
             }
         }

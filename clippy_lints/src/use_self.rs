@@ -71,7 +71,7 @@ fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path) {
         "unnecessary structure name repetition",
         "use the applicable keyword",
         "Self".to_owned(),
-        Applicability::Unspecified,
+        Applicability::MachineApplicable,
     );
 }
 

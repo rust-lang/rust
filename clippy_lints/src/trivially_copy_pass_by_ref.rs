@@ -15,14 +15,14 @@ use crate::rustc::hir::intravisit::FnKind;
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::session::config::Config as SessionConfig;
-use crate::rustc::ty::TyKind;
+use crate::rustc::ty::{FnSig, TyKind};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::rustc_target::abi::LayoutOf;
 use crate::rustc_target::spec::abi::Abi;
 use crate::syntax::ast::NodeId;
 use crate::syntax_pos::Span;
-use crate::utils::{in_macro, is_copy, is_self, snippet, span_lint_and_sugg};
+use crate::utils::{in_macro, is_copy, is_self_ty, snippet, span_lint_and_sugg};
 use if_chain::if_chain;
 use matches::matches;
 
@@ -141,7 +141,9 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
                         input.span,
                         "this argument is passed by reference, but would be more efficient if passed by value",
                         "consider passing by value instead",
-                        value_type);
+                        value_type,
+                        Applicability::Unspecified,
+                    );
                 }
             }
         }

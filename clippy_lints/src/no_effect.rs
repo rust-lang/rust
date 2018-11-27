@@ -132,7 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     "statement can be reduced",
                     "replace it with",
                     snippet,
-                    Applicability::Unspecified,
+                    Applicability::MachineApplicable,
                 );
             }
         }

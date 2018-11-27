@@ -29,7 +29,7 @@ use crate::utils::paths;
 use crate::utils::{
     clip, comparisons, differing_macro_contexts, higher, in_constant, in_macro, int_bits, last_path_segment,
     match_def_path, match_path, match_type, multispan_sugg, opt_def_id, same_tys, sext, snippet, snippet_opt,
-    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
+    snippet_with_applicability, span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, unsext,
 };
 use if_chain::if_chain;
 use std::borrow::Cow;
@@ -334,20 +334,21 @@ fn check_ty_rptr(cx: &LateContext<'_, '_>, ast_ty: &hir::Ty, is_local: bool, lt:
                     let ltopt = if lt.is_elided() {
                         String::new()
                     } else {
-                        format!("{} ", lt.name.ident().name.as_str())
+                        format!("{} ", lt.name.ident().as_str())
                     };
                     let mutopt = if mut_ty.mutbl == Mutability::MutMutable {
                         "mut "
                     } else {
                         ""
                     };
+                    let mut applicability = Applicability::MachineApplicable;
                     span_lint_and_sugg(
                         cx,
                         BORROWED_BOX,
                         ast_ty.span,
                         "you seem to be trying to use `&Box<T>`. Consider using just `&T`",
                         "try",
-                        format!("&{}{}{}", ltopt, mutopt, &snippet(cx, inner.span, "..")),
+                        format!("&{}{}{}", ltopt, mutopt, &snippet_with_applicability(cx, inner.span, "..", &mut applicability)),
                         Applicability::Unspecified,
                     );
                     return; // don't recurse into the type
@@ -542,7 +543,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitArg {
                                         "passing a unit value to a function",
                                         "if you intended to pass a unit value, use a unit literal instead",
                                         "()".to_string(),
-                                        Applicability::Unspecified,
+                                        Applicability::MachineApplicable,
                                     );
                                 }
                             }
@@ -862,6 +863,7 @@ fn span_lossless_lint(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_fro
     if in_constant(cx, expr.id) { return }
     // The suggestion is to use a function call, so if the original expression
     // has parens on the outside, they are no longer needed.
+    let mut applicability = Applicability::MachineApplicable;
     let opt = snippet_opt(cx, op.span);
     let sugg = if let Some(ref snip) = opt {
         if should_strip_parens(op, snip) {
@@ -870,6 +872,7 @@ fn span_lossless_lint(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_fro
             snip.as_str()
         }
     } else {
+        applicability = Applicability::HasPlaceholders;
         ".."
     };
 
@@ -880,7 +883,7 @@ fn span_lossless_lint(cx: &LateContext<'_, '_>, expr: &Expr, op: &Expr, cast_fro
         &format!("casting {} to {} may become silently lossy if types change", cast_from, cast_to),
         "try",
         format!("{}::from({})", cast_to, sugg),
-        Applicability::Unspecified,
+        applicability,
     );
 }
 
@@ -1100,7 +1103,8 @@ fn lint_fn_to_numeric_cast(cx: &LateContext<'_, '_>, expr: &Expr, cast_expr: &Ex
     }
     match cast_from.sty {
         ty::FnDef(..) | ty::FnPtr(_) => {
-            let from_snippet = snippet(cx, cast_expr.span, "x");
+            let mut applicability = Applicability::MachineApplicable;
+            let from_snippet = snippet_with_applicability(cx, cast_expr.span, "x", &mut applicability);
 
             let to_nbits = int_ty_to_nbits(cast_to, cx.tcx);
             if to_nbits < cx.tcx.data_layout.pointer_size.bits() {
@@ -1111,7 +1115,7 @@ fn lint_fn_to_numeric_cast(cx: &LateContext<'_, '_>, expr: &Expr, cast_expr: &Ex
                     &format!("casting function pointer `{}` to `{}`, which truncates the value", from_snippet, cast_to),
                     "try",
                     format!("{} as usize", from_snippet),
-                    Applicability::Unspecified,
+                    applicability,
                 );
 
             } else if cast_to.sty != ty::Uint(UintTy::Usize) {
@@ -1122,7 +1126,7 @@ fn lint_fn_to_numeric_cast(cx: &LateContext<'_, '_>, expr: &Expr, cast_expr: &Ex
                     &format!("casting function pointer `{}` to `{}`", from_snippet, cast_to),
                     "try",
                     format!("{} as usize", from_snippet),
-                    Applicability::Unspecified,
+                    applicability,
                 );
             }
         },

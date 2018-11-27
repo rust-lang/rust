@@ -82,7 +82,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DefaultTraitAccess {
                                 &format!("Calling {} is more clear than this expression", replacement),
                                 "try",
                                 replacement,
-                                Applicability::Unspecified,
+                                Applicability::Unspecified, // First resolve the TODO above
                             );
                          }
                     },

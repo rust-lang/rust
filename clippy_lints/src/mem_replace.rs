@@ -12,7 +12,7 @@ use crate::rustc::hir::{Expr, ExprKind, MutMutable, QPath};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
-use crate::utils::{match_def_path, match_qpath, opt_def_id, paths, snippet, span_lint_and_sugg};
+use crate::utils::{match_def_path, match_qpath, opt_def_id, paths, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 
 /// **What it does:** Checks for `mem::replace()` on an `Option` with
@@ -80,14 +80,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MemReplace {
                     _ => return,
                 };
 
+                let mut applicability = Applicability::MachineApplicable;
                 span_lint_and_sugg(
                     cx,
                     MEM_REPLACE_OPTION_WITH_NONE,
                     expr.span,
                     "replacing an `Option` with `None`",
                     "consider `Option::take()` instead",
-                    format!("{}.take()", snippet(cx, replaced_path.span, "")),
-                    Applicability::Unspecified,
+                    format!("{}.take()", snippet_with_applicability(cx, replaced_path.span, "", &mut applicability)),
+                    applicability,
                 );
             }
         }

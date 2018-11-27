@@ -282,7 +282,7 @@ impl EarlyLintPass for DefaultHashTypes {
                 &msg,
                 "use",
                 replace.to_string(),
-                Applicability::Unspecified,
+                Applicability::MaybeIncorrect, // FxHashMap, ... needs another import
             );
         }
     }

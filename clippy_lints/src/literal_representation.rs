@@ -301,7 +301,7 @@ impl WarningType {
                 "mistyped literal suffix",
                 "did you mean to write",
                 grouping_hint.to_string(),
-                Applicability::Unspecified,
+                Applicability::MachineApplicable,
             ),
             WarningType::UnreadableLiteral => span_lint_and_sugg(
                 cx,
@@ -310,7 +310,7 @@ impl WarningType {
                 "long literal lacking separators",
                 "consider",
                 grouping_hint.to_owned(),
-                Applicability::Unspecified,
+                Applicability::MachineApplicable,
             ),
             WarningType::LargeDigitGroups => span_lint_and_sugg(
                 cx,
@@ -319,7 +319,7 @@ impl WarningType {
                 "digit groups should be smaller",
                 "consider",
                 grouping_hint.to_owned(),
-                Applicability::Unspecified,
+                Applicability::MachineApplicable,
             ),
             WarningType::InconsistentDigitGrouping => span_lint_and_sugg(
                 cx,
@@ -328,7 +328,7 @@ impl WarningType {
                 "digits grouped inconsistently by underscores",
                 "consider",
                 grouping_hint.to_owned(),
-                Applicability::Unspecified,
+                Applicability::MachineApplicable,
             ),
             WarningType::DecimalRepresentation => span_lint_and_sugg(
                 cx,
@@ -337,7 +337,7 @@ impl WarningType {
                 "integer literal has a better hexadecimal representation",
                 "consider",
                 grouping_hint.to_owned(),
-                Applicability::Unspecified,
+                Applicability::MachineApplicable,
             ),
         };
     }

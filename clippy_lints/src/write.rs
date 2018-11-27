@@ -14,7 +14,7 @@ use crate::rustc_errors::Applicability;
 use crate::syntax::ast::*;
 use crate::syntax::parse::{parser, token};
 use crate::syntax::tokenstream::{ThinTokenStream, TokenStream};
-use crate::utils::{snippet, span_lint, span_lint_and_sugg};
+use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg};
 use std::borrow::Cow;
 
 /// **What it does:** This lint warns when you use `println!("")` to
@@ -200,7 +200,7 @@ impl EarlyLintPass for Pass {
                         "using `println!(\"\")`",
                         "replace it with",
                         "println!()".to_string(),
-                        Applicability::Unspecified,
+                        Applicability::MachineApplicable,
                     );
                 }
             }
@@ -239,9 +239,14 @@ impl EarlyLintPass for Pass {
             let check_tts = check_tts(cx, &mac.node.tts, true);
             if let Some(fmtstr) = check_tts.0 {
                 if fmtstr == "" {
-                    let suggestion = check_tts
-                        .1
-                        .map_or(Cow::Borrowed("v"), |expr| snippet(cx, expr.span, "v"));
+                    let mut applicability = Applicability::MachineApplicable;
+                    let suggestion = check_tts.1.map_or_else(
+                        move || {
+                            applicability = Applicability::HasPlaceholders;
+                            Cow::Borrowed("v")
+                        },
+                        move |expr| snippet_with_applicability(cx, expr.span, "v", &mut applicability),
+                    );
 
                     span_lint_and_sugg(
                         cx,
@@ -250,7 +255,7 @@ impl EarlyLintPass for Pass {
                         format!("using `writeln!({}, \"\")`", suggestion).as_str(),
                         "replace it with",
                         format!("writeln!({})", suggestion),
-                        Applicability::Unspecified,
+                        applicability,
                     );
                 }
             }

@@ -17,7 +17,7 @@ use if_chain::if_chain;
 
 use crate::consts::{constant, Constant};
 use crate::utils::paths;
-use crate::utils::{match_type, snippet, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{match_type, snippet_with_applicability, span_lint_and_sugg, walk_ptrs_ty};
 
 /// **What it does:** Checks for calculation of subsecond microseconds or milliseconds
 /// from other `Duration` methods.
@@ -61,14 +61,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DurationSubsec {
                     ("subsec_nanos", 1_000) => "subsec_micros",
                     _ => return,
                 };
+                let mut applicability = Applicability::MachineApplicable;
                 span_lint_and_sugg(
                     cx,
                     DURATION_SUBSEC,
                     expr.span,
                     &format!("Calling `{}()` is more concise than this calculation", suggested_fn),
                     "try",
-                    format!("{}.{}()", snippet(cx, args[0].span, "_"), suggested_fn),
-                    Applicability::Unspecified,
+                    format!("{}.{}()", snippet_with_applicability(cx, args[0].span, "_", &mut applicability), suggested_fn),
+                    applicability,
                 );
             }
         }

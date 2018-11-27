@@ -16,7 +16,7 @@ use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::syntax::source_map::Span;
 
-use crate::utils::{snippet, span_lint_and_sugg, SpanlessEq};
+use crate::utils::{snippet_with_applicability, span_lint_and_sugg, SpanlessEq};
 
 /// **What it does:** Checks for double comparions that could be simpified to a single expression.
 ///
@@ -71,8 +71,9 @@ impl<'a, 'tcx> Pass {
         }
         macro_rules! lint_double_comparison {
             ($op:tt) => {{
-                let lhs_str = snippet(cx, llhs.span, "");
-                let rhs_str = snippet(cx, lrhs.span, "");
+                let mut applicability = Applicability::MachineApplicable;
+                let lhs_str = snippet_with_applicability(cx, llhs.span, "", &mut applicability);
+                let rhs_str = snippet_with_applicability(cx, lrhs.span, "", &mut applicability);
                 let sugg = format!("{} {} {}", lhs_str, stringify!($op), rhs_str);
                 span_lint_and_sugg(
                     cx,
@@ -81,7 +82,7 @@ impl<'a, 'tcx> Pass {
                     "This binary expression can be simplified",
                     "try",
                     sugg,
-                    Applicability::Unspecified,
+                    applicability,
                 );
             }}
         }

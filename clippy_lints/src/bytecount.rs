@@ -15,7 +15,8 @@ use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::syntax::ast::{Name, UintTy};
 use crate::utils::{
-    contains_name, get_pat_name, match_type, paths, single_segment_path, snippet, span_lint_and_sugg, walk_ptrs_ty,
+    contains_name, get_pat_name, match_type, paths, single_segment_path, snippet_with_applicability,
+    span_lint_and_sugg, walk_ptrs_ty,
 };
 use if_chain::if_chain;
 
@@ -91,6 +92,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                         } else {
                             &filter_args[0]
                         };
+                        let mut applicability = Applicability::MachineApplicable;
                         span_lint_and_sugg(
                             cx,
                             NAIVE_BYTECOUNT,
@@ -98,8 +100,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                             "You appear to be counting bytes the naive way",
                             "Consider using the bytecount crate",
                             format!("bytecount::count({}, {})",
-                                    snippet(cx, haystack.span, ".."),
-                                    snippet(cx, needle.span, "..")),
+                                    snippet_with_applicability(cx, haystack.span, "..", &mut applicability),
+                                    snippet_with_applicability(cx, needle.span, "..", &mut applicability)),
                             Applicability::Unspecified,
                         );
                     }

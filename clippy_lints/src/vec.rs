@@ -15,7 +15,7 @@ use crate::rustc::ty::{self, Ty};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::syntax::source_map::Span;
-use crate::utils::{higher, is_copy, snippet, span_lint_and_sugg};
+use crate::utils::{higher, is_copy, snippet_with_applicability, span_lint_and_sugg};
 use if_chain::if_chain;
 
 /// **What it does:** Checks for usage of `&vec![..]` when using `&[..]` would
@@ -77,10 +77,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 }
 
 fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecArgs<'tcx>, span: Span) {
+    let mut applicability = Applicability::MachineApplicable;
     let snippet = match *vec_args {
         higher::VecArgs::Repeat(elem, len) => {
             if constant(cx, cx.tables, len).is_some() {
-                format!("&[{}; {}]", snippet(cx, elem.span, "elem"), snippet(cx, len.span, "len"))
+                format!(
+                    "&[{}; {}]",
+                    snippet_with_applicability(cx, elem.span, "elem", &mut applicability),
+                    snippet_with_applicability(cx, len.span, "len", &mut applicability)
+                )
             } else {
                 return;
             }
@@ -88,7 +93,7 @@ fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecA
         higher::VecArgs::Vec(args) => if let Some(last) = args.iter().last() {
             let span = args[0].span.to(last.span);
 
-            format!("&[{}]", snippet(cx, span, ".."))
+            format!("&[{}]", snippet_with_applicability(cx, span, "..", &mut applicability))
         } else {
             "&[]".into()
         },
@@ -101,7 +106,7 @@ fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecA
         "useless use of `vec!`",
         "you can use a slice directly",
         snippet,
-        Applicability::Unspecified,
+        applicability,
     );
 }
 

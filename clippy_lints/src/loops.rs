@@ -35,10 +35,12 @@ use crate::utils::{in_macro, sugg, sext};
 use crate::utils::usage::mutated_variables;
 use crate::consts::{constant, Constant};
 
-use crate::utils::{get_enclosing_block, get_parent_expr, higher, is_integer_literal, is_refutable,
-            last_path_segment, match_trait_method, match_type, match_var, multispan_sugg, snippet, snippet_opt,
-            span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, SpanlessEq};
 use crate::utils::paths;
+use crate::utils::{
+    get_enclosing_block, get_parent_expr, higher, is_integer_literal, is_refutable, last_path_segment,
+    match_trait_method, match_type, match_var, multispan_sugg, snippet, snippet_opt, snippet_with_applicability,
+    span_help_and_lint, span_lint, span_lint_and_sugg, span_lint_and_then, SpanlessEq,
+};
 
 /// **What it does:** Checks for for-loops that manually copy items between
 /// slices that could be optimized by having a memcpy.
@@ -501,6 +503,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                 // 1) it was ugly with big bodies;
                                 // 2) it was not indented properly;
                                 // 3) it wasn’t very smart (see #675).
+                                let mut applicability = Applicability::MachineApplicable;
                                 span_lint_and_sugg(
                                     cx,
                                     WHILE_LET_LOOP,
@@ -509,10 +512,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                     "try",
                                     format!(
                                         "while let {} = {} {{ .. }}",
-                                        snippet(cx, arms[0].pats[0].span, ".."),
-                                        snippet(cx, matchexpr.span, "..")
+                                        snippet_with_applicability(cx, arms[0].pats[0].span, "..", &mut applicability),
+                                        snippet_with_applicability(cx, matchexpr.span, "..", &mut applicability),
                                     ),
-                                    Applicability::Unspecified,
+                                    applicability,
                                 );
                             }
                         },
@@ -550,7 +553,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         "this loop could be written as a `for` loop",
                         "try",
                         format!("for {} in {} {{ .. }}", loop_var, iterator),
-                        Applicability::Unspecified,
+                        Applicability::HasPlaceholders,
                     );
                 }
             }
@@ -1006,7 +1009,7 @@ fn detect_manual_memcpy<'a, 'tcx>(
             let big_sugg = manual_copies
                 .into_iter()
                 .map(|(dst_var, src_var)| {
-                    let start_str = Offset::positive(snippet_opt(cx, start.span).unwrap_or_else(|| "".into()));
+                    let start_str = Offset::positive(snippet(cx, start.span, "").to_string());
                     let dst_offset = print_sum(&start_str, &dst_var.offset);
                     let dst_limit = print_limit(end, dst_var.offset, &dst_var.var_name);
                     let src_offset = print_sum(&start_str, &src_var.offset);
@@ -1305,7 +1308,8 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
 }
 
 fn lint_iter_method(cx: &LateContext<'_, '_>, args: &[Expr], arg: &Expr, method_name: &str) {
-    let object = snippet(cx, args[0].span, "_");
+    let mut applicability = Applicability::MachineApplicable;
+    let object = snippet_with_applicability(cx, args[0].span, "_", &mut applicability);
     let muta = if method_name == "iter_mut" {
         "mut "
     } else {
@@ -1319,7 +1323,7 @@ fn lint_iter_method(cx: &LateContext<'_, '_>, args: &[Expr], arg: &Expr, method_
          iteration methods",
         "to write this more concisely, try",
         format!("&{}{}", muta, object),
-        Applicability::Unspecified,
+        applicability,
     )
 }
 
@@ -1349,7 +1353,8 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
                         _ => lint_iter_method(cx, args, arg, method_name),
                     };
                 } else {
-                    let object = snippet(cx, args[0].span, "_");
+                    let mut applicability = Applicability::MachineApplicable;
+                    let object = snippet_with_applicability(cx, args[0].span, "_", &mut applicability);
                     span_lint_and_sugg(
                         cx,
                         EXPLICIT_INTO_ITER_LOOP,
@@ -1358,7 +1363,7 @@ fn check_for_loop_arg(cx: &LateContext<'_, '_>, pat: &Pat, arg: &Expr, expr: &Ex
                          iteration methods`",
                         "to write this more concisely, try",
                         object.to_string(),
-                        Applicability::Unspecified,
+                        applicability,
                     );
                 }
             } else if method_name == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {

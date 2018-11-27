@@ -69,7 +69,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ExcessivePrecision {
                     "float has excessive precision",
                     "consider changing the type or truncating it to",
                     sugg,
-                    Applicability::Unspecified,
+                    Applicability::MachineApplicable,
                 );
             }
         }

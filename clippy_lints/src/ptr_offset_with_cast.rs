@@ -77,7 +77,7 @@ impl<'a, 'tcx> lint::LateLintPass<'a, 'tcx> for Pass {
                 &msg,
                 "try",
                 sugg,
-                Applicability::Unspecified,
+                Applicability::MachineApplicable,
             );
         } else {
             utils::span_lint(cx, PTR_OFFSET_WITH_CAST, expr.span, &msg);
