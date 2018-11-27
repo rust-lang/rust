@@ -1,5 +1,6 @@
 //! Utility macros.
 
+#[allow(unused)]
 macro_rules! constify_imm8 {
     ($imm8:expr, $expand:ident) => {
         #[allow(overflowing_literals)]

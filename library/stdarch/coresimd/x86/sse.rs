@@ -1144,18 +1144,20 @@ pub unsafe fn _mm_movemask_ps(a: __m128) -> i32 {
 /// ```
 #[inline]
 #[target_feature(enable = "sse")]
-// TODO: generates MOVHPD if the CPU supports SSE2.
-// #[cfg_attr(test, assert_instr(movhps))]
-#[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(movhpd))]
-// 32-bit codegen does not generate `movhps` or `movhpd`, but instead
-// `movsd` followed by `unpcklpd` (or `movss'/`unpcklps` if there's no SSE2).
 #[cfg_attr(
-    all(test, target_arch = "x86", target_feature = "sse2"),
-    assert_instr(movlhps)
+    all(
+        test,
+        any(
+            target_arch = "x86_64",
+            all(target_arch = "x86", target_feature = "sse2")
+        )
+    ),
+    assert_instr(movhpd)
 )]
+// FIXME: 32-bit codegen without SSE2 generates two `shufps` instead of `movhps`
 #[cfg_attr(
     all(test, target_arch = "x86", not(target_feature = "sse2")),
-    assert_instr(unpcklps)
+    assert_instr(shufps)
 )]
 // TODO: This function is actually not limited to floats, but that's what
 // what matches the C type most closely: (__m128, *const __m64) -> __m128
@@ -1202,20 +1204,16 @@ pub unsafe fn _mm_loadh_pi(a: __m128, p: *const __m64) -> __m128 {
 /// ```
 #[inline]
 #[target_feature(enable = "sse")]
-// TODO: generates MOVLPD if the CPU supports SSE2.
-// #[cfg_attr(test, assert_instr(movlps))]
 #[cfg_attr(all(test, target_arch = "x86_64"), assert_instr(movlpd))]
-// On 32-bit targets with SSE2, it just generates two `movsd`.
 #[cfg_attr(
     all(test, target_arch = "x86", target_feature = "sse2"),
-    assert_instr(movsd)
+    assert_instr(movlpd)
 )]
-// It should really generate "movlps", but oh well...
+// FIXME: On 32-bit targets without SSE2, it just generates two `movss`...
 #[cfg_attr(
     all(test, target_arch = "x86", not(target_feature = "sse2")),
     assert_instr(movss)
 )]
-// TODO: Like _mm_loadh_pi, this also isn't limited to floats.
 pub unsafe fn _mm_loadl_pi(a: __m128, p: *const __m64) -> __m128 {
     let q = p as *const f32x2;
     let b: f32x2 = *q;
