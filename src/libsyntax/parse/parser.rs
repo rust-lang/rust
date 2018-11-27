@@ -43,7 +43,7 @@ use ast::{BinOpKind, UnOp};
 use ast::{RangeEnd, RangeSyntax};
 use {ast, attr};
 use source_map::{self, SourceMap, Spanned, respan};
-use syntax_pos::{self, Span, MultiSpan, BytePos, FileName, edition::Edition};
+use syntax_pos::{self, Span, MultiSpan, BytePos, FileName};
 use errors::{self, Applicability, DiagnosticBuilder, DiagnosticId};
 use parse::{self, SeqSep, classify, token};
 use parse::lexer::TokenAndSpan;
@@ -1404,11 +1404,7 @@ impl<'a> Parser<'a> {
                 // definition...
 
                 // We don't allow argument names to be left off in edition 2018.
-                if p.span.edition() >= Edition::Edition2018 {
-                    p.parse_arg_general(true)
-                } else {
-                    p.parse_arg_general(false)
-                }
+                p.parse_arg_general(p.span.rust_2018())
             })?;
             generics.where_clause = self.parse_where_clause()?;
 
@@ -1601,9 +1597,9 @@ impl<'a> Parser<'a> {
             impl_dyn_multi = bounds.len() > 1 || self.prev_token_kind == PrevTokenKind::Plus;
             TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds)
         } else if self.check_keyword(keywords::Dyn) &&
-                  (self.span.edition() == Edition::Edition2018 ||
+                  (self.span.rust_2018() ||
                    self.look_ahead(1, |t| t.can_begin_bound() &&
-                                         !can_continue_type_after_non_fn_ident(t))) {
+                                          !can_continue_type_after_non_fn_ident(t))) {
             self.bump(); // `dyn`
             // Always parse bounds greedily for better error recovery.
             let bounds = self.parse_generic_bounds()?;
@@ -2084,8 +2080,9 @@ impl<'a> Parser<'a> {
 
         let lo = self.meta_var_span.unwrap_or(self.span);
         let mut segments = Vec::new();
+        let mod_sep_ctxt = self.span.ctxt();
         if self.eat(&token::ModSep) {
-            segments.push(PathSegment::crate_root(lo.shrink_to_lo()));
+            segments.push(PathSegment::crate_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
         self.parse_path_segments(&mut segments, style, enable_warning)?;
 
@@ -2423,8 +2420,7 @@ impl<'a> Parser<'a> {
                     hi = path.span;
                     return Ok(self.mk_expr(lo.to(hi), ExprKind::Path(Some(qself), path), attrs));
                 }
-                if self.span.edition() >= Edition::Edition2018 &&
-                    self.check_keyword(keywords::Async)
+                if self.span.rust_2018() && self.check_keyword(keywords::Async)
                 {
                     if self.is_async_block() { // check for `async {` and `async move {`
                         return self.parse_async_block(attrs);
@@ -3440,7 +3436,7 @@ impl<'a> Parser<'a> {
         } else {
             Movability::Movable
         };
-        let asyncness = if self.span.edition() >= Edition::Edition2018 {
+        let asyncness = if self.span.rust_2018() {
             self.parse_asyncness()
         } else {
             IsAsync::NotAsync
@@ -4562,9 +4558,7 @@ impl<'a> Parser<'a> {
     fn is_try_block(&mut self) -> bool {
         self.token.is_keyword(keywords::Try) &&
         self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) &&
-
-        self.span.edition() >= Edition::Edition2018 &&
-
+        self.span.rust_2018() &&
         // prevent `while try {} {}`, `if try {} {} else {}`, etc.
         !self.restrictions.contains(Restrictions::NO_STRUCT_LITERAL)
     }
@@ -7648,8 +7642,11 @@ impl<'a> Parser<'a> {
                       self.check(&token::BinOp(token::Star)) ||
                       self.is_import_coupler() {
             // `use *;` or `use ::*;` or `use {...};` or `use ::{...};`
+            let mod_sep_ctxt = self.span.ctxt();
             if self.eat(&token::ModSep) {
-                prefix.segments.push(PathSegment::crate_root(lo.shrink_to_lo()));
+                prefix.segments.push(
+                    PathSegment::crate_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt))
+                );
             }
 
             if self.eat(&token::BinOp(token::Star)) {

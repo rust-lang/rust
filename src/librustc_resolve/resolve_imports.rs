@@ -11,7 +11,7 @@
 use self::ImportDirectiveSubclass::*;
 
 use {AmbiguityError, AmbiguityKind, AmbiguityErrorMisc};
-use {CrateLint, Module, ModuleOrUniformRoot, PerNS, UniformRootKind, Weak};
+use {CrateLint, Module, ModuleOrUniformRoot, PerNS, ScopeSet, Weak};
 use Namespace::{self, TypeNS, MacroNS};
 use {NameBinding, NameBindingKind, ToNameBinding, PathResult, PrivacyError};
 use {Resolver, Segment};
@@ -162,45 +162,51 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
     ) -> Result<&'a NameBinding<'a>, (Determinacy, Weak)> {
         let module = match module {
             ModuleOrUniformRoot::Module(module) => module,
-            ModuleOrUniformRoot::UniformRoot(uniform_root_kind) => {
+            ModuleOrUniformRoot::CrateRootAndExternPrelude => {
                 assert!(!restricted_shadowing);
-                match uniform_root_kind {
-                    UniformRootKind::ExternPrelude => {
-                        return if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
-                            Ok(binding)
-                        } else if !self.graph_root.unresolved_invocations.borrow().is_empty() {
-                            // Macro-expanded `extern crate` items can add names to extern prelude.
-                            Err((Undetermined, Weak::No))
-                        } else {
-                            Err((Determined, Weak::No))
-                        }
-                    }
-                    UniformRootKind::CurrentScope => {
-                        let parent_scope =
-                            parent_scope.expect("no parent scope for a single-segment import");
+                let parent_scope = self.dummy_parent_scope();
+                let binding = self.early_resolve_ident_in_lexical_scope(
+                    ident, ScopeSet::AbsolutePath(ns), &parent_scope,
+                    record_used, record_used, path_span,
+                );
+                return binding.map_err(|determinacy| (determinacy, Weak::No));
+            }
+            ModuleOrUniformRoot::ExternPrelude => {
+                assert!(!restricted_shadowing);
+                return if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
+                    Ok(binding)
+                } else if !self.graph_root.unresolved_invocations.borrow().is_empty() {
+                    // Macro-expanded `extern crate` items can add names to extern prelude.
+                    Err((Undetermined, Weak::No))
+                } else {
+                    Err((Determined, Weak::No))
+                }
+            }
+            ModuleOrUniformRoot::CurrentScope => {
+                assert!(!restricted_shadowing);
+                let parent_scope =
+                    parent_scope.expect("no parent scope for a single-segment import");
 
-                        if ns == TypeNS {
-                            if ident.name == keywords::Crate.name() ||
-                               ident.name == keywords::DollarCrate.name() {
-                                let module = self.resolve_crate_root(ident);
-                                let binding = (module, ty::Visibility::Public,
-                                               module.span, Mark::root())
-                                               .to_name_binding(self.arenas);
-                                return Ok(binding);
-                            } else if ident.name == keywords::Super.name() ||
-                                      ident.name == keywords::SelfValue.name() {
-                                // FIXME: Implement these with renaming requirements so that e.g.
-                                // `use super;` doesn't work, but `use super as name;` does.
-                                // Fall through here to get an error from `early_resolve_...`.
-                            }
-                        }
-
-                        let binding = self.early_resolve_ident_in_lexical_scope(
-                            ident, ns, None, true, parent_scope, record_used, record_used, path_span
-                        );
-                        return binding.map_err(|determinacy| (determinacy, Weak::No));
+                if ns == TypeNS {
+                    if ident.name == keywords::Crate.name() ||
+                        ident.name == keywords::DollarCrate.name() {
+                        let module = self.resolve_crate_root(ident);
+                        let binding = (module, ty::Visibility::Public,
+                                        module.span, Mark::root())
+                                        .to_name_binding(self.arenas);
+                        return Ok(binding);
+                    } else if ident.name == keywords::Super.name() ||
+                                ident.name == keywords::SelfValue.name() {
+                        // FIXME: Implement these with renaming requirements so that e.g.
+                        // `use super;` doesn't work, but `use super as name;` does.
+                        // Fall through here to get an error from `early_resolve_...`.
                     }
                 }
+
+                let binding = self.early_resolve_ident_in_lexical_scope(
+                    ident, ScopeSet::Import(ns), parent_scope, record_used, record_used, path_span
+                );
+                return binding.map_err(|determinacy| (determinacy, Weak::No));
             }
         };
 
@@ -333,7 +339,7 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             }
             let module = match glob_import.imported_module.get() {
                 Some(ModuleOrUniformRoot::Module(module)) => module,
-                Some(ModuleOrUniformRoot::UniformRoot(_)) => continue,
+                Some(_) => continue,
                 None => return Err((Undetermined, Weak::Yes)),
             };
             let (orig_current_module, mut ident) = (self.current_module, ident.modern());
@@ -966,9 +972,8 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
 
             return if all_ns_failed {
                 let resolutions = match module {
-                    ModuleOrUniformRoot::Module(module) =>
-                        Some(module.resolutions.borrow()),
-                    ModuleOrUniformRoot::UniformRoot(_) => None,
+                    ModuleOrUniformRoot::Module(module) => Some(module.resolutions.borrow()),
+                    _ => None,
                 };
                 let resolutions = resolutions.as_ref().into_iter().flat_map(|r| r.iter());
                 let names = resolutions.filter_map(|(&(ref i, _), resolution)| {
@@ -1006,7 +1011,7 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                             format!("no `{}` in the root{}", ident, lev_suggestion)
                         }
                     }
-                    ModuleOrUniformRoot::UniformRoot(_) => {
+                    _ => {
                         if !ident.is_path_segment_keyword() {
                             format!("no `{}` external crate{}", ident, lev_suggestion)
                         } else {
@@ -1107,9 +1112,8 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
     fn resolve_glob_import(&mut self, directive: &'b ImportDirective<'b>) {
         let module = match directive.imported_module.get().unwrap() {
             ModuleOrUniformRoot::Module(module) => module,
-            ModuleOrUniformRoot::UniformRoot(_) => {
-                self.session.span_err(directive.span,
-                    "cannot glob-import all possible crates");
+            _ => {
+                self.session.span_err(directive.span, "cannot glob-import all possible crates");
                 return;
             }
         };
