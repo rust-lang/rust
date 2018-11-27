@@ -1106,6 +1106,9 @@ impl<T> MaybeUninit<T> {
     ///
     /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
     /// state, otherwise this will immediately cause undefined behavior.
+    // FIXME: We currently rely on the above being incorrect, i.e., we have references
+    // to uninitialized data (e.g. in `libstd/sys/windows/mutex.rs`).  We should make
+    // a final decision about the rules before stabilization.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub unsafe fn get_ref(&self) -> &T {
@@ -1118,6 +1121,9 @@ impl<T> MaybeUninit<T> {
     ///
     /// It is up to the caller to guarantee that the `MaybeUninit` really is in an initialized
     /// state, otherwise this will immediately cause undefined behavior.
+    // FIXME: We currently rely on the above being incorrect, i.e., we have references
+    // to uninitialized data (e.g. in `libcore/fmt/float.rs`).  We should make
+    // a final decision about the rules before stabilization.
     #[unstable(feature = "maybe_uninit", issue = "53491")]
     #[inline(always)]
     pub unsafe fn get_mut(&mut self) -> &mut T {

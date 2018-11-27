@@ -168,6 +168,9 @@ impl ReentrantMutex {
     }
 
     pub unsafe fn init(&mut self) {
+        // FIXME: Technically, this is calling `get_ref` on an uninitialized
+        // `MaybeUninit`.  Revisit this once we decided whether that is valid
+        // or not.
         c::InitializeCriticalSection(self.inner.get_ref().get());
     }
 
