@@ -2532,7 +2532,7 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 ///
 /// assert_eq!(actual, expected);
 /// ```
-#[unstable(feature = "ptr_hash", reason = "newly added", issue = "56285")]
+#[unstable(feature = "ptr_hash", reason = "newly added", issue = "56286")]
 pub fn hash<T, S: hash::Hasher>(hashee: &T, into: &mut S) {
     use hash::Hash;
     NonNull::from(hashee).hash(into)
