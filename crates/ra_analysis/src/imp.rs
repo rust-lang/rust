@@ -7,7 +7,7 @@ use std::{
 use ra_editor::{self, find_node_at_offset, FileSymbol, LineIndex, LocalEdit};
 use ra_syntax::{
     ast::{self, ArgListOwner, Expr, NameOwner},
-    AstNode, SourceFileNode, SmolStr,
+    AstNode, SourceFileNode,
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
@@ -22,7 +22,6 @@ use crate::{
     hir::{
         FunctionDescriptor, FnSignatureInfo, ModuleDescriptor,
         Problem,
-        DeclarationDescriptor,
     },
     input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
     symbol_index::SymbolIndex,
@@ -273,24 +272,27 @@ impl AnalysisImpl {
         let file = self.db.file_syntax(position.file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
-            // First try to resolve the symbol locally
-            return if let Some((name, range)) =
-                resolve_local_name(&self.db, position.file_id, name_ref)
+            if let Some(fn_descr) =
+                FunctionDescriptor::guess_for_name_ref(&*self.db, position.file_id, name_ref)
             {
-                let mut vec = vec![];
-                vec.push((
-                    position.file_id,
-                    FileSymbol {
-                        name,
-                        node_range: range,
-                        kind: NAME,
-                    },
-                ));
-                Ok(vec)
-            } else {
-                // If that fails try the index based approach.
-                self.index_resolve(name_ref)
-            };
+                let scope = fn_descr.scope(&*self.db);
+                // First try to resolve the symbol locally
+                return if let Some(entry) = scope.resolve_local_name(name_ref) {
+                    let mut vec = vec![];
+                    vec.push((
+                        position.file_id,
+                        FileSymbol {
+                            name: entry.name().clone(),
+                            node_range: entry.ptr().range(),
+                            kind: NAME,
+                        },
+                    ));
+                    Ok(vec)
+                } else {
+                    // If that fails try the index based approach.
+                    self.index_resolve(name_ref)
+                };
+            }
         }
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, position.offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
@@ -320,31 +322,41 @@ impl AnalysisImpl {
 
     pub fn find_all_refs(&self, position: FilePosition) -> Vec<(FileId, TextRange)> {
         let file = self.db.file_syntax(position.file_id);
-        let syntax = file.syntax();
-
         // Find the binding associated with the offset
-        let maybe_binding =
-            find_node_at_offset::<ast::BindPat>(syntax, position.offset).or_else(|| {
-                let name_ref = find_node_at_offset::<ast::NameRef>(syntax, position.offset)?;
-                let resolved = resolve_local_name(&self.db, position.file_id, name_ref)?;
-                find_node_at_offset::<ast::BindPat>(syntax, resolved.1.end())
-            });
-
-        let binding = match maybe_binding {
+        let (binding, descr) = match find_binding(&self.db, &file, position) {
             None => return Vec::new(),
             Some(it) => it,
         };
 
-        let decl = DeclarationDescriptor::new(binding);
-
-        let mut ret = vec![(position.file_id, decl.range)];
+        let mut ret = vec![(position.file_id, binding.syntax().range())];
         ret.extend(
-            decl.find_all_refs()
+            descr
+                .scope(&*self.db)
+                .find_all_refs(binding)
                 .into_iter()
                 .map(|ref_desc| (position.file_id, ref_desc.range)),
         );
 
-        ret
+        return ret;
+
+        fn find_binding<'a>(
+            db: &db::RootDatabase,
+            source_file: &'a SourceFileNode,
+            position: FilePosition,
+        ) -> Option<(ast::BindPat<'a>, FunctionDescriptor)> {
+            let syntax = source_file.syntax();
+            if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, position.offset) {
+                let descr = FunctionDescriptor::guess_for_bind_pat(db, position.file_id, binding)?;
+                return Some((binding, descr));
+            };
+            let name_ref = find_node_at_offset::<ast::NameRef>(syntax, position.offset)?;
+            let descr = FunctionDescriptor::guess_for_name_ref(db, position.file_id, name_ref)?;
+            let scope = descr.scope(db);
+            let resolved = scope.resolve_local_name(name_ref)?;
+            let resolved = resolved.ptr().resolve(source_file);
+            let binding = find_node_at_offset::<ast::BindPat>(syntax, resolved.range().end())?;
+            Some((binding, descr))
+        }
     }
 
     pub fn doc_comment_for(
@@ -581,17 +593,4 @@ impl<'a> FnCallNode<'a> {
             FnCallNode::MethodCallExpr(expr) => expr.arg_list(),
         }
     }
-}
-
-fn resolve_local_name(
-    db: &db::RootDatabase,
-    file_id: FileId,
-    name_ref: ast::NameRef,
-) -> Option<(SmolStr, TextRange)> {
-    let fn_def = name_ref.syntax().ancestors().find_map(ast::FnDef::cast)?;
-    let function = FunctionDescriptor::guess_from_source(db, file_id, fn_def);
-    let scopes = function.scope(db);
-    let scope_entry = scopes.resolve_local_name(name_ref)?;
-    let syntax = db.resolve_syntax_ptr(scope_entry.ptr().into_global(file_id));
-    Some((scope_entry.name().clone(), syntax.range()))
 }

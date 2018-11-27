@@ -11,15 +11,9 @@ mod function;
 mod module;
 mod path;
 
-use ra_syntax::{
-    ast::{self, AstNode},
-    TextRange,
-};
-
 use crate::{
     hir::db::HirDatabase,
     loc2id::{DefId, DefLoc},
-    syntax_ptr::LocalSyntaxPtr,
     Cancelable,
 };
 
@@ -47,52 +41,5 @@ impl DefId {
             DefLoc::Item { .. } => Def::Item,
         };
         Ok(res)
-    }
-}
-
-#[derive(Debug)]
-pub struct ReferenceDescriptor {
-    pub range: TextRange,
-    pub name: String,
-}
-
-#[derive(Debug)]
-pub struct DeclarationDescriptor<'a> {
-    pat: ast::BindPat<'a>,
-    pub range: TextRange,
-}
-
-impl<'a> DeclarationDescriptor<'a> {
-    pub fn new(pat: ast::BindPat) -> DeclarationDescriptor {
-        let range = pat.syntax().range();
-
-        DeclarationDescriptor { pat, range }
-    }
-
-    pub fn find_all_refs(&self) -> Vec<ReferenceDescriptor> {
-        let name_ptr = LocalSyntaxPtr::new(self.pat.syntax());
-
-        let fn_def = match self.pat.syntax().ancestors().find_map(ast::FnDef::cast) {
-            Some(def) => def,
-            None => return Default::default(),
-        };
-
-        let fn_scopes = FnScopes::new(fn_def);
-
-        let refs: Vec<_> = fn_def
-            .syntax()
-            .descendants()
-            .filter_map(ast::NameRef::cast)
-            .filter(|name_ref| match fn_scopes.resolve_local_name(*name_ref) {
-                None => false,
-                Some(entry) => entry.ptr() == name_ptr,
-            })
-            .map(|name_ref| ReferenceDescriptor {
-                name: name_ref.syntax().text().to_string(),
-                range: name_ref.syntax().range(),
-            })
-            .collect();
-
-        refs
     }
 }

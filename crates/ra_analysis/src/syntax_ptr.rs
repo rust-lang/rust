@@ -56,11 +56,8 @@ impl LocalSyntaxPtr {
         }
     }
 
-    pub(crate) fn into_global(self, file_id: FileId) -> SyntaxPtr {
-        SyntaxPtr {
-            file_id,
-            local: self,
-        }
+    pub(crate) fn range(self) -> TextRange {
+        self.range
     }
 }
 

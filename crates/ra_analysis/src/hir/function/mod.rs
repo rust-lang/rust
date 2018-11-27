@@ -6,8 +6,8 @@ use std::{
 };
 
 use ra_syntax::{
+    TextRange, TextUnit, SyntaxNodeRef,
     ast::{self, AstNode, DocCommentsOwner, NameOwner},
-    TextRange, TextUnit,
 };
 
 use crate::{
@@ -37,6 +37,32 @@ impl FunctionDescriptor {
     ) -> FunctionDescriptor {
         let fn_id = FnId::get(db, file_id, fn_def);
         FunctionDescriptor { fn_id }
+    }
+
+    pub(crate) fn guess_for_name_ref(
+        db: &impl HirDatabase,
+        file_id: FileId,
+        name_ref: ast::NameRef,
+    ) -> Option<FunctionDescriptor> {
+        FunctionDescriptor::guess_for_node(db, file_id, name_ref.syntax())
+    }
+
+    pub(crate) fn guess_for_bind_pat(
+        db: &impl HirDatabase,
+        file_id: FileId,
+        bind_pat: ast::BindPat,
+    ) -> Option<FunctionDescriptor> {
+        FunctionDescriptor::guess_for_node(db, file_id, bind_pat.syntax())
+    }
+
+    fn guess_for_node(
+        db: &impl HirDatabase,
+        file_id: FileId,
+        node: SyntaxNodeRef,
+    ) -> Option<FunctionDescriptor> {
+        let fn_def = node.ancestors().find_map(ast::FnDef::cast)?;
+        let res = FunctionDescriptor::guess_from_source(db, file_id, fn_def);
+        Some(res)
     }
 
     pub(crate) fn scope(&self, db: &impl HirDatabase) -> Arc<FnScopes> {

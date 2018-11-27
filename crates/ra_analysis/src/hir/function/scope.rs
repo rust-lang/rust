@@ -1,9 +1,9 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use ra_syntax::{
+    AstNode, SmolStr, SyntaxNodeRef, TextRange,
     algo::generate,
     ast::{self, ArgListOwner, LoopBodyOwner, NameOwner},
-    AstNode, SmolStr, SyntaxNodeRef,
 };
 
 use crate::{
@@ -70,6 +70,27 @@ impl FnScopes {
             .nth(0);
         ret
     }
+
+    pub fn find_all_refs(&self, pat: ast::BindPat) -> Vec<ReferenceDescriptor> {
+        let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
+        let name_ptr = LocalSyntaxPtr::new(pat.syntax());
+        let refs: Vec<_> = fn_def
+            .syntax()
+            .descendants()
+            .filter_map(ast::NameRef::cast)
+            .filter(|name_ref| match self.resolve_local_name(*name_ref) {
+                None => false,
+                Some(entry) => entry.ptr() == name_ptr,
+            })
+            .map(|name_ref| ReferenceDescriptor {
+                name: name_ref.syntax().text().to_string(),
+                range: name_ref.syntax().range(),
+            })
+            .collect();
+
+        refs
+    }
+
     fn root_scope(&mut self) -> ScopeId {
         self.scopes.alloc(ScopeData {
             parent: None,
@@ -260,6 +281,12 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
             None
         }
     }
+}
+
+#[derive(Debug)]
+pub struct ReferenceDescriptor {
+    pub range: TextRange,
+    pub name: String,
 }
 
 #[cfg(test)]

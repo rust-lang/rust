@@ -10,10 +10,10 @@ use test_utils::assert_eq_dbg;
 
 use ra_analysis::{
     mock_analysis::{analysis_and_position, single_file, single_file_with_position, MockAnalysis},
-    AnalysisChange, CrateGraph, FileId, FnDescriptor,
+    AnalysisChange, CrateGraph, FileId, FnSignatureInfo,
 };
 
-fn get_signature(text: &str) -> (FnDescriptor, Option<usize>) {
+fn get_signature(text: &str) -> (FnSignatureInfo, Option<usize>) {
     let (analysis, position) = single_file_with_position(text);
     analysis.resolve_callable(position).unwrap().unwrap()
 }
