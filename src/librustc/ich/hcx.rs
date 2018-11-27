@@ -320,7 +320,7 @@ impl<'a> HashStable<StableHashingContext<'a>> for Span {
         const TAG_EXPANSION: u8 = 0;
         const TAG_NO_EXPANSION: u8 = 1;
 
-        if !hcx.hash_spans {
+        if !hcx.hash_spans || true {
             return
         }
 
