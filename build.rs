@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 fn main() {
     // Forward the profile to the main compilation
     println!("cargo:rustc-env=PROFILE={}", std::env::var("PROFILE").unwrap());
