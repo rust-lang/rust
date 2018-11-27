@@ -37,15 +37,15 @@ use std::cmp::{Ord, Ordering};
 fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
     match (&a.node, &b.node) {
         (&ast::ItemKind::Mod(..), &ast::ItemKind::Mod(..)) => {
-            a.ident.name.as_str().cmp(&b.ident.name.as_str())
+            a.ident.as_str().cmp(&b.ident.as_str())
         }
         (&ast::ItemKind::ExternCrate(ref a_name), &ast::ItemKind::ExternCrate(ref b_name)) => {
             // `extern crate foo as bar;`
             //               ^^^ Comparing this.
             let a_orig_name =
-                a_name.map_or_else(|| a.ident.name.as_str(), |symbol| symbol.as_str());
+                a_name.map_or_else(|| a.ident.as_str(), |symbol| symbol.as_str());
             let b_orig_name =
-                b_name.map_or_else(|| b.ident.name.as_str(), |symbol| symbol.as_str());
+                b_name.map_or_else(|| b.ident.as_str(), |symbol| symbol.as_str());
             let result = a_orig_name.cmp(&b_orig_name);
             if result != Ordering::Equal {
                 return result;
@@ -57,7 +57,7 @@ fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
                 (Some(..), None) => Ordering::Greater,
                 (None, Some(..)) => Ordering::Less,
                 (None, None) => Ordering::Equal,
-                (Some(..), Some(..)) => a.ident.name.as_str().cmp(&b.ident.name.as_str()),
+                (Some(..), Some(..)) => a.ident.as_str().cmp(&b.ident.as_str()),
             }
         }
         _ => unreachable!(),
