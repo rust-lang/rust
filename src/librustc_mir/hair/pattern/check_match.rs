@@ -234,7 +234,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 if !scrutinee_is_uninhabited {
                     // We know the type is inhabited, so this must be wrong
                     let mut err = create_e0004(self.tcx.sess, scrut.span,
-                                               format!("non-exhaustive patterns: type {} \
+                                               format!("non-exhaustive patterns: type `{}` \
                                                         is non-empty",
                                                        pat_ty));
                     span_help!(&mut err, scrut.span,
