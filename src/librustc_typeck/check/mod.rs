@@ -914,6 +914,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         fcx.resolve_generator_interiors(def_id);
 
         for (ty, span, code) in fcx.deferred_sized_obligations.borrow_mut().drain(..) {
+            let ty = fcx.normalize_ty(span, ty);
             fcx.require_type_is_sized(ty, span, code);
         }
         fcx.select_all_obligations_or_error();
