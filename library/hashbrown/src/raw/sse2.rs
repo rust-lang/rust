@@ -1,6 +1,6 @@
+use super::bitmask::BitMask;
+use super::EMPTY;
 use core::mem;
-use raw::bitmask::BitMask;
-use raw::EMPTY;
 
 #[cfg(target_arch = "x86")]
 use core::arch::x86;

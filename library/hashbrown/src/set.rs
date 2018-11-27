@@ -1438,8 +1438,8 @@ fn assert_covariance() {
 
 #[cfg(test)]
 mod test_set {
-    use super::HashSet;
     use super::super::map::DefaultHashBuilder;
+    use super::HashSet;
     use std::vec::Vec;
 
     #[test]

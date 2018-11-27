@@ -52,8 +52,8 @@ mod imp;
 
 mod bitmask;
 
-use raw::bitmask::BitMask;
-use raw::imp::Group;
+use self::bitmask::BitMask;
+use self::imp::Group;
 
 /// Control byte value for an empty bucket.
 const EMPTY: u8 = 0b11111111;

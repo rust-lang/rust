@@ -1,6 +1,6 @@
+use super::bitmask::BitMask;
+use super::EMPTY;
 use core::{mem, ptr};
-use raw::bitmask::BitMask;
-use raw::EMPTY;
 
 // Use the native word size as the group size. Using a 64-bit group size on
 // a 32-bit architecture will just end up being more expensive because
