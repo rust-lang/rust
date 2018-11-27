@@ -5,9 +5,10 @@ error: if expression with an `else if`, but without a final `else`
    |  ____________^
 52 | |         println!("else if");
 53 | |     }
-   | |_____^ help: add an `else` block here
+   | |_____^
    |
    = note: `-D clippy::else-if-without-else` implied by `-D warnings`
+   = help: add an `else` block here
 
 error: if expression with an `else if`, but without a final `else`
   --> $DIR/else_if_without_else.rs:59:12
@@ -16,7 +17,9 @@ error: if expression with an `else if`, but without a final `else`
    |  ____________^
 60 | |         println!("else if 2");
 61 | |     }
-   | |_____^ help: add an `else` block here
+   | |_____^
+   |
+   = help: add an `else` block here
 
 error: aborting due to 2 previous errors
 
