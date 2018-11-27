@@ -49,7 +49,7 @@ impl Module {
         db: &impl HirDatabase,
         position: FilePosition,
     ) -> Cancelable<Option<Module>> {
-        let file = db.file_syntax(position.file_id);
+        let file = db.source_file(position.file_id);
         let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset)
         {
             Some(m) if !m.has_semi() => ModuleSource::new_inline(db, position.file_id, m),
@@ -346,7 +346,7 @@ impl ModuleSource {
     pub(crate) fn resolve(self, db: &impl HirDatabase) -> ModuleSourceNode {
         match self {
             ModuleSource::SourceFile(file_id) => {
-                let syntax = db.file_syntax(file_id);
+                let syntax = db.source_file(file_id);
                 ModuleSourceNode::SourceFile(syntax.ast().owned())
             }
             ModuleSource::Module(item_id) => {

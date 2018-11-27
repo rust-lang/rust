@@ -38,7 +38,7 @@ pub(super) fn fn_scopes(db: &impl HirDatabase, fn_id: FnId) -> Arc<FnScopes> {
 }
 
 pub(super) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<SourceFileItems> {
-    let source_file = db.file_syntax(file_id);
+    let source_file = db.source_file(file_id);
     let source_file = source_file.borrowed();
     let mut res = SourceFileItems::default();
     source_file

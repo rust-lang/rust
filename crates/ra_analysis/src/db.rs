@@ -117,7 +117,7 @@ salsa::database_storage! {
             fn crate_graph() for crate::input::CrateGraphQuery;
         }
         impl SyntaxDatabase {
-            fn file_syntax() for FileSyntaxQuery;
+            fn source_file() for SourceFileQuery;
             fn file_lines() for FileLinesQuery;
         }
         impl symbol_index::SymbolsDatabase {
@@ -139,8 +139,8 @@ salsa::database_storage! {
 
 salsa::query_group! {
     pub(crate) trait SyntaxDatabase: crate::input::FilesDatabase + BaseDatabase {
-        fn file_syntax(file_id: FileId) -> SourceFileNode {
-            type FileSyntaxQuery;
+        fn source_file(file_id: FileId) -> SourceFileNode {
+            type SourceFileQuery;
         }
         fn file_lines(file_id: FileId) -> Arc<LineIndex> {
             type FileLinesQuery;
@@ -148,7 +148,7 @@ salsa::query_group! {
     }
 }
 
-fn file_syntax(db: &impl SyntaxDatabase, file_id: FileId) -> SourceFileNode {
+fn source_file(db: &impl SyntaxDatabase, file_id: FileId) -> SourceFileNode {
     let text = db.file_text(file_id);
     SourceFileNode::parse(&*text)
 }

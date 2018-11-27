@@ -18,7 +18,7 @@ use salsa::{Database, ParallelDatabase};
 
 use crate::{
     completion::{completions, CompletionItem},
-    db::{self, FileSyntaxQuery, SyntaxDatabase},
+    db::{self, SourceFileQuery, SyntaxDatabase},
     hir::{
         self,
         FnSignatureInfo,
@@ -189,7 +189,7 @@ impl fmt::Debug for AnalysisImpl {
 
 impl AnalysisImpl {
     pub fn file_syntax(&self, file_id: FileId) -> SourceFileNode {
-        self.db.file_syntax(file_id)
+        self.db.source_file(file_id)
     }
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
         self.db.file_lines(file_id)
@@ -220,7 +220,7 @@ impl AnalysisImpl {
                 .collect()
         };
         self.db
-            .query(FileSyntaxQuery)
+            .query(SourceFileQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
         Ok(query.search(&buf))
     }
@@ -270,7 +270,7 @@ impl AnalysisImpl {
         &self,
         position: FilePosition,
     ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        let file = self.db.file_syntax(position.file_id);
+        let file = self.db.source_file(position.file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
             if let Some(fn_descr) =
@@ -322,7 +322,7 @@ impl AnalysisImpl {
     }
 
     pub fn find_all_refs(&self, position: FilePosition) -> Vec<(FileId, TextRange)> {
-        let file = self.db.file_syntax(position.file_id);
+        let file = self.db.source_file(position.file_id);
         // Find the binding associated with the offset
         let (binding, descr) = match find_binding(&self.db, &file, position) {
             None => return Vec::new(),
@@ -365,13 +365,13 @@ impl AnalysisImpl {
         file_id: FileId,
         symbol: FileSymbol,
     ) -> Cancelable<Option<String>> {
-        let file = self.db.file_syntax(file_id);
+        let file = self.db.source_file(file_id);
 
         Ok(symbol.docs(&file))
     }
 
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        let syntax = self.db.file_syntax(file_id);
+        let syntax = self.db.source_file(file_id);
 
         let mut res = ra_editor::diagnostics(&syntax)
             .into_iter()
@@ -459,7 +459,7 @@ impl AnalysisImpl {
         &self,
         position: FilePosition,
     ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
-        let file = self.db.file_syntax(position.file_id);
+        let file = self.db.source_file(position.file_id);
         let syntax = file.syntax();
 
         // Find the calling expression and it's NameRef
@@ -470,7 +470,7 @@ impl AnalysisImpl {
         let file_symbols = self.index_resolve(name_ref)?;
         for (fn_file_id, fs) in file_symbols {
             if fs.kind == FN_DEF {
-                let fn_file = self.db.file_syntax(fn_file_id);
+                let fn_file = self.db.source_file(fn_file_id);
                 if let Some(fn_def) = find_node_at_offset(fn_file.syntax(), fs.node_range.start()) {
                     let descr = hir::Function::guess_from_source(&*self.db, fn_file_id, fn_def);
                     if let Some(descriptor) = descr.signature_info(&*self.db) {

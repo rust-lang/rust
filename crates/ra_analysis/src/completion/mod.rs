@@ -29,7 +29,7 @@ pub(crate) fn completions(
     db: &db::RootDatabase,
     position: FilePosition,
 ) -> Cancelable<Option<Vec<CompletionItem>>> {
-    let original_file = db.file_syntax(position.file_id);
+    let original_file = db.source_file(position.file_id);
     // Insert a fake ident to get a valid parse tree
     let file = {
         let edit = AtomEdit::insert(position.offset, "intellijRulezz".to_string());

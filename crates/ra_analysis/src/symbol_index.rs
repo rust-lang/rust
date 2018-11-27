@@ -32,7 +32,7 @@ salsa::query_group! {
 
 fn file_symbols(db: &impl SyntaxDatabase, file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
     db.check_canceled()?;
-    let syntax = db.file_syntax(file_id);
+    let syntax = db.source_file(file_id);
     Ok(Arc::new(SymbolIndex::for_file(file_id, syntax)))
 }
 
