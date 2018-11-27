@@ -10,12 +10,15 @@
 
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
 use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::{Name, UintTy};
-use crate::utils::{contains_name, get_pat_name, match_type, paths, single_segment_path, snippet, span_lint_and_sugg,
-            walk_ptrs_ty};
+use crate::utils::{
+    contains_name, get_pat_name, match_type, paths, single_segment_path, snippet_with_applicability,
+    span_lint_and_sugg, walk_ptrs_ty,
+};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for naive byte counts
 ///
@@ -89,14 +92,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ByteCount {
                         } else {
                             &filter_args[0]
                         };
-                        span_lint_and_sugg(cx,
-                                           NAIVE_BYTECOUNT,
-                                           expr.span,
-                                           "You appear to be counting bytes the naive way",
-                                           "Consider using the bytecount crate",
-                                           format!("bytecount::count({}, {})",
-                                                    snippet(cx, haystack.span, ".."),
-                                                    snippet(cx, needle.span, "..")));
+                        let mut applicability = Applicability::MachineApplicable;
+                        span_lint_and_sugg(
+                            cx,
+                            NAIVE_BYTECOUNT,
+                            expr.span,
+                            "You appear to be counting bytes the naive way",
+                            "Consider using the bytecount crate",
+                            format!("bytecount::count({}, {})",
+                                    snippet_with_applicability(cx, haystack.span, "..", &mut applicability),
+                                    snippet_with_applicability(cx, needle.span, "..", &mut applicability)),
+                            applicability,
+                        );
                     }
                 };
             }

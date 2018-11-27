@@ -12,13 +12,14 @@
 //!
 //! This lint is **warn** by default
 
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::hir::*;
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::LitKind;
 use crate::syntax::source_map::Spanned;
-use crate::utils::{in_macro, snippet, span_lint, span_lint_and_sugg};
 use crate::utils::sugg::Sugg;
+use crate::utils::{in_macro, snippet_with_applicability, span_lint, span_lint_and_sugg};
 
 /// **What it does:** Checks for expressions of the form `if c { true } else {
 /// false }`
@@ -73,7 +74,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
         use self::Expression::*;
         if let ExprKind::If(ref pred, ref then_block, Some(ref else_expr)) = e.node {
             let reduce = |ret, not| {
-                let snip = Sugg::hir(cx, pred, "<predicate>");
+                let mut applicability = Applicability::MachineApplicable;
+                let snip = Sugg::hir_with_applicability(cx, pred, "<predicate>", &mut applicability);
                 let snip = if not { !snip } else { snip };
 
                 let hint = if ret {
@@ -89,6 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                     "this if-then-else expression returns a bool literal",
                     "you can reduce it to",
                     hint,
+                    applicability,
                 );
             };
             if let ExprKind::Block(ref then_block, _) = then_block.node {
@@ -140,31 +143,34 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
         }
 
         if let ExprKind::Binary(Spanned { node: BinOpKind::Eq, .. }, ref left_side, ref right_side) = e.node {
+            let mut applicability = Applicability::MachineApplicable;
             match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
                 (Bool(true), Other) => {
-                    let hint = snippet(cx, right_side.span, "..").into_owned();
+                    let hint = snippet_with_applicability(cx, right_side.span, "..", &mut applicability);
                     span_lint_and_sugg(
                         cx,
                         BOOL_COMPARISON,
                         e.span,
                         "equality checks against true are unnecessary",
                         "try simplifying it as shown",
-                        hint,
+                        hint.to_string(),
+                        applicability,
                     );
                 },
                 (Other, Bool(true)) => {
-                    let hint = snippet(cx, left_side.span, "..").into_owned();
+                    let hint = snippet_with_applicability(cx, left_side.span, "..", &mut applicability);
                     span_lint_and_sugg(
                         cx,
                         BOOL_COMPARISON,
                         e.span,
                         "equality checks against true are unnecessary",
                         "try simplifying it as shown",
-                        hint,
+                        hint.to_string(),
+                        applicability,
                     );
                 },
                 (Bool(false), Other) => {
-                    let hint = Sugg::hir(cx, right_side, "..");
+                    let hint = Sugg::hir_with_applicability(cx, right_side, "..", &mut applicability);
                     span_lint_and_sugg(
                         cx,
                         BOOL_COMPARISON,
@@ -172,10 +178,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                         "equality checks against false can be replaced by a negation",
                         "try simplifying it as shown",
                         (!hint).to_string(),
+                        applicability,
                     );
                 },
                 (Other, Bool(false)) => {
-                    let hint = Sugg::hir(cx, left_side, "..");
+                    let hint = Sugg::hir_with_applicability(cx, left_side, "..", &mut applicability);
                     span_lint_and_sugg(
                         cx,
                         BOOL_COMPARISON,
@@ -183,6 +190,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
                         "equality checks against false can be replaced by a negation",
                         "try simplifying it as shown",
                         (!hint).to_string(),
+                        applicability,
                     );
                 },
                 _ => (),

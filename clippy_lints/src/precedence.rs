@@ -10,9 +10,10 @@
 
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::*;
 use crate::syntax::source_map::Spanned;
-use crate::utils::{in_macro, snippet, span_lint_and_sugg};
+use crate::utils::{in_macro, snippet_with_applicability, span_lint_and_sugg};
 
 /// **What it does:** Checks for operations where precedence may be unclear
 /// and suggests to add parentheses. Currently it catches the following:
@@ -53,7 +54,7 @@ impl EarlyLintPass for Precedence {
         }
 
         if let ExprKind::Binary(Spanned { node: op, .. }, ref left, ref right) = expr.node {
-            let span_sugg = |expr: &Expr, sugg| {
+            let span_sugg = |expr: &Expr, sugg, appl| {
                 span_lint_and_sugg(
                     cx,
                     PRECEDENCE,
@@ -61,39 +62,41 @@ impl EarlyLintPass for Precedence {
                     "operator precedence can trip the unwary",
                     "consider parenthesizing your expression",
                     sugg,
+                    appl,
                 );
             };
 
             if !is_bit_op(op) {
                 return;
             }
+            let mut applicability = Applicability::MachineApplicable;
             match (is_arith_expr(left), is_arith_expr(right)) {
                 (true, true) => {
                     let sugg = format!(
                         "({}) {} ({})",
-                        snippet(cx, left.span, ".."),
+                        snippet_with_applicability(cx, left.span, "..", &mut applicability),
                         op.to_string(),
-                        snippet(cx, right.span, "..")
+                        snippet_with_applicability(cx, right.span, "..", &mut applicability)
                     );
-                    span_sugg(expr, sugg);
+                    span_sugg(expr, sugg, applicability);
                 },
                 (true, false) => {
                     let sugg = format!(
                         "({}) {} {}",
-                        snippet(cx, left.span, ".."),
+                        snippet_with_applicability(cx, left.span, "..", &mut applicability),
                         op.to_string(),
-                        snippet(cx, right.span, "..")
+                        snippet_with_applicability(cx, right.span, "..", &mut applicability)
                     );
-                    span_sugg(expr, sugg);
+                    span_sugg(expr, sugg, applicability);
                 },
                 (false, true) => {
                     let sugg = format!(
                         "{} {} ({})",
-                        snippet(cx, left.span, ".."),
+                        snippet_with_applicability(cx, left.span, "..", &mut applicability),
                         op.to_string(),
-                        snippet(cx, right.span, "..")
+                        snippet_with_applicability(cx, right.span, "..", &mut applicability)
                     );
-                    span_sugg(expr, sugg);
+                    span_sugg(expr, sugg, applicability);
                 },
                 (false, false) => (),
             }
@@ -105,13 +108,15 @@ impl EarlyLintPass for Precedence {
                     if let ExprKind::Lit(ref lit) = slf.node {
                         match lit.node {
                             LitKind::Int(..) | LitKind::Float(..) | LitKind::FloatUnsuffixed(..) => {
+                                let mut applicability = Applicability::MachineApplicable;
                                 span_lint_and_sugg(
                                     cx,
                                     PRECEDENCE,
                                     expr.span,
                                     "unary minus has lower precedence than method call",
                                     "consider adding parentheses to clarify your intent",
-                                    format!("-({})", snippet(cx, rhs.span, "..")),
+                                    format!("-({})", snippet_with_applicability(cx, rhs.span, "..", &mut applicability)),
+                                    applicability,
                                 );
                             },
                             _ => (),

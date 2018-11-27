@@ -9,6 +9,7 @@
 
 
 use crate::rustc::{declare_tool_lint, hir, lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::utils;
 use std::fmt;
 
@@ -69,7 +70,15 @@ impl<'a, 'tcx> lint::LateLintPass<'a, 'tcx> for Pass {
 
         let msg = format!("use of `{}` with a `usize` casted to an `isize`", method);
         if let Some(sugg) = build_suggestion(cx, method, receiver_expr, cast_lhs_expr) {
-            utils::span_lint_and_sugg(cx, PTR_OFFSET_WITH_CAST, expr.span, &msg, "try", sugg);
+            utils::span_lint_and_sugg(
+                cx,
+                PTR_OFFSET_WITH_CAST,
+                expr.span,
+                &msg,
+                "try",
+                sugg,
+                Applicability::MachineApplicable,
+            );
         } else {
             utils::span_lint(cx, PTR_OFFSET_WITH_CAST, expr.span, &msg);
         }

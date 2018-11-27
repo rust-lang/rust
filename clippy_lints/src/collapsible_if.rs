@@ -27,7 +27,7 @@ use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 use crate::syntax::ast;
 
-use crate::utils::{in_macro, snippet_block, span_lint_and_sugg, span_lint_and_then};
+use crate::utils::{in_macro, snippet_block, snippet_block_with_applicability, span_lint_and_sugg, span_lint_and_then};
 use crate::utils::sugg::Sugg;
 use crate::rustc_errors::Applicability;
 
@@ -128,12 +128,16 @@ fn check_collapsible_maybe_if_let(cx: &EarlyContext<'_>, else_: &ast::Expr) {
         then {
             match else_.node {
                 ast::ExprKind::If(..) | ast::ExprKind::IfLet(..) => {
-                    span_lint_and_sugg(cx,
-                                       COLLAPSIBLE_IF,
-                                       block.span,
-                                       "this `else { if .. }` block can be collapsed",
-                                       "try",
-                                       snippet_block(cx, else_.span, "..").into_owned());
+                    let mut applicability = Applicability::MachineApplicable;
+                    span_lint_and_sugg(
+                        cx,
+                        COLLAPSIBLE_IF,
+                        block.span,
+                        "this `else { if .. }` block can be collapsed",
+                        "try",
+                        snippet_block_with_applicability(cx, else_.span, "..", &mut applicability).into_owned(),
+                        applicability,
+                    );
                 }
                 _ => (),
             }

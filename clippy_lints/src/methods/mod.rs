@@ -22,8 +22,9 @@ use crate::utils::sugg;
 use crate::utils::{
     get_arg_name, get_trait_def_id, implements_trait, in_macro, is_copy, is_expn_of, is_self, is_self_ty,
     iter_input_pats, last_path_segment, match_def_path, match_path, match_qpath, match_trait_method, match_type,
-    match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path, snippet, snippet_with_macro_callsite, span_lint,
-    span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
+    match_var, method_calls, method_chain_args, remove_blocks, return_ty, same_tys, single_segment_path, snippet,
+    snippet_with_macro_callsite, snippet_with_applicability, span_lint, span_lint_and_sugg, span_lint_and_then,
+    span_note_and_lint, walk_ptrs_ty, walk_ptrs_ty_depth, SpanlessEq,
 };
 use if_chain::if_chain;
 use matches::matches;
@@ -1035,13 +1036,15 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
                     };
 
                     if implements_trait(cx, arg_ty, default_trait_id, &[]) {
+                        let mut applicability = Applicability::MachineApplicable;
                         span_lint_and_sugg(
                             cx,
                             OR_FUN_CALL,
                             span,
                             &format!("use of `{}` followed by a call to `{}`", name, path),
                             "try this",
-                            format!("{}.unwrap_or_default()", snippet(cx, self_expr.span, "_")),
+                            format!("{}.unwrap_or_default()", snippet_with_applicability(cx, self_expr.span, "_", &mut applicability)),
+                            applicability,
                         );
                         return true;
                     }
@@ -1111,6 +1114,7 @@ fn lint_or_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span: Spa
             &format!("use of `{}` followed by a function call", name),
             "try this",
             format!("{}_{}({})", name, suffix, sugg),
+            Applicability::HasPlaceholders,
         );
     }
 
@@ -1153,11 +1157,15 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         None
     }
 
-    fn generate_format_arg_snippet(cx: &LateContext<'_, '_>, a: &hir::Expr) -> String {
+    fn generate_format_arg_snippet(
+        cx: &LateContext<'_, '_>,
+        a: &hir::Expr,
+        applicability: &mut Applicability,
+    ) -> String {
         if let hir::ExprKind::AddrOf(_, ref format_arg) = a.node {
             if let hir::ExprKind::Match(ref format_arg_expr, _, _) = format_arg.node {
                 if let hir::ExprKind::Tup(ref format_arg_expr_tup) = format_arg_expr.node {
-                    return snippet(cx, format_arg_expr_tup[0].span, "..").into_owned();
+                    return snippet_with_applicability(cx, format_arg_expr_tup[0].span, "..", applicability).into_owned();
                 }
             }
         };
@@ -1208,11 +1216,12 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
         let span_replace_word = method_span.with_hi(span.hi());
 
         if let Some(format_args) = extract_format_args(arg) {
+            let mut applicability = Applicability::MachineApplicable;
             let args_len = format_args.len();
             let args: Vec<String> = format_args
                 .into_iter()
                 .take(args_len - 1)
-                .map(|a| generate_format_arg_snippet(cx, a))
+                .map(|a| generate_format_arg_snippet(cx, a, &mut applicability))
                 .collect();
 
             let sugg = args.join(", ");
@@ -1224,12 +1233,14 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
                 &format!("use of `{}` followed by a function call", name),
                 "try this",
                 format!("unwrap_or_else({} panic!({}))", closure, sugg),
+                applicability,
             );
 
             return;
         }
 
-        let sugg: Cow<'_, _> = snippet(cx, arg.span, "..");
+        let mut applicability = Applicability::MachineApplicable;
+        let sugg: Cow<'_, _> = snippet_with_applicability(cx, arg.span, "..", &mut applicability);
 
         span_lint_and_sugg(
             cx,
@@ -1238,6 +1249,7 @@ fn lint_expect_fun_call(cx: &LateContext<'_, '_>, expr: &hir::Expr, method_span:
             &format!("use of `{}` followed by a function call", name),
             "try this",
             format!("unwrap_or_else({} {{ let msg = {}; panic!(msg) }}))", closure, sugg),
+            applicability,
         );
     }
 
@@ -1354,6 +1366,7 @@ fn lint_clone_on_ref_ptr(cx: &LateContext<'_, '_>, expr: &hir::Expr, arg: &hir::
             "using '.clone()' on a ref-counted pointer",
             "try this",
             format!("{}::<{}>::clone(&{})", caller_type, subst.type_at(0), snippet(cx, arg.span, "_")),
+            Applicability::Unspecified, // Sometimes unnecessary ::<_> after Rc/Arc/Weak
         );
     }
 }
@@ -1372,6 +1385,7 @@ fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::E
             return;
         };
 
+        let mut applicability = Applicability::MachineApplicable;
         span_lint_and_sugg(
             cx,
             STRING_EXTEND_CHARS,
@@ -1380,10 +1394,11 @@ fn lint_string_extend(cx: &LateContext<'_, '_>, expr: &hir::Expr, args: &[hir::E
             "try this",
             format!(
                 "{}.push_str({}{})",
-                snippet(cx, args[0].span, "_"),
+                snippet_with_applicability(cx, args[0].span, "_", &mut applicability),
                 ref_str,
-                snippet(cx, target.span, "_")
+                snippet_with_applicability(cx, target.span, "_", &mut applicability)
             ),
+            applicability,
         );
     }
 }
@@ -1460,12 +1475,13 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
                 let next_point = cx.sess().source_map().next_point(fold_args[0].span);
                 let fold_span = next_point.with_hi(fold_args[2].span.hi() + BytePos(1));
 
+                let mut applicability = Applicability::MachineApplicable;
                 let sugg = if replacement_has_args {
                     format!(
                         ".{replacement}(|{s}| {r})",
                         replacement = replacement_method_name,
                         s = second_arg_ident,
-                        r = snippet(cx, right_expr.span, "EXPR"),
+                        r = snippet_with_applicability(cx, right_expr.span, "EXPR", &mut applicability),
                     )
                 } else {
                     format!(
@@ -1482,6 +1498,7 @@ fn lint_unnecessary_fold(cx: &LateContext<'_, '_>, expr: &hir::Expr, fold_args: 
                     "this `.fold` can be written more succinctly using another method",
                     "try",
                     sugg,
+                    applicability,
                 );
             }
         }
@@ -1545,9 +1562,10 @@ fn lint_iter_nth(cx: &LateContext<'_, '_>, expr: &hir::Expr, iter_args: &[hir::E
 fn lint_get_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, get_args: &[hir::Expr], is_mut: bool) {
     // Note: we don't want to lint `get_mut().unwrap` for HashMap or BTreeMap,
     // because they do not implement `IndexMut`
+    let mut applicability = Applicability::MachineApplicable;
     let expr_ty = cx.tables.expr_ty(&get_args[0]);
     let get_args_str = if get_args.len() > 1 {
-        snippet(cx, get_args[1].span, "_")
+        snippet_with_applicability(cx, get_args[1].span, "_", &mut applicability)
     } else {
         return; // not linting on a .get().unwrap() chain or variant
     };
@@ -1586,9 +1604,10 @@ fn lint_get_unwrap(cx: &LateContext<'_, '_>, expr: &hir::Expr, get_args: &[hir::
         format!(
             "{}{}[{}]",
             borrow_str,
-            snippet(cx, get_args[0].span, "_"),
+            snippet_with_applicability(cx, get_args[0].span, "_", &mut applicability),
             get_args_str
         ),
+        applicability,
     );
 }
 
@@ -2004,22 +2023,26 @@ fn lint_chars_cmp(
         if let Some(segment) = single_segment_path(qpath);
         if segment.ident.name == "Some";
         then {
+            let mut applicability = Applicability::MachineApplicable;
             let self_ty = walk_ptrs_ty(cx.tables.expr_ty_adjusted(&args[0][0]));
 
             if self_ty.sty != ty::Str {
                 return false;
             }
 
-            span_lint_and_sugg(cx,
-                               lint,
-                               info.expr.span,
-                               &format!("you should use the `{}` method", suggest),
-                               "like this",
-                               format!("{}{}.{}({})",
-                                       if info.eq { "" } else { "!" },
-                                       snippet(cx, args[0][0].span, "_"),
-                                       suggest,
-                                       snippet(cx, arg_char[0].span, "_")));
+            span_lint_and_sugg(
+                cx,
+                lint,
+                info.expr.span,
+                &format!("you should use the `{}` method", suggest),
+                "like this",
+                format!("{}{}.{}({})",
+                        if info.eq { "" } else { "!" },
+                        snippet_with_applicability(cx, args[0][0].span, "_", &mut applicability),
+                        suggest,
+                        snippet_with_applicability(cx, arg_char[0].span, "_", &mut applicability)),
+                applicability,
+            );
 
             return true;
         }
@@ -2035,10 +2058,10 @@ fn lint_chars_next_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprIn
 
 /// Checks for the `CHARS_LAST_CMP` lint.
 fn lint_chars_last_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    if lint_chars_cmp(cx, info, &["chars", "last"], CHARS_NEXT_CMP, "ends_with") {
+    if lint_chars_cmp(cx, info, &["chars", "last"], CHARS_LAST_CMP, "ends_with") {
         true
     } else {
-        lint_chars_cmp(cx, info, &["chars", "next_back"], CHARS_NEXT_CMP, "ends_with")
+        lint_chars_cmp(cx, info, &["chars", "next_back"], CHARS_LAST_CMP, "ends_with")
     }
 }
 
@@ -2055,6 +2078,7 @@ fn lint_chars_cmp_with_unwrap<'a, 'tcx>(
         if let hir::ExprKind::Lit(ref lit) = info.other.node;
         if let ast::LitKind::Char(c) = lit.node;
         then {
+            let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
                 lint,
@@ -2063,9 +2087,10 @@ fn lint_chars_cmp_with_unwrap<'a, 'tcx>(
                 "like this",
                 format!("{}{}.{}('{}')",
                         if info.eq { "" } else { "!" },
-                        snippet(cx, args[0][0].span, "_"),
+                        snippet_with_applicability(cx, args[0][0].span, "_", &mut applicability),
                         suggest,
-                        c)
+                        c),
+                applicability,
             );
 
             return true;
@@ -2096,7 +2121,8 @@ fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, _expr: &'tcx h
         if let ast::LitKind::Str(r, _) = lit.node;
         if r.as_str().len() == 1;
         then {
-            let snip = snippet(cx, arg.span, "..");
+            let mut applicability = Applicability::MachineApplicable;
+            let snip = snippet_with_applicability(cx, arg.span, "..", &mut applicability);
             let hint = format!("'{}'", &snip[1..snip.len() - 1]);
             span_lint_and_sugg(
                 cx,
@@ -2105,6 +2131,7 @@ fn lint_single_char_pattern<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, _expr: &'tcx h
                 "single-character string constant used as pattern",
                 "try using a char instead",
                 hint,
+                applicability,
             );
         }
     }
@@ -2122,13 +2149,15 @@ fn lint_asref(cx: &LateContext<'_, '_>, expr: &hir::Expr, call_name: &str, as_re
         let (base_res_ty, res_depth) = walk_ptrs_ty_depth(res_ty);
         let (base_rcv_ty, rcv_depth) = walk_ptrs_ty_depth(rcv_ty);
         if base_rcv_ty == base_res_ty && rcv_depth >= res_depth {
+            let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
                 USELESS_ASREF,
                 expr.span,
                 &format!("this call to `{}` does nothing", call_name),
                 "try this",
-                snippet(cx, recvr.span, "_").into_owned(),
+                snippet_with_applicability(cx, recvr.span, "_", &mut applicability).to_string(),
+                applicability,
             );
         }
     }
@@ -2193,7 +2222,8 @@ fn lint_into_iter(cx: &LateContext<'_, '_>, expr: &hir::Expr, self_ref_ty: ty::T
                 kind,
             ),
             "call directly",
-            method_name.to_owned(),
+            method_name.to_string(),
+            Applicability::MachineApplicable,
         );
     }
 }

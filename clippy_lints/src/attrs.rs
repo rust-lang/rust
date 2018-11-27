@@ -532,6 +532,7 @@ impl EarlyLintPass for CfgAttrPass {
                     "`cfg_attr` is deprecated for rustfmt and got replaced by tool_attributes",
                     "use",
                     format!("{}rustfmt::skip]", attr_style),
+                    Applicability::MachineApplicable,
                 );
             }
         }

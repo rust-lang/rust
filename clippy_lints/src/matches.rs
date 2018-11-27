@@ -19,7 +19,7 @@ use crate::syntax::ast::LitKind;
 use crate::syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::{expr_block, in_macro, is_allowed, is_expn_of, match_qpath, match_type,
-    multispan_sugg, remove_blocks, snippet, span_lint_and_sugg, span_lint_and_then,
+    multispan_sugg, remove_blocks, snippet, snippet_with_applicability, span_lint_and_sugg, span_lint_and_then,
     span_note_and_lint, walk_ptrs_ty};
 use crate::utils::sugg::Sugg;
 use crate::consts::{constant, Constant};
@@ -268,8 +268,9 @@ fn report_single_match_single_pattern(cx: &LateContext<'_, '_>, ex: &Expr, arms:
             snippet(cx, arms[0].pats[0].span, ".."),
             snippet(cx, ex.span, ".."),
             expr_block(cx, &arms[0].body, None, ".."),
-            els_str
+            els_str,
         ),
+        Applicability::HasPlaceholders,
     );
 }
 
@@ -477,13 +478,15 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
         };
         if let Some(rb) = arm_ref {
             let suggestion = if rb == BindingAnnotation::Ref { "as_ref" } else { "as_mut" };
+            let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
                 MATCH_AS_REF,
                 expr.span,
                 &format!("use {}() instead", suggestion),
                 "try this",
-                format!("{}.{}()", snippet(cx, ex.span, "_"), suggestion)
+                format!("{}.{}()", snippet_with_applicability(cx, ex.span, "_", &mut applicability), suggestion),
+                applicability,
             )
         }
     }

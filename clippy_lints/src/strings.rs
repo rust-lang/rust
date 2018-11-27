@@ -10,6 +10,7 @@
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::source_map::Spanned;
 use crate::utils::SpanlessEq;
 use crate::utils::{get_parent_expr, is_allowed, match_type, paths, span_lint, span_lint_and_sugg, walk_ptrs_ty};
@@ -164,7 +165,7 @@ impl LintPass for StringLitAsBytes {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
         use crate::syntax::ast::{LitKind, StrStyle};
-        use crate::utils::{in_macro, snippet};
+        use crate::utils::{in_macro, snippet, snippet_with_applicability};
 
         if let ExprKind::MethodCall(ref path, _, ref args) = e.node {
             if path.ident.name == "as_bytes" {
@@ -177,6 +178,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
                         } else {
                             format!("\"{}\"", lit_content.as_str())
                         };
+                        let mut applicability = Applicability::MachineApplicable;
                         if callsite.starts_with("include_str!") {
                             span_lint_and_sugg(
                                 cx,
@@ -184,7 +186,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
                                 e.span,
                                 "calling `as_bytes()` on `include_str!(..)`",
                                 "consider using `include_bytes!(..)` instead",
-                                snippet(cx, args[0].span, r#""foo""#).replacen("include_str", "include_bytes", 1),
+                                snippet_with_applicability(cx, args[0].span, r#""foo""#, &mut applicability).replacen(
+                                    "include_str",
+                                    "include_bytes",
+                                    1,
+                                ),
+                                applicability,
                             );
                         } else if callsite == expanded
                             && lit_content.as_str().chars().all(|c| c.is_ascii())
@@ -196,7 +203,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
                                 e.span,
                                 "calling `as_bytes()` on a string literal",
                                 "consider using a byte string literal instead",
-                                format!("b{}", snippet(cx, args[0].span, r#""foo""#)),
+                                format!(
+                                    "b{}",
+                                    snippet_with_applicability(cx, args[0].span, r#""foo""#, &mut applicability)
+                                ),
+                                applicability,
                             );
                         }
                     }

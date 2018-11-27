@@ -8,10 +8,11 @@
 // except according to those terms.
 
 
-use super::utils::{get_arg_name, match_var, remove_blocks, snippet, span_lint_and_sugg};
+use super::utils::{get_arg_name, match_var, remove_blocks, snippet_with_applicability, span_lint_and_sugg};
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use if_chain::if_chain;
 
 /// **What it does:** Checks for matches being used to destructure a single-variant enum
@@ -71,6 +72,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             if match_var(body, arg);
 
             then {
+                let mut applicability = Applicability::MachineApplicable;
                 span_lint_and_sugg(
                     cx,
                     INFALLIBLE_DESTRUCTURING_MATCH,
@@ -80,10 +82,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     "try this",
                     format!(
                         "let {}({}) = {};",
-                        snippet(cx, variant_name.span, ".."),
-                        snippet(cx, local.pat.span, ".."),
-                        snippet(cx, target.span, ".."),
+                        snippet_with_applicability(cx, variant_name.span, "..", &mut applicability),
+                        snippet_with_applicability(cx, local.pat.span, "..", &mut applicability),
+                        snippet_with_applicability(cx, target.span, "..", &mut applicability),
                     ),
+                    applicability,
                 );
             }
         }

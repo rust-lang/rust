@@ -11,12 +11,13 @@
 use crate::rustc::hir::def_id::DefId;
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_data_structures::fx::FxHashSet;
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::{Lit, LitKind, Name};
 use crate::syntax::source_map::{Span, Spanned};
-use crate::utils::{get_item_name, in_macro, snippet, span_lint, span_lint_and_sugg, walk_ptrs_ty};
+use crate::utils::{get_item_name, in_macro, snippet_with_applicability, span_lint, span_lint_and_sugg, walk_ptrs_ty};
 
 /// **What it does:** Checks for getting the length of something via `.len()`
 /// just to compare to zero, and suggests using `.is_empty()` where applicable.
@@ -223,7 +224,15 @@ fn check_cmp(cx: &LateContext<'_, '_>, span: Span, method: &Expr, lit: &Expr, op
     }
 }
 
-fn check_len(cx: &LateContext<'_, '_>, span: Span, method_name: Name, args: &[Expr], lit: &Lit, op: &str, compare_to: u32) {
+fn check_len(
+    cx: &LateContext<'_, '_>,
+    span: Span,
+    method_name: Name,
+    args: &[Expr],
+    lit: &Lit,
+    op: &str,
+    compare_to: u32,
+) {
     if let Spanned {
         node: LitKind::Int(lit, _),
         ..
@@ -235,13 +244,15 @@ fn check_len(cx: &LateContext<'_, '_>, span: Span, method_name: Name, args: &[Ex
         }
 
         if method_name == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
+            let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
                 LEN_ZERO,
                 span,
                 &format!("length comparison to {}", if compare_to == 0 { "zero" } else { "one" }),
                 "using `is_empty` is clearer and more explicit",
-                format!("{}{}.is_empty()", op, snippet(cx, args[0].span, "_")),
+                format!("{}{}.is_empty()", op, snippet_with_applicability(cx, args[0].span, "_", &mut applicability)),
+                applicability,
             );
         }
     }

@@ -8,15 +8,16 @@
 // except according to those terms.
 
 
-use crate::utils::{in_macro, span_lint_and_sugg};
-use if_chain::if_chain;
 use crate::rustc::hir::intravisit::{walk_path, walk_ty, NestedVisitorMap, Visitor};
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::ty;
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::syntax_pos::symbol::keywords::SelfType;
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::NodeId;
+use crate::syntax_pos::symbol::keywords::SelfType;
+use crate::utils::{in_macro, span_lint_and_sugg};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for unnecessary repetition of structure name when a
 /// replacement with `Self` is applicable.
@@ -70,6 +71,7 @@ fn span_use_self_lint(cx: &LateContext<'_, '_>, path: &Path) {
         "unnecessary structure name repetition",
         "use the applicable keyword",
         "Self".to_owned(),
+        Applicability::MachineApplicable,
     );
 }
 

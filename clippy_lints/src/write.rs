@@ -8,13 +8,14 @@
 // except according to those terms.
 
 
-use crate::utils::{snippet, span_lint, span_lint_and_sugg};
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use std::borrow::Cow;
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::*;
 use crate::syntax::parse::{parser, token};
 use crate::syntax::tokenstream::{ThinTokenStream, TokenStream};
+use crate::utils::{snippet_with_applicability, span_lint, span_lint_and_sugg};
+use std::borrow::Cow;
 
 /// **What it does:** This lint warns when you use `println!("")` to
 /// print a newline.
@@ -199,6 +200,7 @@ impl EarlyLintPass for Pass {
                         "using `println!(\"\")`",
                         "replace it with",
                         "println!()".to_string(),
+                        Applicability::MachineApplicable,
                     );
                 }
             }
@@ -237,9 +239,14 @@ impl EarlyLintPass for Pass {
             let check_tts = check_tts(cx, &mac.node.tts, true);
             if let Some(fmtstr) = check_tts.0 {
                 if fmtstr == "" {
-                    let suggestion = check_tts
-                        .1
-                        .map_or(Cow::Borrowed("v"), |expr| snippet(cx, expr.span, "v"));
+                    let mut applicability = Applicability::MachineApplicable;
+                    let suggestion = check_tts.1.map_or_else(
+                        move || {
+                            applicability = Applicability::HasPlaceholders;
+                            Cow::Borrowed("v")
+                        },
+                        move |expr| snippet_with_applicability(cx, expr.span, "v", &mut applicability),
+                    );
 
                     span_lint_and_sugg(
                         cx,
@@ -248,6 +255,7 @@ impl EarlyLintPass for Pass {
                         format!("using `writeln!({}, \"\")`", suggestion).as_str(),
                         "replace it with",
                         format!("writeln!({})", suggestion),
+                        applicability,
                     );
                 }
             }
@@ -255,6 +263,20 @@ impl EarlyLintPass for Pass {
     }
 }
 
+/// Checks the arguments of `print[ln]!` and `write[ln]!` calls. It will return a tuple of two
+/// options. The first part of the tuple is `format_str` of the macros. The secund part of the tuple
+/// is in the `write[ln]!` case the expression the `format_str` should be written to.
+///
+/// Example:
+///
+/// Calling this function on
+/// ```rust,ignore
+/// writeln!(buf, "string to write: {}", something)
+/// ```
+/// will return
+/// ```rust,ignore
+/// (Some("string to write: {}"), Some(buf))
+/// ```
 fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> (Option<String>, Option<Expr>) {
     use crate::fmt_macros::*;
     let tts = TokenStream::from(tts.clone());

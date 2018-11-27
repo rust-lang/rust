@@ -18,6 +18,7 @@ use crate::rustc::hir::*;
 use crate::rustc::hir::def::Def;
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use crate::syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
 use crate::syntax::source_map::Span;
@@ -281,6 +282,7 @@ impl EarlyLintPass for DefaultHashTypes {
                 &msg,
                 "use",
                 replace.to_string(),
+                Applicability::MaybeIncorrect, // FxHashMap, ... needs another import
             );
         }
     }
