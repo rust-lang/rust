@@ -11,7 +11,7 @@ use crate::{
     db::RootDatabase,
     completion::CompletionItem,
     hir::{
-        module::{ModuleDescriptor},
+        ModuleDescriptor,
         function::FnScopes,
         Def,
         Path,

@@ -9,8 +9,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     FileId,
-    hir::FileItemId,
-    hir::module::ModuleId,
+    hir::{FileItemId, ModuleId},
     syntax_ptr::SyntaxPtr,
     input::SourceRootId,
 };

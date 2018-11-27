@@ -22,7 +22,7 @@ use crate::{
     hir::{
         FunctionDescriptor, ModuleDescriptor,
         function::FnDescriptor,
-        module::{Problem},
+        Problem,
         DeclarationDescriptor,
     },
     input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},

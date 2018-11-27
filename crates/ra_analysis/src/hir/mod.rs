@@ -6,7 +6,7 @@
 //! applied. So, there relation between syntax and HIR is many-to-one.
 
 pub(crate) mod function;
-pub(crate) mod module;
+mod module;
 pub(crate) mod db;
 mod path;
 mod query_definitions;
@@ -26,7 +26,7 @@ use crate::{
 
 pub(crate) use self::{
     path::{Path, PathKind},
-    module::{ModuleDescriptor, nameres::FileItemId},
+    module::{ModuleDescriptor, ModuleId, Problem, nameres::FileItemId},
     function::FunctionDescriptor,
 };
 
