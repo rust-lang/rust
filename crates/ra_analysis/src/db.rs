@@ -122,15 +122,15 @@ salsa::database_storage! {
             fn file_symbols() for FileSymbolsQuery;
             fn resolve_syntax_ptr() for ResolveSyntaxPtrQuery;
         }
-        impl hir::HirDatabase {
-            fn module_tree() for hir::ModuleTreeQuery;
-            fn fn_scopes() for hir::FnScopesQuery;
-            fn _file_items() for hir::FileItemsQuery;
-            fn _file_item() for hir::FileItemQuery;
-            fn _input_module_items() for hir::InputModuleItemsQuery;
-            fn _item_map() for hir::ItemMapQuery;
-            fn _fn_syntax() for hir::FnSyntaxQuery;
-            fn _submodules() for hir::SubmodulesQuery;
+        impl hir::db::HirDatabase {
+            fn module_tree() for hir::db::ModuleTreeQuery;
+            fn fn_scopes() for hir::db::FnScopesQuery;
+            fn _file_items() for hir::db::FileItemsQuery;
+            fn _file_item() for hir::db::FileItemQuery;
+            fn _input_module_items() for hir::db::InputModuleItemsQuery;
+            fn _item_map() for hir::db::ItemMapQuery;
+            fn _fn_syntax() for hir::db::FnSyntaxQuery;
+            fn _submodules() for hir::db::SubmodulesQuery;
         }
     }
 }
