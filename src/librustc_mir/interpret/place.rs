@@ -295,10 +295,12 @@ impl<'tcx, Tag: ::std::fmt::Debug> PlaceTy<'tcx, Tag> {
 // separating the pointer tag for `impl Trait`, see https://github.com/rust-lang/rust/issues/54385
 impl<'a, 'mir, 'tcx, Tag, M> EvalContext<'a, 'mir, 'tcx, M>
 where
+    // FIXME: Working around https://github.com/rust-lang/rust/issues/54385
     Tag: ::std::fmt::Debug+Default+Copy+Eq+Hash+'static,
     M: Machine<'a, 'mir, 'tcx, PointerTag=Tag>,
+    // FIXME: Working around https://github.com/rust-lang/rust/issues/24159
     M::MemoryMap: AllocMap<AllocId, (MemoryKind<M::MemoryKinds>, Allocation<Tag, M::AllocExtra>)>,
-    M::AllocExtra: AllocationExtra<Tag>,
+    M::AllocExtra: AllocationExtra<Tag, M::MemoryExtra>,
 {
     /// Take a value, which represents a (thin or fat) reference, and make it a place.
     /// Alignment is just based on the type.  This is the inverse of `MemPlace::to_ref()`.

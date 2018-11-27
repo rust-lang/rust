@@ -312,12 +312,16 @@ impl<'rt, 'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>>
                 }
             }
             ty::RawPtr(..) => {
-                // No undef allowed here.  Eventually this should be consistent with
-                // the integer types.
-                let _ptr = try_validation!(value.to_scalar_ptr(),
-                    "undefined address in pointer", self.path);
-                let _meta = try_validation!(value.to_meta(),
-                    "uninitialized data in fat pointer metadata", self.path);
+                if self.const_mode {
+                    // Integers/floats in CTFE: For consistency with integers, we do not
+                    // accept undef.
+                    let _ptr = try_validation!(value.to_scalar_ptr(),
+                        "undefined address in raw pointer", self.path);
+                    let _meta = try_validation!(value.to_meta(),
+                        "uninitialized data in raw fat pointer metadata", self.path);
+                } else {
+                    // Remain consistent with `usize`: Accept anything.
+                }
             }
             _ if ty.is_box() || ty.is_region_ptr() => {
                 // Handle fat pointers.

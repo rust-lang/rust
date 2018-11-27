@@ -77,8 +77,16 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// The `default()` is used for pointers to consts, statics, vtables and functions.
     type PointerTag: ::std::fmt::Debug + Default + Copy + Eq + Hash + 'static;
 
+    /// Extra data stored in every call frame.
+    type FrameExtra;
+
+    /// Extra data stored in memory.  A reference to this is available when `AllocExtra`
+    /// gets initialized, so you can e.g. have an `Rc` here if there is global state you
+    /// need access to in the `AllocExtra` hooks.
+    type MemoryExtra: Default;
+
     /// Extra data stored in every allocation.
-    type AllocExtra: AllocationExtra<Self::PointerTag>;
+    type AllocExtra: AllocationExtra<Self::PointerTag, Self::MemoryExtra>;
 
     /// Memory's allocation map
     type MemoryMap:
@@ -136,8 +144,9 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// the machine memory. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
     fn find_foreign_static(
-        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
         def_id: DefId,
+        tcx: TyCtxtAt<'a, 'tcx, 'tcx>,
+        memory_extra: &Self::MemoryExtra,
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation<Self::PointerTag, Self::AllocExtra>>>;
 
     /// Called to turn an allocation obtained from the `tcx` into one that has
@@ -147,9 +156,10 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     /// allocation (because a copy had to be done to add tags or metadata), machine memory will
     /// cache the result. (This relies on `AllocMap::get_or` being able to add the
     /// owned allocation to the map even when the map is shared.)
-    fn adjust_static_allocation(
-        alloc: &'_ Allocation
-    ) -> Cow<'_, Allocation<Self::PointerTag, Self::AllocExtra>>;
+    fn adjust_static_allocation<'b>(
+        alloc: &'b Allocation,
+        memory_extra: &Self::MemoryExtra,
+    ) -> Cow<'b, Allocation<Self::PointerTag, Self::AllocExtra>>;
 
     /// Called for all binary operations on integer(-like) types when one operand is a pointer
     /// value, and for the `Offset` operation that is inherently about pointers.
@@ -207,4 +217,15 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     ) -> EvalResult<'tcx> {
         Ok(())
     }
+
+    /// Called immediately before a new stack frame got pushed
+    fn stack_push(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+    ) -> EvalResult<'tcx, Self::FrameExtra>;
+
+    /// Called immediately after a stack frame gets popped
+    fn stack_pop(
+        ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
+        extra: Self::FrameExtra,
+    ) -> EvalResult<'tcx>;
 }

@@ -323,6 +323,7 @@ impl_stable_hash_for!(impl<'tcx, 'mir: 'tcx> for struct Frame<'mir, 'tcx> {
     locals,
     block,
     stmt,
+    extra,
 });
 
 impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
@@ -340,6 +341,7 @@ impl<'a, 'mir, 'tcx, Ctx> Snapshot<'a, Ctx> for &'a Frame<'mir, 'tcx>
             locals,
             block,
             stmt,
+            extra: _,
         } = self;
 
         FrameSnapshot {
