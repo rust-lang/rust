@@ -426,6 +426,7 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                 let paths = &[
                     (&["libc", "_SC_PAGESIZE"], Scalar::from_int(4096, dest.layout.size)),
                     (&["libc", "_SC_GETPW_R_SIZE_MAX"], Scalar::from_int(-1, dest.layout.size)),
+                    (&["libc", "_SC_NPROCESSORS_ONLN"], Scalar::from_int(1, dest.layout.size)),
                 ];
                 let mut result = None;
                 for &(path, path_value) in paths {
@@ -450,6 +451,10 @@ pub trait EvalContextExt<'a, 'mir, 'tcx: 'a+'mir>: crate::MiriEvalContextExt<'a,
                         format!("Unimplemented sysconf name: {}", name),
                     ));
                 }
+            }
+
+            "isatty" => {
+                self.write_null(dest)?;
             }
 
             // Hook pthread calls that go to the thread-local storage memory subsystem
