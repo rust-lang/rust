@@ -7,11 +7,11 @@ and the working directory to contain the cargo-miri-test project.
 
 import sys, subprocess
 
-def test_cargo_miri():
-    print("==> Testing `cargo miri run` <==")
+def test(name, cmd, stdout_ref, stderr_ref):
+    print("==> Testing `{}` <==".format(name))
     ## Call `cargo miri`, capture all output
     p = subprocess.Popen(
-        ["cargo", "miri", "run", "-q"],
+        cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )
@@ -26,17 +26,20 @@ def test_cargo_miri():
     # Test for failures
     if p.returncode != 0:
         sys.exit(1)
-    if stdout != open('stdout.ref').read():
+    if stdout != open(stdout_ref).read():
         print("stdout does not match reference")
         sys.exit(1)
-    if stderr != open('stderr.ref').read():
+    if stderr != open(stderr_ref).read():
         print("stderr does not match reference")
         sys.exit(1)
 
-def test_cargo_miri_test():
-    print("==> Testing `cargo miri test` <==")
-    subprocess.check_call(["cargo", "miri", "test"])
+def test_cargo_miri_run():
+    test("cargo miri run", ["cargo", "miri", "run", "-q"], "stout.ref", "stderr.ref")
 
-test_cargo_miri()
+def test_cargo_miri_test():
+    # FIXME: validation disabled for now because of https://github.com/rust-lang/rust/issues/54957
+    test("cargo miri test", ["cargo", "miri", "test", "-q", "--", "-Zmiri-disable-validation"], "stout.ref", "stderr.ref")
+
+test_cargo_miri_run()
 test_cargo_miri_test()
 sys.exit(0)
