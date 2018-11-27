@@ -91,7 +91,7 @@ pub(crate) fn file_item(
     file_id: FileId,
     file_item_id: FileItemId,
 ) -> SyntaxNode {
-    db._file_items(file_id)[file_item_id].clone()
+    db.file_items(file_id)[file_item_id].clone()
 }
 
 /// Item map is the result of the name resolution. Item map contains, for each
@@ -155,7 +155,7 @@ pub(crate) struct NamedImport {
 
 impl NamedImport {
     pub(crate) fn range(&self, db: &impl HirDatabase, file_id: FileId) -> TextRange {
-        let syntax = db._file_item(file_id, self.file_item_id);
+        let syntax = db.file_item(file_id, self.file_item_id);
         let offset = syntax.borrowed().range().start();
         self.relative_range + offset
     }
@@ -172,9 +172,9 @@ pub(crate) fn input_module_items(
     source_root: SourceRootId,
     module_id: ModuleId,
 ) -> Cancelable<Arc<InputModuleItems>> {
-    let module_tree = db._module_tree(source_root)?;
+    let module_tree = db.module_tree(source_root)?;
     let source = module_id.source(&module_tree);
-    let file_items = db._file_items(source.file_id());
+    let file_items = db.file_items(source.file_id());
     let res = match source.resolve(db) {
         ModuleSourceNode::SourceFile(it) => {
             let items = it.borrowed().items();
@@ -197,11 +197,11 @@ pub(crate) fn item_map(
     source_root: SourceRootId,
 ) -> Cancelable<Arc<ItemMap>> {
     let start = Instant::now();
-    let module_tree = db._module_tree(source_root)?;
+    let module_tree = db.module_tree(source_root)?;
     let input = module_tree
         .modules()
         .map(|id| {
-            let items = db._input_module_items(source_root, id)?;
+            let items = db.input_module_items(source_root, id)?;
             Ok((id, items))
         })
         .collect::<Cancelable<FxHashMap<_, _>>>()?;
@@ -460,7 +460,7 @@ mod tests {
             .unwrap()
             .unwrap();
         let module_id = descr.module_id;
-        (db._item_map(source_root).unwrap(), module_id)
+        (db.item_map(source_root).unwrap(), module_id)
     }
 
     #[test]
@@ -513,9 +513,9 @@ mod tests {
         {
             let db = host.analysis().imp.db;
             let events = db.log_executed(|| {
-                db._item_map(source_root).unwrap();
+                db.item_map(source_root).unwrap();
             });
-            assert!(format!("{:?}", events).contains("_item_map"))
+            assert!(format!("{:?}", events).contains("item_map"))
         }
 
         let mut change = AnalysisChange::new();
@@ -537,7 +537,7 @@ mod tests {
         {
             let db = host.analysis().imp.db;
             let events = db.log_executed(|| {
-                db._item_map(source_root).unwrap();
+                db.item_map(source_root).unwrap();
             });
             assert!(
                 !format!("{:?}", events).contains("_item_map"),

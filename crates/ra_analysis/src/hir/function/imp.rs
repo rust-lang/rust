@@ -15,7 +15,7 @@ pub(crate) fn fn_syntax(db: &impl HirDatabase, fn_id: FnId) -> FnDefNode {
 }
 
 pub(crate) fn fn_scopes(db: &impl HirDatabase, fn_id: FnId) -> Arc<FnScopes> {
-    let syntax = db._fn_syntax(fn_id);
+    let syntax = db.fn_syntax(fn_id);
     let res = FnScopes::new(syntax.borrowed());
     Arc::new(res)
 }

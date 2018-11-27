@@ -64,7 +64,7 @@ impl ModuleDescriptor {
         module_source: ModuleSource,
     ) -> Cancelable<Option<ModuleDescriptor>> {
         let source_root_id = db.file_source_root(file_id);
-        let module_tree = db._module_tree(source_root_id)?;
+        let module_tree = db.module_tree(source_root_id)?;
 
         let res = match module_tree.any_module_for_source(module_source) {
             None => None,
@@ -82,7 +82,7 @@ impl ModuleDescriptor {
         source_root_id: SourceRootId,
         module_id: ModuleId,
     ) -> Cancelable<ModuleDescriptor> {
-        let module_tree = db._module_tree(source_root_id)?;
+        let module_tree = db.module_tree(source_root_id)?;
         let res = ModuleDescriptor {
             tree: module_tree,
             source_root_id,
@@ -148,7 +148,7 @@ impl ModuleDescriptor {
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
     pub(crate) fn scope(&self, db: &impl HirDatabase) -> Cancelable<ModuleScope> {
-        let item_map = db._item_map(self.source_root_id)?;
+        let item_map = db.item_map(self.source_root_id)?;
         let res = item_map.per_module[&self.module_id].clone();
         Ok(res)
     }
