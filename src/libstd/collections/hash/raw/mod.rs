@@ -564,8 +564,9 @@ impl<T> RawTable<T> {
                     // size. If both the new and old position fall within the
                     // same unaligned group, then there is no benefit in moving
                     // it and we can just continue to the next item.
-                    let probe_index = |pos| {
-                        ((pos - guard.probe_seq(hash).offset) & guard.bucket_mask) / Group::WIDTH
+                    let probe_index = |pos: usize| {
+                        (pos.wrapping_sub(guard.probe_seq(hash).offset) & guard.bucket_mask)
+                            / Group::WIDTH
                     };
                     if likely(probe_index(i) == probe_index(new_i)) {
                         guard.set_ctrl(i, h2(hash));
