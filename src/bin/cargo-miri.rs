@@ -65,10 +65,7 @@ fn list_targets(mut args: impl Iterator<Item=String>) -> impl Iterator<Item=carg
     {
         metadata
     } else {
-        let _ = std::io::stderr().write_fmt(format_args!(
-            "error: Could not obtain cargo metadata."
-        ));
-        std::process::exit(101);
+        show_error(format!("error: Could not obtain cargo metadata."));
     };
 
     let manifest_path = manifest_path_arg.map(|arg| {
@@ -106,14 +103,11 @@ fn ask(question: &str) {
     print!("{} [Y/n] ", question);
     io::stdout().flush().unwrap();
     io::stdin().read_line(&mut buf).unwrap();
-    let answer = match buf.trim().to_lowercase().as_ref() {
-        "" | "y" | "yes" => true,
-        "n" | "no" => false,
+    match buf.trim().to_lowercase().as_ref() {
+        "" | "y" | "yes" => {}, // proceed
+        "n" | "no" => show_error(format!("Aborting as per your request")),
         a => show_error(format!("I do not understand `{}`", a))
     };
-    if !answer {
-        show_error(format!("Aborting as per your request"))
-    }
 }
 
 /// Perform the setup requires to make `cargo miri` work: Getting a custom-built libstd. Then sets MIRI_SYSROOT.
@@ -152,7 +146,7 @@ fn setup(ask_user: bool) {
     }
 
     // Next, we need our own libstd. We will do this work in ~/.miri.
-    let dir = dirs::home_dir().unwrap().join(".miri");
+    let dir = directories::UserDirs::new().unwrap().home_dir().join(".miri");
     if !dir.exists() {
         fs::create_dir(&dir).unwrap();
     }

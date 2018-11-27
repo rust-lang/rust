@@ -35,7 +35,7 @@ required-features = ["rustc_tests"]
 [dependencies]
 byteorder = { version = "1.1", features = ["i128"]}
 cargo_metadata = { version = "0.6", optional = true }
-dirs = { version = "1.0.4", optional = true }
+directories = { version = "1.0", optional = true }
 env_logger = "0.5"
 log = "0.4"
 
@@ -44,7 +44,7 @@ vergen = "3"
 
 [features]
 default = ["cargo_miri"]
-cargo_miri = ["cargo_metadata", "dirs"]
+cargo_miri = ["cargo_metadata", "directories"]
 rustc_tests = []
 
 [dev-dependencies]
