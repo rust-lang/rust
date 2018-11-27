@@ -1,6 +1,5 @@
 // edition:2018
 
-#![feature(underscore_imports)]
 #![deny(unused_imports)]
 
 mod multi_segment {

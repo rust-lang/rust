@@ -2,7 +2,7 @@
 
 // For the time being `macro_rules` items are treated as *very* private...
 
-#![feature(underscore_imports, decl_macro, uniform_paths)]
+#![feature(decl_macro, uniform_paths)]
 
 mod m1 {
     macro_rules! legacy_macro { () => () }

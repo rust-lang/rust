@@ -1,5 +1,3 @@
-#![feature(underscore_imports)]
-
 #[macro_export]
 macro_rules! do_nothing {
     () => ()

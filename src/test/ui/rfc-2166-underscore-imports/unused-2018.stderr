@@ -1,17 +1,17 @@
 error: unused import: `core::any`
-  --> $DIR/unused-2018.rs:7:9
+  --> $DIR/unused-2018.rs:6:9
    |
 LL |     use core::any; //~ ERROR unused import: `core::any`
    |         ^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/unused-2018.rs:4:9
+  --> $DIR/unused-2018.rs:3:9
    |
 LL | #![deny(unused_imports)]
    |         ^^^^^^^^^^^^^^
 
 error: unused import: `core`
-  --> $DIR/unused-2018.rs:11:9
+  --> $DIR/unused-2018.rs:10:9
    |
 LL |     use core; //~ ERROR unused import: `core`
    |         ^^^^
