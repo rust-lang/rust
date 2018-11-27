@@ -218,7 +218,6 @@ impl ModuleTree {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum ModuleSource {
     SourceFile(FileId),
-    #[allow(dead_code)]
     Module(SyntaxPtr),
 }
 
