@@ -77,7 +77,7 @@ impl ModuleDescriptor {
         Ok(res)
     }
 
-    fn new(
+    pub(super) fn new(
         db: &impl DescriptorDatabase,
         source_root_id: SourceRootId,
         module_id: ModuleId,
@@ -132,6 +132,14 @@ impl ModuleDescriptor {
         Some(link.name(&self.tree))
     }
 
+    pub fn def_id(&self, db: &impl DescriptorDatabase) -> DefId {
+        let def_loc = DefLoc::Module {
+            id: self.module_id,
+            source_root: self.source_root_id,
+        };
+        db.id_maps().def_id(def_loc)
+    }
+
     /// Finds a child module with the specified name.
     pub fn child(&self, name: &str) -> Option<ModuleDescriptor> {
         let child_id = self.module_id.child(&self.tree, name)?;
@@ -152,23 +160,23 @@ impl ModuleDescriptor {
         &self,
         db: &impl DescriptorDatabase,
         path: Path,
-    ) -> Cancelable<Option<ModuleDescriptor>> {
+    ) -> Cancelable<Option<DefId>> {
         let mut curr = match path.kind {
             PathKind::Crate => self.crate_root(),
             PathKind::Self_ | PathKind::Plain => self.clone(),
             PathKind::Super => ctry!(self.parent()),
-        };
+        }
+        .def_id(db);
 
         let segments = path.segments;
-        for name in segments {
-            let scope = curr.scope(db)?;
-            let def_id = ctry!(ctry!(scope.get(&name)).def_id);
-            curr = match db.id_maps().def_loc(def_id) {
+        for name in segments.iter() {
+            let module = match db.id_maps().def_loc(curr) {
                 DefLoc::Module { id, source_root } => ModuleDescriptor::new(db, source_root, id)?,
                 _ => return Ok(None),
             };
+            let scope = module.scope(db)?;
+            curr = ctry!(ctry!(scope.get(&name)).def_id);
         }
-
         Ok(Some(curr))
     }
 

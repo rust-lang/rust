@@ -13,6 +13,7 @@ use crate::{
     descriptors::{
         module::{ModuleDescriptor},
         function::FnScopes,
+        Def,
         Path,
     },
     Cancelable
@@ -156,9 +157,13 @@ fn complete_path(
         return Ok(());
     }
     path.segments.pop();
-    let target_module = match module.resolve_path(db, path)? {
+    let def_id = match module.resolve_path(db, path)? {
         None => return Ok(()),
         Some(it) => it,
+    };
+    let target_module = match def_id.resolve(db)? {
+        Def::Module(it) => it,
+        Def::Item => return Ok(()),
     };
     let module_scope = target_module.scope(db)?;
     let completions = module_scope.entries().map(|(name, _res)| CompletionItem {
