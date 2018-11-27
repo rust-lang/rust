@@ -2526,7 +2526,7 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 /// ptr::hash(five_ref, &mut hasher);
 /// println!("Hash is {:x}!", hasher.finish());
 /// ```
-#[stable(feature = "rust1", since = "1.0.0")] // FIXME: replace with ???
+#[unstable(feature = "ptr_hash", reason = "newly added", issue = "56285")]
 pub fn hash<T, S: hash::Hasher>(a: &T, into: &mut S) {
     use hash::Hash;
     NonNull::from(a).hash(into)
