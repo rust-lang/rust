@@ -1,22 +1,5 @@
 use ra_syntax::{SourceFileNode, SyntaxKind, SyntaxNode, SyntaxNodeRef, TextRange};
 
-use crate::db::SyntaxDatabase;
-use crate::FileId;
-
-pub(crate) fn resolve_syntax_ptr(db: &impl SyntaxDatabase, ptr: SyntaxPtr) -> SyntaxNode {
-    let syntax = db.file_syntax(ptr.file_id);
-    ptr.local.resolve(&syntax)
-}
-
-/// SyntaxPtr is a cheap `Copy` id which identifies a particular syntax node,
-/// without retaining syntax tree in memory. You need to explicitly `resolve`
-/// `SyntaxPtr` to get a `SyntaxNode`
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct SyntaxPtr {
-    file_id: FileId,
-    local: LocalSyntaxPtr,
-}
-
 /// A pionter to a syntax node inside a file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct LocalSyntaxPtr {

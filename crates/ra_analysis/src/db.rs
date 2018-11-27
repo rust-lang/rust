@@ -2,13 +2,12 @@ use std::sync::Arc;
 #[cfg(test)]
 use parking_lot::Mutex;
 use ra_editor::LineIndex;
-use ra_syntax::{SourceFileNode, SyntaxNode};
+use ra_syntax::{SourceFileNode};
 use salsa::{self, Database};
 
 use crate::{
     hir,
     symbol_index::SymbolIndex,
-    syntax_ptr::SyntaxPtr,
     loc2id::{IdMaps},
     Cancelable, Canceled, FileId,
 };
@@ -122,7 +121,6 @@ salsa::database_storage! {
             fn file_syntax() for FileSyntaxQuery;
             fn file_lines() for FileLinesQuery;
             fn file_symbols() for FileSymbolsQuery;
-            fn resolve_syntax_ptr() for ResolveSyntaxPtrQuery;
         }
         impl hir::db::HirDatabase {
             fn module_tree() for hir::db::ModuleTreeQuery;
@@ -147,12 +145,6 @@ salsa::query_group! {
         }
         fn file_symbols(file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
             type FileSymbolsQuery;
-        }
-        fn resolve_syntax_ptr(ptr: SyntaxPtr) -> SyntaxNode {
-            type ResolveSyntaxPtrQuery;
-            // Don't retain syntax trees in memory
-            storage dependencies;
-            use fn crate::syntax_ptr::resolve_syntax_ptr;
         }
     }
 }
