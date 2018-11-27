@@ -56,7 +56,7 @@ compiled the right way.
 Install Miri as a cargo subcommand:
 
 ```sh
-cargo +nightly install --git https://github.com/solson/miri/
+cargo +nightly install --git https://github.com/solson/miri/ miri
 ```
 
 Be aware that if you used `rustup override set` to fix a particular Rust version
