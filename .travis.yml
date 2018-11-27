@@ -30,6 +30,7 @@ before_install:
 install:
   - |
     if [ -z ${INTEGRATION} ]; then
+      rustup component add rustfmt-preview || cargo install --git https://github.com/rust-lang/rustfmt/ --force
       if [ "$TRAVIS_OS_NAME" == "linux" ]; then
         . $HOME/.nvm/nvm.sh
         nvm install stable
@@ -48,7 +49,7 @@ matrix:
     - os: linux
       env: BASE_TESTS=true
     - os: windows
-      env: BASE_TEST=true
+      env: BASE_TESTS=true
     - env: INTEGRATION=rust-lang/cargo
     - env: INTEGRATION=rust-random/rand
     - env: INTEGRATION=rust-lang-nursery/stdsimd
@@ -64,7 +65,7 @@ matrix:
     - env: INTEGRATION=hyperium/hyper
   allow_failures:
   - os: windows
-    env: BASE_TEST=true
+    env: BASE_TESTS=true
 # prevent these jobs with default env vars
   exclude:
     - os: linux
