@@ -707,8 +707,14 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         self.in_cleanup_block = false;
     }
 
-    fn visit_retag(&mut self, fn_entry: &mut bool, place: &mut Place<'tcx>, loc: Location) {
-        self.super_retag(fn_entry, place, loc);
+    fn visit_retag(
+        &mut self,
+        fn_entry: &mut bool,
+        two_phase: &mut bool,
+        place: &mut Place<'tcx>,
+        loc: Location,
+    ) {
+        self.super_retag(fn_entry, two_phase, place, loc);
 
         // We have to patch all inlined retags to be aware that they are no longer
         // happening on function entry.

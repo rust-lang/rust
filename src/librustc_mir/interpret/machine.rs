@@ -204,6 +204,7 @@ pub trait Machine<'a, 'mir, 'tcx>: Sized {
     fn retag(
         _ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         _fn_entry: bool,
+        _two_phase: bool,
         _place: PlaceTy<'tcx, Self::PointerTag>,
     ) -> EvalResult<'tcx> {
         Ok(())

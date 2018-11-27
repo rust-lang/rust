@@ -119,9 +119,9 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
             FakeRead(..) => {}
 
             // Stacked Borrows.
-            Retag { fn_entry, ref place } => {
+            Retag { fn_entry, two_phase, ref place } => {
                 let dest = self.eval_place(place)?;
-                M::retag(self, fn_entry, dest)?;
+                M::retag(self, fn_entry, two_phase, dest)?;
             }
             EscapeToRaw(ref op) => {
                 let op = self.eval_operand(op, None)?;
