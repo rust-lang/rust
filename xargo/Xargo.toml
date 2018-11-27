@@ -1,5 +1,0 @@
-[dependencies.std]
-features = ["panic_unwind", "backtrace"]
-
-[dependencies.test]
-stage = 1

@@ -1,14 +1,21 @@
+#![feature(inner_deref)]
+
 extern crate cargo_metadata;
 
 use std::path::{PathBuf, Path};
-use std::io::Write;
+use std::io::{self, Write};
 use std::process::Command;
-
+use std::fs::{self, File};
 
 const CARGO_MIRI_HELP: &str = r#"Interprets bin crates
 
 Usage:
-    cargo miri [options] [--] [<opts>...]
+    cargo miri [subcommand] [options] [--] [<opts>...]
+
+Subcommands:
+    run                      Run binaries (default)
+    test                     Run tests
+    setup                    Only perform automatic setup, but without asking questions (for getting a proper libstd)
 
 Common options:
     -h, --help               Print this message
@@ -25,6 +32,13 @@ it to configure the resource limits
 available resource limits are `memory_size`, `step_limit`, `stack_limit`
 "#;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum MiriCommand {
+    Run,
+    Test,
+    Setup,
+}
+
 fn show_help() {
     println!("{}", CARGO_MIRI_HELP);
 }
@@ -32,6 +46,145 @@ fn show_help() {
 fn show_version() {
     println!("miri {} ({} {})",
         env!("CARGO_PKG_VERSION"), env!("VERGEN_SHA_SHORT"), env!("VERGEN_COMMIT_DATE"));
+}
+
+fn show_error(msg: String) -> ! {
+    eprintln!("fatal error: {}", msg);
+    std::process::exit(1)
+}
+
+fn list_targets(mut args: impl Iterator<Item=String>) -> impl Iterator<Item=cargo_metadata::Target> {
+    // We need to get the manifest, and then the metadata, to enumerate targets.
+    let manifest_path_arg = args.find(|val| {
+        val.starts_with("--manifest-path=")
+    });
+
+    let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(
+        manifest_path_arg.as_ref().map(AsRef::as_ref),
+    )
+    {
+        metadata
+    } else {
+        show_error(format!("error: Could not obtain cargo metadata."));
+    };
+
+    let manifest_path = manifest_path_arg.map(|arg| {
+        PathBuf::from(Path::new(&arg["--manifest-path=".len()..]))
+    });
+
+    let current_dir = std::env::current_dir();
+
+    let package_index = metadata
+        .packages
+        .iter()
+        .position(|package| {
+            let package_manifest_path = Path::new(&package.manifest_path);
+            if let Some(ref manifest_path) = manifest_path {
+                package_manifest_path == manifest_path
+            } else {
+                let current_dir = current_dir.as_ref().expect(
+                    "could not read current directory",
+                );
+                let package_manifest_directory = package_manifest_path.parent().expect(
+                    "could not find parent directory of package manifest",
+                );
+                package_manifest_directory == current_dir
+            }
+        })
+        .expect("could not find matching package");
+    let package = metadata.packages.remove(package_index);
+
+    // Finally we got the list of targets to build
+    package.targets.into_iter()
+}
+
+fn ask(question: &str) {
+    let mut buf = String::new();
+    print!("{} [Y/n] ", question);
+    io::stdout().flush().unwrap();
+    io::stdin().read_line(&mut buf).unwrap();
+    match buf.trim().to_lowercase().as_ref() {
+        "" | "y" | "yes" => {}, // proceed
+        "n" | "no" => show_error(format!("Aborting as per your request")),
+        a => show_error(format!("I do not understand `{}`", a))
+    };
+}
+
+/// Perform the setup requires to make `cargo miri` work: Getting a custom-built libstd. Then sets MIRI_SYSROOT.
+/// Skipped if MIRI_SYSROOT is already set, in that case we expect the user has done all this already.
+fn setup(ask_user: bool) {
+    if std::env::var("MIRI_SYSROOT").is_ok() {
+        return;
+    }
+
+    // First, we need xargo
+    if Command::new("xargo").arg("--version").output().is_err()
+    {
+        if ask_user {
+            ask("It seems you do not have xargo installed. I will run `cargo install xargo`. Proceed?");
+        } else {
+            println!("Installing xargo: `cargo install xargo`");
+        }
+        if !Command::new("cargo").args(&["install", "xargo"]).status().unwrap().success() {
+            show_error(format!("Failed to install xargo"));
+        }
+    }
+
+    // Then, we also need rust-src.  Let's see if it is already installed.
+    let sysroot = Command::new("rustc").args(&["--print", "sysroot"]).output().unwrap().stdout;
+    let sysroot = std::str::from_utf8(&sysroot[..]).unwrap();
+    let src = Path::new(sysroot.trim_end_matches('\n')).join("lib").join("rustlib").join("src");
+    if !src.exists() {
+        if ask_user {
+            ask("It seems you do not have the rust-src component installed. I will run `rustup component add rust-src`. Proceed?");
+        } else {
+            println!("Installing rust-src component: `rustup component add rust-src`");
+        }
+        if !Command::new("rustup").args(&["component", "add", "rust-src"]).status().unwrap().success() {
+            show_error(format!("Failed to install rust-src component"));
+        }
+    }
+
+    // Next, we need our own libstd. We will do this work in whatever is a good cache dir for this platform.
+    let dirs = directories::ProjectDirs::from("miri", "miri", "miri").unwrap();
+    let dir = dirs.cache_dir();
+    if !dir.exists() {
+        println!("Creating `{}` and using it for miri's build of libstd", dir.display());
+        fs::create_dir_all(&dir).unwrap();
+    }
+    // The interesting bit: Xargo.toml
+    File::create(dir.join("Xargo.toml")).unwrap()
+        .write_all(br#"
+[dependencies.std]
+features = ["panic_unwind"]
+
+[dependencies.test]
+stage = 1
+        "#).unwrap();
+    // The boring bits: A dummy project for xargo
+    File::create(dir.join("Cargo.toml")).unwrap()
+        .write_all(br#"
+[package]
+name = "miri-xargo"
+description = "A dummy project for building libstd with xargo."
+version = "0.0.0"
+
+[lib]
+path = "lib.rs"
+        "#).unwrap();
+    File::create(dir.join("lib.rs")).unwrap();
+    // Run xargo
+    if !Command::new("xargo").arg("build").arg("-q")
+        .current_dir(&dir)
+        .env("RUSTFLAGS", miri::miri_default_args().join(" "))
+        .env("XARGO_HOME", dir.to_str().unwrap())
+        .status().unwrap().success()
+    {
+        show_error(format!("Failed to run xargo"));
+    }
+
+    // That should be it!
+    std::env::set_var("MIRI_SYSROOT", dir.join("HOST"));
 }
 
 fn main() {
@@ -51,61 +204,31 @@ fn main() {
         // binary so that we come back in the other branch, and dispatch
         // the invocations to rustc and miri, respectively.
 
-        let test = std::env::args().nth(2).map_or(false, |text| text == "test");
-        let skip = if test { 3 } else { 2 };
-
-        // We need to get the manifest, and then the metadata, to enumerate targets.
-        let manifest_path_arg = std::env::args().skip(skip).find(|val| {
-            val.starts_with("--manifest-path=")
-        });
-
-        let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(
-            manifest_path_arg.as_ref().map(AsRef::as_ref),
-        )
-        {
-            metadata
-        } else {
-            let _ = std::io::stderr().write_fmt(format_args!(
-                "error: Could not obtain cargo metadata."
-            ));
-            std::process::exit(101);
+        let (subcommand, skip) = match std::env::args().nth(2).deref() {
+            Some("test") => (MiriCommand::Test, 3),
+            Some("run") => (MiriCommand::Run, 3),
+            Some("setup") => (MiriCommand::Setup, 3),
+            // Default command, if there is an option or nothing
+            Some(s) if s.starts_with("-") => (MiriCommand::Run, 2),
+            None => (MiriCommand::Run, 2),
+            // Unvalid command
+            Some(s) => {
+                show_error(format!("Unknown command `{}`", s))
+            }
         };
 
-        let manifest_path = manifest_path_arg.map(|arg| {
-            PathBuf::from(Path::new(&arg["--manifest-path=".len()..]))
-        });
+        // We always setup
+        let ask = subcommand != MiriCommand::Setup;
+        setup(ask);
 
-        let current_dir = std::env::current_dir();
-
-        let package_index = metadata
-            .packages
-            .iter()
-            .position(|package| {
-                let package_manifest_path = Path::new(&package.manifest_path);
-                if let Some(ref manifest_path) = manifest_path {
-                    package_manifest_path == manifest_path
-                } else {
-                    let current_dir = current_dir.as_ref().expect(
-                        "could not read current directory",
-                    );
-                    let package_manifest_directory = package_manifest_path.parent().expect(
-                        "could not find parent directory of package manifest",
-                    );
-                    package_manifest_directory == current_dir
-                }
-            })
-            .expect("could not find matching package");
-        let package = metadata.packages.remove(package_index);
-
-        // Finally we got the metadata, iterate all targets and see for which ones
-        // we do anything.
-        for target in package.targets {
+        // Now run the command.
+        for target in list_targets(std::env::args().skip(skip)) {
             let args = std::env::args().skip(skip);
             let kind = target.kind.get(0).expect(
                 "badly formatted cargo metadata: target::kind is an empty array",
             );
-            match (test, &kind[..]) {
-                (true, "test") => {
+            match (subcommand, &kind[..]) {
+                (MiriCommand::Test, "test") => {
                     // For test binaries we call `cargo rustc --test target -- <rustc args>`
                     if let Err(code) = process(
                         vec!["--test".to_string(), target.name].into_iter().chain(
@@ -116,7 +239,7 @@ fn main() {
                         std::process::exit(code);
                     }
                 }
-                (true, "lib") => {
+                (MiriCommand::Test, "lib") => {
                     // For libraries we call `cargo rustc -- --test <rustc args>`
                     // Notice now that `--test` is a rustc arg rather than a cargo arg. This tells
                     // rustc to build a test harness which calls all #[test] functions. We don't
@@ -131,7 +254,7 @@ fn main() {
                         std::process::exit(code);
                     }
                 }
-                (false, "bin") => {
+                (MiriCommand::Run, "bin") => {
                     // For ordinary binaries we call `cargo rustc --bin target -- <rustc args>`
                     if let Err(code) = process(
                         vec!["--bin".to_string(), target.name].into_iter().chain(
