@@ -11,6 +11,7 @@
 use {ast, attr};
 use syntax_pos::{Span, DUMMY_SP};
 use edition::Edition;
+use errors::FatalError;
 use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
 use ext::expand::{AstFragment, AstFragmentKind};
@@ -44,15 +45,34 @@ pub struct ParserAnyMacro<'a> {
     /// Span of the expansion site of the macro this parser is for
     site_span: Span,
     /// The ident of the macro we're parsing
-    macro_ident: ast::Ident
+    macro_ident: ast::Ident,
+    arm_span: Span,
 }
 
 impl<'a> ParserAnyMacro<'a> {
     pub fn make(mut self: Box<ParserAnyMacro<'a>>, kind: AstFragmentKind) -> AstFragment {
-        let ParserAnyMacro { site_span, macro_ident, ref mut parser } = *self;
+        let ParserAnyMacro { site_span, macro_ident, ref mut parser, arm_span } = *self;
         let fragment = panictry!(parser.parse_ast_fragment(kind, true).map_err(|mut e| {
+            if parser.token == token::Eof && e.message().ends_with(", found `<eof>`") {
+                if !e.span.is_dummy() {  // early end of macro arm (#52866)
+                    e.replace_span_with(parser.sess.source_map().next_point(parser.span));
+                }
+                let msg = &e.message[0];
+                e.message[0] = (
+                    format!(
+                        "macro expansion ends with an incomplete expression: {}",
+                        msg.0.replace(", found `<eof>`", ""),
+                    ),
+                    msg.1,
+                );
+            }
             if e.span.is_dummy() {  // Get around lack of span in error (#30128)
-                e.set_span(site_span);
+                e.replace_span_with(site_span);
+                if parser.sess.source_map().span_to_filename(arm_span).is_real() {
+                    e.span_label(arm_span, "in this macro arm");
+                }
+            } else if !parser.sess.source_map().span_to_filename(parser.span).is_real() {
+                e.span_label(site_span, "in this macro invocation");
             }
             e
         }));
@@ -120,6 +140,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
     // Which arm's failure should we report? (the one furthest along)
     let mut best_fail_spot = DUMMY_SP;
     let mut best_fail_tok = None;
+    let mut best_fail_text = None;
 
     for (i, lhs) in lhses.iter().enumerate() { // try each arm's matchers
         let lhs_tt = match *lhs {
@@ -134,6 +155,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                     quoted::TokenTree::Delimited(_, ref delimed) => delimed.tts.clone(),
                     _ => cx.span_bug(sp, "malformed macro rhs"),
                 };
+                let arm_span = rhses[i].span();
 
                 let rhs_spans = rhs.iter().map(|t| t.span()).collect::<Vec<_>>();
                 // rhs has holes ( `$id` and `$(...)` that need filled)
@@ -172,12 +194,14 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
                     // so we can print a useful error message if the parse of the expanded
                     // macro leaves unparsed tokens.
                     site_span: sp,
-                    macro_ident: name
+                    macro_ident: name,
+                    arm_span,
                 })
             }
-            Failure(sp, tok) => if sp.lo() >= best_fail_spot.lo() {
+            Failure(sp, tok, t) => if sp.lo() >= best_fail_spot.lo() {
                 best_fail_spot = sp;
                 best_fail_tok = Some(tok);
+                best_fail_text = Some(t);
             },
             Error(err_sp, ref msg) => {
                 cx.span_fatal(err_sp.substitute_dummy(sp), &msg[..])
@@ -188,7 +212,7 @@ fn generic_extension<'cx>(cx: &'cx mut ExtCtxt,
     let best_fail_msg = parse_failure_msg(best_fail_tok.expect("ran no matchers"));
     let span = best_fail_spot.substitute_dummy(sp);
     let mut err = cx.struct_span_err(span, &best_fail_msg);
-    err.span_label(span, best_fail_msg);
+    err.span_label(span, best_fail_text.unwrap_or(best_fail_msg));
     if let Some(sp) = def_span {
         if cx.source_map().span_to_filename(sp).is_real() && !sp.is_dummy() {
             err.span_label(cx.source_map().def_span(sp), "when calling this macro");
@@ -268,9 +292,13 @@ pub fn compile(sess: &ParseSess, features: &Features, def: &ast::Item, edition: 
 
     let argument_map = match parse(sess, body.stream(), &argument_gram, None, true) {
         Success(m) => m,
-        Failure(sp, tok) => {
+        Failure(sp, tok, t) => {
             let s = parse_failure_msg(tok);
-            sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s).raise();
+            let sp = sp.substitute_dummy(def.span);
+            let mut err = sess.span_diagnostic.struct_span_fatal(sp, &s);
+            err.span_label(sp, t);
+            err.emit();
+            FatalError.raise();
         }
         Error(sp, s) => {
             sess.span_diagnostic.span_fatal(sp.substitute_dummy(def.span), &s).raise();

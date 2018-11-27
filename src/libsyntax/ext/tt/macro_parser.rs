@@ -281,7 +281,7 @@ pub enum ParseResult<T> {
     Success(T),
     /// Arm failed to match. If the second parameter is `token::Eof`, it indicates an unexpected
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
-    Failure(syntax_pos::Span, Token),
+    Failure(syntax_pos::Span, Token, String),
     /// Fatal error (malformed macro?). Abort compilation.
     Error(syntax_pos::Span, String),
 }
@@ -698,7 +698,7 @@ pub fn parse(
             parser.span,
         ) {
             Success(_) => {}
-            Failure(sp, tok) => return Failure(sp, tok),
+            Failure(sp, tok, t) => return Failure(sp, tok, t),
             Error(sp, msg) => return Error(sp, msg),
         }
 
@@ -710,7 +710,7 @@ pub fn parse(
         // Error messages here could be improved with links to original rules.
 
         // If we reached the EOF, check that there is EXACTLY ONE possible matcher. Otherwise,
-        // either the parse is ambiguous (which should never happen) or their is a syntax error.
+        // either the parse is ambiguous (which should never happen) or there is a syntax error.
         if token_name_eq(&parser.token, &token::Eof) {
             if eof_items.len() == 1 {
                 let matches = eof_items[0]
@@ -724,7 +724,15 @@ pub fn parse(
                     "ambiguity: multiple successful parses".to_string(),
                 );
             } else {
-                return Failure(parser.span, token::Eof);
+                return Failure(
+                    if parser.span.is_dummy() {
+                        parser.span
+                    } else {
+                        sess.source_map().next_point(parser.span)
+                    },
+                    token::Eof,
+                    "missing tokens in macro arguments".to_string(),
+                );
             }
         }
         // Performance hack: eof_items may share matchers via Rc with other things that we want
@@ -757,9 +765,13 @@ pub fn parse(
             );
         }
         // If there are no possible next positions AND we aren't waiting for the black-box parser,
-        // then their is a syntax error.
+        // then there is a syntax error.
         else if bb_items.is_empty() && next_items.is_empty() {
-            return Failure(parser.span, parser.token);
+            return Failure(
+                parser.span,
+                parser.token,
+                "no rules expected this token in macro call".to_string(),
+            );
         }
         // Dump all possible `next_items` into `cur_items` for the next iteration.
         else if !next_items.is_empty() {

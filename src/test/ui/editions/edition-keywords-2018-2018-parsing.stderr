@@ -14,19 +14,24 @@ error: no rules expected the token `r#async`
   --> $DIR/edition-keywords-2018-2018-parsing.rs:22:31
    |
 LL |     r#async = consumes_async!(r#async); //~ ERROR no rules expected the token `r#async`
-   |                               ^^^^^^^ no rules expected the token `r#async`
+   |                               ^^^^^^^ no rules expected this token in macro call
 
 error: no rules expected the token `async`
   --> $DIR/edition-keywords-2018-2018-parsing.rs:23:35
    |
 LL |     r#async = consumes_async_raw!(async); //~ ERROR no rules expected the token `async`
-   |                                   ^^^^^ no rules expected the token `async`
+   |                                   ^^^^^ no rules expected this token in macro call
 
-error: expected one of `move`, `|`, or `||`, found `<eof>`
-  --> <::edition_kw_macro_2018::passes_ident macros>:1:22
+error: macro expansion ends with an incomplete expression: expected one of `move`, `|`, or `||`
+  --> <::edition_kw_macro_2018::passes_ident macros>:1:25
    |
 LL | ( $ i : ident ) => ( $ i )
-   |                      ^^^ expected one of `move`, `|`, or `||` here
+   |                         ^ expected one of `move`, `|`, or `||` here
+   | 
+  ::: $DIR/edition-keywords-2018-2018-parsing.rs:26:8
+   |
+LL |     if passes_ident!(async) == 1 {}
+   |        -------------------- in this macro invocation
 
 error: aborting due to 5 previous errors
 

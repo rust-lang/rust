@@ -55,7 +55,7 @@ LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
 LL |     foo!(a?); //~ ERROR no rules expected the token `?`
-   |           ^ no rules expected the token `?`
+   |           ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
   --> $DIR/macro-at-most-once-rep-2018-feature-gate.rs:42:11
@@ -64,7 +64,7 @@ LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
 LL |     foo!(a?a); //~ ERROR no rules expected the token `?`
-   |           ^ no rules expected the token `?`
+   |           ^ no rules expected this token in macro call
 
 error: no rules expected the token `?`
   --> $DIR/macro-at-most-once-rep-2018-feature-gate.rs:43:11
@@ -73,7 +73,7 @@ LL | macro_rules! foo {
    | ---------------- when calling this macro
 ...
 LL |     foo!(a?a?a); //~ ERROR no rules expected the token `?`
-   |           ^ no rules expected the token `?`
+   |           ^ no rules expected this token in macro call
 
 error: aborting due to 10 previous errors
 
