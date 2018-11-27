@@ -18,7 +18,7 @@ struct Foo<'s> {
 
 impl Foo<'_> {
     fn new(bar: &mut Bar) -> Self {
-        Foo { bar }
+        Foo { bar } //~ ERROR unsatisfied lifetime constraints
     }
 }
 

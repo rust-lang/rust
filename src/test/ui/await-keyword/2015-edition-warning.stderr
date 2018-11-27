@@ -13,7 +13,7 @@ LL | #![deny(keyword_idents)]
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-warning.rs:8:20
+  --> $DIR/2015-edition-warning.rs:10:20
    |
 LL |         pub struct await;
    |                    ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
@@ -22,7 +22,7 @@ LL |         pub struct await;
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-warning.rs:11:16
+  --> $DIR/2015-edition-warning.rs:15:16
    |
 LL | use outer_mod::await::await;
    |                ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
@@ -31,7 +31,7 @@ LL | use outer_mod::await::await;
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-warning.rs:11:23
+  --> $DIR/2015-edition-warning.rs:15:23
    |
 LL | use outer_mod::await::await;
    |                       ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
@@ -40,7 +40,7 @@ LL | use outer_mod::await::await;
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-warning.rs:14:11
+  --> $DIR/2015-edition-warning.rs:22:11
    |
 LL |     match await { await => {} }
    |           ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`
@@ -49,7 +49,7 @@ LL |     match await { await => {} }
    = note: for more information, see issue #49716 <https://github.com/rust-lang/rust/issues/49716>
 
 error: `await` is a keyword in the 2018 edition
-  --> $DIR/2015-edition-warning.rs:14:19
+  --> $DIR/2015-edition-warning.rs:22:19
    |
 LL |     match await { await => {} }
    |                   ^^^^^ help: you can use a raw identifier to stay compatible: `r#await`

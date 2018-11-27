@@ -9,7 +9,7 @@ LL |     for _ in [1, 2] {}
    = note: required by `std::iter::IntoIterator::into_iter`
 
 error[E0277]: `[{integer}; 2]` is not an iterator
-  --> $DIR/array.rs:4:14
+  --> $DIR/array.rs:5:14
    |
 LL |     for _ in x {}
    |              ^ borrow the array with `&` or call `.iter()` on it to iterate over it
@@ -19,7 +19,7 @@ LL |     for _ in x {}
    = note: required by `std::iter::IntoIterator::into_iter`
 
 error[E0277]: `[{float}; 2]` is not an iterator
-  --> $DIR/array.rs:5:14
+  --> $DIR/array.rs:7:14
    |
 LL |     for _ in [1.0, 2.0] {}
    |              ^^^^^^^^^^ borrow the array with `&` or call `.iter()` on it to iterate over it

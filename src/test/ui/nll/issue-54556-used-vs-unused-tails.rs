@@ -8,29 +8,37 @@
 
 fn main() {
     {              let mut _t1 = D(Box::new("t1")); D(&_t1).end()    } ; // suggest `;`
+//~^ ERROR does not live long enough
 
     {            { let mut _t1 = D(Box::new("t1")); D(&_t1).end() }  } ; // suggest `;`
+//~^ ERROR does not live long enough
 
     {            { let mut _t1 = D(Box::new("t1")); D(&_t1).end() }; }   // suggest `;`
+//~^ ERROR does not live long enough
 
     let _ =      { let mut _t1 = D(Box::new("t1")); D(&_t1).end()    } ; // suggest `;`
+//~^ ERROR does not live long enough
 
     let _u =     { let mut _t1 = D(Box::new("t1")); D(&_t1).unit()   } ; // suggest `;`
+//~^ ERROR does not live long enough
 
     let _x =     { let mut _t1 = D(Box::new("t1")); D(&_t1).end()    } ; // `let x = ...; x`
+//~^ ERROR does not live long enough
     let _x =     { let mut _t1 = D(Box::new("t1")); let x = D(&_t1).end(); x } ; // no error
 
     let mut _y;
     _y =         { let mut _t1 = D(Box::new("t1")); D(&_t1).end() } ; // `let x = ...; x`
+//~^ ERROR does not live long enough
     _y =         { let mut _t1 = D(Box::new("t1")); let x = D(&_t1).end(); x } ; // no error
 }
 
 fn f_param_ref(_t1: D<Box<&'static str>>) {         D(&_t1).unit()   }  // no error
 
 fn f_local_ref() { let mut _t1 = D(Box::new("t1")); D(&_t1).unit()   }  // suggest `;`
+//~^ ERROR does not live long enough
 
 fn f() -> String { let mut _t1 = D(Box::new("t1")); D(&_t1).end()   }   // `let x = ...; x`
-
+//~^ ERROR does not live long enough
 
 #[derive(Debug)]
 struct D<T: std::fmt::Debug>(T);

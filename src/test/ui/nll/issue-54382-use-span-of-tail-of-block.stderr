@@ -3,7 +3,7 @@ error[E0597]: `_thing1` does not live long enough
    |
 LL |             D("other").next(&_thing1)
    |                              ^^^^^^^ borrowed value does not live long enough
-LL |         }
+...
 LL |     }
    |     - `_thing1` dropped here while still borrowed
 LL | 

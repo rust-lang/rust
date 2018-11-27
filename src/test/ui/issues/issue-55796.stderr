@@ -24,7 +24,7 @@ LL |         Box::new(self.out_edges(u).map(|e| e.target()))
               found std::boxed::Box<dyn std::iter::Iterator<Item=<Self as Graph<'a>>::Node>>
 
 error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/issue-55796.rs:20:9
+  --> $DIR/issue-55796.rs:21:9
    |
 LL |         Box::new(self.in_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -34,8 +34,8 @@ note: first, the lifetime cannot outlive the lifetime 'a as defined on the trait
    |
 LL | pub trait Graph<'a> {
    |                 ^^
-note: ...so that the type `std::iter::Map<<Self as Graph<'a>>::EdgesIter, [closure@$DIR/issue-55796.rs:20:39: 20:53]>` will meet its required lifetime bounds
-  --> $DIR/issue-55796.rs:20:9
+note: ...so that the type `std::iter::Map<<Self as Graph<'a>>::EdgesIter, [closure@$DIR/issue-55796.rs:21:39: 21:53]>` will meet its required lifetime bounds
+  --> $DIR/issue-55796.rs:21:9
    |
 LL |         Box::new(self.in_edges(u).map(|e| e.target()))
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

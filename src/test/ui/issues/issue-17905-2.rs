@@ -16,6 +16,8 @@ impl Pair<
     isize
 > {
     fn say(self: &Pair<&str, isize>) {
+//~^ ERROR mismatched method receiver
+//~| ERROR mismatched method receiver
         println!("{:?}", self);
     }
 }

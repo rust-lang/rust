@@ -19,6 +19,9 @@ mod borrowck_closures_unique {
     pub fn e(x: &'static mut isize) {
         static mut Y: isize = 3;
         let mut c1 = |y: &'static mut isize| x = y;
+        //[migrate]~^ ERROR is not declared as mutable
+        //[nll]~^^ ERROR is not declared as mutable
+        //[ast]~^^^ closure cannot assign to immutable
         unsafe { c1(&mut Y); }
     }
 }
@@ -27,7 +30,10 @@ mod borrowck_closures_unique_grandparent {
     pub fn ee(x: &'static mut isize) {
         static mut Z: isize = 3;
         let mut c1 = |z: &'static mut isize| {
+        //[ast]~^ closure cannot assign to immutable
             let mut c2 = |y: &'static mut isize| x = y;
+        //[migrate]~^ ERROR is not declared as mutable
+        //[nll]~^^ ERROR is not declared as mutable
             c2(z);
         };
         unsafe { c1(&mut Z); }
@@ -38,15 +44,27 @@ mod borrowck_closures_unique_grandparent {
 mod mutability_errors {
     pub fn capture_assign_whole(x: (i32,)) {
         || { x = (1,); };
+        //[ast]~^ ERROR immutable argument
+        //[migrate]~^^ ERROR is not declared as mutable
+        //[nll]~^^^ ERROR is not declared as mutable
     }
     pub fn capture_assign_part(x: (i32,)) {
         || { x.0 = 1; };
+        //[ast]~^ ERROR immutable argument
+        //[migrate]~^^ ERROR is not declared as mutable
+        //[nll]~^^^ ERROR is not declared as mutable
     }
     pub fn capture_reborrow_whole(x: (i32,)) {
         || { &mut x; };
+        //[ast]~^ ERROR immutable argument
+        //[migrate]~^^ ERROR is not declared as mutable
+        //[nll]~^^^ ERROR is not declared as mutable
     }
     pub fn capture_reborrow_part(x: (i32,)) {
         || { &mut x.0; };
+        //[ast]~^ ERROR immutable argument
+        //[migrate]~^^ ERROR is not declared as mutable
+        //[nll]~^^^ ERROR is not declared as mutable
     }
 }
 

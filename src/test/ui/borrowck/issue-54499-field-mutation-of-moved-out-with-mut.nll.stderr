@@ -9,7 +9,7 @@ LL |         t.0 = S(1);
    = note: move occurs because `t` has type `(S, i32)`, which does not implement the `Copy` trait
 
 error[E0382]: assign to part of moved value: `u`
-  --> $DIR/issue-54499-field-mutation-of-moved-out-with-mut.rs:31:9
+  --> $DIR/issue-54499-field-mutation-of-moved-out-with-mut.rs:34:9
    |
 LL |         drop(u);
    |              - value moved here
@@ -19,7 +19,7 @@ LL |         u.0 = S(1);
    = note: move occurs because `u` has type `Tpair`, which does not implement the `Copy` trait
 
 error[E0382]: assign to part of moved value: `v`
-  --> $DIR/issue-54499-field-mutation-of-moved-out-with-mut.rs:39:9
+  --> $DIR/issue-54499-field-mutation-of-moved-out-with-mut.rs:45:9
    |
 LL |         drop(v);
    |              - value moved here

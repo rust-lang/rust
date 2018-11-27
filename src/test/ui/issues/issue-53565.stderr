@@ -8,7 +8,7 @@ LL | use std::time::{foo, bar, buzz};
    |                 no `foo` in `time`
 
 error[E0432]: unresolved imports `std::time::abc`, `std::time::def`
-  --> $DIR/issue-53565.rs:11:17
+  --> $DIR/issue-53565.rs:12:17
    |
 LL | use std::time::{abc, def};
    |                 ^^^  ^^^ no `def` in `time`

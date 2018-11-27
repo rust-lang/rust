@@ -13,6 +13,6 @@
 #![no_std]
 #![no_main]
 
-#[panic_handler]
+#[panic_handler] //~ ERROR `panic_impl` language item must be applied to a function
 #[no_mangle]
 static X: u32 = 42;
