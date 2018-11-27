@@ -62,11 +62,6 @@ impl LocalSyntaxPtr {
             local: self,
         }
     }
-
-    // Seems unfortunate to expose
-    pub(crate) fn range(self) -> TextRange {
-        self.range
-    }
 }
 
 #[test]

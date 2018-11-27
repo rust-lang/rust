@@ -13,7 +13,7 @@ use crate::{
     FileId,
     db::SyntaxDatabase,
     descriptors::function::{resolve_local_name, FnId, FnScopes},
-    descriptors::module::{ModuleId, ModuleTree, ModuleSource, nameres::{ItemMap, InputModuleItems, FileItemId}},
+    descriptors::module::{ModuleId, ModuleTree, ModuleSource, nameres::{ItemMap, InputModuleItems, FileItems}},
     input::SourceRootId,
     loc2id::IdDatabase,
     syntax_ptr::LocalSyntaxPtr,
@@ -21,6 +21,7 @@ use crate::{
 };
 
 pub(crate) use self::path::{Path, PathKind};
+pub(crate) use self::module::nameres::FileItemId;
 
 salsa::query_group! {
     pub(crate) trait DescriptorDatabase: SyntaxDatabase + IdDatabase {
@@ -29,7 +30,7 @@ salsa::query_group! {
             use fn function::imp::fn_scopes;
         }
 
-        fn _file_items(file_id: FileId) -> Arc<Vec<SyntaxNode>> {
+        fn _file_items(file_id: FileId) -> Arc<FileItems> {
             type FileItemsQuery;
             storage volatile;
             use fn module::nameres::file_items;

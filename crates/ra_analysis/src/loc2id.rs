@@ -8,6 +8,8 @@ use std::{
 use rustc_hash::FxHashMap;
 
 use crate::{
+    FileId,
+    descriptors::FileItemId,
     descriptors::module::ModuleId,
     syntax_ptr::SyntaxPtr,
     input::SourceRootId,
@@ -102,7 +104,8 @@ pub(crate) enum DefLoc {
         source_root: SourceRootId,
     },
     Item {
-        ptr: SyntaxPtr,
+        file_id: FileId,
+        id: FileItemId,
     },
 }
 

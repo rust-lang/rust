@@ -1,6 +1,4 @@
-use ra_syntax::{SmolStr, ast, AstNode};
-
-use crate::syntax_ptr::LocalSyntaxPtr;
+use ra_syntax::{SmolStr, ast, AstNode, TextRange};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Path {
@@ -18,10 +16,7 @@ pub(crate) enum PathKind {
 
 impl Path {
     /// Calls `cb` with all paths, represented by this use item.
-    pub(crate) fn expand_use_item(
-        item: ast::UseItem,
-        mut cb: impl FnMut(Path, Option<LocalSyntaxPtr>),
-    ) {
+    pub(crate) fn expand_use_item(item: ast::UseItem, mut cb: impl FnMut(Path, Option<TextRange>)) {
         if let Some(tree) = item.use_tree() {
             expand_use_tree(None, tree, &mut cb);
         }
@@ -77,7 +72,7 @@ impl Path {
 fn expand_use_tree(
     prefix: Option<Path>,
     tree: ast::UseTree,
-    cb: &mut impl FnMut(Path, Option<LocalSyntaxPtr>),
+    cb: &mut impl FnMut(Path, Option<TextRange>),
 ) {
     if let Some(use_tree_list) = tree.use_tree_list() {
         let prefix = match tree.path() {
@@ -93,13 +88,13 @@ fn expand_use_tree(
     } else {
         if let Some(ast_path) = tree.path() {
             if let Some(path) = convert_path(prefix, ast_path) {
-                let ptr = if tree.has_star() {
+                let range = if tree.has_star() {
                     None
                 } else {
-                    let ptr = LocalSyntaxPtr::new(ast_path.segment().unwrap().syntax());
-                    Some(ptr)
+                    let range = ast_path.segment().unwrap().syntax().range();
+                    Some(range)
                 };
-                cb(path, ptr)
+                cb(path, range)
             }
         }
     }
