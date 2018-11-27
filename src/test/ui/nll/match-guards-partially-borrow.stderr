@@ -45,14 +45,14 @@ LL |             t = true; //~ ERROR
 LL |         false => (),
    |         ----- borrow later used here
 
-error[E0506]: cannot assign to `u` because it is borrowed
+error[E0510]: cannot assign `u` in match guard
   --> $DIR/match-guards-partially-borrow.rs:83:13
    |
 LL |     match u {
-   |           - borrow of `u` occurs here
+   |           - value is immutable in match guard
 ...
 LL |             u = true; //~ ERROR
-   |             ^^^^^^^^ assignment to borrowed `u` occurs here
+   |             ^^^^^^^^ cannot assign
 ...
 LL |         x => (),
    |         - borrow later used here
@@ -66,14 +66,14 @@ LL |     match x {
 LL |                 Some(ref mut r) => *r = None, //~ ERROR
    |                      ^^^^^^^^^ cannot mutably borrow
 
-error[E0506]: cannot assign to `*w.0` because it is borrowed
+error[E0510]: cannot assign `*w.0` in match guard
   --> $DIR/match-guards-partially-borrow.rs:112:13
    |
 LL |     match w {
-   |           - borrow of `*w.0` occurs here
+   |           - value is immutable in match guard
 ...
 LL |             *w.0 = true; //~ ERROR
-   |             ^^^^^^^^^^^ assignment to borrowed `*w.0` occurs here
+   |             ^^^^^^^^^^^ cannot assign
 ...
 LL |         x => (),
    |         - borrow later used here
@@ -128,5 +128,5 @@ LL |         &b => (),
 
 error: aborting due to 11 previous errors
 
-Some errors occurred: E0503, E0506, E0510.
+Some errors occurred: E0503, E0510.
 For more information about an error, try `rustc --explain E0503`.

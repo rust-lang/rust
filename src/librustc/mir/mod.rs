@@ -497,11 +497,32 @@ pub enum BorrowKind {
 
     /// The immediately borrowed place must be immutable, but projections from
     /// it don't need to be. For example, a shallow borrow of `a.b` doesn't
-    /// conflict with a mutable borrow of `a.b.c`.
+    /// conflict with a mutable borrow of `*(a.b)`.
     ///
     /// This is used when lowering matches: when matching on a place we want to
     /// ensure that place have the same value from the start of the match until
-    /// an arm is selected. This prevents this code from compiling:
+    /// an arm is selected. We create a shallow borrow of `x` for the following
+    /// match:
+    ///
+    ///     let mut x = &Some(0);
+    ///     match *x {
+    ///         None => (),
+    ///         Some(_) if { x = &None; /* error */ false } => (),
+    ///         Some(_) => (),
+    ///     }
+    ///
+    /// This can't be a shared borrow because mutably borrowing (*x).0
+    /// should not prevent `match (*x).1 { ... }`, for example, because the
+    /// mutating `(*x).0` can't affect `(*x).1`.
+    Shallow,
+
+    /// Same as `Shared`, but only exists to prevent mutation that could make
+    /// matches non-exhaustive. Removed after borrow checking.
+    ///
+    /// This is used when lowering matches: when matching on a place we want to
+    /// ensure that place have the same value from the start of the match until
+    /// an arm is selected. We create a shallow borrow of `x` for the following
+    /// match:
     ///
     ///     let mut x = &Some(0);
     ///     match *x {
@@ -510,11 +531,15 @@ pub enum BorrowKind {
     ///         Some(_) => (),
     ///     }
     ///
-    /// This can't be a shared borrow because mutably borrowing (*x as Some).0
-    /// should not prevent `if let None = x { ... }`, for example, because the
-    /// mutating `(*x as Some).0` can't affect the discriminant of `x`.
-    /// We can also report errors with this kind of borrow differently.
-    Shallow,
+    /// This can't be a `Shared` borrow because it doesn't conflict with the
+    /// two-phase borrow reservation in
+    ///
+    /// match x {               // Guard borrow here
+    ///     Some(ref mut r)     // reservation from borrow of x
+    ///         if true => (),
+    ///     _ => (),
+    /// }
+    Guard,
 
     /// Data must be immutable but not aliasable.  This kind of borrow
     /// cannot currently be expressed by the user and is used only in
@@ -564,7 +589,10 @@ pub enum BorrowKind {
 impl BorrowKind {
     pub fn allows_two_phase_borrow(&self) -> bool {
         match *self {
-            BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Unique => false,
+            BorrowKind::Shared
+            | BorrowKind::Shallow
+            | BorrowKind::Guard
+            | BorrowKind::Unique => false,
             BorrowKind::Mut { allow_two_phase_borrow } => allow_two_phase_borrow,
         }
     }
@@ -2314,6 +2342,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
                     BorrowKind::Shallow => "shallow ",
+                    BorrowKind::Guard => "guard ",
                     BorrowKind::Mut { .. } | BorrowKind::Unique => "mut ",
                 };
 

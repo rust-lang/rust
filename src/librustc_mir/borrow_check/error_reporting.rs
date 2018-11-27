@@ -409,7 +409,9 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             }
 
             (BorrowKind::Mut { .. }, _, _, BorrowKind::Shallow, _, _)
-            | (BorrowKind::Unique, _, _, BorrowKind::Shallow, _, _) => {
+            | (BorrowKind::Unique, _, _, BorrowKind::Shallow, _, _)
+            | (BorrowKind::Mut { .. }, _, _, BorrowKind::Guard, _, _)
+            | (BorrowKind::Unique, _, _, BorrowKind::Guard, _, _) => {
                 let mut err = tcx.cannot_mutate_in_match_guard(
                     span,
                     issued_span,
@@ -472,17 +474,23 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Origin::Mir,
                 )
             }
-
             (BorrowKind::Shallow, _, _, BorrowKind::Unique, _, _)
-            | (BorrowKind::Shallow, _, _, BorrowKind::Mut { .. }, _, _) => {
-                // Shallow borrows are uses from the user's point of view.
+            | (BorrowKind::Shallow, _, _, BorrowKind::Mut { .. }, _, _)
+            | (BorrowKind::Guard, _, _, BorrowKind::Unique, _, _)
+            | (BorrowKind::Guard, _, _, BorrowKind::Mut { .. }, _, _) => {
+                // Shallow and guard borrows are uses from the user's point of view.
                 self.report_use_while_mutably_borrowed(context, (place, span), issued_borrow);
                 return;
             }
             (BorrowKind::Shared, _, _, BorrowKind::Shared, _, _)
             | (BorrowKind::Shared, _, _, BorrowKind::Shallow, _, _)
+            | (BorrowKind::Shared, _, _, BorrowKind::Guard, _, _)
             | (BorrowKind::Shallow, _, _, BorrowKind::Shared, _, _)
-            | (BorrowKind::Shallow, _, _, BorrowKind::Shallow, _, _) => unreachable!(),
+            | (BorrowKind::Shallow, _, _, BorrowKind::Shallow, _, _)
+            | (BorrowKind::Shallow, _, _, BorrowKind::Guard, _, _)
+            | (BorrowKind::Guard, _, _, BorrowKind::Shared, _, _)
+            | (BorrowKind::Guard, _, _, BorrowKind::Shallow, _, _)
+            | (BorrowKind::Guard, _, _, BorrowKind::Guard, _, _) => unreachable!(),
         };
 
         if issued_spans == borrow_spans {
@@ -1208,21 +1216,24 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         let loan_span = loan_spans.args_or_use();
 
         let tcx = self.infcx.tcx;
-        let mut err = if loan.kind == BorrowKind::Shallow {
-            tcx.cannot_mutate_in_match_guard(
-                span,
-                loan_span,
-                &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
-                "assign",
-                Origin::Mir,
-            )
-        } else {
-            tcx.cannot_assign_to_borrowed(
-                span,
-                loan_span,
-                &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
-                Origin::Mir,
-            )
+        let mut err = match loan.kind {
+            BorrowKind::Shallow | BorrowKind::Guard => {
+                tcx.cannot_mutate_in_match_guard(
+                    span,
+                    loan_span,
+                    &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
+                    "assign",
+                    Origin::Mir,
+                )
+            }
+            BorrowKind::Shared | BorrowKind::Unique | BorrowKind::Mut { .. } => {
+                tcx.cannot_assign_to_borrowed(
+                    span,
+                    loan_span,
+                    &self.describe_place(place).unwrap_or_else(|| "_".to_owned()),
+                    Origin::Mir,
+                )
+            }
         };
 
         loan_spans.var_span_label(

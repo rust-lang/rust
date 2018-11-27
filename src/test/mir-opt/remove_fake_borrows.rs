@@ -21,10 +21,10 @@ fn main() {
 // bb0: {
 //     FakeRead(ForMatchedPlace, _1);
 //     _2 = discriminant(_1);
-//     _3 = &shallow _1;
+//     _3 = &guard _1;
 //     _4 = &shallow ((_1 as Some).0: &'<empty> &'<empty> i32);
 //     _5 = &shallow (*((_1 as Some).0: &'<empty> &'<empty> i32));
-//     _6 = &shallow (*(*((_1 as Some).0: &'<empty> &'<empty> i32)));
+//     _6 = &guard (*(*((_1 as Some).0: &'<empty> &'<empty> i32)));
 //     switchInt(move _2) -> [1isize: bb6, otherwise: bb4];
 // }
 // bb1: {

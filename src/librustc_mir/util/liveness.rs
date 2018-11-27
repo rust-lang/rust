@@ -198,6 +198,7 @@ pub fn categorize<'tcx>(context: PlaceContext<'tcx>) -> Option<DefUse> {
         PlaceContext::MutatingUse(MutatingUseContext::Borrow(..)) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(..)) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(..)) |
+        PlaceContext::NonMutatingUse(NonMutatingUseContext::GuardBorrow(..)) |
         PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow(..)) |
 
         PlaceContext::NonMutatingUse(NonMutatingUseContext::Inspect) |

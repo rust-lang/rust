@@ -37,7 +37,7 @@ fn underscore_example(mut c: i32) {
 }
 
 enum E {
-    V(i32, i32),
+    V(&'static i32, i32),
     W,
 }
 
@@ -46,7 +46,8 @@ fn enum_example(mut e: E) {
         E::V(ref mut x, _) => x,
         E::W => panic!(),
     };
-    match e { // OK, no access of borrowed data
+    // Discriminant accesses the memory x points to.
+    match e { //~ ERROR
         _ if false => (),
         E::V(_, r) => (),
         E::W => (),
@@ -59,7 +60,7 @@ fn indirect_enum_example(mut f: &mut E) {
         E::V(ref mut x, _) => x,
         E::W => panic!(),
     };
-    match f { // OK, no access of borrowed data
+    match f { //~ ERROR
         _ if false => (),
         E::V(_, r) => (),
         E::W => (),

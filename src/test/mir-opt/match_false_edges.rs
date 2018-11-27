@@ -55,8 +55,8 @@ fn main() {
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
 //      FakeRead(ForMatchedPlace, _2);
 //      _7 = discriminant(_2);
-//      _9 = &shallow (promoted[2]: std::option::Option<i32>);
-//      _10 = &(((promoted[1]: std::option::Option<i32>) as Some).0: i32);
+//      _9 = &guard (promoted[2]: std::option::Option<i32>);
+//      _10 = &guard (((promoted[1]: std::option::Option<i32>) as Some).0: i32);
 //      switchInt(move _7) -> [0isize: bb5, 1isize: bb3, otherwise: bb7];
 //  }
 //  bb1: {
@@ -129,8 +129,8 @@ fn main() {
 //      _2 = std::option::Option<i32>::Some(const 42i32,);
 //      FakeRead(ForMatchedPlace, _2);
 //      _7 = discriminant(_2);
-//      _9 = &shallow _2;
-//      _10 = &((_2 as Some).0: i32);
+//      _9 = &guard _2;
+//      _10 = &guard ((_2 as Some).0: i32);
 //      switchInt(move _7) -> [0isize: bb4, 1isize: bb3, otherwise: bb7];
 //  }
 //  bb1: {
@@ -203,8 +203,8 @@ fn main() {
 //     _2 = std::option::Option<i32>::Some(const 1i32,);
 //     FakeRead(ForMatchedPlace, _2);
 //     _11 = discriminant(_2);
-//    _16 = &shallow _2;
-//    _17 = &((_2 as Some).0: i32);
+//    _16 = &guard _2;
+//    _17 = &guard ((_2 as Some).0: i32);
 //     switchInt(move _11) -> [1isize: bb2, otherwise: bb3];
 // }
 // bb1: {

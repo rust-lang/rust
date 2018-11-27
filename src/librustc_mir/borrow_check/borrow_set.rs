@@ -90,6 +90,7 @@ impl<'tcx> fmt::Display for BorrowData<'tcx> {
         let kind = match self.kind {
             mir::BorrowKind::Shared => "",
             mir::BorrowKind::Shallow => "shallow ",
+            mir::BorrowKind::Guard => "guard ",
             mir::BorrowKind::Unique => "uniq ",
             mir::BorrowKind::Mut { .. } => "mut ",
         };
@@ -280,7 +281,8 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
                     // The use of TMP in a shared borrow does not
                     // count as an actual activation.
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(..)) |
-                    PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(..)) =>
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(..)) |
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::GuardBorrow(..)) =>
                         TwoPhaseActivation::NotActivated,
                     _ => {
                         // Double check: This borrow is indeed a two-phase borrow (that is,

@@ -1008,12 +1008,27 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Control::Continue
                 }
 
-                (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared)
-                | (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow) => {
+                (Read(_), BorrowKind::Shared)
+                | (Read(_), BorrowKind::Shallow)
+                | (Read(_), BorrowKind::Guard) => {
                     Control::Continue
                 }
 
-                (Write(WriteKind::Move), BorrowKind::Shallow) => {
+                (Reservation(..), BorrowKind::Shallow)
+                | (Reservation(..), BorrowKind::Guard) => {
+                    // `Shallow` and `Guard` borrows only exist to prevent
+                    // mutation, which a `Reservation` is not, even though it
+                    // creates a mutable reference.
+                    //
+                    // We don't allow `Shared` borrows here, since it is
+                    // undecided whether the mutable reference that is
+                    // created by the `Reservation` should be unique when it's
+                    // created.
+                    Control::Continue
+                }
+
+                (Write(WriteKind::Move), BorrowKind::Shallow)
+                | (Write(WriteKind::Move), BorrowKind::Guard) => {
                     // Handled by initialization checks.
                     Control::Continue
                 }
@@ -1037,7 +1052,8 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     Control::Break
                 }
 
-                (Reservation(kind), BorrowKind::Unique)
+                (Reservation(kind), BorrowKind::Shared)
+                | (Reservation(kind), BorrowKind::Unique)
                 | (Reservation(kind), BorrowKind::Mut { .. })
                 | (Activation(kind, _), _)
                 | (Write(kind), _) => {
@@ -1149,7 +1165,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     BorrowKind::Shallow => {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
                     },
-                    BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
+                    BorrowKind::Shared | BorrowKind::Guard => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
                         if allow_two_phase_borrow(&self.infcx.tcx, bk) {
@@ -1168,10 +1184,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     flow_state,
                 );
 
-                let action = if bk == BorrowKind::Shallow {
-                    InitializationRequiringAction::MatchOn
-                } else {
-                    InitializationRequiringAction::Borrow
+                let action = match bk {
+                    BorrowKind::Shallow | BorrowKind::Guard => {
+                        InitializationRequiringAction::MatchOn
+                    }
+                    BorrowKind::Shared | BorrowKind::Unique | BorrowKind::Mut { .. } => {
+                        InitializationRequiringAction::Borrow
+                    }
                 };
 
                 self.check_if_path_or_subpath_is_moved(
@@ -1421,7 +1440,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
             // only mutable borrows should be 2-phase
             assert!(match borrow.kind {
-                BorrowKind::Shared | BorrowKind::Shallow => false,
+                BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Guard => false,
                 BorrowKind::Unique | BorrowKind::Mut { .. } => true,
             });
 
@@ -1832,7 +1851,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                 let is_local_mutation_allowed = match borrow_kind {
                     BorrowKind::Unique => LocalMutationIsAllowed::Yes,
                     BorrowKind::Mut { .. } => is_local_mutation_allowed,
-                    BorrowKind::Shared | BorrowKind::Shallow => unreachable!(),
+                    BorrowKind::Shared | BorrowKind::Shallow | BorrowKind::Guard => unreachable!(),
                 };
                 match self.is_mutable(place, is_local_mutation_allowed) {
                     Ok(root_place) => {
@@ -1863,9 +1882,11 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             | Reservation(wk @ WriteKind::StorageDeadOrDrop)
             | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
             | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow))
+            | Reservation(wk @ WriteKind::MutableBorrow(BorrowKind::Guard))
             | Write(wk @ WriteKind::StorageDeadOrDrop)
             | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shared))
-            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow)) => {
+            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Shallow))
+            | Write(wk @ WriteKind::MutableBorrow(BorrowKind::Guard)) => {
                 if let (Err(_place_err), true) = (
                     self.is_mutable(place, is_local_mutation_allowed),
                     self.errors_buffer.is_empty()
@@ -1911,6 +1932,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             | Read(ReadKind::Borrow(BorrowKind::Mut { .. }))
             | Read(ReadKind::Borrow(BorrowKind::Shared))
             | Read(ReadKind::Borrow(BorrowKind::Shallow))
+            | Read(ReadKind::Borrow(BorrowKind::Guard))
             | Read(ReadKind::Copy) => {
                 // Access authorized
                 return false;

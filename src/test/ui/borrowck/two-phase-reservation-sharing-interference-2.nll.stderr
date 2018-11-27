@@ -2,13 +2,12 @@ error[E0502]: cannot borrow `v` as mutable because it is also borrowed as immuta
   --> $DIR/two-phase-reservation-sharing-interference-2.rs:22:5
    |
 LL |     let shared = &v;
-   |                   - immutable borrow occurs here
+   |                  -- immutable borrow occurs here
 LL | 
 LL |     v.push(shared.len()); //~ ERROR cannot borrow `v` as mutable
-   |     ^ mutable borrow occurs here
-...
-LL | }
-   | - immutable borrow ends here
+   |     ^      ------ immutable borrow later used here
+   |     |
+   |     mutable borrow occurs here
 
 error: aborting due to previous error
 

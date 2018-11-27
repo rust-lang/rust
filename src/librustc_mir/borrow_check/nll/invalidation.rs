@@ -332,7 +332,7 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
                     BorrowKind::Shallow => {
                         (Shallow(Some(ArtificialField::ShallowBorrow)), Read(ReadKind::Borrow(bk)))
                     },
-                    BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
+                    BorrowKind::Guard | BorrowKind::Shared => (Deep, Read(ReadKind::Borrow(bk))),
                     BorrowKind::Unique | BorrowKind::Mut { .. } => {
                         let wk = WriteKind::MutableBorrow(bk);
                         if allow_two_phase_borrow(&self.tcx, bk) {
@@ -442,8 +442,11 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
                         // have already taken the reservation
                     }
 
-                    (Read(_), BorrowKind::Shallow) | (Reservation(..), BorrowKind::Shallow)
-                    | (Read(_), BorrowKind::Shared) | (Reservation(..), BorrowKind::Shared) => {
+                    (Read(_), BorrowKind::Shallow)
+                    | (Read(_), BorrowKind::Guard)
+                    | (Read(_), BorrowKind::Shared)
+                    | (Reservation(..), BorrowKind::Shallow)
+                    | (Reservation(..), BorrowKind::Guard) => {
                         // Reads/reservations don't invalidate shared or shallow borrows
                     }
 
@@ -460,7 +463,8 @@ impl<'cg, 'cx, 'tcx, 'gcx> InvalidationGenerator<'cx, 'tcx, 'gcx> {
                         this.generate_invalidates(borrow_index, context.loc);
                     }
 
-                    (Reservation(_), BorrowKind::Unique)
+                    (Reservation(..), BorrowKind::Shared)
+                        | (Reservation(_), BorrowKind::Unique)
                         | (Reservation(_), BorrowKind::Mut { .. })
                         | (Activation(_, _), _)
                         | (Write(_), _) => {

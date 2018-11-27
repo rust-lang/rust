@@ -24,7 +24,7 @@ use rustc::mir::*;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::VariantIdx;
 use rustc_data_structures::bit_set::BitSet;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use syntax::ast::{Name, NodeId};
 use syntax_pos::Span;
 
@@ -182,7 +182,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // If there are no match guards then we don't need any fake borrows,
         // so don't track them.
         let mut fake_borrows = if has_guard && tcx.generate_borrow_of_any_match_input() {
-            Some(FxHashMap::default())
+            Some(FxHashSet::default())
         } else {
             None
         };
@@ -734,7 +734,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         arm_blocks: &mut ArmBlocks,
         mut candidates: Vec<Candidate<'pat, 'tcx>>,
         mut block: BasicBlock,
-        fake_borrows: &mut Option<FxHashMap<Place<'tcx>, BorrowKind>>,
+        fake_borrows: &mut Option<FxHashSet<Place<'tcx>>>,
     ) -> Vec<BasicBlock> {
         debug!(
             "matched_candidate(span={:?}, block={:?}, candidates={:?})",
@@ -767,7 +767,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             for Binding { source, .. }
                 in candidates.iter().flat_map(|candidate| &candidate.bindings)
             {
-                fake_borrows.insert(source.clone(), BorrowKind::Shared);
+                fake_borrows.insert(source.clone());
             }
         }
 
@@ -980,7 +980,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         arm_blocks: &mut ArmBlocks,
         candidates: &[Candidate<'pat, 'tcx>],
         block: BasicBlock,
-        fake_borrows: &mut Option<FxHashMap<Place<'tcx>, BorrowKind>>,
+        fake_borrows: &mut Option<FxHashSet<Place<'tcx>>>,
     ) -> (Vec<BasicBlock>, usize) {
         // extract the match-pair from the highest priority candidate
         let match_pair = &candidates.first().unwrap().match_pairs[0];
@@ -1022,9 +1022,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
 
         // Insert a Shallow borrow of any places that is switched on.
-        fake_borrows.as_mut().map(|fb| {
-            fb.entry(match_pair.place.clone()).or_insert(BorrowKind::Shallow)
-        });
+        if let Some(fake_borrows) = fake_borrows {
+            fake_borrows.insert(match_pair.place.clone());
+        }
 
         // perform the test, branching to one of N blocks. For each of
         // those N possible outcomes, create a (initially empty)
@@ -1415,6 +1415,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let borrow_kind = match borrow_kind {
                         BorrowKind::Shared
                         | BorrowKind::Shallow
+                        | BorrowKind::Guard
                         | BorrowKind::Unique => borrow_kind,
                         BorrowKind::Mut { .. } => BorrowKind::Mut {
                             allow_two_phase_borrow: true,
@@ -1562,7 +1563,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn add_fake_borrows<'pat>(
         &mut self,
         pre_binding_blocks: &[(BasicBlock, Span)],
-        fake_borrows: FxHashMap<Place<'tcx>, BorrowKind>,
+        fake_borrows: FxHashSet<Place<'tcx>>,
         source_info: SourceInfo,
         start_block: BasicBlock,
     ) {
@@ -1574,7 +1575,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let mut all_fake_borrows = Vec::with_capacity(fake_borrows.len());
 
         // Insert a Shallow borrow of the prefixes of any fake borrows.
-        for (place, borrow_kind) in fake_borrows
+        for place in fake_borrows
         {
             {
                 let mut prefix_cursor = &place;
@@ -1589,7 +1590,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             }
 
-            all_fake_borrows.push((place, borrow_kind));
+            all_fake_borrows.push((place, BorrowKind::Guard));
         }
 
         // Deduplicate and ensure a deterministic order.

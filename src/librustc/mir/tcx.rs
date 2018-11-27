@@ -346,9 +346,9 @@ impl BorrowKind {
             // and hence is a safe "over approximation".
             BorrowKind::Unique => hir::MutMutable,
 
-            // We have no type corresponding to a shallow borrow, so use
-            // `&` as an approximation.
-            BorrowKind::Shallow => hir::MutImmutable,
+            // We have no type corresponding to a shallow or guard borrows, so
+            // use `&` as an approximation.
+            BorrowKind::Guard | BorrowKind::Shallow => hir::MutImmutable,
         }
     }
 }

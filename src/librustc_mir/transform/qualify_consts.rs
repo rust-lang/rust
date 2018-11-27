@@ -668,6 +668,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow(region)),
                     BorrowKind::Shallow =>
                         PlaceContext::NonMutatingUse(NonMutatingUseContext::ShallowBorrow(region)),
+                    BorrowKind::Guard =>
+                        PlaceContext::NonMutatingUse(NonMutatingUseContext::GuardBorrow(region)),
                     BorrowKind::Unique =>
                         PlaceContext::NonMutatingUse(NonMutatingUseContext::UniqueBorrow(region)),
                     BorrowKind::Mut { .. } =>

@@ -40,6 +40,7 @@ impl_stable_hash_for!(struct mir::UnsafetyCheckResult { violations, unsafe_block
 impl_stable_hash_for!(enum mir::BorrowKind {
     Shared,
     Shallow,
+    Guard,
     Unique,
     Mut { allow_two_phase_borrow },
 });
