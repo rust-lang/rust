@@ -149,7 +149,7 @@ salsa::query_group! {
         fn resolve_syntax_ptr(ptr: SyntaxPtr) -> SyntaxNode {
             type ResolveSyntaxPtrQuery;
             // Don't retain syntax trees in memory
-            storage volatile;
+            storage dependencies;
             use fn crate::syntax_ptr::resolve_syntax_ptr;
         }
     }

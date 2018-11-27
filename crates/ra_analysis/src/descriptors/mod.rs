@@ -32,13 +32,13 @@ salsa::query_group! {
 
         fn _file_items(file_id: FileId) -> Arc<FileItems> {
             type FileItemsQuery;
-            storage volatile;
+            storage dependencies;
             use fn module::nameres::file_items;
         }
 
         fn _file_item(file_id: FileId, file_item_id: FileItemId) -> SyntaxNode {
             type FileItemQuery;
-            storage volatile;
+            storage dependencies;
             use fn module::nameres::file_item;
         }
 
@@ -57,7 +57,7 @@ salsa::query_group! {
         fn _fn_syntax(fn_id: FnId) -> FnDefNode {
             type FnSyntaxQuery;
             // Don't retain syntax trees in memory
-            storage volatile;
+            storage dependencies;
             use fn function::imp::fn_syntax;
         }
         fn _submodules(source: ModuleSource) -> Cancelable<Arc<Vec<module::imp::Submodule>>> {
