@@ -173,7 +173,9 @@ impl<'a, 'crateloader> Resolver<'a, 'crateloader> {
             }
             ModuleOrUniformRoot::ExternPrelude => {
                 assert!(!restricted_shadowing);
-                return if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
+                return if ns != TypeNS {
+                    Err((Determined, Weak::No))
+                } else if let Some(binding) = self.extern_prelude_get(ident, !record_used) {
                     Ok(binding)
                 } else if !self.graph_root.unresolved_invocations.borrow().is_empty() {
                     // Macro-expanded `extern crate` items can add names to extern prelude.
