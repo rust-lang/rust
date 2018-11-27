@@ -33,7 +33,7 @@ impl CrateGraph {
 pub trait FileResolver: fmt::Debug + Send + Sync + 'static {
     fn file_stem(&self, file_id: FileId) -> String;
     fn resolve(&self, file_id: FileId, path: &RelativePath) -> Option<FileId>;
-    fn debug_path(&self, _file_id: FileId) -> Option<std::path::PathBuf> {
+    fn debug_path(&self, _1file_id: FileId) -> Option<std::path::PathBuf> {
         None
     }
 }

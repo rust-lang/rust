@@ -248,7 +248,7 @@ where
         }
 
         for &module_id in self.input.keys() {
-            crate::db::check_canceled(self.db)?;
+            self.db.check_canceled()?;
             self.resolve_imports(module_id);
         }
         Ok(self.result)

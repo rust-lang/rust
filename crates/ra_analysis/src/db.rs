@@ -6,7 +6,6 @@ use ra_syntax::{SourceFileNode, SyntaxNode};
 use salsa::{self, Database};
 
 use crate::{
-    db,
     hir,
     symbol_index::SymbolIndex,
     syntax_ptr::SyntaxPtr,
@@ -59,14 +58,6 @@ impl Default for RootDatabase {
     }
 }
 
-pub(crate) fn check_canceled(db: &impl salsa::Database) -> Cancelable<()> {
-    if db.salsa_runtime().is_current_revision_canceled() {
-        Err(Canceled)
-    } else {
-        Ok(())
-    }
-}
-
 impl salsa::ParallelDatabase for RootDatabase {
     fn snapshot(&self) -> salsa::Snapshot<RootDatabase> {
         salsa::Snapshot::new(RootDatabase {
@@ -80,7 +71,11 @@ impl salsa::ParallelDatabase for RootDatabase {
 pub(crate) trait BaseDatabase: salsa::Database {
     fn id_maps(&self) -> &IdMaps;
     fn check_canceled(&self) -> Cancelable<()> {
-        check_canceled(self)
+        if self.salsa_runtime().is_current_revision_canceled() {
+            Err(Canceled)
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -171,7 +166,7 @@ fn file_lines(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<LineIndex> {
     Arc::new(LineIndex::new(&*text))
 }
 fn file_symbols(db: &impl SyntaxDatabase, file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
-    db::check_canceled(db)?;
+    db.check_canceled()?;
     let syntax = db.file_syntax(file_id);
     Ok(Arc::new(SymbolIndex::for_file(file_id, syntax)))
 }

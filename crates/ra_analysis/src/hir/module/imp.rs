@@ -8,7 +8,6 @@ use relative_path::RelativePathBuf;
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    db,
     hir::HirDatabase,
     input::{SourceRoot, SourceRootId},
     Cancelable, FileId, FileResolverImp,
@@ -52,7 +51,7 @@ pub(crate) fn module_tree(
     db: &impl HirDatabase,
     source_root: SourceRootId,
 ) -> Cancelable<Arc<ModuleTree>> {
-    db::check_canceled(db)?;
+    db.check_canceled()?;
     let res = create_module_tree(db, source_root)?;
     Ok(Arc::new(res))
 }
