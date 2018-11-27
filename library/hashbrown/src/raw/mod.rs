@@ -799,6 +799,23 @@ impl<T: Clone> Clone for RawTable<T> {
     }
 }
 
+#[cfg(feature = "nightly")]
+unsafe impl<#[may_dangle] T> Drop for RawTable<T> {
+    #[inline]
+    fn drop(&mut self) {
+        if self.bucket_mask != 0 {
+            unsafe {
+                if mem::needs_drop::<T>() {
+                    for item in self.iter() {
+                        item.drop();
+                    }
+                }
+                self.free_buckets();
+            }
+        }
+    }
+}
+#[cfg(not(feature = "nightly"))]
 impl<T> Drop for RawTable<T> {
     #[inline]
     fn drop(&mut self) {

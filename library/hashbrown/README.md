@@ -73,7 +73,7 @@ extern crate hashbrown;
 
 This crate has the following Cargo features:
 
-- `nightly`: Enables nightly-only features: `no_std` support and ~10% speedup from branch hint intrinsics.
+- `nightly`: Enables nightly-only features: `no_std` support, `#[may_dangle]` and ~10% speedup from branch hint intrinsics.
 
 ## License
 
