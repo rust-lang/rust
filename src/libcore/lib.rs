@@ -120,7 +120,6 @@
 #![feature(const_slice_len)]
 #![feature(const_str_as_bytes)]
 #![feature(const_str_len)]
-#![cfg_attr(stage0, feature(const_let))]
 #![feature(const_int_rotate)]
 #![feature(const_int_wrapping)]
 #![feature(const_int_sign)]
