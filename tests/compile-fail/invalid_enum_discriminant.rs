@@ -12,5 +12,5 @@ pub enum Foo {
 
 fn main() {
     let f = unsafe { std::mem::transmute::<i32, Foo>(42) };
-    let _ = mem::discriminant(&f);
+    let _val = mem::discriminant(&f);
 }

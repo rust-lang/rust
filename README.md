@@ -42,7 +42,7 @@ in this directory.
 
 [rustup]: https://www.rustup.rs
 
-## Running Miri
+## Running Miri on tiny examples
 
 ```sh
 cargo +nightly run -- -Zmiri-disable-validation tests/run-pass/vecs.rs # Or whatever test you like.
@@ -51,74 +51,47 @@ cargo +nightly run -- -Zmiri-disable-validation tests/run-pass/vecs.rs # Or what
 We have to disable validation because that can lead to errors when libstd is not
 compiled the right way.
 
-## Running Miri with full libstd
-
-Per default libstd does not contain the MIR of non-polymorphic functions, and
-also does not contain some extra MIR statements that miri needs for validation.
-When Miri hits a call to such a function, execution terminates, and even when
-the MIR is present, validation can fail.  To fix this, it is possible to compile
-libstd with full MIR:
-
-```sh
-rustup component add --toolchain nightly rust-src
-cargo +nightly install xargo
-rustup run nightly xargo/build.sh
-```
-
-Now you can run Miri against the libstd compiled by xargo:
-
-```sh
-MIRI_SYSROOT=~/.xargo/HOST cargo +nightly run tests/run-pass-fullmir/hashmap.rs
-```
-
-Notice that you will have to re-run the last step of the preparations above
-(`xargo/build.sh`) when your toolchain changes (e.g., when you update the
-nightly).
-
 ## Running Miri on your own project('s test suite)
 
-Install Miri as a cargo subcommand with `cargo +nightly install --all-features
---path .`.  Be aware that if you used `rustup override set` to fix a particular
-Rust version for the miri directory, that will *not* apply to your own project
-directory!  You have to use a consistent Rust version for building miri and your
-project for this to work, so remember to either always specify the nightly
-version manually, overriding it in your project directory as well, or use
-`rustup default nightly` (or `rustup default nightly-YYYY-MM-DD`) to globally
-make `nightly` the default toolchain.
+Install Miri as a cargo subcommand:
 
-We assume that you have prepared a MIR-enabled libstd as described above.  Now
-compile your project and its dependencies against that libstd:
+```sh
+cargo +nightly install --git https://github.com/solson/miri/ miri
+```
 
-1. Run `cargo clean` to eliminate any cached dependencies that were built against
-the non-MIR `libstd`.
-2. To run all tests in your project through, Miri, use
-`MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri test`. **NOTE**: This is
-currently broken, see the discussion in
-[#479](https://github.com/solson/miri/issues/479).
-3. If you have a binary project, you can run it through Miri using
-`MIRI_SYSROOT=~/.xargo/HOST cargo +nightly miri`.
+Be aware that if you used `rustup override set` to fix a particular Rust version
+for the miri directory, that will *not* apply to your own project directory!
+You have to use a consistent Rust version for building miri and your project for
+this to work, so remember to either always specify the nightly version manually,
+overriding it in your project directory as well, or use `rustup default nightly`
+(or `rustup default nightly-YYYY-MM-DD`) to globally make `nightly` the default
+toolchain.
+
+1. Run `cargo clean` to eliminate any cached dependencies.  Miri needs your
+   dependencies to be compiled the right way, that would not happen if they have
+   previously already been compiled.
+2. To run all tests in your project through Miri, use `cargo +nightly miri test`.
+   **NOTE**: This is currently broken, see the discussion in
+   [#479](https://github.com/solson/miri/issues/479).
+3. If you have a binary project, you can run it through Miri using `cargo
+   +nightly miri run`.
 
 ### Common Problems
 
 When using the above instructions, you may encounter a number of confusing compiler
 errors.
 
-#### "constant evaluation error: no mir for `<function>`"
-
-You may have forgotten to set `MIRI_SYSROOT` when calling `cargo miri`, and
-your program called into `std` or `core`. Be sure to set `MIRI_SYSROOT=~/.xargo/HOST`.
-
 #### "found possibly newer version of crate `std` which `<dependency>` depends on"
 
-Your build directory may contain artifacts from an earlier build that did/did not
-have `MIRI_SYSROOT` set. Run `cargo clean` before switching from non-Miri to Miri
-builds and vice-versa.
+Your build directory may contain artifacts from an earlier build that have/have
+not been built for Miri. Run `cargo clean` before switching from non-Miri to
+Miri builds and vice-versa.
 
 #### "found crate `std` compiled by an incompatible version of rustc"
 
 You may be running `cargo miri` with a different compiler version than the one
-used to build the MIR-enabled `std`. Be sure to consistently use the same toolchain,
-which should be the toolchain specified in the `rust-version` file.
+used to build the custom libstd that Miri uses, and Miri failed to detect that.
+Try deleting `~/.cache/miri`.
 
 ## Miri `-Z` flags
 

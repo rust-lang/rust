@@ -21,25 +21,19 @@ install:
     - rustup-init.exe -y --default-host %TARGET% --default-toolchain %RUST_TOOLCHAIN%
     - set PATH=%USERPROFILE%\.cargo\bin;%PATH%
     - rustc --version
-    # Customize installation.
-    - rustup component add rust-src
-    - cargo install xargo
-    # Prepare a libstd with MIR (cannot use bash script, obviously).
-    # The flags here should be kept in sync with `add_miri_default_args` in `src/lib.rs`.
-    - cd xargo
-    - set RUSTFLAGS=-Zalways-encode-mir -Zmir-emit-retag -Zmir-opt-level=0
-    - xargo build
-    - set RUSTFLAGS=
-    - cd ..
 
 build: false
 
 test_script:
     - set RUSTFLAGS=-g
     - set RUST_BACKTRACE=1
+    # Test plain miri
     - cargo build --release --all-features --all-targets
     - cargo test --release --all-features
-    - set MIRI_SYSROOT=%USERPROFILE%\.xargo\HOST
+    # Get ourselves a MIR-full libstd, and use it henceforth
+    - cargo run --release --all-features --bin cargo-miri -- miri setup
+    - set MIRI_SYSROOT=%USERPROFILE%\AppData\Local\miri\miri\cache\HOST
+    # Test miri with full MIR
     - cargo test --release --all-features
 
 notifications:

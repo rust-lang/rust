@@ -11,7 +11,7 @@ os:
 - osx
 
 before_script:
-# macOS weirdness (https://github.com/travis-ci/travis-ci/issues/6307)
+# macOS weirdness (https://github.com/travis-ci/travis-ci/issues/6307, https://github.com/travis-ci/travis-ci/issues/10165)
 - if [[ "$TRAVIS_OS_NAME" == osx ]]; then rvm get stable; fi
 # Compute the rust version we use. We do not use "language: rust" to have more control here.
 - |
@@ -28,8 +28,6 @@ before_script:
 - rustup target add i686-unknown-linux-gnu
 - rustup target add i686-pc-windows-gnu
 - rustup target add i686-pc-windows-msvc
-- rustup component add rust-src
-- cargo install xargo || echo "Skipping xargo install"
 
 script:
 - set -e
@@ -39,11 +37,15 @@ script:
   cargo test --release --all-features &&
   cargo install --all-features --force --path .
 - |
-  # get ourselves a MIR-full libstd
-  xargo/build.sh &&
-  export MIRI_SYSROOT=~/.xargo/HOST
+  # Get ourselves a MIR-full libstd, and use it henceforth
+  cargo miri setup &&
+  if [ "$TRAVIS_OS_NAME" == osx ]; then
+    export MIRI_SYSROOT=~/Library/Caches/miri.miri.miri/HOST
+  else
+    export MIRI_SYSROOT=~/.cache/miri/HOST
+  fi
 - |
-  # run all tests with full mir
+  # Test miri with full MIR
   cargo test --release --all-features
 - |
   # Test cargo integration

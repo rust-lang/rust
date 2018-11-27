@@ -8,10 +8,10 @@ and the working directory to contain the cargo-miri-test project.
 import sys, subprocess
 
 def test_cargo_miri():
-    print("==> Testing `cargo miri` <==")
+    print("==> Testing `cargo miri run` <==")
     ## Call `cargo miri`, capture all output
     p = subprocess.Popen(
-        ["cargo", "miri", "-q"],
+        ["cargo", "miri", "run", "-q"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE
     )

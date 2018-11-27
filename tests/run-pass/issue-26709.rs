@@ -20,7 +20,7 @@ fn main() {
     let mut x = 0;
     {
         let wrapper = Box::new(Wrapper(&mut x, 123));
-        let _: Box<Wrapper<Send>> = wrapper;
+        let _val: Box<Wrapper<Send>> = wrapper;
     }
     assert_eq!(432, x)
 }

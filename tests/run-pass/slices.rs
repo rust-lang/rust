@@ -4,7 +4,7 @@ fn slice_of_zst() {
     fn foo<T>(v: &[T]) -> Option<&[T]> {
         let mut it = v.iter();
         for _ in 0..5 {
-            let _ = it.next();
+            it.next();
         }
         Some(it.as_slice())
     }
@@ -12,7 +12,7 @@ fn slice_of_zst() {
     fn foo_mut<T>(v: &mut [T]) -> Option<&mut [T]> {
         let mut it = v.iter_mut();
         for _ in 0..5 {
-            let _ = it.next();
+            it.next();
         }
         Some(it.into_slice())
     }
