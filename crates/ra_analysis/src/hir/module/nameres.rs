@@ -16,13 +16,12 @@
 //! structure itself is modified.
 use std::{
     sync::Arc,
-    ops::Index,
 };
 
 use rustc_hash::FxHashMap;
 
 use ra_syntax::{
-    SyntaxNode, SyntaxNodeRef, TextRange,
+    TextRange,
     SmolStr, SyntaxKind::{self, *},
     ast::{self, AstNode}
 };
@@ -31,44 +30,13 @@ use crate::{
     Cancelable, FileId,
     loc2id::{DefId, DefLoc},
     hir::{
+        FileItemId, FileItems,
         Path, PathKind,
         HirDatabase,
         module::{ModuleId, ModuleTree},
     },
     input::SourceRootId,
-    arena::{Arena, Id}
 };
-
-/// Identifier of item within a specific file. This is stable over reparses, so
-/// it's OK to use it as a salsa key/value.
-pub(crate) type FileItemId = Id<SyntaxNode>;
-
-/// Maps item's `SyntaxNode`s to `FileItemId` and back.
-#[derive(Debug, PartialEq, Eq, Default)]
-pub(crate) struct FileItems {
-    arena: Arena<SyntaxNode>,
-}
-
-impl FileItems {
-    pub(crate) fn alloc(&mut self, item: SyntaxNode) -> FileItemId {
-        self.arena.alloc(item)
-    }
-    fn id_of(&self, item: SyntaxNodeRef) -> FileItemId {
-        let (id, _item) = self
-            .arena
-            .iter()
-            .find(|(_id, i)| i.borrowed() == item)
-            .unwrap();
-        id
-    }
-}
-
-impl Index<FileItemId> for FileItems {
-    type Output = SyntaxNode;
-    fn index(&self, idx: FileItemId) -> &SyntaxNode {
-        &self.arena[idx]
-    }
-}
 
 /// Item map is the result of the name resolution. Item map contains, for each
 /// module, the set of visible items.

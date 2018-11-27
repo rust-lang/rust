@@ -11,15 +11,20 @@ mod function;
 mod module;
 mod path;
 
+use std::ops::Index;
+
+use ra_syntax::{SyntaxNodeRef, SyntaxNode};
+
 use crate::{
     hir::db::HirDatabase,
     loc2id::{DefId, DefLoc},
     Cancelable,
+    arena::{Arena, Id},
 };
 
 pub(crate) use self::{
     path::{Path, PathKind},
-    module::{Module, ModuleId, Problem, nameres::FileItemId},
+    module::{Module, ModuleId, Problem},
     function::{Function, FnScopes},
 };
 
@@ -41,5 +46,36 @@ impl DefId {
             DefLoc::Item { .. } => Def::Item,
         };
         Ok(res)
+    }
+}
+
+/// Identifier of item within a specific file. This is stable over reparses, so
+/// it's OK to use it as a salsa key/value.
+pub(crate) type FileItemId = Id<SyntaxNode>;
+
+/// Maps item's `SyntaxNode`s to `FileItemId` and back.
+#[derive(Debug, PartialEq, Eq, Default)]
+pub(crate) struct FileItems {
+    arena: Arena<SyntaxNode>,
+}
+
+impl FileItems {
+    fn alloc(&mut self, item: SyntaxNode) -> FileItemId {
+        self.arena.alloc(item)
+    }
+    fn id_of(&self, item: SyntaxNodeRef) -> FileItemId {
+        let (id, _item) = self
+            .arena
+            .iter()
+            .find(|(_id, i)| i.borrowed() == item)
+            .unwrap();
+        id
+    }
+}
+
+impl Index<FileItemId> for FileItems {
+    type Output = SyntaxNode;
+    fn index(&self, idx: FileItemId) -> &SyntaxNode {
+        &self.arena[idx]
     }
 }

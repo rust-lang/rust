@@ -12,12 +12,13 @@ use ra_syntax::{
 use crate::{
     FileId, Cancelable,
     hir::{
+        FileItems, FileItemId,
         db::HirDatabase,
         function::{FnId, FnScopes},
         module::{
             ModuleSource, ModuleSourceNode, ModuleId,
             imp::Submodule,
-            nameres::{FileItems, FileItemId, InputModuleItems, ItemMap, Resolver},
+            nameres::{InputModuleItems, ItemMap, Resolver},
         },
     },
     input::SourceRootId,

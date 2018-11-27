@@ -8,11 +8,12 @@ use ra_syntax::{
 use crate::{
     FileId,
     db::SyntaxDatabase,
+    hir::{FileItems, FileItemId},
     hir::query_definitions,
     hir::function::{FnId, FnScopes},
     hir::module::{
         ModuleId, ModuleTree, ModuleSource,
-        nameres::{ItemMap, InputModuleItems, FileItems, FileItemId}
+        nameres::{ItemMap, InputModuleItems}
     },
     input::SourceRootId,
     Cancelable,
