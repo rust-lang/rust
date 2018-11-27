@@ -20,7 +20,7 @@ use crate::{
     completion::{completions, CompletionItem},
     db::{self, FileSyntaxQuery, SyntaxDatabase},
     hir::{
-        FnDescriptor, FunctionDescriptor, ModuleDescriptor,
+        FunctionDescriptor, FnSignatureInfo, ModuleDescriptor,
         Problem,
         DeclarationDescriptor,
     },
@@ -445,7 +445,7 @@ impl AnalysisImpl {
     pub fn resolve_callable(
         &self,
         position: FilePosition,
-    ) -> Cancelable<Option<(FnDescriptor, Option<usize>)>> {
+    ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
         let file = self.db.file_syntax(position.file_id);
         let syntax = file.syntax();
 
@@ -455,11 +455,13 @@ impl AnalysisImpl {
 
         // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
         let file_symbols = self.index_resolve(name_ref)?;
-        for (fn_fiel_id, fs) in file_symbols {
+        for (fn_file_id, fs) in file_symbols {
             if fs.kind == FN_DEF {
-                let fn_file = self.db.file_syntax(fn_fiel_id);
+                let fn_file = self.db.file_syntax(fn_file_id);
                 if let Some(fn_def) = find_node_at_offset(fn_file.syntax(), fs.node_range.start()) {
-                    if let Some(descriptor) = FnDescriptor::new(fn_def) {
+                    let descr =
+                        FunctionDescriptor::guess_from_source(&*self.db, fn_file_id, fn_def);
+                    if let Some(descriptor) = descr.signature_info(&*self.db) {
                         // If we have a calling expression let's find which argument we are on
                         let mut current_parameter = None;
 

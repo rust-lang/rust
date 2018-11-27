@@ -29,8 +29,7 @@ pub(crate) use self::{
     function::{FunctionDescriptor, FnScopes},
 };
 
-//TODO: FIXME
-pub use self::function::FnDescriptor;
+pub use self::function::FnSignatureInfo;
 
 pub(crate) enum Def {
     Module(ModuleDescriptor),

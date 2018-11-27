@@ -42,10 +42,15 @@ impl FunctionDescriptor {
     pub(crate) fn scope(&self, db: &impl HirDatabase) -> Arc<FnScopes> {
         db.fn_scopes(self.fn_id)
     }
+
+    pub(crate) fn signature_info(&self, db: &impl HirDatabase) -> Option<FnSignatureInfo> {
+        let syntax = db.fn_syntax(self.fn_id);
+        FnSignatureInfo::new(syntax.borrowed())
+    }
 }
 
 #[derive(Debug, Clone)]
-pub struct FnDescriptor {
+pub struct FnSignatureInfo {
     pub name: String,
     pub label: String,
     pub ret_type: Option<String>,
@@ -53,8 +58,8 @@ pub struct FnDescriptor {
     pub doc: Option<String>,
 }
 
-impl FnDescriptor {
-    pub fn new(node: ast::FnDef) -> Option<Self> {
+impl FnSignatureInfo {
+    fn new(node: ast::FnDef) -> Option<Self> {
         let name = node.name()?.text().to_string();
 
         let mut doc = None;
@@ -73,7 +78,7 @@ impl FnDescriptor {
             node.syntax().text().to_string()
         };
 
-        if let Some((comment_range, docs)) = FnDescriptor::extract_doc_comments(node) {
+        if let Some((comment_range, docs)) = FnSignatureInfo::extract_doc_comments(node) {
             let comment_range = comment_range
                 .checked_sub(node.syntax().range().start())
                 .unwrap();
@@ -105,10 +110,10 @@ impl FnDescriptor {
             }
         }
 
-        let params = FnDescriptor::param_list(node);
+        let params = FnSignatureInfo::param_list(node);
         let ret_type = node.ret_type().map(|r| r.syntax().text().to_string());
 
-        Some(FnDescriptor {
+        Some(FnSignatureInfo {
             name,
             ret_type,
             params,

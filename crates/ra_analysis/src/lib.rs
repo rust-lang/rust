@@ -42,7 +42,7 @@ use crate::{
 
 pub use crate::{
     completion::CompletionItem,
-    hir::FnDescriptor,
+    hir::FnSignatureInfo,
     input::{CrateGraph, CrateId, FileId, FileResolver},
 };
 pub use ra_editor::{
@@ -305,7 +305,7 @@ impl Analysis {
     pub fn resolve_callable(
         &self,
         position: FilePosition,
-    ) -> Cancelable<Option<(FnDescriptor, Option<usize>)>> {
+    ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
         self.imp.resolve_callable(position)
     }
 }
