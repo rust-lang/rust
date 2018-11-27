@@ -346,12 +346,18 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Canonicalizer<'cx, 'gcx, 'tcx> 
 
                     // `TyVar(vid)` is unresolved, track its universe index in the canonicalized
                     // result
-                    Err(ui) => self.canonicalize_ty_var(
-                        CanonicalVarInfo {
-                            kind: CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui))
-                        },
-                        t
-                    )
+                    Err(mut ui) => {
+                        if !self.infcx.unwrap().tcx.sess.opts.debugging_opts.chalk {
+                            // FIXME: perf problem described in #55921.
+                            ui = ty::UniverseIndex::ROOT;
+                        }
+                        self.canonicalize_ty_var(
+                            CanonicalVarInfo {
+                                kind: CanonicalVarKind::Ty(CanonicalTyVarKind::General(ui))
+                            },
+                            t
+                        )
+                    }
                 }
             }
 
