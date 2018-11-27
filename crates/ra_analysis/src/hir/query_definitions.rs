@@ -12,7 +12,7 @@ use ra_syntax::{
 use crate::{
     FileId, Cancelable,
     hir::{
-        SourceFileItems, SourceFileItemId,
+        SourceFileItems, SourceItemId,
         db::HirDatabase,
         function::{FnId, FnScopes},
         module::{
@@ -52,12 +52,8 @@ pub(super) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<SourceFi
     Arc::new(res)
 }
 
-pub(super) fn file_item(
-    db: &impl HirDatabase,
-    file_id: FileId,
-    file_item_id: SourceFileItemId,
-) -> SyntaxNode {
-    db.file_items(file_id)[file_item_id].clone()
+pub(super) fn file_item(db: &impl HirDatabase, source_item_id: SourceItemId) -> SyntaxNode {
+    db.file_items(source_item_id.file_id)[source_item_id.item_id].clone()
 }
 
 pub(crate) fn submodules(

@@ -16,6 +16,7 @@ use std::ops::Index;
 use ra_syntax::{SyntaxNodeRef, SyntaxNode};
 
 use crate::{
+    FileId,
     hir::db::HirDatabase,
     loc2id::{DefId, DefLoc},
     Cancelable,
@@ -52,6 +53,12 @@ impl DefId {
 /// Identifier of item within a specific file. This is stable over reparses, so
 /// it's OK to use it as a salsa key/value.
 pub(crate) type SourceFileItemId = Id<SyntaxNode>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub(crate) struct SourceItemId {
+    file_id: FileId,
+    item_id: SourceFileItemId,
+}
 
 /// Maps item's `SyntaxNode`s to `SourceFileItemId` and back.
 #[derive(Debug, PartialEq, Eq, Default)]

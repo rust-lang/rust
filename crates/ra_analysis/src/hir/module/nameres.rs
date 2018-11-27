@@ -30,7 +30,7 @@ use crate::{
     Cancelable, FileId,
     loc2id::{DefId, DefLoc},
     hir::{
-        SourceFileItemId, SourceFileItems,
+        SourceItemId, SourceFileItemId, SourceFileItems,
         Path, PathKind,
         HirDatabase,
         module::{ModuleId, ModuleTree},
@@ -99,7 +99,11 @@ pub(crate) struct NamedImport {
 
 impl NamedImport {
     pub(crate) fn range(&self, db: &impl HirDatabase, file_id: FileId) -> TextRange {
-        let syntax = db.file_item(file_id, self.file_item_id);
+        let source_item_id = SourceItemId {
+            file_id,
+            item_id: self.file_item_id,
+        };
+        let syntax = db.file_item(source_item_id);
         let offset = syntax.borrowed().range().start();
         self.relative_range + offset
     }
@@ -247,8 +251,10 @@ where
                 continue;
             }
             let def_loc = DefLoc::Item {
-                file_id,
-                id: item.id,
+                source_item_id: SourceItemId {
+                    file_id,
+                    item_id: item.id,
+                },
             };
             let def_id = self.db.id_maps().def_id(def_loc);
             let resolution = Resolution {
