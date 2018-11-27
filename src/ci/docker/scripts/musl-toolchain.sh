@@ -45,8 +45,7 @@ cd ..
 
 # Make musl binaries executable
 
-ln -s $OUTPUT/$TARGET/lib/ld-musl-$ARCH.so.1 /lib
-ln -s $OUTPUT/$TARGET/lib/libc.so /lib
+ln -s $OUTPUT/$TARGET/lib/libc.so /lib/ld-musl-$ARCH.so.1
 echo $OUTPUT/$TARGET/lib >> /etc/ld-musl-$ARCH.path
 
 
