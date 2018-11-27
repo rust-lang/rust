@@ -133,7 +133,15 @@ impl ModuleDescriptor {
         Ok(res)
     }
 
-    pub(crate) fn resolve_path(&self, path: Path) -> Option<ModuleDescriptor> {
+    pub(crate) fn resolve_path(&self, path: Path) -> Cancelable<Option<ModuleDescriptor>> {
+        let res = match self.do_resolve_path(path) {
+            None => return Ok(None),
+            Some(it) => it,
+        };
+        Ok(Some(res))
+    }
+
+    fn do_resolve_path(&self, path: Path) -> Option<ModuleDescriptor> {
         let mut curr = match path.kind {
             PathKind::Crate => self.crate_root(),
             PathKind::Self_ | PathKind::Plain => self.clone(),
