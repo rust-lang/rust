@@ -2524,7 +2524,13 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 ///
 /// let mut hasher = DefaultHasher::new();
 /// ptr::hash(five_ref, &mut hasher);
-/// println!("Hash is {:x}!", hasher.finish());
+/// let actual = hasher.finish();
+///
+/// let mut hasher = DefaultHasher::new();
+/// (five_ref as *const T).hash(&mut hasher);
+/// let expected = hasher.finish();
+///
+/// assert_eq!(actual, expected);
 /// ```
 #[unstable(feature = "ptr_hash", reason = "newly added", issue = "56285")]
 pub fn hash<T, S: hash::Hasher>(hashee: &T, into: &mut S) {
