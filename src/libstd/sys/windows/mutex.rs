@@ -164,7 +164,7 @@ unsafe impl Sync for ReentrantMutex {}
 
 impl ReentrantMutex {
     pub fn uninitialized() -> ReentrantMutex {
-        MaybeUninit::uninitialized()
+        ReentrantMutex { inner: MaybeUninit::uninitialized() }
     }
 
     pub unsafe fn init(&mut self) {
