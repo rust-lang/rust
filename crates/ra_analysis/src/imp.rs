@@ -25,7 +25,7 @@ use crate::{
         Problem,
     },
     input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
-    symbol_index::SymbolIndex,
+    symbol_index::{SymbolIndex, SymbolsDatabase},
     AnalysisChange, Cancelable, CrateGraph, CrateId, Diagnostic, FileId, FileResolver,
     FileSystemEdit, FilePosition, Query, SourceChange, SourceFileNodeEdit,
 };
@@ -161,7 +161,7 @@ impl AnalysisHostImpl {
                     .query_mut(crate::input::SourceRootQuery)
                     .set(source_root_id, Arc::new(source_root));
                 self.db
-                    .query_mut(crate::input::LibrarySymbolsQuery)
+                    .query_mut(crate::symbol_index::LibrarySymbolsQuery)
                     .set(source_root_id, Arc::new(library.symbol_index));
             }
             self.db

@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
 use salsa;
 
-use crate::{symbol_index::SymbolIndex, FileResolverImp};
+use crate::FileResolverImp;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(pub u32);
@@ -54,10 +54,6 @@ salsa::query_group! {
         }
         fn libraries() -> Arc<Vec<SourceRootId>> {
             type LibrariesQuery;
-            storage input;
-        }
-        fn library_symbols(id: SourceRootId) -> Arc<SymbolIndex> {
-            type LibrarySymbolsQuery;
             storage input;
         }
         fn crate_graph() -> Arc<CrateGraph> {

@@ -4,14 +4,37 @@ use std::{
 };
 
 use fst::{self, Streamer};
-use ra_editor::{file_symbols, FileSymbol};
+use ra_editor::{self, FileSymbol};
 use ra_syntax::{
     SourceFileNode,
     SyntaxKind::{self, *},
 };
 use rayon::prelude::*;
 
-use crate::{FileId, Query};
+use crate::{
+    Cancelable,
+    FileId, Query,
+    db::SyntaxDatabase,
+    input::SourceRootId,
+};
+
+salsa::query_group! {
+    pub(crate) trait SymbolsDatabase: SyntaxDatabase {
+        fn file_symbols(file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
+            type FileSymbolsQuery;
+        }
+        fn library_symbols(id: SourceRootId) -> Arc<SymbolIndex> {
+            type LibrarySymbolsQuery;
+            storage input;
+        }
+    }
+}
+
+fn file_symbols(db: &impl SyntaxDatabase, file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
+    db.check_canceled()?;
+    let syntax = db.file_syntax(file_id);
+    Ok(Arc::new(SymbolIndex::for_file(file_id, syntax)))
+}
 
 #[derive(Default, Debug)]
 pub(crate) struct SymbolIndex {
@@ -39,7 +62,7 @@ impl SymbolIndex {
     ) -> SymbolIndex {
         let mut symbols = files
             .flat_map(|(file_id, file)| {
-                file_symbols(&file)
+                ra_editor::file_symbols(&file)
                     .into_iter()
                     .map(move |symbol| (symbol.name.as_str().to_lowercase(), (file_id, symbol)))
                     .collect::<Vec<_>>()

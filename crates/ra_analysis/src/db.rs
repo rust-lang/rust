@@ -7,7 +7,7 @@ use salsa::{self, Database};
 
 use crate::{
     hir,
-    symbol_index::SymbolIndex,
+    symbol_index,
     loc2id::{IdMaps},
     Cancelable, Canceled, FileId,
 };
@@ -114,23 +114,25 @@ salsa::database_storage! {
             fn file_source_root() for crate::input::FileSourceRootQuery;
             fn source_root() for crate::input::SourceRootQuery;
             fn libraries() for crate::input::LibrariesQuery;
-            fn library_symbols() for crate::input::LibrarySymbolsQuery;
             fn crate_graph() for crate::input::CrateGraphQuery;
         }
         impl SyntaxDatabase {
             fn file_syntax() for FileSyntaxQuery;
             fn file_lines() for FileLinesQuery;
-            fn file_symbols() for FileSymbolsQuery;
+        }
+        impl symbol_index::SymbolsDatabase {
+            fn file_symbols() for symbol_index::FileSymbolsQuery;
+            fn library_symbols() for symbol_index::LibrarySymbolsQuery;
         }
         impl hir::db::HirDatabase {
             fn module_tree() for hir::db::ModuleTreeQuery;
             fn fn_scopes() for hir::db::FnScopesQuery;
-            fn _file_items() for hir::db::SourceFileItemsQuery;
-            fn _file_item() for hir::db::FileItemQuery;
-            fn _input_module_items() for hir::db::InputModuleItemsQuery;
-            fn _item_map() for hir::db::ItemMapQuery;
-            fn _fn_syntax() for hir::db::FnSyntaxQuery;
-            fn _submodules() for hir::db::SubmodulesQuery;
+            fn file_items() for hir::db::SourceFileItemsQuery;
+            fn file_item() for hir::db::FileItemQuery;
+            fn input_module_items() for hir::db::InputModuleItemsQuery;
+            fn item_map() for hir::db::ItemMapQuery;
+            fn fn_syntax() for hir::db::FnSyntaxQuery;
+            fn submodules() for hir::db::SubmodulesQuery;
         }
     }
 }
@@ -143,9 +145,6 @@ salsa::query_group! {
         fn file_lines(file_id: FileId) -> Arc<LineIndex> {
             type FileLinesQuery;
         }
-        fn file_symbols(file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
-            type FileSymbolsQuery;
-        }
     }
 }
 
@@ -156,9 +155,4 @@ fn file_syntax(db: &impl SyntaxDatabase, file_id: FileId) -> SourceFileNode {
 fn file_lines(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id);
     Arc::new(LineIndex::new(&*text))
-}
-fn file_symbols(db: &impl SyntaxDatabase, file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
-    db.check_canceled()?;
-    let syntax = db.file_syntax(file_id);
-    Ok(Arc::new(SymbolIndex::for_file(file_id, syntax)))
 }
