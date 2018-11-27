@@ -57,6 +57,19 @@ impl FnScopes {
             self.scopes[scope].parent
         })
     }
+    pub(crate) fn resolve_local_name<'a>(
+        &'a self,
+        name_ref: ast::NameRef,
+    ) -> Option<&'a ScopeEntry> {
+        let mut shadowed = FxHashSet::default();
+        let ret = self
+            .scope_chain(name_ref.syntax())
+            .flat_map(|scope| self.entries(scope).iter())
+            .filter(|entry| shadowed.insert(entry.name()))
+            .filter(|entry| entry.name() == &name_ref.text())
+            .nth(0);
+        ret
+    }
     fn root_scope(&mut self) -> ScopeId {
         self.scopes.alloc(ScopeData {
             parent: None,
@@ -249,20 +262,6 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
     }
 }
 
-pub fn resolve_local_name<'a>(
-    name_ref: ast::NameRef,
-    scopes: &'a FnScopes,
-) -> Option<&'a ScopeEntry> {
-    let mut shadowed = FxHashSet::default();
-    let ret = scopes
-        .scope_chain(name_ref.syntax())
-        .flat_map(|scope| scopes.entries(scope).iter())
-        .filter(|entry| shadowed.insert(entry.name()))
-        .filter(|entry| entry.name() == &name_ref.text())
-        .nth(0);
-    ret
-}
-
 #[cfg(test)]
 mod tests {
     use ra_editor::find_node_at_offset;
@@ -376,7 +375,7 @@ mod tests {
 
         let scopes = FnScopes::new(fn_def);
 
-        let local_name_entry = resolve_local_name(name_ref, &scopes).unwrap();
+        let local_name_entry = scopes.resolve_local_name(name_ref).unwrap();
         let local_name = local_name_entry.ptr().resolve(&file);
         let expected_name =
             find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into()).unwrap();

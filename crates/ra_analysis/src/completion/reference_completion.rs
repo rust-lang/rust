@@ -12,7 +12,7 @@ use crate::{
     completion::CompletionItem,
     hir::{
         ModuleDescriptor,
-        function::FnScopes,
+        FnScopes,
         Def,
         Path,
     },

@@ -15,7 +15,7 @@ use crate::{
     syntax_ptr::SyntaxPtr, FileId,
 };
 
-pub(crate) use self::scope::{resolve_local_name, FnScopes};
+pub(crate) use self::scope::FnScopes;
 pub(crate) use crate::loc2id::FnId;
 
 impl FnId {

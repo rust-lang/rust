@@ -5,11 +5,11 @@
 //! to a particular crate instance. That is, it has cfg flags and features
 //! applied. So, there relation between syntax and HIR is many-to-one.
 
-pub(crate) mod function;
-mod module;
 pub(crate) mod db;
-mod path;
 mod query_definitions;
+mod function;
+mod module;
+mod path;
 
 use ra_syntax::{
     ast::{self, AstNode},
@@ -18,7 +18,6 @@ use ra_syntax::{
 
 use crate::{
     hir::db::HirDatabase,
-    hir::function::{resolve_local_name, FnScopes},
     loc2id::{DefId, DefLoc},
     syntax_ptr::LocalSyntaxPtr,
     Cancelable,
@@ -27,8 +26,11 @@ use crate::{
 pub(crate) use self::{
     path::{Path, PathKind},
     module::{ModuleDescriptor, ModuleId, Problem, nameres::FileItemId},
-    function::FunctionDescriptor,
+    function::{FunctionDescriptor, FnScopes},
 };
+
+//TODO: FIXME
+pub use self::function::FnDescriptor;
 
 pub(crate) enum Def {
     Module(ModuleDescriptor),
@@ -82,7 +84,7 @@ impl<'a> DeclarationDescriptor<'a> {
             .syntax()
             .descendants()
             .filter_map(ast::NameRef::cast)
-            .filter(|name_ref| match resolve_local_name(*name_ref, &fn_scopes) {
+            .filter(|name_ref| match fn_scopes.resolve_local_name(*name_ref) {
                 None => false,
                 Some(entry) => entry.ptr() == name_ptr,
             })

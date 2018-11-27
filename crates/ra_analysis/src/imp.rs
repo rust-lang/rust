@@ -20,8 +20,7 @@ use crate::{
     completion::{completions, CompletionItem},
     db::{self, FileSyntaxQuery, SyntaxDatabase},
     hir::{
-        FunctionDescriptor, ModuleDescriptor,
-        function::FnDescriptor,
+        FnDescriptor, FunctionDescriptor, ModuleDescriptor,
         Problem,
         DeclarationDescriptor,
     },
@@ -590,7 +589,7 @@ fn resolve_local_name(
     let fn_def = name_ref.syntax().ancestors().find_map(ast::FnDef::cast)?;
     let function = FunctionDescriptor::guess_from_source(db, file_id, fn_def);
     let scopes = function.scope(db);
-    let scope_entry = crate::hir::function::resolve_local_name(name_ref, &scopes)?;
+    let scope_entry = scopes.resolve_local_name(name_ref)?;
     let syntax = db.resolve_syntax_ptr(scope_entry.ptr().into_global(file_id));
     Some((scope_entry.name().clone(), syntax.range()))
 }

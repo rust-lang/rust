@@ -42,7 +42,7 @@ use crate::{
 
 pub use crate::{
     completion::CompletionItem,
-    hir::function::FnDescriptor,
+    hir::FnDescriptor,
     input::{CrateGraph, CrateId, FileId, FileResolver},
 };
 pub use ra_editor::{
