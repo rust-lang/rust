@@ -414,12 +414,17 @@ impl CString {
 
     /// Consumes the `CString` and transfers ownership of the string to a C caller.
     ///
-    /// The pointer which this function returns must be returned to Rust and reconstituted using
-    /// [`from_raw`] to be properly deallocated. Specifically, one
-    /// should *not* use the standard C `free()` function to deallocate
-    /// this string.
+    /// If the system allocator is in use, it is safe to have C invoke the corresponding
+    /// system-level deallocation function (e.g. `free()` on Unix, `HeapFree` on Windows)
+    /// on the returned pointer.
     ///
-    /// Failure to call [`from_raw`] will lead to a memory leak.
+    /// If you are using a custom allocator, then this value should be returned
+    /// to Rust and reconstituted using [`from_raw`] to be properly deallocated.
+    ///
+    /// As a general rule, best practice is for library crates to not make an assumption
+    /// about the global allocator.
+    ///
+    /// Failure to call [`from_raw`] (or `free()`) will lead to a memory leak.
     ///
     /// [`from_raw`]: #method.from_raw
     ///
