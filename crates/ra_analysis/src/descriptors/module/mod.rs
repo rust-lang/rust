@@ -17,6 +17,7 @@ use crate::{
     descriptors::{Path, PathKind, DescriptorDatabase},
     input::SourceRootId,
     arena::{Arena, Id},
+    loc2id::{DefLoc, DefId},
 };
 
 pub(crate) use self::nameres::ModuleScope;
@@ -76,6 +77,20 @@ impl ModuleDescriptor {
         Ok(res)
     }
 
+    pub(super) fn new(
+        db: &impl DescriptorDatabase,
+        source_root_id: SourceRootId,
+        module_id: ModuleId,
+    ) -> Cancelable<ModuleDescriptor> {
+        let module_tree = db._module_tree(source_root_id)?;
+        let res = ModuleDescriptor {
+            tree: module_tree,
+            source_root_id,
+            module_id,
+        };
+        Ok(res)
+    }
+
     /// Returns `mod foo;` or `mod foo {}` node whihc declared this module.
     /// Returns `None` for the root module
     pub fn parent_link_source(
@@ -117,6 +132,14 @@ impl ModuleDescriptor {
         Some(link.name(&self.tree))
     }
 
+    pub fn def_id(&self, db: &impl DescriptorDatabase) -> DefId {
+        let def_loc = DefLoc::Module {
+            id: self.module_id,
+            source_root: self.source_root_id,
+        };
+        db.id_maps().def_id(def_loc)
+    }
+
     /// Finds a child module with the specified name.
     pub fn child(&self, name: &str) -> Option<ModuleDescriptor> {
         let child_id = self.module_id.child(&self.tree, name)?;
@@ -133,17 +156,28 @@ impl ModuleDescriptor {
         Ok(res)
     }
 
-    pub(crate) fn resolve_path(&self, path: Path) -> Option<ModuleDescriptor> {
+    pub(crate) fn resolve_path(
+        &self,
+        db: &impl DescriptorDatabase,
+        path: Path,
+    ) -> Cancelable<Option<DefId>> {
         let mut curr = match path.kind {
             PathKind::Crate => self.crate_root(),
             PathKind::Self_ | PathKind::Plain => self.clone(),
-            PathKind::Super => self.parent()?,
-        };
-        let segments = path.segments;
-        for name in segments {
-            curr = curr.child(&name)?;
+            PathKind::Super => ctry!(self.parent()),
         }
-        Some(curr)
+        .def_id(db);
+
+        let segments = path.segments;
+        for name in segments.iter() {
+            let module = match db.id_maps().def_loc(curr) {
+                DefLoc::Module { id, source_root } => ModuleDescriptor::new(db, source_root, id)?,
+                _ => return Ok(None),
+            };
+            let scope = module.scope(db)?;
+            curr = ctry!(ctry!(scope.get(&name)).def_id);
+        }
+        Ok(Some(curr))
     }
 
     pub fn problems(&self, db: &impl DescriptorDatabase) -> Vec<(SyntaxNode, Problem)> {

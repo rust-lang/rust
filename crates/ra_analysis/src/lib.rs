@@ -9,6 +9,15 @@ extern crate relative_path;
 extern crate rustc_hash;
 extern crate salsa;
 
+macro_rules! ctry {
+    ($expr:expr) => {
+        match $expr {
+            None => return Ok(None),
+            Some(it) => it,
+        }
+    };
+}
+
 mod arena;
 mod db;
 mod loc2id;

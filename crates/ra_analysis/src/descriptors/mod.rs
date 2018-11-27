@@ -13,9 +13,12 @@ use crate::{
     FileId,
     db::SyntaxDatabase,
     descriptors::function::{resolve_local_name, FnId, FnScopes},
-    descriptors::module::{ModuleId, ModuleTree, ModuleSource, nameres::{ItemMap, InputModuleItems, FileItems}},
+    descriptors::module::{
+        ModuleId, ModuleTree, ModuleSource, ModuleDescriptor,
+        nameres::{ItemMap, InputModuleItems, FileItems}
+    },
     input::SourceRootId,
-    loc2id::IdDatabase,
+    loc2id::{IdDatabase, DefId, DefLoc},
     syntax_ptr::LocalSyntaxPtr,
     Cancelable,
 };
@@ -64,6 +67,25 @@ salsa::query_group! {
             type SubmodulesQuery;
             use fn module::imp::submodules;
         }
+    }
+}
+
+pub(crate) enum Def {
+    Module(ModuleDescriptor),
+    Item,
+}
+
+impl DefId {
+    pub(crate) fn resolve(self, db: &impl DescriptorDatabase) -> Cancelable<Def> {
+        let loc = db.id_maps().def_loc(self);
+        let res = match loc {
+            DefLoc::Module { id, source_root } => {
+                let descr = ModuleDescriptor::new(db, source_root, id)?;
+                Def::Module(descr)
+            }
+            DefLoc::Item { .. } => Def::Item,
+        };
+        Ok(res)
     }
 }
 
