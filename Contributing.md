@@ -2,8 +2,8 @@
 
 There are many ways to contribute to Rustfmt. This document lays out what they
 are and has information for how to get started. If you have any questions about
-contributing or need help with anything, please ping nrc on irc, #rust-dev-tools
-on irc.mozilla.org is probably the best channel. Feel free to also ask questions
+contributing or need help with anything, please ask in the WG-Rustfmt channel
+on [Discord](https://discordapp.com/invite/rust-lang). Feel free to also ask questions
 on issues, or file new issues specifically to get help.
 
 All contributors are expected to follow our [Code of
@@ -13,14 +13,6 @@ Conduct](CODE_OF_CONDUCT.md).
 
 It would be really useful to have people use rustfmt on their projects and file
 issues where it does something you don't expect.
-
-A really useful thing to do that on a crate from the Rust repo. If it does
-something unexpected, file an issue; if not, make a PR to the Rust repo with the
-reformatted code. We hope to get the whole repo consistently rustfmt'ed and to
-replace `make tidy` with rustfmt as a medium-term goal. Issues with stack traces
-for bugs and/or minimal test cases are especially useful.
-
-See this [blog post](http://ncameron.org/blog/rustfmt-ing-rust/) for more details.
 
 
 ## Create test cases
@@ -66,11 +58,14 @@ example, the `issue-1111.rs` test file is configured by the file
 
 ## Debugging
 
-Some `rewrite_*` methods use the `debug!` macro for printing useful information. These messages can be printed by using the environment variable `RUST_LOG=rustfmt=DEBUG`. These traces can be helpful in understanding which part of the code was used and get a better grasp on the execution flow.
+Some `rewrite_*` methods use the `debug!` macro for printing useful information.
+These messages can be printed by using the environment variable `RUST_LOG=rustfmt=DEBUG`.
+These traces can be helpful in understanding which part of the code was used
+and get a better grasp on the execution flow.
 
 ## Hack!
 
-Here are some [good starting issues](https://github.com/rust-lang-nursery/rustfmt/issues?q=is%3Aopen+is%3Aissue+label%3Agood-first-issue).
+Here are some [good starting issues](https://github.com/rust-lang/rustfmt/issues?q=is%3Aopen+is%3Aissue+label%3Agood-first-issue).
 
 If you've found areas which need polish and don't have issues, please submit a
 PR, don't feel there needs to be an issue.
@@ -85,6 +80,12 @@ tests. That ensures that the Rustfmt source code adheres to our own conventions.
 Talking of tests, if you add a new feature or fix a bug, please also add a test.
 It's really easy, see above for details. Please run `cargo test` before
 submitting a PR to ensure your patch passes all tests, it's pretty quick.
+
+Rustfmt is post-1.0 and within major version releases we strive for backwards
+compatibility (at least when using the default options). That means any code
+which changes Rustfmt's output must be guarded by either an option or a version
+check. The latter is implemented as an option called `option`. See the section on
+[configuration](#Configuration) below.
 
 Please try to avoid leaving `TODO`s in the code. There are a few around, but I
 wish there weren't. You can leave `FIXME`s, preferably with an issue number.

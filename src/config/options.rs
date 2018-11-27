@@ -291,6 +291,13 @@ configuration_option_enum! { Color:
     Auto,
 }
 
+configuration_option_enum! { Version:
+    // 1.x.y
+    One,
+    // 2.x.y
+    Two,
+}
+
 impl Color {
     /// Whether we should use a coloured terminal.
     pub fn use_colored_tty(self) -> bool {

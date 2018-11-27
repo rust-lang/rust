@@ -1,4 +1,4 @@
-# rustfmt [![Build Status](https://travis-ci.org/rust-lang-nursery/rustfmt.svg)](https://travis-ci.org/rust-lang-nursery/rustfmt) [![Build Status](https://ci.appveyor.com/api/projects/status/github/rust-lang-nursery/rustfmt?svg=true)](https://ci.appveyor.com/project/nrc/rustfmt) [![crates.io](https://img.shields.io/crates/v/rustfmt-nightly.svg)](https://crates.io/crates/rustfmt-nightly) [![Travis Configuration Status](https://img.shields.io/travis/davidalber/rustfmt-travis.svg?label=travis%20example)](https://travis-ci.org/davidalber/rustfmt-travis)
+# rustfmt [![Build Status](https://travis-ci.org/rust-lang/rustfmt.svg)](https://travis-ci.org/rust-lang/rustfmt) [![Build Status](https://ci.appveyor.com/api/projects/status/github/rust-lang/rustfmt?svg=true)](https://ci.appveyor.com/project/nrc/rustfmt) [![crates.io](https://img.shields.io/crates/v/rustfmt-nightly.svg)](https://crates.io/crates/rustfmt-nightly) [![Travis Configuration Status](https://img.shields.io/travis/davidalber/rustfmt-travis.svg?label=travis%20example)](https://travis-ci.org/davidalber/rustfmt-travis)
 
 A tool for formatting Rust code according to style guidelines.
 

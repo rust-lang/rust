@@ -2367,6 +2367,22 @@ If you want to format code that requires edition 2018, add the following to your
 edition = "2018"
 ```
 
+## `version`
+
+Which version of the formatting rules to use. `Version::One` is backwards-compatible
+with Rustfmt 1.0. Other versions are only backwards compatible within a major
+version number.
+
+- **Default value**: `One`
+- **Possible values**: `One`, `Two`
+- **Stable**: No
+
+### Example
+
+```toml
+version = "Two"
+```
+
 ## `normalize_doc_attributes`
 
 Convert `#![doc]` and `#[doc]` attributes to `//!` and `///` doc comments.
