@@ -24,7 +24,7 @@ use rustc_hash::FxHashMap;
 use ra_syntax::{
     SyntaxNode,
     SmolStr, SyntaxKind::{self, *},
-    ast::{self, ModuleItemOwner}
+    ast::{self, ModuleItemOwner, AstNode}
 };
 
 use crate::{
@@ -44,7 +44,13 @@ use crate::{
 pub(crate) struct FileItemId(u32);
 
 pub(crate) fn file_items(db: &impl DescriptorDatabase, file_id: FileId) -> Arc<Vec<SyntaxNode>> {
-    unimplemented!()
+    let source_file = db.file_syntax(file_id);
+    let source_file = source_file.borrowed();
+    let res = source_file.syntax().descendants()
+        .filter_map(ast::ModuleItem::cast)
+        .map(|it| it.syntax().owned())
+        .collect::<Vec<_>>();
+    Arc::new(res)
 }
 
 pub(crate) fn file_item(db: &impl DescriptorDatabase, file_id: FileId, file_item_id: FileItemId) -> SyntaxNode {
