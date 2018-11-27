@@ -11,8 +11,8 @@ use ra_syntax::{
 };
 
 use crate::{
-    hir::HirDatabase,
-    syntax_ptr::SyntaxPtr, FileId,
+    hir::{HirDatabase, SourceItemId},
+    FileId,
 };
 
 pub(crate) use self::scope::FnScopes;
@@ -20,8 +20,10 @@ pub(crate) use crate::loc2id::FnId;
 
 impl FnId {
     pub(crate) fn get(db: &impl HirDatabase, file_id: FileId, fn_def: ast::FnDef) -> FnId {
-        let ptr = SyntaxPtr::new(file_id, fn_def.syntax());
-        db.id_maps().fn_id(ptr)
+        let file_items = db.file_items(file_id);
+        let item_id = file_items.id_of(fn_def.syntax());
+        let item_id = SourceItemId { file_id, item_id };
+        db.id_maps().fn_id(item_id)
     }
 }
 

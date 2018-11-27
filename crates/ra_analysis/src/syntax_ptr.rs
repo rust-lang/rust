@@ -17,13 +17,6 @@ pub(crate) struct SyntaxPtr {
     local: LocalSyntaxPtr,
 }
 
-impl SyntaxPtr {
-    pub(crate) fn new(file_id: FileId, node: SyntaxNodeRef) -> SyntaxPtr {
-        let local = LocalSyntaxPtr::new(node);
-        SyntaxPtr { file_id, local }
-    }
-}
-
 /// A pionter to a syntax node inside a file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct LocalSyntaxPtr {

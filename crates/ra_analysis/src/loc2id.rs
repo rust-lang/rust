@@ -9,7 +9,6 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     hir::{SourceItemId, ModuleId},
-    syntax_ptr::SyntaxPtr,
     input::SourceRootId,
 };
 
@@ -112,10 +111,10 @@ pub(crate) struct IdMaps {
 }
 
 impl IdMaps {
-    pub(crate) fn fn_id(&self, ptr: SyntaxPtr) -> FnId {
-        self.inner.fns.lock().loc2id(&ptr)
+    pub(crate) fn fn_id(&self, item_id: SourceItemId) -> FnId {
+        self.inner.fns.lock().loc2id(&item_id)
     }
-    pub(crate) fn fn_ptr(&self, fn_id: FnId) -> SyntaxPtr {
+    pub(crate) fn fn_item_id(&self, fn_id: FnId) -> SourceItemId {
         self.inner.fns.lock().id2loc(fn_id)
     }
 
@@ -129,6 +128,6 @@ impl IdMaps {
 
 #[derive(Debug, Default)]
 struct IdMapsInner {
-    fns: Mutex<Loc2IdMap<SyntaxPtr, FnId>>,
+    fns: Mutex<Loc2IdMap<SourceItemId, FnId>>,
     defs: Mutex<Loc2IdMap<DefLoc, DefId>>,
 }
