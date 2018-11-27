@@ -23,8 +23,6 @@ use rustc_metadata::cstore::CStore;
 use rustc_driver::{Compilation, CompilerCalls, RustcDefaultCalls};
 use rustc_driver::driver::{CompileState, CompileController};
 use rustc::session::config::{self, Input, ErrorOutputType};
-use rustc::hir::{self, itemlikevisit};
-use rustc::ty::TyCtxt;
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 use syntax::ast;
 
@@ -115,43 +113,12 @@ fn after_analysis<'a, 'tcx>(
 
     let tcx = state.tcx.unwrap();
 
-    if std::env::args().any(|arg| arg == "--test") {
-        struct Visitor<'a, 'tcx: 'a> {
-            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-            state: &'a CompileState<'a, 'tcx>,
-            validate: bool,
-        };
-        impl<'a, 'tcx: 'a, 'hir> itemlikevisit::ItemLikeVisitor<'hir> for Visitor<'a, 'tcx> {
-            fn visit_item(&mut self, i: &'hir hir::Item) {
-                if let hir::ItemKind::Fn(.., body_id) = i.node {
-                    if i.attrs.iter().any(|attr| {
-                        attr.name() == "test"
-                    })
-                    {
-                        let did = self.tcx.hir().body_owner_def_id(body_id);
-                        println!(
-                            "running test: {}",
-                            self.tcx.def_path_debug_str(did),
-                        );
-                        miri::eval_main(self.tcx, did, self.validate);
-                        self.state.session.abort_if_errors();
-                    }
-                }
-            }
-            fn visit_trait_item(&mut self, _trait_item: &'hir hir::TraitItem) {}
-            fn visit_impl_item(&mut self, _impl_item: &'hir hir::ImplItem) {}
-        }
-        state.hir_crate.unwrap().visit_all_item_likes(
-            &mut Visitor { tcx, state, validate }
-        );
-    } else if let Some((entry_node_id, _, _)) = *state.session.entry_fn.borrow() {
-        let entry_def_id = tcx.hir().local_def_id(entry_node_id);
-        miri::eval_main(tcx, entry_def_id, validate);
+    let (entry_node_id, _, _) = state.session.entry_fn.borrow().expect("no main function found!");
+    let entry_def_id = tcx.hir().local_def_id(entry_node_id);
 
-        state.session.abort_if_errors();
-    } else {
-        println!("no main function found, assuming auxiliary build");
-    }
+    miri::eval_main(tcx, entry_def_id, validate);
+
+    state.session.abort_if_errors();
 }
 
 fn init_early_loggers() {

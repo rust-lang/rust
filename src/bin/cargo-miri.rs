@@ -279,9 +279,8 @@ fn main() {
                 (MiriCommand::Test, "lib") => {
                     // For libraries we call `cargo rustc -- --test <rustc args>`
                     // Notice now that `--test` is a rustc arg rather than a cargo arg. This tells
-                    // rustc to build a test harness which calls all #[test] functions. We don't
-                    // use the harness since we execute each #[test] function's MIR ourselves before
-                    // compilation even completes, but this option is necessary to build the library.
+                    // rustc to build a test harness which calls all #[test] functions.
+                    // We then execute that harness just like any other binary.
                     if let Err(code) = process(
                         vec!["--".to_string(), "--test".to_string()].into_iter().chain(
                             args,
