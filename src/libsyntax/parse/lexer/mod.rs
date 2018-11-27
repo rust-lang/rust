@@ -60,11 +60,11 @@ pub struct StringReader<'a> {
     // cache a direct reference to the source text, so that we don't have to
     // retrieve it via `self.source_file.src.as_ref().unwrap()` all the time.
     src: Lrc<String>,
-    /// Stack of open delimiters and their spans. Used for error message.
     token: token::Token,
     span: Span,
     /// The raw source span which *does not* take `override_span` into account
     span_src_raw: Span,
+    /// Stack of open delimiters and their spans. Used for error message.
     open_braces: Vec<(token::DelimToken, Span)>,
     /// The type and spans for all braces
     ///
@@ -506,8 +506,7 @@ impl<'a> StringReader<'a> {
         }
     }
 
-    /// Advance the StringReader by one character. If a newline is
-    /// discovered, add it to the SourceFile's list of line start offsets.
+    /// Advance the StringReader by one character.
     crate fn bump(&mut self) {
         let next_src_index = self.src_index(self.next_pos);
         if next_src_index < self.end_src_index {
