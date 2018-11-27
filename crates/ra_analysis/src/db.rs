@@ -7,7 +7,7 @@ use salsa::{self, Database};
 
 use crate::{
     db,
-    descriptors,
+    hir,
     symbol_index::SymbolIndex,
     syntax_ptr::SyntaxPtr,
     loc2id::{IdMaps, IdDatabase},
@@ -122,15 +122,15 @@ salsa::database_storage! {
             fn file_symbols() for FileSymbolsQuery;
             fn resolve_syntax_ptr() for ResolveSyntaxPtrQuery;
         }
-        impl descriptors::DescriptorDatabase {
-            fn module_tree() for descriptors::ModuleTreeQuery;
-            fn fn_scopes() for descriptors::FnScopesQuery;
-            fn _file_items() for descriptors::FileItemsQuery;
-            fn _file_item() for descriptors::FileItemQuery;
-            fn _input_module_items() for descriptors::InputModuleItemsQuery;
-            fn _item_map() for descriptors::ItemMapQuery;
-            fn _fn_syntax() for descriptors::FnSyntaxQuery;
-            fn _submodules() for descriptors::SubmodulesQuery;
+        impl hir::DescriptorDatabase {
+            fn module_tree() for hir::ModuleTreeQuery;
+            fn fn_scopes() for hir::FnScopesQuery;
+            fn _file_items() for hir::FileItemsQuery;
+            fn _file_item() for hir::FileItemQuery;
+            fn _input_module_items() for hir::InputModuleItemsQuery;
+            fn _item_map() for hir::ItemMapQuery;
+            fn _fn_syntax() for hir::FnSyntaxQuery;
+            fn _submodules() for hir::SubmodulesQuery;
         }
     }
 }

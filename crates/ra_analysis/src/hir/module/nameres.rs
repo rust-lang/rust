@@ -31,7 +31,7 @@ use ra_syntax::{
 use crate::{
     Cancelable, FileId,
     loc2id::{DefId, DefLoc},
-    descriptors::{
+    hir::{
         Path, PathKind,
         DescriptorDatabase,
         module::{ModuleId, ModuleTree, ModuleSourceNode},
@@ -447,7 +447,7 @@ mod tests {
     use crate::{
         AnalysisChange,
         mock_analysis::{MockAnalysis, analysis_and_position},
-        descriptors::{DescriptorDatabase, module::ModuleDescriptor},
+        hir::{DescriptorDatabase, module::ModuleDescriptor},
         input::FilesDatabase,
 };
     use super::*;

@@ -11,7 +11,7 @@ use rustc_hash::{FxHashMap};
 
 use crate::{
     db::{self, SyntaxDatabase},
-    descriptors::{
+    hir::{
         module::{ModuleDescriptor}
     },
     Cancelable, FilePosition

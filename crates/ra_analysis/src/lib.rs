@@ -19,14 +19,14 @@ macro_rules! ctry {
 }
 
 mod arena;
+mod syntax_ptr;
+mod input;
 mod db;
 mod loc2id;
-mod input;
 mod imp;
 mod completion;
-mod descriptors;
+mod hir;
 mod symbol_index;
-mod syntax_ptr;
 pub mod mock_analysis;
 
 use std::{fmt, sync::Arc};
@@ -42,7 +42,7 @@ use crate::{
 
 pub use crate::{
     completion::CompletionItem,
-    descriptors::function::FnDescriptor,
+    hir::function::FnDescriptor,
     input::{CrateGraph, CrateId, FileId, FileResolver},
 };
 pub use ra_editor::{

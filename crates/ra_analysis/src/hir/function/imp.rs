@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ra_syntax::ast::{AstNode, FnDef, FnDefNode};
 
-use crate::descriptors::{
+use crate::hir::{
     function::{FnId, FnScopes},
     DescriptorDatabase,
 };

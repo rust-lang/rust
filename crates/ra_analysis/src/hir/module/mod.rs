@@ -14,7 +14,7 @@ use relative_path::RelativePathBuf;
 
 use crate::{
     db::SyntaxDatabase, syntax_ptr::SyntaxPtr, FileId, FilePosition, Cancelable,
-    descriptors::{Path, PathKind, DescriptorDatabase},
+    hir::{Path, PathKind, DescriptorDatabase},
     input::SourceRootId,
     arena::{Arena, Id},
     loc2id::{DefLoc, DefId},

@@ -1,3 +1,10 @@
+//! HIR (previsouly known as descriptors) provides a high-level OO acess to Rust
+//! code.
+//!
+//! The principal difference between HIR and syntax trees is that HIR is bound
+//! to a particular crate instance. That is, it has cfg flags and features
+//! applied. So, there relation between syntax and HIR is many-to-one.
+
 pub(crate) mod function;
 pub(crate) mod module;
 mod path;
@@ -12,8 +19,8 @@ use ra_syntax::{
 use crate::{
     FileId,
     db::SyntaxDatabase,
-    descriptors::function::{resolve_local_name, FnId, FnScopes},
-    descriptors::module::{
+    hir::function::{resolve_local_name, FnId, FnScopes},
+    hir::module::{
         ModuleId, ModuleTree, ModuleSource, ModuleDescriptor,
         nameres::{ItemMap, InputModuleItems, FileItems}
     },

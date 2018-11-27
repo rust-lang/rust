@@ -10,7 +10,7 @@ use ra_syntax::{
 use crate::{
     db::RootDatabase,
     completion::CompletionItem,
-    descriptors::{
+    hir::{
         module::{ModuleDescriptor},
         function::FnScopes,
         Def,

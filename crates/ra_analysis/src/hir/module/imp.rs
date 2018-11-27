@@ -9,7 +9,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     db,
-    descriptors::DescriptorDatabase,
+    hir::DescriptorDatabase,
     input::{SourceRoot, SourceRootId},
     Cancelable, FileId, FileResolverImp,
 };
