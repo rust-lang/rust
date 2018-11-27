@@ -9,7 +9,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     db,
-    hir::DescriptorDatabase,
+    hir::HirDatabase,
     input::{SourceRoot, SourceRootId},
     Cancelable, FileId, FileResolverImp,
 };
@@ -35,7 +35,7 @@ impl Submodule {
 }
 
 pub(crate) fn submodules(
-    db: &impl DescriptorDatabase,
+    db: &impl HirDatabase,
     source: ModuleSource,
 ) -> Cancelable<Arc<Vec<Submodule>>> {
     db::check_canceled(db)?;
@@ -82,7 +82,7 @@ pub(crate) fn modules<'a>(
 }
 
 pub(crate) fn module_tree(
-    db: &impl DescriptorDatabase,
+    db: &impl HirDatabase,
     source_root: SourceRootId,
 ) -> Cancelable<Arc<ModuleTree>> {
     db::check_canceled(db)?;
@@ -91,7 +91,7 @@ pub(crate) fn module_tree(
 }
 
 fn create_module_tree<'a>(
-    db: &impl DescriptorDatabase,
+    db: &impl HirDatabase,
     source_root: SourceRootId,
 ) -> Cancelable<ModuleTree> {
     let mut tree = ModuleTree::default();
@@ -121,7 +121,7 @@ fn create_module_tree<'a>(
 }
 
 fn build_subtree(
-    db: &impl DescriptorDatabase,
+    db: &impl HirDatabase,
     source_root: &SourceRoot,
     tree: &mut ModuleTree,
     visited: &mut FxHashSet<ModuleSource>,

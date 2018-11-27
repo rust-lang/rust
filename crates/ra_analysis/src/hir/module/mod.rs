@@ -14,7 +14,7 @@ use relative_path::RelativePathBuf;
 
 use crate::{
     db::SyntaxDatabase, syntax_ptr::SyntaxPtr, FileId, FilePosition, Cancelable,
-    hir::{Path, PathKind, DescriptorDatabase},
+    hir::{Path, PathKind, HirDatabase},
     input::SourceRootId,
     arena::{Arena, Id},
     loc2id::{DefLoc, DefId},
@@ -36,7 +36,7 @@ impl ModuleDescriptor {
     /// lossy transformation: in general, a single source might correspond to
     /// several modules.
     pub fn guess_from_file_id(
-        db: &impl DescriptorDatabase,
+        db: &impl HirDatabase,
         file_id: FileId,
     ) -> Cancelable<Option<ModuleDescriptor>> {
         ModuleDescriptor::guess_from_source(db, file_id, ModuleSource::SourceFile(file_id))
@@ -46,7 +46,7 @@ impl ModuleDescriptor {
     /// is inherently lossy transformation: in general, a single source might
     /// correspond to several modules.
     pub fn guess_from_position(
-        db: &impl DescriptorDatabase,
+        db: &impl HirDatabase,
         position: FilePosition,
     ) -> Cancelable<Option<ModuleDescriptor>> {
         let file = db.file_syntax(position.file_id);
@@ -59,7 +59,7 @@ impl ModuleDescriptor {
     }
 
     fn guess_from_source(
-        db: &impl DescriptorDatabase,
+        db: &impl HirDatabase,
         file_id: FileId,
         module_source: ModuleSource,
     ) -> Cancelable<Option<ModuleDescriptor>> {
@@ -78,7 +78,7 @@ impl ModuleDescriptor {
     }
 
     pub(super) fn new(
-        db: &impl DescriptorDatabase,
+        db: &impl HirDatabase,
         source_root_id: SourceRootId,
         module_id: ModuleId,
     ) -> Cancelable<ModuleDescriptor> {
@@ -93,10 +93,7 @@ impl ModuleDescriptor {
 
     /// Returns `mod foo;` or `mod foo {}` node whihc declared this module.
     /// Returns `None` for the root module
-    pub fn parent_link_source(
-        &self,
-        db: &impl DescriptorDatabase,
-    ) -> Option<(FileId, ast::ModuleNode)> {
+    pub fn parent_link_source(&self, db: &impl HirDatabase) -> Option<(FileId, ast::ModuleNode)> {
         let link = self.module_id.parent_link(&self.tree)?;
         let file_id = link.owner(&self.tree).source(&self.tree).file_id();
         let src = link.bind_source(&self.tree, db);
@@ -132,7 +129,7 @@ impl ModuleDescriptor {
         Some(link.name(&self.tree))
     }
 
-    pub fn def_id(&self, db: &impl DescriptorDatabase) -> DefId {
+    pub fn def_id(&self, db: &impl HirDatabase) -> DefId {
         let def_loc = DefLoc::Module {
             id: self.module_id,
             source_root: self.source_root_id,
@@ -150,7 +147,7 @@ impl ModuleDescriptor {
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub(crate) fn scope(&self, db: &impl DescriptorDatabase) -> Cancelable<ModuleScope> {
+    pub(crate) fn scope(&self, db: &impl HirDatabase) -> Cancelable<ModuleScope> {
         let item_map = db._item_map(self.source_root_id)?;
         let res = item_map.per_module[&self.module_id].clone();
         Ok(res)
@@ -158,7 +155,7 @@ impl ModuleDescriptor {
 
     pub(crate) fn resolve_path(
         &self,
-        db: &impl DescriptorDatabase,
+        db: &impl HirDatabase,
         path: Path,
     ) -> Cancelable<Option<DefId>> {
         let mut curr = match path.kind {
@@ -180,7 +177,7 @@ impl ModuleDescriptor {
         Ok(Some(curr))
     }
 
-    pub fn problems(&self, db: &impl DescriptorDatabase) -> Vec<(SyntaxNode, Problem)> {
+    pub fn problems(&self, db: &impl HirDatabase) -> Vec<(SyntaxNode, Problem)> {
         self.module_id.problems(&self.tree, db)
     }
 }

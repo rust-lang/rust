@@ -122,7 +122,7 @@ salsa::database_storage! {
             fn file_symbols() for FileSymbolsQuery;
             fn resolve_syntax_ptr() for ResolveSyntaxPtrQuery;
         }
-        impl hir::DescriptorDatabase {
+        impl hir::HirDatabase {
             fn module_tree() for hir::ModuleTreeQuery;
             fn fn_scopes() for hir::FnScopesQuery;
             fn _file_items() for hir::FileItemsQuery;

@@ -34,7 +34,7 @@ pub(crate) use self::path::{Path, PathKind};
 pub(crate) use self::module::nameres::FileItemId;
 
 salsa::query_group! {
-    pub(crate) trait DescriptorDatabase: SyntaxDatabase + IdDatabase {
+pub(crate) trait HirDatabase: SyntaxDatabase + IdDatabase {
         fn fn_scopes(fn_id: FnId) -> Arc<FnScopes> {
             type FnScopesQuery;
             use fn function::imp::fn_scopes;
@@ -83,7 +83,7 @@ pub(crate) enum Def {
 }
 
 impl DefId {
-    pub(crate) fn resolve(self, db: &impl DescriptorDatabase) -> Cancelable<Def> {
+    pub(crate) fn resolve(self, db: &impl HirDatabase) -> Cancelable<Def> {
         let loc = db.id_maps().def_loc(self);
         let res = match loc {
             DefLoc::Module { id, source_root } => {

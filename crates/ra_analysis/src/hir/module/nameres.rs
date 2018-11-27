@@ -33,7 +33,7 @@ use crate::{
     loc2id::{DefId, DefLoc},
     hir::{
         Path, PathKind,
-        DescriptorDatabase,
+        HirDatabase,
         module::{ModuleId, ModuleTree, ModuleSourceNode},
     },
     input::SourceRootId,
@@ -71,7 +71,7 @@ impl Index<FileItemId> for FileItems {
     }
 }
 
-pub(crate) fn file_items(db: &impl DescriptorDatabase, file_id: FileId) -> Arc<FileItems> {
+pub(crate) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<FileItems> {
     let source_file = db.file_syntax(file_id);
     let source_file = source_file.borrowed();
     let mut res = FileItems::default();
@@ -87,7 +87,7 @@ pub(crate) fn file_items(db: &impl DescriptorDatabase, file_id: FileId) -> Arc<F
 }
 
 pub(crate) fn file_item(
-    db: &impl DescriptorDatabase,
+    db: &impl HirDatabase,
     file_id: FileId,
     file_item_id: FileItemId,
 ) -> SyntaxNode {
@@ -154,7 +154,7 @@ pub(crate) struct NamedImport {
 }
 
 impl NamedImport {
-    pub(crate) fn range(&self, db: &impl DescriptorDatabase, file_id: FileId) -> TextRange {
+    pub(crate) fn range(&self, db: &impl HirDatabase, file_id: FileId) -> TextRange {
         let syntax = db._file_item(file_id, self.file_item_id);
         let offset = syntax.borrowed().range().start();
         self.relative_range + offset
@@ -168,7 +168,7 @@ enum ImportKind {
 }
 
 pub(crate) fn input_module_items(
-    db: &impl DescriptorDatabase,
+    db: &impl HirDatabase,
     source_root: SourceRootId,
     module_id: ModuleId,
 ) -> Cancelable<Arc<InputModuleItems>> {
@@ -193,7 +193,7 @@ pub(crate) fn input_module_items(
 }
 
 pub(crate) fn item_map(
-    db: &impl DescriptorDatabase,
+    db: &impl HirDatabase,
     source_root: SourceRootId,
 ) -> Cancelable<Arc<ItemMap>> {
     let start = Instant::now();
@@ -316,7 +316,7 @@ struct Resolver<'a, DB> {
 
 impl<'a, DB> Resolver<'a, DB>
 where
-    DB: DescriptorDatabase,
+    DB: HirDatabase,
 {
     fn resolve(&mut self) -> Cancelable<()> {
         for (&module_id, items) in self.input.iter() {
@@ -447,7 +447,7 @@ mod tests {
     use crate::{
         AnalysisChange,
         mock_analysis::{MockAnalysis, analysis_and_position},
-        hir::{DescriptorDatabase, module::ModuleDescriptor},
+        hir::{HirDatabase, module::ModuleDescriptor},
         input::FilesDatabase,
 };
     use super::*;
