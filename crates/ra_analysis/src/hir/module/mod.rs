@@ -13,8 +13,8 @@ use ra_syntax::{
 use relative_path::RelativePathBuf;
 
 use crate::{
-    db::SyntaxDatabase, syntax_ptr::SyntaxPtr, FileId, FilePosition, Cancelable,
-    hir::{Path, PathKind, HirDatabase},
+    FileId, FilePosition, Cancelable,
+    hir::{Path, PathKind, HirDatabase, SourceItemId},
     input::SourceRootId,
     arena::{Arena, Id},
     loc2id::{DefLoc, DefId},
@@ -52,7 +52,7 @@ impl Module {
         let file = db.file_syntax(position.file_id);
         let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset)
         {
-            Some(m) if !m.has_semi() => ModuleSource::new_inline(position.file_id, m),
+            Some(m) if !m.has_semi() => ModuleSource::new_inline(db, position.file_id, m),
             _ => ModuleSource::SourceFile(position.file_id),
         };
         Module::guess_from_source(db, position.file_id, module_source)
@@ -218,7 +218,7 @@ impl ModuleTree {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub(crate) enum ModuleSource {
     SourceFile(FileId),
-    Module(SyntaxPtr),
+    Module(SourceItemId),
 }
 
 /// An owned syntax node for a module. Unlike `ModuleSource`,
@@ -273,7 +273,7 @@ impl ModuleId {
             Some((link.name.clone(), module))
         })
     }
-    fn problems(self, tree: &ModuleTree, db: &impl SyntaxDatabase) -> Vec<(SyntaxNode, Problem)> {
+    fn problems(self, tree: &ModuleTree, db: &impl HirDatabase) -> Vec<(SyntaxNode, Problem)> {
         tree.mods[self]
             .children
             .iter()
@@ -294,7 +294,7 @@ impl LinkId {
     fn name(self, tree: &ModuleTree) -> SmolStr {
         tree.links[self].name.clone()
     }
-    fn bind_source<'a>(self, tree: &ModuleTree, db: &impl SyntaxDatabase) -> ast::ModuleNode {
+    fn bind_source<'a>(self, tree: &ModuleTree, db: &impl HirDatabase) -> ast::ModuleNode {
         let owner = self.owner(tree);
         match owner.source(tree).resolve(db) {
             ModuleSourceNode::SourceFile(root) => {
@@ -317,10 +317,16 @@ pub(crate) struct ModuleData {
 }
 
 impl ModuleSource {
-    pub(crate) fn new_inline(file_id: FileId, module: ast::Module) -> ModuleSource {
+    pub(crate) fn new_inline(
+        db: &impl HirDatabase,
+        file_id: FileId,
+        module: ast::Module,
+    ) -> ModuleSource {
         assert!(!module.has_semi());
-        let ptr = SyntaxPtr::new(file_id, module.syntax());
-        ModuleSource::Module(ptr)
+        let items = db.file_items(file_id);
+        let item_id = items.id_of(module.syntax());
+        let id = SourceItemId { file_id, item_id };
+        ModuleSource::Module(id)
     }
 
     pub(crate) fn as_file(self) -> Option<FileId> {
@@ -333,18 +339,18 @@ impl ModuleSource {
     pub(crate) fn file_id(self) -> FileId {
         match self {
             ModuleSource::SourceFile(f) => f,
-            ModuleSource::Module(ptr) => ptr.file_id(),
+            ModuleSource::Module(source_item_id) => source_item_id.file_id,
         }
     }
 
-    pub(crate) fn resolve(self, db: &impl SyntaxDatabase) -> ModuleSourceNode {
+    pub(crate) fn resolve(self, db: &impl HirDatabase) -> ModuleSourceNode {
         match self {
             ModuleSource::SourceFile(file_id) => {
                 let syntax = db.file_syntax(file_id);
                 ModuleSourceNode::SourceFile(syntax.ast().owned())
             }
-            ModuleSource::Module(ptr) => {
-                let syntax = db.resolve_syntax_ptr(ptr);
+            ModuleSource::Module(item_id) => {
+                let syntax = db.file_item(item_id);
                 let syntax = syntax.borrowed();
                 let module = ast::Module::cast(syntax).unwrap();
                 ModuleSourceNode::Module(module.owned())

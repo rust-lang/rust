@@ -22,10 +22,6 @@ impl SyntaxPtr {
         let local = LocalSyntaxPtr::new(node);
         SyntaxPtr { file_id, local }
     }
-
-    pub(crate) fn file_id(self) -> FileId {
-        self.file_id
-    }
 }
 
 /// A pionter to a syntax node inside a file.
