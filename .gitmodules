@@ -56,9 +56,9 @@
 [submodule "src/tools/lldb"]
 	path = src/tools/lldb
 	url = https://github.com/rust-lang-nursery/lldb.git
-	branch = rust-release-80-v1
+	branch = rust-release-80-v2
 [submodule "src/tools/clang"]
 	path = src/tools/clang
 	url = https://github.com/rust-lang-nursery/clang.git
-	branch = rust-release-80-v1
+	branch = rust-release-80-v2
 
