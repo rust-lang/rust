@@ -28,6 +28,7 @@
         "singleQuote": true
     },
     "dependencies": {
+        "event-stream": "^3.3.4",
         "vscode-languageclient": "^5.1.1"
     },
     "devDependencies": {
