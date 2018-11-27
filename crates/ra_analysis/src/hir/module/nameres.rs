@@ -30,7 +30,7 @@ use crate::{
     Cancelable, FileId,
     loc2id::{DefId, DefLoc},
     hir::{
-        FileItemId, FileItems,
+        SourceFileItemId, SourceFileItems,
         Path, PathKind,
         HirDatabase,
         module::{ModuleId, ModuleTree},
@@ -73,7 +73,7 @@ pub(crate) struct InputModuleItems {
 
 #[derive(Debug, PartialEq, Eq)]
 struct ModuleItem {
-    id: FileItemId,
+    id: SourceFileItemId,
     name: SmolStr,
     kind: SyntaxKind,
     vis: Vis,
@@ -93,7 +93,7 @@ struct Import {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct NamedImport {
-    file_item_id: FileItemId,
+    file_item_id: SourceFileItemId,
     relative_range: TextRange,
 }
 
@@ -135,7 +135,7 @@ pub(crate) struct Resolution {
 
 impl InputModuleItems {
     pub(in crate::hir) fn new<'a>(
-        file_items: &FileItems,
+        file_items: &SourceFileItems,
         items: impl Iterator<Item = ast::ModuleItem<'a>>,
     ) -> InputModuleItems {
         let mut res = InputModuleItems::default();
@@ -145,7 +145,7 @@ impl InputModuleItems {
         res
     }
 
-    fn add_item(&mut self, file_items: &FileItems, item: ast::ModuleItem) -> Option<()> {
+    fn add_item(&mut self, file_items: &SourceFileItems, item: ast::ModuleItem) -> Option<()> {
         match item {
             ast::ModuleItem::StructDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
             ast::ModuleItem::EnumDef(it) => self.items.push(ModuleItem::new(file_items, it)?),
@@ -166,7 +166,7 @@ impl InputModuleItems {
         Some(())
     }
 
-    fn add_use_item(&mut self, file_items: &FileItems, item: ast::UseItem) {
+    fn add_use_item(&mut self, file_items: &SourceFileItems, item: ast::UseItem) {
         let file_item_id = file_items.id_of(item.syntax());
         let start_offset = item.syntax().range().start();
         Path::expand_use_item(item, |path, range| {
@@ -183,7 +183,7 @@ impl InputModuleItems {
 }
 
 impl ModuleItem {
-    fn new<'a>(file_items: &FileItems, item: impl ast::NameOwner<'a>) -> Option<ModuleItem> {
+    fn new<'a>(file_items: &SourceFileItems, item: impl ast::NameOwner<'a>) -> Option<ModuleItem> {
         let name = item.name()?.text();
         let kind = item.syntax().kind();
         let vis = Vis::Other;

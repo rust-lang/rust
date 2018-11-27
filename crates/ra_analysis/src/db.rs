@@ -127,7 +127,7 @@ salsa::database_storage! {
         impl hir::db::HirDatabase {
             fn module_tree() for hir::db::ModuleTreeQuery;
             fn fn_scopes() for hir::db::FnScopesQuery;
-            fn _file_items() for hir::db::FileItemsQuery;
+            fn _file_items() for hir::db::SourceFileItemsQuery;
             fn _file_item() for hir::db::FileItemQuery;
             fn _input_module_items() for hir::db::InputModuleItemsQuery;
             fn _item_map() for hir::db::ItemMapQuery;

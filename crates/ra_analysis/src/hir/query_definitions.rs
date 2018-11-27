@@ -12,7 +12,7 @@ use ra_syntax::{
 use crate::{
     FileId, Cancelable,
     hir::{
-        FileItems, FileItemId,
+        SourceFileItems, SourceFileItemId,
         db::HirDatabase,
         function::{FnId, FnScopes},
         module::{
@@ -37,10 +37,10 @@ pub(super) fn fn_scopes(db: &impl HirDatabase, fn_id: FnId) -> Arc<FnScopes> {
     Arc::new(res)
 }
 
-pub(super) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<FileItems> {
+pub(super) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<SourceFileItems> {
     let source_file = db.file_syntax(file_id);
     let source_file = source_file.borrowed();
-    let mut res = FileItems::default();
+    let mut res = SourceFileItems::default();
     source_file
         .syntax()
         .descendants()
@@ -55,7 +55,7 @@ pub(super) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<FileItem
 pub(super) fn file_item(
     db: &impl HirDatabase,
     file_id: FileId,
-    file_item_id: FileItemId,
+    file_item_id: SourceFileItemId,
 ) -> SyntaxNode {
     db.file_items(file_id)[file_item_id].clone()
 }

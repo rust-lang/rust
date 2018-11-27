@@ -8,7 +8,7 @@ use ra_syntax::{
 use crate::{
     FileId,
     db::SyntaxDatabase,
-    hir::{FileItems, FileItemId},
+    hir::{SourceFileItems, SourceFileItemId},
     hir::query_definitions,
     hir::function::{FnId, FnScopes},
     hir::module::{
@@ -33,13 +33,13 @@ pub(crate) trait HirDatabase: SyntaxDatabase {
         use fn query_definitions::fn_syntax;
     }
 
-    fn file_items(file_id: FileId) -> Arc<FileItems> {
-        type FileItemsQuery;
+    fn file_items(file_id: FileId) -> Arc<SourceFileItems> {
+        type SourceFileItemsQuery;
         storage dependencies;
         use fn query_definitions::file_items;
     }
 
-    fn file_item(file_id: FileId, file_item_id: FileItemId) -> SyntaxNode {
+    fn file_item(file_id: FileId, file_item_id: SourceFileItemId) -> SyntaxNode {
         type FileItemQuery;
         storage dependencies;
         use fn query_definitions::file_item;

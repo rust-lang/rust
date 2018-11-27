@@ -51,19 +51,19 @@ impl DefId {
 
 /// Identifier of item within a specific file. This is stable over reparses, so
 /// it's OK to use it as a salsa key/value.
-pub(crate) type FileItemId = Id<SyntaxNode>;
+pub(crate) type SourceFileItemId = Id<SyntaxNode>;
 
-/// Maps item's `SyntaxNode`s to `FileItemId` and back.
+/// Maps item's `SyntaxNode`s to `SourceFileItemId` and back.
 #[derive(Debug, PartialEq, Eq, Default)]
-pub(crate) struct FileItems {
+pub(crate) struct SourceFileItems {
     arena: Arena<SyntaxNode>,
 }
 
-impl FileItems {
-    fn alloc(&mut self, item: SyntaxNode) -> FileItemId {
+impl SourceFileItems {
+    fn alloc(&mut self, item: SyntaxNode) -> SourceFileItemId {
         self.arena.alloc(item)
     }
-    fn id_of(&self, item: SyntaxNodeRef) -> FileItemId {
+    fn id_of(&self, item: SyntaxNodeRef) -> SourceFileItemId {
         let (id, _item) = self
             .arena
             .iter()
@@ -73,9 +73,9 @@ impl FileItems {
     }
 }
 
-impl Index<FileItemId> for FileItems {
+impl Index<SourceFileItemId> for SourceFileItems {
     type Output = SyntaxNode;
-    fn index(&self, idx: FileItemId) -> &SyntaxNode {
+    fn index(&self, idx: SourceFileItemId) -> &SyntaxNode {
         &self.arena[idx]
     }
 }
