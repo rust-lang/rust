@@ -17,7 +17,9 @@ All contributors are expected to follow the [Rust Code of Conduct](http://www.ru
   * [Author lint](#author-lint)
   * [Documentation](#documentation)
   * [Running test suite](#running-test-suite)
+  * [Running rustfmt](#running-rustfmt)
   * [Testing manually](#testing-manually)
+  * [Linting Clippy with your local changes](#linting-clippy-with-your-local-changes)
   * [How Clippy works](#how-clippy-works)
   * [Fixing nightly build failures](#fixing-build-failures-caused-by-rust)
 * [Contributions](#contributions)
@@ -145,6 +147,18 @@ Therefore you should use `tests/ui/update-all-references.sh` (after running
 `cargo test`) and check whether the output looks as you expect with `git diff`. Commit all
 `*.stderr` files, too.
 
+### Running rustfmt
+
+[Rustfmt](https://github.com/rust-lang/rustfmt) is a tool for formatting Rust code according
+to style guidelines. The code has to be formatted by `rustfmt` before a PR will be merged.
+
+It can be installed via `rustup`:
+```bash
+rustup component add rustfmt-preview
+```
+
+Use `cargo fmt --all` to format the whole codebase.
+
 ### Testing manually
 
 Manually testing against an example file is useful if you have added some
@@ -152,7 +166,7 @@ Manually testing against an example file is useful if you have added some
 local modifications, run `env CLIPPY_TESTS=true cargo run --bin clippy-driver -- -L ./target/debug input.rs`
 from the working copy root.
 
-### Linting Clippy with your changes locally
+### Linting Clippy with your local changes
 
 Clippy CI only passes if all lints defined in the version of the Clippy being
 tested pass (that is, don’t report any suggestions). You can avoid prolonging
@@ -245,7 +259,8 @@ Contributions to Clippy should be made in the form of GitHub pull requests. Each
 be reviewed by a core contributor (someone with permission to land patches) and either landed in the
 main tree or given feedback for changes that would be required.
 
-All code in this repository is under the [Mozilla Public License, 2.0](https://www.mozilla.org/MPL/2.0/)
+All code in this repository is under the [Apache-2.0](http://www.apache.org/licenses/LICENSE-2.0>)
+or the [MIT](http://opensource.org/licenses/MIT) license.
 
 <!-- adapted from https://github.com/servo/servo/blob/master/CONTRIBUTING.md -->
 
