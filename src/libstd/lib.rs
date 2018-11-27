@@ -310,6 +310,7 @@
 #![feature(panic_info_message)]
 #![feature(non_exhaustive)]
 #![feature(alloc_layout_extra)]
+#![feature(maybe_uninit)]
 
 #![default_lib_allocator]
 
