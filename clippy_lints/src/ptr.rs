@@ -54,10 +54,9 @@ use std::borrow::Cow;
 /// fn foo(&Vec<u32>) { .. }
 /// ```
 declare_clippy_lint! {
-pub PTR_ARG,
-style,
-"fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` \
- instead, respectively"
+    pub PTR_ARG,
+    style,
+    "fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` instead, respectively"
 }
 
 /// **What it does:** This lint checks for equality comparisons with `ptr::null`

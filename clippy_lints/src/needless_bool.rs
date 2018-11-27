@@ -40,10 +40,9 @@ use crate::utils::{in_macro, snippet_with_applicability, span_lint, span_lint_an
 /// }
 /// ```
 declare_clippy_lint! {
-pub NEEDLESS_BOOL,
-complexity,
-"if-statements with plain booleans in the then- and else-clause, e.g. \
- `if p { true } else { false }`"
+    pub NEEDLESS_BOOL,
+    complexity,
+    "if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`"
 }
 
 /// **What it does:** Checks for expressions of the form `x == true` (or vice

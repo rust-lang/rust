@@ -45,10 +45,9 @@ declare_clippy_lint! {
 /// let x = "Hä?"
 /// ```
 declare_clippy_lint! {
-pub NON_ASCII_LITERAL,
-pedantic,
-"using any literal non-ASCII chars in a string literal instead of \
- using the `\\u` escape"
+    pub NON_ASCII_LITERAL,
+    pedantic,
+    "using any literal non-ASCII chars in a string literal instead of using the `\\u` escape"
 }
 
 /// **What it does:** Checks for string literals that contain Unicode in a form
@@ -63,10 +62,9 @@ pedantic,
 /// **Example:** You may not see it, but “à” and “à” aren't the same string. The
 /// former when escaped is actually `"a\u{300}"` while the latter is `"\u{e0}"`.
 declare_clippy_lint! {
-pub UNICODE_NOT_NFC,
-pedantic,
-"using a unicode literal not in NFC normal form (see \
- [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)"
+    pub UNICODE_NOT_NFC,
+    pedantic,
+    "using a unicode literal not in NFC normal form (see [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)"
 }
 
 #[derive(Copy, Clone)]

@@ -81,7 +81,8 @@ declare_clippy_lint! {
 /// **Example:**
 /// ```rust
 /// let _: &T = std::mem::transmute(p); // where p: *const T
-///                                     // can be written:
+///
+/// // can be written:
 /// let _: &T = &*p;
 /// ```
 declare_clippy_lint! {
@@ -108,7 +109,8 @@ declare_clippy_lint! {
 /// **Example:**
 /// ```rust
 /// let _: char = std::mem::transmute(x); // where x: u32
-///                                       // should be:
+///
+/// // should be:
 /// let _ = std::char::from_u32(x).unwrap();
 /// ```
 declare_clippy_lint! {
@@ -135,7 +137,8 @@ declare_clippy_lint! {
 /// **Example:**
 /// ```rust
 /// let _: &str = std::mem::transmute(b); // where b: &[u8]
-///                                       // should be:
+///
+/// // should be:
 /// let _ = std::str::from_utf8(b).unwrap();
 /// ```
 declare_clippy_lint! {
@@ -153,7 +156,8 @@ declare_clippy_lint! {
 /// **Example:**
 /// ```rust
 /// let _: bool = std::mem::transmute(x); // where x: u8
-///                                       // should be:
+///
+/// // should be:
 /// let _: bool = x != 0;
 /// ```
 declare_clippy_lint! {
@@ -171,7 +175,8 @@ declare_clippy_lint! {
 /// **Example:**
 /// ```rust
 /// let _: f32 = std::mem::transmute(x); // where x: u32
-///                                      // should be:
+///
+/// // should be:
 /// let _: f32 = f32::from_bits(x);
 /// ```
 declare_clippy_lint! {

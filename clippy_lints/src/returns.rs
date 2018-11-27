@@ -65,10 +65,9 @@ declare_clippy_lint! {
 /// }
 /// ```
 declare_clippy_lint! {
-pub LET_AND_RETURN,
-style,
-"creating a let-binding and then immediately returning it like `let x = expr; x` at \
- the end of a block"
+    pub LET_AND_RETURN,
+    style,
+    "creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block"
 }
 
 /// **What it does:** Checks for unit (`()`) expressions that can be removed.

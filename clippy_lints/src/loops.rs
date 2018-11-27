@@ -249,10 +249,9 @@ declare_clippy_lint! {
 /// vec.iter().map(|x| /* some operation returning () */).collect::<Vec<_>>();
 /// ```
 declare_clippy_lint! {
-pub UNUSED_COLLECT,
-perf,
-"`collect()`ing an iterator without using the result; this is usually better \
- written as a for loop"
+    pub UNUSED_COLLECT,
+    perf,
+    "`collect()`ing an iterator without using the result; this is usually better written as a for loop"
 }
 
 /// **What it does:** Checks for functions collecting an iterator when collect

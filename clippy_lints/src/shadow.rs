@@ -56,10 +56,9 @@ declare_clippy_lint! {
 /// let y = x + 1;
 /// ```
 declare_clippy_lint! {
-pub SHADOW_REUSE,
-restriction,
-"rebinding a name to an expression that re-uses the original value, e.g. \
- `let x = x + 1`"
+    pub SHADOW_REUSE,
+    restriction,
+    "rebinding a name to an expression that re-uses the original value, e.g. `let x = x + 1`"
 }
 
 /// **What it does:** Checks for bindings that shadow other bindings already in

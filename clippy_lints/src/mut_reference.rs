@@ -27,10 +27,9 @@ use crate::utils::span_lint;
 /// my_vec.push(&mut value)
 /// ```
 declare_clippy_lint! {
-pub UNNECESSARY_MUT_PASSED,
-style,
-"an argument passed as a mutable reference although the callee only demands an \
- immutable reference"
+    pub UNNECESSARY_MUT_PASSED,
+    style,
+    "an argument passed as a mutable reference although the callee only demands an immutable reference"
 }
 
 #[derive(Copy, Clone)]

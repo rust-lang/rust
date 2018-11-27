@@ -117,10 +117,9 @@ declare_clippy_lint! {
 /// let x = LinkedList::new();
 /// ```
 declare_clippy_lint! {
-pub LINKEDLIST,
-pedantic,
-"usage of LinkedList, usually a vector is faster, or a more specialized data \
- structure like a VecDeque"
+    pub LINKEDLIST,
+    pedantic,
+    "usage of LinkedList, usually a vector is faster, or a more specialized data structure like a VecDeque"
 }
 
 /// **What it does:** Checks for use of `&Box<T>` anywhere in the code.
@@ -668,10 +667,9 @@ declare_clippy_lint! {
 /// }
 /// ```
 declare_clippy_lint! {
-pub CAST_POSSIBLE_TRUNCATION,
-pedantic,
-"casts that may cause truncation of the value, e.g. `x as u8` where `x: u32`, \
- or `x as i32` where `x: f32`"
+    pub CAST_POSSIBLE_TRUNCATION,
+    pedantic,
+    "casts that may cause truncation of the value, e.g. `x as u8` where `x: u32`, or `x as i32` where `x: f32`"
 }
 
 /// **What it does:** Checks for casts from an unsigned type to a signed type of
@@ -692,10 +690,9 @@ pedantic,
 /// u32::MAX as i32 // will yield a value of `-1`
 /// ```
 declare_clippy_lint! {
-pub CAST_POSSIBLE_WRAP,
-pedantic,
-"casts that may cause wrapping around the value, e.g. `x as i32` where `x: u32` \
- and `x > i32::MAX`"
+    pub CAST_POSSIBLE_WRAP,
+    pedantic,
+    "casts that may cause wrapping around the value, e.g. `x as i32` where `x: u32` and `x > i32::MAX`"
 }
 
 /// **What it does:** Checks for on casts between numerical types that may

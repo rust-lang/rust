@@ -27,10 +27,9 @@ use if_chain::if_chain;
 /// writeln!(&mut io::stderr(), "foo: {:?}", bar).unwrap();
 /// ```
 declare_clippy_lint! {
-pub EXPLICIT_WRITE,
-complexity,
-"using the `write!()` family of functions instead of the `print!()` family \
- of functions, when using the latter would work"
+    pub EXPLICIT_WRITE,
+    complexity,
+    "using the `write!()` family of functions instead of the `print!()` family of functions, when using the latter would work"
 }
 
 #[derive(Copy, Clone, Debug)]

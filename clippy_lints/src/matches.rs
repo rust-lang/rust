@@ -40,10 +40,9 @@ use std::collections::Bound;
 /// }
 /// ```
 declare_clippy_lint! {
-pub SINGLE_MATCH,
-style,
-"a match statement with a single nontrivial arm (i.e. where the other arm \
- is `_ => {}`) instead of `if let`"
+    pub SINGLE_MATCH,
+    style,
+    "a match statement with a single nontrivial arm (i.e. where the other arm is `_ => {}`) instead of `if let`"
 }
 
 /// **What it does:** Checks for matches with a two arms where an `if let` will
@@ -61,10 +60,9 @@ style,
 /// }
 /// ```
 declare_clippy_lint! {
-pub SINGLE_MATCH_ELSE,
-pedantic,
-"a match statement with a two arms where the second arm's pattern is a wildcard \
- instead of `if let`"
+    pub SINGLE_MATCH_ELSE,
+    pedantic,
+    "a match statement with a two arms where the second arm's pattern is a wildcard instead of `if let`"
 }
 
 /// **What it does:** Checks for matches where all arms match a reference,

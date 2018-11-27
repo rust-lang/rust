@@ -131,10 +131,9 @@ declare_clippy_lint! {
 /// }
 /// ```
 declare_clippy_lint! {
-pub WRONG_SELF_CONVENTION,
-style,
-"defining a method named with an established prefix (like \"into_\") that takes \
- `self` with the wrong convention"
+    pub WRONG_SELF_CONVENTION,
+    style,
+    "defining a method named with an established prefix (like \"into_\") that takes `self` with the wrong convention"
 }
 
 /// **What it does:** This is the same as
@@ -155,10 +154,9 @@ style,
 /// }
 /// ```
 declare_clippy_lint! {
-pub WRONG_PUB_SELF_CONVENTION,
-restriction,
-"defining a public method named with an established prefix (like \"into_\") that takes \
- `self` with the wrong convention"
+    pub WRONG_PUB_SELF_CONVENTION,
+    restriction,
+    "defining a public method named with an established prefix (like \"into_\") that takes `self` with the wrong convention"
 }
 
 /// **What it does:** Checks for usage of `ok().expect(..)`.
@@ -173,10 +171,9 @@ restriction,
 /// x.ok().expect("why did I do this again?")
 /// ```
 declare_clippy_lint! {
-pub OK_EXPECT,
-style,
-"using `ok().expect()`, which gives worse error messages than \
- calling `expect` directly on the Result"
+    pub OK_EXPECT,
+    style,
+    "using `ok().expect()`, which gives worse error messages than calling `expect` directly on the Result"
 }
 
 /// **What it does:** Checks for usage of `_.map(_).unwrap_or(_)`.
@@ -209,10 +206,9 @@ pedantic,
 /// x.map(|a| a + 1).unwrap_or_else(some_function)
 /// ```
 declare_clippy_lint! {
-pub OPTION_MAP_UNWRAP_OR_ELSE,
-pedantic,
-"using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as \
- `map_or_else(g, f)`"
+    pub OPTION_MAP_UNWRAP_OR_ELSE,
+    pedantic,
+    "using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `map_or_else(g, f)`"
 }
 
 /// **What it does:** Checks for usage of `result.map(_).unwrap_or_else(_)`.
@@ -227,10 +223,9 @@ pedantic,
 /// x.map(|a| a + 1).unwrap_or_else(some_function)
 /// ```
 declare_clippy_lint! {
-pub RESULT_MAP_UNWRAP_OR_ELSE,
-pedantic,
-"using `Result.map(f).unwrap_or_else(g)`, which is more succinctly expressed as \
- `.ok().map_or_else(g, f)`"
+    pub RESULT_MAP_UNWRAP_OR_ELSE,
+    pedantic,
+    "using `Result.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `.ok().map_or_else(g, f)`"
 }
 
 /// **What it does:** Checks for usage of `_.map_or(None, _)`.
@@ -245,10 +240,9 @@ pedantic,
 /// opt.map_or(None, |a| a + 1)
 /// ```
 declare_clippy_lint! {
-pub OPTION_MAP_OR_NONE,
-style,
-"using `Option.map_or(None, f)`, which is more succinctly expressed as \
- `and_then(f)`"
+    pub OPTION_MAP_OR_NONE,
+    style,
+    "using `Option.map_or(None, f)`, which is more succinctly expressed as `and_then(f)`"
 }
 
 /// **What it does:** Checks for usage of `_.filter(_).next()`.
@@ -280,10 +274,9 @@ declare_clippy_lint! {
 /// iter.map(|x| x.iter()).flatten()
 /// ```
 declare_clippy_lint! {
-pub MAP_FLATTEN,
-pedantic,
-"using combinations of `flatten` and `map` which can usually be written as a \
- single method call"
+    pub MAP_FLATTEN,
+    pedantic,
+    "using combinations of `flatten` and `map` which can usually be written as a single method call"
 }
 
 /// **What it does:** Checks for usage of `_.filter(_).map(_)`,
@@ -300,10 +293,9 @@ pedantic,
 /// iter.filter(|x| x == 0).map(|x| x * 2)
 /// ```
 declare_clippy_lint! {
-pub FILTER_MAP,
-pedantic,
-"using combinations of `filter`, `map`, `filter_map` and `flat_map` which can \
- usually be written as a single method call"
+    pub FILTER_MAP,
+    pedantic,
+    "using combinations of `filter`, `map`, `filter_map` and `flat_map` which can usually be written as a single method call"
 }
 
 /// **What it does:** Checks for an iterator search (such as `find()`,
@@ -319,10 +311,9 @@ pedantic,
 /// iter.find(|x| x == 0).is_some()
 /// ```
 declare_clippy_lint! {
-pub SEARCH_IS_SOME,
-complexity,
-"using an iterator search followed by `is_some()`, which is more succinctly \
- expressed as a call to `any()`"
+    pub SEARCH_IS_SOME,
+    complexity,
+    "using an iterator search followed by `is_some()`, which is more succinctly expressed as a call to `any()`"
 }
 
 /// **What it does:** Checks for usage of `.chars().next()` on a `str` to check
@@ -485,10 +476,9 @@ declare_clippy_lint! {
 /// **Example:**
 /// `_.split("x")` could be `_.split('x')`
 declare_clippy_lint! {
-pub SINGLE_CHAR_PATTERN,
-perf,
-"using a single-character str where a char could be used, e.g. \
- `_.split(\"x\")`"
+    pub SINGLE_CHAR_PATTERN,
+    perf,
+    "using a single-character str where a char could be used, e.g. `_.split(\"x\")`"
 }
 
 /// **What it does:** Checks for getting the inner pointer of a temporary
