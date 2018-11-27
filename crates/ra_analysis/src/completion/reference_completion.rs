@@ -157,7 +157,7 @@ fn complete_path(
         return Ok(());
     }
     path.segments.pop();
-    let target_module = match module.resolve_path(path)? {
+    let target_module = match module.resolve_path(db, path)? {
         None => return Ok(()),
         Some(it) => it,
     };

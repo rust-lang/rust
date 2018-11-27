@@ -133,7 +133,7 @@ impl ModuleDescriptor {
         Ok(res)
     }
 
-    pub(crate) fn resolve_path(&self, path: Path) -> Cancelable<Option<ModuleDescriptor>> {
+    pub(crate) fn resolve_path(&self, db: &impl DescriptorDatabase, path: Path) -> Cancelable<Option<ModuleDescriptor>> {
         let res = match self.do_resolve_path(path) {
             None => return Ok(None),
             Some(it) => it,
