@@ -7,9 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
 // Tests for the various helper functions used by the needless_continue
 // lint that don't belong in utils.
 
