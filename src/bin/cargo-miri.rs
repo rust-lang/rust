@@ -145,8 +145,9 @@ fn setup(ask_user: bool) {
         }
     }
 
-    // Next, we need our own libstd. We will do this work in ~/.miri.
-    let dir = directories::UserDirs::new().unwrap().home_dir().join(".miri");
+    // Next, we need our own libstd. We will do this work in whatever is a good cache dir for this platform.
+    let dirs = directories::ProjectDirs::from("miri", "miri", "miri").unwrap();
+    let dir = dirs.cache_dir();
     if !dir.exists() {
         fs::create_dir(&dir).unwrap();
     }
