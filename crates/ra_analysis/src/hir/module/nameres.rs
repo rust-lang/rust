@@ -16,7 +16,6 @@
 //! structure itself is modified.
 use std::{
     sync::Arc,
-    time::Instant,
     ops::Index,
 };
 
@@ -25,7 +24,7 @@ use rustc_hash::FxHashMap;
 use ra_syntax::{
     SyntaxNode, SyntaxNodeRef, TextRange,
     SmolStr, SyntaxKind::{self, *},
-    ast::{self, ModuleItemOwner, AstNode}
+    ast::{self, AstNode}
 };
 
 use crate::{
@@ -34,7 +33,7 @@ use crate::{
     hir::{
         Path, PathKind,
         HirDatabase,
-        module::{ModuleId, ModuleTree, ModuleSourceNode},
+        module::{ModuleId, ModuleTree},
     },
     input::SourceRootId,
     arena::{Arena, Id}
@@ -51,7 +50,7 @@ pub(crate) struct FileItems {
 }
 
 impl FileItems {
-    fn alloc(&mut self, item: SyntaxNode) -> FileItemId {
+    pub(crate) fn alloc(&mut self, item: SyntaxNode) -> FileItemId {
         self.arena.alloc(item)
     }
     fn id_of(&self, item: SyntaxNodeRef) -> FileItemId {
@@ -69,29 +68,6 @@ impl Index<FileItemId> for FileItems {
     fn index(&self, idx: FileItemId) -> &SyntaxNode {
         &self.arena[idx]
     }
-}
-
-pub(crate) fn file_items(db: &impl HirDatabase, file_id: FileId) -> Arc<FileItems> {
-    let source_file = db.file_syntax(file_id);
-    let source_file = source_file.borrowed();
-    let mut res = FileItems::default();
-    source_file
-        .syntax()
-        .descendants()
-        .filter_map(ast::ModuleItem::cast)
-        .map(|it| it.syntax().owned())
-        .for_each(|it| {
-            res.alloc(it);
-        });
-    Arc::new(res)
-}
-
-pub(crate) fn file_item(
-    db: &impl HirDatabase,
-    file_id: FileId,
-    file_item_id: FileItemId,
-) -> SyntaxNode {
-    db.file_items(file_id)[file_item_id].clone()
 }
 
 /// Item map is the result of the name resolution. Item map contains, for each
@@ -167,58 +143,6 @@ enum ImportKind {
     Named(NamedImport),
 }
 
-pub(crate) fn input_module_items(
-    db: &impl HirDatabase,
-    source_root: SourceRootId,
-    module_id: ModuleId,
-) -> Cancelable<Arc<InputModuleItems>> {
-    let module_tree = db.module_tree(source_root)?;
-    let source = module_id.source(&module_tree);
-    let file_items = db.file_items(source.file_id());
-    let res = match source.resolve(db) {
-        ModuleSourceNode::SourceFile(it) => {
-            let items = it.borrowed().items();
-            InputModuleItems::new(&file_items, items)
-        }
-        ModuleSourceNode::Module(it) => {
-            let items = it
-                .borrowed()
-                .item_list()
-                .into_iter()
-                .flat_map(|it| it.items());
-            InputModuleItems::new(&file_items, items)
-        }
-    };
-    Ok(Arc::new(res))
-}
-
-pub(crate) fn item_map(
-    db: &impl HirDatabase,
-    source_root: SourceRootId,
-) -> Cancelable<Arc<ItemMap>> {
-    let start = Instant::now();
-    let module_tree = db.module_tree(source_root)?;
-    let input = module_tree
-        .modules()
-        .map(|id| {
-            let items = db.input_module_items(source_root, id)?;
-            Ok((id, items))
-        })
-        .collect::<Cancelable<FxHashMap<_, _>>>()?;
-    let mut resolver = Resolver {
-        db: db,
-        input: &input,
-        source_root,
-        module_tree,
-        result: ItemMap::default(),
-    };
-    resolver.resolve()?;
-    let res = resolver.result;
-    let elapsed = start.elapsed();
-    log::info!("item_map: {:?}", elapsed);
-    Ok(Arc::new(res))
-}
-
 /// Resolution is basically `DefId` atm, but it should account for stuff like
 /// multiple namespaces, ambiguity and errors.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -242,7 +166,7 @@ pub(crate) struct Resolution {
 // }
 
 impl InputModuleItems {
-    fn new<'a>(
+    pub(in crate::hir) fn new<'a>(
         file_items: &FileItems,
         items: impl Iterator<Item = ast::ModuleItem<'a>>,
     ) -> InputModuleItems {
@@ -306,19 +230,19 @@ impl ModuleItem {
     }
 }
 
-struct Resolver<'a, DB> {
-    db: &'a DB,
-    input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
-    source_root: SourceRootId,
-    module_tree: Arc<ModuleTree>,
-    result: ItemMap,
+pub(in crate::hir) struct Resolver<'a, DB> {
+    pub db: &'a DB,
+    pub input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
+    pub source_root: SourceRootId,
+    pub module_tree: Arc<ModuleTree>,
+    pub result: ItemMap,
 }
 
 impl<'a, DB> Resolver<'a, DB>
 where
     DB: HirDatabase,
 {
-    fn resolve(&mut self) -> Cancelable<()> {
+    pub(in crate::hir) fn resolve(mut self) -> Cancelable<ItemMap> {
         for (&module_id, items) in self.input.iter() {
             self.populate_module(module_id, items)
         }
@@ -327,7 +251,7 @@ where
             crate::db::check_canceled(self.db)?;
             self.resolve_imports(module_id);
         }
-        Ok(())
+        Ok(self.result)
     }
 
     fn populate_module(&mut self, module_id: ModuleId, input: &InputModuleItems) {

@@ -109,10 +109,6 @@ pub(crate) enum DefLoc {
     },
 }
 
-pub(crate) trait IdDatabase: salsa::Database {
-    fn id_maps(&self) -> &IdMaps;
-}
-
 #[derive(Debug, Default, Clone)]
 pub(crate) struct IdMaps {
     inner: Arc<IdMapsInner>,

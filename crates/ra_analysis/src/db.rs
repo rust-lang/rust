@@ -10,7 +10,7 @@ use crate::{
     hir,
     symbol_index::SymbolIndex,
     syntax_ptr::SyntaxPtr,
-    loc2id::{IdMaps, IdDatabase},
+    loc2id::{IdMaps},
     Cancelable, Canceled, FileId,
 };
 
@@ -77,7 +77,14 @@ impl salsa::ParallelDatabase for RootDatabase {
     }
 }
 
-impl IdDatabase for RootDatabase {
+pub(crate) trait BaseDatabase: salsa::Database {
+    fn id_maps(&self) -> &IdMaps;
+    fn check_canceled(&self) -> Cancelable<()> {
+        check_canceled(self)
+    }
+}
+
+impl BaseDatabase for RootDatabase {
     fn id_maps(&self) -> &IdMaps {
         &self.id_maps
     }
@@ -136,7 +143,7 @@ salsa::database_storage! {
 }
 
 salsa::query_group! {
-    pub(crate) trait SyntaxDatabase: crate::input::FilesDatabase {
+    pub(crate) trait SyntaxDatabase: crate::input::FilesDatabase + BaseDatabase {
         fn file_syntax(file_id: FileId) -> SourceFileNode {
             type FileSyntaxQuery;
         }

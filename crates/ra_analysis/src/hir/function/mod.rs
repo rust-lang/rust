@@ -1,4 +1,3 @@
-pub(super) mod imp;
 mod scope;
 
 use std::{
@@ -14,14 +13,13 @@ use ra_syntax::{
 use crate::{
     hir::HirDatabase,
     syntax_ptr::SyntaxPtr, FileId,
-    loc2id::IdDatabase,
 };
 
 pub(crate) use self::scope::{resolve_local_name, FnScopes};
 pub(crate) use crate::loc2id::FnId;
 
 impl FnId {
-    pub(crate) fn get(db: &impl IdDatabase, file_id: FileId, fn_def: ast::FnDef) -> FnId {
+    pub(crate) fn get(db: &impl HirDatabase, file_id: FileId, fn_def: ast::FnDef) -> FnId {
         let ptr = SyntaxPtr::new(file_id, fn_def.syntax());
         db.id_maps().fn_id(ptr)
     }

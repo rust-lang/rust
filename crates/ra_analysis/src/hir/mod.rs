@@ -9,6 +9,7 @@ pub(crate) mod function;
 pub(crate) mod module;
 pub(crate) mod db;
 mod path;
+mod query_definitions;
 
 use ra_syntax::{
     ast::{self, AstNode},

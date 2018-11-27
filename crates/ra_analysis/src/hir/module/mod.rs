@@ -196,7 +196,7 @@ pub(crate) struct ModuleTree {
 }
 
 impl ModuleTree {
-    fn modules<'a>(&'a self) -> impl Iterator<Item = ModuleId> + 'a {
+    pub(in crate::hir) fn modules<'a>(&'a self) -> impl Iterator<Item = ModuleId> + 'a {
         self.mods.iter().map(|(id, _)| id)
     }
 
@@ -224,7 +224,7 @@ pub(crate) enum ModuleSource {
 
 /// An owned syntax node for a module. Unlike `ModuleSource`,
 /// this holds onto the AST for the whole file.
-enum ModuleSourceNode {
+pub(crate) enum ModuleSourceNode {
     SourceFile(ast::SourceFileNode),
     Module(ast::ModuleNode),
 }
@@ -244,7 +244,7 @@ pub enum Problem {
 }
 
 impl ModuleId {
-    fn source(self, tree: &ModuleTree) -> ModuleSource {
+    pub(in crate::hir) fn source(self, tree: &ModuleTree) -> ModuleSource {
         tree.mods[self].source
     }
     fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
@@ -318,7 +318,7 @@ pub(crate) struct ModuleData {
 }
 
 impl ModuleSource {
-    fn new_inline(file_id: FileId, module: ast::Module) -> ModuleSource {
+    pub(crate) fn new_inline(file_id: FileId, module: ast::Module) -> ModuleSource {
         assert!(!module.has_semi());
         let ptr = SyntaxPtr::new(file_id, module.syntax());
         ModuleSource::Module(ptr)
@@ -338,7 +338,7 @@ impl ModuleSource {
         }
     }
 
-    fn resolve(self, db: &impl SyntaxDatabase) -> ModuleSourceNode {
+    pub(crate) fn resolve(self, db: &impl SyntaxDatabase) -> ModuleSourceNode {
         match self {
             ModuleSource::SourceFile(file_id) => {
                 let syntax = db.file_syntax(file_id);
