@@ -149,6 +149,7 @@ fn setup(ask_user: bool) {
     let dirs = directories::ProjectDirs::from("miri", "miri", "miri").unwrap();
     let dir = dirs.cache_dir();
     if !dir.exists() {
+        println!("Creating `{}` and using it for miri's build of libstd", dir.display());
         fs::create_dir_all(&dir).unwrap();
     }
     // The interesting bit: Xargo.toml
