@@ -22,53 +22,53 @@ use crate::{
 
 pub(crate) use self::nameres::ModuleScope;
 
-/// `ModuleDescriptor` is API entry point to get all the information
+/// `Module` is API entry point to get all the information
 /// about a particular module.
 #[derive(Debug, Clone)]
-pub(crate) struct ModuleDescriptor {
+pub(crate) struct Module {
     tree: Arc<ModuleTree>,
     source_root_id: SourceRootId,
     module_id: ModuleId,
 }
 
-impl ModuleDescriptor {
-    /// Lookup `ModuleDescriptor` by `FileId`. Note that this is inherently
+impl Module {
+    /// Lookup `Module` by `FileId`. Note that this is inherently
     /// lossy transformation: in general, a single source might correspond to
     /// several modules.
     pub fn guess_from_file_id(
         db: &impl HirDatabase,
         file_id: FileId,
-    ) -> Cancelable<Option<ModuleDescriptor>> {
-        ModuleDescriptor::guess_from_source(db, file_id, ModuleSource::SourceFile(file_id))
+    ) -> Cancelable<Option<Module>> {
+        Module::guess_from_source(db, file_id, ModuleSource::SourceFile(file_id))
     }
 
-    /// Lookup `ModuleDescriptor` by position in the source code. Note that this
+    /// Lookup `Module` by position in the source code. Note that this
     /// is inherently lossy transformation: in general, a single source might
     /// correspond to several modules.
     pub fn guess_from_position(
         db: &impl HirDatabase,
         position: FilePosition,
-    ) -> Cancelable<Option<ModuleDescriptor>> {
+    ) -> Cancelable<Option<Module>> {
         let file = db.file_syntax(position.file_id);
         let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset)
         {
             Some(m) if !m.has_semi() => ModuleSource::new_inline(position.file_id, m),
             _ => ModuleSource::SourceFile(position.file_id),
         };
-        ModuleDescriptor::guess_from_source(db, position.file_id, module_source)
+        Module::guess_from_source(db, position.file_id, module_source)
     }
 
     fn guess_from_source(
         db: &impl HirDatabase,
         file_id: FileId,
         module_source: ModuleSource,
-    ) -> Cancelable<Option<ModuleDescriptor>> {
+    ) -> Cancelable<Option<Module>> {
         let source_root_id = db.file_source_root(file_id);
         let module_tree = db.module_tree(source_root_id)?;
 
         let res = match module_tree.any_module_for_source(module_source) {
             None => None,
-            Some(module_id) => Some(ModuleDescriptor {
+            Some(module_id) => Some(Module {
                 tree: module_tree,
                 source_root_id,
                 module_id,
@@ -81,9 +81,9 @@ impl ModuleDescriptor {
         db: &impl HirDatabase,
         source_root_id: SourceRootId,
         module_id: ModuleId,
-    ) -> Cancelable<ModuleDescriptor> {
+    ) -> Cancelable<Module> {
         let module_tree = db.module_tree(source_root_id)?;
-        let res = ModuleDescriptor {
+        let res = Module {
             tree: module_tree,
             source_root_id,
             module_id,
@@ -105,18 +105,18 @@ impl ModuleDescriptor {
     }
 
     /// Parent module. Returns `None` if this is a root module.
-    pub fn parent(&self) -> Option<ModuleDescriptor> {
+    pub fn parent(&self) -> Option<Module> {
         let parent_id = self.module_id.parent(&self.tree)?;
-        Some(ModuleDescriptor {
+        Some(Module {
             module_id: parent_id,
             ..self.clone()
         })
     }
 
     /// The root of the tree this module is part of
-    pub fn crate_root(&self) -> ModuleDescriptor {
+    pub fn crate_root(&self) -> Module {
         let root_id = self.module_id.crate_root(&self.tree);
-        ModuleDescriptor {
+        Module {
             module_id: root_id,
             ..self.clone()
         }
@@ -138,9 +138,9 @@ impl ModuleDescriptor {
     }
 
     /// Finds a child module with the specified name.
-    pub fn child(&self, name: &str) -> Option<ModuleDescriptor> {
+    pub fn child(&self, name: &str) -> Option<Module> {
         let child_id = self.module_id.child(&self.tree, name)?;
-        Some(ModuleDescriptor {
+        Some(Module {
             module_id: child_id,
             ..self.clone()
         })
@@ -168,7 +168,7 @@ impl ModuleDescriptor {
         let segments = path.segments;
         for name in segments.iter() {
             let module = match db.id_maps().def_loc(curr) {
-                DefLoc::Module { id, source_root } => ModuleDescriptor::new(db, source_root, id)?,
+                DefLoc::Module { id, source_root } => Module::new(db, source_root, id)?,
                 _ => return Ok(None),
             };
             let scope = module.scope(db)?;

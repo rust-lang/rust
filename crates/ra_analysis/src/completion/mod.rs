@@ -11,9 +11,7 @@ use rustc_hash::{FxHashMap};
 
 use crate::{
     db::{self, SyntaxDatabase},
-    hir::
-        ModuleDescriptor
-    ,
+    hir,
     Cancelable, FilePosition
 };
 
@@ -38,7 +36,7 @@ pub(crate) fn completions(
         original_file.reparse(&edit)
     };
 
-    let module = ctry!(ModuleDescriptor::guess_from_position(db, position)?);
+    let module = ctry!(hir::Module::guess_from_position(db, position)?);
 
     let mut res = Vec::new();
     let mut has_completions = false;

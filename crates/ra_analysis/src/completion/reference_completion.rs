@@ -11,7 +11,7 @@ use crate::{
     db::RootDatabase,
     completion::CompletionItem,
     hir::{
-        ModuleDescriptor,
+        self,
         FnScopes,
         Def,
         Path,
@@ -22,7 +22,7 @@ use crate::{
 pub(super) fn completions(
     acc: &mut Vec<CompletionItem>,
     db: &RootDatabase,
-    module: &ModuleDescriptor,
+    module: &hir::Module,
     file: &SourceFileNode,
     name_ref: ast::NameRef,
 ) -> Cancelable<()> {
@@ -150,7 +150,7 @@ fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<Completi
 fn complete_path(
     acc: &mut Vec<CompletionItem>,
     db: &RootDatabase,
-    module: &ModuleDescriptor,
+    module: &hir::Module,
     mut path: Path,
 ) -> Cancelable<()> {
     if path.segments.is_empty() {

@@ -19,14 +19,14 @@ use crate::{
 
 pub(crate) use self::{
     path::{Path, PathKind},
-    module::{ModuleDescriptor, ModuleId, Problem, nameres::FileItemId},
+    module::{Module, ModuleId, Problem, nameres::FileItemId},
     function::{FunctionDescriptor, FnScopes},
 };
 
 pub use self::function::FnSignatureInfo;
 
 pub(crate) enum Def {
-    Module(ModuleDescriptor),
+    Module(Module),
     Item,
 }
 
@@ -35,7 +35,7 @@ impl DefId {
         let loc = db.id_maps().def_loc(self);
         let res = match loc {
             DefLoc::Module { id, source_root } => {
-                let descr = ModuleDescriptor::new(db, source_root, id)?;
+                let descr = Module::new(db, source_root, id)?;
                 Def::Module(descr)
             }
             DefLoc::Item { .. } => Def::Item,
