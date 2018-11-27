@@ -17,7 +17,7 @@ use crate::{
     descriptors::{Path, PathKind, DescriptorDatabase},
     input::SourceRootId,
     arena::{Arena, Id},
-    loc2id::DefLoc,
+    loc2id::{DefLoc, DefId},
 };
 
 pub(crate) use self::nameres::ModuleScope;
@@ -153,15 +153,6 @@ impl ModuleDescriptor {
         db: &impl DescriptorDatabase,
         path: Path,
     ) -> Cancelable<Option<ModuleDescriptor>> {
-        macro_rules! ctry {
-            ($expr:expr) => {
-                match $expr {
-                    None => return Ok(None),
-                    Some(it) => it,
-                }
-            };
-        };
-
         let mut curr = match path.kind {
             PathKind::Crate => self.crate_root(),
             PathKind::Self_ | PathKind::Plain => self.clone(),

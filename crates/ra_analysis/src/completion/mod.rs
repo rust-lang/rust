@@ -38,10 +38,7 @@ pub(crate) fn completions(
         original_file.reparse(&edit)
     };
 
-    let module = match ModuleDescriptor::guess_from_position(db, position)? {
-        None => return Ok(None),
-        Some(it) => it,
-    };
+    let module = ctry!(ModuleDescriptor::guess_from_position(db, position)?);
 
     let mut res = Vec::new();
     let mut has_completions = false;

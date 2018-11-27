@@ -450,14 +450,8 @@ impl AnalysisImpl {
         let syntax = file.syntax();
 
         // Find the calling expression and it's NameRef
-        let calling_node = match FnCallNode::with_node(syntax, position.offset) {
-            Some(node) => node,
-            None => return Ok(None),
-        };
-        let name_ref = match calling_node.name_ref() {
-            Some(name) => name,
-            None => return Ok(None),
-        };
+        let calling_node = ctry!(FnCallNode::with_node(syntax, position.offset));
+        let name_ref = ctry!(calling_node.name_ref());
 
         // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
         let file_symbols = self.index_resolve(name_ref)?;
