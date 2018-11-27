@@ -7,10 +7,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! lint on if expressions with an else if, but without a final else branch
 
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use crate::rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::*;
 

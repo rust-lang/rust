@@ -7,12 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::utils::span_lint;
 use crate::rustc::hir;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::source_map::Span;
+use crate::utils::span_lint;
 
 /// **What it does:** Checks for plain integer arithmetic.
 ///
@@ -52,7 +51,8 @@ declare_clippy_lint! {
 #[derive(Copy, Clone, Default)]
 pub struct Arithmetic {
     expr_span: Option<Span>,
-    /// This field is used to check whether expressions are constants, such as in enum discriminants and consts
+    /// This field is used to check whether expressions are constants, such as in enum discriminants
+    /// and consts
     const_span: Option<Span>,
 }
 
@@ -124,8 +124,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
         let body_owner = cx.tcx.hir.body_owner(body.id());
 
         match cx.tcx.hir.body_owner_kind(body_owner) {
-            hir::BodyOwnerKind::Static(_)
-            | hir::BodyOwnerKind::Const => {
+            hir::BodyOwnerKind::Static(_) | hir::BodyOwnerKind::Const => {
                 let body_span = cx.tcx.hir.span(body_owner);
 
                 if let Some(span) = self.const_span {
@@ -134,7 +133,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Arithmetic {
                     }
                 }
                 self.const_span = Some(body_span);
-            }
+            },
             hir::BodyOwnerKind::Fn => (),
         }
     }

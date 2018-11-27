@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::consts::constant;
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -90,12 +89,14 @@ fn check_vec_macro<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, vec_args: &higher::VecA
                 return;
             }
         },
-        higher::VecArgs::Vec(args) => if let Some(last) = args.iter().last() {
-            let span = args[0].span.to(last.span);
+        higher::VecArgs::Vec(args) => {
+            if let Some(last) = args.iter().last() {
+                let span = args[0].span.to(last.span);
 
-            format!("&[{}]", snippet_with_applicability(cx, span, "..", &mut applicability))
-        } else {
-            "&[]".into()
+                format!("&[{}]", snippet_with_applicability(cx, span, "..", &mut applicability))
+            } else {
+                "&[]".into()
+            }
         },
     };
 

@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir;
 use crate::rustc::hir::def::Def;
 use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};

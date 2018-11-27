@@ -7,18 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::reexport::*;
-use matches::matches;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
-use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::hir::def::Def;
-use crate::rustc::hir::*;
 use crate::rustc::hir::intravisit::*;
+use crate::rustc::hir::*;
+use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use crate::syntax::source_map::Span;
-use crate::utils::{last_path_segment, span_lint};
 use crate::syntax::symbol::keywords;
+use crate::utils::{last_path_segment, span_lint};
+use matches::matches;
 
 /// **What it does:** Checks for lifetime annotations which can be removed by
 /// relying on lifetime elision.
@@ -32,13 +31,15 @@ use crate::syntax::symbol::keywords;
 ///
 /// **Example:**
 /// ```rust
-/// fn in_and_out<'a>(x: &'a u8, y: u8) -> &'a u8 { x }
+/// fn in_and_out<'a>(x: &'a u8, y: u8) -> &'a u8 {
+///     x
+/// }
 /// ```
 declare_clippy_lint! {
-    pub NEEDLESS_LIFETIMES,
-    complexity,
-    "using explicit lifetimes for references in function arguments when elision rules \
-     would allow omitting them"
+pub NEEDLESS_LIFETIMES,
+complexity,
+"using explicit lifetimes for references in function arguments when elision rules \
+ would allow omitting them"
 }
 
 /// **What it does:** Checks for lifetimes in generics that are never used
@@ -52,7 +53,9 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// fn unused_lifetime<'a>(x: u8) { .. }
+/// fn unused_lifetime<'a>(x: u8) {
+///     ..
+/// }
 /// ```
 declare_clippy_lint! {
     pub EXTRA_UNUSED_LIFETIMES,
@@ -152,7 +155,8 @@ fn check_fn_inner<'a, 'tcx>(
             cx,
             NEEDLESS_LIFETIMES,
             span,
-            "explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)",
+            "explicit lifetimes given in parameter types where they could be elided \
+             (or replaced with `'_` if needed by type declaration)",
         );
     }
     report_extra_lifetimes(cx, decl, generics);
@@ -220,9 +224,7 @@ fn could_use_elision<'a, 'tcx: 'a>(
         // no output lifetimes, check distinctness of input lifetimes
 
         // only unnamed and static, ok
-        let unnamed_and_static = input_lts
-            .iter()
-            .all(|lt| *lt == RefLt::Unnamed || *lt == RefLt::Static);
+        let unnamed_and_static = input_lts.iter().all(|lt| *lt == RefLt::Unnamed || *lt == RefLt::Static);
         if unnamed_and_static {
             return false;
         }
@@ -320,7 +322,8 @@ impl<'v, 't> RefVisitor<'v, 't> {
                 && !last_path_segment.args.iter().any(|arg| match arg {
                     GenericArg::Lifetime(_) => true,
                     GenericArg::Type(_) => false,
-                }) {
+                })
+            {
                 let hir_id = self.cx.tcx.hir.node_to_hir_id(ty.id);
                 match self.cx.tables.qpath_def(qpath, hir_id) {
                     Def::TyAlias(def_id) | Def::Struct(def_id) => {
@@ -354,9 +357,8 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                 self.record(&None);
             },
             TyKind::Path(ref path) => {
-
                 self.collect_anonymous_lifetimes(path, ty);
-            }
+            },
             TyKind::Def(item, _) => {
                 if let ItemKind::Existential(ref exist_ty) = self.cx.tcx.hir.expect_item(item.id).node {
                     for bound in &exist_ty.bounds {
@@ -368,7 +370,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
                     unreachable!()
                 }
                 walk_ty(self, ty);
-            }
+            },
             TyKind::TraitObject(ref bounds, ref lt) => {
                 if !lt.is_elided() {
                     self.abort = true;
@@ -410,9 +412,11 @@ fn has_where_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, where_clause: &
                 // and check that all lifetimes are allowed
                 match visitor.into_vec() {
                     None => return false,
-                    Some(lts) => for lt in lts {
-                        if !allowed_lts.contains(&lt) {
-                            return true;
+                    Some(lts) => {
+                        for lt in lts {
+                            if !allowed_lts.contains(&lt) {
+                                return true;
+                            }
                         }
                     },
                 }
@@ -456,7 +460,9 @@ impl<'tcx> Visitor<'tcx> for LifetimeChecker {
 }
 
 fn report_extra_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, func: &'tcx FnDecl, generics: &'tcx Generics) {
-    let hs = generics.params.iter()
+    let hs = generics
+        .params
+        .iter()
         .filter_map(|par| match par.kind {
             GenericParamKind::Lifetime { .. } => Some((par.name.ident().name, par.span)),
             _ => None,
@@ -468,7 +474,12 @@ fn report_extra_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, func: &'tcx 
     walk_fn_decl(&mut checker, func);
 
     for &v in checker.map.values() {
-        span_lint(cx, EXTRA_UNUSED_LIFETIMES, v, "this lifetime isn't used in the function definition");
+        span_lint(
+            cx,
+            EXTRA_UNUSED_LIFETIMES,
+            v,
+            "this lifetime isn't used in the function definition",
+        );
     }
 }
 

@@ -7,17 +7,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! This module contains functions for retrieve the original AST from lowered
 //! `hir`.
 
 #![deny(clippy::missing_docs_in_private_items)]
 
-use if_chain::if_chain;
-use crate::rustc::{hir, ty};
 use crate::rustc::lint::LateContext;
+use crate::rustc::{hir, ty};
 use crate::syntax::ast;
 use crate::utils::{is_expn_of, match_def_path, match_qpath, opt_def_id, paths, resolve_node};
+use if_chain::if_chain;
 
 /// Convert a hir binary operator to the corresponding `ast` type.
 pub fn binop(op: hir::BinOpKind) -> ast::BinOpKind {
@@ -64,7 +63,6 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
         Some(expr)
     }
 
-
     let def_path = match cx.tables.expr_ty(expr).sty {
         ty::Adt(def, _) => cx.tcx.def_path(def.did),
         _ => return None,
@@ -109,47 +107,51 @@ pub fn range<'a, 'b, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'b hir::Expr) -> O
                 None
             }
         },
-        hir::ExprKind::Call(ref path, ref args) => if let hir::ExprKind::Path(ref path) = path.node {
-            if match_qpath(path, &paths::RANGE_INCLUSIVE_STD_NEW) || match_qpath(path, &paths::RANGE_INCLUSIVE_NEW) {
+        hir::ExprKind::Call(ref path, ref args) => {
+            if let hir::ExprKind::Path(ref path) = path.node {
+                if match_qpath(path, &paths::RANGE_INCLUSIVE_STD_NEW) || match_qpath(path, &paths::RANGE_INCLUSIVE_NEW)
+                {
+                    Some(Range {
+                        start: Some(&args[0]),
+                        end: Some(&args[1]),
+                        limits: ast::RangeLimits::Closed,
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        },
+        hir::ExprKind::Struct(ref path, ref fields, None) => {
+            if match_qpath(path, &paths::RANGE_FROM_STD) || match_qpath(path, &paths::RANGE_FROM) {
                 Some(Range {
-                    start: Some(&args[0]),
-                    end: Some(&args[1]),
+                    start: Some(get_field("start", fields)?),
+                    end: None,
+                    limits: ast::RangeLimits::HalfOpen,
+                })
+            } else if match_qpath(path, &paths::RANGE_STD) || match_qpath(path, &paths::RANGE) {
+                Some(Range {
+                    start: Some(get_field("start", fields)?),
+                    end: Some(get_field("end", fields)?),
+                    limits: ast::RangeLimits::HalfOpen,
+                })
+            } else if match_qpath(path, &paths::RANGE_TO_INCLUSIVE_STD) || match_qpath(path, &paths::RANGE_TO_INCLUSIVE)
+            {
+                Some(Range {
+                    start: None,
+                    end: Some(get_field("end", fields)?),
                     limits: ast::RangeLimits::Closed,
+                })
+            } else if match_qpath(path, &paths::RANGE_TO_STD) || match_qpath(path, &paths::RANGE_TO) {
+                Some(Range {
+                    start: None,
+                    end: Some(get_field("end", fields)?),
+                    limits: ast::RangeLimits::HalfOpen,
                 })
             } else {
                 None
             }
-        } else {
-            None
-        },
-        hir::ExprKind::Struct(ref path, ref fields, None) => if match_qpath(path, &paths::RANGE_FROM_STD)
-            || match_qpath(path, &paths::RANGE_FROM)
-        {
-            Some(Range {
-                start: Some(get_field("start", fields)?),
-                end: None,
-                limits: ast::RangeLimits::HalfOpen,
-            })
-        } else if match_qpath(path, &paths::RANGE_STD) || match_qpath(path, &paths::RANGE) {
-            Some(Range {
-                start: Some(get_field("start", fields)?),
-                end: Some(get_field("end", fields)?),
-                limits: ast::RangeLimits::HalfOpen,
-            })
-        } else if match_qpath(path, &paths::RANGE_TO_INCLUSIVE_STD) || match_qpath(path, &paths::RANGE_TO_INCLUSIVE) {
-            Some(Range {
-                start: None,
-                end: Some(get_field("end", fields)?),
-                limits: ast::RangeLimits::Closed,
-            })
-        } else if match_qpath(path, &paths::RANGE_TO_STD) || match_qpath(path, &paths::RANGE_TO) {
-            Some(Range {
-                start: None,
-                end: Some(get_field("end", fields)?),
-                limits: ast::RangeLimits::HalfOpen,
-            })
-        } else {
-            None
         },
         _ => None,
     }
@@ -161,7 +163,7 @@ pub fn is_from_for_desugar(decl: &hir::Decl) -> bool {
     //
     // ```
     // for x in some_vec {
-    //   // do stuff
+    //     // do stuff
     // }
     // ```
     if_chain! {
@@ -178,7 +180,7 @@ pub fn is_from_for_desugar(decl: &hir::Decl) -> bool {
     //
     // ```
     // for _ in vec![()] {
-    //   // anything
+    //     // anything
     // }
     // ```
     if_chain! {

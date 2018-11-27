@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
@@ -68,7 +67,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DurationSubsec {
                     expr.span,
                     &format!("Calling `{}()` is more concise than this calculation", suggested_fn),
                     "try",
-                    format!("{}.{}()", snippet_with_applicability(cx, args[0].span, "_", &mut applicability), suggested_fn),
+                    format!(
+                        "{}.{}()",
+                        snippet_with_applicability(cx, args[0].span, "_", &mut applicability),
+                        suggested_fn
+                    ),
                     applicability,
                 );
             }

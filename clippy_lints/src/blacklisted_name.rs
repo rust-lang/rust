@@ -7,10 +7,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::hir::*;
 use crate::utils::span_lint;
 
 /// **What it does:** Checks for usage of blacklisted names for variables, such
@@ -38,9 +37,7 @@ pub struct BlackListedName {
 
 impl BlackListedName {
     pub fn new(blacklist: Vec<String>) -> Self {
-        Self {
-            blacklist,
-        }
+        Self { blacklist }
     }
 }
 

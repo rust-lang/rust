@@ -7,22 +7,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Checks for usage of  `&Vec[_]` and `&String`.
 
-use std::borrow::Cow;
-use crate::rustc::hir::*;
 use crate::rustc::hir::QPath;
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
 use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::NodeId;
 use crate::syntax::source_map::Span;
 use crate::syntax_pos::MultiSpan;
-use crate::utils::{match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then, walk_ptrs_hir_ty};
 use crate::utils::ptr::get_spans;
-use crate::rustc_errors::Applicability;
+use crate::utils::{match_qpath, match_type, paths, snippet_opt, span_lint, span_lint_and_then, walk_ptrs_hir_ty};
+use if_chain::if_chain;
+use std::borrow::Cow;
 
 /// **What it does:** This lint checks for function arguments of type `&String`
 /// or `&Vec` unless the references are mutable. It will also suggest you
@@ -55,10 +54,10 @@ use crate::rustc_errors::Applicability;
 /// fn foo(&Vec<u32>) { .. }
 /// ```
 declare_clippy_lint! {
-    pub PTR_ARG,
-    style,
-    "fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` \
-     instead, respectively"
+pub PTR_ARG,
+style,
+"fn arguments of the type `&Vec<...>` or `&String`, suggesting to use `&[...]` or `&str` \
+ instead, respectively"
 }
 
 /// **What it does:** This lint checks for equality comparisons with `ptr::null`
@@ -71,7 +70,9 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// if x == ptr::null { .. }
+/// if x == ptr::null {
+///     ..
+/// }
 /// ```
 declare_clippy_lint! {
     pub CMP_NULL,
@@ -162,12 +163,7 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
     let fn_ty = sig.skip_binder();
 
     for (idx, (arg, ty)) in decl.inputs.iter().zip(fn_ty.inputs()).enumerate() {
-        if let ty::Ref(
-            _,
-            ty,
-            MutImmutable
-        ) = ty.sty
-        {
+        if let ty::Ref(_, ty, MutImmutable) = ty.sty {
             if match_type(cx, ty, &paths::VEC) {
                 let mut ty_snippet = None;
                 if_chain! {
@@ -193,19 +189,18 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
                         |db| {
                             if let Some(ref snippet) = ty_snippet {
                                 db.span_suggestion_with_applicability(
-                                            arg.span,
-                                            "change this to",
-                                            format!("&[{}]", snippet),
-                                            Applicability::Unspecified,
-                                            );
+                                    arg.span,
+                                    "change this to",
+                                    format!("&[{}]", snippet),
+                                    Applicability::Unspecified,
+                                );
                             }
                             for (clonespan, suggestion) in spans {
                                 db.span_suggestion_with_applicability(
                                     clonespan,
-                                    &snippet_opt(cx, clonespan).map_or(
-                                        "change the call to".into(),
-                                        |x| Cow::Owned(format!("change `{}` to", x)),
-                                    ),
+                                    &snippet_opt(cx, clonespan).map_or("change the call to".into(), |x| {
+                                        Cow::Owned(format!("change `{}` to", x))
+                                    }),
                                     suggestion.into(),
                                     Applicability::Unspecified,
                                 );
@@ -230,10 +225,9 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
                             for (clonespan, suggestion) in spans {
                                 db.span_suggestion_short_with_applicability(
                                     clonespan,
-                                    &snippet_opt(cx, clonespan).map_or(
-                                        "change the call to".into(),
-                                        |x| Cow::Owned(format!("change `{}` to", x)),
-                                    ),
+                                    &snippet_opt(cx, clonespan).map_or("change the call to".into(), |x| {
+                                        Cow::Owned(format!("change `{}` to", x))
+                                    }),
                                     suggestion.into(),
                                     Applicability::Unspecified,
                                 );
@@ -280,7 +274,8 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
     if let FunctionRetTy::Return(ref ty) = decl.output {
         if let Some((out, MutMutable, _)) = get_rptr_lm(ty) {
             let mut immutables = vec![];
-            for (_, ref mutbl, ref argspan) in decl.inputs
+            for (_, ref mutbl, ref argspan) in decl
+                .inputs
                 .iter()
                 .filter_map(|ty| get_rptr_lm(ty))
                 .filter(|&(lt, _, _)| lt.name == out.name)
@@ -293,10 +288,16 @@ fn check_fn(cx: &LateContext<'_, '_>, decl: &FnDecl, fn_id: NodeId, opt_body_id:
             if immutables.is_empty() {
                 return;
             }
-            span_lint_and_then(cx, MUT_FROM_REF, ty.span, "mutable borrow from immutable input(s)", |db| {
-                let ms = MultiSpan::from_spans(immutables);
-                db.span_note(ms, "immutable borrow here");
-            });
+            span_lint_and_then(
+                cx,
+                MUT_FROM_REF,
+                ty.span,
+                "mutable borrow from immutable input(s)",
+                |db| {
+                    let ms = MultiSpan::from_spans(immutables);
+                    db.span_note(ms, "immutable borrow here");
+                },
+            );
         }
     }
 }

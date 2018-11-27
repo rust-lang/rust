@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir::def_id::DefId;
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -32,19 +31,27 @@ use crate::utils::{get_item_name, in_macro, snippet_with_applicability, span_lin
 ///
 /// **Example:**
 /// ```rust
-/// if x.len() == 0 { .. }
-/// if y.len() != 0 { .. }
+/// if x.len() == 0 {
+///     ..
+/// }
+/// if y.len() != 0 {
+///     ..
+/// }
 /// ```
 /// instead use
 /// ```rust
-/// if x.len().is_empty() { .. }
-/// if !y.len().is_empty() { .. }
+/// if x.len().is_empty() {
+///     ..
+/// }
+/// if !y.len().is_empty() {
+///     ..
+/// }
 /// ```
 declare_clippy_lint! {
-    pub LEN_ZERO,
-    style,
-    "checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` \
-     could be used instead"
+pub LEN_ZERO,
+style,
+"checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` \
+ could be used instead"
 }
 
 /// **What it does:** Checks for items that implement `.len()` but not
@@ -61,7 +68,9 @@ declare_clippy_lint! {
 /// **Example:**
 /// ```rust
 /// impl X {
-///     pub fn len(&self) -> usize { .. }
+///     pub fn len(&self) -> usize {
+///         ..
+///     }
 /// }
 /// ```
 declare_clippy_lint! {
@@ -125,14 +134,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
 
 fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items: &[TraitItemRef]) {
     fn is_named_self(cx: &LateContext<'_, '_>, item: &TraitItemRef, name: &str) -> bool {
-        item.ident.name == name && if let AssociatedItemKind::Method { has_self } = item.kind {
-            has_self && {
-                let did = cx.tcx.hir.local_def_id(item.id.node_id);
-                cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
+        item.ident.name == name
+            && if let AssociatedItemKind::Method { has_self } = item.kind {
+                has_self && {
+                    let did = cx.tcx.hir.local_def_id(item.id.node_id);
+                    cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
+                }
+            } else {
+                false
             }
-        } else {
-            false
-        }
     }
 
     // fill the set with current and super traits
@@ -153,7 +163,9 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items
             .iter()
             .flat_map(|&i| cx.tcx.associated_items(i))
             .any(|i| {
-                i.kind == ty::AssociatedKind::Method && i.method_has_self_argument && i.ident.name == "is_empty"
+                i.kind == ty::AssociatedKind::Method
+                    && i.method_has_self_argument
+                    && i.ident.name == "is_empty"
                     && cx.tcx.fn_sig(i.def_id).inputs().skip_binder().len() == 1
             });
 
@@ -173,14 +185,15 @@ fn check_trait_items(cx: &LateContext<'_, '_>, visited_trait: &Item, trait_items
 
 fn check_impl_items(cx: &LateContext<'_, '_>, item: &Item, impl_items: &[ImplItemRef]) {
     fn is_named_self(cx: &LateContext<'_, '_>, item: &ImplItemRef, name: &str) -> bool {
-        item.ident.name == name && if let AssociatedItemKind::Method { has_self } = item.kind {
-            has_self && {
-                let did = cx.tcx.hir.local_def_id(item.id.node_id);
-                cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
+        item.ident.name == name
+            && if let AssociatedItemKind::Method { has_self } = item.kind {
+                has_self && {
+                    let did = cx.tcx.hir.local_def_id(item.id.node_id);
+                    cx.tcx.fn_sig(did).inputs().skip_binder().len() == 1
+                }
+            } else {
+                false
             }
-        } else {
-            false
-        }
     }
 
     let is_empty = if let Some(is_empty) = impl_items.iter().find(|i| is_named_self(cx, i, "is_empty")) {
@@ -251,7 +264,11 @@ fn check_len(
                 span,
                 &format!("length comparison to {}", if compare_to == 0 { "zero" } else { "one" }),
                 "using `is_empty` is clearer and more explicit",
-                format!("{}{}.is_empty()", op, snippet_with_applicability(cx, args[0].span, "_", &mut applicability)),
+                format!(
+                    "{}{}.is_empty()",
+                    op,
+                    snippet_with_applicability(cx, args[0].span, "_", &mut applicability)
+                ),
                 applicability,
             );
         }
@@ -277,16 +294,16 @@ fn has_is_empty(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
 
     /// Check the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext<'_, '_>, id: DefId) -> bool {
-        cx.tcx.inherent_impls(id).iter().any(|imp| {
-            cx.tcx
-                .associated_items(*imp)
-                .any(|item| is_is_empty(cx, &item))
-        })
+        cx.tcx
+            .inherent_impls(id)
+            .iter()
+            .any(|imp| cx.tcx.associated_items(*imp).any(|item| is_is_empty(cx, &item)))
     }
 
     let ty = &walk_ptrs_ty(cx.tables.expr_ty(expr));
     match ty.sty {
-        ty::Dynamic(ref tt, ..) => cx.tcx
+        ty::Dynamic(ref tt, ..) => cx
+            .tcx
             .associated_items(tt.principal().def_id())
             .any(|item| is_is_empty(cx, &item)),
         ty::Projection(ref proj) => has_is_empty_impl(cx, proj.item_def_id),

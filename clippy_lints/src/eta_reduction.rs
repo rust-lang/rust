@@ -7,16 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::ty;
 use crate::rustc::hir::*;
-use crate::utils::{is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
+use crate::utils::{is_adjusted, iter_input_pats, snippet_opt, span_lint_and_then};
 
 pub struct EtaPass;
-
 
 /// **What it does:** Checks for closures which just call another function where
 /// the function can be called directly. `unsafe` functions or calls where types
@@ -52,8 +50,10 @@ impl LintPass for EtaPass {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EtaPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         match expr.node {
-            ExprKind::Call(_, ref args) | ExprKind::MethodCall(_, _, ref args) => for arg in args {
-                check_closure(cx, arg)
+            ExprKind::Call(_, ref args) | ExprKind::MethodCall(_, _, ref args) => {
+                for arg in args {
+                    check_closure(cx, arg)
+                }
             },
             _ => (),
         }

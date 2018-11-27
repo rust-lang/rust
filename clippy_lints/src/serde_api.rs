@@ -7,10 +7,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::hir::*;
 use crate::utils::{get_trait_def_id, paths, span_lint};
 
 /// **What it does:** Checks for mis-uses of the serde API.
@@ -27,7 +26,6 @@ declare_clippy_lint! {
     correctness,
     "various things that will negatively affect your serde experience"
 }
-
 
 #[derive(Copy, Clone)]
 pub struct Serde;

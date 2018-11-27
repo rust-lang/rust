@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::ty;
@@ -118,10 +117,12 @@ fn check_arg(name: Name, arg: Name, needle: &Expr) -> bool {
 fn get_path_name(expr: &Expr) -> Option<Name> {
     match expr.node {
         ExprKind::Box(ref e) | ExprKind::AddrOf(_, ref e) | ExprKind::Unary(UnOp::UnDeref, ref e) => get_path_name(e),
-        ExprKind::Block(ref b, _) => if b.stmts.is_empty() {
-            b.expr.as_ref().and_then(|p| get_path_name(p))
-        } else {
-            None
+        ExprKind::Block(ref b, _) => {
+            if b.stmts.is_empty() {
+                b.expr.as_ref().and_then(|p| get_path_name(p))
+            } else {
+                None
+            }
         },
         ExprKind::Path(ref qpath) => single_segment_path(qpath).map(|ps| ps.ident.name),
         _ => None,

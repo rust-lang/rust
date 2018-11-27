@@ -7,19 +7,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use matches::matches;
-use crate::rustc::hir::intravisit;
 use crate::rustc::hir;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::ty;
 use crate::rustc::hir::def::Def;
+use crate::rustc::hir::intravisit;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_data_structures::fx::FxHashSet;
-use crate::syntax::ast;
 use crate::rustc_target::spec::abi::Abi;
+use crate::syntax::ast;
 use crate::syntax::source_map::Span;
 use crate::utils::{iter_input_pats, span_lint, type_is_unsafe_function};
+use matches::matches;
 
 /// **What it does:** Checks for functions with too many parameters.
 ///
@@ -31,8 +30,9 @@ use crate::utils::{iter_input_pats, span_lint, type_is_unsafe_function};
 ///
 /// **Example:**
 /// ```rust
-/// fn foo(x: u32, y: u32, name: &str, c: Color, w: f32, h: f32, a: f32, b:
-/// f32) { .. }
+/// fn foo(x: u32, y: u32, name: &str, c: Color, w: f32, h: f32, a: f32, b: f32) {
+///     ..
+/// }
 /// ```
 declare_clippy_lint! {
     pub TOO_MANY_ARGUMENTS,
@@ -58,7 +58,9 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// pub fn foo(x: *const u8) { println!("{}", unsafe { *x }); }
+/// pub fn foo(x: *const u8) {
+///     println!("{}", unsafe { *x });
+/// }
 /// ```
 declare_clippy_lint! {
     pub NOT_UNSAFE_PTR_ARG_DEREF,
@@ -73,9 +75,7 @@ pub struct Functions {
 
 impl Functions {
     pub fn new(threshold: u64) -> Self {
-        Self {
-            threshold,
-        }
+        Self { threshold }
     }
 }
 
@@ -111,8 +111,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Functions {
         if !is_impl {
             // don't lint extern functions decls, it's not their fault either
             match kind {
-                hir::intravisit::FnKind::Method(_, &hir::MethodSig { header: hir::FnHeader { abi: Abi::Rust, .. }, .. }, _, _) |
-                hir::intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _, _) => self.check_arg_number(cx, decl, span),
+                hir::intravisit::FnKind::Method(
+                    _,
+                    &hir::MethodSig {
+                        header: hir::FnHeader { abi: Abi::Rust, .. },
+                        ..
+                    },
+                    _,
+                    _,
+                )
+                | hir::intravisit::FnKind::ItemFn(_, _, hir::FnHeader { abi: Abi::Rust, .. }, _, _) => {
+                    self.check_arg_number(cx, decl, span)
+                },
                 _ => {},
             }
         }

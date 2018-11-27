@@ -7,16 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::rustc::hir::intravisit::*;
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::hir::*;
-use crate::rustc::hir::intravisit::*;
+use crate::rustc_data_structures::thin_vec::ThinVec;
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::{LitKind, NodeId, DUMMY_NODE_ID};
 use crate::syntax::source_map::{dummy_spanned, Span, DUMMY_SP};
-use crate::rustc_data_structures::thin_vec::ThinVec;
-use crate::utils::{in_macro, paths, match_type, snippet_opt, span_lint_and_then, SpanlessEq, get_trait_def_id, implements_trait};
-use crate::rustc_errors::Applicability;
+use crate::utils::{
+    get_trait_def_id, implements_trait, in_macro, match_type, paths, snippet_opt, span_lint_and_then, SpanlessEq,
+};
 
 /// **What it does:** Checks for boolean expressions that can be written more
 /// concisely.
@@ -57,10 +58,7 @@ declare_clippy_lint! {
 }
 
 // For each pairs, both orders are considered.
-const METHODS_WITH_NEGATION: [(&str, &str); 2] = [
-    ("is_some", "is_none"),
-    ("is_err", "is_ok"),
-];
+const METHODS_WITH_NEGATION: [(&str, &str); 2] = [("is_some", "is_none"), ("is_err", "is_ok")];
 
 #[derive(Copy, Clone)]
 pub struct NonminimalBool;
@@ -134,19 +132,16 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
             }
             let negated = match e.node {
                 ExprKind::Binary(binop, ref lhs, ref rhs) => {
-
                     if !implements_ord(self.cx, lhs) {
                         continue;
                     }
 
-                    let mk_expr = |op| {
-                        Expr {
-                            id: DUMMY_NODE_ID,
-                            hir_id: DUMMY_HIR_ID,
-                            span: DUMMY_SP,
-                            attrs: ThinVec::new(),
-                            node: ExprKind::Binary(dummy_spanned(op), lhs.clone(), rhs.clone()),
-                        }
+                    let mk_expr = |op| Expr {
+                        id: DUMMY_NODE_ID,
+                        hir_id: DUMMY_HIR_ID,
+                        span: DUMMY_SP,
+                        attrs: ThinVec::new(),
+                        node: ExprKind::Binary(dummy_spanned(op), lhs.clone(), rhs.clone()),
                     };
                     match binop.node {
                         BinOpKind::Eq => mk_expr(BinOpKind::Ne),
@@ -191,7 +186,6 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
     fn simplify_not(&self, expr: &Expr) -> Option<String> {
         match expr.node {
             ExprKind::Binary(binop, ref lhs, ref rhs) => {
-
                 if !implements_ord(self.cx, lhs) {
                     return None;
                 }
@@ -204,16 +198,19 @@ impl<'a, 'tcx, 'v> SuggestContext<'a, 'tcx, 'v> {
                     BinOpKind::Le => Some(" > "),
                     BinOpKind::Ge => Some(" < "),
                     _ => None,
-                }.and_then(|op| Some(format!("{}{}{}", self.snip(lhs)?, op, self.snip(rhs)?)))
+                }
+                .and_then(|op| Some(format!("{}{}{}", self.snip(lhs)?, op, self.snip(rhs)?)))
             },
             ExprKind::MethodCall(ref path, _, ref args) if args.len() == 1 => {
                 let type_of_receiver = self.cx.tables.expr_ty(&args[0]);
-                if !match_type(self.cx, type_of_receiver, &paths::OPTION) &&
-                    !match_type(self.cx, type_of_receiver, &paths::RESULT) {
-                        return None;
+                if !match_type(self.cx, type_of_receiver, &paths::OPTION)
+                    && !match_type(self.cx, type_of_receiver, &paths::RESULT)
+                {
+                    return None;
                 }
                 METHODS_WITH_NEGATION
-                    .iter().cloned()
+                    .iter()
+                    .cloned()
                     .flat_map(|(a, b)| vec![(a, b), (b, a)])
                     .find(|&(a, _)| a == path.ident.as_str())
                     .and_then(|(_, neg_method)| Some(format!("{}.{}()", self.snip(&args[0])?, neg_method)))
@@ -452,7 +449,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
                     improvements
                         .into_iter()
                         .map(|suggestion| suggest(self.cx, suggestion, &h2q.terminals).0)
-                        .collect()
+                        .collect(),
                 );
             }
         }
@@ -465,11 +462,15 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
             return;
         }
         match e.node {
-            ExprKind::Binary(binop, _, _) if binop.node == BinOpKind::Or || binop.node == BinOpKind::And => self.bool_expr(e),
-            ExprKind::Unary(UnNot, ref inner) => if self.cx.tables.node_types()[inner.hir_id].is_bool() {
-                self.bool_expr(e);
-            } else {
-                walk_expr(self, e);
+            ExprKind::Binary(binop, _, _) if binop.node == BinOpKind::Or || binop.node == BinOpKind::And => {
+                self.bool_expr(e)
+            },
+            ExprKind::Unary(UnNot, ref inner) => {
+                if self.cx.tables.node_types()[inner.hir_id].is_bool() {
+                    self.bool_expr(e);
+                } else {
+                    walk_expr(self, e);
+                }
             },
             _ => walk_expr(self, e),
         }
@@ -479,9 +480,7 @@ impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
     }
 }
 
-
 fn implements_ord<'a, 'tcx>(cx: &'a LateContext<'a, 'tcx>, expr: &Expr) -> bool {
     let ty = cx.tables.expr_ty(expr);
-    get_trait_def_id(cx, &paths::ORD)
-        .map_or(false, |id| implements_trait(cx, ty, id, &[]))
+    get_trait_def_id(cx, &paths::ORD).map_or(false, |id| implements_trait(cx, ty, id, &[]))
 }

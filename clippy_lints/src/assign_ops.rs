@@ -7,16 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, SpanlessEq};
-use crate::utils::{higher, sugg};
 use crate::rustc::hir;
 use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::syntax::ast;
 use crate::rustc_errors::Applicability;
+use crate::syntax::ast;
+use crate::utils::{get_trait_def_id, implements_trait, snippet_opt, span_lint_and_then, SpanlessEq};
+use crate::utils::{higher, sugg};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for `a = a op b` or `a = b commutative_op a`
 /// patterns.
@@ -217,7 +216,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                         // a = b commutative_op a
                         // Limited to primitive type as these ops are know to be commutative
                         if SpanlessEq::new(cx).ignore_fn().eq_expr(assignee, r)
-                                && cx.tables.expr_ty(assignee).is_primitive_ty() {
+                            && cx.tables.expr_ty(assignee).is_primitive_ty()
+                        {
                             match op.node {
                                 hir::BinOpKind::Add
                                 | hir::BinOpKind::Mul

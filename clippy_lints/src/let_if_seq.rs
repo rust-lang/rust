@@ -7,16 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::rustc::hir;
+use crate::rustc::hir::def::Def;
+use crate::rustc::hir::BindingAnnotation;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::rustc::hir;
-use crate::rustc::hir::BindingAnnotation;
-use crate::rustc::hir::def::Def;
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast;
 use crate::utils::{snippet, span_lint_and_then};
-use crate::rustc_errors::Applicability;
+use if_chain::if_chain;
 
 /// **What it does:** Checks for variable declarations immediately followed by a
 /// conditional affectation.
@@ -207,11 +206,7 @@ fn check_assign<'a, 'tcx>(
 }
 
 fn used_in_expr<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, id: ast::NodeId, expr: &'tcx hir::Expr) -> bool {
-    let mut v = UsedVisitor {
-        cx,
-        id,
-        used: false,
-    };
+    let mut v = UsedVisitor { cx, id, used: false };
     hir::intravisit::walk_expr(&mut v, expr);
     v.used
 }

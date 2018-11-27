@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir::{Expr, ExprKind};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
@@ -200,7 +199,12 @@ fn check_open_options(cx: &LateContext<'_, '_>, options: &[(OpenOption, Argument
     }
 
     if read && truncate && read_arg && truncate_arg && !(write && write_arg) {
-        span_lint(cx, NONSENSICAL_OPEN_OPTIONS, span, "file opened with \"truncate\" and \"read\"");
+        span_lint(
+            cx,
+            NONSENSICAL_OPEN_OPTIONS,
+            span,
+            "file opened with \"truncate\" and \"read\"",
+        );
     }
     if append && truncate && append_arg && truncate_arg {
         span_lint(

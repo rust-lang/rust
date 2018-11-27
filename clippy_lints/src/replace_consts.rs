@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir;
 use crate::rustc::hir::def::Def;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -74,43 +73,46 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ReplaceConsts {
 
 const REPLACEMENTS: &[(&[&str], &str)] = &[
     // Once
-    (&["core", "sync",  "ONCE_INIT"], "Once::new()"),
+    (&["core", "sync", "ONCE_INIT"], "Once::new()"),
     // Atomic
-    (&["core", "sync", "atomic", "ATOMIC_BOOL_INIT"],  "AtomicBool::new(false)"),
+    (
+        &["core", "sync", "atomic", "ATOMIC_BOOL_INIT"],
+        "AtomicBool::new(false)",
+    ),
     (&["core", "sync", "atomic", "ATOMIC_ISIZE_INIT"], "AtomicIsize::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_I8_INIT"],    "AtomicI8::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_I16_INIT"],   "AtomicI16::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_I32_INIT"],   "AtomicI32::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_I64_INIT"],   "AtomicI64::new(0)"),
+    (&["core", "sync", "atomic", "ATOMIC_I8_INIT"], "AtomicI8::new(0)"),
+    (&["core", "sync", "atomic", "ATOMIC_I16_INIT"], "AtomicI16::new(0)"),
+    (&["core", "sync", "atomic", "ATOMIC_I32_INIT"], "AtomicI32::new(0)"),
+    (&["core", "sync", "atomic", "ATOMIC_I64_INIT"], "AtomicI64::new(0)"),
     (&["core", "sync", "atomic", "ATOMIC_USIZE_INIT"], "AtomicUsize::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_U8_INIT"],    "AtomicU8::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_U16_INIT"],   "AtomicU16::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_U32_INIT"],   "AtomicU32::new(0)"),
-    (&["core", "sync", "atomic", "ATOMIC_U64_INIT"],   "AtomicU64::new(0)"),
+    (&["core", "sync", "atomic", "ATOMIC_U8_INIT"], "AtomicU8::new(0)"),
+    (&["core", "sync", "atomic", "ATOMIC_U16_INIT"], "AtomicU16::new(0)"),
+    (&["core", "sync", "atomic", "ATOMIC_U32_INIT"], "AtomicU32::new(0)"),
+    (&["core", "sync", "atomic", "ATOMIC_U64_INIT"], "AtomicU64::new(0)"),
     // Min
     (&["core", "isize", "MIN"], "isize::min_value()"),
-    (&["core", "i8",    "MIN"], "i8::min_value()"),
-    (&["core", "i16",   "MIN"], "i16::min_value()"),
-    (&["core", "i32",   "MIN"], "i32::min_value()"),
-    (&["core", "i64",   "MIN"], "i64::min_value()"),
-    (&["core", "i128",  "MIN"], "i128::min_value()"),
+    (&["core", "i8", "MIN"], "i8::min_value()"),
+    (&["core", "i16", "MIN"], "i16::min_value()"),
+    (&["core", "i32", "MIN"], "i32::min_value()"),
+    (&["core", "i64", "MIN"], "i64::min_value()"),
+    (&["core", "i128", "MIN"], "i128::min_value()"),
     (&["core", "usize", "MIN"], "usize::min_value()"),
-    (&["core", "u8",    "MIN"], "u8::min_value()"),
-    (&["core", "u16",   "MIN"], "u16::min_value()"),
-    (&["core", "u32",   "MIN"], "u32::min_value()"),
-    (&["core", "u64",   "MIN"], "u64::min_value()"),
-    (&["core", "u128",  "MIN"], "u128::min_value()"),
+    (&["core", "u8", "MIN"], "u8::min_value()"),
+    (&["core", "u16", "MIN"], "u16::min_value()"),
+    (&["core", "u32", "MIN"], "u32::min_value()"),
+    (&["core", "u64", "MIN"], "u64::min_value()"),
+    (&["core", "u128", "MIN"], "u128::min_value()"),
     // Max
     (&["core", "isize", "MAX"], "isize::max_value()"),
-    (&["core", "i8",    "MAX"], "i8::max_value()"),
-    (&["core", "i16",   "MAX"], "i16::max_value()"),
-    (&["core", "i32",   "MAX"], "i32::max_value()"),
-    (&["core", "i64",   "MAX"], "i64::max_value()"),
-    (&["core", "i128",  "MAX"], "i128::max_value()"),
+    (&["core", "i8", "MAX"], "i8::max_value()"),
+    (&["core", "i16", "MAX"], "i16::max_value()"),
+    (&["core", "i32", "MAX"], "i32::max_value()"),
+    (&["core", "i64", "MAX"], "i64::max_value()"),
+    (&["core", "i128", "MAX"], "i128::max_value()"),
     (&["core", "usize", "MAX"], "usize::max_value()"),
-    (&["core", "u8",    "MAX"], "u8::max_value()"),
-    (&["core", "u16",   "MAX"], "u16::max_value()"),
-    (&["core", "u32",   "MAX"], "u32::max_value()"),
-    (&["core", "u64",   "MAX"], "u64::max_value()"),
-    (&["core", "u128",  "MAX"], "u128::max_value()"),
+    (&["core", "u8", "MAX"], "u8::max_value()"),
+    (&["core", "u16", "MAX"], "u16::max_value()"),
+    (&["core", "u32", "MAX"], "u32::max_value()"),
+    (&["core", "u64", "MAX"], "u64::max_value()"),
+    (&["core", "u128", "MAX"], "u128::max_value()"),
 ];

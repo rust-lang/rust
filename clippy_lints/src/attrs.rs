@@ -7,27 +7,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! checks for attributes
 
 use crate::reexport::*;
-use crate::utils::{
-    in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_sugg,
-    span_lint_and_then, without_block_comments,
-};
-use if_chain::if_chain;
 use crate::rustc::hir::*;
 use crate::rustc::lint::{
     CheckLintNameResult, EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintContext, LintPass,
 };
 use crate::rustc::ty::{self, TyCtxt};
 use crate::rustc::{declare_tool_lint, lint_array};
-use semver::Version;
-use crate::syntax::ast::{
-    AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind,
-};
-use crate::syntax::source_map::Span;
 use crate::rustc_errors::Applicability;
+use crate::syntax::ast::{AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
+use crate::syntax::source_map::Span;
+use crate::utils::{
+    in_macro, last_line_of_span, match_def_path, opt_def_id, paths, snippet_opt, span_lint, span_lint_and_sugg,
+    span_lint_and_then, without_block_comments,
+};
+use if_chain::if_chain;
+use semver::Version;
 
 /// **What it does:** Checks for items annotated with `#[inline(always)]`,
 /// unless the annotated function is empty or simply panics.
@@ -219,8 +216,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
             match &*attr.name().as_str() {
                 "allow" | "warn" | "deny" | "forbid" => {
                     check_clippy_lint_names(cx, items);
-                }
-                _ => {}
+                },
+                _ => {},
             }
             if items.is_empty() || attr.name() != "deprecated" {
                 return;
@@ -254,19 +251,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
                                 // and `unused_imports` for `extern crate` items with `macro_use`
                                 for lint in lint_list {
                                     match item.node {
-                                        ItemKind::Use(..) => if is_word(lint, "unused_imports")
-                                                                || is_word(lint, "deprecated") {
-                                                return
+                                        ItemKind::Use(..) => {
+                                            if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
+                                                return;
+                                            }
                                         },
                                         ItemKind::ExternCrate(..) => {
-                                            if is_word(lint, "unused_imports")
-                                                && skip_unused_imports {
-                                                    return
+                                            if is_word(lint, "unused_imports") && skip_unused_imports {
+                                                return;
                                             }
                                             if is_word(lint, "unused_extern_crates") {
-                                                return
+                                                return;
                                             }
-                                        }
+                                        },
                                         _ => {},
                                     }
                                 }
@@ -396,14 +393,16 @@ fn is_relevant_expr(tcx: TyCtxt<'_, '_, '_>, tables: &ty::TypeckTables<'_>, expr
         ExprKind::Block(ref block, _) => is_relevant_block(tcx, tables, block),
         ExprKind::Ret(Some(ref e)) => is_relevant_expr(tcx, tables, e),
         ExprKind::Ret(None) | ExprKind::Break(_, None) => false,
-        ExprKind::Call(ref path_expr, _) => if let ExprKind::Path(ref qpath) = path_expr.node {
-            if let Some(fun_id) = opt_def_id(tables.qpath_def(qpath, path_expr.hir_id)) {
-                !match_def_path(tcx, fun_id, &paths::BEGIN_PANIC)
+        ExprKind::Call(ref path_expr, _) => {
+            if let ExprKind::Path(ref qpath) = path_expr.node {
+                if let Some(fun_id) = opt_def_id(tables.qpath_def(qpath, path_expr.hir_id)) {
+                    !match_def_path(tcx, fun_id, &paths::BEGIN_PANIC)
+                } else {
+                    true
+                }
             } else {
                 true
             }
-        } else {
-            true
         },
         _ => true,
     }
@@ -435,7 +434,8 @@ fn check_attrs(cx: &LateContext<'_, '_>, span: Span, name: Name, attrs: &[Attrib
                         cx,
                         EMPTY_LINE_AFTER_OUTER_ATTR,
                         begin_of_attr_to_item,
-                        "Found an empty line after an outer attribute. Perhaps you forgot to add a '!' to make it an inner attribute?"
+                        "Found an empty line after an outer attribute. \
+                         Perhaps you forgot to add a '!' to make it an inner attribute?",
                     );
                 }
             }
@@ -501,9 +501,7 @@ pub struct CfgAttrPass;
 
 impl LintPass for CfgAttrPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(
-            DEPRECATED_CFG_ATTR,
-        )
+        lint_array!(DEPRECATED_CFG_ATTR,)
     }
 }
 

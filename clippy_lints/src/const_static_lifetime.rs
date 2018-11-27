@@ -7,12 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::syntax::ast::*;
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::utils::{in_macro, snippet, span_lint_and_then};
 use crate::rustc_errors::Applicability;
+use crate::syntax::ast::*;
+use crate::utils::{in_macro, snippet, span_lint_and_then};
 
 /// **What it does:** Checks for constants with an explicit `'static` lifetime.
 ///
@@ -52,16 +51,17 @@ impl StaticConst {
             TyKind::Array(ref ty, _) => {
                 self.visit_type(&*ty, cx);
             },
-            TyKind::Tup(ref tup) => for tup_ty in tup {
-                self.visit_type(&*tup_ty, cx);
+            TyKind::Tup(ref tup) => {
+                for tup_ty in tup {
+                    self.visit_type(&*tup_ty, cx);
+                }
             },
             // This is what we are looking for !
             TyKind::Rptr(ref optional_lifetime, ref borrow_type) => {
                 // Match the 'static lifetime
                 if let Some(lifetime) = *optional_lifetime {
                     match borrow_type.ty.node {
-                        TyKind::Path(..) | TyKind::Slice(..) | TyKind::Array(..) |
-                        TyKind::Tup(..) => {
+                        TyKind::Path(..) | TyKind::Slice(..) | TyKind::Array(..) | TyKind::Tup(..) => {
                             if lifetime.ident.name == "'static" {
                                 let snip = snippet(cx, borrow_type.ty.span, "<type>");
                                 let sugg = format!("&{}", snip);
@@ -72,7 +72,7 @@ impl StaticConst {
                                     "Constants have by default a `'static` lifetime",
                                     |db| {
                                         db.span_suggestion_with_applicability(
-                                            ty.span, 
+                                            ty.span,
                                             "consider removing `'static`",
                                             sugg,
                                             Applicability::MachineApplicable, //snippet
@@ -80,8 +80,8 @@ impl StaticConst {
                                     },
                                 );
                             }
-                        }
-                        _ => {}
+                        },
+                        _ => {},
                     }
                 }
                 self.visit_type(&*borrow_type.ty, cx);

@@ -7,16 +7,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::rustc::hir::intravisit::{walk_expr, walk_stmt, walk_block, NestedVisitorMap, Visitor};
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, Lint};
-use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::hir::intravisit::{walk_block, walk_expr, walk_stmt, NestedVisitorMap, Visitor};
 use crate::rustc::hir::*;
-use if_chain::if_chain;
-use crate::syntax_pos::symbol::Symbol;
+use crate::rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::{LitKind, NodeId};
-use crate::utils::{match_qpath, span_lint_and_then, SpanlessEq, get_enclosing_block};
+use crate::syntax_pos::symbol::Symbol;
 use crate::utils::sugg::Sugg;
-use crate::rustc_errors::{Applicability};
+use crate::utils::{get_enclosing_block, match_qpath, span_lint_and_then, SpanlessEq};
+use if_chain::if_chain;
 
 /// **What it does:** Checks slow zero-filled vector initialization
 ///
@@ -49,7 +49,9 @@ declare_clippy_lint! {
 /// **Example:**
 /// ```rust
 /// let mut vec1 = Vec::with_capacity(len);
-/// unsafe { vec1.set_len(len); }
+/// unsafe {
+///     vec1.set_len(len);
+/// }
 /// ```
 declare_clippy_lint! {
     pub UNSAFE_VECTOR_INITIALIZATION,
@@ -62,10 +64,7 @@ pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(
-            SLOW_VECTOR_INITIALIZATION,
-            UNSAFE_VECTOR_INITIALIZATION,
-        )
+        lint_array!(SLOW_VECTOR_INITIALIZATION, UNSAFE_VECTOR_INITIALIZATION,)
     }
 }
 
@@ -162,11 +161,7 @@ impl Pass {
     }
 
     /// Search initialization for the given vector
-    fn search_initialization<'tcx>(
-        cx: &LateContext<'_, 'tcx>,
-        vec_alloc: VecAllocation<'tcx>,
-        parent_node: NodeId
-    ) {
+    fn search_initialization<'tcx>(cx: &LateContext<'_, 'tcx>, vec_alloc: VecAllocation<'tcx>, parent_node: NodeId) {
         let enclosing_body = get_enclosing_block(cx, parent_node);
 
         if enclosing_body.is_none() {
@@ -187,26 +182,27 @@ impl Pass {
         }
     }
 
-    fn lint_initialization<'tcx>(cx: &LateContext<'_, 'tcx>, initialization: &InitializationType<'tcx>, vec_alloc: &VecAllocation<'_>) {
+    fn lint_initialization<'tcx>(
+        cx: &LateContext<'_, 'tcx>,
+        initialization: &InitializationType<'tcx>,
+        vec_alloc: &VecAllocation<'_>,
+    ) {
         match initialization {
-            InitializationType::UnsafeSetLen(e) =>
-                Self::emit_lint(
-                    cx,
-                    e,
-                    vec_alloc,
-                    "unsafe vector initialization",
-                    UNSAFE_VECTOR_INITIALIZATION
-                ),
+            InitializationType::UnsafeSetLen(e) => Self::emit_lint(
+                cx,
+                e,
+                vec_alloc,
+                "unsafe vector initialization",
+                UNSAFE_VECTOR_INITIALIZATION,
+            ),
 
-            InitializationType::Extend(e) |
-            InitializationType::Resize(e) =>
-                Self::emit_lint(
-                    cx,
-                    e,
-                    vec_alloc,
-                    "slow zero-filling initialization",
-                    SLOW_VECTOR_INITIALIZATION
-                )
+            InitializationType::Extend(e) | InitializationType::Resize(e) => Self::emit_lint(
+                cx,
+                e,
+                vec_alloc,
+                "slow zero-filling initialization",
+                SLOW_VECTOR_INITIALIZATION,
+            ),
         };
     }
 
@@ -215,24 +211,18 @@ impl Pass {
         slow_fill: &Expr,
         vec_alloc: &VecAllocation<'_>,
         msg: &str,
-        lint: &'static Lint
+        lint: &'static Lint,
     ) {
         let len_expr = Sugg::hir(cx, vec_alloc.len_expr, "len");
 
-        span_lint_and_then(
-            cx,
-            lint,
-            slow_fill.span,
-            msg,
-            |db| {
-                db.span_suggestion_with_applicability(
-                    vec_alloc.allocation_expr.span,
-                    "consider replace allocation with",
-                    format!("vec![0; {}]", len_expr),
-                    Applicability::Unspecified
-                );
-            }
-        );
+        span_lint_and_then(cx, lint, slow_fill.span, msg, |db| {
+            db.span_suggestion_with_applicability(
+                vec_alloc.allocation_expr.span,
+                "consider replace allocation with",
+                format!("vec![0; {}]", len_expr),
+                Applicability::Unspecified,
+            );
+        });
     }
 }
 
@@ -356,8 +346,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
     fn visit_stmt(&mut self, stmt: &'tcx Stmt) {
         if self.initialization_found {
             match stmt.node {
-                StmtKind::Expr(ref expr, _) |
-                StmtKind::Semi(ref expr, _) => {
+                StmtKind::Expr(ref expr, _) | StmtKind::Semi(ref expr, _) => {
                     self.search_slow_extend_filling(expr);
                     self.search_slow_resize_filling(expr);
                     self.search_unsafe_set_len(expr);
@@ -374,7 +363,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
     fn visit_block(&mut self, block: &'tcx Block) {
         if self.initialization_found {
             if let Some(ref s) = block.stmts.get(0) {
-                self.visit_stmt( s)
+                self.visit_stmt(s)
             }
 
             self.initialization_found = false;

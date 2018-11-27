@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Checks for continue statements in loops that are redundant.
 //!
 //! For example, the lint would catch
@@ -181,7 +180,6 @@ impl EarlyLintPass for NeedlessContinue {
 /// - The expression is a `continue` node.
 /// - The expression node is a block with the first statement being a
 /// `continue`.
-///
 fn needless_continue_in_else(else_expr: &ast::Expr) -> bool {
     match else_expr.node {
         ast::ExprKind::Block(ref else_block, _) => is_first_block_stmt_continue(else_block),
@@ -192,10 +190,12 @@ fn needless_continue_in_else(else_expr: &ast::Expr) -> bool {
 
 fn is_first_block_stmt_continue(block: &ast::Block) -> bool {
     block.stmts.get(0).map_or(false, |stmt| match stmt.node {
-        ast::StmtKind::Semi(ref e) | ast::StmtKind::Expr(ref e) => if let ast::ExprKind::Continue(_) = e.node {
-            true
-        } else {
-            false
+        ast::StmtKind::Semi(ref e) | ast::StmtKind::Expr(ref e) => {
+            if let ast::ExprKind::Continue(_) = e.node {
+                true
+            } else {
+                false
+            }
         },
         _ => false,
     })
@@ -208,10 +208,10 @@ where
     F: FnMut(&ast::Block),
 {
     match expr.node {
-        ast::ExprKind::While(_, ref loop_block, _) |
-        ast::ExprKind::WhileLet(_, _, ref loop_block, _) |
-        ast::ExprKind::ForLoop(_, _, ref loop_block, _) |
-        ast::ExprKind::Loop(ref loop_block, _) => func(loop_block),
+        ast::ExprKind::While(_, ref loop_block, _)
+        | ast::ExprKind::WhileLet(_, _, ref loop_block, _)
+        | ast::ExprKind::ForLoop(_, _, ref loop_block, _)
+        | ast::ExprKind::Loop(ref loop_block, _) => func(loop_block),
         _ => {},
     }
 }
@@ -224,7 +224,6 @@ where
 /// - The `if` condition expression,
 /// - The `then` block, and
 /// - The `else` expression.
-///
 fn with_if_expr<F>(stmt: &ast::Stmt, mut func: F)
 where
     F: FnMut(&ast::Expr, &ast::Expr, &ast::Block, &ast::Expr),
@@ -274,7 +273,6 @@ const DROP_ELSE_BLOCK_AND_MERGE_MSG: &str = "Consider dropping the else clause a
 const DROP_ELSE_BLOCK_MSG: &str = "Consider dropping the else clause, and moving out the code in the else \
                                    block, like so:\n";
 
-
 fn emit_warning<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str, typ: LintType) {
     // snip    is the whole *help* message that appears after the warning.
     // message is the warning message.
@@ -294,7 +292,11 @@ fn emit_warning<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str
     span_help_and_lint(ctx, NEEDLESS_CONTINUE, expr.span, message, &snip);
 }
 
-fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str) -> String {
+fn suggestion_snippet_for_continue_inside_if<'a>(
+    ctx: &EarlyContext<'_>,
+    data: &'a LintData<'_>,
+    header: &str,
+) -> String {
     let cond_code = snippet(ctx, data.if_cond.span, "..");
 
     let if_code = format!("if {} {{\n    continue;\n}}\n", cond_code);
@@ -311,7 +313,11 @@ fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext<'_>, data: &
     ret
 }
 
-fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext<'_>, data: &'a LintData<'_>, header: &str) -> String {
+fn suggestion_snippet_for_continue_inside_else<'a>(
+    ctx: &EarlyContext<'_>,
+    data: &'a LintData<'_>,
+    header: &str,
+) -> String {
     let cond_code = snippet(ctx, data.if_cond.span, "..");
     let mut if_code = format!("if {} {{\n", cond_code);
 
@@ -355,7 +361,12 @@ fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
                     block_stmts: &loop_block.stmts,
                 };
                 if needless_continue_in_else(else_expr) {
-                    emit_warning(ctx, data, DROP_ELSE_BLOCK_AND_MERGE_MSG, LintType::ContinueInsideElseBlock);
+                    emit_warning(
+                        ctx,
+                        data,
+                        DROP_ELSE_BLOCK_AND_MERGE_MSG,
+                        LintType::ContinueInsideElseBlock,
+                    );
                 } else if is_first_block_stmt_continue(then_block) {
                     emit_warning(ctx, data, DROP_ELSE_BLOCK_MSG, LintType::ContinueInsideThenBlock);
                 }
@@ -369,9 +380,9 @@ fn check_and_warn<'a>(ctx: &EarlyContext<'_>, expr: &'a ast::Expr) {
 /// e.g., the string
 ///
 /// ```
-///     {
-///         let x = 5;
-///     }
+/// {
+///     let x = 5;
+/// }
 /// ```
 ///
 /// is transformed to
@@ -413,7 +424,6 @@ pub fn erode_from_back(s: &str) -> String {
 ///             inside_a_block();
 ///         }
 /// ```
-///
 pub fn erode_from_front(s: &str) -> String {
     s.chars()
         .skip_while(|c| c.is_whitespace())

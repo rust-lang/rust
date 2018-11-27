@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 /// Return the index of the character after the first camel-case component of
 /// `s`.
 pub fn until(s: &str) -> usize {

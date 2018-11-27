@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Lint on unnecessary double comparisons. Some examples:
 
 use crate::rustc::hir::*;
@@ -51,18 +50,11 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> Pass {
     #[allow(clippy::similar_names)]
-    fn check_binop(
-        &self,
-        cx: &LateContext<'a, 'tcx>,
-        op: BinOpKind,
-        lhs: &'tcx Expr,
-        rhs: &'tcx Expr,
-        span: Span,
-    ) {
+    fn check_binop(&self, cx: &LateContext<'a, 'tcx>, op: BinOpKind, lhs: &'tcx Expr, rhs: &'tcx Expr, span: Span) {
         let (lkind, llhs, lrhs, rkind, rlhs, rrhs) = match (lhs.node.clone(), rhs.node.clone()) {
             (ExprKind::Binary(lb, llhs, lrhs), ExprKind::Binary(rb, rlhs, rrhs)) => {
                 (lb.node, llhs, lrhs, rb.node, rlhs, rrhs)
-            }
+            },
             _ => return,
         };
         let mut spanless_eq = SpanlessEq::new(cx).ignore_fn();
@@ -84,13 +76,21 @@ impl<'a, 'tcx> Pass {
                     sugg,
                     applicability,
                 );
-            }}
+            }};
         }
         match (op, lkind, rkind) {
-            (BinOpKind::Or, BinOpKind::Eq, BinOpKind::Lt) | (BinOpKind::Or, BinOpKind::Lt, BinOpKind::Eq) => lint_double_comparison!(<=),
-            (BinOpKind::Or, BinOpKind::Eq, BinOpKind::Gt) | (BinOpKind::Or, BinOpKind::Gt, BinOpKind::Eq) => lint_double_comparison!(>=),
-            (BinOpKind::Or, BinOpKind::Lt, BinOpKind::Gt) | (BinOpKind::Or, BinOpKind::Gt, BinOpKind::Lt) => lint_double_comparison!(!=),
-            (BinOpKind::And, BinOpKind::Le, BinOpKind::Ge) | (BinOpKind::And, BinOpKind::Ge, BinOpKind::Le) => lint_double_comparison!(==),
+            (BinOpKind::Or, BinOpKind::Eq, BinOpKind::Lt) | (BinOpKind::Or, BinOpKind::Lt, BinOpKind::Eq) => {
+                lint_double_comparison!(<=)
+            },
+            (BinOpKind::Or, BinOpKind::Eq, BinOpKind::Gt) | (BinOpKind::Or, BinOpKind::Gt, BinOpKind::Eq) => {
+                lint_double_comparison!(>=)
+            },
+            (BinOpKind::Or, BinOpKind::Lt, BinOpKind::Gt) | (BinOpKind::Or, BinOpKind::Gt, BinOpKind::Lt) => {
+                lint_double_comparison!(!=)
+            },
+            (BinOpKind::And, BinOpKind::Le, BinOpKind::Ge) | (BinOpKind::And, BinOpKind::Ge, BinOpKind::Le) => {
+                lint_double_comparison!(==)
+            },
             _ => (),
         };
     }

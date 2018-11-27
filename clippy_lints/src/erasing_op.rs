@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::consts::{constant_simple, Constant};
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -25,7 +24,9 @@ use crate::utils::{in_macro, span_lint};
 ///
 /// **Example:**
 /// ```rust
-/// 0 / x; 0 * x; x & 0
+/// 0 / x;
+/// 0 * x;
+/// x & 0
 /// ```
 declare_clippy_lint! {
     pub ERASING_OP,

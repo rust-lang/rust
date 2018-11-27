@@ -7,18 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! lint on indexing and slicing operations
 
 use crate::consts::{constant, Constant};
+use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::syntax::ast::RangeLimits;
 use crate::utils;
 use crate::utils::higher;
 use crate::utils::higher::Range;
-use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::ty;
-use crate::syntax::ast::RangeLimits;
 
 /// **What it does:** Checks for out of bounds array indexing with a constant
 /// index.
@@ -29,7 +28,7 @@ use crate::syntax::ast::RangeLimits;
 ///
 /// **Example:**
 /// ```rust
-/// let x = [1,2,3,4];
+/// let x = [1, 2, 3, 4];
 ///
 /// // Bad
 /// x[9];
@@ -108,7 +107,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
         if let ExprKind::Index(ref array, ref index) = &expr.node {
             let ty = cx.tables.expr_ty(array);
             if let Some(range) = higher::range(cx, index) {
-
                 // Ranged indexes, i.e. &x[n..m], &x[n..], &x[..n] and &x[..]
                 if let ty::Array(_, s) = ty.sty {
                     let size: u128 = s.assert_usize(cx.tcx).unwrap().into();
@@ -153,13 +151,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IndexingSlicing {
                     (None, None) => return, // [..] is ok.
                 };
 
-                utils::span_help_and_lint(
-                    cx,
-                    INDEXING_SLICING,
-                    expr.span,
-                    "slicing may panic.",
-                    help_msg,
-                );
+                utils::span_help_and_lint(cx, INDEXING_SLICING, expr.span, "slicing may panic.", help_msg);
             } else {
                 // Catchall non-range index, i.e. [n] or [n << m]
                 if let ty::Array(..) = ty.sty {
@@ -189,23 +181,21 @@ fn to_const_range<'a, 'tcx>(
     range: Range<'_>,
     array_size: u128,
 ) -> (Option<u128>, Option<u128>) {
-    let s = range
-        .start
-        .map(|expr| constant(cx, cx.tables, expr).map(|(c, _)| c));
+    let s = range.start.map(|expr| constant(cx, cx.tables, expr).map(|(c, _)| c));
     let start = match s {
         Some(Some(Constant::Int(x))) => Some(x),
         Some(_) => None,
         None => Some(0),
     };
 
-    let e = range
-        .end
-        .map(|expr| constant(cx, cx.tables, expr).map(|(c, _)| c));
+    let e = range.end.map(|expr| constant(cx, cx.tables, expr).map(|(c, _)| c));
     let end = match e {
-        Some(Some(Constant::Int(x))) => if range.limits == RangeLimits::Closed {
-            Some(x + 1)
-        } else {
-            Some(x)
+        Some(Some(Constant::Int(x))) => {
+            if range.limits == RangeLimits::Closed {
+                Some(x + 1)
+            } else {
+                Some(x)
+            }
         },
         Some(_) => None,
         None => Some(array_size),

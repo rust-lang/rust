@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Utility functions about comparison operators.
 
 #![deny(clippy::missing_docs_in_private_items)]

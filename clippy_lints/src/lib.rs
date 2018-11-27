@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // error-pattern:cargo-clippy
 
 #![feature(box_syntax)]
@@ -18,7 +17,6 @@
 #![allow(clippy::missing_docs_in_private_items)]
 #![recursion_limit = "256"]
 #![feature(macro_at_most_once_rep)]
-
 #![warn(rust_2018_idioms, trivial_casts, trivial_numeric_casts)]
 #![feature(crate_visibility_modifier)]
 #![feature(try_from)]
@@ -216,12 +214,19 @@ mod reexport {
     crate use crate::syntax::ast::{Name, NodeId};
 }
 
-pub fn register_pre_expansion_lints(session: &rustc::session::Session, store: &mut rustc::lint::LintStore, conf: &Conf) {
+pub fn register_pre_expansion_lints(
+    session: &rustc::session::Session,
+    store: &mut rustc::lint::LintStore,
+    conf: &Conf,
+) {
     store.register_pre_expansion_pass(Some(session), box write::Pass);
     store.register_pre_expansion_pass(Some(session), box redundant_field_names::RedundantFieldNames);
-    store.register_pre_expansion_pass(Some(session), box non_expressive_names::NonExpressiveNames {
-        single_char_binding_names_threshold: conf.single_char_binding_names_threshold,
-    });
+    store.register_pre_expansion_pass(
+        Some(session),
+        box non_expressive_names::NonExpressiveNames {
+            single_char_binding_names_threshold: conf.single_char_binding_names_threshold,
+        },
+    );
     store.register_pre_expansion_pass(Some(session), box attrs::CfgAttrPass);
 }
 
@@ -236,38 +241,49 @@ pub fn read_conf(reg: &rustc_plugin::Registry<'_>) -> Conf {
                 match utils::conf::lookup_conf_file() {
                     Ok(path) => path,
                     Err(error) => {
-                        reg.sess.struct_err(&format!("error finding Clippy's configuration file: {}", error)).emit();
+                        reg.sess
+                            .struct_err(&format!("error finding Clippy's configuration file: {}", error))
+                            .emit();
                         None
-                    }
+                    },
                 }
             };
 
-            let file_name = file_name.map(|file_name| if file_name.is_relative() {
-                reg.sess
-                    .local_crate_source_file
-                    .as_ref()
-                    .and_then(|file| std::path::Path::new(&file).parent().map(std::path::Path::to_path_buf))
-                    .unwrap_or_default()
-                    .join(file_name)
-            } else {
-                file_name
+            let file_name = file_name.map(|file_name| {
+                if file_name.is_relative() {
+                    reg.sess
+                        .local_crate_source_file
+                        .as_ref()
+                        .and_then(|file| std::path::Path::new(&file).parent().map(std::path::Path::to_path_buf))
+                        .unwrap_or_default()
+                        .join(file_name)
+                } else {
+                    file_name
+                }
             });
 
             let (conf, errors) = utils::conf::read(file_name.as_ref().map(|p| p.as_ref()));
 
             // all conf errors are non-fatal, we just use the default conf in case of error
             for error in errors {
-                reg.sess.struct_err(&format!("error reading Clippy's configuration file `{}`: {}", file_name.as_ref().and_then(|p| p.to_str()).unwrap_or(""), error)).emit();
+                reg.sess
+                    .struct_err(&format!(
+                        "error reading Clippy's configuration file `{}`: {}",
+                        file_name.as_ref().and_then(|p| p.to_str()).unwrap_or(""),
+                        error
+                    ))
+                    .emit();
             }
 
             conf
-        }
+        },
         Err((err, span)) => {
-            reg.sess.struct_span_err(span, err)
-                    .span_note(span, "Clippy will use default configuration")
-                    .emit();
+            reg.sess
+                .struct_span_err(span, err)
+                .span_note(span, "Clippy will use default configuration")
+                .emit();
             toml::from_str("").expect("we never error on empty config files")
-        }
+        },
     }
 }
 

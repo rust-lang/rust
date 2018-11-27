@@ -7,14 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::utils::span_lint;
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use std::f64::consts as f64;
 use crate::syntax::ast::{FloatTy, Lit, LitKind};
 use crate::syntax::symbol;
+use crate::utils::span_lint;
+use std::f64::consts as f64;
 
 /// **What it does:** Checks for floating point literals that approximate
 /// constants which are defined in

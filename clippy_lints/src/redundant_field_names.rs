@@ -7,12 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::syntax::ast::*;
-use crate::utils::{span_lint_and_sugg};
+use crate::utils::span_lint_and_sugg;
 
 /// **What it does:** Checks for fields in struct literals where shorthands
 /// could be used.

@@ -7,18 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Read configurations files.
 
 #![deny(clippy::missing_docs_in_private_items)]
 
+use crate::syntax::{ast, source_map};
 use lazy_static::lazy_static;
 use std::default::Default;
-use std::{env, fmt, fs, io, path};
 use std::io::Read;
-use crate::syntax::{ast, source_map};
-use toml;
 use std::sync::Mutex;
+use std::{env, fmt, fs, io, path};
+use toml;
 
 /// Get the configuration file from arguments.
 pub fn file_from_args(
@@ -30,10 +29,12 @@ pub fn file_from_args(
                 ast::MetaItemKind::Word | ast::MetaItemKind::List(_) => {
                     Err(("`conf_file` must be a named value", arg.span))
                 },
-                ast::MetaItemKind::NameValue(ref value) => if let ast::LitKind::Str(ref file, _) = value.node {
-                    Ok(Some(file.to_string().into()))
-                } else {
-                    Err(("`conf_file` value must be a string", value.span))
+                ast::MetaItemKind::NameValue(ref value) => {
+                    if let ast::LitKind::Str(ref file, _) = value.node {
+                        Ok(Some(file.to_string().into()))
+                    } else {
+                        Err(("`conf_file` value must be a string", value.span))
+                    }
                 },
             };
         }
@@ -179,8 +180,10 @@ pub fn lookup_conf_file() -> io::Result<Option<path::PathBuf>> {
                 Ok(ref md) if md.is_file() => return Ok(Some(config_file)),
                 // Return the error if it's something other than `NotFound`; otherwise we didn't
                 // find the project file yet, and continue searching.
-                Err(e) => if e.kind() != io::ErrorKind::NotFound {
-                    return Err(e);
+                Err(e) => {
+                    if e.kind() != io::ErrorKind::NotFound {
+                        return Err(e);
+                    }
                 },
                 _ => (),
             }
@@ -223,25 +226,14 @@ pub fn read(path: Option<&path::Path>) -> (Conf, Vec<Error>) {
         Err(err) => return default(vec![err.into()]),
     };
 
-    assert!(
-        ERRORS
-            .lock()
-            .expect("no threading -> mutex always safe")
-            .is_empty()
-    );
+    assert!(ERRORS.lock().expect("no threading -> mutex always safe").is_empty());
     match toml::from_str(&file) {
         Ok(toml) => (
             toml,
-            ERRORS
-                .lock()
-                .expect("no threading -> mutex always safe")
-                .split_off(0),
+            ERRORS.lock().expect("no threading -> mutex always safe").split_off(0),
         ),
         Err(e) => {
-            let mut errors = ERRORS
-                .lock()
-                .expect("no threading -> mutex always safe")
-                .split_off(0);
+            let mut errors = ERRORS.lock().expect("no threading -> mutex always safe").split_off(0);
             errors.push(Error::Toml(e.to_string()));
             default(errors)
         },

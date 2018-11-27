@@ -7,18 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::rustc::hir::def::Def;
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::rustc::hir::*;
-use crate::rustc::hir::def::Def;
-use crate::utils::sugg::Sugg;
 use crate::syntax::ptr::P;
+use crate::utils::sugg::Sugg;
+use if_chain::if_chain;
 
-use crate::utils::{match_def_path, match_type, span_lint_and_then};
-use crate::utils::paths::*;
 use crate::rustc_errors::Applicability;
+use crate::utils::paths::*;
+use crate::utils::{match_def_path, match_type, span_lint_and_then};
 
 /// **What it does:** Checks for expressions that could be replaced by the question mark operator
 ///
@@ -38,7 +37,7 @@ use crate::rustc_errors::Applicability;
 /// ```rust
 /// option?;
 /// ```
-declare_clippy_lint!{
+declare_clippy_lint! {
     pub QUESTION_MARK,
     style,
     "checks for expressions that could be replaced by the question mark operator"
@@ -108,17 +107,15 @@ impl Pass {
 
                 false
             },
-            ExprKind::Ret(Some(ref expr)) => {
-                Self::expression_returns_none(cx, expr)
-            },
+            ExprKind::Ret(Some(ref expr)) => Self::expression_returns_none(cx, expr),
             ExprKind::Path(ref qp) => {
                 if let Def::VariantCtor(def_id, _) = cx.tables.qpath_def(qp, expression.hir_id) {
-                    return match_def_path(cx.tcx, def_id,  &OPTION_NONE);
+                    return match_def_path(cx.tcx, def_id, &OPTION_NONE);
                 }
 
                 false
             },
-            _ => false
+            _ => false,
         }
     }
 

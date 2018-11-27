@@ -7,15 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! A group of attributes that can be attached to Rust code in order
 //! to generate a clippy lint detecting said code automatically.
 
+use crate::rustc::hir;
+use crate::rustc::hir::intravisit::{NestedVisitorMap, Visitor};
+use crate::rustc::hir::{BindingAnnotation, DeclKind, Expr, ExprKind, Pat, PatKind, QPath, Stmt, StmtKind, TyKind};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::hir;
-use crate::rustc::hir::{Expr, ExprKind, QPath, TyKind, Pat, PatKind, BindingAnnotation, StmtKind, DeclKind, Stmt};
-use crate::rustc::hir::intravisit::{NestedVisitorMap, Visitor};
 use crate::rustc_data_structures::fx::FxHashMap;
 use crate::syntax::ast::{Attribute, LitKind, DUMMY_NODE_ID};
 use crate::utils::get_attr;
@@ -40,7 +39,7 @@ use crate::utils::get_attr;
 ///
 /// ```rust
 /// // ./tests/ui/new_lint.stdout
-/// if_chain!{
+/// if_chain! {
 ///     if let ExprKind::If(ref cond, ref then, None) = item.node,
 ///     if let ExprKind::Binary(BinOp::Eq, ref left, ref right) = cond.node,
 ///     if let ExprKind::Path(ref path) = left.node,
@@ -248,7 +247,10 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let op_pat = self.next("op");
                 let left_pat = self.next("left");
                 let right_pat = self.next("right");
-                println!("Binary(ref {}, ref {}, ref {}) = {};", op_pat, left_pat, right_pat, current);
+                println!(
+                    "Binary(ref {}, ref {}, ref {}) = {};",
+                    op_pat, left_pat, right_pat, current
+                );
                 println!("    if BinOpKind::{:?} == {}.node;", op.node, op_pat);
                 self.current = left_pat;
                 self.visit_expr(left);
@@ -311,7 +313,10 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let then_pat = self.next("then");
                 if let Some(ref else_) = *opt_else {
                     let else_pat = self.next("else_");
-                    println!("If(ref {}, ref {}, Some(ref {})) = {};", cond_pat, then_pat, else_pat, current);
+                    println!(
+                        "If(ref {}, ref {}, Some(ref {})) = {};",
+                        cond_pat, then_pat, else_pat, current
+                    );
                     self.current = else_pat;
                     self.visit_expr(else_);
                 } else {
@@ -326,7 +331,10 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let cond_pat = self.next("cond");
                 let body_pat = self.next("body");
                 let label_pat = self.next("label");
-                println!("While(ref {}, ref {}, ref {}) = {};", cond_pat, body_pat, label_pat, current);
+                println!(
+                    "While(ref {}, ref {}, ref {}) = {};",
+                    cond_pat, body_pat, label_pat, current
+                );
                 self.current = cond_pat;
                 self.visit_expr(cond);
                 self.current = body_pat;
@@ -360,7 +368,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                                 println!("    if let Guard::If(ref {}) = {};", if_expr_pat, guard_pat);
                                 self.current = if_expr_pat;
                                 self.visit_expr(if_expr);
-                            }
+                            },
                         }
                     }
                     println!("    if {}[{}].pats.len() == {};", arms_pat, i, arm.pats.len());
@@ -399,7 +407,10 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let op_pat = self.next("op");
                 let target_pat = self.next("target");
                 let value_pat = self.next("value");
-                println!("AssignOp(ref {}, ref {}, ref {}) = {};", op_pat, target_pat, value_pat, current);
+                println!(
+                    "AssignOp(ref {}, ref {}, ref {}) = {};",
+                    op_pat, target_pat, value_pat, current
+                );
                 println!("    if BinOpKind::{:?} == {}.node;", op.node, op_pat);
                 self.current = target_pat;
                 self.visit_expr(target);
@@ -452,13 +463,15 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 println!("Again(ref {}) = {};", destination_pat, current);
                 // FIXME: implement label printing
             },
-            ExprKind::Ret(ref opt_value) => if let Some(ref value) = *opt_value {
-                let value_pat = self.next("value");
-                println!("Ret(Some(ref {})) = {};", value_pat, current);
-                self.current = value_pat;
-                self.visit_expr(value);
-            } else {
-                println!("Ret(None) = {};", current);
+            ExprKind::Ret(ref opt_value) => {
+                if let Some(ref value) = *opt_value {
+                    let value_pat = self.next("value");
+                    println!("Ret(Some(ref {})) = {};", value_pat, current);
+                    self.current = value_pat;
+                    self.visit_expr(value);
+                } else {
+                    println!("Ret(None) = {};", current);
+                }
             },
             ExprKind::InlineAsm(_, ref _input, ref _output) => {
                 println!("InlineAsm(_, ref input, ref output) = {};", current);
@@ -471,10 +484,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     let base_pat = self.next("base");
                     println!(
                         "Struct(ref {}, ref {}, Some(ref {})) = {};",
-                        path_pat,
-                        fields_pat,
-                        base_pat,
-                        current
+                        path_pat, fields_pat, base_pat, current
                     );
                     self.current = base_pat;
                     self.visit_expr(base);
@@ -512,27 +522,36 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 let name_pat = self.next("name");
                 if let Some(ref sub) = *sub {
                     let sub_pat = self.next("sub");
-                    println!("Binding({}, _, {}, Some(ref {})) = {};", anno_pat, name_pat, sub_pat, current);
+                    println!(
+                        "Binding({}, _, {}, Some(ref {})) = {};",
+                        anno_pat, name_pat, sub_pat, current
+                    );
                     self.current = sub_pat;
                     self.visit_pat(sub);
                 } else {
                     println!("Binding({}, _, {}, None) = {};", anno_pat, name_pat, current);
                 }
                 println!("    if {}.node.as_str() == \"{}\";", name_pat, ident.as_str());
-            }
+            },
             PatKind::Struct(ref path, ref fields, ignore) => {
                 let path_pat = self.next("path");
                 let fields_pat = self.next("fields");
-                println!("Struct(ref {}, ref {}, {}) = {};", path_pat, fields_pat, ignore, current);
+                println!(
+                    "Struct(ref {}, ref {}, {}) = {};",
+                    path_pat, fields_pat, ignore, current
+                );
                 self.current = path_pat;
                 self.print_qpath(path);
                 println!("    if {}.len() == {};", fields_pat, fields.len());
                 println!("    // unimplemented: field checks");
-            }
+            },
             PatKind::TupleStruct(ref path, ref fields, skip_pos) => {
                 let path_pat = self.next("path");
                 let fields_pat = self.next("fields");
-                println!("TupleStruct(ref {}, ref {}, {:?}) = {};", path_pat, fields_pat, skip_pos, current);
+                println!(
+                    "TupleStruct(ref {}, ref {}, {:?}) = {};",
+                    path_pat, fields_pat, skip_pos, current
+                );
                 self.current = path_pat;
                 self.print_qpath(path);
                 println!("    if {}.len() == {};", fields_pat, fields.len());
@@ -543,13 +562,13 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 println!("Path(ref {}) = {};", path_pat, current);
                 self.current = path_pat;
                 self.print_qpath(path);
-            }
+            },
             PatKind::Tuple(ref fields, skip_pos) => {
                 let fields_pat = self.next("fields");
                 println!("Tuple(ref {}, {:?}) = {};", fields_pat, skip_pos, current);
                 println!("    if {}.len() == {};", fields_pat, fields.len());
                 println!("    // unimplemented: field checks");
-            }
+            },
             PatKind::Box(ref pat) => {
                 let pat_pat = self.next("pat");
                 println!("Box(ref {}) = {};", pat_pat, current);
@@ -567,22 +586,28 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                 println!("Lit(ref {}) = {}", lit_expr_pat, current);
                 self.current = lit_expr_pat;
                 self.visit_expr(lit_expr);
-            }
+            },
             PatKind::Range(ref start, ref end, end_kind) => {
                 let start_pat = self.next("start");
                 let end_pat = self.next("end");
-                println!("Range(ref {}, ref {}, RangeEnd::{:?}) = {};", start_pat, end_pat, end_kind, current);
+                println!(
+                    "Range(ref {}, ref {}, RangeEnd::{:?}) = {};",
+                    start_pat, end_pat, end_kind, current
+                );
                 self.current = start_pat;
                 self.visit_expr(start);
                 self.current = end_pat;
                 self.visit_expr(end);
-            }
+            },
             PatKind::Slice(ref start, ref middle, ref end) => {
                 let start_pat = self.next("start");
                 let end_pat = self.next("end");
                 if let Some(ref middle) = middle {
                     let middle_pat = self.next("middle");
-                    println!("Slice(ref {}, Some(ref {}), ref {}) = {};", start_pat, middle_pat, end_pat, current);
+                    println!(
+                        "Slice(ref {}, Some(ref {}), ref {}) = {};",
+                        start_pat, middle_pat, end_pat, current
+                    );
                     self.current = middle_pat;
                     self.visit_pat(middle);
                 } else {
@@ -598,7 +623,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                     self.current = format!("{}[{}]", end_pat, i);
                     self.visit_pat(pat);
                 }
-            }
+            },
         }
     }
 
@@ -631,7 +656,7 @@ impl<'tcx> Visitor<'tcx> for PrintVisitor {
                         println!("Item(item_id) = {};", current);
                     },
                 }
-            }
+            },
 
             // Expr without trailing semi-colon (must have unit type):
             StmtKind::Expr(ref e, _) => {
@@ -666,7 +691,10 @@ fn desugaring_name(des: hir::MatchSource) -> String {
         hir::MatchSource::TryDesugar => "MatchSource::TryDesugar".to_string(),
         hir::MatchSource::WhileLetDesugar => "MatchSource::WhileLetDesugar".to_string(),
         hir::MatchSource::Normal => "MatchSource::Normal".to_string(),
-        hir::MatchSource::IfLetDesugar { contains_else_clause } => format!("MatchSource::IfLetDesugar {{ contains_else_clause: {} }}", contains_else_clause),
+        hir::MatchSource::IfLetDesugar { contains_else_clause } => format!(
+            "MatchSource::IfLetDesugar {{ contains_else_clause: {} }}",
+            contains_else_clause
+        ),
     }
 }
 
@@ -680,13 +708,15 @@ fn loop_desugaring_name(des: hir::LoopSource) -> &'static str {
 
 fn print_path(path: &QPath, first: &mut bool) {
     match *path {
-        QPath::Resolved(_, ref path) => for segment in &path.segments {
-            if *first {
-                *first = false;
-            } else {
-                print!(", ");
+        QPath::Resolved(_, ref path) => {
+            for segment in &path.segments {
+                if *first {
+                    *first = false;
+                } else {
+                    print!(", ");
+                }
+                print!("{:?}", segment.ident.as_str());
             }
-            print!("{:?}", segment.ident.as_str());
         },
         QPath::TypeRelative(ref ty, ref segment) => match ty.node {
             hir::TyKind::Path(ref inner_path) => {

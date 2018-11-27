@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //   Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 //   file at the top-level directory of this distribution and at
 //   http://rust-lang.org/COPYRIGHT.
@@ -33,9 +32,9 @@ use crate::utils::span_lint;
 /// crates when that's profitable as long as any form of LTO is used. When LTO is disabled,
 /// functions that are not `#[inline]` cannot be inlined across crates. Certain types of crates
 /// might intend for most of the methods in their public API to be able to be inlined across
-/// crates even when LTO is disabled. For these types of crates, enabling this lint might make sense.
-/// It allows the crate to require all exported methods to be `#[inline]` by default, and then opt
-/// out for specific methods where this might not make sense.
+/// crates even when LTO is disabled. For these types of crates, enabling this lint might make
+/// sense. It allows the crate to require all exported methods to be `#[inline]` by default, and
+/// then opt out for specific methods where this might not make sense.
 ///
 /// **Known problems:** None.
 ///
@@ -79,11 +78,8 @@ declare_clippy_lint! {
 
 pub struct MissingInline;
 
-fn check_missing_inline_attrs(cx: &LateContext<'_, '_>,
-                              attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
-    let has_inline = attrs
-        .iter()
-        .any(|a| a.name() == "inline" );
+fn check_missing_inline_attrs(cx: &LateContext<'_, '_>, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
+    let has_inline = attrs.iter().any(|a| a.name() == "inline");
     if !has_inline {
         span_lint(
             cx,
@@ -97,11 +93,9 @@ fn check_missing_inline_attrs(cx: &LateContext<'_, '_>,
 fn is_executable<'a, 'tcx>(cx: &LateContext<'a, 'tcx>) -> bool {
     use crate::rustc::session::config::CrateType;
 
-    cx.tcx.sess.crate_types.get().iter().any(|t: &CrateType| {
-        match t {
-            CrateType::Executable => true,
-            _ => false,
-        }
+    cx.tcx.sess.crate_types.get().iter().any(|t: &CrateType| match t {
+        CrateType::Executable => true,
+        _ => false,
     })
 }
 
@@ -125,47 +119,44 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
                 let desc = "a function";
                 check_missing_inline_attrs(cx, &it.attrs, it.span, desc);
             },
-            hir::ItemKind::Trait(ref _is_auto, ref _unsafe, ref _generics,
-                           ref _bounds, ref trait_items)  => {
+            hir::ItemKind::Trait(ref _is_auto, ref _unsafe, ref _generics, ref _bounds, ref trait_items) => {
                 // note: we need to check if the trait is exported so we can't use
                 // `LateLintPass::check_trait_item` here.
                 for tit in trait_items {
                     let tit_ = cx.tcx.hir.trait_item(tit.id);
                     match tit_.node {
-                        hir::TraitItemKind::Const(..) |
-                        hir::TraitItemKind::Type(..) => {},
+                        hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => {},
                         hir::TraitItemKind::Method(..) => {
                             if tit.defaultness.has_value() {
                                 // trait method with default body needs inline in case
                                 // an impl is not provided
                                 let desc = "a default trait method";
                                 let item = cx.tcx.hir.expect_trait_item(tit.id.node_id);
-                                check_missing_inline_attrs(cx, &item.attrs,
-                                                                item.span, desc);
+                                check_missing_inline_attrs(cx, &item.attrs, item.span, desc);
                             }
                         },
                     }
                 }
-            }
-            hir::ItemKind::Const(..) |
-            hir::ItemKind::Enum(..) |
-            hir::ItemKind::Mod(..) |
-            hir::ItemKind::Static(..) |
-            hir::ItemKind::Struct(..) |
-            hir::ItemKind::TraitAlias(..) |
-            hir::ItemKind::GlobalAsm(..) |
-            hir::ItemKind::Ty(..) |
-            hir::ItemKind::Union(..) |
-            hir::ItemKind::Existential(..) |
-            hir::ItemKind::ExternCrate(..) |
-            hir::ItemKind::ForeignMod(..) |
-            hir::ItemKind::Impl(..) |
-            hir::ItemKind::Use(..) => {},
+            },
+            hir::ItemKind::Const(..)
+            | hir::ItemKind::Enum(..)
+            | hir::ItemKind::Mod(..)
+            | hir::ItemKind::Static(..)
+            | hir::ItemKind::Struct(..)
+            | hir::ItemKind::TraitAlias(..)
+            | hir::ItemKind::GlobalAsm(..)
+            | hir::ItemKind::Ty(..)
+            | hir::ItemKind::Union(..)
+            | hir::ItemKind::Existential(..)
+            | hir::ItemKind::ExternCrate(..)
+            | hir::ItemKind::ForeignMod(..)
+            | hir::ItemKind::Impl(..)
+            | hir::ItemKind::Use(..) => {},
         };
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'a, 'tcx>, impl_item: &'tcx hir::ImplItem) {
-        use crate::rustc::ty::{TraitContainer, ImplContainer};
+        use crate::rustc::ty::{ImplContainer, TraitContainer};
         if is_executable(cx) {
             return;
         }
@@ -177,9 +168,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingInline {
 
         let desc = match impl_item.node {
             hir::ImplItemKind::Method(..) => "a method",
-            hir::ImplItemKind::Const(..) |
-            hir::ImplItemKind::Type(_) |
-            hir::ImplItemKind::Existential(_) => return,
+            hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) | hir::ImplItemKind::Existential(_) => return,
         };
 
         let def_id = cx.tcx.hir.local_def_id(impl_item.id);

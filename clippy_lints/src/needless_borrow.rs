@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Checks for needless address of operations (`&`)
 //!
 //! This lint is **warn** by default
@@ -18,8 +17,8 @@ use crate::rustc::ty;
 use crate::rustc::ty::adjustment::{Adjust, Adjustment};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
-use crate::utils::{in_macro, snippet_opt, span_lint_and_then};
 use crate::syntax::ast::NodeId;
+use crate::utils::{in_macro, snippet_opt, span_lint_and_then};
 use if_chain::if_chain;
 
 /// **What it does:** Checks for address of operations (`&`) that are going to
@@ -60,11 +59,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
             if let ty::Ref(..) = cx.tables.expr_ty(inner).sty {
                 for adj3 in cx.tables.expr_adjustments(e).windows(3) {
                     if let [Adjustment {
-                        kind: Adjust::Deref(_),
-                        ..
+                        kind: Adjust::Deref(_), ..
                     }, Adjustment {
-                        kind: Adjust::Deref(_),
-                        ..
+                        kind: Adjust::Deref(_), ..
                     }, Adjustment {
                         kind: Adjust::Borrow(_),
                         ..

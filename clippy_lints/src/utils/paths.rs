@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! This module contains paths to types and functions Clippy needs to know
 //! about.
 

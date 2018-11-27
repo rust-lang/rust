@@ -10,21 +10,21 @@
 
 #![allow(clippy::float_cmp)]
 
-use crate::rustc::lint::LateContext;
-use crate::rustc::{span_bug, bug};
 use crate::rustc::hir::def::Def;
 use crate::rustc::hir::*;
-use crate::rustc::ty::{self, Ty, TyCtxt, Instance};
+use crate::rustc::lint::LateContext;
 use crate::rustc::ty::subst::{Subst, Substs};
+use crate::rustc::ty::{self, Instance, Ty, TyCtxt};
+use crate::rustc::{bug, span_bug};
+use crate::syntax::ast::{FloatTy, LitKind};
+use crate::syntax::ptr::P;
+use crate::utils::{clip, sext, unsext};
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::convert::TryInto;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::rc::Rc;
-use crate::syntax::ast::{FloatTy, LitKind};
-use crate::syntax::ptr::P;
-use crate::utils::{sext, unsext, clip};
 
 /// A `LitKind`-like enum to fold constant `Expr`s into.
 #[derive(Debug, Clone)]
@@ -71,7 +71,9 @@ impl PartialEq for Constant {
                 unsafe { mem::transmute::<f64, u64>(f64::from(l)) == mem::transmute::<f64, u64>(f64::from(r)) }
             },
             (&Constant::Bool(l), &Constant::Bool(r)) => l == r,
-            (&Constant::Vec(ref l), &Constant::Vec(ref r)) | (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) => l == r,
+            (&Constant::Vec(ref l), &Constant::Vec(ref r)) | (&Constant::Tuple(ref l), &Constant::Tuple(ref r)) => {
+                l == r
+            },
             (&Constant::Repeat(ref lv, ref ls), &Constant::Repeat(ref rv, ref rs)) => ls == rs && lv == rv,
             _ => false, // TODO: Are there inter-type equalities?
         }
@@ -117,7 +119,12 @@ impl Hash for Constant {
 }
 
 impl Constant {
-    pub fn partial_cmp(tcx: TyCtxt<'_, '_, '_>, cmp_type: &ty::TyKind<'_>, left: &Self, right: &Self) -> Option<Ordering> {
+    pub fn partial_cmp(
+        tcx: TyCtxt<'_, '_, '_>,
+        cmp_type: &ty::TyKind<'_>,
+        left: &Self,
+        right: &Self,
+    ) -> Option<Ordering> {
         match (left, right) {
             (&Constant::Str(ref ls), &Constant::Str(ref rs)) => Some(ls.cmp(rs)),
             (&Constant::Char(ref l), &Constant::Char(ref r)) => Some(l.cmp(r)),
@@ -158,8 +165,7 @@ pub fn lit_to_constant<'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
         LitKind::ByteStr(ref s) => Constant::Binary(Rc::clone(s)),
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n),
-        LitKind::Float(ref is, _) |
-        LitKind::FloatUnsuffixed(ref is) => match ty.sty {
+        LitKind::Float(ref is, _) | LitKind::FloatUnsuffixed(ref is) => match ty.sty {
             ty::Float(FloatTy::F32) => Constant::F32(is.as_str().parse().unwrap()),
             ty::Float(FloatTy::F64) => Constant::F64(is.as_str().parse().unwrap()),
             _ => bug!(),
@@ -168,7 +174,11 @@ pub fn lit_to_constant<'tcx>(lit: &LitKind, ty: Ty<'tcx>) -> Constant {
     }
 }
 
-pub fn constant<'c, 'cc>(lcx: &LateContext<'c, 'cc>, tables: &'c ty::TypeckTables<'cc>, e: &Expr) -> Option<(Constant, bool)> {
+pub fn constant<'c, 'cc>(
+    lcx: &LateContext<'c, 'cc>,
+    tables: &'c ty::TypeckTables<'cc>,
+    e: &Expr,
+) -> Option<(Constant, bool)> {
     let mut cx = ConstEvalLateContext {
         tcx: lcx.tcx,
         tables,
@@ -179,12 +189,19 @@ pub fn constant<'c, 'cc>(lcx: &LateContext<'c, 'cc>, tables: &'c ty::TypeckTable
     cx.expr(e).map(|cst| (cst, cx.needed_resolution))
 }
 
-pub fn constant_simple<'c, 'cc>(lcx: &LateContext<'c, 'cc>, tables: &'c ty::TypeckTables<'cc>, e: &Expr) -> Option<Constant> {
+pub fn constant_simple<'c, 'cc>(
+    lcx: &LateContext<'c, 'cc>,
+    tables: &'c ty::TypeckTables<'cc>,
+    e: &Expr,
+) -> Option<Constant> {
     constant(lcx, tables, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
 }
 
 /// Creates a `ConstEvalLateContext` from the given `LateContext` and `TypeckTables`
-pub fn constant_context<'c, 'cc>(lcx: &LateContext<'c, 'cc>, tables: &'c ty::TypeckTables<'cc>) -> ConstEvalLateContext<'c, 'cc> {
+pub fn constant_context<'c, 'cc>(
+    lcx: &LateContext<'c, 'cc>,
+    tables: &'c ty::TypeckTables<'cc>,
+) -> ConstEvalLateContext<'c, 'cc> {
     ConstEvalLateContext {
         tcx: lcx.tcx,
         tables,
@@ -270,9 +287,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
     /// create `Some(Vec![..])` of all constants, unless there is any
     /// non-constant part
     fn multi(&mut self, vec: &[Expr]) -> Option<Vec<Constant>> {
-        vec.iter()
-            .map(|elem| self.expr(elem))
-            .collect::<Option<_>>()
+        vec.iter().map(|elem| self.expr(elem)).collect::<Option<_>>()
     }
 
     /// lookup a possibly constant expression from a ExprKind::Path
@@ -331,63 +346,51 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         let l = self.expr(left)?;
         let r = self.expr(right);
         match (l, r) {
-            (Constant::Int(l), Some(Constant::Int(r))) => {
-                match self.tables.expr_ty(left).sty {
-                    ty::Int(ity) => {
-                        let l = sext(self.tcx, l, ity);
-                        let r = sext(self.tcx, r, ity);
-                        let zext = |n: i128| Constant::Int(unsext(self.tcx, n, ity));
-                        match op.node {
-                            BinOpKind::Add => l.checked_add(r).map(zext),
-                            BinOpKind::Sub => l.checked_sub(r).map(zext),
-                            BinOpKind::Mul => l.checked_mul(r).map(zext),
-                            BinOpKind::Div if r != 0 => l.checked_div(r).map(zext),
-                            BinOpKind::Rem if r != 0 => l.checked_rem(r).map(zext),
-                            BinOpKind::Shr => l.checked_shr(
-                                    r.try_into().expect("invalid shift")
-                                ).map(zext),
-                            BinOpKind::Shl => l.checked_shl(
-                                    r.try_into().expect("invalid shift")
-                                ).map(zext),
-                            BinOpKind::BitXor => Some(zext(l ^ r)),
-                            BinOpKind::BitOr => Some(zext(l | r)),
-                            BinOpKind::BitAnd => Some(zext(l & r)),
-                            BinOpKind::Eq => Some(Constant::Bool(l == r)),
-                            BinOpKind::Ne => Some(Constant::Bool(l != r)),
-                            BinOpKind::Lt => Some(Constant::Bool(l < r)),
-                            BinOpKind::Le => Some(Constant::Bool(l <= r)),
-                            BinOpKind::Ge => Some(Constant::Bool(l >= r)),
-                            BinOpKind::Gt => Some(Constant::Bool(l > r)),
-                            _ => None,
-                        }
+            (Constant::Int(l), Some(Constant::Int(r))) => match self.tables.expr_ty(left).sty {
+                ty::Int(ity) => {
+                    let l = sext(self.tcx, l, ity);
+                    let r = sext(self.tcx, r, ity);
+                    let zext = |n: i128| Constant::Int(unsext(self.tcx, n, ity));
+                    match op.node {
+                        BinOpKind::Add => l.checked_add(r).map(zext),
+                        BinOpKind::Sub => l.checked_sub(r).map(zext),
+                        BinOpKind::Mul => l.checked_mul(r).map(zext),
+                        BinOpKind::Div if r != 0 => l.checked_div(r).map(zext),
+                        BinOpKind::Rem if r != 0 => l.checked_rem(r).map(zext),
+                        BinOpKind::Shr => l.checked_shr(r.try_into().expect("invalid shift")).map(zext),
+                        BinOpKind::Shl => l.checked_shl(r.try_into().expect("invalid shift")).map(zext),
+                        BinOpKind::BitXor => Some(zext(l ^ r)),
+                        BinOpKind::BitOr => Some(zext(l | r)),
+                        BinOpKind::BitAnd => Some(zext(l & r)),
+                        BinOpKind::Eq => Some(Constant::Bool(l == r)),
+                        BinOpKind::Ne => Some(Constant::Bool(l != r)),
+                        BinOpKind::Lt => Some(Constant::Bool(l < r)),
+                        BinOpKind::Le => Some(Constant::Bool(l <= r)),
+                        BinOpKind::Ge => Some(Constant::Bool(l >= r)),
+                        BinOpKind::Gt => Some(Constant::Bool(l > r)),
+                        _ => None,
                     }
-                    ty::Uint(_) => {
-                        match op.node {
-                            BinOpKind::Add => l.checked_add(r).map(Constant::Int),
-                            BinOpKind::Sub => l.checked_sub(r).map(Constant::Int),
-                            BinOpKind::Mul => l.checked_mul(r).map(Constant::Int),
-                            BinOpKind::Div => l.checked_div(r).map(Constant::Int),
-                            BinOpKind::Rem => l.checked_rem(r).map(Constant::Int),
-                            BinOpKind::Shr => l.checked_shr(
-                                    r.try_into().expect("shift too large")
-                                ).map(Constant::Int),
-                            BinOpKind::Shl => l.checked_shl(
-                                    r.try_into().expect("shift too large")
-                                ).map(Constant::Int),
-                            BinOpKind::BitXor => Some(Constant::Int(l ^ r)),
-                            BinOpKind::BitOr => Some(Constant::Int(l | r)),
-                            BinOpKind::BitAnd => Some(Constant::Int(l & r)),
-                            BinOpKind::Eq => Some(Constant::Bool(l == r)),
-                            BinOpKind::Ne => Some(Constant::Bool(l != r)),
-                            BinOpKind::Lt => Some(Constant::Bool(l < r)),
-                            BinOpKind::Le => Some(Constant::Bool(l <= r)),
-                            BinOpKind::Ge => Some(Constant::Bool(l >= r)),
-                            BinOpKind::Gt => Some(Constant::Bool(l > r)),
-                            _ => None,
-                        }
-                    },
+                },
+                ty::Uint(_) => match op.node {
+                    BinOpKind::Add => l.checked_add(r).map(Constant::Int),
+                    BinOpKind::Sub => l.checked_sub(r).map(Constant::Int),
+                    BinOpKind::Mul => l.checked_mul(r).map(Constant::Int),
+                    BinOpKind::Div => l.checked_div(r).map(Constant::Int),
+                    BinOpKind::Rem => l.checked_rem(r).map(Constant::Int),
+                    BinOpKind::Shr => l.checked_shr(r.try_into().expect("shift too large")).map(Constant::Int),
+                    BinOpKind::Shl => l.checked_shl(r.try_into().expect("shift too large")).map(Constant::Int),
+                    BinOpKind::BitXor => Some(Constant::Int(l ^ r)),
+                    BinOpKind::BitOr => Some(Constant::Int(l | r)),
+                    BinOpKind::BitAnd => Some(Constant::Int(l & r)),
+                    BinOpKind::Eq => Some(Constant::Bool(l == r)),
+                    BinOpKind::Ne => Some(Constant::Bool(l != r)),
+                    BinOpKind::Lt => Some(Constant::Bool(l < r)),
+                    BinOpKind::Le => Some(Constant::Bool(l <= r)),
+                    BinOpKind::Ge => Some(Constant::Bool(l >= r)),
+                    BinOpKind::Gt => Some(Constant::Bool(l > r)),
                     _ => None,
-                }
+                },
+                _ => None,
             },
             (Constant::F32(l), Some(Constant::F32(r))) => match op.node {
                 BinOpKind::Add => Some(Constant::F32(l + r)),
@@ -420,7 +423,9 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             (l, r) => match (op.node, l, r) {
                 (BinOpKind::And, Constant::Bool(false), _) => Some(Constant::Bool(false)),
                 (BinOpKind::Or, Constant::Bool(true), _) => Some(Constant::Bool(true)),
-                (BinOpKind::And, Constant::Bool(true), Some(r)) | (BinOpKind::Or, Constant::Bool(false), Some(r)) => Some(r),
+                (BinOpKind::And, Constant::Bool(true), Some(r)) | (BinOpKind::Or, Constant::Bool(false), Some(r)) => {
+                    Some(r)
+                },
                 (BinOpKind::BitXor, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l ^ r)),
                 (BinOpKind::BitAnd, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l & r)),
                 (BinOpKind::BitOr, Constant::Bool(l), Some(Constant::Bool(r))) => Some(Constant::Bool(l | r)),
@@ -431,36 +436,34 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 }
 
 pub fn miri_to_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, result: &ty::Const<'tcx>) -> Option<Constant> {
-    use crate::rustc::mir::interpret::{Scalar, ConstValue};
+    use crate::rustc::mir::interpret::{ConstValue, Scalar};
     match result.val {
-        ConstValue::Scalar(Scalar::Bits{ bits: b, ..}) => match result.ty.sty {
+        ConstValue::Scalar(Scalar::Bits { bits: b, .. }) => match result.ty.sty {
             ty::Bool => Some(Constant::Bool(b == 1)),
             ty::Uint(_) | ty::Int(_) => Some(Constant::Int(b)),
             ty::Float(FloatTy::F32) => Some(Constant::F32(f32::from_bits(
-                b.try_into().expect("invalid f32 bit representation")
+                b.try_into().expect("invalid f32 bit representation"),
             ))),
             ty::Float(FloatTy::F64) => Some(Constant::F64(f64::from_bits(
-                b.try_into().expect("invalid f64 bit representation")
+                b.try_into().expect("invalid f64 bit representation"),
             ))),
             // FIXME: implement other conversion
             _ => None,
         },
-        ConstValue::ScalarPair(Scalar::Ptr(ptr),
-                                Scalar::Bits { bits: n, .. }) => match result.ty.sty {
+        ConstValue::ScalarPair(Scalar::Ptr(ptr), Scalar::Bits { bits: n, .. }) => match result.ty.sty {
             ty::Ref(_, tam, _) => match tam.sty {
                 ty::Str => {
-                    let alloc = tcx
-                        .alloc_map
-                        .lock()
-                        .unwrap_memory(ptr.alloc_id);
+                    let alloc = tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
                     let offset = ptr.offset.bytes().try_into().expect("too-large pointer offset");
                     let n = n as usize;
-                    String::from_utf8(alloc.bytes[offset..(offset + n)].to_owned()).ok().map(Constant::Str)
+                    String::from_utf8(alloc.bytes[offset..(offset + n)].to_owned())
+                        .ok()
+                        .map(Constant::Str)
                 },
                 _ => None,
             },
             _ => None,
-        }
+        },
         // FIXME: implement other conversions
         _ => None,
     }

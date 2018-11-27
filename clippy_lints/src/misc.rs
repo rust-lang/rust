@@ -7,23 +7,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::reexport::*;
-use matches::matches;
-use crate::rustc::hir::*;
-use crate::rustc::hir::intravisit::FnKind;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::rustc::ty;
-use crate::syntax::source_map::{ExpnFormat, Span};
-use crate::utils::{get_item_name, get_parent_expr, implements_trait, in_constant, in_macro, is_integer_literal,
-            iter_input_pats, last_path_segment, match_qpath, match_trait_method, paths, snippet, span_lint,
-            span_lint_and_then, walk_ptrs_ty, SpanlessEq};
-use crate::utils::sugg::Sugg;
-use crate::syntax::ast::LitKind;
 use crate::consts::{constant, Constant};
+use crate::reexport::*;
+use crate::rustc::hir::intravisit::FnKind;
+use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
+use crate::syntax::ast::LitKind;
+use crate::syntax::source_map::{ExpnFormat, Span};
+use crate::utils::sugg::Sugg;
+use crate::utils::{
+    get_item_name, get_parent_expr, implements_trait, in_constant, in_macro, is_integer_literal, iter_input_pats,
+    last_path_segment, match_qpath, match_trait_method, paths, snippet, span_lint, span_lint_and_then, walk_ptrs_ty,
+    SpanlessEq,
+};
+use if_chain::if_chain;
+use matches::matches;
 
 /// **What it does:** Checks for function arguments and let bindings denoted as
 /// `ref`.
@@ -43,7 +44,9 @@ use crate::rustc_errors::Applicability;
 ///
 /// **Example:**
 /// ```rust
-/// fn foo(ref x: u8) -> bool { .. }
+/// fn foo(ref x: u8) -> bool {
+///     ..
+/// }
 /// ```
 declare_clippy_lint! {
     pub TOPLEVEL_REF_ARG,
@@ -139,7 +142,7 @@ declare_clippy_lint! {
 /// ```rust
 /// match v {
 ///     Some(x) => (),
-///     y @ _   => (), // easier written as `y`,
+///     y @ _ => (), // easier written as `y`,
 /// }
 /// ```
 declare_clippy_lint! {
@@ -182,7 +185,7 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// f() && g();  // We should write `if f() { g(); }`.
+/// f() && g(); // We should write `if f() { g(); }`.
 /// ```
 declare_clippy_lint! {
     pub SHORT_CIRCUIT_STATEMENT,
@@ -266,8 +269,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         }
         for arg in iter_input_pats(decl, body) {
             match arg.pat.node {
-                PatKind::Binding(BindingAnnotation::Ref, _, _, _) |
-                PatKind::Binding(BindingAnnotation::RefMut, _, _, _) => {
+                PatKind::Binding(BindingAnnotation::Ref, _, _, _)
+                | PatKind::Binding(BindingAnnotation::RefMut, _, _, _) => {
                     span_lint(
                         cx,
                         TOPLEVEL_REF_ARG,
@@ -372,7 +375,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     }
                     if let Some(name) = get_item_name(cx, expr) {
                         let name = name.as_str();
-                        if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_")
+                        if name == "eq"
+                            || name == "ne"
+                            || name == "is_nan"
+                            || name.starts_with("eq_")
                             || name.ends_with("_eq")
                         {
                             return;
@@ -451,7 +457,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     cx,
                     REDUNDANT_PATTERN,
                     pat.span,
-                    &format!("the `{} @ _` pattern can be written as just `{}`", ident.name, ident.name),
+                    &format!(
+                        "the `{} @ _` pattern can be written as just `{}`",
+                        ident.name, ident.name
+                    ),
                 );
             }
         }
@@ -467,7 +476,7 @@ fn check_nan(cx: &LateContext<'_, '_>, path: &Path, expr: &Expr) {
                     CMP_NAN,
                     expr.span,
                     "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead",
-                    );
+                );
             }
         }
     }
@@ -477,7 +486,7 @@ fn is_named_constant<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) -> 
     if let Some((_, res)) = constant(cx, cx.tables, expr) {
         res
     } else {
-       false
+        false
     }
 }
 
@@ -502,14 +511,16 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
                 return;
             }
         },
-        ExprKind::Call(ref path, ref v) if v.len() == 1 => if let ExprKind::Path(ref path) = path.node {
-            if match_qpath(path, &["String", "from_str"]) || match_qpath(path, &["String", "from"]) {
-                (cx.tables.expr_ty_adjusted(&v[0]), snippet(cx, v[0].span, ".."))
+        ExprKind::Call(ref path, ref v) if v.len() == 1 => {
+            if let ExprKind::Path(ref path) = path.node {
+                if match_qpath(path, &["String", "from_str"]) || match_qpath(path, &["String", "from"]) {
+                    (cx.tables.expr_ty_adjusted(&v[0]), snippet(cx, v[0].span, ".."))
+                } else {
+                    return;
+                }
             } else {
                 return;
             }
-        } else {
-            return;
         },
         _ => return,
     };
@@ -520,18 +531,15 @@ fn check_to_owned(cx: &LateContext<'_, '_>, expr: &Expr, other: &Expr) {
         None => return,
     };
 
-    let deref_arg_impl_partial_eq_other = arg_ty
-        .builtin_deref(true)
-        .map_or(false, |tam| implements_trait(cx, tam.ty, partial_eq_trait_id, &[other_ty.into()]));
-    let arg_impl_partial_eq_deref_other = other_ty
-        .builtin_deref(true)
-        .map_or(false, |tam| implements_trait(cx, arg_ty, partial_eq_trait_id, &[tam.ty.into()]));
+    let deref_arg_impl_partial_eq_other = arg_ty.builtin_deref(true).map_or(false, |tam| {
+        implements_trait(cx, tam.ty, partial_eq_trait_id, &[other_ty.into()])
+    });
+    let arg_impl_partial_eq_deref_other = other_ty.builtin_deref(true).map_or(false, |tam| {
+        implements_trait(cx, arg_ty, partial_eq_trait_id, &[tam.ty.into()])
+    });
     let arg_impl_partial_eq_other = implements_trait(cx, arg_ty, partial_eq_trait_id, &[other_ty.into()]);
 
-    if !deref_arg_impl_partial_eq_other
-        && !arg_impl_partial_eq_deref_other
-        && !arg_impl_partial_eq_other
-    {
+    if !deref_arg_impl_partial_eq_other && !arg_impl_partial_eq_deref_other && !arg_impl_partial_eq_other {
         return;
     }
 

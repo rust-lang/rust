@@ -7,16 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! lint on inherent implementations
 
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_data_structures::fx::FxHashMap;
-use std::default::Default;
 use crate::syntax_pos::Span;
 use crate::utils::span_lint_and_then;
+use std::default::Default;
 
 /// **What it does:** Checks for multiple inherent implementations of a struct
 ///
@@ -56,7 +55,9 @@ pub struct Pass {
 
 impl Default for Pass {
     fn default() -> Self {
-        Self { impls: FxHashMap::default() }
+        Self {
+            impls: FxHashMap::default(),
+        }
     }
 }
 
@@ -88,11 +89,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 let mut impl_spans = impls
                     .iter()
                     .filter_map(|impl_def| self.impls.get(impl_def))
-                    .filter_map(|(span, generics)| if generics.params.len() == 0 {
-                        Some(span)
-                    } else {
-                        None
-                    });
+                    .filter_map(|(span, generics)| if generics.params.len() == 0 { Some(span) } else { None });
                 if let Some(initial_span) = impl_spans.nth(0) {
                     impl_spans.for_each(|additional_span| {
                         span_lint_and_then(
@@ -101,10 +98,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             *additional_span,
                             "Multiple implementations of this structure",
                             |db| {
-                                db.span_note(
-                                    *initial_span,
-                                    "First implementation here",
-                                );
+                                db.span_note(*initial_span, "First implementation here");
                             },
                         )
                     })

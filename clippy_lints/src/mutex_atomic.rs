@@ -7,15 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Checks for uses of mutex where an atomic value could be used
 //!
 //! This lint is **warn** by default
 
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::ty::{self, Ty};
 use crate::rustc::hir::Expr;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::ty::{self, Ty};
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast;
 use crate::utils::{match_type, paths, span_lint};
 

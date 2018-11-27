@@ -7,27 +7,28 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use matches::matches;
-use crate::rustc::hir::*;
 use crate::rustc::hir::intravisit::FnKind;
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::rustc::ty::{self, RegionKind, TypeFoldable};
-use crate::rustc::traits;
 use crate::rustc::middle::expr_use_visitor as euv;
 use crate::rustc::middle::mem_categorization as mc;
-use crate::rustc_target::spec::abi::Abi;
+use crate::rustc::traits;
+use crate::rustc::ty::{self, RegionKind, TypeFoldable};
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use crate::syntax::ast::NodeId;
-use crate::syntax_pos::Span;
-use crate::syntax::errors::DiagnosticBuilder;
-use crate::utils::{get_trait_def_id, implements_trait, in_macro, is_copy, is_self, match_type, multispan_sugg, paths,
-            snippet, snippet_opt, span_lint_and_then};
-use crate::utils::ptr::get_spans;
-use std::borrow::Cow;
 use crate::rustc_errors::Applicability;
+use crate::rustc_target::spec::abi::Abi;
+use crate::syntax::ast::NodeId;
+use crate::syntax::errors::DiagnosticBuilder;
+use crate::syntax_pos::Span;
+use crate::utils::ptr::get_spans;
+use crate::utils::{
+    get_trait_def_id, implements_trait, in_macro, is_copy, is_self, match_type, multispan_sugg, paths, snippet,
+    snippet_opt, span_lint_and_then,
+};
+use if_chain::if_chain;
+use matches::matches;
+use std::borrow::Cow;
 
 /// **What it does:** Checks for functions taking arguments by value, but not
 /// consuming them in its
@@ -67,7 +68,13 @@ impl LintPass for NeedlessPassByValue {
 }
 
 macro_rules! need {
-    ($e: expr) => { if let Some(x) = $e { x } else { return; } };
+    ($e: expr) => {
+        if let Some(x) = $e {
+            x
+        } else {
+            return;
+        }
+    };
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
@@ -114,7 +121,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             need!(cx.tcx.lang_items().fn_trait()),
             need!(cx.tcx.lang_items().fn_once_trait()),
             need!(cx.tcx.lang_items().fn_mut_trait()),
-            need!(get_trait_def_id(cx, &paths::RANGE_ARGUMENT_TRAIT))
+            need!(get_trait_def_id(cx, &paths::RANGE_ARGUMENT_TRAIT)),
         ];
 
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
@@ -125,7 +132,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             .filter(|p| !p.is_global())
             .filter_map(|pred| {
                 if let ty::Predicate::Trait(poly_trait_ref) = pred {
-                    if poly_trait_ref.def_id() == sized_trait || poly_trait_ref.skip_binder().has_escaping_bound_vars() {
+                    if poly_trait_ref.def_id() == sized_trait || poly_trait_ref.skip_binder().has_escaping_bound_vars()
+                    {
                         return None;
                     }
                     Some(poly_trait_ref)
@@ -152,12 +160,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         let fn_sig = cx.tcx.fn_sig(fn_def_id);
         let fn_sig = cx.tcx.erase_late_bound_regions(&fn_sig);
 
-        for (idx, ((input, &ty), arg)) in decl.inputs
-            .iter()
-            .zip(fn_sig.inputs())
-            .zip(&body.arguments)
-            .enumerate()
-        {
+        for (idx, ((input, &ty), arg)) in decl.inputs.iter().zip(fn_sig.inputs()).zip(&body.arguments).enumerate() {
             // All spans generated from a proc-macro invocation are the same...
             if span == input.span {
                 return;
@@ -172,9 +175,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 }
             }
 
+            //
             // * Exclude a type that is specifically bounded by `Borrow`.
-            // * Exclude a type whose reference also fulfills its bound.
-            //   (e.g. `std::convert::AsRef`, `serde::Serialize`)
+            // * Exclude a type whose reference also fulfills its bound. (e.g. `std::convert::AsRef`,
+            //   `serde::Serialize`)
             let (implements_borrow_trait, all_borrowable_trait) = {
                 let preds = preds
                     .iter()
@@ -183,17 +187,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
                 (
                     preds.iter().any(|t| t.def_id() == borrow_trait),
-                    !preds.is_empty() && preds.iter().all(|t| {
-                        let ty_params = &t.skip_binder().trait_ref.substs.iter().skip(1)
-                            .cloned()
-                            .collect::<Vec<_>>();
-                        implements_trait(
-                            cx,
-                            cx.tcx.mk_imm_ref(&RegionKind::ReErased, ty),
-                            t.def_id(),
-                            ty_params
-                        )
-                    }),
+                    !preds.is_empty()
+                        && preds.iter().all(|t| {
+                            let ty_params = &t
+                                .skip_binder()
+                                .trait_ref
+                                .substs
+                                .iter()
+                                .skip(1)
+                                .cloned()
+                                .collect::<Vec<_>>();
+                            implements_trait(cx, cx.tcx.mk_imm_ref(&RegionKind::ReErased, ty), t.def_id(), ty_params)
+                        }),
                 )
             };
 
@@ -415,13 +420,21 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
         }
     }
 
-    fn borrow(&mut self, _: NodeId, _: Span, _: &mc::cmt_<'tcx>, _: ty::Region<'_>, _: ty::BorrowKind, _: euv::LoanCause) {}
+    fn borrow(
+        &mut self,
+        _: NodeId,
+        _: Span,
+        _: &mc::cmt_<'tcx>,
+        _: ty::Region<'_>,
+        _: ty::BorrowKind,
+        _: euv::LoanCause,
+    ) {
+    }
 
     fn mutate(&mut self, _: NodeId, _: Span, _: &mc::cmt_<'tcx>, _: euv::MutateMode) {}
 
     fn decl_without_init(&mut self, _: NodeId, _: Span) {}
 }
-
 
 fn unwrap_downcast_or_interior<'a, 'tcx>(mut cmt: &'a mc::cmt_<'tcx>) -> mc::cmt_<'tcx> {
     loop {
@@ -431,5 +444,5 @@ fn unwrap_downcast_or_interior<'a, 'tcx>(mut cmt: &'a mc::cmt_<'tcx>) -> mc::cmt
             },
             _ => return (*cmt).clone(),
         }
-    };
+    }
 }

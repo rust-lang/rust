@@ -7,20 +7,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! lint on C-like enums that are `repr(isize/usize)` and have values that
 //! don't fit into an `i32`
 
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
+use crate::consts::{miri_to_const, Constant};
 use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::mir::interpret::GlobalId;
 use crate::rustc::ty;
 use crate::rustc::ty::subst::Substs;
+use crate::rustc::ty::util::IntTypeExt;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::{IntTy, UintTy};
 use crate::utils::span_lint;
-use crate::consts::{Constant, miri_to_const};
-use crate::rustc::ty::util::IntTypeExt;
-use crate::rustc::mir::interpret::GlobalId;
 
 /// **What it does:** Checks for C-like enumerations that are
 /// `repr(isize/usize)` and have values that don't fit into an `i32`.
@@ -35,7 +34,7 @@ use crate::rustc::mir::interpret::GlobalId;
 /// #[repr(usize)]
 /// enum NonPortable {
 ///     X = 0x1_0000_0000,
-///     Y = 0
+///     Y = 0,
 /// }
 /// ```
 declare_clippy_lint! {
@@ -68,7 +67,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
                     let instance = ty::Instance::new(def_id, substs);
                     let c_id = GlobalId {
                         instance,
-                        promoted: None
+                        promoted: None,
                     };
                     let constant = cx.tcx.const_eval(param_env.and(c_id)).ok();
                     if let Some(Constant::Int(val)) = constant.and_then(|c| miri_to_const(cx.tcx, c)) {
@@ -84,7 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
                                 if val <= i128::from(i32::max_value()) && val >= i128::from(i32::min_value()) {
                                     continue;
                                 }
-                            }
+                            },
                             ty::Uint(UintTy::Usize) if val > u128::from(u32::max_value()) => {},
                             _ => continue,
                         }

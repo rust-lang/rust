@@ -7,14 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::hir::*;
 use crate::syntax::ast::{LitKind, NodeId};
 use crate::syntax::source_map::Span;
-use unicode_normalization::UnicodeNormalization;
 use crate::utils::{is_allowed, snippet, span_help_and_lint};
+use unicode_normalization::UnicodeNormalization;
 
 /// **What it does:** Checks for the Unicode zero-width space in the code.
 ///
@@ -46,10 +45,10 @@ declare_clippy_lint! {
 /// let x = "Hä?"
 /// ```
 declare_clippy_lint! {
-    pub NON_ASCII_LITERAL,
-    pedantic,
-    "using any literal non-ASCII chars in a string literal instead of \
-     using the `\\u` escape"
+pub NON_ASCII_LITERAL,
+pedantic,
+"using any literal non-ASCII chars in a string literal instead of \
+ using the `\\u` escape"
 }
 
 /// **What it does:** Checks for string literals that contain Unicode in a form
@@ -64,12 +63,11 @@ declare_clippy_lint! {
 /// **Example:** You may not see it, but “à” and “à” aren't the same string. The
 /// former when escaped is actually `"a\u{300}"` while the latter is `"\u{e0}"`.
 declare_clippy_lint! {
-    pub UNICODE_NOT_NFC,
-    pedantic,
-    "using a unicode literal not in NFC normal form (see \
-     [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)"
+pub UNICODE_NOT_NFC,
+pedantic,
+"using a unicode literal not in NFC normal form (see \
+ [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)"
 }
-
 
 #[derive(Copy, Clone)]
 pub struct Unicode;
@@ -140,7 +138,10 @@ fn check_str(cx: &LateContext<'_, '_>, span: Span, id: NodeId) {
             UNICODE_NOT_NFC,
             span,
             "non-nfc unicode sequence detected",
-            &format!("Consider replacing the string with:\n\"{}\"", string.nfc().collect::<String>()),
+            &format!(
+                "Consider replacing the string with:\n\"{}\"",
+                string.nfc().collect::<String>()
+            ),
         );
     }
 }

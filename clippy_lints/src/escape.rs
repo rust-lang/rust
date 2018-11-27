@@ -7,16 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::rustc::hir::*;
 use crate::rustc::hir::intravisit as visit;
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::middle::expr_use_visitor::*;
 use crate::rustc::middle::mem_categorization::{cmt_, Categorization};
-use crate::rustc::ty::{self, Ty};
 use crate::rustc::ty::layout::LayoutOf;
+use crate::rustc::ty::{self, Ty};
 use crate::rustc::util::nodemap::NodeSet;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::NodeId;
 use crate::syntax::source_map::Span;
 use crate::utils::span_lint;
@@ -65,7 +64,6 @@ impl LintPass for Pass {
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
-
     fn check_fn(
         &mut self,
         cx: &LateContext<'a, 'tcx>,
@@ -157,7 +155,15 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             }
         }
     }
-    fn borrow(&mut self, _: NodeId, _: Span, cmt: &cmt_<'tcx>, _: ty::Region<'_>, _: ty::BorrowKind, loan_cause: LoanCause) {
+    fn borrow(
+        &mut self,
+        _: NodeId,
+        _: Span,
+        cmt: &cmt_<'tcx>,
+        _: ty::Region<'_>,
+        _: ty::BorrowKind,
+        loan_cause: LoanCause,
+    ) {
         if let Categorization::Local(lid) = cmt.cat {
             match loan_cause {
                 // x.foo()

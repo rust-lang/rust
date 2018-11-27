@@ -279,7 +279,9 @@ impl<'tcx> mir::visit::Visitor<'tcx> for LocalUseVisitor {
 
     fn visit_local(&mut self, local: &mir::Local, ctx: PlaceContext<'tcx>, _: mir::Location) {
         match ctx {
-            PlaceContext::MutatingUse(MutatingUseContext::Drop) | PlaceContext::NonUse(NonUseContext::StorageDead) => return,
+            PlaceContext::MutatingUse(MutatingUseContext::Drop) | PlaceContext::NonUse(NonUseContext::StorageDead) => {
+                return
+            },
             _ => {},
         }
 

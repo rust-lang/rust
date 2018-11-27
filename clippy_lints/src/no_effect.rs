@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir::def::Def;
 use crate::rustc::hir::{BinOpKind, BlockCheckMode, Expr, ExprKind, Stmt, StmtKind, UnsafeSource};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -63,36 +62,41 @@ fn has_no_effect(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
             has_no_effect(cx, a) && has_no_effect(cx, b)
         },
         ExprKind::Array(ref v) | ExprKind::Tup(ref v) => v.iter().all(|val| has_no_effect(cx, val)),
-        ExprKind::Repeat(ref inner, _) |
-        ExprKind::Cast(ref inner, _) |
-        ExprKind::Type(ref inner, _) |
-        ExprKind::Unary(_, ref inner) |
-        ExprKind::Field(ref inner, _) |
-        ExprKind::AddrOf(_, ref inner) |
-        ExprKind::Box(ref inner) => has_no_effect(cx, inner),
+        ExprKind::Repeat(ref inner, _)
+        | ExprKind::Cast(ref inner, _)
+        | ExprKind::Type(ref inner, _)
+        | ExprKind::Unary(_, ref inner)
+        | ExprKind::Field(ref inner, _)
+        | ExprKind::AddrOf(_, ref inner)
+        | ExprKind::Box(ref inner) => has_no_effect(cx, inner),
         ExprKind::Struct(_, ref fields, ref base) => {
-            !has_drop(cx, expr) && fields.iter().all(|field| has_no_effect(cx, &field.expr)) && match *base {
-                Some(ref base) => has_no_effect(cx, base),
-                None => true,
-            }
+            !has_drop(cx, expr)
+                && fields.iter().all(|field| has_no_effect(cx, &field.expr))
+                && match *base {
+                    Some(ref base) => has_no_effect(cx, base),
+                    None => true,
+                }
         },
-        ExprKind::Call(ref callee, ref args) => if let ExprKind::Path(ref qpath) = callee.node {
-            let def = cx.tables.qpath_def(qpath, callee.hir_id);
-            match def {
-                Def::Struct(..) | Def::Variant(..) | Def::StructCtor(..) | Def::VariantCtor(..) => {
-                    !has_drop(cx, expr) && args.iter().all(|arg| has_no_effect(cx, arg))
-                },
-                _ => false,
-            }
-        } else {
-            false
-        },
-        ExprKind::Block(ref block, _) => {
-            block.stmts.is_empty() && if let Some(ref expr) = block.expr {
-                has_no_effect(cx, expr)
+        ExprKind::Call(ref callee, ref args) => {
+            if let ExprKind::Path(ref qpath) = callee.node {
+                let def = cx.tables.qpath_def(qpath, callee.hir_id);
+                match def {
+                    Def::Struct(..) | Def::Variant(..) | Def::StructCtor(..) | Def::VariantCtor(..) => {
+                        !has_drop(cx, expr) && args.iter().all(|arg| has_no_effect(cx, arg))
+                    },
+                    _ => false,
+                }
             } else {
                 false
             }
+        },
+        ExprKind::Block(ref block, _) => {
+            block.stmts.is_empty()
+                && if let Some(ref expr) = block.expr {
+                    has_no_effect(cx, expr)
+                } else {
+                    false
+                }
         },
         _ => false,
     }
@@ -139,7 +143,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-
 fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<Vec<&'a Expr>> {
     if in_macro(expr.span) {
         return None;
@@ -150,37 +153,34 @@ fn reduce_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a Expr) -> Option<Vec
             Some(vec![&**a, &**b])
         },
         ExprKind::Array(ref v) | ExprKind::Tup(ref v) => Some(v.iter().collect()),
-        ExprKind::Repeat(ref inner, _) |
-        ExprKind::Cast(ref inner, _) |
-        ExprKind::Type(ref inner, _) |
-        ExprKind::Unary(_, ref inner) |
-        ExprKind::Field(ref inner, _) |
-        ExprKind::AddrOf(_, ref inner) |
-        ExprKind::Box(ref inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
-        ExprKind::Struct(_, ref fields, ref base) => if has_drop(cx, expr) {
-            None
-        } else {
-            Some(
-                fields
-                    .iter()
-                    .map(|f| &f.expr)
-                    .chain(base)
-                    .map(Deref::deref)
-                    .collect(),
-            )
-        },
-        ExprKind::Call(ref callee, ref args) => if let ExprKind::Path(ref qpath) = callee.node {
-            let def = cx.tables.qpath_def(qpath, callee.hir_id);
-            match def {
-                Def::Struct(..) | Def::Variant(..) | Def::StructCtor(..) | Def::VariantCtor(..)
-                    if !has_drop(cx, expr) =>
-                {
-                    Some(args.iter().collect())
-                },
-                _ => None,
+        ExprKind::Repeat(ref inner, _)
+        | ExprKind::Cast(ref inner, _)
+        | ExprKind::Type(ref inner, _)
+        | ExprKind::Unary(_, ref inner)
+        | ExprKind::Field(ref inner, _)
+        | ExprKind::AddrOf(_, ref inner)
+        | ExprKind::Box(ref inner) => reduce_expression(cx, inner).or_else(|| Some(vec![inner])),
+        ExprKind::Struct(_, ref fields, ref base) => {
+            if has_drop(cx, expr) {
+                None
+            } else {
+                Some(fields.iter().map(|f| &f.expr).chain(base).map(Deref::deref).collect())
             }
-        } else {
-            None
+        },
+        ExprKind::Call(ref callee, ref args) => {
+            if let ExprKind::Path(ref qpath) = callee.node {
+                let def = cx.tables.qpath_def(qpath, callee.hir_id);
+                match def {
+                    Def::Struct(..) | Def::Variant(..) | Def::StructCtor(..) | Def::VariantCtor(..)
+                        if !has_drop(cx, expr) =>
+                    {
+                        Some(args.iter().collect())
+                    },
+                    _ => None,
+                }
+            } else {
+                None
+            }
         },
         ExprKind::Block(ref block, _) => {
             if block.stmts.is_empty() {

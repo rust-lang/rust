@@ -7,22 +7,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::rustc::hir;
+use crate::rustc::hir::def::Def;
+use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::rustc::hir::*;
+use crate::rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use crate::rustc_errors::Applicability;
+use crate::syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
+use crate::syntax::source_map::Span;
+use crate::syntax::symbol::LocalInternedString;
 use crate::utils::{
     match_def_path, match_type, paths, span_help_and_lint, span_lint, span_lint_and_sugg, walk_ptrs_ty,
 };
 use if_chain::if_chain;
-use crate::rustc::hir;
-use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use crate::rustc::hir::*;
-use crate::rustc::hir::def::Def;
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc_errors::Applicability;
-use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use crate::syntax::ast::{Crate as AstCrate, Ident, ItemKind, Name};
-use crate::syntax::source_map::Span;
-use crate::syntax::symbol::LocalInternedString;
 
 /// **What it does:** Checks for various things we like to keep tidy in clippy.
 ///
@@ -112,18 +111,9 @@ impl LintPass for Clippy {
 
 impl EarlyLintPass for Clippy {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &AstCrate) {
-        if let Some(utils) = krate
-            .module
-            .items
-            .iter()
-            .find(|item| item.ident.name == "utils")
-        {
+        if let Some(utils) = krate.module.items.iter().find(|item| item.ident.name == "utils") {
             if let ItemKind::Mod(ref utils_mod) = utils.node {
-                if let Some(paths) = utils_mod
-                    .items
-                    .iter()
-                    .find(|item| item.ident.name == "paths")
-                {
+                if let Some(paths) = utils_mod.items.iter().find(|item| item.ident.name == "paths") {
                     if let ItemKind::Mod(ref paths_mod) = paths.node {
                         let mut last_name: Option<LocalInternedString> = None;
                         for item in &paths_mod.items {
@@ -218,7 +208,8 @@ fn is_lint_ref_type<'tcx>(cx: &LateContext<'_, 'tcx>, ty: &Ty) -> bool {
             ty: ref inner,
             mutbl: MutImmutable,
         },
-    ) = ty.node {
+    ) = ty.node
+    {
         if let TyKind::Path(ref path) = inner.node {
             if let Def::Struct(def_id) = cx.tables.qpath_def(path, inner.hir_id) {
                 return match_def_path(cx.tcx, def_id, &paths::LINT);
@@ -272,9 +263,11 @@ impl EarlyLintPass for DefaultHashTypes {
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
         let ident_string = ident.to_string();
         if let Some(replace) = self.map.get(&ident_string) {
-            let msg = format!("Prefer {} over {}, it has better performance \
-                              and we don't need any collision prevention in clippy",
-                              replace, ident_string);
+            let msg = format!(
+                "Prefer {} over {}, it has better performance \
+                 and we don't need any collision prevention in clippy",
+                replace, ident_string
+            );
             span_lint_and_sugg(
                 cx,
                 DEFAULT_HASH_TYPES,

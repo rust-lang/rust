@@ -7,11 +7,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::utils::{is_copy, match_path, paths, span_note_and_lint};
 use crate::rustc::hir::{Item, ItemKind};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
+use crate::utils::{is_copy, match_path, paths, span_note_and_lint};
 
 /// **What it does:** Checks for types that implement `Copy` as well as
 /// `Iterator`.

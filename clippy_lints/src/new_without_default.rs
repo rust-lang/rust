@@ -7,19 +7,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::rustc::hir::def_id::DefId;
 use crate::rustc::hir;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use crate::rustc::hir::def_id::DefId;
+use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use crate::rustc::ty::{self, Ty};
 use crate::rustc::util::nodemap::NodeSet;
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::rustc::ty::{self, Ty};
+use crate::rustc_errors::Applicability;
 use crate::syntax::source_map::Span;
 use crate::utils::paths;
-use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span_lint_and_then};
 use crate::utils::sugg::DiagnosticBuilderExt;
-use crate::rustc_errors::Applicability;
+use crate::utils::{get_trait_def_id, implements_trait, return_ty, same_tys, span_lint_and_then};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for types with a `fn new() -> Self` method and no
 /// implementation of
@@ -125,7 +124,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                         }
                         if impl_item.generics.params.iter().any(|gen| match gen.kind {
                             hir::GenericParamKind::Type { .. } => true,
-                            _ => false
+                            _ => false,
                         }) {
                             // when the result of `new()` depends on a type parameter we should not require
                             // an
@@ -134,8 +133,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                         }
                         if sig.decl.inputs.is_empty() && name == "new" && cx.access_levels.is_reachable(id) {
                             let self_did = cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id));
-                            let self_ty = cx.tcx
-                                .type_of(self_did);
+                            let self_ty = cx.tcx.type_of(self_did);
                             if_chain! {
                                 if same_tys(cx, self_ty, return_ty(cx, id));
                                 if let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT);
@@ -171,7 +169,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                             cx,
                                             NEW_WITHOUT_DEFAULT_DERIVE,
                                             impl_item.span,
-                                            &format!("you should consider deriving a `Default` implementation for `{}`", self_ty),
+                                            &format!(
+                                                "you should consider deriving a `Default` implementation for `{}`",
+                                                self_ty
+                                            ),
                                             |db| {
                                                 db.suggest_item_with_attr(
                                                     cx,
@@ -186,7 +187,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                                             cx,
                                             NEW_WITHOUT_DEFAULT,
                                             impl_item.span,
-                                            &format!("you should consider adding a `Default` implementation for `{}`", self_ty),
+                                            &format!(
+                                                "you should consider adding a `Default` implementation for `{}`",
+                                                self_ty
+                                            ),
                                             |db| {
                                                 db.suggest_prepend_item(
                                                     cx,

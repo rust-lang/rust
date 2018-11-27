@@ -7,18 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::ty::Ty;
 use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::ty::Ty;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_data_structures::fx::FxHashMap;
+use crate::syntax::symbol::LocalInternedString;
+use crate::utils::{get_parent_expr, in_macro, snippet, span_lint_and_then, span_note_and_lint};
+use crate::utils::{SpanlessEq, SpanlessHash};
+use smallvec::SmallVec;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault;
-use crate::syntax::symbol::LocalInternedString;
-use smallvec::SmallVec;
-use crate::utils::{SpanlessEq, SpanlessHash};
-use crate::utils::{get_parent_expr, in_macro, snippet, span_lint_and_then, span_note_and_lint};
 
 /// **What it does:** Checks for consecutive `if`s with the same condition.
 ///
@@ -168,7 +167,8 @@ fn lint_same_cond(cx: &LateContext<'_, '_>, conds: &[&Expr]) {
         h.finish()
     };
 
-    let eq: &dyn Fn(&&Expr, &&Expr) -> bool = &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs) };
+    let eq: &dyn Fn(&&Expr, &&Expr) -> bool =
+        &|&lhs, &rhs| -> bool { SpanlessEq::new(cx).ignore_fn().eq_expr(lhs, rhs) };
 
     if let Some((i, j)) = search_same(conds, hash, eq) {
         span_note_and_lint(
@@ -229,7 +229,10 @@ fn lint_match_arms(cx: &LateContext<'_, '_>, expr: &Expr) {
                             // hiding all the subsequent arms, and rust won't compile
                             db.span_note(
                                 i.body.span,
-                                &format!("`{}` has the same arm body as the `_` wildcard, consider removing it`", lhs),
+                                &format!(
+                                    "`{}` has the same arm body as the `_` wildcard, consider removing it`",
+                                    lhs
+                                ),
                             );
                         } else {
                             db.span_note(i.body.span, &format!("consider refactoring into `{} | {}`", lhs, rhs));
@@ -276,11 +279,17 @@ fn if_sequence(mut expr: &Expr) -> (SmallVec<[&Expr; 1]>, SmallVec<[&Block; 1]>)
 
 /// Return the list of bindings in a pattern.
 fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<LocalInternedString, Ty<'tcx>> {
-    fn bindings_impl<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat, map: &mut FxHashMap<LocalInternedString, Ty<'tcx>>) {
+    fn bindings_impl<'a, 'tcx>(
+        cx: &LateContext<'a, 'tcx>,
+        pat: &Pat,
+        map: &mut FxHashMap<LocalInternedString, Ty<'tcx>>,
+    ) {
         match pat.node {
             PatKind::Box(ref pat) | PatKind::Ref(ref pat, _) => bindings_impl(cx, pat, map),
-            PatKind::TupleStruct(_, ref pats, _) => for pat in pats {
-                bindings_impl(cx, pat, map);
+            PatKind::TupleStruct(_, ref pats, _) => {
+                for pat in pats {
+                    bindings_impl(cx, pat, map);
+                }
             },
             PatKind::Binding(_, _, ident, ref as_pat) => {
                 if let Entry::Vacant(v) = map.entry(ident.as_str()) {
@@ -290,11 +299,15 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<LocalI
                     bindings_impl(cx, as_pat, map);
                 }
             },
-            PatKind::Struct(_, ref fields, _) => for pat in fields {
-                bindings_impl(cx, &pat.node.pat, map);
+            PatKind::Struct(_, ref fields, _) => {
+                for pat in fields {
+                    bindings_impl(cx, &pat.node.pat, map);
+                }
             },
-            PatKind::Tuple(ref fields, _) => for pat in fields {
-                bindings_impl(cx, pat, map);
+            PatKind::Tuple(ref fields, _) => {
+                for pat in fields {
+                    bindings_impl(cx, pat, map);
+                }
             },
             PatKind::Slice(ref lhs, ref mid, ref rhs) => {
                 for pat in lhs {
@@ -315,7 +328,6 @@ fn bindings<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, pat: &Pat) -> FxHashMap<LocalI
     bindings_impl(cx, pat, &mut result);
     result
 }
-
 
 fn search_same_sequenced<T, Eq>(exprs: &[T], eq: Eq) -> Option<(&T, &T)>
 where
@@ -345,10 +357,8 @@ where
         };
     }
 
-    let mut map: FxHashMap<_, Vec<&_>> = FxHashMap::with_capacity_and_hasher(
-        exprs.len(),
-        BuildHasherDefault::default()
-    );
+    let mut map: FxHashMap<_, Vec<&_>> =
+        FxHashMap::with_capacity_and_hasher(exprs.len(), BuildHasherDefault::default());
 
     for expr in exprs {
         match map.entry(hash(expr)) {

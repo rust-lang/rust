@@ -7,16 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! lint on enum variants that are prefixed or suffixed by the same characters
 
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, Lint};
+use crate::rustc::lint::{EarlyContext, EarlyLintPass, Lint, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::*;
 use crate::syntax::source_map::Span;
 use crate::syntax::symbol::LocalInternedString;
-use crate::utils::{span_help_and_lint, span_lint};
 use crate::utils::{camel_case, in_macro};
+use crate::utils::{span_help_and_lint, span_lint};
 
 /// **What it does:** Detects enumeration variants that are prefixed or suffixed
 /// by the same characters.
@@ -139,10 +138,7 @@ fn var2str(var: &Variant) -> LocalInternedString {
 fn partial_match(pre: &str, name: &str) -> usize {
     let mut name_iter = name.chars();
     let _ = name_iter.next_back(); // make sure the name is never fully matched
-    pre.chars()
-        .zip(name_iter)
-        .take_while(|&(l, r)| l == r)
-        .count()
+    pre.chars().zip(name_iter).take_while(|&(l, r)| l == r).count()
 }
 
 /// Returns the number of chars that match from the end
@@ -171,9 +167,7 @@ fn check_variant(
     for var in &def.variants {
         let name = var2str(var);
         if partial_match(item_name, &name) == item_name_chars
-            && name.chars()
-                .nth(item_name_chars)
-                .map_or(false, |c| !c.is_lowercase())
+            && name.chars().nth(item_name_chars).map_or(false, |c| !c.is_lowercase())
         {
             span_lint(cx, lint, var.span, "Variant name starts with the enum's name");
         }
@@ -277,19 +271,26 @@ impl EarlyLintPass for EnumVariantNames {
                         let rmatching = partial_rmatch(mod_camel, &item_camel);
                         let nchars = mod_camel.chars().count();
 
-                        let is_word_beginning = |c: char| {
-                            c == '_' || c.is_uppercase() || c.is_numeric()
-                        };
+                        let is_word_beginning = |c: char| c == '_' || c.is_uppercase() || c.is_numeric();
 
                         if matching == nchars {
                             match item_camel.chars().nth(nchars) {
-                                Some(c) if is_word_beginning(c) =>
-                                    span_lint(cx, STUTTER, item.span, "item name starts with its containing module's name"),
-                                _ => ()
+                                Some(c) if is_word_beginning(c) => span_lint(
+                                    cx,
+                                    STUTTER,
+                                    item.span,
+                                    "item name starts with its containing module's name",
+                                ),
+                                _ => (),
                             }
                         }
                         if rmatching == nchars {
-                            span_lint(cx, STUTTER, item.span, "item name ends with its containing module's name");
+                            span_lint(
+                                cx,
+                                STUTTER,
+                                item.span,
+                                "item name ends with its containing module's name",
+                            );
                         }
                     }
                 }

@@ -7,16 +7,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use matches::matches;
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
 use crate::rustc::ty;
-use crate::utils::{differing_macro_contexts, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty, SpanlessEq};
-use crate::utils::sugg::Sugg;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
+use crate::utils::sugg::Sugg;
+use crate::utils::{
+    differing_macro_contexts, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty, SpanlessEq,
+};
+use if_chain::if_chain;
+use matches::matches;
 
 /// **What it does:** Checks for manual swapping.
 ///
