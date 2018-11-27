@@ -26,7 +26,7 @@ use crate::{
 
 /// Resolve `FnId` to the corresponding `SyntaxNode`
 pub(super) fn fn_syntax(db: &impl HirDatabase, fn_id: FnId) -> FnDefNode {
-    let item_id = db.id_maps().fn_item_id(fn_id);
+    let item_id = fn_id.loc(db);
     let syntax = db.file_item(item_id);
     FnDef::cast(syntax.borrowed()).unwrap().owned()
 }

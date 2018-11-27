@@ -1,9 +1,6 @@
 use parking_lot::Mutex;
 
-use std::{
-    hash::Hash,
-    sync::Arc,
-};
+use std::hash::Hash;
 
 use rustc_hash::FxHashMap;
 
@@ -23,19 +20,19 @@ use crate::{
 /// bidirectional mapping between positional and numeric ids, we can use compact
 /// representation wich still allows us to get the actual item
 #[derive(Debug)]
-pub(crate) struct Loc2IdMap<L, ID>
+struct Loc2IdMap<LOC, ID>
 where
     ID: NumericId,
-    L: Clone + Eq + Hash,
+    LOC: Clone + Eq + Hash,
 {
-    loc2id: FxHashMap<L, ID>,
-    id2loc: FxHashMap<ID, L>,
+    loc2id: FxHashMap<LOC, ID>,
+    id2loc: FxHashMap<ID, LOC>,
 }
 
-impl<L, ID> Default for Loc2IdMap<L, ID>
+impl<LOC, ID> Default for Loc2IdMap<LOC, ID>
 where
     ID: NumericId,
-    L: Clone + Eq + Hash,
+    LOC: Clone + Eq + Hash,
 {
     fn default() -> Self {
         Loc2IdMap {
@@ -45,12 +42,12 @@ where
     }
 }
 
-impl<L, ID> Loc2IdMap<L, ID>
+impl<LOC, ID> Loc2IdMap<LOC, ID>
 where
     ID: NumericId,
-    L: Clone + Eq + Hash,
+    LOC: Clone + Eq + Hash,
 {
-    pub fn loc2id(&mut self, loc: &L) -> ID {
+    pub fn loc2id(&mut self, loc: &LOC) -> ID {
         match self.loc2id.get(loc) {
             Some(id) => return id.clone(),
             None => (),
@@ -63,7 +60,7 @@ where
         id
     }
 
-    pub fn id2loc(&self, id: ID) -> L {
+    pub fn id2loc(&self, id: ID) -> LOC {
         self.id2loc[&id].clone()
     }
 }
@@ -90,6 +87,18 @@ macro_rules! impl_numeric_id {
 pub(crate) struct FnId(u32);
 impl_numeric_id!(FnId);
 
+impl FnId {
+    pub(crate) fn from_loc(
+        db: &impl AsRef<LocationIntener<SourceItemId, FnId>>,
+        loc: &SourceItemId,
+    ) -> FnId {
+        db.as_ref().loc2id(loc)
+    }
+    pub(crate) fn loc(self, db: &impl AsRef<LocationIntener<SourceItemId, FnId>>) -> SourceItemId {
+        db.as_ref().id2loc(self)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct DefId(u32);
 impl_numeric_id!(DefId);
@@ -105,29 +114,54 @@ pub(crate) enum DefLoc {
     },
 }
 
-#[derive(Debug, Default, Clone)]
-pub(crate) struct IdMaps {
-    inner: Arc<IdMapsInner>,
+impl DefId {
+    pub(crate) fn loc(self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefLoc {
+        db.as_ref().id2loc(self)
+    }
 }
 
-impl IdMaps {
-    pub(crate) fn fn_id(&self, item_id: SourceItemId) -> FnId {
-        self.inner.fns.lock().loc2id(&item_id)
-    }
-    pub(crate) fn fn_item_id(&self, fn_id: FnId) -> SourceItemId {
-        self.inner.fns.lock().id2loc(fn_id)
-    }
-
-    pub(crate) fn def_id(&self, loc: DefLoc) -> DefId {
-        self.inner.defs.lock().loc2id(&loc)
-    }
-    pub(crate) fn def_loc(&self, def_id: DefId) -> DefLoc {
-        self.inner.defs.lock().id2loc(def_id)
+impl DefLoc {
+    pub(crate) fn id(&self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefId {
+        db.as_ref().loc2id(&self)
     }
 }
 
 #[derive(Debug, Default)]
-struct IdMapsInner {
-    fns: Mutex<Loc2IdMap<SourceItemId, FnId>>,
-    defs: Mutex<Loc2IdMap<DefLoc, DefId>>,
+pub(crate) struct IdMaps {
+    pub(crate) fns: LocationIntener<SourceItemId, FnId>,
+    pub(crate) defs: LocationIntener<DefLoc, DefId>,
+}
+
+#[derive(Debug)]
+pub(crate) struct LocationIntener<LOC, ID>
+where
+    ID: NumericId,
+    LOC: Clone + Eq + Hash,
+{
+    map: Mutex<Loc2IdMap<LOC, ID>>,
+}
+
+impl<LOC, ID> Default for LocationIntener<LOC, ID>
+where
+    ID: NumericId,
+    LOC: Clone + Eq + Hash,
+{
+    fn default() -> Self {
+        LocationIntener {
+            map: Default::default(),
+        }
+    }
+}
+
+impl<LOC, ID> LocationIntener<LOC, ID>
+where
+    ID: NumericId,
+    LOC: Clone + Eq + Hash,
+{
+    fn loc2id(&self, loc: &LOC) -> ID {
+        self.map.lock().loc2id(loc)
+    }
+    fn id2loc(&self, id: ID) -> LOC {
+        self.map.lock().id2loc(id)
+    }
 }

@@ -134,7 +134,7 @@ impl Module {
             id: self.module_id,
             source_root: self.source_root_id,
         };
-        db.id_maps().def_id(def_loc)
+        def_loc.id(db)
     }
 
     /// Finds a child module with the specified name.
@@ -167,7 +167,7 @@ impl Module {
 
         let segments = path.segments;
         for name in segments.iter() {
-            let module = match db.id_maps().def_loc(curr) {
+            let module = match curr.loc(db) {
                 DefLoc::Module { id, source_root } => Module::new(db, source_root, id)?,
                 _ => return Ok(None),
             };

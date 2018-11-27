@@ -23,7 +23,7 @@ impl FnId {
         let file_items = db.file_items(file_id);
         let item_id = file_items.id_of(fn_def.syntax());
         let item_id = SourceItemId { file_id, item_id };
-        db.id_maps().fn_id(item_id)
+        FnId::from_loc(db, &item_id)
     }
 }
 

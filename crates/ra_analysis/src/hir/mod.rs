@@ -38,7 +38,7 @@ pub(crate) enum Def {
 
 impl DefId {
     pub(crate) fn resolve(self, db: &impl HirDatabase) -> Cancelable<Def> {
-        let loc = db.id_maps().def_loc(self);
+        let loc = self.loc(db);
         let res = match loc {
             DefLoc::Module { id, source_root } => {
                 let descr = Module::new(db, source_root, id)?;

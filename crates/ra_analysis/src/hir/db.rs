@@ -8,20 +8,24 @@ use ra_syntax::{
 use crate::{
     FileId,
     db::SyntaxDatabase,
-    hir::{SourceFileItems, SourceItemId},
-    hir::query_definitions,
-    hir::function::{FnId, FnScopes},
-    hir::module::{
-        ModuleId, ModuleTree, ModuleSource,
-        nameres::{ItemMap, InputModuleItems}
+    hir::{
+        SourceFileItems, SourceItemId,
+        query_definitions,
+        function::{FnScopes},
+        module::{ModuleId, ModuleTree, ModuleSource,
+        nameres::{ItemMap, InputModuleItems}},
     },
     input::SourceRootId,
+    loc2id::{DefLoc, DefId, FnId, LocationIntener},
     Cancelable,
 };
 
 salsa::query_group! {
 
-pub(crate) trait HirDatabase: SyntaxDatabase {
+pub(crate) trait HirDatabase: SyntaxDatabase
+    + AsRef<LocationIntener<DefLoc, DefId>>
+    + AsRef<LocationIntener<SourceItemId, FnId>>
+{
     fn fn_scopes(fn_id: FnId) -> Arc<FnScopes> {
         type FnScopesQuery;
         use fn query_definitions::fn_scopes;

@@ -256,7 +256,7 @@ where
                     item_id: item.id,
                 },
             };
-            let def_id = self.db.id_maps().def_id(def_loc);
+            let def_id = def_loc.id(self.db);
             let resolution = Resolution {
                 def_id: Some(def_id),
                 import: None,
@@ -269,7 +269,7 @@ where
                 id: mod_id,
                 source_root: self.source_root,
             };
-            let def_id = self.db.id_maps().def_id(def_loc);
+            let def_id = def_loc.id(self.db);
             let resolution = Resolution {
                 def_id: Some(def_id),
                 import: None,
@@ -318,7 +318,7 @@ where
             };
 
             if !is_last {
-                curr = match self.db.id_maps().def_loc(def_id) {
+                curr = match def_id.loc(self.db) {
                     DefLoc::Module { id, .. } => id,
                     _ => return,
                 }

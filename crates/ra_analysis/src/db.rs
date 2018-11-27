@@ -8,7 +8,7 @@ use salsa::{self, Database};
 use crate::{
     hir,
     symbol_index,
-    loc2id::{IdMaps},
+    loc2id::{IdMaps, LocationIntener, DefId, DefLoc, FnId},
     Cancelable, Canceled, FileId,
 };
 
@@ -20,7 +20,7 @@ pub(crate) struct RootDatabase {
     events: (),
 
     runtime: salsa::Runtime<RootDatabase>,
-    id_maps: IdMaps,
+    id_maps: Arc<IdMaps>,
 }
 
 impl salsa::Database for RootDatabase {
@@ -45,7 +45,7 @@ impl Default for RootDatabase {
         let mut db = RootDatabase {
             events: Default::default(),
             runtime: salsa::Runtime::default(),
-            id_maps: IdMaps::default(),
+            id_maps: Default::default(),
         };
         db.query_mut(crate::input::SourceRootQuery)
             .set(crate::input::WORKSPACE, Default::default());
@@ -81,6 +81,18 @@ pub(crate) trait BaseDatabase: salsa::Database {
 impl BaseDatabase for RootDatabase {
     fn id_maps(&self) -> &IdMaps {
         &self.id_maps
+    }
+}
+
+impl AsRef<LocationIntener<DefLoc, DefId>> for RootDatabase {
+    fn as_ref(&self) -> &LocationIntener<DefLoc, DefId> {
+        &self.id_maps.defs
+    }
+}
+
+impl AsRef<LocationIntener<hir::SourceItemId, FnId>> for RootDatabase {
+    fn as_ref(&self) -> &LocationIntener<hir::SourceItemId, FnId> {
+        &self.id_maps.fns
     }
 }
 
