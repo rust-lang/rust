@@ -2046,10 +2046,10 @@ fn lint_chars_next_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprIn
 
 /// Checks for the `CHARS_LAST_CMP` lint.
 fn lint_chars_last_cmp<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, info: &BinaryExprInfo<'_>) -> bool {
-    if lint_chars_cmp(cx, info, &["chars", "last"], CHARS_NEXT_CMP, "ends_with") {
+    if lint_chars_cmp(cx, info, &["chars", "last"], CHARS_LAST_CMP, "ends_with") {
         true
     } else {
-        lint_chars_cmp(cx, info, &["chars", "next_back"], CHARS_NEXT_CMP, "ends_with")
+        lint_chars_cmp(cx, info, &["chars", "next_back"], CHARS_LAST_CMP, "ends_with")
     }
 }
 

@@ -24,7 +24,7 @@ use crate::syntax::parse::token;
 use crate::syntax::print::pprust::token_to_string;
 use crate::syntax::util::parser::AssocOp;
 use crate::syntax::ast;
-use crate::utils::{higher, snippet, snippet_opt};
+use crate::utils::{higher, in_macro, snippet, snippet_opt};
 use crate::syntax_pos::{BytePos, Pos};
 use crate::rustc_errors::Applicability;
 
@@ -96,7 +96,21 @@ impl<'a> Sugg<'a> {
         Self::hir_opt(cx, expr).unwrap_or_else(|| Sugg::NonParen(Cow::Borrowed(default)))
     }
 
-    pub fn hir_with_applicability(cx: &LateContext<'_, '_>, expr: &hir::Expr, default: &'a str, applicability: &mut Applicability) -> Self {
+    /// Same as `hir`, but it adapts the applicability level by following rules:
+    ///
+    /// - Applicability level `Unspecified` will never be changed.
+    /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
+    /// - If the default value is used and the applicability level is `MachineApplicable`, change it to
+    /// `HasPlaceholders`
+    pub fn hir_with_applicability(
+        cx: &LateContext<'_, '_>,
+        expr: &hir::Expr,
+        default: &'a str,
+        applicability: &mut Applicability,
+    ) -> Self {
+        if *applicability != Applicability::Unspecified && in_macro(expr.span) {
+            *applicability = Applicability::MaybeIncorrect;
+        }
         Self::hir_opt(cx, expr).unwrap_or_else(|| {
             if *applicability == Applicability::MachineApplicable {
                 *applicability = Applicability::HasPlaceholders;

@@ -384,24 +384,25 @@ pub fn snippet<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str)
     snippet_opt(cx, span).map_or_else(|| Cow::Borrowed(default), From::from)
 }
 
+/// Same as `snippet`, but it adapts the applicability level by following rules:
+///
+/// - Applicability level `Unspecified` will never be changed.
+/// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
+/// - If the default value is used and the applicability level is `MachineApplicable`, change it to
+/// `HasPlaceholders`
 pub fn snippet_with_applicability<'a, 'b, T: LintContext<'b>>(
     cx: &T,
     span: Span,
     default: &'a str,
     applicability: &mut Applicability,
 ) -> Cow<'a, str> {
+    if *applicability != Applicability::Unspecified && in_macro(span) {
+        *applicability = Applicability::MaybeIncorrect;
+    }
     snippet_opt(cx, span).map_or_else(
         || {
-            // If the applicability is already `HasPlaceholders` or `MaybeIncorrect` don't change it.
-            // Also `Unspecified` shouldn't be changed
-            // Only if the applicability level is originally `MachineApplicable` and the default value
-            // has to be used change it to `HasPlaceholders`
             if *applicability == Applicability::MachineApplicable {
-                if in_macro(span) {
-                    *applicability = Applicability::MaybeIncorrect;
-                } else {
-                    *applicability = Applicability::HasPlaceholders;
-                }
+                *applicability = Applicability::HasPlaceholders;
             }
             Cow::Borrowed(default)
         },
@@ -432,6 +433,18 @@ pub fn snippet_opt<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String>
 /// ```
 pub fn snippet_block<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
     let snip = snippet(cx, span, default);
+    trim_multiline(snip, true)
+}
+
+/// Same as `snippet_block`, but adapts the applicability level by the rules of
+/// `snippet_with_applicabiliy`.
+pub fn snippet_block_with_applicability<'a, 'b, T: LintContext<'b>>(
+    cx: &T,
+    span: Span,
+    default: &'a str,
+    applicability: &mut Applicability,
+) -> Cow<'a, str> {
+    let snip = snippet_with_applicability(cx, span, default, applicability);
     trim_multiline(snip, true)
 }
 

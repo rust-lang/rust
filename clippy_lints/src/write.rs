@@ -258,6 +258,20 @@ impl EarlyLintPass for Pass {
     }
 }
 
+/// Checks the arguments of `print[ln]!` and `write[ln]!` calls. It will return a tuple of two
+/// options. The first part of the tuple is format_str of the macros. The secund part of the tuple
+/// is in the `write[ln]!` case the expression the format_str should be written to.
+///
+/// Example:
+///
+/// Calling this function on
+/// ```rust,ignore
+/// writeln!(buf, "string to write: {}", something)
+/// ```
+/// will return
+/// ```rust,ignore
+/// (Some("string to write: {}"), Some(buf))
+/// ```
 fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -> (Option<String>, Option<Expr>) {
     use crate::fmt_macros::*;
     let tts = TokenStream::from(tts.clone());
