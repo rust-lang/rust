@@ -39,10 +39,10 @@ impl<'a, 'tcx: 'a> VirtualIndex {
 
         let llvtable = bx.pointercast(
             llvtable,
-            bx.cx().type_ptr_to(bx.cx().fn_ptr_backend_type(fn_ty))
+            bx.type_ptr_to(bx.fn_ptr_backend_type(fn_ty))
         );
         let ptr_align = bx.tcx().data_layout.pointer_align.abi;
-        let gep = bx.inbounds_gep(llvtable, &[bx.cx().const_usize(self.0)]);
+        let gep = bx.inbounds_gep(llvtable, &[bx.const_usize(self.0)]);
         let ptr = bx.load(gep, ptr_align);
         bx.nonnull_metadata(ptr);
         // Vtable loads are invariant
@@ -58,9 +58,9 @@ impl<'a, 'tcx: 'a> VirtualIndex {
         // Load the data pointer from the object.
         debug!("get_int({:?}, {:?})", llvtable, self);
 
-        let llvtable = bx.pointercast(llvtable, bx.cx().type_ptr_to(bx.cx().type_isize()));
+        let llvtable = bx.pointercast(llvtable, bx.type_ptr_to(bx.type_isize()));
         let usize_align = bx.tcx().data_layout.pointer_align.abi;
-        let gep = bx.inbounds_gep(llvtable, &[bx.cx().const_usize(self.0)]);
+        let gep = bx.inbounds_gep(llvtable, &[bx.const_usize(self.0)]);
         let ptr = bx.load(gep, usize_align);
         // Vtable loads are invariant
         bx.set_invariant_load(ptr);

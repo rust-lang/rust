@@ -143,11 +143,11 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn count_insn(&self, category: &str) {
-        if self.cx().sess().codegen_stats() {
-            self.cx().stats.borrow_mut().n_llvm_insns += 1;
+        if self.sess().codegen_stats() {
+            self.stats.borrow_mut().n_llvm_insns += 1;
         }
-        if self.cx().sess().count_llvm_insns() {
-            *self.cx().stats
+        if self.sess().count_llvm_insns() {
+            *self.stats
                       .borrow_mut()
                       .llvm_insns
                       .entry(category.to_string())
@@ -475,8 +475,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         use rustc::ty::{Int, Uint};
 
         let new_sty = match ty.sty {
-            Int(Isize) => Int(self.cx().tcx.sess.target.isize_ty),
-            Uint(Usize) => Uint(self.cx().tcx.sess.target.usize_ty),
+            Int(Isize) => Int(self.tcx.sess.target.isize_ty),
+            Uint(Usize) => Uint(self.tcx.sess.target.usize_ty),
             ref t @ Uint(_) | ref t @ Int(_) => t.clone(),
             _ => panic!("tried to get overflow intrinsic for op applied to non-int type")
         };
@@ -529,7 +529,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             },
         };
 
-        let intrinsic = self.cx().get_intrinsic(&name);
+        let intrinsic = self.get_intrinsic(&name);
         let res = self.call(intrinsic, &[lhs, rhs], None);
         (
             self.extract_value(res, 0),
@@ -637,7 +637,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let vr = scalar.valid_range.clone();
             match scalar.value {
                 layout::Int(..) => {
-                    let range = scalar.valid_range_exclusive(bx.cx());
+                    let range = scalar.valid_range_exclusive(bx);
                     if range.start != range.end {
                         bx.range_metadata(load, range);
                     }
@@ -676,7 +676,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 let load = self.load(llptr, align);
                 scalar_load_metadata(self, load, scalar);
                 if scalar.is_bool() {
-                    self.trunc(load, self.cx().type_i1())
+                    self.trunc(load, self.type_i1())
                 } else {
                     load
                 }
@@ -696,7 +696,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
 
 
     fn range_metadata(&mut self, load: &'ll Value, range: Range<u128>) {
-        if self.cx().sess().target.target.arch == "amdgpu" {
+        if self.sess().target.target.arch == "amdgpu" {
             // amdgpu/LLVM does something weird and thinks a i64 value is
             // split into a v2i32, halving the bitwidth LLVM expects,
             // tripping an assertion. So, for now, just disable this
@@ -942,7 +942,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }).collect::<Vec<_>>();
 
         debug!("Asm Output Type: {:?}", output);
-        let fty = self.cx().type_func(&argtys[..], output);
+        let fty = self.type_func(&argtys[..], output);
         unsafe {
             // Ask LLVM to verify that the constraints are well-formed.
             let constraints_ok = llvm::LLVMRustInlineAsmVerify(fty, cons.as_ptr());
@@ -970,14 +970,14 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         if flags.contains(MemFlags::NONTEMPORAL) {
             // HACK(nox): This is inefficient but there is no nontemporal memcpy.
             let val = self.load(src, src_align);
-            let ptr = self.pointercast(dst, self.cx().type_ptr_to(self.cx().val_ty(val)));
+            let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
             self.store_with_flags(val, ptr, dst_align, flags);
             return;
         }
-        let size = self.intcast(size, self.cx().type_isize(), false);
+        let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        let dst = self.pointercast(dst, self.cx().type_i8p());
-        let src = self.pointercast(src, self.cx().type_i8p());
+        let dst = self.pointercast(dst, self.type_i8p());
+        let src = self.pointercast(src, self.type_i8p());
         unsafe {
             llvm::LLVMRustBuildMemCpy(self.llbuilder, dst, dst_align.bytes() as c_uint,
                                       src, src_align.bytes() as c_uint, size, is_volatile);
@@ -990,14 +990,14 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         if flags.contains(MemFlags::NONTEMPORAL) {
             // HACK(nox): This is inefficient but there is no nontemporal memmove.
             let val = self.load(src, src_align);
-            let ptr = self.pointercast(dst, self.cx().type_ptr_to(self.cx().val_ty(val)));
+            let ptr = self.pointercast(dst, self.type_ptr_to(self.val_ty(val)));
             self.store_with_flags(val, ptr, dst_align, flags);
             return;
         }
-        let size = self.intcast(size, self.cx().type_isize(), false);
+        let size = self.intcast(size, self.type_isize(), false);
         let is_volatile = flags.contains(MemFlags::VOLATILE);
-        let dst = self.pointercast(dst, self.cx().type_i8p());
-        let src = self.pointercast(src, self.cx().type_i8p());
+        let dst = self.pointercast(dst, self.type_i8p());
+        let src = self.pointercast(src, self.type_i8p());
         unsafe {
             llvm::LLVMRustBuildMemMove(self.llbuilder, dst, dst_align.bytes() as c_uint,
                                       src, src_align.bytes() as c_uint, size, is_volatile);
@@ -1012,12 +1012,12 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         align: Align,
         flags: MemFlags,
     ) {
-        let ptr_width = &self.cx().sess().target.target.target_pointer_width;
+        let ptr_width = &self.sess().target.target.target_pointer_width;
         let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
-        let llintrinsicfn = self.cx().get_intrinsic(&intrinsic_key);
-        let ptr = self.pointercast(ptr, self.cx().type_i8p());
-        let align = self.cx().const_u32(align.bytes() as u32);
-        let volatile = self.cx().const_bool(flags.contains(MemFlags::VOLATILE));
+        let llintrinsicfn = self.get_intrinsic(&intrinsic_key);
+        let ptr = self.pointercast(ptr, self.type_i8p());
+        let align = self.const_u32(align.bytes() as u32);
+        let volatile = self.const_bool(flags.contains(MemFlags::VOLATILE));
         self.call(llintrinsicfn, &[ptr, fill_byte, size, align, volatile], None);
     }
 
@@ -1083,10 +1083,10 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     fn vector_splat(&mut self, num_elts: usize, elt: &'ll Value) -> &'ll Value {
         unsafe {
             let elt_ty = self.cx.val_ty(elt);
-            let undef = llvm::LLVMGetUndef(self.cx().type_vector(elt_ty, num_elts as u64));
+            let undef = llvm::LLVMGetUndef(self.type_vector(elt_ty, num_elts as u64));
             let vec = self.insert_element(undef, elt, self.cx.const_i32(0));
-            let vec_i32_ty = self.cx().type_vector(self.cx().type_i32(), num_elts as u64);
-            self.shuffle_vector(vec, undef, self.cx().const_null(vec_i32_ty))
+            let vec_i32_ty = self.type_vector(self.type_i32(), num_elts as u64);
+            self.shuffle_vector(vec, undef, self.const_null(vec_i32_ty))
         }
     }
 
@@ -1397,7 +1397,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let param_tys = self.cx.func_params_types(fn_ty);
 
         let all_args_match = param_tys.iter()
-            .zip(args.iter().map(|&v| self.cx().val_ty(v)))
+            .zip(args.iter().map(|&v| self.val_ty(v)))
             .all(|(expected_ty, actual_ty)| *expected_ty == actual_ty);
 
         if all_args_match {
@@ -1408,7 +1408,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             .zip(args.iter())
             .enumerate()
             .map(|(i, (expected_ty, &actual_val))| {
-                let actual_ty = self.cx().val_ty(actual_val);
+                let actual_ty = self.val_ty(actual_val);
                 if expected_ty != actual_ty {
                     debug!("Type mismatch in function call of {:?}. \
                             Expected {:?} for param {}, got {:?}; injecting bitcast",

@@ -182,13 +182,13 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let lp1 = bx.load_operand(lp1).immediate();
                     slot.storage_dead(&mut bx);
 
-                    if !bx.cx().sess().target.target.options.custom_unwind_resume {
-                        let mut lp = bx.cx().const_undef(self.landing_pad_type());
+                    if !bx.sess().target.target.options.custom_unwind_resume {
+                        let mut lp = bx.const_undef(self.landing_pad_type());
                         lp = bx.insert_value(lp, lp0, 0);
                         lp = bx.insert_value(lp, lp1, 1);
                         bx.resume(lp);
                     } else {
-                        bx.call(bx.cx().eh_unwind_resume(), &[lp0], funclet(self));
+                        bx.call(bx.eh_unwind_resume(), &[lp0], funclet(self));
                         bx.unreachable();
                     }
                 }
@@ -218,10 +218,10 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bx.cond_br(discr.immediate(), lltrue, llfalse);
                         }
                     } else {
-                        let switch_llty = bx.cx().immediate_backend_type(
-                            bx.cx().layout_of(switch_ty)
+                        let switch_llty = bx.immediate_backend_type(
+                            bx.layout_of(switch_ty)
                         );
-                        let llval = bx.cx().const_uint_big(switch_llty, values[0]);
+                        let llval = bx.const_uint_big(switch_llty, values[0]);
                         let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
                         bx.cond_br(cmp, lltrue, llfalse);
                     }
@@ -230,11 +230,11 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let switch = bx.switch(discr.immediate(),
                                            llblock(self, *otherwise),
                                            values.len());
-                    let switch_llty = bx.cx().immediate_backend_type(
-                        bx.cx().layout_of(switch_ty)
+                    let switch_llty = bx.immediate_backend_type(
+                        bx.layout_of(switch_ty)
                     );
                     for (&value, target) in values.iter().zip(targets) {
-                        let llval = bx.cx().const_uint_big(switch_llty, value);
+                        let llval = bx.const_uint_big(switch_llty, value);
                         let llbb = llblock(self, *target);
                         bx.add_case(switch, llval, llbb)
                     }
@@ -283,8 +283,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 llval
                             }
                         };
-                        let addr = bx.pointercast(llslot, bx.cx().type_ptr_to(
-                            bx.cx().cast_backend_type(&cast_ty)
+                        let addr = bx.pointercast(llslot, bx.type_ptr_to(
+                            bx.cast_backend_type(&cast_ty)
                         ));
                         bx.load(addr, self.fn_ty.ret.layout.align.abi)
                     }
@@ -299,7 +299,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
                 let ty = location.ty(self.mir, bx.tcx()).to_ty(bx.tcx());
                 let ty = self.monomorphize(&ty);
-                let drop_fn = monomorphize::resolve_drop_in_place(bx.cx().tcx(), ty);
+                let drop_fn = monomorphize::resolve_drop_in_place(bx.tcx(), ty);
 
                 if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
                     // we don't actually need to drop anything.
@@ -323,14 +323,14 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             ty::ParamEnv::reveal_all(),
                             &sig,
                         );
-                        let fn_ty = bx.cx().new_vtable(sig, &[]);
+                        let fn_ty = bx.new_vtable(sig, &[]);
                         let vtable = args[1];
                         args = &args[..1];
                         (meth::DESTRUCTOR.get_fn(&mut bx, vtable, &fn_ty), fn_ty)
                     }
                     _ => {
-                        (bx.cx().get_fn(drop_fn),
-                         bx.cx().fn_type_of_instance(&drop_fn))
+                        (bx.get_fn(drop_fn),
+                         bx.fn_type_of_instance(&drop_fn))
                     }
                 };
                 do_call(self, &mut bx, fn_ty, drop_fn, args,
@@ -340,7 +340,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
                 let cond = self.codegen_operand(&mut bx, cond).immediate();
-                let mut const_cond = bx.cx().const_to_opt_u128(cond, false).map(|c| c == 1);
+                let mut const_cond = bx.const_to_opt_u128(cond, false).map(|c| c == 1);
 
                 // This case can currently arise only from functions marked
                 // with #[rustc_inherit_overflow_checks] and inlined from
@@ -349,7 +349,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // NOTE: Unlike binops, negation doesn't have its own
                 // checked operation, just a comparison with the minimum
                 // value, so we have to check for the assert message.
-                if !bx.cx().check_overflow() {
+                if !bx.check_overflow() {
                     if let mir::interpret::EvalErrorKind::OverflowNeg = *msg {
                         const_cond = Some(expected);
                     }
@@ -378,11 +378,11 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 self.set_debug_loc(&mut bx, terminator.source_info);
 
                 // Get the location information.
-                let loc = bx.cx().sess().source_map().lookup_char_pos(span.lo());
+                let loc = bx.sess().source_map().lookup_char_pos(span.lo());
                 let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
-                let filename = bx.cx().const_str_slice(filename);
-                let line = bx.cx().const_u32(loc.line as u32);
-                let col = bx.cx().const_u32(loc.col.to_usize() as u32 + 1);
+                let filename = bx.const_str_slice(filename);
+                let line = bx.const_u32(loc.line as u32);
+                let col = bx.const_u32(loc.col.to_usize() as u32 + 1);
                 let align = tcx.data_layout.aggregate_align.abi
                     .max(tcx.data_layout.i32_align.abi)
                     .max(tcx.data_layout.pointer_align.abi);
@@ -393,8 +393,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let len = self.codegen_operand(&mut bx, len).immediate();
                         let index = self.codegen_operand(&mut bx, index).immediate();
 
-                        let file_line_col = bx.cx().const_struct(&[filename, line, col], false);
-                        let file_line_col = bx.cx().static_addr_of(
+                        let file_line_col = bx.const_struct(&[filename, line, col], false);
+                        let file_line_col = bx.static_addr_of(
                             file_line_col,
                             align,
                             Some("panic_bounds_check_loc")
@@ -405,12 +405,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     _ => {
                         let str = msg.description();
                         let msg_str = Symbol::intern(str).as_str();
-                        let msg_str = bx.cx().const_str_slice(msg_str);
-                        let msg_file_line_col = bx.cx().const_struct(
+                        let msg_str = bx.const_str_slice(msg_str);
+                        let msg_file_line_col = bx.const_struct(
                             &[msg_str, filename, line, col],
                             false
                         );
-                        let msg_file_line_col = bx.cx().static_addr_of(
+                        let msg_file_line_col = bx.static_addr_of(
                             msg_file_line_col,
                             align,
                             Some("panic_loc")
@@ -423,8 +423,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // Obtain the panic entry point.
                 let def_id = common::langcall(bx.tcx(), Some(span), "", lang_item);
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let fn_ty = bx.cx().fn_type_of_instance(&instance);
-                let llfn = bx.cx().get_fn(instance);
+                let fn_ty = bx.fn_type_of_instance(&instance);
+                let llfn = bx.get_fn(instance);
 
                 // Codegen the actual panic invoke/call.
                 do_call(self, &mut bx, fn_ty, llfn, &args, None, cleanup);
@@ -446,7 +446,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let (instance, mut llfn) = match callee.layout.ty.sty {
                     ty::FnDef(def_id, substs) => {
-                        (Some(ty::Instance::resolve(bx.cx().tcx(),
+                        (Some(ty::Instance::resolve(bx.tcx(),
                                                     ty::ParamEnv::reveal_all(),
                                                     def_id,
                                                     substs).unwrap()),
@@ -485,7 +485,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // we can do what we like. Here, we declare that transmuting
                         // into an uninhabited type is impossible, so anything following
                         // it must be unreachable.
-                        assert_eq!(bx.cx().layout_of(sig.output()).abi, layout::Abi::Uninhabited);
+                        assert_eq!(bx.layout_of(sig.output()).abi, layout::Abi::Uninhabited);
                         bx.unreachable();
                     }
                     return;
@@ -499,7 +499,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let fn_ty = match def {
                     Some(ty::InstanceDef::Virtual(..)) => {
-                        bx.cx().new_vtable(sig, &extra_args)
+                        bx.new_vtable(sig, &extra_args)
                     }
                     Some(ty::InstanceDef::DropGlue(_, None)) => {
                         // empty drop glue - a nop.
@@ -507,18 +507,18 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         funclet_br(self, &mut bx, target);
                         return;
                     }
-                    _ => bx.cx().new_fn_type(sig, &extra_args)
+                    _ => bx.new_fn_type(sig, &extra_args)
                 };
 
                 // emit a panic instead of instantiating an uninhabited type
                 if (intrinsic == Some("init") || intrinsic == Some("uninit")) &&
                     fn_ty.ret.layout.abi.is_uninhabited()
                 {
-                    let loc = bx.cx().sess().source_map().lookup_char_pos(span.lo());
+                    let loc = bx.sess().source_map().lookup_char_pos(span.lo());
                     let filename = Symbol::intern(&loc.file.name.to_string()).as_str();
-                    let filename = bx.cx().const_str_slice(filename);
-                    let line = bx.cx().const_u32(loc.line as u32);
-                    let col = bx.cx().const_u32(loc.col.to_usize() as u32 + 1);
+                    let filename = bx.const_str_slice(filename);
+                    let line = bx.const_u32(loc.line as u32);
+                    let col = bx.const_u32(loc.col.to_usize() as u32 + 1);
                     let align = tcx.data_layout.aggregate_align.abi
                         .max(tcx.data_layout.i32_align.abi)
                         .max(tcx.data_layout.pointer_align.abi);
@@ -529,12 +529,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         if intrinsic == Some("init") { "zeroed" } else { "uninitialized" }
                     );
                     let msg_str = Symbol::intern(&str).as_str();
-                    let msg_str = bx.cx().const_str_slice(msg_str);
-                    let msg_file_line_col = bx.cx().const_struct(
+                    let msg_str = bx.const_str_slice(msg_str);
+                    let msg_file_line_col = bx.const_struct(
                         &[msg_str, filename, line, col],
                         false,
                     );
-                    let msg_file_line_col = bx.cx().static_addr_of(
+                    let msg_file_line_col = bx.static_addr_of(
                         msg_file_line_col,
                         align,
                         Some("panic_loc"),
@@ -544,8 +544,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let def_id =
                         common::langcall(bx.tcx(), Some(span), "", lang_items::PanicFnLangItem);
                     let instance = ty::Instance::mono(bx.tcx(), def_id);
-                    let fn_ty = bx.cx().fn_type_of_instance(&instance);
-                    let llfn = bx.cx().get_fn(instance);
+                    let fn_ty = bx.fn_type_of_instance(&instance);
+                    let llfn = bx.get_fn(instance);
 
                     // Codegen the actual panic invoke/call.
                     do_call(
@@ -577,7 +577,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let dest = match ret_dest {
                         _ if fn_ty.ret.is_indirect() => llargs[0],
                         ReturnDest::Nothing => {
-                            bx.cx().const_undef(bx.cx().type_ptr_to(bx.memory_ty(&fn_ty.ret)))
+                            bx.const_undef(bx.type_ptr_to(bx.memory_ty(&fn_ty.ret)))
                         }
                         ReturnDest::IndirectOperand(dst, _) |
                         ReturnDest::Store(dst) => dst.llval,
@@ -611,7 +611,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     );
                                     return OperandRef {
                                         val: Immediate(llval),
-                                        layout: bx.cx().layout_of(ty),
+                                        layout: bx.layout_of(ty),
                                     };
 
                                 },
@@ -629,7 +629,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     );
                                     return OperandRef {
                                         val: Immediate(llval),
-                                        layout: bx.cx().layout_of(ty)
+                                        layout: bx.layout_of(ty)
                                     };
                                 }
                             }
@@ -639,7 +639,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }).collect();
 
 
-                    let callee_ty = instance.as_ref().unwrap().ty(bx.cx().tcx());
+                    let callee_ty = instance.as_ref().unwrap().ty(bx.tcx());
                     bx.codegen_intrinsic_call(callee_ty, &fn_ty, &args, dest,
                                                terminator.source_info.span);
 
@@ -736,7 +736,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 let fn_ptr = match (llfn, instance) {
                     (Some(llfn), _) => llfn,
-                    (None, Some(instance)) => bx.cx().get_fn(instance),
+                    (None, Some(instance)) => bx.get_fn(instance),
                     _ => span_bug!(span, "no llfn for call"),
                 };
 
@@ -760,7 +760,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         // Fill padding with undef value, where applicable.
         if let Some(ty) = arg.pad {
-            llargs.push(bx.cx().const_undef(bx.cx().reg_backend_type(&ty)))
+            llargs.push(bx.const_undef(bx.reg_backend_type(&ty)))
         }
 
         if arg.is_ignore() {
@@ -820,8 +820,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
             if let PassMode::Cast(ty) = arg.mode {
-                let addr = bx.pointercast(llval, bx.cx().type_ptr_to(
-                    bx.cx().cast_backend_type(&ty))
+                let addr = bx.pointercast(llval, bx.type_ptr_to(
+                    bx.cast_backend_type(&ty))
                 );
                 llval = bx.load(addr, align.min(arg.layout.align.abi));
             } else {
@@ -1030,7 +1030,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 LocalRef::Place(place) => self.codegen_transmute_into(bx, src, place),
                 LocalRef::UnsizedPlace(_) => bug!("transmute must not involve unsized locals"),
                 LocalRef::Operand(None) => {
-                    let dst_layout = bx.cx().layout_of(self.monomorphized_place_ty(dst));
+                    let dst_layout = bx.layout_of(self.monomorphized_place_ty(dst));
                     assert!(!dst_layout.ty.has_erasable_regions());
                     let place = PlaceRef::alloca(bx, dst_layout, "transmute_temp");
                     place.storage_live(bx);
@@ -1057,8 +1057,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         dst: PlaceRef<'tcx, Bx::Value>
     ) {
         let src = self.codegen_operand(bx, src);
-        let llty = bx.cx().backend_type(src.layout);
-        let cast_ptr = bx.pointercast(dst.llval, bx.cx().type_ptr_to(llty));
+        let llty = bx.backend_type(src.layout);
+        let cast_ptr = bx.pointercast(dst.llval, bx.type_ptr_to(llty));
         let align = src.layout.align.abi.min(dst.align);
         src.val.store(bx, PlaceRef::new_sized(cast_ptr, src.layout, align));
     }

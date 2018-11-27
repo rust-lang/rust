@@ -194,7 +194,7 @@ fn shift_mask_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     rhs: Bx::Value
 ) -> Bx::Value {
-    let rhs_llty = bx.cx().val_ty(rhs);
+    let rhs_llty = bx.val_ty(rhs);
     let shift_val = shift_mask_val(bx, rhs_llty, rhs_llty, false);
     bx.and(rhs, shift_val)
 }
@@ -205,25 +205,25 @@ pub fn shift_mask_val<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     mask_llty: Bx::Type,
     invert: bool
 ) -> Bx::Value {
-    let kind = bx.cx().type_kind(llty);
+    let kind = bx.type_kind(llty);
     match kind {
         TypeKind::Integer => {
             // i8/u8 can shift by at most 7, i16/u16 by at most 15, etc.
-            let val = bx.cx().int_width(llty) - 1;
+            let val = bx.int_width(llty) - 1;
             if invert {
-                bx.cx().const_int(mask_llty, !val as i64)
+                bx.const_int(mask_llty, !val as i64)
             } else {
-                bx.cx().const_uint(mask_llty, val)
+                bx.const_uint(mask_llty, val)
             }
         },
         TypeKind::Vector => {
             let mask = shift_mask_val(
                 bx,
-                bx.cx().element_type(llty),
-                bx.cx().element_type(mask_llty),
+                bx.element_type(llty),
+                bx.element_type(mask_llty),
                 invert
             );
-            bx.vector_splat(bx.cx().vector_length(mask_llty), mask)
+            bx.vector_splat(bx.vector_length(mask_llty), mask)
         },
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
     }

@@ -57,7 +57,7 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 
         // Default per-arch clobbers
         // Basically what clang does
-        let arch_clobbers = match &self.cx().sess().target.target.arch[..] {
+        let arch_clobbers = match &self.sess().target.target.arch[..] {
             "x86" | "x86_64"  => vec!["~{dirflag}", "~{fpsr}", "~{flags}"],
             "mips" | "mips64" => vec!["~{$1}"],
             _                 => Vec::new()
@@ -76,9 +76,9 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         // Depending on how many outputs we have, the return type is different
         let num_outputs = output_types.len();
         let output_type = match num_outputs {
-            0 => self.cx().type_void(),
+            0 => self.type_void(),
             1 => output_types[0],
-            _ => self.cx().type_struct(&output_types, false)
+            _ => self.type_struct(&output_types, false)
         };
 
         let asm = CString::new(ia.asm.as_str().as_bytes()).unwrap();
@@ -108,13 +108,13 @@ impl AsmBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         // back to source locations.  See #17552.
         unsafe {
             let key = "srcloc";
-            let kind = llvm::LLVMGetMDKindIDInContext(self.cx().llcx,
+            let kind = llvm::LLVMGetMDKindIDInContext(self.llcx,
                 key.as_ptr() as *const c_char, key.len() as c_uint);
 
-            let val: &'ll Value = self.cx().const_i32(ia.ctxt.outer().as_u32() as i32);
+            let val: &'ll Value = self.const_i32(ia.ctxt.outer().as_u32() as i32);
 
             llvm::LLVMSetMetadata(r, kind,
-                llvm::LLVMMDNodeInContext(self.cx().llcx, &val, 1));
+                llvm::LLVMMDNodeInContext(self.llcx, &val, 1));
         }
 
         true

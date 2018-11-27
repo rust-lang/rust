@@ -14,7 +14,7 @@ use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::mir::interpret::{GlobalId, ConstValue};
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::{self, LayoutOf};
+use rustc::ty::layout;
 use syntax::source_map::Span;
 use traits::*;
 
@@ -75,20 +75,20 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         c,
                     )?;
                     if let Some(prim) = field.val.try_to_scalar() {
-                        let layout = bx.cx().layout_of(field_ty);
+                        let layout = bx.layout_of(field_ty);
                         let scalar = match layout.abi {
                             layout::Abi::Scalar(ref x) => x,
                             _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
                         };
-                        Ok(bx.cx().scalar_to_backend(
+                        Ok(bx.scalar_to_backend(
                             prim, scalar,
-                            bx.cx().immediate_backend_type(layout),
+                            bx.immediate_backend_type(layout),
                         ))
                     } else {
                         bug!("simd shuffle field {:?}", field)
                     }
                 }).collect();
-                let llval = bx.cx().const_struct(&values?, false);
+                let llval = bx.const_struct(&values?, false);
                 Ok((llval, c.ty))
             })
             .unwrap_or_else(|_| {
@@ -98,8 +98,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
                 // We've errored, so we don't have to produce working code.
                 let ty = self.monomorphize(&ty);
-                let llty = bx.cx().backend_type(bx.cx().layout_of(ty));
-                (bx.cx().const_undef(llty), ty)
+                let llty = bx.backend_type(bx.layout_of(ty));
+                (bx.const_undef(llty), ty)
             })
     }
 }

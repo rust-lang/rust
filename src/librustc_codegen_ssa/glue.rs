@@ -16,7 +16,6 @@ use std;
 
 use common::IntPredicate;
 use meth;
-use rustc::ty::layout::LayoutOf;
 use rustc::ty::{self, Ty};
 use traits::*;
 
@@ -25,12 +24,12 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     t: Ty<'tcx>,
     info: Option<Bx::Value>
 ) -> (Bx::Value, Bx::Value) {
-    let layout = bx.cx().layout_of(t);
+    let layout = bx.layout_of(t);
     debug!("size_and_align_of_dst(ty={}, info={:?}): layout: {:?}",
            t, info, layout);
     if !layout.is_unsized() {
-        let size = bx.cx().const_usize(layout.size.bytes());
-        let align = bx.cx().const_usize(layout.align.abi.bytes());
+        let size = bx.const_usize(layout.size.bytes());
+        let align = bx.const_usize(layout.align.abi.bytes());
         return (size, align);
     }
     match t.sty {
@@ -40,11 +39,11 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             (meth::SIZE.get_usize(bx, vtable), meth::ALIGN.get_usize(bx, vtable))
         }
         ty::Slice(_) | ty::Str => {
-            let unit = layout.field(bx.cx(), 0);
+            let unit = layout.field(bx, 0);
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
-            (bx.mul(info.unwrap(), bx.cx().const_usize(unit.size.bytes())),
-             bx.cx().const_usize(unit.align.abi.bytes()))
+            (bx.mul(info.unwrap(), bx.const_usize(unit.size.bytes())),
+             bx.const_usize(unit.align.abi.bytes()))
         }
         _ => {
             // First get the size of all statically known fields.
@@ -58,12 +57,12 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             let sized_align = layout.align.abi.bytes();
             debug!("DST {} statically sized prefix size: {} align: {}",
                    t, sized_size, sized_align);
-            let sized_size = bx.cx().const_usize(sized_size);
-            let sized_align = bx.cx().const_usize(sized_align);
+            let sized_size = bx.const_usize(sized_size);
+            let sized_align = bx.const_usize(sized_align);
 
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
-            let field_ty = layout.field(bx.cx(), i).ty;
+            let field_ty = layout.field(bx, i).ty;
             let (unsized_size, mut unsized_align) = size_and_align_of_dst(bx, field_ty, info);
 
             // FIXME (#26403, #27023): We should be adding padding
@@ -85,12 +84,12 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
             // Choose max of two known alignments (combined value must
             // be aligned according to more restrictive of the two).
-            let align = match (bx.cx().const_to_opt_u128(sized_align, false),
-                               bx.cx().const_to_opt_u128(unsized_align, false)) {
+            let align = match (bx.const_to_opt_u128(sized_align, false),
+                               bx.const_to_opt_u128(unsized_align, false)) {
                 (Some(sized_align), Some(unsized_align)) => {
                     // If both alignments are constant, (the sized_align should always be), then
                     // pick the correct alignment statically.
-                    bx.cx().const_usize(std::cmp::max(sized_align, unsized_align) as u64)
+                    bx.const_usize(std::cmp::max(sized_align, unsized_align) as u64)
                 }
                 _ => {
                     let cmp = bx.icmp(IntPredicate::IntUGT, sized_align, unsized_align);
@@ -108,7 +107,7 @@ pub fn size_and_align_of_dst<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             // emulated via the semi-standard fast bit trick:
             //
             //   `(size + (align-1)) & -align`
-            let one = bx.cx().const_usize(1);
+            let one = bx.const_usize(1);
             let addend = bx.sub(align, one);
             let add = bx.add(size, addend);
             let neg =  bx.neg(align);
