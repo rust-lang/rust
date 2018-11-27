@@ -2515,6 +2515,7 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 /// # Examples
 ///
 /// ```
+/// #![feature(ptr_hash)]
 /// use std::collections::hash_map::DefaultHasher;
 /// use std::hash::{Hash, Hasher};
 /// use std::ptr;
@@ -2523,7 +2524,6 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 /// let five_ref = &five;
 ///
 /// let mut hasher = DefaultHasher::new();
-/// #[feature(ptr_hash)]
 /// ptr::hash(five_ref, &mut hasher);
 /// let actual = hasher.finish();
 ///
