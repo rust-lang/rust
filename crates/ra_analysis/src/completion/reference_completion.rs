@@ -42,8 +42,7 @@ pub(super) fn completions(
             let module_scope = module.scope(db)?;
             acc.extend(
                 module_scope
-                    .items
-                    .iter()
+                    .entries()
                     .filter(|(_name, res)| {
                         // Don't expose this item
                         match res.import {
@@ -162,14 +161,11 @@ fn complete_path(
         Some(it) => it,
     };
     let module_scope = target_module.scope(db)?;
-    let completions = module_scope
-        .items
-        .iter()
-        .map(|(name, _res)| CompletionItem {
-            label: name.to_string(),
-            lookup: None,
-            snippet: None,
-        });
+    let completions = module_scope.entries().map(|(name, _res)| CompletionItem {
+        label: name.to_string(),
+        lookup: None,
+        snippet: None,
+    });
     acc.extend(completions);
     Ok(())
 }

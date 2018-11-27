@@ -17,6 +17,7 @@ use crate::{
     descriptors::{Path, PathKind, DescriptorDatabase},
     input::SourceRootId,
     arena::{Arena, Id},
+    loc2id::DefLoc,
 };
 
 pub(crate) use self::nameres::ModuleScope;
@@ -72,6 +73,20 @@ impl ModuleDescriptor {
                 source_root_id,
                 module_id,
             }),
+        };
+        Ok(res)
+    }
+
+    fn new(
+        db: &impl DescriptorDatabase,
+        source_root_id: SourceRootId,
+        module_id: ModuleId,
+    ) -> Cancelable<ModuleDescriptor> {
+        let module_tree = db._module_tree(source_root_id)?;
+        let res = ModuleDescriptor {
+            tree: module_tree,
+            source_root_id,
+            module_id,
         };
         Ok(res)
     }
@@ -133,25 +148,37 @@ impl ModuleDescriptor {
         Ok(res)
     }
 
-    pub(crate) fn resolve_path(&self, db: &impl DescriptorDatabase, path: Path) -> Cancelable<Option<ModuleDescriptor>> {
-        let res = match self.do_resolve_path(path) {
-            None => return Ok(None),
-            Some(it) => it,
+    pub(crate) fn resolve_path(
+        &self,
+        db: &impl DescriptorDatabase,
+        path: Path,
+    ) -> Cancelable<Option<ModuleDescriptor>> {
+        macro_rules! ctry {
+            ($expr:expr) => {
+                match $expr {
+                    None => return Ok(None),
+                    Some(it) => it,
+                }
+            };
         };
-        Ok(Some(res))
-    }
 
-    fn do_resolve_path(&self, path: Path) -> Option<ModuleDescriptor> {
         let mut curr = match path.kind {
             PathKind::Crate => self.crate_root(),
             PathKind::Self_ | PathKind::Plain => self.clone(),
-            PathKind::Super => self.parent()?,
+            PathKind::Super => ctry!(self.parent()),
         };
+
         let segments = path.segments;
         for name in segments {
-            curr = curr.child(&name)?;
+            let scope = curr.scope(db)?;
+            let def_id = ctry!(ctry!(scope.get(&name)).def_id);
+            curr = match db.id_maps().def_loc(def_id) {
+                DefLoc::Module { id, source_root } => ModuleDescriptor::new(db, source_root, id)?,
+                _ => return Ok(None),
+            };
         }
-        Some(curr)
+
+        Ok(Some(curr))
     }
 
     pub fn problems(&self, db: &impl DescriptorDatabase) -> Vec<(SyntaxNode, Problem)> {

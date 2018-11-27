@@ -103,7 +103,16 @@ pub(crate) struct ItemMap {
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub(crate) struct ModuleScope {
-    pub(crate) items: FxHashMap<SmolStr, Resolution>,
+    items: FxHashMap<SmolStr, Resolution>,
+}
+
+impl ModuleScope {
+    pub(crate) fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a SmolStr, &Resolution)> + 'a {
+        self.items.iter()
+    }
+    pub(crate) fn get(&self, name: &SmolStr) -> Option<&Resolution> {
+        self.items.get(name)
+    }
 }
 
 /// A set of items and imports declared inside a module, without relation to
