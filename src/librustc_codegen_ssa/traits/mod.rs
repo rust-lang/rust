@@ -85,7 +85,9 @@ impl<'tcx, T> CodegenMethods<'tcx> for T where
 {
 }
 
-pub trait HasCodegen<'tcx>: Backend<'tcx> {
+pub trait HasCodegen<'tcx>:
+    Backend<'tcx> + ::std::ops::Deref<Target = <Self as HasCodegen<'tcx>>::CodegenCx>
+{
     type CodegenCx: CodegenMethods<'tcx>
         + BackendTypes<
             Value = Self::Value,

@@ -29,7 +29,7 @@ use rustc_codegen_ssa::mir::operand::{OperandValue, OperandRef};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use std::borrow::Cow;
 use std::ffi::CStr;
-use std::ops::Range;
+use std::ops::{Deref, Range};
 use std::ptr;
 
 // All Builders must have an llfn associated with them
@@ -84,6 +84,13 @@ impl ty::layout::LayoutOf for Builder<'_, '_, 'tcx> {
     }
 }
 
+impl Deref for Builder<'_, 'll, 'tcx> {
+    type Target = CodegenCx<'ll, 'tcx>;
+
+    fn deref(&self) -> &Self::Target {
+        self.cx
+    }
+}
 
 impl HasCodegen<'tcx> for Builder<'_, 'll, 'tcx> {
     type CodegenCx = CodegenCx<'ll, 'tcx>;
