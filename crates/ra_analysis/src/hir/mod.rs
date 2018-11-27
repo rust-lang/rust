@@ -21,7 +21,7 @@ use crate::{
     db::SyntaxDatabase,
     hir::function::{resolve_local_name, FnId, FnScopes},
     hir::module::{
-        ModuleId, ModuleTree, ModuleSource, ModuleDescriptor,
+        ModuleId, ModuleTree, ModuleSource,
         nameres::{ItemMap, InputModuleItems, FileItems}
     },
     input::SourceRootId,
@@ -30,8 +30,11 @@ use crate::{
     Cancelable,
 };
 
-pub(crate) use self::path::{Path, PathKind};
-pub(crate) use self::module::nameres::FileItemId;
+pub(crate) use self::{
+    path::{Path, PathKind},
+    module::{ModuleDescriptor, nameres::FileItemId},
+    function::FunctionDescriptor,
+};
 
 salsa::query_group! {
 pub(crate) trait HirDatabase: SyntaxDatabase + IdDatabase {

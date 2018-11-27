@@ -20,9 +20,10 @@ use crate::{
     completion::{completions, CompletionItem},
     db::{self, FileSyntaxQuery, SyntaxDatabase},
     hir::{
-        function::{FnDescriptor, FnId},
-        module::{ModuleDescriptor, Problem},
-        DeclarationDescriptor, HirDatabase,
+        FunctionDescriptor, ModuleDescriptor,
+        function::FnDescriptor,
+        module::{Problem},
+        DeclarationDescriptor,
     },
     input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
     symbol_index::SymbolIndex,
@@ -587,8 +588,8 @@ fn resolve_local_name(
     name_ref: ast::NameRef,
 ) -> Option<(SmolStr, TextRange)> {
     let fn_def = name_ref.syntax().ancestors().find_map(ast::FnDef::cast)?;
-    let fn_id = FnId::get(db, file_id, fn_def);
-    let scopes = db.fn_scopes(fn_id);
+    let function = FunctionDescriptor::guess_from_source(db, file_id, fn_def);
+    let scopes = function.scope(db);
     let scope_entry = crate::hir::function::resolve_local_name(name_ref, &scopes)?;
     let syntax = db.resolve_syntax_ptr(scope_entry.ptr().into_global(file_id));
     Some((scope_entry.name().clone(), syntax.range()))

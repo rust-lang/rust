@@ -1,7 +1,10 @@
 pub(super) mod imp;
 mod scope;
 
-use std::cmp::{max, min};
+use std::{
+    cmp::{max, min},
+    sync::Arc,
+};
 
 use ra_syntax::{
     ast::{self, AstNode, DocCommentsOwner, NameOwner},
@@ -9,6 +12,7 @@ use ra_syntax::{
 };
 
 use crate::{
+    hir::HirDatabase,
     syntax_ptr::SyntaxPtr, FileId,
     loc2id::IdDatabase,
 };
@@ -20,6 +24,25 @@ impl FnId {
     pub(crate) fn get(db: &impl IdDatabase, file_id: FileId, fn_def: ast::FnDef) -> FnId {
         let ptr = SyntaxPtr::new(file_id, fn_def.syntax());
         db.id_maps().fn_id(ptr)
+    }
+}
+
+pub(crate) struct FunctionDescriptor {
+    fn_id: FnId,
+}
+
+impl FunctionDescriptor {
+    pub(crate) fn guess_from_source(
+        db: &impl HirDatabase,
+        file_id: FileId,
+        fn_def: ast::FnDef,
+    ) -> FunctionDescriptor {
+        let fn_id = FnId::get(db, file_id, fn_def);
+        FunctionDescriptor { fn_id }
+    }
+
+    pub(crate) fn scope(&self, db: &impl HirDatabase) -> Arc<FnScopes> {
+        db.fn_scopes(self.fn_id)
     }
 }
 
