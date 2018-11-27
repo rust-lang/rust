@@ -149,7 +149,7 @@ fn setup(ask_user: bool) {
     let dirs = directories::ProjectDirs::from("miri", "miri", "miri").unwrap();
     let dir = dirs.cache_dir();
     if !dir.exists() {
-        fs::create_dir(&dir).unwrap();
+        fs::create_dir_all(&dir).unwrap();
     }
     // The interesting bit: Xargo.toml
     File::create(dir.join("Xargo.toml")).unwrap()
