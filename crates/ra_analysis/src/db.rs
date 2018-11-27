@@ -7,10 +7,7 @@ use salsa::{self, Database};
 
 use crate::{
     db,
-    descriptors::{
-        DescriptorDatabase, FnScopesQuery, FnSyntaxQuery, ModuleTreeQuery,
-        SubmodulesQuery, ItemMapQuery, InputModuleItemsQuery,
-    },
+    descriptors,
     symbol_index::SymbolIndex,
     syntax_ptr::SyntaxPtr,
     loc2id::{IdMaps, IdDatabase},
@@ -125,13 +122,15 @@ salsa::database_storage! {
             fn file_symbols() for FileSymbolsQuery;
             fn resolve_syntax_ptr() for ResolveSyntaxPtrQuery;
         }
-        impl DescriptorDatabase {
-            fn module_tree() for ModuleTreeQuery;
-            fn fn_scopes() for FnScopesQuery;
-            fn _input_module_items() for InputModuleItemsQuery;
-            fn _item_map() for ItemMapQuery;
-            fn _fn_syntax() for FnSyntaxQuery;
-            fn _submodules() for SubmodulesQuery;
+        impl descriptors::DescriptorDatabase {
+            fn module_tree() for descriptors::ModuleTreeQuery;
+            fn fn_scopes() for descriptors::FnScopesQuery;
+            fn _file_items() for descriptors::FileItemsQuery;
+            fn _file_item() for descriptors::FileItemQuery;
+            fn _input_module_items() for descriptors::InputModuleItemsQuery;
+            fn _item_map() for descriptors::ItemMapQuery;
+            fn _fn_syntax() for descriptors::FnSyntaxQuery;
+            fn _submodules() for descriptors::SubmodulesQuery;
         }
     }
 }

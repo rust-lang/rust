@@ -46,9 +46,12 @@ pub(super) fn completions(
                     .iter()
                     .filter(|(_name, res)| {
                         // Don't expose this item
-                        match res.import_name {
+                        match res.import {
                             None => true,
-                            Some(ptr) => !ptr.range().is_subrange(&name_ref.syntax().range()),
+                            Some(import) => {
+                                let range = import.range(db, module.source().file_id());
+                                !range.is_subrange(&name_ref.syntax().range())
+                            }
                         }
                     })
                     .map(|(name, _res)| CompletionItem {
