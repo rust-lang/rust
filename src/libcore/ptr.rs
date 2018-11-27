@@ -2516,18 +2516,19 @@ pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
 ///
 /// ```
 /// use std::collections::hash_map::DefaultHasher;
-/// use std::hash::Hasher;
+/// use std::hash::{Hash, Hasher};
 /// use std::ptr;
 ///
 /// let five = 5;
 /// let five_ref = &five;
 ///
 /// let mut hasher = DefaultHasher::new();
+/// #[feature(ptr_hash)]
 /// ptr::hash(five_ref, &mut hasher);
 /// let actual = hasher.finish();
 ///
 /// let mut hasher = DefaultHasher::new();
-/// (five_ref as *const T).hash(&mut hasher);
+/// (five_ref as *const i32).hash(&mut hasher);
 /// let expected = hasher.finish();
 ///
 /// assert_eq!(actual, expected);
