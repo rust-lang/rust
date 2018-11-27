@@ -994,7 +994,7 @@ fn link_args(cmd: &mut dyn Linker,
     //
     // The rationale behind this ordering is that those items lower down in the
     // list can't depend on items higher up in the list. For example nothing can
-    // depend on what we just generated (e.g. that'd be a circular dependency).
+    // depend on what we just generated (e.g., that'd be a circular dependency).
     // Upstream rust libraries are not allowed to depend on our local native
     // libraries as that would violate the structure of the DAG, in that
     // scenario they are required to link to them as well in a shared fashion.
@@ -1003,7 +1003,7 @@ fn link_args(cmd: &mut dyn Linker,
     // well, but they also can't depend on what we just started to add to the
     // link line. And finally upstream native libraries can't depend on anything
     // in this DAG so far because they're only dylibs and dylibs can only depend
-    // on other dylibs (e.g. other native deps).
+    // on other dylibs (e.g., other native deps).
     add_local_native_libraries(cmd, sess, codegen_results);
     add_upstream_rust_crates(cmd, sess, codegen_results, crate_type, tmpdir);
     add_upstream_native_libraries(cmd, sess, codegen_results, crate_type);
@@ -1205,7 +1205,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
     // compiler-builtins are always placed last to ensure that they're
     // linked correctly.
     // We must always link the `compiler_builtins` crate statically. Even if it
-    // was already "included" in a dylib (e.g. `libstd` when `-C prefer-dynamic`
+    // was already "included" in a dylib (e.g., `libstd` when `-C prefer-dynamic`
     // is used)
     if let Some(cnum) = compiler_builtins {
         add_static_crate(cmd, sess, codegen_results, tmpdir, crate_type, cnum);
@@ -1385,7 +1385,7 @@ fn add_upstream_rust_crates(cmd: &mut dyn Linker,
             // because a `dylib` can be reused as an intermediate artifact.
             //
             // Note, though, that we don't want to include the whole of a
-            // compiler-builtins crate (e.g. compiler-rt) because it'll get
+            // compiler-builtins crate (e.g., compiler-rt) because it'll get
             // repeatedly linked anyway.
             if crate_type == config::CrateType::Dylib &&
                 codegen_results.crate_info.compiler_builtins != Some(cnum) {

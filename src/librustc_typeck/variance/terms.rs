@@ -125,7 +125,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         let newly_added = self.inferred_starts.insert(id, InferredIndex(start)).is_none();
         assert!(newly_added);
 
-        // NB: In the code below for writing the results back into the
+        // N.B., in the code below for writing the results back into the
         // `CrateVariancesMap`, we rely on the fact that all inferreds
         // for a particular item are assigned continuous indices.
 

@@ -10,7 +10,7 @@
 
 //! Job management on Windows for bootstrapping
 //!
-//! Most of the time when you're running a build system (e.g. make) you expect
+//! Most of the time when you're running a build system (e.g., make) you expect
 //! Ctrl-C or abnormal termination to actually terminate the entire tree of
 //! process in play, not just the one at the top. This currently works "by
 //! default" on Unix platforms because Ctrl-C actually sends a signal to the
@@ -162,11 +162,11 @@ pub unsafe fn setup(build: &mut Build) {
         return
     }
 
-    // If we've got a parent process (e.g. the python script that called us)
+    // If we've got a parent process (e.g., the python script that called us)
     // then move ownership of this job object up to them. That way if the python
-    // script is killed (e.g. via ctrl-c) then we'll all be torn down.
+    // script is killed (e.g., via ctrl-c) then we'll all be torn down.
     //
-    // If we don't have a parent (e.g. this was run directly) then we
+    // If we don't have a parent (e.g., this was run directly) then we
     // intentionally leak the job object handle. When our process exits
     // (normally or abnormally) it will close the handle implicitly, causing all
     // processes in the job to be cleaned up.
@@ -184,7 +184,7 @@ pub unsafe fn setup(build: &mut Build) {
 
     // If this failed, well at least we tried! An example of DuplicateHandle
     // failing in the past has been when the wrong python2 package spawned this
-    // build system (e.g. the `python2` package in MSYS instead of
+    // build system (e.g., the `python2` package in MSYS instead of
     // `mingw-w64-x86_64-python2`. Not sure why it failed, but the "failure
     // mode" here is that we only clean everything up when the build system
     // dies, not when the python parent does, so not too bad.

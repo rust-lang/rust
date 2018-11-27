@@ -67,7 +67,7 @@ pub struct Lint {
     /// `declare_lint!()` invocations to follow the convention of upper-case
     /// statics without repeating the name.
     ///
-    /// The name is written with underscores, e.g. "unused_imports".
+    /// The name is written with underscores, e.g., "unused_imports".
     /// On the command line, underscores become dashes.
     pub name: &'static str,
 
@@ -76,7 +76,7 @@ pub struct Lint {
 
     /// Description of the lint or the issue it detects.
     ///
-    /// e.g. "imports that are never used"
+    /// e.g., "imports that are never used"
     pub desc: &'static str,
 
     /// Starting at the given edition, default to the given lint level. If this is `None`, then use
@@ -173,7 +173,7 @@ pub type LintArray = Vec<&'static Lint>;
 pub trait LintPass {
     /// Get descriptions of the lints this `LintPass` object can emit.
     ///
-    /// NB: there is no enforcement that the object only emits lints it registered.
+    /// N.B., there is no enforcement that the object only emits lints it registered.
     /// And some `rustc` internal `LintPass`es register lints to be emitted by other
     /// parts of the compiler. If you want enforced access restrictions for your
     /// `Lint`, make it a private `static` item in its own module.

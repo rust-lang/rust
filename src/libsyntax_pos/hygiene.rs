@@ -308,11 +308,11 @@ impl SyntaxContext {
         }
 
         // Otherwise, `mark` is a macros 1.0 definition and the call site is in a
-        // macros 2.0 expansion, i.e. a macros 1.0 invocation is in a macros 2.0 definition.
+        // macros 2.0 expansion, i.e., a macros 1.0 invocation is in a macros 2.0 definition.
         //
         // In this case, the tokens from the macros 1.0 definition inherit the hygiene
         // at their invocation. That is, we pretend that the macros 1.0 definition
-        // was defined at its invocation (i.e. inside the macros 2.0 definition)
+        // was defined at its invocation (i.e., inside the macros 2.0 definition)
         // so that the macros 2.0 definition remains hygienic.
         //
         // See the example at `test/run-pass/hygiene/legacy_interaction.rs`.
@@ -438,7 +438,7 @@ impl SyntaxContext {
     /// }
     /// ```
     /// This returns the expansion whose definition scope we use to privacy check the resolution,
-    /// or `None` if we privacy check as usual (i.e. not w.r.t. a macro definition scope).
+    /// or `None` if we privacy check as usual (i.e., not w.r.t. a macro definition scope).
     pub fn adjust(&mut self, expansion: Mark) -> Option<Mark> {
         let mut scope = None;
         while !expansion.is_descendant_of(self.outer()) {
@@ -540,7 +540,7 @@ pub struct ExpnInfo {
     /// The location of the actual macro invocation or syntax sugar , e.g.
     /// `let x = foo!();` or `if let Some(y) = x {}`
     ///
-    /// This may recursively refer to other macro invocations, e.g. if
+    /// This may recursively refer to other macro invocations, e.g., if
     /// `foo!()` invoked `bar!()` internally, and there was an
     /// expression inside `bar!`; the call_site of the expression in
     /// the expansion would point to the `bar!` invocation; that
@@ -548,7 +548,7 @@ pub struct ExpnInfo {
     /// pointing to the `foo!` invocation.
     pub call_site: Span,
     /// The span of the macro definition itself. The macro may not
-    /// have a sensible definition span (e.g. something defined
+    /// have a sensible definition span (e.g., something defined
     /// completely inside libsyntax) in which case this is None.
     /// This span serves only informational purpose and is not used for resolution.
     pub def_site: Option<Span>,
@@ -571,9 +571,9 @@ pub struct ExpnInfo {
 /// The source of expansion.
 #[derive(Clone, Hash, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum ExpnFormat {
-    /// e.g. #[derive(...)] <item>
+    /// e.g., #[derive(...)] <item>
     MacroAttribute(Symbol),
-    /// e.g. `format!()`
+    /// e.g., `format!()`
     MacroBang(Symbol),
     /// Desugaring done by the compiler during HIR lowering.
     CompilerDesugaring(CompilerDesugaringKind)

@@ -29,7 +29,7 @@
 //! ```
 //!
 //! This means that users of this analysis still have to check whether
-//! pre-existing references can be used to access the value (e.g. at movable
+//! pre-existing references can be used to access the value (e.g., at movable
 //! generator yield points, all pre-existing references are invalidated, so this
 //! doesn't matter).
 

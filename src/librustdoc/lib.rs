@@ -276,7 +276,7 @@ fn opts() -> Vec<RustcOptGroup> {
         unstable("resource-suffix", |o| {
             o.optopt("",
                      "resource-suffix",
-                     "suffix to add to CSS and JavaScript files, e.g. \"light.css\" will become \
+                     "suffix to add to CSS and JavaScript files, e.g., \"light.css\" will become \
                       \"light-suffix.css\"",
                      "PATH")
         }),

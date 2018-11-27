@@ -865,7 +865,7 @@ assert!(!Wrapping(10", stringify!($t), ").is_power_of_two());
             doc_comment! {
                 concat!("Returns the smallest power of two greater than or equal to `self`.
 
-When return value overflows (i.e. `self > (1 << (N-1))` for type
+When return value overflows (i.e., `self > (1 << (N-1))` for type
 `uN`), overflows to `2^N = 0`.
 
 # Examples

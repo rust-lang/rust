@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Slice management and manipulation
+//! Slice management and manipulation.
 //!
 //! For more details see [`std::slice`].
 //!
@@ -1151,7 +1151,7 @@ impl<T> [T] {
     ///
     /// # Examples
     ///
-    /// Print the slice split once by numbers divisible by 3 (i.e. `[10, 40]`,
+    /// Print the slice split once by numbers divisible by 3 (i.e., `[10, 40]`,
     /// `[20, 60, 50]`):
     ///
     /// ```
@@ -1215,7 +1215,7 @@ impl<T> [T] {
     /// # Examples
     ///
     /// Print the slice split once, starting from the end, by numbers divisible
-    /// by 3 (i.e. `[50]`, `[10, 40, 30, 20]`):
+    /// by 3 (i.e., `[50]`, `[10, 40, 30, 20]`):
     ///
     /// ```
     /// let v = [10, 40, 30, 20, 60, 50];
@@ -1471,8 +1471,8 @@ impl<T> [T] {
 
     /// Sorts the slice, but may not preserve the order of equal elements.
     ///
-    /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
-    /// and `O(n log n)` worst-case.
+    /// This sort is unstable (i.e., may reorder equal elements), in-place
+    /// (i.e., does not allocate), and `O(n log n)` worst-case.
     ///
     /// # Current implementation
     ///
@@ -1482,7 +1482,7 @@ impl<T> [T] {
     /// randomization to avoid degenerate cases, but with a fixed seed to always provide
     /// deterministic behavior.
     ///
-    /// It is typically faster than stable sorting, except in a few special cases, e.g. when the
+    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
     /// slice consists of several concatenated sorted sequences.
     ///
     /// # Examples
@@ -1506,8 +1506,8 @@ impl<T> [T] {
     /// Sorts the slice with a comparator function, but may not preserve the order of equal
     /// elements.
     ///
-    /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
-    /// and `O(n log n)` worst-case.
+    /// This sort is unstable (i.e., may reorder equal elements), in-place
+    /// (i.e., does not allocate), and `O(n log n)` worst-case.
     ///
     /// The comparator function must define a total ordering for the elements in the slice. If
     /// the ordering is not total, the order of the elements is unspecified. An order is a
@@ -1533,7 +1533,7 @@ impl<T> [T] {
     /// randomization to avoid degenerate cases, but with a fixed seed to always provide
     /// deterministic behavior.
     ///
-    /// It is typically faster than stable sorting, except in a few special cases, e.g. when the
+    /// It is typically faster than stable sorting, except in a few special cases, e.g., when the
     /// slice consists of several concatenated sorted sequences.
     ///
     /// # Examples
@@ -1560,8 +1560,9 @@ impl<T> [T] {
     /// Sorts the slice with a key extraction function, but may not preserve the order of equal
     /// elements.
     ///
-    /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
-    /// and `O(m n log(m n))` worst-case, where the key function is `O(m)`.
+    /// This sort is unstable (i.e., may reorder equal elements), in-place
+    /// (i.e., does not allocate), and `O(m n log(m n))` worst-case, where the key function is
+    /// `O(m)`.
     ///
     /// # Current implementation
     ///
@@ -2458,13 +2459,13 @@ impl<T> SliceIndex<[T]> for usize {
 
     #[inline]
     fn index(self, slice: &[T]) -> &T {
-        // NB: use intrinsic indexing
+        // N.B., use intrinsic indexing
         &(*slice)[self]
     }
 
     #[inline]
     fn index_mut(self, slice: &mut [T]) -> &mut T {
-        // NB: use intrinsic indexing
+        // N.B., use intrinsic indexing
         &mut (*slice)[self]
     }
 }

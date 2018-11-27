@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME: The assumes we're using the non-vector ABI, i.e. compiling
+// FIXME: The assumes we're using the non-vector ABI, i.e., compiling
 // for a pre-z13 machine or using -mno-vx.
 
 use abi::call::{FnType, ArgType, Reg};

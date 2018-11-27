@@ -340,7 +340,7 @@ struct AddTypeParameterBoundWhereClause<T>(
 
 // Empty struct ----------------------------------------------------------------
 // Since we cannot change anything in this case, we just make sure that the
-// fingerprint is stable (i.e. that there are no random influences like memory
+// fingerprint is stable (i.e., that there are no random influences like memory
 // addresses taken into account by the hashing algorithm).
 // Note: there is no #[cfg(...)], so this is ALWAYS compiled
 #[rustc_clean(label="Hir", cfg="cfail2")]

@@ -62,7 +62,7 @@
 //! The following example uses [`Option`] to create an optional box of
 //! [`i32`]. Notice that in order to use the inner [`i32`] value first, the
 //! `check_optional` function needs to use pattern matching to
-//! determine whether the box has a value (i.e. it is [`Some(...)`][`Some`]) or
+//! determine whether the box has a value (i.e., it is [`Some(...)`][`Some`]) or
 //! not ([`None`]).
 //!
 //! ```

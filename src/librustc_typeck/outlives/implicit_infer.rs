@@ -314,7 +314,7 @@ pub fn check_explicit_predicates<'tcx>(
         // case that `substs` come from a `dyn Trait` type, our caller will have
         // included `Self = usize` as the value for `Self`. If we were
         // to apply the substs, and not filter this predicate, we might then falsely
-        // conclude that e.g. `X: 'x` was a reasonable inferred requirement.
+        // conclude that e.g., `X: 'x` was a reasonable inferred requirement.
         //
         // Another similar case is where we have a inferred
         // requirement like `<Self as Trait>::Foo: 'b`. We presently

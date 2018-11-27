@@ -107,7 +107,7 @@ impl LinkerInfo {
 /// This trait is the total list of requirements needed by `back::link` and
 /// represents the meaning of each option being passed down. This trait is then
 /// used to dispatch on whether a GNU-like linker (generally `ld.exe`) or an
-/// MSVC linker (e.g. `link.exe`) is being used.
+/// MSVC linker (e.g., `link.exe`) is being used.
 pub trait Linker {
     fn link_dylib(&mut self, lib: &str);
     fn link_rust_dylib(&mut self, lib: &str, path: &Path);

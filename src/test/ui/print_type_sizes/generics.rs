@@ -30,7 +30,7 @@
 //     Copy.
 //
 //     (I suspect this reflect some naivety within the rust compiler
-//      itself; it should be checking for drop glue, i.e. a destructor
+//      itself; it should be checking for drop glue, i.e., a destructor
 //      somewhere in the monomorphized types. It should not matter whether
 //      the type is Copy.)
 #[derive(Copy, Clone)]

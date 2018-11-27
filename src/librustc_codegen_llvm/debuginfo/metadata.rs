@@ -509,7 +509,7 @@ pub fn type_metadata(
             },
             None => {
                 // The Ty is not in the TypeMap but maybe we have already seen
-                // an equivalent type (e.g. only differing in region arguments).
+                // an equivalent type (e.g., only differing in region arguments).
                 // In order to find out, generate the unique type id and look
                 // that up.
                 let unique_type_id = type_map.get_unique_type_id_of_type(cx, t);

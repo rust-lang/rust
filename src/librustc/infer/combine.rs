@@ -371,7 +371,7 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
         if self.ambient_variance == ty::Variance::Invariant {
             // Avoid fetching the variance if we are in an invariant
             // context; no need, and it can induce dependency cycles
-            // (e.g. #41849).
+            // (e.g., #41849).
             relate::relate_substs(self, None, a_subst, b_subst)
         } else {
             let opt_variances = self.tcx().variances_of(item_def_id);

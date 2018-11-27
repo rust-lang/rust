@@ -176,7 +176,7 @@ fn find_libdir(sysroot: &Path) -> Cow<'static, str> {
     // of the directory where librustc is located, rather than where the rustc
     // binary is.
     // If --libdir is set during configuration to the value other than
-    // "lib" (i.e. non-default), this value is used (see issue #16552).
+    // "lib" (i.e., non-default), this value is used (see issue #16552).
 
     #[cfg(target_pointer_width = "64")]
     const PRIMARY_LIB_DIR: &str = "lib64";

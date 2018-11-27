@@ -290,7 +290,7 @@ impl<'a, 'tcx: 'a, BD> DataflowBuilder<'a, 'tcx, BD> where BD: BitDenotation
 /// It abstracts over the FlowState and also completely hides the
 /// underlying flow analysis results, because it needs to handle cases
 /// where we are combining the results of *multiple* flow analyses
-/// (e.g. borrows + inits + uninits).
+/// (e.g., borrows + inits + uninits).
 pub(crate) trait DataflowResultsConsumer<'a, 'tcx: 'a> {
     type FlowState: FlowsAtLocation;
 
@@ -553,7 +553,7 @@ impl<E:Idx> AllSets<E> {
 /// Parameterization for the precise form of data flow that is used.
 /// `InitialFlow` handles initializing the bitvectors before any
 /// code is inspected by the analysis. Analyses that need more nuanced
-/// initialization (e.g. they need to consult the results of some other
+/// initialization (e.g., they need to consult the results of some other
 /// dataflow analysis to set up the initial bitvectors) should not
 /// implement this.
 pub trait InitialFlow {
@@ -592,7 +592,7 @@ pub trait BitDenotation: BitSetOperator {
 
     /// A name describing the dataflow analysis that this
     /// BitDenotation is supporting.  The name should be something
-    /// suitable for plugging in as part of a filename e.g. avoid
+    /// suitable for plugging in as part of a filename e.g., avoid
     /// space-characters or other things that tend to look bad on a
     /// file system, like slashes or periods. It is also better for
     /// the name to be reasonably short, again because it will be
@@ -739,7 +739,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D> where D: BitDenotation
     /// To reflect this, the `propagate_call_return` method of the
     /// `BitDenotation` mutates `in_out` when propagating `in_out` via
     /// a call terminator; such mutation is performed *last*, to
-    /// ensure its side-effects do not leak elsewhere (e.g. into
+    /// ensure its side-effects do not leak elsewhere (e.g., into
     /// unwind target).
     fn propagate_bits_into_graph_successors_of(
         &mut self,

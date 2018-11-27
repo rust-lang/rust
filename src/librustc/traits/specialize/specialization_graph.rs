@@ -29,7 +29,7 @@ use util::nodemap::{DefIdMap, FxHashMap};
 ///
 /// The graph provides two key services:
 ///
-/// - Construction, which implicitly checks for overlapping impls (i.e., impls
+/// - Construction. This implicitly checks for overlapping impls (i.e., impls
 ///   that overlap but where neither specializes the other -- an artifact of the
 ///   simple "chain" rule.
 ///
@@ -39,11 +39,11 @@ use util::nodemap::{DefIdMap, FxHashMap};
 ///   has at most one parent.
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct Graph {
-    // all impls have a parent; the "root" impls have as their parent the def_id
-    // of the trait
+    // All impls have a parent; the "root" impls have as their parent the `def_id`
+    // of the trait.
     parent: DefIdMap<DefId>,
 
-    // the "root" impls are found by looking up the trait's def_id.
+    // The "root" impls are found by looking up the trait's def_id.
     children: DefIdMap<Children>,
 }
 
@@ -81,7 +81,7 @@ enum Inserted {
 }
 
 impl<'a, 'gcx, 'tcx> Children {
-    /// Insert an impl into this set of children without comparing to any existing impls
+    /// Insert an impl into this set of children without comparing to any existing impls.
     fn insert_blindly(&mut self,
                       tcx: TyCtxt<'a, 'gcx, 'tcx>,
                       impl_def_id: DefId) {
@@ -144,13 +144,13 @@ impl<'a, 'gcx, 'tcx> Children {
             );
 
             let overlap_error = |overlap: traits::coherence::OverlapResult<'_>| {
-                // overlap, but no specialization; error out
+                // Found overlap, but no specialization; error out.
                 let trait_ref = overlap.impl_header.trait_ref.unwrap();
                 let self_ty = trait_ref.self_ty();
                 OverlapError {
                     with_impl: possible_sibling,
                     trait_desc: trait_ref.to_string(),
-                    // only report the Self type if it has at least
+                    // Only report the `Self` type if it has at least
                     // some outer concrete shell; otherwise, it's
                     // not adding much information.
                     self_desc: if self_ty.has_concrete_skeleton() {
@@ -189,7 +189,7 @@ impl<'a, 'gcx, 'tcx> Children {
                 debug!("descending as child of TraitRef {:?}",
                        tcx.impl_trait_ref(possible_sibling).unwrap());
 
-                // the impl specializes possible_sibling
+                // The impl specializes `possible_sibling`.
                 return Ok(Inserted::ShouldRecurseOn(possible_sibling));
             } else if ge && !le {
                 debug!("placing as parent of TraitRef {:?}",
@@ -216,7 +216,7 @@ impl<'a, 'gcx, 'tcx> Children {
             return Ok(Inserted::ReplaceChildren(replace_children));
         }
 
-        // no overlap with any potential siblings, so add as a new sibling
+        // No overlap with any potential siblings, so add as a new sibling.
         debug!("placing as new sibling");
         self.insert_blindly(tcx, impl_def_id);
         Ok(Inserted::BecameNewSibling(last_lint))
@@ -256,7 +256,7 @@ impl<'a, 'gcx, 'tcx> Graph {
         debug!("insert({:?}): inserting TraitRef {:?} into specialization graph",
                impl_def_id, trait_ref);
 
-        // if the reference itself contains an earlier error (e.g., due to a
+        // If the reference itself contains an earlier error (e.g., due to a
         // resolution failure), then we just insert the impl at the top level of
         // the graph and claim that there's no overlap (in order to suppress
         // bogus errors).
@@ -275,7 +275,7 @@ impl<'a, 'gcx, 'tcx> Graph {
         let mut last_lint = None;
         let simplified = fast_reject::simplify_type(tcx, trait_ref.self_ty(), false);
 
-        // Descend the specialization tree, where `parent` is the current parent node
+        // Descend the specialization tree, where `parent` is the current parent node.
         loop {
             use self::Inserted::*;
 
@@ -313,7 +313,7 @@ impl<'a, 'gcx, 'tcx> Graph {
                         siblings.insert_blindly(tcx, impl_def_id);
                     }
 
-                    // Set G's parent to N and N's parent to P
+                    // Set G's parent to N and N's parent to P.
                     for &grand_child_to_be in &grand_children_to_be {
                         self.parent.insert(grand_child_to_be, impl_def_id);
                     }
@@ -429,7 +429,8 @@ impl<T> NodeItem<T> {
 impl<'a, 'gcx, 'tcx> Ancestors {
     /// Search the items from the given ancestors, returning each definition
     /// with the given name and the given kind.
-    #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
+    // FIXME(#35870): avoid closures being unexported due to `impl Trait`.
+    #[inline]
     pub fn defs(
         self,
         tcx: TyCtxt<'a, 'gcx, 'tcx>,

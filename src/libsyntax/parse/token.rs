@@ -550,7 +550,7 @@ impl Token {
         });
 
         // During early phases of the compiler the AST could get modified
-        // directly (e.g. attributes added or removed) and the internal cache
+        // directly (e.g., attributes added or removed) and the internal cache
         // of tokens my not be invalidated or updated. Consequently if the
         // "lossless" token stream disagrees with our actual stringification
         // (which has historically been much more battle-tested) then we go

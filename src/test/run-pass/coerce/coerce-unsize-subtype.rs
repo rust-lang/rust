@@ -32,7 +32,7 @@ fn long_to_short_rc<'a, T>(xs: Rc<[&'static T; 1]>) -> Rc<[&'a T]> {
 }
 
 // LUB-coercion (if-else/match/array) coerces `xs: &'b [&'static T: N]`
-// to a subtype of the LUB of `xs` and `ys` (i.e. `&'b [&'a T]`),
+// to a subtype of the LUB of `xs` and `ys` (i.e., `&'b [&'a T]`),
 // regardless of the order they appear (in if-else/match/array).
 fn long_and_short_lub1<'a, 'b, T>(xs: &'b [&'static T; 1], ys: &'b [&'a T]) {
     let _order1 = [xs, ys];
@@ -40,7 +40,7 @@ fn long_and_short_lub1<'a, 'b, T>(xs: &'b [&'static T; 1], ys: &'b [&'a T]) {
 }
 
 // LUB-coercion should also have the exact same effect when `&'b [&'a T; N]`
-// needs to be coerced, i.e. the resulting type is not &'b [&'static T], but
+// needs to be coerced, i.e., the resulting type is not &'b [&'static T], but
 // rather the `&'b [&'a T]` LUB.
 fn long_and_short_lub2<'a, 'b, T>(xs: &'b [&'static T], ys: &'b [&'a T; 1]) {
     let _order1 = [xs, ys];

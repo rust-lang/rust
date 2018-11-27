@@ -40,7 +40,7 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
                tcx.item_path_str(impl_def_id));
 
         // Skip impls where one of the self type is an error type.
-        // This occurs with e.g. resolve failures (#30589).
+        // This occurs with e.g., resolve failures (#30589).
         if trait_ref.references_error() {
             return;
         }

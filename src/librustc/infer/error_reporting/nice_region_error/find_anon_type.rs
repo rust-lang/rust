@@ -30,7 +30,7 @@ impl<'a, 'gcx, 'tcx> NiceRegionError<'a, 'gcx, 'tcx> {
     ///    { x.push(y); }
     /// ```
     /// The function returns the nested type corresponding to the anonymous region
-    /// for e.g. `&u8` and Vec<`&u8`.
+    /// for e.g., `&u8` and Vec<`&u8`.
     pub(super) fn find_anon_type(
         &self,
         region: Region<'tcx>,
@@ -97,7 +97,7 @@ struct FindNestedTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     // associated with the anonymous region we are looking for.
     bound_region: ty::BoundRegion,
     // The type where the anonymous lifetime appears
-    // for e.g. Vec<`&u8`> and <`&u8`>
+    // for e.g., Vec<`&u8`> and <`&u8`>
     found_type: Option<&'gcx hir::Ty>,
     current_index: ty::DebruijnIndex,
 }

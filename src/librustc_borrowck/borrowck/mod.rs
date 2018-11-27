@@ -217,7 +217,7 @@ fn build_borrowck_dataflow_data<'a, 'c, 'tcx, F>(this: &mut BorrowckCtxt<'a, 'tc
 }
 
 /// Accessor for introspective clients inspecting `AnalysisData` and
-/// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
+/// the `BorrowckCtxt` itself , e.g., the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     body_id: hir::BodyId,

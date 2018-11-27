@@ -556,7 +556,7 @@ pub enum BorrowKind {
     /// Data is mutable and not aliasable.
     Mut {
         /// True if this borrow arose from method-call auto-ref
-        /// (i.e. `adjustment::Adjust::Borrow`)
+        /// (i.e., `adjustment::Adjust::Borrow`)
         allow_two_phase_borrow: bool,
     },
 }
@@ -692,7 +692,7 @@ mod binding_form_impl {
 /// expression; that is, a block like `{ STMT_1; STMT_2; EXPR }`.
 ///
 /// It is used to improve diagnostics when such temporaries are
-/// involved in borrow_check errors, e.g. explanations of where the
+/// involved in borrow_check errors, e.g., explanations of where the
 /// temporaries come from, when their destructors are run, and/or how
 /// one might revise the code to satisfy the borrow checker's rules.
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
@@ -701,7 +701,7 @@ pub struct BlockTailInfo {
     /// expression is ignored by the block's expression context.
     ///
     /// Examples include `{ ...; tail };` and `let _ = { ...; tail };`
-    /// but not e.g. `let _x = { ...; tail };`
+    /// but not e.g., `let _x = { ...; tail };`
     pub tail_result_is_ignored: bool,
 }
 
@@ -756,7 +756,7 @@ pub struct LocalDecl<'tcx> {
     pub ty: Ty<'tcx>,
 
     /// If the user manually ascribed a type to this variable,
-    /// e.g. via `let x: T`, then we carry that type here. The MIR
+    /// e.g., via `let x: T`, then we carry that type here. The MIR
     /// borrow checker needs this information since it can affect
     /// region inference.
     pub user_ty: UserTypeProjections<'tcx>,
@@ -767,7 +767,7 @@ pub struct LocalDecl<'tcx> {
     /// to generate better debuginfo.
     pub name: Option<Name>,
 
-    /// The *syntactic* (i.e. not visibility) source scope the local is defined
+    /// The *syntactic* (i.e., not visibility) source scope the local is defined
     /// in. If the local was defined in a let-statement, this
     /// is *within* the let-statement, rather than outside
     /// of it.
@@ -1745,7 +1745,7 @@ pub enum StatementKind<'tcx> {
     Assign(Place<'tcx>, Box<Rvalue<'tcx>>),
 
     /// This represents all the reading that a pattern match may do
-    /// (e.g. inspecting constants and discriminant values), and the
+    /// (e.g., inspecting constants and discriminant values), and the
     /// kind of pattern it comes from. This is in order to adapt potential
     /// error messages to these specific patterns.
     FakeRead(FakeReadCause, Place<'tcx>),
@@ -2180,7 +2180,7 @@ pub enum Rvalue<'tcx> {
 
     /// Read the discriminant of an ADT.
     ///
-    /// Undefined (i.e. no effort is made to make it defined, but there’s no reason why it cannot
+    /// Undefined (i.e., no effort is made to make it defined, but there’s no reason why it cannot
     /// be defined to return, say, a 0) if ADT is not an enum.
     Discriminant(Place<'tcx>),
 
@@ -2222,7 +2222,7 @@ pub enum AggregateKind<'tcx> {
     /// The second field is the variant index. It's equal to 0 for struct
     /// and union expressions. The fourth field is
     /// active field number and is present only for union expressions
-    /// -- e.g. for a union expression `SomeUnion { c: .. }`, the
+    /// -- e.g., for a union expression `SomeUnion { c: .. }`, the
     /// active field index would identity the field `c`
     Adt(
         &'tcx AdtDef,

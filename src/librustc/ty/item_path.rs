@@ -317,7 +317,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
             // Unclear if there is any value in distinguishing these.
             // Probably eventually (and maybe we would even want
-            // finer-grained distinctions, e.g. between enum/struct).
+            // finer-grained distinctions, e.g., between enum/struct).
             data @ DefPathData::Misc |
             data @ DefPathData::TypeNs(..) |
             data @ DefPathData::Trait(..) |

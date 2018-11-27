@@ -183,7 +183,7 @@ macro_rules! define_bignum {
                 let nonzero = &digits[..end];
 
                 if nonzero.is_empty() {
-                    // There are no non-zero digits, i.e. the number is zero.
+                    // There are no non-zero digits, i.e., the number is zero.
                     return 0;
                 }
                 // This could be optimized with leading_zeros() and bit shifts, but that's

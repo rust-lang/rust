@@ -467,7 +467,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         };
 
         if Some(local) == mir.spread_arg {
-            // This argument (e.g. the last argument in the "rust-call" ABI)
+            // This argument (e.g., the last argument in the "rust-call" ABI)
             // is a tuple that was spread at the ABI level and now we have
             // to reconstruct it into a tuple local variable, from multiple
             // individual LLVM function arguments.
@@ -614,7 +614,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             // because that's what the llvm.dbg.declare intrinsic expects.
 
             // FIXME(eddyb) this shouldn't be necessary but SROA seems to
-            // mishandle DW_OP_plus not preceded by DW_OP_deref, i.e. it
+            // mishandle DW_OP_plus not preceded by DW_OP_deref, i.e., it
             // doesn't actually strip the offset when splitting the closure
             // environment into its components so it ends up out of bounds.
             // (cuviper) It seems to be fine without the alloca on LLVM 6 and later.

@@ -280,7 +280,7 @@ extern {
 }
 
 // In many of the cases below, the type that is actually under test is wrapped
-// in a tuple, e.g. Box<T>, references, raw pointers, fixed-size vectors, ...
+// in a tuple, e.g., Box<T>, references, raw pointers, fixed-size vectors, ...
 // This is because GDB will not print the type name from DWARF debuginfo for
 // some kinds of types (pointers, arrays, functions, ...)
 // Since tuples are structs as far as GDB is concerned, their name will be

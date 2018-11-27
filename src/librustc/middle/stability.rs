@@ -14,9 +14,10 @@
 pub use self::StabilityLevel::*;
 
 use lint;
+use hir::{self, Item, Generics, StructField, Variant, HirId};
 use hir::def::Def;
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
-use ty::{self, TyCtxt};
+use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use middle::privacy::AccessLevels;
 use session::{DiagnosticMessageId, Session};
 use syntax::symbol::Symbol;
@@ -25,11 +26,8 @@ use syntax::ast;
 use syntax::ast::{NodeId, Attribute};
 use syntax::feature_gate::{GateIssue, emit_feature_err};
 use syntax::attr::{self, Stability, Deprecation};
+use ty::{self, TyCtxt};
 use util::nodemap::{FxHashSet, FxHashMap};
-
-use hir;
-use hir::{Item, Generics, StructField, Variant, HirId};
-use hir::intravisit::{self, Visitor, NestedVisitorMap};
 
 use std::mem::replace;
 use std::cmp::Ordering;
@@ -474,10 +472,10 @@ pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 }
 
 /// Check whether an item marked with `deprecated(since="X")` is currently
-/// deprecated (i.e. whether X is not greater than the current rustc version).
+/// deprecated (i.e., whether X is not greater than the current rustc version).
 pub fn deprecation_in_effect(since: &str) -> bool {
     fn parse_version(ver: &str) -> Vec<u32> {
-        // We ignore non-integer components of the version (e.g. "nightly").
+        // We ignore non-integer components of the version (e.g., "nightly").
         ver.split(|c| c == '.' || c == '-').flat_map(|s| s.parse()).collect()
     }
 
@@ -518,7 +516,7 @@ pub enum EvalResult {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    // (See issue #38412)
+    // See issue #38412.
     fn skip_stability_check_due_to_privacy(self, mut def_id: DefId) -> bool {
         // Check if `def_id` is a trait method.
         match self.describe_def(def_id) {
@@ -528,8 +526,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 if let ty::TraitContainer(trait_def_id) = self.associated_item(def_id).container {
                     // Trait methods do not declare visibility (even
                     // for visibility info in cstore). Use containing
-                    // trait instead, so methods of pub traits are
-                    // themselves considered pub.
+                    // trait instead, so methods of `pub` traits are
+                    // themselves considered `pub`.
                     def_id = trait_def_id;
                 }
             }
@@ -539,10 +537,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let visibility = self.visibility(def_id);
 
         match visibility {
-            // must check stability for pub items.
+            // Must check stability for `pub` items.
             ty::Visibility::Public => false,
 
-            // these are not visible outside crate; therefore
+            // These are not visible outside crate; therefore
             // stability markers are irrelevant, if even present.
             ty::Visibility::Restricted(..) |
             ty::Visibility::Invisible => true,
@@ -628,7 +626,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return EvalResult::Allow;
         }
 
-        // Issue 38412: private items lack stability markers.
+        // Issue #38412: private items lack stability markers.
         if self.skip_stability_check_due_to_privacy(def_id) {
             return EvalResult::Allow;
         }
@@ -644,7 +642,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // crates also pulled in from crates.io. We want to ideally be
                 // able to compile everything without requiring upstream
                 // modifications, so in the case that this looks like a
-                // rustc_private crate (e.g. a compiler crate) and we also have
+                // `rustc_private` crate (e.g., a compiler crate) and we also have
                 // the `-Z force-unstable-if-unmarked` flag present (we're
                 // compiling a compiler crate), then let this missing feature
                 // annotation slide.
@@ -794,7 +792,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-/// Given the list of enabled features that were not language features (i.e. that
+/// Given the list of enabled features that were not language features (i.e., that
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
 pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {

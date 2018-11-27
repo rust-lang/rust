@@ -43,7 +43,7 @@ pub fn non_ssa_locals<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             // These sorts of types require an alloca. Note that
             // is_llvm_immediate() may *still* be true, particularly
             // for newtypes, but we currently force some types
-            // (e.g. structs) into an alloca unconditionally, just so
+            // (e.g., structs) into an alloca unconditionally, just so
             // that we don't have to deal with having two pathways
             // (gep vs extractvalue etc).
             analyzer.not_ssa(mir::Local::new(index));
@@ -227,9 +227,9 @@ impl<'mir, 'a: 'mir, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> Visitor<'tcx>
 
             PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) |
             PlaceContext::NonMutatingUse(NonMutatingUseContext::Move) => {
-                // Reads from uninitialized variables (e.g. in dead code, after
+                // Reads from uninitialized variables (e.g., in dead code, after
                 // optimizations) require locals to be in (uninitialized) memory.
-                // NB: there can be uninitialized reads of a local visited after
+                // N.B., there can be uninitialized reads of a local visited after
                 // an assignment to that local, if they happen on disjoint paths.
                 let ssa_read = match self.first_assignment(local) {
                     Some(assignment_location) => {

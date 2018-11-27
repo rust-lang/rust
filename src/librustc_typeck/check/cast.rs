@@ -27,7 +27,7 @@
 //!
 //! where `&.T` and `*T` are references of either mutability,
 //! and where pointer_kind(`T`) is the kind of the unsize info
-//! in `T` - the vtable for a trait definition (e.g. `fmt::Display` or
+//! in `T` - the vtable for a trait definition (e.g., `fmt::Display` or
 //! `Iterator`, not `Iterator<Item=u8>`) or a length (or `()` if `T: Sized`).
 //!
 //! Note that lengths are not adjusted when casting raw slices -

@@ -32,7 +32,7 @@ use syntax_pos::Span;
 ///    coherence),
 ///
 /// 2. The generic region/type parameters of the impl's self-type must
-///    all be parameters of the Drop impl itself (i.e. no
+///    all be parameters of the Drop impl itself (i.e., no
 ///    specialization like `impl Drop for Foo<i32>`), and,
 ///
 /// 3. Any bounds on the generic parameters must be reflected in the
@@ -180,7 +180,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     //
     //     self_to_impl_substs = {'c => 'z, 'b => 'y, 'a => 'x}
     //
-    // Applying this to the predicates (i.e. assumptions) provided by the item
+    // Applying this to the predicates (i.e., assumptions) provided by the item
     // definition yields the instantiated assumptions:
     //
     //     ['y : 'z]

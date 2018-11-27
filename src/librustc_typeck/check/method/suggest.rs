@@ -12,29 +12,23 @@
 //! found or is otherwise invalid.
 
 use check::FnCtxt;
-use rustc::hir::map as hir_map;
-use hir::Node;
-use rustc_data_structures::sync::Lrc;
-use rustc::ty::{self, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
-use rustc::ty::item_path::with_crate_prefix;
-use hir::def::Def;
-use hir::def_id::{CRATE_DEF_INDEX, DefId};
+use errors::{Applicability, DiagnosticBuilder};
 use middle::lang_items::FnOnceTraitLangItem;
 use namespace::Namespace;
-use rustc::traits::Obligation;
-use util::nodemap::FxHashSet;
-
-use syntax::ast;
-use syntax::util::lev_distance::find_best_match_for_name;
-use errors::{Applicability, DiagnosticBuilder};
-use syntax_pos::{Span, FileName};
-
-
-use rustc::hir::def_id::LOCAL_CRATE;
-use rustc::hir;
+use rustc_data_structures::sync::Lrc;
+use rustc::hir::{self, Node};
+use rustc::hir::def::Def;
+use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, DefId};
+use rustc::hir::map as hir_map;
 use rustc::hir::print;
 use rustc::infer::type_variable::TypeVariableOrigin;
-use rustc::ty::Adt;
+use rustc::traits::Obligation;
+use rustc::ty::{self, Adt, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
+use rustc::ty::item_path::with_crate_prefix;
+use util::nodemap::FxHashSet;
+use syntax_pos::{Span, FileName};
+use syntax::ast;
+use syntax::util::lev_distance::find_best_match_for_name;
 
 use std::cmp::Ordering;
 
@@ -45,12 +39,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn is_fn_ty(&self, ty: &Ty<'tcx>, span: Span) -> bool {
         let tcx = self.tcx;
         match ty.sty {
-            // Not all of these (e.g. unsafe fns) implement FnOnce
-            // so we look for these beforehand
+            // Not all of these (e.g., unsafe fns) implement `FnOnce`,
+            // so we look for these beforehand.
             ty::Closure(..) |
             ty::FnDef(..) |
             ty::FnPtr(_) => true,
-            // If it's not a simple function, look for things which implement FnOnce
+            // If it's not a simple function, look for things which implement `FnOnce`.
             _ => {
                 let fn_once = match tcx.lang_items().require(FnOnceTraitLangItem) {
                     Ok(fn_once) => fn_once,
@@ -83,7 +77,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                rcvr_expr: Option<&hir::Expr>,
                                error: MethodError<'tcx>,
                                args: Option<&'gcx [hir::Expr]>) {
-        // avoid suggestions when we don't know what's going on.
+        // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
             return;
         }
@@ -194,7 +188,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let tcx = self.tcx;
 
                 let actual = self.resolve_type_vars_if_possible(&rcvr_ty);
-                let ty_string = self.ty_to_string(actual);
+                let ty_str = self.ty_to_string(actual);
                 let is_method = mode == Mode::MethodCall;
                 let mut suggestion = None;
                 let item_kind = if is_method {
@@ -239,7 +233,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             "can't call {} `{}` on ambiguous numeric type `{}`",
                             item_kind,
                             item_name,
-                            ty_string
+                            ty_str
                         );
                         let concrete_type = if actual.is_integral() {
                             "i32"
@@ -247,7 +241,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             "f32"
                         };
                         match expr.node {
-                            hir::ExprKind::Lit(ref lit) => { // numeric literal
+                            hir::ExprKind::Lit(ref lit) => {
+                                // numeric literal
                                 let snippet = tcx.sess.source_map().span_to_snippet(lit.span)
                                     .unwrap_or_else(|_| "<numeric literal>".to_owned());
 
@@ -262,7 +257,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                     Applicability::MaybeIncorrect,
                                 );
                             }
-                            hir::ExprKind::Path(ref qpath) => {  // local binding
+                            hir::ExprKind::Path(ref qpath) => {
+                                // local binding
                                 if let &hir::QPath::Resolved(_, ref path) = &qpath {
                                     if let hir::def::Def::Local(node_id) = path.def {
                                         let span = tcx.hir().span(node_id);
@@ -339,7 +335,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 // If the method name is the name of a field with a function or closure type,
-                // give a helping note that it has to be called as (x.f)(...).
+                // give a helping note that it has to be called as `(x.f)(...)`.
                 if let Some(expr) = rcvr_expr {
                     for (ty, _) in self.autoderef(span, rcvr_ty) {
                         if let ty::Adt(def, substs) = ty.sty {
@@ -351,8 +347,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     let expr_string = match snippet {
                                         Ok(expr_string) => expr_string,
                                         _ => "s".into(), // Default to a generic placeholder for the
-                                        // expression when we can't generate a
-                                        // string snippet
+                                                         // expression when we can't generate a
+                                                         // string snippet.
                                     };
 
                                     let field_ty = field.ty(tcx, substs);
@@ -380,7 +376,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                     }
                 } else {
-                    err.span_label(span, format!("{} not found in `{}`", item_kind, ty_string));
+                    err.span_label(span, format!("{} not found in `{}`", item_kind, ty_str));
                 }
 
                 if self.is_fn_ty(&rcvr_ty, span) {
@@ -424,7 +420,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     report_candidates(&mut err, static_sources);
                 } else if static_sources.len() > 1 {
-
                     report_candidates(&mut err, static_sources);
                 }
 
@@ -509,7 +504,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let (span, found_use) = UsePlacementFinder::check(self.tcx, krate, module_id);
         if let Some(span) = span {
             let path_strings = candidates.iter().map(|did| {
-                // produce an additional newline to separate the new use statement
+                // Produce an additional newline to separate the new use statement
                 // from the directly following item.
                 let additional_newline = if found_use {
                     ""
@@ -597,15 +592,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let type_is_local = self.type_derefs_to_local(span, rcvr_ty, rcvr_expr);
 
-        // there's no implemented traits, so lets suggest some traits to
+        // There are no traits implemented, so lets suggest some traits to
         // implement, by finding ones that have the item name, and are
         // legal to implement.
         let mut candidates = all_traits(self.tcx)
             .into_iter()
             .filter(|info| {
-                // we approximate the coherence rules to only suggest
+                // We approximate the coherence rules to only suggest
                 // traits that are legal to implement by requiring that
-                // either the type or trait is local. Multidispatch means
+                // either the type or trait is local. Multi-dispatch means
                 // this isn't perfect (that is, there are cases when
                 // implementing a trait would be legal but is rejected
                 // here).
@@ -620,11 +615,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             .collect::<Vec<_>>();
 
         if !candidates.is_empty() {
-            // sort from most relevant to least relevant
+            // Sort from most relevant to least relevant.
             candidates.sort_by(|a, b| a.cmp(b).reverse());
             candidates.dedup();
 
-            // FIXME #21673 this help message could be tuned to the case
+            // FIXME #21673: this help message could be tuned to the case
             // of a type parameter: suggest adding a trait bound rather
             // than implementing.
             err.help("items from traits can only be used if the trait is implemented and in scope");
@@ -656,8 +651,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn type_derefs_to_local(&self,
                             span: Span,
                             rcvr_ty: Ty<'tcx>,
-                            rcvr_expr: Option<&hir::Expr>)
-                            -> bool {
+                            source: SelfSource) -> bool {
         fn is_local(ty: Ty) -> bool {
             match ty.sty {
                 ty::Adt(def, _) => def.did.is_local(),
@@ -667,8 +661,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 ty::Param(_) => true,
 
-                // everything else (primitive types etc.) is effectively
-                // non-local (there are "edge" cases, e.g. (LocalType,), but
+                // Everything else (primitive types, etc.) is effectively
+                // non-local (there are "edge" cases, e.g., `(LocalType,)`, but
                 // the noise from these sort of types is usually just really
                 // annoying, rather than any sort of help).
                 _ => false,
@@ -703,8 +697,8 @@ impl PartialOrd for TraitInfo {
 }
 impl Ord for TraitInfo {
     fn cmp(&self, other: &TraitInfo) -> Ordering {
-        // local crates are more important than remote ones (local:
-        // cnum == 0), and otherwise we throw in the defid for totality
+        // Local crates are more important than remote ones (local:
+        // `cnum == 0`), and otherwise we throw in the defid for totality.
 
         let lhs = (other.def_id.krate, other.def_id);
         let rhs = (self.def_id.krate, self.def_id);
@@ -719,65 +713,65 @@ pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<TraitInfo>
 
 /// Compute all traits in this crate and any dependent crates.
 fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId> {
-        use rustc::hir::itemlikevisit;
+    use hir::itemlikevisit;
 
-        let mut traits = vec![];
+    let mut traits = vec![];
 
-        // Crate-local:
-        //
-        // meh.
-        struct Visitor<'a, 'tcx: 'a> {
-            map: &'a hir_map::Map<'tcx>,
-            traits: &'a mut Vec<DefId>,
+    // Crate-local:
+
+    struct Visitor<'a, 'tcx: 'a> {
+        map: &'a hir_map::Map<'tcx>,
+        traits: &'a mut Vec<DefId>,
+    }
+
+    impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
+        fn visit_item(&mut self, i: &'v hir::Item) {
+            if let hir::ItemKind::Trait(..) = i.node {
+                let def_id = self.map.local_def_id(i.id);
+                self.traits.push(def_id);
+            }
         }
-        impl<'v, 'a, 'tcx> itemlikevisit::ItemLikeVisitor<'v> for Visitor<'a, 'tcx> {
-            fn visit_item(&mut self, i: &'v hir::Item) {
-                if let hir::ItemKind::Trait(..) = i.node {
-                    let def_id = self.map.local_def_id(i.id);
-                    self.traits.push(def_id);
+
+        fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {}
+
+        fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {}
+    }
+
+    tcx.hir().krate().visit_all_item_likes(&mut Visitor {
+        map: &tcx.hir(),
+        traits: &mut traits,
+    });
+
+    // Cross-crate:
+
+    let mut external_mods = FxHashSet::default();
+    fn handle_external_def(tcx: TyCtxt,
+                           traits: &mut Vec<DefId>,
+                           external_mods: &mut FxHashSet<DefId>,
+                           def: Def) {
+        let def_id = def.def_id();
+        match def {
+            Def::Trait(..) => {
+                traits.push(def_id);
+            }
+            Def::Mod(..) => {
+                if !external_mods.insert(def_id) {
+                    return;
+                }
+                for child in tcx.item_children(def_id).iter() {
+                    handle_external_def(tcx, traits, external_mods, child.def)
                 }
             }
-
-            fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
-            }
-
-            fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
-            }
+            _ => {}
         }
-        tcx.hir().krate().visit_all_item_likes(&mut Visitor {
-            map: &tcx.hir(),
-            traits: &mut traits,
-        });
-
-        // Cross-crate:
-        let mut external_mods = FxHashSet::default();
-        fn handle_external_def(tcx: TyCtxt,
-                               traits: &mut Vec<DefId>,
-                               external_mods: &mut FxHashSet<DefId>,
-                               def: Def) {
-            let def_id = def.def_id();
-            match def {
-                Def::Trait(..) => {
-                    traits.push(def_id);
-                }
-                Def::Mod(..) => {
-                    if !external_mods.insert(def_id) {
-                        return;
-                    }
-                    for child in tcx.item_children(def_id).iter() {
-                        handle_external_def(tcx, traits, external_mods, child.def)
-                    }
-                }
-                _ => {}
-            }
-        }
-        for &cnum in tcx.crates().iter() {
-            let def_id = DefId {
-                krate: cnum,
-                index: CRATE_DEF_INDEX,
-            };
-            handle_external_def(tcx, &mut traits, &mut external_mods, Def::Mod(def_id));
-        }
+    }
+    for &cnum in tcx.crates().iter() {
+        let def_id = DefId {
+            krate: cnum,
+            index: CRATE_DEF_INDEX,
+        };
+        handle_external_def(tcx, &mut traits, &mut external_mods, Def::Mod(def_id));
+    }
 
     traits
 }
@@ -827,29 +821,29 @@ impl<'a, 'tcx, 'gcx> hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'a, '
             hir::intravisit::walk_mod(self, module, node_id);
             return;
         }
-        // find a use statement
+        // Find a `use` statement.
         for item_id in &module.item_ids {
             let item = self.tcx.hir().expect_item(item_id.id);
             match item.node {
                 hir::ItemKind::Use(..) => {
-                    // don't suggest placing a use before the prelude
-                    // import or other generated ones
+                    // Don't suggest placing a `use` before the prelude
+                    // import or other generated ones.
                     if item.span.ctxt().outer().expn_info().is_none() {
                         self.span = Some(item.span.shrink_to_lo());
                         self.found_use = true;
                         return;
                     }
                 },
-                // don't place use before extern crate
+                // Don't place `use` before `extern crate`...
                 hir::ItemKind::ExternCrate(_) => {}
-                // but place them before the first other item
+                // ...but do place them before the first other item.
                 _ => if self.span.map_or(true, |span| item.span < span ) {
                     if item.span.ctxt().outer().expn_info().is_none() {
-                        // don't insert between attributes and an item
+                        // Don't insert between attributes and an item.
                         if item.attrs.is_empty() {
                             self.span = Some(item.span.shrink_to_lo());
                         } else {
-                            // find the first attribute on the item
+                            // Find the first attribute on the item.
                             for attr in &item.attrs {
                                 if self.span.map_or(true, |span| attr.span < span) {
                                     self.span = Some(attr.span.shrink_to_lo());
@@ -861,6 +855,7 @@ impl<'a, 'tcx, 'gcx> hir::intravisit::Visitor<'tcx> for UsePlacementFinder<'a, '
             }
         }
     }
+
     fn nested_visit_map<'this>(
         &'this mut self
     ) -> hir::intravisit::NestedVisitorMap<'this, 'tcx> {

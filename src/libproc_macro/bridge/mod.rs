@@ -14,7 +14,7 @@
 //! Serialization (with C ABI buffers) and unique integer handles are employed
 //! to allow safely interfacing between two copies of `proc_macro` built
 //! (from the same source) by different compilers with potentially mismatching
-//! Rust ABIs (e.g. stage0/bin/rustc vs stage1/bin/rustc during bootstrap).
+//! Rust ABIs (e.g., stage0/bin/rustc vs stage1/bin/rustc during bootstrap).
 
 #![deny(unsafe_code)]
 

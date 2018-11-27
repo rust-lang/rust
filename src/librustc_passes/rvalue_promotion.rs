@@ -383,7 +383,7 @@ fn check_expr_kind<'a, 'tcx>(
                         NotPromotable
                     };
                     // Just in case the type is more specific than the definition,
-                    // e.g. impl associated const with type parameters, check it.
+                    // e.g., impl associated const with type parameters, check it.
                     // Also, trait associated consts are relaxed by this.
                     promotable | v.type_promotability(node_ty)
                 }

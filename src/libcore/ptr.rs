@@ -103,7 +103,7 @@ pub use intrinsics::write_bytes;
 ///   dropped normally.
 ///
 /// * It is friendlier to the optimizer to do this over [`ptr::read`] when
-///   dropping manually allocated memory (e.g. when writing Box/Rc/Vec),
+///   dropping manually allocated memory (e.g., when writing Box/Rc/Vec),
 ///   as the compiler doesn't need to prove that it's sound to elide the
 ///   copy.
 ///
@@ -836,7 +836,7 @@ pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///
 /// The compiler shouldn't change the relative order or number of volatile
 /// memory operations. However, volatile memory operations on zero-sized types
-/// (e.g. if a zero-sized type is passed to `read_volatile`) are no-ops
+/// (e.g., if a zero-sized type is passed to `read_volatile`) are no-ops
 /// and may be ignored.
 ///
 /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
@@ -913,7 +913,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 ///
 /// The compiler shouldn't change the relative order or number of volatile
 /// memory operations. However, volatile memory operations on zero-sized types
-/// (e.g. if a zero-sized type is passed to `write_volatile`) are no-ops
+/// (e.g., if a zero-sized type is passed to `write_volatile`) are no-ops
 /// and may be ignored.
 ///
 /// [c11]: http://www.open-std.org/jtc1/sc22/wg14/www/docs/n1570.pdf
@@ -1035,7 +1035,7 @@ impl<T: ?Sized> *const T {
 
     /// Calculates the offset from a pointer.
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1089,7 +1089,7 @@ impl<T: ?Sized> *const T {
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1253,7 +1253,7 @@ impl<T: ?Sized> *const T {
 
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1310,7 +1310,7 @@ impl<T: ?Sized> *const T {
     /// Calculates the offset from a pointer (convenience for
     /// `.offset((count as isize).wrapping_neg())`).
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1367,7 +1367,7 @@ impl<T: ?Sized> *const T {
     /// Calculates the offset from a pointer using wrapping arithmetic.
     /// (convenience for `.wrapping_offset(count as isize)`)
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1408,7 +1408,7 @@ impl<T: ?Sized> *const T {
     /// Calculates the offset from a pointer using wrapping arithmetic.
     /// (convenience for `.wrapping_offset((count as isize).wrapping_sub())`)
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1655,7 +1655,7 @@ impl<T: ?Sized> *mut T {
 
     /// Calculates the offset from a pointer.
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1708,7 +1708,7 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1891,7 +1891,7 @@ impl<T: ?Sized> *mut T {
 
     /// Calculates the offset from a pointer (convenience for `.offset(count as isize)`).
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -1948,7 +1948,7 @@ impl<T: ?Sized> *mut T {
     /// Calculates the offset from a pointer (convenience for
     /// `.offset((count as isize).wrapping_neg())`).
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -2005,7 +2005,7 @@ impl<T: ?Sized> *mut T {
     /// Calculates the offset from a pointer using wrapping arithmetic.
     /// (convenience for `.wrapping_offset(count as isize)`)
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -2046,7 +2046,7 @@ impl<T: ?Sized> *mut T {
     /// Calculates the offset from a pointer using wrapping arithmetic.
     /// (convenience for `.wrapping_offset((count as isize).wrapping_sub())`)
     ///
-    /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
+    /// `count` is in units of T; e.g., a `count` of 3 represents a pointer
     /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
@@ -2375,7 +2375,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
     fn mod_inv(x: usize, m: usize) -> usize {
         /// Multiplicative modular inverse table modulo 2⁴ = 16.
         ///
-        /// Note, that this table does not contain values where inverse does not exist (i.e. for
+        /// Note, that this table does not contain values where inverse does not exist (i.e., for
         /// `0⁻¹ mod 16`, `2⁻¹ mod 16`, etc.)
         const INV_TABLE_MOD_16: [u8; 8] = [1, 11, 13, 7, 9, 3, 5, 15];
         /// Modulo for which the `INV_TABLE_MOD_16` is intended.
@@ -2398,7 +2398,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
                 // y = y * (2 - xy) mod n
                 //
                 // Note, that we use wrapping operations here intentionally – the original formula
-                // uses e.g. subtraction `mod n`. It is entirely fine to do them `mod
+                // uses e.g., subtraction `mod n`. It is entirely fine to do them `mod
                 // usize::max_value()` instead, because we take the result `mod n` at the end
                 // anyway.
                 inverse = inverse.wrapping_mul(
@@ -2887,12 +2887,12 @@ pub struct NonNull<T: ?Sized> {
 }
 
 /// `NonNull` pointers are not `Send` because the data they reference may be aliased.
-// NB: This impl is unnecessary, but should provide better error messages.
+// N.B., this impl is unnecessary, but should provide better error messages.
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> !Send for NonNull<T> { }
 
 /// `NonNull` pointers are not `Sync` because the data they reference may be aliased.
-// NB: This impl is unnecessary, but should provide better error messages.
+// N.B., this impl is unnecessary, but should provide better error messages.
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> !Sync for NonNull<T> { }
 

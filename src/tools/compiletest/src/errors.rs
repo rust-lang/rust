@@ -56,7 +56,7 @@ impl fmt::Display for ErrorKind {
 #[derive(Debug)]
 pub struct Error {
     pub line_num: usize,
-    /// What kind of message we expect (e.g. warning, error, suggestion).
+    /// What kind of message we expect (e.g., warning, error, suggestion).
     /// `None` if not specified or unknown message kind.
     pub kind: Option<ErrorKind>,
     pub msg: String,

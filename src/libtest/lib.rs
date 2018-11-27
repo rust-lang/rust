@@ -23,7 +23,7 @@
 // running tests while providing a base that other test frameworks may
 // build off of.
 
-// NB: this is also specified in this crate's Cargo.toml, but libsyntax contains logic specific to
+// N.B., this is also specified in this crate's Cargo.toml, but libsyntax contains logic specific to
 // this crate, which relies on this attribute (rather than the value of `--crate-name` passed by
 // cargo) to detect this crate.
 
@@ -100,7 +100,7 @@ mod formatters;
 use formatters::{JsonFormatter, OutputFormatter, PrettyFormatter, TerseFormatter};
 
 // The name of a test. By convention this follows the rules for rust
-// paths; i.e. it should be a series of identifiers separated by double
+// paths; i.e., it should be a series of identifiers separated by double
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
@@ -515,7 +515,7 @@ Test Attributes:
 
 // FIXME: Copied from libsyntax until linkage errors are resolved. Issue #47566
 fn is_nightly() -> bool {
-    // Whether this is a feature-staged build, i.e. on the beta or stable channel
+    // Whether this is a feature-staged build, i.e., on the beta or stable channel
     let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
     // Whether we should enable unstable features for bootstrapping
     let bootstrap = env::var("RUSTC_BOOTSTRAP").is_ok();
@@ -1614,7 +1614,7 @@ where
     // be left doing 0 iterations on every loop. The unfortunate
     // side effect of not being able to do as many runs is
     // automatically handled by the statistical analysis below
-    // (i.e. larger error bars).
+    // (i.e., larger error bars).
     n = cmp::max(1, n);
 
     let mut total_run = Duration::new(0, 0);

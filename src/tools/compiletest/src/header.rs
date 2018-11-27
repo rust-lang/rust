@@ -715,7 +715,7 @@ impl Config {
         }
     }
 
-    /// Parses a name-value directive which contains config-specific information, e.g. `ignore-x86`
+    /// Parses a name-value directive which contains config-specific information, e.g., `ignore-x86`
     /// or `normalize-stderr-32bit`.
     fn parse_cfg_name_directive(&self, line: &str, prefix: &str) -> ParsedNameDirective {
         if line.starts_with(prefix) && line.as_bytes().get(prefix.len()) == Some(&b'-') {

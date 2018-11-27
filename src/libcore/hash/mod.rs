@@ -408,7 +408,7 @@ impl<H: Hasher + ?Sized> Hasher for &mut H {
 
 /// A trait for creating instances of [`Hasher`].
 ///
-/// A `BuildHasher` is typically used (e.g. by [`HashMap`]) to create
+/// A `BuildHasher` is typically used (e.g., by [`HashMap`]) to create
 /// [`Hasher`]s for each key such that they are hashed independently of one
 /// another, since [`Hasher`]s contain state.
 ///

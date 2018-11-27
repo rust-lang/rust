@@ -117,7 +117,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     };
                     this.block_context.push(BlockFrame::Statement { ignores_expr_result });
 
-                    // Enter the remainder scope, i.e. the bindings' destruction scope.
+                    // Enter the remainder scope, i.e., the bindings' destruction scope.
                     this.push_scope((remainder_scope, source_info));
                     let_scope_stack.push(remainder_scope);
 

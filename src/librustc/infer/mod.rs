@@ -219,7 +219,7 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// `UniverseIndex::root()` but grows from there as we enter
     /// universal quantifiers.
     ///
-    /// NB: At present, we exclude the universal quantifiers on the
+    /// N.B., at present, we exclude the universal quantifiers on the
     /// item we are type-checking, and just consider those names as
     /// part of the root universe. So this would only get incremented
     /// when we enter into a higher-ranked (`for<..>`) type or trait
@@ -732,7 +732,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             region_obligations_snapshot: self.region_obligations.borrow().len(),
             universe: self.universe(),
             was_in_snapshot: in_snapshot,
-            // Borrow tables "in progress" (i.e. during typeck)
+            // Borrow tables "in progress" (i.e., during typeck)
             // to ban writes from within a snapshot to them.
             _in_progress_tables: self.in_progress_tables.map(|tables| tables.borrow()),
         }
@@ -1047,7 +1047,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 // type parameter definition. The substitutions are
                 // for actual parameters that may be referred to by
                 // the default of this type parameter, if it exists.
-                // E.g. `struct Foo<A, B, C = (A, B)>(...);` when
+                // e.g., `struct Foo<A, B, C = (A, B)>(...);` when
                 // used in a path such as `Foo::<T, U>::new()` will
                 // use an inference variable for `C` with `[T, U]`
                 // as the substitutions for the default, `(T, U)`.
@@ -1261,7 +1261,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
          * Where possible, replaces type/int/float variables in
          * `value` with their final value. Note that region variables
          * are unaffected. If a type variable has not been unified, it
-         * is left as is.  This is an idempotent operation that does
+         * is left as is. This is an idempotent operation that does
          * not affect inference state in any way and so you can do it
          * at will.
          */
@@ -1298,7 +1298,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         /*!
          * Attempts to resolve all type/region variables in
          * `value`. Region inference must have been run already (e.g.,
-         * by calling `resolve_regions_and_report_errors`).  If some
+         * by calling `resolve_regions_and_report_errors`). If some
          * variable was never unified, an `Err` results.
          *
          * This method is idempotent, but it not typically not invoked
@@ -1331,7 +1331,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let actual_ty = self.resolve_type_vars_if_possible(&actual_ty);
         debug!("type_error_struct_with_diag({:?}, {:?})", sp, actual_ty);
 
-        // Don't report an error if actual type is Error.
+        // Don't report an error if actual type is `Error`.
         if actual_ty.references_error() {
             return self.tcx.sess.diagnostic().struct_dummy();
         }

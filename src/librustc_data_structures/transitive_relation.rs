@@ -304,7 +304,7 @@ impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     ///
     /// The intuition is that this moves "one step up" through a lattice
     /// (where the relation is encoding the `<=` relation for the lattice).
-    /// So e.g. if the relation is `->` and we have
+    /// So e.g., if the relation is `->` and we have
     ///
     /// ```
     /// a -> b -> d -> f

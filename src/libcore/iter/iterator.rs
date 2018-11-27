@@ -154,7 +154,7 @@ pub trait Iterator {
     ///
     /// `size_hint()` is primarily intended to be used for optimizations such as
     /// reserving space for the elements of the iterator, but must not be
-    /// trusted to e.g. omit bounds checks in unsafe code. An incorrect
+    /// trusted to e.g., omit bounds checks in unsafe code. An incorrect
     /// implementation of `size_hint()` should not lead to memory safety
     /// violations.
     ///

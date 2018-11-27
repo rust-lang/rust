@@ -39,11 +39,11 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     //FIXME(#54444) rewrite this lint to use the dataflow framework
 
     // Walk through this function (say `f`) looking to see if
-    // every possible path references itself, i.e. the function is
+    // every possible path references itself, i.e., the function is
     // called recursively unconditionally. This is done by trying
     // to find a path from the entry node to the exit node that
     // *doesn't* call `f` by traversing from the entry while
-    // pretending that calls of `f` are sinks (i.e. ignoring any
+    // pretending that calls of `f` are sinks (i.e., ignoring any
     // exit edges from them).
     //
     // NB. this has an edge case with non-returning statements,
@@ -62,7 +62,7 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // considers this to be an error for two reasons, (a) it is
     // easier to implement, and (b) it seems rare to actually want
     // to have behaviour like the above, rather than
-    // e.g. accidentally recursing after an assert.
+    // e.g., accidentally recursing after an assert.
 
     let basic_blocks = mir.basic_blocks();
     let mut reachable_without_self_call_queue = vec![mir::START_BLOCK];
@@ -135,7 +135,7 @@ fn check_fn_for_unconditional_recursion(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     // Check the number of self calls because a function that
-    // doesn't return (e.g. calls a `-> !` function or `loop { /*
+    // doesn't return (e.g., calls a `-> !` function or `loop { /*
     // no break */ }`) shouldn't be linted unless it actually
     // recurs.
     if !reached_exit_without_self_call && !self_call_locations.is_empty() {

@@ -166,7 +166,7 @@
 //!
 //! (3) Tuple-, pointer and function types are structurally identified, which
 //!     means that they are equivalent if their component types are equivalent
-//!     (i.e. (i32, i32) is the same regardless in which crate it is used).
+//!     (i.e., (i32, i32) is the same regardless in which crate it is used).
 //!
 //! This algorithm also provides a stable ID for types that are defined in one
 //! crate but instantiated from metadata within another crate. We just have to

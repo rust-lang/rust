@@ -67,7 +67,7 @@ pub fn error_string(mut errnum: i32) -> String {
                                     buf.len() as c::DWORD,
                                     ptr::null()) as usize;
         if res == 0 {
-            // Sometimes FormatMessageW can fail e.g. system doesn't like langId,
+            // Sometimes FormatMessageW can fail e.g., system doesn't like langId,
             let fm_err = errno();
             return format!("OS Error {} (FormatMessageW() returned error {})",
                            errnum, fm_err);

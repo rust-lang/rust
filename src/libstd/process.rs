@@ -628,7 +628,7 @@ impl Command {
     ///
     /// # Platform-specific behavior
     ///
-    /// If the program path is relative (e.g. `"./script.sh"`), it's ambiguous
+    /// If the program path is relative (e.g., `"./script.sh"`), it's ambiguous
     /// whether it should be interpreted relative to the parent's working
     /// directory or relative to `current_dir`. The behavior in this case is
     /// platform specific and unstable, and it's recommended to use

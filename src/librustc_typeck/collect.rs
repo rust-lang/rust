@@ -97,7 +97,7 @@ pub fn provide(providers: &mut Providers) {
 /// AstConv. It has information about the predicates that are defined
 /// on the trait. Unfortunately, this predicate information is
 /// available in various different forms at various points in the
-/// process. So we can't just store a pointer to e.g. the AST or the
+/// process. So we can't just store a pointer to e.g., the AST or the
 /// parsed ty form, we have to be more flexible. To this end, the
 /// `ItemCtxt` is parameterized by a `DefId` that it uses to satisfy
 /// `get_type_parameter_bounds` requests, drawing the information from
@@ -704,16 +704,16 @@ fn super_predicates_of<'a, 'tcx>(
 
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
-    // Convert the bounds that follow the colon, e.g. `Bar + Zed` in `trait Foo : Bar + Zed`.
+    // Convert the bounds that follow the colon, e.g., `Bar + Zed` in `trait Foo : Bar + Zed`.
     let self_param_ty = tcx.mk_self_type();
     let superbounds1 = compute_bounds(&icx, self_param_ty, bounds, SizedByDefault::No, item.span);
 
     let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
     // Convert any explicit superbounds in the where clause,
-    // e.g. `trait Foo where Self : Bar`.
+    // e.g., `trait Foo where Self : Bar`.
     // In the case of trait aliases, however, we include all bounds in the where clause,
-    // so e.g. `trait Foo = where u32: PartialEq<Self>` would include `u32: PartialEq<Self>`
+    // so e.g., `trait Foo = where u32: PartialEq<Self>` would include `u32: PartialEq<Self>`
     // as one of its "superpredicates".
     let is_trait_alias = ty::is_trait_alias(tcx, trait_def_id);
     let superbounds2 = icx.type_parameter_bounds_in_generics(
@@ -1715,7 +1715,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                 let substs = Substs::identity_for_item(tcx, def_id);
                 let opaque_ty = tcx.mk_opaque(def_id, substs);
 
-                // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
+                // Collect the bounds, i.e., the `A+B+'c` in `impl A+B+'c`.
                 let bounds = compute_bounds(
                     &icx,
                     opaque_ty,
@@ -1760,7 +1760,7 @@ fn explicit_predicates_of<'a, 'tcx>(
                     let substs = Substs::identity_for_item(tcx, def_id);
                     let opaque_ty = tcx.mk_opaque(def_id, substs);
 
-                    // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
+                    // Collect the bounds, i.e., the `A+B+'c` in `impl A+B+'c`.
                     let bounds = compute_bounds(
                         &icx,
                         opaque_ty,

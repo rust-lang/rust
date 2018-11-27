@@ -13,9 +13,9 @@
 // Language items are items that represent concepts intrinsic to the language
 // itself. Examples are:
 //
-// * Traits that specify "kinds"; e.g. "Sync", "Send".
+// * Traits that specify "kinds"; e.g., "Sync", "Send".
 //
-// * Traits that represent operators; e.g. "Add", "Sub", "Index".
+// * Traits that represent operators; e.g., "Add", "Sub", "Index".
 //
 // * Functions called by the compiler itself.
 

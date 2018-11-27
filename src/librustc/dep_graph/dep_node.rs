@@ -17,7 +17,7 @@
 //! fully identify a dependency node, even across multiple compilation sessions.
 //! In other words, the value of the fingerprint does not depend on anything
 //! that is specific to a given compilation session, like an unpredictable
-//! interning key (e.g. NodeId, DefId, Symbol) or the numeric value of a
+//! interning key (e.g., NodeId, DefId, Symbol) or the numeric value of a
 //! pointer. The concept behind this could be compared to how git commit hashes
 //! uniquely identify a given commit and has a few advantages:
 //!
@@ -28,7 +28,7 @@
 //! * A `Fingerprint` is just a bunch of bits, which allows `DepNode` to
 //!   implement `Copy`, `Sync`, `Send`, `Freeze`, etc.
 //! * Since we just have a bit pattern, `DepNode` can be mapped from disk into
-//!   memory without any post-processing (e.g. "abomination-style" pointer
+//!   memory without any post-processing (e.g., "abomination-style" pointer
 //!   reconstruction).
 //! * Because a `DepNode` is self-contained, we can instantiate `DepNodes` that
 //!   refer to things that do not exist anymore. In previous implementations
@@ -81,7 +81,7 @@ use ty::{TyCtxt, FnSig, Instance, InstanceDef,
 use ty::subst::Substs;
 
 // erase!() just makes tokens go away. It's used to specify which macro argument
-// is repeated (i.e. which sub-expression of the macro we are in) but don't need
+// is repeated (i.e., which sub-expression of the macro we are in) but don't need
 // to actually use any of the arguments.
 macro_rules! erase {
     ($x:tt) => ({})

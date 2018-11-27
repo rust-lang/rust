@@ -93,9 +93,9 @@ pub enum TokenTree {
     Delimited(DelimSpan, Lrc<Delimited>),
     /// A kleene-style repetition sequence
     Sequence(DelimSpan, Lrc<SequenceRepetition>),
-    /// E.g. `$var`
+    /// e.g., `$var`
     MetaVar(Span, ast::Ident),
-    /// E.g. `$var:expr`. This is only used in the left hand side of MBE macros.
+    /// e.g., `$var:expr`. This is only used in the left hand side of MBE macros.
     MetaVarDecl(
         Span,
         ast::Ident, /* name to bind */
@@ -199,7 +199,7 @@ pub fn parse(
     let mut trees = input.trees().peekable();
     while let Some(tree) = trees.next() {
         // Given the parsed tree, if there is a metavar and we are expecting matchers, actually
-        // parse out the matcher (i.e. in `$id:ident` this would parse the `:` and `ident`).
+        // parse out the matcher (i.e., in `$id:ident` this would parse the `:` and `ident`).
         let tree = parse_tree(
             tree,
             &mut trees,
@@ -280,7 +280,7 @@ where
         // `tree` is a `$` token. Look at the next token in `trees`
         tokenstream::TokenTree::Token(span, token::Dollar) => match trees.next() {
             // `tree` is followed by a delimited set of token trees. This indicates the beginning
-            // of a repetition sequence in the macro (e.g. `$(pat)*`).
+            // of a repetition sequence in the macro (e.g., `$(pat)*`).
             Some(tokenstream::TokenTree::Delimited(span, delimited)) => {
                 // Must have `(` not `{` or `[`
                 if delimited.delim != token::Paren {
@@ -309,7 +309,7 @@ where
                         edition,
                         macro_node_id,
                     );
-                // Count the number of captured "names" (i.e. named metavars)
+                // Count the number of captured "names" (i.e., named metavars)
                 let name_captures = macro_parser::count_names(&sequence);
                 TokenTree::Sequence(
                     span,
@@ -352,7 +352,7 @@ where
         // `tree` is an arbitrary token. Keep it.
         tokenstream::TokenTree::Token(span, tok) => TokenTree::Token(span, tok),
 
-        // `tree` is the beginning of a delimited set of tokens (e.g. `(` or `{`). We need to
+        // `tree` is the beginning of a delimited set of tokens (e.g., `(` or `{`). We need to
         // descend into the delimited set and further parse it.
         tokenstream::TokenTree::Delimited(span, delimited) => TokenTree::Delimited(
             span,

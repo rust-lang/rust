@@ -44,7 +44,7 @@ pub struct Constraint<'a> {
 }
 
 /// To build constraints, we visit one item (type, trait) at a time
-/// and look at its contents. So e.g. if we have
+/// and look at its contents. So e.g., if we have
 ///
 ///     struct Foo<T> {
 ///         b: Bar<T>

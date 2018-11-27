@@ -38,7 +38,7 @@ pub fn check_legal_trait_for_method_call(tcx: TyCtxt, span: Span, trait_id: DefI
 enum CallStep<'tcx> {
     Builtin(Ty<'tcx>),
     DeferredClosure(ty::FnSig<'tcx>),
-    /// e.g. enum variant constructors
+    /// e.g., enum variant constructors
     Overloaded(MethodCallee<'tcx>),
 }
 

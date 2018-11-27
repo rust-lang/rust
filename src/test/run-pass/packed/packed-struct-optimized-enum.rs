@@ -34,12 +34,12 @@ fn main() {
 
     // In #46769, `Option<(Packed<&()>, bool)>` was found to have
     // pointer alignment, without actually being aligned in size.
-    // E.g. on 64-bit platforms, it had alignment `8` but size `9`.
+    // e.g., on 64-bit platforms, it had alignment `8` but size `9`.
     type PackedRefAndBool<'a> = (Packed<&'a ()>, bool);
     sanity_check_size::<Option<PackedRefAndBool>>(Some((Packed(&()), true)));
 
     // Make sure we don't pay for the enum optimization in size,
-    // e.g. we shouldn't need extra padding after the packed data.
+    // e.g., we shouldn't need extra padding after the packed data.
     assert_eq!(std::mem::align_of::<Option<PackedRefAndBool>>(), 1);
     assert_eq!(std::mem::size_of::<Option<PackedRefAndBool>>(),
                std::mem::size_of::<PackedRefAndBool>());

@@ -41,7 +41,7 @@ use self::CandidateKind::*;
 pub use self::PickKind::*;
 
 /// Boolean flag used to indicate if this search is for a suggestion
-/// or not.  If true, we can allow ambiguity and so forth.
+/// or not. If true, we can allow ambiguity and so forth.
 #[derive(Clone, Copy)]
 pub struct IsSuggestion(pub bool);
 

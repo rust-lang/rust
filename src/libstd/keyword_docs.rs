@@ -188,7 +188,7 @@ mod enum_keyword { }
 /// For external connections in Rust code.
 ///
 /// The `extern` keyword is used in two places in Rust. One is in conjunction with the [`crate`]
-/// keyword to make your Rust code aware of other Rust crates in your project, i.e. `extern crate
+/// keyword to make your Rust code aware of other Rust crates in your project, i.e., `extern crate
 /// lazy_static;`. The other use is in foreign function interfaces (FFI).
 ///
 /// `extern` is used in two different contexts within FFI. The first is in the form of external

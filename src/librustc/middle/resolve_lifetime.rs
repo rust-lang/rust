@@ -303,14 +303,14 @@ enum Scope<'a> {
     /// Lifetimes introduced by a fn are scoped to the call-site for that fn,
     /// if this is a fn body, otherwise the original definitions are used.
     /// Unspecified lifetimes are inferred, unless an elision scope is nested,
-    /// e.g. `(&T, fn(&T) -> &T);` becomes `(&'_ T, for<'a> fn(&'a T) -> &'a T)`.
+    /// e.g., `(&T, fn(&T) -> &T);` becomes `(&'_ T, for<'a> fn(&'a T) -> &'a T)`.
     Body {
         id: hir::BodyId,
         s: ScopeRef<'a>,
     },
 
     /// A scope which either determines unspecified lifetimes or errors
-    /// on them (e.g. due to ambiguity). For more details, see `Elide`.
+    /// on them (e.g., due to ambiguity). For more details, see `Elide`.
     Elision {
         elide: Elide,
         s: ScopeRef<'a>,
@@ -622,13 +622,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     LifetimeName::Implicit => {
                         // If the user does not write *anything*, we
                         // use the object lifetime defaulting
-                        // rules. So e.g. `Box<dyn Debug>` becomes
+                        // rules. So e.g., `Box<dyn Debug>` becomes
                         // `Box<dyn Debug + 'static>`.
                         self.resolve_object_lifetime_default(lifetime)
                     }
                     LifetimeName::Underscore => {
                         // If the user writes `'_`, we use the *ordinary* elision
-                        // rules. So the `'_` in e.g. `Box<dyn Debug + '_>` will be
+                        // rules. So the `'_` in e.g., `Box<dyn Debug + '_>` will be
                         // resolved the same as the `'_` in `&'_ Foo`.
                         //
                         // cc #48468
@@ -1699,7 +1699,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
     {
         insert_late_bound_lifetimes(self.map, decl, generics);
 
-        // Find the start of nested early scopes, e.g. in methods.
+        // Find the start of nested early scopes, e.g., in methods.
         let mut index = 0;
         if let Some(parent_id) = parent_id {
             let parent = self.tcx.hir().expect_item(parent_id);

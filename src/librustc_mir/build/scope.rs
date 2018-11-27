@@ -152,7 +152,7 @@ struct DropData<'tcx> {
 pub(crate) struct CachedBlock {
     /// The cached block for the cleanups-on-diverge path. This block
     /// contains code to run the current drop and all the preceding
-    /// drops (i.e. those having lower index in Drop’s Scope drop
+    /// drops (i.e., those having lower index in Drop’s Scope drop
     /// array)
     unwind: Option<BasicBlock>,
 
@@ -182,7 +182,7 @@ pub struct BreakableScope<'tcx> {
     /// Block to branch into when the loop or block terminates (either by being `break`-en out
     /// from, or by having its condition to become false)
     pub break_block: BasicBlock,
-    /// The destination of the loop/block expression itself (i.e. where to put the result of a
+    /// The destination of the loop/block expression itself (i.e., where to put the result of a
     /// `break` expression)
     pub break_destination: Place<'tcx>,
 }
@@ -737,7 +737,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             //
             // Note that this code iterates scopes from the inner-most to the outer-most,
             // invalidating caches of each scope visited. This way bare minimum of the
-            // caches gets invalidated. i.e. if a new drop is added into the middle scope, the
+            // caches gets invalidated. i.e., if a new drop is added into the middle scope, the
             // cache of outer scpoe stays intact.
             scope.invalidate_cache(!needs_drop, this_scope);
             if this_scope {

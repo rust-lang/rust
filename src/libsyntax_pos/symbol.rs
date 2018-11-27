@@ -9,19 +9,20 @@
 // except according to those terms.
 
 //! An "interner" is a data structure that associates values with usize tags and
-//! allows bidirectional lookup; i.e. given a value, one can easily find the
+//! allows bidirectional lookup; i.e., given a value, one can easily find the
 //! type, and vice versa.
 
-use hygiene::SyntaxContext;
-use {Span, DUMMY_SP, GLOBALS};
-
-use rustc_data_structures::fx::FxHashMap;
 use arena::DroplessArena;
+use rustc_data_structures::fx::FxHashMap;
 use serialize::{Decodable, Decoder, Encodable, Encoder};
+
 use std::fmt;
 use std::str;
 use std::cmp::{PartialEq, Ordering, PartialOrd, Ord};
 use std::hash::{Hash, Hasher};
+
+use hygiene::SyntaxContext;
+use {Span, DUMMY_SP, GLOBALS};
 
 #[derive(Copy, Clone, Eq)]
 pub struct Ident {
@@ -34,6 +35,7 @@ impl Ident {
     pub const fn new(name: Symbol, span: Span) -> Ident {
         Ident { name, span }
     }
+
     #[inline]
     pub const fn with_empty_ctxt(name: Symbol) -> Ident {
         Ident::new(name, DUMMY_SP)
@@ -60,7 +62,7 @@ impl Ident {
 
     /// "Normalize" ident for use in comparisons using "item hygiene".
     /// Identifiers with same string value become same if they came from the same "modern" macro
-    /// (e.g. `macro` item, but not `macro_rules` item) and stay different if they came from
+    /// (e.g., `macro` item, but not `macro_rules` item) and stay different if they came from
     /// different "modern" macros.
     /// Technically, this operation strips all non-opaque marks from ident's syntactic context.
     pub fn modern(self) -> Ident {
@@ -69,7 +71,7 @@ impl Ident {
 
     /// "Normalize" ident for use in comparisons using "local variable hygiene".
     /// Identifiers with same string value become same if they came from the same non-transparent
-    /// macro (e.g. `macro` or `macro_rules!` items) and stay different if they came from different
+    /// macro (e.g., `macro` or `macro_rules!` items) and stay different if they came from different
     /// non-transparent macros.
     /// Technically, this operation strips all transparent marks from ident's syntactic context.
     pub fn modern_and_legacy(self) -> Ident {
@@ -122,7 +124,7 @@ impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         if self.span.ctxt().modern() == SyntaxContext::empty() {
             s.emit_str(&self.as_str())
-        } else { // FIXME(jseyfried) intercrate hygiene
+        } else { // FIXME(jseyfried): intercrate hygiene
             let mut string = "#".to_owned();
             string.push_str(&self.as_str());
             s.emit_str(&string)
@@ -135,7 +137,7 @@ impl Decodable for Ident {
         let string = d.read_str()?;
         Ok(if !string.starts_with('#') {
             Ident::from_str(&string)
-        } else { // FIXME(jseyfried) intercrate hygiene
+        } else { // FIXME(jseyfried): intercrate hygiene
             Ident::with_empty_ctxt(Symbol::gensym(&string[1..]))
         })
     }
@@ -146,7 +148,7 @@ impl Decodable for Ident {
 pub struct Symbol(u32);
 
 // The interner is pointed to by a thread local value which is only set on the main thread
-// with parallelization is disabled. So we don't allow Symbol to transfer between threads
+// with parallelization is disabled. So we don't allow `Symbol` to transfer between threads
 // to avoid panics and other errors, even though it would be memory safe to do so.
 #[cfg(not(parallel_queries))]
 impl !Send for Symbol { }
@@ -163,7 +165,7 @@ impl Symbol {
         with_interner(|interner| interner.interned(self))
     }
 
-    /// gensym's a new usize, using the current interner.
+    /// Gensyms a new usize, using the current interner.
     pub fn gensym(string: &str) -> Self {
         with_interner(|interner| interner.gensym(string))
     }
@@ -226,7 +228,7 @@ impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
     }
 }
 
-// The &'static strs in this type actually point into the arena
+// The `&'static str`s in this type actually point into the arena.
 #[derive(Default)]
 pub struct Interner {
     arena: DroplessArena,
@@ -240,7 +242,7 @@ impl Interner {
         let mut this = Interner::default();
         for &string in init {
             if string == "" {
-                // We can't allocate empty strings in the arena, so handle this here
+                // We can't allocate empty strings in the arena, so handle this here.
                 let name = Symbol(this.strings.len() as u32);
                 this.names.insert("", name);
                 this.strings.push("");
@@ -258,12 +260,13 @@ impl Interner {
 
         let name = Symbol(self.strings.len() as u32);
 
-        // from_utf8_unchecked is safe since we just allocated a &str which is known to be utf8
+        // `from_utf8_unchecked` is safe since we just allocated a `&str` which is known to be
+        // UTF-8.
         let string: &str = unsafe {
             str::from_utf8_unchecked(self.arena.alloc_slice(string.as_bytes()))
         };
-        // It is safe to extend the arena allocation to 'static because we only access
-        // these while the arena is still alive
+        // It is safe to extend the arena allocation to `'static` because we only access
+        // these while the arena is still alive.
         let string: &'static str =  unsafe {
             &*(string as *const str)
         };
@@ -344,7 +347,7 @@ macro_rules! declare_keywords {(
     }
 }}
 
-// NB: leaving holes in the ident table is bad! a different ident will get
+// N.B., leaving holes in the ident table is bad! a different ident will get
 // interned with the id from the hole, but it will be between the min and max
 // of the reserved words, and thus tagged as "reserved".
 // After modifying this list adjust `is_special`, `is_used_keyword`/`is_unused_keyword`,
@@ -438,7 +441,7 @@ impl Symbol {
 }
 
 impl Ident {
-    // Returns true for reserved identifiers used internally for elided lifetimes,
+    // Returns `true` for reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
         self.name <= keywords::Underscore.name()
@@ -491,8 +494,8 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 /// Represents a string stored in the interner. Because the interner outlives any thread
 /// which uses this type, we can safely treat `string` which points to interner data,
 /// as an immortal string, as long as this type never crosses between threads.
-// FIXME: Ensure that the interner outlives any thread which uses LocalInternedString,
-//        by creating a new thread right after constructing the interner
+// FIXME: ensure that the interner outlives any thread which uses `LocalInternedString`,
+// by creating a new thread right after constructing the interner.
 #[derive(Clone, Copy, Hash, PartialOrd, Eq, Ord)]
 pub struct LocalInternedString {
     string: &'static str,
@@ -581,7 +584,7 @@ impl Encodable for LocalInternedString {
     }
 }
 
-/// Represents a string stored in the string interner
+/// Represents a string stored in the string interner.
 #[derive(Clone, Copy, Eq)]
 pub struct InternedString {
     symbol: Symbol,

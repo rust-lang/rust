@@ -174,7 +174,7 @@ declare_lint! {
 declare_lint! {
     pub LEGACY_DIRECTORY_OWNERSHIP,
     Deny,
-    "non-inline, non-`#[path]` modules (e.g. `mod foo;`) were erroneously allowed in some files \
+    "non-inline, non-`#[path]` modules (e.g., `mod foo;`) were erroneously allowed in some files \
      not named `mod.rs`"
 }
 
@@ -366,7 +366,7 @@ pub mod parser {
 }
 
 /// Does nothing as a lint pass, but registers some `Lint`s
-/// which are used by other parts of the compiler.
+/// that are used by other parts of the compiler.
 #[derive(Copy, Clone)]
 pub struct HardwiredLints;
 

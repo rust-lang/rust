@@ -233,7 +233,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         // they're not available to be linked against. This poses a few problems
         // for the compiler, some of which are somewhat fundamental, but we use
         // the `use_dll_storage_attrs` variable below to attach the `dllexport`
-        // attribute to all LLVM functions that are exported e.g. they're
+        // attribute to all LLVM functions that are exported e.g., they're
         // already tagged with external linkage). This is suboptimal for a few
         // reasons:
         //

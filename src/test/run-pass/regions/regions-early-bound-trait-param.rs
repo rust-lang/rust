@@ -131,7 +131,7 @@ pub fn main() {
     // for details.
     assert_eq!(object_invoke2(&*m), 5);
 
-    // The RefMakerTrait above is pretty strange (i.e. it is strange
+    // The RefMakerTrait above is pretty strange (i.e., it is strange
     // to consume a value of type T and return a &T).  Easiest thing
     // that came to my mind: consume a cell of a linked list and
     // return a reference to the list it points to.

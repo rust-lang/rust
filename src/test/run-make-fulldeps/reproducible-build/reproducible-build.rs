@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // This test case makes sure that two identical invocations of the compiler
-// (i.e. same code base, same compile-flags, same compiler-versions, etc.)
+// (i.e., same code base, same compile-flags, same compiler-versions, etc.)
 // produce the same output. In the past, symbol names of monomorphized functions
 // were not deterministic (which we want to avoid).
 //

@@ -379,7 +379,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             hir::ExprKind::Index(ref l, ref r) |
-            hir::ExprKind::Binary(_, ref l, ref r) => { // NB: && and || handled earlier
+            hir::ExprKind::Binary(_, ref l, ref r) => { // N.B., && and || handled earlier
                 self.straightline(expr, pred, [l, r].iter().map(|&e| &**e))
             }
 

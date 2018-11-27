@@ -8,25 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The various pretty print routines.
+//! The various pretty-printing routines.
 
-pub use self::UserIdentifiedItem::*;
-pub use self::PpSourceMode::*;
-pub use self::PpMode::*;
-use self::NodesMatchingUII::*;
-
-use {abort_on_err, driver};
-
-use rustc::ty::{self, TyCtxt, Resolutions, AllArenas};
 use rustc::cfg;
 use rustc::cfg::graphviz::LabelledCFG;
+use rustc::hir;
+use rustc::hir::map as hir_map;
+use rustc::hir::map::blocks;
+use rustc::hir::print as pprust_hir;
 use rustc::session::Session;
 use rustc::session::config::{Input, OutputFilenames};
+use rustc::ty::{self, TyCtxt, Resolutions, AllArenas};
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_metadata::cstore::CStore;
-
 use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
 use syntax::ast::{self, BlockCheckMode};
@@ -47,10 +43,11 @@ use std::path::Path;
 use std::str::FromStr;
 use std::mem;
 
-use rustc::hir::map as hir_map;
-use rustc::hir::map::blocks;
-use rustc::hir;
-use rustc::hir::print as pprust_hir;
+pub use self::UserIdentifiedItem::*;
+pub use self::PpSourceMode::*;
+pub use self::PpMode::*;
+use self::NodesMatchingUII::*;
+use {abort_on_err, driver};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub enum PpSourceMode {

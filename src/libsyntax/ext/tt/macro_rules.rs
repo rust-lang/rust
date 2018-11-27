@@ -77,9 +77,9 @@ impl<'a> ParserAnyMacro<'a> {
             e
         }));
 
-        // We allow semicolons at the end of expressions -- e.g. the semicolon in
+        // We allow semicolons at the end of expressions -- e.g., the semicolon in
         // `macro_rules! m { () => { panic!(); } }` isn't parsed by `.parse_expr()`,
-        // but `m!()` is allowed in expression positions (c.f. issue #34706).
+        // but `m!()` is allowed in expression positions (cf. issue #34706).
         if kind == AstFragmentKind::Expr && parser.token == token::Semi {
             parser.bump();
         }
@@ -482,15 +482,15 @@ fn check_matcher(sess: &ParseSess,
     err == sess.span_diagnostic.err_count()
 }
 
-// The FirstSets for a matcher is a mapping from subsequences in the
+// `The FirstSets` for a matcher is a mapping from subsequences in the
 // matcher to the FIRST set for that subsequence.
 //
 // This mapping is partially precomputed via a backwards scan over the
 // token trees of the matcher, which provides a mapping from each
-// repetition sequence to its FIRST set.
+// repetition sequence to its *first* set.
 //
-// (Hypothetically sequences should be uniquely identifiable via their
-// spans, though perhaps that is false e.g. for macro-generated macros
+// (Hypothetically, sequences should be uniquely identifiable via their
+// spans, though perhaps that is false, e.g., for macro-generated macros
 // that do not try to inject artificial span information. My plan is
 // to try to catch such cases ahead of time and not include them in
 // the precomputed mapping.)

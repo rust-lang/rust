@@ -661,7 +661,7 @@ impl<'a> Context<'a> {
             // Ok so at this point we've determined that `(lib, kind)` above is
             // a candidate crate to load, and that `slot` is either none (this
             // is the first crate of its kind) or if some the previous path has
-            // the exact same hash (e.g. it's the exact same crate).
+            // the exact same hash (e.g., it's the exact same crate).
             //
             // In principle these two candidate crates are exactly the same so
             // we can choose either of them to link. As a stupidly gross hack,

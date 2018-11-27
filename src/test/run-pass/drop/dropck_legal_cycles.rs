@@ -108,7 +108,7 @@
 //    of all-zeroes.
 //
 // 6. assert that the context confirms that it actually saw a cycle (since a traversal
-//    might have terminated, e.g. on a tree structure that contained no cycles).
+//    might have terminated, e.g., on a tree structure that contained no cycles).
 
 use std::cell::{Cell, RefCell};
 use std::cmp::Ordering;

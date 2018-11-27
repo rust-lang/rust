@@ -8,6 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use errors;
+use errors::emitter::ColorConfig;
+use rustc_data_structures::sync::Lrc;
+use rustc_lint;
+use rustc_driver::{self, driver, target_features, Compilation};
+use rustc_driver::driver::phase_2_configure_and_expand;
+use rustc_metadata::cstore::CStore;
+use rustc_metadata::dynamic_lib::DynamicLibrary;
+use rustc_resolve::MakeGlobMap;
+use rustc::hir;
+use rustc::hir::intravisit;
+use rustc::session::{self, CompileIncomplete, config};
+use rustc::session::config::{OutputType, OutputTypes, Externs, CodegenOptions};
+use rustc::session::search_paths::{SearchPaths, PathKind};
+use syntax::ast;
+use syntax::source_map::SourceMap;
+use syntax::edition::Edition;
+use syntax::feature_gate::UnstableFeatures;
+use syntax::with_globals;
+use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
+use tempfile::Builder as TempFileBuilder;
+use testing;
+
 use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
@@ -16,30 +39,7 @@ use std::path::PathBuf;
 use std::panic::{self, AssertUnwindSafe};
 use std::process::Command;
 use std::str;
-use rustc_data_structures::sync::Lrc;
 use std::sync::{Arc, Mutex};
-
-use testing;
-use rustc_lint;
-use rustc::hir;
-use rustc::hir::intravisit;
-use rustc::session::{self, CompileIncomplete, config};
-use rustc::session::config::{OutputType, OutputTypes, Externs, CodegenOptions};
-use rustc::session::search_paths::{SearchPaths, PathKind};
-use rustc_metadata::dynamic_lib::DynamicLibrary;
-use tempfile::Builder as TempFileBuilder;
-use rustc_driver::{self, driver, target_features, Compilation};
-use rustc_driver::driver::phase_2_configure_and_expand;
-use rustc_metadata::cstore::CStore;
-use rustc_resolve::MakeGlobMap;
-use syntax::ast;
-use syntax::source_map::SourceMap;
-use syntax::edition::Edition;
-use syntax::feature_gate::UnstableFeatures;
-use syntax::with_globals;
-use syntax_pos::{BytePos, DUMMY_SP, Pos, Span, FileName};
-use errors;
-use errors::emitter::ColorConfig;
 
 use clean::Attributes;
 use config::Options;
@@ -153,7 +153,7 @@ pub fn run(mut options: Options) -> isize {
     })
 }
 
-// Look for #![doc(test(no_crate_inject))], used by crates in the std facade
+// Look for `#![doc(test(no_crate_inject))]`, used by crates in the std facade.
 fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
     use syntax::print::pprust;
 
@@ -192,12 +192,11 @@ fn run_test(test: &str, cratename: &str, filename: &FileName, line: usize,
             should_panic: bool, no_run: bool, as_test_harness: bool,
             compile_fail: bool, mut error_codes: Vec<String>, opts: &TestOptions,
             maybe_sysroot: Option<PathBuf>, linker: Option<PathBuf>, edition: Edition) {
-    // the test harness wants its own `main` & top level functions, so
-    // never wrap the test in `fn main() { ... }`
+    // The test harness wants its own `main` and top-level functions, so
+    // never wrap the test in `fn main() { ... }`.
     let (test, line_offset) = make_test(test, Some(cratename), as_test_harness, opts);
     // FIXME(#44940): if doctests ever support path remapping, then this filename
-    // needs to be the result of SourceMap::span_to_unmapped_path
-
+    // needs to be the result of `SourceMap::span_to_unmapped_path`.
     let path = match filename {
         FileName::Real(path) => path.clone(),
         _ => PathBuf::from(r"doctest.rs"),
@@ -408,8 +407,8 @@ pub fn make_test(s: &str,
         let filename = FileName::anon_source_code(s);
         let source = crates + &everything_else;
 
-        // any errors in parsing should also appear when the doctest is compiled for real, so just
-        // send all the errors that libsyntax emits directly into a Sink instead of stderr
+        // Any errors in parsing should also appear when the doctest is compiled for real, so just
+        // send all the errors that libsyntax emits directly into a `Sink` instead of stderr.
         let cm = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         let emitter = EmitterWriter::new(box io::sink(), None, false, false);
         let handler = Handler::with_emitter(false, false, box emitter);
@@ -537,10 +536,10 @@ pub struct Collector {
     // The name of the test displayed to the user, separated by `::`.
     //
     // In tests from Rust source, this is the path to the item
-    // e.g. `["std", "vec", "Vec", "push"]`.
+    // e.g., `["std", "vec", "Vec", "push"]`.
     //
     // In tests from a markdown file, this is the titles of all headers (h1~h6)
-    // of the sections that contain the code block, e.g. if the markdown file is
+    // of the sections that contain the code block, e.g., if the markdown file is
     // written as:
     //
     // ``````markdown
@@ -689,7 +688,7 @@ impl Tester for Collector {
 
     fn register_header(&mut self, name: &str, level: u32) {
         if self.use_headers {
-            // we use these headings as test names, so it's good if
+            // We use these headings as test names, so it's good if
             // they're valid identifiers.
             let name = name.chars().enumerate().map(|(i, c)| {
                     if (i == 0 && c.is_xid_start()) ||
@@ -703,7 +702,7 @@ impl Tester for Collector {
             // Here we try to efficiently assemble the header titles into the
             // test name in the form of `h1::h2::h3::h4::h5::h6`.
             //
-            // Suppose originally `self.names` contains `[h1, h2, h3]`...
+            // Suppose that originally `self.names` contains `[h1, h2, h3]`...
             let level = level as usize;
             if level <= self.names.len() {
                 // ... Consider `level == 2`. All headers in the lower levels
@@ -752,8 +751,8 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
 
         attrs.collapse_doc_comments();
         attrs.unindent_doc_comments();
-        // the collapse-docs pass won't combine sugared/raw doc attributes, or included files with
-        // anything else, this will combine them for us
+        // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
+        // anything else, this will combine them for us.
         if let Some(doc) = attrs.collapsed_doc_value() {
             self.collector.set_position(attrs.span.unwrap_or(DUMMY_SP));
             let res = markdown::find_testable_code(&doc, self.collector, self.codes);
@@ -847,8 +846,8 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_crate_name_no_use() {
-        //if you give a crate name but *don't* use it within the test, it won't bother inserting
-        //the `extern crate` statement
+        // If you give a crate name but *don't* use it within the test, it won't bother inserting
+        // the `extern crate` statement.
         let opts = TestOptions::default();
         let input =
 "assert_eq!(2+2, 4);";
@@ -863,8 +862,8 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_crate_name() {
-        //if you give a crate name and use it within the test, it will insert an `extern crate`
-        //statement before `fn main`
+        // If you give a crate name and use it within the test, it will insert an `extern crate`
+        // statement before `fn main`.
         let opts = TestOptions::default();
         let input =
 "use asdf::qwop;
@@ -882,8 +881,8 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_no_crate_inject() {
-        //even if you do use the crate within the test, setting `opts.no_crate_inject` will skip
-        //adding it anyway
+        // Even if you do use the crate within the test, setting `opts.no_crate_inject` will skip
+        // adding it anyway.
         let opts = TestOptions {
             no_crate_inject: true,
             display_warnings: false,
@@ -904,8 +903,9 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_ignore_std() {
-        //even if you include a crate name, and use it in the doctest, we still won't include an
-        //`extern crate` statement if the crate is "std" - that's included already by the compiler!
+        // Even if you include a crate name, and use it in the doctest, we still won't include an
+        // `extern crate` statement if the crate is "std" -- that's included already by the
+        // compiler!
         let opts = TestOptions::default();
         let input =
 "use std::*;
@@ -922,8 +922,8 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_manual_extern_crate() {
-        //when you manually include an `extern crate` statement in your doctest, make_test assumes
-        //you've included one for your own crate too
+        // When you manually include an `extern crate` statement in your doctest, `make_test`
+        // assumes you've included one for your own crate too.
         let opts = TestOptions::default();
         let input =
 "extern crate asdf;
@@ -960,8 +960,8 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_opts_attrs() {
-        //if you supplied some doctest attributes with #![doc(test(attr(...)))], it will use those
-        //instead of the stock #![allow(unused)]
+        // If you supplied some doctest attributes with `#![doc(test(attr(...)))]`, it will use
+        // those instead of the stock `#![allow(unused)]`.
         let mut opts = TestOptions::default();
         opts.attrs.push("feature(sick_rad)".to_string());
         let input =
@@ -977,7 +977,7 @@ assert_eq!(2+2, 4);
         let output = make_test(input, Some("asdf"), false, &opts);
         assert_eq!(output, (expected, 3));
 
-        //adding more will also bump the returned line offset
+        // Adding more will also bump the returned line offset.
         opts.attrs.push("feature(hella_dope)".to_string());
         let expected =
 "#![feature(sick_rad)]
@@ -993,8 +993,8 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_crate_attrs() {
-        //including inner attributes in your doctest will apply them to the whole "crate", pasting
-        //them outside the generated main function
+        // Including inner attributes in your doctest will apply them to the whole "crate", pasting
+        // them outside the generated main function.
         let opts = TestOptions::default();
         let input =
 "#![feature(sick_rad)]
@@ -1011,7 +1011,7 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_with_main() {
-        //including your own `fn main` wrapper lets the test use it verbatim
+        // Including your own `fn main` wrapper lets the test use it verbatim.
         let opts = TestOptions::default();
         let input =
 "fn main() {
@@ -1028,7 +1028,7 @@ fn main() {
 
     #[test]
     fn make_test_fake_main() {
-        //...but putting it in a comment will still provide a wrapper
+        // ... but putting it in a comment will still provide a wrapper.
         let opts = TestOptions::default();
         let input =
 "//Ceci n'est pas une `fn main`
@@ -1045,7 +1045,7 @@ assert_eq!(2+2, 4);
 
     #[test]
     fn make_test_dont_insert_main() {
-        //even with that, if you set `dont_insert_main`, it won't create the `fn main` wrapper
+        // Even with that, if you set `dont_insert_main`, it won't create the `fn main` wrapper.
         let opts = TestOptions::default();
         let input =
 "//Ceci n'est pas une `fn main`
@@ -1060,7 +1060,7 @@ assert_eq!(2+2, 4);".to_string();
 
     #[test]
     fn make_test_display_warnings() {
-        //if the user is asking to display doctest warnings, suppress the default allow(unused)
+        // If the user is asking to display doctest warnings, suppress the default `allow(unused)`.
         let mut opts = TestOptions::default();
         opts.display_warnings = true;
         let input =

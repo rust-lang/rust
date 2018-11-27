@@ -51,7 +51,7 @@
 //!
 //! - There are two codegen units for every source-level module:
 //! - One for "stable", that is non-generic, code
-//! - One for more "volatile" code, i.e. monomorphized instances of functions
+//! - One for more "volatile" code, i.e., monomorphized instances of functions
 //!   defined in that module
 //!
 //! In order to see why this heuristic makes sense, let's take a look at when a

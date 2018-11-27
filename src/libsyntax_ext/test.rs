@@ -318,7 +318,7 @@ fn has_test_signature(cx: &ExtCtxt, i: &ast::Item) -> bool {
 
 fn has_bench_signature(cx: &ExtCtxt, i: &ast::Item) -> bool {
     let has_sig = if let ast::ItemKind::Fn(ref decl, _, _, _) = i.node {
-        // NB: inadequate check, but we're running
+        // N.B., inadequate check, but we're running
         // well before resolve, can't get too deep.
         decl.inputs.len() == 1
     } else {

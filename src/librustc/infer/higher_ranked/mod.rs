@@ -542,7 +542,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// Pops the placeholder regions found in `placeholder_map` from the region
     /// inference context. Whenever you create placeholder regions via
     /// `replace_bound_vars_with_placeholders`, they must be popped before you
-    /// commit the enclosing snapshot (if you do not commit, e.g. within a
+    /// commit the enclosing snapshot (if you do not commit, e.g., within a
     /// probe or as a result of an error, then this is not necessary, as
     /// popping happens as part of the rollback).
     ///

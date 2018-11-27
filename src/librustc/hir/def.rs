@@ -46,7 +46,7 @@ pub enum NonMacroAttrKind {
 pub enum Def {
     // Type namespace
     Mod(DefId),
-    Struct(DefId), // DefId refers to NodeId of the struct itself
+    Struct(DefId), // `DefId` refers to `NodeId` of the struct itself
     Union(DefId),
     Enum(DefId),
     Variant(DefId),
@@ -63,27 +63,27 @@ pub enum Def {
     PrimTy(hir::PrimTy),
     TyParam(DefId),
     SelfTy(Option<DefId> /* trait */, Option<DefId> /* impl */),
-    ToolMod, // e.g. `rustfmt` in `#[rustfmt::skip]`
+    ToolMod, // e.g., `rustfmt` in `#[rustfmt::skip]`
 
     // Value namespace
     Fn(DefId),
     Const(DefId),
     Static(DefId, bool /* is_mutbl */),
-    StructCtor(DefId, CtorKind), // DefId refers to NodeId of the struct's constructor
-    VariantCtor(DefId, CtorKind), // DefId refers to the enum variant
-    SelfCtor(DefId /* impl */),  // DefId refers to the impl
+    StructCtor(DefId, CtorKind), // `DefId` refers to `NodeId` of the struct's constructor
+    VariantCtor(DefId, CtorKind), // `DefId` refers to the enum variant
+    SelfCtor(DefId /* impl */),  // `DefId` refers to the impl
     Method(DefId),
     AssociatedConst(DefId),
 
     Local(ast::NodeId),
-    Upvar(ast::NodeId,  // node id of closed over local
-          usize,        // index in the freevars list of the closure
+    Upvar(ast::NodeId,  // `NodeId` of closed over local
+          usize,        // index in the `freevars` list of the closure
           ast::NodeId), // expr node that creates the closure
     Label(ast::NodeId),
 
     // Macro namespace
     Macro(DefId, MacroKind),
-    NonMacroAttr(NonMacroAttrKind), // e.g. `#[inline]` or `#[rustfmt::skip]`
+    NonMacroAttr(NonMacroAttrKind), // e.g., `#[inline]` or `#[rustfmt::skip]`
 
     // Both namespaces
     Err,
@@ -170,6 +170,7 @@ impl<T> PerNS<T> {
 
 impl<T> ::std::ops::Index<Namespace> for PerNS<T> {
     type Output = T;
+
     fn index(&self, ns: Namespace) -> &T {
         match ns {
             ValueNS => &self.value_ns,
@@ -238,6 +239,7 @@ impl CtorKind {
             ast::VariantData::Struct(..) => CtorKind::Fictive,
         }
     }
+
     pub fn from_hir(vdata: &hir::VariantData) -> CtorKind {
         match *vdata {
             hir::VariantData::Tuple(..) => CtorKind::Fn,

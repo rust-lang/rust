@@ -60,7 +60,7 @@ pub struct RegionConstraintCollector<'tcx> {
     /// which can never be rolled back.
     undo_log: Vec<UndoLog<'tcx>>,
 
-    /// The number of open snapshots, i.e. those that haven't been committed or
+    /// The number of open snapshots, i.e., those that haven't been committed or
     /// rolled back.
     num_open_snapshots: usize,
 
@@ -607,7 +607,7 @@ impl<'tcx> RegionConstraintCollector<'tcx> {
 
         // never overwrite an existing (constraint, origin) - only insert one if it isn't
         // present in the map yet. This prevents origins from outside the snapshot being
-        // replaced with "less informative" origins e.g. during calls to `can_eq`
+        // replaced with "less informative" origins e.g., during calls to `can_eq`
         let in_snapshot = self.in_snapshot();
         let undo_log = &mut self.undo_log;
         self.data.constraints.entry(constraint).or_insert_with(|| {

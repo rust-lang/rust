@@ -32,7 +32,7 @@ impl DwarfReader {
         DwarfReader { ptr }
     }
 
-    // DWARF streams are packed, so e.g. a u32 would not necessarily be aligned
+    // DWARF streams are packed, so e.g., a u32 would not necessarily be aligned
     // on a 4-byte boundary. This may cause problems on platforms with strict
     // alignment requirements. By wrapping data in a "packed" struct, we are
     // telling the backend to generate "misalignment-safe" code.

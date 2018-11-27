@@ -15,7 +15,7 @@
 //! always work with the most recent version of Android, but we also want to
 //! work with older versions of Android for whenever projects need to.
 //!
-//! Our current minimum supported Android version is `android-9`, e.g. Android
+//! Our current minimum supported Android version is `android-9`, e.g., Android
 //! with API level 9. We then in theory want to work on that and all future
 //! versions of Android!
 //!

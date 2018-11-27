@@ -353,7 +353,7 @@ impl Step for Mingw {
     /// Build the `rust-mingw` installer component.
     ///
     /// This contains all the bits and pieces to run the MinGW Windows targets
-    /// without any extra installed software (e.g. we bundle gcc, libraries, etc).
+    /// without any extra installed software (e.g., we bundle gcc, libraries, etc).
     fn run(self, builder: &Builder) -> Option<PathBuf> {
         let host = self.host;
 

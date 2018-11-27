@@ -93,7 +93,7 @@
 //! Threads are represented via the [`Thread`] type, which you can get in one of
 //! two ways:
 //!
-//! * By spawning a new thread, e.g. using the [`thread::spawn`][`spawn`]
+//! * By spawning a new thread, e.g., using the [`thread::spawn`][`spawn`]
 //!   function, and calling [`thread`][`JoinHandle::thread`] on the [`JoinHandle`].
 //! * By requesting the current thread, using the [`thread::current`] function.
 //!
@@ -124,7 +124,7 @@
 //! thread, use [`Thread::name`]. A couple examples of where the name of a thread gets used:
 //!
 //! * If a panic occurs in a named thread, the thread name will be printed in the panic message.
-//! * The thread name is provided to the OS where applicable (e.g. `pthread_setname_np` in
+//! * The thread name is provided to the OS where applicable (e.g., `pthread_setname_np` in
 //!   unix-like platforms).
 //!
 //! ## Stack size
@@ -422,7 +422,7 @@ impl Builder {
     ///
     /// - ensure that [`join`][`JoinHandle::join`] is called before any referenced
     /// data is dropped
-    /// - use only types with `'static` lifetime bounds, i.e. those with no or only
+    /// - use only types with `'static` lifetime bounds, i.e., those with no or only
     /// `'static` references (both [`thread::Builder::spawn`][`Builder::spawn`]
     /// and [`thread::spawn`][`spawn`] enforce this property statically)
     ///
@@ -692,7 +692,7 @@ pub fn yield_now() {
 /// already poison themselves when a thread panics while holding the lock.
 ///
 /// This can also be used in multithreaded applications, in order to send a
-/// message to other threads warning that a thread has panicked (e.g. for
+/// message to other threads warning that a thread has panicked (e.g., for
 /// monitoring purposes).
 ///
 /// # Examples
@@ -1078,7 +1078,7 @@ struct Inner {
 /// Threads are represented via the `Thread` type, which you can get in one of
 /// two ways:
 ///
-/// * By spawning a new thread, e.g. using the [`thread::spawn`][`spawn`]
+/// * By spawning a new thread, e.g., using the [`thread::spawn`][`spawn`]
 ///   function, and calling [`thread`][`JoinHandle::thread`] on the
 ///   [`JoinHandle`].
 /// * By requesting the current thread, using the [`thread::current`] function.

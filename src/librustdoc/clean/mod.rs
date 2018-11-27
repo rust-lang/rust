@@ -11,14 +11,31 @@
 //! This module contains the "cleaned" pieces of the AST, and the functions
 //! that clean them.
 
-pub use self::Type::*;
-pub use self::Mutability::*;
-pub use self::ItemEnum::*;
-pub use self::SelfTy::*;
-pub use self::FunctionRetTy::*;
-pub use self::Visibility::{Public, Inherited};
+pub mod inline;
+pub mod cfg;
+mod simplify;
+mod auto_trait;
+mod blanket_impl;
+pub mod def_ctor;
 
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
+use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi::Abi;
+use rustc_typeck::hir_ty_to_ty;
+use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
+use rustc::mir::interpret::ConstValue;
+use rustc::middle::resolve_lifetime as rl;
+use rustc::middle::lang_items;
+use rustc::middle::stability;
+use rustc::mir::interpret::GlobalId;
+use rustc::hir::{self, GenericArg, HirVec};
+use rustc::hir::def::{self, Def, CtorKind};
+use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
+use rustc::ty::subst::Substs;
+use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
+use rustc::ty::fold::TypeFolder;
+use rustc::ty::layout::VariantIdx;
+use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use syntax::ast::{self, AttrStyle, Ident};
 use syntax::attr;
 use syntax::ext::base::MacroKind;
@@ -28,30 +45,12 @@ use syntax::symbol::keywords::{self, Keyword};
 use syntax::symbol::InternedString;
 use syntax_pos::{self, DUMMY_SP, Pos, FileName};
 
-use rustc::mir::interpret::ConstValue;
-use rustc::middle::resolve_lifetime as rl;
-use rustc::ty::fold::TypeFolder;
-use rustc::middle::lang_items;
-use rustc::mir::interpret::GlobalId;
-use rustc::hir::{self, GenericArg, HirVec};
-use rustc::hir::def::{self, Def, CtorKind};
-use rustc::hir::def_id::{CrateNum, DefId, CRATE_DEF_INDEX, LOCAL_CRATE};
-use rustc::ty::subst::Substs;
-use rustc::ty::{self, TyCtxt, Region, RegionVid, Ty, AdtKind};
-use rustc::ty::layout::VariantIdx;
-use rustc::middle::stability;
-use rustc::util::nodemap::{FxHashMap, FxHashSet};
-use rustc_typeck::hir_ty_to_ty;
-use rustc::infer::region_constraints::{RegionConstraintData, Constraint};
-use rustc_data_structures::indexed_vec::{IndexVec, Idx};
-
 use std::collections::hash_map::Entry;
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::default::Default;
 use std::{mem, slice, vec};
 use std::iter::{FromIterator, once};
-use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::cell::RefCell;
@@ -66,16 +65,16 @@ use visit_ast;
 use html::render::{cache, ExternalLocation};
 use html::item_type::ItemType;
 
-pub mod inline;
-pub mod cfg;
-mod simplify;
-mod auto_trait;
-mod blanket_impl;
-pub mod def_ctor;
-
 use self::cfg::Cfg;
 use self::auto_trait::AutoTraitFinder;
 use self::blanket_impl::BlanketImplFinder;
+
+pub use self::Type::*;
+pub use self::Mutability::*;
+pub use self::ItemEnum::*;
+pub use self::SelfTy::*;
+pub use self::FunctionRetTy::*;
+pub use self::Visibility::{Public, Inherited};
 
 thread_local!(pub static MAX_DEF_ID: RefCell<FxHashMap<CrateNum, DefId>> = Default::default());
 
@@ -1621,7 +1620,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
         }
 
         // It would be nice to collect all of the bounds on a type and recombine
-        // them if possible, to avoid e.g. `where T: Foo, T: Bar, T: Sized, T: 'a`
+        // them if possible, to avoid e.g., `where T: Foo, T: Bar, T: Sized, T: 'a`
         // and instead see `where T: Foo + Bar + Sized + 'a`
 
         Generics {
@@ -3899,7 +3898,7 @@ impl Clean<Deprecation> for attr::Deprecation {
     }
 }
 
-/// An equality constraint on an associated type, e.g. `A=Bar` in `Foo<A=Bar>`
+/// An equality constraint on an associated type, e.g., `A=Bar` in `Foo<A=Bar>`
 #[derive(Clone, PartialEq, Eq, RustcDecodable, RustcEncodable, Debug, Hash)]
 pub struct TypeBinding {
     pub name: String,

@@ -127,7 +127,7 @@ pub enum PointerKind<'tcx> {
 }
 
 // We use the term "interior" to mean "something reachable from the
-// base without a pointer dereference", e.g. a field
+// base without a pointer dereference", e.g., a field
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InteriorKind {
     InteriorField(FieldIndex),
@@ -153,8 +153,8 @@ impl Hash for FieldIndex {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum InteriorOffsetKind {
-    Index,   // e.g. `array_expr[index_expr]`
-    Pattern, // e.g. `fn foo([_, a, _, _]: [A; 4]) { ... }`
+    Index,   // e.g., `array_expr[index_expr]`
+    Pattern, // e.g., `fn foo([_, a, _, _]: [A; 4]) { ... }`
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
@@ -961,7 +961,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
         debug!("cat_rvalue_node: promotable = {:?}", promotable);
 
-        // Always promote `[T; 0]` (even when e.g. borrowed mutably).
+        // Always promote `[T; 0]` (even when e.g., borrowed mutably).
         let promotable = match expr_ty.sty {
             ty::Array(_, len) if len.assert_usize(self.tcx) == Some(0) => true,
             _ => promotable,

@@ -24,7 +24,7 @@
 /// `Box<dyn AnotherTrait>`.
 ///
 /// `TraitObject` is guaranteed to match layouts, but it is not the
-/// type of trait objects (e.g. the fields are not directly accessible
+/// type of trait objects (e.g., the fields are not directly accessible
 /// on a `&SomeTrait`) nor does it control that layout (changing the
 /// definition will not change the layout of a `&SomeTrait`). It is
 /// only designed to be used by unsafe code that needs to manipulate

@@ -9,15 +9,9 @@
 // except according to those terms.
 
 use rustc::dep_graph::DepGraph;
-use rustc::hir::{self, map as hir_map};
+use rustc::hir;
 use rustc::hir::lowering::lower_crate;
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::StableHasher;
-use rustc_mir as mir;
-use rustc::session::{CompileResult, CrateDisambiguator, Session};
-use rustc::session::CompileIncomplete;
-use rustc::session::config::{self, Input, OutputFilenames, OutputType};
-use rustc::session::search_paths::PathKind;
+use rustc::hir::map as hir_map;
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
 use rustc::middle::privacy::AccessLevels;
@@ -25,32 +19,27 @@ use rustc::ty::{self, AllArenas, Resolutions, TyCtxt};
 use rustc::traits;
 use rustc::util::common::{install_panic_hook, time, ErrorReported};
 use rustc::util::profiling::ProfileCategory;
+use rustc::session::{CompileResult, CrateDisambiguator, Session};
+use rustc::session::CompileIncomplete;
+use rustc::session::config::{self, Input, OutputFilenames, OutputType};
+use rustc::session::search_paths::PathKind;
 use rustc_allocator as allocator;
 use rustc_borrowck as borrowck;
+use rustc_codegen_utils::codegen_backend::CodegenBackend;
+use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::stable_hasher::StableHasher;
+use rustc_data_structures::sync::{self, Lrc, Lock};
 use rustc_incremental;
-use rustc_resolve::{MakeGlobMap, Resolver, ResolverArenas};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
-use rustc_traits;
-use rustc_codegen_utils::codegen_backend::CodegenBackend;
-use rustc_typeck as typeck;
-use rustc_privacy;
-use rustc_plugin::registry::Registry;
-use rustc_plugin as plugin;
+use rustc_mir as mir;
 use rustc_passes::{self, ast_validation, hir_stats, loops, rvalue_promotion};
-use super::Compilation;
-
-use serialize::json;
-
-use std::any::Any;
-use std::env;
-use std::ffi::OsString;
-use std::fs;
-use std::io::{self, Write};
-use std::iter;
-use std::path::{Path, PathBuf};
-use rustc_data_structures::sync::{self, Lrc, Lock};
-use std::sync::mpsc;
+use rustc_plugin as plugin;
+use rustc_plugin::registry::Registry;
+use rustc_privacy;
+use rustc_resolve::{MakeGlobMap, Resolver, ResolverArenas};
+use rustc_traits;
+use rustc_typeck as typeck;
 use syntax::{self, ast, attr, diagnostics, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
 use syntax::ext::base::ExtCtxt;
@@ -62,10 +51,21 @@ use syntax::symbol::Symbol;
 use syntax_pos::{FileName, hygiene};
 use syntax_ext;
 
-use proc_macro_decls;
-use pretty::ReplaceBodyWithLoop;
+use serialize::json;
 
+use std::any::Any;
+use std::env;
+use std::ffi::OsString;
+use std::fs;
+use std::io::{self, Write};
+use std::iter;
+use std::path::{Path, PathBuf};
+use std::sync::mpsc;
+
+use pretty::ReplaceBodyWithLoop;
+use proc_macro_decls;
 use profile;
+use super::Compilation;
 
 #[cfg(not(parallel_queries))]
 pub fn spawn_thread_pool<F: FnOnce(config::Options) -> R + sync::Send, R: sync::Send>(

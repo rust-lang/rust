@@ -9,7 +9,7 @@
 // except according to those terms.
 
 // compile-flags: -O
-// `#[no_mangle]`d static variables always have external linkage, i.e. no `internal` in their
+// `#[no_mangle]`d static variables always have external linkage, i.e., no `internal` in their
 // definitions
 
 #![crate_type = "lib"]

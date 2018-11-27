@@ -175,7 +175,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// Creates a new type variable.
     ///
     /// - `diverging`: indicates if this is a "diverging" type
-    ///   variable, e.g.  one created as the type of a `return`
+    ///   variable, e.g.,  one created as the type of a `return`
     ///   expression. The code in this module doesn't care if a
     ///   variable is diverging, but the main Rust type-checker will
     ///   sometimes "unify" such variables with the `!` or `()` types.

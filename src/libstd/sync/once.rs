@@ -189,7 +189,7 @@ impl Once {
     /// static INIT: Once = Once::new();
     ///
     /// // Accessing a `static mut` is unsafe much of the time, but if we do so
-    /// // in a synchronized fashion (e.g. write once or read all) then we're
+    /// // in a synchronized fashion (e.g., write once or read all) then we're
     /// // good to go!
     /// //
     /// // This function will only call `expensive_computation` once, and will
@@ -232,7 +232,7 @@ impl Once {
 
     /// Performs the same function as [`call_once`] except ignores poisoning.
     ///
-    /// Unlike [`call_once`], if this `Once` has been poisoned (i.e. a previous
+    /// Unlike [`call_once`], if this `Once` has been poisoned (i.e., a previous
     /// call to `call_once` or `call_once_force` caused a panic), calling
     /// `call_once_force` will still invoke the closure `f` and will _not_
     /// result in an immediate panic. If `f` panics, the `Once` will remain

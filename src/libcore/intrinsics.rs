@@ -52,7 +52,7 @@
 pub use ptr::drop_in_place;
 
 extern "rust-intrinsic" {
-    // NB: These intrinsics take raw pointers because they mutate aliased
+    // N.B., these intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
 
     /// Stores a value if the current value is the same as the `old` value.
@@ -635,7 +635,7 @@ extern "rust-intrinsic" {
     /// Tells LLVM that this point in the code is not reachable, enabling
     /// further optimizations.
     ///
-    /// NB: This is very different from the `unreachable!()` macro: Unlike the
+    /// N.B., this is very different from the `unreachable!()` macro: Unlike the
     /// macro, which panics when it is executed, it is *undefined behavior* to
     /// reach code marked with this function.
     ///

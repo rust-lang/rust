@@ -10,24 +10,24 @@
 
 /*!
 
-typeck.rs, an introduction
+# typeck.rs
 
 The type checker is responsible for:
 
-1. Determining the type of each expression
-2. Resolving methods and traits
-3. Guaranteeing that most type rules are met ("most?", you say, "why most?"
+1. Determining the type of each expression.
+2. Resolving methods and traits.
+3. Guaranteeing that most type rules are met. ("Most?", you say, "why most?"
    Well, dear reader, read on)
 
-The main entry point is `check_crate()`.  Type checking operates in
+The main entry point is `check_crate()`. Type checking operates in
 several major phases:
 
 1. The collect phase first passes over all items and determines their
    type, without examining their "innards".
 
-2. Variance inference then runs to compute the variance of each parameter
+2. Variance inference then runs to compute the variance of each parameter.
 
-3. Coherence checks for overlapping or orphaned impls
+3. Coherence checks for overlapping or orphaned impls.
 
 4. Finally, the check phase then checks function bodies and so forth.
    Within the check phase, we check each function body one at a time
@@ -41,12 +41,12 @@ The type checker is defined into various submodules which are documented
 independently:
 
 - astconv: converts the AST representation of types
-  into the `ty` representation
+  into the `ty` representation.
 
 - collect: computes the types of each top-level item and enters them into
-  the `tcx.types` table for later use
+  the `tcx.types` table for later use.
 
-- coherence: enforces coherence rules, builds some tables
+- coherence: enforces coherence rules, builds some tables.
 
 - variance: variance inference
 
@@ -59,7 +59,7 @@ independently:
   all subtyping and assignment constraints are met.  In essence, the check
   module specifies the constraints, and the infer module solves them.
 
-# Note
+## Note
 
 This API is completely unstable and subject to change.
 
@@ -97,29 +97,7 @@ extern crate rustc_errors as errors;
 extern crate rustc_target;
 extern crate smallvec;
 
-use rustc::hir;
-use rustc::lint;
-use rustc::middle;
-use rustc::session;
-use rustc::util;
-
-use hir::Node;
-use rustc::infer::InferOk;
-use rustc::ty::subst::Substs;
-use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::query::Providers;
-use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt};
-use rustc::util::profiling::ProfileCategory;
-use session::{CompileIncomplete, config};
-use util::common::time;
-
-use syntax::ast;
-use rustc_target::spec::abi::Abi;
-use syntax_pos::Span;
-
-use std::iter;
-
-// NB: This module needs to be declared first so diagnostics are
+// N.B., this module needs to be declared first so diagnostics are
 // registered before they are used.
 mod diagnostics;
 
@@ -134,6 +112,26 @@ mod impl_wf_check;
 mod namespace;
 mod outlives;
 mod variance;
+
+use hir::Node;
+use rustc_target::spec::abi::Abi;
+use rustc::hir;
+use rustc::infer::InferOk;
+use rustc::lint;
+use rustc::middle;
+use rustc::session;
+use rustc::traits::{ObligationCause, ObligationCauseCode, TraitEngine, TraitEngineExt};
+use rustc::ty::subst::Substs;
+use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::query::Providers;
+use rustc::util;
+use rustc::util::profiling::ProfileCategory;
+use session::{CompileIncomplete, config};
+use syntax_pos::Span;
+use syntax::ast;
+use util::common::time;
+
+use std::iter;
 
 pub struct TypeAndSubsts<'tcx> {
     substs: &'tcx Substs<'tcx>,

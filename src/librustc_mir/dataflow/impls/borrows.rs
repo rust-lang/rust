@@ -267,7 +267,7 @@ impl<'a, 'gcx, 'tcx> BitDenotation for Borrows<'a, 'gcx, 'tcx> {
                         Place::Local(..) | Place::Static(..) => {} // okay
                         Place::Projection(..) => {
                             // ... can assign into projections,
-                            // e.g. `box (&mut _)`. Current
+                            // e.g., `box (&mut _)`. Current
                             // conservative solution: force
                             // immediate activation here.
                             sets.gen(*index);

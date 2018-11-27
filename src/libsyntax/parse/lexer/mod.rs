@@ -1127,7 +1127,7 @@ impl<'a> StringReader<'a> {
                     "expected at least one digit in exponent"
                 );
                 if let Some(ch) = self.ch {
-                    // check for e.g. Unicode minus '−' (Issue #49746)
+                    // check for e.g., Unicode minus '−' (Issue #49746)
                     if unicode_chars::check_for_substitution(self, ch, &mut err) {
                         self.bump();
                         self.scan_digits(10, 10);

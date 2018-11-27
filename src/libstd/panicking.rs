@@ -460,7 +460,7 @@ fn rust_panic_with_hook(payload: &mut dyn BoxMeUp,
 
     let panics = update_panic_count(1);
 
-    // If this is the third nested call (e.g. panics == 2, this is 0-indexed),
+    // If this is the third nested call (e.g., panics == 2, this is 0-indexed),
     // the panic hook probably triggered the last panic, otherwise the
     // double-panic check would have aborted the process. In this case abort the
     // process real quickly as we don't want to try calling it again as it'll

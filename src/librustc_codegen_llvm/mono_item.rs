@@ -63,7 +63,7 @@ impl PreDefineMethods<'tcx> for CodegenCx<'ll, 'tcx> {
             llvm::SetUniqueComdat(self.llmod, lldecl);
         }
 
-        // If we're compiling the compiler-builtins crate, e.g. the equivalent of
+        // If we're compiling the compiler-builtins crate, e.g., the equivalent of
         // compiler-rt, then we want to implicitly compile everything with hidden
         // visibility as we're going to link this object all over the place but
         // don't want the symbols to get exported.

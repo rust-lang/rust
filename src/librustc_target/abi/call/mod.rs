@@ -164,7 +164,7 @@ impl Reg {
 }
 
 /// An argument passed entirely registers with the
-/// same kind (e.g. HFA / HVA on PPC64 and AArch64).
+/// same kind (e.g., HFA / HVA on PPC64 and AArch64).
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Uniform {
     pub unit: Reg,
@@ -173,7 +173,7 @@ pub struct Uniform {
     /// * equal to `unit.size` (one scalar/vector)
     /// * a multiple of `unit.size` (an array of scalar/vectors)
     /// * if `unit.kind` is `Integer`, the last element
-    ///   can be shorter, i.e. `{ i64, i64, i32 }` for
+    ///   can be shorter, i.e., `{ i64, i64, i32 }` for
     ///   64-bit integers with a total size of 20 bytes
     pub total: Size,
 }

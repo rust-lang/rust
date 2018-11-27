@@ -95,7 +95,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     /// Search the argument types for one that references fr (which should be a free region).
     /// Returns Some(_) with the index of the input if one is found.
     ///
-    /// NB: In the case of a closure, the index is indexing into the signature as seen by the
+    /// N.B., in the case of a closure, the index is indexing into the signature as seen by the
     /// user - in particular, index 0 is not the implicit self parameter.
     crate fn get_argument_index_for_region(
         &self,

@@ -188,7 +188,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
 
             // Third, perform some lints.
             for pat in &arm.pats {
-                check_for_bindings_named_the_same_as_variants(self, pat);
+                check_for_bindings_named_same_as_variants(self, pat);
             }
         }
 
@@ -309,7 +309,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     }
 }
 
-fn check_for_bindings_named_the_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
+fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
     pat.walk(|p| {
         if let PatKind::Binding(_, _, ident, None) = p.node {
             if let Some(&bm) = cx.tables.pat_binding_modes().get(p.hir_id) {

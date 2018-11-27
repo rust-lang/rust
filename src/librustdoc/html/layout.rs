@@ -130,7 +130,7 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
             <div class=\"infos\">\
                 <h2>Search Tricks</h2>\
                 <p>\
-                    Prefix searches with a type followed by a colon (e.g. \
+                    Prefix searches with a type followed by a colon (e.g., \
                     <code>fn:</code>) to restrict the search to a given type.\
                 </p>\
                 <p>\
@@ -140,11 +140,11 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
                     and <code>const</code>.\
                 </p>\
                 <p>\
-                    Search functions by type signature (e.g. \
+                    Search functions by type signature (e.g., \
                     <code>vec -> usize</code> or <code>* -> vec</code>)\
                 </p>\
                 <p>\
-                    Search multiple things at once by splitting your query with comma (e.g. \
+                    Search multiple things at once by splitting your query with comma (e.g., \
                     <code>str,u8</code> or <code>String,struct:Vec,test</code>)\
                 </p>\
             </div>\

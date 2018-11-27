@@ -110,7 +110,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         }
     }
 
-    // Returns path to the compilation output (e.g. libfoo-12345678.rmeta)
+    // Returns path to the compilation output (e.g., libfoo-12345678.rmeta)
     pub fn compilation_output(&self, crate_name: &str) -> PathBuf {
         let sess = &self.tcx.sess;
         // Save-analysis is emitted per whole session, not per each crate type

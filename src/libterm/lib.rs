@@ -198,7 +198,7 @@ pub trait Terminal: Write {
     /// *Note: This does not flush.*
     ///
     /// That means the reset command may get buffered so, if you aren't planning on doing anything
-    /// else that might flush stdout's buffer (e.g. writing a line of text), you should flush after
+    /// else that might flush stdout's buffer (e.g., writing a line of text), you should flush after
     /// calling reset.
     fn reset(&mut self) -> io::Result<bool>;
 

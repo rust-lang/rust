@@ -63,7 +63,7 @@ pub use context::CodegenCx;
 ///
 /// Each `Block` may contain an instance of this, indicating whether the block
 /// is part of a landing pad or not. This is used to make decision about whether
-/// to emit `invoke` instructions (e.g. in a landing pad we don't continue to
+/// to emit `invoke` instructions (e.g., in a landing pad we don't continue to
 /// use `invoke`) and also about various function call metadata.
 ///
 /// For GNU exceptions (`landingpad` + `resume` instructions) this structure is

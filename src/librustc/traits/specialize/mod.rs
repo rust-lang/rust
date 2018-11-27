@@ -19,22 +19,21 @@
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
 
-use super::{SelectionContext, FulfillmentContext};
-use super::util::impl_trait_ref_and_oblig;
+pub mod specialization_graph;
 
-use rustc_data_structures::fx::FxHashSet;
 use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
-use ty::subst::{Subst, Substs};
+use lint;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::sync::Lrc;
+use syntax_pos::DUMMY_SP;
 use traits::{self, ObligationCause, TraitEngine};
 use traits::select::IntercrateAmbiguityCause;
 use ty::{self, TyCtxt, TypeFoldable};
-use syntax_pos::DUMMY_SP;
-use rustc_data_structures::sync::Lrc;
+use ty::subst::{Subst, Substs};
 
-use lint;
-
-pub mod specialization_graph;
+use super::{SelectionContext, FulfillmentContext};
+use super::util::impl_trait_ref_and_oblig;
 
 /// Information pertinent to an overlapping impl error.
 pub struct OverlapError {
@@ -184,7 +183,7 @@ pub(super) fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     //
     // See RFC 1210 for more details and justification.
 
-    // Currently we do not allow e.g. a negative impl to specialize a positive one
+    // Currently we do not allow e.g., a negative impl to specialize a positive one
     if tcx.impl_polarity(impl1_def_id) != tcx.impl_polarity(impl2_def_id) {
         return false;
     }
@@ -295,17 +294,18 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 // Query provider for `specialization_graph_of`.
-pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                      trait_id: DefId)
-                                                      -> Lrc<specialization_graph::Graph> {
+pub(super) fn specialization_graph_provider<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    trait_id: DefId,
+) -> Lrc<specialization_graph::Graph> {
     let mut sg = specialization_graph::Graph::new();
 
     let mut trait_impls = tcx.all_impls(trait_id);
 
     // The coherence checking implementation seems to rely on impls being
     // iterated over (roughly) in definition order, so we are sorting by
-    // negated CrateNum (so remote definitions are visited first) and then
-    // by a flattened version of the DefIndex.
+    // negated `CrateNum` (so remote definitions are visited first) and then
+    // by a flattened version of the `DefIndex`.
     trait_impls.sort_unstable_by_key(|def_id| {
         (-(def_id.krate.as_u32() as i64),
          def_id.index.address_space().index(),

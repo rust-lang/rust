@@ -85,7 +85,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // categories:
             //
             // 1. Those that are included statically via a static library
-            // 2. Those included otherwise (e.g. dynamically or via a framework)
+            // 2. Those included otherwise (e.g., dynamically or via a framework)
             //
             // Although our LLVM module is not literally emitting code for the
             // statically included symbols, it's an export of our library which

@@ -8,51 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Trait Resolution. See [rustc guide] for more info on how this works.
+//! Trait Resolution. See the [rustc guide] for more information on how this works.
 //!
 //! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
-
-pub use self::SelectionError::*;
-pub use self::FulfillmentErrorCode::*;
-pub use self::Vtable::*;
-pub use self::ObligationCauseCode::*;
-
-use chalk_engine;
-use hir;
-use hir::def_id::DefId;
-use infer::SuppressRegionErrors;
-use infer::outlives::env::OutlivesEnvironment;
-use middle::region;
-use mir::interpret::ErrorHandled;
-use ty::subst::Substs;
-use ty::{self, AdtKind, List, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
-use ty::error::{ExpectedFound, TypeError};
-use ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
-use infer::{InferCtxt};
-use util::common::ErrorReported;
-
-use rustc_data_structures::sync::Lrc;
-use std::fmt::Debug;
-use std::rc::Rc;
-use syntax::ast;
-use syntax_pos::{Span, DUMMY_SP};
-
-pub use self::coherence::{orphan_check, overlapping_impls, OrphanCheckErr, OverlapResult};
-pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
-pub use self::project::MismatchedProjectionTypes;
-pub use self::project::{normalize, normalize_projection_type, poly_project_and_unify_type};
-pub use self::project::{ProjectionCache, ProjectionCacheSnapshot, Reveal, Normalized};
-pub use self::object_safety::ObjectSafetyViolation;
-pub use self::object_safety::MethodViolationCode;
-pub use self::on_unimplemented::{OnUnimplementedDirective, OnUnimplementedNote};
-pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
-pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
-pub use self::specialize::{OverlapError, specialization_graph, translate_substs};
-pub use self::specialize::find_associated_item;
-pub use self::engine::{TraitEngine, TraitEngineExt};
-pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
-pub use self::util::{supertraits, supertrait_def_ids, Supertraits, SupertraitDefIds};
-pub use self::util::transitive_bounds;
 
 #[allow(dead_code)]
 pub mod auto_trait;
@@ -68,8 +26,50 @@ mod specialize;
 mod structural_impls;
 pub mod codegen;
 mod util;
-
 pub mod query;
+
+use chalk_engine;
+use hir;
+use hir::def_id::DefId;
+use infer::{InferCtxt, SuppressRegionErrors};
+use infer::outlives::env::OutlivesEnvironment;
+use middle::region;
+use mir::interpret::ErrorHandled;
+use rustc_data_structures::sync::Lrc;
+use syntax::ast;
+use syntax_pos::{Span, DUMMY_SP};
+use ty::subst::Substs;
+use ty::{self, AdtKind, List, Ty, TyCtxt, GenericParamDefKind, ToPredicate};
+use ty::error::{ExpectedFound, TypeError};
+use ty::fold::{TypeFolder, TypeFoldable, TypeVisitor};
+use util::common::ErrorReported;
+
+pub use self::SelectionError::*;
+pub use self::FulfillmentErrorCode::*;
+pub use self::Vtable::*;
+pub use self::ObligationCauseCode::*;
+
+pub use self::coherence::{orphan_check, overlapping_impls, OrphanCheckErr, OverlapResult};
+pub use self::fulfill::{FulfillmentContext, PendingPredicateObligation};
+pub use self::project::MismatchedProjectionTypes;
+pub use self::project::{normalize, normalize_projection_type, poly_project_and_unify_type};
+pub use self::project::{ProjectionCache, ProjectionCacheSnapshot, Reveal, Normalized};
+pub use self::object_safety::ObjectSafetyViolation;
+pub use self::object_safety::MethodViolationCode;
+pub use self::on_unimplemented::{OnUnimplementedDirective, OnUnimplementedNote};
+pub use self::select::{EvaluationCache, SelectionContext, SelectionCache};
+pub use self::select::{EvaluationResult, IntercrateAmbiguityCause, OverflowError};
+pub use self::specialize::{OverlapError, specialization_graph, translate_substs};
+pub use self::specialize::find_associated_item;
+pub use self::engine::{TraitEngine, TraitEngineExt};
+pub use self::util::{elaborate_predicates, elaborate_trait_ref, elaborate_trait_refs};
+pub use self::util::{supertraits, supertrait_def_ids, transitive_bounds,
+                     Supertraits, SupertraitDefIds};
+
+pub use self::ObligationCauseCode::*;
+pub use self::FulfillmentErrorCode::*;
+pub use self::SelectionError::*;
+pub use self::Vtable::*;
 
 // Whether to enable bug compatibility with issue #43355
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -91,7 +91,7 @@ pub enum TraitQueryMode {
     Canonical,
 }
 
-/// An `Obligation` represents some trait reference (e.g. `int:Eq`) for
+/// An `Obligation` represents some trait reference (e.g., `int:Eq`) for
 /// which the vtable must be found.  The process of finding a vtable is
 /// called "resolving" the `Obligation`. This process consists of
 /// either identifying an `impl` (e.g., `impl Eq for int`) that
@@ -955,7 +955,7 @@ fn substitute_normalize_and_test_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
 
 /// Given a trait `trait_ref`, iterates the vtable entries
 /// that come from `trait_ref`, including its supertraits.
-#[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
+#[inline] // FIXME(#35870): avoid closures being unexported due to `impl Trait`.
 fn vtable_methods<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_ref: ty::PolyTraitRef<'tcx>)
