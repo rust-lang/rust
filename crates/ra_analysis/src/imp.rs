@@ -21,7 +21,7 @@ use crate::{
     db::{self, FileSyntaxQuery, SyntaxDatabase},
     hir::{
         self,
-        FunctionDescriptor, FnSignatureInfo,
+        FnSignatureInfo,
         Problem,
     },
     input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
@@ -274,7 +274,7 @@ impl AnalysisImpl {
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
             if let Some(fn_descr) =
-                FunctionDescriptor::guess_for_name_ref(&*self.db, position.file_id, name_ref)
+                hir::Function::guess_for_name_ref(&*self.db, position.file_id, name_ref)
             {
                 let scope = fn_descr.scope(&*self.db);
                 // First try to resolve the symbol locally
@@ -344,14 +344,14 @@ impl AnalysisImpl {
             db: &db::RootDatabase,
             source_file: &'a SourceFileNode,
             position: FilePosition,
-        ) -> Option<(ast::BindPat<'a>, FunctionDescriptor)> {
+        ) -> Option<(ast::BindPat<'a>, hir::Function)> {
             let syntax = source_file.syntax();
             if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, position.offset) {
-                let descr = FunctionDescriptor::guess_for_bind_pat(db, position.file_id, binding)?;
+                let descr = hir::Function::guess_for_bind_pat(db, position.file_id, binding)?;
                 return Some((binding, descr));
             };
             let name_ref = find_node_at_offset::<ast::NameRef>(syntax, position.offset)?;
-            let descr = FunctionDescriptor::guess_for_name_ref(db, position.file_id, name_ref)?;
+            let descr = hir::Function::guess_for_name_ref(db, position.file_id, name_ref)?;
             let scope = descr.scope(db);
             let resolved = scope.resolve_local_name(name_ref)?;
             let resolved = resolved.ptr().resolve(source_file);
@@ -472,8 +472,7 @@ impl AnalysisImpl {
             if fs.kind == FN_DEF {
                 let fn_file = self.db.file_syntax(fn_file_id);
                 if let Some(fn_def) = find_node_at_offset(fn_file.syntax(), fs.node_range.start()) {
-                    let descr =
-                        FunctionDescriptor::guess_from_source(&*self.db, fn_file_id, fn_def);
+                    let descr = hir::Function::guess_from_source(&*self.db, fn_file_id, fn_def);
                     if let Some(descriptor) = descr.signature_info(&*self.db) {
                         // If we have a calling expression let's find which argument we are on
                         let mut current_parameter = None;

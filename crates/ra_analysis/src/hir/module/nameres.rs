@@ -371,7 +371,7 @@ mod tests {
     use crate::{
         AnalysisChange,
         mock_analysis::{MockAnalysis, analysis_and_position},
-        hir::{HirDatabase, module::ModuleDescriptor},
+        hir::{self, HirDatabase},
         input::FilesDatabase,
 };
     use super::*;
@@ -380,7 +380,7 @@ mod tests {
         let (analysis, pos) = analysis_and_position(fixture);
         let db = analysis.imp.db;
         let source_root = db.file_source_root(pos.file_id);
-        let descr = ModuleDescriptor::guess_from_position(&*db, pos)
+        let descr = hir::Module::guess_from_position(&*db, pos)
             .unwrap()
             .unwrap();
         let module_id = descr.module_id;

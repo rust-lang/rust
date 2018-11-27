@@ -25,43 +25,43 @@ impl FnId {
     }
 }
 
-pub(crate) struct FunctionDescriptor {
+pub(crate) struct Function {
     fn_id: FnId,
 }
 
-impl FunctionDescriptor {
+impl Function {
     pub(crate) fn guess_from_source(
         db: &impl HirDatabase,
         file_id: FileId,
         fn_def: ast::FnDef,
-    ) -> FunctionDescriptor {
+    ) -> Function {
         let fn_id = FnId::get(db, file_id, fn_def);
-        FunctionDescriptor { fn_id }
+        Function { fn_id }
     }
 
     pub(crate) fn guess_for_name_ref(
         db: &impl HirDatabase,
         file_id: FileId,
         name_ref: ast::NameRef,
-    ) -> Option<FunctionDescriptor> {
-        FunctionDescriptor::guess_for_node(db, file_id, name_ref.syntax())
+    ) -> Option<Function> {
+        Function::guess_for_node(db, file_id, name_ref.syntax())
     }
 
     pub(crate) fn guess_for_bind_pat(
         db: &impl HirDatabase,
         file_id: FileId,
         bind_pat: ast::BindPat,
-    ) -> Option<FunctionDescriptor> {
-        FunctionDescriptor::guess_for_node(db, file_id, bind_pat.syntax())
+    ) -> Option<Function> {
+        Function::guess_for_node(db, file_id, bind_pat.syntax())
     }
 
     fn guess_for_node(
         db: &impl HirDatabase,
         file_id: FileId,
         node: SyntaxNodeRef,
-    ) -> Option<FunctionDescriptor> {
+    ) -> Option<Function> {
         let fn_def = node.ancestors().find_map(ast::FnDef::cast)?;
-        let res = FunctionDescriptor::guess_from_source(db, file_id, fn_def);
+        let res = Function::guess_from_source(db, file_id, fn_def);
         Some(res)
     }
 

@@ -20,7 +20,7 @@ use crate::{
 pub(crate) use self::{
     path::{Path, PathKind},
     module::{Module, ModuleId, Problem, nameres::FileItemId},
-    function::{FunctionDescriptor, FnScopes},
+    function::{Function, FnScopes},
 };
 
 pub use self::function::FnSignatureInfo;
