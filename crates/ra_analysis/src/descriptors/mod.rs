@@ -6,13 +6,14 @@ use std::sync::Arc;
 
 use ra_syntax::{
     ast::{self, FnDefNode, AstNode},
-    TextRange,
+    TextRange, SyntaxNode,
 };
 
 use crate::{
+    FileId,
     db::SyntaxDatabase,
     descriptors::function::{resolve_local_name, FnId, FnScopes},
-    descriptors::module::{ModuleId, ModuleTree, ModuleSource, nameres::{ItemMap, InputModuleItems}},
+    descriptors::module::{ModuleId, ModuleTree, ModuleSource, nameres::{ItemMap, InputModuleItems, FileItemId}},
     input::SourceRootId,
     loc2id::IdDatabase,
     syntax_ptr::LocalSyntaxPtr,
@@ -26,6 +27,18 @@ salsa::query_group! {
         fn fn_scopes(fn_id: FnId) -> Arc<FnScopes> {
             type FnScopesQuery;
             use fn function::imp::fn_scopes;
+        }
+
+        fn _file_items(file_id: FileId) -> Arc<Vec<SyntaxNode>> {
+            type FileItemsQuery;
+            storage volatile;
+            use fn module::nameres::file_items;
+        }
+
+        fn _file_item(file_id: FileId, file_item_id: FileItemId) -> SyntaxNode {
+            type FileItemQuery;
+            storage volatile;
+            use fn module::nameres::file_item;
         }
 
         fn _input_module_items(source_root_id: SourceRootId, module_id: ModuleId) -> Cancelable<Arc<InputModuleItems>> {

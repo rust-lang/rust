@@ -22,12 +22,13 @@ use std::{
 use rustc_hash::FxHashMap;
 
 use ra_syntax::{
+    SyntaxNode,
     SmolStr, SyntaxKind::{self, *},
     ast::{self, ModuleItemOwner}
 };
 
 use crate::{
-    Cancelable,
+    Cancelable, FileId,
     loc2id::{DefId, DefLoc},
     descriptors::{
         Path, PathKind,
@@ -37,6 +38,20 @@ use crate::{
     syntax_ptr::{LocalSyntaxPtr},
     input::SourceRootId,
 };
+
+
+#[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
+pub(crate) struct FileItemId(u32);
+
+pub(crate) fn file_items(db: &impl DescriptorDatabase, file_id: FileId) -> Arc<Vec<SyntaxNode>> {
+    unimplemented!()
+}
+
+pub(crate) fn file_item(db: &impl DescriptorDatabase, file_id: FileId, file_item_id: FileItemId) -> SyntaxNode {
+    let items = db._file_items(file_id);
+    let idx = file_item_id.0 as usize;
+    items[idx].clone()
+}
 
 /// Item map is the result of the name resolution. Item map contains, for each
 /// module, the set of visible items.
