@@ -319,7 +319,6 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
         // We walk up the stack a few frames to also cover their callees.
         const WHITELIST: &[(&str, &str)] = &[
             // Uses mem::uninitialized
-            ("std::ptr::read", ""),
             ("std::sys::windows::mutex::Mutex::", ""),
         ];
         for frame in ecx.stack().iter()
