@@ -7,7 +7,7 @@ LL |         x = box x;
    |             cyclic type of infinite size
    |             help: try using a conversion method: `box x.to_string()`
 
-error[E0055]: reached the recursion limit while auto-dereferencing Foo
+error[E0055]: reached the recursion limit while auto-dereferencing `Foo`
   --> $DIR/infinite-autoderef.rs:35:5
    |
 LL |     Foo.foo;
@@ -15,7 +15,7 @@ LL |     Foo.foo;
    |
    = help: consider adding a `#![recursion_limit="128"]` attribute to your crate
 
-error[E0055]: reached the recursion limit while auto-dereferencing Foo
+error[E0055]: reached the recursion limit while auto-dereferencing `Foo`
   --> $DIR/infinite-autoderef.rs:35:9
    |
 LL |     Foo.foo;
@@ -29,7 +29,7 @@ error[E0609]: no field `foo` on type `Foo`
 LL |     Foo.foo;
    |         ^^^ unknown field
 
-error[E0055]: reached the recursion limit while auto-dereferencing Foo
+error[E0055]: reached the recursion limit while auto-dereferencing `Foo`
   --> $DIR/infinite-autoderef.rs:36:9
    |
 LL |     Foo.bar();
