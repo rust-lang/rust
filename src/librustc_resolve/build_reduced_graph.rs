@@ -318,7 +318,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         // This particular use tree
                         &tree, id, &prefix, true,
                         // The whole `use` item
-                        parent_scope.clone(), item, ty::Visibility::Invisible, root_span,
+                        parent_scope, item, ty::Visibility::Invisible, root_span,
                     );
                 }
             }
