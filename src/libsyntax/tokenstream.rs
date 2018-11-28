@@ -28,7 +28,7 @@ use ext::tt::{macro_parser, quoted};
 use parse::Directory;
 use parse::token::{self, DelimToken, Token};
 use print::pprust;
-use serialize::{Decoder, Decodable, Encoder, Encodable};
+use rustc_serialize::{Decoder, Decodable, Encoder, Encodable};
 use util::RcVec;
 
 use std::borrow::Cow;

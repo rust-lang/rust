@@ -41,7 +41,7 @@ extern crate rustc_codegen_utils;
 extern crate rustc_data_structures;
 extern crate rustc_allocator;
 extern crate rustc_fs_util;
-extern crate serialize;
+extern crate rustc_serialize;
 extern crate rustc_errors;
 extern crate rustc_demangle;
 extern crate cc;

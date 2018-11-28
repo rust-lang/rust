@@ -22,7 +22,7 @@ use rustc::ty::{self, Ty, ReprOptions};
 use rustc_target::spec::{PanicStrategy, TargetTriple};
 use rustc_data_structures::svh::Svh;
 
-use rustc_serialize as serialize;
+use rustc_serialize;
 use syntax::{ast, attr};
 use syntax::edition::Edition;
 use syntax::symbol::Symbol;
@@ -98,8 +98,8 @@ impl<T> Clone for Lazy<T> {
     }
 }
 
-impl<T> serialize::UseSpecializedEncodable for Lazy<T> {}
-impl<T> serialize::UseSpecializedDecodable for Lazy<T> {}
+impl<T> rustc_serialize::UseSpecializedEncodable for Lazy<T> {}
+impl<T> rustc_serialize::UseSpecializedDecodable for Lazy<T> {}
 
 impl<CTX, T> HashStable<CTX> for Lazy<T> {
     fn hash_stable<W: StableHasherResult>(&self,
@@ -155,8 +155,8 @@ impl<T> Clone for LazySeq<T> {
     }
 }
 
-impl<T> serialize::UseSpecializedEncodable for LazySeq<T> {}
-impl<T> serialize::UseSpecializedDecodable for LazySeq<T> {}
+impl<T> rustc_serialize::UseSpecializedEncodable for LazySeq<T> {}
+impl<T> rustc_serialize::UseSpecializedDecodable for LazySeq<T> {}
 
 impl<CTX, T> HashStable<CTX> for LazySeq<T> {
     fn hash_stable<W: StableHasherResult>(&self,

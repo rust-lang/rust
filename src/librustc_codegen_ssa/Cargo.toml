@@ -19,7 +19,7 @@ log = "0.4.5"
 libc = "0.2.43"
 jobserver = "0.1.11"
 
-serialize = { path = "../libserialize" }
+rustc_serialize = { path = "../librustc_serialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc = { path = "../librustc" }

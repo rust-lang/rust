@@ -13,4 +13,4 @@ bitflags = "1.0"
 log = "0.4"
 rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 rustc_data_structures = { path = "../librustc_data_structures" }
-serialize = { path = "../libserialize" }
+rustc_serialize = { path = "../librustc_serialize" }

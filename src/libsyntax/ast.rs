@@ -30,7 +30,7 @@ use ThinVec;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
-use serialize::{self, Decoder, Encoder};
+use rustc_serialize::{self, Decoder, Encoder};
 use std::fmt;
 
 pub use rustc_target::abi::FloatTy;
@@ -242,13 +242,13 @@ impl fmt::Display for NodeId {
     }
 }
 
-impl serialize::UseSpecializedEncodable for NodeId {
+impl rustc_serialize::UseSpecializedEncodable for NodeId {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_u32(self.as_u32())
     }
 }
 
-impl serialize::UseSpecializedDecodable for NodeId {
+impl rustc_serialize::UseSpecializedDecodable for NodeId {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<NodeId, D::Error> {
         d.read_u32().map(NodeId::from_u32)
     }
@@ -2321,12 +2321,12 @@ impl ForeignItemKind {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serialize;
+    use rustc_serialize;
 
     // are ASTs encodable?
     #[test]
     fn check_asts_encodable() {
-        fn assert_encodable<T: serialize::Encodable>() {}
+        fn assert_encodable<T: rustc_serialize::Encodable>() {}
         assert_encodable::<Crate>();
     }
 }

@@ -62,7 +62,7 @@ extern crate rustc_fs_util;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
-extern crate serialize;
+extern crate rustc_serialize;
 extern crate cc; // Used to locate MSVC
 extern crate tempfile;
 extern crate memmap;

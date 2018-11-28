@@ -10,8 +10,8 @@
 
 use std::mem;
 use stable_hasher;
-use serialize;
-use serialize::opaque::{EncodeResult, Encoder, Decoder};
+use rustc_serialize;
+use rustc_serialize::opaque::{EncodeResult, Encoder, Decoder};
 
 #[derive(Eq, PartialEq, Ord, PartialOrd, Hash, Debug, Clone, Copy)]
 pub struct Fingerprint(u64, u64);
@@ -94,17 +94,17 @@ impl stable_hasher::StableHasherResult for Fingerprint {
 
 impl_stable_hash_via_hash!(Fingerprint);
 
-impl serialize::UseSpecializedEncodable for Fingerprint { }
+impl rustc_serialize::UseSpecializedEncodable for Fingerprint { }
 
-impl serialize::UseSpecializedDecodable for Fingerprint { }
+impl rustc_serialize::UseSpecializedDecodable for Fingerprint { }
 
-impl serialize::SpecializedEncoder<Fingerprint> for serialize::opaque::Encoder {
+impl rustc_serialize::SpecializedEncoder<Fingerprint> for rustc_serialize::opaque::Encoder {
     fn specialized_encode(&mut self, f: &Fingerprint) -> Result<(), Self::Error> {
         f.encode_opaque(self)
     }
 }
 
-impl<'a> serialize::SpecializedDecoder<Fingerprint> for serialize::opaque::Decoder<'a> {
+impl<'a> rustc_serialize::SpecializedDecoder<Fingerprint> for rustc_serialize::opaque::Decoder<'a> {
     fn specialized_decode(&mut self) -> Result<Fingerprint, Self::Error> {
         Fingerprint::decode_opaque(self)
     }

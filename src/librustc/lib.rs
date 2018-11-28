@@ -87,7 +87,6 @@ extern crate libc;
 extern crate polonius_engine;
 extern crate rustc_target;
 #[macro_use] extern crate rustc_data_structures;
-extern crate serialize;
 extern crate parking_lot;
 extern crate rustc_errors as errors;
 extern crate rustc_rayon as rayon;
@@ -100,7 +99,7 @@ extern crate proc_macro;
 extern crate chalk_engine;
 extern crate rustc_fs_util;
 
-extern crate serialize as rustc_serialize; // used by deriving
+extern crate rustc_serialize; // used by deriving
 
 extern crate rustc_apfloat;
 extern crate byteorder;

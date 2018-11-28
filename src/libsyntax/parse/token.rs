@@ -18,7 +18,7 @@ use ast::{self};
 use parse::ParseSess;
 use print::pprust;
 use ptr::P;
-use serialize::{Decodable, Decoder, Encodable, Encoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use symbol::keywords;
 use syntax::parse::parse_stream_from_source_str;
 use syntax_pos::{self, Span, FileName};

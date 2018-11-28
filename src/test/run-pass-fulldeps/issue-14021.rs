@@ -12,11 +12,11 @@
 #![allow(unused_imports)]
 #![feature(rustc_private)]
 
-extern crate serialize;
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
+extern crate rustc_serialize;
 
-use serialize::{Encodable, Decodable};
-use serialize::json;
+use rustc_serialize::{Encodable, Decodable};
+use rustc_serialize::json;
 
 #[derive(RustcEncodable, RustcDecodable, PartialEq, Debug)]
 struct UnitLikeStruct;

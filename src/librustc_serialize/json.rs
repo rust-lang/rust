@@ -57,8 +57,8 @@
 //!
 //! Rust provides a mechanism for low boilerplate encoding & decoding of values to and from JSON via
 //! the serialization API.
-//! To be able to encode a piece of data, it must implement the `serialize::RustcEncodable` trait.
-//! To be able to decode a piece of data, it must implement the `serialize::RustcDecodable` trait.
+//! To be able to encode a piece of data, it must implement the `rustc_serialize::Encodable` trait.
+//! To be able to decode a piece of data, it must implement the `rustc_serialize::Decodable` trait.
 //! The Rust compiler provides an annotation to automatically generate the code for these traits:
 //! `#[derive(RustcDecodable, RustcEncodable)]`
 //!
@@ -78,7 +78,7 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
-//! extern crate serialize as rustc_serialize; // for the deriving below
+//! extern crate rustc_serialize; // for the deriving below
 //! use rustc_serialize::json;
 //!
 //! // Automatically generate `Decodable` and `Encodable` trait implementations
@@ -113,8 +113,8 @@
 //!
 //! ```rust
 //! # #![feature(rustc_private)]
-//! extern crate serialize;
-//! use serialize::json::{self, ToJson, Json};
+//! extern crate rustc_serialize;
+//! use rustc_serialize::json::{self, ToJson, Json};
 //!
 //! // A custom data structure
 //! struct ComplexNum {
@@ -155,7 +155,7 @@
 //! # #![feature(rustc_private)]
 //! extern crate serialize;
 //! use std::collections::BTreeMap;
-//! use serialize::json::{self, Json, ToJson};
+//! use rustc_serialize::json::{self, Json, ToJson};
 //!
 //! // Only generate `Decodable` trait implementation
 //! #[derive(Decodable)]

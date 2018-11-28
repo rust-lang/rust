@@ -33,7 +33,6 @@
 
 #[macro_use] extern crate bitflags;
 extern crate core;
-extern crate serialize;
 #[macro_use] extern crate log;
 pub extern crate rustc_errors as errors;
 extern crate syntax_pos;
@@ -43,7 +42,7 @@ extern crate rustc_target;
 #[macro_use]
 extern crate smallvec;
 
-extern crate serialize as rustc_serialize; // used by deriving
+extern crate rustc_serialize; // used by deriving
 
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::bit_set::GrowableBitSet;

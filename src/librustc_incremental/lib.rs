@@ -22,7 +22,7 @@
 extern crate graphviz;
 #[macro_use] extern crate rustc;
 extern crate rustc_data_structures;
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 extern crate rand;
 extern crate rustc_fs_util;
 

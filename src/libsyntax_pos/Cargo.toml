@@ -9,7 +9,7 @@ path = "lib.rs"
 crate-type = ["dylib"]
 
 [dependencies]
-serialize = { path = "../libserialize" }
+rustc_serialize = { path = "../librustc_serialize" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 arena = { path = "../libarena" }
 scoped-tls = { version = "0.1.1", features = ["nightly"] }

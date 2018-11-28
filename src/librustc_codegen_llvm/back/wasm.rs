@@ -13,7 +13,7 @@ use std::path::Path;
 use std::str;
 
 use rustc_data_structures::fx::FxHashMap;
-use serialize::leb128;
+use rustc_serialize::leb128;
 
 // https://webassembly.github.io/spec/core/binary/modules.html#binary-importsec
 const WASM_IMPORT_SECTION_ID: u8 = 2;

@@ -12,7 +12,7 @@ crate-type = ["dylib"]
 ena = "0.11"
 log = "0.4"
 rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
-serialize = { path = "../libserialize" }
+rustc_serialize = { path = "../librustc_serialize" }
 graphviz = { path = "../libgraphviz" }
 cfg-if = "0.1.2"
 stable_deref_trait = "1.0.0"

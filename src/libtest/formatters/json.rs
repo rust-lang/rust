@@ -151,7 +151,7 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
 }
 
 /// A formatting utility used to print strings with characters in need of escaping.
-/// Base code taken form `libserialize::json::escape_str`
+/// Base code taken form `librustc_serialize::json::escape_str`
 struct EscapedString<S: AsRef<str>>(S);
 
 impl<S: AsRef<str>> ::std::fmt::Display for EscapedString<S> {

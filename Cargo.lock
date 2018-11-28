@@ -1933,9 +1933,9 @@ dependencies = [
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_fs_util 0.0.0",
+ "rustc_serialize 0.0.0",
  "rustc_target 0.0.0",
  "scoped-tls 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "serialize 0.0.0",
  "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
@@ -2187,8 +2187,8 @@ dependencies = [
  "rustc_fs_util 0.0.0",
  "rustc_incremental 0.0.0",
  "rustc_mir 0.0.0",
+ "rustc_serialize 0.0.0",
  "rustc_target 0.0.0",
- "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -2231,7 +2231,7 @@ dependencies = [
  "rustc-rayon 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-rayon-core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_cratesio_shim 0.0.0",
- "serialize 0.0.0",
+ "rustc_serialize 0.0.0",
  "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "stable_deref_trait 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -2261,11 +2261,11 @@ dependencies = [
  "rustc_privacy 0.0.0",
  "rustc_resolve 0.0.0",
  "rustc_save_analysis 0.0.0",
+ "rustc_serialize 0.0.0",
  "rustc_target 0.0.0",
  "rustc_traits 0.0.0",
  "rustc_typeck 0.0.0",
  "scoped-tls 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "serialize 0.0.0",
  "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax 0.0.0",
  "syntax_ext 0.0.0",
@@ -2280,7 +2280,7 @@ dependencies = [
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_cratesio_shim 0.0.0",
  "rustc_data_structures 0.0.0",
- "serialize 0.0.0",
+ "rustc_serialize 0.0.0",
  "syntax_pos 0.0.0",
  "termcolor 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "unicode-width 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2300,7 +2300,7 @@ dependencies = [
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_fs_util 0.0.0",
- "serialize 0.0.0",
+ "rustc_serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
@@ -2347,8 +2347,8 @@ dependencies = [
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_serialize 0.0.0",
  "rustc_target 0.0.0",
- "serialize 0.0.0",
  "stable_deref_trait 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax 0.0.0",
  "syntax_ext 0.0.0",
@@ -2371,8 +2371,8 @@ dependencies = [
  "rustc_apfloat 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_serialize 0.0.0",
  "rustc_target 0.0.0",
- "serialize 0.0.0",
  "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
@@ -2461,6 +2461,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_serialize"
+version = "0.0.0"
+dependencies = [
+ "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "rustc_target"
 version = "0.0.0"
 dependencies = [
@@ -2468,7 +2475,7 @@ dependencies = [
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_cratesio_shim 0.0.0",
  "rustc_data_structures 0.0.0",
- "serialize 0.0.0",
+ "rustc_serialize 0.0.0",
 ]
 
 [[package]]
@@ -2679,13 +2686,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serialize"
-version = "0.0.0"
-dependencies = [
- "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "shell-escape"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2869,9 +2869,9 @@ dependencies = [
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
+ "rustc_serialize 0.0.0",
  "rustc_target 0.0.0",
  "scoped-tls 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "serialize 0.0.0",
  "smallvec 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax_pos 0.0.0",
 ]
@@ -2897,8 +2897,8 @@ dependencies = [
  "arena 0.0.0",
  "cfg-if 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_data_structures 0.0.0",
+ "rustc_serialize 0.0.0",
  "scoped-tls 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "serialize 0.0.0",
  "unicode-width 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 

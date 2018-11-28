@@ -1,10 +1,10 @@
 [package]
 authors = ["The Rust Project Developers"]
-name = "serialize"
+name = "rustc_serialize"
 version = "0.0.0"
 
 [lib]
-name = "serialize"
+name = "rustc_serialize"
 path = "lib.rs"
 crate-type = ["dylib", "rlib"]
 

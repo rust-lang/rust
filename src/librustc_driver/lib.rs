@@ -56,7 +56,7 @@ extern crate rustc_traits;
 extern crate rustc_codegen_utils;
 extern crate rustc_typeck;
 extern crate scoped_tls;
-extern crate serialize;
+extern crate rustc_serialize;
 extern crate smallvec;
 #[macro_use]
 extern crate log;
@@ -94,7 +94,7 @@ use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc::util::common::{time, ErrorReported};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
 
-use serialize::json::ToJson;
+use rustc_serialize::json::ToJson;
 
 use std::any::Any;
 use std::borrow::Cow;

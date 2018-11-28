@@ -12,7 +12,7 @@
 #![feature(rustc_private)]
 #![no_std]
 
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 
 #[derive(RustcEncodable)]
 struct Bar {

@@ -15,7 +15,7 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
 use ich::StableHashingContext;
 use mir::{Mir, BasicBlock};
 
-use rustc_serialize as serialize;
+use rustc_serialize;
 
 #[derive(Clone, Debug)]
 pub struct Cache {
@@ -23,15 +23,15 @@ pub struct Cache {
 }
 
 
-impl serialize::Encodable for Cache {
-    fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        serialize::Encodable::encode(&(), s)
+impl rustc_serialize::Encodable for Cache {
+    fn encode<S: rustc_serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        rustc_serialize::Encodable::encode(&(), s)
     }
 }
 
-impl serialize::Decodable for Cache {
-    fn decode<D: serialize::Decoder>(d: &mut D) -> Result<Self, D::Error> {
-        serialize::Decodable::decode(d).map(|_v: ()| Self::new())
+impl rustc_serialize::Decodable for Cache {
+    fn decode<D: rustc_serialize::Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        rustc_serialize::Decodable::decode(d).map(|_v: ()| Self::new())
     }
 }
 

@@ -29,7 +29,7 @@ use rustc_target::spec::abi;
 use syntax::ast::{self, Ident};
 use syntax::symbol::{keywords, InternedString};
 
-use serialize;
+use rustc_serialize;
 
 use hir;
 
@@ -578,7 +578,7 @@ impl<'a, 'gcx, 'tcx> Binder<ExistentialPredicate<'tcx>> {
     }
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<ExistentialPredicate<'tcx>> {}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx List<ExistentialPredicate<'tcx>> {}
 
 impl<'tcx> List<ExistentialPredicate<'tcx>> {
     pub fn principal(&self) -> ExistentialTraitRef<'tcx> {
@@ -1193,7 +1193,7 @@ pub enum RegionKind {
     ReClosureBound(RegionVid),
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for Region<'tcx> {}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for Region<'tcx> {}
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, PartialOrd, Ord)]
 pub struct EarlyBoundRegion {
@@ -2108,4 +2108,4 @@ impl<'tcx> Const<'tcx> {
     }
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Const<'tcx> {}

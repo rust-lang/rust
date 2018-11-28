@@ -224,7 +224,7 @@ pub struct TraitDef<'a> {
     /// other than the current trait
     pub additional_bounds: Vec<Ty<'a>>,
 
-    /// Any extra lifetimes and/or bounds, e.g. `D: serialize::Decoder`
+    /// Any extra lifetimes and/or bounds, e.g. `D: rustc_serialize::Decoder`
     pub generics: LifetimeBounds<'a>,
 
     /// Is it an `unsafe` trait?

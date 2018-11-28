@@ -10,7 +10,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 bitflags = "1.0"
-serialize = { path = "../libserialize" }
+rustc_serialize = { path = "../librustc_serialize" }
 log = "0.4"
 scoped-tls = "0.1"
 syntax_pos = { path = "../libsyntax_pos" }

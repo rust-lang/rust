@@ -13,7 +13,7 @@
 extern crate env_logger;
 extern crate syntax;
 extern crate rustdoc;
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 
 use std::collections::BTreeMap;
 use std::env;

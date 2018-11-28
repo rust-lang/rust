@@ -139,7 +139,7 @@ impl<Tag, Extra> Allocation<Tag, Extra> {
     }
 }
 
-impl<'tcx> ::serialize::UseSpecializedDecodable for &'tcx Allocation {}
+impl<'tcx> ::rustc_serialize::UseSpecializedDecodable for &'tcx Allocation {}
 
 /// Alignment and bounds checks
 impl<'tcx, Tag, Extra> Allocation<Tag, Extra> {

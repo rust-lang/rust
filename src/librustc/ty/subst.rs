@@ -15,7 +15,7 @@ use infer::canonical::Canonical;
 use ty::{self, BoundVar, Lift, List, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 
-use serialize::{self, Encodable, Encoder, Decodable, Decoder};
+use rustc_serialize::{self, Encodable, Encoder, Decodable, Decoder};
 use syntax_pos::{Span, DUMMY_SP};
 use rustc_data_structures::indexed_vec::Idx;
 use smallvec::SmallVec;
@@ -352,7 +352,7 @@ impl<'tcx> TypeFoldable<'tcx> for &'tcx Substs<'tcx> {
     }
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx Substs<'tcx> {}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx Substs<'tcx> {}
 
 ///////////////////////////////////////////////////////////////////////////
 // Public trait `Subst`

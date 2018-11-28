@@ -40,7 +40,7 @@ use rustc_plugin as plugin;
 use rustc_passes::{self, ast_validation, hir_stats, loops, rvalue_promotion};
 use super::Compilation;
 
-use serialize::json;
+use rustc_serialize::json;
 
 use std::any::Any;
 use std::env;

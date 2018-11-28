@@ -428,7 +428,7 @@ impl Error + 'static + Send {
         <Error + 'static>::is::<T>(self)
     }
 }
-extern crate serialize;
+extern crate rustc_serialize;
 #[derive(Clone, Copy, Hash, Encodable, Decodable, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
 struct AllDerives(i32);
 

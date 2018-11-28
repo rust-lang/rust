@@ -13,7 +13,7 @@
 #![feature(rustc_private)]
 #![allow(dead_code)]
 
-extern crate serialize;
+extern crate rustc_serialize as serialize;
 
 #[derive(Encodable)]
 //~^ WARNING derive(Encodable) is deprecated in favor of derive(RustcEncodable)

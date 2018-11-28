@@ -29,10 +29,9 @@
 
 #[macro_use]
 extern crate bitflags;
-extern crate serialize;
 #[macro_use] extern crate log;
 
-extern crate serialize as rustc_serialize; // used by deriving
+extern crate rustc_serialize; // used by deriving
 
 // See librustc_cratesio_shim/Cargo.toml for a comment explaining this.
 #[allow(unused_extern_crates)]

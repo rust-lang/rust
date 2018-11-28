@@ -53,7 +53,7 @@ use std::sync::Arc;
 use std::rc::Rc;
 
 use errors;
-use serialize::json::{ToJson, Json, as_json};
+use rustc_serialize::json::{ToJson, Json, as_json};
 use syntax::ast;
 use syntax::ext::base::MacroKind;
 use syntax::source_map::FileName;

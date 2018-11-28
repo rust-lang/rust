@@ -40,7 +40,6 @@ extern crate rustc_lint;
 extern crate rustc_metadata;
 extern crate rustc_target;
 extern crate rustc_typeck;
-extern crate serialize;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 extern crate test as testing;
@@ -51,7 +50,7 @@ extern crate tempfile;
 extern crate minifier;
 extern crate parking_lot;
 
-extern crate serialize as rustc_serialize; // used by deriving
+extern crate rustc_serialize; // used by deriving
 
 use std::default::Default;
 use std::env;

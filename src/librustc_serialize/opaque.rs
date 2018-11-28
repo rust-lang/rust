@@ -337,7 +337,7 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
 #[cfg(test)]
 mod tests {
-    use serialize::{Encodable, Decodable};
+    use rustc_serialize::{Encodable, Decodable};
     use std::fmt::Debug;
     use super::{Encoder, Decoder};
 

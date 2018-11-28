@@ -41,7 +41,7 @@ use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 use arena::SyncDroplessArena;
 use session::DataTypeKind;
 
-use serialize::{self, Encodable, Encoder};
+use rustc_serialize::{self, Encodable, Encoder};
 use std::cell::RefCell;
 use std::cmp::{self, Ordering};
 use std::fmt;
@@ -598,8 +598,8 @@ impl<'a, 'gcx> HashStable<StableHashingContext<'a>> for ty::TyS<'gcx> {
 
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
-impl<'tcx> serialize::UseSpecializedEncodable for Ty<'tcx> {}
-impl<'tcx> serialize::UseSpecializedDecodable for Ty<'tcx> {}
+impl<'tcx> rustc_serialize::UseSpecializedEncodable for Ty<'tcx> {}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for Ty<'tcx> {}
 
 pub type CanonicalTy<'gcx> = Canonical<'gcx, Ty<'gcx>>;
 
@@ -718,7 +718,7 @@ impl<'a, T> IntoIterator for &'a List<T> {
     }
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx List<Ty<'tcx>> {}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx List<Ty<'tcx>> {}
 
 impl<T> List<T> {
     #[inline(always)]
@@ -995,8 +995,8 @@ pub struct GenericPredicates<'tcx> {
     pub predicates: Vec<(Predicate<'tcx>, Span)>,
 }
 
-impl<'tcx> serialize::UseSpecializedEncodable for GenericPredicates<'tcx> {}
-impl<'tcx> serialize::UseSpecializedDecodable for GenericPredicates<'tcx> {}
+impl<'tcx> rustc_serialize::UseSpecializedEncodable for GenericPredicates<'tcx> {}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for GenericPredicates<'tcx> {}
 
 impl<'a, 'gcx, 'tcx> GenericPredicates<'tcx> {
     pub fn instantiate(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, substs: &Substs<'tcx>)
@@ -1905,13 +1905,13 @@ impl Hash for AdtDef {
     }
 }
 
-impl<'tcx> serialize::UseSpecializedEncodable for &'tcx AdtDef {
+impl<'tcx> rustc_serialize::UseSpecializedEncodable for &'tcx AdtDef {
     fn default_encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         self.did.encode(s)
     }
 }
 
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx AdtDef {}
+impl<'tcx> rustc_serialize::UseSpecializedDecodable for &'tcx AdtDef {}
 
 
 impl<'a> HashStable<StableHashingContext<'a>> for AdtDef {

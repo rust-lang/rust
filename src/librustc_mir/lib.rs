@@ -52,7 +52,7 @@ extern crate polonius_engine;
 #[macro_use]
 extern crate rustc;
 #[macro_use] extern crate rustc_data_structures;
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 extern crate rustc_errors;
 #[macro_use]
 extern crate syntax;
