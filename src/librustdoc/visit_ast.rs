@@ -376,6 +376,10 @@ impl<'a, 'tcx, 'rcx, 'cstore> RustdocVisitor<'a, 'tcx, 'rcx, 'cstore> {
                 });
                 true
             }
+            Node::MacroDef(def) if !glob => {
+                om.macros.push(self.visit_local_macro(def));
+                true
+            }
             _ => false,
         };
         self.view_item_stack.remove(&def_node_id);
