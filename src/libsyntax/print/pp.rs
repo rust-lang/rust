@@ -316,75 +316,75 @@ impl<'a> Printer<'a> {
     pub fn pretty_print(&mut self, token: Token) -> io::Result<()> {
         debug!("pp Vec<{},{}>", self.left, self.right);
         match token {
-          Token::Eof => {
-            if !self.scan_stack.is_empty() {
-                self.check_stack(0);
-                self.advance_left()?;
+            Token::Eof => {
+                if !self.scan_stack.is_empty() {
+                    self.check_stack(0);
+                    self.advance_left()?;
+                }
+                self.indent(0);
+                Ok(())
             }
-            self.indent(0);
-            Ok(())
-          }
-          Token::Begin(b) => {
-            if self.scan_stack.is_empty() {
-                self.left_total = 1;
-                self.right_total = 1;
-                self.left = 0;
-                self.right = 0;
-            } else {
-                self.advance_right();
-            }
-            debug!("pp Begin({})/buffer Vec<{},{}>",
-                   b.offset, self.left, self.right);
-            self.buf[self.right] = BufEntry { token: token, size: -self.right_total };
-            let right = self.right;
-            self.scan_push(right);
-            Ok(())
-          }
-          Token::End => {
-            if self.scan_stack.is_empty() {
-                debug!("pp End/print Vec<{},{}>", self.left, self.right);
-                self.print(token, 0)
-            } else {
-                debug!("pp End/buffer Vec<{},{}>", self.left, self.right);
-                self.advance_right();
-                self.buf[self.right] = BufEntry { token: token, size: -1 };
+            Token::Begin(b) => {
+                if self.scan_stack.is_empty() {
+                    self.left_total = 1;
+                    self.right_total = 1;
+                    self.left = 0;
+                    self.right = 0;
+                } else {
+                    self.advance_right();
+                }
+                debug!("pp Begin({})/buffer Vec<{},{}>",
+                       b.offset, self.left, self.right);
+                self.buf[self.right] = BufEntry { token: token, size: -self.right_total };
                 let right = self.right;
                 self.scan_push(right);
                 Ok(())
             }
-          }
-          Token::Break(b) => {
-            if self.scan_stack.is_empty() {
-                self.left_total = 1;
-                self.right_total = 1;
-                self.left = 0;
-                self.right = 0;
-            } else {
-                self.advance_right();
+            Token::End => {
+                if self.scan_stack.is_empty() {
+                    debug!("pp End/print Vec<{},{}>", self.left, self.right);
+                    self.print(token, 0)
+                } else {
+                    debug!("pp End/buffer Vec<{},{}>", self.left, self.right);
+                    self.advance_right();
+                    self.buf[self.right] = BufEntry { token: token, size: -1 };
+                    let right = self.right;
+                    self.scan_push(right);
+                    Ok(())
+                }
             }
-            debug!("pp Break({})/buffer Vec<{},{}>",
-                   b.offset, self.left, self.right);
-            self.check_stack(0);
-            let right = self.right;
-            self.scan_push(right);
-            self.buf[self.right] = BufEntry { token: token, size: -self.right_total };
-            self.right_total += b.blank_space;
-            Ok(())
-          }
-          Token::String(s, len) => {
-            if self.scan_stack.is_empty() {
-                debug!("pp String('{}')/print Vec<{},{}>",
-                       s, self.left, self.right);
-                self.print(Token::String(s, len), len)
-            } else {
-                debug!("pp String('{}')/buffer Vec<{},{}>",
-                       s, self.left, self.right);
-                self.advance_right();
-                self.buf[self.right] = BufEntry { token: Token::String(s, len), size: len };
-                self.right_total += len;
-                self.check_stream()
+            Token::Break(b) => {
+                if self.scan_stack.is_empty() {
+                    self.left_total = 1;
+                    self.right_total = 1;
+                    self.left = 0;
+                    self.right = 0;
+                } else {
+                    self.advance_right();
+                }
+                debug!("pp Break({})/buffer Vec<{},{}>",
+                       b.offset, self.left, self.right);
+                self.check_stack(0);
+                let right = self.right;
+                self.scan_push(right);
+                self.buf[self.right] = BufEntry { token: token, size: -self.right_total };
+                self.right_total += b.blank_space;
+                Ok(())
             }
-          }
+            Token::String(s, len) => {
+                if self.scan_stack.is_empty() {
+                    debug!("pp String('{}')/print Vec<{},{}>",
+                           s, self.left, self.right);
+                    self.print(Token::String(s, len), len)
+                } else {
+                    debug!("pp String('{}')/buffer Vec<{},{}>",
+                           s, self.left, self.right);
+                    self.advance_right();
+                    self.buf[self.right] = BufEntry { token: Token::String(s, len), size: len };
+                    self.right_total += len;
+                    self.check_stream()
+                }
+            }
         }
     }
     pub fn check_stream(&mut self) -> io::Result<()> {
@@ -523,74 +523,74 @@ impl<'a> Printer<'a> {
                              self.right,
                              6));
         match token {
-          Token::Begin(b) => {
-            if l > self.space {
-                let col = self.margin - self.space + b.offset;
-                debug!("print Begin -> push broken block at col {}", col);
-                self.print_stack.push(PrintStackElem {
-                    offset: col,
-                    pbreak: PrintStackBreak::Broken(b.breaks)
-                });
-            } else {
-                debug!("print Begin -> push fitting block");
-                self.print_stack.push(PrintStackElem {
-                    offset: 0,
-                    pbreak: PrintStackBreak::Fits
-                });
-            }
-            Ok(())
-          }
-          Token::End => {
-            debug!("print End -> pop End");
-            let print_stack = &mut self.print_stack;
-            assert!(!print_stack.is_empty());
-            print_stack.pop().unwrap();
-            Ok(())
-          }
-          Token::Break(b) => {
-            let top = self.get_top();
-            match top.pbreak {
-              PrintStackBreak::Fits => {
-                debug!("print Break({}) in fitting block", b.blank_space);
-                self.space -= b.blank_space;
-                self.indent(b.blank_space);
-                Ok(())
-              }
-              PrintStackBreak::Broken(Breaks::Consistent) => {
-                debug!("print Break({}+{}) in consistent block",
-                       top.offset, b.offset);
-                let ret = self.print_newline(top.offset + b.offset);
-                self.space = self.margin - (top.offset + b.offset);
-                ret
-              }
-              PrintStackBreak::Broken(Breaks::Inconsistent) => {
+            Token::Begin(b) => {
                 if l > self.space {
-                    debug!("print Break({}+{}) w/ newline in inconsistent",
-                           top.offset, b.offset);
-                    let ret = self.print_newline(top.offset + b.offset);
-                    self.space = self.margin - (top.offset + b.offset);
-                    ret
+                    let col = self.margin - self.space + b.offset;
+                    debug!("print Begin -> push broken block at col {}", col);
+                    self.print_stack.push(PrintStackElem {
+                        offset: col,
+                        pbreak: PrintStackBreak::Broken(b.breaks)
+                    });
                 } else {
-                    debug!("print Break({}) w/o newline in inconsistent",
-                           b.blank_space);
-                    self.indent(b.blank_space);
-                    self.space -= b.blank_space;
-                    Ok(())
+                    debug!("print Begin -> push fitting block");
+                    self.print_stack.push(PrintStackElem {
+                        offset: 0,
+                        pbreak: PrintStackBreak::Fits
+                    });
                 }
-              }
+                Ok(())
             }
-          }
-          Token::String(ref s, len) => {
-            debug!("print String({})", s);
-            assert_eq!(l, len);
-            // assert!(l <= space);
-            self.space -= len;
-            self.print_str(s)
-          }
-          Token::Eof => {
-            // Eof should never get here.
-            panic!();
-          }
+            Token::End => {
+                debug!("print End -> pop End");
+                let print_stack = &mut self.print_stack;
+                assert!(!print_stack.is_empty());
+                print_stack.pop().unwrap();
+                Ok(())
+            }
+            Token::Break(b) => {
+                let top = self.get_top();
+                match top.pbreak {
+                    PrintStackBreak::Fits => {
+                        debug!("print Break({}) in fitting block", b.blank_space);
+                        self.space -= b.blank_space;
+                        self.indent(b.blank_space);
+                        Ok(())
+                    }
+                    PrintStackBreak::Broken(Breaks::Consistent) => {
+                        debug!("print Break({}+{}) in consistent block",
+                               top.offset, b.offset);
+                        let ret = self.print_newline(top.offset + b.offset);
+                        self.space = self.margin - (top.offset + b.offset);
+                        ret
+                    }
+                    PrintStackBreak::Broken(Breaks::Inconsistent) => {
+                        if l > self.space {
+                            debug!("print Break({}+{}) w/ newline in inconsistent",
+                                   top.offset, b.offset);
+                            let ret = self.print_newline(top.offset + b.offset);
+                            self.space = self.margin - (top.offset + b.offset);
+                            ret
+                        } else {
+                            debug!("print Break({}) w/o newline in inconsistent",
+                                   b.blank_space);
+                            self.indent(b.blank_space);
+                            self.space -= b.blank_space;
+                            Ok(())
+                        }
+                    }
+                }
+            }
+            Token::String(ref s, len) => {
+                debug!("print String({})", s);
+                assert_eq!(l, len);
+                // assert!(l <= space);
+                self.space -= len;
+                self.print_str(s)
+            }
+            Token::Eof => {
+                // Eof should never get here.
+                panic!();
+            }
         }
     }
 
