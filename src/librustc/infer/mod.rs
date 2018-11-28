@@ -581,7 +581,7 @@ impl<'tcx, T> InferOk<'tcx, T> {
     pub fn into_value_registering_obligations(
         self,
         infcx: &InferCtxt<'_, '_, 'tcx>,
-        fulfill_cx: &mut impl TraitEngine<'tcx>,
+        fulfill_cx: &mut dyn TraitEngine<'tcx>,
     ) -> T {
         let InferOk { value, obligations } = self;
         for obligation in obligations {

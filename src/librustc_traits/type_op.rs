@@ -11,7 +11,7 @@ use rustc::traits::query::type_op::prove_predicate::ProvePredicate;
 use rustc::traits::query::type_op::subtype::Subtype;
 use rustc::traits::query::{Fallible, NoSolution};
 use rustc::traits::{
-    FulfillmentContext, Normalized, Obligation, ObligationCause, TraitEngine, TraitEngineExt,
+    Normalized, Obligation, ObligationCause, TraitEngine, TraitEngineExt,
 };
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{Kind, Subst, UserSelfTy, UserSubsts};
@@ -75,7 +75,7 @@ fn type_op_ascribe_user_type<'tcx>(
 struct AscribeUserTypeCx<'me, 'gcx: 'tcx, 'tcx: 'me> {
     infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
     param_env: ParamEnv<'tcx>,
-    fulfill_cx: &'me mut FulfillmentContext<'tcx>,
+    fulfill_cx: &'me mut dyn TraitEngine<'tcx>,
 }
 
 impl AscribeUserTypeCx<'me, 'gcx, 'tcx> {
@@ -231,7 +231,7 @@ fn type_op_eq<'tcx>(
 
 fn type_op_normalize<T>(
     infcx: &InferCtxt<'_, 'gcx, 'tcx>,
-    fulfill_cx: &mut FulfillmentContext<'tcx>,
+    fulfill_cx: &mut dyn TraitEngine<'tcx>,
     key: ParamEnvAnd<'tcx, Normalize<T>>,
 ) -> Fallible<T>
 where

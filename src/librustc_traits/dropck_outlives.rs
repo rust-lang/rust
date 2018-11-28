@@ -2,7 +2,7 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::canonical::{Canonical, QueryResponse};
 use rustc::traits::query::dropck_outlives::{DropckOutlivesResult, DtorckConstraint};
 use rustc::traits::query::{CanonicalTyGoal, NoSolution};
-use rustc::traits::{FulfillmentContext, Normalized, ObligationCause, TraitEngineExt};
+use rustc::traits::{TraitEngine, Normalized, ObligationCause, TraitEngineExt};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
@@ -78,7 +78,7 @@ fn dropck_outlives<'tcx>(
             // Set used to detect infinite recursion.
             let mut ty_set = FxHashSet::default();
 
-            let fulfill_cx = &mut FulfillmentContext::new();
+            let mut fulfill_cx = TraitEngine::new(infcx.tcx);
 
             let cause = ObligationCause::dummy();
             while let Some((ty, depth)) = ty_stack.pop() {
@@ -136,7 +136,11 @@ fn dropck_outlives<'tcx>(
 
             debug!("dropck_outlives: result = {:#?}", result);
 
-            infcx.make_canonicalized_query_response(canonical_inference_vars, result, fulfill_cx)
+            infcx.make_canonicalized_query_response(
+                canonical_inference_vars,
+                result,
+                &mut *fulfill_cx
+            )
         },
     )
 }

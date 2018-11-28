@@ -3243,11 +3243,14 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             trait_ref,
         )?);
 
-        obligations.push(Obligation::new(
-            obligation.cause.clone(),
-            obligation.param_env,
-            ty::Predicate::ClosureKind(closure_def_id, substs, kind),
-        ));
+        // FIXME: chalk
+        if !self.tcx().sess.opts.debugging_opts.chalk {
+            obligations.push(Obligation::new(
+                obligation.cause.clone(),
+                obligation.param_env,
+                ty::Predicate::ClosureKind(closure_def_id, substs, kind),
+            ));
+        }
 
         Ok(VtableClosureData {
             closure_def_id,
