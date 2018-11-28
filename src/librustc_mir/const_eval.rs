@@ -143,7 +143,11 @@ pub fn op_to_const<'tcx>(
             ConstValue::Scalar(x.not_undef()?),
         Ok(Immediate::ScalarPair(a, b)) => {
             // create an allocation just for the fat pointer
-            let mut allocation = Allocation::undef(op.layout.size, op.layout.align.abi, Default::default());
+            let mut allocation = Allocation::undef(
+                op.layout.size,
+                op.layout.align.abi,
+                Default::default(),
+            );
             let alloc_id = ecx.tcx.alloc_map.lock().reserve();
             let ptr = Pointer::from(alloc_id);
             // write the fat pointer into the allocation
