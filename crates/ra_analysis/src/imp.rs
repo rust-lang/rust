@@ -14,15 +14,15 @@ use ra_db::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE, SyntaxDatabase, 
 use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 use salsa::{Database, ParallelDatabase};
+use hir::{
+    self,
+    FnSignatureInfo,
+    Problem,
+};
 
 use crate::{
     completion::{completions, CompletionItem},
     db,
-    hir::{
-        self,
-        FnSignatureInfo,
-        Problem,
-    },
     symbol_index::{SymbolIndex, SymbolsDatabase},
     AnalysisChange, Cancelable, CrateId, Diagnostic, FileId,
     FileSystemEdit, FilePosition, Query, SourceChange, SourceFileNodeEdit,

@@ -18,7 +18,7 @@ use super::{
 };
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub(crate) enum Submodule {
+pub enum Submodule {
     Declaration(SmolStr),
     Definition(SmolStr, ModuleSource),
 }

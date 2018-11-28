@@ -14,7 +14,7 @@ macro_rules! ctry {
     };
 }
 
-pub(crate) mod db;
+pub mod db;
 mod query_definitions;
 mod function;
 mod module;
@@ -31,36 +31,36 @@ use crate::{
     arena::{Arena, Id},
 };
 
-pub(crate) use self::{
+pub use self::{
     path::{Path, PathKind},
-    module::{Module, ModuleId, Problem},
+    module::{Module, ModuleId, Problem, nameres::ItemMap},
     function::{Function, FnScopes},
 };
 
 pub use self::function::FnSignatureInfo;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct FnId(u32);
+pub struct FnId(u32);
 ra_db::impl_numeric_id!(FnId);
 
 impl FnId {
-    pub(crate) fn from_loc(
+    pub fn from_loc(
         db: &impl AsRef<LocationIntener<SourceItemId, FnId>>,
         loc: &SourceItemId,
     ) -> FnId {
         db.as_ref().loc2id(loc)
     }
-    pub(crate) fn loc(self, db: &impl AsRef<LocationIntener<SourceItemId, FnId>>) -> SourceItemId {
+    pub fn loc(self, db: &impl AsRef<LocationIntener<SourceItemId, FnId>>) -> SourceItemId {
         db.as_ref().id2loc(self)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct DefId(u32);
+pub struct DefId(u32);
 ra_db::impl_numeric_id!(DefId);
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum DefLoc {
+pub enum DefLoc {
     Module {
         id: ModuleId,
         source_root: SourceRootId,
@@ -71,24 +71,24 @@ pub(crate) enum DefLoc {
 }
 
 impl DefId {
-    pub(crate) fn loc(self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefLoc {
+    pub fn loc(self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefLoc {
         db.as_ref().id2loc(self)
     }
 }
 
 impl DefLoc {
-    pub(crate) fn id(&self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefId {
+    pub fn id(&self, db: &impl AsRef<LocationIntener<DefLoc, DefId>>) -> DefId {
         db.as_ref().loc2id(&self)
     }
 }
 
-pub(crate) enum Def {
+pub enum Def {
     Module(Module),
     Item,
 }
 
 impl DefId {
-    pub(crate) fn resolve(self, db: &impl HirDatabase) -> Cancelable<Def> {
+    pub fn resolve(self, db: &impl HirDatabase) -> Cancelable<Def> {
         let loc = self.loc(db);
         let res = match loc {
             DefLoc::Module { id, source_root } => {
@@ -106,14 +106,14 @@ impl DefId {
 pub(crate) type SourceFileItemId = Id<SyntaxNode>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct SourceItemId {
+pub struct SourceItemId {
     file_id: FileId,
     item_id: SourceFileItemId,
 }
 
 /// Maps item's `SyntaxNode`s to `SourceFileItemId` and back.
 #[derive(Debug, PartialEq, Eq, Default)]
-pub(crate) struct SourceFileItems {
+pub struct SourceFileItems {
     arena: Arena<SyntaxNode>,
 }
 
@@ -121,7 +121,7 @@ impl SourceFileItems {
     fn alloc(&mut self, item: SyntaxNode) -> SourceFileItemId {
         self.arena.alloc(item)
     }
-    fn id_of(&self, item: SyntaxNodeRef) -> SourceFileItemId {
+    pub fn id_of(&self, item: SyntaxNodeRef) -> SourceFileItemId {
         let (id, _item) = self
             .arena
             .iter()

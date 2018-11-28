@@ -38,20 +38,20 @@ use crate::{
 /// Item map is the result of the name resolution. Item map contains, for each
 /// module, the set of visible items.
 #[derive(Default, Debug, PartialEq, Eq)]
-pub(crate) struct ItemMap {
-    pub(crate) per_module: FxHashMap<ModuleId, ModuleScope>,
+pub struct ItemMap {
+    pub per_module: FxHashMap<ModuleId, ModuleScope>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
-pub(crate) struct ModuleScope {
-    items: FxHashMap<SmolStr, Resolution>,
+pub struct ModuleScope {
+    pub items: FxHashMap<SmolStr, Resolution>,
 }
 
 impl ModuleScope {
-    pub(crate) fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a SmolStr, &Resolution)> + 'a {
+    pub fn entries<'a>(&'a self) -> impl Iterator<Item = (&'a SmolStr, &Resolution)> + 'a {
         self.items.iter()
     }
-    pub(crate) fn get(&self, name: &SmolStr) -> Option<&Resolution> {
+    pub fn get(&self, name: &SmolStr) -> Option<&Resolution> {
         self.items.get(name)
     }
 }
@@ -63,7 +63,7 @@ impl ModuleScope {
 /// recomputing name res: if `InputModuleItems` are the same, we can avoid
 /// running name resolution.
 #[derive(Debug, Default, PartialEq, Eq)]
-pub(crate) struct InputModuleItems {
+pub struct InputModuleItems {
     items: Vec<ModuleItem>,
     imports: Vec<Import>,
 }
@@ -89,13 +89,13 @@ struct Import {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct NamedImport {
-    file_item_id: SourceFileItemId,
-    relative_range: TextRange,
+pub struct NamedImport {
+    pub file_item_id: SourceFileItemId,
+    pub relative_range: TextRange,
 }
 
 impl NamedImport {
-    pub(crate) fn range(&self, db: &impl HirDatabase, file_id: FileId) -> TextRange {
+    pub fn range(&self, db: &impl HirDatabase, file_id: FileId) -> TextRange {
         let source_item_id = SourceItemId {
             file_id,
             item_id: self.file_item_id,
@@ -115,11 +115,11 @@ enum ImportKind {
 /// Resolution is basically `DefId` atm, but it should account for stuff like
 /// multiple namespaces, ambiguity and errors.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Resolution {
+pub struct Resolution {
     /// None for unresolved
-    pub(crate) def_id: Option<DefId>,
+    pub def_id: Option<DefId>,
     /// ident by whitch this is imported into local scope.
-    pub(crate) import: Option<NamedImport>,
+    pub import: Option<NamedImport>,
 }
 
 // #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -334,111 +334,5 @@ where
     fn update(&mut self, module_id: ModuleId, f: impl FnOnce(&mut ModuleScope)) {
         let module_items = self.result.per_module.get_mut(&module_id).unwrap();
         f(module_items)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use ra_db::FilesDatabase;
-    use crate::{
-        AnalysisChange,
-        mock_analysis::{MockAnalysis, analysis_and_position},
-        hir::{self, HirDatabase},
-};
-    use super::*;
-
-    fn item_map(fixture: &str) -> (Arc<ItemMap>, ModuleId) {
-        let (analysis, pos) = analysis_and_position(fixture);
-        let db = analysis.imp.db;
-        let source_root = db.file_source_root(pos.file_id);
-        let descr = hir::Module::guess_from_position(&*db, pos)
-            .unwrap()
-            .unwrap();
-        let module_id = descr.module_id;
-        (db.item_map(source_root).unwrap(), module_id)
-    }
-
-    #[test]
-    fn test_item_map() {
-        let (item_map, module_id) = item_map(
-            "
-            //- /lib.rs
-            mod foo;
-
-            use crate::foo::bar::Baz;
-            <|>
-
-            //- /foo/mod.rs
-            pub mod bar;
-
-            //- /foo/bar.rs
-            pub struct Baz;
-        ",
-        );
-        let name = SmolStr::from("Baz");
-        let resolution = &item_map.per_module[&module_id].items[&name];
-        assert!(resolution.def_id.is_some());
-    }
-
-    #[test]
-    fn typing_inside_a_function_should_not_invalidate_item_map() {
-        let mock_analysis = MockAnalysis::with_files(
-            "
-            //- /lib.rs
-            mod foo;
-
-            use crate::foo::bar::Baz;
-
-            fn foo() -> i32 {
-                1 + 1
-            }
-            //- /foo/mod.rs
-            pub mod bar;
-
-            //- /foo/bar.rs
-            pub struct Baz;
-        ",
-        );
-
-        let file_id = mock_analysis.id_of("/lib.rs");
-        let mut host = mock_analysis.analysis_host();
-
-        let source_root = host.analysis().imp.db.file_source_root(file_id);
-
-        {
-            let db = host.analysis().imp.db;
-            let events = db.log_executed(|| {
-                db.item_map(source_root).unwrap();
-            });
-            assert!(format!("{:?}", events).contains("item_map"))
-        }
-
-        let mut change = AnalysisChange::new();
-
-        change.change_file(
-            file_id,
-            "
-            mod foo;
-
-            use crate::foo::bar::Baz;
-
-            fn foo() -> i32 { 92 }
-        "
-            .to_string(),
-        );
-
-        host.apply_change(change);
-
-        {
-            let db = host.analysis().imp.db;
-            let events = db.log_executed(|| {
-                db.item_map(source_root).unwrap();
-            });
-            assert!(
-                !format!("{:?}", events).contains("_item_map"),
-                "{:#?}",
-                events
-            )
-        }
     }
 }

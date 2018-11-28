@@ -3,9 +3,9 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 use salsa::{self, Database};
 use ra_db::{LocationIntener, BaseDatabase};
+use hir::{self, DefId, DefLoc, FnId, SourceItemId};
 
 use crate::{
-    hir::{self, DefId, DefLoc, FnId, SourceItemId},
     symbol_index,
 };
 

@@ -15,7 +15,7 @@ pub(crate) type ScopeId = Id<ScopeData>;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct FnScopes {
-    pub(crate) self_param: Option<LocalSyntaxPtr>,
+    pub self_param: Option<LocalSyntaxPtr>,
     scopes: Arena<ScopeData>,
     scope_for: FxHashMap<LocalSyntaxPtr, ScopeId>,
 }
@@ -27,13 +27,13 @@ pub struct ScopeEntry {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct ScopeData {
+pub struct ScopeData {
     parent: Option<ScopeId>,
     entries: Vec<ScopeEntry>,
 }
 
 impl FnScopes {
-    pub(crate) fn new(fn_def: ast::FnDef) -> FnScopes {
+    pub fn new(fn_def: ast::FnDef) -> FnScopes {
         let mut scopes = FnScopes {
             self_param: fn_def
                 .param_list()
@@ -49,7 +49,7 @@ impl FnScopes {
         }
         scopes
     }
-    pub(crate) fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
+    pub fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
         &self.scopes[scope].entries
     }
     pub fn scope_chain<'a>(&'a self, node: SyntaxNodeRef) -> impl Iterator<Item = ScopeId> + 'a {
@@ -57,10 +57,7 @@ impl FnScopes {
             self.scopes[scope].parent
         })
     }
-    pub(crate) fn resolve_local_name<'a>(
-        &'a self,
-        name_ref: ast::NameRef,
-    ) -> Option<&'a ScopeEntry> {
+    pub fn resolve_local_name<'a>(&'a self, name_ref: ast::NameRef) -> Option<&'a ScopeEntry> {
         let mut shadowed = FxHashSet::default();
         let ret = self
             .scope_chain(name_ref.syntax())
@@ -138,10 +135,10 @@ impl ScopeEntry {
         };
         Some(res)
     }
-    pub(crate) fn name(&self) -> &SmolStr {
+    pub fn name(&self) -> &SmolStr {
         &self.name
     }
-    pub(crate) fn ptr(&self) -> LocalSyntaxPtr {
+    pub fn ptr(&self) -> LocalSyntaxPtr {
         self.ptr
     }
 }

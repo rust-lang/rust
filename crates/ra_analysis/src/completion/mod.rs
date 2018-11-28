@@ -12,7 +12,6 @@ use rustc_hash::{FxHashMap};
 
 use crate::{
     db,
-    hir,
     Cancelable, FilePosition
 };
 

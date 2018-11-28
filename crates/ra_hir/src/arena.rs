@@ -8,7 +8,7 @@ use std::{
     marker::PhantomData,
 };
 
-pub(crate) struct Id<T> {
+pub struct Id<T> {
     idx: u32,
     _ty: PhantomData<fn() -> T>,
 }

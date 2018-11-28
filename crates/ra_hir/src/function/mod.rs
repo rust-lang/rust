@@ -15,10 +15,10 @@ use crate::{
     FnId, HirDatabase, SourceItemId,
 };
 
-pub(crate) use self::scope::FnScopes;
+pub use self::scope::FnScopes;
 
 impl FnId {
-    pub(crate) fn get(db: &impl HirDatabase, file_id: FileId, fn_def: ast::FnDef) -> FnId {
+    pub fn get(db: &impl HirDatabase, file_id: FileId, fn_def: ast::FnDef) -> FnId {
         let file_items = db.file_items(file_id);
         let item_id = file_items.id_of(fn_def.syntax());
         let item_id = SourceItemId { file_id, item_id };
@@ -26,12 +26,12 @@ impl FnId {
     }
 }
 
-pub(crate) struct Function {
+pub struct Function {
     fn_id: FnId,
 }
 
 impl Function {
-    pub(crate) fn guess_from_source(
+    pub fn guess_from_source(
         db: &impl HirDatabase,
         file_id: FileId,
         fn_def: ast::FnDef,
@@ -40,7 +40,7 @@ impl Function {
         Function { fn_id }
     }
 
-    pub(crate) fn guess_for_name_ref(
+    pub fn guess_for_name_ref(
         db: &impl HirDatabase,
         file_id: FileId,
         name_ref: ast::NameRef,
@@ -48,7 +48,7 @@ impl Function {
         Function::guess_for_node(db, file_id, name_ref.syntax())
     }
 
-    pub(crate) fn guess_for_bind_pat(
+    pub fn guess_for_bind_pat(
         db: &impl HirDatabase,
         file_id: FileId,
         bind_pat: ast::BindPat,
@@ -66,11 +66,11 @@ impl Function {
         Some(res)
     }
 
-    pub(crate) fn scope(&self, db: &impl HirDatabase) -> Arc<FnScopes> {
+    pub fn scope(&self, db: &impl HirDatabase) -> Arc<FnScopes> {
         db.fn_scopes(self.fn_id)
     }
 
-    pub(crate) fn signature_info(&self, db: &impl HirDatabase) -> Option<FnSignatureInfo> {
+    pub fn signature_info(&self, db: &impl HirDatabase) -> Option<FnSignatureInfo> {
         let syntax = db.fn_syntax(self.fn_id);
         FnSignatureInfo::new(syntax.borrowed())
     }

@@ -18,15 +18,16 @@ use crate::{
     arena::{Arena, Id},
 };
 
-pub(crate) use self::nameres::ModuleScope;
+pub use self::nameres::ModuleScope;
 
 /// `Module` is API entry point to get all the information
 /// about a particular module.
 #[derive(Debug, Clone)]
-pub(crate) struct Module {
+pub struct Module {
     tree: Arc<ModuleTree>,
     source_root_id: SourceRootId,
-    module_id: ModuleId,
+    //TODO: make private
+    pub module_id: ModuleId,
 }
 
 impl Module {
@@ -145,17 +146,13 @@ impl Module {
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub(crate) fn scope(&self, db: &impl HirDatabase) -> Cancelable<ModuleScope> {
+    pub fn scope(&self, db: &impl HirDatabase) -> Cancelable<ModuleScope> {
         let item_map = db.item_map(self.source_root_id)?;
         let res = item_map.per_module[&self.module_id].clone();
         Ok(res)
     }
 
-    pub(crate) fn resolve_path(
-        &self,
-        db: &impl HirDatabase,
-        path: Path,
-    ) -> Cancelable<Option<DefId>> {
+    pub fn resolve_path(&self, db: &impl HirDatabase, path: Path) -> Cancelable<Option<DefId>> {
         let mut curr = match path.kind {
             PathKind::Crate => self.crate_root(),
             PathKind::Self_ | PathKind::Plain => self.clone(),
@@ -188,7 +185,7 @@ impl Module {
 /// (which can have multiple parents) to the precise world of modules (which
 /// always have one parent).
 #[derive(Default, Debug, PartialEq, Eq)]
-pub(crate) struct ModuleTree {
+pub struct ModuleTree {
     mods: Arena<ModuleData>,
     links: Arena<LinkData>,
 }
@@ -214,19 +211,19 @@ impl ModuleTree {
 /// `ModuleSource` is the syntax tree element that produced this module:
 /// either a file, or an inlinde module.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum ModuleSource {
+pub enum ModuleSource {
     SourceFile(FileId),
     Module(SourceItemId),
 }
 
 /// An owned syntax node for a module. Unlike `ModuleSource`,
 /// this holds onto the AST for the whole file.
-pub(crate) enum ModuleSourceNode {
+pub enum ModuleSourceNode {
     SourceFile(ast::SourceFileNode),
     Module(ast::ModuleNode),
 }
 
-pub(crate) type ModuleId = Id<ModuleData>;
+pub type ModuleId = Id<ModuleData>;
 type LinkId = Id<LinkData>;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -308,7 +305,7 @@ impl LinkId {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub(crate) struct ModuleData {
+pub struct ModuleData {
     source: ModuleSource,
     parent: Option<LinkId>,
     children: Vec<LinkId>,
@@ -327,21 +324,21 @@ impl ModuleSource {
         ModuleSource::Module(id)
     }
 
-    pub(crate) fn as_file(self) -> Option<FileId> {
+    pub fn as_file(self) -> Option<FileId> {
         match self {
             ModuleSource::SourceFile(f) => Some(f),
             ModuleSource::Module(..) => None,
         }
     }
 
-    pub(crate) fn file_id(self) -> FileId {
+    pub fn file_id(self) -> FileId {
         match self {
             ModuleSource::SourceFile(f) => f,
             ModuleSource::Module(source_item_id) => source_item_id.file_id,
         }
     }
 
-    pub(crate) fn resolve(self, db: &impl HirDatabase) -> ModuleSourceNode {
+    pub fn resolve(self, db: &impl HirDatabase) -> ModuleSourceNode {
         match self {
             ModuleSource::SourceFile(file_id) => {
                 let syntax = db.source_file(file_id);

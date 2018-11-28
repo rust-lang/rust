@@ -6,16 +6,16 @@ use ra_syntax::{
     ast::{self, LoopBodyOwner},
     SyntaxKind::*,
 };
-
-use crate::{
-    db::RootDatabase,
-    completion::CompletionItem,
-    hir::{
+use     hir::{
         self,
         FnScopes,
         Def,
         Path,
-    },
+};
+
+use crate::{
+    db::RootDatabase,
+    completion::CompletionItem,
     Cancelable
 };
 

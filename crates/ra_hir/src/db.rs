@@ -10,14 +10,14 @@ use crate::{
     DefLoc, DefId, FnId,
     SourceFileItems, SourceItemId,
     query_definitions,
-    function::{FnScopes},
+    FnScopes,
     module::{ModuleId, ModuleTree, ModuleSource,
     nameres::{ItemMap, InputModuleItems}},
 };
 
 salsa::query_group! {
 
-pub(crate) trait HirDatabase: SyntaxDatabase
+pub trait HirDatabase: SyntaxDatabase
     + AsRef<LocationIntener<DefLoc, DefId>>
     + AsRef<LocationIntener<SourceItemId, FnId>>
 {
