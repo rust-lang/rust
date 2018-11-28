@@ -31,7 +31,7 @@ use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
 use rustc_data_structures::sync::Lrc;
-use hair::pattern::{lit_to_const, LitToConstError};
+use hair::constant::{lit_to_const, LitToConstError};
 
 #[derive(Clone)]
 pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
