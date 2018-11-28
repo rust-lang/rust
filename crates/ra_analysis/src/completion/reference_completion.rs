@@ -173,9 +173,12 @@ fn complete_path(
 
 fn complete_mod_item_snippets(acc: &mut Vec<CompletionItem>) {
     acc.push(CompletionItem {
-        label: "tfn".to_string(),
+        label: "Test function".to_string(),
         lookup: None,
-        snippet: Some("#[test]\nfn $1() {\n    $0\n}".to_string()),
+        snippet: Some("#[test]\n\
+            fn test_${1:feature}() {\n\
+               $0\n\
+            }".to_string()),
     });
     acc.push(CompletionItem {
         label: "pub(crate)".to_string(),
