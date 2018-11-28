@@ -37,15 +37,15 @@ mod range_map;
 mod mono_hash_map;
 mod stacked_borrows;
 
-use crate::fn_call::EvalContextExt as MissingFnsEvalContextExt;
-use crate::operator::EvalContextExt as OperatorEvalContextExt;
-use crate::intrinsic::EvalContextExt as IntrinsicEvalContextExt;
-use crate::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
+pub use crate::fn_call::EvalContextExt as MissingFnsEvalContextExt;
+pub use crate::operator::EvalContextExt as OperatorEvalContextExt;
+pub use crate::intrinsic::EvalContextExt as IntrinsicEvalContextExt;
+pub use crate::tls::{EvalContextExt as TlsEvalContextExt, TlsData};
 use crate::range_map::RangeMap;
 #[allow(unused_imports)] // FIXME rustc bug https://github.com/rust-lang/rust/issues/53682
-use crate::helpers::{ScalarExt, EvalContextExt as HelpersEvalContextExt};
+pub use crate::helpers::{ScalarExt, EvalContextExt as HelpersEvalContextExt};
 use crate::mono_hash_map::MonoHashMap;
-use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
+pub use crate::stacked_borrows::{EvalContextExt as StackedBorEvalContextExt};
 
 // Used by priroda
 pub use crate::stacked_borrows::{Borrow, Stack, Stacks, BorStackItem};
