@@ -174,9 +174,9 @@ fn complete_path(
 fn complete_mod_item_snippets(acc: &mut Vec<CompletionItem>) {
     acc.push(CompletionItem {
         label: "Test function".to_string(),
-        lookup: None,
+        lookup: Some("tfn".to_string()),
         snippet: Some("#[test]\n\
-            fn test_${1:feature}() {\n\
+            fn ${1:feature}() {\n\
                $0\n\
             }".to_string()),
     });

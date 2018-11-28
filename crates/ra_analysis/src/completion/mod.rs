@@ -440,7 +440,7 @@ mod tests {
                 <|>
             }
             ",
-            r##"[CompletionItem { label: "Test function", lookup: None, snippet: Some("#[test]\nfn test_${1:feature}() {\n$0\n}") },
+            r##"[CompletionItem { label: "Test function", lookup: Some("tfn"), snippet: Some("#[test]\nfn ${1:feature}() {\n$0\n}") },
                  CompletionItem { label: "pub(crate)", lookup: None, snippet: Some("pub(crate) $0") }]"##,
         );
     }
