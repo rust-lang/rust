@@ -175,10 +175,13 @@ fn complete_mod_item_snippets(acc: &mut Vec<CompletionItem>) {
     acc.push(CompletionItem {
         label: "Test function".to_string(),
         lookup: Some("tfn".to_string()),
-        snippet: Some("#[test]\n\
+        snippet: Some(
+            "#[test]\n\
             fn ${1:feature}() {\n\
                $0\n\
-            }".to_string()),
+            }"
+            .to_string()
+        ),
     });
     acc.push(CompletionItem {
         label: "pub(crate)".to_string(),
