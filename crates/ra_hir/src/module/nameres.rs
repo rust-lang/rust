@@ -44,7 +44,7 @@ pub struct ItemMap {
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct ModuleScope {
-    pub items: FxHashMap<SmolStr, Resolution>,
+    items: FxHashMap<SmolStr, Resolution>,
 }
 
 impl ModuleScope {
@@ -200,11 +200,11 @@ impl ModuleItem {
 }
 
 pub(crate) struct Resolver<'a, DB> {
-    pub db: &'a DB,
-    pub input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
-    pub source_root: SourceRootId,
-    pub module_tree: Arc<ModuleTree>,
-    pub result: ItemMap,
+    pub(crate) db: &'a DB,
+    pub(crate) input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
+    pub(crate) source_root: SourceRootId,
+    pub(crate) module_tree: Arc<ModuleTree>,
+    pub(crate) result: ItemMap,
 }
 
 impl<'a, DB> Resolver<'a, DB>
