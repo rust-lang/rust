@@ -1,11 +1,4 @@
 //! ra_db defines basic database traits. Concrete DB is defined by ra_analysis.
-
-extern crate ra_editor;
-extern crate ra_syntax;
-extern crate relative_path;
-extern crate rustc_hash;
-extern crate salsa;
-
 mod syntax_ptr;
 mod file_resolver;
 mod input;

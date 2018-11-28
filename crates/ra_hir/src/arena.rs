@@ -46,10 +46,10 @@ pub(crate) struct ArenaBehavior<T> {
 
 impl<T> id_arena::ArenaBehavior for ArenaBehavior<T> {
     type Id = Id<T>;
-    fn new_arena_id() -> usize {
+    fn new_arena_id() -> u32 {
         0
     }
-    fn new_id(_arena_id: usize, index: usize) -> Id<T> {
+    fn new_id(_arena_id: u32, index: usize) -> Id<T> {
         Id {
             idx: index as u32,
             _ty: PhantomData,
@@ -58,7 +58,7 @@ impl<T> id_arena::ArenaBehavior for ArenaBehavior<T> {
     fn index(id: Id<T>) -> usize {
         id.idx as usize
     }
-    fn arena_id(_id: Id<T>) -> usize {
+    fn arena_id(_id: Id<T>) -> u32 {
         0
     }
 }
