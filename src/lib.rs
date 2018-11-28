@@ -525,6 +525,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
     fn retag(
         ecx: &mut EvalContext<'a, 'mir, 'tcx, Self>,
         fn_entry: bool,
+        two_phase: bool,
         place: PlaceTy<'tcx, Borrow>,
     ) -> EvalResult<'tcx> {
         if !ecx.tcx.sess.opts.debugging_opts.mir_emit_retag || !Self::enforce_validity(ecx) {
@@ -535,7 +536,7 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
             // uninitialized data.
              Ok(())
         } else {
-            ecx.retag(fn_entry, place)
+            ecx.retag(fn_entry, two_phase, place)
         }
     }
 
