@@ -63,14 +63,15 @@ an AST expression). `match_def_path()` in Clippy's `utils` module can also be us
 
 ## Writing code
 
-Compiling Clippy from scratch can take almost a minute or more depending on your machine.
-However, since Rust 1.24.0 incremental compilation is enabled by default and compile times for small changes should be quick.
-
 [Llogiq's blog post on lints](https://llogiq.github.io/2015/06/04/workflows.html) is a nice primer
 to lint-writing, though it does get into advanced stuff. Most lints consist of an implementation of
 `LintPass` with one or more of its default methods overridden. See the existing lints for examples
 of this.
 
+If you want to add a new lint or change existing ones apart from bugfixing, it's
+also a good idea to give the [stability guaratees][rfc_stability] and
+[lint categories][rfc_lint_cats] sections of the [Clippy 1.0 RFC][clippy_rfc] a
+quick read.
 
 ### Author lint
 
@@ -263,3 +264,6 @@ All code in this repository is under the [Mozilla Public License, 2.0](https://w
 [toolstate_commit]: https://github.com/rust-lang-nursery/rust-toolstate/commit/6ce0459f6bfa7c528ae1886492a3e0b5ef0ee547
 [rtim]: https://github.com/kennytm/rustup-toolchain-install-master
 [rustup_component_history]: https://mexus.github.io/rustup-components-history
+[clippy_rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md
+[rfc_stability]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#stability-guarantees
+[rfc_lint_cats]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories
