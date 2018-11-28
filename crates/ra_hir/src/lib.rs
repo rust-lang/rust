@@ -15,6 +15,8 @@ macro_rules! ctry {
 }
 
 pub mod db;
+#[cfg(test)]
+mod mock;
 mod query_definitions;
 mod function;
 mod module;
