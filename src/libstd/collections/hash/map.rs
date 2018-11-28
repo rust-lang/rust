@@ -2817,8 +2817,11 @@ mod test_map {
     use super::RandomState;
     use cell::RefCell;
     use rand::{thread_rng, Rng};
+    #[cfg(try_reserve_not_implemented)]
     use realstd::collections::CollectionAllocErr::*;
+    #[cfg(try_reserve_not_implemented)]
     use realstd::mem::size_of;
+    #[cfg(try_reserve_not_implemented)]
     use realstd::usize;
 
     #[test]
