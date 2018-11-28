@@ -2,8 +2,12 @@
 
 #![feature(external_doc)]
 
-#[doc(include = "not-a-file.md")] //~ ERROR: couldn't read
-pub struct SomeStruct;
+#[doc(include = "not-a-file.md")]
+pub struct SomeStruct; //~^ ERROR couldn't read
+                       //~| HELP external doc paths are relative to the crate root
+
+#[doc(include = "auxiliary/invalid-utf8.txt")]
+pub struct InvalidUtf8; //~^ ERROR wasn't a utf-8 file
 
 #[doc(include)]
 pub struct MissingPath; //~^ ERROR expected path
