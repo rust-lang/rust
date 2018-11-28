@@ -9,15 +9,6 @@ extern crate relative_path;
 extern crate rustc_hash;
 extern crate salsa;
 
-macro_rules! ctry {
-    ($expr:expr) => {
-        match $expr {
-            None => return Ok(None),
-            Some(it) => it,
-        }
-    };
-}
-
 mod arena;
 mod db;
 mod imp;
@@ -47,7 +38,7 @@ pub use ra_editor::{
 };
 
 pub use ra_db::{
-    Canceled, Cancelable,
+    Canceled, Cancelable, FilePosition,
     CrateGraph, CrateId, FileId, FileResolver
 };
 
@@ -117,12 +108,6 @@ impl AnalysisHost {
     pub fn apply_change(&mut self, change: AnalysisChange) {
         self.imp.apply_change(change)
     }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct FilePosition {
-    pub file_id: FileId,
-    pub offset: TextUnit,
 }
 
 #[derive(Debug)]

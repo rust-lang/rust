@@ -13,7 +13,7 @@ mod loc2id;
 
 use std::sync::Arc;
 use ra_editor::LineIndex;
-use ra_syntax::SourceFileNode;
+use ra_syntax::{TextUnit, SourceFileNode};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Canceled;
@@ -80,4 +80,10 @@ fn source_file(db: &impl SyntaxDatabase, file_id: FileId) -> SourceFileNode {
 fn file_lines(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<LineIndex> {
     let text = db.file_text(file_id);
     Arc::new(LineIndex::new(&*text))
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct FilePosition {
+    pub file_id: FileId,
+    pub offset: TextUnit,
 }
