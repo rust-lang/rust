@@ -30,6 +30,7 @@ path = "src/git-rustfmt/main.rs"
 default = ["cargo-fmt", "rustfmt-format-diff"]
 cargo-fmt = []
 rustfmt-format-diff = []
+generic-simd = ["bytecount/generic-simd"]
 
 [dependencies]
 atty = "0.2"
@@ -51,7 +52,7 @@ rustc-ap-rustc_target = "297.0.0"
 rustc-ap-syntax = "297.0.0"
 rustc-ap-syntax_pos = "297.0.0"
 failure = "0.1.1"
-bytecount = { version = "0.3", features = ["simd-accel"] }
+bytecount = "0.4"
 
 # A noop dependency that changes in the Rust repository, it's a bit of a hack.
 # See the `src/tools/rustc-workspace-hack/README.md` file in `rust-lang/rust`
