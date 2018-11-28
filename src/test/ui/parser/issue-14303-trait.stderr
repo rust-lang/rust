@@ -3,6 +3,10 @@ error: lifetime parameters must be declared prior to type parameters
    |
 LL | trait Foo<'a, T, 'b> {}
    |                  ^^
+help: move the lifetime parameter prior to the first type parameter
+   |
+LL | trait Foo<'a, 'b, T> {}
+   |               ^^^ --
 
 error: aborting due to previous error
 
