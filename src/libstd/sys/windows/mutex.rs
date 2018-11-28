@@ -157,37 +157,34 @@ fn kind() -> Kind {
     return ret;
 }
 
-pub struct ReentrantMutex { inner: MaybeUninit<UnsafeCell<c::CRITICAL_SECTION>> }
+pub struct ReentrantMutex { inner: UnsafeCell<MaybeUninit<c::CRITICAL_SECTION>> }
 
 unsafe impl Send for ReentrantMutex {}
 unsafe impl Sync for ReentrantMutex {}
 
 impl ReentrantMutex {
     pub fn uninitialized() -> ReentrantMutex {
-        ReentrantMutex { inner: MaybeUninit::uninitialized() }
+        ReentrantMutex { inner: UnsafeCell::new(MaybeUninit::uninitialized()) }
     }
 
     pub unsafe fn init(&mut self) {
-        // FIXME: Technically, this is calling `get_ref` on an uninitialized
-        // `MaybeUninit`.  Revisit this once we decided whether that is valid
-        // or not.
-        c::InitializeCriticalSection(self.inner.get_ref().get());
+        c::InitializeCriticalSection(self.inner.get().as_mut_ptr());
     }
 
     pub unsafe fn lock(&self) {
-        c::EnterCriticalSection(self.inner.get_ref().get());
+        c::EnterCriticalSection(self.inner.get().get_ref());
     }
 
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        c::TryEnterCriticalSection(self.inner.get_ref().get()) != 0
+        c::TryEnterCriticalSection(self.inner.get().get_ref()) != 0
     }
 
     pub unsafe fn unlock(&self) {
-        c::LeaveCriticalSection(self.inner.get_ref().get());
+        c::LeaveCriticalSection(self.inner.get().get_ref());
     }
 
     pub unsafe fn destroy(&self) {
-        c::DeleteCriticalSection(self.inner.get_ref().get());
+        c::DeleteCriticalSection(self.inner.get().get_ref());
     }
 }
