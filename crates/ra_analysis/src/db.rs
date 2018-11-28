@@ -1,6 +1,4 @@
 use std::sync::Arc;
-#[cfg(test)]
-use parking_lot::Mutex;
 use salsa::{self, Database};
 use ra_db::{LocationIntener, BaseDatabase};
 use hir::{self, DefId, DefLoc, FnId, SourceItemId};
@@ -11,11 +9,6 @@ use crate::{
 
 #[derive(Debug)]
 pub(crate) struct RootDatabase {
-    #[cfg(test)]
-    events: Mutex<Option<Vec<salsa::Event<RootDatabase>>>>,
-    #[cfg(not(test))]
-    events: (),
-
     runtime: salsa::Runtime<RootDatabase>,
     id_maps: Arc<IdMaps>,
 }
@@ -30,23 +23,11 @@ impl salsa::Database for RootDatabase {
     fn salsa_runtime(&self) -> &salsa::Runtime<RootDatabase> {
         &self.runtime
     }
-
-    #[allow(unused)]
-    fn salsa_event(&self, event: impl Fn() -> salsa::Event<RootDatabase>) {
-        #[cfg(test)]
-        {
-            let mut events = self.events.lock();
-            if let Some(events) = &mut *events {
-                events.push(event());
-            }
-        }
-    }
 }
 
 impl Default for RootDatabase {
     fn default() -> RootDatabase {
         let mut db = RootDatabase {
-            events: Default::default(),
             runtime: salsa::Runtime::default(),
             id_maps: Default::default(),
         };
@@ -63,7 +44,6 @@ impl Default for RootDatabase {
 impl salsa::ParallelDatabase for RootDatabase {
     fn snapshot(&self) -> salsa::Snapshot<RootDatabase> {
         salsa::Snapshot::new(RootDatabase {
-            events: Default::default(),
             runtime: self.runtime.snapshot(self),
             id_maps: self.id_maps.clone(),
         })
@@ -81,29 +61,6 @@ impl AsRef<LocationIntener<DefLoc, DefId>> for RootDatabase {
 impl AsRef<LocationIntener<hir::SourceItemId, FnId>> for RootDatabase {
     fn as_ref(&self) -> &LocationIntener<hir::SourceItemId, FnId> {
         &self.id_maps.fns
-    }
-}
-
-#[cfg(test)]
-impl RootDatabase {
-    pub(crate) fn log(&self, f: impl FnOnce()) -> Vec<salsa::Event<RootDatabase>> {
-        *self.events.lock() = Some(Vec::new());
-        f();
-        let events = self.events.lock().take().unwrap();
-        events
-    }
-
-    pub(crate) fn log_executed(&self, f: impl FnOnce()) -> Vec<String> {
-        let events = self.log(f);
-        events
-            .into_iter()
-            .filter_map(|e| match e.kind {
-                // This pretty horrible, but `Debug` is the only way to inspect
-                // QueryDescriptor at the moment.
-                salsa::EventKind::WillExecute { descriptor } => Some(format!("{:?}", descriptor)),
-                _ => None,
-            })
-            .collect()
     }
 }
 
