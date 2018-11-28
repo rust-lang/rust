@@ -23,7 +23,7 @@ use hair::util::UserAnnotatedTyHelpers;
 use rustc::mir::{fmt_const_val, Field, BorrowKind, Mutability};
 use rustc::mir::{ProjectionElem, UserTypeAnnotation, UserTypeProjection, UserTypeProjections};
 use rustc::mir::interpret::{Scalar, GlobalId, ConstValue, sign_extend};
-use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty};
+use rustc::ty::{self, Region, TyCtxt, AdtDef, Ty, ParamEnv};
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::layout::VariantIdx;
 use rustc::hir::{self, PatKind, RangeEnd};
@@ -891,12 +891,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         );
                         *self.const_to_pat(instance, val, expr.hir_id, lit.span).kind
                     },
-                    Err(e) => {
-                        if e == LitToConstError::UnparseableFloat {
-                            self.errors.push(PatternError::FloatBug);
-                        }
+                    Err(LitToConstError::UnparseableFloat) => {
+                        self.errors.push(PatternError::FloatBug);
                         PatternKind::Wild
                     },
+                    Err(LitToConstError::Reported) => PatternKind::Wild,
                 }
             },
             hir::ExprKind::Path(ref qpath) => *self.lower_path(qpath, expr.hir_id, expr.span).kind,
@@ -914,12 +913,11 @@ impl<'a, 'tcx> PatternContext<'a, 'tcx> {
                         );
                         *self.const_to_pat(instance, val, expr.hir_id, lit.span).kind
                     },
-                    Err(e) => {
-                        if e == LitToConstError::UnparseableFloat {
-                            self.errors.push(PatternError::FloatBug);
-                        }
+                    Err(LitToConstError::UnparseableFloat) => {
+                        self.errors.push(PatternError::FloatBug);
                         PatternKind::Wild
                     },
+                    Err(LitToConstError::Reported) => PatternKind::Wild,
                 }
             }
             _ => span_bug!(expr.span, "not a literal: {:?}", expr),
@@ -1296,18 +1294,31 @@ pub fn compare_const_vals<'a, 'tcx>(
 }
 
 #[derive(PartialEq)]
-enum LitToConstError {
+pub enum LitToConstError {
     UnparseableFloat,
-    Propagated,
+    Reported,
 }
 
-// FIXME: Combine with rustc_mir::hair::cx::const_eval_literal
-fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
-                          tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                          ty: Ty<'tcx>,
-                          neg: bool)
-                          -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {
+pub fn lit_to_const<'a, 'gcx, 'tcx>(
+    lit: &'tcx ast::LitKind,
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    ty: Ty<'tcx>,
+    neg: bool,
+) -> Result<&'tcx ty::Const<'tcx>, LitToConstError> {
     use syntax::ast::*;
+
+    let trunc = |n| {
+        let param_ty = ParamEnv::reveal_all().and(tcx.lift_to_global(&ty).unwrap());
+        let width = tcx.layout_of(param_ty).map_err(|_| LitToConstError::Reported)?.size;
+        trace!("trunc {} with size {} and shift {}", n, width.bits(), 128 - width.bits());
+        let shift = 128 - width.bits();
+        let result = (n << shift) >> shift;
+        trace!("trunc result: {}", result);
+        Ok(ConstValue::Scalar(Scalar::Bits {
+            bits: result,
+            size: width.bytes() as u8,
+        }))
+    };
 
     use rustc::mir::interpret::*;
     let lit = match *lit {
@@ -1324,48 +1335,12 @@ fn lit_to_const<'a, 'tcx>(lit: &'tcx ast::LitKind,
             bits: n as u128,
             size: 1,
         }),
-        LitKind::Int(n, _) => {
-            enum Int {
-                Signed(IntTy),
-                Unsigned(UintTy),
-            }
-            let ity = match ty.sty {
-                ty::Int(IntTy::Isize) => Int::Signed(tcx.sess.target.isize_ty),
-                ty::Int(other) => Int::Signed(other),
-                ty::Uint(UintTy::Usize) => Int::Unsigned(tcx.sess.target.usize_ty),
-                ty::Uint(other) => Int::Unsigned(other),
-                ty::Error => { // Avoid ICE (#51963)
-                    return Err(LitToConstError::Propagated);
-                }
-                _ => bug!("literal integer type with bad type ({:?})", ty.sty),
-            };
-            // This converts from LitKind::Int (which is sign extended) to
-            // Scalar::Bytes (which is zero extended)
-            let n = match ity {
-                // FIXME(oli-obk): are these casts correct?
-                Int::Signed(IntTy::I8) if neg =>
-                    (n as i8).overflowing_neg().0 as u8 as u128,
-                Int::Signed(IntTy::I16) if neg =>
-                    (n as i16).overflowing_neg().0 as u16 as u128,
-                Int::Signed(IntTy::I32) if neg =>
-                    (n as i32).overflowing_neg().0 as u32 as u128,
-                Int::Signed(IntTy::I64) if neg =>
-                    (n as i64).overflowing_neg().0 as u64 as u128,
-                Int::Signed(IntTy::I128) if neg =>
-                    (n as i128).overflowing_neg().0 as u128,
-                Int::Signed(IntTy::I8) | Int::Unsigned(UintTy::U8) => n as u8 as u128,
-                Int::Signed(IntTy::I16) | Int::Unsigned(UintTy::U16) => n as u16 as u128,
-                Int::Signed(IntTy::I32) | Int::Unsigned(UintTy::U32) => n as u32 as u128,
-                Int::Signed(IntTy::I64) | Int::Unsigned(UintTy::U64) => n as u64 as u128,
-                Int::Signed(IntTy::I128)| Int::Unsigned(UintTy::U128) => n,
-                _ => bug!(),
-            };
-            let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size.bytes() as u8;
-            ConstValue::Scalar(Scalar::Bits {
-                bits: n,
-                size,
-            })
+        LitKind::Int(n, _) if neg => {
+            let n = n as i128;
+            let n = n.overflowing_neg().0;
+            trunc(n as u128)?
         },
+        LitKind::Int(n, _) => trunc(n)?,
         LitKind::Float(n, fty) => {
             parse_float(n, fty, neg).map_err(|_| LitToConstError::UnparseableFloat)?
         }
