@@ -31,6 +31,7 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::{self, Pat, PatKind};
 
+use smallvec::smallvec;
 use std::slice;
 
 use syntax::ast;
@@ -250,7 +251,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                 .iter()
                 .filter(|&&(_, guard)| guard.is_none())
                 .flat_map(|arm| &arm.0)
-                .map(|pat| vec![pat.0])
+                .map(|pat| smallvec![pat.0])
                 .collect();
             let scrut_ty = self.tables.node_id_to_type(scrut.hir_id);
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix);
@@ -274,7 +275,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                                                 self.tables);
             let pattern = patcx.lower_pattern(pat);
             let pattern_ty = pattern.ty;
-            let pats: Matrix = vec![vec![
+            let pats: Matrix = vec![smallvec![
                 expand_pattern(cx, pattern)
             ]].into_iter().collect();
 
@@ -367,7 +368,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     let mut printed_if_let_err = false;
     for (arm_index, &(ref pats, guard)) in arms.iter().enumerate() {
         for &(pat, hir_pat) in pats {
-            let v = vec![pat];
+            let v = smallvec![pat];
 
             match is_useful(cx, &seen, &v, LeaveOutWitness) {
                 NotUseful => {
@@ -462,10 +463,10 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     }
 }
 
-fn check_exhaustive<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
+fn check_exhaustive<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                               scrut_ty: Ty<'tcx>,
                               sp: Span,
-                              matrix: &Matrix<'a, 'tcx>) {
+                              matrix: &Matrix<'p, 'tcx>) {
     let wild_pattern = Pattern {
         ty: scrut_ty,
         span: DUMMY_SP,

@@ -190,6 +190,7 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use arena::TypedArena;
 
+use smallvec::{SmallVec, smallvec};
 use std::cmp::{self, Ordering, min, max};
 use std::fmt;
 use std::iter::{FromIterator, IntoIterator};
@@ -237,14 +238,16 @@ impl<'tcx> Pattern<'tcx> {
     }
 }
 
-pub struct Matrix<'a, 'tcx: 'a>(Vec<Vec<&'a Pattern<'tcx>>>);
+/// A 2D matrix. Nx1 matrices are very common, which is why `SmallVec[_; 2]`
+/// works well for each row.
+pub struct Matrix<'p, 'tcx: 'p>(Vec<SmallVec<[&'p Pattern<'tcx>; 2]>>);
 
-impl<'a, 'tcx> Matrix<'a, 'tcx> {
+impl<'p, 'tcx> Matrix<'p, 'tcx> {
     pub fn empty() -> Self {
         Matrix(vec![])
     }
 
-    pub fn push(&mut self, row: Vec<&'a Pattern<'tcx>>) {
+    pub fn push(&mut self, row: SmallVec<[&'p Pattern<'tcx>; 2]>) {
         self.0.push(row)
     }
 }
@@ -261,7 +264,7 @@ impl<'a, 'tcx> Matrix<'a, 'tcx> {
 /// ++++++++++++++++++++++++++
 /// + _     + [_, _, ..tail] +
 /// ++++++++++++++++++++++++++
-impl<'a, 'tcx> fmt::Debug for Matrix<'a, 'tcx> {
+impl<'p, 'tcx> fmt::Debug for Matrix<'p, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "\n")?;
 
@@ -293,8 +296,9 @@ impl<'a, 'tcx> fmt::Debug for Matrix<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> FromIterator<Vec<&'a Pattern<'tcx>>> for Matrix<'a, 'tcx> {
-    fn from_iter<T: IntoIterator<Item=Vec<&'a Pattern<'tcx>>>>(iter: T) -> Self
+impl<'p, 'tcx> FromIterator<SmallVec<[&'p Pattern<'tcx>; 2]>> for Matrix<'p, 'tcx> {
+    fn from_iter<T>(iter: T) -> Self
+        where T: IntoIterator<Item=SmallVec<[&'p Pattern<'tcx>; 2]>>
     {
         Matrix(iter.into_iter().collect())
     }
@@ -998,7 +1002,7 @@ fn compute_missing_ctors<'a, 'tcx: 'a>(
 /// matrix isn't exhaustive).
 pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                        matrix: &Matrix<'p, 'tcx>,
-                                       v: &[&'p Pattern<'tcx>],
+                                       v: &[&Pattern<'tcx>],
                                        witness: WitnessPreference)
                                        -> Usefulness<'tcx> {
     let &Matrix(ref rows) = matrix;
@@ -1108,7 +1112,7 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         } else {
             let matrix = rows.iter().filter_map(|r| {
                 if r[0].is_wildcard() {
-                    Some(r[1..].to_vec())
+                    Some(SmallVec::from_slice(&r[1..]))
                 } else {
                     None
                 }
@@ -1199,10 +1203,10 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
 /// A shorthand for the `U(S(c, P), S(c, q))` operation from the paper. I.e., `is_useful` applied
 /// to the specialised version of both the pattern matrix `P` and the new pattern `q`.
-fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
+fn is_useful_specialized<'p, 'a: 'p, 'tcx: 'a>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     &Matrix(ref m): &Matrix<'p, 'tcx>,
-    v: &[&'p Pattern<'tcx>],
+    v: &[&Pattern<'tcx>],
     ctor: Constructor<'tcx>,
     lty: Ty<'tcx>,
     witness: WitnessPreference,
@@ -1521,7 +1525,7 @@ fn constructor_intersects_pattern<'p, 'a: 'p, 'tcx: 'a>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ctor: &Constructor<'tcx>,
     pat: &'p Pattern<'tcx>,
-) -> Option<Vec<&'p Pattern<'tcx>>> {
+) -> Option<SmallVec<[&'p Pattern<'tcx>; 2]>> {
     if should_treat_range_exhaustively(tcx, ctor) {
         match (IntRange::from_ctor(tcx, ctor), IntRange::from_pat(tcx, pat)) {
             (Some(ctor), Some(pat)) => {
@@ -1529,7 +1533,7 @@ fn constructor_intersects_pattern<'p, 'a: 'p, 'tcx: 'a>(
                     let (pat_lo, pat_hi) = pat.range.into_inner();
                     let (ctor_lo, ctor_hi) = ctor.range.into_inner();
                     assert!(pat_lo <= ctor_lo && ctor_hi <= pat_hi);
-                    vec![]
+                    smallvec![]
                 })
             }
             _ => None,
@@ -1539,7 +1543,7 @@ fn constructor_intersects_pattern<'p, 'a: 'p, 'tcx: 'a>(
         // conveniently handled by `IntRange`. For these cases, the constructor may not be a range
         // so intersection actually devolves into being covered by the pattern.
         match constructor_covered_by_range(tcx, ctor, pat) {
-            Ok(true) => Some(vec![]),
+            Ok(true) => Some(smallvec![]),
             Ok(false) | Err(ErrorReported) => None,
         }
     }
@@ -1610,9 +1614,9 @@ fn constructor_covered_by_range<'a, 'tcx>(
 fn patterns_for_variant<'p, 'a: 'p, 'tcx: 'a>(
     subpatterns: &'p [FieldPattern<'tcx>],
     wild_patterns: &[&'p Pattern<'tcx>])
-    -> Vec<&'p Pattern<'tcx>>
+    -> SmallVec<[&'p Pattern<'tcx>; 2]>
 {
-    let mut result = wild_patterns.to_owned();
+    let mut result = SmallVec::from_slice(wild_patterns);
 
     for subpat in subpatterns {
         result[subpat.field.index()] = &subpat.pattern;
@@ -1635,15 +1639,16 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
     r: &[&'p Pattern<'tcx>],
     constructor: &Constructor<'tcx>,
     wild_patterns: &[&'p Pattern<'tcx>],
-) -> Option<Vec<&'p Pattern<'tcx>>> {
+) -> Option<SmallVec<[&'p Pattern<'tcx>; 2]>> {
     let pat = &r[0];
 
-    let head: Option<Vec<&Pattern>> = match *pat.kind {
-        PatternKind::AscribeUserType { ref subpattern, .. } =>
-            specialize(cx, ::std::slice::from_ref(&subpattern), constructor, wild_patterns),
+    let head = match *pat.kind {
+        PatternKind::AscribeUserType { ref subpattern, .. } => {
+            specialize(cx, ::std::slice::from_ref(&subpattern), constructor, wild_patterns)
+        }
 
         PatternKind::Binding { .. } | PatternKind::Wild => {
-            Some(wild_patterns.to_owned())
+            Some(SmallVec::from_slice(wild_patterns))
         }
 
         PatternKind::Variant { adt_def, variant_index, ref subpatterns, .. } => {
@@ -1660,7 +1665,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
         }
 
         PatternKind::Deref { ref subpattern } => {
-            Some(vec![subpattern])
+            Some(smallvec![subpattern])
         }
 
         PatternKind::Constant { value } => {
@@ -1696,7 +1701,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     if wild_patterns.len() as u64 == n {
                         // convert a constant slice/array pattern to a list of patterns.
                         match (n, opt_ptr) {
-                            (0, _) => Some(Vec::new()),
+                            (0, _) => Some(SmallVec::new()),
                             (_, Some(ptr)) => {
                                 let alloc = cx.tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id);
                                 let layout = cx.tcx.layout_of(cx.param_env.and(ty)).ok()?;
@@ -1765,7 +1770,7 @@ fn specialize<'p, 'a: 'p, 'tcx: 'a>(
                     match slice_pat_covered_by_constructor(
                         cx.tcx, pat.span, constructor, prefix, slice, suffix
                             ) {
-                        Ok(true) => Some(vec![]),
+                        Ok(true) => Some(smallvec![]),
                         Ok(false) => None,
                         Err(ErrorReported) => None
                     }
