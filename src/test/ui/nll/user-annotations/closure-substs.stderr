@@ -7,6 +7,10 @@ LL | fn foo<'a>() {
 LL |         return x;
    |                ^ returning this value requires that `'a` must outlive `'static`
 
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
+
 error: lifetime may not live long enough
   --> $DIR/closure-substs.rs:15:16
    |
@@ -23,6 +27,10 @@ LL | fn bar<'a>() {
 ...
 LL |         b(x);
    |         ^^^^ argument requires that `'a` must outlive `'static`
+
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
 
 error[E0521]: borrowed data escapes outside of closure
   --> $DIR/closure-substs.rs:29:9

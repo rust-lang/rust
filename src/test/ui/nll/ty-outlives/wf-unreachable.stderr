@@ -7,6 +7,10 @@ LL |     return;
 LL |     let x: &'static &'a ();
    |            ^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
+
 error: lifetime may not live long enough
   --> $DIR/wf-unreachable.rs:13:12
    |
@@ -16,6 +20,10 @@ LL |     return;
 LL |     let x: &'static &'a () = &&();
    |            ^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
+
 error: lifetime may not live long enough
   --> $DIR/wf-unreachable.rs:17:12
    |
@@ -23,6 +31,10 @@ LL | fn uninit_infer<'a>() {
    |                 -- lifetime `'a` defined here
 LL |     let x: &'static &'a _;
    |            ^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
 
 error: lifetime may not live long enough
   --> $DIR/wf-unreachable.rs:23:12
@@ -33,6 +45,10 @@ LL |     return;
 LL |     let x: &'static &'a _ = &&();
    |            ^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
+
 error: lifetime may not live long enough
   --> $DIR/wf-unreachable.rs:28:12
    |
@@ -41,6 +57,10 @@ LL | fn uninit_no_var<'a>() {
 LL |     return;
 LL |     let _: &'static &'a ();
    |            ^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
 
 error: lifetime may not live long enough
   --> $DIR/wf-unreachable.rs:33:12
@@ -51,6 +71,10 @@ LL |     return;
 LL |     let _: &'static &'a () = &&();
    |            ^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
+
 error: lifetime may not live long enough
   --> $DIR/wf-unreachable.rs:38:12
    |
@@ -60,6 +84,10 @@ LL |     return;
 LL |     let _: &'static &'a _ = &&();
    |            ^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
+
 error: lifetime may not live long enough
   --> $DIR/wf-unreachable.rs:51:12
    |
@@ -68,6 +96,10 @@ LL | fn required_substs<'a>() {
 LL |     return;
 LL |     let _: C<'static, 'a, _> = C((), &(), &());
    |            ^^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+
+help: the following changes may resolve your lifetime errors
+   |
+   = help: replace `'a` with `'static`
 
 error: aborting due to 8 previous errors
 

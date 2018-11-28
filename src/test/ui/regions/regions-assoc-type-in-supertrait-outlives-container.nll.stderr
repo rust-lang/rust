@@ -9,5 +9,9 @@ LL | fn with_assoc<'a,'b>() {
 LL |     let _: &'a WithAssoc<TheType<'b>> = loop { };
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
 
+help: the following changes may resolve your lifetime errors
+   |
+   = help: add bound `'b: 'a`
+
 error: aborting due to previous error
 

@@ -367,7 +367,7 @@ fn do_mir_borrowck<'a, 'tcx>(
     }
 
     if !mbcx.errors_buffer.is_empty() {
-        mbcx.errors_buffer.sort_by_key(|diag| diag.span.primary_span());
+        mbcx.errors_buffer.sort_by_key(|diag| diag.sort_span);
 
         for diag in mbcx.errors_buffer.drain(..) {
             mbcx.infcx.tcx.sess.diagnostic().emit_diagnostic(&diag);

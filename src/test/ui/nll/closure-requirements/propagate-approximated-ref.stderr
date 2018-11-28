@@ -43,5 +43,9 @@ LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
 LL |         demand_y(x, y, x.get())
    |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'a` must outlive `'b`
 
+help: the following changes may resolve your lifetime errors
+   |
+   = help: add bound `'a: 'b`
+
 error: aborting due to previous error
 
