@@ -122,7 +122,7 @@ impl Group {
     /// - `FULL => DELETED`
     #[inline]
     pub fn convert_special_to_empty_and_full_to_deleted(&self) -> Group {
-        let special = self.0 & repeat(0x80);
-        Group(special + (!special >> 7))
+        let full = !self.0 & repeat(0x80);
+        Group(!full + (full >> 7))
     }
 }
