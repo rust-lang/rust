@@ -1573,7 +1573,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             .collect();
 
         // ensure that we issue lints in a repeatable order
-        def_ids.sort_by_key(|&def_id| self.tcx.def_path_hash(def_id));
+        def_ids.sort_by_cached_key(|&def_id| self.tcx.def_path_hash(def_id));
 
         for def_id in def_ids {
             debug!(
