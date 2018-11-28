@@ -20,7 +20,6 @@ macro_rules! ctry {
 
 mod arena;
 mod db;
-mod loc2id;
 mod imp;
 mod completion;
 mod hir;

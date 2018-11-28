@@ -11,12 +11,11 @@ use ra_syntax::{
 };
 
 use crate::{
-    hir::{HirDatabase, SourceItemId},
+    hir::{FnId, HirDatabase, SourceItemId},
     FileId,
 };
 
 pub(crate) use self::scope::FnScopes;
-pub(crate) use crate::loc2id::FnId;
 
 impl FnId {
     pub(crate) fn get(db: &impl HirDatabase, file_id: FileId, fn_def: ast::FnDef) -> FnId {

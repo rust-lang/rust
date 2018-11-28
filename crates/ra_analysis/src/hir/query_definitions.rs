@@ -13,9 +13,10 @@ use ra_db::SourceRootId;
 use crate::{
     FileId, Cancelable,
     hir::{
+        FnId,
         SourceFileItems, SourceItemId,
         db::HirDatabase,
-        function::{FnId, FnScopes},
+        function::FnScopes,
         module::{
             ModuleSource, ModuleSourceNode, ModuleId,
             imp::Submodule,

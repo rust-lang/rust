@@ -15,9 +15,8 @@ use relative_path::RelativePathBuf;
 
 use crate::{
     FileId, FilePosition, Cancelable,
-    hir::{Path, PathKind, HirDatabase, SourceItemId},
+    hir::{DefLoc, DefId, Path, PathKind, HirDatabase, SourceItemId},
     arena::{Arena, Id},
-    loc2id::{DefLoc, DefId},
 };
 
 pub(crate) use self::nameres::ModuleScope;

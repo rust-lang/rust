@@ -9,13 +9,13 @@ use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase};
 use crate::{
     FileId,
     hir::{
+        DefLoc, DefId, FnId,
         SourceFileItems, SourceItemId,
         query_definitions,
         function::{FnScopes},
         module::{ModuleId, ModuleTree, ModuleSource,
         nameres::{ItemMap, InputModuleItems}},
     },
-    loc2id::{DefLoc, DefId, FnId},
     Cancelable,
 };
 

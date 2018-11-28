@@ -28,8 +28,8 @@ use ra_db::SourceRootId;
 
 use crate::{
     Cancelable, FileId,
-    loc2id::{DefId, DefLoc},
     hir::{
+        DefId, DefLoc,
         SourceItemId, SourceFileItemId, SourceFileItems,
         Path, PathKind,
         HirDatabase,

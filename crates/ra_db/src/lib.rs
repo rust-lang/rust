@@ -38,6 +38,20 @@ pub use crate::{
     loc2id::{LocationIntener, NumericId},
 };
 
+#[macro_export]
+macro_rules! impl_numeric_id {
+    ($id:ident) => {
+        impl $crate::NumericId for $id {
+            fn from_u32(id: u32) -> Self {
+                $id(id)
+            }
+            fn to_u32(self) -> u32 {
+                self.0
+            }
+        }
+    };
+}
+
 pub trait BaseDatabase: salsa::Database {
     fn check_canceled(&self) -> Cancelable<()> {
         if self.salsa_runtime().is_current_revision_canceled() {

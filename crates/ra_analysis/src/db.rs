@@ -5,9 +5,8 @@ use salsa::{self, Database};
 use ra_db::{LocationIntener, BaseDatabase};
 
 use crate::{
-    hir,
+    hir::{self, DefId, DefLoc, FnId, SourceItemId},
     symbol_index,
-    loc2id::{IdMaps, DefId, DefLoc, FnId},
 };
 
 #[derive(Debug)]
@@ -19,6 +18,12 @@ pub(crate) struct RootDatabase {
 
     runtime: salsa::Runtime<RootDatabase>,
     id_maps: Arc<IdMaps>,
+}
+
+#[derive(Debug, Default)]
+struct IdMaps {
+    fns: LocationIntener<SourceItemId, FnId>,
+    defs: LocationIntener<DefLoc, DefId>,
 }
 
 impl salsa::Database for RootDatabase {
