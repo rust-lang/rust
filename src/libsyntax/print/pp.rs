@@ -309,10 +309,12 @@ impl<'a> Printer<'a> {
     pub fn last_token(&mut self) -> Token {
         self.buf[self.right].token.clone()
     }
-    /// be very careful with this!
+
+    /// Be very careful with this!
     pub fn replace_last_token(&mut self, t: Token) {
         self.buf[self.right].token = t;
     }
+
     pub fn pretty_print(&mut self, token: Token) -> io::Result<()> {
         debug!("pp Vec<{},{}>", self.left, self.right);
         match token {
@@ -387,6 +389,7 @@ impl<'a> Printer<'a> {
             }
         }
     }
+
     pub fn check_stream(&mut self) -> io::Result<()> {
         debug!("check_stream Vec<{}, {}> with left_total={}, right_total={}",
                self.left, self.right, self.left_total, self.right_total);
@@ -405,19 +408,24 @@ impl<'a> Printer<'a> {
         }
         Ok(())
     }
+
     pub fn scan_push(&mut self, x: usize) {
         debug!("scan_push {}", x);
         self.scan_stack.push_front(x);
     }
+
     pub fn scan_pop(&mut self) -> usize {
         self.scan_stack.pop_front().unwrap()
     }
+
     pub fn scan_top(&mut self) -> usize {
         *self.scan_stack.front().unwrap()
     }
+
     pub fn scan_pop_bottom(&mut self) -> usize {
         self.scan_stack.pop_back().unwrap()
     }
+
     pub fn advance_right(&mut self) {
         self.right += 1;
         self.right %= self.buf_max_len;
@@ -427,6 +435,7 @@ impl<'a> Printer<'a> {
         }
         assert_ne!(self.right, self.left);
     }
+
     pub fn advance_left(&mut self) -> io::Result<()> {
         debug!("advance_left Vec<{},{}>, sizeof({})={}", self.left, self.right,
                self.left, self.buf[self.left].size);
@@ -461,6 +470,7 @@ impl<'a> Printer<'a> {
 
         Ok(())
     }
+
     pub fn check_stack(&mut self, k: isize) {
         if !self.scan_stack.is_empty() {
             let x = self.scan_top();
@@ -488,6 +498,7 @@ impl<'a> Printer<'a> {
             }
         }
     }
+
     pub fn print_newline(&mut self, amount: isize) -> io::Result<()> {
         debug!("NEWLINE {}", amount);
         let ret = write!(self.out, "\n");
@@ -495,10 +506,12 @@ impl<'a> Printer<'a> {
         self.indent(amount);
         ret
     }
+
     pub fn indent(&mut self, amount: isize) {
         debug!("INDENT {}", amount);
         self.pending_indentation += amount;
     }
+
     pub fn get_top(&mut self) -> PrintStackElem {
         match self.print_stack.last() {
             Some(el) => *el,
@@ -508,6 +521,7 @@ impl<'a> Printer<'a> {
             }
         }
     }
+
     pub fn print_str(&mut self, s: &str) -> io::Result<()> {
         while self.pending_indentation > 0 {
             write!(self.out, " ")?;
@@ -515,6 +529,7 @@ impl<'a> Printer<'a> {
         }
         write!(self.out, "{}", s)
     }
+
     pub fn print(&mut self, token: Token, l: isize) -> io::Result<()> {
         debug!("print {} {} (remaining line space={})", token, l,
                self.space);
@@ -631,14 +646,6 @@ impl<'a> Printer<'a> {
 
     pub fn word(&mut self, wrd: &str) -> io::Result<()> {
         self.pretty_print(Token::String(wrd.to_string(), wrd.len() as isize))
-    }
-
-    pub fn huge_word(&mut self, wrd: &str) -> io::Result<()> {
-        self.pretty_print(Token::String(wrd.to_string(), SIZE_INFINITY))
-    }
-
-    pub fn zero_word(&mut self, wrd: &str) -> io::Result<()> {
-        self.pretty_print(Token::String(wrd.to_string(), 0))
     }
 
     fn spaces(&mut self, n: usize) -> io::Result<()> {
