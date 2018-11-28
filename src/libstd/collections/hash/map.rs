@@ -3337,7 +3337,7 @@ mod test_map {
         let mut m = HashMap::new();
 
         assert_eq!(m.len(), 0);
-        assert_eq!(m.raw_capacity(), 0);
+        assert_eq!(m.raw_capacity(), 1);
         assert!(m.is_empty());
 
         m.insert(0, 0);
@@ -3377,7 +3377,7 @@ mod test_map {
         m.shrink_to_fit();
         assert_eq!(m.raw_capacity(), raw_cap);
         // again, a little more than half full
-        for _ in 0..raw_cap / 2 - 1 {
+        for _ in 0..raw_cap / 2 {
             i -= 1;
             m.remove(&i);
         }
