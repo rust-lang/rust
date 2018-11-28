@@ -343,6 +343,24 @@ fn wf_clause_for_ref<'tcx>(
     tcx.mk_clauses(iter::once(wf_clause))
 }
 
+fn wf_clause_for_fn_def<'tcx>(
+    tcx: ty::TyCtxt<'_, '_, 'tcx>,
+    def_id: DefId
+) -> Clauses<'tcx> {
+    let fn_def = generic_types::fn_def(tcx, def_id);
+
+    let wf_clause = ProgramClause {
+        goal: DomainGoal::WellFormed(WellFormed::Ty(fn_def)),
+        hypotheses: ty::List::empty(),
+        category: ProgramClauseCategory::WellFormed,
+    };
+    let wf_clause = Clause::ForAll(ty::Binder::bind(wf_clause));
+
+    // `forall <T1, ..., Tn+1> { WellFormed(fn some_fn(T1, ..., Tn) -> Tn+1). }`
+    // where `def_id` maps to the `some_fn` function definition
+    tcx.mk_clauses(iter::once(wf_clause))
+}
+
 impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
     pub(super) fn program_clauses_impl(
         &self,
@@ -506,6 +524,8 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                     // WF if `sub_ty` outlives `region`.
                     ty::Ref(_, _, mutbl) => wf_clause_for_ref(self.infcx.tcx, mutbl),
 
+                    ty::FnDef(def_id, ..) => wf_clause_for_fn_def(self.infcx.tcx, def_id),
+
                     ty::Dynamic(..) => {
                         // FIXME: no rules yet for trait objects
                         ty::List::empty()
@@ -515,8 +535,8 @@ impl ChalkInferenceContext<'cx, 'gcx, 'tcx> {
                         self.infcx.tcx.program_clauses_for(def.did)
                     }
 
+                    // FIXME: these are probably wrong
                     ty::Foreign(def_id) |
-                    ty::FnDef(def_id, ..) |
                     ty::Closure(def_id, ..) |
                     ty::Generator(def_id, ..) |
                     ty::Opaque(def_id, ..) => {
