@@ -4,5 +4,29 @@ error: couldn't read $DIR/not-a-file.md: $FILE_NOT_FOUND_MSG (os error 2)
 LL | #[doc(include = "not-a-file.md")] //~ ERROR: couldn't read
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: expected path to external documentation
+  --> $DIR/external-doc-error.rs:8:7
+   |
+LL | #[doc(include)]
+   |       ^^^^^^^ help: provide a file path with `=`: `include = "<path>"`
+
+error: expected path to external documentation
+  --> $DIR/external-doc-error.rs:13:7
+   |
+LL | #[doc(include("../README.md"))]
+   |       ^^^^^^^^^^^^^^^^^^^^^^^ help: provide a file path with `=`: `include = "../README.md"`
+
+error: expected path to external documentation
+  --> $DIR/external-doc-error.rs:18:7
+   |
+LL | #[doc(include = 123)]
+   |       ^^^^^^^^^^^^^ help: provide a file path with `=`: `include = "<path>"`
+
+error: expected path to external documentation
+  --> $DIR/external-doc-error.rs:23:7
+   |
+LL | #[doc(include(123))]
+   |       ^^^^^^^^^^^^ help: provide a file path with `=`: `include = "<path>"`
+
+error: aborting due to 5 previous errors
 
