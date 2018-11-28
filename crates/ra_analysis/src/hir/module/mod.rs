@@ -10,12 +10,12 @@ use ra_syntax::{
     ast::{self, AstNode, NameOwner},
     SmolStr, SyntaxNode,
 };
+use ra_db::SourceRootId;
 use relative_path::RelativePathBuf;
 
 use crate::{
     FileId, FilePosition, Cancelable,
     hir::{Path, PathKind, HirDatabase, SourceItemId},
-    input::SourceRootId,
     arena::{Arena, Id},
     loc2id::{DefLoc, DefId},
 };

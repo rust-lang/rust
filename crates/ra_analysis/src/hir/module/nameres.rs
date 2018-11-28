@@ -19,12 +19,12 @@ use std::{
 };
 
 use rustc_hash::FxHashMap;
-
 use ra_syntax::{
     TextRange,
     SmolStr, SyntaxKind::{self, *},
     ast::{self, AstNode}
 };
+use ra_db::SourceRootId;
 
 use crate::{
     Cancelable, FileId,
@@ -35,7 +35,6 @@ use crate::{
         HirDatabase,
         module::{ModuleId, ModuleTree},
     },
-    input::SourceRootId,
 };
 
 /// Item map is the result of the name resolution. Item map contains, for each
@@ -342,11 +341,11 @@ where
 
 #[cfg(test)]
 mod tests {
+    use ra_db::FilesDatabase;
     use crate::{
         AnalysisChange,
         mock_analysis::{MockAnalysis, analysis_and_position},
         hir::{self, HirDatabase},
-        input::FilesDatabase,
 };
     use super::*;
 

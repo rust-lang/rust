@@ -9,13 +9,12 @@ use ra_syntax::{
     SourceFileNode,
     SyntaxKind::{self, *},
 };
+use ra_db::{SyntaxDatabase, SourceRootId};
 use rayon::prelude::*;
 
 use crate::{
     Cancelable,
     FileId, Query,
-    db::SyntaxDatabase,
-    input::SourceRootId,
 };
 
 salsa::query_group! {

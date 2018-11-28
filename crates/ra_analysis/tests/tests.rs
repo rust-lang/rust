@@ -126,7 +126,7 @@ fn test_resolve_crate_root() {
     let mut host = mock.analysis_host();
     assert!(host.analysis().crate_for(mod_file).unwrap().is_empty());
 
-    let mut crate_graph = CrateGraph::new();
+    let mut crate_graph = CrateGraph::default();
     let crate_id = crate_graph.add_crate_root(root_file);
     let mut change = AnalysisChange::new();
     change.set_crate_graph(crate_graph);

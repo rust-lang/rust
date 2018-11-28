@@ -5,9 +5,10 @@ use ra_syntax::{
     algo::generate,
     ast::{self, ArgListOwner, LoopBodyOwner, NameOwner},
 };
+use ra_db::LocalSyntaxPtr;
 
 use crate::{
-    syntax_ptr::LocalSyntaxPtr,
+
     arena::{Arena, Id},
 };
 

@@ -6,11 +6,11 @@ use ra_syntax::{
 };
 use relative_path::RelativePathBuf;
 use rustc_hash::{FxHashMap, FxHashSet};
+use ra_db::{SourceRoot, SourceRootId, FileResolverImp};
 
 use crate::{
     hir::HirDatabase,
-    input::{SourceRoot, SourceRootId},
-    Cancelable, FileId, FileResolverImp,
+    Cancelable, FileId,
 };
 
 use super::{

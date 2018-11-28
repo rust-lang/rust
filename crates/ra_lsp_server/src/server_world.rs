@@ -140,7 +140,7 @@ impl ServerWorldState {
         Ok(file_id)
     }
     pub fn set_workspaces(&mut self, ws: Vec<CargoWorkspace>) {
-        let mut crate_graph = CrateGraph::new();
+        let mut crate_graph = CrateGraph::default();
         ws.iter()
             .flat_map(|ws| {
                 ws.packages()

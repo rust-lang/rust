@@ -4,10 +4,10 @@ use ra_syntax::{
     SyntaxNode,
     ast::FnDefNode,
 };
+use ra_db::{SourceRootId, LocationIntener, SyntaxDatabase};
 
 use crate::{
     FileId,
-    db::SyntaxDatabase,
     hir::{
         SourceFileItems, SourceItemId,
         query_definitions,
@@ -15,8 +15,7 @@ use crate::{
         module::{ModuleId, ModuleTree, ModuleSource,
         nameres::{ItemMap, InputModuleItems}},
     },
-    input::SourceRootId,
-    loc2id::{DefLoc, DefId, FnId, LocationIntener},
+    loc2id::{DefLoc, DefId, FnId},
     Cancelable,
 };
 

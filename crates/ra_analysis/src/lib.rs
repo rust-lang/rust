@@ -19,8 +19,6 @@ macro_rules! ctry {
 }
 
 mod arena;
-mod syntax_ptr;
-mod input;
 mod db;
 mod loc2id;
 mod imp;
@@ -32,35 +30,27 @@ pub mod mock_analysis;
 use std::{fmt, sync::Arc};
 
 use ra_syntax::{AtomEdit, SourceFileNode, TextRange, TextUnit};
+use ra_db::FileResolverImp;
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 
 use crate::{
-    imp::{AnalysisHostImpl, AnalysisImpl, FileResolverImp},
+    imp::{AnalysisHostImpl, AnalysisImpl},
     symbol_index::SymbolIndex,
 };
 
 pub use crate::{
     completion::CompletionItem,
     hir::FnSignatureInfo,
-    input::{CrateGraph, CrateId, FileId, FileResolver},
 };
 pub use ra_editor::{
     FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable, RunnableKind, StructureNode,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Canceled;
-
-pub type Cancelable<T> = Result<T, Canceled>;
-
-impl std::fmt::Display for Canceled {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt.write_str("Canceled")
-    }
-}
-
-impl std::error::Error for Canceled {}
+pub use ra_db::{
+    Canceled, Cancelable,
+    CrateGraph, CrateId, FileId, FileResolver
+};
 
 #[derive(Default)]
 pub struct AnalysisChange {

@@ -7,10 +7,11 @@ use ra_syntax::{
     AstNode, AtomEdit,
     SyntaxNodeRef,
 };
+use ra_db::SyntaxDatabase;
 use rustc_hash::{FxHashMap};
 
 use crate::{
-    db::{self, SyntaxDatabase},
+    db,
     hir,
     Cancelable, FilePosition
 };

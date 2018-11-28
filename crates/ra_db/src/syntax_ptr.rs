@@ -2,20 +2,20 @@ use ra_syntax::{SourceFileNode, SyntaxKind, SyntaxNode, SyntaxNodeRef, TextRange
 
 /// A pionter to a syntax node inside a file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct LocalSyntaxPtr {
+pub struct LocalSyntaxPtr {
     range: TextRange,
     kind: SyntaxKind,
 }
 
 impl LocalSyntaxPtr {
-    pub(crate) fn new(node: SyntaxNodeRef) -> LocalSyntaxPtr {
+    pub fn new(node: SyntaxNodeRef) -> LocalSyntaxPtr {
         LocalSyntaxPtr {
             range: node.range(),
             kind: node.kind(),
         }
     }
 
-    pub(crate) fn resolve(self, file: &SourceFileNode) -> SyntaxNode {
+    pub fn resolve(self, file: &SourceFileNode) -> SyntaxNode {
         let mut curr = file.syntax();
         loop {
             if curr.range() == self.range && curr.kind() == self.kind {
@@ -28,7 +28,7 @@ impl LocalSyntaxPtr {
         }
     }
 
-    pub(crate) fn range(self) -> TextRange {
+    pub fn range(self) -> TextRange {
         self.range
     }
 }

@@ -1,15 +1,13 @@
 use std::sync::Arc;
 #[cfg(test)]
 use parking_lot::Mutex;
-use ra_editor::LineIndex;
-use ra_syntax::{SourceFileNode};
 use salsa::{self, Database};
+use ra_db::{LocationIntener, BaseDatabase};
 
 use crate::{
     hir,
     symbol_index,
-    loc2id::{IdMaps, LocationIntener, DefId, DefLoc, FnId},
-    Cancelable, Canceled, FileId,
+    loc2id::{IdMaps, DefId, DefLoc, FnId},
 };
 
 #[derive(Debug)]
@@ -47,11 +45,11 @@ impl Default for RootDatabase {
             runtime: salsa::Runtime::default(),
             id_maps: Default::default(),
         };
-        db.query_mut(crate::input::SourceRootQuery)
-            .set(crate::input::WORKSPACE, Default::default());
-        db.query_mut(crate::input::CrateGraphQuery)
+        db.query_mut(ra_db::SourceRootQuery)
+            .set(ra_db::WORKSPACE, Default::default());
+        db.query_mut(ra_db::CrateGraphQuery)
             .set((), Default::default());
-        db.query_mut(crate::input::LibrariesQuery)
+        db.query_mut(ra_db::LibrariesQuery)
             .set((), Default::default());
         db
     }
@@ -67,22 +65,7 @@ impl salsa::ParallelDatabase for RootDatabase {
     }
 }
 
-pub(crate) trait BaseDatabase: salsa::Database {
-    fn id_maps(&self) -> &IdMaps;
-    fn check_canceled(&self) -> Cancelable<()> {
-        if self.salsa_runtime().is_current_revision_canceled() {
-            Err(Canceled)
-        } else {
-            Ok(())
-        }
-    }
-}
-
-impl BaseDatabase for RootDatabase {
-    fn id_maps(&self) -> &IdMaps {
-        &self.id_maps
-    }
-}
+impl BaseDatabase for RootDatabase {}
 
 impl AsRef<LocationIntener<DefLoc, DefId>> for RootDatabase {
     fn as_ref(&self) -> &LocationIntener<DefLoc, DefId> {
@@ -121,16 +104,16 @@ impl RootDatabase {
 
 salsa::database_storage! {
     pub(crate) struct RootDatabaseStorage for RootDatabase {
-        impl crate::input::FilesDatabase {
-            fn file_text() for crate::input::FileTextQuery;
-            fn file_source_root() for crate::input::FileSourceRootQuery;
-            fn source_root() for crate::input::SourceRootQuery;
-            fn libraries() for crate::input::LibrariesQuery;
-            fn crate_graph() for crate::input::CrateGraphQuery;
+        impl ra_db::FilesDatabase {
+            fn file_text() for ra_db::FileTextQuery;
+            fn file_source_root() for ra_db::FileSourceRootQuery;
+            fn source_root() for ra_db::SourceRootQuery;
+            fn libraries() for ra_db::LibrariesQuery;
+            fn crate_graph() for ra_db::CrateGraphQuery;
         }
-        impl SyntaxDatabase {
-            fn source_file() for SourceFileQuery;
-            fn file_lines() for FileLinesQuery;
+        impl ra_db::SyntaxDatabase {
+            fn source_file() for ra_db::SourceFileQuery;
+            fn file_lines() for ra_db::FileLinesQuery;
         }
         impl symbol_index::SymbolsDatabase {
             fn file_symbols() for symbol_index::FileSymbolsQuery;
@@ -147,24 +130,4 @@ salsa::database_storage! {
             fn submodules() for hir::db::SubmodulesQuery;
         }
     }
-}
-
-salsa::query_group! {
-    pub(crate) trait SyntaxDatabase: crate::input::FilesDatabase + BaseDatabase {
-        fn source_file(file_id: FileId) -> SourceFileNode {
-            type SourceFileQuery;
-        }
-        fn file_lines(file_id: FileId) -> Arc<LineIndex> {
-            type FileLinesQuery;
-        }
-    }
-}
-
-fn source_file(db: &impl SyntaxDatabase, file_id: FileId) -> SourceFileNode {
-    let text = db.file_text(file_id);
-    SourceFileNode::parse(&*text)
-}
-fn file_lines(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<LineIndex> {
-    let text = db.file_text(file_id);
-    Arc::new(LineIndex::new(&*text))
 }

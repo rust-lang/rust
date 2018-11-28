@@ -1,6 +1,5 @@
 use std::{
     fmt,
-    hash::{Hash, Hasher},
     sync::Arc,
 };
 
@@ -11,83 +10,23 @@ use ra_syntax::{
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
+use ra_db::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE, SyntaxDatabase, SourceFileQuery};
 use rayon::prelude::*;
-use relative_path::RelativePath;
 use rustc_hash::FxHashSet;
 use salsa::{Database, ParallelDatabase};
 
 use crate::{
     completion::{completions, CompletionItem},
-    db::{self, SourceFileQuery, SyntaxDatabase},
+    db,
     hir::{
         self,
         FnSignatureInfo,
         Problem,
     },
-    input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
     symbol_index::{SymbolIndex, SymbolsDatabase},
-    AnalysisChange, Cancelable, CrateGraph, CrateId, Diagnostic, FileId, FileResolver,
+    AnalysisChange, Cancelable, CrateId, Diagnostic, FileId,
     FileSystemEdit, FilePosition, Query, SourceChange, SourceFileNodeEdit,
 };
-
-#[derive(Clone, Debug)]
-pub(crate) struct FileResolverImp {
-    inner: Arc<FileResolver>,
-}
-
-impl PartialEq for FileResolverImp {
-    fn eq(&self, other: &FileResolverImp) -> bool {
-        self.inner() == other.inner()
-    }
-}
-
-impl Eq for FileResolverImp {}
-
-impl Hash for FileResolverImp {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        self.inner().hash(hasher);
-    }
-}
-
-impl FileResolverImp {
-    pub(crate) fn new(inner: Arc<FileResolver>) -> FileResolverImp {
-        FileResolverImp { inner }
-    }
-    pub(crate) fn file_stem(&self, file_id: FileId) -> String {
-        self.inner.file_stem(file_id)
-    }
-    pub(crate) fn resolve(&self, file_id: FileId, path: &RelativePath) -> Option<FileId> {
-        self.inner.resolve(file_id, path)
-    }
-    pub(crate) fn debug_path(&self, file_id: FileId) -> Option<std::path::PathBuf> {
-        self.inner.debug_path(file_id)
-    }
-    fn inner(&self) -> *const FileResolver {
-        &*self.inner
-    }
-}
-
-impl Default for FileResolverImp {
-    fn default() -> FileResolverImp {
-        #[derive(Debug)]
-        struct DummyResolver;
-        impl FileResolver for DummyResolver {
-            fn file_stem(&self, _file_: FileId) -> String {
-                panic!("file resolver not set")
-            }
-            fn resolve(
-                &self,
-                _file_id: FileId,
-                _path: &::relative_path::RelativePath,
-            ) -> Option<FileId> {
-                panic!("file resolver not set")
-            }
-        }
-        FileResolverImp {
-            inner: Arc::new(DummyResolver),
-        }
-    }
-}
 
 #[derive(Debug, Default)]
 pub(crate) struct AnalysisHostImpl {
@@ -105,7 +44,7 @@ impl AnalysisHostImpl {
 
         for (file_id, text) in change.files_changed {
             self.db
-                .query_mut(crate::input::FileTextQuery)
+                .query_mut(ra_db::FileTextQuery)
                 .set(file_id, Arc::new(text))
         }
         if !(change.files_added.is_empty() && change.files_removed.is_empty()) {
@@ -115,22 +54,22 @@ impl AnalysisHostImpl {
             let mut source_root = SourceRoot::clone(&self.db.source_root(WORKSPACE));
             for (file_id, text) in change.files_added {
                 self.db
-                    .query_mut(crate::input::FileTextQuery)
+                    .query_mut(ra_db::FileTextQuery)
                     .set(file_id, Arc::new(text));
                 self.db
-                    .query_mut(crate::input::FileSourceRootQuery)
-                    .set(file_id, crate::input::WORKSPACE);
+                    .query_mut(ra_db::FileSourceRootQuery)
+                    .set(file_id, ra_db::WORKSPACE);
                 source_root.files.insert(file_id);
             }
             for file_id in change.files_removed {
                 self.db
-                    .query_mut(crate::input::FileTextQuery)
+                    .query_mut(ra_db::FileTextQuery)
                     .set(file_id, Arc::new(String::new()));
                 source_root.files.remove(&file_id);
             }
             source_root.file_resolver = file_resolver;
             self.db
-                .query_mut(crate::input::SourceRootQuery)
+                .query_mut(ra_db::SourceRootQuery)
                 .set(WORKSPACE, Arc::new(source_root))
         }
         if !change.libraries_added.is_empty() {
@@ -147,10 +86,10 @@ impl AnalysisHostImpl {
                         library.file_resolver.debug_path(file_id)
                     );
                     self.db
-                        .query_mut(crate::input::FileSourceRootQuery)
+                        .query_mut(ra_db::FileSourceRootQuery)
                         .set_constant(file_id, source_root_id);
                     self.db
-                        .query_mut(crate::input::FileTextQuery)
+                        .query_mut(ra_db::FileTextQuery)
                         .set_constant(file_id, Arc::new(text));
                 }
                 let source_root = SourceRoot {
@@ -158,19 +97,19 @@ impl AnalysisHostImpl {
                     file_resolver: library.file_resolver,
                 };
                 self.db
-                    .query_mut(crate::input::SourceRootQuery)
+                    .query_mut(ra_db::SourceRootQuery)
                     .set(source_root_id, Arc::new(source_root));
                 self.db
                     .query_mut(crate::symbol_index::LibrarySymbolsQuery)
                     .set(source_root_id, Arc::new(library.symbol_index));
             }
             self.db
-                .query_mut(crate::input::LibrariesQuery)
+                .query_mut(ra_db::LibrariesQuery)
                 .set((), Arc::new(libraries));
         }
         if let Some(crate_graph) = change.crate_graph {
             self.db
-                .query_mut(crate::input::CrateGraphQuery)
+                .query_mut(ra_db::CrateGraphQuery)
                 .set((), Arc::new(crate_graph))
         }
     }
@@ -261,7 +200,7 @@ impl AnalysisImpl {
         Ok(crate_id.into_iter().collect())
     }
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
-        self.db.crate_graph().crate_roots[&crate_id]
+        self.db.crate_graph().crate_root(crate_id)
     }
     pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
         completions(&self.db, position)
@@ -543,16 +482,6 @@ impl SourceChange {
                 .cursor_position
                 .map(|offset| FilePosition { offset, file_id }),
         }
-    }
-}
-
-impl CrateGraph {
-    fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
-        let (&crate_id, _) = self
-            .crate_roots
-            .iter()
-            .find(|(_crate_id, &root_id)| root_id == file_id)?;
-        Some(crate_id)
     }
 }
 

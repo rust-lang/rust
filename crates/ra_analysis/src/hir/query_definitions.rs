@@ -8,6 +8,7 @@ use ra_syntax::{
     AstNode,  SyntaxNode, SmolStr,
     ast::{self, FnDef, FnDefNode, NameOwner, ModuleItemOwner}
 };
+use ra_db::SourceRootId;
 
 use crate::{
     FileId, Cancelable,
@@ -21,7 +22,6 @@ use crate::{
             nameres::{InputModuleItems, ItemMap, Resolver},
         },
     },
-    input::SourceRootId,
 };
 
 /// Resolve `FnId` to the corresponding `SyntaxNode`

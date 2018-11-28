@@ -607,6 +607,7 @@ dependencies = [
  "id-arena 1.0.2 (git+https://github.com/fitzgen/id-arena/?rev=43ecd67)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_db 0.1.0",
  "ra_editor 0.1.0",
  "ra_syntax 0.1.0",
  "rayon 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -626,6 +627,21 @@ dependencies = [
  "ra_editor 0.1.0",
  "ra_syntax 0.1.0",
  "tools 0.1.0",
+]
+
+[[package]]
+name = "ra_db"
+version = "0.1.0"
+dependencies = [
+ "id-arena 1.0.2 (git+https://github.com/fitzgen/id-arena/?rev=43ecd67)",
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "parking_lot 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "ra_editor 0.1.0",
+ "ra_syntax 0.1.0",
+ "relative-path 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-hash 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "salsa 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "test_utils 0.1.0",
 ]
 
 [[package]]
