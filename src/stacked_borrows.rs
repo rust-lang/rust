@@ -407,7 +407,7 @@ impl<'tcx> Stacks {
             // alias with `&mut`.
             // FIXME: This means that the `dereferencable` attribute on non-frozen shared
             // references is incorrect!  They are dereferencable when the function is
-            // called, but might become non-dereferencable during the coruse of execution.
+            // called, but might become non-dereferencable during the course of execution.
             // Also see [1], [2].
             //
             // [1]: <https://internals.rust-lang.org/t/
