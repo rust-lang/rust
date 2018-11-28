@@ -41,7 +41,7 @@ LL |     barplus!(); //~ERROR unexpected end of macro invocation
    |     ^^^^^^^^^^^ missing tokens in macro arguments
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-at-most-once-rep-2018.rs:41:15
+  --> $DIR/macro-at-most-once-rep-2018.rs:39:15
    |
 LL | macro_rules! barplus {
    | -------------------- when calling this macro
@@ -77,7 +77,7 @@ LL |     barstar!(); //~ERROR unexpected end of macro invocation
    |     ^^^^^^^^^^^ missing tokens in macro arguments
 
 error: unexpected end of macro invocation
-  --> $DIR/macro-at-most-once-rep-2018.rs:46:14
+  --> $DIR/macro-at-most-once-rep-2018.rs:46:15
    |
 LL | macro_rules! barstar {
    | -------------------- when calling this macro
