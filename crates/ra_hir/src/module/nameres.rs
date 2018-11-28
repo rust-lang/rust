@@ -337,7 +337,6 @@ where
     }
 }
 
-//TODO: move to hir
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
