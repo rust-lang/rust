@@ -168,23 +168,31 @@ impl ReentrantMutex {
     }
 
     pub unsafe fn init(&mut self) {
-        c::InitializeCriticalSection(self.inner.get().as_mut_ptr());
+        c::InitializeCriticalSection((&mut *self.inner.get()).as_mut_ptr());
     }
 
     pub unsafe fn lock(&self) {
-        c::EnterCriticalSection(self.inner.get().get_ref());
+        // `init` must have been called, so this is now initialized and
+        // we can call `get_ref`.
+        c::EnterCriticalSection((&mut *self.inner.get()).get_ref());
     }
 
     #[inline]
     pub unsafe fn try_lock(&self) -> bool {
-        c::TryEnterCriticalSection(self.inner.get().get_ref()) != 0
+        // `init` must have been called, so this is now initialized and
+        // we can call `get_ref`.
+        c::TryEnterCriticalSection((&mut *self.inner.get()).get_ref()) != 0
     }
 
     pub unsafe fn unlock(&self) {
-        c::LeaveCriticalSection(self.inner.get().get_ref());
+        // `init` must have been called, so this is now initialized and
+        // we can call `get_ref`.
+        c::LeaveCriticalSection((&mut *self.inner.get()).get_ref());
     }
 
     pub unsafe fn destroy(&self) {
-        c::DeleteCriticalSection(self.inner.get().get_ref());
+        // `init` must have been called, so this is now initialized and
+        // we can call `get_ref`.
+        c::DeleteCriticalSection((&mut *self.inner.get()).get_ref());
     }
 }
