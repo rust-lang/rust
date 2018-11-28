@@ -11,7 +11,7 @@
 //! Module for inferring the variance of type and lifetime parameters. See the [rustc guide]
 //! chapter for more info.
 //!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/variance.html
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/variance.html
 
 use arena;
 use rustc::hir;

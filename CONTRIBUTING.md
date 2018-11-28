@@ -640,7 +640,7 @@ are:
 * **Google!** ([search only in Rust Documentation][gsearchdocs] to find types, traits, etc. quickly)
 * Don't be afraid to ask! The Rust community is friendly and helpful.
 
-[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
+[rustc guide]: https://rust-lang.github.io/rustc-guide/about-this-guide.html
 [gdfrustc]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc/
 [gsearchdocs]: https://www.google.com/search?q=site:doc.rust-lang.org+your+query+here
 [rif]: http://internals.rust-lang.org
@@ -648,5 +648,5 @@ are:
 [rustforge]: https://forge.rust-lang.org/
 [tlgba]: http://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: http://www.rustaceans.org/
-[rctd]: https://rust-lang-nursery.github.io/rustc-guide/tests/intro.html
+[rctd]: https://rust-lang.github.io/rustc-guide/tests/intro.html
 [cheatsheet]: https://buildbot2.rust-lang.org/homu/

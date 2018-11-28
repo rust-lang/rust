@@ -12,4 +12,4 @@ There is also useful content in the following READMEs, which are gradually being
 - https://github.com/rust-lang/rust/tree/master/src/librustc/infer/higher_ranked
 - https://github.com/rust-lang/rust/tree/master/src/librustc/infer/lexical_region_resolve
 
-[rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/about-this-guide.html
+[rustc guide]: https://rust-lang.github.io/rustc-guide/about-this-guide.html
