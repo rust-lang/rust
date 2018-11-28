@@ -10,6 +10,7 @@ mod syntax_ptr;
 mod file_resolver;
 mod input;
 mod loc2id;
+pub mod mock;
 
 use std::sync::Arc;
 use ra_editor::LineIndex;

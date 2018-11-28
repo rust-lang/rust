@@ -44,7 +44,7 @@ pub struct ItemMap {
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct ModuleScope {
-    pub items: FxHashMap<SmolStr, Resolution>,
+    items: FxHashMap<SmolStr, Resolution>,
 }
 
 impl ModuleScope {
@@ -200,11 +200,11 @@ impl ModuleItem {
 }
 
 pub(crate) struct Resolver<'a, DB> {
-    pub db: &'a DB,
-    pub input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
-    pub source_root: SourceRootId,
-    pub module_tree: Arc<ModuleTree>,
-    pub result: ItemMap,
+    pub(crate) db: &'a DB,
+    pub(crate) input: &'a FxHashMap<ModuleId, Arc<InputModuleItems>>,
+    pub(crate) source_root: SourceRootId,
+    pub(crate) module_tree: Arc<ModuleTree>,
+    pub(crate) result: ItemMap,
 }
 
 impl<'a, DB> Resolver<'a, DB>
@@ -334,5 +334,101 @@ where
     fn update(&mut self, module_id: ModuleId, f: impl FnOnce(&mut ModuleScope)) {
         let module_items = self.result.per_module.get_mut(&module_id).unwrap();
         f(module_items)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use salsa::Database;
+    use ra_db::FilesDatabase;
+    use ra_syntax::SmolStr;
+
+    use crate::{
+        self as hir,
+        db::HirDatabase,
+        mock::MockDatabase,
+};
+
+    fn item_map(fixture: &str) -> (Arc<hir::ItemMap>, hir::ModuleId) {
+        let (db, pos) = MockDatabase::with_position(fixture);
+        let source_root = db.file_source_root(pos.file_id);
+        let module = hir::Module::guess_from_position(&db, pos).unwrap().unwrap();
+        let module_id = module.module_id;
+        (db.item_map(source_root).unwrap(), module_id)
+    }
+
+    #[test]
+    fn test_item_map() {
+        let (item_map, module_id) = item_map(
+            "
+            //- /lib.rs
+            mod foo;
+
+            use crate::foo::bar::Baz;
+            <|>
+
+            //- /foo/mod.rs
+            pub mod bar;
+
+            //- /foo/bar.rs
+            pub struct Baz;
+        ",
+        );
+        let name = SmolStr::from("Baz");
+        let resolution = &item_map.per_module[&module_id].items[&name];
+        assert!(resolution.def_id.is_some());
+    }
+
+    #[test]
+    fn typing_inside_a_function_should_not_invalidate_item_map() {
+        let (mut db, pos) = MockDatabase::with_position(
+            "
+            //- /lib.rs
+            mod foo;<|>
+
+            use crate::foo::bar::Baz;
+
+            fn foo() -> i32 {
+                1 + 1
+            }
+            //- /foo/mod.rs
+            pub mod bar;
+
+            //- /foo/bar.rs
+            pub struct Baz;
+        ",
+        );
+        let source_root = db.file_source_root(pos.file_id);
+        {
+            let events = db.log_executed(|| {
+                db.item_map(source_root).unwrap();
+            });
+            assert!(format!("{:?}", events).contains("item_map"))
+        }
+
+        let new_text = "
+            mod foo;
+
+            use crate::foo::bar::Baz;
+
+            fn foo() -> i32 { 92 }
+        "
+        .to_string();
+
+        db.query_mut(ra_db::FileTextQuery)
+            .set(pos.file_id, Arc::new(new_text));
+
+        {
+            let events = db.log_executed(|| {
+                db.item_map(source_root).unwrap();
+            });
+            assert!(
+                !format!("{:?}", events).contains("_item_map"),
+                "{:#?}",
+                events
+            )
+        }
     }
 }

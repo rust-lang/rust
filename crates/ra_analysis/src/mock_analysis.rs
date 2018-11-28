@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
-use relative_path::{RelativePath, RelativePathBuf};
+use relative_path::{RelativePathBuf};
 use test_utils::{extract_offset, parse_fixture, CURSOR_MARKER};
+use ra_db::mock::FileMap;
 
-use crate::{Analysis, AnalysisChange, AnalysisHost, FileId, FileResolver, FilePosition};
+use crate::{Analysis, AnalysisChange, AnalysisHost, FileId, FilePosition};
 
 /// Mock analysis is used in test to bootstrap an AnalysisHost/Analysis
 /// from a set of in-memory files.
@@ -76,16 +77,15 @@ impl MockAnalysis {
     }
     pub fn analysis_host(self) -> AnalysisHost {
         let mut host = AnalysisHost::default();
-        let mut file_map = Vec::new();
+        let mut file_map = FileMap::default();
         let mut change = AnalysisChange::new();
-        for (id, (path, contents)) in self.files.into_iter().enumerate() {
-            let file_id = FileId((id + 1) as u32);
+        for (path, contents) in self.files.into_iter() {
             assert!(path.starts_with('/'));
             let path = RelativePathBuf::from_path(&path[1..]).unwrap();
+            let file_id = file_map.add(path);
             change.add_file(file_id, contents);
-            file_map.push((file_id, path));
         }
-        change.set_file_resolver(Arc::new(FileMap(file_map)));
+        change.set_file_resolver(Arc::new(file_map));
         host.apply_change(change);
         host
     }
@@ -112,30 +112,4 @@ pub fn single_file_with_position(code: &str) -> (Analysis, FilePosition) {
     let mut mock = MockAnalysis::new();
     let pos = mock.add_file_with_position("/main.rs", code);
     (mock.analysis(), pos)
-}
-
-#[derive(Debug)]
-struct FileMap(Vec<(FileId, RelativePathBuf)>);
-
-impl FileMap {
-    fn iter<'a>(&'a self) -> impl Iterator<Item = (FileId, &'a RelativePath)> + 'a {
-        self.0
-            .iter()
-            .map(|(id, path)| (*id, path.as_relative_path()))
-    }
-
-    fn path(&self, id: FileId) -> &RelativePath {
-        self.iter().find(|&(it, _)| it == id).unwrap().1
-    }
-}
-
-impl FileResolver for FileMap {
-    fn file_stem(&self, id: FileId) -> String {
-        self.path(id).file_stem().unwrap().to_string()
-    }
-    fn resolve(&self, id: FileId, rel: &RelativePath) -> Option<FileId> {
-        let path = self.path(id).join(rel).normalize();
-        let id = self.iter().find(|&(_, p)| path == p)?.0;
-        Some(id)
-    }
 }

@@ -26,8 +26,7 @@ pub use self::nameres::ModuleScope;
 pub struct Module {
     tree: Arc<ModuleTree>,
     source_root_id: SourceRootId,
-    //TODO: make private
-    pub module_id: ModuleId,
+    module_id: ModuleId,
 }
 
 impl Module {
@@ -122,7 +121,6 @@ impl Module {
     }
 
     /// `name` is `None` for the crate's root module
-    #[allow(unused)]
     pub fn name(&self) -> Option<SmolStr> {
         let link = self.module_id.parent_link(&self.tree)?;
         Some(link.name(&self.tree))
@@ -218,7 +216,7 @@ pub enum ModuleSource {
 
 /// An owned syntax node for a module. Unlike `ModuleSource`,
 /// this holds onto the AST for the whole file.
-pub enum ModuleSourceNode {
+pub(crate) enum ModuleSourceNode {
     SourceFile(ast::SourceFileNode),
     Module(ast::ModuleNode),
 }
@@ -338,7 +336,7 @@ impl ModuleSource {
         }
     }
 
-    pub fn resolve(self, db: &impl HirDatabase) -> ModuleSourceNode {
+    pub(crate) fn resolve(self, db: &impl HirDatabase) -> ModuleSourceNode {
         match self {
             ModuleSource::SourceFile(file_id) => {
                 let syntax = db.source_file(file_id);
