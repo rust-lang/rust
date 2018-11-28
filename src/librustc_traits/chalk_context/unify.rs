@@ -13,6 +13,7 @@ crate struct UnificationResult<'tcx> {
 crate fn unify<'me, 'gcx, 'tcx, T: Relate<'tcx>>(
     infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
     environment: Environment<'tcx>,
+    variance: ty::Variance,
     a: &T,
     b: &T
 ) -> RelateResult<'tcx, UnificationResult<'tcx>> {
@@ -30,7 +31,7 @@ crate fn unify<'me, 'gcx, 'tcx, T: Relate<'tcx>>(
     TypeRelating::new(
         infcx,
         &mut delegate,
-        ty::Variance::Invariant
+        variance
     ).relate(a, b)?;
 
     debug!("unify: goals = {:?}, constraints = {:?}", delegate.goals, delegate.constraints);

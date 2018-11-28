@@ -395,6 +395,7 @@ impl<'tcx> fmt::Display for traits::Goal<'tcx> {
 
                 Ok(())
             }
+            Subtype(a, b) => write!(fmt, "{} <: {}", a, b),
             CannotProve => write!(fmt, "CannotProve"),
         }
     }
@@ -668,6 +669,7 @@ EnumLiftImpl! {
         (traits::GoalKind::Not)(goal),
         (traits::GoalKind::DomainGoal)(domain_goal),
         (traits::GoalKind::Quantified)(kind, goal),
+        (traits::GoalKind::Subtype)(a, b),
         (traits::GoalKind::CannotProve),
     }
 }
@@ -864,6 +866,7 @@ EnumTypeFoldableImpl! {
         (traits::GoalKind::Not)(goal),
         (traits::GoalKind::DomainGoal)(domain_goal),
         (traits::GoalKind::Quantified)(qkind, goal),
+        (traits::GoalKind::Subtype)(a, b),
         (traits::GoalKind::CannotProve),
     }
 }

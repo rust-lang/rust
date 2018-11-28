@@ -1195,6 +1195,10 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Goal<'tcx> {
                 quantifier.hash_stable(hcx, hasher);
                 goal.hash_stable(hcx, hasher);
             },
+            Subtype(a, b) => {
+                a.hash_stable(hcx, hasher);
+                b.hash_stable(hcx, hasher);
+            }
             CannotProve => { },
         }
     }

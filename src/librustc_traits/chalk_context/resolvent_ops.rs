@@ -51,8 +51,13 @@ impl context::ResolventOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
                 ).0,
             };
 
-            let result = unify(self.infcx, *environment, goal, &consequence)
-                .map_err(|_| NoSolution)?;
+            let result = unify(
+                self.infcx,
+                *environment,
+                ty::Variance::Invariant,
+                goal,
+                &consequence
+            ).map_err(|_| NoSolution)?;
 
             let mut ex_clause = ExClause {
                 subst: subst.clone(),
@@ -139,7 +144,7 @@ impl AnswerSubstitutor<'cx, 'gcx, 'tcx> {
         );
 
         super::into_ex_clause(
-            unify(self.infcx, self.environment, answer_param, pending)?,
+            unify(self.infcx, self.environment, ty::Variance::Invariant, answer_param, pending)?,
             &mut self.ex_clause
         );
 

@@ -116,6 +116,8 @@ impl context::Context for ChalkArenas<'tcx> {
 
     type UnificationResult = UnificationResult<'tcx>;
 
+    type Variance = ty::Variance;
+
     fn goal_in_environment(
         env: &Environment<'tcx>,
         goal: Goal<'tcx>,
@@ -332,6 +334,11 @@ impl context::InferenceTable<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
             GoalKind::DomainGoal(d) => HhGoal::DomainGoal(d),
             GoalKind::Quantified(QuantifierKind::Universal, binder) => HhGoal::ForAll(binder),
             GoalKind::Quantified(QuantifierKind::Existential, binder) => HhGoal::Exists(binder),
+            GoalKind::Subtype(a, b) => HhGoal::Unify(
+                ty::Variance::Covariant,
+                a.into(),
+                b.into()
+            ),
             GoalKind::CannotProve => HhGoal::CannotProve,
         }
     }
@@ -444,11 +451,13 @@ impl context::UnificationOps<ChalkArenas<'gcx>, ChalkArenas<'tcx>>
     fn unify_parameters(
         &mut self,
         environment: &Environment<'tcx>,
+        variance: ty::Variance,
         a: &Kind<'tcx>,
         b: &Kind<'tcx>,
     ) -> Fallible<UnificationResult<'tcx>> {
         self.infcx.commit_if_ok(|_| {
-            unify(self.infcx, *environment, a, b).map_err(|_| chalk_engine::fallible::NoSolution)
+            unify(self.infcx, *environment, variance, a, b)
+                .map_err(|_| chalk_engine::fallible::NoSolution)
         })
     }
 
@@ -671,6 +680,13 @@ crate fn evaluate_goal<'a, 'tcx>(
         goal: match goal.goal {
             ty::Predicate::WellFormed(ty) => tcx.mk_goal(
                 GoalKind::DomainGoal(DomainGoal::WellFormed(WellFormed::Ty(ty)))
+            ),
+
+            ty::Predicate::Subtype(predicate) => tcx.mk_goal(
+                GoalKind::Quantified(
+                    QuantifierKind::Universal,
+                    predicate.map_bound(|pred| tcx.mk_goal(GoalKind::Subtype(pred.a, pred.b)))
+                )
             ),
 
             other => tcx.mk_goal(

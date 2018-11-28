@@ -324,6 +324,7 @@ pub enum GoalKind<'tcx> {
     Not(Goal<'tcx>),
     DomainGoal(DomainGoal<'tcx>),
     Quantified(QuantifierKind, ty::Binder<Goal<'tcx>>),
+    Subtype(Ty<'tcx>, Ty<'tcx>),
     CannotProve,
 }
 

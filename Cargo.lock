@@ -273,7 +273,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "chalk-engine"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "chalk-macros 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2067,7 +2067,7 @@ dependencies = [
  "backtrace 0.3.11 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "byteorder 1.2.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "chalk-engine 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chalk-engine 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "flate2 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "fmt_macros 0.0.0",
  "graphviz 0.0.0",
@@ -2640,7 +2640,7 @@ name = "rustc_traits"
 version = "0.0.0"
 dependencies = [
  "bitflags 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "chalk-engine 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "chalk-engine 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
@@ -3403,7 +3403,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum cargo_metadata 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7d8dfe3adeb30f7938e6c1dd5327f29235d8ada3e898aeb08c343005ec2915a2"
 "checksum cc 1.0.25 (registry+https://github.com/rust-lang/crates.io-index)" = "f159dfd43363c4d08055a07703eb7a3406b0dac4d0584d96965a3262db3c9d16"
 "checksum cfg-if 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "082bb9b28e00d3c9d39cc03e64ce4cea0f1bb9b3fde493f0cbc008472d22bdf4"
-"checksum chalk-engine 0.8.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6749eb72e7d4355d944a99f15fbaea701b978c18c5e184a025fcde942b0c9779"
+"checksum chalk-engine 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "17ec698a6f053a23bfbe646d9f2fde4b02abc19125595270a99e6f44ae0bdd1a"
 "checksum chalk-macros 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "295635afd6853aa9f20baeb7f0204862440c0fe994c5a253d5f479dac41d047e"
 "checksum chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)" = "45912881121cb26fad7c38c17ba7daa18764771836b34fab7d3fbd93ed633878"
 "checksum clap 2.32.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b957d88f4b6a63b9d70d5f454ac8011819c6efa7727858f458ab71c756ce2d3e"
