@@ -174,6 +174,7 @@ impl MirPass for AddRetag {
                         let src_ty = src.ty(&*local_decls, tcx);
                         if src_ty.is_region_ptr() {
                             // The only `Misc` casts on references are those creating raw pointers.
+                            let src = src.clone();
                             assert!(dest_ty.is_unsafe_ptr());
                             // Insert escape-to-raw before the cast.  We are not concerned
                             // with stability here: Our EscapeToRaw will not change the value
@@ -184,7 +185,7 @@ impl MirPass for AddRetag {
                             let source_info = block_data.statements[i].source_info;
                             block_data.statements.insert(i, Statement {
                                 source_info,
-                                kind: StatementKind::EscapeToRaw(src.clone()),
+                                kind: StatementKind::EscapeToRaw(src),
                             });
                         }
                     }
@@ -194,9 +195,10 @@ impl MirPass for AddRetag {
                     StatementKind::Assign(ref place, _) if needs_retag(place) => {
                         // Insert a retag after the assignment.
                         let source_info = block_data.statements[i].source_info;
+                        let place = place.clone();
                         block_data.statements.insert(i+1, Statement {
                             source_info,
-                            kind: StatementKind::Retag { fn_entry: false, place: place.clone() },
+                            kind: StatementKind::Retag { fn_entry: false, place },
                         });
                     }
                     // Do nothing for the rest

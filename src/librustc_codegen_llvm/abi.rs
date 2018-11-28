@@ -276,7 +276,8 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 OperandValue::Ref(next(), Some(next()), self.layout.align.abi).store(bx, dst);
             }
             PassMode::Direct(_) | PassMode::Indirect(_, None) | PassMode::Cast(_) => {
-                self.store(bx, next(), dst);
+                let next_param = next();
+                self.store(bx, next_param, dst);
             }
         }
     }
