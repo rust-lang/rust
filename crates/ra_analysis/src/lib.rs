@@ -18,49 +18,36 @@ macro_rules! ctry {
     };
 }
 
-mod arena;
 mod db;
-mod loc2id;
-mod input;
 mod imp;
 mod completion;
-mod descriptors;
 mod symbol_index;
-mod syntax_ptr;
 pub mod mock_analysis;
 
 use std::{fmt, sync::Arc};
 
 use ra_syntax::{AtomEdit, SourceFileNode, TextRange, TextUnit};
+use ra_db::FileResolverImp;
 use rayon::prelude::*;
 use relative_path::RelativePathBuf;
 
 use crate::{
-    imp::{AnalysisHostImpl, AnalysisImpl, FileResolverImp},
+    imp::{AnalysisHostImpl, AnalysisImpl},
     symbol_index::SymbolIndex,
 };
 
 pub use crate::{
     completion::CompletionItem,
-    descriptors::function::FnDescriptor,
-    input::{CrateGraph, CrateId, FileId, FileResolver},
 };
 pub use ra_editor::{
     FileSymbol, Fold, FoldKind, HighlightedRange, LineIndex, Runnable, RunnableKind, StructureNode,
 };
+pub use hir::FnSignatureInfo;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct Canceled;
-
-pub type Cancelable<T> = Result<T, Canceled>;
-
-impl std::fmt::Display for Canceled {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        fmt.write_str("Canceled")
-    }
-}
-
-impl std::error::Error for Canceled {}
+pub use ra_db::{
+    Canceled, Cancelable, FilePosition,
+    CrateGraph, CrateId, FileId, FileResolver
+};
 
 #[derive(Default)]
 pub struct AnalysisChange {
@@ -128,12 +115,6 @@ impl AnalysisHost {
     pub fn apply_change(&mut self, change: AnalysisChange) {
         self.imp.apply_change(change)
     }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct FilePosition {
-    pub file_id: FileId,
-    pub offset: TextUnit,
 }
 
 #[derive(Debug)]
@@ -305,7 +286,7 @@ impl Analysis {
     pub fn resolve_callable(
         &self,
         position: FilePosition,
-    ) -> Cancelable<Option<(FnDescriptor, Option<usize>)>> {
+    ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
         self.imp.resolve_callable(position)
     }
 }
@@ -335,4 +316,113 @@ impl LibraryData {
 fn analysis_is_send() {
     fn is_send<T: Send>() {}
     is_send::<Analysis>();
+}
+
+//TODO: move to hir
+#[cfg(test)]
+mod hir_namres_tests {
+    use std::sync::Arc;
+    use ra_db::FilesDatabase;
+    use ra_syntax::SmolStr;
+    use hir::{self, db::HirDatabase};
+
+    use crate::{
+        AnalysisChange,
+        mock_analysis::{MockAnalysis, analysis_and_position},
+};
+
+    fn item_map(fixture: &str) -> (Arc<hir::ItemMap>, hir::ModuleId) {
+        let (analysis, pos) = analysis_and_position(fixture);
+        let db = analysis.imp.db;
+        let source_root = db.file_source_root(pos.file_id);
+        let descr = hir::Module::guess_from_position(&*db, pos)
+            .unwrap()
+            .unwrap();
+        let module_id = descr.module_id;
+        (db.item_map(source_root).unwrap(), module_id)
+    }
+
+    #[test]
+    fn test_item_map() {
+        let (item_map, module_id) = item_map(
+            "
+            //- /lib.rs
+            mod foo;
+
+            use crate::foo::bar::Baz;
+            <|>
+
+            //- /foo/mod.rs
+            pub mod bar;
+
+            //- /foo/bar.rs
+            pub struct Baz;
+        ",
+        );
+        let name = SmolStr::from("Baz");
+        let resolution = &item_map.per_module[&module_id].items[&name];
+        assert!(resolution.def_id.is_some());
+    }
+
+    #[test]
+    fn typing_inside_a_function_should_not_invalidate_item_map() {
+        let mock_analysis = MockAnalysis::with_files(
+            "
+            //- /lib.rs
+            mod foo;
+
+            use crate::foo::bar::Baz;
+
+            fn foo() -> i32 {
+                1 + 1
+            }
+            //- /foo/mod.rs
+            pub mod bar;
+
+            //- /foo/bar.rs
+            pub struct Baz;
+        ",
+        );
+
+        let file_id = mock_analysis.id_of("/lib.rs");
+        let mut host = mock_analysis.analysis_host();
+
+        let source_root = host.analysis().imp.db.file_source_root(file_id);
+
+        {
+            let db = host.analysis().imp.db;
+            let events = db.log_executed(|| {
+                db.item_map(source_root).unwrap();
+            });
+            assert!(format!("{:?}", events).contains("item_map"))
+        }
+
+        let mut change = AnalysisChange::new();
+
+        change.change_file(
+            file_id,
+            "
+            mod foo;
+
+            use crate::foo::bar::Baz;
+
+            fn foo() -> i32 { 92 }
+        "
+            .to_string(),
+        );
+
+        host.apply_change(change);
+
+        {
+            let db = host.analysis().imp.db;
+            let events = db.log_executed(|| {
+                db.item_map(source_root).unwrap();
+            });
+            assert!(
+                !format!("{:?}", events).contains("_item_map"),
+                "{:#?}",
+                events
+            )
+        }
+    }
 }

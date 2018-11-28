@@ -1,13 +1,13 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use ra_syntax::{
+    AstNode, SmolStr, SyntaxNodeRef, TextRange,
     algo::generate,
     ast::{self, ArgListOwner, LoopBodyOwner, NameOwner},
-    AstNode, SmolStr, SyntaxNodeRef,
 };
+use ra_db::LocalSyntaxPtr;
 
 use crate::{
-    syntax_ptr::LocalSyntaxPtr,
     arena::{Arena, Id},
 };
 
@@ -15,7 +15,7 @@ pub(crate) type ScopeId = Id<ScopeData>;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct FnScopes {
-    pub(crate) self_param: Option<LocalSyntaxPtr>,
+    pub self_param: Option<LocalSyntaxPtr>,
     scopes: Arena<ScopeData>,
     scope_for: FxHashMap<LocalSyntaxPtr, ScopeId>,
 }
@@ -27,13 +27,13 @@ pub struct ScopeEntry {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub(crate) struct ScopeData {
+pub struct ScopeData {
     parent: Option<ScopeId>,
     entries: Vec<ScopeEntry>,
 }
 
 impl FnScopes {
-    pub(crate) fn new(fn_def: ast::FnDef) -> FnScopes {
+    pub fn new(fn_def: ast::FnDef) -> FnScopes {
         let mut scopes = FnScopes {
             self_param: fn_def
                 .param_list()
@@ -49,7 +49,7 @@ impl FnScopes {
         }
         scopes
     }
-    pub(crate) fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
+    pub fn entries(&self, scope: ScopeId) -> &[ScopeEntry] {
         &self.scopes[scope].entries
     }
     pub fn scope_chain<'a>(&'a self, node: SyntaxNodeRef) -> impl Iterator<Item = ScopeId> + 'a {
@@ -57,6 +57,37 @@ impl FnScopes {
             self.scopes[scope].parent
         })
     }
+    pub fn resolve_local_name<'a>(&'a self, name_ref: ast::NameRef) -> Option<&'a ScopeEntry> {
+        let mut shadowed = FxHashSet::default();
+        let ret = self
+            .scope_chain(name_ref.syntax())
+            .flat_map(|scope| self.entries(scope).iter())
+            .filter(|entry| shadowed.insert(entry.name()))
+            .filter(|entry| entry.name() == &name_ref.text())
+            .nth(0);
+        ret
+    }
+
+    pub fn find_all_refs(&self, pat: ast::BindPat) -> Vec<ReferenceDescriptor> {
+        let fn_def = pat.syntax().ancestors().find_map(ast::FnDef::cast).unwrap();
+        let name_ptr = LocalSyntaxPtr::new(pat.syntax());
+        let refs: Vec<_> = fn_def
+            .syntax()
+            .descendants()
+            .filter_map(ast::NameRef::cast)
+            .filter(|name_ref| match self.resolve_local_name(*name_ref) {
+                None => false,
+                Some(entry) => entry.ptr() == name_ptr,
+            })
+            .map(|name_ref| ReferenceDescriptor {
+                name: name_ref.syntax().text().to_string(),
+                range: name_ref.syntax().range(),
+            })
+            .collect();
+
+        refs
+    }
+
     fn root_scope(&mut self) -> ScopeId {
         self.scopes.alloc(ScopeData {
             parent: None,
@@ -104,10 +135,10 @@ impl ScopeEntry {
         };
         Some(res)
     }
-    pub(crate) fn name(&self) -> &SmolStr {
+    pub fn name(&self) -> &SmolStr {
         &self.name
     }
-    pub(crate) fn ptr(&self) -> LocalSyntaxPtr {
+    pub fn ptr(&self) -> LocalSyntaxPtr {
         self.ptr
     }
 }
@@ -249,18 +280,10 @@ fn compute_expr_scopes(expr: ast::Expr, scopes: &mut FnScopes, scope: ScopeId) {
     }
 }
 
-pub fn resolve_local_name<'a>(
-    name_ref: ast::NameRef,
-    scopes: &'a FnScopes,
-) -> Option<&'a ScopeEntry> {
-    let mut shadowed = FxHashSet::default();
-    let ret = scopes
-        .scope_chain(name_ref.syntax())
-        .flat_map(|scope| scopes.entries(scope).iter())
-        .filter(|entry| shadowed.insert(entry.name()))
-        .filter(|entry| entry.name() == &name_ref.text())
-        .nth(0);
-    ret
+#[derive(Debug)]
+pub struct ReferenceDescriptor {
+    pub range: TextRange,
+    pub name: String,
 }
 
 #[cfg(test)]
@@ -376,7 +399,7 @@ mod tests {
 
         let scopes = FnScopes::new(fn_def);
 
-        let local_name_entry = resolve_local_name(name_ref, &scopes).unwrap();
+        let local_name_entry = scopes.resolve_local_name(name_ref).unwrap();
         let local_name = local_name_entry.ptr().resolve(&file);
         let expected_name =
             find_node_at_offset::<ast::Name>(file.syntax(), expected_offset.into()).unwrap();

@@ -6,23 +6,23 @@ use ra_syntax::{
     ast::{self, LoopBodyOwner},
     SyntaxKind::*,
 };
+use     hir::{
+        self,
+        FnScopes,
+        Def,
+        Path,
+};
 
 use crate::{
     db::RootDatabase,
     completion::CompletionItem,
-    descriptors::{
-        module::{ModuleDescriptor},
-        function::FnScopes,
-        Def,
-        Path,
-    },
     Cancelable
 };
 
 pub(super) fn completions(
     acc: &mut Vec<CompletionItem>,
     db: &RootDatabase,
-    module: &ModuleDescriptor,
+    module: &hir::Module,
     file: &SourceFileNode,
     name_ref: ast::NameRef,
 ) -> Cancelable<()> {
@@ -150,7 +150,7 @@ fn complete_fn(name_ref: ast::NameRef, scopes: &FnScopes, acc: &mut Vec<Completi
 fn complete_path(
     acc: &mut Vec<CompletionItem>,
     db: &RootDatabase,
-    module: &ModuleDescriptor,
+    module: &hir::Module,
     mut path: Path,
 ) -> Cancelable<()> {
     if path.segments.is_empty() {

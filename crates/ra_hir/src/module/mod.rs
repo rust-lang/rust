@@ -10,65 +10,64 @@ use ra_syntax::{
     ast::{self, AstNode, NameOwner},
     SmolStr, SyntaxNode,
 };
+use ra_db::{SourceRootId, FileId, FilePosition, Cancelable};
 use relative_path::RelativePathBuf;
 
 use crate::{
-    db::SyntaxDatabase, syntax_ptr::SyntaxPtr, FileId, FilePosition, Cancelable,
-    descriptors::{Path, PathKind, DescriptorDatabase},
-    input::SourceRootId,
+    DefLoc, DefId, Path, PathKind, HirDatabase, SourceItemId,
     arena::{Arena, Id},
-    loc2id::{DefLoc, DefId},
 };
 
-pub(crate) use self::nameres::ModuleScope;
+pub use self::nameres::ModuleScope;
 
-/// `ModuleDescriptor` is API entry point to get all the information
+/// `Module` is API entry point to get all the information
 /// about a particular module.
 #[derive(Debug, Clone)]
-pub(crate) struct ModuleDescriptor {
+pub struct Module {
     tree: Arc<ModuleTree>,
     source_root_id: SourceRootId,
-    module_id: ModuleId,
+    //TODO: make private
+    pub module_id: ModuleId,
 }
 
-impl ModuleDescriptor {
-    /// Lookup `ModuleDescriptor` by `FileId`. Note that this is inherently
+impl Module {
+    /// Lookup `Module` by `FileId`. Note that this is inherently
     /// lossy transformation: in general, a single source might correspond to
     /// several modules.
     pub fn guess_from_file_id(
-        db: &impl DescriptorDatabase,
+        db: &impl HirDatabase,
         file_id: FileId,
-    ) -> Cancelable<Option<ModuleDescriptor>> {
-        ModuleDescriptor::guess_from_source(db, file_id, ModuleSource::SourceFile(file_id))
+    ) -> Cancelable<Option<Module>> {
+        Module::guess_from_source(db, file_id, ModuleSource::SourceFile(file_id))
     }
 
-    /// Lookup `ModuleDescriptor` by position in the source code. Note that this
+    /// Lookup `Module` by position in the source code. Note that this
     /// is inherently lossy transformation: in general, a single source might
     /// correspond to several modules.
     pub fn guess_from_position(
-        db: &impl DescriptorDatabase,
+        db: &impl HirDatabase,
         position: FilePosition,
-    ) -> Cancelable<Option<ModuleDescriptor>> {
-        let file = db.file_syntax(position.file_id);
+    ) -> Cancelable<Option<Module>> {
+        let file = db.source_file(position.file_id);
         let module_source = match find_node_at_offset::<ast::Module>(file.syntax(), position.offset)
         {
-            Some(m) if !m.has_semi() => ModuleSource::new_inline(position.file_id, m),
+            Some(m) if !m.has_semi() => ModuleSource::new_inline(db, position.file_id, m),
             _ => ModuleSource::SourceFile(position.file_id),
         };
-        ModuleDescriptor::guess_from_source(db, position.file_id, module_source)
+        Module::guess_from_source(db, position.file_id, module_source)
     }
 
     fn guess_from_source(
-        db: &impl DescriptorDatabase,
+        db: &impl HirDatabase,
         file_id: FileId,
         module_source: ModuleSource,
-    ) -> Cancelable<Option<ModuleDescriptor>> {
+    ) -> Cancelable<Option<Module>> {
         let source_root_id = db.file_source_root(file_id);
-        let module_tree = db._module_tree(source_root_id)?;
+        let module_tree = db.module_tree(source_root_id)?;
 
         let res = match module_tree.any_module_for_source(module_source) {
             None => None,
-            Some(module_id) => Some(ModuleDescriptor {
+            Some(module_id) => Some(Module {
                 tree: module_tree,
                 source_root_id,
                 module_id,
@@ -78,12 +77,12 @@ impl ModuleDescriptor {
     }
 
     pub(super) fn new(
-        db: &impl DescriptorDatabase,
+        db: &impl HirDatabase,
         source_root_id: SourceRootId,
         module_id: ModuleId,
-    ) -> Cancelable<ModuleDescriptor> {
-        let module_tree = db._module_tree(source_root_id)?;
-        let res = ModuleDescriptor {
+    ) -> Cancelable<Module> {
+        let module_tree = db.module_tree(source_root_id)?;
+        let res = Module {
             tree: module_tree,
             source_root_id,
             module_id,
@@ -93,10 +92,7 @@ impl ModuleDescriptor {
 
     /// Returns `mod foo;` or `mod foo {}` node whihc declared this module.
     /// Returns `None` for the root module
-    pub fn parent_link_source(
-        &self,
-        db: &impl DescriptorDatabase,
-    ) -> Option<(FileId, ast::ModuleNode)> {
+    pub fn parent_link_source(&self, db: &impl HirDatabase) -> Option<(FileId, ast::ModuleNode)> {
         let link = self.module_id.parent_link(&self.tree)?;
         let file_id = link.owner(&self.tree).source(&self.tree).file_id();
         let src = link.bind_source(&self.tree, db);
@@ -108,18 +104,18 @@ impl ModuleDescriptor {
     }
 
     /// Parent module. Returns `None` if this is a root module.
-    pub fn parent(&self) -> Option<ModuleDescriptor> {
+    pub fn parent(&self) -> Option<Module> {
         let parent_id = self.module_id.parent(&self.tree)?;
-        Some(ModuleDescriptor {
+        Some(Module {
             module_id: parent_id,
             ..self.clone()
         })
     }
 
     /// The root of the tree this module is part of
-    pub fn crate_root(&self) -> ModuleDescriptor {
+    pub fn crate_root(&self) -> Module {
         let root_id = self.module_id.crate_root(&self.tree);
-        ModuleDescriptor {
+        Module {
             module_id: root_id,
             ..self.clone()
         }
@@ -132,35 +128,31 @@ impl ModuleDescriptor {
         Some(link.name(&self.tree))
     }
 
-    pub fn def_id(&self, db: &impl DescriptorDatabase) -> DefId {
+    pub fn def_id(&self, db: &impl HirDatabase) -> DefId {
         let def_loc = DefLoc::Module {
             id: self.module_id,
             source_root: self.source_root_id,
         };
-        db.id_maps().def_id(def_loc)
+        def_loc.id(db)
     }
 
     /// Finds a child module with the specified name.
-    pub fn child(&self, name: &str) -> Option<ModuleDescriptor> {
+    pub fn child(&self, name: &str) -> Option<Module> {
         let child_id = self.module_id.child(&self.tree, name)?;
-        Some(ModuleDescriptor {
+        Some(Module {
             module_id: child_id,
             ..self.clone()
         })
     }
 
     /// Returns a `ModuleScope`: a set of items, visible in this module.
-    pub(crate) fn scope(&self, db: &impl DescriptorDatabase) -> Cancelable<ModuleScope> {
-        let item_map = db._item_map(self.source_root_id)?;
+    pub fn scope(&self, db: &impl HirDatabase) -> Cancelable<ModuleScope> {
+        let item_map = db.item_map(self.source_root_id)?;
         let res = item_map.per_module[&self.module_id].clone();
         Ok(res)
     }
 
-    pub(crate) fn resolve_path(
-        &self,
-        db: &impl DescriptorDatabase,
-        path: Path,
-    ) -> Cancelable<Option<DefId>> {
+    pub fn resolve_path(&self, db: &impl HirDatabase, path: Path) -> Cancelable<Option<DefId>> {
         let mut curr = match path.kind {
             PathKind::Crate => self.crate_root(),
             PathKind::Self_ | PathKind::Plain => self.clone(),
@@ -170,8 +162,8 @@ impl ModuleDescriptor {
 
         let segments = path.segments;
         for name in segments.iter() {
-            let module = match db.id_maps().def_loc(curr) {
-                DefLoc::Module { id, source_root } => ModuleDescriptor::new(db, source_root, id)?,
+            let module = match curr.loc(db) {
+                DefLoc::Module { id, source_root } => Module::new(db, source_root, id)?,
                 _ => return Ok(None),
             };
             let scope = module.scope(db)?;
@@ -180,7 +172,7 @@ impl ModuleDescriptor {
         Ok(Some(curr))
     }
 
-    pub fn problems(&self, db: &impl DescriptorDatabase) -> Vec<(SyntaxNode, Problem)> {
+    pub fn problems(&self, db: &impl HirDatabase) -> Vec<(SyntaxNode, Problem)> {
         self.module_id.problems(&self.tree, db)
     }
 }
@@ -193,13 +185,13 @@ impl ModuleDescriptor {
 /// (which can have multiple parents) to the precise world of modules (which
 /// always have one parent).
 #[derive(Default, Debug, PartialEq, Eq)]
-pub(crate) struct ModuleTree {
+pub struct ModuleTree {
     mods: Arena<ModuleData>,
     links: Arena<LinkData>,
 }
 
 impl ModuleTree {
-    fn modules<'a>(&'a self) -> impl Iterator<Item = ModuleId> + 'a {
+    pub(crate) fn modules<'a>(&'a self) -> impl Iterator<Item = ModuleId> + 'a {
         self.mods.iter().map(|(id, _)| id)
     }
 
@@ -219,20 +211,19 @@ impl ModuleTree {
 /// `ModuleSource` is the syntax tree element that produced this module:
 /// either a file, or an inlinde module.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub(crate) enum ModuleSource {
+pub enum ModuleSource {
     SourceFile(FileId),
-    #[allow(dead_code)]
-    Module(SyntaxPtr),
+    Module(SourceItemId),
 }
 
 /// An owned syntax node for a module. Unlike `ModuleSource`,
 /// this holds onto the AST for the whole file.
-enum ModuleSourceNode {
+pub enum ModuleSourceNode {
     SourceFile(ast::SourceFileNode),
     Module(ast::ModuleNode),
 }
 
-pub(crate) type ModuleId = Id<ModuleData>;
+pub type ModuleId = Id<ModuleData>;
 type LinkId = Id<LinkData>;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
@@ -247,7 +238,7 @@ pub enum Problem {
 }
 
 impl ModuleId {
-    fn source(self, tree: &ModuleTree) -> ModuleSource {
+    pub(crate) fn source(self, tree: &ModuleTree) -> ModuleSource {
         tree.mods[self].source
     }
     fn parent_link(self, tree: &ModuleTree) -> Option<LinkId> {
@@ -277,7 +268,7 @@ impl ModuleId {
             Some((link.name.clone(), module))
         })
     }
-    fn problems(self, tree: &ModuleTree, db: &impl SyntaxDatabase) -> Vec<(SyntaxNode, Problem)> {
+    fn problems(self, tree: &ModuleTree, db: &impl HirDatabase) -> Vec<(SyntaxNode, Problem)> {
         tree.mods[self]
             .children
             .iter()
@@ -298,7 +289,7 @@ impl LinkId {
     fn name(self, tree: &ModuleTree) -> SmolStr {
         tree.links[self].name.clone()
     }
-    fn bind_source<'a>(self, tree: &ModuleTree, db: &impl SyntaxDatabase) -> ast::ModuleNode {
+    fn bind_source<'a>(self, tree: &ModuleTree, db: &impl HirDatabase) -> ast::ModuleNode {
         let owner = self.owner(tree);
         match owner.source(tree).resolve(db) {
             ModuleSourceNode::SourceFile(root) => {
@@ -314,41 +305,47 @@ impl LinkId {
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub(crate) struct ModuleData {
+pub struct ModuleData {
     source: ModuleSource,
     parent: Option<LinkId>,
     children: Vec<LinkId>,
 }
 
 impl ModuleSource {
-    fn new_inline(file_id: FileId, module: ast::Module) -> ModuleSource {
+    pub(crate) fn new_inline(
+        db: &impl HirDatabase,
+        file_id: FileId,
+        module: ast::Module,
+    ) -> ModuleSource {
         assert!(!module.has_semi());
-        let ptr = SyntaxPtr::new(file_id, module.syntax());
-        ModuleSource::Module(ptr)
+        let items = db.file_items(file_id);
+        let item_id = items.id_of(module.syntax());
+        let id = SourceItemId { file_id, item_id };
+        ModuleSource::Module(id)
     }
 
-    pub(crate) fn as_file(self) -> Option<FileId> {
+    pub fn as_file(self) -> Option<FileId> {
         match self {
             ModuleSource::SourceFile(f) => Some(f),
             ModuleSource::Module(..) => None,
         }
     }
 
-    pub(crate) fn file_id(self) -> FileId {
+    pub fn file_id(self) -> FileId {
         match self {
             ModuleSource::SourceFile(f) => f,
-            ModuleSource::Module(ptr) => ptr.file_id(),
+            ModuleSource::Module(source_item_id) => source_item_id.file_id,
         }
     }
 
-    fn resolve(self, db: &impl SyntaxDatabase) -> ModuleSourceNode {
+    pub fn resolve(self, db: &impl HirDatabase) -> ModuleSourceNode {
         match self {
             ModuleSource::SourceFile(file_id) => {
-                let syntax = db.file_syntax(file_id);
+                let syntax = db.source_file(file_id);
                 ModuleSourceNode::SourceFile(syntax.ast().owned())
             }
-            ModuleSource::Module(ptr) => {
-                let syntax = db.resolve_syntax_ptr(ptr);
+            ModuleSource::Module(item_id) => {
+                let syntax = db.file_item(item_id);
                 let syntax = syntax.borrowed();
                 let module = ast::Module::cast(syntax).unwrap();
                 ModuleSourceNode::Module(module.owned())

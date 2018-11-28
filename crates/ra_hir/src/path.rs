@@ -1,13 +1,13 @@
 use ra_syntax::{SmolStr, ast, AstNode, TextRange};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Path {
-    pub(crate) kind: PathKind,
-    pub(crate) segments: Vec<SmolStr>,
+pub struct Path {
+    pub kind: PathKind,
+    pub segments: Vec<SmolStr>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum PathKind {
+pub enum PathKind {
     Plain,
     Self_,
     Super,
@@ -16,14 +16,14 @@ pub(crate) enum PathKind {
 
 impl Path {
     /// Calls `cb` with all paths, represented by this use item.
-    pub(crate) fn expand_use_item(item: ast::UseItem, mut cb: impl FnMut(Path, Option<TextRange>)) {
+    pub fn expand_use_item(item: ast::UseItem, mut cb: impl FnMut(Path, Option<TextRange>)) {
         if let Some(tree) = item.use_tree() {
             expand_use_tree(None, tree, &mut cb);
         }
     }
 
     /// Converts an `ast::Path` to `Path`. Works with use trees.
-    pub(crate) fn from_ast(mut path: ast::Path) -> Option<Path> {
+    pub fn from_ast(mut path: ast::Path) -> Option<Path> {
         let mut kind = PathKind::Plain;
         let mut segments = Vec::new();
         loop {
@@ -64,7 +64,7 @@ impl Path {
     }
 
     /// `true` is this path is a single identifier, like `foo`
-    pub(crate) fn is_ident(&self) -> bool {
+    pub fn is_ident(&self) -> bool {
         self.kind == PathKind::Plain && self.segments.len() == 1
     }
 }

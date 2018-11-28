@@ -1,30 +1,83 @@
-pub(super) mod imp;
 mod scope;
 
-use std::cmp::{max, min};
+use std::{
+    cmp::{max, min},
+    sync::Arc,
+};
 
 use ra_syntax::{
+    TextRange, TextUnit, SyntaxNodeRef,
     ast::{self, AstNode, DocCommentsOwner, NameOwner},
-    TextRange, TextUnit,
 };
+use ra_db::FileId;
 
 use crate::{
-    syntax_ptr::SyntaxPtr, FileId,
-    loc2id::IdDatabase,
+    FnId, HirDatabase, SourceItemId,
 };
 
-pub(crate) use self::scope::{resolve_local_name, FnScopes};
-pub(crate) use crate::loc2id::FnId;
+pub use self::scope::FnScopes;
 
 impl FnId {
-    pub(crate) fn get(db: &impl IdDatabase, file_id: FileId, fn_def: ast::FnDef) -> FnId {
-        let ptr = SyntaxPtr::new(file_id, fn_def.syntax());
-        db.id_maps().fn_id(ptr)
+    pub fn get(db: &impl HirDatabase, file_id: FileId, fn_def: ast::FnDef) -> FnId {
+        let file_items = db.file_items(file_id);
+        let item_id = file_items.id_of(fn_def.syntax());
+        let item_id = SourceItemId { file_id, item_id };
+        FnId::from_loc(db, &item_id)
+    }
+}
+
+pub struct Function {
+    fn_id: FnId,
+}
+
+impl Function {
+    pub fn guess_from_source(
+        db: &impl HirDatabase,
+        file_id: FileId,
+        fn_def: ast::FnDef,
+    ) -> Function {
+        let fn_id = FnId::get(db, file_id, fn_def);
+        Function { fn_id }
+    }
+
+    pub fn guess_for_name_ref(
+        db: &impl HirDatabase,
+        file_id: FileId,
+        name_ref: ast::NameRef,
+    ) -> Option<Function> {
+        Function::guess_for_node(db, file_id, name_ref.syntax())
+    }
+
+    pub fn guess_for_bind_pat(
+        db: &impl HirDatabase,
+        file_id: FileId,
+        bind_pat: ast::BindPat,
+    ) -> Option<Function> {
+        Function::guess_for_node(db, file_id, bind_pat.syntax())
+    }
+
+    fn guess_for_node(
+        db: &impl HirDatabase,
+        file_id: FileId,
+        node: SyntaxNodeRef,
+    ) -> Option<Function> {
+        let fn_def = node.ancestors().find_map(ast::FnDef::cast)?;
+        let res = Function::guess_from_source(db, file_id, fn_def);
+        Some(res)
+    }
+
+    pub fn scope(&self, db: &impl HirDatabase) -> Arc<FnScopes> {
+        db.fn_scopes(self.fn_id)
+    }
+
+    pub fn signature_info(&self, db: &impl HirDatabase) -> Option<FnSignatureInfo> {
+        let syntax = db.fn_syntax(self.fn_id);
+        FnSignatureInfo::new(syntax.borrowed())
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct FnDescriptor {
+pub struct FnSignatureInfo {
     pub name: String,
     pub label: String,
     pub ret_type: Option<String>,
@@ -32,8 +85,8 @@ pub struct FnDescriptor {
     pub doc: Option<String>,
 }
 
-impl FnDescriptor {
-    pub fn new(node: ast::FnDef) -> Option<Self> {
+impl FnSignatureInfo {
+    fn new(node: ast::FnDef) -> Option<Self> {
         let name = node.name()?.text().to_string();
 
         let mut doc = None;
@@ -52,7 +105,7 @@ impl FnDescriptor {
             node.syntax().text().to_string()
         };
 
-        if let Some((comment_range, docs)) = FnDescriptor::extract_doc_comments(node) {
+        if let Some((comment_range, docs)) = FnSignatureInfo::extract_doc_comments(node) {
             let comment_range = comment_range
                 .checked_sub(node.syntax().range().start())
                 .unwrap();
@@ -84,10 +137,10 @@ impl FnDescriptor {
             }
         }
 
-        let params = FnDescriptor::param_list(node);
+        let params = FnSignatureInfo::param_list(node);
         let ret_type = node.ret_type().map(|r| r.syntax().text().to_string());
 
-        Some(FnDescriptor {
+        Some(FnSignatureInfo {
             name,
             ret_type,
             params,

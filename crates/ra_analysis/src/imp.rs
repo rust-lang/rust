@@ -1,93 +1,32 @@
 use std::{
     fmt,
-    hash::{Hash, Hasher},
     sync::Arc,
 };
 
 use ra_editor::{self, find_node_at_offset, FileSymbol, LineIndex, LocalEdit};
 use ra_syntax::{
     ast::{self, ArgListOwner, Expr, NameOwner},
-    AstNode, SourceFileNode, SmolStr,
+    AstNode, SourceFileNode,
     SyntaxKind::*,
     SyntaxNodeRef, TextRange, TextUnit,
 };
+use ra_db::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE, SyntaxDatabase, SourceFileQuery};
 use rayon::prelude::*;
-use relative_path::RelativePath;
 use rustc_hash::FxHashSet;
 use salsa::{Database, ParallelDatabase};
+use hir::{
+    self,
+    FnSignatureInfo,
+    Problem,
+};
 
 use crate::{
     completion::{completions, CompletionItem},
-    db::{self, FileSyntaxQuery, SyntaxDatabase},
-    descriptors::{
-        function::{FnDescriptor, FnId},
-        module::{ModuleDescriptor, Problem},
-        DeclarationDescriptor, DescriptorDatabase,
-    },
-    input::{FilesDatabase, SourceRoot, SourceRootId, WORKSPACE},
-    symbol_index::SymbolIndex,
-    AnalysisChange, Cancelable, CrateGraph, CrateId, Diagnostic, FileId, FileResolver,
+    db,
+    symbol_index::{SymbolIndex, SymbolsDatabase},
+    AnalysisChange, Cancelable, CrateId, Diagnostic, FileId,
     FileSystemEdit, FilePosition, Query, SourceChange, SourceFileNodeEdit,
 };
-
-#[derive(Clone, Debug)]
-pub(crate) struct FileResolverImp {
-    inner: Arc<FileResolver>,
-}
-
-impl PartialEq for FileResolverImp {
-    fn eq(&self, other: &FileResolverImp) -> bool {
-        self.inner() == other.inner()
-    }
-}
-
-impl Eq for FileResolverImp {}
-
-impl Hash for FileResolverImp {
-    fn hash<H: Hasher>(&self, hasher: &mut H) {
-        self.inner().hash(hasher);
-    }
-}
-
-impl FileResolverImp {
-    pub(crate) fn new(inner: Arc<FileResolver>) -> FileResolverImp {
-        FileResolverImp { inner }
-    }
-    pub(crate) fn file_stem(&self, file_id: FileId) -> String {
-        self.inner.file_stem(file_id)
-    }
-    pub(crate) fn resolve(&self, file_id: FileId, path: &RelativePath) -> Option<FileId> {
-        self.inner.resolve(file_id, path)
-    }
-    pub(crate) fn debug_path(&self, file_id: FileId) -> Option<std::path::PathBuf> {
-        self.inner.debug_path(file_id)
-    }
-    fn inner(&self) -> *const FileResolver {
-        &*self.inner
-    }
-}
-
-impl Default for FileResolverImp {
-    fn default() -> FileResolverImp {
-        #[derive(Debug)]
-        struct DummyResolver;
-        impl FileResolver for DummyResolver {
-            fn file_stem(&self, _file_: FileId) -> String {
-                panic!("file resolver not set")
-            }
-            fn resolve(
-                &self,
-                _file_id: FileId,
-                _path: &::relative_path::RelativePath,
-            ) -> Option<FileId> {
-                panic!("file resolver not set")
-            }
-        }
-        FileResolverImp {
-            inner: Arc::new(DummyResolver),
-        }
-    }
-}
 
 #[derive(Debug, Default)]
 pub(crate) struct AnalysisHostImpl {
@@ -105,7 +44,7 @@ impl AnalysisHostImpl {
 
         for (file_id, text) in change.files_changed {
             self.db
-                .query_mut(crate::input::FileTextQuery)
+                .query_mut(ra_db::FileTextQuery)
                 .set(file_id, Arc::new(text))
         }
         if !(change.files_added.is_empty() && change.files_removed.is_empty()) {
@@ -115,22 +54,22 @@ impl AnalysisHostImpl {
             let mut source_root = SourceRoot::clone(&self.db.source_root(WORKSPACE));
             for (file_id, text) in change.files_added {
                 self.db
-                    .query_mut(crate::input::FileTextQuery)
+                    .query_mut(ra_db::FileTextQuery)
                     .set(file_id, Arc::new(text));
                 self.db
-                    .query_mut(crate::input::FileSourceRootQuery)
-                    .set(file_id, crate::input::WORKSPACE);
+                    .query_mut(ra_db::FileSourceRootQuery)
+                    .set(file_id, ra_db::WORKSPACE);
                 source_root.files.insert(file_id);
             }
             for file_id in change.files_removed {
                 self.db
-                    .query_mut(crate::input::FileTextQuery)
+                    .query_mut(ra_db::FileTextQuery)
                     .set(file_id, Arc::new(String::new()));
                 source_root.files.remove(&file_id);
             }
             source_root.file_resolver = file_resolver;
             self.db
-                .query_mut(crate::input::SourceRootQuery)
+                .query_mut(ra_db::SourceRootQuery)
                 .set(WORKSPACE, Arc::new(source_root))
         }
         if !change.libraries_added.is_empty() {
@@ -147,10 +86,10 @@ impl AnalysisHostImpl {
                         library.file_resolver.debug_path(file_id)
                     );
                     self.db
-                        .query_mut(crate::input::FileSourceRootQuery)
+                        .query_mut(ra_db::FileSourceRootQuery)
                         .set_constant(file_id, source_root_id);
                     self.db
-                        .query_mut(crate::input::FileTextQuery)
+                        .query_mut(ra_db::FileTextQuery)
                         .set_constant(file_id, Arc::new(text));
                 }
                 let source_root = SourceRoot {
@@ -158,19 +97,19 @@ impl AnalysisHostImpl {
                     file_resolver: library.file_resolver,
                 };
                 self.db
-                    .query_mut(crate::input::SourceRootQuery)
+                    .query_mut(ra_db::SourceRootQuery)
                     .set(source_root_id, Arc::new(source_root));
                 self.db
-                    .query_mut(crate::input::LibrarySymbolsQuery)
+                    .query_mut(crate::symbol_index::LibrarySymbolsQuery)
                     .set(source_root_id, Arc::new(library.symbol_index));
             }
             self.db
-                .query_mut(crate::input::LibrariesQuery)
+                .query_mut(ra_db::LibrariesQuery)
                 .set((), Arc::new(libraries));
         }
         if let Some(crate_graph) = change.crate_graph {
             self.db
-                .query_mut(crate::input::CrateGraphQuery)
+                .query_mut(ra_db::CrateGraphQuery)
                 .set((), Arc::new(crate_graph))
         }
     }
@@ -189,7 +128,7 @@ impl fmt::Debug for AnalysisImpl {
 
 impl AnalysisImpl {
     pub fn file_syntax(&self, file_id: FileId) -> SourceFileNode {
-        self.db.file_syntax(file_id)
+        self.db.source_file(file_id)
     }
     pub fn file_line_index(&self, file_id: FileId) -> Arc<LineIndex> {
         self.db.file_lines(file_id)
@@ -220,14 +159,14 @@ impl AnalysisImpl {
                 .collect()
         };
         self.db
-            .query(FileSyntaxQuery)
+            .query(SourceFileQuery)
             .sweep(salsa::SweepStrategy::default().discard_values());
         Ok(query.search(&buf))
     }
     /// This return `Vec`: a module may be included from several places. We
     /// don't handle this case yet though, so the Vec has length at most one.
     pub fn parent_module(&self, position: FilePosition) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        let descr = match ModuleDescriptor::guess_from_position(&*self.db, position)? {
+        let descr = match hir::Module::guess_from_position(&*self.db, position)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
@@ -246,7 +185,7 @@ impl AnalysisImpl {
     }
     /// Returns `Vec` for the same reason as `parent_module`
     pub fn crate_for(&self, file_id: FileId) -> Cancelable<Vec<CrateId>> {
-        let descr = match ModuleDescriptor::guess_from_file_id(&*self.db, file_id)? {
+        let descr = match hir::Module::guess_from_file_id(&*self.db, file_id)? {
             None => return Ok(Vec::new()),
             Some(it) => it,
         };
@@ -261,7 +200,7 @@ impl AnalysisImpl {
         Ok(crate_id.into_iter().collect())
     }
     pub fn crate_root(&self, crate_id: CrateId) -> FileId {
-        self.db.crate_graph().crate_roots[&crate_id]
+        self.db.crate_graph().crate_root(crate_id)
     }
     pub fn completions(&self, position: FilePosition) -> Cancelable<Option<Vec<CompletionItem>>> {
         completions(&self.db, position)
@@ -270,33 +209,36 @@ impl AnalysisImpl {
         &self,
         position: FilePosition,
     ) -> Cancelable<Vec<(FileId, FileSymbol)>> {
-        let file = self.db.file_syntax(position.file_id);
+        let file = self.db.source_file(position.file_id);
         let syntax = file.syntax();
         if let Some(name_ref) = find_node_at_offset::<ast::NameRef>(syntax, position.offset) {
-            // First try to resolve the symbol locally
-            return if let Some((name, range)) =
-                resolve_local_name(&self.db, position.file_id, name_ref)
+            if let Some(fn_descr) =
+                hir::Function::guess_for_name_ref(&*self.db, position.file_id, name_ref)
             {
-                let mut vec = vec![];
-                vec.push((
-                    position.file_id,
-                    FileSymbol {
-                        name,
-                        node_range: range,
-                        kind: NAME,
-                    },
-                ));
-                Ok(vec)
-            } else {
-                // If that fails try the index based approach.
-                self.index_resolve(name_ref)
-            };
+                let scope = fn_descr.scope(&*self.db);
+                // First try to resolve the symbol locally
+                return if let Some(entry) = scope.resolve_local_name(name_ref) {
+                    let mut vec = vec![];
+                    vec.push((
+                        position.file_id,
+                        FileSymbol {
+                            name: entry.name().clone(),
+                            node_range: entry.ptr().range(),
+                            kind: NAME,
+                        },
+                    ));
+                    Ok(vec)
+                } else {
+                    // If that fails try the index based approach.
+                    self.index_resolve(name_ref)
+                };
+            }
         }
         if let Some(name) = find_node_at_offset::<ast::Name>(syntax, position.offset) {
             if let Some(module) = name.syntax().parent().and_then(ast::Module::cast) {
                 if module.has_semi() {
                     let parent_module =
-                        ModuleDescriptor::guess_from_file_id(&*self.db, position.file_id)?;
+                        hir::Module::guess_from_file_id(&*self.db, position.file_id)?;
                     let child_name = module.name();
                     match (parent_module, child_name) {
                         (Some(parent_module), Some(child_name)) => {
@@ -319,32 +261,42 @@ impl AnalysisImpl {
     }
 
     pub fn find_all_refs(&self, position: FilePosition) -> Vec<(FileId, TextRange)> {
-        let file = self.db.file_syntax(position.file_id);
-        let syntax = file.syntax();
-
+        let file = self.db.source_file(position.file_id);
         // Find the binding associated with the offset
-        let maybe_binding =
-            find_node_at_offset::<ast::BindPat>(syntax, position.offset).or_else(|| {
-                let name_ref = find_node_at_offset::<ast::NameRef>(syntax, position.offset)?;
-                let resolved = resolve_local_name(&self.db, position.file_id, name_ref)?;
-                find_node_at_offset::<ast::BindPat>(syntax, resolved.1.end())
-            });
-
-        let binding = match maybe_binding {
+        let (binding, descr) = match find_binding(&self.db, &file, position) {
             None => return Vec::new(),
             Some(it) => it,
         };
 
-        let decl = DeclarationDescriptor::new(binding);
-
-        let mut ret = vec![(position.file_id, decl.range)];
+        let mut ret = vec![(position.file_id, binding.syntax().range())];
         ret.extend(
-            decl.find_all_refs()
+            descr
+                .scope(&*self.db)
+                .find_all_refs(binding)
                 .into_iter()
                 .map(|ref_desc| (position.file_id, ref_desc.range)),
         );
 
-        ret
+        return ret;
+
+        fn find_binding<'a>(
+            db: &db::RootDatabase,
+            source_file: &'a SourceFileNode,
+            position: FilePosition,
+        ) -> Option<(ast::BindPat<'a>, hir::Function)> {
+            let syntax = source_file.syntax();
+            if let Some(binding) = find_node_at_offset::<ast::BindPat>(syntax, position.offset) {
+                let descr = hir::Function::guess_for_bind_pat(db, position.file_id, binding)?;
+                return Some((binding, descr));
+            };
+            let name_ref = find_node_at_offset::<ast::NameRef>(syntax, position.offset)?;
+            let descr = hir::Function::guess_for_name_ref(db, position.file_id, name_ref)?;
+            let scope = descr.scope(db);
+            let resolved = scope.resolve_local_name(name_ref)?;
+            let resolved = resolved.ptr().resolve(source_file);
+            let binding = find_node_at_offset::<ast::BindPat>(syntax, resolved.range().end())?;
+            Some((binding, descr))
+        }
     }
 
     pub fn doc_comment_for(
@@ -352,13 +304,13 @@ impl AnalysisImpl {
         file_id: FileId,
         symbol: FileSymbol,
     ) -> Cancelable<Option<String>> {
-        let file = self.db.file_syntax(file_id);
+        let file = self.db.source_file(file_id);
 
         Ok(symbol.docs(&file))
     }
 
     pub fn diagnostics(&self, file_id: FileId) -> Cancelable<Vec<Diagnostic>> {
-        let syntax = self.db.file_syntax(file_id);
+        let syntax = self.db.source_file(file_id);
 
         let mut res = ra_editor::diagnostics(&syntax)
             .into_iter()
@@ -368,7 +320,7 @@ impl AnalysisImpl {
                 fix: None,
             })
             .collect::<Vec<_>>();
-        if let Some(m) = ModuleDescriptor::guess_from_file_id(&*self.db, file_id)? {
+        if let Some(m) = hir::Module::guess_from_file_id(&*self.db, file_id)? {
             for (name_node, problem) in m.problems(&*self.db) {
                 let diag = match problem {
                     Problem::UnresolvedModule { candidate } => {
@@ -445,8 +397,8 @@ impl AnalysisImpl {
     pub fn resolve_callable(
         &self,
         position: FilePosition,
-    ) -> Cancelable<Option<(FnDescriptor, Option<usize>)>> {
-        let file = self.db.file_syntax(position.file_id);
+    ) -> Cancelable<Option<(FnSignatureInfo, Option<usize>)>> {
+        let file = self.db.source_file(position.file_id);
         let syntax = file.syntax();
 
         // Find the calling expression and it's NameRef
@@ -455,11 +407,12 @@ impl AnalysisImpl {
 
         // Resolve the function's NameRef (NOTE: this isn't entirely accurate).
         let file_symbols = self.index_resolve(name_ref)?;
-        for (fn_fiel_id, fs) in file_symbols {
+        for (fn_file_id, fs) in file_symbols {
             if fs.kind == FN_DEF {
-                let fn_file = self.db.file_syntax(fn_fiel_id);
+                let fn_file = self.db.source_file(fn_file_id);
                 if let Some(fn_def) = find_node_at_offset(fn_file.syntax(), fs.node_range.start()) {
-                    if let Some(descriptor) = FnDescriptor::new(fn_def) {
+                    let descr = hir::Function::guess_from_source(&*self.db, fn_file_id, fn_def);
+                    if let Some(descriptor) = descr.signature_info(&*self.db) {
                         // If we have a calling expression let's find which argument we are on
                         let mut current_parameter = None;
 
@@ -532,16 +485,6 @@ impl SourceChange {
     }
 }
 
-impl CrateGraph {
-    fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
-        let (&crate_id, _) = self
-            .crate_roots
-            .iter()
-            .find(|(_crate_id, &root_id)| root_id == file_id)?;
-        Some(crate_id)
-    }
-}
-
 enum FnCallNode<'a> {
     CallExpr(ast::CallExpr<'a>),
     MethodCallExpr(ast::MethodCallExpr<'a>),
@@ -579,17 +522,4 @@ impl<'a> FnCallNode<'a> {
             FnCallNode::MethodCallExpr(expr) => expr.arg_list(),
         }
     }
-}
-
-fn resolve_local_name(
-    db: &db::RootDatabase,
-    file_id: FileId,
-    name_ref: ast::NameRef,
-) -> Option<(SmolStr, TextRange)> {
-    let fn_def = name_ref.syntax().ancestors().find_map(ast::FnDef::cast)?;
-    let fn_id = FnId::get(db, file_id, fn_def);
-    let scopes = db.fn_scopes(fn_id);
-    let scope_entry = crate::descriptors::function::resolve_local_name(name_ref, &scopes)?;
-    let syntax = db.resolve_syntax_ptr(scope_entry.ptr().into_global(file_id));
-    Some((scope_entry.name().clone(), syntax.range()))
 }

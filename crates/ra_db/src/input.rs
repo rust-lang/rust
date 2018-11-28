@@ -1,11 +1,10 @@
-use std::{fmt, sync::Arc};
+use std::sync::Arc;
 
-use relative_path::RelativePath;
 use rustc_hash::FxHashMap;
 use rustc_hash::FxHashSet;
 use salsa;
 
-use crate::{symbol_index::SymbolIndex, FileResolverImp};
+use crate::file_resolver::FileResolverImp;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FileId(pub u32);
@@ -19,8 +18,8 @@ pub struct CrateGraph {
 }
 
 impl CrateGraph {
-    pub fn new() -> CrateGraph {
-        CrateGraph::default()
+    pub fn crate_root(&self, crate_id: CrateId) -> FileId {
+        self.crate_roots[&crate_id]
     }
     pub fn add_crate_root(&mut self, file_id: FileId) -> CrateId {
         let crate_id = CrateId(self.crate_roots.len() as u32);
@@ -28,18 +27,17 @@ impl CrateGraph {
         assert!(prev.is_none());
         crate_id
     }
-}
-
-pub trait FileResolver: fmt::Debug + Send + Sync + 'static {
-    fn file_stem(&self, file_id: FileId) -> String;
-    fn resolve(&self, file_id: FileId, path: &RelativePath) -> Option<FileId>;
-    fn debug_path(&self, _file_id: FileId) -> Option<std::path::PathBuf> {
-        None
+    pub fn crate_id_for_crate_root(&self, file_id: FileId) -> Option<CrateId> {
+        let (&crate_id, _) = self
+            .crate_roots
+            .iter()
+            .find(|(_crate_id, &root_id)| root_id == file_id)?;
+        Some(crate_id)
     }
 }
 
 salsa::query_group! {
-    pub(crate) trait FilesDatabase: salsa::Database {
+    pub trait FilesDatabase: salsa::Database {
         fn file_text(file_id: FileId) -> Arc<String> {
             type FileTextQuery;
             storage input;
@@ -56,10 +54,6 @@ salsa::query_group! {
             type LibrariesQuery;
             storage input;
         }
-        fn library_symbols(id: SourceRootId) -> Arc<SymbolIndex> {
-            type LibrarySymbolsQuery;
-            storage input;
-        }
         fn crate_graph() -> Arc<CrateGraph> {
             type CrateGraphQuery;
             storage input;
@@ -68,12 +62,12 @@ salsa::query_group! {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub(crate) struct SourceRootId(pub(crate) u32);
+pub struct SourceRootId(pub u32);
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
-pub(crate) struct SourceRoot {
-    pub(crate) file_resolver: FileResolverImp,
-    pub(crate) files: FxHashSet<FileId>,
+pub struct SourceRoot {
+    pub file_resolver: FileResolverImp,
+    pub files: FxHashSet<FileId>,
 }
 
-pub(crate) const WORKSPACE: SourceRootId = SourceRootId(0);
+pub const WORKSPACE: SourceRootId = SourceRootId(0);

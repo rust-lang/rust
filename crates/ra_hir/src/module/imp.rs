@@ -6,21 +6,19 @@ use ra_syntax::{
 };
 use relative_path::RelativePathBuf;
 use rustc_hash::{FxHashMap, FxHashSet};
+use ra_db::{SourceRoot, SourceRootId, FileResolverImp, Cancelable, FileId,};
 
 use crate::{
-    db,
-    descriptors::DescriptorDatabase,
-    input::{SourceRoot, SourceRootId},
-    Cancelable, FileId, FileResolverImp,
+    HirDatabase,
 };
 
 use super::{
-    LinkData, LinkId, ModuleData, ModuleId, ModuleSource, ModuleSourceNode,
+    LinkData, LinkId, ModuleData, ModuleId, ModuleSource,
     ModuleTree, Problem,
 };
 
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
-pub(crate) enum Submodule {
+pub enum Submodule {
     Declaration(SmolStr),
     Definition(SmolStr, ModuleSource),
 }
@@ -31,39 +29,6 @@ impl Submodule {
             Submodule::Declaration(name) => name,
             Submodule::Definition(name, _) => name,
         }
-    }
-}
-
-pub(crate) fn submodules(
-    db: &impl DescriptorDatabase,
-    source: ModuleSource,
-) -> Cancelable<Arc<Vec<Submodule>>> {
-    db::check_canceled(db)?;
-    let file_id = source.file_id();
-    let submodules = match source.resolve(db) {
-        ModuleSourceNode::SourceFile(it) => collect_submodules(file_id, it.borrowed()),
-        ModuleSourceNode::Module(it) => it
-            .borrowed()
-            .item_list()
-            .map(|it| collect_submodules(file_id, it))
-            .unwrap_or_else(Vec::new),
-    };
-    return Ok(Arc::new(submodules));
-
-    fn collect_submodules<'a>(
-        file_id: FileId,
-        root: impl ast::ModuleItemOwner<'a>,
-    ) -> Vec<Submodule> {
-        modules(root)
-            .map(|(name, m)| {
-                if m.has_semi() {
-                    Submodule::Declaration(name)
-                } else {
-                    let src = ModuleSource::new_inline(file_id, m);
-                    Submodule::Definition(name, src)
-                }
-            })
-            .collect()
     }
 }
 
@@ -82,16 +47,16 @@ pub(crate) fn modules<'a>(
 }
 
 pub(crate) fn module_tree(
-    db: &impl DescriptorDatabase,
+    db: &impl HirDatabase,
     source_root: SourceRootId,
 ) -> Cancelable<Arc<ModuleTree>> {
-    db::check_canceled(db)?;
+    db.check_canceled()?;
     let res = create_module_tree(db, source_root)?;
     Ok(Arc::new(res))
 }
 
 fn create_module_tree<'a>(
-    db: &impl DescriptorDatabase,
+    db: &impl HirDatabase,
     source_root: SourceRootId,
 ) -> Cancelable<ModuleTree> {
     let mut tree = ModuleTree::default();
@@ -121,7 +86,7 @@ fn create_module_tree<'a>(
 }
 
 fn build_subtree(
-    db: &impl DescriptorDatabase,
+    db: &impl HirDatabase,
     source_root: &SourceRoot,
     tree: &mut ModuleTree,
     visited: &mut FxHashSet<ModuleSource>,
@@ -135,7 +100,7 @@ fn build_subtree(
         parent,
         children: Vec::new(),
     });
-    for sub in db._submodules(source)?.iter() {
+    for sub in db.submodules(source)?.iter() {
         let link = tree.push_link(LinkData {
             name: sub.name().clone(),
             owner: id,

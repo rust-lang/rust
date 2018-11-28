@@ -1,17 +1,12 @@
 use std::sync::Arc;
 #[cfg(test)]
 use parking_lot::Mutex;
-use ra_editor::LineIndex;
-use ra_syntax::{SourceFileNode, SyntaxNode};
 use salsa::{self, Database};
+use ra_db::{LocationIntener, BaseDatabase};
+use hir::{self, DefId, DefLoc, FnId, SourceItemId};
 
 use crate::{
-    db,
-    descriptors,
-    symbol_index::SymbolIndex,
-    syntax_ptr::SyntaxPtr,
-    loc2id::{IdMaps, IdDatabase},
-    Cancelable, Canceled, FileId,
+    symbol_index,
 };
 
 #[derive(Debug)]
@@ -22,7 +17,13 @@ pub(crate) struct RootDatabase {
     events: (),
 
     runtime: salsa::Runtime<RootDatabase>,
-    id_maps: IdMaps,
+    id_maps: Arc<IdMaps>,
+}
+
+#[derive(Debug, Default)]
+struct IdMaps {
+    fns: LocationIntener<SourceItemId, FnId>,
+    defs: LocationIntener<DefLoc, DefId>,
 }
 
 impl salsa::Database for RootDatabase {
@@ -47,23 +48,15 @@ impl Default for RootDatabase {
         let mut db = RootDatabase {
             events: Default::default(),
             runtime: salsa::Runtime::default(),
-            id_maps: IdMaps::default(),
+            id_maps: Default::default(),
         };
-        db.query_mut(crate::input::SourceRootQuery)
-            .set(crate::input::WORKSPACE, Default::default());
-        db.query_mut(crate::input::CrateGraphQuery)
+        db.query_mut(ra_db::SourceRootQuery)
+            .set(ra_db::WORKSPACE, Default::default());
+        db.query_mut(ra_db::CrateGraphQuery)
             .set((), Default::default());
-        db.query_mut(crate::input::LibrariesQuery)
+        db.query_mut(ra_db::LibrariesQuery)
             .set((), Default::default());
         db
-    }
-}
-
-pub(crate) fn check_canceled(db: &impl salsa::Database) -> Cancelable<()> {
-    if db.salsa_runtime().is_current_revision_canceled() {
-        Err(Canceled)
-    } else {
-        Ok(())
     }
 }
 
@@ -77,9 +70,17 @@ impl salsa::ParallelDatabase for RootDatabase {
     }
 }
 
-impl IdDatabase for RootDatabase {
-    fn id_maps(&self) -> &IdMaps {
-        &self.id_maps
+impl BaseDatabase for RootDatabase {}
+
+impl AsRef<LocationIntener<DefLoc, DefId>> for RootDatabase {
+    fn as_ref(&self) -> &LocationIntener<DefLoc, DefId> {
+        &self.id_maps.defs
+    }
+}
+
+impl AsRef<LocationIntener<hir::SourceItemId, FnId>> for RootDatabase {
+    fn as_ref(&self) -> &LocationIntener<hir::SourceItemId, FnId> {
+        &self.id_maps.fns
     }
 }
 
@@ -108,63 +109,30 @@ impl RootDatabase {
 
 salsa::database_storage! {
     pub(crate) struct RootDatabaseStorage for RootDatabase {
-        impl crate::input::FilesDatabase {
-            fn file_text() for crate::input::FileTextQuery;
-            fn file_source_root() for crate::input::FileSourceRootQuery;
-            fn source_root() for crate::input::SourceRootQuery;
-            fn libraries() for crate::input::LibrariesQuery;
-            fn library_symbols() for crate::input::LibrarySymbolsQuery;
-            fn crate_graph() for crate::input::CrateGraphQuery;
+        impl ra_db::FilesDatabase {
+            fn file_text() for ra_db::FileTextQuery;
+            fn file_source_root() for ra_db::FileSourceRootQuery;
+            fn source_root() for ra_db::SourceRootQuery;
+            fn libraries() for ra_db::LibrariesQuery;
+            fn crate_graph() for ra_db::CrateGraphQuery;
         }
-        impl SyntaxDatabase {
-            fn file_syntax() for FileSyntaxQuery;
-            fn file_lines() for FileLinesQuery;
-            fn file_symbols() for FileSymbolsQuery;
-            fn resolve_syntax_ptr() for ResolveSyntaxPtrQuery;
+        impl ra_db::SyntaxDatabase {
+            fn source_file() for ra_db::SourceFileQuery;
+            fn file_lines() for ra_db::FileLinesQuery;
         }
-        impl descriptors::DescriptorDatabase {
-            fn module_tree() for descriptors::ModuleTreeQuery;
-            fn fn_scopes() for descriptors::FnScopesQuery;
-            fn _file_items() for descriptors::FileItemsQuery;
-            fn _file_item() for descriptors::FileItemQuery;
-            fn _input_module_items() for descriptors::InputModuleItemsQuery;
-            fn _item_map() for descriptors::ItemMapQuery;
-            fn _fn_syntax() for descriptors::FnSyntaxQuery;
-            fn _submodules() for descriptors::SubmodulesQuery;
+        impl symbol_index::SymbolsDatabase {
+            fn file_symbols() for symbol_index::FileSymbolsQuery;
+            fn library_symbols() for symbol_index::LibrarySymbolsQuery;
         }
-    }
-}
-
-salsa::query_group! {
-    pub(crate) trait SyntaxDatabase: crate::input::FilesDatabase {
-        fn file_syntax(file_id: FileId) -> SourceFileNode {
-            type FileSyntaxQuery;
-        }
-        fn file_lines(file_id: FileId) -> Arc<LineIndex> {
-            type FileLinesQuery;
-        }
-        fn file_symbols(file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
-            type FileSymbolsQuery;
-        }
-        fn resolve_syntax_ptr(ptr: SyntaxPtr) -> SyntaxNode {
-            type ResolveSyntaxPtrQuery;
-            // Don't retain syntax trees in memory
-            storage dependencies;
-            use fn crate::syntax_ptr::resolve_syntax_ptr;
+        impl hir::db::HirDatabase {
+            fn module_tree() for hir::db::ModuleTreeQuery;
+            fn fn_scopes() for hir::db::FnScopesQuery;
+            fn file_items() for hir::db::SourceFileItemsQuery;
+            fn file_item() for hir::db::FileItemQuery;
+            fn input_module_items() for hir::db::InputModuleItemsQuery;
+            fn item_map() for hir::db::ItemMapQuery;
+            fn fn_syntax() for hir::db::FnSyntaxQuery;
+            fn submodules() for hir::db::SubmodulesQuery;
         }
     }
-}
-
-fn file_syntax(db: &impl SyntaxDatabase, file_id: FileId) -> SourceFileNode {
-    let text = db.file_text(file_id);
-    SourceFileNode::parse(&*text)
-}
-fn file_lines(db: &impl SyntaxDatabase, file_id: FileId) -> Arc<LineIndex> {
-    let text = db.file_text(file_id);
-    Arc::new(LineIndex::new(&*text))
-}
-fn file_symbols(db: &impl SyntaxDatabase, file_id: FileId) -> Cancelable<Arc<SymbolIndex>> {
-    db::check_canceled(db)?;
-    let syntax = db.file_syntax(file_id);
-    Ok(Arc::new(SymbolIndex::for_file(file_id, syntax)))
 }

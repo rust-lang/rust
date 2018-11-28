@@ -10,10 +10,10 @@ use test_utils::assert_eq_dbg;
 
 use ra_analysis::{
     mock_analysis::{analysis_and_position, single_file, single_file_with_position, MockAnalysis},
-    AnalysisChange, CrateGraph, FileId, FnDescriptor,
+    AnalysisChange, CrateGraph, FileId, FnSignatureInfo,
 };
 
-fn get_signature(text: &str) -> (FnDescriptor, Option<usize>) {
+fn get_signature(text: &str) -> (FnSignatureInfo, Option<usize>) {
     let (analysis, position) = single_file_with_position(text);
     analysis.resolve_callable(position).unwrap().unwrap()
 }
@@ -126,7 +126,7 @@ fn test_resolve_crate_root() {
     let mut host = mock.analysis_host();
     assert!(host.analysis().crate_for(mod_file).unwrap().is_empty());
 
-    let mut crate_graph = CrateGraph::new();
+    let mut crate_graph = CrateGraph::default();
     let crate_id = crate_graph.add_crate_root(root_file);
     let mut change = AnalysisChange::new();
     change.set_crate_graph(crate_graph);

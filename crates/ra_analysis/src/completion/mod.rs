@@ -7,13 +7,11 @@ use ra_syntax::{
     AstNode, AtomEdit,
     SyntaxNodeRef,
 };
+use ra_db::SyntaxDatabase;
 use rustc_hash::{FxHashMap};
 
 use crate::{
-    db::{self, SyntaxDatabase},
-    descriptors::{
-        module::{ModuleDescriptor}
-    },
+    db,
     Cancelable, FilePosition
 };
 
@@ -31,14 +29,14 @@ pub(crate) fn completions(
     db: &db::RootDatabase,
     position: FilePosition,
 ) -> Cancelable<Option<Vec<CompletionItem>>> {
-    let original_file = db.file_syntax(position.file_id);
+    let original_file = db.source_file(position.file_id);
     // Insert a fake ident to get a valid parse tree
     let file = {
         let edit = AtomEdit::insert(position.offset, "intellijRulezz".to_string());
         original_file.reparse(&edit)
     };
 
-    let module = ctry!(ModuleDescriptor::guess_from_position(db, position)?);
+    let module = ctry!(hir::Module::guess_from_position(db, position)?);
 
     let mut res = Vec::new();
     let mut has_completions = false;

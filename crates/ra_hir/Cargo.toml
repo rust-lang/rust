@@ -1,19 +1,17 @@
 [package]
 edition = "2018"
-name = "ra_analysis"
+name = "ra_hir"
 version = "0.1.0"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
 
 [dependencies]
 log = "0.4.5"
 relative-path = "0.4.0"
-rayon = "1.0.2"
-fst = "0.3.1"
 salsa = "0.8.0"
 rustc-hash = "1.0"
 parking_lot = "0.6.4"
+id-arena = { git = "https://github.com/fitzgen/id-arena/", rev = "43ecd67" }
 ra_syntax = { path = "../ra_syntax" }
 ra_editor = { path = "../ra_editor" }
 ra_db = { path = "../ra_db" }
-hir = { path = "../ra_hir", package = "ra_hir" }
 test_utils = { path = "../test_utils" }
