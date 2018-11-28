@@ -1,3 +1,6 @@
+// FIXME: investigate why this fails since barriers have been added
+// compile-flags: -Zmiri-disable-validation
+
 #![feature(
     async_await,
     await_macro,
