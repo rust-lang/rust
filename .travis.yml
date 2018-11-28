@@ -101,7 +101,7 @@ script:
 
 after_success: |
   #!/bin/bash
-  if [ $(uname) == Linux ]; then
+  if [ "$TRAVIS_OS_NAME" == "linux" ]; then
     set -ex
     if [ -z ${INTEGRATION} ]; then
       ./.github/deploy.sh
