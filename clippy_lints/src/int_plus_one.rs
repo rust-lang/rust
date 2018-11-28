@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! lint on blocks unnecessarily using >= with a + 1 or - 1
 
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
@@ -162,14 +161,20 @@ impl IntPlusOne {
     }
 
     fn emit_warning(&self, cx: &EarlyContext<'_>, block: &Expr, recommendation: String) {
-        span_lint_and_then(cx, INT_PLUS_ONE, block.span, "Unnecessary `>= y + 1` or `x - 1 >=`", |db| {
-            db.span_suggestion_with_applicability(
-                block.span,
-                "change `>= y + 1` to `> y` as shown",
-                recommendation,
-                Applicability::MachineApplicable, // snippet
-            );
-        });
+        span_lint_and_then(
+            cx,
+            INT_PLUS_ONE,
+            block.span,
+            "Unnecessary `>= y + 1` or `x - 1 >=`",
+            |db| {
+                db.span_suggestion_with_applicability(
+                    block.span,
+                    "change `>= y + 1` to `> y` as shown",
+                    recommendation,
+                    Applicability::MachineApplicable, // snippet
+                );
+            },
+        );
     }
 }
 

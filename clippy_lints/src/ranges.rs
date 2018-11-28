@@ -7,17 +7,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::rustc::hir::*;
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::RangeLimits;
 use crate::syntax::source_map::Spanned;
-use crate::utils::{is_integer_literal, paths, snippet, span_lint, span_lint_and_then, snippet_opt};
-use crate::utils::{get_trait_def_id, higher, implements_trait, SpanlessEq};
 use crate::utils::sugg::Sugg;
-use crate::rustc_errors::Applicability;
+use crate::utils::{get_trait_def_id, higher, implements_trait, SpanlessEq};
+use crate::utils::{is_integer_literal, paths, snippet, snippet_opt, span_lint, span_lint_and_then};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for calling `.step_by(0)` on iterators,
 /// which never terminates.
@@ -29,7 +28,9 @@ use crate::rustc_errors::Applicability;
 ///
 /// **Example:**
 /// ```rust
-/// for x in (5..5).step_by(0) { .. }
+/// for x in (5..5).step_by(0) {
+///     ..
+/// }
 /// ```
 declare_clippy_lint! {
     pub ITERATOR_STEP_BY_ZERO,
@@ -98,7 +99,12 @@ pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(ITERATOR_STEP_BY_ZERO, RANGE_ZIP_WITH_LEN, RANGE_PLUS_ONE, RANGE_MINUS_ONE)
+        lint_array!(
+            ITERATOR_STEP_BY_ZERO,
+            RANGE_ZIP_WITH_LEN,
+            RANGE_PLUS_ONE,
+            RANGE_MINUS_ONE
+        )
     }
 }
 
@@ -148,7 +154,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
         // exclusive range plus one: x..(y+1)
         if_chain! {
-            if let Some(higher::Range { start, end: Some(end), limits: RangeLimits::HalfOpen }) = higher::range(cx, expr);
+            if let Some(higher::Range {
+                start,
+                end: Some(end),
+                limits: RangeLimits::HalfOpen
+            }) = higher::range(cx, expr);
             if let Some(y) = y_plus_one(end);
             then {
                 span_lint_and_then(
@@ -217,12 +227,20 @@ fn has_step_by(cx: &LateContext<'_, '_>, expr: &Expr) -> bool {
 
 fn y_plus_one(expr: &Expr) -> Option<&Expr> {
     match expr.node {
-        ExprKind::Binary(Spanned { node: BinOpKind::Add, .. }, ref lhs, ref rhs) => if is_integer_literal(lhs, 1) {
-            Some(rhs)
-        } else if is_integer_literal(rhs, 1) {
-            Some(lhs)
-        } else {
-            None
+        ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::Add, ..
+            },
+            ref lhs,
+            ref rhs,
+        ) => {
+            if is_integer_literal(lhs, 1) {
+                Some(rhs)
+            } else if is_integer_literal(rhs, 1) {
+                Some(lhs)
+            } else {
+                None
+            }
         },
         _ => None,
     }
@@ -230,7 +248,13 @@ fn y_plus_one(expr: &Expr) -> Option<&Expr> {
 
 fn y_minus_one(expr: &Expr) -> Option<&Expr> {
     match expr.node {
-        ExprKind::Binary(Spanned { node: BinOpKind::Sub, .. }, ref lhs, ref rhs) if is_integer_literal(rhs, 1) => Some(lhs),
+        ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::Sub, ..
+            },
+            ref lhs,
+            ref rhs,
+        ) if is_integer_literal(rhs, 1) => Some(lhs),
         _ => None,
     }
 }

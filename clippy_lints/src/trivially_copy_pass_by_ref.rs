@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use std::cmp;
 
 use crate::rustc::hir;
@@ -82,11 +81,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
         Self { limit }
     }
 
-    fn check_trait_method(
-        &mut self,
-        cx: &LateContext<'_, 'tcx>,
-        item: &TraitItemRef
-    ) {
+    fn check_trait_method(&mut self, cx: &LateContext<'_, 'tcx>, item: &TraitItemRef) {
         let method_def_id = cx.tcx.hir.local_def_id(item.id.node_id);
         let method_sig = cx.tcx.fn_sig(method_def_id);
         let method_sig = cx.tcx.erase_late_bound_regions(&method_sig);
@@ -99,13 +94,7 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
         self.check_poly_fn(cx, &decl, &method_sig, None);
     }
 
-    fn check_poly_fn(
-        &mut self,
-        cx: &LateContext<'_, 'tcx>,
-        decl: &FnDecl,
-        sig: &FnSig<'tcx>,
-        span: Option<Span>,
-    ) {
+    fn check_poly_fn(&mut self, cx: &LateContext<'_, 'tcx>, decl: &FnDecl, sig: &FnSig<'tcx>, span: Option<Span>) {
         // Use lifetimes to determine if we're returning a reference to the
         // argument. In that case we can't switch to pass-by-value as the
         // argument will not live long enough.
@@ -149,13 +138,9 @@ impl<'a, 'tcx> TriviallyCopyPassByRef {
         }
     }
 
-    fn check_trait_items(
-        &mut self,
-        cx: &LateContext<'_, '_>,
-        trait_items: &[TraitItemRef]
-    ) {
+    fn check_trait_items(&mut self, cx: &LateContext<'_, '_>, trait_items: &[TraitItemRef]) {
         for item in trait_items {
-            if let AssociatedItemKind::Method{..} = item.kind {
+            if let AssociatedItemKind::Method { .. } = item.kind {
                 self.check_trait_method(cx, item);
             }
         }

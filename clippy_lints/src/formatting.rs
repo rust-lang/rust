@@ -7,12 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast;
-use crate::utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
 use crate::syntax::ptr::P;
+use crate::utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
 
 /// **What it does:** Checks for use of the non-existent `=*`, `=!` and `=-`
 /// operators.
@@ -78,7 +77,6 @@ declare_clippy_lint! {
     "possible missing comma in array"
 }
 
-
 #[derive(Copy, Clone)]
 pub struct Formatting;
 
@@ -96,8 +94,8 @@ impl EarlyLintPass for Formatting {
     fn check_block(&mut self, cx: &EarlyContext<'_>, block: &ast::Block) {
         for w in block.stmts.windows(2) {
             match (&w[0].node, &w[1].node) {
-                (&ast::StmtKind::Expr(ref first), &ast::StmtKind::Expr(ref second)) |
-                (&ast::StmtKind::Expr(ref first), &ast::StmtKind::Semi(ref second)) => {
+                (&ast::StmtKind::Expr(ref first), &ast::StmtKind::Expr(ref second))
+                | (&ast::StmtKind::Expr(ref first), &ast::StmtKind::Semi(ref second)) => {
                     check_consecutive_ifs(cx, first, second);
                 },
                 _ => (),
@@ -153,9 +151,7 @@ fn check_else_if(cx: &EarlyContext<'_>, expr: &ast::Expr) {
             // the snippet should look like " else \n    " with maybe comments anywhere
             // it’s bad when there is a ‘\n’ after the “else”
             if let Some(else_snippet) = snippet_opt(cx, else_span) {
-                let else_pos = else_snippet
-                    .find("else")
-                    .expect("there must be a `else` here");
+                let else_pos = else_snippet.find("else").expect("there must be a `else` here");
 
                 if else_snippet[else_pos..].contains('\n') {
                     span_note_and_lint(
@@ -175,9 +171,7 @@ fn check_else_if(cx: &EarlyContext<'_>, expr: &ast::Expr) {
 
 fn has_unary_equivalent(bin_op: ast::BinOpKind) -> bool {
     // &, *, -
-    bin_op == ast::BinOpKind::And
-    || bin_op == ast::BinOpKind::Mul
-    || bin_op == ast::BinOpKind::Sub
+    bin_op == ast::BinOpKind::And || bin_op == ast::BinOpKind::Mul || bin_op == ast::BinOpKind::Sub
 }
 
 /// Implementation of the `POSSIBLE_MISSING_COMMA` lint for array
@@ -208,7 +202,9 @@ fn check_array(cx: &EarlyContext<'_>, expr: &ast::Expr) {
 
 /// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for consecutive ifs.
 fn check_consecutive_ifs(cx: &EarlyContext<'_>, first: &ast::Expr, second: &ast::Expr) {
-    if !differing_macro_contexts(first.span, second.span) && !in_macro(first.span) && unsugar_if(first).is_some()
+    if !differing_macro_contexts(first.span, second.span)
+        && !in_macro(first.span)
+        && unsugar_if(first).is_some()
         && unsugar_if(second).is_some()
     {
         // where the else would be

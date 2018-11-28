@@ -7,15 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
 use crate::rustc::hir;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax_pos::Span;
-use crate::utils::{match_def_path, method_chain_args, span_lint_and_then, walk_ptrs_ty, is_expn_of, opt_def_id};
 use crate::utils::paths::{BEGIN_PANIC, BEGIN_PANIC_FMT, FROM_TRAIT, OPTION, RESULT};
+use crate::utils::{is_expn_of, match_def_path, method_chain_args, opt_def_id, span_lint_and_then, walk_ptrs_ty};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for impls of `From<..>` that contain `panic!()` or `unwrap()`
 ///
@@ -62,8 +61,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for FallibleImplFrom {
 }
 
 fn lint_impl_body<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, impl_span: Span, impl_items: &hir::HirVec<hir::ImplItemRef>) {
-    use crate::rustc::hir::*;
     use crate::rustc::hir::intravisit::{self, NestedVisitorMap, Visitor};
+    use crate::rustc::hir::*;
 
     struct FindPanicUnwrap<'a, 'tcx: 'a> {
         tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,

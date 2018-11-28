@@ -7,16 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::consts::{constant_simple, constant_context};
-use crate::rustc::lint::LateContext;
+use crate::consts::{constant_context, constant_simple};
 use crate::rustc::hir::*;
-use crate::rustc::ty::{TypeckTables};
-use std::hash::{Hash, Hasher};
-use std::collections::hash_map::DefaultHasher;
+use crate::rustc::lint::LateContext;
+use crate::rustc::ty::TypeckTables;
 use crate::syntax::ast::Name;
 use crate::syntax::ptr::P;
 use crate::utils::differing_macro_contexts;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 /// Type used to check whether two ast are the same. This is different from the
 /// operator
@@ -60,9 +59,8 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                     false
                 }
             },
-            (&StmtKind::Expr(ref l, _), &StmtKind::Expr(ref r, _)) | (&StmtKind::Semi(ref l, _), &StmtKind::Semi(ref r, _)) => {
-                self.eq_expr(l, r)
-            },
+            (&StmtKind::Expr(ref l, _), &StmtKind::Expr(ref r, _))
+            | (&StmtKind::Semi(ref l, _), &StmtKind::Semi(ref r, _)) => self.eq_expr(l, r),
             _ => false,
         }
     }
@@ -79,18 +77,25 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             return false;
         }
 
-        if let (Some(l), Some(r)) = (constant_simple(self.cx, self.tables, left), constant_simple(self.cx, self.tables, right)) {
+        if let (Some(l), Some(r)) = (
+            constant_simple(self.cx, self.tables, left),
+            constant_simple(self.cx, self.tables, right),
+        ) {
             if l == r {
                 return true;
             }
         }
 
         match (&left.node, &right.node) {
-            (&ExprKind::AddrOf(l_mut, ref le), &ExprKind::AddrOf(r_mut, ref re)) => l_mut == r_mut && self.eq_expr(le, re),
+            (&ExprKind::AddrOf(l_mut, ref le), &ExprKind::AddrOf(r_mut, ref re)) => {
+                l_mut == r_mut && self.eq_expr(le, re)
+            },
             (&ExprKind::Continue(li), &ExprKind::Continue(ri)) => {
                 both(&li.label, &ri.label, |l, r| l.ident.as_str() == r.ident.as_str())
             },
-            (&ExprKind::Assign(ref ll, ref lr), &ExprKind::Assign(ref rl, ref rr)) => self.eq_expr(ll, rl) && self.eq_expr(lr, rr),
+            (&ExprKind::Assign(ref ll, ref lr), &ExprKind::Assign(ref rl, ref rr)) => {
+                self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
+            },
             (&ExprKind::AssignOp(ref lo, ref ll, ref lr), &ExprKind::AssignOp(ref ro, ref rl, ref rr)) => {
                 lo.node == ro.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
             },
@@ -109,12 +114,16 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprKind::Call(ref l_fun, ref l_args), &ExprKind::Call(ref r_fun, ref r_args)) => {
                 !self.ignore_fn && self.eq_expr(l_fun, r_fun) && self.eq_exprs(l_args, r_args)
             },
-            (&ExprKind::Cast(ref lx, ref lt), &ExprKind::Cast(ref rx, ref rt)) |
-            (&ExprKind::Type(ref lx, ref lt), &ExprKind::Type(ref rx, ref rt)) => self.eq_expr(lx, rx) && self.eq_ty(lt, rt),
+            (&ExprKind::Cast(ref lx, ref lt), &ExprKind::Cast(ref rx, ref rt))
+            | (&ExprKind::Type(ref lx, ref lt), &ExprKind::Type(ref rx, ref rt)) => {
+                self.eq_expr(lx, rx) && self.eq_ty(lt, rt)
+            },
             (&ExprKind::Field(ref l_f_exp, ref l_f_ident), &ExprKind::Field(ref r_f_exp, ref r_f_ident)) => {
                 l_f_ident.name == r_f_ident.name && self.eq_expr(l_f_exp, r_f_exp)
             },
-            (&ExprKind::Index(ref la, ref li), &ExprKind::Index(ref ra, ref ri)) => self.eq_expr(la, ra) && self.eq_expr(li, ri),
+            (&ExprKind::Index(ref la, ref li), &ExprKind::Index(ref ra, ref ri)) => {
+                self.eq_expr(la, ra) && self.eq_expr(li, ri)
+            },
             (&ExprKind::If(ref lc, ref lt, ref le), &ExprKind::If(ref rc, ref rt, ref re)) => {
                 self.eq_expr(lc, rc) && self.eq_expr(&**lt, &**rt) && both(le, re, |l, r| self.eq_expr(l, r))
             },
@@ -123,10 +132,13 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 lls == rls && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.ident.as_str() == r.ident.as_str())
             },
             (&ExprKind::Match(ref le, ref la, ref ls), &ExprKind::Match(ref re, ref ra, ref rs)) => {
-                ls == rs && self.eq_expr(le, re) && over(la, ra, |l, r| {
-                    self.eq_expr(&l.body, &r.body) && both(&l.guard, &r.guard, |l, r| self.eq_guard(l, r))
-                        && over(&l.pats, &r.pats, |l, r| self.eq_pat(l, r))
-                })
+                ls == rs
+                    && self.eq_expr(le, re)
+                    && over(la, ra, |l, r| {
+                        self.eq_expr(&l.body, &r.body)
+                            && both(&l.guard, &r.guard, |l, r| self.eq_guard(l, r))
+                            && over(&l.pats, &r.pats, |l, r| self.eq_pat(l, r))
+                    })
             },
             (&ExprKind::MethodCall(ref l_path, _, ref l_args), &ExprKind::MethodCall(ref r_path, _, ref r_args)) => {
                 !self.ignore_fn && self.eq_path_segment(l_path, r_path) && self.eq_exprs(l_args, r_args)
@@ -142,14 +154,17 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             (&ExprKind::Ret(ref l), &ExprKind::Ret(ref r)) => both(l, r, |l, r| self.eq_expr(l, r)),
             (&ExprKind::Path(ref l), &ExprKind::Path(ref r)) => self.eq_qpath(l, r),
             (&ExprKind::Struct(ref l_path, ref lf, ref lo), &ExprKind::Struct(ref r_path, ref rf, ref ro)) => {
-                self.eq_qpath(l_path, r_path) && both(lo, ro, |l, r| self.eq_expr(l, r))
+                self.eq_qpath(l_path, r_path)
+                    && both(lo, ro, |l, r| self.eq_expr(l, r))
                     && over(lf, rf, |l, r| self.eq_field(l, r))
             },
             (&ExprKind::Tup(ref l_tup), &ExprKind::Tup(ref r_tup)) => self.eq_exprs(l_tup, r_tup),
             (&ExprKind::Unary(l_op, ref le), &ExprKind::Unary(r_op, ref re)) => l_op == r_op && self.eq_expr(le, re),
             (&ExprKind::Array(ref l), &ExprKind::Array(ref r)) => self.eq_exprs(l, r),
             (&ExprKind::While(ref lc, ref lb, ref ll), &ExprKind::While(ref rc, ref rb, ref rl)) => {
-                self.eq_expr(lc, rc) && self.eq_block(lb, rb) && both(ll, rl, |l, r| l.ident.as_str() == r.ident.as_str())
+                self.eq_expr(lc, rc)
+                    && self.eq_block(lb, rb)
+                    && both(ll, rl, |l, r| l.ident.as_str() == r.ident.as_str())
             },
             _ => false,
         }
@@ -201,7 +216,8 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             },
             (&PatKind::Ref(ref le, ref lm), &PatKind::Ref(ref re, ref rm)) => lm == rm && self.eq_pat(le, re),
             (&PatKind::Slice(ref ls, ref li, ref le), &PatKind::Slice(ref rs, ref ri, ref re)) => {
-                over(ls, rs, |l, r| self.eq_pat(l, r)) && over(le, re, |l, r| self.eq_pat(l, r))
+                over(ls, rs, |l, r| self.eq_pat(l, r))
+                    && over(le, re, |l, r| self.eq_pat(l, r))
                     && both(li, ri, |l, r| self.eq_pat(l, r))
             },
             (&PatKind::Wild, &PatKind::Wild) => true,
@@ -233,11 +249,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 && over(&left.bindings, &right.bindings, |l, r| self.eq_type_binding(l, r))
         } else if left.parenthesized && right.parenthesized {
             over(left.inputs(), right.inputs(), |l, r| self.eq_ty(l, r))
-                && both(
-                    &Some(&left.bindings[0].ty),
-                    &Some(&right.bindings[0].ty),
-                    |l, r| self.eq_ty(l, r),
-                )
+                && both(&Some(&left.bindings[0].ty), &Some(&right.bindings[0].ty), |l, r| {
+                    self.eq_ty(l, r)
+                })
         } else {
             false
         }
@@ -283,7 +297,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 self.tables = full_table;
                 eq_ty && ll == rl
             },
-            (&TyKind::Ptr(ref l_mut), &TyKind::Ptr(ref r_mut)) => l_mut.mutbl == r_mut.mutbl && self.eq_ty(&*l_mut.ty, &*r_mut.ty),
+            (&TyKind::Ptr(ref l_mut), &TyKind::Ptr(ref r_mut)) => {
+                l_mut.mutbl == r_mut.mutbl && self.eq_ty(&*l_mut.ty, &*r_mut.ty)
+            },
             (&TyKind::Rptr(_, ref l_rmut), &TyKind::Rptr(_, ref r_rmut)) => {
                 l_rmut.mutbl == r_rmut.mutbl && self.eq_ty(&*l_rmut.ty, &*r_rmut.ty)
             },
@@ -301,24 +317,24 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
 
 fn swap_binop<'a>(binop: BinOpKind, lhs: &'a Expr, rhs: &'a Expr) -> Option<(BinOpKind, &'a Expr, &'a Expr)> {
     match binop {
-        BinOpKind::Add |
-        BinOpKind::Mul |
-        BinOpKind::Eq |
-        BinOpKind::Ne |
-        BinOpKind::BitAnd |
-        BinOpKind::BitXor |
-        BinOpKind::BitOr => Some((binop, rhs, lhs)),
+        BinOpKind::Add
+        | BinOpKind::Mul
+        | BinOpKind::Eq
+        | BinOpKind::Ne
+        | BinOpKind::BitAnd
+        | BinOpKind::BitXor
+        | BinOpKind::BitOr => Some((binop, rhs, lhs)),
         BinOpKind::Lt => Some((BinOpKind::Gt, rhs, lhs)),
         BinOpKind::Le => Some((BinOpKind::Ge, rhs, lhs)),
         BinOpKind::Ge => Some((BinOpKind::Le, rhs, lhs)),
         BinOpKind::Gt => Some((BinOpKind::Lt, rhs, lhs)),
-        BinOpKind::Shl |
-        BinOpKind::Shr |
-        BinOpKind::Rem |
-        BinOpKind::Sub |
-        BinOpKind::Div |
-        BinOpKind::And |
-        BinOpKind::Or => None,
+        BinOpKind::Shl
+        | BinOpKind::Shr
+        | BinOpKind::Rem
+        | BinOpKind::Sub
+        | BinOpKind::Div
+        | BinOpKind::And
+        | BinOpKind::Or => None,
     }
 }
 
@@ -339,7 +355,6 @@ where
 {
     left.len() == right.len() && left.iter().zip(right).all(|(x, y)| eq_fn(x, y))
 }
-
 
 /// Type used to hash an ast element. This is different from the `Hash` trait
 /// on ast types as this
@@ -380,7 +395,8 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
             BlockCheckMode::UnsafeBlock(_) => 1,
             BlockCheckMode::PushUnsafeBlock(_) => 2,
             BlockCheckMode::PopUnsafeBlock(_) => 3,
-        }.hash(&mut self.s);
+        }
+        .hash(&mut self.s);
     }
 
     #[allow(clippy::many_single_char_names)]
@@ -466,7 +482,8 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 match cap {
                     CaptureClause::CaptureByValue => 0,
                     CaptureClause::CaptureByRef => 1,
-                }.hash(&mut self.s);
+                }
+                .hash(&mut self.s);
                 self.hash_expr(&self.cx.tcx.hir.body(eid).value);
             },
             ExprKind::Field(ref e, ref f) => {
@@ -661,7 +678,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_) -> _ = Guard::If;
                 c.hash(&mut self.s);
                 self.hash_expr(expr);
-            }
+            },
         }
     }
 }

@@ -7,15 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use crate::rustc::hir::*;
-use crate::rustc::ty;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::ty;
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
 use crate::syntax::ast;
 use crate::utils::{get_parent_expr, span_lint, span_note_and_lint};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for a read and a write to the same variable where
 /// whether the read occurs before or after the write depends on the evaluation
@@ -30,7 +29,10 @@ use crate::utils::{get_parent_expr, span_lint, span_note_and_lint};
 /// **Example:**
 /// ```rust
 /// let mut x = 0;
-/// let a = {x = 1; 1} + x;
+/// let a = {
+///     x = 1;
+///     1
+/// } + x;
 /// // Unclear whether a is 1 or 2.
 /// ```
 declare_clippy_lint! {
@@ -74,17 +76,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // Find a write to a local variable.
         match expr.node {
-            ExprKind::Assign(ref lhs, _) | ExprKind::AssignOp(_, ref lhs, _) => if let ExprKind::Path(ref qpath) = lhs.node {
-                if let QPath::Resolved(_, ref path) = *qpath {
-                    if path.segments.len() == 1 {
-                        if let def::Def::Local(var) = cx.tables.qpath_def(qpath, lhs.hir_id) {
-                            let mut visitor = ReadVisitor {
-                                cx,
-                                var,
-                                write_expr: expr,
-                                last_expr: expr,
-                            };
-                            check_for_unsequenced_reads(&mut visitor);
+            ExprKind::Assign(ref lhs, _) | ExprKind::AssignOp(_, ref lhs, _) => {
+                if let ExprKind::Path(ref qpath) = lhs.node {
+                    if let QPath::Resolved(_, ref path) = *qpath {
+                        if path.segments.len() == 1 {
+                            if let def::Def::Local(var) = cx.tables.qpath_def(qpath, lhs.hir_id) {
+                                let mut visitor = ReadVisitor {
+                                    cx,
+                                    var,
+                                    write_expr: expr,
+                                    last_expr: expr,
+                                };
+                                check_for_unsequenced_reads(&mut visitor);
+                            }
                         }
                     }
                 }
@@ -95,12 +99,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EvalOrderDependence {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         match stmt.node {
             StmtKind::Expr(ref e, _) | StmtKind::Semi(ref e, _) => DivergenceVisitor { cx }.maybe_walk_expr(e),
-            StmtKind::Decl(ref d, _) => if let DeclKind::Local(ref local) = d.node {
-                if let Local {
-                    init: Some(ref e), ..
-                } = **local
-                {
-                    DivergenceVisitor { cx }.visit_expr(e);
+            StmtKind::Decl(ref d, _) => {
+                if let DeclKind::Local(ref local) = d.node {
+                    if let Local { init: Some(ref e), .. } = **local {
+                        DivergenceVisitor { cx }.visit_expr(e);
+                    }
                 }
             },
         }
@@ -179,12 +182,12 @@ impl<'a, 'tcx> Visitor<'tcx> for DivergenceVisitor<'a, 'tcx> {
 /// This means reads for which there is a common ancestor between the read and
 /// the write such that
 ///
-/// * evaluating the ancestor necessarily evaluates both the read and the write
-///   (for example, `&x` and `|| x = 1` don't necessarily evaluate `x`), and
+/// * evaluating the ancestor necessarily evaluates both the read and the write (for example, `&x`
+///   and `|| x = 1` don't necessarily evaluate `x`), and
 ///
-/// * which one is evaluated first depends on the order of sub-expression
-///   evaluation. Blocks, `if`s, loops, `match`es, and the short-circuiting
-///   logical operators are considered to have a defined evaluation order.
+/// * which one is evaluated first depends on the order of sub-expression evaluation. Blocks, `if`s,
+///   loops, `match`es, and the short-circuiting logical operators are considered to have a defined
+///   evaluation order.
 ///
 /// When such a read is found, the lint is triggered.
 fn check_for_unsequenced_reads(vis: &mut ReadVisitor<'_, '_>) {
@@ -232,14 +235,14 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> St
     }
 
     match expr.node {
-        ExprKind::Array(_) |
-        ExprKind::Tup(_) |
-        ExprKind::MethodCall(..) |
-        ExprKind::Call(_, _) |
-        ExprKind::Assign(_, _) |
-        ExprKind::Index(_, _) |
-        ExprKind::Repeat(_, _) |
-        ExprKind::Struct(_, _, _) => {
+        ExprKind::Array(_)
+        | ExprKind::Tup(_)
+        | ExprKind::MethodCall(..)
+        | ExprKind::Call(_, _)
+        | ExprKind::Assign(_, _)
+        | ExprKind::Index(_, _)
+        | ExprKind::Repeat(_, _)
+        | ExprKind::Struct(_, _, _) => {
             walk_expr(vis, expr);
         },
         ExprKind::Binary(op, _, _) | ExprKind::AssignOp(op, _, _) => {
@@ -253,13 +256,12 @@ fn check_expr<'a, 'tcx>(vis: &mut ReadVisitor<'a, 'tcx>, expr: &'tcx Expr) -> St
         ExprKind::Closure(_, _, _, _, _) => {
             // Either
             //
-            // * `var` is defined in the closure body, in which case we've
-            //   reached the top of the enclosing function and can stop, or
+            // * `var` is defined in the closure body, in which case we've reached the top of the enclosing
+            //   function and can stop, or
             //
-            // * `var` is captured by the closure, in which case, because
-            //   evaluating a closure does not evaluate its body, we don't
-            //   necessarily have a write, so we need to stop to avoid
-            //   generating false positives.
+            // * `var` is captured by the closure, in which case, because evaluating a closure does not evaluate
+            //   its body, we don't necessarily have a write, so we need to stop to avoid generating false
+            //   positives.
             //
             // This is also the only place we need to stop early (grrr).
             return StopEarly::Stop;

@@ -7,16 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
 use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::syntax::source_map::Span;
-use crate::utils::{in_macro, iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
 use crate::utils::paths;
+use crate::utils::{in_macro, iter_input_pats, match_type, method_chain_args, snippet, span_lint_and_then};
+use if_chain::if_chain;
 
 #[derive(Clone)]
 pub struct Pass;
@@ -87,7 +86,6 @@ declare_clippy_lint! {
     "using `result.map(f)`, where f is a function or closure that returns ()"
 }
 
-
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
         lint_array!(OPTION_MAP_UNIT_FN, RESULT_MAP_UNIT_FN)
@@ -127,8 +125,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr) -> 
     }
 
     match expr.node {
-        hir::ExprKind::Call(_, _) |
-        hir::ExprKind::MethodCall(_, _, _) => {
+        hir::ExprKind::Call(_, _) | hir::ExprKind::MethodCall(_, _, _) => {
             // Calls can't be reduced any more
             Some(expr.span)
         },
@@ -155,7 +152,7 @@ fn reduce_unit_expression<'a>(cx: &LateContext<'_, '_>, expr: &'a hir::Expr) -> 
                     //
                     // We do not attempt to build a suggestion for those right now.
                     None
-                }
+                },
             }
         },
         _ => None,
@@ -189,15 +186,14 @@ fn let_binding_name(cx: &LateContext<'_, '_>, var_arg: &hir::Expr) -> String {
     match &var_arg.node {
         hir::ExprKind::Field(_, _) => snippet(cx, var_arg.span, "_").replace(".", "_"),
         hir::ExprKind::Path(_) => format!("_{}", snippet(cx, var_arg.span, "")),
-        _ => "_".to_string()
+        _ => "_".to_string(),
     }
 }
 
 fn suggestion_msg(function_type: &str, map_type: &str) -> String {
     format!(
         "called `map(f)` on an {0} value where `f` is a unit {1}",
-        map_type,
-        function_type
+        map_type, function_type
     )
 }
 
@@ -205,39 +201,39 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt, expr: &hir::Expr
     let var_arg = &map_args[0];
     let fn_arg = &map_args[1];
 
-    let (map_type, variant, lint) =
-        if match_type(cx, cx.tables.expr_ty(var_arg), &paths::OPTION) {
-            ("Option", "Some", OPTION_MAP_UNIT_FN)
-        } else if match_type(cx, cx.tables.expr_ty(var_arg), &paths::RESULT) {
-            ("Result", "Ok", RESULT_MAP_UNIT_FN)
-        } else {
-            return
-        };
+    let (map_type, variant, lint) = if match_type(cx, cx.tables.expr_ty(var_arg), &paths::OPTION) {
+        ("Option", "Some", OPTION_MAP_UNIT_FN)
+    } else if match_type(cx, cx.tables.expr_ty(var_arg), &paths::RESULT) {
+        ("Result", "Ok", RESULT_MAP_UNIT_FN)
+    } else {
+        return;
+    };
 
     if is_unit_function(cx, fn_arg) {
         let msg = suggestion_msg("function", map_type);
-        let suggestion = format!("if let {0}({1}) = {2} {{ {3}(...) }}",
-                                 variant,
-                                 let_binding_name(cx, var_arg),
-                                 snippet(cx, var_arg.span, "_"),
-                                 snippet(cx, fn_arg.span, "_"));
+        let suggestion = format!(
+            "if let {0}({1}) = {2} {{ {3}(...) }}",
+            variant,
+            let_binding_name(cx, var_arg),
+            snippet(cx, var_arg.span, "_"),
+            snippet(cx, fn_arg.span, "_")
+        );
 
         span_lint_and_then(cx, lint, expr.span, &msg, |db| {
-            db.span_suggestion_with_applicability(stmt.span,
-                                                  "try this",
-                                                  suggestion,
-                                                  Applicability::Unspecified);
+            db.span_suggestion_with_applicability(stmt.span, "try this", suggestion, Applicability::Unspecified);
         });
     } else if let Some((binding, closure_expr)) = unit_closure(cx, fn_arg) {
         let msg = suggestion_msg("closure", map_type);
 
         span_lint_and_then(cx, lint, expr.span, &msg, |db| {
             if let Some(reduced_expr_span) = reduce_unit_expression(cx, closure_expr) {
-                let suggestion = format!("if let {0}({1}) = {2} {{ {3} }}",
-                                         variant,
-                                         snippet(cx, binding.pat.span, "_"),
-                                         snippet(cx, var_arg.span, "_"),
-                                         snippet(cx, reduced_expr_span, "_"));
+                let suggestion = format!(
+                    "if let {0}({1}) = {2} {{ {3} }}",
+                    variant,
+                    snippet(cx, binding.pat.span, "_"),
+                    snippet(cx, var_arg.span, "_"),
+                    snippet(cx, reduced_expr_span, "_")
+                );
                 db.span_suggestion_with_applicability(
                     stmt.span,
                     "try this",
@@ -245,16 +241,13 @@ fn lint_map_unit_fn(cx: &LateContext<'_, '_>, stmt: &hir::Stmt, expr: &hir::Expr
                     Applicability::MachineApplicable, // snippet
                 );
             } else {
-                let suggestion = format!("if let {0}({1}) = {2} {{ ... }}",
-                                         variant,
-                                         snippet(cx, binding.pat.span, "_"),
-                                         snippet(cx, var_arg.span, "_"));
-                db.span_suggestion_with_applicability(
-                    stmt.span,
-                    "try this",
-                    suggestion,
-                    Applicability::Unspecified,
+                let suggestion = format!(
+                    "if let {0}({1}) = {2} {{ ... }}",
+                    variant,
+                    snippet(cx, binding.pat.span, "_"),
+                    snippet(cx, var_arg.span, "_")
                 );
+                db.span_suggestion_with_applicability(stmt.span, "try this", suggestion, Applicability::Unspecified);
             }
         });
     }

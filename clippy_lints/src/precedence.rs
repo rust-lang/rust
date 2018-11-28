@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
@@ -115,7 +114,10 @@ impl EarlyLintPass for Precedence {
                                     expr.span,
                                     "unary minus has lower precedence than method call",
                                     "consider adding parentheses to clarify your intent",
-                                    format!("-({})", snippet_with_applicability(cx, rhs.span, "..", &mut applicability)),
+                                    format!(
+                                        "-({})",
+                                        snippet_with_applicability(cx, rhs.span, "..", &mut applicability)
+                                    ),
                                     applicability,
                                 );
                             },

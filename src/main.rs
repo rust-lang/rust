@@ -7,11 +7,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
-
 #![allow(clippy::missing_docs_in_private_items)]
 
 use rustc_tools_util::*;
@@ -106,7 +104,8 @@ where
                         .into_os_string()
                 },
             )
-        }).map(|p| ("CARGO_TARGET_DIR", p));
+        })
+        .map(|p| ("CARGO_TARGET_DIR", p));
 
     let exit_status = std::process::Command::new("cargo")
         .args(&args)

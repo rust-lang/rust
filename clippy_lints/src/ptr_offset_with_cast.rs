@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::{declare_tool_lint, hir, lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::utils;
@@ -27,7 +26,9 @@ use std::fmt;
 /// let ptr = vec.as_ptr();
 /// let offset = 1_usize;
 ///
-/// unsafe { ptr.offset(offset as isize); }
+/// unsafe {
+///     ptr.offset(offset as isize);
+/// }
 /// ```
 ///
 /// Could be written:
@@ -37,7 +38,9 @@ use std::fmt;
 /// let ptr = vec.as_ptr();
 /// let offset = 1_usize;
 ///
-/// unsafe { ptr.add(offset); }
+/// unsafe {
+///     ptr.add(offset);
+/// }
 /// ```
 declare_clippy_lint! {
     pub PTR_OFFSET_WITH_CAST,
@@ -82,7 +85,6 @@ impl<'a, 'tcx> lint::LateLintPass<'a, 'tcx> for Pass {
         } else {
             utils::span_lint(cx, PTR_OFFSET_WITH_CAST, expr.span, &msg);
         }
-
     }
 }
 
@@ -119,18 +121,12 @@ fn expr_as_ptr_offset_call<'a, 'tcx>(
 }
 
 // Is the type of the expression a usize?
-fn is_expr_ty_usize<'a, 'tcx>(
-    cx: &lint::LateContext<'a, 'tcx>,
-    expr: &hir::Expr,
-) -> bool {
+fn is_expr_ty_usize<'a, 'tcx>(cx: &lint::LateContext<'a, 'tcx>, expr: &hir::Expr) -> bool {
     cx.tables.expr_ty(expr) == cx.tcx.types.usize
 }
 
 // Is the type of the expression a raw pointer?
-fn is_expr_ty_raw_ptr<'a, 'tcx>(
-    cx: &lint::LateContext<'a, 'tcx>,
-    expr: &hir::Expr,
-) -> bool {
+fn is_expr_ty_raw_ptr<'a, 'tcx>(cx: &lint::LateContext<'a, 'tcx>, expr: &hir::Expr) -> bool {
     cx.tables.expr_ty(expr).is_unsafe_ptr()
 }
 

@@ -7,12 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::utils::{in_macro, implements_trait, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then, SpanlessEq};
 use crate::rustc_errors::Applicability;
+use crate::utils::{
+    implements_trait, in_macro, is_copy, multispan_sugg, snippet, span_lint, span_lint_and_then, SpanlessEq,
+};
 
 /// **What it does:** Checks for equal operands to comparison, logical and
 /// bitwise, difference and division binary operators (`==`, `>`, etc., `&&`,
@@ -92,7 +93,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                 BinOpKind::Shl => (cx.tcx.lang_items().shl_trait(), false),
                 BinOpKind::Shr => (cx.tcx.lang_items().shr_trait(), false),
                 BinOpKind::Ne | BinOpKind::Eq => (cx.tcx.lang_items().eq_trait(), true),
-                BinOpKind::Lt | BinOpKind::Le | BinOpKind::Ge | BinOpKind::Gt => (cx.tcx.lang_items().ord_trait(), true),
+                BinOpKind::Lt | BinOpKind::Le | BinOpKind::Ge | BinOpKind::Gt => {
+                    (cx.tcx.lang_items().ord_trait(), true)
+                },
             };
             if let Some(trait_id) = trait_id {
                 #[allow(clippy::match_same_arms)]
@@ -122,7 +125,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                     );
                                 },
                             )
-                        } else if lcpy && !rcpy && implements_trait(cx, lty, trait_id, &[cx.tables.expr_ty(right).into()]) {
+                        } else if lcpy
+                            && !rcpy
+                            && implements_trait(cx, lty, trait_id, &[cx.tables.expr_ty(right).into()])
+                        {
                             span_lint_and_then(cx, OP_REF, e.span, "needlessly taken reference of left operand", |db| {
                                 let lsnip = snippet(cx, l.span, "...").to_string();
                                 db.span_suggestion_with_applicability(
@@ -132,7 +138,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                                     Applicability::MachineApplicable, // snippet
                                 );
                             })
-                        } else if !lcpy && rcpy && implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty.into()]) {
+                        } else if !lcpy
+                            && rcpy
+                            && implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty.into()])
+                        {
                             span_lint_and_then(
                                 cx,
                                 OP_REF,
@@ -154,7 +163,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                     (&ExprKind::AddrOf(_, ref l), _) => {
                         let lty = cx.tables.expr_ty(l);
                         let lcpy = is_copy(cx, lty);
-                        if (requires_ref || lcpy) && implements_trait(cx, lty, trait_id, &[cx.tables.expr_ty(right).into()]) {
+                        if (requires_ref || lcpy)
+                            && implements_trait(cx, lty, trait_id, &[cx.tables.expr_ty(right).into()])
+                        {
                             span_lint_and_then(cx, OP_REF, e.span, "needlessly taken reference of left operand", |db| {
                                 let lsnip = snippet(cx, l.span, "...").to_string();
                                 db.span_suggestion_with_applicability(
@@ -170,7 +181,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                     (_, &ExprKind::AddrOf(_, ref r)) => {
                         let rty = cx.tables.expr_ty(r);
                         let rcpy = is_copy(cx, rty);
-                        if (requires_ref || rcpy) && implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty.into()]) {
+                        if (requires_ref || rcpy)
+                            && implements_trait(cx, cx.tables.expr_ty(left), trait_id, &[rty.into()])
+                        {
                             span_lint_and_then(cx, OP_REF, e.span, "taken reference of right operand", |db| {
                                 let rsnip = snippet(cx, r.span, "...").to_string();
                                 db.span_suggestion_with_applicability(
@@ -189,10 +202,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
     }
 }
 
-
 fn is_valid_operator(op: BinOp) -> bool {
     match op.node {
-        BinOpKind::Sub | BinOpKind::Div | BinOpKind::Eq | BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge | BinOpKind::Ne | BinOpKind::And | BinOpKind::Or | BinOpKind::BitXor | BinOpKind::BitAnd | BinOpKind::BitOr => true,
+        BinOpKind::Sub
+        | BinOpKind::Div
+        | BinOpKind::Eq
+        | BinOpKind::Lt
+        | BinOpKind::Le
+        | BinOpKind::Gt
+        | BinOpKind::Ge
+        | BinOpKind::Ne
+        | BinOpKind::And
+        | BinOpKind::Or
+        | BinOpKind::BitXor
+        | BinOpKind::BitAnd
+        | BinOpKind::BitOr => true,
         _ => false,
     }
 }

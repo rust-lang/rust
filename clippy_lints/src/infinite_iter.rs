@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
@@ -160,7 +159,8 @@ fn is_infinite(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
                         First => is_infinite(cx, &args[0]),
                         Any => is_infinite(cx, &args[0]).or(is_infinite(cx, &args[1])),
                         All => is_infinite(cx, &args[0]).and(is_infinite(cx, &args[1])),
-                    }).and(cap);
+                    })
+                    .and(cap);
                 }
             }
             if method.ident.name == "flat_map" && args.len() == 2 {
@@ -173,14 +173,14 @@ fn is_infinite(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
         },
         ExprKind::Block(ref block, _) => block.expr.as_ref().map_or(Finite, |e| is_infinite(cx, e)),
         ExprKind::Box(ref e) | ExprKind::AddrOf(_, ref e) => is_infinite(cx, e),
-        ExprKind::Call(ref path, _) => if let ExprKind::Path(ref qpath) = path.node {
-            match_qpath(qpath, &paths::REPEAT).into()
-        } else {
-            Finite
+        ExprKind::Call(ref path, _) => {
+            if let ExprKind::Path(ref qpath) = path.node {
+                match_qpath(qpath, &paths::REPEAT).into()
+            } else {
+                Finite
+            }
         },
-        ExprKind::Struct(..) => higher::range(cx, expr)
-            .map_or(false, |r| r.end.is_none())
-            .into(),
+        ExprKind::Struct(..) => higher::range(cx, expr).map_or(false, |r| r.end.is_none()).into(),
         _ => Finite,
     }
 }
@@ -235,10 +235,10 @@ fn complete_infinite_iter(cx: &LateContext<'_, '_>, expr: &Expr) -> Finiteness {
                 }
             }
         },
-        ExprKind::Binary(op, ref l, ref r) => if op.node.is_comparison() {
-            return is_infinite(cx, l)
-                .and(is_infinite(cx, r))
-                .and(MaybeInfinite);
+        ExprKind::Binary(op, ref l, ref r) => {
+            if op.node.is_comparison() {
+                return is_infinite(cx, l).and(is_infinite(cx, r)).and(MaybeInfinite);
+            }
         }, // TODO: ExprKind::Loop + Match
         _ => (),
     }

@@ -7,13 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::utils::{is_expn_of, match_def_path, resolve_node, span_lint};
 use crate::utils::opt_def_id;
+use crate::utils::{is_expn_of, match_def_path, resolve_node, span_lint};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for usage of `write!()` / `writeln()!` which can be
 /// replaced with `(e)print!()` / `(e)println!()`
@@ -30,8 +29,7 @@ use crate::utils::opt_def_id;
 declare_clippy_lint! {
     pub EXPLICIT_WRITE,
     complexity,
-    "using the `write!()` family of functions instead of the `print!()` family \
-     of functions, when using the latter would work"
+    "using the `write!()` family of functions instead of the `print!()` family of functions, when using the latter would work"
 }
 
 #[derive(Copy, Clone, Debug)]

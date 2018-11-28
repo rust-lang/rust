@@ -7,13 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use matches::matches;
+use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::hir::*;
-use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use crate::utils::*;
+use matches::matches;
 
 /// **What it does:** Checks for `if` conditions that use blocks to contain an
 /// expression.
@@ -112,10 +111,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                             );
                         }
                     } else {
-                        let span = block
-                            .expr
-                            .as_ref()
-                            .map_or_else(|| block.stmts[0].span, |e| e.span);
+                        let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
                         if in_macro(span) || differing_macro_contexts(expr.span, span) {
                             return;
                         }
@@ -134,10 +130,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                     }
                 }
             } else {
-                let mut visitor = ExVisitor {
-                    found_block: None,
-                    cx,
-                };
+                let mut visitor = ExVisitor { found_block: None, cx };
                 walk_expr(&mut visitor, check);
                 if let Some(block) = visitor.found_block {
                     span_lint(cx, BLOCK_IN_IF_CONDITION_STMT, block.span, COMPLEX_BLOCK_MESSAGE);

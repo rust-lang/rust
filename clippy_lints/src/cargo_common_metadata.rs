@@ -56,7 +56,7 @@ fn is_empty_str(value: &Option<String>) -> bool {
     match value {
         None => true,
         Some(value) if value.is_empty() => true,
-        _ => false
+        _ => false,
     }
 }
 

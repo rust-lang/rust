@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::ty::TyKind;
@@ -32,12 +31,12 @@ use std::fmt;
 ///
 /// ```rust
 /// // Bad
-///    let v: f32 = 0.123_456_789_9;
-///    println!("{}", v); //  0.123_456_789
+/// let v: f32 = 0.123_456_789_9;
+/// println!("{}", v); //  0.123_456_789
 ///
 /// // Good
-///    let v: f64 = 0.123_456_789_9;
-///    println!("{}", v); //  0.123_456_789_9
+/// let v: f64 = 0.123_456_789_9;
+/// println!("{}", v); //  0.123_456_789_9
 /// ```
 declare_clippy_lint! {
     pub EXCESSIVE_PRECISION,
@@ -82,7 +81,7 @@ impl ExcessivePrecision {
         let max = max_digits(fty);
         let sym_str = sym.as_str();
         if dot_zero_exclusion(&sym_str) {
-            return None
+            return None;
         }
         // Try to bail out if the float is for sure fine.
         // If its within the 2 decimal digits of being out of precision we
@@ -116,9 +115,7 @@ impl ExcessivePrecision {
 /// Ex 1_000_000_000.
 fn dot_zero_exclusion(s: &str) -> bool {
     if let Some(after_dec) = s.split('.').nth(1) {
-        let mut decpart = after_dec
-            .chars()
-            .take_while(|c| *c != 'e' || *c != 'E');
+        let mut decpart = after_dec.chars().take_while(|c| *c != 'e' || *c != 'E');
 
         match decpart.next() {
             Some('0') => decpart.count() == 0,
@@ -169,7 +166,9 @@ impl FloatFormat {
             .unwrap_or(FloatFormat::Normal)
     }
     fn format<T>(&self, f: T) -> String
-    where T: fmt::UpperExp + fmt::LowerExp + fmt::Display {
+    where
+        T: fmt::UpperExp + fmt::LowerExp + fmt::Display,
+    {
         match self {
             FloatFormat::LowerExp => format!("{:e}", f),
             FloatFormat::UpperExp => format!("{:E}", f),

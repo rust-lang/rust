@@ -7,12 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir;
 use crate::rustc::hir::intravisit;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
-use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::utils::{higher, span_lint};
 
 /// **What it does:** Checks for instances of `mut mut` references.
@@ -81,12 +80,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
                     expr.span,
                     "generally you want to avoid `&mut &mut _` if possible",
                 );
-            } else if let ty::Ref(
-                _,
-                _,
-                hir::MutMutable,
-            ) = self.cx.tables.expr_ty(e).sty
-            {
+            } else if let ty::Ref(_, _, hir::MutMutable) = self.cx.tables.expr_ty(e).sty {
                 span_lint(
                     self.cx,
                     MUT_MUT,
@@ -109,8 +103,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             if let hir::TyKind::Rptr(
                 _,
                 hir::MutTy {
-                    mutbl: hir::MutMutable,
-                    ..
+                    mutbl: hir::MutMutable, ..
                 },
             ) = pty.node
             {

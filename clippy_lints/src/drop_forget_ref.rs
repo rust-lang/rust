@@ -7,13 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::rustc::ty;
 use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::utils::{is_copy, match_def_path, opt_def_id, paths, span_note_and_lint};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for calls to `std::mem::drop` with a reference
 /// instead of an owned value.
@@ -70,9 +69,9 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// let x:i32 = 42;   // i32 implements Copy
+/// let x: i32 = 42; // i32 implements Copy
 /// std::mem::drop(x) // A copy of x is passed to the function, leaving the
-/// // original unaffected
+///                   // original unaffected
 /// ```
 declare_clippy_lint! {
     pub DROP_COPY,
@@ -97,9 +96,9 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// let x:i32 = 42;     // i32 implements Copy
+/// let x: i32 = 42; // i32 implements Copy
 /// std::mem::forget(x) // A copy of x is passed to the function, leaving the
-/// // original unaffected
+///                     // original unaffected
 /// ```
 declare_clippy_lint! {
     pub FORGET_COPY,

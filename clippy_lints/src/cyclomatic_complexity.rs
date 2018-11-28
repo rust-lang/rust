@@ -7,15 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! calculate cyclomatic complexity and warn about overly complex functions
 
 use crate::rustc::cfg::CFG;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, LintContext};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::hir::*;
-use crate::rustc::ty;
 use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::{Attribute, NodeId};
 use crate::syntax::source_map::Span;
 
@@ -138,12 +137,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
     }
 
     fn enter_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
-        self.limit
-            .push_attrs(cx.sess(), attrs, "cyclomatic_complexity");
+        self.limit.push_attrs(cx.sess(), attrs, "cyclomatic_complexity");
     }
     fn exit_lint_attrs(&mut self, cx: &LateContext<'a, 'tcx>, attrs: &'tcx [Attribute]) {
-        self.limit
-            .pop_attrs(cx.sess(), attrs, "cyclomatic_complexity");
+        self.limit.pop_attrs(cx.sess(), attrs, "cyclomatic_complexity");
     }
 }
 
@@ -197,7 +194,16 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
 
 #[cfg(feature = "debugging")]
 #[allow(clippy::too_many_arguments)]
-fn report_cc_bug(_: &LateContext<'_, '_>, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, _: NodeId) {
+fn report_cc_bug(
+    _: &LateContext<'_, '_>,
+    cc: u64,
+    narms: u64,
+    div: u64,
+    shorts: u64,
+    returns: u64,
+    span: Span,
+    _: NodeId,
+) {
     span_bug!(
         span,
         "Clippy encountered a bug calculating cyclomatic complexity: cc = {}, arms = {}, \
@@ -211,7 +217,16 @@ fn report_cc_bug(_: &LateContext<'_, '_>, cc: u64, narms: u64, div: u64, shorts:
 }
 #[cfg(not(feature = "debugging"))]
 #[allow(clippy::too_many_arguments)]
-fn report_cc_bug(cx: &LateContext<'_, '_>, cc: u64, narms: u64, div: u64, shorts: u64, returns: u64, span: Span, id: NodeId) {
+fn report_cc_bug(
+    cx: &LateContext<'_, '_>,
+    cc: u64,
+    narms: u64,
+    div: u64,
+    shorts: u64,
+    returns: u64,
+    span: Span,
+    id: NodeId,
+) {
     if !is_allowed(cx, CYCLOMATIC_COMPLEXITY, id) {
         cx.sess().span_note_without_error(
             span,
@@ -220,11 +235,7 @@ fn report_cc_bug(cx: &LateContext<'_, '_>, cc: u64, narms: u64, div: u64, shorts
                  (hide this message with `#[allow(cyclomatic_complexity)]`): \
                  cc = {}, arms = {}, div = {}, shorts = {}, returns = {}. \
                  Please file a bug report.",
-                cc,
-                narms,
-                div,
-                shorts,
-                returns
+                cc, narms, div, shorts, returns
             ),
         );
     }

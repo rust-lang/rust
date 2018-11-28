@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 // This file incorporates work covered by the following copyright and
 // permission notice:
 //   Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
@@ -29,13 +28,13 @@
 //
 
 use crate::rustc::hir;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, LintContext};
-use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast;
 use crate::syntax::attr;
 use crate::syntax::source_map::Span;
-use crate::utils::{span_lint, in_macro};
+use crate::utils::{in_macro, span_lint};
 
 /// **What it does:** Warns if there is missing doc for any documentable item
 /// (public or private).
@@ -72,12 +71,16 @@ impl MissingDoc {
     }
 
     fn doc_hidden(&self) -> bool {
-        *self.doc_hidden_stack
-            .last()
-            .expect("empty doc_hidden_stack")
+        *self.doc_hidden_stack.last().expect("empty doc_hidden_stack")
     }
 
-    fn check_missing_docs_attrs(&self, cx: &LateContext<'_, '_>, attrs: &[ast::Attribute], sp: Span, desc: &'static str) {
+    fn check_missing_docs_attrs(
+        &self,
+        cx: &LateContext<'_, '_>,
+        attrs: &[ast::Attribute],
+        sp: Span,
+        desc: &'static str,
+    ) {
         // If we're building a test harness, then warning about
         // documentation is probably not really relevant right now.
         if cx.sess().opts.test {
@@ -93,9 +96,7 @@ impl MissingDoc {
             return;
         }
 
-        let has_doc = attrs
-            .iter()
-            .any(|a| a.is_value_str() && a.name() == "doc");
+        let has_doc = attrs.iter().any(|a| a.is_value_str() && a.name() == "doc");
         if !has_doc {
             span_lint(
                 cx,
@@ -115,12 +116,14 @@ impl LintPass for MissingDoc {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
     fn enter_lint_attrs(&mut self, _: &LateContext<'a, 'tcx>, attrs: &'tcx [ast::Attribute]) {
-        let doc_hidden = self.doc_hidden() || attrs.iter().any(|attr| {
-            attr.check_name("doc") && match attr.meta_item_list() {
-                None => false,
-                Some(l) => attr::list_contains_name(&l[..], "hidden"),
-            }
-        });
+        let doc_hidden = self.doc_hidden()
+            || attrs.iter().any(|attr| {
+                attr.check_name("doc")
+                    && match attr.meta_item_list() {
+                        None => false,
+                        Some(l) => attr::list_contains_name(&l[..], "hidden"),
+                    }
+            });
         self.doc_hidden_stack.push(doc_hidden);
     }
 
@@ -156,10 +159,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             hir::ItemKind::Ty(..) => "a type alias",
             hir::ItemKind::Union(..) => "a union",
             hir::ItemKind::Existential(..) => "an existential type",
-            hir::ItemKind::ExternCrate(..) |
-            hir::ItemKind::ForeignMod(..) |
-            hir::ItemKind::Impl(..) |
-            hir::ItemKind::Use(..) => return,
+            hir::ItemKind::ExternCrate(..)
+            | hir::ItemKind::ForeignMod(..)
+            | hir::ItemKind::Impl(..)
+            | hir::ItemKind::Use(..) => return,
         };
 
         self.check_missing_docs_attrs(cx, &it.attrs, it.span, desc);
@@ -180,8 +183,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
         let def_id = cx.tcx.hir.local_def_id(impl_item.id);
         match cx.tcx.associated_item(def_id).container {
             ty::TraitContainer(_) => return,
-            ty::ImplContainer(cid) => if cx.tcx.impl_trait_ref(cid).is_some() {
-                return;
+            ty::ImplContainer(cid) => {
+                if cx.tcx.impl_trait_ref(cid).is_some() {
+                    return;
+                }
             },
         }
 

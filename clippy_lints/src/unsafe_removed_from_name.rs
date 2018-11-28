@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::*;
@@ -62,14 +61,13 @@ fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext<'_>, span: Span) {
                 .expect("use paths cannot be empty")
                 .ident;
             unsafe_to_safe_check(old_name, new_name, cx, span);
-        }
-        UseTreeKind::Simple(None, ..) |
-        UseTreeKind::Glob => {},
+        },
+        UseTreeKind::Simple(None, ..) | UseTreeKind::Glob => {},
         UseTreeKind::Nested(ref nested_use_tree) => {
             for &(ref use_tree, _) in nested_use_tree {
                 check_use_tree(use_tree, cx, span);
             }
-        }
+        },
     }
 }
 
@@ -81,7 +79,10 @@ fn unsafe_to_safe_check(old_name: Ident, new_name: Ident, cx: &EarlyContext<'_>,
             cx,
             UNSAFE_REMOVED_FROM_NAME,
             span,
-            &format!("removed \"unsafe\" from the name of `{}` in use as `{}`", old_str, new_str),
+            &format!(
+                "removed \"unsafe\" from the name of `{}` in use as `{}`",
+                old_str, new_str
+            ),
         );
     }
 }

@@ -7,14 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! lint when items are used after statements
 
-use matches::matches;
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::*;
 use crate::utils::{in_macro, span_lint};
+use matches::matches;
 
 /// **What it does:** Checks for items declared after some statement in a block.
 ///
@@ -59,7 +58,8 @@ impl EarlyLintPass for ItemsAfterStatements {
         }
 
         // skip initial items
-        let stmts = item.stmts
+        let stmts = item
+            .stmts
             .iter()
             .map(|stmt| &stmt.node)
             .skip_while(|s| matches!(**s, StmtKind::Item(..)));

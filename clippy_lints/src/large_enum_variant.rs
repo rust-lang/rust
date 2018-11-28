@@ -7,15 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! lint when there is a large size difference between variants on an enum
 
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::hir::*;
-use crate::utils::{snippet_opt, span_lint_and_then};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::ty::layout::LayoutOf;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
+use crate::utils::{snippet_opt, span_lint_and_then};
 
 /// **What it does:** Checks for large size differences between variants on
 /// `enum`s.
@@ -29,8 +28,8 @@ use crate::rustc_errors::Applicability;
 /// **Example:**
 /// ```rust
 /// enum Test {
-///    A(i32),
-///    B([i32; 8000]),
+///     A(i32),
+///     B([i32; 8000]),
 /// }
 /// ```
 declare_clippy_lint! {
@@ -63,8 +62,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
         let did = cx.tcx.hir.local_def_id(item.id);
         if let ItemKind::Enum(ref def, _) = item.node {
             let ty = cx.tcx.type_of(did);
-            let adt = ty.ty_adt_def()
-                .expect("already checked whether this is an enum");
+            let adt = ty.ty_adt_def().expect("already checked whether this is an enum");
 
             let mut smallest_variant: Option<(_, _)> = None;
             let mut largest_variant: Option<(_, _)> = None;

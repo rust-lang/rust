@@ -7,22 +7,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Checks for uses of const which the type is not Freeze (Cell-free).
 //!
 //! This lint is **deny** by default.
 
-use crate::rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::hir::*;
 use crate::rustc::hir::def::Def;
-use crate::rustc::ty::{self, TypeFlags};
+use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, Lint, LintArray, LintPass};
 use crate::rustc::ty::adjustment::Adjust;
+use crate::rustc::ty::{self, TypeFlags};
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
 use crate::rustc_typeck::hir_ty_to_ty;
-use crate::syntax_pos::{DUMMY_SP, Span};
-use std::ptr;
+use crate::syntax_pos::{Span, DUMMY_SP};
 use crate::utils::{in_constant, in_macro, is_copy, span_lint_and_then};
+use std::ptr;
 
 /// **What it does:** Checks for declaration of `const` items which is interior
 /// mutable (e.g. contains a `Cell`, `Mutex`, `AtomicXxxx` etc).
@@ -42,11 +41,11 @@ use crate::utils::{in_constant, in_macro, is_copy, span_lint_and_then};
 ///
 /// **Example:**
 /// ```rust
-/// use std::sync::atomic::{Ordering::SeqCst, AtomicUsize};
+/// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 ///
 /// // Bad.
 /// const CONST_ATOM: AtomicUsize = AtomicUsize::new(12);
-/// CONST_ATOM.store(6, SeqCst);             // the content of the atomic is unchanged
+/// CONST_ATOM.store(6, SeqCst); // the content of the atomic is unchanged
 /// assert_eq!(CONST_ATOM.load(SeqCst), 12); // because the CONST_ATOM in these lines are distinct
 ///
 /// // Good.
@@ -74,11 +73,11 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// use std::sync::atomic::{Ordering::SeqCst, AtomicUsize};
+/// use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 /// const CONST_ATOM: AtomicUsize = AtomicUsize::new(12);
 ///
 /// // Bad.
-/// CONST_ATOM.store(6, SeqCst);             // the content of the atomic is unchanged
+/// CONST_ATOM.store(6, SeqCst); // the content of the atomic is unchanged
 /// assert_eq!(CONST_ATOM.load(SeqCst), 12); // because the CONST_ATOM in these lines are distinct
 ///
 /// // Good.
@@ -94,16 +93,9 @@ declare_clippy_lint! {
 
 #[derive(Copy, Clone)]
 enum Source {
-    Item {
-        item: Span,
-    },
-    Assoc {
-        item: Span,
-        ty: Span,
-    },
-    Expr {
-        expr: Span,
-    },
+    Item { item: Span },
+    Assoc { item: Span, ty: Span },
+    Expr { expr: Span },
 }
 
 impl Source {
@@ -123,11 +115,7 @@ impl Source {
     }
 }
 
-fn verify_ty_bound<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    ty: ty::Ty<'tcx>,
-    source: Source,
-) {
+fn verify_ty_bound<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>, source: Source) {
     if ty.is_freeze(cx.tcx, cx.param_env, DUMMY_SP) || is_copy(cx, ty) {
         // an UnsafeCell is !Copy, and an UnsafeCell is also the only type which
         // is !Freeze, thus if our type is Copy we can be sure it must be Freeze
@@ -149,21 +137,18 @@ fn verify_ty_bound<'a, 'tcx>(
                     "static".to_string(),
                     Applicability::MachineApplicable,
                 );
-            }
+            },
             Source::Assoc { ty: ty_span, .. } => {
                 if ty.flags.contains(TypeFlags::HAS_FREE_LOCAL_NAMES) {
                     db.span_help(ty_span, &format!("consider requiring `{}` to be `Copy`", ty));
                 }
-            }
+            },
             Source::Expr { .. } => {
-                db.help(
-                    "assign this const to a local or static variable, and use the variable here",
-                );
-            }
+                db.help("assign this const to a local or static variable, and use the variable here");
+            },
         }
     });
 }
-
 
 pub struct NonCopyConst;
 
@@ -184,7 +169,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
     fn check_trait_item(&mut self, cx: &LateContext<'a, 'tcx>, trait_item: &'tcx TraitItem) {
         if let TraitItemKind::Const(hir_ty, ..) = &trait_item.node {
             let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-            verify_ty_bound(cx, ty, Source::Assoc { ty: hir_ty.span, item: trait_item.span });
+            verify_ty_bound(
+                cx,
+                ty,
+                Source::Assoc {
+                    ty: hir_ty.span,
+                    item: trait_item.span,
+                },
+            );
         }
     }
 
@@ -195,7 +187,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
             // ensure the impl is an inherent impl.
             if let ItemKind::Impl(_, _, _, _, None, _, _) = item.node {
                 let ty = hir_ty_to_ty(cx.tcx, hir_ty);
-                verify_ty_bound(cx, ty, Source::Assoc { ty: hir_ty.span, item: impl_item.span });
+                verify_ty_bound(
+                    cx,
+                    ty,
+                    Source::Assoc {
+                        ty: hir_ty.span,
+                        item: impl_item.span,
+                    },
+                );
             }
         }
     }
@@ -227,25 +226,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCopyConst {
                         ExprKind::AddrOf(..) => {
                             // `&e` => `e` must be referenced
                             needs_check_adjustment = false;
-                        }
+                        },
                         ExprKind::Field(..) => {
                             dereferenced_expr = parent_expr;
                             needs_check_adjustment = true;
-                        }
+                        },
                         ExprKind::Index(e, _) if ptr::eq(&**e, cur_expr) => {
                             // `e[i]` => desugared to `*Index::index(&e, i)`,
                             // meaning `e` must be referenced.
                             // no need to go further up since a method call is involved now.
                             needs_check_adjustment = false;
                             break;
-                        }
+                        },
                         ExprKind::Unary(UnDeref, _) => {
                             // `*e` => desugared to `*Deref::deref(&e)`,
                             // meaning `e` must be referenced.
                             // no need to go further up since a method call is involved now.
                             needs_check_adjustment = false;
                             break;
-                        }
+                        },
                         _ => break,
                     }
                     cur_expr = parent_expr;

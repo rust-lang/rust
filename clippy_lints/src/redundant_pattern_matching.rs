@@ -7,14 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::hir::*;
-use crate::syntax::ptr::P;
-use crate::syntax::ast::LitKind;
-use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
 use crate::rustc_errors::Applicability;
+use crate::syntax::ast::LitKind;
+use crate::syntax::ptr::P;
+use crate::utils::{match_qpath, paths, snippet, span_lint_and_then};
 
 /// **What it does:** Lint for redundant pattern matching over `Result` or
 /// `Option`
@@ -46,7 +45,6 @@ use crate::rustc_errors::Applicability;
 /// if Some(42).is_some() {}
 /// Ok::<i32, i32>(42).is_ok();
 /// ```
-///
 declare_clippy_lint! {
     pub REDUNDANT_PATTERN_MATCHING,
     style,
@@ -74,12 +72,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn find_sugg_for_if_let<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    expr: &'tcx Expr,
-    op: &P<Expr>,
-    arms: &HirVec<Arm>
-) {
+fn find_sugg_for_if_let<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, op: &P<Expr>, arms: &HirVec<Arm>) {
     if arms[0].pats.len() == 1 {
         let good_method = match arms[0].pats[0].node {
             PatKind::TupleStruct(ref path, ref patterns, _) if patterns.len() == 1 => {
@@ -123,19 +116,14 @@ fn find_sugg_for_if_let<'a, 'tcx>(
     }
 }
 
-fn find_sugg_for_match<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    expr: &'tcx Expr,
-    op: &P<Expr>,
-    arms: &HirVec<Arm>
-) {
+fn find_sugg_for_match<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, op: &P<Expr>, arms: &HirVec<Arm>) {
     if arms.len() == 2 {
         let node_pair = (&arms[0].pats[0].node, &arms[1].pats[0].node);
 
         let found_good_method = match node_pair {
             (
                 PatKind::TupleStruct(ref path_left, ref patterns_left, _),
-                PatKind::TupleStruct(ref path_right, ref patterns_right, _)
+                PatKind::TupleStruct(ref path_right, ref patterns_right, _),
             ) if patterns_left.len() == 1 && patterns_right.len() == 1 => {
                 if let (PatKind::Wild, PatKind::Wild) = (&patterns_left[0].node, &patterns_right[0].node) {
                     find_good_method_for_match(
@@ -145,19 +133,16 @@ fn find_sugg_for_match<'a, 'tcx>(
                         &paths::RESULT_OK,
                         &paths::RESULT_ERR,
                         "is_ok()",
-                        "is_err()"
+                        "is_err()",
                     )
                 } else {
                     None
                 }
             },
-            (
-                PatKind::TupleStruct(ref path_left, ref patterns, _),
-                PatKind::Path(ref path_right)
-            ) | (
-                PatKind::Path(ref path_left),
-                PatKind::TupleStruct(ref path_right, ref patterns, _)
-            ) if patterns.len() == 1 => {
+            (PatKind::TupleStruct(ref path_left, ref patterns, _), PatKind::Path(ref path_right))
+            | (PatKind::Path(ref path_left), PatKind::TupleStruct(ref path_right, ref patterns, _))
+                if patterns.len() == 1 =>
+            {
                 if let PatKind::Wild = patterns[0].node {
                     find_good_method_for_match(
                         arms,
@@ -166,7 +151,7 @@ fn find_sugg_for_match<'a, 'tcx>(
                         &paths::OPTION_SOME,
                         &paths::OPTION_NONE,
                         "is_some()",
-                        "is_none()"
+                        "is_none()",
                     )
                 } else {
                     None
@@ -204,7 +189,7 @@ fn find_good_method_for_match<'a>(
     expected_left: &[&str],
     expected_right: &[&str],
     should_be_left: &'a str,
-    should_be_right: &'a str
+    should_be_right: &'a str,
 ) -> Option<&'a str> {
     let body_node_pair = if match_qpath(path_left, expected_left) && match_qpath(path_right, expected_right) {
         (&(*arms[0].body).node, &(*arms[1].body).node)
@@ -215,12 +200,10 @@ fn find_good_method_for_match<'a>(
     };
 
     match body_node_pair {
-        (ExprKind::Lit(ref lit_left), ExprKind::Lit(ref lit_right)) => {
-            match (&lit_left.node, &lit_right.node) {
-                (LitKind::Bool(true), LitKind::Bool(false)) => Some(should_be_left),
-                (LitKind::Bool(false), LitKind::Bool(true)) => Some(should_be_right),
-                _ => None,
-            }
+        (ExprKind::Lit(ref lit_left), ExprKind::Lit(ref lit_right)) => match (&lit_left.node, &lit_right.node) {
+            (LitKind::Bool(true), LitKind::Bool(false)) => Some(should_be_left),
+            (LitKind::Bool(false), LitKind::Bool(true)) => Some(should_be_right),
+            _ => None,
         },
         _ => None,
     }

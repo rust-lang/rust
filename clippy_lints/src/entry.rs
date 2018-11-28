@@ -7,16 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::rustc::hir::*;
 use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
+use crate::rustc_errors::Applicability;
 use crate::syntax::source_map::Span;
 use crate::utils::SpanlessEq;
 use crate::utils::{get_item_name, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty};
-use crate::rustc_errors::Applicability;
+use if_chain::if_chain;
 
 /// **What it does:** Checks for uses of `contains_key` + `insert` on `HashMap`
 /// or `BTreeMap`.
@@ -26,12 +25,16 @@ use crate::rustc_errors::Applicability;
 /// **Known problems:** Some false negatives, eg.:
 /// ```rust
 /// let k = &key;
-/// if !m.contains_key(k) { m.insert(k.clone(), v); }
+/// if !m.contains_key(k) {
+///     m.insert(k.clone(), v);
+/// }
 /// ```
 ///
 /// **Example:**
 /// ```rust
-/// if !m.contains_key(&k) { m.insert(k, v) }
+/// if !m.contains_key(&k) {
+///     m.insert(k, v)
+/// }
 /// ```
 /// can be rewritten as:
 /// ```rust
@@ -60,11 +63,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapLint {
                     // in case of `if !m.contains_key(&k) { m.insert(k, v); }`
                     // we can give a better error message
                     let sole_expr = {
-                        else_block.is_none() && if let ExprKind::Block(ref then_block, _) = then_block.node {
-                            (then_block.expr.is_some() as usize) + then_block.stmts.len() == 1
-                        } else {
-                            true
-                        }
+                        else_block.is_none()
+                            && if let ExprKind::Block(ref then_block, _) = then_block.node {
+                                (then_block.expr.is_some() as usize) + then_block.stmts.len() == 1
+                            } else {
+                                true
+                            }
                     };
 
                     let mut visitor = InsertVisitor {

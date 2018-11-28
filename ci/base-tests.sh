@@ -26,6 +26,7 @@ cd clippy_dev && cargo test && cd ..
 
 # Perform various checks for lint registration
 ./util/dev update_lints --check
+cargo +nightly fmt --all -- --check
 
 CLIPPY="`pwd`/target/debug/cargo-clippy clippy"
 # run clippy on its own codebase...

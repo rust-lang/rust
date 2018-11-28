@@ -7,12 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
 use crate::syntax::source_map::{Span, Spanned};
+use if_chain::if_chain;
 
 use crate::consts::{self, Constant};
 use crate::utils::span_lint;
@@ -45,7 +44,14 @@ impl LintPass for NegMultiply {
 #[allow(clippy::match_same_arms)]
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NegMultiply {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if let ExprKind::Binary(Spanned { node: BinOpKind::Mul, .. }, ref l, ref r) = e.node {
+        if let ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::Mul, ..
+            },
+            ref l,
+            ref r,
+        ) = e.node
+        {
             match (&l.node, &r.node) {
                 (&ExprKind::Unary(..), &ExprKind::Unary(..)) => (),
                 (&ExprKind::Unary(UnNeg, ref lit), _) => check_mul(cx, e.span, lit, r),

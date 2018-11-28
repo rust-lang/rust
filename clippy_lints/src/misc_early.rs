@@ -7,17 +7,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, LintContext, in_external_macro};
+use crate::rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_data_structures::fx::FxHashMap;
-use if_chain::if_chain;
-use std::char;
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::*;
 use crate::syntax::source_map::Span;
-use crate::syntax::visit::{FnKind, Visitor, walk_expr};
+use crate::syntax::visit::{walk_expr, FnKind, Visitor};
 use crate::utils::{constants, snippet, snippet_opt, span_help_and_lint, span_lint, span_lint_and_then};
-use crate::rustc_errors::Applicability;
+use if_chain::if_chain;
+use std::char;
 
 /// **What it does:** Checks for structure field patterns bound to wildcards.
 ///
@@ -206,9 +205,7 @@ struct ReturnVisitor {
 
 impl ReturnVisitor {
     fn new() -> Self {
-        Self {
-            found_return: false,
-        }
+        Self { found_return: false }
     }
 }
 
@@ -244,7 +241,8 @@ impl EarlyLintPass for MiscEarly {
     fn check_pat(&mut self, cx: &EarlyContext<'_>, pat: &Pat, _: &mut bool) {
         if let PatKind::Struct(ref npat, ref pfields, _) = pat.node {
             let mut wilds = 0;
-            let type_name = npat.segments
+            let type_name = npat
+                .segments
                 .last()
                 .expect("A path must have at least one segment")
                 .ident
@@ -271,8 +269,10 @@ impl EarlyLintPass for MiscEarly {
                 for field in pfields {
                     match field.node.pat.node {
                         PatKind::Wild => {},
-                        _ => if let Ok(n) = cx.sess().source_map().span_to_snippet(field.span) {
-                            normal.push(n);
+                        _ => {
+                            if let Ok(n) = cx.sess().source_map().span_to_snippet(field.span) {
+                                normal.push(n);
+                            }
                         },
                     }
                 }
@@ -334,36 +334,42 @@ impl EarlyLintPass for MiscEarly {
             return;
         }
         match expr.node {
-            ExprKind::Call(ref paren, _) => if let ExprKind::Paren(ref closure) = paren.node {
-                if let ExprKind::Closure(_, _, _, ref decl, ref block, _) = closure.node {
-                    let mut visitor = ReturnVisitor::new();
-                    visitor.visit_expr(block);
-                    if !visitor.found_return {
-                        span_lint_and_then(
-                            cx,
-                            REDUNDANT_CLOSURE_CALL,
-                            expr.span,
-                            "Try not to call a closure in the expression where it is declared.",
-                            |db| if decl.inputs.is_empty() {
-                                let hint = snippet(cx, block.span, "..").into_owned();
-                                db.span_suggestion_with_applicability(
-                                    expr.span,
-                                    "Try doing something like: ",
-                                    hint,
-                                    Applicability::MachineApplicable, // snippet
-                                );
-                            },
-                        );
+            ExprKind::Call(ref paren, _) => {
+                if let ExprKind::Paren(ref closure) = paren.node {
+                    if let ExprKind::Closure(_, _, _, ref decl, ref block, _) = closure.node {
+                        let mut visitor = ReturnVisitor::new();
+                        visitor.visit_expr(block);
+                        if !visitor.found_return {
+                            span_lint_and_then(
+                                cx,
+                                REDUNDANT_CLOSURE_CALL,
+                                expr.span,
+                                "Try not to call a closure in the expression where it is declared.",
+                                |db| {
+                                    if decl.inputs.is_empty() {
+                                        let hint = snippet(cx, block.span, "..").into_owned();
+                                        db.span_suggestion_with_applicability(
+                                            expr.span,
+                                            "Try doing something like: ",
+                                            hint,
+                                            Applicability::MachineApplicable, // snippet
+                                        );
+                                    }
+                                },
+                            );
+                        }
                     }
                 }
             },
-            ExprKind::Unary(UnOp::Neg, ref inner) => if let ExprKind::Unary(UnOp::Neg, _) = inner.node {
-                span_lint(
-                    cx,
-                    DOUBLE_NEG,
-                    expr.span,
-                    "`--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op",
-                );
+            ExprKind::Unary(UnOp::Neg, ref inner) => {
+                if let ExprKind::Unary(UnOp::Neg, _) = inner.node {
+                    span_lint(
+                        cx,
+                        DOUBLE_NEG,
+                        expr.span,
+                        "`--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op",
+                    );
+                }
             },
             ExprKind::Lit(ref lit) => self.check_lit(cx, lit),
             _ => (),

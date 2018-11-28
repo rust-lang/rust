@@ -7,16 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
 
-use crate::utils::{in_macro, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
 use crate::rustc::hir::intravisit::*;
 use crate::rustc::hir::*;
 use crate::syntax::ast::NodeId;
 use crate::syntax::source_map::Span;
+use crate::utils::{in_macro, match_type, paths, span_lint_and_then, usage::is_potentially_mutated};
 
 /// **What it does:** Checks for calls of `unwrap[_err]()` that cannot fail.
 ///

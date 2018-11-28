@@ -7,23 +7,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::consts::{constant, Constant};
 use crate::rustc::hir::*;
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
+use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
 use crate::rustc::ty::{self, Ty};
-use std::cmp::Ordering;
-use std::collections::Bound;
+use crate::rustc::{declare_tool_lint, lint_array};
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::LitKind;
 use crate::syntax::source_map::Span;
 use crate::utils::paths;
-use crate::utils::{expr_block, in_macro, is_allowed, is_expn_of, match_qpath, match_type,
-    multispan_sugg, remove_blocks, snippet, snippet_with_applicability, span_lint_and_sugg, span_lint_and_then,
-    span_note_and_lint, walk_ptrs_ty};
 use crate::utils::sugg::Sugg;
-use crate::consts::{constant, Constant};
-use crate::rustc_errors::Applicability;
+use crate::utils::{
+    expr_block, in_macro, is_allowed, is_expn_of, match_qpath, match_type, multispan_sugg, remove_blocks, snippet,
+    snippet_with_applicability, span_lint_and_sugg, span_lint_and_then, span_note_and_lint, walk_ptrs_ty,
+};
+use if_chain::if_chain;
+use std::cmp::Ordering;
+use std::collections::Bound;
 
 /// **What it does:** Checks for matches with a single arm where an `if let`
 /// will usually suffice.
@@ -36,14 +36,13 @@ use crate::rustc_errors::Applicability;
 /// ```rust
 /// match x {
 ///     Some(ref foo) => bar(foo),
-///     _ => ()
+///     _ => (),
 /// }
 /// ```
 declare_clippy_lint! {
     pub SINGLE_MATCH,
     style,
-    "a match statement with a single nontrivial arm (i.e. where the other arm \
-     is `_ => {}`) instead of `if let`"
+    "a match statement with a single nontrivial arm (i.e. where the other arm is `_ => {}`) instead of `if let`"
 }
 
 /// **What it does:** Checks for matches with a two arms where an `if let` will
@@ -63,8 +62,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     pub SINGLE_MATCH_ELSE,
     pedantic,
-    "a match statement with a two arms where the second arm's pattern is a wildcard \
-     instead of `if let`"
+    "a match statement with a two arms where the second arm's pattern is a wildcard instead of `if let`"
 }
 
 /// **What it does:** Checks for matches where all arms match a reference,
@@ -131,8 +129,8 @@ declare_clippy_lint! {
 /// ```rust
 /// let x = 5;
 /// match x {
-///     1 ... 10 => println!("1 ... 10"),
-///     5 ... 15 => println!("5 ... 15"),
+///     1...10 => println!("1 ... 10"),
+///     5...15 => println!("5 ... 15"),
 ///     _ => (),
 /// }
 /// ```
@@ -152,7 +150,7 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// let x : Result(i32, &str) = Ok(3);
+/// let x: Result(i32, &str) = Ok(3);
 /// match x {
 ///     Ok(_) => println!("ok"),
 ///     Err(_) => panic!("err"),
@@ -175,8 +173,8 @@ declare_clippy_lint! {
 /// ```rust
 /// let x: Option<()> = None;
 /// let r: Option<&()> = match x {
-///   None => None,
-///   Some(ref v) => Some(v),
+///     None => None,
+///     Some(ref v) => Some(v),
 /// };
 /// ```
 declare_clippy_lint! {
@@ -243,19 +241,29 @@ fn check_single_match(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
     }
 }
 
-fn check_single_match_single_pattern(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
+fn check_single_match_single_pattern(
+    cx: &LateContext<'_, '_>,
+    ex: &Expr,
+    arms: &[Arm],
+    expr: &Expr,
+    els: Option<&Expr>,
+) {
     if is_wild(&arms[1].pats[0]) {
         report_single_match_single_pattern(cx, ex, arms, expr, els);
     }
 }
 
-fn report_single_match_single_pattern(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
-    let lint = if els.is_some() {
-        SINGLE_MATCH_ELSE
-    } else {
-        SINGLE_MATCH
-    };
-    let els_str = els.map_or(String::new(), |els| format!(" else {}", expr_block(cx, els, None, "..")));
+fn report_single_match_single_pattern(
+    cx: &LateContext<'_, '_>,
+    ex: &Expr,
+    arms: &[Arm],
+    expr: &Expr,
+    els: Option<&Expr>,
+) {
+    let lint = if els.is_some() { SINGLE_MATCH_ELSE } else { SINGLE_MATCH };
+    let els_str = els.map_or(String::new(), |els| {
+        format!(" else {}", expr_block(cx, els, None, ".."))
+    });
     span_lint_and_sugg(
         cx,
         lint,
@@ -274,7 +282,14 @@ fn report_single_match_single_pattern(cx: &LateContext<'_, '_>, ex: &Expr, arms:
     );
 }
 
-fn check_single_match_opt_like(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr, ty: Ty<'_>, els: Option<&Expr>) {
+fn check_single_match_opt_like(
+    cx: &LateContext<'_, '_>,
+    ex: &Expr,
+    arms: &[Arm],
+    expr: &Expr,
+    ty: Ty<'_>,
+    els: Option<&Expr>,
+) {
     // list of candidate Enums we know will never get any more members
     let candidates = &[
         (&paths::COW, "Borrowed"),
@@ -466,9 +481,12 @@ fn check_match_ref_pats(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr:
 }
 
 fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &Expr) {
-    if arms.len() == 2 &&
-        arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
-        arms[1].pats.len() == 1 && arms[1].guard.is_none() {
+    if arms.len() == 2
+        && arms[0].pats.len() == 1
+        && arms[0].guard.is_none()
+        && arms[1].pats.len() == 1
+        && arms[1].guard.is_none()
+    {
         let arm_ref: Option<BindingAnnotation> = if is_none_arm(&arms[0]) {
             is_ref_some_arm(&arms[1])
         } else if is_none_arm(&arms[1]) {
@@ -477,7 +495,11 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
             None
         };
         if let Some(rb) = arm_ref {
-            let suggestion = if rb == BindingAnnotation::Ref { "as_ref" } else { "as_mut" };
+            let suggestion = if rb == BindingAnnotation::Ref {
+                "as_ref"
+            } else {
+                "as_mut"
+            };
             let mut applicability = Applicability::MachineApplicable;
             span_lint_and_sugg(
                 cx,
@@ -485,7 +507,11 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
                 expr.span,
                 &format!("use {}() instead", suggestion),
                 "try this",
-                format!("{}.{}()", snippet_with_applicability(cx, ex.span, "_", &mut applicability), suggestion),
+                format!(
+                    "{}.{}()",
+                    snippet_with_applicability(cx, ex.span, "_", &mut applicability),
+                    suggestion
+                ),
                 applicability,
             )
         }
@@ -493,22 +519,18 @@ fn check_match_as_ref(cx: &LateContext<'_, '_>, ex: &Expr, arms: &[Arm], expr: &
 }
 
 /// Get all arms that are unbounded `PatRange`s.
-fn all_ranges<'a, 'tcx>(
-    cx: &LateContext<'a, 'tcx>,
-    arms: &'tcx [Arm],
-) -> Vec<SpannedRange<Constant>> {
+fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &'tcx [Arm]) -> Vec<SpannedRange<Constant>> {
     arms.iter()
         .flat_map(|arm| {
             if let Arm {
-                ref pats,
-                guard: None,
-                ..
+                ref pats, guard: None, ..
             } = *arm
             {
                 pats.iter()
             } else {
                 [].iter()
-            }.filter_map(|pat| {
+            }
+            .filter_map(|pat| {
                 if let PatKind::Range(ref lhs, ref rhs, ref range_end) = pat.node {
                     let lhs = constant(cx, cx.tables, lhs)?.0;
                     let rhs = constant(cx, cx.tables, rhs)?.0;
@@ -516,12 +538,18 @@ fn all_ranges<'a, 'tcx>(
                         RangeEnd::Included => Bound::Included(rhs),
                         RangeEnd::Excluded => Bound::Excluded(rhs),
                     };
-                    return Some(SpannedRange { span: pat.span, node: (lhs, rhs) });
+                    return Some(SpannedRange {
+                        span: pat.span,
+                        node: (lhs, rhs),
+                    });
                 }
 
                 if let PatKind::Lit(ref value) = pat.node {
                     let value = constant(cx, cx.tables, value)?.0;
-                    return Some(SpannedRange { span: pat.span, node: (value.clone(), Bound::Included(value)) });
+                    return Some(SpannedRange {
+                        span: pat.span,
+                        node: (value.clone(), Bound::Included(value)),
+                    });
                 }
 
                 None
@@ -545,24 +573,15 @@ fn type_ranges(ranges: &[SpannedRange<Constant>]) -> TypedRanges {
     ranges
         .iter()
         .filter_map(|range| match range.node {
-            (
-                Constant::Int(start),
-                Bound::Included(Constant::Int(end)),
-            ) => Some(SpannedRange {
+            (Constant::Int(start), Bound::Included(Constant::Int(end))) => Some(SpannedRange {
                 span: range.span,
                 node: (start, Bound::Included(end)),
             }),
-            (
-                Constant::Int(start),
-                Bound::Excluded(Constant::Int(end)),
-            ) => Some(SpannedRange {
+            (Constant::Int(start), Bound::Excluded(Constant::Int(end))) => Some(SpannedRange {
                 span: range.span,
                 node: (start, Bound::Excluded(end)),
             }),
-            (
-                Constant::Int(start),
-                Bound::Unbounded,
-            ) => Some(SpannedRange {
+            (Constant::Int(start), Bound::Unbounded) => Some(SpannedRange {
                 span: range.span,
                 node: (start, Bound::Unbounded),
             }),
@@ -608,7 +627,8 @@ fn is_ref_some_arm(arm: &Arm) -> Option<BindingAnnotation> {
 }
 
 fn has_only_ref_pats(arms: &[Arm]) -> bool {
-    let mapped = arms.iter()
+    let mapped = arms
+        .iter()
         .flat_map(|a| &a.pats)
         .map(|p| {
             match p.node {
@@ -682,8 +702,10 @@ where
 
     for (a, b) in values.iter().zip(values.iter().skip(1)) {
         match (a, b) {
-            (&Kind::Start(_, ra), &Kind::End(_, rb)) => if ra.node != rb.node {
-                return Some((ra, rb));
+            (&Kind::Start(_, ra), &Kind::End(_, rb)) => {
+                if ra.node != rb.node {
+                    return Some((ra, rb));
+                }
             },
             (&Kind::End(a, _), &Kind::Start(b, _)) if a != Bound::Included(b) => (),
             _ => return Some((a.range(), b.range())),

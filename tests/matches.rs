@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 #![feature(rustc_private)]
 
 extern crate clippy_lints;
@@ -16,8 +15,8 @@ use std::collections::Bound;
 
 #[test]
 fn test_overlapping() {
-    use clippy_lints::matches::overlapping;
     use crate::syntax::source_map::DUMMY_SP;
+    use clippy_lints::matches::overlapping;
 
     let sp = |s, e| clippy_lints::matches::SpannedRange {
         span: DUMMY_SP,

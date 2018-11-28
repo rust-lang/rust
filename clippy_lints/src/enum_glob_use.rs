@@ -7,11 +7,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! lint on `use`ing all variants of an enum
 
-use crate::rustc::hir::*;
 use crate::rustc::hir::def::Def;
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::NodeId;
@@ -60,12 +59,7 @@ impl EnumGlobUse {
         }
         if let ItemKind::Use(ref path, UseKind::Glob) = item.node {
             if let Def::Enum(_) = path.def {
-                span_lint(
-                    cx,
-                    ENUM_GLOB_USE,
-                    item.span,
-                    "don't use glob imports for enum variants",
-                );
+                span_lint(cx, ENUM_GLOB_USE, item.span, "don't use glob imports for enum variants");
             }
         }
     }

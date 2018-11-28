@@ -7,17 +7,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::consts::{constant, Constant};
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast::LitKind;
 use crate::syntax::source_map::Span;
-use crate::utils::{span_lint, span_lint_and_then};
 use crate::utils::sugg::Sugg;
-use crate::consts::{constant, Constant};
-use crate::rustc_errors::Applicability;
+use crate::utils::{span_lint, span_lint_and_then};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for incompatible bit masks in comparisons.
 ///
@@ -173,7 +172,6 @@ fn invert_cmp(cmp: BinOpKind) -> BinOpKind {
     }
 }
 
-
 fn check_compare(cx: &LateContext<'_, '_>, bit_op: &Expr, cmp_op: BinOpKind, cmp_value: u128, span: Span) {
     if let ExprKind::Binary(ref op, ref left, ref right) = bit_op.node {
         if op.node != BinOpKind::BitAnd && op.node != BinOpKind::BitOr {
@@ -185,99 +183,112 @@ fn check_compare(cx: &LateContext<'_, '_>, bit_op: &Expr, cmp_op: BinOpKind, cmp
     }
 }
 
-fn check_bit_mask(cx: &LateContext<'_, '_>, bit_op: BinOpKind, cmp_op: BinOpKind, mask_value: u128, cmp_value: u128, span: Span) {
+fn check_bit_mask(
+    cx: &LateContext<'_, '_>,
+    bit_op: BinOpKind,
+    cmp_op: BinOpKind,
+    mask_value: u128,
+    cmp_value: u128,
+    span: Span,
+) {
     match cmp_op {
         BinOpKind::Eq | BinOpKind::Ne => match bit_op {
-            BinOpKind::BitAnd => if mask_value & cmp_value != cmp_value {
-                if cmp_value != 0 {
+            BinOpKind::BitAnd => {
+                if mask_value & cmp_value != cmp_value {
+                    if cmp_value != 0 {
+                        span_lint(
+                            cx,
+                            BAD_BIT_MASK,
+                            span,
+                            &format!(
+                                "incompatible bit mask: `_ & {}` can never be equal to `{}`",
+                                mask_value, cmp_value
+                            ),
+                        );
+                    }
+                } else if mask_value == 0 {
+                    span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
+                }
+            },
+            BinOpKind::BitOr => {
+                if mask_value | cmp_value != cmp_value {
                     span_lint(
                         cx,
                         BAD_BIT_MASK,
                         span,
                         &format!(
-                            "incompatible bit mask: `_ & {}` can never be equal to `{}`",
-                            mask_value,
-                            cmp_value
+                            "incompatible bit mask: `_ | {}` can never be equal to `{}`",
+                            mask_value, cmp_value
                         ),
                     );
                 }
-            } else if mask_value == 0 {
-                span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
-            },
-            BinOpKind::BitOr => if mask_value | cmp_value != cmp_value {
-                span_lint(
-                    cx,
-                    BAD_BIT_MASK,
-                    span,
-                    &format!(
-                        "incompatible bit mask: `_ | {}` can never be equal to `{}`",
-                        mask_value,
-                        cmp_value
-                    ),
-                );
             },
             _ => (),
         },
         BinOpKind::Lt | BinOpKind::Ge => match bit_op {
-            BinOpKind::BitAnd => if mask_value < cmp_value {
-                span_lint(
-                    cx,
-                    BAD_BIT_MASK,
-                    span,
-                    &format!(
-                        "incompatible bit mask: `_ & {}` will always be lower than `{}`",
-                        mask_value,
-                        cmp_value
-                    ),
-                );
-            } else if mask_value == 0 {
-                span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
+            BinOpKind::BitAnd => {
+                if mask_value < cmp_value {
+                    span_lint(
+                        cx,
+                        BAD_BIT_MASK,
+                        span,
+                        &format!(
+                            "incompatible bit mask: `_ & {}` will always be lower than `{}`",
+                            mask_value, cmp_value
+                        ),
+                    );
+                } else if mask_value == 0 {
+                    span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
+                }
             },
-            BinOpKind::BitOr => if mask_value >= cmp_value {
-                span_lint(
-                    cx,
-                    BAD_BIT_MASK,
-                    span,
-                    &format!(
-                        "incompatible bit mask: `_ | {}` will never be lower than `{}`",
-                        mask_value,
-                        cmp_value
-                    ),
-                );
-            } else {
-                check_ineffective_lt(cx, span, mask_value, cmp_value, "|");
+            BinOpKind::BitOr => {
+                if mask_value >= cmp_value {
+                    span_lint(
+                        cx,
+                        BAD_BIT_MASK,
+                        span,
+                        &format!(
+                            "incompatible bit mask: `_ | {}` will never be lower than `{}`",
+                            mask_value, cmp_value
+                        ),
+                    );
+                } else {
+                    check_ineffective_lt(cx, span, mask_value, cmp_value, "|");
+                }
             },
             BinOpKind::BitXor => check_ineffective_lt(cx, span, mask_value, cmp_value, "^"),
             _ => (),
         },
         BinOpKind::Le | BinOpKind::Gt => match bit_op {
-            BinOpKind::BitAnd => if mask_value <= cmp_value {
-                span_lint(
-                    cx,
-                    BAD_BIT_MASK,
-                    span,
-                    &format!(
-                        "incompatible bit mask: `_ & {}` will never be higher than `{}`",
-                        mask_value,
-                        cmp_value
-                    ),
-                );
-            } else if mask_value == 0 {
-                span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
+            BinOpKind::BitAnd => {
+                if mask_value <= cmp_value {
+                    span_lint(
+                        cx,
+                        BAD_BIT_MASK,
+                        span,
+                        &format!(
+                            "incompatible bit mask: `_ & {}` will never be higher than `{}`",
+                            mask_value, cmp_value
+                        ),
+                    );
+                } else if mask_value == 0 {
+                    span_lint(cx, BAD_BIT_MASK, span, "&-masking with zero");
+                }
             },
-            BinOpKind::BitOr => if mask_value > cmp_value {
-                span_lint(
-                    cx,
-                    BAD_BIT_MASK,
-                    span,
-                    &format!(
-                        "incompatible bit mask: `_ | {}` will always be higher than `{}`",
-                        mask_value,
-                        cmp_value
-                    ),
-                );
-            } else {
-                check_ineffective_gt(cx, span, mask_value, cmp_value, "|");
+            BinOpKind::BitOr => {
+                if mask_value > cmp_value {
+                    span_lint(
+                        cx,
+                        BAD_BIT_MASK,
+                        span,
+                        &format!(
+                            "incompatible bit mask: `_ | {}` will always be higher than `{}`",
+                            mask_value, cmp_value
+                        ),
+                    );
+                } else {
+                    check_ineffective_gt(cx, span, mask_value, cmp_value, "|");
+                }
             },
             BinOpKind::BitXor => check_ineffective_gt(cx, span, mask_value, cmp_value, "^"),
             _ => (),
@@ -294,9 +305,7 @@ fn check_ineffective_lt(cx: &LateContext<'_, '_>, span: Span, m: u128, c: u128, 
             span,
             &format!(
                 "ineffective bit mask: `x {} {}` compared to `{}`, is the same as x compared directly",
-                op,
-                m,
-                c
+                op, m, c
             ),
         );
     }
@@ -310,9 +319,7 @@ fn check_ineffective_gt(cx: &LateContext<'_, '_>, span: Span, m: u128, c: u128, 
             span,
             &format!(
                 "ineffective bit mask: `x {} {}` compared to `{}`, is the same as x compared directly",
-                op,
-                m,
-                c
+                op, m, c
             ),
         );
     }

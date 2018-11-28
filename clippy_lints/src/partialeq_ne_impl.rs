@@ -7,12 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::rustc::hir::*;
 use crate::utils::{is_automatically_derived, span_lint};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for manual re-implementations of `PartialEq::ne`.
 ///

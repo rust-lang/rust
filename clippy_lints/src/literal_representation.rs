@@ -414,9 +414,11 @@ impl LiteralDigitGrouping {
                                                                                     parts[0].len(),
                                                                                     parts[1].len());
                                                 if !consistent {
-                                                    WarningType::InconsistentDigitGrouping.display(&digit_info.grouping_hint(),
-                                                    cx,
-                                                    lit.span);
+                                                    WarningType::InconsistentDigitGrouping.display(
+                                                        &digit_info.grouping_hint(),
+                                                        cx,
+                                                        lit.span,
+                                                    );
                                                 }
                                         })
                                     .map_err(|warning_type| warning_type.display(&digit_info.grouping_hint(),

@@ -7,12 +7,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::rustc::hir::*;
 use crate::utils::{match_type, method_chain_args, paths, snippet, span_help_and_lint};
+use if_chain::if_chain;
 
 /// **What it does:*** Checks for unnecessary `ok()` in if let.
 ///

@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc_errors::Applicability;
@@ -336,9 +335,11 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
                 let mut seen = false;
                 for arg in &args {
                     match arg.position {
-                        ArgumentImplicitlyIs(n) | ArgumentIs(n) => if n == idx {
-                            all_simple &= arg.format == SIMPLE;
-                            seen = true;
+                        ArgumentImplicitlyIs(n) | ArgumentIs(n) => {
+                            if n == idx {
+                                all_simple &= arg.format == SIMPLE;
+                                seen = true;
+                            }
                         },
                         ArgumentNamed(_) => {},
                     }
@@ -356,9 +357,11 @@ fn check_tts<'a>(cx: &EarlyContext<'a>, tts: &ThinTokenStream, is_write: bool) -
                         for arg in &args {
                             match arg.position {
                                 ArgumentImplicitlyIs(_) | ArgumentIs(_) => {},
-                                ArgumentNamed(name) => if *p == name {
-                                    seen = true;
-                                    all_simple &= arg.format == SIMPLE;
+                                ArgumentNamed(name) => {
+                                    if *p == name {
+                                        seen = true;
+                                        all_simple &= arg.format == SIMPLE;
+                                    }
                                 },
                             }
                         }

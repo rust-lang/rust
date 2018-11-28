@@ -7,14 +7,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
 use crate::rustc::hir;
 use crate::rustc::hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast;
 use crate::utils::{get_trait_def_id, span_lint};
+use if_chain::if_chain;
 
 /// **What it does:** Lints for suspicious operations in impls of arithmetic operators, e.g.
 /// subtracting elements in an Add impl.
@@ -73,13 +72,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
         if let hir::ExprKind::Binary(binop, _, _) = expr.node {
             match binop.node {
-                | hir::BinOpKind::Eq
+                hir::BinOpKind::Eq
                 | hir::BinOpKind::Lt
                 | hir::BinOpKind::Le
                 | hir::BinOpKind::Ne
                 | hir::BinOpKind::Ge
-                | hir::BinOpKind::Gt
-                => return,
+                | hir::BinOpKind::Gt => return,
                 _ => {},
             }
             // Check if the binary expression is part of another bi/unary expression
@@ -97,9 +95,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                 parent_expr = cx.tcx.hir.get_parent_node(parent_expr);
             }
             // as a parent node
-            let mut visitor = BinaryExprVisitor {
-                in_binary_expr: false,
-            };
+            let mut visitor = BinaryExprVisitor { in_binary_expr: false };
             walk_expr(&mut visitor, expr);
 
             if visitor.in_binary_expr {
@@ -122,10 +118,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                     cx,
                     SUSPICIOUS_ARITHMETIC_IMPL,
                     binop.span,
-                    &format!(
-                        r#"Suspicious use of binary operator in `{}` impl"#,
-                        impl_trait
-                    ),
+                    &format!(r#"Suspicious use of binary operator in `{}` impl"#, impl_trait),
                 );
             }
 
@@ -162,10 +155,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for SuspiciousImpl {
                     cx,
                     SUSPICIOUS_OP_ASSIGN_IMPL,
                     binop.span,
-                    &format!(
-                        r#"Suspicious use of binary operator in `{}` impl"#,
-                        impl_trait
-                    ),
+                    &format!(r#"Suspicious use of binary operator in `{}` impl"#, impl_trait),
                 );
             }
         }
@@ -218,9 +208,7 @@ impl<'a, 'tcx: 'a> Visitor<'tcx> for BinaryExprVisitor {
         match expr.node {
             hir::ExprKind::Binary(..)
             | hir::ExprKind::Unary(hir::UnOp::UnNot, _)
-            | hir::ExprKind::Unary(hir::UnOp::UnNeg, _) => {
-                self.in_binary_expr = true
-            },
+            | hir::ExprKind::Unary(hir::UnOp::UnNeg, _) => self.in_binary_expr = true,
             _ => {},
         }
 

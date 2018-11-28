@@ -7,16 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use crate::rustc::lint::{in_external_macro, EarlyContext, EarlyLintPass, LintArray, LintContext, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast;
 use crate::syntax::source_map::Span;
 use crate::syntax::visit::FnKind;
 use crate::syntax_pos::BytePos;
-use crate::rustc_errors::Applicability;
 use crate::utils::{in_macro, match_path_ast, snippet_opt, span_lint_and_then, span_note_and_lint};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for return statements at the end of a block.
 ///
@@ -28,11 +27,15 @@ use crate::utils::{in_macro, match_path_ast, snippet_opt, span_lint_and_then, sp
 ///
 /// **Example:**
 /// ```rust
-/// fn foo(x: usize) { return x; }
+/// fn foo(x: usize) {
+///     return x;
+/// }
 /// ```
 /// simplify to
 /// ```rust
-/// fn foo(x: usize) { x }
+/// fn foo(x: usize) {
+///     x
+/// }
 /// ```
 declare_clippy_lint! {
     pub NEEDLESS_RETURN,
@@ -51,21 +54,20 @@ declare_clippy_lint! {
 /// **Example:**
 /// ```rust
 /// fn foo() -> String {
-///    let x = String::new();
-///    x
-///}
+///     let x = String::new();
+///     x
+/// }
 /// ```
 /// instead, use
 /// ```
 /// fn foo() -> String {
-///    String::new()
-///}
+///     String::new()
+/// }
 /// ```
 declare_clippy_lint! {
     pub LET_AND_RETURN,
     style,
-    "creating a let-binding and then immediately returning it like `let x = expr; x` at \
-     the end of a block"
+    "creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block"
 }
 
 /// **What it does:** Checks for unit (`()`) expressions that can be removed.
@@ -79,7 +81,9 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// fn return_unit() -> () { () }
+/// fn return_unit() -> () {
+///     ()
+/// }
 /// ```
 declare_clippy_lint! {
     pub UNUSED_UNIT,
@@ -125,8 +129,10 @@ impl ReturnPass {
                 self.check_final_expr(cx, elsexpr, None);
             },
             // a match expr, check all arms
-            ast::ExprKind::Match(_, ref arms) => for arm in arms {
-                self.check_final_expr(cx, &arm.body, Some(arm.body.span));
+            ast::ExprKind::Match(_, ref arms) => {
+                for arm in arms {
+                    self.check_final_expr(cx, &arm.body, Some(arm.body.span));
+                }
             },
             _ => (),
         }
@@ -254,8 +260,8 @@ impl EarlyLintPass for ReturnPass {
                         );
                     });
                 }
-            }
-            _ => ()
+            },
+            _ => (),
         }
     }
 }

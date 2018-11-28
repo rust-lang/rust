@@ -7,15 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::rustc::ty::{self, Ty};
 use crate::rustc::hir::*;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::ty::{self, Ty};
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::source_map::Span;
 use crate::utils::paths;
 use crate::utils::{is_automatically_derived, is_copy, match_path, span_lint_and_then};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for deriving `Hash` but implementing `PartialEq`
 /// explicitly or vice versa.
@@ -154,16 +153,18 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
             ty::Adt(def, _) if def.is_union() => return,
 
             // Some types are not Clone by default but could be cloned “by hand” if necessary
-            ty::Adt(def, substs) => for variant in &def.variants {
-                for field in &variant.fields {
-                    if let ty::FnDef(..) = field.ty(cx.tcx, substs).sty {
-                        return;
-                    }
-                }
-                for subst in substs {
-                    if let ty::subst::UnpackedKind::Type(subst) = subst.unpack() {
-                        if let ty::Param(_) = subst.sty {
+            ty::Adt(def, substs) => {
+                for variant in &def.variants {
+                    for field in &variant.fields {
+                        if let ty::FnDef(..) = field.ty(cx.tcx, substs).sty {
                             return;
+                        }
+                    }
+                    for subst in substs {
+                        if let ty::subst::UnpackedKind::Type(subst) = subst.unpack() {
+                            if let ty::Param(_) = subst.sty {
+                                return;
+                            }
                         }
                     }
                 }

@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Checks for if expressions that contain only an if expression.
 //!
 //! For example, the lint would catch:
@@ -24,12 +23,12 @@
 
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
 use crate::syntax::ast;
+use if_chain::if_chain;
 
-use crate::utils::{in_macro, snippet_block, snippet_block_with_applicability, span_lint_and_sugg, span_lint_and_then};
-use crate::utils::sugg::Sugg;
 use crate::rustc_errors::Applicability;
+use crate::utils::sugg::Sugg;
+use crate::utils::{in_macro, snippet_block, snippet_block_with_applicability, span_lint_and_sugg, span_lint_and_then};
 
 /// **What it does:** Checks for nested `if` statements which can be collapsed
 /// by `&&`-combining their conditions and for `else { if ... }` expressions
@@ -100,10 +99,12 @@ impl EarlyLintPass for CollapsibleIf {
 
 fn check_if(cx: &EarlyContext<'_>, expr: &ast::Expr) {
     match expr.node {
-        ast::ExprKind::If(ref check, ref then, ref else_) => if let Some(ref else_) = *else_ {
-            check_collapsible_maybe_if_let(cx, else_);
-        } else {
-            check_collapsible_no_if_let(cx, expr, check, then);
+        ast::ExprKind::If(ref check, ref then, ref else_) => {
+            if let Some(ref else_) = *else_ {
+                check_collapsible_maybe_if_let(cx, else_);
+            } else {
+                check_collapsible_no_if_let(cx, expr, check, then);
+            }
         },
         ast::ExprKind::IfLet(_, _, _, Some(ref else_)) => {
             check_collapsible_maybe_if_let(cx, else_);
@@ -114,8 +115,9 @@ fn check_if(cx: &EarlyContext<'_>, expr: &ast::Expr) {
 
 fn block_starts_with_comment(cx: &EarlyContext<'_>, expr: &ast::Block) -> bool {
     // We trim all opening braces and whitespaces and then check if the next string is a comment.
-    let trimmed_block_text =
-        snippet_block(cx, expr.span, "..").trim_left_matches(|c: char| c.is_whitespace() || c == '{').to_owned();
+    let trimmed_block_text = snippet_block(cx, expr.span, "..")
+        .trim_left_matches(|c: char| c.is_whitespace() || c == '{')
+        .to_owned();
     trimmed_block_text.starts_with("//") || trimmed_block_text.starts_with("/*")
 }
 

@@ -7,17 +7,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Checks for useless borrowed references.
 //!
 //! This lint is **warn** by default
 
+use crate::rustc::hir::{BindingAnnotation, MutImmutable, Pat, PatKind};
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use if_chain::if_chain;
-use crate::rustc::hir::{BindingAnnotation, MutImmutable, Pat, PatKind};
-use crate::utils::{in_macro, snippet, span_lint_and_then};
 use crate::rustc_errors::Applicability;
+use crate::utils::{in_macro, snippet, span_lint_and_then};
+use if_chain::if_chain;
 
 /// **What it does:** Checks for useless borrowed references.
 ///
@@ -48,8 +47,8 @@ use crate::rustc_errors::Applicability;
 ///
 /// **Example:**
 /// ```rust
-///     let mut v = Vec::<String>::new();
-///     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
+/// let mut v = Vec::<String>::new();
+/// let _ = v.iter_mut().filter(|&ref a| a.is_empty());
 /// ```
 /// This closure takes a reference on something that has been matched as a
 /// reference and
@@ -89,7 +88,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrowedRef {
                                    |db| {
                                        let hint = snippet(cx, spanned_name.span, "..").into_owned();
                                        db.span_suggestion_with_applicability(
-                                           pat.span, 
+                                           pat.span,
                                            "try removing the `&ref` part and just keep",
                                            hint,
                                            Applicability::MachineApplicable, // snippet

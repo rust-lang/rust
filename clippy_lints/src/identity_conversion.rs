@@ -7,14 +7,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
+use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::hir::*;
-use crate::syntax::ast::NodeId;
-use crate::utils::{in_macro, match_def_path, match_trait_method, same_tys, snippet, snippet_with_macro_callsite, span_lint_and_then};
-use crate::utils::{opt_def_id, paths, resolve_node};
 use crate::rustc_errors::Applicability;
+use crate::syntax::ast::NodeId;
+use crate::utils::{
+    in_macro, match_def_path, match_trait_method, same_tys, snippet, snippet_with_macro_callsite, span_lint_and_then,
+};
+use crate::utils::{opt_def_id, paths, resolve_node};
 
 /// **What it does:** Checks for always-identical `Into`/`From`/`IntoIter` conversions.
 ///
@@ -101,22 +102,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityConversion {
                 }
             },
 
-            ExprKind::Call(ref path, ref args) => if let ExprKind::Path(ref qpath) = path.node {
-                if let Some(def_id) = opt_def_id(resolve_node(cx, qpath, path.hir_id)) {
-                    if match_def_path(cx.tcx, def_id, &paths::FROM_FROM[..]) {
-                        let a = cx.tables.expr_ty(e);
-                        let b = cx.tables.expr_ty(&args[0]);
-                        if same_tys(cx, a, b) {
-                            let sugg = snippet(cx, args[0].span.source_callsite(), "<expr>").into_owned();
-                            let sugg_msg = format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
-                            span_lint_and_then(cx, IDENTITY_CONVERSION, e.span, "identical conversion", |db| {
-                                db.span_suggestion_with_applicability(
-                                    e.span,
-                                    &sugg_msg,
-                                    sugg,
-                                    Applicability::MachineApplicable, // snippet
-                                );
-                            });
+            ExprKind::Call(ref path, ref args) => {
+                if let ExprKind::Path(ref qpath) = path.node {
+                    if let Some(def_id) = opt_def_id(resolve_node(cx, qpath, path.hir_id)) {
+                        if match_def_path(cx.tcx, def_id, &paths::FROM_FROM[..]) {
+                            let a = cx.tables.expr_ty(e);
+                            let b = cx.tables.expr_ty(&args[0]);
+                            if same_tys(cx, a, b) {
+                                let sugg = snippet(cx, args[0].span.source_callsite(), "<expr>").into_owned();
+                                let sugg_msg =
+                                    format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
+                                span_lint_and_then(cx, IDENTITY_CONVERSION, e.span, "identical conversion", |db| {
+                                    db.span_suggestion_with_applicability(
+                                        e.span,
+                                        &sugg_msg,
+                                        sugg,
+                                        Applicability::MachineApplicable, // snippet
+                                    );
+                                });
+                            }
                         }
                     }
                 }

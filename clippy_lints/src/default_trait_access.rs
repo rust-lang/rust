@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::ty::TyKind;
@@ -16,7 +15,6 @@ use crate::rustc_errors::Applicability;
 use if_chain::if_chain;
 
 use crate::utils::{any_parent_is_automatically_derived, match_def_path, opt_def_id, paths, span_lint_and_sugg};
-
 
 /// **What it does:** Checks for literal calls to `Default::default()`.
 ///
@@ -89,6 +87,6 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for DefaultTraitAccess {
                     QPath::TypeRelative(..) => {},
                 }
             }
-         }
+        }
     }
 }

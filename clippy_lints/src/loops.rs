@@ -7,33 +7,32 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use itertools::Itertools;
 use crate::reexport::*;
-use crate::rustc::hir::*;
 use crate::rustc::hir::def::Def;
 use crate::rustc::hir::def_id;
 use crate::rustc::hir::intravisit::{walk_block, walk_decl, walk_expr, walk_pat, walk_stmt, NestedVisitorMap, Visitor};
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass, in_external_macro, LintContext};
+use crate::rustc::hir::*;
+use crate::rustc::lint::{in_external_macro, LateContext, LateLintPass, LintArray, LintContext, LintPass};
+use crate::rustc::middle::region;
 use crate::rustc::{declare_tool_lint, lint_array};
 use if_chain::if_chain;
-use crate::rustc::middle::region;
+use itertools::Itertools;
 // use crate::rustc::middle::region::CodeExtent;
+use crate::consts::{constant, Constant};
 use crate::rustc::middle::expr_use_visitor::*;
-use crate::rustc::middle::mem_categorization::Categorization;
 use crate::rustc::middle::mem_categorization::cmt_;
-use crate::rustc::ty::{self, Ty};
+use crate::rustc::middle::mem_categorization::Categorization;
 use crate::rustc::ty::subst::Subst;
-use crate::rustc_errors::Applicability;
+use crate::rustc::ty::{self, Ty};
 use crate::rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use std::iter::{once, Iterator};
-use std::mem;
+use crate::rustc_errors::Applicability;
 use crate::syntax::ast;
 use crate::syntax::source_map::Span;
 use crate::syntax_pos::BytePos;
-use crate::utils::{in_macro, sugg, sext};
 use crate::utils::usage::mutated_variables;
-use crate::consts::{constant, Constant};
+use crate::utils::{in_macro, sext, sugg};
+use std::iter::{once, Iterator};
+use std::mem;
 
 use crate::utils::paths;
 use crate::utils::{
@@ -92,11 +91,15 @@ declare_clippy_lint! {
 /// **Example:**
 /// ```rust
 /// // with `y` a `Vec` or slice:
-/// for x in y.iter() { .. }
+/// for x in y.iter() {
+///     ..
+/// }
 /// ```
 /// can be rewritten to
 /// ```rust
-/// for x in &y { .. }
+/// for x in &y {
+///     ..
+/// }
 /// ```
 declare_clippy_lint! {
     pub EXPLICIT_ITER_LOOP,
@@ -114,11 +117,15 @@ declare_clippy_lint! {
 /// **Example:**
 /// ```rust
 /// // with `y` a `Vec` or slice:
-/// for x in y.into_iter() { .. }
+/// for x in y.into_iter() {
+///     ..
+/// }
 /// ```
 /// can be rewritten to
 /// ```rust
-/// for x in y { .. }
+/// for x in y {
+///     ..
+/// }
 /// ```
 declare_clippy_lint! {
     pub EXPLICIT_INTO_ITER_LOOP,
@@ -139,7 +146,9 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// for x in y.next() { .. }
+/// for x in y.next() {
+///     ..
+/// }
 /// ```
 declare_clippy_lint! {
     pub ITER_NEXT_LOOP,
@@ -156,12 +165,16 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// for x in option { .. }
+/// for x in option {
+///     ..
+/// }
 /// ```
 ///
 /// This should be
 /// ```rust
-/// if let Some(x) = option { .. }
+/// if let Some(x) = option {
+///     ..
+/// }
 /// ```
 declare_clippy_lint! {
     pub FOR_LOOP_OVER_OPTION,
@@ -178,12 +191,16 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// for x in result { .. }
+/// for x in result {
+///     ..
+/// }
 /// ```
 ///
 /// This should be
 /// ```rust
-/// if let Ok(x) = result { .. }
+/// if let Ok(x) = result {
+///     ..
+/// }
 /// ```
 declare_clippy_lint! {
     pub FOR_LOOP_OVER_RESULT,
@@ -234,8 +251,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     pub UNUSED_COLLECT,
     perf,
-    "`collect()`ing an iterator without using the result; this is usually better \
-     written as a for loop"
+    "`collect()`ing an iterator without using the result; this is usually better written as a for loop"
 }
 
 /// **What it does:** Checks for functions collecting an iterator when collect
@@ -273,7 +289,9 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// for x in 5..10-5 { .. } // oops, stray `-`
+/// for x in 5..10 - 5 {
+///     ..
+/// } // oops, stray `-`
 /// ```
 declare_clippy_lint! {
     pub REVERSE_RANGE_LOOP,
@@ -328,7 +346,9 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// while let Some(val) = iter() { .. }
+/// while let Some(val) = iter() {
+///     ..
+/// }
 /// ```
 declare_clippy_lint! {
     pub WHILE_LET_ON_ITERATOR,
@@ -346,13 +366,17 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// for (k, _) in &map { .. }
+/// for (k, _) in &map {
+///     ..
+/// }
 /// ```
 ///
 /// could be replaced by
 ///
 /// ```rust
-/// for k in map.keys() { .. }
+/// for k in map.keys() {
+///     ..
+/// }
 /// ```
 declare_clippy_lint! {
     pub FOR_KV_MAP,
@@ -370,7 +394,10 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// loop { ..; break; }
+/// loop {
+///     ..;
+///     break;
+/// }
 /// ```
 declare_clippy_lint! {
     pub NEVER_LOOP,
@@ -412,7 +439,7 @@ declare_clippy_lint! {
 /// ```rust
 /// let i = 0;
 /// while i > 10 {
-///    println!("let me loop forever!");
+///     println!("let me loop forever!");
 /// }
 /// ```
 declare_clippy_lint! {
@@ -459,8 +486,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         match expr.node {
             ExprKind::While(_, ref block, _) | ExprKind::Loop(ref block, _, _) => {
                 match never_loop_block(block, expr.id) {
-                    NeverLoopResult::AlwaysBreak =>
-                        span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops"),
+                    NeverLoopResult::AlwaysBreak => {
+                        span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops")
+                    },
                     NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Otherwise => (),
                 }
             },
@@ -490,8 +518,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     // ensure "if let" compatible match structure
                     match *source {
                         MatchSource::Normal | MatchSource::IfLetDesugar { .. } => {
-                            if arms.len() == 2 && arms[0].pats.len() == 1 && arms[0].guard.is_none()
-                                && arms[1].pats.len() == 1 && arms[1].guard.is_none()
+                            if arms.len() == 2
+                                && arms[0].pats.len() == 1
+                                && arms[0].guard.is_none()
+                                && arms[1].pats.len() == 1
+                                && arms[1].guard.is_none()
                                 && is_simple_break_expr(&arms[1].body)
                             {
                                 if in_external_macro(cx.sess(), expr.span) {
@@ -533,12 +564,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             {
                 let iter_expr = &method_args[0];
                 let lhs_constructor = last_path_segment(qpath);
-                if method_path.ident.name == "next" && match_trait_method(cx, match_expr, &paths::ITERATOR)
-                    && lhs_constructor.ident.name == "Some" && (
-                        pat_args.is_empty()
+                if method_path.ident.name == "next"
+                    && match_trait_method(cx, match_expr, &paths::ITERATOR)
+                    && lhs_constructor.ident.name == "Some"
+                    && (pat_args.is_empty()
                         || !is_refutable(cx, &pat_args[0])
-                        && !is_iterator_used_after_while_let(cx, iter_expr)
-                        && !is_nested(cx, expr, &method_args[0]))
+                            && !is_iterator_used_after_while_let(cx, iter_expr)
+                            && !is_nested(cx, expr, &method_args[0]))
                 {
                     let iterator = snippet(cx, method_args[0].span, "_");
                     let loop_var = if pat_args.is_empty() {
@@ -594,8 +626,7 @@ enum NeverLoopResult {
 
 fn absorb_break(arg: &NeverLoopResult) -> NeverLoopResult {
     match *arg {
-        NeverLoopResult::AlwaysBreak |
-        NeverLoopResult::Otherwise => NeverLoopResult::Otherwise,
+        NeverLoopResult::AlwaysBreak | NeverLoopResult::Otherwise => NeverLoopResult::Otherwise,
         NeverLoopResult::MayContinueMainLoop => NeverLoopResult::MayContinueMainLoop,
     }
 }
@@ -611,24 +642,22 @@ fn combine_seq(first: NeverLoopResult, second: NeverLoopResult) -> NeverLoopResu
 // Combine two results where both parts are called but not necessarily in order.
 fn combine_both(left: NeverLoopResult, right: NeverLoopResult) -> NeverLoopResult {
     match (left, right) {
-        (NeverLoopResult::MayContinueMainLoop, _) | (_, NeverLoopResult::MayContinueMainLoop) =>
-            NeverLoopResult::MayContinueMainLoop,
-        (NeverLoopResult::AlwaysBreak, _) | (_, NeverLoopResult::AlwaysBreak) =>
-            NeverLoopResult::AlwaysBreak,
-        (NeverLoopResult::Otherwise, NeverLoopResult::Otherwise) =>
-            NeverLoopResult::Otherwise,
+        (NeverLoopResult::MayContinueMainLoop, _) | (_, NeverLoopResult::MayContinueMainLoop) => {
+            NeverLoopResult::MayContinueMainLoop
+        },
+        (NeverLoopResult::AlwaysBreak, _) | (_, NeverLoopResult::AlwaysBreak) => NeverLoopResult::AlwaysBreak,
+        (NeverLoopResult::Otherwise, NeverLoopResult::Otherwise) => NeverLoopResult::Otherwise,
     }
 }
 
 // Combine two results where only one of the part may have been executed.
 fn combine_branches(b1: NeverLoopResult, b2: NeverLoopResult) -> NeverLoopResult {
     match (b1, b2) {
-        (NeverLoopResult::AlwaysBreak, NeverLoopResult::AlwaysBreak) =>
-            NeverLoopResult::AlwaysBreak,
-        (NeverLoopResult::MayContinueMainLoop, _) | (_, NeverLoopResult::MayContinueMainLoop) =>
-            NeverLoopResult::MayContinueMainLoop,
-        (NeverLoopResult::Otherwise, _) | (_, NeverLoopResult::Otherwise) =>
-            NeverLoopResult::Otherwise,
+        (NeverLoopResult::AlwaysBreak, NeverLoopResult::AlwaysBreak) => NeverLoopResult::AlwaysBreak,
+        (NeverLoopResult::MayContinueMainLoop, _) | (_, NeverLoopResult::MayContinueMainLoop) => {
+            NeverLoopResult::MayContinueMainLoop
+        },
+        (NeverLoopResult::Otherwise, _) | (_, NeverLoopResult::Otherwise) => NeverLoopResult::Otherwise,
     }
 }
 
@@ -655,26 +684,28 @@ fn decl_to_expr(decl: &Decl) -> Option<&Expr> {
 
 fn never_loop_expr(expr: &Expr, main_loop_id: NodeId) -> NeverLoopResult {
     match expr.node {
-        ExprKind::Box(ref e) |
-        ExprKind::Unary(_, ref e) |
-        ExprKind::Cast(ref e, _) |
-        ExprKind::Type(ref e, _) |
-        ExprKind::Field(ref e, _) |
-        ExprKind::AddrOf(_, ref e) |
-        ExprKind::Struct(_, _, Some(ref e)) |
-        ExprKind::Repeat(ref e, _) => never_loop_expr(e, main_loop_id),
+        ExprKind::Box(ref e)
+        | ExprKind::Unary(_, ref e)
+        | ExprKind::Cast(ref e, _)
+        | ExprKind::Type(ref e, _)
+        | ExprKind::Field(ref e, _)
+        | ExprKind::AddrOf(_, ref e)
+        | ExprKind::Struct(_, _, Some(ref e))
+        | ExprKind::Repeat(ref e, _) => never_loop_expr(e, main_loop_id),
         ExprKind::Array(ref es) | ExprKind::MethodCall(_, _, ref es) | ExprKind::Tup(ref es) => {
             never_loop_expr_all(&mut es.iter(), main_loop_id)
         },
         ExprKind::Call(ref e, ref es) => never_loop_expr_all(&mut once(&**e).chain(es.iter()), main_loop_id),
-        ExprKind::Binary(_, ref e1, ref e2) |
-        ExprKind::Assign(ref e1, ref e2) |
-        ExprKind::AssignOp(_, ref e1, ref e2) |
-        ExprKind::Index(ref e1, ref e2) => never_loop_expr_all(&mut [&**e1, &**e2].iter().cloned(), main_loop_id),
+        ExprKind::Binary(_, ref e1, ref e2)
+        | ExprKind::Assign(ref e1, ref e2)
+        | ExprKind::AssignOp(_, ref e1, ref e2)
+        | ExprKind::Index(ref e1, ref e2) => never_loop_expr_all(&mut [&**e1, &**e2].iter().cloned(), main_loop_id),
         ExprKind::If(ref e, ref e2, ref e3) => {
             let e1 = never_loop_expr(e, main_loop_id);
             let e2 = never_loop_expr(e2, main_loop_id);
-            let e3 = e3.as_ref().map_or(NeverLoopResult::Otherwise, |e| never_loop_expr(e, main_loop_id));
+            let e3 = e3
+                .as_ref()
+                .map_or(NeverLoopResult::Otherwise, |e| never_loop_expr(e, main_loop_id));
             combine_seq(e1, combine_branches(e2, e3))
         },
         ExprKind::Loop(ref b, _, _) => {
@@ -698,7 +729,8 @@ fn never_loop_expr(expr: &Expr, main_loop_id: NodeId) -> NeverLoopResult {
         },
         ExprKind::Block(ref b, _) => never_loop_block(b, main_loop_id),
         ExprKind::Continue(d) => {
-            let id = d.target_id
+            let id = d
+                .target_id
                 .expect("target id can only be missing in the presence of compilation errors");
             if id == main_loop_id {
                 NeverLoopResult::MayContinueMainLoop
@@ -706,9 +738,7 @@ fn never_loop_expr(expr: &Expr, main_loop_id: NodeId) -> NeverLoopResult {
                 NeverLoopResult::AlwaysBreak
             }
         },
-        ExprKind::Break(_, _) => {
-            NeverLoopResult::AlwaysBreak
-        },
+        ExprKind::Break(_, _) => NeverLoopResult::AlwaysBreak,
         ExprKind::Ret(ref e) => {
             if let Some(ref e) = *e {
                 combine_seq(never_loop_expr(e, main_loop_id), NeverLoopResult::AlwaysBreak)
@@ -716,26 +746,26 @@ fn never_loop_expr(expr: &Expr, main_loop_id: NodeId) -> NeverLoopResult {
                 NeverLoopResult::AlwaysBreak
             }
         },
-        ExprKind::Struct(_, _, None) |
-        ExprKind::Yield(_) |
-        ExprKind::Closure(_, _, _, _, _) |
-        ExprKind::InlineAsm(_, _, _) |
-        ExprKind::Path(_) |
-        ExprKind::Lit(_) => NeverLoopResult::Otherwise,
+        ExprKind::Struct(_, _, None)
+        | ExprKind::Yield(_)
+        | ExprKind::Closure(_, _, _, _, _)
+        | ExprKind::InlineAsm(_, _, _)
+        | ExprKind::Path(_)
+        | ExprKind::Lit(_) => NeverLoopResult::Otherwise,
     }
 }
 
-fn never_loop_expr_seq<'a, T: Iterator<Item=&'a Expr>>(es: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
+fn never_loop_expr_seq<'a, T: Iterator<Item = &'a Expr>>(es: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
     es.map(|e| never_loop_expr(e, main_loop_id))
         .fold(NeverLoopResult::Otherwise, combine_seq)
 }
 
-fn never_loop_expr_all<'a, T: Iterator<Item=&'a Expr>>(es: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
+fn never_loop_expr_all<'a, T: Iterator<Item = &'a Expr>>(es: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
     es.map(|e| never_loop_expr(e, main_loop_id))
         .fold(NeverLoopResult::Otherwise, combine_both)
 }
 
-fn never_loop_expr_branch<'a, T: Iterator<Item=&'a Expr>>(e: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
+fn never_loop_expr_branch<'a, T: Iterator<Item = &'a Expr>>(e: &mut T, main_loop_id: NodeId) -> NeverLoopResult {
     e.map(|e| never_loop_expr(e, main_loop_id))
         .fold(NeverLoopResult::AlwaysBreak, combine_branches)
 }
@@ -779,10 +809,7 @@ struct Offset {
 
 impl Offset {
     fn negative(s: String) -> Self {
-        Self {
-            value: s,
-            negate: true,
-        }
+        Self { value: s, negate: true }
     }
 
     fn positive(s: String) -> Self {
@@ -842,19 +869,19 @@ fn get_fixed_offset_var<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &Expr, var: 
                 BinOpKind::Sub if same_var(cx, lhs, var) => extract_offset(cx, rhs, var).map(Offset::negative),
                 _ => None,
             },
-            ExprKind::Path(..) => if same_var(cx, idx, var) {
-                Some(Offset::positive("0".into()))
-            } else {
-                None
+            ExprKind::Path(..) => {
+                if same_var(cx, idx, var) {
+                    Some(Offset::positive("0".into()))
+                } else {
+                    None
+                }
             },
             _ => None,
         };
 
-        offset.map(|o| {
-            FixedOffsetVar {
-                var_name: snippet_opt(cx, seqexpr.span).unwrap_or_else(|| "???".into()),
-                offset: o,
-            }
+        offset.map(|o| FixedOffsetVar {
+            var_name: snippet_opt(cx, seqexpr.span).unwrap_or_else(|| "???".into()),
+            offset: o,
         })
     } else {
         None
@@ -890,7 +917,10 @@ fn get_indexed_assignments<'a, 'tcx>(
         var: ast::NodeId,
     ) -> Option<(FixedOffsetVar, FixedOffsetVar)> {
         if let ExprKind::Assign(ref lhs, ref rhs) = e.node {
-            match (get_fixed_offset_var(cx, lhs, var), fetch_cloned_fixed_offset_var(cx, rhs, var)) {
+            match (
+                get_fixed_offset_var(cx, lhs, var),
+                fetch_cloned_fixed_offset_var(cx, rhs, var),
+            ) {
                 (Some(offset_left), Some(offset_right)) => {
                     // Source and destination must be different
                     if offset_left.var_name == offset_right.var_name {
@@ -908,9 +938,7 @@ fn get_indexed_assignments<'a, 'tcx>(
 
     if let ExprKind::Block(ref b, _) = body.node {
         let Block {
-            ref stmts,
-            ref expr,
-            ..
+            ref stmts, ref expr, ..
         } = **b;
 
         stmts
@@ -919,11 +947,7 @@ fn get_indexed_assignments<'a, 'tcx>(
                 StmtKind::Decl(..) => None,
                 StmtKind::Expr(ref e, _node_id) | StmtKind::Semi(ref e, _node_id) => Some(get_assignment(cx, e, var)),
             })
-            .chain(
-                expr.as_ref()
-                    .into_iter()
-                    .map(|e| Some(get_assignment(cx, &*e, var))),
-            )
+            .chain(expr.as_ref().into_iter().map(|e| Some(get_assignment(cx, &*e, var))))
             .filter_map(|op| op)
             .collect::<Option<Vec<_>>>()
             .unwrap_or_else(|| vec![])
@@ -973,33 +997,35 @@ fn detect_manual_memcpy<'a, 'tcx>(
                 }
             };
 
-            let print_limit = |end: &Option<&Expr>, offset: Offset, var_name: &str| if let Some(end) = *end {
-                if_chain! {
-                    if let ExprKind::MethodCall(ref method, _, ref len_args) = end.node;
-                    if method.ident.name == "len";
-                    if len_args.len() == 1;
-                    if let Some(arg) = len_args.get(0);
-                    if snippet(cx, arg.span, "??") == var_name;
-                    then {
-                        return if offset.negate {
-                            format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value)
-                        } else {
-                            String::new()
-                        };
+            let print_limit = |end: &Option<&Expr>, offset: Offset, var_name: &str| {
+                if let Some(end) = *end {
+                    if_chain! {
+                        if let ExprKind::MethodCall(ref method, _, ref len_args) = end.node;
+                        if method.ident.name == "len";
+                        if len_args.len() == 1;
+                        if let Some(arg) = len_args.get(0);
+                        if snippet(cx, arg.span, "??") == var_name;
+                        then {
+                            return if offset.negate {
+                                format!("({} - {})", snippet(cx, end.span, "<src>.len()"), offset.value)
+                            } else {
+                                String::new()
+                            };
+                        }
                     }
+
+                    let end_str = match limits {
+                        ast::RangeLimits::Closed => {
+                            let end = sugg::Sugg::hir(cx, end, "<count>");
+                            format!("{}", end + sugg::ONE)
+                        },
+                        ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
+                    };
+
+                    print_sum(&Offset::positive(end_str), &offset)
+                } else {
+                    "..".into()
                 }
-
-                let end_str = match limits {
-                    ast::RangeLimits::Closed => {
-                        let end = sugg::Sugg::hir(cx, end, "<count>");
-                        format!("{}", end + sugg::ONE)
-                    },
-                    ast::RangeLimits::HalfOpen => format!("{}", snippet(cx, end.span, "..")),
-                };
-
-                print_sum(&Offset::positive(end_str), &offset)
-            } else {
-                "..".into()
             };
 
             // The only statements in the for loops can be indexed assignments from
@@ -1020,7 +1046,10 @@ fn detect_manual_memcpy<'a, 'tcx>(
                         format!("{}[{}..{}]", dst_var.var_name, dst_offset, dst_limit)
                     };
 
-                    format!("{}.clone_from_slice(&{}[{}..{}])", dst, src_var.var_name, src_offset, src_limit)
+                    format!(
+                        "{}.clone_from_slice(&{}[{}..{}])",
+                        dst, src_var.var_name, src_offset, src_limit
+                    )
                 })
                 .join("\n    ");
 
@@ -1166,7 +1195,10 @@ fn check_for_loop_range<'a, 'tcx>(
                                 "consider using an iterator".to_string(),
                                 vec![
                                     (pat.span, format!("({}, <item>)", ident.name)),
-                                    (arg.span, format!("{}.{}().enumerate(){}{}", indexed, method, method_1, method_2)),
+                                    (
+                                        arg.span,
+                                        format!("{}.{}().enumerate(){}{}", indexed, method, method_1, method_2),
+                                    ),
                                 ],
                             );
                         },
@@ -1182,7 +1214,10 @@ fn check_for_loop_range<'a, 'tcx>(
                         cx,
                         NEEDLESS_RANGE_LOOP,
                         expr.span,
-                        &format!("the loop variable `{}` is only used to index `{}`.", ident.name, indexed),
+                        &format!(
+                            "the loop variable `{}` is only used to index `{}`.",
+                            ident.name, indexed
+                        ),
                         |db| {
                             multispan_sugg(
                                 db,
@@ -1213,12 +1248,7 @@ fn is_len_call(expr: &Expr, var: Name) -> bool {
     false
 }
 
-fn is_end_eq_array_len(
-    cx: &LateContext<'_, '_>,
-    end: &Expr,
-    limits: ast::RangeLimits,
-    indexed_ty: Ty<'_>,
-) -> bool {
+fn is_end_eq_array_len(cx: &LateContext<'_, '_>, end: &Expr, limits: ast::RangeLimits, indexed_ty: Ty<'_>) -> bool {
     if_chain! {
         if let ExprKind::Lit(ref lit) = end.node;
         if let ast::LitKind::Int(end_int, _) = lit.node;
@@ -1252,14 +1282,14 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
                 // smaller value.
                 let ty = cx.tables.expr_ty(start);
                 let (sup, eq) = match (start_idx, end_idx) {
-                    (
-                        Constant::Int(start_idx),
-                        Constant::Int(end_idx),
-                    ) => (match ty.sty {
-                        ty::Int(ity) => sext(cx.tcx, start_idx, ity) > sext(cx.tcx, end_idx, ity),
-                        ty::Uint(_) => start_idx > end_idx,
-                        _ => false,
-                    }, start_idx == end_idx),
+                    (Constant::Int(start_idx), Constant::Int(end_idx)) => (
+                        match ty.sty {
+                            ty::Int(ity) => sext(cx.tcx, start_idx, ity) > sext(cx.tcx, end_idx, ity),
+                            ty::Uint(_) => start_idx > end_idx,
+                            _ => false,
+                        },
+                        start_idx == end_idx,
+                    ),
                     _ => (false, false),
                 };
 
@@ -1310,11 +1340,7 @@ fn check_for_loop_reverse_range<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arg: &'tcx
 fn lint_iter_method(cx: &LateContext<'_, '_>, args: &[Expr], arg: &Expr, method_name: &str) {
     let mut applicability = Applicability::MachineApplicable;
     let object = snippet_with_applicability(cx, args[0].span, "_", &mut applicability);
-    let muta = if method_name == "iter_mut" {
-        "mut "
-    } else {
-        ""
-    };
+    let muta = if method_name == "iter_mut" { "mut " } else { "" };
     span_lint_and_sugg(
         cx,
         EXPLICIT_ITER_LOOP,
@@ -1439,15 +1465,12 @@ fn check_for_loop_explicit_counter<'a, 'tcx>(
     // For each candidate, check the parent block to see if
     // it's initialized to zero at the start of the loop.
     let map = &cx.tcx.hir;
-    let parent_scope = map.get_enclosing_scope(expr.id)
+    let parent_scope = map
+        .get_enclosing_scope(expr.id)
         .and_then(|id| map.get_enclosing_scope(id));
     if let Some(parent_id) = parent_scope {
         if let Node::Block(block) = map.get(parent_id) {
-            for (id, _) in visitor
-                .states
-                .iter()
-                .filter(|&(_, v)| *v == VarState::IncrOnce)
-            {
+            for (id, _) in visitor.states.iter().filter(|&(_, v)| *v == VarState::IncrOnce) {
                 let mut visitor2 = InitializeVisitor {
                     cx,
                     end_expr: expr,
@@ -1586,10 +1609,7 @@ fn check_for_mut_range_bound(cx: &LateContext<'_, '_>, arg: &Expr, body: &Expr) 
         ..
     }) = higher::range(cx, arg)
     {
-        let mut_ids = vec![
-            check_for_mutability(cx, start),
-            check_for_mutability(cx, end),
-        ];
+        let mut_ids = vec![check_for_mutability(cx, start), check_for_mutability(cx, end)];
         if mut_ids[0].is_some() || mut_ids[1].is_some() {
             let (span_low, span_high) = check_for_mutation(cx, body, &mut_ids);
             mut_warn_with_span(cx, span_low);
@@ -1631,7 +1651,11 @@ fn check_for_mutability(cx: &LateContext<'_, '_>, bound: &Expr) -> Option<NodeId
     None
 }
 
-fn check_for_mutation(cx: &LateContext<'_, '_>, body: &Expr, bound_ids: &[Option<NodeId>]) -> (Option<Span>, Option<Span>) {
+fn check_for_mutation(
+    cx: &LateContext<'_, '_>,
+    body: &Expr,
+    bound_ids: &[Option<NodeId>],
+) -> (Option<Span>, Option<Span>) {
     let mut delegate = MutatePairDelegate {
         node_id_low: bound_ids[0],
         node_id_high: bound_ids[1],
@@ -1821,8 +1845,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
         }
         let old = self.prefer_mutable;
         match expr.node {
-            ExprKind::AssignOp(_, ref lhs, ref rhs) |
-            ExprKind::Assign(ref lhs, ref rhs) => {
+            ExprKind::AssignOp(_, ref lhs, ref rhs) | ExprKind::Assign(ref lhs, ref rhs) => {
                 self.prefer_mutable = true;
                 self.visit_expr(lhs);
                 self.prefer_mutable = false;
@@ -1909,7 +1932,6 @@ impl<'a, 'tcx> Visitor<'tcx> for VarUsedAfterLoopVisitor<'a, 'tcx> {
         NestedVisitorMap::None
     }
 }
-
 
 /// Return true if the type of expr is one that provides `IntoIterator` impls
 /// for `&T` and `&mut T`, such as `Vec`.
@@ -1998,9 +2020,9 @@ enum VarState {
 
 /// Scan a for loop for variables that are incremented exactly once.
 struct IncrementVisitor<'a, 'tcx: 'a> {
-    cx: &'a LateContext<'a, 'tcx>,     // context reference
+    cx: &'a LateContext<'a, 'tcx>,       // context reference
     states: FxHashMap<NodeId, VarState>, // incremented variables
-    depth: u32,                        // depth of conditional expressions
+    depth: u32,                          // depth of conditional expressions
     done: bool,
 }
 
@@ -2244,8 +2266,10 @@ impl<'tcx> Visitor<'tcx> for LoopNestVisitor {
             return;
         }
         match expr.node {
-            ExprKind::Assign(ref path, _) | ExprKind::AssignOp(_, ref path, _) => if match_var(path, self.iterator) {
-                self.nesting = RuledOut;
+            ExprKind::Assign(ref path, _) | ExprKind::AssignOp(_, ref path, _) => {
+                if match_var(path, self.iterator) {
+                    self.nesting = RuledOut;
+                }
             },
             _ => walk_expr(self, expr),
         }
@@ -2299,7 +2323,7 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, e
     let no_cond_variable_mutated = if let Some(used_mutably) = mutated_variables(expr, cx) {
         used_in_condition.is_disjoint(&used_mutably)
     } else {
-        return
+        return;
     };
     let mutable_static_in_cond = var_visitor.def_ids.iter().any(|(_, v)| *v);
     if no_cond_variable_mutated && !mutable_static_in_cond {
@@ -2307,7 +2331,8 @@ fn check_infinite_loop<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, cond: &'tcx Expr, e
             cx,
             WHILE_IMMUTABLE_CONDITION,
             cond.span,
-            "Variable in the condition are not mutated in the loop body. This either leads to an infinite or to a never running loop.",
+            "Variable in the condition are not mutated in the loop body. \
+             This either leads to an infinite or to a never running loop.",
         );
     }
 }

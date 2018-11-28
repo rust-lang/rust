@@ -7,15 +7,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use itertools::Itertools;
-use pulldown_cmark;
 use crate::rustc::lint::{EarlyContext, EarlyLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast;
 use crate::syntax::source_map::{BytePos, Span};
 use crate::syntax_pos::Pos;
 use crate::utils::span_lint;
+use itertools::Itertools;
+use pulldown_cmark;
 use url::Url;
 
 /// **What it does:** Checks for the presence of `_`, `::` or camel-case words
@@ -49,9 +48,7 @@ pub struct Doc {
 
 impl Doc {
     pub fn new(valid_idents: Vec<String>) -> Self {
-        Self {
-            valid_idents,
-        }
+        Self { valid_idents }
     }
 }
 
@@ -107,9 +104,7 @@ pub fn strip_doc_comment_decoration(comment: &str, span: Span) -> (String, Vec<(
             doc.push('\n');
             return (
                 doc.to_owned(),
-                vec![
-                    (doc.len(), span.with_lo(span.lo() + BytePos(prefix.len() as u32))),
-                ],
+                vec![(doc.len(), span.with_lo(span.lo() + BytePos(prefix.len() as u32)))],
             );
         }
     }
@@ -275,13 +270,10 @@ fn check_word(cx: &EarlyContext<'_>, word: &str, span: Span) {
             return false;
         }
 
-        let s = if s.ends_with('s') {
-            &s[..s.len() - 1]
-        } else {
-            s
-        };
+        let s = if s.ends_with('s') { &s[..s.len() - 1] } else { s };
 
-        s.chars().all(char::is_alphanumeric) && s.chars().filter(|&c| c.is_uppercase()).take(2).count() > 1
+        s.chars().all(char::is_alphanumeric)
+            && s.chars().filter(|&c| c.is_uppercase()).take(2).count() > 1
             && s.chars().filter(|&c| c.is_lowercase()).take(1).count() > 0
     }
 

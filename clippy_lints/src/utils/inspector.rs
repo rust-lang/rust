@@ -7,13 +7,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! checks for attributes
 
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
 use crate::rustc::hir;
 use crate::rustc::hir::print;
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::syntax::ast::Attribute;
 use crate::utils::get_attr;
 
@@ -413,7 +412,7 @@ fn print_item(cx: &LateContext<'_, '_>, item: &hir::Item) {
         },
         hir::ItemKind::TraitAlias(..) => {
             println!("trait alias");
-        }
+        },
         hir::ItemKind::Impl(_, _, _, _, Some(ref _trait_ref), _, _) => {
             println!("trait impl");
         },
@@ -533,6 +532,6 @@ fn print_guard(cx: &LateContext<'_, '_>, guard: &hir::Guard, indent: usize) {
         hir::Guard::If(expr) => {
             println!("{}If", ind);
             print_expr(cx, expr, indent + 1);
-        }
+        },
     }
 }

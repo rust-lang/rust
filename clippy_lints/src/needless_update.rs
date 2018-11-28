@@ -7,11 +7,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
-use crate::rustc::{declare_tool_lint, lint_array};
-use crate::rustc::ty;
 use crate::rustc::hir::{Expr, ExprKind};
+use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
+use crate::rustc::ty;
+use crate::rustc::{declare_tool_lint, lint_array};
 use crate::utils::span_lint;
 
 /// **What it does:** Checks for needlessly including a base struct on update
@@ -24,7 +23,11 @@ use crate::utils::span_lint;
 ///
 /// **Example:**
 /// ```rust
-/// Point { x: 1, y: 0, ..zero_point }
+/// Point {
+///     x: 1,
+///     y: 0,
+///     ..zero_point
+/// }
 /// ```
 declare_clippy_lint! {
     pub NEEDLESS_UPDATE,

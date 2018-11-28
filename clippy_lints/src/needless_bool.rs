@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Checks for needless boolean results of if-else expressions
 //!
 //! This lint is **warn** by default
@@ -34,13 +33,16 @@ use crate::utils::{in_macro, snippet_with_applicability, span_lint, span_lint_an
 ///
 /// **Example:**
 /// ```rust
-/// if x { false } else { true }
+/// if x {
+///     false
+/// } else {
+///     true
+/// }
 /// ```
 declare_clippy_lint! {
     pub NEEDLESS_BOOL,
     complexity,
-    "if-statements with plain booleans in the then- and else-clause, e.g. \
-     `if p { true } else { false }`"
+    "if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`"
 }
 
 /// **What it does:** Checks for expressions of the form `x == true` (or vice
@@ -52,7 +54,7 @@ declare_clippy_lint! {
 ///
 /// **Example:**
 /// ```rust
-/// if x == true { }  // could be `if x { }`
+/// if x == true {} // could be `if x { }`
 /// ```
 declare_clippy_lint! {
     pub BOOL_COMPARISON,
@@ -142,7 +144,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
             return;
         }
 
-        if let ExprKind::Binary(Spanned { node: BinOpKind::Eq, .. }, ref left_side, ref right_side) = e.node {
+        if let ExprKind::Binary(
+            Spanned {
+                node: BinOpKind::Eq, ..
+            },
+            ref left_side,
+            ref right_side,
+        ) = e.node
+        {
             let mut applicability = Applicability::MachineApplicable;
             match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
                 (Bool(true), Other) => {
@@ -208,14 +217,16 @@ enum Expression {
 fn fetch_bool_block(block: &Block) -> Expression {
     match (&*block.stmts, block.expr.as_ref()) {
         (&[], Some(e)) => fetch_bool_expr(&**e),
-        (&[ref e], None) => if let StmtKind::Semi(ref e, _) = e.node {
-            if let ExprKind::Ret(_) = e.node {
-                fetch_bool_expr(&**e)
+        (&[ref e], None) => {
+            if let StmtKind::Semi(ref e, _) = e.node {
+                if let ExprKind::Ret(_) = e.node {
+                    fetch_bool_expr(&**e)
+                } else {
+                    Expression::Other
+                }
             } else {
                 Expression::Other
             }
-        } else {
-            Expression::Other
         },
         _ => Expression::Other,
     }
@@ -224,10 +235,12 @@ fn fetch_bool_block(block: &Block) -> Expression {
 fn fetch_bool_expr(expr: &Expr) -> Expression {
     match expr.node {
         ExprKind::Block(ref block, _) => fetch_bool_block(block),
-        ExprKind::Lit(ref lit_ptr) => if let LitKind::Bool(value) = lit_ptr.node {
-            Expression::Bool(value)
-        } else {
-            Expression::Other
+        ExprKind::Lit(ref lit_ptr) => {
+            if let LitKind::Bool(value) = lit_ptr.node {
+                Expression::Bool(value)
+            } else {
+                Expression::Other
+            }
         },
         ExprKind::Ret(Some(ref expr)) => match fetch_bool_expr(expr) {
             Expression::Bool(value) => Expression::RetBool(value),

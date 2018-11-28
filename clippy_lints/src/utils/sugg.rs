@@ -7,26 +7,25 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 //! Contains utility functions to generate suggestions.
 #![deny(clippy::missing_docs_in_private_items)]
 
-use matches::matches;
 use crate::rustc::hir;
 use crate::rustc::lint::{EarlyContext, LateContext, LintContext};
 use crate::rustc_errors;
+use crate::rustc_errors::Applicability;
+use crate::syntax::ast;
+use crate::syntax::parse::token;
+use crate::syntax::print::pprust::token_to_string;
+use crate::syntax::source_map::{CharPos, Span};
+use crate::syntax::util::parser::AssocOp;
+use crate::syntax_pos::{BytePos, Pos};
+use crate::utils::{higher, in_macro, snippet, snippet_opt};
+use matches::matches;
+use std;
 use std::borrow::Cow;
 use std::convert::TryInto;
 use std::fmt::Display;
-use std;
-use crate::syntax::source_map::{CharPos, Span};
-use crate::syntax::parse::token;
-use crate::syntax::print::pprust::token_to_string;
-use crate::syntax::util::parser::AssocOp;
-use crate::syntax::ast;
-use crate::utils::{higher, in_macro, snippet, snippet_opt};
-use crate::syntax_pos::{BytePos, Pos};
-use crate::rustc_errors::Applicability;
 
 /// A helper type to build suggestion correctly handling parenthesis.
 pub enum Sugg<'a> {
@@ -57,30 +56,30 @@ impl<'a> Sugg<'a> {
         snippet_opt(cx, expr.span).map(|snippet| {
             let snippet = Cow::Owned(snippet);
             match expr.node {
-                hir::ExprKind::AddrOf(..) |
-                hir::ExprKind::Box(..) |
-                hir::ExprKind::Closure(.., _) |
-                hir::ExprKind::If(..) |
-                hir::ExprKind::Unary(..) |
-                hir::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
-                hir::ExprKind::Continue(..) |
-                hir::ExprKind::Yield(..) |
-                hir::ExprKind::Array(..) |
-                hir::ExprKind::Block(..) |
-                hir::ExprKind::Break(..) |
-                hir::ExprKind::Call(..) |
-                hir::ExprKind::Field(..) |
-                hir::ExprKind::Index(..) |
-                hir::ExprKind::InlineAsm(..) |
-                hir::ExprKind::Lit(..) |
-                hir::ExprKind::Loop(..) |
-                hir::ExprKind::MethodCall(..) |
-                hir::ExprKind::Path(..) |
-                hir::ExprKind::Repeat(..) |
-                hir::ExprKind::Ret(..) |
-                hir::ExprKind::Struct(..) |
-                hir::ExprKind::Tup(..) |
-                hir::ExprKind::While(..) => Sugg::NonParen(snippet),
+                hir::ExprKind::AddrOf(..)
+                | hir::ExprKind::Box(..)
+                | hir::ExprKind::Closure(.., _)
+                | hir::ExprKind::If(..)
+                | hir::ExprKind::Unary(..)
+                | hir::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
+                hir::ExprKind::Continue(..)
+                | hir::ExprKind::Yield(..)
+                | hir::ExprKind::Array(..)
+                | hir::ExprKind::Block(..)
+                | hir::ExprKind::Break(..)
+                | hir::ExprKind::Call(..)
+                | hir::ExprKind::Field(..)
+                | hir::ExprKind::Index(..)
+                | hir::ExprKind::InlineAsm(..)
+                | hir::ExprKind::Lit(..)
+                | hir::ExprKind::Loop(..)
+                | hir::ExprKind::MethodCall(..)
+                | hir::ExprKind::Path(..)
+                | hir::ExprKind::Repeat(..)
+                | hir::ExprKind::Ret(..)
+                | hir::ExprKind::Struct(..)
+                | hir::ExprKind::Tup(..)
+                | hir::ExprKind::While(..) => Sugg::NonParen(snippet),
                 hir::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
                 hir::ExprKind::AssignOp(op, ..) => Sugg::BinOp(hirbinop2assignop(op), snippet),
                 hir::ExprKind::Binary(op, ..) => Sugg::BinOp(AssocOp::from_ast_binop(higher::binop(op.node)), snippet),
@@ -100,7 +99,8 @@ impl<'a> Sugg<'a> {
     ///
     /// - Applicability level `Unspecified` will never be changed.
     /// - If the span is inside a macro, change the applicability level to `MaybeIncorrect`.
-    /// - If the default value is used and the applicability level is `MachineApplicable`, change it to
+    /// - If the default value is used and the applicability level is `MachineApplicable`, change it
+    ///   to
     /// `HasPlaceholders`
     pub fn hir_with_applicability(
         cx: &LateContext<'_, '_>,
@@ -126,39 +126,39 @@ impl<'a> Sugg<'a> {
         let snippet = snippet(cx, expr.span, default);
 
         match expr.node {
-            ast::ExprKind::AddrOf(..) |
-            ast::ExprKind::Box(..) |
-            ast::ExprKind::Closure(..) |
-            ast::ExprKind::If(..) |
-            ast::ExprKind::IfLet(..) |
-            ast::ExprKind::ObsoleteInPlace(..) |
-            ast::ExprKind::Unary(..) |
-            ast::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
-            ast::ExprKind::Async(..) |
-            ast::ExprKind::Block(..) |
-            ast::ExprKind::Break(..) |
-            ast::ExprKind::Call(..) |
-            ast::ExprKind::Continue(..) |
-            ast::ExprKind::Yield(..) |
-            ast::ExprKind::Field(..) |
-            ast::ExprKind::ForLoop(..) |
-            ast::ExprKind::Index(..) |
-            ast::ExprKind::InlineAsm(..) |
-            ast::ExprKind::Lit(..) |
-            ast::ExprKind::Loop(..) |
-            ast::ExprKind::Mac(..) |
-            ast::ExprKind::MethodCall(..) |
-            ast::ExprKind::Paren(..) |
-            ast::ExprKind::Path(..) |
-            ast::ExprKind::Repeat(..) |
-            ast::ExprKind::Ret(..) |
-            ast::ExprKind::Struct(..) |
-            ast::ExprKind::Try(..) |
-            ast::ExprKind::TryBlock(..) |
-            ast::ExprKind::Tup(..) |
-            ast::ExprKind::Array(..) |
-            ast::ExprKind::While(..) |
-            ast::ExprKind::WhileLet(..) => Sugg::NonParen(snippet),
+            ast::ExprKind::AddrOf(..)
+            | ast::ExprKind::Box(..)
+            | ast::ExprKind::Closure(..)
+            | ast::ExprKind::If(..)
+            | ast::ExprKind::IfLet(..)
+            | ast::ExprKind::ObsoleteInPlace(..)
+            | ast::ExprKind::Unary(..)
+            | ast::ExprKind::Match(..) => Sugg::MaybeParen(snippet),
+            ast::ExprKind::Async(..)
+            | ast::ExprKind::Block(..)
+            | ast::ExprKind::Break(..)
+            | ast::ExprKind::Call(..)
+            | ast::ExprKind::Continue(..)
+            | ast::ExprKind::Yield(..)
+            | ast::ExprKind::Field(..)
+            | ast::ExprKind::ForLoop(..)
+            | ast::ExprKind::Index(..)
+            | ast::ExprKind::InlineAsm(..)
+            | ast::ExprKind::Lit(..)
+            | ast::ExprKind::Loop(..)
+            | ast::ExprKind::Mac(..)
+            | ast::ExprKind::MethodCall(..)
+            | ast::ExprKind::Paren(..)
+            | ast::ExprKind::Path(..)
+            | ast::ExprKind::Repeat(..)
+            | ast::ExprKind::Ret(..)
+            | ast::ExprKind::Struct(..)
+            | ast::ExprKind::Try(..)
+            | ast::ExprKind::TryBlock(..)
+            | ast::ExprKind::Tup(..)
+            | ast::ExprKind::Array(..)
+            | ast::ExprKind::While(..)
+            | ast::ExprKind::WhileLet(..) => Sugg::NonParen(snippet),
             ast::ExprKind::Range(.., RangeLimits::HalfOpen) => Sugg::BinOp(AssocOp::DotDot, snippet),
             ast::ExprKind::Range(.., RangeLimits::Closed) => Sugg::BinOp(AssocOp::DotDotEq, snippet),
             ast::ExprKind::Assign(..) => Sugg::BinOp(AssocOp::Assign, snippet),
@@ -225,10 +225,12 @@ impl<'a> Sugg<'a> {
         match self {
             Sugg::NonParen(..) => self,
             // (x) and (x).y() both don't need additional parens
-            Sugg::MaybeParen(sugg) => if sugg.starts_with('(') && sugg.ends_with(')') {
-                Sugg::MaybeParen(sugg)
-            } else {
-                Sugg::NonParen(format!("({})", sugg).into())
+            Sugg::MaybeParen(sugg) => {
+                if sugg.starts_with('(') && sugg.ends_with(')') {
+                    Sugg::MaybeParen(sugg)
+                } else {
+                    Sugg::NonParen(format!("({})", sugg).into())
+                }
             },
             Sugg::BinOp(_, sugg) => Sugg::NonParen(format!("({})", sugg).into()),
         }
@@ -267,10 +269,7 @@ struct ParenHelper<T> {
 impl<T> ParenHelper<T> {
     /// Build a `ParenHelper`.
     fn new(paren: bool, wrapped: T) -> Self {
-        Self {
-            paren,
-            wrapped,
-        }
+        Self { paren, wrapped }
     }
 }
 
@@ -320,7 +319,8 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
             || (other.precedence() == op.precedence()
                 && ((op != other && associativity(op) != dir)
                     || (op == other && associativity(op) != Associativity::Both)))
-            || is_shift(op) && is_arith(other) || is_shift(other) && is_arith(op)
+            || is_shift(op) && is_arith(other)
+            || is_shift(other) && is_arith(op)
     }
 
     let lhs_paren = if let Sugg::BinOp(ref lop, _) = *lhs {
@@ -338,24 +338,29 @@ pub fn make_assoc(op: AssocOp, lhs: &Sugg<'_>, rhs: &Sugg<'_>) -> Sugg<'static> 
     let lhs = ParenHelper::new(lhs_paren, lhs);
     let rhs = ParenHelper::new(rhs_paren, rhs);
     let sugg = match op {
-        AssocOp::Add |
-        AssocOp::BitAnd |
-        AssocOp::BitOr |
-        AssocOp::BitXor |
-        AssocOp::Divide |
-        AssocOp::Equal |
-        AssocOp::Greater |
-        AssocOp::GreaterEqual |
-        AssocOp::LAnd |
-        AssocOp::LOr |
-        AssocOp::Less |
-        AssocOp::LessEqual |
-        AssocOp::Modulus |
-        AssocOp::Multiply |
-        AssocOp::NotEqual |
-        AssocOp::ShiftLeft |
-        AssocOp::ShiftRight |
-        AssocOp::Subtract => format!("{} {} {}", lhs, op.to_ast_binop().expect("Those are AST ops").to_string(), rhs),
+        AssocOp::Add
+        | AssocOp::BitAnd
+        | AssocOp::BitOr
+        | AssocOp::BitXor
+        | AssocOp::Divide
+        | AssocOp::Equal
+        | AssocOp::Greater
+        | AssocOp::GreaterEqual
+        | AssocOp::LAnd
+        | AssocOp::LOr
+        | AssocOp::Less
+        | AssocOp::LessEqual
+        | AssocOp::Modulus
+        | AssocOp::Multiply
+        | AssocOp::NotEqual
+        | AssocOp::ShiftLeft
+        | AssocOp::ShiftRight
+        | AssocOp::Subtract => format!(
+            "{} {} {}",
+            lhs,
+            op.to_ast_binop().expect("Those are AST ops").to_string(),
+            rhs
+        ),
         AssocOp::Assign => format!("{} = {}", lhs, rhs),
         AssocOp::ObsoleteInPlace => format!("in ({}) {}", lhs, rhs),
         AssocOp::AssignOp(op) => format!("{} {}= {}", lhs, token_to_string(&token::BinOp(op)), rhs),
@@ -400,17 +405,8 @@ fn associativity(op: &AssocOp) -> Associativity {
     match *op {
         ObsoleteInPlace | Assign | AssignOp(_) => Associativity::Right,
         Add | BitAnd | BitOr | BitXor | LAnd | LOr | Multiply | As | Colon => Associativity::Both,
-        Divide |
-        Equal |
-        Greater |
-        GreaterEqual |
-        Less |
-        LessEqual |
-        Modulus |
-        NotEqual |
-        ShiftLeft |
-        ShiftRight |
-        Subtract => Associativity::Left,
+        Divide | Equal | Greater | GreaterEqual | Less | LessEqual | Modulus | NotEqual | ShiftLeft | ShiftRight
+        | Subtract => Associativity::Left,
         DotDot | DotDotEq => Associativity::None,
     }
 }
@@ -431,15 +427,14 @@ fn hirbinop2assignop(op: hir::BinOp) -> AssocOp {
         hir::BinOpKind::Shr => Shr,
         hir::BinOpKind::Sub => Minus,
 
-        | hir::BinOpKind::And
+        hir::BinOpKind::And
         | hir::BinOpKind::Eq
         | hir::BinOpKind::Ge
         | hir::BinOpKind::Gt
         | hir::BinOpKind::Le
         | hir::BinOpKind::Lt
         | hir::BinOpKind::Ne
-        | hir::BinOpKind::Or
-        => panic!("This operator does not exist"),
+        | hir::BinOpKind::Or => panic!("This operator does not exist"),
     })
 }
 
@@ -467,9 +462,7 @@ fn astbinop2assignop(op: ast::BinOp) -> AssocOp {
 /// before it on its line.
 fn indentation<'a, T: LintContext<'a>>(cx: &T, span: Span) -> Option<String> {
     let lo = cx.sess().source_map().lookup_char_pos(span.lo());
-    if let Some(line) = lo.file
-        .get_line(lo.line - 1 /* line numbers in `Loc` are 1-based */)
-    {
+    if let Some(line) = lo.file.get_line(lo.line - 1 /* line numbers in `Loc` are 1-based */) {
         if let Some((pos, _)) = line.char_indices().find(|&(_, c)| c != ' ' && c != '\t') {
             // we can mix char and byte positions here because we only consider `[ \t]`
             if lo.col == CharPos(pos) {
@@ -496,7 +489,14 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext<'a>> {
     /// ```rust,ignore
     /// db.suggest_item_with_attr(cx, item, "#[derive(Default)]");
     /// ```
-    fn suggest_item_with_attr<D: Display + ?Sized>(&mut self, cx: &T, item: Span, msg: &str, attr: &D, applicability: Applicability);
+    fn suggest_item_with_attr<D: Display + ?Sized>(
+        &mut self,
+        cx: &T,
+        item: Span,
+        msg: &str,
+        attr: &D,
+        applicability: Applicability,
+    );
 
     /// Suggest to add an item before another.
     ///
@@ -527,16 +527,18 @@ pub trait DiagnosticBuilderExt<'a, T: LintContext<'a>> {
 }
 
 impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_errors::DiagnosticBuilder<'b> {
-    fn suggest_item_with_attr<D: Display + ?Sized>(&mut self, cx: &T, item: Span, msg: &str, attr: &D, applicability: Applicability) {
+    fn suggest_item_with_attr<D: Display + ?Sized>(
+        &mut self,
+        cx: &T,
+        item: Span,
+        msg: &str,
+        attr: &D,
+        applicability: Applicability,
+    ) {
         if let Some(indent) = indentation(cx, item) {
             let span = item.with_hi(item.lo());
 
-            self.span_suggestion_with_applicability(
-                        span,
-                        msg,
-                        format!("{}\n{}", attr, indent),
-                        applicability,
-                        );
+            self.span_suggestion_with_applicability(span, msg, format!("{}\n{}", attr, indent), applicability);
         }
     }
 
@@ -557,12 +559,7 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
                 })
                 .collect::<String>();
 
-            self.span_suggestion_with_applicability(
-                        span,
-                        msg,
-                        format!("{}\n{}", new_item, indent),
-                        applicability,
-                        );
+            self.span_suggestion_with_applicability(span, msg, format!("{}\n{}", new_item, indent), applicability);
         }
     }
 
@@ -575,15 +572,11 @@ impl<'a, 'b, 'c, T: LintContext<'c>> DiagnosticBuilderExt<'c, T> for rustc_error
             let non_whitespace_offset = src[fmpos.pos.to_usize()..].find(|c| c != ' ' && c != '\t' && c != '\n');
 
             if let Some(non_whitespace_offset) = non_whitespace_offset {
-                remove_span = remove_span.with_hi(remove_span.hi() + BytePos(non_whitespace_offset.try_into().expect("offset too large")))
+                remove_span = remove_span
+                    .with_hi(remove_span.hi() + BytePos(non_whitespace_offset.try_into().expect("offset too large")))
             }
         }
 
-        self.span_suggestion_with_applicability(
-            remove_span,
-            msg,
-            String::new(),
-            applicability,
-        );
+        self.span_suggestion_with_applicability(remove_span, msg, String::new(), applicability);
     }
 }

@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir::intravisit::{walk_path, walk_ty, NestedVisitorMap, Visitor};
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
@@ -88,11 +87,9 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
         let impl_ty = self.impl_type_walker.next();
 
         if let TyKind::Path(QPath::Resolved(_, path)) = &t.node {
-
             // The implementation and trait types don't match which means that
             // the concrete type was specified by the implementation
             if impl_ty != trait_ty {
-
                 if let Some(impl_ty) = impl_ty {
                     if self.item_type == impl_ty {
                         let is_self_ty = if let def::Def::SelfTy(..) = path.def {
@@ -106,7 +103,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TraitImplTyVisitor<'a, 'tcx> {
                         }
                     }
                 }
-
             }
         }
 

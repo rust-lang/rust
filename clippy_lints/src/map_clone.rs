@@ -7,7 +7,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 use crate::rustc::hir;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
@@ -15,7 +14,9 @@ use crate::rustc_errors::Applicability;
 use crate::syntax::ast::Ident;
 use crate::syntax::source_map::Span;
 use crate::utils::paths;
-use crate::utils::{in_macro, match_trait_method, match_type, remove_blocks, snippet_with_applicability, span_lint_and_sugg};
+use crate::utils::{
+    in_macro, match_trait_method, match_type, remove_blocks, snippet_with_applicability, span_lint_and_sugg,
+};
 use if_chain::if_chain;
 
 #[derive(Clone)]
@@ -72,15 +73,26 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             let closure_expr = remove_blocks(&closure_body.value);
             then {
                 match closure_body.arguments[0].pat.node {
-                    hir::PatKind::Ref(ref inner, _) => if let hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) = inner.node {
+                    hir::PatKind::Ref(ref inner, _) => if let hir::PatKind::Binding(
+                        hir::BindingAnnotation::Unannotated, _, name, None
+                    ) = inner.node {
                         lint(cx, e.span, args[0].span, name, closure_expr);
                     },
-                    hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) => match closure_expr.node {
-                        hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) if !cx.tables.expr_ty(inner).is_box() => lint(cx, e.span, args[0].span, name, inner),
-                        hir::ExprKind::MethodCall(ref method, _, ref obj) => if method.ident.as_str() == "clone" && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
-                            lint(cx, e.span, args[0].span, name, &obj[0]);
+                    hir::PatKind::Binding(hir::BindingAnnotation::Unannotated, _, name, None) => {
+                        match closure_expr.node {
+                            hir::ExprKind::Unary(hir::UnOp::UnDeref, ref inner) => {
+                                if !cx.tables.expr_ty(inner).is_box() {
+                                    lint(cx, e.span, args[0].span, name, inner);
+                                }
+                            },
+                            hir::ExprKind::MethodCall(ref method, _, ref obj) => {
+                                if method.ident.as_str() == "clone"
+                                    && match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) {
+                                    lint(cx, e.span, args[0].span, name, &obj[0]);
+                                }
+                            },
+                            _ => {},
                         }
-                        _ => {},
                     },
                     _ => {},
                 }
@@ -99,7 +111,10 @@ fn lint(cx: &LateContext<'_, '_>, replace: Span, root: Span, name: Ident, path: 
                 replace,
                 "You are using an explicit closure for cloning elements",
                 "Consider calling the dedicated `cloned` method",
-                format!("{}.cloned()", snippet_with_applicability(cx, root, "..", &mut applicability)),
+                format!(
+                    "{}.cloned()",
+                    snippet_with_applicability(cx, root, "..", &mut applicability)
+                ),
                 applicability,
             )
         }
