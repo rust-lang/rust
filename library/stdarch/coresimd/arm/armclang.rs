@@ -39,6 +39,13 @@ use stdsimd_test::assert_instr;
 #[inline(always)]
 #[rustc_args_required_const(0)]
 pub unsafe fn __breakpoint(val: i32) {
+    // Ensure that this compiles correctly on non-arm architectures, so libstd
+    // doc builds work. The proper macro will shadow this definition below.
+    #[allow(unused_macros)]
+    macro_rules! call {
+        ($e:expr) => {()}
+    }
+
     #[cfg(target_arch = "arm")]
     macro_rules! call {
         ($imm8:expr) => {
