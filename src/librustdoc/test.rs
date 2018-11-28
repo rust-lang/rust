@@ -481,7 +481,7 @@ pub fn make_test(s: &str,
     if dont_insert_main || already_has_main {
         prog.push_str(everything_else);
     } else {
-        prog.push_str("fn main() {\n");
+        prog.push_str("fn main() -> Result<(), ()> {\n");
         line_offset += 1;
         prog.push_str(everything_else);
         prog.push_str("\n}");
