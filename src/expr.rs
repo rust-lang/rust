@@ -417,15 +417,16 @@ fn rewrite_empty_block(
     prefix: &str,
     shape: Shape,
 ) -> Option<String> {
+    if !block.stmts.is_empty() {
+        return None;
+    }
+
     let label_str = rewrite_label(label);
     if attrs.map_or(false, |a| !inner_attributes(a).is_empty()) {
         return None;
     }
 
-    if block.stmts.is_empty()
-        && !block_contains_comment(block, context.source_map)
-        && shape.width >= 2
-    {
+    if !block_contains_comment(block, context.source_map) && shape.width >= 2 {
         return Some(format!("{}{}{{}}", prefix, label_str));
     }
 
@@ -510,13 +511,13 @@ pub fn rewrite_block_with_visitor(
     let mut visitor = FmtVisitor::from_context(context);
     visitor.block_indent = shape.indent;
     visitor.is_if_else_block = context.is_if_else_block();
-    match block.rules {
-        ast::BlockCheckMode::Unsafe(..) => {
+    match (block.rules, label) {
+        (ast::BlockCheckMode::Unsafe(..), _) | (ast::BlockCheckMode::Default, Some(_)) => {
             let snippet = context.snippet(block.span);
             let open_pos = snippet.find_uncommented("{")?;
             visitor.last_pos = block.span.lo() + BytePos(open_pos as u32)
         }
-        ast::BlockCheckMode::Default => visitor.last_pos = block.span.lo(),
+        (ast::BlockCheckMode::Default, None) => visitor.last_pos = block.span.lo(),
     }
 
     let inner_attrs = attrs.map(inner_attributes);
