@@ -68,7 +68,7 @@ to lint-writing, though it does get into advanced stuff. Most lints consist of a
 `LintPass` with one or more of its default methods overridden. See the existing lints for examples
 of this.
 
-If want to add a new lint or change existing ones apart from bugfixing, it's
+If you want to add a new lint or change existing ones apart from bugfixing, it's
 also a good idea to give the [stability guaratees][rfc_stability] and
 [lint categories][rfc_lint_cats] sections of the [Clippy 1.0 RFC][clippy_rfc] a
 quick read.
