@@ -22,8 +22,6 @@
 
 // edition:2018
 
-#![feature(macro_at_most_once_rep)]
-
 macro_rules! foo {
     ($($a:ident)? ; $num:expr) => { {
         let mut x = 0;

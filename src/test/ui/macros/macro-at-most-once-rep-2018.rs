@@ -12,22 +12,20 @@
 
 // edition:2018
 
-#![feature(macro_at_most_once_rep)]
-
 macro_rules! foo {
-    ($(a)?) => {}
+    ($(a)?) => {};
 }
 
 macro_rules! baz {
-    ($(a),?) => {} //~ERROR the `?` macro repetition operator
+    ($(a),?) => {}; //~ERROR the `?` macro repetition operator
 }
 
 macro_rules! barplus {
-    ($(a)?+) => {} // ok. matches "a+" and "+"
+    ($(a)?+) => {}; // ok. matches "a+" and "+"
 }
 
 macro_rules! barstar {
-    ($(a)?*) => {} // ok. matches "a*" and "*"
+    ($(a)?*) => {}; // ok. matches "a*" and "*"
 }
 
 pub fn main() {
