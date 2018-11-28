@@ -699,6 +699,7 @@ impl<'a, 'mir, 'tcx> EvalContextExt<'tcx> for MiriEvalContext<'a, 'mir, 'tcx> {
         let new_place = place.with_tag(new_bor);
         // Handle two-phase borrows.
         if two_phase {
+            assert!(mutbl == MutMutable, "two-phase shared borrows make no sense");
             // We immediately share it, to allow read accesses
             let two_phase_time = self.machine.stacked_borrows.increment_clock();
             let two_phase_bor = Borrow::Shr(Some(two_phase_time));
