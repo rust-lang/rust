@@ -51,7 +51,7 @@ use html::render::RenderInfo;
 use passes;
 
 pub use rustc::session::config::{Input, Options, CodegenOptions};
-pub use rustc::session::search_paths::SearchPaths;
+pub use rustc::session::search_paths::SearchPath;
 
 pub type ExternalPaths = FxHashMap<DefId, (Vec<String>, clean::TypeKind)>;
 

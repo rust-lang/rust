@@ -212,12 +212,7 @@ fn link_binary_output(sess: &Session,
 }
 
 fn archive_search_paths(sess: &Session) -> Vec<PathBuf> {
-    let mut search = Vec::new();
-    sess.target_filesearch(PathKind::Native).for_each_lib_search_path(|path, _| {
-        search.push(path.to_path_buf());
-    });
-
-    search
+    sess.target_filesearch(PathKind::Native).search_path_dirs()
 }
 
 fn archive_config<'a>(sess: &'a Session,
@@ -1024,11 +1019,10 @@ fn link_args(cmd: &mut dyn Linker,
     // where extern libraries might live, based on the
     // addl_lib_search_paths
     if sess.opts.cg.rpath {
-        let sysroot = sess.sysroot();
         let target_triple = sess.opts.target_triple.triple();
         let mut get_install_prefix_lib_path = || {
             let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
-            let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
+            let tlib = filesearch::relative_target_lib_path(&sess.sysroot, target_triple);
             let mut path = PathBuf::from(install_prefix);
             path.push(&tlib);
 
@@ -1068,12 +1062,13 @@ fn link_args(cmd: &mut dyn Linker,
 fn add_local_native_libraries(cmd: &mut dyn Linker,
                               sess: &Session,
                               codegen_results: &CodegenResults) {
-    sess.target_filesearch(PathKind::All).for_each_lib_search_path(|path, k| {
-        match k {
-            PathKind::Framework => { cmd.framework_path(path); }
-            _ => { cmd.include_path(&fix_windows_verbatim_for_gcc(path)); }
+    let filesearch = sess.target_filesearch(PathKind::All);
+    for search_path in filesearch.search_paths() {
+        match search_path.kind {
+            PathKind::Framework => { cmd.framework_path(&search_path.dir); }
+            _ => { cmd.include_path(&fix_windows_verbatim_for_gcc(&search_path.dir)); }
         }
-    });
+    }
 
     let relevant_libs = codegen_results.crate_info.used_libraries.iter().filter(|l| {
         relevant_lib(sess, l)

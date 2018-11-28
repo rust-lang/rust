@@ -20,7 +20,7 @@ use rustc::session::early_error;
 use rustc::session::config::{CodegenOptions, DebuggingOptions, ErrorOutputType, Externs};
 use rustc::session::config::{nightly_options, build_codegen_options, build_debugging_options,
                              get_cmd_lint_options};
-use rustc::session::search_paths::SearchPaths;
+use rustc::session::search_paths::SearchPath;
 use rustc_driver;
 use rustc_target::spec::TargetTriple;
 use syntax::edition::Edition;
@@ -46,7 +46,7 @@ pub struct Options {
     /// How to format errors and warnings.
     pub error_format: ErrorOutputType,
     /// Library search paths to hand to the compiler.
-    pub libs: SearchPaths,
+    pub libs: Vec<SearchPath>,
     /// The list of external crates to link against.
     pub externs: Externs,
     /// List of `cfg` flags to hand to the compiler. Always includes `rustdoc`.
@@ -295,10 +295,9 @@ impl Options {
         }
         let input = PathBuf::from(&matches.free[0]);
 
-        let mut libs = SearchPaths::new();
-        for s in &matches.opt_strs("L") {
-            libs.add_path(s, error_format);
-        }
+        let libs = matches.opt_strs("L").iter()
+            .map(|s| SearchPath::from_cli_opt(s, error_format))
+            .collect();
         let externs = match parse_externs(&matches) {
             Ok(ex) => ex,
             Err(err) => {
