@@ -357,7 +357,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::FalseUnwind { .. } => None,
 
                 TerminatorKind::Return => {
-                    if !self.tcx.sess.features_untracked().const_let {
+                    if !self.tcx.features().const_let {
                         // Check for unused values. This usually means
                         // there are extra statements in the AST.
                         for temp in mir.temps_iter() {
@@ -464,7 +464,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             LocalKind::ReturnPointer => {
                 self.not_const();
             }
-            LocalKind::Var if !self.tcx.sess.features_untracked().const_let => {
+            LocalKind::Var if !self.tcx.features().const_let => {
                 if self.mode != Mode::Fn {
                     emit_feature_err(&self.tcx.sess.parse_sess, "const_let",
                                     self.span, GateIssue::Language,
@@ -558,7 +558,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 Mode::Fn => {},
                                 _ => {
                                     if let ty::RawPtr(_) = base_ty.sty {
-                                        if !this.tcx.sess.features_untracked().const_raw_ptr_deref {
+                                        if !this.tcx.features().const_raw_ptr_deref {
                                             emit_feature_err(
                                                 &this.tcx.sess.parse_sess, "const_raw_ptr_deref",
                                                 this.span, GateIssue::Language,
@@ -581,7 +581,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                     match this.mode {
                                         Mode::Fn => this.not_const(),
                                         Mode::ConstFn => {
-                                            if !this.tcx.sess.features_untracked().const_fn_union {
+                                            if !this.tcx.features().const_fn_union {
                                                 emit_feature_err(
                                                     &this.tcx.sess.parse_sess, "const_fn_union",
                                                     this.span, GateIssue::Language,
@@ -807,7 +807,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         if let Mode::Fn = self.mode {
                             // in normal functions, mark such casts as not promotable
                             self.add(Qualif::NOT_CONST);
-                        } else if !self.tcx.sess.features_untracked().const_raw_ptr_to_usize_cast {
+                        } else if !self.tcx.features().const_raw_ptr_to_usize_cast {
                             // in const fn and constants require the feature gate
                             // FIXME: make it unsafe inside const fn and constants
                             emit_feature_err(
@@ -834,7 +834,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     if let Mode::Fn = self.mode {
                         // raw pointer operations are not allowed inside promoteds
                         self.add(Qualif::NOT_CONST);
-                    } else if !self.tcx.sess.features_untracked().const_compare_raw_pointers {
+                    } else if !self.tcx.features().const_compare_raw_pointers {
                         // require the feature gate inside constants and const fn
                         // FIXME: make it unsafe to use these operations
                         emit_feature_err(
@@ -933,7 +933,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 if self.mode != Mode::Fn {
                                     is_const_fn = true;
                                     // const eval transmute calls only with the feature gate
-                                    if !self.tcx.sess.features_untracked().const_transmute {
+                                    if !self.tcx.features().const_transmute {
                                         emit_feature_err(
                                             &self.tcx.sess.parse_sess, "const_transmute",
                                             self.span, GateIssue::Language,
@@ -971,7 +971,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 // FIXME: cannot allow this inside `allow_internal_unstable` because
                                 // that would make `panic!` insta stable in constants, since the
                                 // macro is marked with the attr
-                                if self.tcx.sess.features_untracked().const_panic {
+                                if self.tcx.features().const_panic {
                                     is_const_fn = true;
                                 } else {
                                     // don't allow panics in constants without the feature gate
@@ -1158,7 +1158,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         if let (Mode::ConstFn, &Place::Local(index)) = (self.mode, dest) {
             if self.mir.local_kind(index) == LocalKind::Var &&
                self.const_fn_arg_vars.insert(index) &&
-               !self.tcx.sess.features_untracked().const_let {
+               !self.tcx.features().const_let {
 
                 // Direct use of an argument is permitted.
                 match *rvalue {
