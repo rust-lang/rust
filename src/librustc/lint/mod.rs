@@ -111,13 +111,13 @@ impl Lint {
 /// Declare a static item of type `&'static Lint`.
 #[macro_export]
 macro_rules! declare_lint {
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr) => (
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr $(,)?) => (
         declare_lint!{$vis $NAME, $Level, $desc, false}
     );
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, report_in_external_macro: $rep: expr) => (
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, report_in_external_macro: $rep: expr $(,)?) => (
         declare_lint!{$vis $NAME, $Level, $desc, $rep}
     );
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, $external: expr) => (
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, $external: expr $(,)?) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
             default_level: $crate::lint::$Level,
@@ -127,7 +127,7 @@ macro_rules! declare_lint {
         };
     );
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
-     $lint_edition: expr => $edition_level: ident
+     $lint_edition: expr => $edition_level: ident $(,)?
     ) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: stringify!($NAME),
@@ -141,14 +141,14 @@ macro_rules! declare_lint {
 
 #[macro_export]
 macro_rules! declare_tool_lint {
-    ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr) => (
+    ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr $(,)?) => (
         declare_tool_lint!{$vis $tool::$NAME, $Level, $desc, false}
     );
     ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr,
-     report_in_external_macro: $rep: expr) => (
+     report_in_external_macro: $rep: expr $(,)?) => (
          declare_tool_lint!{$vis $tool::$NAME, $Level, $desc, $rep}
     );
-    ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr, $external: expr) => (
+    ($vis: vis $tool: ident ::$NAME: ident, $Level: ident, $desc: expr, $external: expr $(,)?) => (
         $vis static $NAME: &$crate::lint::Lint = &$crate::lint::Lint {
             name: &concat!(stringify!($tool), "::", stringify!($NAME)),
             default_level: $crate::lint::$Level,
@@ -162,8 +162,7 @@ macro_rules! declare_tool_lint {
 /// Declare a static `LintArray` and return it as an expression.
 #[macro_export]
 macro_rules! lint_array {
-    ($( $lint:expr ),* ,) => { lint_array!( $($lint),* ) };
-    ($( $lint:expr ),*) => {{
+    ($( $lint:expr ),*  $(,)?) => {{
         vec![$($lint),*]
     }}
 }

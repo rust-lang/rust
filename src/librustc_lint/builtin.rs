@@ -1389,7 +1389,7 @@ impl LintPass for SoftLints {
             UNIONS_WITH_DROP_FIELDS,
             UNREACHABLE_PUB,
             TYPE_ALIAS_BOUNDS,
-            TRIVIAL_BOUNDS
+            TRIVIAL_BOUNDS,
         )
     }
 }
