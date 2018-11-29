@@ -3952,7 +3952,7 @@ impl<'a> Parser<'a> {
                     );
                     err.emit();
                 }
-                self.bump();  // `..` || `...`:w
+                self.bump();  // `..` || `...`
 
                 if self.token == token::CloseDelim(token::Brace) {
                     etc_span = Some(etc_sp);
@@ -3972,7 +3972,7 @@ impl<'a> Parser<'a> {
                     ate_comma = true;
                 }
 
-                etc_span = Some(etc_sp);
+                etc_span = Some(etc_sp.until(self.span));
                 if self.token == token::CloseDelim(token::Brace) {
                     // If the struct looks otherwise well formed, recover and continue.
                     if let Some(sp) = comma_sp {
