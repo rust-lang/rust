@@ -33,7 +33,7 @@ impl PathMap {
         let file_id = self
             .path2id
             .get(path.as_path())
-            .map(|&id| id)
+            .cloned()
             .unwrap_or_else(|| {
                 inserted = true;
                 let id = self.new_file_id();
@@ -43,7 +43,7 @@ impl PathMap {
         (inserted, file_id)
     }
     pub fn get_id(&self, path: &Path) -> Option<FileId> {
-        self.path2id.get(path).map(|&id| id)
+        self.path2id.get(path).cloned()
     }
     pub fn get_path(&self, file_id: FileId) -> &Path {
         self.id2path.get(&file_id).unwrap().as_path()

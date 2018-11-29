@@ -94,7 +94,7 @@ impl RawRequest {
         R::Params: Serialize,
     {
         RawRequest {
-            id: id,
+            id,
             method: R::METHOD.to_string(),
             params: to_value(params).unwrap(),
         }
