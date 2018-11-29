@@ -298,6 +298,7 @@ pub struct DroplessArena {
 unsafe impl Send for DroplessArena {}
 
 impl Default for DroplessArena {
+    #[inline]
     fn default() -> DroplessArena {
         DroplessArena {
             ptr: Cell::new(0 as *mut u8),
@@ -319,6 +320,7 @@ impl DroplessArena {
         false
     }
 
+    #[inline]
     fn align(&self, align: usize) {
         let final_address = ((self.ptr.get() as usize) + align - 1) & !(align - 1);
         self.ptr.set(final_address as *mut u8);

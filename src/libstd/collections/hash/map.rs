@@ -849,6 +849,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// let mut map: HashMap<&str, i32> = HashMap::new();
     /// map.reserve(10);
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {
         match self.reserve_internal(additional, Infallible) {
@@ -880,6 +881,7 @@ impl<K, V, S> HashMap<K, V, S>
         self.reserve_internal(additional, Fallible)
     }
 
+    #[inline]
     fn reserve_internal(&mut self, additional: usize, fallibility: Fallibility)
         -> Result<(), CollectionAllocErr> {
 
@@ -1571,6 +1573,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// so that the map now contains keys which compare equal, search may start
     /// acting erratically, with two keys randomly masking each other. Implementations
     /// are free to assume this doesn't happen (within the limits of memory-safety).
+    #[inline(always)]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn raw_entry_mut(&mut self) -> RawEntryBuilderMut<K, V, S> {
         self.reserve(1);
@@ -1911,6 +1914,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
     }
 
     /// Create a `RawEntryMut` from the given key and its hash.
+    #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn from_key_hashed_nocheck<Q: ?Sized>(self, hash: u64, k: &Q) -> RawEntryMut<'a, K, V, S>
         where K: Borrow<Q>,
@@ -1919,6 +1923,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
         self.from_hash(hash, |q| q.borrow().eq(k))
     }
 
+    #[inline]
     fn search<F>(self, hash: u64, is_match: F, compare_hashes: bool)  -> RawEntryMut<'a, K, V, S>
         where for<'b> F: FnMut(&'b K) -> bool,
     {
@@ -1941,6 +1946,7 @@ impl<'a, K, V, S> RawEntryBuilderMut<'a, K, V, S>
         }
     }
     /// Create a `RawEntryMut` from the given hash.
+    #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn from_hash<F>(self, hash: u64, is_match: F) -> RawEntryMut<'a, K, V, S>
         where for<'b> F: FnMut(&'b K) -> bool,
@@ -2215,6 +2221,7 @@ impl<'a, K, V, S> RawVacantEntryMut<'a, K, V, S> {
 
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
+    #[inline]
     #[unstable(feature = "hash_raw_entry", issue = "56167")]
     pub fn insert_hashed_nocheck(self, hash: u64, key: K, value: V) -> (&'a mut K, &'a mut V) {
         let hash = SafeHash::new(hash);
