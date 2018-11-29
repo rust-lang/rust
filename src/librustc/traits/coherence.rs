@@ -11,8 +11,8 @@
 //! See rustc guide chapters on [trait-resolution] and [trait-specialization] for more info on how
 //! this works.
 //!
-//! [trait-resolution]: https://rust-lang-nursery.github.io/rustc-guide/traits/resolution.html
-//! [trait-specialization]: https://rust-lang-nursery.github.io/rustc-guide/traits/specialization.html
+//! [trait-resolution]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
+//! [trait-specialization]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
 
 use hir::def_id::{DefId, LOCAL_CRATE};
 use syntax_pos::DUMMY_SP;

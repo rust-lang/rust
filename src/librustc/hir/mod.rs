@@ -689,7 +689,7 @@ pub struct WhereEqPredicate {
 ///
 /// For more details, see the [rustc guide].
 ///
-/// [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/hir.html
+/// [rustc guide]: https://rust-lang.github.io/rustc-guide/hir.html
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Crate {
     pub module: Mod,

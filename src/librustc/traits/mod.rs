@@ -10,7 +10,7 @@
 
 //! Trait Resolution. See [rustc guide] for more info on how this works.
 //!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/resolution.html
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/resolution.html
 
 pub use self::SelectionError::*;
 pub use self::FulfillmentErrorCode::*;

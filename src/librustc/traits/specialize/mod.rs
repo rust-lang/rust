@@ -17,7 +17,7 @@
 //! See the [rustc guide] for a bit more detail on how specialization
 //! fits together with the rest of the trait machinery.
 //!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/traits/specialization.html
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/traits/specialization.html
 
 use super::{SelectionContext, FulfillmentContext};
 use super::util::impl_trait_ref_and_oblig;

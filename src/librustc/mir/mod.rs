@@ -10,7 +10,7 @@
 
 //! MIR datatypes and passes. See the [rustc guide] for more info.
 //!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/mir/index.html
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/mir/index.html
 
 use hir::def::CtorKind;
 use hir::def_id::DefId;
