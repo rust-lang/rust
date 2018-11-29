@@ -7,6 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::rustc_errors::Applicability;
 use crate::rustc::hir::*;
 use crate::rustc::lint::{LateContext, LateLintPass, LintArray, LintPass};
 use crate::rustc::{declare_tool_lint, lint_array};
@@ -101,7 +102,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                                 dest_name
                             ),
                             "try this",
-                            format!("{}{}!(\"{}\")", prefix, macro_name.replace("write", "print"), write_output.escape_default())
+                            format!("{}{}!(\"{}\")", prefix, macro_name.replace("write", "print"), write_output.escape_default()),
+                            Applicability::MachineApplicable
                         );
                     } else {
                         span_lint_and_sugg(
@@ -110,7 +112,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             expr.span,
                             &format!("use of `{}().write_fmt(...).unwrap()`", dest_name),
                             "try this",
-                            format!("{}print!(\"{}\")", prefix, write_output.escape_default())
+                            format!("{}print!(\"{}\")", prefix, write_output.escape_default()),
+                            Applicability::MachineApplicable
                         );
                     }
                 } else {
