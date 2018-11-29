@@ -52,6 +52,7 @@ pub struct Trace<'a, 'gcx: 'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
+    #[inline]
     pub fn at(&'a self,
               cause: &'a ObligationCause<'tcx>,
               param_env: ty::ParamEnv<'tcx>)

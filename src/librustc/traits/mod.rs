@@ -1052,6 +1052,7 @@ impl<'tcx,O> Obligation<'tcx,O> {
 }
 
 impl<'tcx> ObligationCause<'tcx> {
+    #[inline]
     pub fn new(span: Span,
                body_id: ast::NodeId,
                code: ObligationCauseCode<'tcx>)

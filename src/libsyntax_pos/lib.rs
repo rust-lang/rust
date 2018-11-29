@@ -587,6 +587,7 @@ impl fmt::Debug for SpanData {
 }
 
 impl MultiSpan {
+    #[inline]
     pub fn new() -> MultiSpan {
         MultiSpan {
             primary_spans: vec![],

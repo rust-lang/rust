@@ -667,6 +667,7 @@ impl<'tcx> TraitRef<'tcx> {
         }
     }
 
+    #[inline]
     pub fn self_ty(&self) -> Ty<'tcx> {
         self.substs.type_at(0)
     }
@@ -978,15 +979,18 @@ impl<'tcx> FnSig<'tcx> {
 pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
 
 impl<'tcx> PolyFnSig<'tcx> {
+    #[inline]
     pub fn inputs(&self) -> Binder<&'tcx [Ty<'tcx>]> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs())
     }
+    #[inline]
     pub fn input(&self, index: usize) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs()[index])
     }
     pub fn inputs_and_output(&self) -> ty::Binder<&'tcx List<Ty<'tcx>>> {
         self.map_bound_ref(|fn_sig| fn_sig.inputs_and_output)
     }
+    #[inline]
     pub fn output(&self) -> ty::Binder<Ty<'tcx>> {
         self.map_bound_ref(|fn_sig| fn_sig.output())
     }
@@ -1548,6 +1552,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_ty_var(&self) -> bool {
         match self.sty {
             Infer(TyVar(_)) => true,
@@ -1732,6 +1737,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_integral(&self) -> bool {
         match self.sty {
             Infer(IntVar(_)) | Int(_) | Uint(_) => true,
@@ -1762,6 +1768,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn is_fp(&self) -> bool {
         match self.sty {
             Infer(FloatVar(_)) | Float(_) => true,
@@ -1845,6 +1852,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
+    #[inline]
     pub fn ty_adt_def(&self) -> Option<&'tcx AdtDef> {
         match self.sty {
             Adt(adt, _) => Some(adt),

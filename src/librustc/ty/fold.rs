@@ -374,6 +374,7 @@ pub struct RegionFolder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 }
 
 impl<'a, 'gcx, 'tcx> RegionFolder<'a, 'gcx, 'tcx> {
+    #[inline]
     pub fn new(
         tcx: TyCtxt<'a, 'gcx, 'tcx>,
         skipped_regions: &'a mut bool,
