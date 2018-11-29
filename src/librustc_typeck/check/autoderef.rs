@@ -59,7 +59,7 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
         if self.steps.len() >= *tcx.sess.recursion_limit.get() {
             // We've reached the recursion limit, error gracefully.
             let suggested_limit = *tcx.sess.recursion_limit.get() * 2;
-            let msg = format!("reached the recursion limit while auto-dereferencing {:?}",
+            let msg = format!("reached the recursion limit while auto-dereferencing `{:?}`",
                               self.cur_ty);
             let error_id = (DiagnosticMessageId::ErrorId(55), Some(self.span), msg);
             let fresh = tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
@@ -67,7 +67,7 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
                 struct_span_err!(tcx.sess,
                                  self.span,
                                  E0055,
-                                 "reached the recursion limit while auto-dereferencing {:?}",
+                                 "reached the recursion limit while auto-dereferencing `{:?}`",
                                  self.cur_ty)
                     .span_label(self.span, "deref recursion limit reached")
                     .help(&format!(
