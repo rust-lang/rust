@@ -621,7 +621,7 @@ a {
 #crate-search {
 	margin-top: 5px;
 	padding: 6px;
-	padding-right: 12px;
+	padding-right: 19px;
 	border: 0;
 	border-right: 0;
 	border-radius: 4px 0 0 4px;
@@ -633,6 +633,10 @@ a {
 	/* Removes default arrow from firefox */
 	text-indent: 0.01px;
 	text-overflow: "";
+	background-repeat: no-repeat;
+	background-color: transparent;
+	background-size: 16%;
+	background-position: calc(100% - 1px) 56%;
 }
 .search-container > .top-button {
 	position: absolute;

@@ -57,6 +57,9 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
     {css_extension}\
     {favicon}\
     {in_header}\
+    <style type=\"text/css\">\
+    #crate-search{{background-image:url(\"{root_path}down-arrow{suffix}.svg\");}}\
+    </style>\
 </head>\
 <body class=\"rustdoc {css_class}\">\
     <!--[if lte IE 8]>\

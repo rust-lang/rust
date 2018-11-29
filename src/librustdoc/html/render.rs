@@ -793,6 +793,8 @@ fn write_shared(
           static_files::BRUSH_SVG)?;
     write(cx.dst.join(&format!("wheel{}.svg", cx.shared.resource_suffix)),
           static_files::WHEEL_SVG)?;
+    write(cx.dst.join(&format!("down-arrow{}.svg", cx.shared.resource_suffix)),
+          static_files::DOWN_ARROW_SVG)?;
     write_minify(cx.dst.join(&format!("light{}.css", cx.shared.resource_suffix)),
                  static_files::themes::LIGHT,
                  options.enable_minification)?;
