@@ -29,7 +29,7 @@ use source_map::SpanUtils;
 use spanned::Spanned;
 use utils::{
     contains_skip, extra_offset, first_line_width, inner_attributes, last_line_extendable, mk_sp,
-    ptr_vec_to_ref_vec, trimmed_last_line_width,
+    ptr_vec_to_ref_vec, semicolon_for_expr, trimmed_last_line_width,
 };
 
 /// A simple wrapper type against `ast::Arm`. Used inside `write_list()`.
@@ -413,7 +413,12 @@ fn rewrite_match_body(
             } else {
                 ""
             };
-            ("{", format!("{}}}{}", indent_str, comma))
+            let semicolon = if semicolon_for_expr(context, body) {
+                ";"
+            } else {
+                ""
+            };
+            ("{", format!("{}{}}}{}", semicolon, indent_str, comma))
         } else {
             ("", String::from(","))
         };
