@@ -39,7 +39,7 @@ use rustc::ty::layout::{self, Align, HasDataLayout, Integer, IntegerExt, LayoutO
                         PrimitiveExt, Size, TyLayout};
 use rustc::session::config;
 use rustc::util::nodemap::FxHashMap;
-use rustc_fs_util::path2cstr;
+use rustc_fs_util::path_to_c_string;
 use rustc_data_structures::small_c_str::SmallCStr;
 
 use libc::{c_uint, c_longlong};
@@ -892,7 +892,7 @@ pub fn compile_unit_metadata(tcx: TyCtxt,
     };
 
     fn path_to_mdstring(llcx: &'ll llvm::Context, path: &Path) -> &'ll Value {
-        let path_str = path2cstr(path);
+        let path_str = path_to_c_string(path);
         unsafe {
             llvm::LLVMMDStringInContext(llcx,
                                         path_str.as_ptr(),

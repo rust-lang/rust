@@ -116,13 +116,13 @@ pub fn rename_or_copy_remove<P: AsRef<Path>, Q: AsRef<Path>>(p: P,
 }
 
 #[cfg(unix)]
-pub fn path2cstr(p: &Path) -> CString {
-    use std::os::unix::prelude::*;
+pub fn path_to_c_string(p: &Path) -> CString {
+    use std::os::unix::ffi::OsStrExt;
     use std::ffi::OsStr;
     let p: &OsStr = p.as_ref();
     CString::new(p.as_bytes()).unwrap()
 }
 #[cfg(windows)]
-pub fn path2cstr(p: &Path) -> CString {
+pub fn path_to_c_string(p: &Path) -> CString {
     CString::new(p.to_str().unwrap()).unwrap()
 }
