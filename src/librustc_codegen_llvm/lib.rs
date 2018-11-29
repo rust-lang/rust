@@ -127,6 +127,7 @@ mod mono_item;
 mod type_;
 mod type_of;
 mod value;
+mod va_arg;
 
 #[derive(Clone)]
 pub struct LlvmCodegenBackend(());

@@ -723,17 +723,17 @@ impl IntrinsicDeclarationMethods<'tcx> for CodegenCx<'b, 'tcx> {
         ifn!("llvm.bitreverse.i64", fn(t_i64) -> t_i64);
         ifn!("llvm.bitreverse.i128", fn(t_i128) -> t_i128);
 
-    ifn!("llvm.fshl.i8", fn(t_i8, t_i8, t_i8) -> t_i8);
-    ifn!("llvm.fshl.i16", fn(t_i16, t_i16, t_i16) -> t_i16);
-    ifn!("llvm.fshl.i32", fn(t_i32, t_i32, t_i32) -> t_i32);
-    ifn!("llvm.fshl.i64", fn(t_i64, t_i64, t_i64) -> t_i64);
-    ifn!("llvm.fshl.i128", fn(t_i128, t_i128, t_i128) -> t_i128);
+        ifn!("llvm.fshl.i8", fn(t_i8, t_i8, t_i8) -> t_i8);
+        ifn!("llvm.fshl.i16", fn(t_i16, t_i16, t_i16) -> t_i16);
+        ifn!("llvm.fshl.i32", fn(t_i32, t_i32, t_i32) -> t_i32);
+        ifn!("llvm.fshl.i64", fn(t_i64, t_i64, t_i64) -> t_i64);
+        ifn!("llvm.fshl.i128", fn(t_i128, t_i128, t_i128) -> t_i128);
 
-    ifn!("llvm.fshr.i8", fn(t_i8, t_i8, t_i8) -> t_i8);
-    ifn!("llvm.fshr.i16", fn(t_i16, t_i16, t_i16) -> t_i16);
-    ifn!("llvm.fshr.i32", fn(t_i32, t_i32, t_i32) -> t_i32);
-    ifn!("llvm.fshr.i64", fn(t_i64, t_i64, t_i64) -> t_i64);
-    ifn!("llvm.fshr.i128", fn(t_i128, t_i128, t_i128) -> t_i128);
+        ifn!("llvm.fshr.i8", fn(t_i8, t_i8, t_i8) -> t_i8);
+        ifn!("llvm.fshr.i16", fn(t_i16, t_i16, t_i16) -> t_i16);
+        ifn!("llvm.fshr.i32", fn(t_i32, t_i32, t_i32) -> t_i32);
+        ifn!("llvm.fshr.i64", fn(t_i64, t_i64, t_i64) -> t_i64);
+        ifn!("llvm.fshr.i128", fn(t_i128, t_i128, t_i128) -> t_i128);
 
         ifn!("llvm.sadd.with.overflow.i8", fn(t_i8, t_i8) -> mk_struct!{t_i8, i1});
         ifn!("llvm.sadd.with.overflow.i16", fn(t_i16, t_i16) -> mk_struct!{t_i16, i1});
@@ -782,6 +782,11 @@ impl IntrinsicDeclarationMethods<'tcx> for CodegenCx<'b, 'tcx> {
 
         ifn!("llvm.assume", fn(i1) -> void);
         ifn!("llvm.prefetch", fn(i8p, t_i32, t_i32, t_i32) -> void);
+
+        // variadic intrinsics
+        ifn!("llvm.va_start", fn(i8p) -> void);
+        ifn!("llvm.va_end", fn(i8p) -> void);
+        ifn!("llvm.va_copy", fn(i8p, i8p) -> void);
 
         if self.sess().opts.debuginfo != DebugInfo::None {
             ifn!("llvm.dbg.declare", fn(self.type_metadata(), self.type_metadata()) -> void);
