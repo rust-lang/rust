@@ -43,7 +43,9 @@ pub unsafe fn __breakpoint(val: i32) {
     // doc builds work. The proper macro will shadow this definition below.
     #[allow(unused_macros)]
     macro_rules! call {
-        ($e:expr) => {()}
+        ($e:expr) => {
+            ()
+        };
     }
 
     #[cfg(target_arch = "arm")]
