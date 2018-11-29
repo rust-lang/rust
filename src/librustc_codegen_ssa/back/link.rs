@@ -192,11 +192,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
 
     // linker and linker flavor specified via command line have precedence over what the target
     // specification specifies
-    if let Some(ret) = infer_from(
-        sess,
-        sess.opts.cg.linker.clone(),
-        sess.opts.debugging_opts.linker_flavor,
-    ) {
+    if let Some(ret) = infer_from(sess, sess.opts.cg.linker.clone(), sess.opts.cg.linker_flavor) {
         return ret;
     }
 
