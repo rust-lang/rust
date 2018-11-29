@@ -762,23 +762,18 @@ where
                             drop(variables);
                             self.relate(&u, &u)
                         }
-                        TypeVariableValue::Unknown { universe } => {
-                            if self.universe.cannot_name(universe) {
-                                debug!(
-                                    "TypeGeneralizer::tys: root universe {:?} cannot name\
-                                    variable in universe {:?}",
-                                    self.universe,
-                                    universe
-                                );
-                                return Err(TypeError::Mismatch);
-                            }
-
+                        TypeVariableValue::Unknown { universe: _universe } => {
                             if self.ambient_variance == ty::Bivariant {
                                 // FIXME: we may need a WF predicate (related to #54105).
                             }
 
                             let origin = *variables.var_origin(vid);
+
+                            // Replacing with a new variable in the universe `self.universe`,
+                            // it will be unified later with the original type variable in
+                            // the universe `_universe`.
                             let new_var_id = variables.new_var(self.universe, false, origin);
+
                             let u = self.tcx().mk_var(new_var_id);
                             debug!(
                                 "generalize: replacing original vid={:?} with new={:?}",
