@@ -18,7 +18,7 @@ use rustc_data_structures::owning_ref::OwningRef;
 use std::path::Path;
 use std::ptr;
 use std::slice;
-use rustc_fs_util::path2cstr;
+use rustc_fs_util::path_to_c_string;
 
 pub use rustc_data_structures::sync::MetadataRef;
 
@@ -57,7 +57,7 @@ impl MetadataLoader for LlvmMetadataLoader {
                           filename: &Path)
                           -> Result<MetadataRef, String> {
         unsafe {
-            let buf = path2cstr(filename);
+            let buf = path_to_c_string(filename);
             let mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf.as_ptr())
                 .ok_or_else(|| format!("error reading library: '{}'", filename.display()))?;
             let of = ObjectFile::new(mb)

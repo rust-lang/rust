@@ -23,7 +23,7 @@ use llvm_util;
 use ModuleLlvm;
 use rustc_codegen_ssa::{ModuleCodegen, CompiledModule};
 use rustc::util::common::time_ext;
-use rustc_fs_util::{path2cstr, link_or_copy};
+use rustc_fs_util::{path_to_c_string, link_or_copy};
 use rustc_data_structures::small_c_str::SmallCStr;
 use errors::{self, Handler, FatalError};
 use type_::Type;
@@ -80,7 +80,7 @@ pub fn write_output_file(
         output: &Path,
         file_type: llvm::FileType) -> Result<(), FatalError> {
     unsafe {
-        let output_c = path2cstr(output);
+        let output_c = path_to_c_string(output);
         let result = llvm::LLVMRustWriteOutputFile(target, pm, m, output_c.as_ptr(), file_type);
         if result.into_result().is_err() {
             let msg = format!("could not write output to {}", output.display());
@@ -211,7 +211,7 @@ pub(crate) fn save_temp_bitcode(
         let ext = format!("{}.bc", name);
         let cgu = Some(&module.name[..]);
         let path = cgcx.output_filenames.temp_path_ext(&ext, cgu);
-        let cstr = path2cstr(&path);
+        let cstr = path_to_c_string(&path);
         let llmod = module.module_llvm.llmod();
         llvm::LLVMWriteBitcodeToFile(llmod, cstr.as_ptr());
     }
@@ -324,7 +324,7 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
 
     if config.emit_no_opt_bc {
         let out = cgcx.output_filenames.temp_path_ext("no-opt.bc", module_name);
-        let out = path2cstr(&out);
+        let out = path_to_c_string(&out);
         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
     }
 
@@ -530,7 +530,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<LlvmCodegenBackend>,
             || -> Result<(), FatalError> {
             if config.emit_ir {
                 let out = cgcx.output_filenames.temp_path(OutputType::LlvmAssembly, module_name);
-                let out = path2cstr(&out);
+                let out = path_to_c_string(&out);
 
                 extern "C" fn demangle_callback(input_ptr: *const c_char,
                                                 input_len: size_t,
