@@ -161,7 +161,11 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
                 LinkerFlavor::Lld(_) => "lld",
             }), flavor)),
             (Some(linker), None) => {
-                let stem = linker.file_stem().and_then(|stem| stem.to_str()).unwrap_or_else(|| {
+                let stem = if linker.extension().and_then(|ext| ext.to_str()) == Some("exe") {
+                    linker.file_stem().and_then(|stem| stem.to_str())
+                } else {
+                    linker.to_str()
+                }.unwrap_or_else(|| {
                     sess.fatal("couldn't extract file stem from specified linker");
                 }).to_owned();
 
