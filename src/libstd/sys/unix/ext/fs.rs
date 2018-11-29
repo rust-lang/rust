@@ -522,7 +522,7 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn size(&self) -> u64;
-    /// Returns the time of the last access to the file.
+    /// Returns the last access time of the file, in seconds since Unix Epoch.
     ///
     /// # Examples
     ///
@@ -539,7 +539,9 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn atime(&self) -> i64;
-    /// Returns the time of the last access to the file in nanoseconds.
+    /// Returns the last access time of the file, in nanoseconds since [`atime`].
+    ///
+    /// [`atime`]: #tymethod.atime
     ///
     /// # Examples
     ///
@@ -556,7 +558,7 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn atime_nsec(&self) -> i64;
-    /// Returns the time of the last modification of the file.
+    /// Returns the last modification time of the file, in seconds since Unix Epoch.
     ///
     /// # Examples
     ///
@@ -573,7 +575,9 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn mtime(&self) -> i64;
-    /// Returns the time of the last modification of the file in nanoseconds.
+    /// Returns the last modification time of the file, in nanoseconds since [`mtime`].
+    ///
+    /// [`mtime`]: #tymethod.mtime
     ///
     /// # Examples
     ///
@@ -590,7 +594,7 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn mtime_nsec(&self) -> i64;
-    /// Returns the time of the last status change of the file.
+    /// Returns the last status change time of the file, in seconds since Unix Epoch.
     ///
     /// # Examples
     ///
@@ -607,7 +611,9 @@ pub trait MetadataExt {
     /// ```
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn ctime(&self) -> i64;
-    /// Returns the time of the last status change of the file in nanoseconds.
+    /// Returns the last status change time of the file, in nanoseconds since [`ctime`].
+    ///
+    /// [`ctime`]: #tymethod.ctime
     ///
     /// # Examples
     ///
