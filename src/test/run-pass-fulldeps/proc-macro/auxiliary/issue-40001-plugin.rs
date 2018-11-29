@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![feature(box_syntax, plugin, plugin_registrar, rustc_private)]
-#![feature(macro_at_most_once_rep)]
 #![crate_type = "dylib"]
 
 #[macro_use]
