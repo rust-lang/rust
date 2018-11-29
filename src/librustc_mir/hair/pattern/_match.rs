@@ -1355,11 +1355,6 @@ fn slice_pat_covered_by_constructor<'tcx>(
                 ConstValue::Scalar(val) | ConstValue::ScalarPair(val, _) => val,
             };
             if let Ok(ptr) = val.to_ptr() {
-                let is_array_ptr = const_val.ty
-                    .builtin_deref(true)
-                    .and_then(|t| t.ty.builtin_index())
-                    .map_or(false, |t| t == tcx.types.u8);
-                assert!(is_array_ptr);
                 tcx.alloc_map.lock().unwrap_memory(ptr.alloc_id).bytes.as_ref()
             } else {
                 bug!("unexpected non-ptr ConstantValue")
