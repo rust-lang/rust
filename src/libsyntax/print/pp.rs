@@ -147,6 +147,7 @@
 use std::collections::VecDeque;
 use std::fmt;
 use std::io;
+use std::borrow::Cow;
 
 /// How to break. Described in more detail in the module docs.
 #[derive(Clone, Copy, PartialEq)]
@@ -169,7 +170,10 @@ pub struct BeginToken {
 
 #[derive(Clone)]
 pub enum Token {
-    String(String, isize),
+    // In practice a string token contains either a `&'static str` or a
+    // `String`. `Cow` is overkill for this because we never modify the data,
+    // but it's more convenient than rolling our own more specialized type.
+    String(Cow<'static, str>, isize),
     Break(BreakToken),
     Begin(BeginToken),
     End,
@@ -644,8 +648,10 @@ impl<'a> Printer<'a> {
         self.pretty_print(Token::Eof)
     }
 
-    pub fn word(&mut self, wrd: &str) -> io::Result<()> {
-        self.pretty_print(Token::String(wrd.to_string(), wrd.len() as isize))
+    pub fn word<S: Into<Cow<'static, str>>>(&mut self, wrd: S) -> io::Result<()> {
+        let s = wrd.into();
+        let len = s.len() as isize;
+        self.pretty_print(Token::String(s, len))
     }
 
     fn spaces(&mut self, n: usize) -> io::Result<()> {

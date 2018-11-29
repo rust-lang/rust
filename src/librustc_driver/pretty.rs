@@ -530,7 +530,7 @@ impl<'a, 'tcx> pprust_hir::PpAnn for TypedAnnotation<'a, 'tcx> {
                 s.s.space()?;
                 s.s.word("as")?;
                 s.s.space()?;
-                s.s.word(&self.tables.get().expr_ty(expr).to_string())?;
+                s.s.word(self.tables.get().expr_ty(expr).to_string())?;
                 s.pclose()
             }
             _ => Ok(()),
