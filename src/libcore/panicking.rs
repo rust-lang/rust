@@ -40,7 +40,8 @@ use fmt;
 use panic::{Location, PanicInfo};
 
 #[cold]
-// never inline unless panic_immediate_abort to avoid code bloat at the call sites as much as possible
+// never inline unless panic_immediate_abort to avoid code
+// bloat at the call sites as much as possible
 #[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
 #[lang = "panic"]
 pub fn panic(expr_file_line_col: &(&'static str, &'static str, u32, u32)) -> ! {

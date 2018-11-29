@@ -406,7 +406,8 @@ fn continue_panic_fmt(info: &PanicInfo) -> ! {
            reason = "used by the panic! macro",
            issue = "0")]
 #[cfg_attr(not(test), lang = "begin_panic")]
-// never inline unless panic_immediate_abort to avoid code bloat at the call sites as much as possible
+// never inline unless panic_immediate_abort to avoid code
+// bloat at the call sites as much as possible
 #[cfg_attr(not(feature="panic_immediate_abort"),inline(never))]
 #[cold]
 pub fn begin_panic<M: Any + Send>(msg: M, file_line_col: &(&'static str, u32, u32)) -> ! {
