@@ -118,7 +118,7 @@ impl TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, '_, 'tcx> {
     }
 
     fn push_domain_goal(&mut self, _: DomainGoal<'tcx>) {
-        // No-op
+        bug!("should never be invoked with eager normalization")
     }
 
     fn normalization() -> NormalizationStrategy {

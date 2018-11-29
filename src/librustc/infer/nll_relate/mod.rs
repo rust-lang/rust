@@ -16,15 +16,15 @@
 //! Here are the key differences:
 //!
 //! - This code may choose to bypass some checks (e.g. the occurs check)
-//!   in case we know that there are no unbound type inference variables.
-//!   This is the case for NLL, because at NLL time types are fully inferred
-//!   up-to regions.
+//!   in the case where we know that there are no unbound type inference
+//!   variables. This is the case for NLL, because at NLL time types are fully
+//!   inferred up-to regions.
 //! - This code uses "universes" to handle higher-ranked regions and
 //!   not the leak-check. This is "more correct" than what rustc does
 //!   and we are generally migrating in this direction, but NLL had to
 //!   get there first.
 //!
-//! Also, this code assumes that there are no bound type vars at all, not even
+//! Also, this code assumes that there are no bound types at all, not even
 //! free ones. This is ok because:
 //! - we are not relating anything quantified over some type variable
 //! - we will have instantiated all the bound type vars already (the one
@@ -265,7 +265,7 @@ where
     }
 
     /// Relate a projection type and some value type lazily. This will always
-    /// succeed, but we are pushing an additional `ProjectionEq` goal depending
+    /// succeed, but we push an additional `ProjectionEq` goal depending
     /// on the value type:
     /// - if the value type is any type `T` which is not a projection, we push
     ///   `ProjectionEq(projection = T)`.
