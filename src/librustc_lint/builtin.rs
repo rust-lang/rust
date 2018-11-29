@@ -1540,8 +1540,8 @@ impl KeywordIdents {
                     }
                     _ => {},
                 }
-                TokenTree::Delimited(_, ref delim) => {
-                    self.check_tokens(cx, delim.tts.clone().into())
+                TokenTree::Delimited(_, _, tts) => {
+                    self.check_tokens(cx, tts.stream())
                 },
             }
         }

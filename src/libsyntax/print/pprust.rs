@@ -815,12 +815,12 @@ pub trait PrintState<'a> {
                     _ => Ok(())
                 }
             }
-            TokenTree::Delimited(_, ref delimed) => {
-                self.writer().word(token_to_string(&delimed.open_token()))?;
+            TokenTree::Delimited(_, delim, tts) => {
+                self.writer().word(token_to_string(&token::OpenDelim(delim)))?;
                 self.writer().space()?;
-                self.print_tts(delimed.stream())?;
+                self.print_tts(tts.stream())?;
                 self.writer().space()?;
-                self.writer().word(token_to_string(&delimed.close_token()))
+                self.writer().word(token_to_string(&token::CloseDelim(delim)))
             },
         }
     }

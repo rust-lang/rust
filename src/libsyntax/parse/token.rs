@@ -818,16 +818,13 @@ fn prepend_attrs(sess: &ParseSess,
 
         brackets.push(attr.tokens.clone());
 
-        let tokens = tokenstream::Delimited {
-            delim: DelimToken::Bracket,
-            tts: brackets.build().into(),
-        };
         // The span we list here for `#` and for `[ ... ]` are both wrong in
         // that it encompasses more than each token, but it hopefully is "good
         // enough" for now at least.
         builder.push(tokenstream::TokenTree::Token(attr.span, Pound));
         let delim_span = DelimSpan::from_single(attr.span);
-        builder.push(tokenstream::TokenTree::Delimited(delim_span, tokens));
+        builder.push(tokenstream::TokenTree::Delimited(
+            delim_span, DelimToken::Bracket, brackets.build().into()));
     }
     builder.push(tokens.clone());
     Some(builder.build())

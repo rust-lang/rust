@@ -265,10 +265,10 @@ for tokenstream::TokenTree {
                 span.hash_stable(hcx, hasher);
                 hash_token(token, hcx, hasher);
             }
-            tokenstream::TokenTree::Delimited(span, ref delimited) => {
+            tokenstream::TokenTree::Delimited(span, delim, ref tts) => {
                 span.hash_stable(hcx, hasher);
-                std_hash::Hash::hash(&delimited.delim, hasher);
-                for sub_tt in delimited.stream().trees() {
+                std_hash::Hash::hash(&delim, hasher);
+                for sub_tt in tts.stream().trees() {
                     sub_tt.hash_stable(hcx, hasher);
                 }
             }

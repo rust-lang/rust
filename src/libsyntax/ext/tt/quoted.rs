@@ -280,17 +280,17 @@ where
         // `tree` is a `$` token. Look at the next token in `trees`
         tokenstream::TokenTree::Token(span, token::Dollar) => match trees.next() {
             // `tree` is followed by a delimited set of token trees. This indicates the beginning
-            // of a repetition sequence in the macro (e.g., `$(pat)*`).
-            Some(tokenstream::TokenTree::Delimited(span, delimited)) => {
+            // of a repetition sequence in the macro (e.g. `$(pat)*`).
+            Some(tokenstream::TokenTree::Delimited(span, delim, tts)) => {
                 // Must have `(` not `{` or `[`
-                if delimited.delim != token::Paren {
-                    let tok = pprust::token_to_string(&token::OpenDelim(delimited.delim));
+                if delim != token::Paren {
+                    let tok = pprust::token_to_string(&token::OpenDelim(delim));
                     let msg = format!("expected `(`, found `{}`", tok);
                     sess.span_diagnostic.span_err(span.entire(), &msg);
                 }
                 // Parse the contents of the sequence itself
                 let sequence = parse(
-                    delimited.tts.into(),
+                    tts.into(),
                     expect_matchers,
                     sess,
                     features,
@@ -354,12 +354,12 @@ where
 
         // `tree` is the beginning of a delimited set of tokens (e.g., `(` or `{`). We need to
         // descend into the delimited set and further parse it.
-        tokenstream::TokenTree::Delimited(span, delimited) => TokenTree::Delimited(
+        tokenstream::TokenTree::Delimited(span, delim, tts) => TokenTree::Delimited(
             span,
             Lrc::new(Delimited {
-                delim: delimited.delim,
+                delim: delim,
                 tts: parse(
-                    delimited.tts.into(),
+                    tts.into(),
                     expect_matchers,
                     sess,
                     features,
