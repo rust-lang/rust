@@ -25,8 +25,7 @@
 //! but this should catch the majority of "broken link" cases.
 
 use std::env;
-use std::fs::File;
-use std::io::prelude::*;
+use std::fs;
 use std::path::{Path, PathBuf, Component};
 use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
@@ -288,7 +287,7 @@ fn load_file(cache: &mut Cache,
              file: &Path,
              redirect: Redirect)
              -> Result<(PathBuf, String), LoadError> {
-    let mut contents = String::new();
+    let contents;
     let pretty_file = PathBuf::from(file.strip_prefix(root).unwrap_or(&file));
 
     let maybe_redirect = match cache.entry(pretty_file.clone()) {
@@ -297,14 +296,13 @@ fn load_file(cache: &mut Cache,
             None
         }
         Entry::Vacant(entry) => {
-            let mut fp = File::open(file).map_err(|err| {
+            contents = fs::read_to_string(&file).map_err(|err| {
                 if let FromRedirect(true) = redirect {
                     LoadError::BrokenRedirect(file.to_path_buf(), err)
                 } else {
                     LoadError::IOError(err)
                 }
             })?;
-            fp.read_to_string(&mut contents).map_err(|err| LoadError::IOError(err))?;
 
             let maybe = maybe_redirect(&contents);
             if maybe.is_some() {

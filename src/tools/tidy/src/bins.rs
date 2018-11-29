@@ -24,13 +24,10 @@ pub fn check(_path: &Path, _bad: &mut bool) {}
 #[cfg(unix)]
 pub fn check(path: &Path, bad: &mut bool) {
     use std::fs;
-    use std::io::Read;
     use std::process::{Command, Stdio};
     use std::os::unix::prelude::*;
 
-    if let Ok(mut file) = fs::File::open("/proc/version") {
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap();
+    if let Ok(contents) = fs::read_to_string("/proc/version") {
         // Probably on Windows Linux Subsystem or Docker via VirtualBox,
         // all files will be marked as executable, so skip checking.
         if contents.contains("Microsoft") || contents.contains("boot2docker") {

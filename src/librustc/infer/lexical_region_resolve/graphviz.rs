@@ -31,9 +31,8 @@ use std::borrow::Cow;
 use std::collections::hash_map::Entry::Vacant;
 use std::collections::btree_map::BTreeMap;
 use std::env;
-use std::fs::File;
+use std::fs;
 use std::io;
-use std::io::prelude::*;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 fn print_help_message() {
@@ -268,5 +267,5 @@ fn dump_region_data_to<'a, 'gcx, 'tcx>(region_rels: &RegionRelations<'a, 'gcx, '
     debug!("dump_region_data calling render");
     let mut v = Vec::new();
     dot::render(&g, &mut v).unwrap();
-    File::create(path).and_then(|mut f| f.write_all(&v))
+    fs::write(path, &v)
 }
