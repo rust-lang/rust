@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -O
+// compile-flags: -C no-prepopulate-passes
 // `#[no_mangle]`d functions always have external linkage, i.e. no `internal` in their `define`s
 
 #![crate_type = "lib"]
@@ -43,7 +43,7 @@ const HIDDEN: () = {
 };
 
 // The surrounding item should not accidentally become external
-// CHECK: define internal {{.*}} void @_ZN22external_no_mangle_fns1x
+// CHECK: define internal{{.*}} void @_ZN22external_no_mangle_fns1x
 #[inline(never)]
 fn x() {
     // CHECK: define void @g()
