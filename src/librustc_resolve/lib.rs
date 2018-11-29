@@ -3950,7 +3950,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
 
         let first_name = match path.get(0) {
             // In the 2018 edition this lint is a hard error, so nothing to do
-            Some(seg) if seg.ident.span.rust_2015() => seg.ident.name,
+            Some(seg) if seg.ident.span.rust_2015() && self.session.rust_2015() => seg.ident.name,
             _ => return,
         };
 
