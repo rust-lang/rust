@@ -1,4 +1,4 @@
-error[E0055]: reached the recursion limit while auto-dereferencing I
+error[E0055]: reached the recursion limit while auto-dereferencing `I`
   --> $DIR/recursion_limit_deref.rs:60:22
    |
 LL |     let x: &Bottom = &t; //~ ERROR mismatched types

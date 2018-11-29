@@ -102,7 +102,7 @@ macro_rules! define_categories {
                         };
 
                     json.push_str(&format!(
-                        "{{ \"category\": {}, \"time_ms\": {},
+                        "{{ \"category\": \"{}\", \"time_ms\": {},\
                             \"query_count\": {}, \"query_hits\": {} }},",
                         stringify!($name),
                         self.times.$name / 1_000_000,
