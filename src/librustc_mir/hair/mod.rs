@@ -26,6 +26,7 @@ use syntax_pos::Span;
 use self::cx::Cx;
 
 pub mod cx;
+mod constant;
 
 pub mod pattern;
 pub use self::pattern::{BindingMode, Pattern, PatternKind, FieldPattern};
