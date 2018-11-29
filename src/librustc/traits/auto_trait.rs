@@ -649,6 +649,15 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
         };
     }
 
+    fn is_self_referential_projection(&self, p: ty::PolyProjectionPredicate<'_>) -> bool {
+        match p.ty().skip_binder().sty {
+            ty::Projection(proj) if proj == p.skip_binder().projection_ty => {
+                true
+            },
+            _ => false
+        }
+    }
+
     pub fn evaluate_nested_obligations<
         'b,
         'c,
@@ -713,7 +722,23 @@ impl<'a, 'tcx> AutoTraitFinder<'a, 'tcx> {
                             debug!("evaluate_nested_obligations: adding projection predicate\
                             to computed_preds: {:?}", predicate);
 
-                        self.add_user_pred(computed_preds, predicate);
+                            // Under unusual circumstances, we can end up with a self-refeential
+                            // projection predicate. For example:
+                            // <T as MyType>::Value == <T as MyType>::Value
+                            // Not only is displaying this to the user pointless,
+                            // having it in the ParamEnv will cause an issue if we try to call
+                            // poly_project_and_unify_type on the predicate, since this kind of
+                            // predicate will normally never end up in a ParamEnv.
+                            //
+                            // For these reasons, we ignore these weird predicates,
+                            // ensuring that we're able to properly synthesize an auto trait impl
+                            if self.is_self_referential_projection(p) {
+                                debug!("evaluate_nested_obligations: encountered a projection
+                                 predicate equating a type with itself! Skipping");
+
+                            } else {
+                                self.add_user_pred(computed_preds, predicate);
+                            }
                     }
 
                     // We can only call poly_project_and_unify_type when our predicate's
