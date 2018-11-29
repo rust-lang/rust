@@ -3,6 +3,10 @@ error: lifetime parameters must be declared prior to type parameters
    |
 LL | impl<'a, T, 'b> X {}
    |             ^^
+help: move the lifetime parameter prior to the first type parameter
+   |
+LL | impl<'a, 'b, T> X {}
+   |          ^^^ --
 
 error: aborting due to previous error
 
