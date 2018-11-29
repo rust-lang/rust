@@ -164,7 +164,7 @@ pub fn const_to_op<'tcx>(
     ecx: &CompileTimeEvalContext<'_, '_, 'tcx>,
     cnst: &ty::Const<'tcx>,
 ) -> EvalResult<'tcx, OpTy<'tcx>> {
-    let op = ecx.const_value_to_op(cnst.val)?;
+    let op = ecx.const_value_to_op(cnst)?;
     Ok(OpTy { op, layout: ecx.layout_of(cnst.ty)? })
 }
 

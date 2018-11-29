@@ -1053,11 +1053,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Allocates a byte or string literal for `mir::interpret`, read-only
-    pub fn allocate_bytes(self, bytes: &[u8]) -> interpret::AllocId {
+    pub fn allocate_bytes(self, bytes: &[u8]) -> (interpret::AllocId, &'tcx Allocation) {
         // create an allocation that just contains these bytes
         let alloc = interpret::Allocation::from_byte_aligned_bytes(bytes, ());
         let alloc = self.intern_const_alloc(alloc);
-        self.alloc_map.lock().allocate(alloc)
+        (self.alloc_map.lock().allocate(alloc), alloc)
     }
 
     pub fn intern_stability(self, stab: attr::Stability) -> &'gcx attr::Stability {

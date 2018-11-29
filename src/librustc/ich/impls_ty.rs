@@ -313,6 +313,7 @@ impl_stable_hash_for!(
     impl<'tcx> for enum mir::interpret::ConstValue<'tcx> [ mir::interpret::ConstValue ] {
         Unevaluated(def_id, substs),
         Scalar(val),
+        Slice(id, alloc),
         ByRef(id, alloc, offset),
     }
 );

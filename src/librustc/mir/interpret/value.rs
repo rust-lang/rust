@@ -39,6 +39,14 @@ pub enum ConstValue<'tcx> {
     /// Not using the enum `Value` to encode that this must not be `Undef`
     Scalar(Scalar),
 
+    /// Strings and byte strings have a custom variant for performance reasons.
+    /// Otherwise we'd be converting
+    /// from an allocation of a pointer + length to the pointer + length and back all the tim
+    ///
+    /// The allocation of the bytes of the string. The size of the allocation is the length
+    /// of the string in bytes
+    Slice(AllocId, &'tcx Allocation),
+
     /// An allocation + offset into the allocation.
     /// Invariant: The AllocId matches the allocation.
     ByRef(AllocId, &'tcx Allocation, Size),
@@ -49,6 +57,7 @@ impl<'tcx> ConstValue<'tcx> {
     pub fn try_to_scalar(&self) -> Option<Scalar> {
         match *self {
             ConstValue::Unevaluated(..) |
+            ConstValue::Slice(..) |
             ConstValue::ByRef(..) => None,
             ConstValue::Scalar(val) => Some(val),
         }
@@ -65,21 +74,7 @@ impl<'tcx> ConstValue<'tcx> {
     }
 
     #[inline]
-    pub fn new_slice(val: Scalar, len: u64, tcx: TyCtxt<'_, '_, 'tcx>) -> Self {
-        Self::new_ptr_sized_seq(
-            &[
-                val,
-                Scalar::Bits {
-                    bits: len as u128,
-                    size: tcx.data_layout.pointer_size.bytes() as u8,
-                }
-            ],
-            tcx,
-        )
-    }
-
-    #[inline]
-    /// Used for fat pointers and vtables
+    /// Used for trait object fat pointers
     fn new_ptr_sized_seq(scalars: &[Scalar], tcx: TyCtxt<'_, '_, 'tcx>) -> Self {
         let mut allocation = Allocation::undef(
             tcx.data_layout.pointer_size * scalars.len() as u64,

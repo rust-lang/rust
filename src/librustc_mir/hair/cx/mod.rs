@@ -165,12 +165,12 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let lit = match *lit {
             LitKind::Str(ref s, _) => {
                 let s = s.as_str();
-                let id = self.tcx.allocate_bytes(s.as_bytes());
-                ConstValue::new_slice(Scalar::Ptr(id.into()), s.len() as u64, self.tcx)
+                let (id, a) = self.tcx.allocate_bytes(s.as_bytes());
+                ConstValue::Slice(id, a)
             },
             LitKind::ByteStr(ref data) => {
-                let id = self.tcx.allocate_bytes(data);
-                ConstValue::Scalar(Scalar::Ptr(id.into()))
+                let (id, a) = self.tcx.allocate_bytes(data);
+                ConstValue::Slice(id, a)
             },
             LitKind::Byte(n) => ConstValue::Scalar(Scalar::Bits {
                 bits: n as u128,

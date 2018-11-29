@@ -15,6 +15,7 @@ use std::convert::TryInto;
 
 use rustc::mir;
 use rustc::ty::layout::{self, Size, LayoutOf, TyLayout, HasDataLayout, IntegerExt, VariantIdx};
+use rustc::ty::{self, TyKind};
 
 use rustc::mir::interpret::{
     GlobalId, AllocId,
@@ -527,7 +528,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     let ty = self.monomorphize(mir_op.ty(self.mir(), *self.tcx), self.substs());
                     self.layout_of(ty)
                 })?;
-                let op = self.const_value_to_op(constant.literal.val)?;
+                let op = self.const_value_to_op(constant.literal)?;
                 OpTy { op, layout }
             }
         };
@@ -550,10 +551,10 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
     // `eval_operand`, ideally).
     pub(crate) fn const_value_to_op(
         &self,
-        val: ConstValue<'tcx>,
+        cnst: &ty::Const<'tcx>,
     ) -> EvalResult<'tcx, Operand<M::PointerTag>> {
-        trace!("const_value_to_op: {:?}", val);
-        match val {
+        trace!("const_value_to_op: {:?}", cnst);
+        match cnst.val {
             ConstValue::Unevaluated(def_id, substs) => {
                 let instance = self.resolve(def_id, substs)?;
                 Ok(*OpTy::from(self.const_eval_raw(GlobalId {
@@ -568,6 +569,27 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> EvalContext<'a, 'mir, 'tcx, M> 
                     MemPlace::from_ptr(Pointer::new(id, offset), alloc.align)
                 ).with_default_tag())
             },
+            ConstValue::Slice(alloc_id, allocation) => {
+                let fat = match cnst.ty.builtin_deref(false).unwrap().ty.sty {
+                    TyKind::Str => true,
+                    TyKind::Slice(inner) if inner == self.tcx.types.u8 => true,
+                    TyKind::Array(inner, _) if inner == self.tcx.types.u8 => false,
+                    _ => bug!("expected slice, got {:?}", cnst.ty),
+                };
+                if fat {
+                    Ok(Operand::Immediate(Immediate::ScalarPair(
+                        Scalar::from(Pointer::from(alloc_id)).with_default_tag().into(),
+                        Scalar::from_uint(
+                            allocation.bytes.len() as u64,
+                            self.tcx.data_layout.pointer_size,
+                        ).into(),
+                    )))
+                } else {
+                    Ok(Operand::Immediate(Immediate::Scalar(
+                        ScalarMaybeUndef::from(Scalar::from(Pointer::from(alloc_id)))
+                    )).with_default_tag())
+                }
+            }
             ConstValue::Scalar(x) =>
                 Ok(Operand::Immediate(Immediate::Scalar(x.into())).with_default_tag()),
         }

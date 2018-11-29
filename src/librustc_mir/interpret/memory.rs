@@ -124,7 +124,7 @@ impl<'a, 'mir, 'tcx, M: Machine<'a, 'mir, 'tcx>> Memory<'a, 'mir, 'tcx, M> {
     }
 
     pub fn allocate_static_bytes(&mut self, bytes: &[u8]) -> Pointer {
-        Pointer::from(self.tcx.allocate_bytes(bytes))
+        Pointer::from(self.tcx.allocate_bytes(bytes).0)
     }
 
     pub fn allocate_with(

@@ -1265,11 +1265,12 @@ fn collect_const<'a, 'tcx>(
         ConstValue::Unevaluated(..) => bug!("const eval yielded unevaluated const"),
         ConstValue::Scalar(Scalar::Ptr(ptr)) =>
             collect_miri(tcx, ptr.alloc_id, output),
-        ConstValue::ByRef(_id, alloc, _offset) => {
+        ConstValue::Slice(_, alloc) |
+        ConstValue::ByRef(_, alloc, _) => {
             for &((), id) in alloc.relocations.values() {
                 collect_miri(tcx, id, output);
             }
         }
-        _ => {},
+        ConstValue::Scalar(Scalar::Bits { .. }) => {},
     }
 }

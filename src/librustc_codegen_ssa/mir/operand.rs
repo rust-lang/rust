@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::mir::interpret::{ConstValue, ErrorHandled};
+use rustc::mir::interpret::{ConstValue, ErrorHandled, Scalar};
 use rustc::mir;
 use rustc::ty;
-use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
+use rustc::ty::layout::{self, Align, LayoutOf, TyLayout, HasTyCtxt};
 
 use base;
 use MemFlags;
@@ -85,19 +85,42 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
             return Ok(OperandRef::new_zst(bx.cx(), layout));
         }
 
+        let imm = |x| {
+            let scalar = match layout.abi {
+                layout::Abi::Scalar(ref x) => x,
+                _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
+            };
+            let llval = bx.cx().scalar_to_backend(
+                x,
+                scalar,
+                bx.cx().immediate_backend_type(layout),
+            );
+            OperandValue::Immediate(llval)
+        };
+
         let val = match val.val {
             ConstValue::Unevaluated(..) => bug!(),
-            ConstValue::Scalar(x) => {
-                let scalar = match layout.abi {
-                    layout::Abi::Scalar(ref x) => x,
-                    _ => bug!("from_const: invalid ByVal layout: {:#?}", layout)
-                };
-                let llval = bx.cx().scalar_to_backend(
-                    x,
-                    scalar,
-                    bx.cx().immediate_backend_type(layout),
-                );
-                OperandValue::Immediate(llval)
+            ConstValue::Scalar(x) => imm(x),
+            ConstValue::Slice(id, alloc) => {
+                match layout.ty.builtin_deref(false).unwrap().ty.sty {
+                    ty::TyKind::Str => {
+                        let a_scalar = match layout.abi {
+                            layout::Abi::ScalarPair(ref a, _)  => a,
+                            _ => bug!("from_const: invalid layout: {:#?}", layout)
+                        };
+                        let a_llval = bx.cx().scalar_to_backend(
+                            Scalar::Ptr(id.into()),
+                            a_scalar,
+                            bx.cx().scalar_pair_element_backend_type(layout, 0, true),
+                        );
+                        let b_llval = bx.cx().const_usize(alloc.bytes.len() as u64);
+                        OperandValue::Pair(a_llval, b_llval)
+                    },
+                    ty::TyKind::Array(u, _) if u == bx.cx().tcx().types.u8 => {
+                        imm(Scalar::Ptr(id.into()))
+                    }
+                    _ => bug!("from_const: invalid ScalarPair layout: {:#?}", layout)
+                }
             },
             ConstValue::ByRef(_, alloc, offset) => {
                 return Ok(bx.load_operand(bx.cx().from_const_alloc(layout, alloc, offset)));
