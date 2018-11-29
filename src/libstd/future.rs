@@ -95,10 +95,10 @@ where
     });
     let _reset_waker = SetOnDrop(waker_ptr);
 
-    let mut waker_ptr = waker_ptr.expect(
+    let waker_ptr = waker_ptr.expect(
         "TLS LocalWaker not set. This is a rustc bug. \
         Please file an issue on https://github.com/rust-lang/rust.");
-    unsafe { f(waker_ptr.as_mut()) }
+    unsafe { f(waker_ptr.as_ref()) }
 }
 
 #[unstable(feature = "gen_future", issue = "50547")]
