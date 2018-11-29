@@ -10,7 +10,7 @@
 
 //! Method lookup: the secret sauce of Rust. See the [rustc guide] chapter.
 //!
-//! [rustc guide]: https://rust-lang-nursery.github.io/rustc-guide/method-lookup.html
+//! [rustc guide]: https://rust-lang.github.io/rustc-guide/method-lookup.html
 
 use check::FnCtxt;
 use hir::def::Def;

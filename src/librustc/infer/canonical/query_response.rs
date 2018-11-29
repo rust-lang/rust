@@ -15,7 +15,7 @@
 //! For an overview of what canonicaliation is and how it fits into
 //! rustc, check out the [chapter in the rustc guide][c].
 //!
-//! [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html
+//! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
 use infer::canonical::substitute::substitute_value;
 use infer::canonical::{
@@ -184,7 +184,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     /// To get a good understanding of what is happening here, check
     /// out the [chapter in the rustc guide][c].
     ///
-    /// [c]: https://rust-lang-nursery.github.io/rustc-guide/traits/canonicalization.html#processing-the-canonicalized-query-result
+    /// [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html#processing-the-canonicalized-query-result
     pub fn instantiate_query_response_and_region_obligations<R>(
         &self,
         cause: &ObligationCause<'tcx>,

@@ -985,7 +985,7 @@ fn collect_and_partition_mono_items<'a, 'tcx>(
                 output.push_str(" @@");
                 let mut empty = Vec::new();
                 let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
-                cgus.as_mut_slice().sort_by_key(|&(ref name, _)| name.clone());
+                cgus.as_mut_slice().sort_by_cached_key(|&(ref name, _)| name.clone());
                 cgus.dedup();
                 for &(ref cgu_name, (linkage, _)) in cgus.iter() {
                     output.push_str(" ");

@@ -3,6 +3,10 @@ error: lifetime parameters must be declared prior to type parameters
    |
 LL | enum X<'a, T, 'b> {
    |               ^^
+help: move the lifetime parameter prior to the first type parameter
+   |
+LL | enum X<'a, 'b, T> {
+   |            ^^^ --
 
 error: aborting due to previous error
 

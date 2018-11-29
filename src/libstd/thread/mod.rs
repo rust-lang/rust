@@ -326,7 +326,7 @@ impl Builder {
     /// Sets the size of the stack (in bytes) for the new thread.
     ///
     /// The actual stack size may be greater than this value if
-    /// the platform specifies minimal stack size.
+    /// the platform specifies a minimal stack size.
     ///
     /// For more information about the stack size for threads, see
     /// [this module-level documentation][stack-size].

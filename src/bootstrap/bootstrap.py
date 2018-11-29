@@ -154,7 +154,7 @@ def run(args, verbose=False, exception=False, **kwargs):
 
 def stage0_data(rust_root):
     """Build a dictionary from stage0.txt"""
-    nightlies = os.path.join(rust_root, "src/stage0.txt")
+    nightlies = os.path.join(rust_root, "stage0.txt")
     with open(nightlies, 'r') as nightlies:
         lines = [line.rstrip() for line in nightlies
                  if not line.startswith("#")]

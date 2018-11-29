@@ -431,7 +431,7 @@ fn read_to_end_with_reservation<R: Read + ?Sized>(r: &mut R,
 ///     // read up to 10 bytes
 ///     f.read(&mut buffer)?;
 ///
-///     let mut buffer = vec![0; 10];
+///     let mut buffer = Vec::new();
 ///     // read the whole file
 ///     f.read_to_end(&mut buffer)?;
 ///
