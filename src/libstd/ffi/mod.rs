@@ -112,12 +112,12 @@
 //! ## On Unix
 //!
 //! On Unix, [`OsStr`] implements the
-//! `std::os::unix:ffi::`[`OsStrExt`][unix.OsStrExt] trait, which
+//! `std::os::unix::ffi::`[`OsStrExt`][unix.OsStrExt] trait, which
 //! augments it with two methods, [`from_bytes`] and [`as_bytes`].
 //! These do inexpensive conversions from and to UTF-8 byte slices.
 //!
 //! Additionally, on Unix [`OsString`] implements the
-//! `std::os::unix:ffi::`[`OsStringExt`][unix.OsStringExt] trait,
+//! `std::os::unix::ffi::`[`OsStringExt`][unix.OsStringExt] trait,
 //! which provides [`from_vec`] and [`into_vec`] methods that consume
 //! their arguments, and take or produce vectors of [`u8`].
 //!
