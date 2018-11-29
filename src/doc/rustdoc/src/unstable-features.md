@@ -455,3 +455,7 @@ Some methodology notes about what rustdoc counts in this metric:
 
 Public items that are not documented can be seen with the built-in `missing_docs` lint. Private
 items that are not documented can be seen with Clippy's `missing_docs_in_private_items` lint.
+
+### `disable-minification`: prevent minification of CSS and JS files
+
+By default, all JS and CSS files are minified in order to make them smaller. However, it's also a lot harder to read them. This feature allows you to prevent it.
