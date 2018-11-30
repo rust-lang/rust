@@ -478,7 +478,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
     pub fn infer_ctxt(self) -> InferCtxtBuilder<'a, 'gcx, 'tcx> {
         InferCtxtBuilder {
             global_tcx: self,
-            arena: SyncDroplessArena::default(),
+            arena: SyncDroplessArena::new(),
             fresh_tables: None,
         }
     }

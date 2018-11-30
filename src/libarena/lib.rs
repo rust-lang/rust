@@ -24,6 +24,8 @@
        test(no_crate_inject, attr(deny(warnings))))]
 
 #![feature(alloc)]
+#![feature(allocator_api)]
+#![feature(alloc_layout_extra)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(nll)]
@@ -35,16 +37,19 @@
 extern crate alloc;
 extern crate rustc_data_structures;
 
-use rustc_data_structures::sync::MTLock;
+use rustc_data_structures::OnDrop;
+use rustc_data_structures::sync::{MTLock, WorkerLocal};
 
+use std::process;
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::intrinsics;
 use std::marker::{PhantomData, Send};
 use std::mem;
 use std::ptr;
+use std::ptr::NonNull;
 use std::slice;
-
+use std::alloc::{Alloc, Global, Layout};
 use alloc::raw_vec::RawVec;
 
 /// An arena that can hold objects of only one type.
@@ -452,12 +457,20 @@ impl<T> SyncTypedArena<T> {
     }
 }
 
-#[derive(Default)]
 pub struct SyncDroplessArena {
     lock: MTLock<DroplessArena>,
+    deferred: WorkerLocal<RefCell<DeferredDeallocs>>,
 }
 
 impl SyncDroplessArena {
+    #[inline]
+    pub fn new() -> Self {
+        SyncDroplessArena {
+            lock: Default::default(),
+            deferred: WorkerLocal::new(|_| Default::default()),
+        }
+    }
+
     #[inline(always)]
     pub fn in_arena<T: ?Sized>(&self, ptr: *const T) -> bool {
         self.lock.lock().in_arena(ptr)
@@ -482,6 +495,98 @@ impl SyncDroplessArena {
     {
         // Extend the lifetime of the result since it's limited to the lock guard
         unsafe { &mut *(self.lock.lock().alloc_slice(slice) as *mut [T]) }
+    }
+
+    #[inline]
+    pub fn promote<T: DeferDeallocs>(&self, object: T) -> &T {
+        let mem = self.alloc_raw(mem::size_of::<T>(), mem::align_of::<T>()) as *mut _ as *mut T;
+
+        {
+            // Abort the process if we panic here to ensure that we don't both
+            // record and allocation and also destroy object, resulting in a double free
+            let abort = OnDrop(|| process::abort());
+
+            // Defer the allocations
+            object.defer(&mut *self.deferred.borrow_mut());
+
+            mem::forget(abort);
+        }
+
+        unsafe {
+            // Write into uninitialized memory.
+            ptr::write(mem, object);
+            &mut *mem
+        }
+    }
+
+    #[inline(always)]
+    pub fn promote_vec<T: DeferDeallocs>(&self, vec: Vec<T>) -> &[T] {
+        // Defer the allocations
+        vec.defer(&mut *self.deferred.borrow_mut());
+
+        // Then just return the slice
+        let result = &vec[..] as *const [T];
+        mem::forget(vec);
+        unsafe { &*result }
+    }
+}
+
+#[derive(Default)]
+pub struct DeferredDeallocs {
+    allocations: Vec<(NonNull<u8>, Layout)>,
+}
+
+impl DeferredDeallocs {
+    #[inline]
+    fn add(&mut self, ptr: NonNull<u8>, layout: Layout) {
+        self.allocations.push((ptr, layout));
+    }
+}
+
+impl Drop for DeferredDeallocs {
+    fn drop(&mut self) {
+        for &(ptr, layout) in &self.allocations {
+            unsafe {
+                Global.dealloc(ptr, layout);
+            }
+        }
+    }
+}
+
+pub unsafe trait DeferDeallocs {
+    fn defer(&self, deferred: &mut DeferredDeallocs);
+}
+
+unsafe impl<T: DeferDeallocs> DeferDeallocs for Vec<T> {
+    #[inline]
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        if mem::size_of::<T>() == 0 || self.capacity() == 0 {
+            return;
+        }
+        let ptr = unsafe {
+            NonNull::new_unchecked(self.as_ptr() as *mut u8)
+        };
+        let size = mem::size_of::<T>();
+        let align = mem::align_of::<T>();
+        let layout = unsafe {
+            Layout::from_size_align_unchecked(self.capacity() * size, align)
+        };
+        deferred.add(ptr, layout);
+        for v in self {
+            v.defer(deferred)
+        }
+    }
+}
+
+#[macro_export]
+macro_rules! impl_defer_dellocs_for_no_drop_type {
+    ([$($p:tt)*] $t:ty) => {
+        unsafe impl $($p)* $crate::DeferDeallocs for $t {
+            #[inline(always)]
+            fn defer(&self, deferred: &mut $crate::DeferredDeallocs) {
+                assert!(!::std::mem::needs_drop::<Self>());
+            }
+        }
     }
 }
 

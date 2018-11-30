@@ -10,6 +10,7 @@
 
 //! type context book-keeping
 
+use arena::DeferDeallocs;
 use dep_graph::DepGraph;
 use dep_graph::{DepNode, DepConstructor};
 use errors::DiagnosticBuilder;
@@ -92,7 +93,7 @@ impl<'tcx> AllArenas<'tcx> {
     pub fn new() -> Self {
         AllArenas {
             global: WorkerLocal::new(|_| GlobalArenas::default()),
-            interner: SyncDroplessArena::default(),
+            interner: SyncDroplessArena::new(),
         }
     }
 }
@@ -969,6 +970,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             gcx: self.gcx,
             interners: &self.gcx.global_interners,
         }
+    }
+
+    #[inline(always)]
+    pub fn promote<T: DeferDeallocs>(&self, object: T) -> &'gcx T {
+        self.gcx.global_interners.arena.promote(object)
+    }
+
+    #[inline(always)]
+    pub fn promote_vec<T: DeferDeallocs>(&self, vec: Vec<T>) -> &'gcx [T] {
+        self.gcx.global_interners.arena.promote_vec(vec)
     }
 
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {

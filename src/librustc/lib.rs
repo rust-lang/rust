@@ -74,7 +74,7 @@
 
 #![warn(elided_lifetimes_in_paths)]
 
-extern crate arena;
+#[macro_use] extern crate arena;
 #[macro_use] extern crate bitflags;
 extern crate core;
 extern crate fmt_macros;
