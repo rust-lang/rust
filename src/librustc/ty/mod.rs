@@ -14,7 +14,6 @@ pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::fold::TypeFoldable;
 
-use arena::{DeferredDeallocs, DeferDeallocs};
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::Node;
 use hir::def::{Def, CtorKind, ExportMap};
@@ -58,6 +57,7 @@ use syntax::symbol::{keywords, Symbol, LocalInternedString, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 
 use smallvec;
+use rustc_data_structures::defer_deallocs::{DeferredDeallocs, DeferDeallocs};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};

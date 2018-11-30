@@ -10,7 +10,6 @@
 
 //! type context book-keeping
 
-use arena::DeferDeallocs;
 use dep_graph::DepGraph;
 use dep_graph::{DepNode, DepConstructor};
 use errors::DiagnosticBuilder;
@@ -56,6 +55,7 @@ use util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::interner::HashInterner;
 use smallvec::SmallVec;
+use rustc_data_structures::defer_deallocs::DeferDeallocs;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};

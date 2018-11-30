@@ -15,6 +15,7 @@ use std::iter;
 use std::marker::PhantomData;
 use std::mem;
 use std::slice;
+use defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 
 pub type Word = u64;
 pub const WORD_BYTES: usize = mem::size_of::<Word>();
@@ -186,6 +187,13 @@ impl<T: Idx> BitSet<T> {
     pub fn to_hybrid(&self) -> HybridBitSet<T> {
         // Note: we currently don't bother trying to make a Sparse set.
         HybridBitSet::Dense(self.to_owned())
+    }
+}
+
+unsafe impl<T: Idx> DeferDeallocs for BitSet<T> {
+    #[inline]
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.words.defer(deferred);
     }
 }
 

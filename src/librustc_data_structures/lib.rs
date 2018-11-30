@@ -20,6 +20,9 @@
       html_favicon_url = "https://www.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(allocator_api)]
+#![feature(alloc_layout_extra)]
+#![feature(extract_raw_alloc)]
 #![feature(in_band_lifetimes)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
@@ -61,6 +64,7 @@ pub use rustc_serialize::hex::ToHex;
 pub mod macros;
 pub mod svh;
 pub mod base_n;
+#[macro_use] pub mod defer_deallocs;
 pub mod bit_set;
 pub mod const_cstr;
 pub mod flock;
