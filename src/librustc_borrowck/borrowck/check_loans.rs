@@ -615,7 +615,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     let new_loan_str = &new_loan.kind.to_user_str();
                     self.bccx.cannot_reborrow_already_uniquely_borrowed(
                         new_loan.span, "closure", &nl, &new_loan_msg, new_loan_str,
-                        old_loan.span, &old_loan_msg, previous_end_span, Origin::Ast)
+                        old_loan.span, &old_loan_msg, previous_end_span, "", Origin::Ast)
                 }
                 (..) =>
                     self.bccx.cannot_reborrow_already_borrowed(
