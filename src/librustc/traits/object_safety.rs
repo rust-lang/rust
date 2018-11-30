@@ -409,7 +409,7 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             .collect::<Vec<_>>();
 
         // existential predicates need to be in a specific order
-        associated_types.sort_by_key(|item| self.def_path_hash(item.def_id));
+        associated_types.sort_by_cached_key(|item| self.def_path_hash(item.def_id));
 
         let projection_predicates = associated_types.into_iter().map(|item| {
             ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
