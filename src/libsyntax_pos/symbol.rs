@@ -492,6 +492,10 @@ impl LocalInternedString {
             symbol: Symbol::intern(self.string)
         }
     }
+
+    pub fn get(&self) -> &'static str {
+        self.string
+    }
 }
 
 impl<U: ?Sized> ::std::convert::AsRef<U> for LocalInternedString
