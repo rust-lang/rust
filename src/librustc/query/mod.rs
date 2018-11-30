@@ -174,7 +174,7 @@ rustc_queries! {
 
         /// Returns the inferred outlives predicates (e.g., for `struct
         /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
-        query inferred_outlives_of(_: DefId) -> Lrc<Vec<ty::Predicate<'tcx>>> {}
+        query inferred_outlives_of(_: DefId) -> &'tcx [ty::Predicate<'tcx>] {}
 
         /// Maps from the `DefId` of a trait to the list of
         /// super-predicates. This is a subset of the full list of
