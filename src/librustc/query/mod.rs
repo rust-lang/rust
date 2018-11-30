@@ -91,7 +91,7 @@ rustc_queries! {
         /// Maps DefId's that have an associated Mir to the result
         /// of the MIR qualify_consts pass. The actual meaning of
         /// the value isn't known except to the pass itself.
-        query mir_const_qualif(key: DefId) -> (u8, Lrc<BitSet<mir::Local>>) {
+        query mir_const_qualif(key: DefId) -> (u8, &'tcx BitSet<mir::Local>) {
             cache { key.is_local() }
         }
 
