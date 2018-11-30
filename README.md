@@ -175,8 +175,10 @@ Several `-Z` flags are relevant for miri:
 
 Check out the issues on this GitHub repository for some ideas. There's lots that
 needs to be done that I haven't documented in the issues yet, however. For more
-ideas or help with running or hacking on Miri, you can contact me (`scott`) on
-Mozilla IRC in any of the Rust IRC channels (`#rust`, `#rust-offtopic`, etc).
+ideas or help with running or hacking on Miri, you can open an issue here on
+GitHub or contact us (`oli-obk` and `RalfJ`) on the [Rust Zulip].
+
+[Rust Zulip]: https://rust-lang.zulipchat.com
 
 ## History
 
