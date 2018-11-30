@@ -83,6 +83,8 @@ pub struct NormalizationResult<'tcx> {
     pub normalized_ty: Ty<'tcx>,
 }
 
+impl_defer_dellocs_for_no_drop_type!([<'tcx>] NormalizationResult<'tcx>);
+
 struct QueryNormalizer<'cx, 'gcx: 'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
     cause: &'cx ObligationCause<'tcx>,

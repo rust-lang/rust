@@ -572,7 +572,7 @@ define_queries! { <'tcx>
         [] fn normalize_projection_ty: NormalizeProjectionTy(
             CanonicalProjectionGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>>,
+            Bx<'tcx, Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>>,
             NoSolution,
         >,
 
@@ -584,7 +584,7 @@ define_queries! { <'tcx>
         [] fn implied_outlives_bounds: ImpliedOutlivesBounds(
             CanonicalTyGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>>,
+            Bx<'tcx, Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>>,
             NoSolution,
         >,
 
@@ -592,7 +592,7 @@ define_queries! { <'tcx>
         [] fn dropck_outlives: DropckOutlives(
             CanonicalTyGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>>,
+            Bx<'tcx, Canonical<'tcx, canonical::QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>>,
             NoSolution,
         >,
 
@@ -606,7 +606,7 @@ define_queries! { <'tcx>
         [] fn type_op_ascribe_user_type: TypeOpAscribeUserType(
             CanonicalTypeOpAscribeUserTypeGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
+            Bx<'tcx, Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
             NoSolution,
         >,
 
@@ -614,7 +614,7 @@ define_queries! { <'tcx>
         [] fn type_op_eq: TypeOpEq(
             CanonicalTypeOpEqGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
+            Bx<'tcx, Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
             NoSolution,
         >,
 
@@ -622,7 +622,7 @@ define_queries! { <'tcx>
         [] fn type_op_subtype: TypeOpSubtype(
             CanonicalTypeOpSubtypeGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
+            Bx<'tcx, Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
             NoSolution,
         >,
 
@@ -630,7 +630,7 @@ define_queries! { <'tcx>
         [] fn type_op_prove_predicate: TypeOpProvePredicate(
             CanonicalTypeOpProvePredicateGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
+            Bx<'tcx, Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
             NoSolution,
         >,
 
@@ -638,7 +638,7 @@ define_queries! { <'tcx>
         [] fn type_op_normalize_ty: TypeOpNormalizeTy(
             CanonicalTypeOpNormalizeGoal<'tcx, Ty<'tcx>>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, Ty<'tcx>>>>,
+            Bx<'tcx, Canonical<'tcx, canonical::QueryResponse<'tcx, Ty<'tcx>>>>,
             NoSolution,
         >,
 
@@ -646,7 +646,7 @@ define_queries! { <'tcx>
         [] fn type_op_normalize_predicate: TypeOpNormalizePredicate(
             CanonicalTypeOpNormalizeGoal<'tcx, ty::Predicate<'tcx>>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ty::Predicate<'tcx>>>>,
+            Bx<'tcx, Canonical<'tcx, canonical::QueryResponse<'tcx, ty::Predicate<'tcx>>>>,
             NoSolution,
         >,
 
@@ -654,7 +654,7 @@ define_queries! { <'tcx>
         [] fn type_op_normalize_poly_fn_sig: TypeOpNormalizePolyFnSig(
             CanonicalTypeOpNormalizeGoal<'tcx, ty::PolyFnSig<'tcx>>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ty::PolyFnSig<'tcx>>>>,
+            Bx<'tcx, Canonical<'tcx, canonical::QueryResponse<'tcx, ty::PolyFnSig<'tcx>>>>,
             NoSolution,
         >,
 
@@ -662,7 +662,7 @@ define_queries! { <'tcx>
         [] fn type_op_normalize_fn_sig: TypeOpNormalizeFnSig(
             CanonicalTypeOpNormalizeGoal<'tcx, ty::FnSig<'tcx>>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ty::FnSig<'tcx>>>>,
+            Bx<'tcx, Canonical<'tcx, canonical::QueryResponse<'tcx, ty::FnSig<'tcx>>>>,
             NoSolution,
         >,
 

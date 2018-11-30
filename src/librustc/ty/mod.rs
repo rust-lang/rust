@@ -1234,6 +1234,14 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A: B`
+
+unsafe impl<A: DeferDeallocs, B: DeferDeallocs> DeferDeallocs for OutlivesPredicate<A, B> {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.0.defer(deferred);
+        self.1.defer(deferred);
+    }
+}
+
 pub type PolyOutlivesPredicate<A,B> = ty::Binder<OutlivesPredicate<A,B>>;
 pub type RegionOutlivesPredicate<'tcx> = OutlivesPredicate<ty::Region<'tcx>,
                                                            ty::Region<'tcx>>;
@@ -1548,6 +1556,7 @@ newtype_index! {
     }
 }
 
+impl_defer_dellocs_for_no_drop_type!([] UniverseIndex);
 impl_stable_hash_for!(struct UniverseIndex { private });
 
 impl UniverseIndex {

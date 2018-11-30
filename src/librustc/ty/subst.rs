@@ -38,6 +38,8 @@ pub struct Kind<'tcx> {
     marker: PhantomData<(Ty<'tcx>, ty::Region<'tcx>)>
 }
 
+impl_defer_dellocs_for_no_drop_type!([<'tcx>] Kind<'tcx>);
+
 const TAG_MASK: usize = 0b11;
 const TYPE_TAG: usize = 0b00;
 const REGION_TAG: usize = 0b01;

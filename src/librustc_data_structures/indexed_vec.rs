@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use std::fmt::Debug;
 use std::iter::{self, FromIterator};
 use std::slice;
@@ -465,6 +466,12 @@ pub struct IndexVec<I: Idx, T> {
 // Whether `IndexVec` is `Send` depends only on the data,
 // not the phantom data.
 unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
+
+unsafe impl<I: Idx, T: DeferDeallocs> DeferDeallocs for IndexVec<I, T> {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.raw.defer(deferred);
+    }
+}
 
 impl<I: Idx, T: serialize::Encodable> serialize::Encodable for IndexVec<I, T> {
     fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {

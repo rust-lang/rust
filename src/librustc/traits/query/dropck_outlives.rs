@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use infer::at::At;
 use infer::InferOk;
 use infer::canonical::OriginalQueryValues;
@@ -93,6 +94,13 @@ impl<'cx, 'gcx, 'tcx> At<'cx, 'gcx, 'tcx> {
 pub struct DropckOutlivesResult<'tcx> {
     pub kinds: Vec<Kind<'tcx>>,
     pub overflows: Vec<Ty<'tcx>>,
+}
+
+unsafe impl<'tcx> DeferDeallocs for DropckOutlivesResult<'tcx> {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.kinds.defer(deferred);
+        self.overflows.defer(deferred);
+    }
 }
 
 impl<'tcx> DropckOutlivesResult<'tcx> {

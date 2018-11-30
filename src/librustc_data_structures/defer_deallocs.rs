@@ -75,6 +75,7 @@ unsafe impl<T: DeferDeallocs> DeferDeallocs for Vec<T> {
     }
 }
 
+impl_defer_dellocs_for_no_drop_type!([] ());
 impl_defer_dellocs_for_no_drop_type!([] bool);
 impl_defer_dellocs_for_no_drop_type!([] usize);
 impl_defer_dellocs_for_no_drop_type!([] u32);

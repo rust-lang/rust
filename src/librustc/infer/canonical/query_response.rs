@@ -25,9 +25,9 @@ use infer::canonical::{
 use infer::region_constraints::{Constraint, RegionConstraintData};
 use infer::InferCtxtBuilder;
 use infer::{InferCtxt, InferOk, InferResult};
+use rustc_data_structures::defer_deallocs::DeferDeallocs;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::sync::Lrc;
 use std::fmt::Debug;
 use syntax_pos::DUMMY_SP;
 use traits::query::{Fallible, NoSolution};
@@ -63,6 +63,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     where
         K: TypeFoldable<'tcx>,
         R: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
+        <R as Lift<'gcx>>::Lifted: DeferDeallocs,
     {
         self.enter_with_canonical(
             DUMMY_SP,
@@ -104,6 +105,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, T>>
     where
         T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
+        <T as Lift<'gcx>>::Lifted: DeferDeallocs,
     {
         let query_response = self.make_query_response(inference_vars, answer, fulfill_cx)?;
         let canonical_result = self.canonicalize_response(&query_response);
@@ -113,7 +115,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             canonical_result
         );
 
-        Ok(Lrc::new(canonical_result))
+        Ok(self.tcx.bx(canonical_result))
     }
 
     /// Helper for `make_canonicalized_query_response` that does

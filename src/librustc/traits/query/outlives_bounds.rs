@@ -35,6 +35,8 @@ pub enum OutlivesBound<'tcx> {
     RegionSubProjection(ty::Region<'tcx>, ty::ProjectionTy<'tcx>),
 }
 
+impl_defer_dellocs_for_no_drop_type!([<'tcx>] OutlivesBound<'tcx>);
+
 EnumLiftImpl! {
     impl<'a, 'tcx> Lift<'tcx> for self::OutlivesBound<'a> {
         type Lifted = self::OutlivesBound<'tcx>;

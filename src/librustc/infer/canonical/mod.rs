@@ -32,15 +32,15 @@
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
 use infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin};
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::sync::Lrc;
 use serialize::UseSpecializedDecodable;
 use smallvec::SmallVec;
 use std::ops::Index;
 use syntax::source_map::Span;
 use ty::fold::TypeFoldable;
 use ty::subst::Kind;
-use ty::{self, BoundVar, Lift, List, Region, TyCtxt};
+use ty::{self, Bx, BoundVar, Lift, List, Region, TyCtxt};
 
 mod canonicalizer;
 
@@ -56,6 +56,13 @@ pub struct Canonical<'gcx, V> {
     pub max_universe: ty::UniverseIndex,
     pub variables: CanonicalVarInfos<'gcx>,
     pub value: V,
+}
+
+unsafe impl<'gcx, V: DeferDeallocs> DeferDeallocs for Canonical<'gcx, V> {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.max_universe.defer(deferred);
+        self.value.defer(deferred);
+    }
 }
 
 pub type CanonicalVarInfos<'gcx> = &'gcx List<CanonicalVarInfo>;
@@ -74,6 +81,12 @@ impl<'gcx> UseSpecializedDecodable for CanonicalVarInfos<'gcx> {}
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcDecodable, RustcEncodable)]
 pub struct CanonicalVarValues<'tcx> {
     pub var_values: IndexVec<BoundVar, Kind<'tcx>>,
+}
+
+unsafe impl<'tcx> DeferDeallocs for CanonicalVarValues<'tcx> {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.var_values.defer(deferred);
+    }
 }
 
 /// When we canonicalize a value to form a query, we wind up replacing
@@ -192,10 +205,19 @@ pub struct QueryResponse<'tcx, R> {
     pub value: R,
 }
 
+unsafe impl<'tcx, R: DeferDeallocs> DeferDeallocs for QueryResponse<'tcx, R> {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.var_values.defer(deferred);
+        self.region_constraints.defer(deferred);
+        self.certainty.defer(deferred);
+        self.value.defer(deferred);
+    }
+}
+
 pub type Canonicalized<'gcx, V> = Canonical<'gcx, <V as Lift<'gcx>>::Lifted>;
 
 pub type CanonicalizedQueryResponse<'gcx, T> =
-    Lrc<Canonical<'gcx, QueryResponse<'gcx, <T as Lift<'gcx>>::Lifted>>>;
+    Bx<'gcx, Canonical<'gcx, QueryResponse<'gcx, <T as Lift<'gcx>>::Lifted>>>;
 
 /// Indicates whether or not we were able to prove the query to be
 /// true.
@@ -218,6 +240,8 @@ pub enum Certainty {
     /// query.
     Ambiguous,
 }
+
+impl_defer_dellocs_for_no_drop_type!([] Certainty);
 
 impl Certainty {
     pub fn is_proven(&self) -> bool {

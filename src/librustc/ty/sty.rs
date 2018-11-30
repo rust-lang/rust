@@ -10,6 +10,7 @@
 
 //! This module contains TyKind and its major components
 
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use hir::def_id::DefId;
 use infer::canonical::Canonical;
 use mir::interpret::ConstValue;
@@ -888,6 +889,12 @@ impl<T> Binder<T> {
     }
 }
 
+unsafe impl<T: DeferDeallocs> DeferDeallocs for Binder<T> {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.0.defer(deferred);
+    }
+}
+
 /// Represents the projection of an associated type. In explicit UFCS
 /// form this would be written `<T as Trait<..>>::N`.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
@@ -965,6 +972,8 @@ pub struct FnSig<'tcx> {
     pub unsafety: hir::Unsafety,
     pub abi: abi::Abi,
 }
+
+impl_defer_dellocs_for_no_drop_type!([<'tcx>] FnSig<'tcx>);
 
 impl<'tcx> FnSig<'tcx> {
     pub fn inputs(&self) -> &'tcx [Ty<'tcx>] {
@@ -1246,6 +1255,8 @@ pub enum InferTy {
 newtype_index! {
     pub struct BoundVar { .. }
 }
+
+impl_defer_dellocs_for_no_drop_type!([] BoundVar);
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, RustcEncodable, RustcDecodable)]
 pub struct BoundTy {

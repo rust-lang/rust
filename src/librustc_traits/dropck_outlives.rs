@@ -15,9 +15,8 @@ use rustc::traits::query::{CanonicalTyGoal, NoSolution};
 use rustc::traits::{FulfillmentContext, Normalized, ObligationCause, TraitEngineExt};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{Subst, Substs};
-use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt};
+use rustc::ty::{self, Bx, ParamEnvAnd, Ty, TyCtxt};
 use rustc::util::nodemap::FxHashSet;
-use rustc_data_structures::sync::Lrc;
 use syntax::source_map::{Span, DUMMY_SP};
 
 crate fn provide(p: &mut Providers) {
@@ -31,7 +30,7 @@ crate fn provide(p: &mut Providers) {
 fn dropck_outlives<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     canonical_goal: CanonicalTyGoal<'tcx>,
-) -> Result<Lrc<Canonical<'tcx, QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>>, NoSolution> {
+) -> Result<Bx<'tcx, Canonical<'tcx, QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>>, NoSolution> {
     debug!("dropck_outlives(goal={:#?})", canonical_goal);
 
     tcx.infer_ctxt().enter_with_canonical(
