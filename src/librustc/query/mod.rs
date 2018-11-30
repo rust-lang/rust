@@ -245,13 +245,13 @@ rustc_queries! {
 
         /// Get a map with the variance of every item; use `item_variance`
         /// instead.
-        query crate_variances(_: CrateNum) -> Lrc<ty::CrateVariancesMap> {
+        query crate_variances(_: CrateNum) -> Lrc<ty::CrateVariancesMap<'tcx>> {
             desc { "computing the variances for items in this crate" }
         }
 
         /// Maps from def-id of a type or region parameter to its
         /// (inferred) variance.
-        query variances_of(_: DefId) -> Lrc<Vec<ty::Variance>> {}
+        query variances_of(_: DefId) -> &'tcx [ty::Variance] {}
     }
 
     TypeChecking {
