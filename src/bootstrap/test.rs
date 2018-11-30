@@ -1022,7 +1022,13 @@ impl Step for Compiletest {
             cmd.arg("--bless");
         }
 
-        let compare_mode = builder.config.cmd.compare_mode().or(self.compare_mode);
+        let compare_mode = builder.config.cmd.compare_mode().or_else(|| {
+            if builder.config.test_compare_mode {
+                self.compare_mode
+            } else {
+                None
+            }
+        });
 
         if let Some(ref nodejs) = builder.config.nodejs {
             cmd.arg("--nodejs").arg(nodejs);
