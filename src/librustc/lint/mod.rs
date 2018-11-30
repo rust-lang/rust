@@ -114,7 +114,8 @@ macro_rules! declare_lint {
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr $(,)?) => (
         declare_lint!{$vis $NAME, $Level, $desc, false}
     );
-    ($vis: vis $NAME: ident, $Level: ident, $desc: expr, report_in_external_macro: $rep: expr $(,)?) => (
+    ($vis: vis $NAME: ident, $Level: ident, $desc: expr,
+     report_in_external_macro: $rep: expr $(,)?) => (
         declare_lint!{$vis $NAME, $Level, $desc, $rep}
     );
     ($vis: vis $NAME: ident, $Level: ident, $desc: expr, $external: expr $(,)?) => (
