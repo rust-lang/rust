@@ -1275,6 +1275,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
         self.skip_binder().projection_ty.item_def_id
     }
 
+    #[inline]
     pub fn to_poly_trait_ref(&self, tcx: TyCtxt<'_, '_, '_>) -> PolyTraitRef<'tcx> {
         // Note: unlike with `TraitRef::to_poly_trait_ref()`,
         // `self.0.trait_ref` is permitted to have escaping regions.
@@ -1633,6 +1634,7 @@ impl<'tcx> ParamEnv<'tcx> {
     /// there are no where clauses in scope. Hidden types (like `impl
     /// Trait`) are left hidden, so this is suitable for ordinary
     /// type-checking.
+    #[inline]
     pub fn empty() -> Self {
         Self::new(List::empty(), Reveal::UserFacing)
     }
@@ -1644,11 +1646,13 @@ impl<'tcx> ParamEnv<'tcx> {
     ///
     /// N.B. If you want to have predicates in scope, use `ParamEnv::new`,
     /// or invoke `param_env.with_reveal_all()`.
+    #[inline]
     pub fn reveal_all() -> Self {
         Self::new(List::empty(), Reveal::All)
     }
 
     /// Construct a trait environment with the given set of predicates.
+    #[inline]
     pub fn new(caller_bounds: &'tcx List<ty::Predicate<'tcx>>,
                reveal: Reveal)
                -> Self {
@@ -2148,6 +2152,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
     }
 
+    #[inline]
     pub fn variant_descr(&self) -> &'static str {
         match self.adt_kind() {
             AdtKind::Struct => "struct",
