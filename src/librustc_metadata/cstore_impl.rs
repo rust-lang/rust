@@ -20,6 +20,7 @@ use rustc::hir::map::definitions::DefPathTable;
 use rustc::util::nodemap::DefIdMap;
 use rustc_data_structures::svh::Svh;
 
+use smallvec::SmallVec;
 use std::any::Any;
 use rustc_data_structures::sync::Lrc;
 use std::sync::Arc;
@@ -107,10 +108,10 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     variances_of => { tcx.arena.alloc_from_iter(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
-        let mut result = vec![];
+        let mut result = SmallVec::<[_; 8]>::new();
         cdata.each_child_of_item(def_id.index,
           |child| result.push(child.def.def_id()), tcx.sess);
-        Lrc::new(result)
+        tcx.arena.alloc_from_iter(result)
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
