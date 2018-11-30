@@ -1989,6 +1989,19 @@ big endian.
 ```
 let value = ", stringify!($SelfT), "::from_be_bytes(", $be_bytes, ");
 assert_eq!(value, ", $swap_op, ");
+```
+
+When starting from a slice rather than an array, fallible conversion APIs can be used:
+
+```
+#![feature(try_from)]
+use std::convert::TryInto;
+
+fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
+    *input = rest;
+    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+}
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
@@ -2008,6 +2021,19 @@ little endian.
 ```
 let value = ", stringify!($SelfT), "::from_le_bytes(", $le_bytes, ");
 assert_eq!(value, ", $swap_op, ");
+```
+
+When starting from a slice rather than an array, fallible conversion APIs can be used:
+
+```
+#![feature(try_from)]
+use std::convert::TryInto;
+
+fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
+    *input = rest;
+    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+}
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
@@ -2037,6 +2063,19 @@ let value = ", stringify!($SelfT), "::from_ne_bytes(if cfg!(target_endian = \"bi
         ", $le_bytes, "
     });
 assert_eq!(value, ", $swap_op, ");
+```
+
+When starting from a slice rather than an array, fallible conversion APIs can be used:
+
+```
+#![feature(try_from)]
+use std::convert::TryInto;
+
+fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
+    *input = rest;
+    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+}
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
@@ -3614,6 +3653,7 @@ assert_eq!(3", stringify!($SelfT), ".checked_next_power_of_two(), Some(4));
 assert_eq!(", stringify!($SelfT), "::max_value().checked_next_power_of_two(), None);",
 $EndFeature, "
 ```"),
+            #[inline]
             #[stable(feature = "rust1", since = "1.0.0")]
             pub fn checked_next_power_of_two(self) -> Option<Self> {
                 self.one_less_than_next_power_of_two().checked_add(1)
@@ -3719,6 +3759,19 @@ big endian.
 ```
 let value = ", stringify!($SelfT), "::from_be_bytes(", $be_bytes, ");
 assert_eq!(value, ", $swap_op, ");
+```
+
+When starting from a slice rather than an array, fallible conversion APIs can be used:
+
+```
+#![feature(try_from)]
+use std::convert::TryInto;
+
+fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
+    *input = rest;
+    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+}
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
@@ -3738,6 +3791,19 @@ little endian.
 ```
 let value = ", stringify!($SelfT), "::from_le_bytes(", $le_bytes, ");
 assert_eq!(value, ", $swap_op, ");
+```
+
+When starting from a slice rather than an array, fallible conversion APIs can be used:
+
+```
+#![feature(try_from)]
+use std::convert::TryInto;
+
+fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
+    *input = rest;
+    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+}
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]
@@ -3767,6 +3833,19 @@ let value = ", stringify!($SelfT), "::from_ne_bytes(if cfg!(target_endian = \"bi
         ", $le_bytes, "
     });
 assert_eq!(value, ", $swap_op, ");
+```
+
+When starting from a slice rather than an array, fallible conversion APIs can be used:
+
+```
+#![feature(try_from)]
+use std::convert::TryInto;
+
+fn read_be_", stringify!($SelfT), "(input: &mut &[u8]) -> ", stringify!($SelfT), " {
+    let (int_bytes, rest) = input.split_at(std::mem::size_of::<", stringify!($SelfT), ">());
+    *input = rest;
+    ", stringify!($SelfT), "::from_be_bytes(int_bytes.try_into().unwrap())
+}
 ```"),
             #[stable(feature = "int_to_from_bytes", since = "1.32.0")]
             #[rustc_const_unstable(feature = "const_int_conversion")]

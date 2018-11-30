@@ -185,7 +185,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
             Some(orig_name) => format!("use {} as {};", orig_name, item.name),
             None => format!("use {};", item.name),
         };
-        let replacement = visibility_qualified(&item.vis, &base_replacement);
+        let replacement = visibility_qualified(&item.vis, base_replacement);
         tcx.struct_span_lint_node(lint, id, extern_crate.span, msg)
             .span_suggestion_short_with_applicability(
                 extern_crate.span,

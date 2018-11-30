@@ -11,29 +11,40 @@
 //! This code is kind of an alternate way of doing subtyping,
 //! supertyping, and type equating, distinct from the `combine.rs`
 //! code but very similar in its effect and design. Eventually the two
-//! ought to be merged. This code is intended for use in NLL.
+//! ought to be merged. This code is intended for use in NLL and chalk.
 //!
 //! Here are the key differences:
 //!
-//! - This code generally assumes that there are no unbound type
-//!   inferences variables, because at NLL
-//!   time types are fully inferred up-to regions.
-//!   - Actually, to support user-given type annotations like
-//!     `Vec<_>`, we do have some measure of support for type
-//!     inference variables, but we impose some simplifying
-//!     assumptions on them that would not be suitable for the infer
-//!     code more generally. This could be fixed.
+//! - This code may choose to bypass some checks (e.g. the occurs check)
+//!   in the case where we know that there are no unbound type inference
+//!   variables. This is the case for NLL, because at NLL time types are fully
+//!   inferred up-to regions.
 //! - This code uses "universes" to handle higher-ranked regions and
 //!   not the leak-check. This is "more correct" than what rustc does
 //!   and we are generally migrating in this direction, but NLL had to
 //!   get there first.
+//!
+//! Also, this code assumes that there are no bound types at all, not even
+//! free ones. This is ok because:
+//! - we are not relating anything quantified over some type variable
+//! - we will have instantiated all the bound type vars already (the one
+//!   thing we relate in chalk are basically domain goals and their
+//!   constituents)
 
 use crate::infer::InferCtxt;
 use crate::ty::fold::{TypeFoldable, TypeVisitor};
 use crate::ty::relate::{self, Relate, RelateResult, TypeRelation};
 use crate::ty::subst::Kind;
 use crate::ty::{self, Ty, TyCtxt};
+use crate::ty::error::TypeError;
+use crate::traits::DomainGoal;
 use rustc_data_structures::fx::FxHashMap;
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum NormalizationStrategy {
+    Lazy,
+    Eager,
+}
 
 pub struct TypeRelating<'me, 'gcx: 'tcx, 'tcx: 'me, D>
 where
@@ -75,6 +86,10 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// delegate.
     fn push_outlives(&mut self, sup: ty::Region<'tcx>, sub: ty::Region<'tcx>);
 
+    /// Push a domain goal that will need to be proved for the two types to
+    /// be related. Used for lazy normalization.
+    fn push_domain_goal(&mut self, domain_goal: DomainGoal<'tcx>);
+
     /// Creates a new universe index. Used when instantiating placeholders.
     fn create_next_universe(&mut self) -> ty::UniverseIndex;
 
@@ -105,6 +120,13 @@ pub trait TypeRelatingDelegate<'tcx> {
     /// relate `Foo<'?0>` with `Foo<'a>` (and probably add an outlives
     /// relation stating that `'?0: 'a`).
     fn generalize_existential(&mut self, universe: ty::UniverseIndex) -> ty::Region<'tcx>;
+
+    /// Define the normalization strategy to use, eager or lazy.
+    fn normalization() -> NormalizationStrategy;
+
+    /// Enable some optimizations if we do not expect inference variables
+    /// in the RHS of the relation.
+    fn forbid_inference_vars() -> bool;
 }
 
 #[derive(Clone, Debug)]
@@ -242,15 +264,79 @@ where
         self.delegate.push_outlives(sup, sub);
     }
 
-    /// When we encounter a canonical variable `var` in the output,
-    /// equate it with `kind`. If the variable has been previously
-    /// equated, then equate it again.
-    fn relate_var(&mut self, var_ty: Ty<'tcx>, value_ty: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        debug!("equate_var(var_ty={:?}, value_ty={:?})", var_ty, value_ty);
+    /// Relate a projection type and some value type lazily. This will always
+    /// succeed, but we push an additional `ProjectionEq` goal depending
+    /// on the value type:
+    /// - if the value type is any type `T` which is not a projection, we push
+    ///   `ProjectionEq(projection = T)`.
+    /// - if the value type is another projection `other_projection`, we create
+    ///   a new inference variable `?U` and push the two goals
+    ///   `ProjectionEq(projection = ?U)`, `ProjectionEq(other_projection = ?U)`.
+    fn relate_projection_ty(
+        &mut self,
+        projection_ty: ty::ProjectionTy<'tcx>,
+        value_ty: ty::Ty<'tcx>
+    ) -> Ty<'tcx> {
+        use crate::infer::type_variable::TypeVariableOrigin;
+        use crate::traits::WhereClause;
+        use syntax_pos::DUMMY_SP;
 
-        let generalized_ty = self.generalize_value(value_ty);
-        self.infcx
-            .force_instantiate_unchecked(var_ty, generalized_ty);
+        match value_ty.sty {
+            ty::Projection(other_projection_ty) => {
+                let var = self.infcx.next_ty_var(TypeVariableOrigin::MiscVariable(DUMMY_SP));
+                self.relate_projection_ty(projection_ty, var);
+                self.relate_projection_ty(other_projection_ty, var);
+                var
+            }
+
+            _ => {
+                let projection = ty::ProjectionPredicate {
+                    projection_ty,
+                    ty: value_ty,
+                };
+                self.delegate.push_domain_goal(
+                    DomainGoal::Holds(WhereClause::ProjectionEq(projection))
+                );
+                value_ty
+            }
+        }
+    }
+
+    /// Relate a type inference variable with a value type.
+    fn relate_ty_var(
+        &mut self,
+        vid: ty::TyVid,
+        value_ty: Ty<'tcx>
+    ) -> RelateResult<'tcx, Ty<'tcx>> {
+        debug!("relate_ty_var(vid={:?}, value_ty={:?})", vid, value_ty);
+
+        match value_ty.sty {
+            ty::Infer(ty::TyVar(value_vid)) => {
+                // Two type variables: just equate them.
+                self.infcx.type_variables.borrow_mut().equate(vid, value_vid);
+                return Ok(value_ty);
+            }
+
+            ty::Projection(projection_ty)
+                if D::normalization() == NormalizationStrategy::Lazy =>
+            {
+                return Ok(self.relate_projection_ty(projection_ty, self.infcx.tcx.mk_var(vid)));
+            }
+
+            _ => (),
+        }
+
+        let generalized_ty = self.generalize_value(value_ty, vid)?;
+        debug!("relate_ty_var: generalized_ty = {:?}", generalized_ty);
+
+        if D::forbid_inference_vars() {
+            // In NLL, we don't have type inference variables
+            // floating around, so we can do this rather imprecise
+            // variant of the occurs-check.
+            assert!(!generalized_ty.has_infer_types());
+        }
+
+        self.infcx.type_variables.borrow_mut().instantiate(vid, generalized_ty);
 
         // The generalized values we extract from `canonical_var_values` have
         // been fully instantiated and hence the set of scopes we have
@@ -264,22 +350,27 @@ where
         // Restore the old scopes now.
         self.a_scopes = old_a_scopes;
 
-        debug!("equate_var: complete, result = {:?}", result);
+        debug!("relate_ty_var: complete, result = {:?}", result);
         result
     }
 
-    fn generalize_value<T: Relate<'tcx>>(&mut self, value: T) -> T {
-        TypeGeneralizer {
-            tcx: self.infcx.tcx,
+    fn generalize_value<T: Relate<'tcx>>(
+        &mut self,
+        value: T,
+        for_vid: ty::TyVid
+    ) -> RelateResult<'tcx, T> {
+        let universe = self.infcx.probe_ty_var(for_vid).unwrap_err();
+
+        let mut generalizer = TypeGeneralizer {
+            infcx: self.infcx,
             delegate: &mut self.delegate,
             first_free_index: ty::INNERMOST,
             ambient_variance: self.ambient_variance,
+            for_vid_sub_root: self.infcx.type_variables.borrow_mut().sub_root_var(for_vid),
+            universe,
+        };
 
-            // These always correspond to an `_` or `'_` written by
-            // user, and those are always in the root universe.
-            universe: ty::UniverseIndex::ROOT,
-        }.relate(&value, &value)
-            .unwrap()
+        generalizer.relate(&value, &value)
     }
 }
 
@@ -327,11 +418,35 @@ where
         Ok(r)
     }
 
-    fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+    fn tys(&mut self, a: Ty<'tcx>, mut b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
         let a = self.infcx.shallow_resolve(a);
-        match a.sty {
-            ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_)) => {
-                self.relate_var(a.into(), b.into())
+
+        if !D::forbid_inference_vars() {
+            b = self.infcx.shallow_resolve(b);
+        }
+
+        match (&a.sty, &b.sty) {
+            (_, &ty::Infer(ty::TyVar(vid))) => {
+                if D::forbid_inference_vars() {
+                    // Forbid inference variables in the RHS.
+                    bug!("unexpected inference var {:?}", b)
+                } else {
+                    self.relate_ty_var(vid, a)
+                }
+            }
+
+            (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var(vid, b),
+
+            (&ty::Projection(projection_ty), _)
+                if D::normalization() == NormalizationStrategy::Lazy =>
+            {
+                Ok(self.relate_projection_ty(projection_ty, b))
+            }
+
+            (_, &ty::Projection(projection_ty))
+                if D::normalization() == NormalizationStrategy::Lazy =>
+            {
+                Ok(self.relate_projection_ty(projection_ty, a))
             }
 
             _ => {
@@ -340,7 +455,8 @@ where
                     a, b, self.ambient_variance
                 );
 
-                relate::super_relate_tys(self, a, b)
+                // Will also handle unification of `IntVar` and `FloatVar`.
+                self.infcx.super_combine_tys(self, a, b)
             }
         }
     }
@@ -551,7 +667,7 @@ struct TypeGeneralizer<'me, 'gcx: 'tcx, 'tcx: 'me, D>
 where
     D: TypeRelatingDelegate<'tcx> + 'me,
 {
-    tcx: TyCtxt<'me, 'gcx, 'tcx>,
+    infcx: &'me InferCtxt<'me, 'gcx, 'tcx>,
 
     delegate: &'me mut D,
 
@@ -561,6 +677,14 @@ where
 
     first_free_index: ty::DebruijnIndex,
 
+    /// The vid of the type variable that is in the process of being
+    /// instantiated. If we find this within the value we are folding,
+    /// that means we would have created a cyclic value.
+    for_vid_sub_root: ty::TyVid,
+
+    /// The universe of the type variable that is in the process of being
+    /// instantiated. If we find anything that this universe cannot name,
+    /// we reject the relation.
     universe: ty::UniverseIndex,
 }
 
@@ -569,7 +693,7 @@ where
     D: TypeRelatingDelegate<'tcx>,
 {
     fn tcx(&self) -> TyCtxt<'me, 'gcx, 'tcx> {
-        self.tcx
+        self.infcx.tcx
     }
 
     fn tag(&self) -> &'static str {
@@ -609,17 +733,84 @@ where
     }
 
     fn tys(&mut self, a: Ty<'tcx>, _: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        use crate::infer::type_variable::TypeVariableValue;
+
         debug!("TypeGeneralizer::tys(a={:?})", a,);
 
         match a.sty {
-            ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_)) => {
+            ty::Infer(ty::TyVar(_)) | ty::Infer(ty::IntVar(_)) | ty::Infer(ty::FloatVar(_))
+                if D::forbid_inference_vars() =>
+            {
                 bug!(
                     "unexpected inference variable encountered in NLL generalization: {:?}",
                     a
                 );
             }
 
-            _ => relate::super_relate_tys(self, a, a),
+            ty::Infer(ty::TyVar(vid)) => {
+                let mut variables = self.infcx.type_variables.borrow_mut();
+                let vid = variables.root_var(vid);
+                let sub_vid = variables.sub_root_var(vid);
+                if sub_vid == self.for_vid_sub_root {
+                    // If sub-roots are equal, then `for_vid` and
+                    // `vid` are related via subtyping.
+                    debug!("TypeGeneralizer::tys: occurs check failed");
+                    return Err(TypeError::Mismatch);
+                } else {
+                    match variables.probe(vid) {
+                        TypeVariableValue::Known { value: u } => {
+                            drop(variables);
+                            self.relate(&u, &u)
+                        }
+                        TypeVariableValue::Unknown { universe: _universe } => {
+                            if self.ambient_variance == ty::Bivariant {
+                                // FIXME: we may need a WF predicate (related to #54105).
+                            }
+
+                            let origin = *variables.var_origin(vid);
+
+                            // Replacing with a new variable in the universe `self.universe`,
+                            // it will be unified later with the original type variable in
+                            // the universe `_universe`.
+                            let new_var_id = variables.new_var(self.universe, false, origin);
+
+                            let u = self.tcx().mk_var(new_var_id);
+                            debug!(
+                                "generalize: replacing original vid={:?} with new={:?}",
+                                vid,
+                                u
+                            );
+                            return Ok(u);
+                        }
+                    }
+                }
+            }
+
+            ty::Infer(ty::IntVar(_)) |
+            ty::Infer(ty::FloatVar(_)) => {
+                // No matter what mode we are in,
+                // integer/floating-point types must be equal to be
+                // relatable.
+                Ok(a)
+            }
+
+            ty::Placeholder(placeholder) => {
+                if self.universe.cannot_name(placeholder.universe) {
+                    debug!(
+                        "TypeGeneralizer::tys: root universe {:?} cannot name\
+                        placeholder in universe {:?}",
+                        self.universe,
+                        placeholder.universe
+                    );
+                    Err(TypeError::Mismatch)
+                } else {
+                    Ok(a)
+                }
+            }
+
+            _ => {
+                relate::super_relate_tys(self, a, a)
+            }
         }
     }
 
@@ -671,66 +862,5 @@ where
         let result = self.relate(a.skip_binder(), a.skip_binder())?;
         self.first_free_index.shift_out(1);
         Ok(ty::Binder::bind(result))
-    }
-}
-
-impl InferCtxt<'_, '_, 'tcx> {
-    /// A hacky sort of method used by the NLL type-relating code:
-    ///
-    /// - `var` must be some unbound type variable.
-    /// - `value` must be a suitable type to use as its value.
-    ///
-    /// `var` will then be equated with `value`. Note that this
-    /// sidesteps a number of important checks, such as the "occurs
-    /// check" that prevents cyclic types, so it is important not to
-    /// use this method during regular type-check.
-    fn force_instantiate_unchecked(&self, var: Ty<'tcx>, value: Ty<'tcx>) {
-        match (&var.sty, &value.sty) {
-            (&ty::Infer(ty::TyVar(vid)), _) => {
-                let mut type_variables = self.type_variables.borrow_mut();
-
-                // In NLL, we don't have type inference variables
-                // floating around, so we can do this rather imprecise
-                // variant of the occurs-check.
-                assert!(!value.has_infer_types());
-
-                type_variables.instantiate(vid, value);
-            }
-
-            (&ty::Infer(ty::IntVar(vid)), &ty::Int(value)) => {
-                let mut int_unification_table = self.int_unification_table.borrow_mut();
-                int_unification_table
-                    .unify_var_value(vid, Some(ty::IntVarValue::IntType(value)))
-                    .unwrap_or_else(|_| {
-                        bug!("failed to unify int var `{:?}` with `{:?}`", vid, value);
-                    });
-            }
-
-            (&ty::Infer(ty::IntVar(vid)), &ty::Uint(value)) => {
-                let mut int_unification_table = self.int_unification_table.borrow_mut();
-                int_unification_table
-                    .unify_var_value(vid, Some(ty::IntVarValue::UintType(value)))
-                    .unwrap_or_else(|_| {
-                        bug!("failed to unify int var `{:?}` with `{:?}`", vid, value);
-                    });
-            }
-
-            (&ty::Infer(ty::FloatVar(vid)), &ty::Float(value)) => {
-                let mut float_unification_table = self.float_unification_table.borrow_mut();
-                float_unification_table
-                    .unify_var_value(vid, Some(ty::FloatVarValue(value)))
-                    .unwrap_or_else(|_| {
-                        bug!("failed to unify float var `{:?}` with `{:?}`", vid, value)
-                    });
-            }
-
-            _ => {
-                bug!(
-                    "force_instantiate_unchecked invoked with bad combination: var={:?} value={:?}",
-                    var,
-                    value,
-                );
-            }
-        }
     }
 }

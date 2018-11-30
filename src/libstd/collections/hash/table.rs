@@ -329,6 +329,7 @@ impl<K, V, M> Put<K, V> for FullBucket<K, V, M>
 }
 
 impl<K, V, M: Deref<Target = RawTable<K, V>>> Bucket<K, V, M> {
+    #[inline]
     pub fn new(table: M, hash: SafeHash) -> Bucket<K, V, M> {
         Bucket::at_index(table, hash.inspect() as usize)
     }
@@ -342,6 +343,7 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> Bucket<K, V, M> {
         }
     }
 
+    #[inline]
     pub fn at_index(table: M, ib_index: usize) -> Bucket<K, V, M> {
         // if capacity is 0, then the RawBucket will be populated with bogus pointers.
         // This is an uncommon case though, so avoid it in release builds.
@@ -654,6 +656,7 @@ impl<K, V, M> GapThenFull<K, V, M>
 
 // Returns a Layout which describes the allocation required for a hash table,
 // and the offset of the array of (key, value) pairs in the allocation.
+#[inline(always)]
 fn calculate_layout<K, V>(capacity: usize) -> Result<(Layout, usize), LayoutErr> {
     let hashes = Layout::array::<HashUint>(capacity)?;
     let pairs = Layout::array::<(K, V)>(capacity)?;
@@ -722,6 +725,7 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
+    #[inline(always)]
     fn raw_bucket_at(&self, index: usize) -> RawBucket<K, V> {
         let (_, pairs_offset) = calculate_layout::<K, V>(self.capacity())
             .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() });

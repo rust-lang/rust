@@ -895,144 +895,159 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             let mut is_shuffle = false;
             let mut is_const_fn = false;
             let mut is_promotable_const_fn = false;
-            if let ty::FnDef(def_id, _) = fn_ty.sty {
-                callee_def_id = Some(def_id);
-                match self.tcx.fn_sig(def_id).abi() {
-                    Abi::RustIntrinsic |
-                    Abi::PlatformIntrinsic => {
-                        assert!(!self.tcx.is_const_fn(def_id));
-                        match &self.tcx.item_name(def_id).as_str()[..] {
-                            | "size_of"
-                            | "min_align_of"
-                            | "needs_drop"
-                            | "type_id"
-                            | "bswap"
-                            | "bitreverse"
-                            | "ctpop"
-                            | "cttz"
-                            | "cttz_nonzero"
-                            | "ctlz"
-                            | "ctlz_nonzero"
-                            | "overflowing_add"
-                            | "overflowing_sub"
-                            | "overflowing_mul"
-                            | "unchecked_shl"
-                            | "unchecked_shr"
-                            | "rotate_left"
-                            | "rotate_right"
-                            | "add_with_overflow"
-                            | "sub_with_overflow"
-                            | "mul_with_overflow"
-                            // no need to check feature gates, intrinsics are only callable from the
-                            // libstd or with forever unstable feature gates
-                            => is_const_fn = true,
-                            // special intrinsic that can be called diretly without an intrinsic
-                            // feature gate needs a language feature gate
-                            "transmute" => {
-                                // never promote transmute calls
-                                if self.mode != Mode::Fn {
-                                    is_const_fn = true;
-                                    // const eval transmute calls only with the feature gate
-                                    if !self.tcx.features().const_transmute {
-                                        emit_feature_err(
-                                            &self.tcx.sess.parse_sess, "const_transmute",
-                                            self.span, GateIssue::Language,
-                                            &format!("The use of std::mem::transmute() \
-                                            is gated in {}s", self.mode));
+            match fn_ty.sty {
+                ty::FnDef(def_id, _) => {
+                    callee_def_id = Some(def_id);
+                    match self.tcx.fn_sig(def_id).abi() {
+                        Abi::RustIntrinsic |
+                        Abi::PlatformIntrinsic => {
+                            assert!(!self.tcx.is_const_fn(def_id));
+                            match &self.tcx.item_name(def_id).as_str()[..] {
+                                | "size_of"
+                                | "min_align_of"
+                                | "needs_drop"
+                                | "type_id"
+                                | "bswap"
+                                | "bitreverse"
+                                | "ctpop"
+                                | "cttz"
+                                | "cttz_nonzero"
+                                | "ctlz"
+                                | "ctlz_nonzero"
+                                | "overflowing_add"
+                                | "overflowing_sub"
+                                | "overflowing_mul"
+                                | "unchecked_shl"
+                                | "unchecked_shr"
+                                | "rotate_left"
+                                | "rotate_right"
+                                | "add_with_overflow"
+                                | "sub_with_overflow"
+                                | "mul_with_overflow"
+                                // no need to check feature gates, intrinsics are only callable
+                                // from the libstd or with forever unstable feature gates
+                                => is_const_fn = true,
+                                // special intrinsic that can be called diretly without an intrinsic
+                                // feature gate needs a language feature gate
+                                "transmute" => {
+                                    // never promote transmute calls
+                                    if self.mode != Mode::Fn {
+                                        is_const_fn = true;
+                                        // const eval transmute calls only with the feature gate
+                                        if !self.tcx.features().const_transmute {
+                                            emit_feature_err(
+                                                &self.tcx.sess.parse_sess, "const_transmute",
+                                                self.span, GateIssue::Language,
+                                                &format!("The use of std::mem::transmute() \
+                                                is gated in {}s", self.mode));
+                                        }
                                     }
                                 }
-                            }
 
-                            name if name.starts_with("simd_shuffle") => {
-                                is_shuffle = true;
-                            }
-
-                            _ => {}
-                        }
-                    }
-                    _ => {
-                        // in normal functions we only care about promotion
-                        if self.mode == Mode::Fn {
-                            // never promote const fn calls of
-                            // functions without #[rustc_promotable]
-                            if self.tcx.is_promotable_const_fn(def_id) {
-                                is_const_fn = true;
-                                is_promotable_const_fn = true;
-                            } else if self.tcx.is_const_fn(def_id) {
-                                is_const_fn = true;
-                            }
-                        } else {
-                            // stable const fn or unstable const fns with their feature gate
-                            // active
-                            if self.tcx.is_const_fn(def_id) {
-                                is_const_fn = true;
-                            } else if self.is_const_panic_fn(def_id) {
-                                // check the const_panic feature gate
-                                // FIXME: cannot allow this inside `allow_internal_unstable` because
-                                // that would make `panic!` insta stable in constants, since the
-                                // macro is marked with the attr
-                                if self.tcx.features().const_panic {
-                                    is_const_fn = true;
-                                } else {
-                                    // don't allow panics in constants without the feature gate
-                                    emit_feature_err(
-                                        &self.tcx.sess.parse_sess,
-                                        "const_panic",
-                                        self.span,
-                                        GateIssue::Language,
-                                        &format!("panicking in {}s is unstable", self.mode),
-                                    );
+                                name if name.starts_with("simd_shuffle") => {
+                                    is_shuffle = true;
                                 }
-                            } else if let Some(feature) = self.tcx.is_unstable_const_fn(def_id) {
-                                // check `#[unstable]` const fns or `#[rustc_const_unstable]`
-                                // functions without the feature gate active in this crate to report
-                                // a better error message than the one below
-                                if self.span.allows_unstable() {
-                                    // `allow_internal_unstable` can make such calls stable
+
+                                _ => {}
+                            }
+                        }
+                        _ => {
+                            // in normal functions we only care about promotion
+                            if self.mode == Mode::Fn {
+                                // never promote const fn calls of
+                                // functions without #[rustc_promotable]
+                                if self.tcx.is_promotable_const_fn(def_id) {
                                     is_const_fn = true;
-                                } else {
-                                    let mut err = self.tcx.sess.struct_span_err(self.span,
-                                        &format!("`{}` is not yet stable as a const fn",
-                                                self.tcx.item_path_str(def_id)));
-                                    help!(&mut err,
-                                        "in Nightly builds, add `#![feature({})]` \
-                                        to the crate attributes to enable",
-                                        feature);
-                                    err.emit();
+                                    is_promotable_const_fn = true;
+                                } else if self.tcx.is_const_fn(def_id) {
+                                    is_const_fn = true;
                                 }
                             } else {
-                                // FIXME(#24111) Remove this check when const fn stabilizes
-                                let (msg, note) = if let UnstableFeatures::Disallow =
-                                        self.tcx.sess.opts.unstable_features {
-                                    (format!("calls in {}s are limited to \
-                                            tuple structs and tuple variants",
-                                            self.mode),
-                                    Some("a limited form of compile-time function \
-                                        evaluation is available on a nightly \
-                                        compiler via `const fn`"))
+                                // stable const fn or unstable const fns with their feature gate
+                                // active
+                                if self.tcx.is_const_fn(def_id) {
+                                    is_const_fn = true;
+                                } else if self.is_const_panic_fn(def_id) {
+                                    // check the const_panic feature gate
+                                    // FIXME: cannot allow this inside `allow_internal_unstable`
+                                    // because that would make `panic!` insta stable in constants,
+                                    // since the macro is marked with the attr
+                                    if self.tcx.features().const_panic {
+                                        is_const_fn = true;
+                                    } else {
+                                        // don't allow panics in constants without the feature gate
+                                        emit_feature_err(
+                                            &self.tcx.sess.parse_sess,
+                                            "const_panic",
+                                            self.span,
+                                            GateIssue::Language,
+                                            &format!("panicking in {}s is unstable", self.mode),
+                                        );
+                                    }
+                                } else if let Some(feat) = self.tcx.is_unstable_const_fn(def_id) {
+                                    // check `#[unstable]` const fns or `#[rustc_const_unstable]`
+                                    // functions without the feature gate active in this crate to
+                                    // report a better error message than the one below
+                                    if self.span.allows_unstable() {
+                                        // `allow_internal_unstable` can make such calls stable
+                                        is_const_fn = true;
+                                    } else {
+                                        let mut err = self.tcx.sess.struct_span_err(self.span,
+                                            &format!("`{}` is not yet stable as a const fn",
+                                                    self.tcx.item_path_str(def_id)));
+                                        help!(&mut err,
+                                            "in Nightly builds, add `#![feature({})]` \
+                                            to the crate attributes to enable",
+                                            feat);
+                                        err.emit();
+                                    }
                                 } else {
-                                    (format!("calls in {}s are limited \
-                                            to constant functions, \
-                                            tuple structs and tuple variants",
-                                            self.mode),
-                                    None)
-                                };
-                                let mut err = struct_span_err!(
-                                    self.tcx.sess,
-                                    self.span,
-                                    E0015,
-                                    "{}",
-                                    msg,
-                                );
-                                if let Some(note) = note {
-                                    err.span_note(self.span, note);
+                                    // FIXME(#24111) Remove this check when const fn stabilizes
+                                    let (msg, note) = if let UnstableFeatures::Disallow =
+                                            self.tcx.sess.opts.unstable_features {
+                                        (format!("calls in {}s are limited to \
+                                                tuple structs and tuple variants",
+                                                self.mode),
+                                        Some("a limited form of compile-time function \
+                                            evaluation is available on a nightly \
+                                            compiler via `const fn`"))
+                                    } else {
+                                        (format!("calls in {}s are limited \
+                                                to constant functions, \
+                                                tuple structs and tuple variants",
+                                                self.mode),
+                                        None)
+                                    };
+                                    let mut err = struct_span_err!(
+                                        self.tcx.sess,
+                                        self.span,
+                                        E0015,
+                                        "{}",
+                                        msg,
+                                    );
+                                    if let Some(note) = note {
+                                        err.span_note(self.span, note);
+                                    }
+                                    err.emit();
                                 }
-                                err.emit();
                             }
                         }
                     }
+                },
+                ty::FnPtr(_) => {
+                    if self.mode != Mode::Fn {
+                        let mut err = self.tcx.sess.struct_span_err(
+                            self.span,
+                            &format!("function pointers are not allowed in const fn"));
+                        err.emit();
+                    }
+                },
+                _ => {
+                    self.not_const();
+                    return
                 }
             }
+
 
             let constant_arguments = callee_def_id.and_then(|id| {
                 args_required_const(self.tcx, id)

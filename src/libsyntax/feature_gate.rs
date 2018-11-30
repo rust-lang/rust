@@ -475,9 +475,6 @@ declare_features! (
     // Non-builtin attributes in inner attribute position
     (active, custom_inner_attributes, "1.30.0", Some(54726), None),
 
-    // Self struct constructor  (RFC 2302)
-    (active, self_struct_ctor, "1.30.0", Some(51994), None),
-
     // allow mixing of bind-by-move in patterns and references to
     // those identifiers in guards, *if* we are using MIR-borrowck
     // (aka NLL). Essentially this means you need to be on
@@ -688,9 +685,11 @@ declare_features! (
     (accepted, macro_literal_matcher, "1.31.0", Some(35625), None),
     // Use `?` as the Kleene "at most one" operator
     (accepted, macro_at_most_once_rep, "1.32.0", Some(48075), None),
+    // Self struct constructor  (RFC 2302)
+    (accepted, self_struct_ctor, "1.32.0", Some(51994), None),
 );
 
-// If you change this, please modify src/doc/unstable-book as well. You must
+// If you change this, please modify `src/doc/unstable-book` as well. You must
 // move that documentation into the relevant place in the other docs, and
 // remove the chapter on the flag.
 

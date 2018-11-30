@@ -117,8 +117,9 @@ impl<'a, 'tcx> Visitor<'tcx> for ReachableContext<'a, 'tcx> {
                 self.reachable_symbols.insert(node_id);
             }
             Some(def) => {
-                let def_id = def.def_id();
-                if let Some(node_id) = self.tcx.hir.as_local_node_id(def_id) {
+                if let Some((node_id, def_id)) = def.opt_def_id().and_then(|def_id| {
+                    self.tcx.hir.as_local_node_id(def_id).map(|node_id| (node_id, def_id))
+                }) {
                     if self.def_id_represents_local_inlined_item(def_id) {
                         self.worklist.push(node_id);
                     } else {
