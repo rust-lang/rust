@@ -456,7 +456,7 @@ rustc_queries! {
 
         /// Per-body `region::ScopeTree`. The `DefId` should be the owner `DefId` for the body;
         /// in the case of closures, this will be redirected to the enclosing function.
-        query region_scope_tree(_: DefId) -> Lrc<region::ScopeTree> {}
+        query region_scope_tree(_: DefId) -> &'tcx region::ScopeTree {}
 
         query mir_shims(key: ty::InstanceDef<'tcx>) -> &'tcx mir::Mir<'tcx> {
             no_force
