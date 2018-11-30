@@ -131,7 +131,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         mir
     }
     mir_const_qualif => {
-        (cdata.mir_const_qualif(def_id.index), Lrc::new(BitSet::new_empty(0)))
+        (cdata.mir_const_qualif(def_id.index), tcx.arena.alloc(BitSet::new_empty(0)))
     }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
     inherent_impls => { Lrc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }

@@ -7,7 +7,6 @@
 use rustc_data_structures::bit_set::BitSet;
 use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi::Abi;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -833,7 +832,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
     }
 
     /// Check a whole const, static initializer or const fn.
-    fn check_const(&mut self) -> (u8, Lrc<BitSet<Local>>) {
+    fn check_const(&mut self) -> (u8, &'tcx BitSet<Local>) {
         debug!("const-checking {} {:?}", self.mode, self.def_id);
 
         let mir = self.mir;
@@ -907,8 +906,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             }
         }
 
-        let promoted_temps = Lrc::new(promoted_temps);
-
         let mut qualifs = self.qualifs_in_local(RETURN_PLACE);
 
         // Account for errors in consts by using the
@@ -917,7 +914,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             qualifs = self.qualifs_in_any_value_of_ty(mir.return_ty());
         }
 
-        (qualifs.encode_to_bits(), promoted_temps)
+        (qualifs.encode_to_bits(), self.tcx.arena.alloc(promoted_temps))
     }
 }
 
@@ -1433,7 +1430,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 
 fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId)
-                              -> (u8, Lrc<BitSet<Local>>) {
+                              -> (u8, &'tcx BitSet<Local>) {
     // N.B., this `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
@@ -1442,7 +1439,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if mir.return_ty().references_error() {
         tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: Mir had errors");
-        return (1 << IsNotPromotable::IDX, Lrc::new(BitSet::new_empty(0)));
+        return (1 << IsNotPromotable::IDX, tcx.arena.alloc(BitSet::new_empty(0)));
     }
 
     Checker::new(tcx, def_id, mir, Mode::Const).check_const()
