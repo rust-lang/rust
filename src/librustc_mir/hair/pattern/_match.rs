@@ -812,8 +812,17 @@ impl<'tcx> IntRange<'tcx> {
     fn from_ctor(tcx: TyCtxt<'_, 'tcx, 'tcx>,
                  ctor: &Constructor<'tcx>)
                  -> Option<IntRange<'tcx>> {
+        // Floating-point ranges are permitted and we don't want
+        // to consider them when constructing integer ranges.
+        fn is_integral<'tcx>(ty: Ty<'tcx>) -> bool {
+            match ty.sty {
+                ty::Char | ty::Int(_) | ty::Uint(_) => true,
+                _ => false,
+            }
+        }
+
         match ctor {
-            ConstantRange(lo, hi, ty, end) => {
+            ConstantRange(lo, hi, ty, end) if is_integral(ty) => {
                 // Perform a shift if the underlying types are signed,
                 // which makes the interval arithmetic simpler.
                 let bias = IntRange::signed_bias(tcx, ty);
@@ -826,7 +835,7 @@ impl<'tcx> IntRange<'tcx> {
                     Some(IntRange { range: lo..=(hi - offset), ty })
                 }
             }
-            ConstantValue(val) => {
+            ConstantValue(val) if is_integral(val.ty) => {
                 let ty = val.ty;
                 if let Some(val) = val.assert_bits(tcx, ty::ParamEnv::empty().and(ty)) {
                     let bias = IntRange::signed_bias(tcx, ty);
@@ -836,9 +845,7 @@ impl<'tcx> IntRange<'tcx> {
                     None
                 }
             }
-            Single | Variant(_) | Slice(_) => {
-                None
-            }
+            _ => None,
         }
     }
 

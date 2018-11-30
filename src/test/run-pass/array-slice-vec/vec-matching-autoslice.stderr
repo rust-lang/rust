@@ -1,8 +1,0 @@
-warning: unreachable pattern
-  --> $DIR/vec-matching-autoslice.rs:31:9
-   |
-LL |         ([_, _], _) => panic!(),
-   |         ^^^^^^^^^^^
-   |
-   = note: #[warn(unreachable_patterns)] on by default
-

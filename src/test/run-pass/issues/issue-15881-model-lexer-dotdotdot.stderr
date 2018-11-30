@@ -1,8 +1,0 @@
-warning: unreachable pattern
-  --> $DIR/issue-15881-model-lexer-dotdotdot.rs:41:7
-   |
-LL |       _ => panic!("should match float range")
-   |       ^
-   |
-   = note: #[warn(unreachable_patterns)] on by default
-
