@@ -924,8 +924,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                 | "add_with_overflow"
                                 | "sub_with_overflow"
                                 | "mul_with_overflow"
-                                // no need to check feature gates, intrinsics are only callable from the
-                                // libstd or with forever unstable feature gates
+                                // no need to check feature gates, intrinsics are only callable
+                                // from the libstd or with forever unstable feature gates
                                 => is_const_fn = true,
                                 // special intrinsic that can be called diretly without an intrinsic
                                 // feature gate needs a language feature gate
@@ -969,9 +969,9 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                     is_const_fn = true;
                                 } else if self.is_const_panic_fn(def_id) {
                                     // check the const_panic feature gate
-                                    // FIXME: cannot allow this inside `allow_internal_unstable` because
-                                    // that would make `panic!` insta stable in constants, since the
-                                    // macro is marked with the attr
+                                    // FIXME: cannot allow this inside `allow_internal_unstable`
+                                    // because that would make `panic!` insta stable in constants,
+                                    // since the macro is marked with the attr
                                     if self.tcx.features().const_panic {
                                         is_const_fn = true;
                                     } else {
@@ -984,10 +984,10 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                             &format!("panicking in {}s is unstable", self.mode),
                                         );
                                     }
-                                } else if let Some(feature) = self.tcx.is_unstable_const_fn(def_id) {
+                                } else if let Some(feat) = self.tcx.is_unstable_const_fn(def_id) {
                                     // check `#[unstable]` const fns or `#[rustc_const_unstable]`
-                                    // functions without the feature gate active in this crate to report
-                                    // a better error message than the one below
+                                    // functions without the feature gate active in this crate to
+                                    // report a better error message than the one below
                                     if self.span.allows_unstable() {
                                         // `allow_internal_unstable` can make such calls stable
                                         is_const_fn = true;
@@ -998,7 +998,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                                         help!(&mut err,
                                             "in Nightly builds, add `#![feature({})]` \
                                             to the crate attributes to enable",
-                                            feature);
+                                            feat);
                                         err.emit();
                                     }
                                 } else {
