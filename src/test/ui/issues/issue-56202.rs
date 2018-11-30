@@ -1,3 +1,5 @@
+// compile-pass
+
 #![feature(self_struct_ctor)]
 
 trait FooTrait {}
@@ -13,3 +15,5 @@ impl BarTrait for FooStruct {
         Self(u32::default())
     }
 }
+
+fn main() {}
