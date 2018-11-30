@@ -384,7 +384,7 @@ pub fn handle_completion(
     let completion_triggered_after_single_colon = {
         let mut res = false;
         if let Some(ctx) = params.context {
-            if ctx.trigger_character.unwrap_or(String::new()) == ":" {
+            if ctx.trigger_character.unwrap_or_default() == ":" {
                 let source_file = world.analysis().file_syntax(position.file_id);
                 let syntax = source_file.syntax();
                 let text = syntax.text();
@@ -567,10 +567,13 @@ pub fn handle_rename(world: ServerWorld, params: RenameParams) -> Result<Option<
     let mut changes = HashMap::new();
     for r in refs {
         if let Ok(loc) = to_location(r.0, r.1, &world, &line_index) {
-            changes.entry(loc.uri).or_insert(Vec::new()).push(TextEdit {
-                range: loc.range,
-                new_text: params.new_name.clone(),
-            });
+            changes
+                .entry(loc.uri)
+                .or_insert_with(Vec::new)
+                .push(TextEdit {
+                    range: loc.range,
+                    new_text: params.new_name.clone(),
+                });
         }
     }
 
