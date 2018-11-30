@@ -504,7 +504,7 @@ rustc_queries! {
             }
             cache { true }
         }
-        query rvalue_promotable_map(key: DefId) -> Lrc<ItemLocalSet> {
+        query rvalue_promotable_map(key: DefId) -> &'tcx ItemLocalSet {
             desc { |tcx|
                 "checking which parts of `{}` are promotable to static",
                 tcx.def_path_str(key)
