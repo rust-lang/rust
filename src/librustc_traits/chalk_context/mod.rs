@@ -36,7 +36,6 @@ use rustc::ty::{self, TyCtxt, InferConst};
 use rustc::ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::{Kind, UnpackedKind};
-use rustc_data_structures::sync::Lrc;
 use rustc::mir::interpret::ConstValue;
 use syntax_pos::DUMMY_SP;
 
@@ -677,7 +676,7 @@ crate fn evaluate_goal<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     goal: ChalkCanonicalGoal<'tcx>
 ) -> Result<
-    Lrc<Canonical<'tcx, QueryResponse<'tcx, ()>>>,
+    &'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>,
     traits::query::NoSolution
 > {
     use crate::lowering::Lower;
@@ -718,6 +717,6 @@ crate fn evaluate_goal<'a, 'tcx>(
 
     debug!("evaluate_goal: solution = {:?}", solution);
 
-    solution.map(|ok| Ok(Lrc::new(ok)))
-        .unwrap_or(Err(traits::query::NoSolution))
+    solution.map(|ok| Ok(&*tcx.arena.alloc(ok)))
+            .unwrap_or(Err(traits::query::NoSolution))
 }

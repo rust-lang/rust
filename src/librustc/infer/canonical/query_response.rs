@@ -7,6 +7,7 @@
 //!
 //! [c]: https://rust-lang.github.io/rustc-guide/traits/canonicalization.html
 
+use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::substitute::substitute_value;
 use crate::infer::canonical::{
     Canonical, CanonicalVarValues, CanonicalizedQueryResponse, Certainty,
@@ -17,7 +18,6 @@ use crate::infer::InferCtxtBuilder;
 use crate::infer::{InferCtxt, InferOk, InferResult};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::sync::Lrc;
 use std::fmt::Debug;
 use syntax_pos::DUMMY_SP;
 use crate::traits::query::{Fallible, NoSolution};
@@ -54,6 +54,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxtBuilder<'cx, 'gcx, 'tcx> {
     where
         K: TypeFoldable<'tcx>,
         R: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
+        Canonical<'gcx, <QueryResponse<'gcx, R> as Lift<'gcx>>::Lifted>: ArenaAllocatable,
     {
         self.enter_with_canonical(
             DUMMY_SP,
@@ -99,6 +100,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
     ) -> Fallible<CanonicalizedQueryResponse<'gcx, T>>
     where
         T: Debug + Lift<'gcx> + TypeFoldable<'tcx>,
+        Canonical<'gcx, <QueryResponse<'gcx, T> as Lift<'gcx>>::Lifted>: ArenaAllocatable,
     {
         let query_response = self.make_query_response(inference_vars, answer, fulfill_cx)?;
         let canonical_result = self.canonicalize_response(&query_response);
@@ -108,7 +110,7 @@ impl<'cx, 'gcx, 'tcx> InferCtxt<'cx, 'gcx, 'tcx> {
             canonical_result
         );
 
-        Ok(Lrc::new(canonical_result))
+        Ok(self.tcx.arena.alloc(canonical_result))
     }
 
     /// A version of `make_canonicalized_query_response` that does
