@@ -23,7 +23,7 @@ pub fn provide(providers: &mut Providers<'_>) {
 fn inferred_outlives_of<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     item_def_id: DefId,
-) -> Lrc<Vec<ty::Predicate<'tcx>>> {
+) -> &'tcx [ty::Predicate<'tcx>] {
     let id = tcx
         .hir()
         .as_local_hir_id(item_def_id)
@@ -37,8 +37,8 @@ fn inferred_outlives_of<'a, 'tcx>(
                 let predicates = crate_map
                     .predicates
                     .get(&item_def_id)
-                    .unwrap_or(&crate_map.empty_predicate)
-                    .clone();
+                    .map(|p| *p)
+                    .unwrap_or(&[]);
 
                 if tcx.has_attr(item_def_id, "rustc_outlives") {
                     let mut pred: Vec<String> = predicates
@@ -63,10 +63,10 @@ fn inferred_outlives_of<'a, 'tcx>(
                 predicates
             }
 
-            _ => Lrc::new(Vec::new()),
+            _ => &[],
         },
 
-        _ => Lrc::new(Vec::new()),
+        _ => &[],
     }
 }
 
@@ -96,7 +96,7 @@ fn inferred_outlives_crate<'tcx>(
     let predicates = global_inferred_outlives
         .iter()
         .map(|(&def_id, set)| {
-            let vec: Vec<ty::Predicate<'tcx>> = set
+            let predicates = tcx.arena.alloc_from_iter(set
                 .iter()
                 .filter_map(
                     |ty::OutlivesPredicate(kind1, region2)| match kind1.unpack() {
@@ -115,14 +115,11 @@ fn inferred_outlives_crate<'tcx>(
                             None
                         }
                     },
-                ).collect();
-            (def_id, Lrc::new(vec))
+                ));
+            (def_id, &*predicates)
         }).collect();
-
-    let empty_predicate = Lrc::new(Vec::new());
 
     Lrc::new(ty::CratePredicatesMap {
         predicates,
-        empty_predicate,
     })
 }
