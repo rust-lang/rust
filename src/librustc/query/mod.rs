@@ -852,7 +852,7 @@ rustc_queries! {
         /// A vector of every trait accessible in the whole crate
         /// (i.e., including those from subcrates). This is used only for
         /// error reporting.
-        query all_traits(_: CrateNum) -> Lrc<Vec<DefId>> {
+        query all_traits(_: CrateNum) -> &'tcx [DefId] {
             desc { "fetching all foreign and local traits" }
         }
     }

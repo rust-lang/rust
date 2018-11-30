@@ -81,6 +81,7 @@ macro_rules! arena_types {
             [few] lint_levels: rustc::lint::LintLevelMap,
             [few] stability_index: rustc::middle::stability::Index<'tcx>,
             [few] features: syntax::feature_gate::Features,
+            [few] all_traits: Vec<rustc::hir::def_id::DefId>,
         ], $tcx);
     )
 }
