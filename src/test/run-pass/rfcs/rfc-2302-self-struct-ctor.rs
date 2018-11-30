@@ -1,7 +1,5 @@
 // run-pass
 
-#![feature(self_struct_ctor)]
-
 #![allow(dead_code)]
 
 use std::fmt::Display;

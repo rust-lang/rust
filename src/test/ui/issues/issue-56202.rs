@@ -1,7 +1,5 @@
 // compile-pass
 
-#![feature(self_struct_ctor)]
-
 trait FooTrait {}
 
 trait BarTrait {
