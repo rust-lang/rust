@@ -65,3 +65,6 @@
 [submodule "src/doc/rustc-guide"]
 	path = src/doc/rustc-guide
 	url = https://github.com/rust-lang/rustc-guide.git
+[submodule "src/doc/edition-guide"]
+	path = src/doc/edition-guide
+	url = https://github.com/rust-lang-nursery/edition-guide
