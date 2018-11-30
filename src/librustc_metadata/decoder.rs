@@ -1013,12 +1013,15 @@ impl<'a, 'tcx> CrateMetadata {
         None
     }
 
-    pub fn get_inherent_implementations_for_type(&self, id: DefIndex) -> Vec<DefId> {
-        self.entry(id)
-            .inherent_impls
-            .decode(self)
-            .map(|index| self.local_def_id(index))
-            .collect()
+    pub fn get_inherent_implementations_for_type(
+        &self,
+        tcx: TyCtxt<'_, 'tcx, '_>,
+        id: DefIndex
+    ) -> &'tcx [DefId] {
+        tcx.arena.alloc_from_iter(self.entry(id)
+                                      .inherent_impls
+                                      .decode(self)
+                                      .map(|index| self.local_def_id(index)))
     }
 
     pub fn get_implementations_for_trait(&self,

@@ -277,7 +277,7 @@ rustc_queries! {
         /// Maps a `DefId` of a type to a list of its inherent impls.
         /// Contains implementations of methods that are inherent to a type.
         /// Methods in these implementations don't need to be exported.
-        query inherent_impls(_: DefId) -> Lrc<Vec<DefId>> {
+        query inherent_impls(_: DefId) -> &'tcx [DefId] {
             eval_always
         }
     }
@@ -383,7 +383,7 @@ rustc_queries! {
         /// Not meant to be used directly outside of coherence.
         /// (Defined only for `LOCAL_CRATE`.)
         query crate_inherent_impls(k: CrateNum)
-            -> Lrc<CrateInherentImpls> {
+            -> &'tcx CrateInherentImpls {
             eval_always
             desc { "all inherent impls defined in crate `{:?}`", k }
         }
