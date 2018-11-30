@@ -271,7 +271,7 @@ define_queries! { <'tcx>
     },
 
     Other {
-        [] fn used_trait_imports: UsedTraitImports(DefId) -> Lrc<DefIdSet>,
+        [] fn used_trait_imports: UsedTraitImports(DefId) -> Bx<'tcx, DefIdSet>,
     },
 
     TypeChecking {
