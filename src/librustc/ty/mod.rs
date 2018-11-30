@@ -3389,7 +3389,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 /// (constructing this map requires touching the entire crate).
 #[derive(Clone, Debug, Default, HashStable)]
 pub struct CrateInherentImpls {
-    pub inherent_impls: DefIdMap<Lrc<Vec<DefId>>>,
+    pub inherent_impls: DefIdMap<Vec<DefId>>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]

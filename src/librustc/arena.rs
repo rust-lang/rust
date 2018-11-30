@@ -58,6 +58,7 @@ macro_rules! arena_types {
                 rustc::infer::canonical::Canonical<'tcx,
                     rustc::infer::canonical::QueryResponse<'tcx, rustc::ty::Ty<'tcx>>
                 >,
+            [few] crate_inherent_impls: rustc::ty::CrateInherentImpls,
         ], $tcx);
     )
 }
