@@ -67,6 +67,7 @@ macro_rules! arena_types {
                         rustc::hir::def_id::CrateNum
                     >
                 >,
+            [few] resolve_lifetimes: rustc::middle::resolve_lifetime::ResolveLifetimes,
         ], $tcx);
     )
 }
