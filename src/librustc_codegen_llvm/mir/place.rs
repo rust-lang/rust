@@ -150,9 +150,10 @@ impl PlaceRef<'ll, 'tcx> {
             });
             OperandValue::Immediate(base::to_immediate(bx, llval, self.layout))
         } else if let layout::Abi::ScalarPair(ref a, ref b) = self.layout.abi {
-            let load = |i, scalar: &layout::Scalar| {
+            let b_offset = a.value.size(bx.cx).abi_align(b.value.align(bx.cx));
+            let load = |i, scalar: &layout::Scalar, align| {
                 let llptr = bx.struct_gep(self.llval, i as u64);
-                let load = bx.load(llptr, self.align);
+                let load = bx.load(llptr, align);
                 scalar_load_metadata(load, scalar);
                 if scalar.is_bool() {
                     bx.trunc(load, Type::i1(bx.cx))
@@ -160,7 +161,10 @@ impl PlaceRef<'ll, 'tcx> {
                     load
                 }
             };
-            OperandValue::Pair(load(0, a), load(1, b))
+            OperandValue::Pair(
+                load(0, a, self.align),
+                load(1, b, self.align.restrict_for_offset(b_offset)),
+            )
         } else {
             OperandValue::Ref(self.llval, None, self.align)
         };
