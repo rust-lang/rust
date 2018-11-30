@@ -203,7 +203,7 @@ define_queries! { <'tcx>
 
     Other {
         /// Maps from an impl/trait def-id to a list of the def-ids of its items
-        [] fn associated_item_def_ids: AssociatedItemDefIds(DefId) -> Lrc<Vec<DefId>>,
+        [] fn associated_item_def_ids: AssociatedItemDefIds(DefId) -> &'tcx [DefId],
 
         /// Maps from a trait item to the trait item "descriptor"
         [] fn associated_item: AssociatedItems(DefId) -> ty::AssociatedItem,

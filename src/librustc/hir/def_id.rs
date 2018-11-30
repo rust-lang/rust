@@ -223,6 +223,8 @@ pub struct DefId {
     pub index: DefIndex,
 }
 
+impl_defer_dellocs_for_no_drop_type!([] DefId);
+
 impl fmt::Debug for DefId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "DefId({}/{}:{}",

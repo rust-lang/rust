@@ -119,7 +119,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let mut result = vec![];
         cdata.each_child_of_item(def_id.index,
           |child| result.push(child.def.def_id()), tcx.sess);
-        Lrc::new(result)
+        tcx.promote_vec(result)
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
