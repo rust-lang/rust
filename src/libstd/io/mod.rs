@@ -286,7 +286,7 @@ pub use self::cursor::Cursor;
 pub use self::error::{Result, Error, ErrorKind};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::util::{copy, sink, Sink, empty, Empty, repeat, Repeat};
-#[stable(feature = "rust1", since = "1.0.0")]f
+#[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{stdin, stdout, stderr, Stdin, Stdout, Stderr};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
