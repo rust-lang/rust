@@ -224,14 +224,14 @@ impl<T> TypedArena<T> {
         unsafe {
             // Clear the last chunk, which is partially filled.
             let mut chunks_borrow = self.chunks.borrow_mut();
-            if let Some(mut last_chunk) = chunks_borrow.pop() {
+            if let Some(mut last_chunk) = chunks_borrow.last_mut() {
                 self.clear_last_chunk(&mut last_chunk);
+                let len = chunks_borrow.len();
                 // If `T` is ZST, code below has no effect.
-                for mut chunk in chunks_borrow.drain(..) {
+                for mut chunk in chunks_borrow.drain(..len-1) {
                     let cap = chunk.storage.cap();
                     chunk.destroy(cap);
                 }
-                chunks_borrow.push(last_chunk);
             }
         }
     }
@@ -602,6 +602,15 @@ mod tests {
                 arena.alloc(Point { x: 1, y: 2, z: 3 });
             }
         }
+    }
+
+    #[bench]
+    pub fn bench_typed_arena_clear(b: &mut Bencher) {
+        let mut arena = TypedArena::default();
+        b.iter(|| {
+            arena.alloc(Point { x: 1, y: 2, z: 3 });
+            arena.clear();
+        })
     }
 
     // Drop tests
