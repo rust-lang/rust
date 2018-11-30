@@ -25,7 +25,6 @@ use rustc::ty::{self, DefIdTree};
 use rustc::util::ppaux::with_highlight_region_for_bound_region;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, DiagnosticBuilder};
 use syntax_pos::Span;
 
@@ -668,7 +667,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
         &mut self,
         context: Context,
         name: &str,
-        scope_tree: &Lrc<ScopeTree>,
+        scope_tree: &'tcx ScopeTree,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
         borrow_spans: UseSpans,
@@ -851,7 +850,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
     fn report_temporary_value_does_not_live_long_enough(
         &mut self,
         context: Context,
-        scope_tree: &Lrc<ScopeTree>,
+        scope_tree: &'tcx ScopeTree,
         borrow: &BorrowData<'tcx>,
         drop_span: Span,
         borrow_spans: UseSpans,

@@ -53,6 +53,8 @@ impl Hash for Span {
     }
 }
 
+impl_defer_dellocs_for_no_drop_type!([] Span);
+
 /// Dummy span, both position and length are zero, syntax context is zero as well.
 /// This span is kept inline and encoded with format 0.
 pub const DUMMY_SP: Span = Span(0);

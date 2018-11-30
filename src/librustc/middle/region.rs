@@ -22,7 +22,6 @@ use ty;
 
 use std::mem;
 use std::fmt;
-use rustc_data_structures::sync::Lrc;
 use syntax::source_map;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
@@ -34,6 +33,7 @@ use hir::Node;
 use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir::{Block, Arm, Pat, PatKind, Stmt, Expr, Local};
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
@@ -105,6 +105,8 @@ pub struct Scope {
     pub id: hir::ItemLocalId,
     pub data: ScopeData,
 }
+
+impl_defer_dellocs_for_no_drop_type!([] Scope);
 
 impl fmt::Debug for Scope {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -347,6 +349,18 @@ pub struct ScopeTree {
     /// Used to sanity check visit_expr/visit_pat call count when
     /// calculating generator interiors.
     body_expr_count: FxHashMap<hir::BodyId, usize>,
+}
+
+unsafe impl DeferDeallocs for ScopeTree {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.parent_map.defer(deferred);
+        self.var_map.defer(deferred);
+        self.destruction_scopes.defer(deferred);
+        self.rvalue_scopes.defer(deferred);
+        self.closure_tree.defer(deferred);
+        self.yield_in_scope.defer(deferred);
+        self.body_expr_count.defer(deferred);
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -1329,7 +1343,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 }
 
 fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-    -> Lrc<ScopeTree>
+    -> &'tcx ScopeTree
 {
     let closure_base_def_id = tcx.closure_base_def_id(def_id);
     if closure_base_def_id != def_id {
@@ -1371,7 +1385,7 @@ fn region_scope_tree<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         ScopeTree::default()
     };
 
-    Lrc::new(scope_tree)
+    tcx.promote(scope_tree)
 }
 
 pub fn provide(providers: &mut Providers<'_>) {

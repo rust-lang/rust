@@ -330,7 +330,7 @@ define_queries! { <'tcx>
 
         /// Per-body `region::ScopeTree`. The `DefId` should be the owner-def-id for the body;
         /// in the case of closures, this will be redirected to the enclosing function.
-        [] fn region_scope_tree: RegionScopeTree(DefId) -> Lrc<region::ScopeTree>,
+        [] fn region_scope_tree: RegionScopeTree(DefId) -> &'tcx region::ScopeTree,
 
         [] fn mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx mir::Mir<'tcx>,
 

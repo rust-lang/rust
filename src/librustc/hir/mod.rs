@@ -135,6 +135,8 @@ mod item_local_id_inner {
     }
 }
 
+impl_defer_dellocs_for_no_drop_type!([] ItemLocalId);
+
 pub use self::item_local_id_inner::ItemLocalId;
 
 /// The `HirId` corresponding to CRATE_NODE_ID and CRATE_DEF_INDEX
@@ -1268,6 +1270,8 @@ pub enum UnsafeSource {
 pub struct BodyId {
     pub node_id: NodeId,
 }
+
+impl_defer_dellocs_for_no_drop_type!([] BodyId);
 
 /// The body of a function, closure, or constant value. In the case of
 /// a function, the body contains not only the function body itself

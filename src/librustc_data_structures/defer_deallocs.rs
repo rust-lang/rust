@@ -75,8 +75,29 @@ unsafe impl<T: DeferDeallocs> DeferDeallocs for Vec<T> {
     }
 }
 
+impl_defer_dellocs_for_no_drop_type!([] usize);
+impl_defer_dellocs_for_no_drop_type!([] u32);
 impl_defer_dellocs_for_no_drop_type!([] u64);
 impl_defer_dellocs_for_no_drop_type!([<T>] BuildHasherDefault<T>);
+
+unsafe impl<T: DeferDeallocs> DeferDeallocs for Option<T> {
+    #[inline]
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.as_ref().map(|v| v.defer(deferred));
+    }
+}
+
+unsafe impl<
+    T1: DeferDeallocs,
+    T2: DeferDeallocs,
+> DeferDeallocs
+for (T1, T2) {
+    #[inline]
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.0.defer(deferred);
+        self.1.defer(deferred);
+    }
+}
 
 unsafe impl<
     K: DeferDeallocs + Eq + Hash,
