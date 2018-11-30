@@ -361,7 +361,7 @@ rustc_queries! {
     }
 
     Other {
-        query used_trait_imports(_: DefId) -> Lrc<DefIdSet> {}
+        query used_trait_imports(_: DefId) -> &'tcx DefIdSet {}
     }
 
     TypeChecking {
