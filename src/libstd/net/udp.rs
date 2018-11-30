@@ -1030,8 +1030,14 @@ mod tests {
         let mut buf = [0; 10];
 
         let start = Instant::now();
-        let kind = stream.recv_from(&mut buf).err().expect("expected error").kind();
-        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
+        loop {
+            let kind = stream.recv_from(&mut buf).err().expect("expected error").kind();
+            if kind != ErrorKind::Interrupted {
+                assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
+                        "unexpected_error: {:?}", kind);
+                break;
+            }
+        }
         assert!(start.elapsed() > Duration::from_millis(400));
     }
 
@@ -1049,8 +1055,14 @@ mod tests {
         assert_eq!(b"hello world", &buf[..]);
 
         let start = Instant::now();
-        let kind = stream.recv_from(&mut buf).err().expect("expected error").kind();
-        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
+        loop {
+            let kind = stream.recv_from(&mut buf).err().expect("expected error").kind();
+            if kind != ErrorKind::Interrupted {
+                assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
+                        "unexpected_error: {:?}", kind);
+                break;
+            }
+        }
         assert!(start.elapsed() > Duration::from_millis(400));
     }
 
