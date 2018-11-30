@@ -1,0 +1,15 @@
+error[E0015]: calls in constant functions are limited to constant functions, tuple structs and tuple variants
+  --> $DIR/issue-56164.rs:3:18
+   |
+LL | const fn foo() { (||{})() }
+   |                  ^^^^^^^^
+
+error: function pointers are not allowed in const fn
+  --> $DIR/issue-56164.rs:8:5
+   |
+LL |     input()
+   |     ^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.
