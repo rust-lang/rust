@@ -724,12 +724,12 @@ rustc_queries! {
 
     TypeChecking {
         query implementations_of_trait(_: (CrateNum, DefId))
-            -> Lrc<Vec<DefId>> {
+            -> &'tcx [DefId] {
             no_force
             desc { "looking up implementations of a trait in a crate" }
         }
         query all_trait_implementations(_: CrateNum)
-            -> Lrc<Vec<DefId>> {
+            -> &'tcx [DefId] {
             desc { "looking up all (?) trait implementations" }
         }
     }
