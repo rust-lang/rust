@@ -377,7 +377,7 @@ define_queries! { <'tcx>
     },
 
     TypeChecking {
-        [] fn trait_impls_of: TraitImpls(DefId) -> Lrc<ty::trait_def::TraitImpls>,
+        [] fn trait_impls_of: TraitImpls(DefId) -> Bx<'tcx, ty::trait_def::TraitImpls>,
         [] fn specialization_graph_of: SpecializationGraph(DefId)
             -> Lrc<specialization_graph::Graph>,
         [] fn is_object_safe: ObjectSafety(DefId) -> bool,

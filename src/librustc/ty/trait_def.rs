@@ -15,12 +15,12 @@ use ich::{self, StableHashingContext};
 use traits::specialization_graph;
 use ty::fast_reject;
 use ty::fold::TypeFoldable;
-use ty::{Ty, TyCtxt};
+use ty::{Bx, Ty, TyCtxt};
 
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
-use rustc_data_structures::sync::Lrc;
 
 /// A trait's definition with type information.
 pub struct TraitDef {
@@ -51,6 +51,13 @@ pub struct TraitImpls {
     blanket_impls: Vec<DefId>,
     /// Impls indexed by their simplified self-type, for fast lookup.
     non_blanket_impls: FxHashMap<fast_reject::SimplifiedType, Vec<DefId>>,
+}
+
+unsafe impl DeferDeallocs for TraitImpls {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.blanket_impls.defer(deferred);
+        self.non_blanket_impls.defer(deferred);
+    }
 }
 
 impl<'a, 'gcx, 'tcx> TraitDef {
@@ -157,7 +164,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 // Query provider for `trait_impls_of`.
 pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 trait_id: DefId)
-                                                -> Lrc<TraitImpls> {
+                                                -> Bx<'tcx, TraitImpls> {
     let mut impls = TraitImpls::default();
 
     {
@@ -194,7 +201,7 @@ pub(super) fn trait_impls_of_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
-    Lrc::new(impls)
+    tcx.bx(impls)
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for TraitImpls {
