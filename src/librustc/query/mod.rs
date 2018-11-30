@@ -371,7 +371,7 @@ rustc_queries! {
     }
 
     BorrowChecking {
-        query borrowck(_: DefId) -> Lrc<BorrowCheckResult> {}
+        query borrowck(_: DefId) -> &'tcx BorrowCheckResult {}
 
         /// Borrow-checks the function body. If this is a closure, returns
         /// additional requirements that the closure's creator must verify.
