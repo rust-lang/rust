@@ -28,9 +28,8 @@ use infer::{InferCtxt, InferOk};
 use ty::subst::{Subst, Substs};
 use traits::{self, ObligationCause, TraitEngine};
 use traits::select::IntercrateAmbiguityCause;
-use ty::{self, TyCtxt, TypeFoldable};
+use ty::{self, Bx, TyCtxt, TypeFoldable};
 use syntax_pos::DUMMY_SP;
-use rustc_data_structures::sync::Lrc;
 
 use lint;
 
@@ -287,7 +286,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 // Query provider for `specialization_graph_of`.
 pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                       trait_id: DefId)
-                                                      -> Lrc<specialization_graph::Graph> {
+                                                      -> Bx<'tcx, specialization_graph::Graph> {
     let mut sg = specialization_graph::Graph::new();
 
     let mut trait_impls = tcx.all_impls(trait_id);
@@ -370,7 +369,7 @@ pub(super) fn specialization_graph_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
         }
     }
 
-    Lrc::new(sg)
+    tcx.bx(sg)
 }
 
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a

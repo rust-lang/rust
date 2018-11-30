@@ -12,12 +12,12 @@ use super::OverlapError;
 
 use hir::def_id::DefId;
 use ich::{self, StableHashingContext};
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 use traits;
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::fast_reject::{self, SimplifiedType};
-use rustc_data_structures::sync::Lrc;
 use syntax::ast::Ident;
 use util::captures::Captures;
 use util::nodemap::{DefIdMap, FxHashMap};
@@ -47,6 +47,13 @@ pub struct Graph {
     children: DefIdMap<Children>,
 }
 
+unsafe impl DeferDeallocs for Graph {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.parent.defer(deferred);
+        self.children.defer(deferred);
+    }
+}
+
 /// Children of a given impl, grouped into blanket/non-blanket varieties as is
 /// done in `TraitDef`.
 #[derive(Default, RustcEncodable, RustcDecodable)]
@@ -66,6 +73,13 @@ struct Children {
 
     /// Blanket impls associated with the trait.
     blanket_impls: Vec<DefId>,
+}
+
+unsafe impl DeferDeallocs for Children {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.nonblanket_impls.defer(deferred);
+        self.blanket_impls.defer(deferred);
+    }
 }
 
 /// The result of attempting to insert an impl into a group of children.
@@ -389,13 +403,13 @@ impl<'a, 'gcx, 'tcx> Node {
     }
 }
 
-pub struct Ancestors {
+pub struct Ancestors<'tcx> {
     trait_def_id: DefId,
-    specialization_graph: Lrc<Graph>,
+    specialization_graph: &'tcx Graph,
     current_source: Option<Node>,
 }
 
-impl Iterator for Ancestors {
+impl<'tcx> Iterator for Ancestors<'tcx> {
     type Item = Node;
     fn next(&mut self) -> Option<Node> {
         let cur = self.current_source.take();
@@ -426,7 +440,7 @@ impl<T> NodeItem<T> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> Ancestors {
+impl<'a, 'gcx, 'tcx> Ancestors<'gcx> {
     /// Search the items from the given ancestors, returning each definition
     /// with the given name and the given kind.
     #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
@@ -458,11 +472,11 @@ impl<'a, 'gcx, 'tcx> Ancestors {
 
 /// Walk up the specialization ancestors of a given impl, starting with that
 /// impl itself.
-pub fn ancestors(tcx: TyCtxt<'_, '_, '_>,
+pub fn ancestors(tcx: TyCtxt<'_, 'tcx, '_>,
                  trait_def_id: DefId,
                  start_from_impl: DefId)
-                 -> Ancestors {
-    let specialization_graph = tcx.specialization_graph_of(trait_def_id);
+                 -> Ancestors<'tcx> {
+    let specialization_graph = tcx.specialization_graph_of(trait_def_id).0;
     Ancestors {
         trait_def_id,
         specialization_graph,
