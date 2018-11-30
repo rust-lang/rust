@@ -223,7 +223,7 @@ define_queries! { <'tcx>
         /// Set of all the def-ids in this crate that have MIR associated with
         /// them. This includes all the body owners, but also things like struct
         /// constructors.
-        [] fn mir_keys: mir_keys(CrateNum) -> Lrc<DefIdSet>,
+        [] fn mir_keys: mir_keys(CrateNum) -> &'tcx DefIdSet,
 
         /// Maps DefId's that have an associated Mir to the result
         /// of the MIR qualify_consts pass. The actual meaning of
