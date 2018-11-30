@@ -359,7 +359,7 @@ define_queries! { <'tcx>
     TypeChecking {
         [] fn trait_of_item: TraitOfItem(DefId) -> Option<DefId>,
         [] fn const_is_rvalue_promotable_to_static: ConstIsRvaluePromotableToStatic(DefId) -> bool,
-        [] fn rvalue_promotable_map: RvaluePromotableMap(DefId) -> Lrc<ItemLocalSet>,
+        [] fn rvalue_promotable_map: RvaluePromotableMap(DefId) -> &'tcx ItemLocalSet,
     },
 
     Codegen {
