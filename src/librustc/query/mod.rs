@@ -681,11 +681,11 @@ rustc_queries! {
     Codegen {
         query upstream_monomorphizations(
             k: CrateNum
-        ) -> Lrc<DefIdMap<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>>> {
+        ) -> &'tcx DefIdMap<FxHashMap<SubstsRef<'tcx>, CrateNum>> {
             desc { "collecting available upstream monomorphizations `{:?}`", k }
         }
         query upstream_monomorphizations_for(_: DefId)
-            -> Option<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>> {}
+            -> Option<&'tcx FxHashMap<SubstsRef<'tcx>, CrateNum>> {}
     }
 
     Other {
