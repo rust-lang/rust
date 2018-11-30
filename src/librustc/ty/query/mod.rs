@@ -368,7 +368,7 @@ define_queries! { <'tcx>
 
     Other {
         [] fn vtable_methods: vtable_methods_node(ty::PolyTraitRef<'tcx>)
-                            -> Lrc<Vec<Option<(DefId, &'tcx Substs<'tcx>)>>>,
+                            -> &'tcx [Option<(DefId, &'tcx Substs<'tcx>)>],
     },
 
     Codegen {

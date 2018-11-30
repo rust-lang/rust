@@ -79,6 +79,8 @@ impl_defer_dellocs_for_no_drop_type!([] usize);
 impl_defer_dellocs_for_no_drop_type!([] u32);
 impl_defer_dellocs_for_no_drop_type!([] u64);
 impl_defer_dellocs_for_no_drop_type!([<T>] BuildHasherDefault<T>);
+impl_defer_dellocs_for_no_drop_type!([<'a, T: ?Sized>] &'a mut T);
+impl_defer_dellocs_for_no_drop_type!([<'a, T: ?Sized>] &'a T);
 
 unsafe impl<T: DeferDeallocs> DeferDeallocs for Option<T> {
     #[inline]
