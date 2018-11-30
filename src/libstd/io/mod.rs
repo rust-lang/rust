@@ -1936,18 +1936,6 @@ impl<T: BufRead> BufRead for Take<T> {
     }
 }
 
-fn read_one_byte(reader: &mut dyn Read) -> Option<Result<u8>> {
-    let mut buf = [0];
-    loop {
-        return match reader.read(&mut buf) {
-            Ok(0) => None,
-            Ok(..) => Some(Ok(buf[0])),
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
-            Err(e) => Some(Err(e)),
-        };
-    }
-}
-
 /// An iterator over `u8` values of a reader.
 ///
 /// This struct is generally created by calling [`bytes`] on a reader.
@@ -1965,7 +1953,15 @@ impl<R: Read> Iterator for Bytes<R> {
     type Item = Result<u8>;
 
     fn next(&mut self) -> Option<Result<u8>> {
-        read_one_byte(&mut self.inner)
+        let mut buf = [0];
+        loop {
+            return match self.inner.read(&mut buf) {
+                Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+                Ok(0) => None,
+                Ok(..) => Some(Ok(buf[0])),
+                Err(e) => Some(Err(e)),
+            };
+        }
     }
 }
 
