@@ -540,7 +540,7 @@ rustc_queries! {
     }
 
     TypeChecking {
-        query trait_impls_of(key: DefId) -> Lrc<ty::trait_def::TraitImpls> {
+        query trait_impls_of(key: DefId) -> &'tcx ty::trait_def::TraitImpls {
             desc { |tcx| "trait impls of `{}`", tcx.def_path_str(key) }
         }
         query specialization_graph_of(_: DefId) -> &'tcx specialization_graph::Graph {}
