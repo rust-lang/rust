@@ -892,7 +892,7 @@ rustc_queries! {
         query normalize_projection_ty(
             goal: CanonicalProjectionGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>>,
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, NormalizationResult<'tcx>>>,
             NoSolution,
         > {
             no_force
@@ -910,7 +910,7 @@ rustc_queries! {
         query implied_outlives_bounds(
             goal: CanonicalTyGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>>,
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
             NoSolution,
         > {
             no_force
@@ -921,7 +921,7 @@ rustc_queries! {
         query dropck_outlives(
             goal: CanonicalTyGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>>,
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>,
             NoSolution,
         > {
             no_force
@@ -940,7 +940,7 @@ rustc_queries! {
         query evaluate_goal(
             goal: traits::ChalkCanonicalGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
             NoSolution
         > {
             no_force
@@ -951,7 +951,7 @@ rustc_queries! {
         query type_op_ascribe_user_type(
             goal: CanonicalTypeOpAscribeUserTypeGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
             NoSolution,
         > {
             no_force
@@ -962,7 +962,7 @@ rustc_queries! {
         query type_op_eq(
             goal: CanonicalTypeOpEqGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
             NoSolution,
         > {
             no_force
@@ -973,7 +973,7 @@ rustc_queries! {
         query type_op_subtype(
             goal: CanonicalTypeOpSubtypeGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
             NoSolution,
         > {
             no_force
@@ -984,7 +984,7 @@ rustc_queries! {
         query type_op_prove_predicate(
             goal: CanonicalTypeOpProvePredicateGoal<'tcx>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>>,
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ()>>,
             NoSolution,
         > {
             no_force
@@ -995,7 +995,7 @@ rustc_queries! {
         query type_op_normalize_ty(
             goal: CanonicalTypeOpNormalizeGoal<'tcx, Ty<'tcx>>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, Ty<'tcx>>>>,
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Ty<'tcx>>>,
             NoSolution,
         > {
             no_force
@@ -1006,7 +1006,7 @@ rustc_queries! {
         query type_op_normalize_predicate(
             goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::Predicate<'tcx>>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ty::Predicate<'tcx>>>>,
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::Predicate<'tcx>>>,
             NoSolution,
         > {
             no_force
@@ -1017,7 +1017,7 @@ rustc_queries! {
         query type_op_normalize_poly_fn_sig(
             goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::PolyFnSig<'tcx>>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ty::PolyFnSig<'tcx>>>>,
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::PolyFnSig<'tcx>>>,
             NoSolution,
         > {
             no_force
@@ -1028,7 +1028,7 @@ rustc_queries! {
         query type_op_normalize_fn_sig(
             goal: CanonicalTypeOpNormalizeGoal<'tcx, ty::FnSig<'tcx>>
         ) -> Result<
-            Lrc<Canonical<'tcx, canonical::QueryResponse<'tcx, ty::FnSig<'tcx>>>>,
+            &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::FnSig<'tcx>>>,
             NoSolution,
         > {
             no_force

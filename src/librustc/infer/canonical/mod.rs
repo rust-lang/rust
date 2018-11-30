@@ -23,7 +23,6 @@
 
 use crate::infer::{InferCtxt, RegionVariableOrigin, TypeVariableOrigin};
 use rustc_data_structures::indexed_vec::IndexVec;
-use rustc_data_structures::sync::Lrc;
 use rustc_macros::HashStable;
 use serialize::UseSpecializedDecodable;
 use smallvec::SmallVec;
@@ -186,7 +185,7 @@ pub struct QueryResponse<'tcx, R> {
 pub type Canonicalized<'gcx, V> = Canonical<'gcx, <V as Lift<'gcx>>::Lifted>;
 
 pub type CanonicalizedQueryResponse<'gcx, T> =
-    Lrc<Canonical<'gcx, QueryResponse<'gcx, <T as Lift<'gcx>>::Lifted>>>;
+    &'gcx Canonical<'gcx, QueryResponse<'gcx, <T as Lift<'gcx>>::Lifted>>;
 
 /// Indicates whether or not we were able to prove the query to be
 /// true.
