@@ -62,5 +62,11 @@ error: unreachable pattern
 LL |       0.02f64 => {}
    |       ^^^^^^^
 
-error: aborting due to 5 previous errors
+error: unreachable pattern
+  --> $DIR/match-range-fail-dominate.rs:47:7
+   |
+LL |       _ => {}
+   |       ^
+
+error: aborting due to 6 previous errors
 

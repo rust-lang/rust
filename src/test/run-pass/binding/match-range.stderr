@@ -1,0 +1,20 @@
+warning: unreachable pattern
+  --> $DIR/match-range.rs:47:7
+   |
+LL |       _ => panic!("should match float range")
+   |       ^
+   |
+   = note: #[warn(unreachable_patterns)] on by default
+
+warning: unreachable pattern
+  --> $DIR/match-range.rs:55:9
+   |
+LL |         _ => {},
+   |         ^
+
+warning: unreachable pattern
+  --> $DIR/match-range.rs:59:9
+   |
+LL |         _ => panic!("should match the range start"),
+   |         ^
+

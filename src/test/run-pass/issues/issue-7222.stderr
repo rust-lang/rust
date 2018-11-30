@@ -1,0 +1,8 @@
+warning: unreachable pattern
+  --> $DIR/issue-7222.rs:20:9
+   |
+LL |         _ => ()
+   |         ^
+   |
+   = note: #[warn(unreachable_patterns)] on by default
+
