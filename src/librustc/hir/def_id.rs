@@ -35,6 +35,8 @@ pub enum CrateNum {
     Index(CrateId),
 }
 
+impl_defer_dellocs_for_no_drop_type!([] CrateNum);
+
 impl ::std::fmt::Debug for CrateNum {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
         match self {

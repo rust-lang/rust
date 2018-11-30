@@ -459,9 +459,9 @@ define_queries! { <'tcx>
 
     Codegen {
         [] fn upstream_monomorphizations: UpstreamMonomorphizations(CrateNum)
-            -> Lrc<DefIdMap<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>>,
+            -> Bx<'tcx, DefIdMap<Bx<'tcx, FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>>,
         [] fn upstream_monomorphizations_for: UpstreamMonomorphizationsFor(DefId)
-            -> Option<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>,
+            -> Option<Bx<'tcx, FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>,
     },
 
     Other {

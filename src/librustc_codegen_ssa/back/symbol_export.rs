@@ -19,7 +19,7 @@ use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::middle::exported_symbols::{SymbolExportLevel, ExportedSymbol, metadata_symbol_name};
 use rustc::session::config;
-use rustc::ty::{TyCtxt, SymbolName};
+use rustc::ty::{Bx, TyCtxt, SymbolName};
 use rustc::ty::query::Providers;
 use rustc::ty::subst::Substs;
 use rustc::util::nodemap::{FxHashMap, DefIdMap};
@@ -293,7 +293,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn upstream_monomorphizations_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cnum: CrateNum)
-    -> Lrc<DefIdMap<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>>
+    -> Bx<'tcx, DefIdMap<Bx<'tcx, FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>>
 {
     debug_assert!(cnum == LOCAL_CRATE);
 
@@ -337,20 +337,20 @@ fn upstream_monomorphizations_provider<'a, 'tcx>(
         }
     }
 
-    Lrc::new(instances.into_iter()
-                      .map(|(key, value)| (key, Lrc::new(value)))
+    tcx.bx(instances.into_iter()
+                      .map(|(key, value)| (key, tcx.bx(value)))
                       .collect())
 }
 
 fn upstream_monomorphizations_for_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId)
-    -> Option<Lrc<FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>
+    -> Option<Bx<'tcx, FxHashMap<&'tcx Substs<'tcx>, CrateNum>>>
 {
     debug_assert!(!def_id.is_local());
     tcx.upstream_monomorphizations(LOCAL_CRATE)
        .get(&def_id)
-       .cloned()
+       .map(|v| *v)
 }
 
 fn is_unreachable_local_definition_provider(tcx: TyCtxt, def_id: DefId) -> bool {
