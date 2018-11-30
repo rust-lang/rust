@@ -439,8 +439,6 @@ declare_features! (
     // 'a: { break 'a; }
     (active, label_break_value, "1.28.0", Some(48594), None),
 
-    // Integer match exhaustiveness checking
-    (active, exhaustive_integer_patterns, "1.30.0", Some(50907), None),
 
     // #[doc(keyword = "...")]
     (active, doc_keyword, "1.28.0", Some(51315), None),
@@ -686,6 +684,8 @@ declare_features! (
     (accepted, extern_crate_item_prelude, "1.31.0", Some(55599), None),
     // Allows use of the :literal macro fragment specifier (RFC 1576)
     (accepted, macro_literal_matcher, "1.31.0", Some(35625), None),
+    // Integer match exhaustiveness checking (RFC 2591)
+    (accepted, exhaustive_integer_patterns, "1.32.0", Some(50907), None),
     // Use `?` as the Kleene "at most one" operator
     (accepted, macro_at_most_once_rep, "1.32.0", Some(48075), None),
 );

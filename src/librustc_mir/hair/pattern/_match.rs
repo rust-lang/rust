@@ -622,7 +622,6 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                                   -> Vec<Constructor<'tcx>>
 {
     debug!("all_constructors({:?})", pcx.ty);
-    let exhaustive_integer_patterns = cx.tcx.features().exhaustive_integer_patterns;
     let ctors = match pcx.ty.sty {
         ty::Bool => {
             [true, false].iter().map(|&b| {
@@ -652,7 +651,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 .map(|v| Variant(v.did))
                 .collect()
         }
-        ty::Char if exhaustive_integer_patterns => {
+        ty::Char => {
             vec![
                 // The valid Unicode Scalar Value ranges.
                 ConstantRange('\u{0000}' as u128,
@@ -667,14 +666,14 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                 ),
             ]
         }
-        ty::Int(ity) if exhaustive_integer_patterns => {
+        ty::Int(ity) => {
             // FIXME(49937): refactor these bit manipulations into interpret.
             let bits = Integer::from_attr(&cx.tcx, SignedInt(ity)).size().bits() as u128;
             let min = 1u128 << (bits - 1);
             let max = (1u128 << (bits - 1)) - 1;
             vec![ConstantRange(min, max, pcx.ty, RangeEnd::Included)]
         }
-        ty::Uint(uty) if exhaustive_integer_patterns => {
+        ty::Uint(uty) => {
             // FIXME(49937): refactor these bit manipulations into interpret.
             let bits = Integer::from_attr(&cx.tcx, UnsignedInt(uty)).size().bits() as u128;
             let max = !0u128 >> (128 - bits);
@@ -971,12 +970,10 @@ fn compute_missing_ctors<'a, 'tcx: 'a>(
                 // If a constructor appears in a `match` arm, we can
                 // eliminate it straight away.
                 refined_ctors = vec![]
-            } else if tcx.features().exhaustive_integer_patterns {
-                if let Some(interval) = IntRange::from_ctor(tcx, used_ctor) {
-                    // Refine the required constructors for the type by subtracting
-                    // the range defined by the current constructor pattern.
-                    refined_ctors = interval.subtract_from(tcx, refined_ctors);
-                }
+            } else if let Some(interval) = IntRange::from_ctor(tcx, used_ctor) {
+                // Refine the required constructors for the type by subtracting
+                // the range defined by the current constructor pattern.
+                refined_ctors = interval.subtract_from(tcx, refined_ctors);
             }
 
             // If the constructor patterns that have been considered so far
@@ -1433,17 +1430,16 @@ fn slice_pat_covered_by_constructor<'tcx>(
 // Whether to evaluate a constructor using exhaustive integer matching. This is true if the
 // constructor is a range or constant with an integer type.
 fn should_treat_range_exhaustively(tcx: TyCtxt<'_, 'tcx, 'tcx>, ctor: &Constructor<'tcx>) -> bool {
-    if tcx.features().exhaustive_integer_patterns {
-        let ty = match ctor {
-            ConstantValue(value) => value.ty,
-            ConstantRange(_, _, ty, _) => ty,
-            _ => return false,
-        };
-        if let ty::Char | ty::Int(_) | ty::Uint(_) = ty.sty {
-            return true;
-        }
+    let ty = match ctor {
+        ConstantValue(value) => value.ty,
+        ConstantRange(_, _, ty, _) => ty,
+        _ => return false,
+    };
+    if let ty::Char | ty::Int(_) | ty::Uint(_) = ty.sty {
+        true
+    } else {
+        false
     }
-    false
 }
 
 /// For exhaustive integer matching, some constructors are grouped within other constructors

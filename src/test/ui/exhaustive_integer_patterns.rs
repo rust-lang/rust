@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(exhaustive_integer_patterns)]
 #![feature(exclusive_range_pattern)]
+
 #![deny(unreachable_patterns)]
 
 use std::{char, usize, u8, u16, u32, u64, u128, isize, i8, i16, i32, i64, i128};
