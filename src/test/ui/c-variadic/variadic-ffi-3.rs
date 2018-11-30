@@ -14,12 +14,10 @@ fn main() {
         let x: unsafe extern "C" fn(f: isize, x: u8) = foo;
         //~^ ERROR: mismatched types
         //~| expected type `unsafe extern "C" fn(isize, u8)`
-        //~| found type `unsafe extern "C" fn(isize, u8, ...) {foo}`
 
         let y: extern "C" fn(f: isize, x: u8, ...) = bar;
         //~^ ERROR: mismatched types
-        //~| expected type `extern "C" fn(isize, u8, ...)`
-        //~| found type `extern "C" fn(isize, u8) {bar}`
+        //~| expected type `for<'r> extern "C" fn(isize, u8, std::ffi::VaList<'r>, ...)`
 
         foo(1, 2, 3f32); //~ ERROR can't pass `f32` to variadic function
         foo(1, 2, true); //~ ERROR can't pass `bool` to variadic function

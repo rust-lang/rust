@@ -434,6 +434,9 @@ impl<'a> State<'a> {
                 self.s.word("/*ERROR*/")?;
                 self.pclose()?;
             }
+            hir::TyKind::CVarArgs(_) => {
+                self.s.word("...")?;
+            }
         }
         self.end()
     }

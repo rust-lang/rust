@@ -977,9 +977,9 @@ impl<'tcx> PolyGenSig<'tcx> {
 /// Signature of a function type, which I have arbitrarily
 /// decided to use to refer to the input/output types.
 ///
-/// - `inputs` is the list of arguments and their modes.
-/// - `output` is the return type.
-/// - `variadic` indicates whether this is a variadic function. (only true for foreign fns)
+/// - `inputs`: is the list of arguments and their modes.
+/// - `output`: is the return type.
+/// - `variadic`: indicates whether this is a C-variadic function.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct FnSig<'tcx> {
     pub inputs_and_output: &'tcx List<Ty<'tcx>>,

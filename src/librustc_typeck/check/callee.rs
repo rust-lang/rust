@@ -368,17 +368,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             .0;
         let fn_sig = self.normalize_associated_types_in(call_expr.span, &fn_sig);
 
+        let inputs = if fn_sig.variadic {
+            if fn_sig.inputs().len() > 1 {
+                &fn_sig.inputs()[..fn_sig.inputs().len() - 1]
+            } else {
+                span_bug!(call_expr.span,
+                          "C-variadic functions are only valid with one or more fixed arguments");
+            }
+        } else {
+            &fn_sig.inputs()[..]
+        };
         // Call the generic checker.
         let expected_arg_tys = self.expected_inputs_for_expected_output(
             call_expr.span,
             expected,
             fn_sig.output(),
-            fn_sig.inputs(),
+            inputs,
         );
         self.check_argument_types(
             call_expr.span,
             call_expr.span,
-            fn_sig.inputs(),
+            inputs,
             &expected_arg_tys[..],
             arg_exprs,
             fn_sig.variadic,

@@ -1345,6 +1345,12 @@ impl<'a> LoweringContext<'a> {
                 }
             }
             TyKind::Mac(_) => panic!("TyMac should have been expanded by now."),
+            TyKind::CVarArgs => {
+                // Create the implicit lifetime of the "spoofed" `VaList`.
+                let span = self.sess.source_map().next_point(t.span.shrink_to_lo());
+                let lt = self.new_implicit_lifetime(span);
+                hir::TyKind::CVarArgs(lt)
+            },
         };
 
         let LoweredNodeId { node_id: _, hir_id } = self.lower_node_id(t.id);

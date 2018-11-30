@@ -1643,6 +1643,8 @@ pub enum TyKind {
     Mac(Mac),
     /// Placeholder for a kind that has failed to be defined.
     Err,
+    /// Placeholder for a `va_list`.
+    CVarArgs,
 }
 
 impl TyKind {

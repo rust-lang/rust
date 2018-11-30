@@ -401,7 +401,8 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
     let Ty { id, node, span } = ty.deref_mut();
     vis.visit_id(id);
     match node {
-        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err | TyKind::Never => {}
+        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err |
+            TyKind::Never | TyKind::CVarArgs => {}
         TyKind::Slice(ty) => vis.visit_ty(ty),
         TyKind::Ptr(mt) => vis.visit_mt(mt),
         TyKind::Rptr(lt, mt) => {

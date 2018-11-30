@@ -190,6 +190,7 @@ impl Sig for ast::Ty {
                 Ok(replace_text(nested, text))
             }
             ast::TyKind::Never => Ok(text_sig("!".to_owned())),
+            ast::TyKind::CVarArgs => Ok(text_sig("...".to_owned())),
             ast::TyKind::Tup(ref ts) => {
                 let mut text = "(".to_owned();
                 let mut defs = vec![];

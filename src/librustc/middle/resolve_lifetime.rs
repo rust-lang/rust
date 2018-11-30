@@ -764,6 +764,13 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     });
                 }
             }
+            hir::TyKind::CVarArgs(ref lt) => {
+                // Resolve the generated lifetime for the C-variadic arguments.
+                // The lifetime is generated in AST -> HIR lowering.
+                if lt.name.is_elided() {
+                    self.resolve_elided_lifetimes(vec![lt])
+                }
+            }
             _ => intravisit::walk_ty(self, ty),
         }
     }
@@ -2225,18 +2232,22 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 if let hir::TyKind::BareFn(_) = ty.node {
                     self.outer_index.shift_in(1);
                 }
-                if let hir::TyKind::TraitObject(ref bounds, ref lifetime) = ty.node {
-                    for bound in bounds {
-                        self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
-                    }
+                match ty.node {
+                    hir::TyKind::TraitObject(ref bounds, ref lifetime) => {
+                        for bound in bounds {
+                            self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
+                        }
 
-                    // Stay on the safe side and don't include the object
-                    // lifetime default (which may not end up being used).
-                    if !lifetime.is_elided() {
-                        self.visit_lifetime(lifetime);
+                        // Stay on the safe side and don't include the object
+                        // lifetime default (which may not end up being used).
+                        if !lifetime.is_elided() {
+                            self.visit_lifetime(lifetime);
+                        }
                     }
-                } else {
-                    intravisit::walk_ty(self, ty);
+                    hir::TyKind::CVarArgs(_) => {}
+                    _ => {
+                        intravisit::walk_ty(self, ty);
+                    }
                 }
                 if let hir::TyKind::BareFn(_) = ty.node {
                     self.outer_index.shift_out(1);

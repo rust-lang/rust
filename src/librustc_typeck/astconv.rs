@@ -1822,6 +1822,15 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
             hir::TyKind::Err => {
                 tcx.types.err
             }
+            hir::TyKind::CVarArgs(lt) => {
+                let va_list_did = match tcx.lang_items().va_list() {
+                    Some(did) => did,
+                    None => span_bug!(ast_ty.span,
+                                      "`va_list` lang item required for variadics"),
+                };
+                let region = self.ast_region_to_region(&lt, None);
+                tcx.type_of(va_list_did).subst(tcx, &[region.into()])
+            }
         };
 
         self.record_ty(ast_ty.hir_id, result_ty, ast_ty.span);

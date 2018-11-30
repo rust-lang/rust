@@ -3,7 +3,7 @@ use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::interpret::EvalErrorKind;
-use rustc_target::abi::call::{ArgType, FnType, PassMode};
+use rustc_target::abi::call::{ArgType, FnType, PassMode, IgnoreMode};
 use rustc_target::spec::abi::Abi;
 use rustc_mir::monomorphize;
 use crate::base;
@@ -18,7 +18,7 @@ use syntax_pos::Pos;
 
 use super::{FunctionCx, LocalRef};
 use super::place::PlaceRef;
-use super::operand::OperandRef;
+use super::operand::{OperandValue, OperandRef};
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
 impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -232,10 +232,19 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::Return => {
+                if self.fn_ty.variadic {
+                    if let Some(va_list) = self.va_list_ref {
+                        bx.va_end(va_list.llval);
+                    }
+                }
                 let llval = match self.fn_ty.ret.mode {
-                    PassMode::Ignore | PassMode::Indirect(..) => {
+                    PassMode::Ignore(IgnoreMode::Zst) | PassMode::Indirect(..) => {
                         bx.ret_void();
                         return;
+                    }
+
+                    PassMode::Ignore(IgnoreMode::CVarArgs) => {
+                        bug!("C variadic arguments should never be the return type");
                     }
 
                     PassMode::Direct(_) | PassMode::Pair(..) => {
@@ -481,7 +490,10 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return;
                 }
 
-                let extra_args = &args[sig.inputs().len()..];
+                // The "spoofed" `VaList` added to a C-variadic functions signature
+                // should not be included in the `extra_args` calculation.
+                let extra_args_start_idx = sig.inputs().len() - if sig.variadic { 1 } else { 0 };
+                let extra_args = &args[extra_args_start_idx..];
                 let extra_args = extra_args.iter().map(|op_arg| {
                     let op_ty = op_arg.ty(self.mir, bx.tcx());
                     self.monomorphize(&op_ty)
@@ -658,7 +670,37 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     (&args[..], None)
                 };
 
+                // Useful determining if the current argument is the "spoofed" `VaList`
+                let last_arg_idx = if sig.inputs().is_empty() {
+                    None
+                } else {
+                    Some(sig.inputs().len() - 1)
+                };
                 'make_args: for (i, arg) in first_args.iter().enumerate() {
+                    // If this is a C-variadic function the function signature contains
+                    // an "spoofed" `VaList`. This argument is ignored, but we need to
+                    // populate it with a dummy operand so that the users real arguments
+                    // are not overwritten.
+                    let i = if sig.variadic && last_arg_idx.map(|x| x == i).unwrap_or(false) {
+                        let layout = match tcx.lang_items().va_list() {
+                            Some(did) => bx.cx().layout_of(bx.tcx().type_of(did)),
+                            None => bug!("va_list language item required for C variadics"),
+                        };
+                        let op = OperandRef {
+                            val: OperandValue::Immediate(
+                                bx.cx().const_undef(bx.cx().immediate_backend_type(layout))
+                            ),
+                            layout: layout,
+                        };
+                        self.codegen_argument(&mut bx, op, &mut llargs, &fn_ty.args[i]);
+                        if i + 1 < fn_ty.args.len() {
+                            i + 1
+                        } else {
+                            break 'make_args
+                        }
+                    } else {
+                        i
+                    };
                     let mut op = self.codegen_operand(&mut bx, arg);
 
                     if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {

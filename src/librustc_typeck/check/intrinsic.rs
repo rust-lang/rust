@@ -337,7 +337,7 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             "va_start" | "va_end" => {
                 match mk_va_list_ty() {
                     Some(va_list_ty) => (0, vec![va_list_ty], tcx.mk_unit()),
-                    None => bug!("va_list lang_item must be defined to use va_list intrinsics")
+                    None => bug!("`va_list` language item needed for C-variadic intrinsics")
                 }
             }
 
@@ -364,14 +364,14 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                         };
                         (0, vec![tcx.mk_imm_ref(tcx.mk_region(env_region), va_list_ty)], ret_ty)
                     }
-                    None => bug!("va_list lang_item must be defined to use va_list intrinsics")
+                    None => bug!("`va_list` language item needed for C-variadic intrinsics")
                 }
             }
 
             "va_arg" => {
                 match mk_va_list_ty() {
                     Some(va_list_ty) => (1, vec![va_list_ty], param(0)),
-                    None => bug!("va_list lang_item must be defined to use va_list intrinsics")
+                    None => bug!("`va_list` language item needed for C-variadic intrinsics")
                 }
             }
 

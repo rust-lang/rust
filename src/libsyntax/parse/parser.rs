@@ -1543,7 +1543,7 @@ impl<'a> Parser<'a> {
                 // definition...
 
                 // We don't allow argument names to be left off in edition 2018.
-                p.parse_arg_general(p.span.rust_2018(), true)
+                p.parse_arg_general(p.span.rust_2018(), true, false)
             })?;
             generics.where_clause = self.parse_where_clause()?;
 
@@ -1613,7 +1613,7 @@ impl<'a> Parser<'a> {
     /// Parses an optional return type `[ -> TY ]` in a function declaration.
     fn parse_ret_ty(&mut self, allow_plus: bool) -> PResult<'a, FunctionRetTy> {
         if self.eat(&token::RArrow) {
-            Ok(FunctionRetTy::Ty(self.parse_ty_common(allow_plus, true)?))
+            Ok(FunctionRetTy::Ty(self.parse_ty_common(allow_plus, true, false)?))
         } else {
             Ok(FunctionRetTy::Default(self.span.shrink_to_lo()))
         }
@@ -1621,7 +1621,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a type.
     pub fn parse_ty(&mut self) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(true, true)
+        self.parse_ty_common(true, true, false)
     }
 
     /// Parses a type in restricted contexts where `+` is not permitted.
@@ -1631,11 +1631,11 @@ impl<'a> Parser<'a> {
     /// Example 2: `value1 as TYPE + value2`
     ///     `+` is prohibited to avoid interactions with expression grammar.
     fn parse_ty_no_plus(&mut self) -> PResult<'a, P<Ty>> {
-        self.parse_ty_common(false, true)
+        self.parse_ty_common(false, true, false)
     }
 
-    fn parse_ty_common(&mut self, allow_plus: bool, allow_qpath_recovery: bool)
-                       -> PResult<'a, P<Ty>> {
+    fn parse_ty_common(&mut self, allow_plus: bool, allow_qpath_recovery: bool,
+                       allow_variadic: bool) -> PResult<'a, P<Ty>> {
         maybe_whole!(self, NtTy, |x| x);
 
         let lo = self.span;
@@ -1771,6 +1771,15 @@ impl<'a> Parser<'a> {
                 } else {
                     TyKind::Path(None, path)
                 }
+            }
+        } else if self.check(&token::DotDotDot) {
+            if allow_variadic {
+                self.eat(&token::DotDotDot);
+                TyKind::CVarArgs
+            } else {
+                return Err(self.fatal(
+                    "only foreign functions are allowed to be variadic"
+                ));
             }
         } else {
             let msg = format!("expected type, found {}", self.this_token_descr());
@@ -1959,7 +1968,8 @@ impl<'a> Parser<'a> {
     }
 
     /// This version of parse arg doesn't necessarily require identifier names.
-    fn parse_arg_general(&mut self, require_name: bool, is_trait_item: bool) -> PResult<'a, Arg> {
+    fn parse_arg_general(&mut self, require_name: bool, is_trait_item: bool,
+                         allow_variadic: bool) -> PResult<'a, Arg> {
         maybe_whole!(self, NtArg, |x| x);
 
         if let Ok(Some(_)) = self.parse_self_arg() {
@@ -2008,12 +2018,12 @@ impl<'a> Parser<'a> {
             }
 
             self.eat_incorrect_doc_comment("a method argument's type");
-            (pat, self.parse_ty()?)
+            (pat, self.parse_ty_common(true, true, allow_variadic)?)
         } else {
             debug!("parse_arg_general ident_to_pat");
             let parser_snapshot_before_ty = self.clone();
             self.eat_incorrect_doc_comment("a method argument's type");
-            let mut ty = self.parse_ty();
+            let mut ty = self.parse_ty_common(true, true, allow_variadic);
             if ty.is_ok() && self.token != token::Comma &&
                self.token != token::CloseDelim(token::Paren) {
                 // This wasn't actually a type, but a pattern looking like a type,
@@ -2032,6 +2042,11 @@ impl<'a> Parser<'a> {
                     (pat, ty)
                 }
                 Err(mut err) => {
+                    // If this is a variadic argument and we hit an error, return the
+                    // error.
+                    if self.token == token::DotDotDot {
+                        return Err(err);
+                    }
                     // Recover from attempting to parse the argument as a type without pattern.
                     err.cancel();
                     mem::replace(self, parser_snapshot_before_ty);
@@ -2068,7 +2083,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a single function argument.
     crate fn parse_arg(&mut self) -> PResult<'a, Arg> {
-        self.parse_arg_general(true, false)
+        self.parse_arg_general(true, false, false)
     }
 
     /// Parses an argument in a lambda header (e.g., `|arg, arg|`).
@@ -2406,7 +2421,7 @@ impl<'a> Parser<'a> {
                 }
                 let span = lo.to(self.prev_span);
                 let output = if self.eat(&token::RArrow) {
-                    Some(self.parse_ty_common(false, false)?)
+                    Some(self.parse_ty_common(false, false, false)?)
                 } else {
                     None
                 };
@@ -6118,44 +6133,38 @@ impl<'a> Parser<'a> {
                 &token::CloseDelim(token::Paren),
                 SeqSep::trailing_allowed(token::Comma),
                 |p| {
-                    if p.token == token::DotDotDot {
-                        p.bump();
-                        variadic = true;
-                        if allow_variadic {
-                            if p.token != token::CloseDelim(token::Paren) {
-                                let span = p.span;
-                                p.span_err(span,
-                                    "`...` must be last in argument list for variadic function");
-                            }
-                            Ok(None)
-                        } else {
-                            let span = p.prev_span;
-                            if p.token == token::CloseDelim(token::Paren) {
-                                // continue parsing to present any further errors
-                                p.struct_span_err(
-                                    span,
-                                    "only foreign functions are allowed to be variadic"
-                                ).emit();
-                                Ok(Some(dummy_arg(span)))
-                           } else {
-                               // this function definition looks beyond recovery, stop parsing
-                                p.span_err(span,
-                                           "only foreign functions are allowed to be variadic");
-                                Ok(None)
-                            }
-                        }
+                    // If the argument is a C-variadic argument we should not
+                    // enforce named arguments.
+                    let enforce_named_args = if p.token == token::DotDotDot {
+                        false
                     } else {
-                        match p.parse_arg_general(named_args, false) {
-                            Ok(arg) => Ok(Some(arg)),
-                            Err(mut e) => {
-                                e.emit();
-                                let lo = p.prev_span;
-                                // Skip every token until next possible arg or end.
-                                p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
-                                // Create a placeholder argument for proper arg count (#34264).
-                                let span = lo.to(p.prev_span);
-                                Ok(Some(dummy_arg(span)))
+                        named_args
+                    };
+                    match p.parse_arg_general(enforce_named_args, false,
+                                              allow_variadic) {
+                        Ok(arg) => {
+                            if let TyKind::CVarArgs = arg.ty.node {
+                                variadic = true;
+                                if p.token != token::CloseDelim(token::Paren) {
+                                    let span = p.span;
+                                    p.span_err(span,
+                                        "`...` must be last in argument list in variadic function");
+                                    Ok(None)
+                                } else {
+                                    Ok(Some(arg))
+                                }
+                            } else {
+                                Ok(Some(arg))
                             }
+                        },
+                        Err(mut e) => {
+                            e.emit();
+                            let lo = p.prev_span;
+                            // Skip every token until next possible arg or end.
+                            p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
+                            // Create a placeholder argument for proper arg count (issue #34264).
+                            let span = lo.to(p.prev_span);
+                            Ok(Some(dummy_arg(span)))
                         }
                     }
                 }
@@ -6389,7 +6398,8 @@ impl<'a> Parser<'a> {
                      abi: Abi)
                      -> PResult<'a, ItemInfo> {
         let (ident, mut generics) = self.parse_fn_header()?;
-        let decl = self.parse_fn_decl(false)?;
+        let allow_variadic = abi == Abi::C && unsafety == Unsafety::Unsafe;
+        let decl = self.parse_fn_decl(allow_variadic)?;
         generics.where_clause = self.parse_where_clause()?;
         let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
         let header = FnHeader { unsafety, asyncness, constness, abi };
