@@ -2,7 +2,7 @@ error[E0411]: cannot find type `Self` in this scope
   --> $DIR/E0411.rs:12:6
    |
 LL |     <Self>::foo; //~ ERROR E0411
-   |      ^^^^ `Self` is only available in traits and impls
+   |      ^^^^ `Self` is only available in impls, traits, and type definitions
 
 error: aborting due to previous error
 
