@@ -969,7 +969,7 @@ impl<'a, 'tcx> TypeVisitor<'tcx> for TypePrivacyVisitor<'a, 'tcx> {
                             Some(poly_projection_predicate.skip_binder()
                                                           .projection_ty.trait_ref(self.tcx))
                         }
-                        ty::Predicate::TypeOutlives(..) => None,
+                        ty::Predicate::TypeOutlives(..) | ty::Predicate::RegionOutlives(..) => None,
                         _ => bug!("unexpected predicate: {:?}", predicate),
                     };
                     if let Some(trait_ref) = trait_ref {
