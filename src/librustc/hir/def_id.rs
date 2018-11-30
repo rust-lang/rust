@@ -275,6 +275,8 @@ impl serialize::UseSpecializedDecodable for DefId {}
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct LocalDefId(DefIndex);
 
+impl_defer_dellocs_for_no_drop_type!([] LocalDefId);
+
 impl LocalDefId {
     #[inline]
     pub fn from_def_id(def_id: DefId) -> LocalDefId {

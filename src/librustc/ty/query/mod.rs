@@ -499,13 +499,13 @@ define_queries! { <'tcx>
 
     BorrowChecking {
         // Lifetime resolution. See `middle::resolve_lifetimes`.
-        [] fn resolve_lifetimes: ResolveLifetimes(CrateNum) -> Lrc<ResolveLifetimes>,
+        [] fn resolve_lifetimes: ResolveLifetimes(CrateNum) -> Bx<'tcx, ResolveLifetimes>,
         [] fn named_region_map: NamedRegion(DefIndex) ->
-            Option<Lrc<FxHashMap<ItemLocalId, Region>>>,
+            Option<Bx<'tcx, FxHashMap<ItemLocalId, Region>>>,
         [] fn is_late_bound_map: IsLateBound(DefIndex) ->
-            Option<Lrc<FxHashSet<ItemLocalId>>>,
+            Option<Bx<'tcx, FxHashSet<ItemLocalId>>>,
         [] fn object_lifetime_defaults_map: ObjectLifetimeDefaults(DefIndex)
-            -> Option<Lrc<FxHashMap<ItemLocalId, Lrc<Vec<ObjectLifetimeDefault>>>>>,
+            -> Option<Bx<'tcx, FxHashMap<ItemLocalId, Vec<ObjectLifetimeDefault>>>>,
     },
 
     TypeChecking {
