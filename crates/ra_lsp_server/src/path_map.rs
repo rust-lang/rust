@@ -33,7 +33,7 @@ impl PathMap {
         let file_id = self
             .path2id
             .get(path.as_path())
-            .cloned()
+            .map(|&id| id)
             .unwrap_or_else(|| {
                 inserted = true;
                 let id = self.new_file_id();
