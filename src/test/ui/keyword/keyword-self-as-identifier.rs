@@ -10,5 +10,4 @@
 
 fn main() {
     let Self = 22; //~ ERROR cannot find unit struct/variant or constant `Self` in this scope
-        //~^ ERROR `Self` struct constructors are unstable (see issue #51994)
 }
