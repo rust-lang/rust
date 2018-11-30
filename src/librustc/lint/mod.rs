@@ -31,7 +31,7 @@
 pub use self::Level::*;
 pub use self::LintSource::*;
 
-use rustc_data_structures::sync::{self, Lrc};
+use rustc_data_structures::sync;
 
 use errors::{DiagnosticBuilder, DiagnosticId};
 use hir::def_id::{CrateNum, LOCAL_CRATE};
@@ -48,7 +48,7 @@ use syntax::edition::Edition;
 use syntax::symbol::Symbol;
 use syntax::visit as ast_visit;
 use syntax_pos::Span;
-use ty::TyCtxt;
+use ty::{Bx, TyCtxt};
 use ty::query::Providers;
 use util::nodemap::NodeMap;
 
@@ -393,6 +393,8 @@ pub struct LintId {
     lint: &'static Lint,
 }
 
+impl_defer_dellocs_for_no_drop_type!([] LintId);
+
 impl PartialEq for LintId {
     fn eq(&self, other: &LintId) -> bool {
         ptr::eq(self.lint, other.lint)
@@ -431,6 +433,8 @@ impl LintId {
 pub enum Level {
     Allow, Warn, Deny, Forbid,
 }
+
+impl_defer_dellocs_for_no_drop_type!([] Level);
 
 impl_stable_hash_for!(enum self::Level {
     Allow,
@@ -481,6 +485,8 @@ impl_stable_hash_for!(enum self::LintSource {
     Node(name, span, reason),
     CommandLine(text)
 });
+
+impl_defer_dellocs_for_no_drop_type!([] LintSource);
 
 pub type LevelSource = (Level, LintSource);
 
@@ -636,7 +642,7 @@ pub fn struct_lint_level<'a>(sess: &'a Session,
 }
 
 fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)
-    -> Lrc<LintLevelMap>
+    -> Bx<'tcx, LintLevelMap>
 {
     assert_eq!(cnum, LOCAL_CRATE);
     let mut builder = LintLevelMapBuilder {
@@ -649,7 +655,7 @@ fn lint_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, cnum: CrateNum)
         intravisit::walk_crate(builder, krate);
     });
 
-    Lrc::new(builder.levels.build_map())
+    tcx.bx(builder.levels.build_map())
 }
 
 struct LintLevelMapBuilder<'a, 'tcx: 'a> {

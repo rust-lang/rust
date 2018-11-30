@@ -427,7 +427,7 @@ define_queries! { <'tcx>
 
     Other {
         [] fn module_exports: ModuleExports(DefId) -> Option<Lrc<Vec<Export>>>,
-        [] fn lint_levels: lint_levels_node(CrateNum) -> Lrc<lint::LintLevelMap>,
+        [] fn lint_levels: lint_levels_node(CrateNum) -> Bx<'tcx, lint::LintLevelMap>,
     },
 
     TypeChecking {

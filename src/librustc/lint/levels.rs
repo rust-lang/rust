@@ -16,6 +16,7 @@ use ich::StableHashingContext;
 use lint::builtin;
 use lint::context::CheckLintNameResult;
 use lint::{self, Lint, LintId, Level, LintSource};
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use rustc_data_structures::stable_hasher::{HashStable, ToStableHashKey,
                                            StableHasher, StableHasherResult};
 use session::Session;
@@ -31,6 +32,13 @@ pub struct LintLevelSets {
     lint_cap: Level,
 }
 
+unsafe impl DeferDeallocs for LintLevelSets {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.list.defer(deferred);
+        self.lint_cap.defer(deferred);
+    }
+}
+
 enum LintSet {
     CommandLine {
         // -A,-W,-D flags, a `Symbol` for the flag itself and `Level` for which
@@ -42,6 +50,15 @@ enum LintSet {
         specs: FxHashMap<LintId, (Level, LintSource)>,
         parent: u32,
     },
+}
+
+unsafe impl DeferDeallocs for LintSet {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        match self {
+            LintSet::CommandLine { specs } |
+            LintSet::Node { specs, parent: _ } => specs.defer(deferred),
+        }
+    }
 }
 
 impl LintLevelSets {
@@ -514,6 +531,13 @@ impl<'a> LintLevelsBuilder<'a> {
 pub struct LintLevelMap {
     sets: LintLevelSets,
     id_to_set: FxHashMap<HirId, u32>,
+}
+
+unsafe impl DeferDeallocs for LintLevelMap {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.sets.defer(deferred);
+        self.id_to_set.defer(deferred);
+    }
 }
 
 impl LintLevelMap {
