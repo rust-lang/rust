@@ -230,6 +230,8 @@ pub struct Export {
     pub vis: ty::Visibility,
 }
 
+impl_defer_dellocs_for_no_drop_type!([] Export);
+
 impl CtorKind {
     pub fn from_ast(vdata: &ast::VariantData) -> CtorKind {
         match *vdata {

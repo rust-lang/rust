@@ -515,7 +515,7 @@ define_queries! { <'tcx>
     Other {
         [] fn dep_kind: DepKind(CrateNum) -> DepKind,
         [] fn crate_name: CrateName(CrateNum) -> Symbol,
-        [] fn item_children: ItemChildren(DefId) -> Lrc<Vec<Export>>,
+        [] fn item_children: ItemChildren(DefId) -> Bx<'tcx, [Export]>,
         [] fn extern_mod_stmt_cnum: ExternModStmtCnum(DefId) -> Option<CrateNum>,
 
         [] fn get_lib_features: get_lib_features_node(CrateNum) -> Lrc<LibFeatures>,
