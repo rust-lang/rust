@@ -808,8 +808,8 @@ fn has_typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn used_trait_imports<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 def_id: DefId)
-                                -> Lrc<DefIdSet> {
-    tcx.typeck_tables_of(def_id).used_trait_imports.clone()
+                                -> &'tcx DefIdSet {
+    &*tcx.typeck_tables_of(def_id).used_trait_imports
 }
 
 fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
