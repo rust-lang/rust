@@ -2982,10 +2982,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn object_lifetime_defaults(self, id: HirId)
-        -> Option<Lrc<Vec<ObjectLifetimeDefault>>>
+        -> Option<&'gcx [ObjectLifetimeDefault]>
     {
         self.object_lifetime_defaults_map(id.owner)
-            .and_then(|map| map.get(&id.local_id).cloned())
+            .and_then(|map| map.get(&id.local_id).map(|v| &**v))
     }
 }
 

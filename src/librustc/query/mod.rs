@@ -754,19 +754,19 @@ rustc_queries! {
 
     BorrowChecking {
         // Lifetime resolution. See `middle::resolve_lifetimes`.
-        query resolve_lifetimes(_: CrateNum) -> Lrc<ResolveLifetimes> {
+        query resolve_lifetimes(_: CrateNum) -> &'tcx ResolveLifetimes {
             desc { "resolving lifetimes" }
         }
         query named_region_map(_: DefIndex) ->
-            Option<Lrc<FxHashMap<ItemLocalId, Region>>> {
+            Option<&'tcx FxHashMap<ItemLocalId, Region>> {
             desc { "looking up a named region" }
         }
         query is_late_bound_map(_: DefIndex) ->
-            Option<Lrc<FxHashSet<ItemLocalId>>> {
+            Option<&'tcx FxHashSet<ItemLocalId>> {
             desc { "testing if a region is late bound" }
         }
         query object_lifetime_defaults_map(_: DefIndex)
-            -> Option<Lrc<FxHashMap<ItemLocalId, Lrc<Vec<ObjectLifetimeDefault>>>>> {
+            -> Option<&'tcx FxHashMap<ItemLocalId, Vec<ObjectLifetimeDefault>>> {
             desc { "looking up lifetime defaults for a region" }
         }
     }
