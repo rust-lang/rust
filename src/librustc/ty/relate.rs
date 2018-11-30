@@ -60,7 +60,7 @@ pub trait TypeRelation<'a, 'gcx: 'a+'tcx, 'tcx: 'a> : Sized {
                b_subst);
 
         let opt_variances = self.tcx().variances_of(item_def_id);
-        relate_substs(self, Some(&opt_variances), a_subst, b_subst)
+        relate_substs(self, Some(opt_variances), a_subst, b_subst)
     }
 
     /// Switch variance for the purpose of relating `a` and `b`.
@@ -122,7 +122,7 @@ impl<'tcx> Relate<'tcx> for ty::TypeAndMut<'tcx> {
 }
 
 pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
-                                        variances: Option<&Vec<ty::Variance>>,
+                                        variances: Option<&[ty::Variance]>,
                                         a_subst: SubstsRef<'tcx>,
                                         b_subst: SubstsRef<'tcx>)
                                         -> RelateResult<'tcx, SubstsRef<'tcx>>

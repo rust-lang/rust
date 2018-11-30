@@ -8,7 +8,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 
 use super::constraints::*;
 use super::terms::*;
@@ -23,7 +22,9 @@ struct SolveContext<'a, 'tcx: 'a> {
     solutions: Vec<ty::Variance>,
 }
 
-pub fn solve_constraints(constraints_cx: ConstraintContext<'_, '_>) -> ty::CrateVariancesMap {
+pub fn solve_constraints<'tcx>(
+    constraints_cx: ConstraintContext<'_, 'tcx>
+) -> ty::CrateVariancesMap<'tcx> {
     let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;
 
     let mut solutions = vec![ty::Bivariant; terms_cx.inferred_terms.len()];
@@ -41,9 +42,8 @@ pub fn solve_constraints(constraints_cx: ConstraintContext<'_, '_>) -> ty::Crate
     };
     solutions_cx.solve();
     let variances = solutions_cx.create_map();
-    let empty_variance = Lrc::new(Vec::new());
 
-    ty::CrateVariancesMap { variances, empty_variance }
+    ty::CrateVariancesMap { variances }
 }
 
 impl<'a, 'tcx> SolveContext<'a, 'tcx> {
@@ -78,7 +78,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         }
     }
 
-    fn create_map(&self) -> FxHashMap<DefId, Lrc<Vec<ty::Variance>>> {
+    fn create_map(&self) -> FxHashMap<DefId, &'tcx [ty::Variance]> {
         let tcx = self.terms_cx.tcx;
 
         let solutions = &self.solutions;
@@ -86,20 +86,24 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             let def_id = tcx.hir().local_def_id_from_hir_id(id);
             let generics = tcx.generics_of(def_id);
 
-            let mut variances = solutions[start..start+generics.count()].to_vec();
+            let variances = solutions[start..start+generics.count()].iter().cloned();
 
             debug!("id={} variances={:?}", id, variances);
 
-            // Functions can have unused type parameters: make those invariant.
-            if let ty::FnDef(..) = tcx.type_of(def_id).sty {
-                for variance in &mut variances {
-                    if *variance == ty::Bivariant {
-                        *variance = ty::Invariant;
+            let variances = if let ty::FnDef(..) = tcx.type_of(def_id).sty {
+                // Functions can have unused type parameters: make those invariant.
+                tcx.arena.alloc_from_iter(variances.map(|variance| {
+                    if variance == ty::Bivariant {
+                        ty::Invariant
+                    } else {
+                        variance
                     }
-                }
-            }
+                }))
+            } else {
+                tcx.arena.alloc_from_iter(variances)
+            };
 
-            (def_id, Lrc::new(variances))
+            (def_id, &*variances)
         }).collect()
     }
 
