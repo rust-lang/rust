@@ -572,7 +572,7 @@ fn issue_3005() {
         } if num_context.is_ok(context.parsing_mode, value) => {
             return NoCalcLength::parse_dimension(context, value, unit)
                 .map(LengthOrPercentage::Length)
-                .map_err(|()| location.new_unexpected_token_error(token.clone()))
+                .map_err(|()| location.new_unexpected_token_error(token.clone()));
         }
     }
 }

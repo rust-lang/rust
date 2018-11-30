@@ -137,7 +137,7 @@ impl TemplateParser {
                 return Err(LicenseError::Parse(format!(
                     "incomplete escape sequence on l. {}",
                     parser.linum
-                )))
+                )));
             }
             _ => (),
         }

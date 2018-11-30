@@ -545,7 +545,7 @@ fn issue_3005() {
                  {
                      return NoCalcLength::parse_dimension(context, value, unit)
                          .map(LengthOrPercentage::Length)
-                         .map_err(|()| location.new_unexpected_token_error(token.clone()))
+                         .map_err(|()| location.new_unexpected_token_error(token.clone()));
                  },
              }
 }
