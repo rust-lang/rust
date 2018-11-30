@@ -149,7 +149,6 @@ fn setup(ask_user: bool) {
     let dirs = directories::ProjectDirs::from("miri", "miri", "miri").unwrap();
     let dir = dirs.cache_dir();
     if !dir.exists() {
-        println!("Creating `{}` and using it for miri's build of libstd", dir.display());
         fs::create_dir_all(&dir).unwrap();
     }
     // The interesting bit: Xargo.toml
@@ -184,7 +183,11 @@ path = "lib.rs"
     }
 
     // That should be it!
-    std::env::set_var("MIRI_SYSROOT", dir.join("HOST"));
+    let sysroot = dir.join("HOST");
+    std::env::set_var("MIRI_SYSROOT", &sysroot);
+    if !ask_user {
+        println!("A libstd for miri is now available in `{}`", sysroot.display());
+    }
 }
 
 fn main() {
