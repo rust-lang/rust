@@ -24,12 +24,12 @@
 //! A few whitelisted exceptions are allowed as there's known bugs in rustdoc,
 //! but this should catch the majority of "broken link" cases.
 
-use std::env;
-use std::fs::File;
-use std::io::prelude::*;
-use std::path::{Path, PathBuf, Component};
-use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry;
+use std::collections::{HashMap, HashSet};
+use std::env;
+use std::fs;
+use std::path::{Path, PathBuf, Component};
+use std::rc::Rc;
 
 use Redirect::*;
 
@@ -63,7 +63,7 @@ enum Redirect {
 }
 
 struct FileEntry {
-    source: String,
+    source: Rc<String>,
     ids: HashSet<String>,
 }
 
@@ -113,7 +113,7 @@ fn walk(cache: &mut Cache, root: &Path, dir: &Path, errors: &mut bool) {
                 let entry = cache.get_mut(&pretty_path).unwrap();
                 // we don't need the source anymore,
                 // so drop to reduce memory-usage
-                entry.source = String::new();
+                entry.source = Rc::new(String::new());
             }
         }
     }
@@ -287,24 +287,24 @@ fn load_file(cache: &mut Cache,
              root: &Path,
              file: &Path,
              redirect: Redirect)
-             -> Result<(PathBuf, String), LoadError> {
-    let mut contents = String::new();
+             -> Result<(PathBuf, Rc<String>), LoadError> {
     let pretty_file = PathBuf::from(file.strip_prefix(root).unwrap_or(&file));
 
-    let maybe_redirect = match cache.entry(pretty_file.clone()) {
+    let (maybe_redirect, contents) = match cache.entry(pretty_file.clone()) {
         Entry::Occupied(entry) => {
-            contents = entry.get().source.clone();
-            None
+            (None, entry.get().source.clone())
         }
         Entry::Vacant(entry) => {
-            let mut fp = File::open(file).map_err(|err| {
-                if let FromRedirect(true) = redirect {
-                    LoadError::BrokenRedirect(file.to_path_buf(), err)
-                } else {
-                    LoadError::IOError(err)
+            let contents = match fs::read_to_string(file) {
+                Ok(s) => Rc::new(s),
+                Err(err) => {
+                    return Err(if let FromRedirect(true) = redirect {
+                        LoadError::BrokenRedirect(file.to_path_buf(), err)
+                    } else {
+                        LoadError::IOError(err)
+                    })
                 }
-            })?;
-            fp.read_to_string(&mut contents).map_err(|err| LoadError::IOError(err))?;
+            };
 
             let maybe = maybe_redirect(&contents);
             if maybe.is_some() {
@@ -317,7 +317,7 @@ fn load_file(cache: &mut Cache,
                     ids: HashSet::new(),
                 });
             }
-            maybe
+            (maybe, contents)
         }
     };
     match maybe_redirect.map(|url| file.parent().unwrap().join(url)) {
