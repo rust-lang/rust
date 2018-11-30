@@ -1166,7 +1166,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         if let (Mode::ConstFn, &Place::Local(index)) = (self.mode, dest) {
             if self.mir.local_kind(index) == LocalKind::Var &&
                self.const_fn_arg_vars.insert(index) &&
-               !self.tcx.sess.features_untracked().const_let {
+               !self.const_let_allowed() {
                 // Direct use of an argument is permitted.
                 match *rvalue {
                     Rvalue::Use(Operand::Copy(Place::Local(local))) |
