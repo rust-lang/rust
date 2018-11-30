@@ -1087,6 +1087,8 @@ pub enum Predicate<'tcx> {
     ConstEvaluatable(DefId, &'tcx Substs<'tcx>),
 }
 
+impl_defer_dellocs_for_no_drop_type!([<'tcx>] Predicate<'tcx>);
+
 /// The crate outlives map is computed during typeck and contains the
 /// outlives of every item in the local crate. You should not use it
 /// directly, because to do so will make your pass dependent on the
@@ -1097,10 +1099,7 @@ pub struct CratePredicatesMap<'tcx> {
     /// For each struct with outlive bounds, maps to a vector of the
     /// predicate of its outlive bounds. If an item has no outlives
     /// bounds, it will have no entry.
-    pub predicates: FxHashMap<DefId, Lrc<Vec<ty::Predicate<'tcx>>>>,
-
-    /// An empty vector, useful for cloning.
-    pub empty_predicate: Lrc<Vec<ty::Predicate<'tcx>>>,
+    pub predicates: FxHashMap<DefId, &'tcx [ty::Predicate<'tcx>]>,
 }
 
 impl<'tcx> AsRef<Predicate<'tcx>> for Predicate<'tcx> {

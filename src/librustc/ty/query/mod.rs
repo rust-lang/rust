@@ -142,7 +142,7 @@ define_queries! { <'tcx>
 
         /// Returns the inferred outlives predicates (e.g., for `struct
         /// Foo<'a, T> { x: &'a T }`, this would return `T: 'a`).
-        [] fn inferred_outlives_of: InferredOutlivesOf(DefId) -> Lrc<Vec<ty::Predicate<'tcx>>>,
+        [] fn inferred_outlives_of: InferredOutlivesOf(DefId) -> &'tcx [ty::Predicate<'tcx>],
 
         /// Maps from the def-id of a trait to the list of
         /// super-predicates. This is a subset of the full list of
