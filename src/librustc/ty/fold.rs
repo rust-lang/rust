@@ -680,24 +680,31 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 // vars. See comment on `shift_vars_through_binders` method in
 // `subst.rs` for more details.
 
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+enum Direction {
+    In,
+    Out,
+}
+
 struct Shifter<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
-
     current_index: ty::DebruijnIndex,
     amount: u32,
+    direction: Direction,
 }
 
 impl Shifter<'a, 'gcx, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, amount: u32) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>, amount: u32, direction: Direction) -> Self {
         Shifter {
             tcx,
             current_index: ty::INNERMOST,
             amount,
+            direction,
         }
     }
 }
 
-impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
+impl TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
     fn fold_binder<T: TypeFoldable<'tcx>>(&mut self, t: &ty::Binder<T>) -> ty::Binder<T> {
@@ -713,7 +720,14 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
                 if self.amount == 0 || debruijn < self.current_index {
                     r
                 } else {
-                    let shifted = ty::ReLateBound(debruijn.shifted_in(self.amount), br);
+                    let debruijn = match self.direction {
+                        Direction::In => debruijn.shifted_in(self.amount),
+                        Direction::Out => {
+                            assert!(debruijn.as_u32() >= self.amount);
+                            debruijn.shifted_out(self.amount)
+                        }
+                    };
+                    let shifted = ty::ReLateBound(debruijn, br);
                     self.tcx.mk_region(shifted)
                 }
             }
@@ -727,8 +741,15 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Shifter<'a, 'gcx, 'tcx> {
                 if self.amount == 0 || debruijn < self.current_index {
                     ty
                 } else {
+                    let debruijn = match self.direction {
+                        Direction::In => debruijn.shifted_in(self.amount),
+                        Direction::Out => {
+                            assert!(debruijn.as_u32() >= self.amount);
+                            debruijn.shifted_out(self.amount)
+                        }
+                    };
                     self.tcx.mk_ty(
-                        ty::Bound(debruijn.shifted_in(self.amount), bound_ty)
+                        ty::Bound(debruijn, bound_ty)
                     )
                 }
             }
@@ -761,7 +782,18 @@ pub fn shift_vars<'a, 'gcx, 'tcx, T>(
     debug!("shift_vars(value={:?}, amount={})",
            value, amount);
 
-    value.fold_with(&mut Shifter::new(tcx, amount))
+    value.fold_with(&mut Shifter::new(tcx, amount, Direction::In))
+}
+
+pub fn shift_out_vars<'a, 'gcx, 'tcx, T>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    value: &T,
+    amount: u32
+) -> T where T: TypeFoldable<'tcx> {
+    debug!("shift_out_vars(value={:?}, amount={})",
+           value, amount);
+
+    value.fold_with(&mut Shifter::new(tcx, amount, Direction::Out))
 }
 
 /// An "escaping var" is a bound var whose binder is not part of `t`. A bound var can be a
