@@ -4,7 +4,6 @@ error[E0531]: cannot find unit struct/variant or constant `Self` in this scope
 LL |     let Self = 22; //~ ERROR cannot find unit struct/variant or constant `Self` in this scope
    |         ^^^^ not found in this scope
 
-error: aborting due to 1 previous error
+error: aborting due to previous error
 
-Some errors occurred: E0531, E0658.
-For more information about an error, try `rustc --explain E0531`.
+For more information about this error, try `rustc --explain E0531`.
