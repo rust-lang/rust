@@ -839,12 +839,6 @@ host_test!(CompileFailFullDeps {
     suite: "compile-fail-fulldeps"
 });
 
-host_test!(IncrementalFullDeps {
-    path: "src/test/incremental-fulldeps",
-    mode: "incremental",
-    suite: "incremental-fulldeps"
-});
-
 host_test!(Rustdoc {
     path: "src/test/rustdoc",
     mode: "rustdoc",
@@ -982,6 +976,11 @@ impl Step for Compiletest {
             builder.ensure(compile::Std { compiler, target: compiler.host });
         }
 
+        // HACK(eddyb) ensure that `libproc_macro` is available on the host.
+        builder.ensure(compile::Test { compiler, target: compiler.host });
+        // Also provide `rust_test_helpers` for the host.
+        builder.ensure(native::TestHelpers { target: compiler.host });
+
         builder.ensure(native::TestHelpers { target });
         builder.ensure(RemoteCopyLibs { compiler, target });
 
@@ -1049,7 +1048,11 @@ impl Step for Compiletest {
             cmd.arg("--linker").arg(linker);
         }
 
-        let hostflags = flags.clone();
+        let mut hostflags = flags.clone();
+        hostflags.push(format!(
+            "-Lnative={}",
+            builder.test_helpers_out(compiler.host).display()
+        ));
         cmd.arg("--host-rustcflags").arg(hostflags.join(" "));
 
         let mut targetflags = flags;

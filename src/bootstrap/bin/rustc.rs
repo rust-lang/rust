@@ -129,10 +129,12 @@ fn main() {
         // Help the libc crate compile by assisting it in finding the MUSL
         // native libraries.
         if let Some(s) = env::var_os("MUSL_ROOT") {
-            let mut root = OsString::from("native=");
-            root.push(&s);
-            root.push("/lib");
-            cmd.arg("-L").arg(&root);
+            if target.contains("musl") {
+                let mut root = OsString::from("native=");
+                root.push(&s);
+                root.push("/lib");
+                cmd.arg("-L").arg(&root);
+            }
         }
 
         // Override linker if necessary.

@@ -470,7 +470,7 @@ define_queries! { <'tcx>
         [] fn foreign_modules: ForeignModules(CrateNum) -> Lrc<Vec<ForeignModule>>,
 
         [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
-        [] fn derive_registrar_fn: DeriveRegistrarFn(CrateNum) -> Option<DefId>,
+        [] fn proc_macro_decls_static: ProcMacroDeclsStatic(CrateNum) -> Option<DefId>,
         [] fn crate_disambiguator: CrateDisambiguator(CrateNum) -> CrateDisambiguator,
         [] fn crate_hash: CrateHash(CrateNum) -> Svh,
         [] fn original_crate_name: OriginalCrateName(CrateNum) -> Symbol,

@@ -390,7 +390,6 @@ impl<'a> Builder<'a> {
                 test::RunPassFullDeps,
                 test::RunFailFullDeps,
                 test::CompileFailFullDeps,
-                test::IncrementalFullDeps,
                 test::Rustdoc,
                 test::Pretty,
                 test::RunPassPretty,

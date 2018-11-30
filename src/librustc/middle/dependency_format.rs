@@ -127,9 +127,8 @@ fn calculate_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             sess.crt_static() => Linkage::Static,
         config::CrateType::Executable => Linkage::Dynamic,
 
-        // proc-macro crates are required to be dylibs, and they're currently
-        // required to link to libsyntax as well.
-        config::CrateType::ProcMacro => Linkage::Dynamic,
+        // proc-macro crates are mostly cdylibs, but we also need metadata.
+        config::CrateType::ProcMacro => Linkage::Static,
 
         // No linkage happens with rlibs, we just needed the metadata (which we
         // got long ago), so don't bother with anything.

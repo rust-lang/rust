@@ -5,10 +5,3 @@ version = "0.0.0"
 
 [lib]
 path = "lib.rs"
-crate-type = ["dylib"]
-
-[dependencies]
-syntax = { path = "../libsyntax" }
-syntax_pos = { path = "../libsyntax_pos" }
-rustc_errors = { path = "../librustc_errors" }
-rustc_data_structures = { path = "../librustc_data_structures" }

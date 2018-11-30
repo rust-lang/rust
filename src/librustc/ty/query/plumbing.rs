@@ -1200,7 +1200,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::ReachableNonGenerics => { force!(reachable_non_generics, krate!()); }
         DepKind::NativeLibraries => { force!(native_libraries, krate!()); }
         DepKind::PluginRegistrarFn => { force!(plugin_registrar_fn, krate!()); }
-        DepKind::DeriveRegistrarFn => { force!(derive_registrar_fn, krate!()); }
+        DepKind::ProcMacroDeclsStatic => { force!(proc_macro_decls_static, krate!()); }
         DepKind::CrateDisambiguator => { force!(crate_disambiguator, krate!()); }
         DepKind::CrateHash => { force!(crate_hash, krate!()); }
         DepKind::OriginalCrateName => { force!(original_crate_name, krate!()); }

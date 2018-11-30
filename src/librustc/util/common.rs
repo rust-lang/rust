@@ -24,7 +24,6 @@ use std::sync::mpsc::{Sender};
 use syntax_pos::{SpanData};
 use ty::TyCtxt;
 use dep_graph::{DepNode};
-use proc_macro;
 use lazy_static;
 use session::Session;
 
@@ -47,14 +46,13 @@ lazy_static! {
 }
 
 fn panic_hook(info: &panic::PanicInfo<'_>) {
-    if !proc_macro::__internal::in_sess() {
-        (*DEFAULT_HOOK)(info);
+    (*DEFAULT_HOOK)(info);
 
-        let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
+    let backtrace = env::var_os("RUST_BACKTRACE").map(|x| &x != "0").unwrap_or(false);
 
-        if backtrace {
-            TyCtxt::try_print_query_stack();
-        }
+    if backtrace {
+        TyCtxt::try_print_query_stack();
+    }
 
         #[cfg(windows)]
         unsafe {
@@ -66,7 +64,6 @@ fn panic_hook(info: &panic::PanicInfo<'_>) {
                 DebugBreak();
             }
         }
-    }
 }
 
 pub fn install_panic_hook() {

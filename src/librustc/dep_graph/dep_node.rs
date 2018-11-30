@@ -596,7 +596,7 @@ define_dep_nodes!( <'tcx>
     [] ReachableNonGenerics(CrateNum),
     [] NativeLibraries(CrateNum),
     [] PluginRegistrarFn(CrateNum),
-    [] DeriveRegistrarFn(CrateNum),
+    [] ProcMacroDeclsStatic(CrateNum),
     [input] CrateDisambiguator(CrateNum),
     [input] CrateHash(CrateNum),
     [input] OriginalCrateName(CrateNum),

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::panic;
 
 use errors::FatalError;
 
@@ -17,11 +16,13 @@ use syntax::ext::base::*;
 use syntax::tokenstream::TokenStream;
 use syntax::ext::base;
 
-use proc_macro::TokenStream as TsShim;
-use proc_macro::__internal;
+pub const EXEC_STRATEGY: ::proc_macro::bridge::server::SameThread =
+    ::proc_macro::bridge::server::SameThread;
 
 pub struct AttrProcMacro {
-    pub inner: fn(TsShim, TsShim) -> TsShim,
+    pub client: ::proc_macro::bridge::client::Client<
+        fn(::proc_macro::TokenStream, ::proc_macro::TokenStream) -> ::proc_macro::TokenStream,
+    >,
 }
 
 impl base::AttrProcMacro for AttrProcMacro {
@@ -31,22 +32,13 @@ impl base::AttrProcMacro for AttrProcMacro {
                    annotation: TokenStream,
                    annotated: TokenStream)
                    -> TokenStream {
-        let annotation = __internal::token_stream_wrap(annotation);
-        let annotated = __internal::token_stream_wrap(annotated);
-
-        let res = __internal::set_sess(ecx, || {
-            panic::catch_unwind(panic::AssertUnwindSafe(|| (self.inner)(annotation, annotated)))
-        });
-
-        match res {
-            Ok(stream) => __internal::token_stream_inner(stream),
+        let server = ::proc_macro_server::Rustc::new(ecx);
+        match self.client.run(&EXEC_STRATEGY, server, annotation, annotated) {
+            Ok(stream) => stream,
             Err(e) => {
                 let msg = "custom attribute panicked";
                 let mut err = ecx.struct_span_fatal(span, msg);
-                if let Some(s) = e.downcast_ref::<String>() {
-                    err.help(&format!("message: {}", s));
-                }
-                if let Some(s) = e.downcast_ref::<&'static str>() {
+                if let Some(s) = e.as_str() {
                     err.help(&format!("message: {}", s));
                 }
 
@@ -58,7 +50,9 @@ impl base::AttrProcMacro for AttrProcMacro {
 }
 
 pub struct BangProcMacro {
-    pub inner: fn(TsShim) -> TsShim,
+    pub client: ::proc_macro::bridge::client::Client<
+        fn(::proc_macro::TokenStream) -> ::proc_macro::TokenStream,
+    >,
 }
 
 impl base::ProcMacro for BangProcMacro {
@@ -67,21 +61,13 @@ impl base::ProcMacro for BangProcMacro {
                    span: Span,
                    input: TokenStream)
                    -> TokenStream {
-        let input = __internal::token_stream_wrap(input);
-
-        let res = __internal::set_sess(ecx, || {
-            panic::catch_unwind(panic::AssertUnwindSafe(|| (self.inner)(input)))
-        });
-
-        match res {
-            Ok(stream) => __internal::token_stream_inner(stream),
+        let server = ::proc_macro_server::Rustc::new(ecx);
+        match self.client.run(&EXEC_STRATEGY, server, input) {
+            Ok(stream) => stream,
             Err(e) => {
                 let msg = "proc macro panicked";
                 let mut err = ecx.struct_span_fatal(span, msg);
-                if let Some(s) = e.downcast_ref::<String>() {
-                    err.help(&format!("message: {}", s));
-                }
-                if let Some(s) = e.downcast_ref::<&'static str>() {
+                if let Some(s) = e.as_str() {
                     err.help(&format!("message: {}", s));
                 }
 

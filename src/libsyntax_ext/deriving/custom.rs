@@ -8,15 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::panic;
-
 use errors::FatalError;
-use proc_macro::{TokenStream, __internal};
 use syntax::ast::{self, ItemKind, Attribute, Mac};
 use syntax::attr::{mark_used, mark_known};
 use syntax::source_map::Span;
 use syntax::ext::base::*;
+use syntax::parse;
+use syntax::parse::token::{self, Token};
+use syntax::tokenstream;
 use syntax::visit::Visitor;
+use syntax_pos::DUMMY_SP;
+
+use proc_macro_impl::EXEC_STRATEGY;
 
 struct MarkAttrs<'a>(&'a [ast::Name]);
 
@@ -32,14 +35,10 @@ impl<'a> Visitor<'a> for MarkAttrs<'a> {
 }
 
 pub struct ProcMacroDerive {
-    inner: fn(TokenStream) -> TokenStream,
-    attrs: Vec<ast::Name>,
-}
-
-impl ProcMacroDerive {
-    pub fn new(inner: fn(TokenStream) -> TokenStream, attrs: Vec<ast::Name>) -> ProcMacroDerive {
-        ProcMacroDerive { inner: inner, attrs: attrs }
-    }
+    pub client: ::proc_macro::bridge::client::Client<
+        fn(::proc_macro::TokenStream) -> ::proc_macro::TokenStream,
+    >,
+    pub attrs: Vec<ast::Name>,
 }
 
 impl MultiItemModifier for ProcMacroDerive {
@@ -75,21 +74,17 @@ impl MultiItemModifier for ProcMacroDerive {
         // Mark attributes as known, and used.
         MarkAttrs(&self.attrs).visit_item(&item);
 
-        let input = __internal::new_token_stream(ecx.resolver.eliminate_crate_var(item));
-        let res = __internal::set_sess(ecx, || {
-            let inner = self.inner;
-            panic::catch_unwind(panic::AssertUnwindSafe(|| inner(input)))
-        });
+        let item = ecx.resolver.eliminate_crate_var(item);
+        let token = Token::interpolated(token::NtItem(item));
+        let input = tokenstream::TokenTree::Token(DUMMY_SP, token).into();
 
-        let stream = match res {
+        let server = ::proc_macro_server::Rustc::new(ecx);
+        let stream = match self.client.run(&EXEC_STRATEGY, server, input) {
             Ok(stream) => stream,
             Err(e) => {
                 let msg = "proc-macro derive panicked";
                 let mut err = ecx.struct_span_fatal(span, msg);
-                if let Some(s) = e.downcast_ref::<String>() {
-                    err.help(&format!("message: {}", s));
-                }
-                if let Some(s) = e.downcast_ref::<&'static str>() {
+                if let Some(s) = e.as_str() {
                     err.help(&format!("message: {}", s));
                 }
 
@@ -99,21 +94,33 @@ impl MultiItemModifier for ProcMacroDerive {
         };
 
         let error_count_before = ecx.parse_sess.span_diagnostic.err_count();
-        __internal::set_sess(ecx, || {
-            let msg = "proc-macro derive produced unparseable tokens";
-            match __internal::token_stream_parse_items(stream) {
-                // fail if there have been errors emitted
-                Ok(_) if ecx.parse_sess.span_diagnostic.err_count() > error_count_before => {
-                    ecx.struct_span_fatal(span, msg).emit();
-                    FatalError.raise();
+        let msg = "proc-macro derive produced unparseable tokens";
+
+        let mut parser = parse::stream_to_parser(ecx.parse_sess, stream);
+        let mut items = vec![];
+
+        loop {
+            match parser.parse_item() {
+                Ok(None) => break,
+                Ok(Some(item)) => {
+                    items.push(Annotatable::Item(item))
                 }
-                Ok(new_items) => new_items.into_iter().map(Annotatable::Item).collect(),
-                Err(_) => {
+                Err(mut err) => {
                     // FIXME: handle this better
+                    err.cancel();
                     ecx.struct_span_fatal(span, msg).emit();
                     FatalError.raise();
                 }
             }
-        })
+        }
+
+
+        // fail if there have been errors emitted
+        if ecx.parse_sess.span_diagnostic.err_count() > error_count_before {
+            ecx.struct_span_fatal(span, msg).emit();
+            FatalError.raise();
+        }
+
+        items
     }
 }
