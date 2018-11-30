@@ -70,6 +70,7 @@ macro_rules! book {
 book!(
     Nomicon, "src/doc/nomicon", "nomicon";
     Reference, "src/doc/reference", "reference";
+    EditionGuide, "src/doc/edition-guide", "edition-guide";
     RustdocBook, "src/doc/rustdoc", "rustdoc";
     RustcBook, "src/doc/rustc", "rustc";
     RustByExample, "src/doc/rust-by-example", "rust-by-example";
