@@ -167,10 +167,12 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use any::Any;
+use boxed::FnBox;
 use cell::UnsafeCell;
 use ffi::{CStr, CString};
 use fmt;
 use io;
+use mem;
 use panic;
 use panicking;
 use str;
@@ -452,8 +454,8 @@ impl Builder {
     /// [`io::Result`]: ../../std/io/type.Result.html
     /// [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
     #[unstable(feature = "thread_spawn_unchecked", issue = "55132")]
-    pub unsafe fn spawn_unchecked<F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
-        F: FnOnce() -> T, F: Send, T: Send
+    pub unsafe fn spawn_unchecked<'a, F, T>(self, f: F) -> io::Result<JoinHandle<T>> where
+        F: FnOnce() -> T, F: Send + 'a, T: Send + 'a
     {
         let Builder { name, stack_size } = self;
 
@@ -482,7 +484,21 @@ impl Builder {
         };
 
         Ok(JoinHandle(JoinInner {
-            native: Some(imp::Thread::new(stack_size, Box::new(main))?),
+            // `imp::Thread::new` takes a closure with a `'static` lifetime, since it's passed
+            // through FFI or otherwise used with low-level threading primitives that have no
+            // notion of or way to enforce lifetimes.
+            //
+            // As mentioned in the `Safety` section of this function's documentation, the caller of
+            // this function needs to guarantee that the passed-in lifetime is sufficiently long
+            // for the lifetime of the thread.
+            //
+            // Similarly, the `sys` implementation must guarantee that no references to the closure
+            // exist after the thread has terminated, which is signaled by `Thread::join`
+            // returning.
+            native: Some(imp::Thread::new(
+                stack_size,
+                mem::transmute::<Box<dyn FnBox() + 'a>, Box<dyn FnBox() + 'static>>(Box::new(main))
+            )?),
             thread: my_thread,
             packet: Packet(my_packet),
         }))
