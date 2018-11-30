@@ -16,7 +16,6 @@
 #![feature(range_contains)]
 #![allow(clippy::missing_docs_in_private_items)]
 #![recursion_limit = "256"]
-#![feature(macro_at_most_once_rep)]
 #![warn(rust_2018_idioms, trivial_casts, trivial_numeric_casts)]
 #![feature(crate_visibility_modifier)]
 #![feature(try_from)]
