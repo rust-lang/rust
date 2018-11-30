@@ -216,56 +216,73 @@ crate fn environment<'a, 'tcx>(
     let node_id = tcx.hir().as_local_node_id(def_id).unwrap();
     let node = tcx.hir().get(node_id);
 
-    let mut is_fn = false;
-    let mut is_impl = false;
-    match node {
+    enum NodeKind {
+        TraitImpl,
+        InherentImpl,
+        Fn,
+        Other,
+    };
+
+    let node_kind = match node {
         Node::TraitItem(item) => match item.node {
-            TraitItemKind::Method(..) => is_fn = true,
-            _ => (),
+            TraitItemKind::Method(..) => NodeKind::Fn,
+            _ => NodeKind::Other,
         }
 
         Node::ImplItem(item) => match item.node {
-            ImplItemKind::Method(..) => is_fn = true,
-            _ => (),
+            ImplItemKind::Method(..) => NodeKind::Fn,
+            _ => NodeKind::Other,
         }
 
         Node::Item(item) => match item.node {
-            ItemKind::Impl(..) => is_impl = true,
-            ItemKind::Fn(..) => is_fn = true,
-            _ => (),
+            ItemKind::Impl(.., Some(..), _, _) => NodeKind::TraitImpl,
+            ItemKind::Impl(.., None, _, _) => NodeKind::InherentImpl,
+            ItemKind::Fn(..) => NodeKind::Fn,
+            _ => NodeKind::Other,
         }
 
         Node::ForeignItem(item) => match item.node {
-            ForeignItemKind::Fn(..) => is_fn = true,
-            _ => (),
+            ForeignItemKind::Fn(..) => NodeKind::Fn,
+            _ => NodeKind::Other,
         }
 
         // FIXME: closures?
-        _ => (),
-    }
+        _ => NodeKind::Other,
+    };
 
     let mut input_tys = FxHashSet::default();
 
-    // In an impl, we assume that the header trait ref and all its constituents
-    // are well-formed.
-    if is_impl {
-        let trait_ref = tcx.impl_trait_ref(def_id)
-            .expect("not an impl");
+    match node_kind {
+        // In a trait impl, we assume that the header trait ref and all its
+        // constituents are well-formed.
+        NodeKind::TraitImpl => {
+            let trait_ref = tcx.impl_trait_ref(def_id)
+                .expect("not an impl");
 
-        input_tys.extend(
-            trait_ref.input_types().flat_map(|ty| ty.walk())
-        );
-    }
+            input_tys.extend(
+                trait_ref.input_types().flat_map(|ty| ty.walk())
+            );
+        }
 
-    // In an fn, we assume that the arguments and all their constituents are
-    // well-formed.
-    if is_fn {
-        let fn_sig = tcx.fn_sig(def_id);
-        let fn_sig = tcx.liberate_late_bound_regions(def_id, &fn_sig);
+        // In an inherent impl, we assume that the receiver type and all its
+        // constituents are well-formed.
+        NodeKind::InherentImpl => {
+            let self_ty = tcx.type_of(def_id);
+            input_tys.extend(self_ty.walk());
+        }
 
-        input_tys.extend(
-            fn_sig.inputs().iter().flat_map(|ty| ty.walk())
-        );
+        // In an fn, we assume that the arguments and all their constituents are
+        // well-formed.
+        NodeKind::Fn => {
+            let fn_sig = tcx.fn_sig(def_id);
+            let fn_sig = tcx.liberate_late_bound_regions(def_id, &fn_sig);
+
+            input_tys.extend(
+                fn_sig.inputs().iter().flat_map(|ty| ty.walk())
+            );
+        }
+
+        NodeKind::Other => (),
     }
 
     let clauses = clauses.chain(
