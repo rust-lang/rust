@@ -888,9 +888,11 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
             PathResult::Indeterminate | PathResult::NonModule(..) => unreachable!(),
         };
 
-        let (ident, source_bindings, target_bindings, type_ns_only) = match directive.subclass {
-            SingleImport { source, ref source_bindings, ref target_bindings, type_ns_only, .. } =>
-                (source, source_bindings, target_bindings, type_ns_only),
+        let (ident, target, source_bindings, target_bindings, type_ns_only) =
+                match directive.subclass {
+            SingleImport { source, target, ref source_bindings,
+                           ref target_bindings, type_ns_only } =>
+                (source, target, source_bindings, target_bindings, type_ns_only),
             GlobImport { is_prelude, ref max_vis } => {
                 if directive.module_path.len() <= 1 {
                     // HACK(eddyb) `lint_if_path_starts_with_module` needs at least
@@ -944,8 +946,10 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                     // Consistency checks, analogous to `finalize_current_module_macro_resolutions`.
                     let initial_def = source_bindings[ns].get().map(|initial_binding| {
                         all_ns_err = false;
-                        this.record_use(ident, ns, initial_binding,
-                                        directive.module_path.is_empty());
+                        if target.name == "_" &&
+                           initial_binding.is_extern_crate() && !initial_binding.is_import() {
+                            this.used_imports.insert((directive.id, TypeNS));
+                        }
                         initial_binding.def_ignoring_ambiguity()
                     });
                     let def = binding.def_ignoring_ambiguity();

@@ -157,7 +157,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
         };
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename, ..) => {
-                let mut ident = use_tree.ident();
+                let mut ident = use_tree.ident().gensym_if_underscore();
                 let mut module_path = prefix;
                 let mut source = module_path.pop().unwrap();
                 let mut type_ns_only = false;
@@ -334,7 +334,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
     fn build_reduced_graph_for_item(&mut self, item: &Item, parent_scope: ParentScope<'a>) {
         let parent = parent_scope.module;
         let expansion = parent_scope.expansion;
-        let ident = item.ident;
+        let ident = item.ident.gensym_if_underscore();
         let sp = item.span;
         let vis = self.resolve_visibility(&item.vis);
 
@@ -628,7 +628,11 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'a>, child: Export) {
-        let Export { ident, def, vis, span, .. } = child;
+        let Export { ident, def, vis, span } = child;
+        // FIXME: We shouldn't create the gensym here, it should come from metadata,
+        // but metadata cannot encode gensyms currently, so we create it here.
+        // This is only a guess, two equivalent idents may incorrectly get different gensyms here.
+        let ident = ident.gensym_if_underscore();
         let def_id = def.def_id();
         let expansion = Mark::root(); // FIXME(jseyfried) intercrate hygiene
         match def {
