@@ -18,6 +18,7 @@ macro_rules! arena_types {
             [decode] specialization_graph: rustc::traits::specialization_graph::Graph,
             [few] crate_inherent_impls: rustc::ty::CrateInherentImpls,
             [] region_scope_tree: rustc::middle::region::ScopeTree,
+            [] item_local_set: rustc::util::nodemap::ItemLocalSet,
         ], $tcx);
     )
 }

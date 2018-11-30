@@ -25,7 +25,6 @@ use rustc::ty::query::Providers;
 use rustc::ty::subst::{InternalSubsts, SubstsRef};
 use rustc::util::nodemap::{ItemLocalSet, HirIdSet};
 use rustc::hir;
-use rustc_data_structures::sync::Lrc;
 use syntax_pos::{Span, DUMMY_SP};
 use log::debug;
 use Promotability::*;
@@ -53,7 +52,7 @@ fn const_is_rvalue_promotable_to_static<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    def_id: DefId)
-                                   -> Lrc<ItemLocalSet>
+                                   -> &'tcx ItemLocalSet
 {
     let outer_def_id = tcx.closure_base_def_id(def_id);
     if outer_def_id != def_id {
@@ -77,7 +76,7 @@ fn rvalue_promotable_map<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let body_id = tcx.hir().body_owned_by(hir_id);
     let _ = visitor.check_nested_body(body_id);
 
-    Lrc::new(visitor.result)
+    tcx.arena.alloc(visitor.result)
 }
 
 struct CheckCrateVisitor<'a, 'tcx: 'a> {
