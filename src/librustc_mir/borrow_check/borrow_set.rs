@@ -16,7 +16,7 @@ use rustc::mir::traversal;
 use rustc::mir::visit::{
     PlaceContext, Visitor, NonUseContext, MutatingUseContext, NonMutatingUseContext
 };
-use rustc::mir::{self, Location, Mir, Place, Local};
+use rustc::mir::{self, Location, Mir, Local};
 use rustc::ty::{RegionVid, TyCtxt};
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -40,10 +40,6 @@ crate struct BorrowSet<'tcx> {
     /// when more general two-phase borrow support is introduced, but for now we
     /// only need to store one borrow index
     crate activation_map: FxHashMap<Location, Vec<BorrowIndex>>,
-
-    /// Every borrow has a region; this maps each such regions back to
-    /// its borrow-indexes.
-    crate region_map: FxHashMap<RegionVid, FxHashSet<BorrowIndex>>,
 
     /// Map from local to all the borrows on that local
     crate local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
@@ -149,7 +145,6 @@ impl<'tcx> BorrowSet<'tcx> {
             idx_vec: IndexVec::new(),
             location_map: Default::default(),
             activation_map: Default::default(),
-            region_map: Default::default(),
             local_map: Default::default(),
             pending_activations: Default::default(),
             locals_state_at_exit:
@@ -164,7 +159,6 @@ impl<'tcx> BorrowSet<'tcx> {
             borrows: visitor.idx_vec,
             location_map: visitor.location_map,
             activation_map: visitor.activation_map,
-            region_map: visitor.region_map,
             local_map: visitor.local_map,
             locals_state_at_exit: visitor.locals_state_at_exit,
         }
@@ -184,7 +178,6 @@ struct GatherBorrows<'a, 'gcx: 'tcx, 'tcx: 'a> {
     idx_vec: IndexVec<BorrowIndex, BorrowData<'tcx>>,
     location_map: FxHashMap<Location, BorrowIndex>,
     activation_map: FxHashMap<Location, Vec<BorrowIndex>>,
-    region_map: FxHashMap<RegionVid, FxHashSet<BorrowIndex>>,
     local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
 
     /// When we encounter a 2-phase borrow statement, it will always
@@ -229,7 +222,6 @@ impl<'a, 'gcx, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'gcx, 'tcx> {
 
             self.insert_as_pending_if_two_phase(location, &assigned_place, kind, idx);
 
-            self.region_map.entry(region).or_default().insert(idx);
             if let Some(local) = borrowed_place.root_local() {
                 self.local_map.entry(local).or_default().insert(idx);
             }
