@@ -18,7 +18,7 @@ use crate::rustc_errors::Applicability;
 use crate::syntax::ast::LitKind;
 use crate::syntax::source_map::Spanned;
 use crate::utils::sugg::Sugg;
-use crate::utils::{in_macro, snippet_with_applicability, span_lint, span_lint_and_sugg};
+use crate::utils::{in_macro, span_lint, span_lint_and_sugg};
 
 /// **What it does:** Checks for expressions of the form `if c { true } else {
 /// false }`
@@ -45,8 +45,8 @@ declare_clippy_lint! {
     "if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`"
 }
 
-/// **What it does:** Checks for expressions of the form `x == true` (or vice
-/// versa) and suggest using the variable directly.
+/// **What it does:** Checks for expressions of the form `x == true` and
+/// `x != true` (or vice versa) and suggest using the variable directly.
 ///
 /// **Why is this bad?** Unnecessary code.
 ///
@@ -59,7 +59,7 @@ declare_clippy_lint! {
 declare_clippy_lint! {
     pub BOOL_COMPARISON,
     complexity,
-    "comparing a variable to a boolean, e.g. `if x == true`"
+    "comparing a variable to a boolean, e.g. `if x == true` or `if x != true`"
 }
 
 #[derive(Copy, Clone)]
@@ -138,74 +138,76 @@ impl LintPass for BoolComparison {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BoolComparison {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        use self::Expression::*;
-
         if in_macro(e.span) {
             return;
         }
 
-        if let ExprKind::Binary(
-            Spanned {
-                node: BinOpKind::Eq, ..
-            },
-            ref left_side,
-            ref right_side,
-        ) = e.node
-        {
-            let mut applicability = Applicability::MachineApplicable;
-            match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
-                (Bool(true), Other) => {
-                    let hint = snippet_with_applicability(cx, right_side.span, "..", &mut applicability);
-                    span_lint_and_sugg(
-                        cx,
-                        BOOL_COMPARISON,
-                        e.span,
-                        "equality checks against true are unnecessary",
-                        "try simplifying it as shown",
-                        hint.to_string(),
-                        applicability,
-                    );
-                },
-                (Other, Bool(true)) => {
-                    let hint = snippet_with_applicability(cx, left_side.span, "..", &mut applicability);
-                    span_lint_and_sugg(
-                        cx,
-                        BOOL_COMPARISON,
-                        e.span,
-                        "equality checks against true are unnecessary",
-                        "try simplifying it as shown",
-                        hint.to_string(),
-                        applicability,
-                    );
-                },
-                (Bool(false), Other) => {
-                    let hint = Sugg::hir_with_applicability(cx, right_side, "..", &mut applicability);
-                    span_lint_and_sugg(
-                        cx,
-                        BOOL_COMPARISON,
-                        e.span,
-                        "equality checks against false can be replaced by a negation",
-                        "try simplifying it as shown",
-                        (!hint).to_string(),
-                        applicability,
-                    );
-                },
-                (Other, Bool(false)) => {
-                    let hint = Sugg::hir_with_applicability(cx, left_side, "..", &mut applicability);
-                    span_lint_and_sugg(
-                        cx,
-                        BOOL_COMPARISON,
-                        e.span,
-                        "equality checks against false can be replaced by a negation",
-                        "try simplifying it as shown",
-                        (!hint).to_string(),
-                        applicability,
-                    );
-                },
+        if let ExprKind::Binary(Spanned { node, .. }, ..) = e.node {
+            match node {
+                BinOpKind::Eq => check_comparison(
+                    cx,
+                    e,
+                    "equality checks against true are unnecessary",
+                    "equality checks against false can be replaced by a negation",
+                    |h| h,
+                    |h| !h,
+                ),
+                BinOpKind::Ne => check_comparison(
+                    cx,
+                    e,
+                    "inequality checks against true can be replaced by a negation",
+                    "inequality checks against false are unnecessary",
+                    |h| !h,
+                    |h| h,
+                ),
                 _ => (),
             }
         }
     }
+}
+
+fn check_comparison<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    e: &'tcx Expr,
+    true_message: &str,
+    false_message: &str,
+    true_hint: impl FnOnce(Sugg<'_>) -> Sugg<'_>,
+    false_hint: impl FnOnce(Sugg<'_>) -> Sugg<'_>,
+) {
+    use self::Expression::*;
+
+    if let ExprKind::Binary(_, ref left_side, ref right_side) = e.node {
+        let applicability = Applicability::MachineApplicable;
+        match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
+            (Bool(true), Other) => suggest_bool_comparison(cx, e, right_side, applicability, true_message, true_hint),
+            (Other, Bool(true)) => suggest_bool_comparison(cx, e, left_side, applicability, true_message, true_hint),
+            (Bool(false), Other) => {
+                suggest_bool_comparison(cx, e, right_side, applicability, false_message, false_hint)
+            },
+            (Other, Bool(false)) => suggest_bool_comparison(cx, e, left_side, applicability, false_message, false_hint),
+            _ => (),
+        }
+    }
+}
+
+fn suggest_bool_comparison<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    e: &'tcx Expr,
+    expr: &Expr,
+    mut applicability: Applicability,
+    message: &str,
+    conv_hint: impl FnOnce(Sugg<'_>) -> Sugg<'_>,
+) {
+    let hint = Sugg::hir_with_applicability(cx, expr, "..", &mut applicability);
+    span_lint_and_sugg(
+        cx,
+        BOOL_COMPARISON,
+        e.span,
+        message,
+        "try simplifying it as shown",
+        conv_hint(hint).to_string(),
+        applicability,
+    );
 }
 
 enum Expression {
