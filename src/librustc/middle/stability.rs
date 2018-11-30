@@ -13,6 +13,7 @@
 
 pub use self::StabilityLevel::*;
 
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use lint;
 use hir::def::Def;
 use hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId, LOCAL_CRATE};
@@ -66,6 +67,8 @@ pub struct DeprecationEntry {
     origin: Option<HirId>,
 }
 
+impl_defer_dellocs_for_no_drop_type!([] DeprecationEntry);
+
 impl_stable_hash_for!(struct self::DeprecationEntry {
     attr,
     origin
@@ -106,6 +109,15 @@ pub struct Index<'tcx> {
 
     /// Features enabled for this crate.
     active_features: FxHashSet<Symbol>,
+}
+
+unsafe impl<'tcx> DeferDeallocs for Index<'tcx> {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.stab_map.defer(deferred);
+        self.stab_map.defer(deferred);
+        self.staged_api.defer(deferred);
+        self.active_features.defer(deferred);
+    }
 }
 
 impl_stable_hash_for!(struct self::Index<'tcx> {

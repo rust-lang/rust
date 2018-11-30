@@ -75,6 +75,7 @@ unsafe impl<T: DeferDeallocs> DeferDeallocs for Vec<T> {
     }
 }
 
+impl_defer_dellocs_for_no_drop_type!([] bool);
 impl_defer_dellocs_for_no_drop_type!([] usize);
 impl_defer_dellocs_for_no_drop_type!([] u32);
 impl_defer_dellocs_for_no_drop_type!([] u64);
@@ -107,6 +108,20 @@ for (T1, T2) {
     fn defer(&self, deferred: &mut DeferredDeallocs) {
         self.0.defer(deferred);
         self.1.defer(deferred);
+    }
+}
+
+unsafe impl<
+    T1: DeferDeallocs,
+    T2: DeferDeallocs,
+    T3: DeferDeallocs,
+> DeferDeallocs
+for (T1, T2, T3) {
+    #[inline]
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.0.defer(deferred);
+        self.1.defer(deferred);
+        self.2.defer(deferred);
     }
 }
 

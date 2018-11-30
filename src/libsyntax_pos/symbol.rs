@@ -141,6 +141,8 @@ impl Decodable for Ident {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Symbol(u32);
 
+impl_defer_dellocs_for_no_drop_type!([] Symbol);
+
 // The interner is pointed to by a thread local value which is only set on the main thread
 // with parallelization is disabled. So we don't allow Symbol to transfer between threads
 // to avoid panics and other errors, even though it would be memory safe to do so.

@@ -25,6 +25,7 @@
 use self::AttributeType::*;
 use self::AttributeGate::*;
 
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::abi::Abi;
 use ast::{self, NodeId, PatKind, RangeEnd};
@@ -103,6 +104,13 @@ macro_rules! declare_features {
         const ACCEPTED_FEATURES: &[(&str, &str, Option<u32>, Option<&str>)] = &[
             $((stringify!($feature), $ver, $issue, None)),+
         ];
+    }
+}
+
+unsafe impl DeferDeallocs for Features {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.declared_lang_features.defer(deferred);
+        self.declared_lib_features.defer(deferred);
     }
 }
 

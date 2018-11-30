@@ -535,8 +535,8 @@ define_queries! { <'tcx>
         [] fn maybe_unused_extern_crates: maybe_unused_extern_crates_node(CrateNum)
             -> Lrc<Vec<(DefId, Span)>>,
 
-        [] fn stability_index: stability_index_node(CrateNum) -> Lrc<stability::Index<'tcx>>,
-        [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Lrc<Vec<CrateNum>>,
+        [] fn stability_index: stability_index_node(CrateNum) -> Bx<'tcx, stability::Index<'tcx>>,
+        [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Bx<'tcx, [CrateNum]>,
 
         /// A vector of every trait accessible in the whole crate
         /// (i.e. including those from subcrates). This is used only for
@@ -678,7 +678,7 @@ define_queries! { <'tcx>
         [] fn instance_def_size_estimate: instance_def_size_estimate_dep_node(ty::InstanceDef<'tcx>)
             -> usize,
 
-        [] fn features_query: features_node(CrateNum) -> Lrc<feature_gate::Features>,
+        [] fn features_query: features_node(CrateNum) -> Bx<'tcx, feature_gate::Features>,
     },
 
     TypeChecking {
