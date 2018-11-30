@@ -298,6 +298,8 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     type MemoryKinds = !;
     type PointerTag = ();
     type AllocExtra = ();
+    type MemoryExtra = ();
+    type FrameExtra = ();
     type MemoryMap = FxHashMap<AllocId, (MemoryKind<!>, Allocation<()>)>;
     const STATIC_KIND: Option<!> = None;
 
@@ -329,8 +331,9 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
     }
 
     fn find_foreign_static(
-        _: ::rustc::ty::query::TyCtxtAt<'a, 'tcx, 'tcx>,
         _: DefId,
+        _: ::rustc::ty::query::TyCtxtAt<'a, 'tcx, 'tcx>,
+        _: &(),
     ) -> EvalResult<'tcx, Cow<'tcx, Allocation>> {
         panic!();
     }
@@ -358,7 +361,10 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         panic!();
     }
 
-    fn adjust_static_allocation(alloc: &Allocation) -> Cow<'_, Allocation> {
+    fn adjust_static_allocation<'alloc>(
+        alloc: &'alloc Allocation,
+        _: &(),
+    ) -> Cow<'alloc, Allocation> {
         Cow::Borrowed(alloc)
     }
 
@@ -368,5 +374,13 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for TransPlaceInterpreter {
         _: MemoryKind<!>,
     ) -> EvalResult<'tcx, Pointer> {
         Ok(ptr)
+    }
+
+    fn stack_push(_: &mut EvalContext<'a, 'mir, 'tcx, Self>) -> EvalResult<'tcx>{
+        Ok(())
+    }
+
+    fn stack_pop(_: &mut EvalContext<'a, 'mir, 'tcx, Self>, _: ()) -> EvalResult<'tcx> {
+        Ok(())
     }
 }
