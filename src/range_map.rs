@@ -16,13 +16,6 @@ pub struct RangeMap<T> {
     map: BTreeMap<Range, T>,
 }
 
-impl<T> Default for RangeMap<T> {
-    #[inline(always)]
-    fn default() -> Self {
-        RangeMap::new()
-    }
-}
-
 // The derived `Ord` impl sorts first by the first field, then, if the fields are the same,
 // by the second field.
 // This is exactly what we need for our purposes, since a range query on a BTReeSet/BTreeMap will give us all
@@ -73,9 +66,15 @@ impl Range {
 }
 
 impl<T> RangeMap<T> {
+    /// Create a new RangeMap for the given size, and with the given initial value used for
+    /// the entire range.
     #[inline(always)]
-    pub fn new() -> RangeMap<T> {
-        RangeMap { map: BTreeMap::new() }
+    pub fn new(size: Size, init: T) -> RangeMap<T> {
+        let mut map = RangeMap { map: BTreeMap::new() };
+        if size.bytes() > 0 {
+            map.map.insert(Range { start: 0, end: size.bytes() }, init);
+        }
+        map
     }
 
     fn iter_with_range<'a>(
@@ -95,6 +94,9 @@ impl<T> RangeMap<T> {
         )
     }
 
+    /// Provide read-only iteration over everything in the given range.  This does
+    /// *not* split items if they overlap with the edges.  Do not use this to mutate
+    /// through interior mutability.
     pub fn iter<'a>(&'a self, offset: Size, len: Size) -> impl Iterator<Item = &'a T> + 'a {
         self.iter_with_range(offset.bytes(), len.bytes()).map(|(_, data)| data)
     }
@@ -140,8 +142,7 @@ impl<T> RangeMap<T> {
     /// Provide mutable iteration over everything in the given range.  As a side-effect,
     /// this will split entries in the map that are only partially hit by the given range,
     /// to make sure that when they are mutated, the effect is constrained to the given range.
-    /// If there are gaps, leave them be.
-    pub fn iter_mut_with_gaps<'a>(
+    pub fn iter_mut<'a>(
         &'a mut self,
         offset: Size,
         len: Size,
@@ -174,64 +175,6 @@ impl<T> RangeMap<T> {
             },
         )
     }
-
-    /// Provide a mutable iterator over everything in the given range, with the same side-effects as
-    /// iter_mut_with_gaps.  Furthermore, if there are gaps between ranges, fill them with the given default
-    /// before yielding them in the iterator.
-    /// This is also how you insert.
-    pub fn iter_mut<'a>(&'a mut self, offset: Size, len: Size) -> impl Iterator<Item = &'a mut T> + 'a
-    where
-        T: Clone + Default,
-    {
-        if len.bytes() > 0 {
-            let offset = offset.bytes();
-            let len = len.bytes();
-
-            // Do a first iteration to collect the gaps
-            let mut gaps = Vec::new();
-            let mut last_end = offset;
-            for (range, _) in self.iter_with_range(offset, len) {
-                if last_end < range.start {
-                    gaps.push(Range {
-                        start: last_end,
-                        end: range.start,
-                    });
-                }
-                last_end = range.end;
-            }
-            if last_end < offset + len {
-                gaps.push(Range {
-                    start: last_end,
-                    end: offset + len,
-                });
-            }
-
-            // Add default for all gaps
-            for gap in gaps {
-                let old = self.map.insert(gap, Default::default());
-                assert!(old.is_none());
-            }
-        }
-
-        // Now provide mutable iteration
-        self.iter_mut_with_gaps(offset, len)
-    }
-
-    pub fn retain<F>(&mut self, mut f: F)
-    where
-        F: FnMut(&T) -> bool,
-    {
-        let mut remove = Vec::new();
-        for (range, data) in &self.map {
-            if !f(data) {
-                remove.push(*range);
-            }
-        }
-
-        for range in remove {
-            self.map.remove(&range);
-        }
-    }
 }
 
 #[cfg(test)]
@@ -239,14 +182,13 @@ mod tests {
     use super::*;
 
     /// Query the map at every offset in the range and collect the results.
-    fn to_vec<T: Copy>(map: &RangeMap<T>, offset: u64, len: u64, default: Option<T>) -> Vec<T> {
+    fn to_vec<T: Copy>(map: &RangeMap<T>, offset: u64, len: u64) -> Vec<T> {
         (offset..offset + len)
             .into_iter()
             .map(|i| map
                 .iter(Size::from_bytes(i), Size::from_bytes(1))
                 .next()
                 .map(|&t| t)
-                .or(default)
                 .unwrap()
             )
             .collect()
@@ -254,13 +196,13 @@ mod tests {
 
     #[test]
     fn basic_insert() {
-        let mut map = RangeMap::<i32>::new();
+        let mut map = RangeMap::<i32>::new(Size::from_bytes(20), -1);
         // Insert
         for x in map.iter_mut(Size::from_bytes(10), Size::from_bytes(1)) {
             *x = 42;
         }
         // Check
-        assert_eq!(to_vec(&map, 10, 1, None), vec![42]);
+        assert_eq!(to_vec(&map, 10, 1), vec![42]);
 
         // Insert with size 0
         for x in map.iter_mut(Size::from_bytes(10), Size::from_bytes(0)) {
@@ -269,12 +211,12 @@ mod tests {
         for x in map.iter_mut(Size::from_bytes(11), Size::from_bytes(0)) {
             *x = 19;
         }
-        assert_eq!(to_vec(&map, 10, 2, Some(-1)), vec![42, -1]);
+        assert_eq!(to_vec(&map, 10, 2), vec![42, -1]);
     }
 
     #[test]
     fn gaps() {
-        let mut map = RangeMap::<i32>::new();
+        let mut map = RangeMap::<i32>::new(Size::from_bytes(20), -1);
         for x in map.iter_mut(Size::from_bytes(11), Size::from_bytes(1)) {
             *x = 42;
         }
@@ -282,11 +224,10 @@ mod tests {
             *x = 43;
         }
         assert_eq!(
-            to_vec(&map, 10, 10, Some(-1)),
+            to_vec(&map, 10, 10),
             vec![-1, 42, -1, -1, -1, 43, -1, -1, -1, -1]
         );
 
-        // Now request a range that needs three gaps filled
         for x in map.iter_mut(Size::from_bytes(10), Size::from_bytes(10)) {
             if *x < 42 {
                 *x = 23;
@@ -294,9 +235,18 @@ mod tests {
         }
 
         assert_eq!(
-            to_vec(&map, 10, 10, None),
+            to_vec(&map, 10, 10),
             vec![23, 42, 23, 23, 23, 43, 23, 23, 23, 23]
         );
-        assert_eq!(to_vec(&map, 13, 5, None), vec![23, 23, 43, 23, 23]);
+        assert_eq!(to_vec(&map, 13, 5), vec![23, 23, 43, 23, 23]);
+
+        // Now request a range that goes beyond the initial size
+        for x in map.iter_mut(Size::from_bytes(15), Size::from_bytes(10)) {
+            *x = 19;
+        }
+        assert_eq!(map.iter(Size::from_bytes(19), Size::from_bytes(1))
+            .map(|&t| t).collect::<Vec<_>>(), vec![19]);
+        assert_eq!(map.iter(Size::from_bytes(20), Size::from_bytes(1))
+            .map(|&t| t).collect::<Vec<_>>(), vec![]);
     }
 }
