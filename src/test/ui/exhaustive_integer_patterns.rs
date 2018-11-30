@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(precise_pointer_size_matching)]
 #![feature(exclusive_range_pattern)]
 
 #![deny(unreachable_patterns)]

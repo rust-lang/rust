@@ -1129,7 +1129,8 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
         // For privately empty and non-exhaustive enums, we work as if there were an "extra"
         // `_` constructor for the type, so we can never match over all constructors.
-        let is_non_exhaustive = is_privately_empty || is_declared_nonexhaustive;
+        let is_non_exhaustive = is_privately_empty || is_declared_nonexhaustive ||
+            (pcx.ty.is_pointer_sized() && !cx.tcx.features().precise_pointer_size_matching);
 
         if cheap_missing_ctors == MissingCtors::Empty && !is_non_exhaustive {
             split_grouped_constructors(cx.tcx, all_ctors, matrix, pcx.ty).into_iter().map(|c| {
@@ -1436,7 +1437,7 @@ fn should_treat_range_exhaustively(tcx: TyCtxt<'_, 'tcx, 'tcx>, ctor: &Construct
         _ => return false,
     };
     if let ty::Char | ty::Int(_) | ty::Uint(_) = ty.sty {
-        true
+        !ty.is_pointer_sized() || tcx.features().precise_pointer_size_matching
     } else {
         false
     }

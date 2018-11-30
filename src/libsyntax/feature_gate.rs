@@ -439,6 +439,8 @@ declare_features! (
     // 'a: { break 'a; }
     (active, label_break_value, "1.28.0", Some(48594), None),
 
+    // Exhaustive pattern matching on `usize` and `isize`.
+    (active, precise_pointer_size_matching, "1.32.0", Some(56354), None),
 
     // #[doc(keyword = "...")]
     (active, doc_keyword, "1.28.0", Some(51315), None),
