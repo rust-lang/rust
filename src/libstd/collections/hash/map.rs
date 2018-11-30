@@ -11,11 +11,13 @@
 use self::Entry::*;
 use self::VacantEntryState::*;
 
+use alloc::Layout;
 use collections::CollectionAllocErr;
 use cell::Cell;
 use borrow::Borrow;
 use cmp::max;
 use fmt::{self, Debug};
+use ptr::NonNull;
 #[allow(deprecated)]
 use hash::{Hash, Hasher, BuildHasher, SipHasher13};
 use iter::{FromIterator, FusedIterator};
@@ -830,6 +832,14 @@ impl<K, V, S> HashMap<K, V, S>
     #[inline]
     fn raw_capacity(&self) -> usize {
         self.table.capacity()
+    }
+
+    /// Gets the underlying allocation used to store data
+    /// if such allocation exists
+    #[inline]
+    #[unstable(feature = "extract_raw_alloc", issue = "0")]
+    pub fn raw_alloc(&self) -> Option<(NonNull<u8>, Layout)> {
+        self.table.raw_alloc()
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted

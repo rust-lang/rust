@@ -13,6 +13,8 @@ use fmt;
 use hash::{Hash, BuildHasher};
 use iter::{Chain, FromIterator, FusedIterator};
 use ops::{BitOr, BitAnd, BitXor, Sub};
+use ptr::NonNull;
+use alloc::Layout;
 
 use super::Recover;
 use super::map::{self, HashMap, Keys, RandomState};
@@ -248,6 +250,14 @@ impl<T, S> HashSet<T, S>
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize {
         self.map.capacity()
+    }
+
+    /// Gets the underlying allocation used to store data
+    /// if such allocation exists
+    #[inline]
+    #[unstable(feature = "extract_raw_alloc", issue = "0")]
+    pub fn raw_alloc(&self) -> Option<(NonNull<u8>, Layout)> {
+        self.map.raw_alloc()
     }
 
     /// Reserves capacity for at least `additional` more elements to be inserted

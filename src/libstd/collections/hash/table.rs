@@ -769,6 +769,18 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
+    #[inline]
+    pub fn raw_alloc(&self) -> Option<(NonNull<u8>, Layout)> {
+        if self.capacity() == 0 {
+            return None;
+        }
+        let (layout, _) = calculate_layout::<K, V>(self.capacity())
+            .unwrap_or_else(|_| unsafe { hint::unreachable_unchecked() });
+        unsafe {
+            Some((NonNull::new_unchecked(self.hashes.ptr()).cast(), layout))
+        }
+    }
+
     /// The hashtable's capacity, similar to a vector's.
     pub fn capacity(&self) -> usize {
         self.capacity_mask.wrapping_add(1)

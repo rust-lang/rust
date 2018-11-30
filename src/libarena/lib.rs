@@ -26,6 +26,7 @@
 #![feature(alloc)]
 #![feature(allocator_api)]
 #![feature(alloc_layout_extra)]
+#![feature(extract_raw_alloc)]
 #![feature(core_intrinsics)]
 #![feature(dropck_eyepatch)]
 #![feature(nll)]
@@ -42,14 +43,16 @@ use rustc_data_structures::sync::{MTLock, WorkerLocal};
 
 use std::process;
 use std::cell::{Cell, RefCell};
+use std::collections::{HashMap, HashSet};
 use std::cmp;
 use std::intrinsics;
 use std::marker::{PhantomData, Send};
-use std::mem;
+use std::mem::{self, needs_drop};
 use std::ptr;
 use std::ptr::NonNull;
 use std::slice;
 use std::alloc::{Alloc, Global, Layout};
+use std::hash::{Hash, BuildHasher, BuildHasherDefault};
 use alloc::raw_vec::RawVec;
 
 /// An arena that can hold objects of only one type.
@@ -572,8 +575,49 @@ unsafe impl<T: DeferDeallocs> DeferDeallocs for Vec<T> {
             Layout::from_size_align_unchecked(self.capacity() * size, align)
         };
         deferred.add(ptr, layout);
-        for v in self {
-            v.defer(deferred)
+        if needs_drop::<T>() {
+            for v in self {
+                v.defer(deferred)
+            }
+        }
+    }
+}
+
+impl_defer_dellocs_for_no_drop_type!([<T>] BuildHasherDefault<T>);
+
+unsafe impl<
+    K: DeferDeallocs + Eq + Hash,
+    V: DeferDeallocs,
+    S: DeferDeallocs + BuildHasher
+> DeferDeallocs
+for HashMap<K, V, S> {
+    #[inline]
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.hasher().defer(deferred);
+        if let Some((ptr, layout)) = self.raw_alloc() {
+            deferred.add(ptr, layout);
+        }
+        if needs_drop::<(K, V)>() {
+            for (k, v) in self.iter() {
+                k.defer(deferred);
+                v.defer(deferred);
+            }
+        }
+    }
+}
+
+unsafe impl<T: DeferDeallocs + Eq + Hash, S: DeferDeallocs + BuildHasher> DeferDeallocs
+for HashSet<T, S> {
+    #[inline]
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.hasher().defer(deferred);
+        if let Some((ptr, layout)) = self.raw_alloc() {
+            deferred.add(ptr, layout);
+        }
+        if needs_drop::<T>() {
+            for v in self.iter() {
+                v.defer(deferred);
+            }
         }
     }
 }
