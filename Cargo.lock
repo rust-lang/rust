@@ -1941,6 +1941,7 @@ dependencies = [
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
  "rustc_fs_util 0.0.0",
+ "rustc_local_drop_derive 0.1.0",
  "rustc_target 0.0.0",
  "scoped-tls 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",

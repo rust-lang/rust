@@ -86,6 +86,7 @@ extern crate graphviz;
 extern crate libc;
 extern crate polonius_engine;
 extern crate rustc_target;
+#[macro_use] extern crate rustc_local_drop_derive;
 #[macro_use] extern crate rustc_data_structures;
 extern crate serialize;
 extern crate parking_lot;

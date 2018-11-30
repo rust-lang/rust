@@ -17,11 +17,12 @@ use std::u32;
 
 newtype_index! {
     pub struct CrateId {
+        derive [LocalDrop]
         ENCODABLE = custom
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, LocalDrop)]
 pub enum CrateNum {
     /// Virtual crate for builtin macros
     // FIXME(jseyfried): this is also used for custom derives until proc-macro crates get
@@ -124,7 +125,7 @@ impl serialize::UseSpecializedDecodable for CrateNum {}
 /// Since the DefIndex is mostly treated as an opaque ID, you probably
 /// don't have to care about these address spaces.
 
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, LocalDrop)]
 pub struct DefIndex(u32);
 
 /// The crate root is always assigned index 0 by the AST Map code,
@@ -217,7 +218,7 @@ impl DefIndexAddressSpace {
 
 /// A `DefId` identifies a particular *definition*, by combining a crate
 /// index and a def index.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Copy, LocalDrop)]
 pub struct DefId {
     pub krate: CrateNum,
     pub index: DefIndex,

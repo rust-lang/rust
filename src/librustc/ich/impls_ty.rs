@@ -855,8 +855,6 @@ impl_stable_hash_for!(struct ty::CrateVariancesMap {
 
 impl_stable_hash_for!(struct ty::CratePredicatesMap<'tcx> {
     predicates,
-    // This is just an irrelevant helper value.
-    empty_predicate -> _,
 });
 
 impl_stable_hash_for!(struct ty::AssociatedItem {

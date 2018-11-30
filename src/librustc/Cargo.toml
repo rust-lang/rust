@@ -22,6 +22,7 @@ rustc-rayon = "0.1.1"
 rustc-rayon-core = "0.1.1"
 rustc_apfloat = { path = "../librustc_apfloat" }
 rustc_target = { path = "../librustc_target" }
+rustc_local_drop_derive = { path = "../librustc_local_drop_derive" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_errors = { path = "../librustc_errors" }
 serialize = { path = "../libserialize" }
