@@ -351,19 +351,22 @@ impl<'a, 'tcx> UnsafetyChecker<'a, 'tcx> {
                 }
                 // only some unsafety is allowed in const fn
                 if self.min_const_fn {
+                    let min_const_unsafe_fn = self.tcx.features().min_const_unsafe_fn;
                     for violation in violations {
                         match violation.kind {
-                            // these are allowed
-                            UnsafetyViolationKind::GatedConstFnCall => {
+                            UnsafetyViolationKind::GatedConstFnCall if min_const_unsafe_fn => {
+                                // these function calls to unsafe functions are allowed
                                 // if `#![feature(min_const_unsafe_fn)]` is active
-                                if !self.tcx.sess.features_untracked().min_const_unsafe_fn {
-                                    if !self.violations.contains(&violation) {
-                                        self.violations.push(violation.clone())
-                                    }
+                            },
+                            UnsafetyViolationKind::GatedConstFnCall => {
+                                // without the feature gate, we report errors
+                                if !self.violations.contains(&violation) {
+                                    self.violations.push(violation.clone())
                                 }
                             }
                             // these unsafe things are stable in const fn
                             UnsafetyViolationKind::GeneralAndConstFn => {},
+                            // these things are forbidden in const fns
                             UnsafetyViolationKind::General |
                             UnsafetyViolationKind::BorrowPacked(_) |
                             UnsafetyViolationKind::ExternStatic(_) => {
