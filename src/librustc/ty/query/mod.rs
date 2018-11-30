@@ -188,11 +188,11 @@ define_queries! { <'tcx>
 
         /// Get a map with the variance of every item; use `item_variance`
         /// instead.
-        [] fn crate_variances: crate_variances(CrateNum) -> Lrc<ty::CrateVariancesMap>,
+        [] fn crate_variances: crate_variances(CrateNum) -> Lrc<ty::CrateVariancesMap<'tcx>>,
 
         /// Maps from def-id of a type or region parameter to its
         /// (inferred) variance.
-        [] fn variances_of: ItemVariances(DefId) -> Lrc<Vec<ty::Variance>>,
+        [] fn variances_of: ItemVariances(DefId) -> &'tcx [ty::Variance],
     },
 
     TypeChecking {

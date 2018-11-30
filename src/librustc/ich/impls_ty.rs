@@ -847,10 +847,8 @@ impl_stable_hash_for!(struct ty::Destructor {
     did
 });
 
-impl_stable_hash_for!(struct ty::CrateVariancesMap {
+impl_stable_hash_for!(struct ty::CrateVariancesMap<'tcx> {
     variances,
-    // This is just an irrelevant helper value.
-    empty_variance -> _,
 });
 
 impl_stable_hash_for!(struct ty::CratePredicatesMap<'tcx> {

@@ -338,20 +338,19 @@ pub enum Variance {
     Bivariant,      // T<A> <: T<B>            -- e.g., unused type parameter
 }
 
+impl_defer_dellocs_for_no_drop_type!([] Variance);
+
 /// The crate variances map is computed during typeck and contains the
 /// variance of every item in the local crate. You should not use it
 /// directly, because to do so will make your pass dependent on the
 /// HIR of every item in the local crate. Instead, use
 /// `tcx.variances_of()` to get the variance for a *particular*
 /// item.
-pub struct CrateVariancesMap {
+pub struct CrateVariancesMap<'tcx> {
     /// For each item with generics, maps to a vector of the variance
     /// of its generics.  If an item has no generics, it will have no
     /// entry.
-    pub variances: FxHashMap<DefId, Lrc<Vec<ty::Variance>>>,
-
-    /// An empty vector, useful for cloning.
-    pub empty_variance: Lrc<Vec<ty::Variance>>,
+    pub variances: FxHashMap<DefId, &'tcx [ty::Variance]>,
 }
 
 impl Variance {

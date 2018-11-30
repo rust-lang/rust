@@ -18,7 +18,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::ty;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 
 use super::constraints::*;
 use super::terms::*;
@@ -33,7 +32,9 @@ struct SolveContext<'a, 'tcx: 'a> {
     solutions: Vec<ty::Variance>,
 }
 
-pub fn solve_constraints(constraints_cx: ConstraintContext) -> ty::CrateVariancesMap {
+pub fn solve_constraints<'tcx>(
+    constraints_cx: ConstraintContext<'_, 'tcx>
+) -> ty::CrateVariancesMap<'tcx> {
     let ConstraintContext { terms_cx, constraints, .. } = constraints_cx;
 
     let mut solutions = vec![ty::Bivariant; terms_cx.inferred_terms.len()];
@@ -51,9 +52,8 @@ pub fn solve_constraints(constraints_cx: ConstraintContext) -> ty::CrateVariance
     };
     solutions_cx.solve();
     let variances = solutions_cx.create_map();
-    let empty_variance = Lrc::new(Vec::new());
 
-    ty::CrateVariancesMap { variances, empty_variance }
+    ty::CrateVariancesMap { variances }
 }
 
 impl<'a, 'tcx> SolveContext<'a, 'tcx> {
@@ -88,7 +88,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         }
     }
 
-    fn create_map(&self) -> FxHashMap<DefId, Lrc<Vec<ty::Variance>>> {
+    fn create_map(&self) -> FxHashMap<DefId, &'tcx [ty::Variance]> {
         let tcx = self.terms_cx.tcx;
 
         let solutions = &self.solutions;
@@ -109,7 +109,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
                 }
             }
 
-            (def_id, Lrc::new(variances))
+            (def_id, tcx.promote_vec(variances))
         }).collect()
     }
 
