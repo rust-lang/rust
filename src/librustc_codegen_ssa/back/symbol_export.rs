@@ -282,7 +282,7 @@ fn exported_symbols_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn upstream_monomorphizations_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     cnum: CrateNum)
-    -> Lrc<DefIdMap<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>>>
+    -> &'tcx DefIdMap<FxHashMap<SubstsRef<'tcx>, CrateNum>>
 {
     debug_assert!(cnum == LOCAL_CRATE);
 
@@ -326,20 +326,16 @@ fn upstream_monomorphizations_provider<'a, 'tcx>(
         }
     }
 
-    Lrc::new(instances.into_iter()
-                      .map(|(key, value)| (key, Lrc::new(value)))
-                      .collect())
+    tcx.arena.alloc(instances)
 }
 
 fn upstream_monomorphizations_for_provider<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId)
-    -> Option<Lrc<FxHashMap<SubstsRef<'tcx>, CrateNum>>>
+    -> Option<&'tcx FxHashMap<SubstsRef<'tcx>, CrateNum>>
 {
     debug_assert!(!def_id.is_local());
-    tcx.upstream_monomorphizations(LOCAL_CRATE)
-       .get(&def_id)
-       .cloned()
+    tcx.upstream_monomorphizations(LOCAL_CRATE).get(&def_id)
 }
 
 fn is_unreachable_local_definition_provider(tcx: TyCtxt<'_, '_, '_>, def_id: DefId) -> bool {
