@@ -138,8 +138,8 @@ rustup override set custom
 export MIRI_SYSROOT=$(rustc --print sysroot)
 ```
 
-With this, you should now have a working development setup!  See "Testing Miri"
-above for how to proceed.
+With this, you should now have a working development setup!  See
+["Testing Miri"](#testing-miri) above for how to proceed.
 
 Moreover, you can now run Miri with a trace of all execution steps:
 ```sh
