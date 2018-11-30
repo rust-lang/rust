@@ -67,7 +67,7 @@ rustc_queries! {
             desc { "looking up the native libraries of a linked crate" }
         }
 
-        query lint_levels(_: CrateNum) -> Lrc<lint::LintLevelMap> {
+        query lint_levels(_: CrateNum) -> &'tcx lint::LintLevelMap {
             eval_always
             desc { "computing the lint levels for items in this crate" }
         }

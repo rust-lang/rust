@@ -78,6 +78,7 @@ macro_rules! arena_types {
                 >,
             [few] resolve_lifetimes: rustc::middle::resolve_lifetime::ResolveLifetimes,
             [decode] generic_predicates: rustc::ty::GenericPredicates<'tcx>,
+            [few] lint_levels: rustc::lint::LintLevelMap,
         ], $tcx);
     )
 }
