@@ -22,7 +22,7 @@ use rustc::middle::exported_symbols::ExportedSymbol;
 use rustc::middle::stability::DeprecationEntry;
 use rustc::hir::def;
 use rustc::session::{CrateDisambiguator, Session};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, Bx, TyCtxt};
 use rustc::ty::query::Providers;
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE, CRATE_DEF_INDEX};
 use rustc::hir::map::{DefKey, DefPath, DefPathHash};
@@ -139,7 +139,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         mir
     }
     mir_const_qualif => {
-        (cdata.mir_const_qualif(def_id.index), Lrc::new(BitSet::new_empty(0)))
+        (cdata.mir_const_qualif(def_id.index), Bx(tcx.promote(BitSet::new_empty(0))))
     }
     fn_sig => { cdata.fn_sig(def_id.index, tcx) }
     inherent_impls => { tcx.promote_vec(cdata.get_inherent_implementations_for_type(def_id.index)) }

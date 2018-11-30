@@ -45,7 +45,7 @@ use traits::query::normalize::NormalizationResult;
 use traits::query::outlives_bounds::OutlivesBound;
 use traits::specialization_graph;
 use traits::Clauses;
-use ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt};
+use ty::{self, CrateInherentImpls, ParamEnvAnd, Ty, TyCtxt, Bx};
 use ty::steal::Steal;
 use ty::subst::Substs;
 use util::nodemap::{DefIdSet, DefIdMap, ItemLocalSet};
@@ -228,7 +228,7 @@ define_queries! { <'tcx>
         /// Maps DefId's that have an associated Mir to the result
         /// of the MIR qualify_consts pass. The actual meaning of
         /// the value isn't known except to the pass itself.
-        [] fn mir_const_qualif: MirConstQualif(DefId) -> (u8, Lrc<BitSet<mir::Local>>),
+        [] fn mir_const_qualif: MirConstQualif(DefId) -> (u8, Bx<'tcx, BitSet<mir::Local>>),
 
         /// Fetch the MIR for a given def-id right after it's built - this includes
         /// unreachable code.

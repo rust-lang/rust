@@ -21,7 +21,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::mir::interpret::ConstValue;
 use rustc::traits::{self, TraitEngine};
-use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
+use rustc::ty::{self, TyCtxt, Ty, TypeFoldable, Bx};
 use rustc::ty::cast::CastTy;
 use rustc::ty::query::Providers;
 use rustc::mir::*;
@@ -34,7 +34,6 @@ use syntax::feature_gate::{UnstableFeatures, feature_err, emit_feature_err, Gate
 use syntax_pos::{Span, DUMMY_SP};
 
 use std::fmt;
-use rustc_data_structures::sync::Lrc;
 use std::usize;
 
 use transform::{MirPass, MirSource};
@@ -321,7 +320,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
     }
 
     /// Qualify a whole const, static initializer or const fn.
-    fn qualify_const(&mut self) -> (Qualif, Lrc<BitSet<Local>>) {
+    fn qualify_const(&mut self) -> (Qualif, Bx<'tcx, BitSet<Local>>) {
         debug!("qualifying {} {:?}", self.mode, self.def_id);
 
         let mir = self.mir;
@@ -441,7 +440,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             }
         }
 
-        (self.qualif, Lrc::new(promoted_temps))
+        (self.qualif, Bx(self.tcx.promote(promoted_temps)))
     }
 
     fn is_const_panic_fn(&self, def_id: DefId) -> bool {
@@ -1258,7 +1257,7 @@ pub fn provide(providers: &mut Providers) {
 
 fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               def_id: DefId)
-                              -> (u8, Lrc<BitSet<Local>>) {
+                              -> (u8, Bx<'tcx, BitSet<Local>>) {
     // NB: This `borrow()` is guaranteed to be valid (i.e., the value
     // cannot yet be stolen), because `mir_validated()`, which steals
     // from `mir_const(), forces this query to execute before
@@ -1267,7 +1266,7 @@ fn mir_const_qualif<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if mir.return_ty().references_error() {
         tcx.sess.delay_span_bug(mir.span, "mir_const_qualif: Mir had errors");
-        return (Qualif::NOT_CONST.bits(), Lrc::new(BitSet::new_empty(0)));
+        return (Qualif::NOT_CONST.bits(), Bx(tcx.promote(BitSet::new_empty(0))));
     }
 
     let mut qualifier = Qualifier::new(tcx, def_id, mir, Mode::Const);
