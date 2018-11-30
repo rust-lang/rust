@@ -8,11 +8,6 @@
 // except according to those terms.
 
 #[test]
-fn dogfood_runner() {
-    dogfood();
-    dogfood_tests();
-}
-
 fn dogfood() {
     if option_env!("RUSTC_TEST_SUITE").is_some() || cfg!(windows) {
         return;
@@ -23,8 +18,8 @@ fn dogfood() {
         .join(env!("PROFILE"))
         .join("cargo-clippy");
 
-    std::env::set_current_dir(root_dir).unwrap();
     let output = std::process::Command::new(clippy_cmd)
+        .current_dir(root_dir)
         .env("CLIPPY_DOGFOOD", "1")
         .arg("clippy")
         .arg("--all-targets")
@@ -42,6 +37,7 @@ fn dogfood() {
     assert!(output.status.success());
 }
 
+#[test]
 fn dogfood_tests() {
     if option_env!("RUSTC_TEST_SUITE").is_some() || cfg!(windows) {
         return;
@@ -60,8 +56,8 @@ fn dogfood_tests() {
         "clippy_dev",
         "rustc_tools_util",
     ] {
-        std::env::set_current_dir(root_dir.join(d)).unwrap();
         let output = std::process::Command::new(&clippy_cmd)
+            .current_dir(root_dir.join(d))
             .env("CLIPPY_DOGFOOD", "1")
             .arg("clippy")
             .arg("--")
