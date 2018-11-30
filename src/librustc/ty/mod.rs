@@ -91,6 +91,8 @@ pub use self::trait_def::TraitDef;
 
 pub use self::query::queries;
 
+pub use self::util::Bx;
+
 pub mod adjustment;
 pub mod binding;
 pub mod cast;

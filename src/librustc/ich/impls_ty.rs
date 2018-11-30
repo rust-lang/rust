@@ -1231,6 +1231,15 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for traits::Clause<'tcx> {
     }
 }
 
+impl<'a, 'tcx, T: ?Sized> HashStable<StableHashingContext<'a>> for ty::util::Bx<'tcx, T>
+where T: HashStable<StableHashingContext<'a>> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a>,
+                                          hasher: &mut StableHasher<W>) {
+        self.0.hash_stable(hcx, hasher);
+    }
+}
+
 impl_stable_hash_for!(enum traits::QuantifierKind {
     Universal,
     Existential

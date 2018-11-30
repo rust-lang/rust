@@ -19,10 +19,11 @@
 use hir::def_id::{DefId, CrateNum};
 use infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::defer_deallocs::DeferDeallocs;
 use rustc_serialize::{Decodable, Decoder, Encoder, Encodable, opaque};
 use std::hash::Hash;
 use std::intrinsics;
-use ty::{self, Ty, TyCtxt};
+use ty::{self, Ty, TyCtxt, Bx};
 use ty::subst::Substs;
 use mir::interpret::Allocation;
 
@@ -213,6 +214,24 @@ pub fn decode_region<'a, 'tcx, D>(decoder: &mut D) -> Result<ty::Region<'tcx>, D
 }
 
 #[inline]
+pub fn decode_bx<'a, 'tcx, D, T: DeferDeallocs + Decodable>(decoder: &mut D) -> Result<Bx<'tcx, T>, D::Error>
+    where D: TyDecoder<'a, 'tcx>,
+          'tcx: 'a,
+{
+    Ok(Bx(decoder.tcx().promote(Decodable::decode(decoder)?)))
+}
+
+#[inline]
+pub fn decode_bx_slice<'a, 'tcx, D, T: DeferDeallocs + Decodable>(
+    decoder: &mut D
+) -> Result<Bx<'tcx, [T]>, D::Error>
+    where D: TyDecoder<'a, 'tcx>,
+          'tcx: 'a,
+{
+    Ok(Bx(decoder.tcx().promote_vec(<Vec<T> as Decodable>::decode(decoder)?)))
+}
+
+#[inline]
 pub fn decode_ty_slice<'a, 'tcx, D>(decoder: &mut D)
                                     -> Result<&'tcx ty::List<Ty<'tcx>>, D::Error>
     where D: TyDecoder<'a, 'tcx>,
@@ -293,7 +312,8 @@ macro_rules! implement_ty_decoder {
             use $crate::ty::codec::*;
             use $crate::ty::subst::Substs;
             use $crate::hir::def_id::{CrateNum};
-            use rustc_serialize::{Decoder, SpecializedDecoder};
+            use rustc_data_structures::defer_deallocs::DeferDeallocs;
+            use rustc_serialize::{Decoder, Decodable, SpecializedDecoder};
             use std::borrow::Cow;
 
             impl<$($typaram ),*> Decoder for $DecoderName<$($typaram),*> {
@@ -358,6 +378,20 @@ macro_rules! implement_ty_decoder {
             for $DecoderName<$($typaram),*> {
                 fn specialized_decode(&mut self) -> Result<&'tcx Substs<'tcx>, Self::Error> {
                     decode_substs(self)
+                }
+            }
+
+            impl<$($typaram),*, T: DeferDeallocs + Decodable> SpecializedDecoder<ty::Bx<'tcx, T>>
+            for $DecoderName<$($typaram),*> {
+                fn specialized_decode(&mut self) -> Result<ty::Bx<'tcx, T>, Self::Error> {
+                    decode_bx(self)
+                }
+            }
+
+            impl<$($typaram),*, T: DeferDeallocs + Decodable> SpecializedDecoder<ty::Bx<'tcx, [T]>>
+            for $DecoderName<$($typaram),*> {
+                fn specialized_decode(&mut self) -> Result<ty::Bx<'tcx, [T]>, Self::Error> {
+                    decode_bx_slice(self)
                 }
             }
 

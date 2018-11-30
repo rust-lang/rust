@@ -24,12 +24,48 @@ use ty::layout::{Integer, IntegerExt};
 use util::common::ErrorReported;
 use middle::lang_items;
 
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use rustc_data_structures::fx::FxHashMap;
 use std::{cmp, fmt};
+use std::ops::Deref;
 use syntax::ast;
 use syntax::attr::{self, SignedInt, UnsignedInt};
 use syntax_pos::{Span, DUMMY_SP};
+
+#[repr(transparent)]
+#[derive(Debug)]
+pub struct Bx<'tcx, T: ?Sized>(pub &'tcx T);
+
+impl<'tcx, T: 'tcx + ?Sized> Clone for Bx<'tcx, T> {
+    fn clone(&self) -> Self {
+        Bx(self.0)
+    }
+}
+impl<'tcx, T: 'tcx + ?Sized> Copy for Bx<'tcx, T> {}
+
+impl<'tcx, T: ?Sized> Deref for Bx<'tcx, T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        self.0
+    }
+}
+
+impl<'tcx, T: DeferDeallocs> serialize::UseSpecializedDecodable for Bx<'tcx, T> {}
+impl<'tcx, T: DeferDeallocs> serialize::UseSpecializedDecodable for Bx<'tcx, [T]> {}
+
+unsafe impl<'tcx, T: DeferDeallocs> DeferDeallocs for Bx<'tcx, T> {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.0.defer(deferred);
+    }
+}
+
+impl<'tcx, T: DeferDeallocs> serialize::Encodable for Bx<'tcx, T> {
+    fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        serialize::Encodable::encode(&(), s)
+    }
+}
 
 #[derive(Copy, Clone, Debug)]
 pub struct Discr<'tcx> {

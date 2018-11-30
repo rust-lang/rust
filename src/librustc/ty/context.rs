@@ -38,7 +38,7 @@ use ty::ReprOptions;
 use traits;
 use traits::{Clause, Clauses, GoalKind, Goal, Goals};
 use ty::{self, Ty, TypeAndMut};
-use ty::{TyS, TyKind, List};
+use ty::{Bx, TyS, TyKind, List};
 use ty::{AdtKind, AdtDef, ClosureSubsts, GeneratorSubsts, Region, Const};
 use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate, Predicate};
 use ty::RegionKind;
@@ -980,6 +980,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     #[inline(always)]
     pub fn promote_vec<T: DeferDeallocs>(&self, vec: Vec<T>) -> &'gcx [T] {
         self.gcx.global_interners.arena.promote_vec(vec)
+    }
+
+    #[inline(always)]
+    pub fn bx<T: DeferDeallocs>(&self, object: T) -> Bx<'gcx, T> {
+        Bx(self.promote(object))
+    }
+
+    #[inline(always)]
+    pub fn bx_vec<T: DeferDeallocs>(&self, vec: Vec<T>) -> Bx<'gcx, [T]> {
+        Bx(self.promote_vec(vec))
     }
 
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {

@@ -82,6 +82,15 @@ impl_defer_dellocs_for_no_drop_type!([<T>] BuildHasherDefault<T>);
 impl_defer_dellocs_for_no_drop_type!([<'a, T: ?Sized>] &'a mut T);
 impl_defer_dellocs_for_no_drop_type!([<'a, T: ?Sized>] &'a T);
 
+unsafe impl<T: DeferDeallocs> DeferDeallocs for [T] {
+    #[inline]
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        for v in self {
+            v.defer(deferred)
+        }
+    }
+}
+
 unsafe impl<T: DeferDeallocs> DeferDeallocs for Option<T> {
     #[inline]
     fn defer(&self, deferred: &mut DeferredDeallocs) {
@@ -98,6 +107,24 @@ for (T1, T2) {
     fn defer(&self, deferred: &mut DeferredDeallocs) {
         self.0.defer(deferred);
         self.1.defer(deferred);
+    }
+}
+
+unsafe impl<T: DeferDeallocs + ?Sized> DeferDeallocs for Box<T> {
+    #[inline]
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        let size = mem::size_of_val(&**self);
+        // FIXME: What happens when `size` is 0 here? Like [T] when T is zero sized
+        if size == 0 {
+            return;
+        }
+        let layout = unsafe {
+            Layout::from_size_align_unchecked(size, mem::align_of_val(&**self))
+        };
+        deferred.add(unsafe {
+            NonNull::new_unchecked(&**self as *const T as *mut u8)
+        }, layout);
+        (**self).defer(deferred);
     }
 }
 
