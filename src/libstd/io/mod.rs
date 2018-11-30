@@ -271,6 +271,7 @@
 
 use cmp;
 use fmt;
+use slice;
 use str;
 use memchr;
 use ptr;
@@ -285,7 +286,7 @@ pub use self::cursor::Cursor;
 pub use self::error::{Result, Error, ErrorKind};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::util::{copy, sink, Sink, empty, Empty, repeat, Repeat};
-#[stable(feature = "rust1", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]f
 pub use self::stdio::{stdin, stdout, stderr, Stdin, Stdout, Stderr};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::stdio::{StdoutLock, StderrLock, StdinLock};
@@ -1953,12 +1954,12 @@ impl<R: Read> Iterator for Bytes<R> {
     type Item = Result<u8>;
 
     fn next(&mut self) -> Option<Result<u8>> {
-        let mut buf = [0];
+        let mut byte = 0;
         loop {
-            return match self.inner.read(&mut buf) {
+            return match self.inner.read(slice::from_mut(&mut byte)) {
                 Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
                 Ok(0) => None,
-                Ok(..) => Some(Ok(buf[0])),
+                Ok(..) => Some(Ok(byte)),
                 Err(e) => Some(Err(e)),
             };
         }
