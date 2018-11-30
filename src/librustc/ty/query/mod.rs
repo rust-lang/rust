@@ -541,7 +541,7 @@ define_queries! { <'tcx>
         /// A vector of every trait accessible in the whole crate
         /// (i.e. including those from subcrates). This is used only for
         /// error reporting.
-        [] fn all_traits: all_traits_node(CrateNum) -> Lrc<Vec<DefId>>,
+        [] fn all_traits: all_traits_node(CrateNum) -> Bx<'tcx, [DefId]>,
     },
 
     Linking {

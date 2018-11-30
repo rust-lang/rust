@@ -14,7 +14,6 @@
 use check::FnCtxt;
 use rustc::hir::map as hir_map;
 use hir::Node;
-use rustc_data_structures::sync::Lrc;
 use rustc::ty::{self, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use rustc::ty::item_path::with_crate_prefix;
 use hir::def::Def;
@@ -785,7 +784,7 @@ fn compute_all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Vec<DefId>
 pub fn provide(providers: &mut ty::query::Providers) {
     providers.all_traits = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        Lrc::new(compute_all_traits(tcx))
+        tcx.bx_vec(compute_all_traits(tcx))
     }
 }
 
