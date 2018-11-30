@@ -216,7 +216,7 @@ define_queries! { <'tcx>
         /// Maps a DefId of a type to a list of its inherent impls.
         /// Contains implementations of methods that are inherent to a type.
         /// Methods in these implementations don't need to be exported.
-        [] fn inherent_impls: InherentImpls(DefId) -> Lrc<Vec<DefId>>,
+        [] fn inherent_impls: InherentImpls(DefId) -> &'tcx [DefId],
     },
 
     Codegen {
@@ -293,7 +293,7 @@ define_queries! { <'tcx>
         /// Not meant to be used directly outside of coherence.
         /// (Defined only for LOCAL_CRATE)
         [] fn crate_inherent_impls: crate_inherent_impls_dep_node(CrateNum)
-            -> Lrc<CrateInherentImpls>,
+            -> &'tcx CrateInherentImpls,
 
         /// Checks all types in the krate for overlap in their inherent impls. Reports errors.
         /// Not meant to be used directly outside of coherence.

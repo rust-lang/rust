@@ -14,6 +14,7 @@ pub use self::BorrowKind::*;
 pub use self::IntVarValue::*;
 pub use self::fold::TypeFoldable;
 
+use arena::{DeferredDeallocs, DeferDeallocs};
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::Node;
 use hir::def::{Def, CtorKind, ExportMap};
@@ -3207,7 +3208,13 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 /// (constructing this map requires touching the entire crate).
 #[derive(Clone, Debug, Default)]
 pub struct CrateInherentImpls {
-    pub inherent_impls: DefIdMap<Lrc<Vec<DefId>>>,
+    pub inherent_impls: DefIdMap<Vec<DefId>>,
+}
+
+unsafe impl DeferDeallocs for CrateInherentImpls {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.inherent_impls.defer(deferred)
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RustcEncodable, RustcDecodable)]
