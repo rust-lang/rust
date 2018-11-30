@@ -977,12 +977,14 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 let what = self.binding_description(binding, ident,
                                                     flags.contains(Flags::MISC_FROM_PRELUDE));
                 let note_msg = format!("this import refers to {what}", what = what);
-                if binding.span.is_dummy() {
+                let label_span = if binding.span.is_dummy() {
                     err.note(&note_msg);
+                    ident.span
                 } else {
                     err.span_note(binding.span, &note_msg);
-                    err.span_label(binding.span, "not an extern crate passed with `--extern`");
-                }
+                    binding.span
+                };
+                err.span_label(label_span, "not an extern crate passed with `--extern`");
                 err.emit();
             }
 

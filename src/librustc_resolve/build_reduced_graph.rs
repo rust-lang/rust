@@ -230,12 +230,17 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 }
 
                 let subclass = SingleImport {
-                    target: ident,
                     source: source.ident,
-                    result: PerNS {
+                    target: ident,
+                    source_bindings: PerNS {
                         type_ns: Cell::new(Err(Undetermined)),
                         value_ns: Cell::new(Err(Undetermined)),
                         macro_ns: Cell::new(Err(Undetermined)),
+                    },
+                    target_bindings: PerNS {
+                        type_ns: Cell::new(None),
+                        value_ns: Cell::new(None),
+                        macro_ns: Cell::new(None),
                     },
                     type_ns_only,
                 };

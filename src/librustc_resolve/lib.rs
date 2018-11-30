@@ -1521,6 +1521,7 @@ pub struct Resolver<'a, 'b: 'a> {
 
     /// FIXME: Refactor things so that this is passed through arguments and not resolver.
     last_import_segment: bool,
+    blacklisted_binding: Option<&'a NameBinding<'a>>,
 
     /// The idents for the primitive types.
     primitive_type_table: PrimitiveTypeTable,
@@ -1871,6 +1872,7 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             current_self_type: None,
             current_self_item: None,
             last_import_segment: false,
+            blacklisted_binding: None,
 
             primitive_type_table: PrimitiveTypeTable::new(),
 
