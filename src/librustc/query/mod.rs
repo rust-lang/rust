@@ -264,7 +264,7 @@ rustc_queries! {
 
     Other {
         /// Maps from an impl/trait def-id to a list of the def-ids of its items
-        query associated_item_def_ids(_: DefId) -> Lrc<Vec<DefId>> {}
+        query associated_item_def_ids(_: DefId) -> &'tcx [DefId] {}
 
         /// Maps from a trait item to the trait item "descriptor"
         query associated_item(_: DefId) -> ty::AssociatedItem {}
