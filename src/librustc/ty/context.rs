@@ -155,6 +155,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
     }
 
     /// Intern a type
+    #[inline(never)]
     fn intern_ty(
         local: &CtxtInterners<'tcx>,
         global: &CtxtInterners<'gcx>,
@@ -216,6 +217,7 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
 }
 
 pub struct CommonTypes<'tcx> {
+    pub unit: Ty<'tcx>,
     pub bool: Ty<'tcx>,
     pub char: Ty<'tcx>,
     pub isize: Ty<'tcx>,
@@ -832,7 +834,9 @@ impl<'tcx> CommonTypes<'tcx> {
             interners.region.borrow_mut().insert(Interned(r));
             &*r
         };
+
         CommonTypes {
+            unit: mk(Tuple(List::empty())),
             bool: mk(Bool),
             char: mk(Char),
             never: mk(Never),
@@ -885,6 +889,7 @@ pub struct TyCtxt<'a, 'gcx: 'tcx, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> Deref for TyCtxt<'a, 'gcx, 'tcx> {
     type Target = &'a GlobalCtxt<'gcx>;
+    #[inline(always)]
     fn deref(&self) -> &Self::Target {
         &self.gcx
     }
@@ -2515,6 +2520,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_fn_ptr(converted_sig)
     }
 
+    #[inline]
     pub fn mk_ty(&self, st: TyKind<'tcx>) -> Ty<'tcx> {
         CtxtInterners::intern_ty(&self.interners, &self.global_interners, st)
     }
@@ -2548,19 +2554,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    #[inline]
     pub fn mk_str(self) -> Ty<'tcx> {
         self.mk_ty(Str)
     }
 
+    #[inline]
     pub fn mk_static_str(self) -> Ty<'tcx> {
         self.mk_imm_ref(self.types.re_static, self.mk_str())
     }
 
+    #[inline]
     pub fn mk_adt(self, def: &'tcx AdtDef, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         // take a copy of substs so that we own the vectors inside
         self.mk_ty(Adt(def, substs))
     }
 
+    #[inline]
     pub fn mk_foreign(self, def_id: DefId) -> Ty<'tcx> {
         self.mk_ty(Foreign(def_id))
     }
@@ -2584,42 +2594,52 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(Adt(adt_def, substs))
     }
 
+    #[inline]
     pub fn mk_ptr(self, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         self.mk_ty(RawPtr(tm))
     }
 
+    #[inline]
     pub fn mk_ref(self, r: Region<'tcx>, tm: TypeAndMut<'tcx>) -> Ty<'tcx> {
         self.mk_ty(Ref(r, tm.ty, tm.mutbl))
     }
 
+    #[inline]
     pub fn mk_mut_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::MutMutable})
     }
 
+    #[inline]
     pub fn mk_imm_ref(self, r: Region<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ref(r, TypeAndMut {ty: ty, mutbl: hir::MutImmutable})
     }
 
+    #[inline]
     pub fn mk_mut_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::MutMutable})
     }
 
+    #[inline]
     pub fn mk_imm_ptr(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ptr(TypeAndMut {ty: ty, mutbl: hir::MutImmutable})
     }
 
+    #[inline]
     pub fn mk_nil_ptr(self) -> Ty<'tcx> {
         self.mk_imm_ptr(self.mk_unit())
     }
 
+    #[inline]
     pub fn mk_array(self, ty: Ty<'tcx>, n: u64) -> Ty<'tcx> {
         self.mk_ty(Array(ty, ty::Const::from_usize(self, n)))
     }
 
+    #[inline]
     pub fn mk_slice(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         self.mk_ty(Slice(ty))
     }
 
+    #[inline]
     pub fn intern_tup(self, ts: &[Ty<'tcx>]) -> Ty<'tcx> {
         self.mk_ty(Tuple(self.intern_type_list(ts)))
     }
@@ -2628,10 +2648,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         iter.intern_with(|ts| self.mk_ty(Tuple(self.intern_type_list(ts))))
     }
 
+    #[inline]
     pub fn mk_unit(self) -> Ty<'tcx> {
-        self.intern_tup(&[])
+        self.types.unit
     }
 
+    #[inline]
     pub fn mk_diverging_default(self) -> Ty<'tcx> {
         if self.features().never_type {
             self.types.never
@@ -2640,19 +2662,23 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    #[inline]
     pub fn mk_bool(self) -> Ty<'tcx> {
         self.mk_ty(Bool)
     }
 
+    #[inline]
     pub fn mk_fn_def(self, def_id: DefId,
                      substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         self.mk_ty(FnDef(def_id, substs))
     }
 
+    #[inline]
     pub fn mk_fn_ptr(self, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
         self.mk_ty(FnPtr(fty))
     }
 
+    #[inline]
     pub fn mk_dynamic(
         self,
         obj: ty::Binder<&'tcx List<ExistentialPredicate<'tcx>>>,
@@ -2661,6 +2687,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(Dynamic(obj, reg))
     }
 
+    #[inline]
     pub fn mk_projection(self,
                          item_def_id: DefId,
                          substs: &'tcx Substs<'tcx>)
@@ -2671,11 +2698,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             }))
         }
 
+    #[inline]
     pub fn mk_closure(self, closure_id: DefId, closure_substs: ClosureSubsts<'tcx>)
                       -> Ty<'tcx> {
         self.mk_ty(Closure(closure_id, closure_substs))
     }
 
+    #[inline]
     pub fn mk_generator(self,
                         id: DefId,
                         generator_substs: GeneratorSubsts<'tcx>,
@@ -2684,32 +2713,39 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_ty(Generator(id, generator_substs, movability))
     }
 
+    #[inline]
     pub fn mk_generator_witness(self, types: ty::Binder<&'tcx List<Ty<'tcx>>>) -> Ty<'tcx> {
         self.mk_ty(GeneratorWitness(types))
     }
 
+    #[inline]
     pub fn mk_var(self, v: TyVid) -> Ty<'tcx> {
         self.mk_infer(TyVar(v))
     }
 
+    #[inline]
     pub fn mk_int_var(self, v: IntVid) -> Ty<'tcx> {
         self.mk_infer(IntVar(v))
     }
 
+    #[inline]
     pub fn mk_float_var(self, v: FloatVid) -> Ty<'tcx> {
         self.mk_infer(FloatVar(v))
     }
 
+    #[inline]
     pub fn mk_infer(self, it: InferTy) -> Ty<'tcx> {
         self.mk_ty(Infer(it))
     }
 
+    #[inline]
     pub fn mk_ty_param(self,
                        index: u32,
                        name: InternedString) -> Ty<'tcx> {
         self.mk_ty(Param(ParamTy { idx: index, name: name }))
     }
 
+    #[inline]
     pub fn mk_self_type(self) -> Ty<'tcx> {
         self.mk_ty_param(0, keywords::SelfType.name().as_interned_str())
     }
@@ -2723,6 +2759,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    #[inline]
     pub fn mk_opaque(self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
         self.mk_ty(Opaque(def_id, substs))
     }
