@@ -32,7 +32,7 @@ use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::ImmutabilityBlame;
 use rustc::middle::region;
 use rustc::middle::free_region::RegionRelations;
-use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::{self, Bx, Ty, TyCtxt};
 use rustc::ty::query::Providers;
 use rustc_mir::util::borrowck_errors::{BorrowckErrors, Origin};
 use rustc_mir::util::suggest_ref_mut;
@@ -42,7 +42,6 @@ use std::borrow::Cow;
 use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::rc::Rc;
-use rustc_data_structures::sync::Lrc;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
 use syntax_pos::{MultiSpan, Span};
@@ -87,7 +86,7 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
 }
 
 fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
-    -> Lrc<BorrowCheckResult>
+    -> Bx<'tcx, BorrowCheckResult>
 {
     assert!(tcx.use_ast_borrowck() || tcx.migrate_borrowck());
 
@@ -102,7 +101,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
             // those things (notably the synthesized constructors from
             // tuple structs/variants) do not have an associated body
             // and do not need borrowchecking.
-            return Lrc::new(BorrowCheckResult {
+            return tcx.bx(BorrowCheckResult {
                 used_mut_nodes: Default::default(),
                 signalled_any_error: SignalledError::NoErrorsSeen,
             })
@@ -153,7 +152,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId)
         unused::check(&mut bccx, body);
     }
 
-    Lrc::new(BorrowCheckResult {
+    tcx.bx(BorrowCheckResult {
         used_mut_nodes: bccx.used_mut_nodes.into_inner(),
         signalled_any_error: bccx.signalled_any_error.into_inner(),
     })

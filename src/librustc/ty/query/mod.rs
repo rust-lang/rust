@@ -281,7 +281,7 @@ define_queries! { <'tcx>
     },
 
     BorrowChecking {
-        [] fn borrowck: BorrowCheck(DefId) -> Lrc<BorrowCheckResult>,
+        [] fn borrowck: BorrowCheck(DefId) -> Bx<'tcx, BorrowCheckResult>,
 
         /// Borrow checks the function body. If this is a closure, returns
         /// additional requirements that the closure's creator must verify.

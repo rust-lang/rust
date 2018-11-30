@@ -12,11 +12,14 @@ use ich::StableHashingContext;
 use hir::HirId;
 use util::nodemap::FxHashSet;
 
+use rustc_data_structures::defer_deallocs::{DeferredDeallocs, DeferDeallocs};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 
 #[derive(Copy, Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum SignalledError { SawSomeError, NoErrorsSeen }
+
+impl_defer_dellocs_for_no_drop_type!([] SignalledError);
 
 impl Default for SignalledError {
     fn default() -> SignalledError {
@@ -30,6 +33,13 @@ impl_stable_hash_for!(enum self::SignalledError { SawSomeError, NoErrorsSeen });
 pub struct BorrowCheckResult {
     pub used_mut_nodes: FxHashSet<HirId>,
     pub signalled_any_error: SignalledError,
+}
+
+unsafe impl DeferDeallocs for BorrowCheckResult {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.used_mut_nodes.defer(deferred);
+        self.signalled_any_error.defer(deferred);
+    }
 }
 
 impl<'a> HashStable<StableHashingContext<'a>> for BorrowCheckResult {

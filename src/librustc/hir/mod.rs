@@ -85,6 +85,8 @@ pub struct HirId {
     pub local_id: ItemLocalId,
 }
 
+impl_defer_dellocs_for_no_drop_type!([] HirId);
+
 impl HirId {
     pub fn owner_def_id(self) -> DefId {
         DefId::local(self.owner)
