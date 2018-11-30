@@ -479,9 +479,9 @@ define_queries! { <'tcx>
 
     TypeChecking {
         [] fn implementations_of_trait: implementations_of_trait_node((CrateNum, DefId))
-            -> Lrc<Vec<DefId>>,
+            -> Bx<'tcx, [DefId]>,
         [] fn all_trait_implementations: AllTraitImplementations(CrateNum)
-            -> Lrc<Vec<DefId>>,
+            -> Bx<'tcx, [DefId]>,
     },
 
     Other {

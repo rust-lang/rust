@@ -219,13 +219,13 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         let mut result = vec![];
         let filter = Some(other);
         cdata.get_implementations_for_trait(filter, &mut result);
-        Lrc::new(result)
+        tcx.bx_vec(result)
     }
 
     all_trait_implementations => {
         let mut result = vec![];
         cdata.get_implementations_for_trait(None, &mut result);
-        Lrc::new(result)
+        tcx.bx_vec(result)
     }
 
     visibility => { cdata.get_visibility(def_id.index) }
