@@ -571,6 +571,10 @@ fn trans_stmt<'a, 'tcx: 'a>(
                             };
                             lval.write_cvalue(fx, CValue::ByVal(res, dest_layout));
                         }
+                        (ty::Adt(adt_def, _substs), ty::Uint(_)) | (ty::Adt(adt_def, _substs), ty::Int(_)) if adt_def.is_enum() => {
+                            let discr = trans_get_discriminant(fx, operand, fx.layout_of(to_ty));
+                            lval.write_cvalue(fx, discr);
+                        }
                         _ => unimpl!("rval misc {:?} {:?}", from_ty, to_ty),
                     }
                 }

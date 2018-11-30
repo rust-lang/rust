@@ -4,37 +4,8 @@ Date: Thu, 23 Aug 2018 11:15:01 +0200
 Subject: [PATCH] Disable some more unsupported stuff in libcore
 
 ---
- src/libcore/cmp.rs     | 5 ++++-
  src/libcore/num/mod.rs | 8 ++++++--
- 2 files changed, 9 insertions(+), 3 deletions(-)
-
-diff --git a/src/libcore/cmp.rs b/src/libcore/cmp.rs
-index a6e6496..f9374ea 100644
---- a/src/libcore/cmp.rs
-+++ b/src/libcore/cmp.rs
-@@ -496,6 +496,7 @@ pub trait Ord: Eq + PartialOrd<Self> {
- #[stable(feature = "rust1", since = "1.0.0")]
- impl Eq for Ordering {}
-
-+/*
- #[stable(feature = "rust1", since = "1.0.0")]
- impl Ord for Ordering {
-     #[inline]
-@@ -503,12 +504,14 @@ impl Ord for Ordering {
-         (*self as i32).cmp(&(*other as i32))
-     }
- }
-+*/
-
- #[stable(feature = "rust1", since = "1.0.0")]
- impl PartialOrd for Ordering {
-     #[inline]
-     fn partial_cmp(&self, other: &Ordering) -> Option<Ordering> {
--        (*self as i32).partial_cmp(&(*other as i32))
-+        //(*self as i32).partial_cmp(&(*other as i32))
-+        None
-     }
- }
+ 1 files changed, 8 insertions(+), 2 deletions(-)
 
 diff --git a/src/libcore/num/mod.rs b/src/libcore/num/mod.rs
 index 5d00949..f077f1d 100644
