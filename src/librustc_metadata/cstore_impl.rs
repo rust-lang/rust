@@ -322,7 +322,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
             // which is to say, its not deterministic in general. But
             // we believe that libstd is consistently assigned crate
             // num 1, so it should be enough to resolve #46112.
-            let mut crates: Vec<CrateNum> = (*tcx.crates()).clone();
+            let mut crates: Vec<CrateNum> = (*tcx.crates()).to_owned();
             crates.sort();
 
             for &cnum in crates.iter() {

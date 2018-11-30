@@ -838,11 +838,11 @@ rustc_queries! {
             eval_always
         }
 
-        query stability_index(_: CrateNum) -> Lrc<stability::Index<'tcx>> {
+        query stability_index(_: CrateNum) -> &'tcx stability::Index<'tcx> {
             eval_always
             desc { "calculating the stability index for the local crate" }
         }
-        query all_crate_nums(_: CrateNum) -> Lrc<Vec<CrateNum>> {
+        query all_crate_nums(_: CrateNum) -> &'tcx [CrateNum] {
             eval_always
             desc { "fetching all foreign CrateNum instances" }
         }
@@ -1062,7 +1062,7 @@ rustc_queries! {
             desc { |tcx| "estimating size for `{}`", tcx.def_path_str(def.def_id()) }
         }
 
-        query features_query(_: CrateNum) -> Lrc<feature_gate::Features> {
+        query features_query(_: CrateNum) -> &'tcx feature_gate::Features {
             eval_always
             desc { "looking up enabled feature gates" }
         }

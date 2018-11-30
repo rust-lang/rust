@@ -1420,15 +1420,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         else { None }
     }
 
-    pub fn stability(self) -> Lrc<stability::Index<'tcx>> {
+    pub fn stability(self) -> &'gcx stability::Index<'gcx> {
         self.stability_index(LOCAL_CRATE)
     }
 
-    pub fn crates(self) -> Lrc<Vec<CrateNum>> {
+    pub fn crates(self) -> &'gcx [CrateNum] {
         self.all_crate_nums(LOCAL_CRATE)
     }
 
-    pub fn features(self) -> Lrc<feature_gate::Features> {
+    pub fn features(self) -> &'gcx feature_gate::Features {
         self.features_query(LOCAL_CRATE)
     }
 
@@ -3083,7 +3083,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
 
     providers.stability_index = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        Lrc::new(stability::Index::new(tcx))
+        tcx.arena.alloc(stability::Index::new(tcx))
     };
     providers.lookup_stability = |tcx, id| {
         assert_eq!(id.krate, LOCAL_CRATE);
@@ -3101,7 +3101,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.all_crate_nums = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        Lrc::new(tcx.cstore.crates_untracked())
+        tcx.arena.alloc_slice(&tcx.cstore.crates_untracked())
     };
     providers.postorder_cnums = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
@@ -3113,7 +3113,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.features_query = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        Lrc::new(tcx.sess.features_untracked().clone())
+        tcx.arena.alloc(tcx.sess.features_untracked().clone())
     };
     providers.is_panic_runtime = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
