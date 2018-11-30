@@ -1,3 +1,4 @@
+//~ ERROR mismatched types
 // aux-build:span-preservation.rs
 
 // For each of these, we should get the appropriate type mismatch error message,
@@ -9,13 +10,13 @@ use foo::foo;
 
 #[foo]
 fn a() {
-    let x: usize = "hello";;;;;
+    let x: usize = "hello";;;;; //~ ERROR mismatched types
 }
 
 #[foo]
 fn b(x: Option<isize>) -> usize {
     match x {
-        Some(x) => { return x },
+        Some(x) => { return x }, //~ ERROR mismatched types
         None => 10
     }
 }
@@ -31,8 +32,8 @@ fn c() {
         b: usize
     }
 
-    let x = Foo { a: 10isize };
-    let y = Foo { a: 10, b: 10isize };
+    let x = Foo { a: 10isize }; //~ ERROR mismatched types
+    let y = Foo { a: 10, b: 10isize }; //~ ERROR has no field named `b`
 }
 
 // FIXME: This doesn't work at the moment. See the one below. The pretty-printer
@@ -45,7 +46,7 @@ extern fn bar() {
 
 #[foo]
 extern "C" fn baz() {
-    0
+    0 //~ ERROR mismatched types
 }
 
 fn main() {}
