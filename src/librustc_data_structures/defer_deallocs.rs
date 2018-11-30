@@ -21,7 +21,7 @@ pub struct DeferredDeallocs {
 
 impl DeferredDeallocs {
     #[inline]
-    fn add(&mut self, ptr: NonNull<u8>, layout: Layout) {
+    pub fn add(&mut self, ptr: NonNull<u8>, layout: Layout) {
         self.allocations.push((ptr, layout));
     }
 }
