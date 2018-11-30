@@ -18,7 +18,6 @@ use syntax::ast;
 use syntax::attr;
 use syntax::symbol::Symbol;
 use rustc::hir;
-use rustc_data_structures::sync::Lrc;
 use crate::hair::constant::{lit_to_const, LitToConstError};
 
 #[derive(Clone)]
@@ -32,7 +31,7 @@ pub struct Cx<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// Identity `InternalSubsts` for use with const-evaluation.
     pub identity_substs: &'gcx InternalSubsts<'gcx>,
 
-    pub region_scope_tree: Lrc<region::ScopeTree>,
+    pub region_scope_tree: &'gcx region::ScopeTree,
     pub tables: &'a ty::TypeckTables<'gcx>,
 
     /// This is `Constness::Const` if we are compiling a `static`,
