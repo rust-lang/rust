@@ -310,13 +310,8 @@ impl Default for DroplessArena {
 impl DroplessArena {
     pub fn in_arena<T: ?Sized>(&self, ptr: *const T) -> bool {
         let ptr = ptr as *const u8 as *mut u8;
-        for chunk in &*self.chunks.borrow() {
-            if chunk.start() <= ptr && ptr < chunk.end() {
-                return true;
-            }
-        }
 
-        false
+        self.chunks.borrow().iter().any(|chunk| chunk.start() <= ptr && ptr < chunk.end())
     }
 
     fn align(&self, align: usize) {
@@ -408,7 +403,7 @@ impl DroplessArena {
     {
         assert!(!mem::needs_drop::<T>());
         assert!(mem::size_of::<T>() != 0);
-        assert!(slice.len() != 0);
+        assert!(!slice.is_empty());
 
         let mem = self.alloc_raw(
             slice.len() * mem::size_of::<T>(),
