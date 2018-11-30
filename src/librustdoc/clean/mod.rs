@@ -4434,7 +4434,7 @@ pub fn path_to_def(tcx: TyCtxt<'_, '_, '_>, path: &[Symbol]) -> Option<DefId> {
         loop {
             let segment = path_it.next()?;
 
-            for item in mem::replace(&mut items, Lrc::new(vec![])).iter() {
+            for item in mem::replace(&mut items, &[]).iter() {
                 if item.ident.name == *segment {
                     if path_it.peek().is_none() {
                         return match item.res {

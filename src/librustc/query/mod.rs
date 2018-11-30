@@ -784,7 +784,7 @@ rustc_queries! {
             eval_always
             desc { "fetching what a crate is named" }
         }
-        query item_children(_: DefId) -> Lrc<Vec<Export<hir::HirId>>> {}
+        query item_children(_: DefId) -> &'tcx [Export<hir::HirId>] {}
         query extern_mod_stmt_cnum(_: DefId) -> Option<CrateNum> {}
 
         query get_lib_features(_: CrateNum) -> Lrc<LibFeatures> {
