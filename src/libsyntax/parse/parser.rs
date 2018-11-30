@@ -6134,9 +6134,6 @@ impl<'a> Parser<'a> {
 
     fn consume_block(&mut self, delim: token::DelimToken) {
         let mut brace_depth = 0;
-        if !self.eat(&token::OpenDelim(delim)) {
-            return;
-        }
         loop {
             if self.eat(&token::OpenDelim(delim)) {
                 brace_depth += 1;
@@ -6147,7 +6144,7 @@ impl<'a> Parser<'a> {
                     brace_depth -= 1;
                     continue;
                 }
-            } else if self.eat(&token::Eof) || self.eat(&token::CloseDelim(token::NoDelim)) {
+            } else if self.token == token::Eof || self.eat(&token::CloseDelim(token::NoDelim)) {
                 return;
             } else {
                 self.bump();
@@ -7397,17 +7394,27 @@ impl<'a> Parser<'a> {
                 return Err(err);
             } else if self.look_ahead(1, |t| *t == token::OpenDelim(token::Paren)) {
                 let ident = self.parse_ident().unwrap();
+                self.bump();  // `(`
+                let kw_name = if let Ok(Some(_)) = self.parse_self_arg() {
+                    "method"
+                } else {
+                    "function"
+                };
                 self.consume_block(token::Paren);
-                let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) ||
-                    self.check(&token::OpenDelim(token::Brace))
-                {
-                    ("fn", "method", false)
+                let (kw, kw_name, ambiguous) = if self.check(&token::RArrow) {
+                    self.eat_to_tokens(&[&token::OpenDelim(token::Brace)]);
+                    self.bump();  // `{`
+                    ("fn", kw_name, false)
+                } else if self.check(&token::OpenDelim(token::Brace)) {
+                    self.bump();  // `{`
+                    ("fn", kw_name, false)
                 } else if self.check(&token::Colon) {
                     let kw = "struct";
                     (kw, kw, false)
                 } else {
-                    ("fn` or `struct", "method or struct", true)
+                    ("fn` or `struct", "function or struct", true)
                 };
+                self.consume_block(token::Brace);
 
                 let msg = format!("missing `{}` for {} definition", kw, kw_name);
                 let mut err = self.diagnostic().struct_span_err(sp, &msg);
@@ -7437,13 +7444,17 @@ impl<'a> Parser<'a> {
             } else if self.look_ahead(1, |t| *t == token::Lt) {
                 let ident = self.parse_ident().unwrap();
                 self.eat_to_tokens(&[&token::Gt]);
-                self.bump();
-                let (kw, kw_name, ambiguous) = if self.check(&token::OpenDelim(token::Paren)) {
-                    ("fn", "method", false)
+                self.bump();  // `>`
+                let (kw, kw_name, ambiguous) = if self.eat(&token::OpenDelim(token::Paren)) {
+                    if let Ok(Some(_)) = self.parse_self_arg() {
+                        ("fn", "method", false)
+                    } else {
+                        ("fn", "function", false)
+                    }
                 } else if self.check(&token::OpenDelim(token::Brace)) {
                     ("struct", "struct", false)
                 } else {
-                    ("fn` or `struct", "method or struct", true)
+                    ("fn` or `struct", "function or struct", true)
                 };
                 let msg = format!("missing `{}` for {} definition", kw, kw_name);
                 let mut err = self.diagnostic().struct_span_err(sp, &msg);

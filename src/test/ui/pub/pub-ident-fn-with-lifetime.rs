@@ -1,5 +1,5 @@
 pub   foo<'a>(_s: &'a usize) -> bool { true }
-//~^ ERROR missing `fn` for method definition
+//~^ ERROR missing `fn` for function definition
 
 fn main() {
     foo(2);
