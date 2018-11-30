@@ -21,6 +21,7 @@ macro_rules! arena_types {
             [] item_local_set: rustc::util::nodemap::ItemLocalSet,
             [decode] mir_const_qualif: rustc_data_structures::bit_set::BitSet<rustc::mir::Local>,
             [decode] borrowck: rustc::middle::borrowck::BorrowCheckResult,
+            [] trait_impls_of: rustc::ty::trait_def::TraitImpls,
         ], $tcx);
     )
 }
