@@ -86,7 +86,7 @@ impl<T: Encodable> Encodable for VecDeque<T> {
 impl<T:Decodable> Decodable for VecDeque<T> {
     fn decode<D: Decoder>(d: &mut D) -> Result<VecDeque<T>, D::Error> {
         d.read_seq(|d, len| {
-            let mut deque: VecDeque<T> = VecDeque::new();
+            let mut deque: VecDeque<T> = VecDeque::with_capacity(len);
             for i in 0..len {
                 deque.push_back(d.read_seq_elt(i, |d| Decodable::decode(d))?);
             }
