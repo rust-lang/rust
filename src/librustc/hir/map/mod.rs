@@ -813,11 +813,11 @@ impl<'hir> Map<'hir> {
     /// Returns the name associated with the given NodeId's AST.
     pub fn name(&self, id: NodeId) -> Name {
         match self.get(id) {
-            Node::Item(i) => i.name,
-            Node::ForeignItem(i) => i.name,
+            Node::Item(i) => i.ident.name,
+            Node::ForeignItem(fi) => fi.ident.name,
             Node::ImplItem(ii) => ii.ident.name,
             Node::TraitItem(ti) => ti.ident.name,
-            Node::Variant(v) => v.node.name,
+            Node::Variant(v) => v.node.ident.name,
             Node::Field(f) => f.ident.name,
             Node::Lifetime(lt) => lt.name.ident().name,
             Node::GenericParam(param) => param.name.ident().name,
@@ -953,7 +953,7 @@ impl<'a, 'hir> NodesMatchingSuffix<'a, 'hir> {
             loop {
                 if let Node::Item(item) = map.find(id)? {
                     if item_is_mod(&item) {
-                        return Some((id, item.name))
+                        return Some((id, item.ident.name))
                     }
                 }
                 let parent = map.get_parent(id);
@@ -1009,9 +1009,9 @@ trait Named {
 
 impl<T:Named> Named for Spanned<T> { fn name(&self) -> Name { self.node.name() } }
 
-impl Named for Item { fn name(&self) -> Name { self.name } }
-impl Named for ForeignItem { fn name(&self) -> Name { self.name } }
-impl Named for VariantKind { fn name(&self) -> Name { self.name } }
+impl Named for Item { fn name(&self) -> Name { self.ident.name } }
+impl Named for ForeignItem { fn name(&self) -> Name { self.ident.name } }
+impl Named for VariantKind { fn name(&self) -> Name { self.ident.name } }
 impl Named for StructField { fn name(&self) -> Name { self.ident.name } }
 impl Named for TraitItem { fn name(&self) -> Name { self.ident.name } }
 impl Named for ImplItem { fn name(&self) -> Name { self.ident.name } }
@@ -1194,7 +1194,7 @@ fn node_id_to_string(map: &Map<'_>, id: NodeId, include_id: bool) -> String {
         }
         Some(Node::Variant(ref variant)) => {
             format!("variant {} in {}{}",
-                    variant.node.name,
+                    variant.node.ident,
                     path_str(), id_str)
         }
         Some(Node::Field(ref field)) => {

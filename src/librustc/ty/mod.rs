@@ -1780,7 +1780,7 @@ pub struct VariantDef {
     /// The variant's `DefId`. If this is a tuple-like struct,
     /// this is the `DefId` of the struct's ctor.
     pub did: DefId,
-    pub name: Name, // struct's name if this is a struct
+    pub ident: Ident, // struct's name if this is a struct
     pub discr: VariantDiscr,
     pub fields: Vec<FieldDef>,
     pub ctor_kind: CtorKind,
@@ -1804,7 +1804,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
     /// remove this hack and use the constructor DefId everywhere.
     pub fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                did: DefId,
-               name: Name,
+               ident: Ident,
                discr: VariantDiscr,
                fields: Vec<FieldDef>,
                adt_kind: AdtKind,
@@ -1812,7 +1812,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
                attribute_def_id: DefId)
                -> Self
     {
-        debug!("VariantDef::new({:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?})", did, name, discr,
+        debug!("VariantDef::new({:?}, {:?}, {:?}, {:?}, {:?}, {:?}, {:?})", did, ident, discr,
                fields, adt_kind, ctor_kind, attribute_def_id);
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
         if adt_kind == AdtKind::Struct && tcx.has_attr(attribute_def_id, "non_exhaustive") {
@@ -1821,7 +1821,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
         }
         VariantDef {
             did,
-            name,
+            ident,
             discr,
             fields,
             ctor_kind,
@@ -1837,7 +1837,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
 
 impl_stable_hash_for!(struct VariantDef {
     did,
-    name,
+    ident -> (ident.name),
     discr,
     fields,
     ctor_kind,
@@ -1977,8 +1977,6 @@ bitflags! {
 impl_stable_hash_for!(struct ReprFlags {
     bits
 });
-
-
 
 /// Represents the repr options provided by the user,
 #[derive(Copy, Clone, Debug, Eq, PartialEq, RustcEncodable, RustcDecodable, Default)]

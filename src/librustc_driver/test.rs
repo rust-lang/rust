@@ -261,7 +261,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
             assert!(idx < names.len());
             for item in &m.item_ids {
                 let item = this.infcx.tcx.hir().expect_item(item.id);
-                if item.name.to_string() == names[idx] {
+                if item.ident.to_string() == names[idx] {
                     return search(this, item, idx + 1, names);
                 }
             }

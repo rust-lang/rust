@@ -71,7 +71,7 @@ fn equate_intrinsic_type<'a, 'tcx>(
 pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                       it: &hir::ForeignItem) {
     let param = |n| tcx.mk_ty_param(n, Symbol::intern(&format!("P{}", n)).as_interned_str());
-    let name = it.name.as_str();
+    let name = it.ident.as_str();
 
     let mk_va_list_ty = || {
         tcx.lang_items().va_list().map(|did| {
@@ -393,7 +393,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let def_id = tcx.hir().local_def_id(it.id);
     let i_n_tps = tcx.generics_of(def_id).own_counts().types;
-    let name = it.name.as_str();
+    let name = it.ident.as_str();
 
     let (n_tps, inputs, output) = match &*name {
         "simd_eq" | "simd_ne" | "simd_lt" | "simd_le" | "simd_gt" | "simd_ge" => {

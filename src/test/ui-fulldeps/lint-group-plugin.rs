@@ -1,6 +1,7 @@
 // run-pass
 // aux-build:lint_group_plugin_test.rs
 // ignore-stage1
+
 #![feature(plugin)]
 #![plugin(lint_group_plugin_test)]
 #![allow(dead_code)]

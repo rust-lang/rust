@@ -2040,7 +2040,7 @@ impl<'tcx> Debug for Place<'tcx> {
             Promoted(ref promoted) => write!(fmt, "({:?}: {:?})", promoted.0, promoted.1),
             Projection(ref data) => match data.elem {
                 ProjectionElem::Downcast(ref adt_def, index) => {
-                    write!(fmt, "({:?} as {})", data.base, adt_def.variants[index].name)
+                    write!(fmt, "({:?} as {})", data.base, adt_def.variants[index].ident)
                 }
                 ProjectionElem::Deref => write!(fmt, "(*{:?})", data.base),
                 ProjectionElem::Field(field, ty) => {

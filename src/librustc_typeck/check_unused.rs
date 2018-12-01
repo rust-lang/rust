@@ -154,7 +154,7 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
 
         // If the extern crate isn't in the extern prelude,
         // there is no way it can be written as an `use`.
-        let orig_name = extern_crate.orig_name.unwrap_or(item.name);
+        let orig_name = extern_crate.orig_name.unwrap_or(item.ident.name);
         if !tcx.extern_prelude.get(&orig_name).map_or(false, |from_item| !from_item) {
             continue;
         }
@@ -173,8 +173,8 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
             visibility_qualified(&item.vis, "use")
         );
         let base_replacement = match extern_crate.orig_name {
-            Some(orig_name) => format!("use {} as {};", orig_name, item.name),
-            None => format!("use {};", item.name),
+            Some(orig_name) => format!("use {} as {};", orig_name, item.ident.name),
+            None => format!("use {};", item.ident.name),
         };
         let replacement = visibility_qualified(&item.vis, base_replacement);
         tcx.struct_span_lint_node(lint, id, extern_crate.span, msg)
@@ -219,7 +219,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CollectExternCrateVisitor<'a, 'tcx> {
                     def_id: extern_crate_def_id,
                     span: item.span,
                     orig_name,
-                    warn_if_unused: !item.name.as_str().starts_with('_'),
+                    warn_if_unused: !item.ident.as_str().starts_with('_'),
                 }
             );
         }

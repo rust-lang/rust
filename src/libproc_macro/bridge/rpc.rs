@@ -1,4 +1,4 @@
-//! Serialization for client<->server communication.
+//! Serialization for client-server communication.
 
 use std::any::Any;
 use std::char;

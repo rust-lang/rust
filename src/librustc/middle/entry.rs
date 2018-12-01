@@ -86,7 +86,7 @@ fn entry_point_type(item: &Item, at_root: bool) -> EntryPointType {
                 EntryPointType::Start
             } else if attr::contains_name(&item.attrs, "main") {
                 EntryPointType::MainAttr
-            } else if item.name == "main" {
+            } else if item.ident.name == "main" {
                 if at_root {
                     // This is a top-level function so can be 'main'.
                     EntryPointType::MainNamed
