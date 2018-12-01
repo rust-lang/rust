@@ -129,8 +129,8 @@ impl CodegenBackend for MetadataOnlyCodegenBackend {
     fn provide(&self, providers: &mut Providers) {
         ::symbol_names::provide(providers);
 
-        providers.target_features_whitelist = |_tcx, _cnum| {
-            Default::default() // Just a dummy
+        providers.target_features_whitelist = |tcx, _cnum| {
+            tcx.bx(Default::default()) // Just a dummy
         };
         providers.is_reachable_non_generic = |_tcx, _defid| true;
         providers.exported_symbols = |_tcx, _crate| Arc::new(Vec::new());

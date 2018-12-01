@@ -426,7 +426,7 @@ define_queries! { <'tcx>
     },
 
     Other {
-        [] fn module_exports: ModuleExports(DefId) -> Option<Lrc<Vec<Export>>>,
+        [] fn module_exports: ModuleExports(DefId) -> Option<Bx<'tcx, Vec<Export>>>,
         [] fn lint_levels: lint_levels_node(CrateNum) -> Bx<'tcx, lint::LintLevelMap>,
     },
 
@@ -672,7 +672,9 @@ define_queries! { <'tcx>
 
     Other {
         [] fn target_features_whitelist:
-            target_features_whitelist_node(CrateNum) -> Lrc<FxHashMap<String, Option<String>>>,
+            target_features_whitelist_node(
+                CrateNum
+        ) -> Bx<'tcx, FxHashMap<String, Option<String>>>,
 
         // Get an estimate of the size of an InstanceDef based on its MIR for CGU partitioning.
         [] fn instance_def_size_estimate: instance_def_size_estimate_dep_node(ty::InstanceDef<'tcx>)
@@ -694,7 +696,7 @@ define_queries! { <'tcx>
 
     Linking {
         [] fn wasm_import_module_map: WasmImportModuleMap(CrateNum)
-            -> Lrc<FxHashMap<DefId, String>>,
+            -> Bx<'tcx, FxHashMap<DefId, String>>,
     },
 }
 

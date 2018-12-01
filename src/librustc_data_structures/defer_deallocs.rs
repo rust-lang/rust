@@ -84,6 +84,11 @@ impl_defer_dellocs_for_no_drop_type!([<T>] BuildHasherDefault<T>);
 impl_defer_dellocs_for_no_drop_type!([<'a, T: ?Sized>] &'a mut T);
 impl_defer_dellocs_for_no_drop_type!([<'a, T: ?Sized>] &'a T);
 
+unsafe impl DeferDeallocs for String {
+    #[inline]
+    fn defer(&self, deferred: &mut DeferredDeallocs) {}
+}
+
 unsafe impl<T: DeferDeallocs> DeferDeallocs for [T] {
     #[inline]
     fn defer(&self, deferred: &mut DeferredDeallocs) {

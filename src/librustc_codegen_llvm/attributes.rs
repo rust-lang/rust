@@ -18,7 +18,6 @@ use rustc::session::config::Sanitizer;
 use rustc::ty::TyCtxt;
 use rustc::ty::layout::HasTyCtxt;
 use rustc::ty::query::Providers;
-use rustc_data_structures::sync::Lrc;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_target::spec::PanicStrategy;
 use rustc_codegen_ssa::traits::*;
@@ -269,11 +268,11 @@ pub fn provide(providers: &mut Providers) {
         if tcx.sess.opts.actually_rustdoc {
             // rustdoc needs to be able to document functions that use all the features, so
             // whitelist them all
-            Lrc::new(llvm_util::all_known_features()
+            tcx.bx(llvm_util::all_known_features()
                 .map(|(a, b)| (a.to_string(), b.map(|s| s.to_string())))
                 .collect())
         } else {
-            Lrc::new(llvm_util::target_feature_whitelist(tcx.sess)
+            tcx.bx(llvm_util::target_feature_whitelist(tcx.sess)
                 .iter()
                 .map(|&(a, b)| (a.to_string(), b.map(|s| s.to_string())))
                 .collect())
@@ -313,7 +312,7 @@ pub fn provide_extern(providers: &mut Providers) {
             }));
         }
 
-        Lrc::new(ret)
+        tcx.bx(ret)
     };
 }
 
