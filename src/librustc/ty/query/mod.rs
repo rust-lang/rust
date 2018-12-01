@@ -403,7 +403,7 @@ define_queries! { <'tcx>
 
     Other {
         [] fn dylib_dependency_formats: DylibDepFormats(CrateNum)
-                                        -> Lrc<Vec<(CrateNum, LinkagePreference)>>,
+                                        -> Bx<'tcx, Vec<(CrateNum, LinkagePreference)>>,
     },
 
     Codegen {
@@ -416,7 +416,7 @@ define_queries! { <'tcx>
         [fatal_cycle] fn panic_strategy: GetPanicStrategy(CrateNum) -> PanicStrategy,
         [fatal_cycle] fn is_no_builtins: IsNoBuiltins(CrateNum) -> bool,
 
-        [] fn extern_crate: ExternCrate(DefId) -> Lrc<Option<ExternCrate>>,
+        [] fn extern_crate: ExternCrate(DefId) -> Bx<'tcx, Option<ExternCrate>>,
     },
 
     TypeChecking {
@@ -452,7 +452,7 @@ define_queries! { <'tcx>
         // Does not include external symbols that don't have a corresponding DefId,
         // like the compiler-generated `main` function and so on.
         [] fn reachable_non_generics: ReachableNonGenerics(CrateNum)
-            -> Lrc<DefIdMap<SymbolExportLevel>>,
+            -> Bx<'tcx, DefIdMap<SymbolExportLevel>>,
         [] fn is_reachable_non_generic: IsReachableNonGeneric(DefId) -> bool,
         [] fn is_unreachable_local_definition: IsUnreachableLocalDefinition(DefId) -> bool,
     },

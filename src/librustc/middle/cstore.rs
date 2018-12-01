@@ -106,6 +106,8 @@ pub enum LinkagePreference {
     RequireStatic,
 }
 
+impl_defer_dellocs_for_no_drop_type!([] LinkagePreference);
+
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub enum NativeLibraryKind {
     /// native static library (.a archive)
@@ -156,6 +158,8 @@ pub struct ExternCrate {
     /// of the crate.
     pub direct: bool,
 }
+
+impl_defer_dellocs_for_no_drop_type!([] ExternCrate);
 
 #[derive(Copy, Clone, Debug)]
 pub enum ExternCrateSource {

@@ -59,7 +59,7 @@ pub fn crates_export_threshold(crate_types: &[config::CrateType]) -> SymbolExpor
 
 fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              cnum: CrateNum)
-                                             -> Lrc<DefIdMap<SymbolExportLevel>>
+                                             -> Bx<'tcx, DefIdMap<SymbolExportLevel>>
 {
     assert_eq!(cnum, LOCAL_CRATE);
 
@@ -167,7 +167,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         reachable_non_generics.insert(def_id, SymbolExportLevel::C);
     }
 
-    Lrc::new(reachable_non_generics)
+    tcx.bx(reachable_non_generics)
 }
 
 fn is_reachable_non_generic_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

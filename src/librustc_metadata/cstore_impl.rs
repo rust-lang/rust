@@ -167,7 +167,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     }
     is_mir_available => { cdata.is_item_mir_available(def_id.index) }
 
-    dylib_dependency_formats => { Lrc::new(cdata.get_dylib_dependency_formats()) }
+    dylib_dependency_formats => { tcx.bx(cdata.get_dylib_dependency_formats()) }
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
@@ -176,7 +176,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
     is_profiler_runtime => { cdata.root.profiler_runtime }
     panic_strategy => { cdata.root.panic_strategy }
     extern_crate => {
-        let r = Lrc::new(*cdata.extern_crate.lock());
+        let r = tcx.bx(*cdata.extern_crate.lock());
         r
     }
     is_no_builtins => { cdata.root.no_builtins }
@@ -194,7 +194,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
             })
             .collect();
 
-        Lrc::new(reachable_non_generics)
+        tcx.bx(reachable_non_generics)
     }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
     foreign_modules => { tcx.bx(cdata.get_foreign_modules(tcx.sess)) }

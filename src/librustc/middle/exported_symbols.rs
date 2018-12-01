@@ -28,6 +28,8 @@ pub enum SymbolExportLevel {
     Rust,
 }
 
+impl_defer_dellocs_for_no_drop_type!([] SymbolExportLevel);
+
 impl_stable_hash_for!(enum self::SymbolExportLevel {
     C,
     Rust
