@@ -689,7 +689,7 @@ rustc_queries! {
     }
 
     Other {
-        query foreign_modules(_: CrateNum) -> Lrc<Vec<ForeignModule>> {
+        query foreign_modules(_: CrateNum) -> &'tcx [ForeignModule] {
             desc { "looking up the foreign modules of a linked crate" }
         }
 
@@ -736,7 +736,7 @@ rustc_queries! {
 
     Other {
         query dllimport_foreign_items(_: CrateNum)
-            -> Lrc<FxHashSet<DefId>> {
+            -> &'tcx FxHashSet<DefId> {
             desc { "dllimport_foreign_items" }
         }
         query is_dllimport_foreign_item(_: DefId) -> bool {}

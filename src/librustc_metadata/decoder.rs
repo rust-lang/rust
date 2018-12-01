@@ -1085,12 +1085,15 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_foreign_modules(&self, sess: &Session) -> Vec<ForeignModule> {
+    pub fn get_foreign_modules(
+        &self,
+        tcx: TyCtxt<'_, 'tcx, '_>,
+    ) -> &'tcx [ForeignModule] {
         if self.proc_macros.is_some() {
             // Proc macro crates do not have any *target* foreign modules.
-            vec![]
+            &[]
         } else {
-            self.root.foreign_modules.decode((self, sess)).collect()
+            tcx.arena.alloc_from_iter(self.root.foreign_modules.decode((self, tcx.sess)))
         }
     }
 

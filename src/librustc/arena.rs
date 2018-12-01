@@ -94,6 +94,8 @@ macro_rules! arena_types {
             [few] get_lib_features: rustc::middle::lib_features::LibFeatures,
             [few] defined_lib_features: rustc::middle::lang_items::LanguageItems,
             [few] visible_parent_map: rustc::util::nodemap::DefIdMap<rustc::hir::def_id::DefId>,
+            [few] foreign_module: rustc::middle::cstore::ForeignModule,
+            [few] foreign_modules: Vec<rustc::middle::cstore::ForeignModule>,
         ], $tcx);
     )
 }

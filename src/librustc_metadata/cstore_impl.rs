@@ -193,7 +193,7 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         Lrc::new(reachable_non_generics)
     }
     native_libraries => { Lrc::new(cdata.get_native_libraries(tcx.sess)) }
-    foreign_modules => { Lrc::new(cdata.get_foreign_modules(tcx.sess)) }
+    foreign_modules => { cdata.get_foreign_modules(tcx) }
     plugin_registrar_fn => {
         cdata.root.plugin_registrar_fn.map(|index| {
             DefId { krate: def_id.krate, index }
@@ -285,7 +285,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
         },
         foreign_modules: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
-            Lrc::new(foreign_modules::collect(tcx))
+            &tcx.arena.alloc(foreign_modules::collect(tcx))[..]
         },
         link_args: |tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
