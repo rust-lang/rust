@@ -132,27 +132,51 @@ impl<T> TypedArena<T> {
     /// Allocates an object in the `TypedArena`, returning a reference to it.
     #[inline]
     pub fn alloc(&self, object: T) -> &mut T {
-        if self.ptr == self.end {
-            self.grow(1)
-        }
+        // Zero sized path
+        if mem::size_of::<T>() == 0 {
+            if self.ptr == self.end {
+                self.grow(1)
+            }
 
-        unsafe {
-            if mem::size_of::<T>() == 0 {
+            unsafe {
                 self.ptr
                     .set(intrinsics::arith_offset(self.ptr.get() as *mut u8, 1)
                         as *mut T);
                 let ptr = mem::align_of::<T>() as *mut T;
                 // Don't drop the object. This `write` is equivalent to `forget`.
                 ptr::write(ptr, object);
-                &mut *ptr
-            } else {
-                let ptr = self.ptr.get();
-                // Advance the pointer.
-                self.ptr.set(self.ptr.get().offset(1));
-                // Write into uninitialized memory.
-                ptr::write(ptr, object);
-                &mut *ptr
+                return &mut *ptr;
             }
+        }
+
+        let ptr = self.ptr.get();
+
+        unsafe {
+            if std::intrinsics::unlikely(ptr == self.end.get()) {
+                self.grow_and_alloc(object)
+            } else {
+                self.alloc_unchecked(ptr, object)
+            }
+        }
+    }
+
+    #[inline(always)]
+    unsafe fn alloc_unchecked(&self, ptr: *mut T, object: T) -> &mut T {
+        // Advance the pointer.
+        self.ptr.set(ptr.offset(1));
+        // Write into uninitialized memory.
+        ptr::write(ptr, object);
+        &mut *ptr
+    }
+
+    #[inline(never)]
+    #[cold]
+    fn grow_and_alloc(&self, object: T) -> &mut T {
+        // We move the object in this function so if it has a destructor
+        // the fast path need not have an unwind handler to destroy it
+        self.grow(1);
+        unsafe {
+            self.alloc_unchecked(self.ptr.get(), object)
         }
     }
 
@@ -174,7 +198,7 @@ impl<T> TypedArena<T> {
         let available_capacity_bytes = self.end.get() as usize - self.ptr.get() as usize;
         let at_least_bytes = slice.len() * mem::size_of::<T>();
         if available_capacity_bytes < at_least_bytes {
-            self.grow(slice.len());
+            self.grow_slice(slice.len());
         }
 
         unsafe {
@@ -186,9 +210,14 @@ impl<T> TypedArena<T> {
         }
     }
 
-    /// Grows the arena.
     #[inline(never)]
     #[cold]
+    fn grow_slice(&self, n: usize) {
+        self.grow(n)
+    }
+
+    /// Grows the arena.
+    #[inline(always)]
     fn grow(&self, n: usize) {
         unsafe {
             let mut chunks = self.chunks.borrow_mut();
@@ -283,6 +312,22 @@ unsafe impl<#[may_dangle] T> Drop for TypedArena<T> {
 
 unsafe impl<T: Send> Send for TypedArena<T> {}
 
+type BackingType = usize;
+const BLOCK_SIZE: usize = std::mem::size_of::<BackingType>();
+
+#[inline(always)]
+fn required_backing_types(bytes: usize) -> usize {
+    assert!(BLOCK_SIZE.is_power_of_two());
+    // FIXME: This addition could overflow
+    (bytes + BLOCK_SIZE - 1) / BLOCK_SIZE
+}
+
+#[inline(always)]
+fn align(val: usize, align: usize) -> usize {
+    assert!(align.is_power_of_two());
+    (val + align - 1) & !(align - 1)
+}
+
 pub struct DroplessArena {
     /// A pointer to the next object to be allocated.
     ptr: Cell<*mut u8>,
@@ -292,7 +337,7 @@ pub struct DroplessArena {
     end: Cell<*mut u8>,
 
     /// A vector of arena chunks.
-    chunks: RefCell<Vec<TypedArenaChunk<u8>>>,
+    chunks: RefCell<Vec<TypedArenaChunk<BackingType>>>,
 }
 
 unsafe impl Send for DroplessArena {}
@@ -310,69 +355,84 @@ impl Default for DroplessArena {
 
 impl DroplessArena {
     pub fn in_arena<T: ?Sized>(&self, ptr: *const T) -> bool {
-        let ptr = ptr as *const u8 as *mut u8;
+        let ptr = ptr as *const u8 as *mut BackingType;
 
         self.chunks.borrow().iter().any(|chunk| chunk.start() <= ptr && ptr < chunk.end())
     }
 
-    #[inline]
-    fn align(&self, align: usize) {
-        let final_address = ((self.ptr.get() as usize) + align - 1) & !(align - 1);
-        self.ptr.set(final_address as *mut u8);
-        assert!(self.ptr <= self.end);
-    }
-
-    #[inline(never)]
-    #[cold]
     fn grow(&self, needed_bytes: usize) {
         unsafe {
+            let needed_vals = required_backing_types(needed_bytes);
             let mut chunks = self.chunks.borrow_mut();
             let (chunk, mut new_capacity);
             if let Some(last_chunk) = chunks.last_mut() {
                 let used_bytes = self.ptr.get() as usize - last_chunk.start() as usize;
+                let used_vals = required_backing_types(used_bytes);
                 if last_chunk
                     .storage
-                    .reserve_in_place(used_bytes, needed_bytes)
+                    .reserve_in_place(used_vals, needed_vals)
                 {
-                    self.end.set(last_chunk.end());
+                    self.end.set(last_chunk.end() as *mut u8);
                     return;
                 } else {
                     new_capacity = last_chunk.storage.cap();
                     loop {
                         new_capacity = new_capacity.checked_mul(2).unwrap();
-                        if new_capacity >= used_bytes + needed_bytes {
+                        if new_capacity >= used_vals + needed_vals {
                             break;
                         }
                     }
                 }
             } else {
-                new_capacity = cmp::max(needed_bytes, PAGE);
+                new_capacity = cmp::max(needed_vals, required_backing_types(PAGE));
             }
-            chunk = TypedArenaChunk::<u8>::new(new_capacity);
-            self.ptr.set(chunk.start());
-            self.end.set(chunk.end());
+            chunk = TypedArenaChunk::<BackingType>::new(new_capacity);
+            self.ptr.set(chunk.start() as *mut u8);
+            self.end.set(chunk.end() as *mut u8);
             chunks.push(chunk);
         }
+    }
+
+    #[inline(never)]
+    #[cold]
+    fn grow_and_alloc_raw(&self, bytes: usize) -> &mut [u8] {
+        self.grow(bytes);
+        unsafe {
+            self.alloc_raw_unchecked(self.ptr.get(), bytes)
+        }
+    }
+
+    #[inline(always)]
+    unsafe fn alloc_raw_unchecked(&self, start: *mut u8, bytes: usize) -> &mut [u8] {
+        // Tell LLVM that `start` is aligned to BLOCK_SIZE
+        std::intrinsics::assume(start as usize == align(start as usize, BLOCK_SIZE));
+
+        // Set the pointer past ourselves and align it
+        let end = start.offset(bytes as isize) as usize;
+        let end = align(end, BLOCK_SIZE) as *mut u8;
+        self.ptr.set(end);
+
+        // Return the result
+        slice::from_raw_parts_mut(start, bytes)
     }
 
     #[inline]
     pub fn alloc_raw(&self, bytes: usize, align: usize) -> &mut [u8] {
         unsafe {
             assert!(bytes != 0);
+            assert!(align <= BLOCK_SIZE);
+            assert!(std::mem::align_of::<BackingType>() == std::mem::size_of::<BackingType>());
+            // FIXME: Check that `bytes` fit in a isize
 
-            self.align(align);
-
-            let future_end = intrinsics::arith_offset(self.ptr.get(), bytes as isize);
-            if (future_end as *mut u8) >= self.end.get() {
-                self.grow(bytes);
-            }
-
+            // FIXME: arith_offset could overflow here.
+            // Find some way to guarantee this doesn't happen for small fixed size types
             let ptr = self.ptr.get();
-            // Set the pointer past ourselves
-            self.ptr.set(
-                intrinsics::arith_offset(self.ptr.get(), bytes as isize) as *mut u8,
-            );
-            slice::from_raw_parts_mut(ptr, bytes)
+            let future_end = intrinsics::arith_offset(ptr, bytes as isize);
+            if std::intrinsics::unlikely((future_end as *mut u8) >= self.end.get()) {
+                self.grow_and_alloc_raw(bytes)
+            } else {
+                self.alloc_raw_unchecked(ptr, bytes)
+            }
         }
     }
 
