@@ -40,6 +40,7 @@ use traits::query::{
     CanonicalTypeOpSubtypeGoal, CanonicalTypeOpProvePredicateGoal,
     CanonicalTypeOpNormalizeGoal, NoSolution,
 };
+use traits::query::method_autoderef::MethodAutoderefStepsResult;
 use traits::query::dropck_outlives::{DtorckConstraint, DropckOutlivesResult};
 use traits::query::normalize::NormalizationResult;
 use traits::query::outlives_bounds::OutlivesBound;
@@ -668,6 +669,10 @@ define_queries! { <'tcx>
 
         [] fn substitute_normalize_and_test_predicates:
             substitute_normalize_and_test_predicates_node((DefId, &'tcx Substs<'tcx>)) -> bool,
+
+        [] fn method_autoderef_steps: MethodAutoderefSteps(
+            CanonicalTyGoal<'tcx>
+        ) -> MethodAutoderefStepsResult<'tcx>,
     },
 
     Other {

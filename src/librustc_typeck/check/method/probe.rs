@@ -19,12 +19,16 @@ use hir::def_id::DefId;
 use hir::def::Def;
 use namespace::Namespace;
 
+use rustc_data_structures::sync::Lrc;
 use rustc::hir;
 use rustc::lint;
 use rustc::session::config::nightly_options;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, ObligationCause};
-use rustc::ty::{self, ParamEnv, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TraitRef, TypeFoldable};
+use rustc::traits::query::{CanonicalTyGoal};
+use rustc::traits::query::method_autoderef::{CandidateStep, MethodAutoderefStepsResult};
+use rustc::traits::query::method_autoderef::{MethodAutoderefBadTy};
+use rustc::ty::{self, ParamEnvAnd, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TraitRef, TypeFoldable};
 use rustc::ty::GenericParamDefKind;
 use rustc::infer::type_variable::TypeVariableOrigin;
 use rustc::util::nodemap::FxHashSet;
@@ -34,7 +38,7 @@ use rustc::infer::canonical::{OriginalQueryValues};
 use rustc::middle::stability;
 use syntax::ast;
 use syntax::util::lev_distance::{lev_distance, find_best_match_for_name};
-use syntax_pos::{Span, symbol::Symbol};
+use syntax_pos::{DUMMY_SP, Span, symbol::Symbol};
 use std::iter;
 use std::mem;
 use std::ops::Deref;
@@ -59,7 +63,7 @@ struct ProbeContext<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     /// This is the OriginalQueryValues for the steps queries
     /// that are answered in steps.
     orig_steps_var_values: OriginalQueryValues<'tcx>,
-    steps: Rc<Vec<CandidateStep<'gcx>>>,
+    steps: Lrc<Vec<CandidateStep<'gcx>>>,
 
     inherent_candidates: Vec<Candidate<'tcx>>,
     extension_candidates: Vec<Candidate<'tcx>>,
@@ -88,19 +92,6 @@ impl<'a, 'gcx, 'tcx> Deref for ProbeContext<'a, 'gcx, 'tcx> {
     fn deref(&self) -> &Self::Target {
         &self.fcx
     }
-}
-
-#[derive(Debug)]
-struct CandidateStep<'gcx> {
-    self_ty: Canonical<'gcx, QueryResponse<'gcx, Ty<'gcx>>>,
-    autoderefs: usize,
-    // true if the type results from a dereference of a raw pointer.
-    // when assembling candidates, we include these steps, but not when
-    // picking methods. This so that if we have `foo: *const Foo` and `Foo` has methods
-    // `fn by_raw_ptr(self: *const Self)` and `fn by_ref(&self)`, then
-    // `foo.by_raw_ptr()` will work and `foo.by_ref()` won't.
-    from_unsafe_deref: bool,
-    unsize: bool,
 }
 
 #[derive(Debug)]
@@ -260,11 +251,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     {
         let mut orig_values = OriginalQueryValues::default();
         let param_env_and_self_ty =
-            self.infcx.canonicalize_query(&(self.param_env, self_ty), &mut orig_values);
+            self.infcx.canonicalize_query(
+                &ParamEnvAnd {
+                    param_env: self.param_env,
+                    value: self_ty
+                }, &mut orig_values);
 
-        // FIXME: consider caching this "whole op" here.
         let steps = if mode == Mode::MethodCall {
-            create_steps_inner(self.tcx.global_tcx(), span, param_env_and_self_ty)
+            self.tcx.method_autoderef_steps(param_env_and_self_ty)
         } else {
             self.infcx.probe(|_| {
                 // Mode::Path - the deref steps is "trivial". This turns
@@ -273,18 +267,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // special handling for this "trivial case" is a good idea.
 
                 let infcx = &self.infcx;
-                let ((_, self_ty), canonical_inference_vars) =
+                let (ParamEnvAnd {
+                    param_env: _,
+                    value: self_ty
+                }, canonical_inference_vars) =
                     infcx.instantiate_canonical_with_fresh_inference_vars(
                         span, &param_env_and_self_ty);
-                debug!("param_env_and_self_ty={:?} self_ty={:?}", param_env_and_self_ty, self_ty);
-                CreateStepsResult {
-                    steps: vec![CandidateStep {
+                debug!("probe_op: Mode::Path, param_env_and_self_ty={:?} self_ty={:?}",
+                       param_env_and_self_ty, self_ty);
+                MethodAutoderefStepsResult {
+                    steps: Lrc::new(vec![CandidateStep {
                         self_ty: self.make_query_response_with_obligations_pending(
                             canonical_inference_vars, self_ty),
                         autoderefs: 0,
                         from_unsafe_deref: false,
                         unsize: false,
-                    }],
+                    }]),
                     opt_bad_ty: None
                 }
             })
@@ -292,11 +290,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // If we encountered an `_` type or an error type during autoderef, this is
         // ambiguous.
-        if let Some(CreateStepsBadTy { reached_raw_pointer, ty }) = &steps.opt_bad_ty {
+        if let Some(autoderef_bad_ty) = &steps.opt_bad_ty {
+            let MethodAutoderefBadTy { reached_raw_pointer, ref ty } = **autoderef_bad_ty;
             if is_suggestion.0 {
                 // Ambiguity was encountered during a suggestion. Just keep going.
                 debug!("ProbeContext: encountered ambiguity in suggestion");
-            } else if *reached_raw_pointer && !self.tcx.features().arbitrary_self_types {
+            } else if reached_raw_pointer && !self.tcx.features().arbitrary_self_types {
                 // this case used to be allowed by the compiler,
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
@@ -337,7 +336,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.probe(|_| {
             let mut probe_cx = ProbeContext::new(
                 self, span, mode, method_name, return_type, orig_values,
-                Rc::new(steps.steps), is_suggestion,
+                steps.steps, is_suggestion,
             );
 
             probe_cx.assemble_inherent_candidates();
@@ -352,27 +351,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-#[derive(Debug)]
-struct CreateStepsResult<'gcx> {
-    steps: Vec<CandidateStep<'gcx>>,
-    opt_bad_ty: Option<CreateStepsBadTy<'gcx>>
+pub fn provide(providers: &mut ty::query::Providers) {
+    providers.method_autoderef_steps = method_autoderef_steps;
 }
 
-#[derive(Debug)]
-struct CreateStepsBadTy<'gcx> {
-    reached_raw_pointer: bool,
-    ty: Canonical<'gcx, QueryResponse<'gcx, Ty<'gcx>>>,
-}
-
-fn create_steps_inner<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
-                                      span: Span,
-                                      pe_and_self_ty: Canonical<'gcx, (ParamEnv<'gcx>, Ty<'gcx>)>)
-                                      -> CreateStepsResult<'gcx>
+fn method_autoderef_steps<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
+                                          goal: CanonicalTyGoal<'tcx>)
+                                          -> MethodAutoderefStepsResult<'gcx>
 {
-    tcx.infer_ctxt().enter(|ref infcx| {
-        let ((param_env, self_ty), inference_vars) =
-            infcx.instantiate_canonical_with_fresh_inference_vars(span, &pe_and_self_ty);
-        let mut autoderef = Autoderef::new(infcx, param_env, ast::DUMMY_NODE_ID, span, self_ty)
+    debug!("method_autoderef_steps({:?})", goal);
+
+    tcx.infer_ctxt().enter_with_canonical(DUMMY_SP, &goal, |ref infcx, goal, inference_vars| {
+        let ParamEnvAnd { param_env, value: self_ty } = goal;
+
+        let mut autoderef = Autoderef::new(infcx, param_env, ast::DUMMY_NODE_ID, DUMMY_SP, self_ty)
             .include_raw_pointers();
         let mut reached_raw_pointer = false;
         let mut steps: Vec<_> = autoderef.by_ref()
@@ -396,7 +388,7 @@ fn create_steps_inner<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         let opt_bad_ty = match final_ty.sty {
             ty::Infer(ty::TyVar(_)) |
             ty::Error => {
-                Some(CreateStepsBadTy {
+                Some(MethodAutoderefBadTy {
                     reached_raw_pointer,
                     ty: infcx.make_query_response_with_obligations_pending(
                         inference_vars, final_ty)
@@ -420,9 +412,12 @@ fn create_steps_inner<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
             _ => None
         };
 
-        debug!("create_steps: steps={:?} opt_bad_ty={:?}", steps, opt_bad_ty);
+        debug!("method_autoderef_steps: steps={:?} opt_bad_ty={:?}", steps, opt_bad_ty);
 
-        CreateStepsResult { steps, opt_bad_ty }
+        MethodAutoderefStepsResult {
+            steps: Lrc::new(steps),
+            opt_bad_ty: opt_bad_ty.map(Lrc::new)
+        }
     })
 }
 

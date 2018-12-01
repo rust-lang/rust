@@ -827,6 +827,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::substitute_normalize_and_test_pre
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::method_autoderef_steps<'tcx> {
+    fn describe(_tcx: TyCtxt<'_, '_, '_>, goal: CanonicalTyGoal<'tcx>) -> Cow<'static, str> {
+        format!("computing autoderef types for `{:?}`", goal).into()
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::target_features_whitelist<'tcx> {
     fn describe(_tcx: TyCtxt<'_, '_, '_>, _: CrateNum) -> Cow<'static, str> {
         "looking up the whitelist of target features".into()

@@ -39,6 +39,7 @@ use self::probe::{IsSuggestion, ProbeScope};
 
 pub fn provide(providers: &mut ty::query::Providers) {
     suggest::provide(providers);
+    probe::provide(providers);
 }
 
 #[derive(Clone, Copy, Debug)]
