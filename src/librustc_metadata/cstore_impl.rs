@@ -386,7 +386,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
                 }
             }
 
-            Lrc::new(visible_parent_map)
+            tcx.bx(visible_parent_map)
         },
 
         ..*providers

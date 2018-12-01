@@ -525,7 +525,7 @@ define_queries! { <'tcx>
         [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Bx<'tcx, Vec<(DefId, usize)>>,
         [] fn missing_lang_items: MissingLangItems(CrateNum) -> Bx<'tcx, Vec<LangItem>>,
         [] fn visible_parent_map: visible_parent_map_node(CrateNum)
-            -> Lrc<DefIdMap<DefId>>,
+            -> Bx<'tcx, DefIdMap<DefId>>,
         [] fn missing_extern_crate_item: MissingExternCrateItem(CrateNum) -> bool,
 
         // Uses Lrc since it lives beyond the type arena
