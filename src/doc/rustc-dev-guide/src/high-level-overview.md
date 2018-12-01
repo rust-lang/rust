@@ -96,7 +96,7 @@ take:
 1. **Parsing input**
     - this processes the `.rs` files and produces the AST
       ("abstract syntax tree")
-    - the AST is defined in `syntax/ast.rs`. It is intended to match the lexical
+    - the AST is defined in `src/libsyntax/ast.rs`. It is intended to match the lexical
       syntax of the Rust language quite closely.
 2. **Name resolution, macro expansion, and configuration**
     - once parsing is complete, we process the AST recursively, resolving
