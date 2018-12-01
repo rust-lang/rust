@@ -132,27 +132,51 @@ impl<T> TypedArena<T> {
     /// Allocates an object in the `TypedArena`, returning a reference to it.
     #[inline]
     pub fn alloc(&self, object: T) -> &mut T {
-        if self.ptr == self.end {
-            self.grow(1)
-        }
+        // Zero sized path
+        if mem::size_of::<T>() == 0 {
+            if self.ptr == self.end {
+                self.grow(1)
+            }
 
-        unsafe {
-            if mem::size_of::<T>() == 0 {
+            unsafe {
                 self.ptr
                     .set(intrinsics::arith_offset(self.ptr.get() as *mut u8, 1)
                         as *mut T);
                 let ptr = mem::align_of::<T>() as *mut T;
                 // Don't drop the object. This `write` is equivalent to `forget`.
                 ptr::write(ptr, object);
-                &mut *ptr
-            } else {
-                let ptr = self.ptr.get();
-                // Advance the pointer.
-                self.ptr.set(self.ptr.get().offset(1));
-                // Write into uninitialized memory.
-                ptr::write(ptr, object);
-                &mut *ptr
+                return &mut *ptr;
             }
+        }
+
+        let ptr = self.ptr.get();
+
+        let ptr = if ptr == self.end.get() {
+            self.grow_and_alloc()
+        } else {
+            // Advance the pointer.
+            unsafe {
+                self.ptr.set(ptr.offset(1));
+            }
+            ptr
+        };
+
+        unsafe {
+            // Write into uninitialized memory.
+            ptr::write(ptr, object);
+            &mut *ptr
+        }
+    }
+
+    #[inline(never)]
+    #[cold]
+    fn grow_and_alloc(&self) -> *mut T {
+        self.grow(1);
+        unsafe {
+            let ptr = self.ptr.get();
+            // Advance the pointer.
+            self.ptr.set(ptr.offset(1));
+            ptr
         }
     }
 
@@ -174,7 +198,7 @@ impl<T> TypedArena<T> {
         let available_capacity_bytes = self.end.get() as usize - self.ptr.get() as usize;
         let at_least_bytes = slice.len() * mem::size_of::<T>();
         if available_capacity_bytes < at_least_bytes {
-            self.grow(slice.len());
+            self.grow_slice(slice.len());
         }
 
         unsafe {
@@ -186,9 +210,14 @@ impl<T> TypedArena<T> {
         }
     }
 
-    /// Grows the arena.
     #[inline(never)]
     #[cold]
+    fn grow_slice(&self, n: usize) {
+        self.grow(n)
+    }
+    
+    /// Grows the arena.
+    #[inline(always)]
     fn grow(&self, n: usize) {
         unsafe {
             let mut chunks = self.chunks.borrow_mut();
@@ -312,6 +341,11 @@ pub struct DroplessArena {
 }
 
 #[no_mangle]
+pub fn tatest1(a: &TypedArena<usize>) -> &usize {
+    a.alloc(64usize)
+}
+
+#[no_mangle]
 pub fn atest1(a: &DroplessArena) -> &usize {
     a.alloc(64usize)
 }
@@ -410,6 +444,7 @@ impl DroplessArena {
     }
 
     #[inline(never)]
+    #[cold]
     fn grow_and_alloc_raw(&self, bytes: usize) -> &mut [u8] {
         self.grow(bytes);
         unsafe {
@@ -444,7 +479,7 @@ impl DroplessArena {
             // Find some way to guarantee this doesn't happen for small fixed size types
             let ptr = self.ptr.get();
             let future_end = intrinsics::arith_offset(ptr, bytes as isize);
-            if std::intrinsics::unlikely((future_end as *mut u8) >= self.end.get()) {
+            if /*std::intrinsics::unlikely(*/(future_end as *mut u8) >= self.end.get()/*)*/ {
                 self.grow_and_alloc_raw(bytes)
             } else {
                 self.alloc_raw_unchecked(ptr, bytes)
@@ -543,7 +578,7 @@ impl Drop for DropType {
 pub struct SyncDroplessArena {
     // Ordered so `deferred` gets dropped before the arena
     // since its destructor can reference memory in the arena
-    deferred: WorkerLocal<RefCell<Vec<DropType>>>,
+    deferred: WorkerLocal<TypedArena<DropType>>,
     lock: MTLock<DroplessArena>,
 }
 
@@ -592,7 +627,7 @@ impl SyncDroplessArena {
         };
         // Record the destructor after doing the allocation as that may panic
         // and would cause `object` destuctor to run twice if it was recorded before
-        self.deferred.borrow_mut().push(DropType {
+        self.deferred.alloc(DropType {
             drop_fn: drop_for_type::<T>,
             obj: result as *mut T as *mut u8,
         });
