@@ -28,8 +28,7 @@ class Stage0DataTestCase(unittest.TestCase):
     def setUp(self):
         self.rust_root = tempfile.mkdtemp()
         os.mkdir(os.path.join(self.rust_root, "src"))
-        with open(os.path.join(self.rust_root, "src",
-                               "stage0.txt"), "w") as stage0:
+        with open(os.path.join(self.rust_root, "stage0.txt"), "w") as stage0:
             stage0.write("#ignore\n\ndate: 2017-06-15\nrustc: beta\ncargo: beta")
 
     def tearDown(self):

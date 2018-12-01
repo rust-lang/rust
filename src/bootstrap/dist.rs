@@ -434,6 +434,7 @@ impl Step for Rustc {
         cp("LICENSE-APACHE");
         cp("LICENSE-MIT");
         cp("README.md");
+        cp("stage0.txt");
         // tiny morsel of metadata is used by rust-packaging
         let version = builder.rust_version();
         builder.create(&overlay.join("version"), &version);
