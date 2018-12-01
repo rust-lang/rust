@@ -19,7 +19,7 @@
 
 use core::cmp::Ordering;
 use core::fmt;
-use core::iter::{repeat, repeat_with, FromIterator, FusedIterator};
+use core::iter::{repeat_with, FromIterator, FusedIterator};
 use core::mem;
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{Index, IndexMut, RangeBounds};
@@ -1886,40 +1886,6 @@ impl<T> VecDeque<T> {
             debug_assert!(!self.is_full());
         }
     }
-}
-
-impl<T: Clone> VecDeque<T> {
-    /// Modifies the `VecDeque` in-place so that `len()` is equal to new_len,
-    /// either by removing excess elements from the back or by appending clones of `value`
-    /// to the back.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::collections::VecDeque;
-    ///
-    /// let mut buf = VecDeque::new();
-    /// buf.push_back(5);
-    /// buf.push_back(10);
-    /// buf.push_back(15);
-    /// assert_eq!(buf, [5, 10, 15]);
-    ///
-    /// buf.resize(2, 0);
-    /// assert_eq!(buf, [5, 10]);
-    ///
-    /// buf.resize(5, 20);
-    /// assert_eq!(buf, [5, 10, 20, 20, 20]);
-    /// ```
-    #[stable(feature = "deque_extras", since = "1.16.0")]
-    pub fn resize(&mut self, new_len: usize, value: T) {
-        let len = self.len();
-
-        if new_len > len {
-            self.extend(repeat(value).take(new_len - len))
-        } else {
-            self.truncate(new_len);
-        }
-    }
 
     /// Modifies the `VecDeque` in-place so that `len()` is equal to `new_len`,
     /// either by removing excess elements from the back or by appending
@@ -1957,6 +1923,34 @@ impl<T: Clone> VecDeque<T> {
         } else {
             self.truncate(new_len);
         }
+    }
+}
+
+impl<T: Clone> VecDeque<T> {
+    /// Modifies the `VecDeque` in-place so that `len()` is equal to new_len,
+    /// either by removing excess elements from the back or by appending clones of `value`
+    /// to the back.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecDeque;
+    ///
+    /// let mut buf = VecDeque::new();
+    /// buf.push_back(5);
+    /// buf.push_back(10);
+    /// buf.push_back(15);
+    /// assert_eq!(buf, [5, 10, 15]);
+    ///
+    /// buf.resize(2, 0);
+    /// assert_eq!(buf, [5, 10]);
+    ///
+    /// buf.resize(5, 20);
+    /// assert_eq!(buf, [5, 10, 20, 20, 20]);
+    /// ```
+    #[stable(feature = "deque_extras", since = "1.16.0")]
+    pub fn resize(&mut self, new_len: usize, value: T) {
+        self.resize_with(new_len, || value.clone());
     }
 }
 
