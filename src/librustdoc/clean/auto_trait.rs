@@ -151,7 +151,7 @@ impl<'a, 'tcx, 'rcx, 'cstore> AutoTraitFinder<'a, 'tcx, 'rcx, 'cstore> {
                     // Instead, we generate `impl !Send for Foo<T>`, which better
                     // expresses the fact that `Foo<T>` never implements `Send`,
                     // regardless of the choice of `T`.
-                    let real_generics = (&generics, &Default::default());
+                    let real_generics = (&generics, &self.cx.tcx.bx(Default::default()));
 
                     // Clean the generics, but ignore the '?Sized' bounds generated
                     // by the `Clean` impl

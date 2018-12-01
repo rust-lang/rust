@@ -51,7 +51,6 @@ use std::hash::{Hash, Hasher};
 use std::default::Default;
 use std::{mem, slice, vec};
 use std::iter::{FromIterator, once};
-use rustc_data_structures::sync::Lrc;
 use std::rc::Rc;
 use std::str::FromStr;
 use std::cell::RefCell;
@@ -1563,7 +1562,7 @@ impl Clean<Generics> for hir::Generics {
 }
 
 impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
-                                    &'a Lrc<ty::GenericPredicates<'tcx>>) {
+                                    &'a Bx<'tcx, ty::GenericPredicates<'tcx>>) {
     fn clean(&self, cx: &DocContext) -> Generics {
         use self::WherePredicate as WP;
 

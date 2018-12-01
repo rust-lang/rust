@@ -21,10 +21,9 @@ use middle::resolve_lifetime as rl;
 use namespace::Namespace;
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits;
-use rustc::ty::{self, Ty, TyCtxt, ToPredicate, TypeFoldable};
+use rustc::ty::{self, Bx, Ty, TyCtxt, ToPredicate, TypeFoldable};
 use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::wf::object_region_bounds;
-use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi;
 use std::collections::BTreeSet;
 use std::slice;
@@ -47,7 +46,7 @@ pub trait AstConv<'gcx, 'tcx> {
     /// Returns the set of bounds in scope for the type parameter with
     /// the given id.
     fn get_type_parameter_bounds(&self, span: Span, def_id: DefId)
-                                 -> Lrc<ty::GenericPredicates<'tcx>>;
+                                 -> Bx<'tcx, ty::GenericPredicates<'tcx>>;
 
     /// What lifetime should we use when a lifetime is omitted (and not elided)?
     fn re_infer(&self, span: Span, _def: Option<&ty::GenericParamDef>)

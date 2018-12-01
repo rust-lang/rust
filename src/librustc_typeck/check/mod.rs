@@ -115,7 +115,6 @@ use util::common::{ErrorReported, indenter};
 use util::nodemap::{DefIdMap, DefIdSet, FxHashMap, FxHashSet, NodeMap};
 
 use std::cell::{Cell, RefCell, Ref, RefMut};
-use rustc_data_structures::sync::Lrc;
 use std::collections::hash_map::Entry;
 use std::cmp;
 use std::fmt::Display;
@@ -1878,7 +1877,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
     fn get_type_parameter_bounds(&self, _: Span, def_id: DefId)
-                                 -> Lrc<ty::GenericPredicates<'tcx>>
+                                 -> Bx<'tcx, ty::GenericPredicates<'tcx>>
     {
         let tcx = self.tcx;
         let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
@@ -1886,7 +1885,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         let item_def_id = tcx.hir.local_def_id(item_id);
         let generics = tcx.generics_of(item_def_id);
         let index = generics.param_def_id_to_index[&def_id];
-        Lrc::new(ty::GenericPredicates {
+        tcx.bx(ty::GenericPredicates {
             parent: None,
             predicates: self.param_env.caller_bounds.iter().filter_map(|&predicate| {
                 match predicate {

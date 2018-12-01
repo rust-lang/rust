@@ -1030,6 +1030,13 @@ pub struct GenericPredicates<'tcx> {
     pub predicates: Vec<(Predicate<'tcx>, Span)>,
 }
 
+unsafe impl<'tcx> DeferDeallocs for GenericPredicates<'tcx> {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.parent.defer(deferred);
+        self.predicates.defer(deferred);
+    }
+}
+
 impl<'tcx> serialize::UseSpecializedEncodable for GenericPredicates<'tcx> {}
 impl<'tcx> serialize::UseSpecializedDecodable for GenericPredicates<'tcx> {}
 
@@ -2251,7 +2258,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Lrc<GenericPredicates<'gcx>> {
+    pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Bx<'tcx, GenericPredicates<'gcx>> {
         tcx.predicates_of(self.did)
     }
 
