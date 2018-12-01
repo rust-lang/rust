@@ -31,7 +31,6 @@ use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::{ReprOptions, ToPredicate};
 use rustc::util::captures::Captures;
 use rustc::util::nodemap::FxHashMap;
-use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi;
 
 use syntax::ast;
@@ -177,7 +176,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
     }
 
     fn get_type_parameter_bounds(&self, span: Span, def_id: DefId)
-                                 -> Lrc<ty::GenericPredicates<'tcx>> {
+                                 -> &'tcx ty::GenericPredicates<'tcx> {
         self.tcx
             .at(span)
             .type_param_predicates((self.item_def_id, def_id))
@@ -242,7 +241,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
 fn type_param_predicates<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     (item_def_id, def_id): (DefId, DefId),
-) -> Lrc<ty::GenericPredicates<'tcx>> {
+) -> &'tcx ty::GenericPredicates<'tcx> {
     use rustc::hir::*;
 
     // In the AST, bounds can derive from two places. Either
@@ -263,8 +262,9 @@ fn type_param_predicates<'a, 'tcx>(
         tcx.generics_of(item_def_id).parent
     };
 
-    let mut result = parent.map_or_else(
-        || Lrc::new(ty::GenericPredicates {
+    let result = parent.map_or_else(
+        // FIXME: Allocate this empty predicate only once
+        || &*tcx.arena.alloc(ty::GenericPredicates {
             parent: None,
             predicates: vec![],
         }),
@@ -273,6 +273,7 @@ fn type_param_predicates<'a, 'tcx>(
             icx.get_type_parameter_bounds(DUMMY_SP, def_id)
         },
     );
+    let mut extend = None;
 
     let item_hir_id = tcx.hir().as_local_hir_id(item_def_id).unwrap();
     let ast_generics = match tcx.hir().get_by_hir_id(item_hir_id) {
@@ -297,9 +298,7 @@ fn type_param_predicates<'a, 'tcx>(
                     // Implied `Self: Trait` and supertrait bounds.
                     if param_id == item_hir_id {
                         let identity_trait_ref = ty::TraitRef::identity(tcx, item_def_id);
-                        Lrc::make_mut(&mut result)
-                            .predicates
-                            .push((identity_trait_ref.to_predicate(), item.span));
+                        extend = Some((identity_trait_ref.to_predicate(), item.span));
                     }
                     generics
                 }
@@ -316,11 +315,12 @@ fn type_param_predicates<'a, 'tcx>(
     };
 
     let icx = ItemCtxt::new(tcx, item_def_id);
-    Lrc::make_mut(&mut result)
-        .predicates
-        .extend(icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty,
-            OnlySelfBounds(true)));
-    result
+    let mut result = (*result).clone();
+    result.predicates.extend(extend.into_iter());
+    result.predicates
+          .extend(icx.type_parameter_bounds_in_generics(ast_generics, param_id, ty,
+                  OnlySelfBounds(true)));
+    tcx.arena.alloc(result)
 }
 
 impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
@@ -689,7 +689,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
 fn super_predicates_of<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     trait_def_id: DefId,
-) -> Lrc<ty::GenericPredicates<'tcx>> {
+) -> &'tcx ty::GenericPredicates<'tcx> {
     debug!("super_predicates(trait_def_id={:?})", trait_def_id);
     let trait_hir_id = tcx.hir().as_local_hir_id(trait_def_id).unwrap();
 
@@ -733,7 +733,7 @@ fn super_predicates_of<'a, 'tcx>(
         }
     }
 
-    Lrc::new(ty::GenericPredicates {
+    tcx.arena.alloc(ty::GenericPredicates {
         parent: None,
         predicates: superbounds,
     })
@@ -1823,7 +1823,7 @@ fn early_bound_lifetimes_from_generics<'a, 'tcx>(
 fn predicates_defined_on<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-) -> Lrc<ty::GenericPredicates<'tcx>> {
+) -> &'tcx ty::GenericPredicates<'tcx> {
     debug!("predicates_defined_on({:?})", def_id);
     let mut result = tcx.explicit_predicates_of(def_id);
     debug!(
@@ -1839,9 +1839,9 @@ fn predicates_defined_on<'a, 'tcx>(
             def_id,
             inferred_outlives,
         );
-        Lrc::make_mut(&mut result)
-            .predicates
-            .extend(inferred_outlives.iter().map(|&p| (p, span)));
+        let mut predicates = (*result).clone();
+        predicates.predicates.extend(inferred_outlives.iter().map(|&p| (p, span)));
+        result = tcx.arena.alloc(predicates);
     }
     debug!("predicates_defined_on({:?}) = {:?}", def_id, result);
     result
@@ -1853,7 +1853,7 @@ fn predicates_defined_on<'a, 'tcx>(
 fn predicates_of<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-) -> Lrc<ty::GenericPredicates<'tcx>> {
+) -> &'tcx ty::GenericPredicates<'tcx> {
     let mut result = tcx.predicates_defined_on(def_id);
 
     if tcx.is_trait(def_id) {
@@ -1870,9 +1870,9 @@ fn predicates_of<'a, 'tcx>(
         // used, and adding the predicate into this list ensures
         // that this is done.
         let span = tcx.def_span(def_id);
-        Lrc::make_mut(&mut result)
-            .predicates
-            .push((ty::TraitRef::identity(tcx, def_id).to_predicate(), span));
+        let mut predicates = (*result).clone();
+        predicates.predicates.push((ty::TraitRef::identity(tcx, def_id).to_predicate(), span));
+        result = tcx.arena.alloc(predicates);
     }
     debug!("predicates_of(def_id={:?}) = {:?}", def_id, result);
     result
@@ -1883,7 +1883,7 @@ fn predicates_of<'a, 'tcx>(
 fn explicit_predicates_of<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def_id: DefId,
-) -> Lrc<ty::GenericPredicates<'tcx>> {
+) -> &'tcx ty::GenericPredicates<'tcx> {
     use rustc::hir::*;
     use rustc_data_structures::fx::FxHashSet;
 
@@ -1998,7 +1998,7 @@ fn explicit_predicates_of<'a, 'tcx>(
 
                     if impl_trait_fn.is_some() {
                         // impl Trait
-                        return Lrc::new(ty::GenericPredicates {
+                        return tcx.arena.alloc(ty::GenericPredicates {
                             parent: None,
                             predicates: bounds.predicates(tcx, opaque_ty),
                         });
@@ -2209,7 +2209,7 @@ fn explicit_predicates_of<'a, 'tcx>(
         );
     }
 
-    let result = Lrc::new(ty::GenericPredicates {
+    let result = tcx.arena.alloc(ty::GenericPredicates {
         parent: generics.parent,
         predicates,
     });
