@@ -2753,7 +2753,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn obligations_for_self_ty<'b>(&'b self, self_ty: ty::TyVid)
-        -> impl Iterator<Item=ty::PolyTraitRef<'tcx>> + Captures<'gcx> + 'b
+        -> impl Iterator<Item=(ty::PolyTraitRef<'tcx>, traits::PredicateObligation<'tcx>)>
+           + Captures<'gcx> + 'b
     {
         let ty_var_root = self.root_var(self_ty);
         debug!("obligations_for_self_ty: self_ty={:?} ty_var_root={:?} pending_obligations={:?}",
@@ -2765,8 +2766,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             .pending_obligations()
             .into_iter()
             .filter_map(move |obligation| match obligation.predicate {
-                ty::Predicate::Projection(ref data) => Some(data.to_poly_trait_ref(self.tcx)),
-                ty::Predicate::Trait(ref data) => Some(data.to_poly_trait_ref()),
+                ty::Predicate::Projection(ref data) =>
+                    Some((data.to_poly_trait_ref(self.tcx), obligation)),
+                ty::Predicate::Trait(ref data) =>
+                    Some((data.to_poly_trait_ref(), obligation)),
                 ty::Predicate::Subtype(..) => None,
                 ty::Predicate::RegionOutlives(..) => None,
                 ty::Predicate::TypeOutlives(..) => None,
@@ -2782,11 +2785,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // code is looking for a self type of a unresolved
                 // inference variable.
                 ty::Predicate::ClosureKind(..) => None,
-            }).filter(move |tr| self.self_type_matches_expected_vid(*tr, ty_var_root))
+            }).filter(move |(tr, _)| self.self_type_matches_expected_vid(*tr, ty_var_root))
     }
 
     fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
-        self.obligations_for_self_ty(self_ty).any(|tr| {
+        self.obligations_for_self_ty(self_ty).any(|(tr, _)| {
             Some(tr.def_id()) == self.tcx.lang_items().sized_trait()
         })
     }

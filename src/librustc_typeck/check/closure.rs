@@ -219,14 +219,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         &self,
         expected_vid: ty::TyVid,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
-        let fulfillment_cx = self.fulfillment_cx.borrow();
-        // Here `expected_ty` is known to be a type inference variable.
-
-        let expected_vid = self.root_var(expected_vid);
-        let expected_sig = fulfillment_cx
-            .pending_obligations()
-            .iter()
-            .filter_map(|obligation| {
+        let expected_sig = self.obligations_for_self_ty(expected_vid)
+            .find_map(|(_, obligation)| {
                 debug!(
                     "deduce_expectations_from_obligations: obligation.predicate={:?}",
                     obligation.predicate
@@ -235,27 +229,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 if let ty::Predicate::Projection(ref proj_predicate) = obligation.predicate {
                     // Given a Projection predicate, we can potentially infer
                     // the complete signature.
-                    let trait_ref = proj_predicate.to_poly_trait_ref(self.tcx);
-                    Some(()).filter(|()| {
-                        self.self_type_matches_expected_vid(trait_ref, expected_vid)
-                    }).and_then(|()| {
-                        self.deduce_sig_from_projection(
-                            Some(obligation.cause.span),
-                            proj_predicate
-                        )
-                    })
+                    self.deduce_sig_from_projection(
+                        Some(obligation.cause.span),
+                        proj_predicate
+                    )
                 } else {
                     None
                 }
-            })
-            .next();
+            });
 
         // Even if we can't infer the full signature, we may be able to
         // infer the kind. This can occur if there is a trait-reference
         // like `F : Fn<A>`. Note that due to subtyping we could encounter
         // many viable options, so pick the most restrictive.
         let expected_kind = self.obligations_for_self_ty(expected_vid)
-            .filter_map(|tr| self.tcx.lang_items().fn_trait_kind(tr.def_id()))
+            .filter_map(|(tr, _)| self.tcx.lang_items().fn_trait_kind(tr.def_id()))
             .fold(None, |best, cur| {
                 Some(best.map_or(cur, |best| cmp::min(best, cur)))
             });
