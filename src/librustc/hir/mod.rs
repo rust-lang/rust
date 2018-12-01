@@ -2385,6 +2385,8 @@ impl Freevar {
     }
 }
 
+impl_defer_dellocs_for_no_drop_type!([] Freevar);
+
 pub type FreevarMap = NodeMap<Vec<Freevar>>;
 
 pub type CaptureModeMap = NodeMap<CaptureClause>;

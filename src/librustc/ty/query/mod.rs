@@ -530,7 +530,7 @@ define_queries! { <'tcx>
         [] fn used_crate_source: UsedCrateSource(CrateNum) -> Lrc<CrateSource>,
         [] fn postorder_cnums: postorder_cnums_node(CrateNum) -> Lrc<Vec<CrateNum>>,
 
-        [] fn freevars: Freevars(DefId) -> Option<Lrc<Vec<hir::Freevar>>>,
+        [] fn freevars: Freevars(DefId) -> Option<Bx<'tcx, Vec<hir::Freevar>>>,
         [] fn maybe_unused_trait_import: MaybeUnusedTraitImport(DefId) -> bool,
         [] fn maybe_unused_extern_crates: maybe_unused_extern_crates_node(CrateNum)
             -> Lrc<Vec<(DefId, Span)>>,

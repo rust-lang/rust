@@ -902,7 +902,7 @@ pub struct GlobalCtxt<'tcx> {
                                          StableVec<TraitCandidate>>>,
 
     /// Export map produced by name resolution.
-    export_map: FxHashMap<DefId, Lrc<Vec<Export>>>,
+    export_map: &'tcx FxHashMap<DefId, Vec<Export>>,
 
     pub hir: hir_map::Map<'tcx>,
 
@@ -915,7 +915,7 @@ pub struct GlobalCtxt<'tcx> {
     // Records the free variables referenced by every closure
     // expression. Do not track deps for this, just recompute it from
     // scratch every time.
-    freevars: FxHashMap<DefId, Lrc<Vec<hir::Freevar>>>,
+    freevars: &'tcx FxHashMap<DefId, Vec<hir::Freevar>>,
 
     maybe_unused_trait_imports: FxHashSet<DefId>,
     maybe_unused_extern_crates: Vec<(DefId, Span)>,
@@ -1188,12 +1188,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             dep_graph,
             types: common_types,
             trait_map: arenas.interner.promote(trait_map),
-            export_map: resolutions.export_map.into_iter().map(|(k, v)| {
-                (k, Lrc::new(v))
-            }).collect(),
-            freevars: resolutions.freevars.into_iter().map(|(k, v)| {
-                (hir.local_def_id(k), Lrc::new(v))
-            }).collect(),
+            export_map: arenas.interner.promote(resolutions.export_map),
+            freevars: arenas.interner.promote(resolutions.freevars.into_iter().map(|(k, v)| {
+                (hir.local_def_id(k), v)
+            }).collect()),
             maybe_unused_trait_imports:
                 resolutions.maybe_unused_trait_imports
                     .into_iter()
@@ -3036,7 +3034,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     // therefore no actual inputs, they're just reading tables calculated in
     // resolve! Does this work? Unsure! That's what the issue is about
     providers.in_scope_traits_map = |tcx, id| tcx.gcx.trait_map.get(&id).map(|m| Bx(m));
-    providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).cloned();
+    providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).map(|m| Bx(m));
     providers.crate_name = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         tcx.crate_name
@@ -3049,7 +3047,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(id, LOCAL_CRATE);
         Lrc::new(middle::lang_items::collect(tcx))
     };
-    providers.freevars = |tcx, id| tcx.gcx.freevars.get(&id).cloned();
+    providers.freevars = |tcx, id| tcx.gcx.freevars.get(&id).map(|m| Bx(m));
     providers.maybe_unused_trait_import = |tcx, id| {
         tcx.maybe_unused_trait_imports.contains(&id)
     };
