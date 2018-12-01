@@ -2395,6 +2395,8 @@ pub struct TraitCandidate {
     pub import_id: Option<NodeId>,
 }
 
+impl_defer_dellocs_for_no_drop_type!([] TraitCandidate);
+
 // Trait method resolution
 pub type TraitMap = NodeMap<Vec<TraitCandidate>>;
 

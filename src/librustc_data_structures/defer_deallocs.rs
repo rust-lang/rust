@@ -11,7 +11,7 @@
 use std::ptr::NonNull;
 use std::alloc::{Alloc, Global, Layout};
 use std::collections::{HashMap, HashSet};
-use std::hash::{Hash, BuildHasher, BuildHasherDefault};
+use std::hash::BuildHasherDefault;
 use std::mem::{self, needs_drop};
 
 #[derive(Default)]

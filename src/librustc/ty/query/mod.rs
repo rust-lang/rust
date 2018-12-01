@@ -422,7 +422,7 @@ define_queries! { <'tcx>
     TypeChecking {
         [] fn specializes: specializes_node((DefId, DefId)) -> bool,
         [] fn in_scope_traits_map: InScopeTraits(DefIndex)
-            -> Option<Lrc<FxHashMap<ItemLocalId, Lrc<StableVec<TraitCandidate>>>>>,
+            -> Option<Bx<'tcx, FxHashMap<ItemLocalId, StableVec<TraitCandidate>>>>,
     },
 
     Other {

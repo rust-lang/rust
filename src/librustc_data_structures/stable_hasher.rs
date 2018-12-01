@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use std::hash::{Hash, Hasher, BuildHasher};
 use std::marker::PhantomData;
 use std::mem;
@@ -553,6 +554,13 @@ pub struct StableVec<T>(Vec<T>);
 impl<T> StableVec<T> {
     pub fn new(v: Vec<T>) -> Self {
         StableVec(v)
+    }
+}
+
+unsafe impl<T: DeferDeallocs> DeferDeallocs for StableVec<T> {
+    #[inline]
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.0.defer(deferred)
     }
 }
 
