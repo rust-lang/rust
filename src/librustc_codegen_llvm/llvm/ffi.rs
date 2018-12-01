@@ -1586,9 +1586,10 @@ extern "C" {
                                             LineNo: c_uint)
                                             -> &'a DINameSpace;
 
-    pub fn LLVMRustDICompositeTypeSetTypeArray(Builder: &DIBuilder<'a>,
-                                               CompositeType: &'a DIType,
-                                               TypeArray: &'a DIArray);
+    pub fn LLVMRustDICompositeTypeReplaceArrays(Builder: &DIBuilder<'a>,
+                                                CompositeType: &'a DIType,
+                                                Elements: Option<&'a DIArray>,
+                                                Params: Option<&'a DIArray>);
 
 
     pub fn LLVMRustDIBuilderCreateDebugLocation(Context: &'a Context,
