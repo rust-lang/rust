@@ -1,7 +1,5 @@
 // Test ensuring that `dbg!(expr)` will take ownership of the argument.
 
-#![feature(dbg_macro)]
-
 #[derive(Debug)]
 struct NoCopy(usize);
 
