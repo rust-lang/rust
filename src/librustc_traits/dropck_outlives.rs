@@ -30,7 +30,8 @@ crate fn provide(p: &mut Providers) {
 fn dropck_outlives<'tcx>(
     tcx: TyCtxt<'_, 'tcx, 'tcx>,
     canonical_goal: CanonicalTyGoal<'tcx>,
-) -> Result<Bx<'tcx, Canonical<'tcx, QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>>, NoSolution> {
+) -> Result<Bx<'tcx, Canonical<'tcx,
+                               QueryResponse<'tcx, DropckOutlivesResult<'tcx>>>>, NoSolution> {
     debug!("dropck_outlives(goal={:#?})", canonical_goal);
 
     tcx.infer_ctxt().enter_with_canonical(
