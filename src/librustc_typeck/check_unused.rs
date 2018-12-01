@@ -113,11 +113,12 @@ fn unused_crates_lint<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) {
             true
         })
         .filter(|&&(def_id, _)| {
-            let cnum = tcx.extern_mod_stmt_cnum(def_id).unwrap();
-            !tcx.is_compiler_builtins(cnum)
-                && !tcx.is_panic_runtime(cnum)
-                && !tcx.has_global_allocator(cnum)
-                && !tcx.has_panic_handler(cnum)
+            tcx.extern_mod_stmt_cnum(def_id).map_or(true, |cnum| {
+                !tcx.is_compiler_builtins(cnum) &&
+                !tcx.is_panic_runtime(cnum) &&
+                !tcx.has_global_allocator(cnum) &&
+                !tcx.has_panic_handler(cnum)
+            })
         })
         .cloned()
         .collect();

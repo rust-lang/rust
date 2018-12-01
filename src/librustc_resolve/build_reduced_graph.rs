@@ -40,7 +40,7 @@ use syntax::ext::base::{MacroKind, SyntaxExtension};
 use syntax::ext::base::Determinacy::Undetermined;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
-use syntax::feature_gate::is_builtin_attr;
+use syntax::feature_gate::{is_builtin_attr, emit_feature_err, GateIssue};
 use syntax::parse::token::{self, Token};
 use syntax::std_inject::injected_crate_name;
 use syntax::symbol::keywords;
@@ -344,9 +344,23 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             }
 
             ItemKind::ExternCrate(orig_name) => {
-                let crate_id = self.crate_loader.process_extern_crate(item, &self.definitions);
-                let module =
-                    self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX });
+                let module = if orig_name.is_none() && ident.name == keywords::SelfValue.name() {
+                    self.session
+                        .struct_span_err(item.span, "`extern crate self;` requires renaming")
+                        .span_suggestion(item.span, "try", "extern crate self as name;".into())
+                        .emit();
+                    return;
+                } else if orig_name == Some(keywords::SelfValue.name()) {
+                    if !self.session.features_untracked().extern_crate_self {
+                        emit_feature_err(&self.session.parse_sess, "extern_crate_self", item.span,
+                                         GateIssue::Language, "`extern crate self` is unstable");
+                    }
+                    self.graph_root
+                } else {
+                    let crate_id = self.crate_loader.process_extern_crate(item, &self.definitions);
+                    self.get_module(DefId { krate: crate_id, index: CRATE_DEF_INDEX })
+                };
+
                 self.populate_module_if_necessary(module);
                 if injected_crate_name().map_or(false, |name| ident.name == name) {
                     self.injected_crate = Some(module);
@@ -767,6 +781,12 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 if self.current_module.parent.is_some() {
                     span_err!(self.session, item.span, E0468,
                         "an `extern crate` loading macros must be at the crate root");
+                }
+                if let ItemKind::ExternCrate(Some(orig_name)) = item.node {
+                    if orig_name == keywords::SelfValue.name() {
+                        self.session.span_err(attr.span,
+                            "`macro_use` is not supported on `extern crate self`");
+                    }
                 }
                 let ill_formed = |span| span_err!(self.session, span, E0466, "bad macro import");
                 match attr.meta() {
