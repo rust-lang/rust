@@ -53,7 +53,6 @@ use rustc_mir::monomorphize::partitioning::{CodegenUnit, CodegenUnitExt};
 use mono_item::MonoItem;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::sync::Lrc;
 use rustc_codegen_utils::{symbol_names_test, check_for_rustc_errors_attr};
 use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 
