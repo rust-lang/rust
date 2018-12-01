@@ -155,7 +155,7 @@ rustc_queries! {
     }
 
     Linking {
-        query wasm_import_module_map(_: CrateNum) -> Lrc<FxHashMap<DefId, String>> {
+        query wasm_import_module_map(_: CrateNum) -> &'tcx FxHashMap<DefId, String> {
             desc { "wasm import module map" }
         }
     }
@@ -1050,7 +1050,7 @@ rustc_queries! {
     }
 
     Other {
-        query target_features_whitelist(_: CrateNum) -> Lrc<FxHashMap<String, Option<Symbol>>> {
+        query target_features_whitelist(_: CrateNum) -> &'tcx FxHashMap<String, Option<Symbol>> {
             eval_always
             desc { "looking up the whitelist of target features" }
         }

@@ -83,6 +83,14 @@ macro_rules! arena_types {
             [few] features: syntax::feature_gate::Features,
             [few] all_traits: Vec<rustc::hir::def_id::DefId>,
             [few] privacy_access_levels: rustc::middle::privacy::AccessLevels,
+            [few] target_features_whitelist: rustc_data_structures::fx::FxHashMap<
+                String,
+                Option<syntax::symbol::Symbol>
+            >,
+            [few] wasm_import_module_map: rustc_data_structures::fx::FxHashMap<
+                rustc::hir::def_id::DefId,
+                String
+            >,
         ], $tcx);
     )
 }
