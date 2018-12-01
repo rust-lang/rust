@@ -615,12 +615,14 @@ pub struct FunctionCx<'a, 'tcx: 'a, B: Backend> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
     pub module: &'a mut Module<B>,
     pub pointer_type: Type, // Cached from module
+
     pub instance: Instance<'tcx>,
     pub mir: &'tcx Mir<'tcx>,
-    pub param_substs: &'tcx Substs<'tcx>,
+
     pub bcx: FunctionBuilder<'a>,
     pub ebb_map: HashMap<BasicBlock, Ebb>,
     pub local_map: HashMap<Local, CPlace<'tcx>>,
+
     pub comments: HashMap<Inst, String>,
     pub constants: &'a mut crate::constant::ConstantCx,
     pub caches: &'a mut Caches<'tcx>,
@@ -631,7 +633,7 @@ pub struct FunctionCx<'a, 'tcx: 'a, B: Backend> {
 
 impl<'a, 'tcx: 'a, B: Backend + 'a> fmt::Debug for FunctionCx<'a, 'tcx, B> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{:?}", self.param_substs)?;
+        writeln!(f, "{:?}", self.instance.substs)?;
         writeln!(f, "{:?}", self.local_map)?;
 
         let mut clif = String::new();
@@ -690,7 +692,7 @@ impl<'a, 'tcx: 'a, B: Backend + 'a> FunctionCx<'a, 'tcx, B> {
         T: TypeFoldable<'tcx>,
     {
         self.tcx.subst_and_normalize_erasing_regions(
-            self.param_substs,
+            self.instance.substs,
             ty::ParamEnv::reveal_all(),
             value,
         )

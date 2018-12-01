@@ -20,6 +20,7 @@ pub fn trans_mono_item<'a, 'tcx: 'a>(
         MonoItem::Fn(inst) => {
             let _inst_guard =
                 PrintOnPanic(|| format!("{:?} {}", inst, tcx.symbol_name(inst).as_str()));
+            debug_assert!(!inst.substs.needs_infer());
             let _mir_guard = PrintOnPanic(|| {
                 match inst.def {
                     InstanceDef::Item(_)
@@ -88,15 +89,14 @@ fn trans_fn<'a, 'tcx: 'a>(
         tcx,
         module,
         pointer_type,
+
         instance,
         mir,
+
         bcx,
-        param_substs: {
-            assert!(!instance.substs.needs_infer());
-            instance.substs
-        },
         ebb_map,
         local_map: HashMap::new(),
+
         comments: HashMap::new(),
         constants,
         caches,
