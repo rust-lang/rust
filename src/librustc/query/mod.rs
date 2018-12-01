@@ -644,7 +644,7 @@ rustc_queries! {
     }
 
     Other {
-        query module_exports(_: DefId) -> Option<Lrc<Vec<Export<hir::HirId>>>> {
+        query module_exports(_: DefId) -> Option<&'tcx [Export<hir::HirId>]> {
             eval_always
         }
     }
@@ -822,7 +822,7 @@ rustc_queries! {
             desc { "generating a postorder list of CrateNums" }
         }
 
-        query upvars(_: DefId) -> Option<Lrc<Vec<hir::Upvar>>> {
+        query upvars(_: DefId) -> Option<&'tcx [hir::Upvar]> {
             eval_always
         }
         query maybe_unused_trait_import(_: DefId) -> bool {

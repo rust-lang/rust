@@ -1068,7 +1068,7 @@ pub struct GlobalCtxt<'tcx> {
                                    StableVec<TraitCandidate>>>,
 
     /// Export map produced by name resolution.
-    export_map: FxHashMap<DefId, Lrc<Vec<Export<hir::HirId>>>>,
+    export_map: FxHashMap<DefId, Vec<Export<hir::HirId>>>,
 
     hir_map: hir_map::Map<'tcx>,
 
@@ -1081,7 +1081,7 @@ pub struct GlobalCtxt<'tcx> {
     // Records the captured variables referenced by every closure
     // expression. Do not track deps for this, just recompute it from
     // scratch every time.
-    upvars: FxHashMap<DefId, Lrc<Vec<hir::Upvar>>>,
+    upvars: FxHashMap<DefId, Vec<hir::Upvar>>,
 
     maybe_unused_trait_imports: FxHashSet<DefId>,
     maybe_unused_extern_crates: Vec<(DefId, Span)>,
@@ -1328,13 +1328,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 let exports: Vec<_> = v.into_iter().map(|e| {
                     e.map_id(|id| hir.node_to_hir_id(id))
                 }).collect();
-                (k, Lrc::new(exports))
+                (k, exports)
             }).collect(),
             upvars: resolutions.upvars.into_iter().map(|(k, v)| {
                 let vars: Vec<_> = v.into_iter().map(|e| {
                     e.map_id(|id| hir.node_to_hir_id(id))
                 }).collect();
-                (hir.local_def_id(k), Lrc::new(vars))
+                (hir.local_def_id(k), vars)
             }).collect(),
             maybe_unused_trait_imports:
                 resolutions.maybe_unused_trait_imports
@@ -3053,7 +3053,7 @@ fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
 
 pub fn provide(providers: &mut ty::query::Providers<'_>) {
     providers.in_scope_traits_map = |tcx, id| tcx.gcx.trait_map.get(&id);
-    providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).cloned();
+    providers.module_exports = |tcx, id| tcx.gcx.export_map.get(&id).map(|v| &v[..]);
     providers.crate_name = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
         tcx.crate_name
@@ -3066,7 +3066,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
         assert_eq!(id, LOCAL_CRATE);
         Lrc::new(middle::lang_items::collect(tcx))
     };
-    providers.upvars = |tcx, id| tcx.gcx.upvars.get(&id).cloned();
+    providers.upvars = |tcx, id| tcx.gcx.upvars.get(&id).map(|v| &v[..]);
     providers.maybe_unused_trait_import = |tcx, id| {
         tcx.maybe_unused_trait_imports.contains(&id)
     };
