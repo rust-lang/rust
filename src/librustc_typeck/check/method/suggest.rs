@@ -185,7 +185,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     "method"
                 } else if actual.is_enum() {
                     if let Adt(ref adt_def, _) = actual.sty {
-                        let names = adt_def.variants.iter().map(|s| &s.name);
+                        let names = adt_def.variants.iter().map(|s| &s.ident.name);
                         suggestion = find_best_match_for_name(names,
                                                               &item_name.as_str(),
                                                               None);

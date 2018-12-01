@@ -2015,7 +2015,7 @@ pub struct EnumDef {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct VariantKind {
-    pub name: Name,
+    pub ident: Ident,
     pub attrs: HirVec<Attribute>,
     pub data: VariantData,
     /// Explicit discriminant, e.g., `Foo = 1`
@@ -2176,7 +2176,7 @@ pub struct ItemId {
 /// The name might be a dummy name in case of anonymous items
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Item {
-    pub name: Name,
+    pub ident: Ident,
     pub id: NodeId,
     pub hir_id: HirId,
     pub attrs: HirVec<Attribute>,
@@ -2331,7 +2331,7 @@ pub enum AssociatedItemKind {
 
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct ForeignItem {
-    pub name: Name,
+    pub ident: Ident,
     pub attrs: HirVec<Attribute>,
     pub node: ForeignItemKind,
     pub id: NodeId,

@@ -2967,7 +2967,7 @@ impl<'tcx> Clean<Item> for ty::VariantDef {
             }
         };
         Item {
-            name: Some(self.name.clean(cx)),
+            name: Some(self.ident.clean(cx)),
             attrs: inline::load_attrs(cx, self.did),
             source: cx.tcx.def_span(self.did).clean(cx),
             visibility: Some(Inherited),
@@ -3183,13 +3183,22 @@ fn qpath_to_string(p: &hir::QPath) -> String {
     s
 }
 
+impl Clean<String> for Ident {
+    #[inline]
+    fn clean(&self, cx: &DocContext) -> String {
+        self.name.clean(cx)
+    }
+}
+
 impl Clean<String> for ast::Name {
+    #[inline]
     fn clean(&self, _: &DocContext) -> String {
         self.to_string()
     }
 }
 
 impl Clean<String> for InternedString {
+    #[inline]
     fn clean(&self, _: &DocContext) -> String {
         self.to_string()
     }
@@ -3616,7 +3625,7 @@ impl Clean<Item> for hir::ForeignItem {
         };
 
         Item {
-            name: Some(self.name.clean(cx)),
+            name: Some(self.ident.clean(cx)),
             attrs: self.attrs.clean(cx),
             source: self.span.clean(cx),
             def_id: cx.tcx.hir().local_def_id(self.id),
@@ -3951,7 +3960,7 @@ pub fn path_to_def_local(tcx: &TyCtxt, path: &[&str]) -> Option<DefId> {
 
         for item_id in mem::replace(&mut items, HirVec::new()).iter() {
             let item = tcx.hir().expect_item(item_id.id);
-            if item.name == *segment {
+            if item.ident.name == *segment {
                 if path_it.peek().is_none() {
                     return Some(tcx.hir().local_def_id(item_id.id))
                 }

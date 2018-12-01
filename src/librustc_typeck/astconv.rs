@@ -1322,8 +1322,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                     span,
                     &format!("no variant `{}` on enum `{}`", &assoc_name.as_str(), ty_str),
                 );
-                // Check if it was a typo
-                let input = adt_def.variants.iter().map(|variant| &variant.name);
+                // Check if it was a typo.
+                let input = adt_def.variants.iter().map(|variant| &variant.ident.name);
                 if let Some(suggested_name) = find_best_match_for_name(
                     input,
                     &assoc_name.as_str(),

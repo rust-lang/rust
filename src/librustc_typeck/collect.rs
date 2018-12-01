@@ -33,7 +33,7 @@ use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi;
 
 use syntax::ast;
-use syntax::ast::MetaItemKind;
+use syntax::ast::{Ident, MetaItemKind};
 use syntax::attr::{InlineAttr, list_contains_name, mark_used};
 use syntax::source_map::Spanned;
 use syntax::feature_gate;
@@ -385,7 +385,7 @@ fn is_param<'a, 'tcx>(
 
 fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
     let it = tcx.hir().expect_item(item_id);
-    debug!("convert: item {} with id {}", it.name, it.id);
+    debug!("convert: item {} with id {}", it.ident, it.id);
     let def_id = tcx.hir().local_def_id(item_id);
     match it.node {
         // These don't define types.
@@ -533,7 +533,7 @@ fn convert_enum_variant_types<'a, 'tcx>(
                     format!("overflowed on value after {}", prev_discr.unwrap()),
                 ).note(&format!(
                     "explicitly set `{} = {}` if that is desired outcome",
-                    variant.node.name, wrapped_discr
+                    variant.node.ident, wrapped_discr
                 ))
                 .emit();
                 None
@@ -556,7 +556,7 @@ fn convert_enum_variant_types<'a, 'tcx>(
 fn convert_variant<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     did: DefId,
-    name: ast::Name,
+    ident: Ident,
     discr: ty::VariantDiscr,
     def: &hir::VariantData,
     adt_kind: ty::AdtKind,
@@ -593,12 +593,13 @@ fn convert_variant<'a, 'tcx>(
         .collect();
     ty::VariantDef::new(tcx,
         did,
-        name,
+        ident,
         discr,
         fields,
         adt_kind,
         CtorKind::from_hir(def),
-        attribute_def_id)
+        attribute_def_id
+    )
 }
 
 fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::AdtDef {
@@ -628,7 +629,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
                         };
                         distance_from_explicit += 1;
 
-                        convert_variant(tcx, did, v.node.name, discr, &v.node.data, AdtKind::Enum,
+                        convert_variant(tcx, did, v.node.ident, discr, &v.node.data, AdtKind::Enum,
                                         did)
                     })
                     .collect(),
@@ -646,7 +647,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
                 std::iter::once(convert_variant(
                     tcx,
                     ctor_id.unwrap_or(def_id),
-                    item.name,
+                    item.ident,
                     ty::VariantDiscr::Relative(0),
                     def,
                     AdtKind::Struct,
@@ -659,7 +660,7 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> &'tcx ty::Ad
             std::iter::once(convert_variant(
                 tcx,
                 def_id,
-                item.name,
+                item.ident,
                 ty::VariantDiscr::Relative(0),
                 def,
                 AdtKind::Union,

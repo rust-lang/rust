@@ -306,7 +306,7 @@ fn check_for_bindings_named_same_as_variants(cx: &MatchVisitor, pat: &Pat) {
                 let pat_ty = cx.tables.pat_ty(p);
                 if let ty::Adt(edef, _) = pat_ty.sty {
                     if edef.is_enum() && edef.variants.iter().any(|variant| {
-                        variant.name == ident.name && variant.ctor_kind == CtorKind::Const
+                        variant.ident == ident && variant.ctor_kind == CtorKind::Const
                     }) {
                         let ty_path = cx.tcx.item_path_str(edef.did);
                         let mut err = struct_span_warn!(cx.tcx.sess, p.span, E0170,

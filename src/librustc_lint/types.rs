@@ -837,7 +837,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for VariantSizeDifferences {
                                 let bytes = variant_layout.size.bytes().saturating_sub(discr_size);
 
                                 debug!("- variant `{}` is {} bytes large",
-                                       variant.node.name,
+                                       variant.node.ident,
                                        bytes);
                                 bytes
                             })

@@ -1327,7 +1327,7 @@ pub fn check_item_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Ite
         }
         hir::ItemKind::Fn(..) => {} // entirely within check_item_body
         hir::ItemKind::Impl(.., ref impl_item_refs) => {
-            debug!("ItemKind::Impl {} with id {}", it.name, it.id);
+            debug!("ItemKind::Impl {} with id {}", it.ident, it.id);
             let impl_def_id = tcx.hir().local_def_id(it.id);
             if let Some(impl_trait_ref) = tcx.impl_trait_ref(impl_def_id) {
                 check_impl_items_against_trait(
@@ -3529,7 +3529,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 ty::Adt(adt, ..) if adt.is_enum() => {
                     struct_span_err!(self.tcx.sess, field.ident.span, E0559,
                                      "{} `{}::{}` has no field named `{}`",
-                                     kind_name, actual, variant.name, field.ident)
+                                     kind_name, actual, variant.ident, field.ident)
                 }
                 _ => {
                     struct_span_err!(self.tcx.sess, field.ident.span, E0560,
@@ -3551,7 +3551,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if adt.is_enum() {
                         err.span_label(field.ident.span,
                                        format!("`{}::{}` does not have this field",
-                                               ty, variant.name));
+                                               ty, variant.ident));
                     } else {
                         err.span_label(field.ident.span,
                                        format!("`{}` does not have this field", ty));
@@ -4813,13 +4813,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let parent = self.tcx.hir().get(fn_id);
 
             if let Node::Item(&hir::Item {
-                name, node: hir::ItemKind::Fn(ref decl, ..), ..
+                ident, node: hir::ItemKind::Fn(ref decl, ..), ..
             }) = parent {
                 decl.clone().and_then(|decl| {
                     // This is less than ideal, it will not suggest a return type span on any
                     // method called `main`, regardless of whether it is actually the entry point,
                     // but it will still present it as the reason for the expected type.
-                    Some((decl, name != Symbol::intern("main")))
+                    Some((decl, ident.name != Symbol::intern("main")))
                 })
             } else if let Node::TraitItem(&hir::TraitItem {
                 node: hir::TraitItemKind::Method(hir::MethodSig {

@@ -811,7 +811,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
         let name = if let hir::ItemKind::Impl(.., ref ty, _) = item.node {
             self.map.node_to_pretty_string(ty.id)
         } else {
-            item.name.to_string()
+            item.ident.to_string()
         };
 
         self.visit_testable(name, &item.attrs, |this| {
@@ -832,7 +832,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
     }
 
     fn visit_foreign_item(&mut self, item: &'hir hir::ForeignItem) {
-        self.visit_testable(item.name.to_string(), &item.attrs, |this| {
+        self.visit_testable(item.ident.to_string(), &item.attrs, |this| {
             intravisit::walk_foreign_item(this, item);
         });
     }
@@ -841,7 +841,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirCollector<'a, 'hir> {
                      v: &'hir hir::Variant,
                      g: &'hir hir::Generics,
                      item_id: ast::NodeId) {
-        self.visit_testable(v.node.name.to_string(), &v.node.attrs, |this| {
+        self.visit_testable(v.node.ident.to_string(), &v.node.attrs, |this| {
             intravisit::walk_variant(this, v, g, item_id);
         });
     }

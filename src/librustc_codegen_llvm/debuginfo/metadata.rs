@@ -1215,7 +1215,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         name: if fallback {
                             String::new()
                         } else {
-                            adt.variants[index].name.as_str().to_string()
+                            adt.variants[index].ident.as_str().to_string()
                         },
                         type_metadata: variant_type_metadata,
                         offset: Size::ZERO,
@@ -1255,7 +1255,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         name: if fallback {
                             String::new()
                         } else {
-                            adt.variants[i].name.as_str().to_string()
+                            adt.variants[i].ident.as_str().to_string()
                         },
                         type_metadata: variant_type_metadata,
                         offset: Size::ZERO,
@@ -1321,7 +1321,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                                        self.layout,
                                        self.layout.fields.offset(0),
                                        self.layout.field(cx, 0).size);
-                    name.push_str(&adt.variants[*niche_variants.start()].name.as_str());
+                    name.push_str(&adt.variants[*niche_variants.start()].ident.as_str());
 
                     // Create the (singleton) list of descriptions of union members.
                     vec![
@@ -1365,7 +1365,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         };
 
                         MemberDescription {
-                            name: adt.variants[i].name.as_str().to_string(),
+                            name: adt.variants[i].ident.as_str().to_string(),
                             type_metadata: variant_type_metadata,
                             offset: Size::ZERO,
                             size: self.layout.size,
@@ -1433,7 +1433,7 @@ fn describe_enum_variant(
     containing_scope: &'ll DIScope,
     span: Span,
 ) -> (&'ll DICompositeType, MemberDescriptionFactory<'ll, 'tcx>) {
-    let variant_name = variant.name.as_str();
+    let variant_name = variant.ident.as_str();
     let unique_type_id = debug_context(cx).type_map
                                           .borrow_mut()
                                           .get_unique_type_id_of_enum_variant(
@@ -1527,7 +1527,7 @@ fn prepare_enum_metadata(
         let enumerators_metadata: Vec<_> = def.discriminants(cx.tcx)
             .zip(&def.variants)
             .map(|((_, discr), v)| {
-                let name = SmallCStr::new(&v.name.as_str());
+                let name = SmallCStr::new(&v.ident.as_str());
                 unsafe {
                     Some(llvm::LLVMRustDIBuilderCreateEnumerator(
                         DIB(cx),

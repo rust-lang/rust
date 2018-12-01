@@ -60,7 +60,7 @@ fn uncached_llvm_type<'a, 'tcx>(cx: &CodegenCx<'a, 'tcx>,
                  = (&layout.ty.sty, &layout.variants)
             {
                 if def.is_enum() && !def.variants.is_empty() {
-                    write!(&mut name, "::{}", def.variants[index].name).unwrap();
+                    write!(&mut name, "::{}", def.variants[index].ident).unwrap();
                 }
             }
             Some(name)

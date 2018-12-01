@@ -450,7 +450,7 @@ impl<'a> State<'a> {
                                   abi: Abi::Rust,
                                   asyncness: hir::IsAsync::NotAsync,
                               },
-                              Some(item.name),
+                              Some(item.ident.name),
                               generics,
                               &item.vis,
                               arg_names,
@@ -464,7 +464,7 @@ impl<'a> State<'a> {
                 if m {
                     self.word_space("mut")?;
                 }
-                self.print_name(item.name)?;
+                self.print_ident(item.ident)?;
                 self.word_space(":")?;
                 self.print_type(&t)?;
                 self.s.word(";")?;
@@ -473,7 +473,7 @@ impl<'a> State<'a> {
             }
             hir::ForeignItemKind::Type => {
                 self.head(visibility_qualified(&item.vis, "type"))?;
-                self.print_name(item.name)?;
+                self.print_ident(item.ident)?;
                 self.s.word(";")?;
                 self.end()?; // end the head-ibox
                 self.end() // end the outer cbox
@@ -533,7 +533,7 @@ impl<'a> State<'a> {
                     self.s.word("as")?;
                     self.s.space()?;
                 }
-                self.print_name(item.name)?;
+                self.print_ident(item.ident)?;
                 self.s.word(";")?;
                 self.end()?; // end inner head-block
                 self.end()?; // end outer head-block
@@ -544,10 +544,10 @@ impl<'a> State<'a> {
 
                 match kind {
                     hir::UseKind::Single => {
-                        if path.segments.last().unwrap().ident.name != item.name {
+                        if path.segments.last().unwrap().ident != item.ident {
                             self.s.space()?;
                             self.word_space("as")?;
-                            self.print_name(item.name)?;
+                            self.print_ident(item.ident)?;
                         }
                         self.s.word(";")?;
                     }
@@ -562,7 +562,7 @@ impl<'a> State<'a> {
                 if m == hir::MutMutable {
                     self.word_space("mut")?;
                 }
-                self.print_name(item.name)?;
+                self.print_ident(item.ident)?;
                 self.word_space(":")?;
                 self.print_type(&ty)?;
                 self.s.space()?;
@@ -575,7 +575,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Const(ref ty, expr) => {
                 self.head(visibility_qualified(&item.vis, "const"))?;
-                self.print_name(item.name)?;
+                self.print_ident(item.ident)?;
                 self.word_space(":")?;
                 self.print_type(&ty)?;
                 self.s.space()?;
@@ -590,7 +590,7 @@ impl<'a> State<'a> {
                 self.head("")?;
                 self.print_fn(decl,
                               header,
-                              Some(item.name),
+                              Some(item.ident.name),
                               typarams,
                               &item.vis,
                               &[],
@@ -602,7 +602,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Mod(ref _mod) => {
                 self.head(visibility_qualified(&item.vis, "mod"))?;
-                self.print_name(item.name)?;
+                self.print_ident(item.ident)?;
                 self.nbsp()?;
                 self.bopen()?;
                 self.print_mod(_mod, &item.attrs)?;
@@ -622,7 +622,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Ty(ref ty, ref generics) => {
                 self.head(visibility_qualified(&item.vis, "type"))?;
-                self.print_name(item.name)?;
+                self.print_ident(item.ident)?;
                 self.print_generic_params(&generics.params)?;
                 self.end()?; // end the inner ibox
 
@@ -635,7 +635,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Existential(ref exist) => {
                 self.head(visibility_qualified(&item.vis, "existential type"))?;
-                self.print_name(item.name)?;
+                self.print_ident(item.ident)?;
                 self.print_generic_params(&exist.generics.params)?;
                 self.end()?; // end the inner ibox
 
@@ -657,15 +657,16 @@ impl<'a> State<'a> {
                 self.end()?; // end the outer ibox
             }
             hir::ItemKind::Enum(ref enum_definition, ref params) => {
-                self.print_enum_def(enum_definition, params, item.name, item.span, &item.vis)?;
+                self.print_enum_def(enum_definition, params, item.ident.name, item.span,
+                                    &item.vis)?;
             }
             hir::ItemKind::Struct(ref struct_def, ref generics) => {
                 self.head(visibility_qualified(&item.vis, "struct"))?;
-                self.print_struct(struct_def, generics, item.name, item.span, true)?;
+                self.print_struct(struct_def, generics, item.ident.name, item.span, true)?;
             }
             hir::ItemKind::Union(ref struct_def, ref generics) => {
                 self.head(visibility_qualified(&item.vis, "union"))?;
-                self.print_struct(struct_def, generics, item.name, item.span, true)?;
+                self.print_struct(struct_def, generics, item.ident.name, item.span, true)?;
             }
             hir::ItemKind::Impl(unsafety,
                           polarity,
@@ -712,7 +713,7 @@ impl<'a> State<'a> {
                 self.print_is_auto(is_auto)?;
                 self.print_unsafety(unsafety)?;
                 self.word_nbsp("trait")?;
-                self.print_name(item.name)?;
+                self.print_ident(item.ident)?;
                 self.print_generic_params(&generics.params)?;
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 for b in bounds.iter() {
@@ -737,7 +738,7 @@ impl<'a> State<'a> {
                 self.head("")?;
                 self.print_visibility(&item.vis)?;
                 self.word_nbsp("trait")?;
-                self.print_name(item.name)?;
+                self.print_ident(item.ident)?;
                 self.print_generic_params(&generics.params)?;
                 let mut real_bounds = Vec::with_capacity(bounds.len());
                 // FIXME(durka) this seems to be some quite outdated syntax
@@ -895,7 +896,7 @@ impl<'a> State<'a> {
     pub fn print_variant(&mut self, v: &hir::Variant) -> io::Result<()> {
         self.head("")?;
         let generics = hir::Generics::empty();
-        self.print_struct(&v.node.data, &generics, v.node.name, v.span, false)?;
+        self.print_struct(&v.node.data, &generics, v.node.ident.name, v.span, false)?;
         if let Some(ref d) = v.node.disr_expr {
             self.s.space()?;
             self.word_space("=")?;

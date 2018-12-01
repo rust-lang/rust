@@ -952,7 +952,7 @@ https://doc.rust-lang.org/reference/types.html#trait-objects");
                 if plural == "" {
                     let input = unmentioned_fields.iter().map(|field| &field.name);
                     let suggested_name =
-                        find_best_match_for_name(input, &ident.name.as_str(), None);
+                        find_best_match_for_name(input, &ident.as_str(), None);
                     if let Some(suggested_name) = suggested_name {
                         err.span_suggestion(*span, "did you mean", suggested_name.to_string());
                         // we don't want to throw `E0027` in case we have thrown `E0026` for them
