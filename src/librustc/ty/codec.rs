@@ -214,7 +214,9 @@ pub fn decode_region<'a, 'tcx, D>(decoder: &mut D) -> Result<ty::Region<'tcx>, D
 }
 
 #[inline]
-pub fn decode_bx<'a, 'tcx, D, T: DeferDeallocs + Decodable>(decoder: &mut D) -> Result<Bx<'tcx, T>, D::Error>
+pub fn decode_bx<'a, 'tcx, D, T: DeferDeallocs + Decodable>(
+    decoder: &mut D
+) -> Result<Bx<'tcx, T>, D::Error>
     where D: TyDecoder<'a, 'tcx>,
           'tcx: 'a,
 {
