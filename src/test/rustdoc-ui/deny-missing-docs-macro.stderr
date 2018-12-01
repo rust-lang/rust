@@ -1,0 +1,14 @@
+error: missing documentation for macro
+  --> $DIR/deny-missing-docs-macro.rs:16:1
+   |
+LL | macro_rules! foo { //~ ERROR
+   | ^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/deny-missing-docs-macro.rs:13:9
+   |
+LL | #![deny(missing_docs)]
+   |         ^^^^^^^^^^^^
+
+error: Compilation failed, aborting rustdoc
+

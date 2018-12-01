@@ -322,6 +322,7 @@ macro_rules! dbg {
     }
 }
 
+/// A macro to await on an async call.
 #[macro_export]
 #[unstable(feature = "await_macro", issue = "50547")]
 #[allow_internal_unstable]

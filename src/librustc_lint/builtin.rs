@@ -297,6 +297,26 @@ pub struct MissingDoc {
     private_traits: FxHashSet<ast::NodeId>,
 }
 
+fn has_doc(attr: &ast::Attribute) -> bool {
+    if !attr.check_name("doc") {
+        return false;
+    }
+
+    if attr.is_value_str() {
+        return true;
+    }
+
+    if let Some(list) = attr.meta_item_list() {
+        for meta in list {
+            if meta.check_name("include") || meta.check_name("hidden") {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
 impl MissingDoc {
     pub fn new() -> MissingDoc {
         MissingDoc {
@@ -335,26 +355,6 @@ impl MissingDoc {
             }
         }
 
-        fn has_doc(attr: &ast::Attribute) -> bool {
-            if !attr.check_name("doc") {
-                return false;
-            }
-
-            if attr.is_value_str() {
-                return true;
-            }
-
-            if let Some(list) = attr.meta_item_list() {
-                for meta in list {
-                    if meta.check_name("include") {
-                        return true;
-                    }
-                }
-            }
-
-            false
-        }
-
         let has_doc = attrs.iter().any(|a| has_doc(a));
         if !has_doc {
             cx.span_lint(MISSING_DOCS,
@@ -389,6 +389,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
 
     fn check_crate(&mut self, cx: &LateContext, krate: &hir::Crate) {
         self.check_missing_docs_attrs(cx, None, &krate.attrs, krate.span, "crate");
+
+        for macro_def in &krate.exported_macros {
+            let has_doc = macro_def.attrs.iter().any(|a| has_doc(a));
+            if !has_doc {
+                cx.span_lint(MISSING_DOCS,
+                             cx.tcx.sess.source_map().def_span(macro_def.span),
+                             "missing documentation for macro");
+            }
+        }
     }
 
     fn check_item(&mut self, cx: &LateContext, it: &hir::Item) {
