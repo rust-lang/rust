@@ -17,15 +17,17 @@ when they'd need to do the same thing for every type anyway).
 ```rust
 #![feature(marker_trait_attr)]
 
-use std::fmt::{Debug, Display};
+#[marker] trait CheapToClone: Clone {}
 
-#[marker] trait MyMarker {}
+impl<T: Copy> CheapToClone for T {}
 
-impl<T: Debug> MyMarker for T {}
-impl<T: Display> MyMarker for T {}
+// These could potentally overlap with the blanket implementation above,
+// so are only allowed because CheapToClone is a marker trait.
+impl<T: CheapToClone, U: CheapToClone> CheapToClone for (T, U) {}
+impl<T: CheapToClone> CheapToClone for std::ops::Range<T> {}
 
-fn foo<T: MyMarker>(t: T) -> T {
-    t
+fn cheap_clone<T: CheapToClone>(t: T) -> T {
+    t.clone()
 }
 ```
 
