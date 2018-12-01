@@ -15,7 +15,7 @@ The guide can be useful today, but it has a lot of work still go.
 
 If you'd like to help improve the guide, we'd love to have you! You can find
 plenty of issues on the [issue
-tracker](https://github.com/rust-lang-nursery/rustc-guide/issue). Just post a
+tracker](https://github.com/rust-lang/rustc-guide/issue). Just post a
 comment on the issue you would like to work on to make sure that we don't
 accidentally duplicate work. If you think something is missing, please open an
 issue about it!

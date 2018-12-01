@@ -81,7 +81,7 @@ suggestions pleasingly in the terminal, or (when the `--error-format json` flag
 is passed) as JSON for consumption by tools, most notably the [Rust Language
 Server][rls] and [`rustfix`][rustfix].
 
-[rls]: https://github.com/rust-lang-nursery/rls
+[rls]: https://github.com/rust-lang/rls
 [rustfix]: https://github.com/rust-lang-nursery/rustfix
 
 Not all suggestions should be applied mechanically. Use the

@@ -11,4 +11,4 @@ be found at the [GitHub repository]. If you find any mistakes in the
 guide, please file an issue about it, or even better, open a PR
 with a correction!
 
-[GitHub repository]: https://github.com/rust-lang-nursery/rustc-guide/
+[GitHub repository]: https://github.com/rust-lang/rustc-guide/
