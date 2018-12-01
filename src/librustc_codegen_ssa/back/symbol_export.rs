@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_data_structures::sync::Lrc;
 use std::sync::Arc;
 
 use rustc::ty::Instance;
@@ -64,7 +63,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
-        return Default::default();
+        return tcx.bx(Default::default());
     }
 
     // Check to see if this crate is a "special runtime crate". These
