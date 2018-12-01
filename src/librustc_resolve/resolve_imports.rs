@@ -42,10 +42,15 @@ use std::{mem, ptr};
 #[derive(Clone, Debug)]
 pub enum ImportDirectiveSubclass<'a> {
     SingleImport {
+        /// `source` in `use prefix::source as target`.
         source: Ident,
+        /// `target` in `use prefix::source as target`.
         target: Ident,
+        /// Bindings to which `source` refers to.
         source_bindings: PerNS<Cell<Result<&'a NameBinding<'a>, Determinacy>>>,
+        /// Bindings introduced by `target`.
         target_bindings: PerNS<Cell<Option<&'a NameBinding<'a>>>>,
+        /// `true` for `...::{self [as target]}` imports, `false` otherwise.
         type_ns_only: bool,
     },
     GlobImport {
@@ -946,9 +951,12 @@ impl<'a, 'b:'a, 'c: 'b> ImportResolver<'a, 'b, 'c> {
                     // Consistency checks, analogous to `finalize_current_module_macro_resolutions`.
                     let initial_def = source_bindings[ns].get().map(|initial_binding| {
                         all_ns_err = false;
-                        if target.name == "_" &&
-                           initial_binding.is_extern_crate() && !initial_binding.is_import() {
-                            this.used_imports.insert((directive.id, TypeNS));
+                        if let Some(target_binding) = target_bindings[ns].get() {
+                            if target.name == "_" &&
+                               initial_binding.is_extern_crate() && !initial_binding.is_import() {
+                                this.record_use(ident, ns, target_binding,
+                                                directive.module_path.is_empty());
+                            }
                         }
                         initial_binding.def_ignoring_ambiguity()
                     });

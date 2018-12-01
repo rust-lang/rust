@@ -1519,8 +1519,11 @@ pub struct Resolver<'a, 'b: 'a> {
     /// The current self item if inside an ADT (used for better errors).
     current_self_item: Option<NodeId>,
 
-    /// FIXME: Refactor things so that this is passed through arguments and not resolver.
+    /// FIXME: Refactor things so that these fields are passed through arguments and not resolver.
+    /// We are resolving a last import segment during import validation.
     last_import_segment: bool,
+    /// This binding should be ignored during in-module resolution, so that we don't get
+    /// "self-confirming" import resolutions during import validation.
     blacklisted_binding: Option<&'a NameBinding<'a>>,
 
     /// The idents for the primitive types.
