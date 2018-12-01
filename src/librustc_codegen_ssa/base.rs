@@ -33,7 +33,6 @@ use rustc_mir::monomorphize::Instance;
 use rustc_mir::monomorphize::partitioning::{CodegenUnit, CodegenUnitExt};
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::sync::Lrc;
 use rustc_codegen_utils::{symbol_names_test, check_for_rustc_errors_attr};
 use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use crate::mir::place::PlaceRef;
@@ -916,7 +915,7 @@ pub fn provide_both(providers: &mut Providers<'_>) {
             .map(|id| &module_map[&id])
             .flat_map(|module| module.foreign_items.iter().cloned())
             .collect();
-        Lrc::new(dllimports)
+        tcx.arena.alloc(dllimports)
     };
 
     providers.is_dllimport_foreign_item = |tcx, def_id| {
