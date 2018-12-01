@@ -145,38 +145,21 @@ unsafe impl<T: DeferDeallocs + ?Sized> DeferDeallocs for Box<T> {
 }
 
 unsafe impl<
-    K: DeferDeallocs + Eq + Hash,
+    K: DeferDeallocs,
     V: DeferDeallocs,
-    S: DeferDeallocs + BuildHasher
+    S: DeferDeallocs
 > DeferDeallocs
 for HashMap<K, V, S> {
     #[inline]
-    fn defer(&self, deferred: &mut DeferredDeallocs) {
-        self.hasher().defer(deferred);
-        if let Some((ptr, layout)) = self.raw_alloc() {
-            deferred.add(ptr, layout);
-        }
-        if needs_drop::<(K, V)>() {
-            for (k, v) in self.iter() {
-                k.defer(deferred);
-                v.defer(deferred);
-            }
-        }
+    fn defer(&self, _: &mut DeferredDeallocs) {
+        // FIXME: Check K and V types
     }
 }
 
-unsafe impl<T: DeferDeallocs + Eq + Hash, S: DeferDeallocs + BuildHasher> DeferDeallocs
+unsafe impl<T: DeferDeallocs, S: DeferDeallocs> DeferDeallocs
 for HashSet<T, S> {
     #[inline]
-    fn defer(&self, deferred: &mut DeferredDeallocs) {
-        self.hasher().defer(deferred);
-        /*if let Some((ptr, layout)) = self.raw_alloc() {
-            deferred.add(ptr, layout);
-        }*/
-        if needs_drop::<T>() {
-            for v in self.iter() {
-                v.defer(deferred);
-            }
-        }
+    fn defer(&self, _: &mut DeferredDeallocs) {
+        // FIXME: Check T type
     }
 }

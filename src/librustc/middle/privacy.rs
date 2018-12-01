@@ -12,6 +12,7 @@
 //! outside their scopes. This pass will also generate a set of exported items
 //! which are available for use externally when compiled as a library.
 
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use util::nodemap::{DefIdSet, FxHashMap};
 
 use std::hash::Hash;
@@ -34,10 +35,18 @@ pub enum AccessLevel {
     Public,
 }
 
+impl_defer_dellocs_for_no_drop_type!([] AccessLevel);
+
 // Accessibility levels for reachable HIR nodes
 #[derive(Clone)]
 pub struct AccessLevels<Id = NodeId> {
     pub map: FxHashMap<Id, AccessLevel>
+}
+
+unsafe impl<Id: DeferDeallocs> DeferDeallocs for AccessLevels<Id> {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.map.defer(deferred);
+    }
 }
 
 impl<Id: Hash + Eq> AccessLevels<Id> {

@@ -224,6 +224,8 @@ mod node_id_inner {
     }
 }
 
+impl_defer_dellocs_for_no_drop_type!([] NodeId);
+
 pub use self::node_id_inner::NodeId;
 
 impl NodeId {

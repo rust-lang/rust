@@ -24,7 +24,6 @@ use ich::Fingerprint;
 use ich::StableHashingContext;
 use infer::canonical::Canonical;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
-use middle::privacy::AccessLevels;
 use middle::resolve_lifetime::ObjectLifetimeDefault;
 use mir::Mir;
 use mir::interpret::{GlobalId, ErrorHandled};
@@ -162,7 +161,6 @@ pub fn test5<'tcx>(
 /// *on-demand* infrastructure.
 #[derive(Clone)]
 pub struct CrateAnalysis {
-    pub access_levels: Lrc<AccessLevels>,
     pub name: String,
     pub glob_map: Option<hir::GlobMap>,
 }

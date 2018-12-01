@@ -20,7 +20,6 @@ use rustc::session::config::{self, Input, OutputFilenames, OutputType};
 use rustc::session::search_paths::PathKind;
 use rustc::lint;
 use rustc::middle::{self, reachable, resolve_lifetime, stability};
-use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, AllArenas, Resolutions, TyCtxt};
 use rustc::traits;
 use rustc::util::common::{install_panic_hook, time, ErrorReported};
@@ -49,7 +48,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
-use rustc_data_structures::sync::{self, Lrc, Lock};
+use rustc_data_structures::sync::{self, Lock};
 use std::sync::mpsc;
 use syntax::{self, ast, attr, diagnostics, visit};
 use syntax::early_buffered_lints::BufferedEarlyLint;
@@ -796,7 +795,6 @@ where
             },
 
             analysis: ty::CrateAnalysis {
-                access_levels: Lrc::new(AccessLevels::default()),
                 name: crate_name.to_string(),
                 glob_map: if resolver.make_glob_map {
                     Some(resolver.glob_map)
@@ -1216,7 +1214,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(
     sess: &'tcx Session,
     cstore: &'tcx CStore,
     hir_map: hir_map::Map<'tcx>,
-    mut analysis: ty::CrateAnalysis,
+    analysis: ty::CrateAnalysis,
     resolutions: Resolutions,
     arenas: &'tcx AllArenas<'tcx>,
     name: &str,
@@ -1298,8 +1296,7 @@ where
                 rvalue_promotion::check_crate(tcx)
             });
 
-            analysis.access_levels =
-                time(sess, "privacy checking", || rustc_privacy::check_crate(tcx));
+            time(sess, "privacy checking", || rustc_privacy::check_crate(tcx));
 
             time(sess, "intrinsic checking", || {
                 middle::intrinsicck::check_crate(tcx)

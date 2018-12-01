@@ -46,6 +46,7 @@ use rustc::hir::def::Def as HirDef;
 use rustc::hir::Node;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::ExternCrate;
+use rustc::middle::privacy::AccessLevels;
 use rustc::session::config::{CrateType, Input, OutputType};
 use rustc::ty::{self, TyCtxt};
 use rustc_typeck::hir_ty_to_ty;
@@ -78,6 +79,7 @@ use rls_data::config::Config;
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
     tables: &'l ty::TypeckTables<'tcx>,
+    access_levels: &'tcx AccessLevels,
     analysis: &'l ty::CrateAnalysis,
     span_utils: SpanUtils<'tcx>,
     config: Config,
@@ -1139,6 +1141,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
         let save_ctxt = SaveContext {
             tcx,
             tables: &ty::TypeckTables::empty(None),
+            access_levels: tcx.privacy_access_levels(LOCAL_CRATE).0,
             analysis,
             span_utils: SpanUtils::new(&tcx.sess),
             config: find_config(config),

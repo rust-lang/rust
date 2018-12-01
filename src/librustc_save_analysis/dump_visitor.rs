@@ -66,14 +66,14 @@ macro_rules! access_from {
     ($save_ctxt:expr, $vis:expr, $id:expr) => {
         Access {
             public: $vis.node.is_pub(),
-            reachable: $save_ctxt.analysis.access_levels.is_reachable($id),
+            reachable: $save_ctxt.access_levels.is_reachable($id),
         }
     };
 
     ($save_ctxt:expr, $item:expr) => {
         Access {
             public: $item.vis.node.is_pub(),
-            reachable: $save_ctxt.analysis.access_levels.is_reachable($item.id),
+            reachable: $save_ctxt.access_levels.is_reachable($item.id),
         }
     };
 }
