@@ -61,9 +61,9 @@ unsafe impl<'tcx, T: DeferDeallocs> DeferDeallocs for Bx<'tcx, T> {
     }
 }
 
-impl<'tcx, T: DeferDeallocs> serialize::Encodable for Bx<'tcx, T> {
+impl<'tcx, T: DeferDeallocs + serialize::Encodable> serialize::Encodable for Bx<'tcx, T> {
     fn encode<S: serialize::Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        serialize::Encodable::encode(&(), s)
+        serialize::Encodable::encode(self.0, s)
     }
 }
 
