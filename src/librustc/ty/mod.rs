@@ -149,8 +149,7 @@ pub fn test4<'tcx>(
 #[no_mangle]
 pub fn test5<'tcx>(
     allocs: &rustc_data_structures::sync::WorkerLocal<RefCell<DeferredDeallocs>>, 
-    vec: Vec<u32>) {
-    let abort = rustc_data_structures::OnDrop(|| std::process::abort());
+    vec: &Vec<u32>) {
     vec.defer(&mut *allocs.borrow_mut());
 }
 

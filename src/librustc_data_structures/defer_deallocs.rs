@@ -153,9 +153,9 @@ for HashMap<K, V, S> {
     #[inline]
     fn defer(&self, deferred: &mut DeferredDeallocs) {
         self.hasher().defer(deferred);
-        /*if let Some((ptr, layout)) = self.raw_alloc() {
+        if let Some((ptr, layout)) = self.raw_alloc() {
             deferred.add(ptr, layout);
-        }*/
+        }
         if needs_drop::<(K, V)>() {
             for (k, v) in self.iter() {
                 k.defer(deferred);

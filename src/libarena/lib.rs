@@ -35,7 +35,7 @@
 extern crate alloc;
 extern crate rustc_data_structures;
 
-use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
+use rustc_data_structures::defer_deallocs::DeferDeallocs;
 use rustc_data_structures::sync::{MTLock, WorkerLocal};
 
 use std::cell::{Cell, RefCell};
@@ -311,6 +311,31 @@ pub struct DroplessArena {
     chunks: RefCell<Vec<TypedArenaChunk<BackingType>>>,
 }
 
+#[no_mangle]
+pub fn atest1(a: &DroplessArena) -> &usize {
+    a.alloc(64usize)
+}
+
+#[no_mangle]
+pub fn atest2(a: &SyncDroplessArena, b: Box<usize>) -> &Box<usize> {
+    a.promote(b)
+}
+
+#[no_mangle]
+pub fn atest3(a: &DroplessArena) {
+    a.align(8);
+}
+
+#[no_mangle]
+pub fn atest4(a: &DroplessArena) {
+    a.align(16);
+}
+
+#[no_mangle]
+pub fn atest5(a: &DroplessArena) {
+    a.align(4);
+}
+
 unsafe impl Send for DroplessArena {}
 
 impl Default for DroplessArena {
@@ -498,9 +523,28 @@ impl<T> SyncTypedArena<T> {
     }
 }
 
+struct DropType {
+    drop_fn: unsafe fn(*mut u8),
+    obj: *mut u8,
+}
+
+unsafe fn drop_for_type<T>(to_drop: *mut u8) {
+    std::ptr::drop_in_place(to_drop as *mut T)
+}
+
+impl Drop for DropType {
+    fn drop(&mut self) {
+        unsafe {
+            (self.drop_fn)(self.obj)
+        }
+    }
+}
+
 pub struct SyncDroplessArena {
+    // Ordered so `deferred` gets dropped before the arena
+    // since its destructor can reference memory in the arena
+    deferred: WorkerLocal<RefCell<Vec<DropType>>>,
     lock: MTLock<DroplessArena>,
-    deferred: WorkerLocal<RefCell<DeferredDeallocs>>,
 }
 
 impl SyncDroplessArena {
@@ -546,23 +590,18 @@ impl SyncDroplessArena {
             ptr::write(mem, object);
             &mut *mem
         };
-        // We write the result into memory which ensures that the object will not have
-        // its destructor called, and only then do we record the allocation inside
-        // to prevent a double free of the same allocation
-        result.defer(&mut *self.deferred.borrow_mut());
+        // Record the destructor after doing the allocation as that may panic
+        // and would cause `object` destuctor to run twice if it was recorded before
+        self.deferred.borrow_mut().push(DropType {
+            drop_fn: drop_for_type::<T>,
+            obj: result as *mut T as *mut u8,
+        });
         result
     }
 
     #[inline(always)]
     pub fn promote_vec<T: DeferDeallocs>(&self, vec: Vec<T>) -> &[T] {
-        let vec = mem::ManuallyDrop::new(vec);
-        // We forget the vector which ensures that its destructor called will not be called,
-        // and only then do we record the allocation inside. This is to prevent a double free
-        // of the same allocation
-        vec.defer(&mut *self.deferred.borrow_mut());
-        unsafe {
-            &*(&vec[..] as *const [T])
-        }
+        &self.promote(vec)[..]
     }
 }
 
