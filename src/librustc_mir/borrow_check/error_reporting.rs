@@ -344,6 +344,13 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
 
         let first_borrow_desc;
 
+        let explanation = self.explain_why_borrow_contains_point(context, issued_borrow, None);
+        let second_borrow_desc = if explanation.is_explained() {
+            "second "
+        } else {
+            ""
+        };
+
         // FIXME: supply non-"" `opt_via` when appropriate
         let mut err = match (
             gen_borrow_kind,
@@ -454,6 +461,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     issued_span,
                     "",
                     None,
+                    second_borrow_desc,
                     Origin::Mir,
                 )
             }
@@ -469,6 +477,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
                     issued_span,
                     "",
                     None,
+                    second_borrow_desc,
                     Origin::Mir,
                 )
             }
@@ -513,7 +522,7 @@ impl<'cx, 'gcx, 'tcx> MirBorrowckCtxt<'cx, 'gcx, 'tcx> {
             );
         }
 
-        self.explain_why_borrow_contains_point(context, issued_borrow, None)
+        explanation
             .add_explanation_to_diagnostic(self.infcx.tcx, self.mir, &mut err, first_borrow_desc);
 
         err.buffer(&mut self.errors_buffer);
