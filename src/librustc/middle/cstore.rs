@@ -256,8 +256,8 @@ pub fn used_crates(tcx: TyCtxt<'_, '_, '_>, prefer: LinkagePreference)
             Some((cnum, path))
         })
         .collect::<Vec<_>>();
-    let mut ordering = tcx.postorder_cnums(LOCAL_CRATE);
-    Lrc::make_mut(&mut ordering).reverse();
+    let mut ordering = tcx.postorder_cnums(LOCAL_CRATE).to_owned();
+    ordering.reverse();
     libs.sort_by_cached_key(|&(a, _)| {
         ordering.iter().position(|x| *x == a)
     });

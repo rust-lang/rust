@@ -91,6 +91,8 @@ macro_rules! arena_types {
                 rustc::hir::def_id::DefId,
                 String
             >,
+            [few] get_lib_features: rustc::middle::lib_features::LibFeatures,
+            [few] defined_lib_features: rustc::middle::lang_items::LanguageItems,
         ], $tcx);
     )
 }
