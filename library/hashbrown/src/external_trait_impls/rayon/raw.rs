@@ -1,86 +1,25 @@
+use alloc::alloc::dealloc;
+use core::alloc::Layout;
 use core::fmt;
 use core::marker::PhantomData;
+use core::mem;
+use core::ptr::NonNull;
 
 use rayon::iter::{
     plumbing::{self, Folder, UnindexedConsumer, UnindexedProducer},
     IntoParallelIterator, ParallelIterator,
 };
 
-use raw::{Bucket, RawTable};
+use raw::{RawIterRange, RawTable};
 
 
-struct SplitBuckets<'a, K: 'a, V: 'a> {
-    table: &'a RawTable<(K, V)>,
-    pos: usize,
-    end: usize,
-}
-
-impl<'a, K, V> SplitBuckets<'a, K, V> {
-    fn new(table: &'a RawTable<(K, V)>) -> Self {
-        let mut begin = 0;
-        let mut end = table.buckets();
-        trim_empty_buckets(table, &mut begin, &mut end);
-
-        Self { table, pos: begin, end }
-    }
-
-    /// Split in halves, if possible. Halves get automatically trimmed.
-    #[inline]
-    fn split<P: From<Self>>(&self) -> (P, Option<P>) {
-        let Self { table, pos, end } = *self;
-        let len = end - pos;
-
-        if len > 1 {
-            let mid = pos + len / 2;
-
-            let mut left = Self { table, pos, end: mid };
-            trim_empty_buckets(left.table, &mut left.pos, &mut left.end);
-
-            let mut right = Self { table, pos: mid, end };
-            trim_empty_buckets(right.table, &mut right.pos, &mut right.end);
-
-            (P::from(left), Some(P::from(right)))
-        } else {
-            (P::from(Self { table, pos, end }), None)
-        }
-    }
-}
-
-/// Trims the (half-open) range `begin..end` of buckets from both sides.
-/// As a result, either of these outcomes occur:
-///
-/// * `begin` becomes equal to `end`;
-/// * `begin` becomes strictly less than `end` AND both `begin` and `end - 1`
-///   point to non-empty buckets.
 #[inline]
-fn trim_empty_buckets<T>(table: &RawTable<T>, begin: &mut usize, end: &mut usize) {
-    // Trim empty buckets from beginning
-    while *begin < *end && table.is_empty_bucket_at(*begin) {
-        *begin += 1;
-    }
-
-    // Trim empty buckets from end
-    while *begin < *end && table.is_empty_bucket_at(*end - 1) {
-        *end -= 1;
-    }
-}
-
-impl<'a, K, V> Iterator for SplitBuckets<'a, K, V> {
-    type Item = Bucket<(K, V)>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        while self.pos < self.end {
-            let item = unsafe { self.table.bucket(self.pos) };
-            let old_pos = self.pos;
-            self.pos += 1;
-
-            if !self.table.is_empty_bucket_at(old_pos) {
-                return Some(item);
-            }
-        }
-
-        None
-    }
+unsafe fn raw_iter_range_split_and_convert<T, P>(iter_range: RawIterRange<T>) -> (P, Option<P>)
+where
+    P: From<RawIterRange<T>>,
+{
+    let (left, right) = iter_range.split();
+    (P::from(left), right.map(P::from))
 }
 
 
@@ -115,7 +54,7 @@ impl<'a, K: Sync, V: Sync> ParallelIterator for ParIter<'a, K, V> {
     fn drive_unindexed<C>(self, consumer: C) -> C::Result
         where C: UnindexedConsumer<Self::Item>
     {
-        let buckets = SplitBuckets::new(self.table);
+        let buckets = unsafe { self.table.iter().iter };
         let producer = ParIterProducer::from(buckets);
         plumbing::bridge_unindexed(producer, consumer)
     }
@@ -129,7 +68,8 @@ impl<'a, K, V> Clone for ParIter<'a, K, V> {
 
 impl<'a, K: fmt::Debug, V: fmt::Debug> fmt::Debug for ParIter<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let entries = SplitBuckets::new(self.table).map(|bucket| unsafe {
+        let iter = unsafe { self.table.iter() };
+        let entries = iter.map(|bucket| unsafe {
             let (ref k, ref v) = *bucket.as_ref();
             (k, v)
         });
@@ -139,13 +79,14 @@ impl<'a, K: fmt::Debug, V: fmt::Debug> fmt::Debug for ParIter<'a, K, V> {
 }
 
 struct ParIterProducer<'a, K: 'a, V: 'a> {
-    iter: SplitBuckets<'a, K, V>,
+    iter: RawIterRange<(K, V)>,
+    marker: PhantomData<&'a ()>,
 }
 
-impl<'a, K, V> From<SplitBuckets<'a, K, V>> for ParIterProducer<'a, K, V> {
+impl<'a, K, V> From<RawIterRange<(K, V)>> for ParIterProducer<'a, K, V> {
     #[inline]
-    fn from(iter: SplitBuckets<'a, K, V>) -> Self {
-        Self { iter }
+    fn from(iter: RawIterRange<(K, V)>) -> Self {
+        Self { iter, marker: PhantomData }
     }
 }
 
@@ -155,7 +96,7 @@ impl<'a, K: Sync, V: Sync> UnindexedProducer for ParIterProducer<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     fn split(self) -> (Self, Option<Self>) {
-        self.iter.split()
+        unsafe { raw_iter_range_split_and_convert(self.iter) }
     }
 
     fn fold_with<F>(self, folder: F) -> F
@@ -197,7 +138,7 @@ impl<'a, K: Sync, V> ParallelIterator for ParKeys<'a, K, V> {
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        let buckets = SplitBuckets::new(self.table);
+        let buckets = unsafe { self.table.iter().iter };
         let producer = ParKeysProducer::from(buckets);
         plumbing::bridge_unindexed(producer, consumer)
     }
@@ -211,7 +152,8 @@ impl<'a, K, V> Clone for ParKeys<'a, K, V> {
 
 impl<'a, K: fmt::Debug, V> fmt::Debug for ParKeys<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let entries = SplitBuckets::new(self.table).map(|bucket| unsafe {
+        let iter = unsafe { self.table.iter() };
+        let entries = iter.map(|bucket| unsafe {
             &bucket.as_ref().0
         });
 
@@ -220,13 +162,14 @@ impl<'a, K: fmt::Debug, V> fmt::Debug for ParKeys<'a, K, V> {
 }
 
 struct ParKeysProducer<'a, K: 'a, V: 'a> {
-    iter: SplitBuckets<'a, K, V>,
+    iter: RawIterRange<(K, V)>,
+    marker: PhantomData<&'a ()>,
 }
 
-impl<'a, K, V> From<SplitBuckets<'a, K, V>> for ParKeysProducer<'a, K, V> {
+impl<'a, K, V> From<RawIterRange<(K, V)>> for ParKeysProducer<'a, K, V> {
     #[inline]
-    fn from(iter: SplitBuckets<'a, K, V>) -> Self {
-        Self { iter }
+    fn from(iter: RawIterRange<(K, V)>) -> Self {
+        Self { iter, marker: PhantomData }
     }
 }
 
@@ -236,7 +179,7 @@ impl<'a, K: Sync, V> UnindexedProducer for ParKeysProducer<'a, K, V> {
     type Item = &'a K;
 
     fn split(self) -> (Self, Option<Self>) {
-        self.iter.split()
+        unsafe { raw_iter_range_split_and_convert(self.iter) }
     }
 
     fn fold_with<F>(self, folder: F) -> F
@@ -278,7 +221,7 @@ impl<'a, K, V: Sync> ParallelIterator for ParValues<'a, K, V> {
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        let buckets = SplitBuckets::new(self.table);
+        let buckets = unsafe { self.table.iter().iter };
         let producer = ParValuesProducer::from(buckets);
         plumbing::bridge_unindexed(producer, consumer)
     }
@@ -292,7 +235,8 @@ impl<'a, K, V> Clone for ParValues<'a, K, V> {
 
 impl<'a, K, V: fmt::Debug> fmt::Debug for ParValues<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let entries = SplitBuckets::new(self.table).map(|bucket| unsafe {
+        let iter = unsafe { self.table.iter() };
+        let entries = iter.map(|bucket| unsafe {
             &bucket.as_ref().1
         });
 
@@ -301,13 +245,14 @@ impl<'a, K, V: fmt::Debug> fmt::Debug for ParValues<'a, K, V> {
 }
 
 struct ParValuesProducer<'a, K: 'a, V: 'a> {
-    iter: SplitBuckets<'a, K, V>,
+    iter: RawIterRange<(K, V)>,
+    marker: PhantomData<&'a ()>,
 }
 
-impl<'a, K, V> From<SplitBuckets<'a, K, V>> for ParValuesProducer<'a, K, V> {
+impl<'a, K, V> From<RawIterRange<(K, V)>> for ParValuesProducer<'a, K, V> {
     #[inline]
-    fn from(iter: SplitBuckets<'a, K, V>) -> Self {
-        Self { iter }
+    fn from(iter: RawIterRange<(K, V)>) -> Self {
+        Self { iter, marker: PhantomData }
     }
 }
 
@@ -317,7 +262,7 @@ impl<'a, K, V: Sync> UnindexedProducer for ParValuesProducer<'a, K, V> {
     type Item = &'a V;
 
     fn split(self) -> (Self, Option<Self>) {
-        self.iter.split()
+        unsafe { raw_iter_range_split_and_convert(self.iter) }
     }
 
     fn fold_with<F>(self, folder: F) -> F
@@ -364,7 +309,7 @@ impl<'a, K: Sync, V: Send> ParallelIterator for ParIterMut<'a, K, V> {
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        let buckets = SplitBuckets::new(self.table);
+        let buckets = unsafe { self.table.iter().iter };
         let producer = ParIterMutProducer::from(buckets);
         plumbing::bridge_unindexed(producer, consumer)
     }
@@ -372,7 +317,8 @@ impl<'a, K: Sync, V: Send> ParallelIterator for ParIterMut<'a, K, V> {
 
 impl<'a, K: fmt::Debug, V: fmt::Debug> fmt::Debug for ParIterMut<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let entries = SplitBuckets::new(self.table).map(|bucket| unsafe {
+        let iter = unsafe { self.table.iter() };
+        let entries = iter.map(|bucket| unsafe {
             let (ref k, ref v) = *bucket.as_ref();
             (k, v)
         });
@@ -382,18 +328,15 @@ impl<'a, K: fmt::Debug, V: fmt::Debug> fmt::Debug for ParIterMut<'a, K, V> {
 }
 
 struct ParIterMutProducer<'a, K: 'a, V: 'a> {
-    iter: SplitBuckets<'a, K, V>,
+    iter: RawIterRange<(K, V)>,
     // To ensure invariance with respect to V
     marker: PhantomData<&'a mut V>,
 }
 
-impl<'a, K, V> From<SplitBuckets<'a, K, V>> for ParIterMutProducer<'a, K, V> {
+impl<'a, K, V> From<RawIterRange<(K, V)>> for ParIterMutProducer<'a, K, V> {
     #[inline]
-    fn from(iter: SplitBuckets<'a, K, V>) -> Self {
-        Self {
-            iter,
-            marker: PhantomData,
-        }
+    fn from(iter: RawIterRange<(K, V)>) -> Self {
+        Self { iter, marker: PhantomData }
     }
 }
 
@@ -403,7 +346,7 @@ impl<'a, K: Sync, V: Send> UnindexedProducer for ParIterMutProducer<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     fn split(self) -> (Self, Option<Self>) {
-        self.iter.split()
+        unsafe { raw_iter_range_split_and_convert(self.iter) }
     }
 
     fn fold_with<F>(self, folder: F) -> F
@@ -446,7 +389,7 @@ impl<'a, K, V: Send> ParallelIterator for ParValuesMut<'a, K, V> {
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        let buckets = SplitBuckets::new(self.table);
+        let buckets = unsafe { self.table.iter().iter };
         let producer = ParValuesMutProducer::from(buckets);
         plumbing::bridge_unindexed(producer, consumer)
     }
@@ -454,7 +397,8 @@ impl<'a, K, V: Send> ParallelIterator for ParValuesMut<'a, K, V> {
 
 impl<'a, K, V: fmt::Debug> fmt::Debug for ParValuesMut<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let entries = SplitBuckets::new(self.table).map(|bucket| unsafe {
+        let iter = unsafe { self.table.iter() };
+        let entries = iter.map(|bucket| unsafe {
             &bucket.as_ref().1
         });
 
@@ -463,18 +407,15 @@ impl<'a, K, V: fmt::Debug> fmt::Debug for ParValuesMut<'a, K, V> {
 }
 
 struct ParValuesMutProducer<'a, K: 'a, V: 'a> {
-    iter: SplitBuckets<'a, K, V>,
+    iter: RawIterRange<(K, V)>,
     // To ensure invariance with respect to V
     marker: PhantomData<&'a mut V>,
 }
 
-impl<'a, K, V> From<SplitBuckets<'a, K, V>> for ParValuesMutProducer<'a, K, V> {
+impl<'a, K, V> From<RawIterRange<(K, V)>> for ParValuesMutProducer<'a, K, V> {
     #[inline]
-    fn from(iter: SplitBuckets<'a, K, V>) -> Self {
-        Self {
-            iter,
-            marker: PhantomData,
-        }
+    fn from(iter: RawIterRange<(K, V)>) -> Self {
+        Self { iter, marker: PhantomData }
     }
 }
 
@@ -484,7 +425,7 @@ impl<'a, K, V: Send> UnindexedProducer for ParValuesMutProducer<'a, K, V> {
     type Item = &'a mut V;
 
     fn split(self) -> (Self, Option<Self>) {
-        self.iter.split()
+        unsafe { raw_iter_range_split_and_convert(self.iter) }
     }
 
     fn fold_with<F>(self, folder: F) -> F
@@ -529,21 +470,17 @@ impl<K: Send, V: Send> ParallelIterator for IntoParIter<K, V> {
     where
         C: UnindexedConsumer<Self::Item>,
     {
-        // Pre-set the map size to zero, indicating all items drained.
-        let mut table = self.table;
-        unsafe {
-            table.set_len(0);
-        }
-
-        let buckets = SplitBuckets::new(&table);
-        let producer = IntoParIterProducer::from(buckets);
+        let iter = unsafe { self.table.iter().iter };
+        let alloc = self.table.into_alloc();
+        let producer = IntoParIterProducer { iter, alloc };
         plumbing::bridge_unindexed(producer, consumer)
     }
 }
 
 impl<'a, K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoParIter<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let entries = SplitBuckets::new(&self.table).map(|bucket| unsafe {
+        let iter = unsafe { self.table.iter() };
+        let entries = iter.map(|bucket| unsafe {
             let (ref k, ref v) = *bucket.as_ref();
             (k, v)
         });
@@ -552,44 +489,51 @@ impl<'a, K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoParIter<K, V> {
     }
 }
 
-struct IntoParIterProducer<'a, K: 'a, V: 'a> {
-    iter: SplitBuckets<'a, K, V>,
+struct IntoParIterProducer<K, V> {
+    iter: RawIterRange<(K, V)>,
+    alloc: Option<(NonNull<u8>, Layout)>,
 }
 
-impl<'a, K, V> From<SplitBuckets<'a, K, V>> for IntoParIterProducer<'a, K, V> {
-    #[inline]
-    fn from(iter: SplitBuckets<'a, K, V>) -> Self {
-        Self { iter }
-    }
-}
+unsafe impl<K: Send, V: Send> Send for IntoParIterProducer<K, V> {}
 
-unsafe impl<'a, K: Send, V: Send> Send for IntoParIterProducer<'a, K, V> {}
-
-impl<'a, K: Send, V: Send> UnindexedProducer for IntoParIterProducer<'a, K, V> {
+impl<K: Send, V: Send> UnindexedProducer for IntoParIterProducer<K, V> {
     type Item = (K, V);
 
-    fn split(self) -> (Self, Option<Self>) {
-        self.iter.split()
+    fn split(mut self) -> (Self, Option<Self>) {
+        let (left_iter, right_iter) = unsafe { self.iter.clone().split() };
+
+        self.iter = left_iter;
+        let right = right_iter.map(|iter| IntoParIterProducer { iter, alloc: None });
+
+        (self, right)
     }
 
-    fn fold_with<F>(mut self, mut folder: F) -> F
+    fn fold_with<F>(mut self, folder: F) -> F
     where
         F: Folder<Self::Item>,
     {
-        for bucket in self.iter.by_ref() {
-            unsafe {
-                self.iter.table.set_empty_bucket(&bucket);
-                folder = folder.consume(bucket.read());
-            }
-
-            if folder.full() {
-                break;
-            }
-        }
-
-        folder
+        let iter = self.iter.by_ref().map(|bucket| unsafe {
+            bucket.read()
+        });
+        folder.consume_iter(iter)
     }
 }
 
-// Use the default `Drop` impl for `IntoParIter` which recursively drops the
-// inner `RawTable`
+impl<K, V> Drop for IntoParIterProducer<K, V> {
+    #[inline]
+    fn drop(&mut self) {
+        unsafe {
+            // Drop all remaining elements
+            if mem::needs_drop::<(K, V)>() {
+                while let Some(item) = self.iter.next() {
+                    item.drop();
+                }
+            }
+
+            // Free the table
+            if let Some((ptr, layout)) = self.alloc {
+                dealloc(ptr.as_ptr(), layout);
+            }
+        }
+    }
+}
