@@ -13,6 +13,7 @@ use std::alloc::{Alloc, Global, Layout};
 use std::collections::{HashMap, HashSet};
 use std::hash::BuildHasherDefault;
 use std::mem::{self, needs_drop};
+use std::path::PathBuf;
 
 #[derive(Default)]
 pub struct DeferredDeallocs {
@@ -86,7 +87,12 @@ impl_defer_dellocs_for_no_drop_type!([<'a, T: ?Sized>] &'a T);
 
 unsafe impl DeferDeallocs for String {
     #[inline]
-    fn defer(&self, deferred: &mut DeferredDeallocs) {}
+    fn defer(&self, _: &mut DeferredDeallocs) {}
+}
+
+unsafe impl DeferDeallocs for PathBuf {
+    #[inline]
+    fn defer(&self, _: &mut DeferredDeallocs) {}
 }
 
 unsafe impl<T: DeferDeallocs> DeferDeallocs for [T] {

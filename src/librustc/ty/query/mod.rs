@@ -518,22 +518,25 @@ define_queries! { <'tcx>
         [] fn item_children: ItemChildren(DefId) -> Bx<'tcx, [Export]>,
         [] fn extern_mod_stmt_cnum: ExternModStmtCnum(DefId) -> Option<CrateNum>,
 
-        [] fn get_lib_features: get_lib_features_node(CrateNum) -> Lrc<LibFeatures>,
+        [] fn get_lib_features: get_lib_features_node(CrateNum) -> Bx<'tcx, LibFeatures>,
         [] fn defined_lib_features: DefinedLibFeatures(CrateNum)
-            -> Lrc<Vec<(Symbol, Option<Symbol>)>>,
-        [] fn get_lang_items: get_lang_items_node(CrateNum) -> Lrc<LanguageItems>,
-        [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Lrc<Vec<(DefId, usize)>>,
-        [] fn missing_lang_items: MissingLangItems(CrateNum) -> Lrc<Vec<LangItem>>,
+            -> Bx<'tcx, Vec<(Symbol, Option<Symbol>)>>,
+        [] fn get_lang_items: get_lang_items_node(CrateNum) -> Bx<'tcx, LanguageItems>,
+        [] fn defined_lang_items: DefinedLangItems(CrateNum) -> Bx<'tcx, Vec<(DefId, usize)>>,
+        [] fn missing_lang_items: MissingLangItems(CrateNum) -> Bx<'tcx, Vec<LangItem>>,
         [] fn visible_parent_map: visible_parent_map_node(CrateNum)
             -> Lrc<DefIdMap<DefId>>,
         [] fn missing_extern_crate_item: MissingExternCrateItem(CrateNum) -> bool,
+
+        // Uses Lrc since it lives beyond the type arena
         [] fn used_crate_source: UsedCrateSource(CrateNum) -> Lrc<CrateSource>,
-        [] fn postorder_cnums: postorder_cnums_node(CrateNum) -> Lrc<Vec<CrateNum>>,
+
+        [] fn postorder_cnums: postorder_cnums_node(CrateNum) -> Bx<'tcx, Vec<CrateNum>>,
 
         [] fn freevars: Freevars(DefId) -> Option<Bx<'tcx, Vec<hir::Freevar>>>,
         [] fn maybe_unused_trait_import: MaybeUnusedTraitImport(DefId) -> bool,
         [] fn maybe_unused_extern_crates: maybe_unused_extern_crates_node(CrateNum)
-            -> Lrc<Vec<(DefId, Span)>>,
+            -> Bx<'tcx, Vec<(DefId, Span)>>,
 
         [] fn stability_index: stability_index_node(CrateNum) -> Bx<'tcx, stability::Index<'tcx>>,
         [] fn all_crate_nums: all_crate_nums_node(CrateNum) -> Bx<'tcx, [CrateNum]>,

@@ -14,6 +14,7 @@
 // and `#[unstable (..)]`), but are not declared in one single location
 // (unlike lang features), which means we need to collect them instead.
 
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use ty::TyCtxt;
 use syntax::symbol::Symbol;
 use syntax::ast::{Attribute, MetaItem, MetaItemKind};
@@ -26,6 +27,13 @@ pub struct LibFeatures {
     // A map from feature to stabilisation version.
     pub stable: FxHashMap<Symbol, Symbol>,
     pub unstable: FxHashSet<Symbol>,
+}
+
+unsafe impl DeferDeallocs for LibFeatures {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.stable.defer(deferred);
+        self.unstable.defer(deferred);
+    }
 }
 
 impl LibFeatures {

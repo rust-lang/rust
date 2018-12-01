@@ -32,6 +32,8 @@ pub enum PathKind {
     All,
 }
 
+impl_defer_dellocs_for_no_drop_type!([] PathKind);
+
 impl SearchPaths {
     pub fn new() -> SearchPaths {
         SearchPaths { paths: Vec::new() }

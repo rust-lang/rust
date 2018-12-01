@@ -21,6 +21,7 @@
 
 pub use self::LangItem::*;
 
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use hir::def_id::DefId;
 use hir::check_attr::Target;
 use ty::{self, TyCtxt};
@@ -54,6 +55,8 @@ impl LangItem {
         }
     }
 }
+
+impl_defer_dellocs_for_no_drop_type!([] LangItem);
 
 pub struct LanguageItems {
     pub items: Vec<Option<DefId>>,
@@ -93,6 +96,13 @@ impl LanguageItems {
             self.items[$variant as usize]
         }
     )*
+}
+
+unsafe impl DeferDeallocs for LanguageItems {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.items.defer(deferred);
+        self.missing.defer(deferred);
+    }
 }
 
 struct LanguageItemCollector<'a, 'tcx: 'a> {

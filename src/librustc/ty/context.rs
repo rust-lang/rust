@@ -1233,12 +1233,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.sess.consider_optimizing(&cname, msg)
     }
 
-    pub fn lib_features(self) -> Lrc<middle::lib_features::LibFeatures> {
-        self.get_lib_features(LOCAL_CRATE)
+    pub fn lib_features(self) -> &'gcx middle::lib_features::LibFeatures {
+        self.get_lib_features(LOCAL_CRATE).0
     }
 
-    pub fn lang_items(self) -> Lrc<middle::lang_items::LanguageItems> {
-        self.get_lang_items(LOCAL_CRATE)
+    pub fn lang_items(self) -> &'gcx middle::lang_items::LanguageItems {
+        self.get_lang_items(LOCAL_CRATE).0
     }
 
     /// Due to missing llvm support for lowering 128 bit math to software emulation
@@ -3041,11 +3041,11 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.get_lib_features = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
-        Lrc::new(middle::lib_features::collect(tcx))
+        tcx.bx(middle::lib_features::collect(tcx))
     };
     providers.get_lang_items = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
-        Lrc::new(middle::lang_items::collect(tcx))
+        tcx.bx(middle::lang_items::collect(tcx))
     };
     providers.freevars = |tcx, id| tcx.gcx.freevars.get(&id).map(|m| Bx(m));
     providers.maybe_unused_trait_import = |tcx, id| {
@@ -3053,7 +3053,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.maybe_unused_extern_crates = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        Lrc::new(tcx.maybe_unused_extern_crates.clone())
+        tcx.bx(tcx.maybe_unused_extern_crates.clone())
     };
 
     providers.stability_index = |tcx, cnum| {
@@ -3080,7 +3080,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.postorder_cnums = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        Lrc::new(tcx.cstore.postorder_cnums_untracked())
+        tcx.bx(tcx.cstore.postorder_cnums_untracked())
     };
     providers.output_filenames = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);

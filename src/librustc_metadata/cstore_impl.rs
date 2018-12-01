@@ -239,9 +239,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
         tcx.bx_vec(result)
     }
-    defined_lib_features => { Lrc::new(cdata.get_lib_features()) }
-    defined_lang_items => { Lrc::new(cdata.get_lang_items()) }
-    missing_lang_items => { Lrc::new(cdata.get_missing_lang_items()) }
+    defined_lib_features => { tcx.bx(cdata.get_lib_features()) }
+    defined_lang_items => { tcx.bx(cdata.get_lang_items()) }
+    missing_lang_items => { tcx.bx(cdata.get_missing_lang_items()) }
 
     missing_extern_crate_item => {
         let r = match *cdata.extern_crate.borrow() {
