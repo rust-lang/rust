@@ -1527,7 +1527,7 @@ impl<'a> State<'a> {
 
     pub fn print_defaultness(&mut self, defaultness: ast::Defaultness) -> io::Result<()> {
         if let ast::Defaultness::Default = defaultness {
-            try!(self.word_nbsp("default"));
+            self.word_nbsp("default")?;
         }
         Ok(())
     }

@@ -915,13 +915,13 @@ fn symlink_dir_force(config: &Config, src: &Path, dst: &Path) -> io::Result<()> 
     }
     if let Ok(m) = fs::symlink_metadata(dst) {
         if m.file_type().is_dir() {
-            try!(fs::remove_dir_all(dst));
+            fs::remove_dir_all(dst)?;
         } else {
             // handle directory junctions on windows by falling back to
             // `remove_dir`.
-            try!(fs::remove_file(dst).or_else(|_| {
+            fs::remove_file(dst).or_else(|_| {
                 fs::remove_dir(dst)
-            }));
+            })?;
         }
     }
 

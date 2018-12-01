@@ -203,11 +203,11 @@ pub fn symlink_dir(config: &Config, src: &Path, dest: &Path) -> io::Result<()> {
         // We're using low-level APIs to create the junction, and these are more
         // picky about paths. For example, forward slashes cannot be used as a
         // path separator, so we should try to canonicalize the path first.
-        let target = try!(fs::canonicalize(target));
+        let target = fs::canonicalize(target)?;
 
-        try!(fs::create_dir(junction));
+        fs::create_dir(junction)?;
 
-        let path = try!(to_u16s(junction));
+        let path = to_u16s(junction)?;
 
         unsafe {
             let h = CreateFileW(path.as_ptr(),
