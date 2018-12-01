@@ -64,4 +64,6 @@
 	path = src/tools/clang
 	url = https://github.com/rust-lang-nursery/clang.git
 	branch = rust-release-80-v1
-  
+[submodule "src/doc/edition-guide"]
+	path = src/doc/edition-guide
+	url = https://github.com/rust-lang-nursery/edition-guide
