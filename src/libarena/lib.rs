@@ -215,7 +215,7 @@ impl<T> TypedArena<T> {
     fn grow_slice(&self, n: usize) {
         self.grow(n)
     }
-    
+
     /// Grows the arena.
     #[inline(always)]
     fn grow(&self, n: usize) {
