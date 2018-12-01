@@ -787,22 +787,22 @@ rustc_queries! {
         query item_children(_: DefId) -> &'tcx [Export<hir::HirId>] {}
         query extern_mod_stmt_cnum(_: DefId) -> Option<CrateNum> {}
 
-        query get_lib_features(_: CrateNum) -> Lrc<LibFeatures> {
+        query get_lib_features(_: CrateNum) -> &'tcx LibFeatures {
             eval_always
             desc { "calculating the lib features map" }
         }
         query defined_lib_features(_: CrateNum)
-            -> Lrc<Vec<(Symbol, Option<Symbol>)>> {
+            -> &'tcx [(Symbol, Option<Symbol>)] {
             desc { "calculating the lib features defined in a crate" }
         }
-        query get_lang_items(_: CrateNum) -> Lrc<LanguageItems> {
+        query get_lang_items(_: CrateNum) -> &'tcx LanguageItems {
             eval_always
             desc { "calculating the lang items map" }
         }
-        query defined_lang_items(_: CrateNum) -> Lrc<Vec<(DefId, usize)>> {
+        query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, usize)] {
             desc { "calculating the lang items defined in a crate" }
         }
-        query missing_lang_items(_: CrateNum) -> Lrc<Vec<LangItem>> {
+        query missing_lang_items(_: CrateNum) -> &'tcx [LangItem] {
             desc { "calculating the missing lang items in a crate" }
         }
         query visible_parent_map(_: CrateNum)
@@ -817,7 +817,7 @@ rustc_queries! {
             eval_always
             desc { "looking at the source for a crate" }
         }
-        query postorder_cnums(_: CrateNum) -> Lrc<Vec<CrateNum>> {
+        query postorder_cnums(_: CrateNum) -> &'tcx [CrateNum] {
             eval_always
             desc { "generating a postorder list of CrateNums" }
         }
@@ -829,7 +829,7 @@ rustc_queries! {
             eval_always
         }
         query maybe_unused_extern_crates(_: CrateNum)
-            -> Lrc<Vec<(DefId, Span)>> {
+            -> &'tcx [(DefId, Span)] {
             eval_always
             desc { "looking up all possibly unused extern crates" }
         }

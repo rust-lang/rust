@@ -708,26 +708,30 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     /// Iterates over all the stability attributes in the given crate.
-    pub fn get_lib_features(&self) -> Vec<(ast::Name, Option<ast::Name>)> {
+    pub fn get_lib_features(
+        &self,
+        tcx: TyCtxt<'_, 'tcx, '_>,
+    ) -> &'tcx [(ast::Name, Option<ast::Name>)] {
         // FIXME: For a proc macro crate, not sure whether we should return the "host"
         // features or an empty Vec. Both don't cause ICEs.
-        self.root
+        tcx.arena.alloc_from_iter(self.root
             .lib_features
-            .decode(self)
-            .collect()
+            .decode(self))
     }
 
     /// Iterates over the language items in the given crate.
-    pub fn get_lang_items(&self) -> Vec<(DefId, usize)> {
+    pub fn get_lang_items(
+        &self,
+        tcx: TyCtxt<'_, 'tcx, '_>,
+    ) -> &'tcx [(DefId, usize)] {
         if self.proc_macros.is_some() {
             // Proc macro crates do not export any lang-items to the target.
-            vec![]
+            &[]
         } else {
-            self.root
+            tcx.arena.alloc_from_iter(self.root
                 .lang_items
                 .decode(self)
-                .map(|(def_index, index)| (self.local_def_id(def_index), index))
-                .collect()
+                .map(|(def_index, index)| (self.local_def_id(def_index), index)))
         }
     }
 
@@ -1102,15 +1106,17 @@ impl<'a, 'tcx> CrateMetadata {
             .collect()
     }
 
-    pub fn get_missing_lang_items(&self) -> Vec<lang_items::LangItem> {
+    pub fn get_missing_lang_items(
+        &self,
+        tcx: TyCtxt<'_, 'tcx, '_>,
+    ) -> &'tcx [lang_items::LangItem] {
         if self.proc_macros.is_some() {
             // Proc macro crates do not depend on any target weak lang-items.
-            vec![]
+            &[]
         } else {
-            self.root
+            tcx.arena.alloc_from_iter(self.root
                 .lang_items_missing
-                .decode(self)
-                .collect()
+                .decode(self))
         }
     }
 

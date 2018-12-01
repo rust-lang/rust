@@ -229,9 +229,9 @@ provide! { <'tcx> tcx, def_id, other, cdata,
         cdata.each_child_of_item(def_id.index, |child| result.push(child), tcx.sess);
         tcx.arena.alloc_slice(&result)
     }
-    defined_lib_features => { Lrc::new(cdata.get_lib_features()) }
-    defined_lang_items => { Lrc::new(cdata.get_lang_items()) }
-    missing_lang_items => { Lrc::new(cdata.get_missing_lang_items()) }
+    defined_lib_features => { cdata.get_lib_features(tcx) }
+    defined_lang_items => { cdata.get_lang_items(tcx) }
+    missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 
     missing_extern_crate_item => {
         let r = match *cdata.extern_crate.borrow() {

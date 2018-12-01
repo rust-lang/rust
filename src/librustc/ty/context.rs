@@ -1376,11 +1376,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.sess.consider_optimizing(&cname, msg)
     }
 
-    pub fn lib_features(self) -> Lrc<middle::lib_features::LibFeatures> {
+    pub fn lib_features(self) -> &'gcx middle::lib_features::LibFeatures {
         self.get_lib_features(LOCAL_CRATE)
     }
 
-    pub fn lang_items(self) -> Lrc<middle::lang_items::LanguageItems> {
+    pub fn lang_items(self) -> &'gcx middle::lang_items::LanguageItems {
         self.get_lang_items(LOCAL_CRATE)
     }
 
@@ -3060,11 +3060,11 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.get_lib_features = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
-        Lrc::new(middle::lib_features::collect(tcx))
+        tcx.arena.alloc(middle::lib_features::collect(tcx))
     };
     providers.get_lang_items = |tcx, id| {
         assert_eq!(id, LOCAL_CRATE);
-        Lrc::new(middle::lang_items::collect(tcx))
+        tcx.arena.alloc(middle::lang_items::collect(tcx))
     };
     providers.upvars = |tcx, id| tcx.gcx.upvars.get(&id).map(|v| &v[..]);
     providers.maybe_unused_trait_import = |tcx, id| {
@@ -3072,7 +3072,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.maybe_unused_extern_crates = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        Lrc::new(tcx.maybe_unused_extern_crates.clone())
+        &tcx.maybe_unused_extern_crates[..]
     };
     providers.names_imported_by_glob_use = |tcx, id| {
         assert_eq!(id.krate, LOCAL_CRATE);
@@ -3103,7 +3103,7 @@ pub fn provide(providers: &mut ty::query::Providers<'_>) {
     };
     providers.postorder_cnums = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
-        Lrc::new(tcx.cstore.postorder_cnums_untracked())
+        tcx.arena.alloc_slice(&tcx.cstore.postorder_cnums_untracked())
     };
     providers.output_filenames = |tcx, cnum| {
         assert_eq!(cnum, LOCAL_CRATE);
