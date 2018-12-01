@@ -24,7 +24,6 @@ use rustc::session::config::{CrateType, Input, OutputType};
 use rustc::ty::{self, DefIdTree, TyCtxt};
 use rustc::{bug, span_bug};
 use rustc_codegen_utils::link::{filename_for_metadata, out_filename};
-use rustc_data_structures::sync::Lrc;
 
 use std::cell::Cell;
 use std::default::Default;
@@ -1120,7 +1119,7 @@ pub fn process_crate<'l, 'tcx, H: SaveHandler>(
         // fallback in case the access levels couldn't have been correctly computed.
         let access_levels = match tcx.sess.compile_status() {
             Ok(..) => tcx.privacy_access_levels(LOCAL_CRATE),
-            Err(..) => Lrc::new(AccessLevels::default()),
+            Err(..) => tcx.arena.alloc(AccessLevels::default()),
         };
 
         let save_ctxt = SaveContext {
