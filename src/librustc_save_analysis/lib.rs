@@ -109,8 +109,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let mut result = Vec::with_capacity(self.tcx.crates().len());
 
         for &n in self.tcx.crates().iter() {
-            let span = match *self.tcx.extern_crate(n.as_def_id()) {
-                Some(ExternCrate { span, .. }) => span,
+            let span = match self.tcx.extern_crate(n.as_def_id()) {
+                Some(&ExternCrate { span, .. }) => span,
                 None => {
                     debug!("Skipping crate {}, no data", n);
                     continue;

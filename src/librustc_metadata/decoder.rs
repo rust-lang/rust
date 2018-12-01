@@ -1097,16 +1097,18 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_dylib_dependency_formats(&self) -> Vec<(CrateNum, LinkagePreference)> {
-        self.root
+    pub fn get_dylib_dependency_formats(
+        &self,
+        tcx: TyCtxt<'_, 'tcx, '_>,
+    ) -> &'tcx [(CrateNum, LinkagePreference)] {
+        tcx.arena.alloc_from_iter(self.root
             .dylib_dependency_formats
             .decode(self)
             .enumerate()
             .flat_map(|(i, link)| {
                 let cnum = CrateNum::new(i + 1);
                 link.map(|link| (self.cnum_map[cnum], link))
-            })
-            .collect()
+            }))
     }
 
     pub fn get_missing_lang_items(
