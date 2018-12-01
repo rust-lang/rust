@@ -97,7 +97,6 @@ use crate::namespace::Namespace;
 use rustc::infer::{self, InferCtxt, InferOk, InferResult};
 use rustc::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi::Abi;
 use rustc::infer::opaque_types::OpaqueTypeDecl;
 use rustc::infer::type_variable::{TypeVariableOrigin};
@@ -1907,7 +1906,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'tcx> { self.tcx }
 
     fn get_type_parameter_bounds(&self, _: Span, def_id: DefId)
-                                 -> Lrc<ty::GenericPredicates<'tcx>>
+                                 -> &'tcx ty::GenericPredicates<'tcx>
     {
         let tcx = self.tcx;
         let hir_id = tcx.hir().as_local_hir_id(def_id).unwrap();
@@ -1915,7 +1914,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         let item_def_id = tcx.hir().local_def_id_from_hir_id(item_id);
         let generics = tcx.generics_of(item_def_id);
         let index = generics.param_def_id_to_index[&def_id];
-        Lrc::new(ty::GenericPredicates {
+        tcx.arena.alloc(ty::GenericPredicates {
             parent: None,
             predicates: self.param_env.caller_bounds.iter().filter_map(|&predicate| {
                 match predicate {

@@ -2298,7 +2298,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     #[inline]
-    pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Lrc<GenericPredicates<'gcx>> {
+    pub fn predicates(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx GenericPredicates<'gcx> {
         tcx.predicates_of(self.did)
     }
 

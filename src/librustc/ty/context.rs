@@ -201,6 +201,10 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
     }
 }
 
+pub struct Common<'tcx> {
+    pub empty_predicates: ty::GenericPredicates<'tcx>,
+}
+
 pub struct CommonTypes<'tcx> {
     pub unit: Ty<'tcx>,
     pub bool: Ty<'tcx>,
@@ -1045,6 +1049,9 @@ pub struct GlobalCtxt<'tcx> {
 
     pub dep_graph: DepGraph,
 
+    /// Common objects.
+    pub common: Common<'tcx>,
+
     /// Common types, pre-interned for your convenience.
     pub types: CommonTypes<'tcx>,
 
@@ -1252,6 +1259,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             s.fatal(&err);
         });
         let interners = CtxtInterners::new(&arenas.interner);
+        let common = Common {
+            empty_predicates: ty::GenericPredicates {
+                parent: None,
+                predicates: vec![],
+            },
+        };
         let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
@@ -1308,6 +1321,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             global_arenas: &arenas.global,
             global_interners: interners,
             dep_graph,
+            common,
             types: common_types,
             lifetimes: common_lifetimes,
             consts: common_consts,
