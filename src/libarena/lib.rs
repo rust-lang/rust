@@ -35,11 +35,9 @@
 extern crate alloc;
 extern crate rustc_data_structures;
 
-use rustc_data_structures::OnDrop;
 use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use rustc_data_structures::sync::{MTLock, WorkerLocal};
 
-use std::process;
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::intrinsics;
@@ -497,34 +495,28 @@ impl SyncDroplessArena {
     #[inline]
     pub fn promote<T: DeferDeallocs>(&self, object: T) -> &T {
         let mem = self.alloc_raw(mem::size_of::<T>(), mem::align_of::<T>()) as *mut _ as *mut T;
-
-        {
-            // Abort the process if we panic here to ensure that we don't both
-            // record and allocation and also destroy object, resulting in a double free
-            let abort = OnDrop(|| process::abort());
-
-            // Defer the allocations
-            object.defer(&mut *self.deferred.borrow_mut());
-
-            mem::forget(abort);
-        }
-
-        unsafe {
+        let result = unsafe {
             // Write into uninitialized memory.
             ptr::write(mem, object);
             &mut *mem
-        }
+        };
+        // We write the result into memory which ensures that the object will not have
+        // its destructor called, and only then do we record the allocation inside
+        // to prevent a double free of the same allocation
+        result.defer(&mut *self.deferred.borrow_mut());
+        result
     }
 
     #[inline(always)]
     pub fn promote_vec<T: DeferDeallocs>(&self, vec: Vec<T>) -> &[T] {
-        // Defer the allocations
+        let vec = mem::ManuallyDrop::new(vec);
+        // We forget the vector which ensures that its destructor called will not be called,
+        // and only then do we record the allocation inside. This is to prevent a double free
+        // of the same allocation
         vec.defer(&mut *self.deferred.borrow_mut());
-
-        // Then just return the slice
-        let result = &vec[..] as *const [T];
-        mem::forget(vec);
-        unsafe { &*result }
+        unsafe {
+            &*(&vec[..] as *const [T])
+        }
     }
 }
 
