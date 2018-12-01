@@ -384,6 +384,11 @@ pub struct CrateVariancesMap<'tcx> {
     pub variances: FxHashMap<DefId, &'tcx [ty::Variance]>,
 }
 
+unsafe impl<'tcx> DeferDeallocs for CrateVariancesMap<'tcx> {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.variances.defer(deferred);
+    }
+}
 impl Variance {
     /// `a.xform(b)` combines the variance of a context with the
     /// variance of a type with the following meaning.  If we are in a
