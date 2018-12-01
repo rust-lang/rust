@@ -65,6 +65,6 @@ rustfmt-nightly = { path = "src/tools/rustfmt" }
 # here
 rustc-workspace-hack = { path = 'src/tools/rustc-workspace-hack' }
 
-[patch."https://github.com/rust-lang-nursery/rust-clippy"]
+[patch."https://github.com/rust-lang/rust-clippy"]
 clippy_lints = { path = "src/tools/clippy/clippy_lints" }
 rustc_tools_util = { path = "src/tools/clippy/rustc_tools_util" }
