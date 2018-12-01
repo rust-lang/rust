@@ -437,7 +437,7 @@ rustc_queries! {
         query check_match(_: DefId) -> () {}
 
         /// Performs part of the privacy check and computes "access levels".
-        query privacy_access_levels(_: CrateNum) -> Lrc<AccessLevels> {
+        query privacy_access_levels(_: CrateNum) -> &'tcx AccessLevels {
             eval_always
             desc { "privacy access levels" }
         }
