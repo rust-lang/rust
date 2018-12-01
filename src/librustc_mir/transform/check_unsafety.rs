@@ -514,7 +514,7 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 
     let param_env = tcx.param_env(def_id);
     let mut checker = UnsafetyChecker::new(
-        tcx.is_const_fn(def_id) && tcx.is_min_const_fn(def_id),
+        tcx.is_min_const_fn(def_id),
         mir, source_scope_local_data, tcx, param_env);
     checker.visit_mir(mir);
 
@@ -617,13 +617,19 @@ pub fn check_unsafety<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) {
         // Report an error.
         match kind {
             UnsafetyViolationKind::General if tcx.is_min_const_fn(def_id) => {
-                tcx.sess.struct_span_err(
+                let mut err = tcx.sess.struct_span_err(
                     source_info.span,
                     &format!("{} is unsafe and unsafe operations \
-                            are not allowed in const fn", description))
-                    .span_label(source_info.span, &description.as_str()[..])
-                    .note(&details.as_str()[..])
-                    .emit();
+                            are not allowed in const fn", description));
+                err.span_label(source_info.span, &description.as_str()[..])
+                    .note(&details.as_str()[..]);
+                if tcx.fn_sig(def_id).unsafety() == hir::Unsafety::Unsafe {
+                    err.note(
+                        "unsafe action within a `const unsafe fn` still require an `unsafe` \
+                        block in contrast to regular `unsafe fn`."
+                    );
+                }
+                err.emit();
             }
             UnsafetyViolationKind::GeneralAndConstFn |
             UnsafetyViolationKind::General => {

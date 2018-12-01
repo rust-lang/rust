@@ -115,7 +115,7 @@ pub fn mir_build<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId) -> Mir<'t
                     // As specified in #55607, a `const unsafe fn` differs
                     // from an `unsafe fn` in that its body is still considered
                     // safe code by default.
-                    assert!(!implicit_argument.is_none());
+                    assert!(implicit_argument.is_none());
                     Safety::Safe
                 },
                 hir::Unsafety::Unsafe => Safety::FnUnsafe,
