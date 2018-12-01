@@ -17,7 +17,6 @@ use rustc::ty::{GenericParamDef, GenericParamDefKind};
 use rustc::ty::subst::{Kind, Subst, InternalSubsts, SubstsRef};
 use rustc::ty::wf::object_region_bounds;
 use rustc::mir::interpret::ConstValue;
-use rustc_data_structures::sync::Lrc;
 use rustc_target::spec::abi;
 use crate::require_c_abi_if_c_variadic;
 use smallvec::SmallVec;
@@ -46,7 +45,7 @@ pub trait AstConv<'gcx, 'tcx> {
     /// Returns the set of bounds in scope for the type parameter with
     /// the given id.
     fn get_type_parameter_bounds(&self, span: Span, def_id: DefId)
-                                 -> Lrc<ty::GenericPredicates<'tcx>>;
+                                 -> &'tcx ty::GenericPredicates<'tcx>;
 
     /// What lifetime should we use when a lifetime is omitted (and not elided)?
     fn re_infer(&self, span: Span, _def: Option<&ty::GenericParamDef>)
