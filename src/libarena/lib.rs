@@ -151,32 +151,32 @@ impl<T> TypedArena<T> {
 
         let ptr = self.ptr.get();
 
-        let ptr = if ptr == self.end.get() {
-            self.grow_and_alloc()
-        } else {
-            // Advance the pointer.
-            unsafe {
-                self.ptr.set(ptr.offset(1));
-            }
-            ptr
-        };
-
         unsafe {
-            // Write into uninitialized memory.
-            ptr::write(ptr, object);
-            &mut *ptr
+            if std::intrinsics::unlikely(ptr == self.end.get()) {
+                self.grow_and_alloc(object)
+            } else {
+                self.alloc_unchecked(ptr, object)
+            }
         }
+    }
+
+    #[inline(always)]
+    unsafe fn alloc_unchecked(&self, ptr: *mut T, object: T) -> &mut T {
+        // Advance the pointer.
+        self.ptr.set(ptr.offset(1));
+        // Write into uninitialized memory.
+        ptr::write(ptr, object);
+        &mut *ptr
     }
 
     #[inline(never)]
     #[cold]
-    fn grow_and_alloc(&self) -> *mut T {
+    fn grow_and_alloc(&self, object: T) -> &mut T {
+        // We move the object in this function so if it has a destructor
+        // the fast path need not have an unwind handler to destroy it
         self.grow(1);
         unsafe {
-            let ptr = self.ptr.get();
-            // Advance the pointer.
-            self.ptr.set(ptr.offset(1));
-            ptr
+            self.alloc_unchecked(self.ptr.get(), object)
         }
     }
 
@@ -356,6 +356,11 @@ pub fn atest2(a: &SyncDroplessArena, b: Box<usize>) -> &Box<usize> {
 }
 
 #[no_mangle]
+pub fn atest6(a: &SyncDroplessArena, b: usize) -> &usize {
+    a.promote(b)
+}
+
+#[no_mangle]
 pub fn atest3(a: &DroplessArena) {
     a.align(8);
 }
@@ -479,7 +484,7 @@ impl DroplessArena {
             // Find some way to guarantee this doesn't happen for small fixed size types
             let ptr = self.ptr.get();
             let future_end = intrinsics::arith_offset(ptr, bytes as isize);
-            if /*std::intrinsics::unlikely(*/(future_end as *mut u8) >= self.end.get()/*)*/ {
+            if std::intrinsics::unlikely((future_end as *mut u8) >= self.end.get()) {
                 self.grow_and_alloc_raw(bytes)
             } else {
                 self.alloc_raw_unchecked(ptr, bytes)
