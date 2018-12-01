@@ -932,6 +932,7 @@ impl<T> VecDeque<T> {
     /// v.push_front(1);
     /// assert!(!v.is_empty());
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
         self.tail == self.head

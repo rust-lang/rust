@@ -461,6 +461,7 @@ impl<T, S> HashSet<T, S>
     /// v.insert(1);
     /// assert_eq!(v.len(), 1);
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> usize {
         self.map.len()
@@ -478,6 +479,7 @@ impl<T, S> HashSet<T, S>
     /// v.insert(1);
     /// assert!(!v.is_empty());
     /// ```
+    #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
         self.map.is_empty()

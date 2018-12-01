@@ -776,6 +776,7 @@ impl<K, V> RawTable<K, V> {
 
     /// The number of elements ever `put` in the hashtable, minus the number
     /// of elements ever `take`n.
+    #[inline]
     pub fn size(&self) -> usize {
         self.size
     }
