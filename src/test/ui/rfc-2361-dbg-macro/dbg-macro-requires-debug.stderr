@@ -1,5 +1,5 @@
 error[E0277]: `NotDebug` doesn't implement `std::fmt::Debug`
-  --> $DIR/dbg-macro-requires-debug.rs:8:23
+  --> $DIR/dbg-macro-requires-debug.rs:6:23
    |
 LL |     let _: NotDebug = dbg!(NotDebug);
    |                       ^^^^^^^^^^^^^^ `NotDebug` cannot be formatted using `{:?}`
