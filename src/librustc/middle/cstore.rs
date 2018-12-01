@@ -36,6 +36,7 @@ use syntax::ast;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 use rustc_target::spec::Target;
+use rustc_data_structures::defer_deallocs::{DeferDeallocs, DeferredDeallocs};
 use rustc_data_structures::sync::{self, MetadataRef, Lrc};
 
 pub use self::NativeLibraryKind::*;
@@ -130,6 +131,13 @@ pub struct NativeLibrary {
 pub struct ForeignModule {
     pub foreign_items: Vec<DefId>,
     pub def_id: DefId,
+}
+
+unsafe impl DeferDeallocs for ForeignModule {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.foreign_items.defer(deferred);
+        self.def_id.defer(deferred);
+    }
 }
 
 #[derive(Copy, Clone, Debug)]

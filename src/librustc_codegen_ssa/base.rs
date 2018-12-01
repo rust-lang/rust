@@ -939,7 +939,7 @@ pub fn provide_both(providers: &mut Providers) {
             .map(|id| &module_map[&id])
             .flat_map(|module| module.foreign_items.iter().cloned())
             .collect();
-        Lrc::new(dllimports)
+        tcx.bx(dllimports)
     };
 
     providers.is_dllimport_foreign_item = |tcx, def_id| {

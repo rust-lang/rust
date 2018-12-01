@@ -467,7 +467,7 @@ define_queries! { <'tcx>
     Other {
         [] fn native_libraries: NativeLibraries(CrateNum) -> Lrc<Vec<NativeLibrary>>,
 
-        [] fn foreign_modules: ForeignModules(CrateNum) -> Lrc<Vec<ForeignModule>>,
+        [] fn foreign_modules: ForeignModules(CrateNum) -> Bx<'tcx, Vec<ForeignModule>>,
 
         [] fn plugin_registrar_fn: PluginRegistrarFn(CrateNum) -> Option<DefId>,
         [] fn proc_macro_decls_static: ProcMacroDeclsStatic(CrateNum) -> Option<DefId>,
@@ -486,7 +486,7 @@ define_queries! { <'tcx>
 
     Other {
         [] fn dllimport_foreign_items: DllimportForeignItems(CrateNum)
-            -> Lrc<FxHashSet<DefId>>,
+            -> Bx<'tcx, FxHashSet<DefId>>,
         [] fn is_dllimport_foreign_item: IsDllimportForeignItem(DefId) -> bool,
         [] fn is_statically_included_foreign_item: IsStaticallyIncludedForeignItem(DefId) -> bool,
         [] fn native_library_kind: NativeLibraryKind(DefId)
@@ -494,6 +494,7 @@ define_queries! { <'tcx>
     },
 
     Linking {
+        // Uses Lrc since it lives beyond the type arena
         [] fn link_args: link_args_node(CrateNum) -> Lrc<Vec<String>>,
     },
 
