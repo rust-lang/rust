@@ -1132,6 +1132,12 @@ pub struct CratePredicatesMap<'tcx> {
     pub predicates: FxHashMap<DefId, &'tcx [ty::Predicate<'tcx>]>,
 }
 
+unsafe impl<'tcx> DeferDeallocs for CratePredicatesMap<'tcx> {
+    fn defer(&self, deferred: &mut DeferredDeallocs) {
+        self.predicates.defer(deferred);
+    }
+}
+
 impl<'tcx> AsRef<Predicate<'tcx>> for Predicate<'tcx> {
     fn as_ref(&self) -> &Predicate<'tcx> {
         self

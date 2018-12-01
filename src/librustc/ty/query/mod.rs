@@ -198,7 +198,7 @@ define_queries! { <'tcx>
     TypeChecking {
         /// Maps from def-id of a type to its (inferred) outlives.
         [] fn inferred_outlives_crate: InferredOutlivesCrate(CrateNum)
-            -> Lrc<ty::CratePredicatesMap<'tcx>>,
+            -> Bx<'tcx, ty::CratePredicatesMap<'tcx>>,
     },
 
     Other {
