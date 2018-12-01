@@ -135,7 +135,7 @@ pub fn test2<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> Bx<'tcx, u32> {
 
 #[no_mangle]
 pub fn test3<'tcx>(
-    allocs: &mut DeferredDeallocs, ptr: std::ptr::NonNull<u8>, 
+    allocs: &mut DeferredDeallocs, ptr: std::ptr::NonNull<u8>,
     layout: std::alloc::Layout) {
     allocs.add(ptr, layout);
 }
@@ -148,7 +148,7 @@ pub fn test4<'tcx>(
 
 #[no_mangle]
 pub fn test5<'tcx>(
-    allocs: &rustc_data_structures::sync::WorkerLocal<RefCell<DeferredDeallocs>>, 
+    allocs: &rustc_data_structures::sync::WorkerLocal<RefCell<DeferredDeallocs>>,
     vec: &Vec<u32>) {
     vec.defer(&mut *allocs.borrow_mut());
 }
