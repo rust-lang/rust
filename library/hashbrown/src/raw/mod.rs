@@ -853,11 +853,16 @@ impl<T> RawIterRange<T> {
     ///
     /// The start offset must be aligned to the group width.
     #[inline]
-    unsafe fn new(ctrl: *const u8, data: *const T, range: Range<usize>) -> RawIterRange<T> {
+    unsafe fn new(
+        input_ctrl: *const u8,
+        input_data: *const T,
+        range: Range<usize>,
+    ) -> RawIterRange<T> {
         debug_assert_eq!(range.start % Group::WIDTH, 0);
-        let ctrl = ctrl.add(range.start);
-        let data = data.add(range.start);
-        let end = ctrl.add(range.end);
+        let ctrl = input_ctrl.add(range.start);
+        let data = input_data.add(range.start);
+        let end = input_ctrl.add(range.end);
+        debug_assert_eq!(offset_from(end, ctrl), range.end - range.start);
         let current_group = Group::load_aligned(ctrl).match_empty_or_deleted().invert();
         RawIterRange {
             data,
@@ -881,7 +886,10 @@ impl<T> RawIterRange<T> {
             debug_assert_eq!(len % (Group::WIDTH * 2), 0);
             let mid = len / 2;
             let tail = RawIterRange::new(self.ctrl, self.data, mid..len);
+            debug_assert_eq!(self.data.add(mid), tail.data);
+            debug_assert_eq!(self.end, tail.end);
             self.end = self.ctrl.add(mid);
+            debug_assert_eq!(self.end, tail.ctrl);
             (self, Some(tail))
         }
     }
