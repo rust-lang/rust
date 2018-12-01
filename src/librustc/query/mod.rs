@@ -592,7 +592,7 @@ rustc_queries! {
 
     Other {
         query dylib_dependency_formats(_: CrateNum)
-                                        -> Lrc<Vec<(CrateNum, LinkagePreference)>> {
+                                        -> &'tcx [(CrateNum, LinkagePreference)] {
             desc { "dylib dependency formats of crate" }
         }
     }
@@ -627,7 +627,7 @@ rustc_queries! {
             desc { "test whether a crate has #![no_builtins]" }
         }
 
-        query extern_crate(_: DefId) -> Lrc<Option<ExternCrate>> {
+        query extern_crate(_: DefId) -> Option<&'tcx ExternCrate> {
             eval_always
             desc { "getting crate's ExternCrateData" }
         }
@@ -673,7 +673,7 @@ rustc_queries! {
         // Does not include external symbols that don't have a corresponding DefId,
         // like the compiler-generated `main` function and so on.
         query reachable_non_generics(_: CrateNum)
-            -> Lrc<DefIdMap<SymbolExportLevel>> {
+            -> &'tcx DefIdMap<SymbolExportLevel> {
             desc { "looking up the exported symbols of a crate" }
         }
         query is_reachable_non_generic(_: DefId) -> bool {}

@@ -1,4 +1,3 @@
-use rustc_data_structures::sync::Lrc;
 use std::sync::Arc;
 
 use rustc::ty::Instance;
@@ -49,12 +48,12 @@ pub fn crates_export_threshold(crate_types: &[config::CrateType]) -> SymbolExpor
 
 fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              cnum: CrateNum)
-                                             -> Lrc<DefIdMap<SymbolExportLevel>>
+                                             -> &'tcx DefIdMap<SymbolExportLevel>
 {
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {
-        return Default::default();
+        return tcx.arena.alloc(Default::default());
     }
 
     // Check to see if this crate is a "special runtime crate". These
@@ -155,7 +154,7 @@ fn reachable_non_generics_provider<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         reachable_non_generics.insert(id, SymbolExportLevel::C);
     }
 
-    Lrc::new(reachable_non_generics)
+    tcx.arena.alloc(reachable_non_generics)
 }
 
 fn is_reachable_non_generic_provider_local<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

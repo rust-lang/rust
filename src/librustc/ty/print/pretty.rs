@@ -253,8 +253,8 @@ pub trait PrettyPrinter<'gcx: 'tcx, 'tcx>:
             // 2. for an extern inferred from a path or an indirect crate,
             //    where there is no explicit `extern crate`, we just prepend
             //    the crate name.
-            match *self.tcx().extern_crate(def_id) {
-                Some(ExternCrate {
+            match self.tcx().extern_crate(def_id) {
+                Some(&ExternCrate {
                     src: ExternCrateSource::Extern(def_id),
                     direct: true,
                     span,

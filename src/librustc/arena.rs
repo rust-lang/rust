@@ -96,6 +96,9 @@ macro_rules! arena_types {
             [few] visible_parent_map: rustc::util::nodemap::DefIdMap<rustc::hir::def_id::DefId>,
             [few] foreign_module: rustc::middle::cstore::ForeignModule,
             [few] foreign_modules: Vec<rustc::middle::cstore::ForeignModule>,
+            [few] reachable_non_generics: rustc::util::nodemap::DefIdMap<
+                rustc::middle::exported_symbols::SymbolExportLevel
+            >,
         ], $tcx);
     )
 }
