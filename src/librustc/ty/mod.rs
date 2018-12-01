@@ -123,6 +123,37 @@ mod instance;
 mod structural_impls;
 mod sty;
 
+#[no_mangle]
+pub fn test1<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>, vec: Vec<u32>) -> Bx<'tcx, [u32]> {
+    tcx.bx_vec(vec)
+}
+
+#[no_mangle]
+pub fn test2<'tcx>(tcx: TyCtxt<'_, 'tcx, 'tcx>) -> Bx<'tcx, u32> {
+    tcx.bx(45)
+}
+
+#[no_mangle]
+pub fn test3<'tcx>(
+    allocs: &mut DeferredDeallocs, ptr: std::ptr::NonNull<u8>, 
+    layout: std::alloc::Layout) {
+    allocs.add(ptr, layout);
+}
+
+#[no_mangle]
+pub fn test4<'tcx>(
+    allocs: &mut DeferredDeallocs, vec: Vec<u32>) {
+    vec.defer(allocs);
+}
+
+#[no_mangle]
+pub fn test5<'tcx>(
+    allocs: &rustc_data_structures::sync::WorkerLocal<RefCell<DeferredDeallocs>>, 
+    vec: Vec<u32>) {
+    let abort = rustc_data_structures::OnDrop(|| std::process::abort());
+    vec.defer(&mut *allocs.borrow_mut());
+}
+
 // Data types
 
 /// The complete set of all analyses described in this module. This is
