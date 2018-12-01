@@ -33,7 +33,10 @@ fn test_a() {
 
 fn test_b() {
     let x: Option<Bar> = None;
-    match x { None => () }
+    match x {
+        Some(_) => (),
+        None => ()
+    }
 }
 
 fn main() { }
