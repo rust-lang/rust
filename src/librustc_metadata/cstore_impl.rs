@@ -371,7 +371,7 @@ pub fn provide<'tcx>(providers: &mut Providers<'tcx>) {
                 }
             }
 
-            Lrc::new(visible_parent_map)
+            tcx.arena.alloc(visible_parent_map)
         },
 
         ..*providers

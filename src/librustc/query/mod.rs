@@ -806,7 +806,7 @@ rustc_queries! {
             desc { "calculating the missing lang items in a crate" }
         }
         query visible_parent_map(_: CrateNum)
-            -> Lrc<DefIdMap<DefId>> {
+            -> &'tcx DefIdMap<DefId> {
             desc { "calculating the visible parent map" }
         }
         query missing_extern_crate_item(_: CrateNum) -> bool {
