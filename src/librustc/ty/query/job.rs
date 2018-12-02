@@ -103,8 +103,11 @@ impl<'tcx> QueryJob<'tcx> {
                     condvar: Condvar::new(),
                 });
                 self.latch.await(&waiter);
-
-                match Lrc::get_mut(&mut waiter).unwrap().cycle.get_mut().take() {
+                // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
+                // although another thread may still have a Lrc reference so we cannot
+                // use Lrc::get_mut
+                let mut cycle = waiter.cycle.lock();
+                match cycle.take() {
                     None => Ok(()),
                     Some(cycle) => Err(cycle)
                 }
