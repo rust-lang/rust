@@ -52,7 +52,7 @@ matrix:
     - os: linux
       env: BASE_TESTS=true
     - os: windows
-      env: BASE_TESTS=true
+      env: CARGO_INCREMENTAL=0 BASE_TESTS=true
     - env: INTEGRATION=rust-lang/cargo
       if: repo =~ /^rust-lang\/rust-clippy$/
     - env: INTEGRATION=rust-random/rand
@@ -81,7 +81,7 @@ matrix:
       if: repo =~ /^rust-lang\/rust-clippy$/
   allow_failures:
   - os: windows
-    env: BASE_TESTS=true
+    env: CARGO_INCREMENTAL=0 BASE_TESTS=true
 # prevent these jobs with default env vars
   exclude:
     - os: linux
