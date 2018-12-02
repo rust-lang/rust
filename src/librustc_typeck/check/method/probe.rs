@@ -42,7 +42,6 @@ use syntax_pos::{DUMMY_SP, Span, symbol::Symbol};
 use std::iter;
 use std::mem;
 use std::ops::Deref;
-use std::rc::Rc;
 use std::cmp::max;
 
 use self::CandidateKind::*;
@@ -448,7 +447,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
            method_name: Option<ast::Ident>,
            return_type: Option<Ty<'tcx>>,
            orig_steps_var_values: OriginalQueryValues<'tcx>,
-           steps: Rc<Vec<CandidateStep<'gcx>>>,
+           steps: Lrc<Vec<CandidateStep<'gcx>>>,
            is_suggestion: IsSuggestion)
            -> ProbeContext<'a, 'gcx, 'tcx> {
         ProbeContext {
