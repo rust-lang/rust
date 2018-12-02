@@ -30,7 +30,7 @@ pub fn set_source_location<D>(
         FunctionDebugContext::RegularContext(ref data) => data
     };
 
-    let dbg_loc = if function_debug_context.source_locations_enabled.get() {
+    let dbg_loc = if function_debug_context.source_locations_enabled {
         debug!("set_source_location: {}", bx.sess().source_map().span_to_string(span));
         let loc = span_start(bx.cx(), span);
         InternalDebugLocation::new(scope.unwrap(), loc.line, loc.col.to_usize())

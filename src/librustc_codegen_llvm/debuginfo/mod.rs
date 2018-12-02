@@ -32,7 +32,7 @@ use rustc_codegen_ssa::debuginfo::{FunctionDebugContext, MirDebugScope, Variable
     VariableKind, FunctionDebugContextData};
 
 use libc::c_uint;
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::ffi::CString;
 
 use syntax_pos::{self, Span, Pos};
@@ -158,7 +158,7 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         variable_kind: VariableKind,
         span: Span,
     ) {
-        assert!(!dbg_context.get_ref(span).source_locations_enabled.get());
+        assert!(!dbg_context.get_ref(span).source_locations_enabled);
         let cx = self.cx();
 
         let file = span_start(cx, span).file;
@@ -327,7 +327,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // Initialize fn debug context (including scope map and namespace map)
         let fn_debug_context = FunctionDebugContextData {
             fn_metadata,
-            source_locations_enabled: Cell::new(false),
+            source_locations_enabled: false,
             defining_crate: def_id.krate,
         };
 
