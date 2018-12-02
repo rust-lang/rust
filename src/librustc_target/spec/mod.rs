@@ -995,7 +995,7 @@ impl Target {
 
         key!(is_builtin, bool);
         key!(linker, optional);
-        try!(key!(lld_flavor, LldFlavor));
+        key!(lld_flavor, LldFlavor)?;
         key!(pre_link_args, link_args);
         key!(pre_link_args_crt, link_args);
         key!(pre_link_objects_exe, list);
@@ -1038,7 +1038,7 @@ impl Target {
         key!(no_default_libraries, bool);
         key!(position_independent_executables, bool);
         key!(needs_plt, bool);
-        try!(key!(relro_level, RelroLevel));
+        key!(relro_level, RelroLevel)?;
         key!(archive_format);
         key!(allow_asm, bool);
         key!(custom_unwind_resume, bool);
@@ -1048,7 +1048,7 @@ impl Target {
         key!(max_atomic_width, Option<u64>);
         key!(min_atomic_width, Option<u64>);
         key!(atomic_cas, bool);
-        try!(key!(panic_strategy, PanicStrategy));
+        key!(panic_strategy, PanicStrategy)?;
         key!(crt_static_allows_dylibs, bool);
         key!(crt_static_default, bool);
         key!(crt_static_respected, bool);
