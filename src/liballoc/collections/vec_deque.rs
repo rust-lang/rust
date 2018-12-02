@@ -701,7 +701,7 @@ impl<T> VecDeque<T> {
     /// buf.shrink_to(0);
     /// assert!(buf.capacity() >= 4);
     /// ```
-    #[unstable(feature = "shrink_to", reason = "new API", issue="0")]
+    #[unstable(feature = "shrink_to", reason = "new API", issue="56431")]
     pub fn shrink_to(&mut self, min_capacity: usize) {
         assert!(self.capacity() >= min_capacity, "Tried to shrink to a larger capacity");
 
