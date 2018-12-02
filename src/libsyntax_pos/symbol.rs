@@ -404,9 +404,11 @@ declare_keywords! {
     (49, Virtual,            "virtual")
     (50, Yield,              "yield")
 
+    // Edition-specific keywords used in the language.
+    (51, Dyn,                "dyn") // >= 2018 Edition only
+
     // Edition-specific keywords reserved for future use.
-    (51, Async,              "async") // >= 2018 Edition only
-    (52, Dyn,                "dyn") // >= 2018 Edition only
+    (52, Async,              "async") // >= 2018 Edition only
     (53, Try,                "try") // >= 2018 Edition only
 
     // Special lifetime names
@@ -417,11 +419,15 @@ declare_keywords! {
     (56, Auto,               "auto")
     (57, Catch,              "catch")
     (58, Default,            "default")
-    (59, Union,              "union")
-    (60, Existential,        "existential")
+    (59, Existential,        "existential")
+    (60, Union,              "union")
 }
 
 impl Symbol {
+    fn is_used_keyword_2018(self) -> bool {
+        self == keywords::Dyn.name()
+    }
+
     fn is_unused_keyword_2018(self) -> bool {
         self >= keywords::Async.name() && self <= keywords::Try.name()
     }
@@ -436,7 +442,9 @@ impl Ident {
 
     /// Returns `true` if the token is a keyword used in the language.
     pub fn is_used_keyword(self) -> bool {
-        self.name >= keywords::As.name() && self.name <= keywords::While.name()
+        // Note: `span.edition()` is relatively expensive, don't call it unless necessary.
+        self.name >= keywords::As.name() && self.name <= keywords::While.name() ||
+        self.name.is_used_keyword_2018() && self.span.rust_2018()
     }
 
     /// Returns `true` if the token is a keyword reserved for possible future use.
