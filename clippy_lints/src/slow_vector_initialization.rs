@@ -55,7 +55,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub UNSAFE_VECTOR_INITIALIZATION,
-    correctness,
+    restriction,
     "unsafe vector initialization"
 }
 
