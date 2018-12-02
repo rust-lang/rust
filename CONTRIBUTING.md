@@ -130,7 +130,7 @@ Please document your lint with a doc comment akin to the following:
 /// ```
 ```
 
-Once your lint is merged it will show up in the [lint list](https://rust-lang-nursery.github.io/rust-clippy/master/index.html)
+Once your lint is merged it will show up in the [lint list](https://rust-lang.github.io/rust-clippy/master/index.html)
 
 ### Running test suite
 
