@@ -1,217 +1,217 @@
 error: inconsistent casing in hexadecimal literal
-  --> $DIR/literals.rs:21:17
+  --> $DIR/literals.rs:22:17
    |
-21 |     let fail1 = 0xabCD;
+22 |     let fail1 = 0xabCD;
    |                 ^^^^^^
    |
    = note: `-D clippy::mixed-case-hex-literals` implied by `-D warnings`
 
 error: inconsistent casing in hexadecimal literal
-  --> $DIR/literals.rs:22:17
+  --> $DIR/literals.rs:23:17
    |
-22 |     let fail2 = 0xabCD_u32;
+23 |     let fail2 = 0xabCD_u32;
    |                 ^^^^^^^^^^
 
 error: inconsistent casing in hexadecimal literal
-  --> $DIR/literals.rs:23:17
+  --> $DIR/literals.rs:24:17
    |
-23 |     let fail2 = 0xabCD_isize;
+24 |     let fail2 = 0xabCD_isize;
    |                 ^^^^^^^^^^^^
 
 error: integer type suffix should be separated by an underscore
-  --> $DIR/literals.rs:24:27
+  --> $DIR/literals.rs:25:27
    |
-24 |     let fail_multi_zero = 000_123usize;
+25 |     let fail_multi_zero = 000_123usize;
    |                           ^^^^^^^^^^^^
    |
    = note: `-D clippy::unseparated-literal-suffix` implied by `-D warnings`
 
 error: this is a decimal constant
-  --> $DIR/literals.rs:24:27
+  --> $DIR/literals.rs:25:27
    |
-24 |     let fail_multi_zero = 000_123usize;
+25 |     let fail_multi_zero = 000_123usize;
    |                           ^^^^^^^^^^^^
    |
    = note: `-D clippy::zero-prefixed-literal` implied by `-D warnings`
 help: if you mean to use a decimal constant, remove the `0` to remove confusion
    |
-24 |     let fail_multi_zero = 123usize;
+25 |     let fail_multi_zero = 123usize;
    |                           ^^^^^^^^
 help: if you mean to use an octal constant, use `0o`
    |
-24 |     let fail_multi_zero = 0o123usize;
+25 |     let fail_multi_zero = 0o123usize;
    |                           ^^^^^^^^^^
-
-error: integer type suffix should be separated by an underscore
-  --> $DIR/literals.rs:29:17
-   |
-29 |     let fail3 = 1234i32;
-   |                 ^^^^^^^
 
 error: integer type suffix should be separated by an underscore
   --> $DIR/literals.rs:30:17
    |
-30 |     let fail4 = 1234u32;
+30 |     let fail3 = 1234i32;
    |                 ^^^^^^^
 
 error: integer type suffix should be separated by an underscore
   --> $DIR/literals.rs:31:17
    |
-31 |     let fail5 = 1234isize;
-   |                 ^^^^^^^^^
+31 |     let fail4 = 1234u32;
+   |                 ^^^^^^^
 
 error: integer type suffix should be separated by an underscore
   --> $DIR/literals.rs:32:17
    |
-32 |     let fail6 = 1234usize;
+32 |     let fail5 = 1234isize;
+   |                 ^^^^^^^^^
+
+error: integer type suffix should be separated by an underscore
+  --> $DIR/literals.rs:33:17
+   |
+33 |     let fail6 = 1234usize;
    |                 ^^^^^^^^^
 
 error: float type suffix should be separated by an underscore
-  --> $DIR/literals.rs:33:17
+  --> $DIR/literals.rs:34:17
    |
-33 |     let fail7 = 1.5f32;
+34 |     let fail7 = 1.5f32;
    |                 ^^^^^^
 
 error: this is a decimal constant
-  --> $DIR/literals.rs:37:17
+  --> $DIR/literals.rs:38:17
    |
-37 |     let fail8 = 0123;
+38 |     let fail8 = 0123;
    |                 ^^^^
 help: if you mean to use a decimal constant, remove the `0` to remove confusion
    |
-37 |     let fail8 = 123;
+38 |     let fail8 = 123;
    |                 ^^^
 help: if you mean to use an octal constant, use `0o`
    |
-37 |     let fail8 = 0o123;
+38 |     let fail8 = 0o123;
    |                 ^^^^^
 
 error: long literal lacking separators
-  --> $DIR/literals.rs:48:17
+  --> $DIR/literals.rs:49:17
    |
-48 |     let fail9 = 0xabcdef;
+49 |     let fail9 = 0xabcdef;
    |                 ^^^^^^^^ help: consider: `0x00ab_cdef`
    |
    = note: `-D clippy::unreadable-literal` implied by `-D warnings`
 
 error: long literal lacking separators
-  --> $DIR/literals.rs:49:18
-   |
-49 |     let fail10 = 0xBAFEBAFE;
-   |                  ^^^^^^^^^^ help: consider: `0xBAFE_BAFE`
-
-error: long literal lacking separators
   --> $DIR/literals.rs:50:18
    |
-50 |     let fail11 = 0xabcdeff;
-   |                  ^^^^^^^^^ help: consider: `0x0abc_deff`
+50 |     let fail10 = 0xBAFEBAFE;
+   |                  ^^^^^^^^^^ help: consider: `0xBAFE_BAFE`
 
 error: long literal lacking separators
   --> $DIR/literals.rs:51:18
    |
-51 |     let fail12 = 0xabcabcabcabcabcabc;
+51 |     let fail11 = 0xabcdeff;
+   |                  ^^^^^^^^^ help: consider: `0x0abc_deff`
+
+error: long literal lacking separators
+  --> $DIR/literals.rs:52:18
+   |
+52 |     let fail12 = 0xabcabcabcabcabcabc;
    |                  ^^^^^^^^^^^^^^^^^^^^ help: consider: `0x00ab_cabc_abca_bcab_cabc`
 
 error: digit groups should be smaller
-  --> $DIR/literals.rs:52:18
+  --> $DIR/literals.rs:53:18
    |
-52 |     let fail13 = 0x1_23456_78901_usize;
+53 |     let fail13 = 0x1_23456_78901_usize;
    |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider: `0x0123_4567_8901_usize`
    |
    = note: `-D clippy::large-digit-groups` implied by `-D warnings`
 
 error: mistyped literal suffix
-  --> $DIR/literals.rs:54:18
+  --> $DIR/literals.rs:55:18
    |
-54 |     let fail14 = 2_32;
+55 |     let fail14 = 2_32;
    |                  ^^^^ help: did you mean to write: `2_i32`
    |
    = note: #[deny(clippy::mistyped_literal_suffixes)] on by default
 
 error: mistyped literal suffix
-  --> $DIR/literals.rs:55:18
-   |
-55 |     let fail15 = 4_64;
-   |                  ^^^^ help: did you mean to write: `4_i64`
-
-error: mistyped literal suffix
   --> $DIR/literals.rs:56:18
    |
-56 |     let fail16 = 7_8;
-   |                  ^^^ help: did you mean to write: `7_i8`
+56 |     let fail15 = 4_64;
+   |                  ^^^^ help: did you mean to write: `4_i64`
 
 error: mistyped literal suffix
   --> $DIR/literals.rs:57:18
    |
-57 |     let fail17 = 23_16;
+57 |     let fail16 = 7_8;
+   |                  ^^^ help: did you mean to write: `7_i8`
+
+error: mistyped literal suffix
+  --> $DIR/literals.rs:58:18
+   |
+58 |     let fail17 = 23_16;
    |                  ^^^^^ help: did you mean to write: `23_i16`
 
 error: digits grouped inconsistently by underscores
-  --> $DIR/literals.rs:59:18
+  --> $DIR/literals.rs:60:18
    |
-59 |     let fail19 = 12_3456_21;
+60 |     let fail19 = 12_3456_21;
    |                  ^^^^^^^^^^ help: consider: `12_345_621`
    |
    = note: `-D clippy::inconsistent-digit-grouping` implied by `-D warnings`
 
 error: mistyped literal suffix
-  --> $DIR/literals.rs:60:18
+  --> $DIR/literals.rs:61:18
    |
-60 |     let fail20 = 2__8;
+61 |     let fail20 = 2__8;
    |                  ^^^^ help: did you mean to write: `2_i8`
 
 error: mistyped literal suffix
-  --> $DIR/literals.rs:61:18
-   |
-61 |     let fail21 = 4___16;
-   |                  ^^^^^^ help: did you mean to write: `4_i16`
-
-error: digits grouped inconsistently by underscores
   --> $DIR/literals.rs:62:18
    |
-62 |     let fail22 = 3__4___23;
-   |                  ^^^^^^^^^ help: consider: `3_423`
+62 |     let fail21 = 4___16;
+   |                  ^^^^^^ help: did you mean to write: `4_i16`
 
 error: digits grouped inconsistently by underscores
   --> $DIR/literals.rs:63:18
    |
-63 |     let fail23 = 3__16___23;
-   |                  ^^^^^^^^^^ help: consider: `31_623`
+63 |     let fail22 = 3__4___23;
+   |                  ^^^^^^^^^ help: consider: `3_423`
 
-error: mistyped literal suffix
-  --> $DIR/literals.rs:65:18
+error: digits grouped inconsistently by underscores
+  --> $DIR/literals.rs:64:18
    |
-65 |     let fail24 = 12.34_64;
-   |                  ^^^^^^^^ help: did you mean to write: `12.34_f64`
+64 |     let fail23 = 3__16___23;
+   |                  ^^^^^^^^^^ help: consider: `31_623`
 
 error: mistyped literal suffix
   --> $DIR/literals.rs:66:18
    |
-66 |     let fail25 = 1E2_32;
-   |                  ^^^^^^ help: did you mean to write: `1E2_f32`
+66 |     let fail24 = 12.34_64;
+   |                  ^^^^^^^^ help: did you mean to write: `12.34_f64`
 
 error: mistyped literal suffix
   --> $DIR/literals.rs:67:18
    |
-67 |     let fail26 = 43E7_64;
-   |                  ^^^^^^^ help: did you mean to write: `43E7_f64`
+67 |     let fail25 = 1E2_32;
+   |                  ^^^^^^ help: did you mean to write: `1E2_f32`
 
 error: mistyped literal suffix
   --> $DIR/literals.rs:68:18
    |
-68 |     let fail27 = 243E17_32;
-   |                  ^^^^^^^^^ help: did you mean to write: `243E17_f32`
+68 |     let fail26 = 43E7_64;
+   |                  ^^^^^^^ help: did you mean to write: `43E7_f64`
 
 error: mistyped literal suffix
   --> $DIR/literals.rs:69:18
    |
-69 |     let fail28 = 241251235E723_64;
-   |                  ^^^^^^^^^^^^^^^^ help: did you mean to write: `241_251_235E723_f64`
+69 |     let fail27 = 243E17_32;
+   |                  ^^^^^^^^^ help: did you mean to write: `243E17_f32`
 
 error: mistyped literal suffix
   --> $DIR/literals.rs:70:18
    |
-70 |     let fail29 = 42279.911_32;
+70 |     let fail28 = 241251235E723_64;
+   |                  ^^^^^^^^^^^^^^^^ help: did you mean to write: `241_251_235E723_f64`
+
+error: mistyped literal suffix
+  --> $DIR/literals.rs:71:18
+   |
+71 |     let fail29 = 42279.911_32;
    |                  ^^^^^^^^^^^^ help: did you mean to write: `42_279.911_f32`
 
 error: aborting due to 31 previous errors

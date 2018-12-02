@@ -7,6 +7,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![warn(clippy::large_digit_groups)]
 #![warn(clippy::mixed_case_hex_literals)]
 #![warn(clippy::unseparated_literal_suffix)]
 #![warn(clippy::zero_prefixed_literal)]
