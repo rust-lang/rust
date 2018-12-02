@@ -2082,7 +2082,7 @@ impl<'a> Parser<'a> {
         let mut segments = Vec::new();
         let mod_sep_ctxt = self.span.ctxt();
         if self.eat(&token::ModSep) {
-            segments.push(PathSegment::crate_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
+            segments.push(PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt)));
         }
         self.parse_path_segments(&mut segments, style, enable_warning)?;
 
@@ -7685,7 +7685,7 @@ impl<'a> Parser<'a> {
             let mod_sep_ctxt = self.span.ctxt();
             if self.eat(&token::ModSep) {
                 prefix.segments.push(
-                    PathSegment::crate_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt))
+                    PathSegment::path_root(lo.shrink_to_lo().with_ctxt(mod_sep_ctxt))
                 );
             }
 

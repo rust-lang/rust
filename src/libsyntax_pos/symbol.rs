@@ -353,7 +353,7 @@ declare_keywords! {
     (2,  DollarCrate,        "$crate")
     (3,  Underscore,         "_")
 
-    // Keywords used in the language.
+    // Keywords that are used in stable Rust.
     (4,  As,                 "as")
     (5,  Box,                "box")
     (6,  Break,              "break")
@@ -391,7 +391,7 @@ declare_keywords! {
     (38, Where,              "where")
     (39, While,              "while")
 
-    // Keywords reserved for future use.
+    // Keywords that are used in unstable Rust or reserved for future use.
     (40, Abstract,           "abstract")
     (41, Become,             "become")
     (42, Do,                 "do")
@@ -404,10 +404,10 @@ declare_keywords! {
     (49, Virtual,            "virtual")
     (50, Yield,              "yield")
 
-    // Edition-specific keywords used in the language.
+    // Edition-specific keywords that are used in stable Rust.
     (51, Dyn,                "dyn") // >= 2018 Edition only
 
-    // Edition-specific keywords reserved for future use.
+    // Edition-specific keywords that are used in unstable Rust or reserved for future use.
     (52, Async,              "async") // >= 2018 Edition only
     (53, Try,                "try") // >= 2018 Edition only
 

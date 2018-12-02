@@ -105,17 +105,6 @@ impl Path {
         }
     }
 
-    // Make a "crate root" segment for this path unless it already has it
-    // or starts with something like `self`/`super`/`$crate`/etc.
-    pub fn make_root(&self) -> Option<PathSegment> {
-        if let Some(ident) = self.segments.get(0).map(|seg| seg.ident) {
-            if ident.is_path_segment_keyword() {
-                return None;
-            }
-        }
-        Some(PathSegment::crate_root(self.span.shrink_to_lo()))
-    }
-
     pub fn is_global(&self) -> bool {
         !self.segments.is_empty() && self.segments[0].ident.name == keywords::PathRoot.name()
     }
@@ -144,7 +133,7 @@ impl PathSegment {
     pub fn from_ident(ident: Ident) -> Self {
         PathSegment { ident, id: DUMMY_NODE_ID, args: None }
     }
-    pub fn crate_root(span: Span) -> Self {
+    pub fn path_root(span: Span) -> Self {
         PathSegment::from_ident(Ident::new(keywords::PathRoot.name(), span))
     }
 }
