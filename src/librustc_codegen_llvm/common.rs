@@ -93,6 +93,34 @@ impl BackendTypes for CodegenCx<'ll, 'tcx> {
     type DIScope = &'ll llvm::debuginfo::DIScope;
 }
 
+impl CodegenCx<'ll, 'tcx> {
+    pub fn const_fat_ptr(
+        &self,
+        ptr: &'ll Value,
+        meta: &'ll Value
+    ) -> &'ll Value {
+        assert_eq!(abi::FAT_PTR_ADDR, 0);
+        assert_eq!(abi::FAT_PTR_EXTRA, 1);
+        self.const_struct(&[ptr, meta], false)
+    }
+
+    pub fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
+        unsafe {
+            return llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint);
+        }
+    }
+
+    pub fn const_vector(&self, elts: &[&'ll Value]) -> &'ll Value {
+        unsafe {
+            return llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint);
+        }
+    }
+
+    pub fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
+        bytes_in_context(self.llcx, bytes)
+    }
+}
+
 impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn const_null(&self, t: &'ll Type) -> &'ll Value {
         unsafe {
@@ -189,38 +217,12 @@ impl ConstMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         self.const_fat_ptr(cs, self.const_usize(len as u64))
     }
 
-    fn const_fat_ptr(
-        &self,
-        ptr: &'ll Value,
-        meta: &'ll Value
-    ) -> &'ll Value {
-        assert_eq!(abi::FAT_PTR_ADDR, 0);
-        assert_eq!(abi::FAT_PTR_EXTRA, 1);
-        self.const_struct(&[ptr, meta], false)
-    }
-
     fn const_struct(
         &self,
         elts: &[&'ll Value],
         packed: bool
     ) -> &'ll Value {
         struct_in_context(self.llcx, elts, packed)
-    }
-
-    fn const_array(&self, ty: &'ll Type, elts: &[&'ll Value]) -> &'ll Value {
-        unsafe {
-            return llvm::LLVMConstArray(ty, elts.as_ptr(), elts.len() as c_uint);
-        }
-    }
-
-    fn const_vector(&self, elts: &[&'ll Value]) -> &'ll Value {
-        unsafe {
-            return llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint);
-        }
-    }
-
-    fn const_bytes(&self, bytes: &[u8]) -> &'ll Value {
-        bytes_in_context(self.llcx, bytes)
     }
 
     fn const_get_elt(&self, v: &'ll Value, idx: u64) -> &'ll Value {

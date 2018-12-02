@@ -24,11 +24,7 @@ pub trait ConstMethods<'tcx>: BackendTypes {
     fn const_cstr(&self, s: LocalInternedString, null_terminated: bool) -> Self::Value;
 
     fn const_str_slice(&self, s: LocalInternedString) -> Self::Value;
-    fn const_fat_ptr(&self, ptr: Self::Value, meta: Self::Value) -> Self::Value;
     fn const_struct(&self, elts: &[Self::Value], packed: bool) -> Self::Value;
-    fn const_array(&self, ty: Self::Type, elts: &[Self::Value]) -> Self::Value;
-    fn const_vector(&self, elts: &[Self::Value]) -> Self::Value;
-    fn const_bytes(&self, bytes: &[u8]) -> Self::Value;
 
     fn const_get_elt(&self, v: Self::Value, idx: u64) -> Self::Value;
     fn const_get_real(&self, v: Self::Value) -> Option<(f64, bool)>;
