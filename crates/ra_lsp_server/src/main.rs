@@ -2,6 +2,7 @@
 extern crate log;
 #[macro_use]
 extern crate failure;
+#[macro_use]
 extern crate serde_derive;
 extern crate serde;
 extern crate flexi_logger;
@@ -64,27 +65,3 @@ fn main_inner() -> Result<()> {
     info!("... IO is down");
     Ok(())
 }
-
-/*
-                    (let ((backend (eglot-xref-backend)))
-                      (mapcar
-                       (lambda (xref)
-                         (let ((loc (xref-item-location xref)))
-                           (propertize
-                            (concat
-                             (when (xref-file-location-p loc)
-                               (with-slots (file line column) loc
-                                 (format "%s:%s:%s:"
-                                         (propertize (file-relative-name file)
-                                                     'face 'compilation-info)
-                                         (propertize (format "%s" line)
-                                                     'face 'compilation-line
-                                                     )
-                                         column)))
-                             (xref-item-summary xref))
-                            'xref xref)))
-                       (xref-backend-apropos backend "Analysis"))
-                      )
-
-
-*/
