@@ -124,16 +124,33 @@ fn is_target_dir<P: Into<PathBuf>>(path: P) -> bool {
     path.metadata().map(|m| m.is_dir()).unwrap_or(false)
 }
 
-fn for_all_targets<F: FnMut(String)>(sysroot: &Path, mut f: F) {
+fn target_has_std<P: Into<PathBuf>>(path: P) -> bool {
+    let mut path = path.into();
+    path.push("lib");
+    std::fs::read_dir(path)
+        .expect("invalid target")
+        .map(|entry| entry.unwrap())
+        .filter(|entry| entry.file_type().unwrap().is_file())
+        .filter_map(|entry| entry.file_name().into_string().ok())
+        .any(|file_name| file_name.starts_with("libstd") && file_name.ends_with(".rlib"))
+}
+
+
+fn for_all_targets<F: FnMut(String)>(sysroot: &Path, f: F) {
     let target_dir = sysroot.join("lib").join("rustlib");
-    for entry in std::fs::read_dir(target_dir).expect("invalid sysroot") {
-        let entry = entry.unwrap();
-        if !is_target_dir(entry.path()) {
-            continue;
-        }
-        let target = entry.file_name().into_string().unwrap();
-        f(target);
+    let mut targets = std::fs::read_dir(target_dir)
+        .expect("invalid sysroot")
+        .map(|entry| entry.unwrap())
+        .filter(|entry| is_target_dir(entry.path()))
+        .filter(|entry| target_has_std(entry.path()))
+        .map(|entry| entry.file_name().into_string().unwrap())
+        .peekable();
+
+    if targets.peek().is_none() {
+        panic!("No valid targets found");
     }
+
+    targets.for_each(f);
 }
 
 fn get_sysroot() -> PathBuf {
