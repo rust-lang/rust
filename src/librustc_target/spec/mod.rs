@@ -44,7 +44,6 @@
 //! the target's settings, though `target-feature` and `link-args` will *add*
 //! to the list specified by the target, rather than replace.
 
-use serialize::json::{Json, ToJson};
 use std::collections::BTreeMap;
 use std::default::Default;
 use std::{fmt, io};
@@ -105,8 +104,56 @@ impl LldFlavor {
     }
 }
 
-impl ToJson for LldFlavor {
-    fn to_json(&self) -> Json {
+// HACK(eddyb) Temporary workaround until we can use `serde_derive`.
+pub trait ToJson {
+    fn to_json(&self) -> ::serde_json::Value;
+}
+
+impl<T: ToJson> ToJson for [T] {
+    fn to_json(&self) -> ::serde_json::Value {
+        self.iter().map(ToJson::to_json).collect()
+    }
+}
+
+impl<T: ToJson> ToJson for Vec<T> {
+    fn to_json(&self) -> ::serde_json::Value {
+        self[..].to_json()
+    }
+}
+
+impl<T: ToJson> ToJson for Option<T> {
+    fn to_json(&self) -> ::serde_json::Value {
+        self.as_ref().map_or(::serde_json::Value::Null, ToJson::to_json)
+    }
+}
+
+macro_rules! impl_to_json {
+    ($x:ident: &$ty:ty => $e:expr) => {
+        impl ToJson for $ty {
+            fn to_json(&self) -> ::serde_json::Value {
+                let $x = self;
+                Into::into($e)
+            }
+        }
+    };
+    ($ty:ty) => {
+        impl_to_json!(x: &$ty => x);
+    }
+}
+
+impl_to_json!(x: &bool => *x);
+impl_to_json!(x: &u64 => *x);
+impl_to_json!(str);
+impl_to_json!(s: &String => &s[..]);
+
+impl_to_json!(LldFlavor);
+impl_to_json!(LinkerFlavor);
+impl_to_json!(PanicStrategy);
+impl_to_json!(RelroLevel);
+impl_to_json!(Target);
+
+impl Into<::serde_json::Value> for &'_ LldFlavor {
+    fn into(self) -> ::serde_json::Value {
         match *self {
             LldFlavor::Ld64 => "darwin",
             LldFlavor::Ld => "gnu",
@@ -116,8 +163,8 @@ impl ToJson for LldFlavor {
     }
 }
 
-impl ToJson for LinkerFlavor {
-    fn to_json(&self) -> Json {
+impl Into<::serde_json::Value> for &'_ LinkerFlavor {
+    fn into(self) -> ::serde_json::Value {
         self.desc().to_json()
     }
 }
@@ -171,9 +218,9 @@ impl PanicStrategy {
     }
 }
 
-impl ToJson for PanicStrategy {
-    fn to_json(&self) -> Json {
-        match *self {
+impl Into<::serde_json::Value> for &'_ PanicStrategy {
+    fn into(self) -> ::serde_json::Value {
+        match self {
             PanicStrategy::Abort => "abort".to_json(),
             PanicStrategy::Unwind => "unwind".to_json(),
         }
@@ -213,9 +260,9 @@ impl FromStr for RelroLevel {
     }
 }
 
-impl ToJson for RelroLevel {
-    fn to_json(&self) -> Json {
-        match *self {
+impl Into<::serde_json::Value> for &'_ RelroLevel {
+    fn into(self) -> ::serde_json::Value {
+        match self {
             RelroLevel::Full => "full".to_json(),
             RelroLevel::Partial => "partial".to_json(),
             RelroLevel::Off => "off".to_json(),
@@ -262,7 +309,6 @@ macro_rules! supported_targets {
 
         #[cfg(test)]
         mod test_json_encode_decode {
-            use serialize::json::ToJson;
             use super::Target;
             $(use super::$module;)*
 
@@ -819,7 +865,7 @@ impl Target {
     }
 
     /// Load a target descriptor from a JSON object.
-    pub fn from_json(obj: Json) -> TargetResult {
+    pub fn from_json(obj: ::serde_json::Value) -> TargetResult {
         // While ugly, this code must remain this way to retain
         // compatibility with existing JSON fields and the internal
         // expected naming of the Target and TargetOptions structs.
@@ -828,14 +874,14 @@ impl Target {
         // the JSON parser is not updated to match the structs.
 
         let get_req_field = |name: &str| {
-            obj.find(name)
-               .map(|s| s.as_string())
+            obj.get(name)
+               .map(|s| s.as_str())
                .and_then(|os| os.map(|s| s.to_string()))
                .ok_or_else(|| format!("Field {} in target specification is required", name))
         };
 
         let get_opt_field = |name: &str, default: &str| {
-            obj.find(name).and_then(|s| s.as_string())
+            obj.get(name).and_then(|s| s.as_str())
                .map(|s| s.to_string())
                .unwrap_or_else(|| default.to_string())
         };
@@ -860,24 +906,24 @@ impl Target {
         macro_rules! key {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).map(|o| o.as_string()
+                obj.get(&name[..]).map(|o| o.as_str()
                                     .map(|s| base.options.$key_name = s.to_string()));
             } );
             ($key_name:ident, bool) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..])
-                    .map(|o| o.as_boolean()
+                obj.get(&name[..])
+                    .map(|o| o.as_bool()
                          .map(|s| base.options.$key_name = s));
             } );
             ($key_name:ident, Option<u64>) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..])
+                obj.get(&name[..])
                     .map(|o| o.as_u64()
                          .map(|s| base.options.$key_name = Some(s)));
             } );
             ($key_name:ident, PanicStrategy) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                obj.get(&name[..]).and_then(|o| o.as_str().and_then(|s| {
                     match s {
                         "unwind" => base.options.$key_name = PanicStrategy::Unwind,
                         "abort" => base.options.$key_name = PanicStrategy::Abort,
@@ -890,7 +936,7 @@ impl Target {
             } );
             ($key_name:ident, RelroLevel) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                obj.get(&name[..]).and_then(|o| o.as_str().and_then(|s| {
                     match s.parse::<RelroLevel>() {
                         Ok(level) => base.options.$key_name = level,
                         _ => return Some(Err(format!("'{}' is not a valid value for \
@@ -902,31 +948,31 @@ impl Target {
             } );
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).map(|o| o.as_array()
+                obj.get(&name[..]).map(|o| o.as_array()
                     .map(|v| base.options.$key_name = v.iter()
-                        .map(|a| a.as_string().unwrap().to_string()).collect()
+                        .map(|a| a.as_str().unwrap().to_string()).collect()
                         )
                     );
             } );
             ($key_name:ident, opt_list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).map(|o| o.as_array()
+                obj.get(&name[..]).map(|o| o.as_array()
                     .map(|v| base.options.$key_name = Some(v.iter()
-                        .map(|a| a.as_string().unwrap().to_string()).collect())
+                        .map(|a| a.as_str().unwrap().to_string()).collect())
                         )
                     );
             } );
             ($key_name:ident, optional) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(o) = obj.find(&name[..]) {
+                if let Some(o) = obj.get(&name[..]) {
                     base.options.$key_name = o
-                        .as_string()
+                        .as_str()
                         .map(|s| s.to_string() );
                 }
             } );
             ($key_name:ident, LldFlavor) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).and_then(|o| o.as_string().and_then(|s| {
+                obj.get(&name[..]).and_then(|o| o.as_str().and_then(|s| {
                     if let Some(flavor) = LldFlavor::from_str(&s) {
                         base.options.$key_name = flavor;
                     } else {
@@ -940,7 +986,7 @@ impl Target {
             } );
             ($key_name:ident, LinkerFlavor) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[..]).and_then(|o| o.as_string().map(|s| {
+                obj.get(&name[..]).and_then(|o| o.as_str().map(|s| {
                     LinkerFlavor::from_str(&s).ok_or_else(|| {
                         Err(format!("'{}' is not a valid value for linker-flavor. \
                                      Use 'em', 'gcc', 'ld' or 'msvc.", s))
@@ -949,7 +995,7 @@ impl Target {
             } );
             ($key_name:ident, link_args) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(val) = obj.find(&name[..]) {
+                if let Some(val) = obj.get(&name[..]) {
                     let obj = val.as_object().ok_or_else(|| format!("{}: expected a \
                         JSON object with fields per linker-flavor.", name))?;
                     let mut args = LinkArgs::new();
@@ -963,9 +1009,9 @@ impl Target {
                             format!("{}.{}: expected a JSON array", name, k)
                         )?.iter().enumerate()
                             .map(|(i,s)| {
-                                let s = s.as_string().ok_or_else(||
+                                let s = s.as_str().ok_or_else(||
                                     format!("{}.{}[{}]: expected a JSON string", name, k, i))?;
-                                Ok(s.to_owned())
+                                Ok(s.to_string())
                             })
                             .collect::<Result<Vec<_>, String>>()?;
 
@@ -976,9 +1022,9 @@ impl Target {
             } );
             ($key_name:ident, env) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                if let Some(a) = obj.find(&name[..]).and_then(|o| o.as_array()) {
+                if let Some(a) = obj.get(&name[..]).and_then(|o| o.as_array()) {
                     for o in a {
-                        if let Some(s) = o.as_string() {
+                        if let Some(s) = o.as_str() {
                             let p = s.split('=').collect::<Vec<_>>();
                             if p.len() == 2 {
                                 let k = p[0].to_string();
@@ -1065,8 +1111,8 @@ impl Target {
         key!(simd_types_indirect, bool);
         key!(override_export_symbols, opt_list);
 
-        if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
-            for name in array.iter().filter_map(|abi| abi.as_string()) {
+        if let Some(array) = obj.get("abi-blacklist").and_then(::serde_json::Value::as_array) {
+            for name in array.iter().filter_map(|abi| abi.as_str()) {
                 match lookup_abi(name) {
                     Some(abi) => {
                         if abi.generic() {
@@ -1094,11 +1140,10 @@ impl Target {
     pub fn search(target_triple: &TargetTriple) -> Result<Target, String> {
         use std::env;
         use std::fs;
-        use serialize::json;
 
         fn load_file(path: &Path) -> Result<Target, String> {
             let contents = fs::read(path).map_err(|e| e.to_string())?;
-            let obj = json::from_reader(&mut &contents[..])
+            let obj = ::serde_json::from_reader(&mut &contents[..])
                            .map_err(|e| e.to_string())?;
             Target::from_json(obj)
         }
@@ -1139,9 +1184,9 @@ impl Target {
     }
 }
 
-impl ToJson for Target {
-    fn to_json(&self) -> Json {
-        let mut d = BTreeMap::new();
+impl Into<::serde_json::Value> for &'_ Target {
+    fn into(self) -> ::serde_json::Value {
+        let mut d = ::serde_json::Map::new();
         let default: TargetOptions = Default::default();
 
         macro_rules! target_val {
@@ -1173,9 +1218,9 @@ impl ToJson for Target {
                 if default.$attr != self.options.$attr {
                     let obj = self.options.$attr
                         .iter()
-                        .map(|(k, v)| (k.desc().to_owned(), v.clone()))
-                        .collect::<BTreeMap<_, _>>();
-                    d.insert(name, obj.to_json());
+                        .map(|(k, v)| (k.desc().to_string(), v[..].to_json()))
+                        .collect::<::serde_json::Map<_, _>>();
+                    d.insert(name, obj.into());
                 }
             } );
             (env - $attr:ident) => ( {
@@ -1184,8 +1229,8 @@ impl ToJson for Target {
                     let obj = self.options.$attr
                         .iter()
                         .map(|&(ref k, ref v)| k.clone() + "=" + &v)
-                        .collect::<Vec<_>>();
-                    d.insert(name, obj.to_json());
+                        .collect();
+                    d.insert(name, obj);
                 }
             } );
 
@@ -1279,10 +1324,10 @@ impl ToJson for Target {
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()
                 .map(|&name| Abi::name(name).to_json())
-                .collect::<Vec<_>>().to_json());
+                .collect());
         }
 
-        Json::Object(d)
+        ::serde_json::Value::Object(d)
     }
 }
 
@@ -1333,7 +1378,7 @@ impl TargetTriple {
             let hash = hasher.finish();
             format!("{}-{}", triple, hash)
         } else {
-            triple.to_owned()
+            triple.to_string()
         }
     }
 }

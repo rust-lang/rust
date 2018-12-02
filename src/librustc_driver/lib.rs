@@ -56,6 +56,7 @@ extern crate rustc_traits;
 extern crate rustc_codegen_utils;
 extern crate rustc_typeck;
 extern crate scoped_tls;
+extern crate serde_json;
 extern crate serialize;
 extern crate smallvec;
 #[macro_use]
@@ -93,8 +94,6 @@ use rustc_metadata::cstore::CStore;
 use rustc_metadata::dynamic_lib::DynamicLibrary;
 use rustc::util::common::{time, ErrorReported};
 use rustc_codegen_utils::codegen_backend::CodegenBackend;
-
-use serialize::json::ToJson;
 
 use std::any::Any;
 use std::borrow::Cow;
@@ -1043,7 +1042,11 @@ impl RustcDefaultCalls {
                     println!("{}", targets.join("\n"));
                 },
                 Sysroot => println!("{}", sess.sysroot().display()),
-                TargetSpec => println!("{}", sess.target.target.to_json().pretty()),
+                TargetSpec => {
+                    use rustc_target::spec::ToJson;
+                    let json = sess.target.target.to_json();
+                    println!("{}", serde_json::to_string_pretty(&json).unwrap());
+                }
                 FileNames | CrateName => {
                     let input = input.unwrap_or_else(||
                         early_error(ErrorOutputType::default(), "no input file provided"));
