@@ -5,8 +5,6 @@
 // Tests ensuring that `dbg!(expr)` has the expected run-time behavior.
 // as well as some compile time properties we expect.
 
-#![feature(dbg_macro)]
-
 #[derive(Copy, Clone, Debug)]
 struct Unit;
 
@@ -57,31 +55,31 @@ fn test() {
 
 fn validate_stderr(stderr: Vec<String>) {
     assert_eq!(stderr, &[
-        ":23] Unit = Unit",
+        ":21] Unit = Unit",
 
-        ":24] a = Unit",
+        ":22] a = Unit",
 
-        ":30] Point{x: 42, y: 24,} = Point {",
+        ":28] Point{x: 42, y: 24,} = Point {",
         "    x: 42,",
         "    y: 24",
         "}",
 
-        ":31] b = Point {",
+        ":29] b = Point {",
         "    x: 42,",
         "    y: 24",
         "}",
 
-        ":40] &a = NoCopy(",
+        ":38] &a = NoCopy(",
         "    1337",
         ")",
 
-        ":40] dbg!(& a) = NoCopy(",
+        ":38] dbg!(& a) = NoCopy(",
         "    1337",
         ")",
-        ":45] f(&42) = 42",
+        ":43] f(&42) = 42",
 
         "before",
-        ":50] { foo += 1; eprintln!(\"before\"); 7331 } = 7331",
+        ":48] { foo += 1; eprintln!(\"before\"); 7331 } = 7331",
     ]);
 }
 
