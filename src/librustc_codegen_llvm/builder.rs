@@ -143,18 +143,8 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn count_insn(&self, category: &str) {
-        if self.sess().codegen_stats() {
-            self.stats.borrow_mut().n_llvm_insns += 1;
-        }
-        if self.sess().count_llvm_insns() {
-            *self.stats
-                      .borrow_mut()
-                      .llvm_insns
-                      .entry(category.to_string())
-                      .or_insert(0) += 1;
-        }
-    }
+    #[inline(always)]
+    fn count_insn(&self, _category: &str) {}
 
     fn set_value_name(&mut self, value: &'ll Value, name: &str) {
         let cname = SmallCStr::new(name);
