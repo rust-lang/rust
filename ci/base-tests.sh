@@ -28,6 +28,9 @@ cd clippy_dev && cargo test && cd ..
 ./util/dev update_lints --check
 cargo +nightly fmt --all -- --check
 
+# Add bin to PATH for windows
+PATH=$PATH:$(rustc --print sysroot)/bin
+
 CLIPPY="`pwd`/target/debug/cargo-clippy clippy"
 # run clippy on its own codebase...
 ${CLIPPY} --all-targets --all-features -- -D clippy::all -D clippy::internal -Dclippy::pedantic
