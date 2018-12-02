@@ -177,10 +177,10 @@ fn complete_mod_item_snippets(acc: &mut Vec<CompletionItem>) {
         lookup: Some("tfn".to_string()),
         snippet: Some(
             "#[test]\n\
-            fn ${1:feature}() {\n\
-               $0\n\
-            }"
-            .to_string()
+             fn ${1:feature}() {\n\
+             $0\n\
+             }"
+            .to_string(),
         ),
     });
     acc.push(CompletionItem {
