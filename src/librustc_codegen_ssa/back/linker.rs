@@ -13,6 +13,7 @@ use super::command::Command;
 use super::archive;
 
 use rustc_data_structures::fx::FxHashMap;
+use serde::ser::Serializer as _;
 use std::ffi::{OsStr, OsString};
 use std::fs::{self, File};
 use std::io::prelude::*;
@@ -26,7 +27,6 @@ use rustc::session::config::{self, CrateType, OptLevel, DebugInfo,
                              CrossLangLto};
 use rustc::ty::TyCtxt;
 use rustc_target::spec::{LinkerFlavor, LldFlavor};
-use serialize::{json, Encoder};
 
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
@@ -842,22 +842,17 @@ impl<'a> Linker for EmLinker<'a> {
         self.cmd.arg("-s");
 
         let mut arg = OsString::from("EXPORTED_FUNCTIONS=");
-        let mut encoded = String::new();
+        let mut encoded: Vec<u8> = vec![];
 
-        {
-            let mut encoder = json::Encoder::new(&mut encoded);
-            let res = encoder.emit_seq(symbols.len(), |encoder| {
-                for (i, sym) in symbols.iter().enumerate() {
-                    encoder.emit_seq_elt(i, |encoder| {
-                        encoder.emit_str(&("_".to_owned() + sym))
-                    })?;
-                }
-                Ok(())
-            });
-            if let Err(e) = res {
-                self.sess.fatal(&format!("failed to encode exported symbols: {}", e));
-            }
-        }
+        ::serde_json::Serializer::new(&mut encoded).collect_seq(
+            symbols.iter().map(|sym| "_".to_string() + sym),
+        ).unwrap_or_else(|e| {
+            self.sess.fatal(&format!("failed to encode exported symbols: {}", e));
+        });
+
+        let encoded = String::from_utf8(encoded).unwrap_or_else(|e| {
+            self.sess.fatal(&format!("failed to encode exported symbols: {}", e));
+        });
         debug!("{}", encoded);
         arg.push(encoded);
 

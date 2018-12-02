@@ -2196,7 +2196,8 @@ dependencies = [
  "rustc_incremental 0.0.0",
  "rustc_mir 0.0.0",
  "rustc_target 0.0.0",
- "serialize 0.0.0",
+ "serde 1.0.75 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.31 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]

@@ -19,6 +19,7 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(in_band_lifetimes)]
 #![feature(slice_sort_by_cached_key)]
+#![feature(underscore_imports)]
 #![feature(nll)]
 #![allow(unused_attributes)]
 #![allow(dead_code)]
@@ -41,7 +42,6 @@ extern crate rustc_codegen_utils;
 extern crate rustc_data_structures;
 extern crate rustc_allocator;
 extern crate rustc_fs_util;
-extern crate serialize;
 extern crate rustc_errors;
 extern crate rustc_demangle;
 extern crate cc;
@@ -49,6 +49,8 @@ extern crate libc;
 extern crate jobserver;
 extern crate memmap;
 extern crate num_cpus;
+extern crate serde;
+extern crate serde_json;
 
 use std::path::PathBuf;
 use rustc::dep_graph::WorkProduct;
