@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::Backend;
-use super::HasCodegen;
+use super::BackendTypes;
 use debuginfo::{FunctionDebugContext, MirDebugScope, VariableAccess, VariableKind};
 use rustc::hir::def_id::CrateNum;
 use rustc::mir;
@@ -19,7 +18,7 @@ use rustc_mir::monomorphize::Instance;
 use syntax::ast::Name;
 use syntax_pos::{SourceFile, Span};
 
-pub trait DebugInfoMethods<'tcx>: Backend<'tcx> {
+pub trait DebugInfoMethods<'tcx>: BackendTypes {
     fn create_vtable_metadata(&self, ty: Ty<'tcx>, vtable: Self::Value);
 
     /// Creates the function-specific debug context.
@@ -51,7 +50,7 @@ pub trait DebugInfoMethods<'tcx>: Backend<'tcx> {
     fn debuginfo_upvar_decls_ops_sequence(&self, byte_offset_of_var_in_env: u64) -> [i64; 4];
 }
 
-pub trait DebugInfoBuilderMethods<'tcx>: HasCodegen<'tcx> {
+pub trait DebugInfoBuilderMethods<'tcx>: BackendTypes {
     fn declare_local(
         &mut self,
         dbg_context: &FunctionDebugContext<Self::DIScope>,

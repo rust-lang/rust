@@ -314,6 +314,10 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             local_gen_sym_counter: Cell::new(0),
         }
     }
+
+    crate fn statics_to_rauw(&self) -> &RefCell<Vec<(&'ll Value, &'ll Value)>> {
+        &self.statics_to_rauw
+    }
 }
 
 impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
@@ -328,7 +332,7 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn get_fn(&self, instance: Instance<'tcx>) -> &'ll Value {
-        get_fn(&&self,instance)
+        get_fn(self, instance)
     }
 
     fn get_param(&self, llfn: &'ll Value, index: c_uint) -> &'ll Value {
@@ -431,10 +435,6 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         &self.codegen_unit
     }
 
-    fn statics_to_rauw(&self) -> &RefCell<Vec<(&'ll Value, &'ll Value)>> {
-        &self.statics_to_rauw
-    }
-
     fn used_statics(&self) -> &RefCell<Vec<&'ll Value>> {
         &self.used_statics
     }
@@ -470,8 +470,8 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 }
 
-impl IntrinsicDeclarationMethods<'tcx> for CodegenCx<'b, 'tcx> {
-    fn get_intrinsic(&self, key: &str) -> &'b Value {
+impl CodegenCx<'b, 'tcx> {
+    crate fn get_intrinsic(&self, key: &str) -> &'b Value {
         if let Some(v) = self.intrinsics.borrow().get(key).cloned() {
             return v;
         }

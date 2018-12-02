@@ -23,21 +23,20 @@ impl<D> FunctionDebugContext<D> {
         match *self {
             FunctionDebugContext::RegularContext(ref data) => data,
             FunctionDebugContext::DebugInfoDisabled => {
-                span_bug!(span, "{}", FunctionDebugContext::<D>::debuginfo_disabled_message());
+                span_bug!(
+                    span,
+                    "debuginfo: Error trying to access FunctionDebugContext \
+                     although debug info is disabled!",
+                );
             }
             FunctionDebugContext::FunctionWithoutDebugInfo => {
-                span_bug!(span, "{}", FunctionDebugContext::<D>::should_be_ignored_message());
+                span_bug!(
+                    span,
+                    "debuginfo: Error trying to access FunctionDebugContext \
+                     for function that should be ignored by debug info!",
+                );
             }
         }
-    }
-
-    fn debuginfo_disabled_message() -> &'static str {
-        "debuginfo: Error trying to access FunctionDebugContext although debug info is disabled!"
-    }
-
-    fn should_be_ignored_message() -> &'static str {
-        "debuginfo: Error trying to access FunctionDebugContext for function that should be \
-         ignored by debug info!"
     }
 }
 

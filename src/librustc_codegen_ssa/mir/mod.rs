@@ -10,7 +10,7 @@
 
 use libc::c_uint;
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
-use rustc::ty::layout::{LayoutOf, TyLayout, HasTyCtxt};
+use rustc::ty::layout::{TyLayout, HasTyCtxt};
 use rustc::mir::{self, Mir};
 use rustc::ty::subst::Substs;
 use rustc::session::config::DebugInfo;
@@ -266,14 +266,14 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
         let mut allocate_local = |local| {
             let decl = &mir.local_decls[local];
-            let layout = bx.cx().layout_of(fx.monomorphize(&decl.ty));
+            let layout = bx.layout_of(fx.monomorphize(&decl.ty));
             assert!(!layout.ty.has_erasable_regions());
 
             if let Some(name) = decl.name {
                 // User variable
                 let debug_scope = fx.scopes[decl.visibility_scope];
                 let dbg = debug_scope.is_valid() &&
-                    bx.cx().sess().opts.debuginfo == DebugInfo::Full;
+                    bx.sess().opts.debuginfo == DebugInfo::Full;
 
                 if !memory_locals.contains(local) && !dbg {
                     debug!("alloc: {:?} ({}) -> operand", local, name);
@@ -376,7 +376,7 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 {
     block_bxs.iter_enumerated().zip(cleanup_kinds).map(|((bb, &llbb), cleanup_kind)| {
         match *cleanup_kind {
-            CleanupKind::Funclet if base::wants_msvc_seh(bx.cx().sess()) => {}
+            CleanupKind::Funclet if base::wants_msvc_seh(bx.sess()) => {}
             _ => return (None, None)
         }
 
@@ -415,8 +415,8 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 // C++ personality function, but `catch (...)` has no type so
                 // it's null. The 64 here is actually a bitfield which
                 // represents that this is a catch-all block.
-                let null = bx.cx().const_null(bx.cx().type_i8p());
-                let sixty_four = bx.cx().const_i32(64);
+                let null = bx.const_null(bx.type_i8p());
+                let sixty_four = bx.const_i32(64);
                 funclet = cp_bx.catch_pad(cs, &[null, sixty_four, null]);
                 cp_bx.br(llbb);
             }
@@ -451,7 +451,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Get the argument scope, if it exists and if we need it.
     let arg_scope = scopes[mir::OUTERMOST_SOURCE_SCOPE];
-    let arg_scope = if bx.cx().sess().opts.debuginfo == DebugInfo::Full {
+    let arg_scope = if bx.sess().opts.debuginfo == DebugInfo::Full {
         arg_scope.scope_metadata
     } else {
         None
@@ -478,7 +478,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
-            let place = PlaceRef::alloca(bx, bx.cx().layout_of(arg_ty), &name);
+            let place = PlaceRef::alloca(bx, bx.layout_of(arg_ty), &name);
             for i in 0..tupled_arg_tys.len() {
                 let arg = &fx.fn_ty.args[idx];
                 idx += 1;
@@ -524,18 +524,18 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                     return local(OperandRef::new_zst(bx.cx(), arg.layout));
                 }
                 PassMode::Direct(_) => {
-                    let llarg = bx.cx().get_param(bx.llfn(), llarg_idx as c_uint);
+                    let llarg = bx.get_param(bx.llfn(), llarg_idx as c_uint);
                     bx.set_value_name(llarg, &name);
                     llarg_idx += 1;
                     return local(
                         OperandRef::from_immediate_or_packed_pair(bx, llarg, arg.layout));
                 }
                 PassMode::Pair(..) => {
-                    let a = bx.cx().get_param(bx.llfn(), llarg_idx as c_uint);
+                    let a = bx.get_param(bx.llfn(), llarg_idx as c_uint);
                     bx.set_value_name(a, &(name.clone() + ".0"));
                     llarg_idx += 1;
 
-                    let b = bx.cx().get_param(bx.llfn(), llarg_idx as c_uint);
+                    let b = bx.get_param(bx.llfn(), llarg_idx as c_uint);
                     bx.set_value_name(b, &(name + ".1"));
                     llarg_idx += 1;
 
@@ -552,16 +552,16 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             // Don't copy an indirect argument to an alloca, the caller
             // already put it in a temporary alloca and gave it up.
             // FIXME: lifetimes
-            let llarg = bx.cx().get_param(bx.llfn(), llarg_idx as c_uint);
+            let llarg = bx.get_param(bx.llfn(), llarg_idx as c_uint);
             bx.set_value_name(llarg, &name);
             llarg_idx += 1;
             PlaceRef::new_sized(llarg, arg.layout, arg.layout.align.abi)
         } else if arg.is_unsized_indirect() {
             // As the storage for the indirect argument lives during
             // the whole function call, we just copy the fat pointer.
-            let llarg = bx.cx().get_param(bx.llfn(), llarg_idx as c_uint);
+            let llarg = bx.get_param(bx.llfn(), llarg_idx as c_uint);
             llarg_idx += 1;
-            let llextra = bx.cx().get_param(bx.llfn(), llarg_idx as c_uint);
+            let llextra = bx.get_param(bx.llfn(), llarg_idx as c_uint);
             llarg_idx += 1;
             let indirect_operand = OperandValue::Pair(llarg, llextra);
 
@@ -599,7 +599,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             // Or is it the closure environment?
             let (closure_layout, env_ref) = match arg.layout.ty.sty {
                 ty::RawPtr(ty::TypeAndMut { ty, .. }) |
-                ty::Ref(_, ty, _)  => (bx.cx().layout_of(ty), true),
+                ty::Ref(_, ty, _)  => (bx.layout_of(ty), true),
                 _ => (arg.layout, false)
             };
 
@@ -618,10 +618,10 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             // doesn't actually strip the offset when splitting the closure
             // environment into its components so it ends up out of bounds.
             // (cuviper) It seems to be fine without the alloca on LLVM 6 and later.
-            let env_alloca = !env_ref && bx.cx().closure_env_needs_indirect_debuginfo();
+            let env_alloca = !env_ref && bx.closure_env_needs_indirect_debuginfo();
             let env_ptr = if env_alloca {
                 let scratch = PlaceRef::alloca(bx,
-                    bx.cx().layout_of(tcx.mk_mut_ptr(arg.layout.ty)),
+                    bx.layout_of(tcx.mk_mut_ptr(arg.layout.ty)),
                     "__debuginfo_env_ptr");
                 bx.store(place.llval, scratch.llval, scratch.align);
                 scratch.llval
@@ -632,7 +632,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
             for (i, (decl, ty)) in mir.upvar_decls.iter().zip(upvar_tys).enumerate() {
                 let byte_offset_of_var_in_env = closure_layout.fields.offset(i).bytes();
 
-                let ops = bx.cx().debuginfo_upvar_decls_ops_sequence(byte_offset_of_var_in_env);
+                let ops = bx.debuginfo_upvar_decls_ops_sequence(byte_offset_of_var_in_env);
 
                 // The environment and the capture can each be indirect.
 

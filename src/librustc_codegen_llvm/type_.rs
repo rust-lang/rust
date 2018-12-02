@@ -47,6 +47,22 @@ impl fmt::Debug for Type {
     }
 }
 
+impl CodegenCx<'ll, 'tcx> {
+    crate fn type_named_struct(&self, name: &str) -> &'ll Type {
+        let name = SmallCStr::new(name);
+        unsafe {
+            llvm::LLVMStructCreateNamed(self.llcx, name.as_ptr())
+        }
+    }
+
+    crate fn set_struct_body(&self, ty: &'ll Type, els: &[&'ll Type], packed: bool) {
+        unsafe {
+            llvm::LLVMStructSetBody(ty, els.as_ptr(),
+                                    els.len() as c_uint, packed as Bool)
+        }
+    }
+}
+
 impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn type_void(&self) -> &'ll Type {
         unsafe {
@@ -160,13 +176,6 @@ impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn type_named_struct(&self, name: &str) -> &'ll Type {
-        let name = SmallCStr::new(name);
-        unsafe {
-            llvm::LLVMStructCreateNamed(self.llcx, name.as_ptr())
-        }
-    }
-
 
     fn type_array(&self, ty: &'ll Type, len: u64) -> &'ll Type {
         unsafe {
@@ -183,13 +192,6 @@ impl BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn type_kind(&self, ty: &'ll Type) -> TypeKind {
         unsafe {
             llvm::LLVMRustGetTypeKind(ty).to_generic()
-        }
-    }
-
-    fn set_struct_body(&self, ty: &'ll Type, els: &[&'ll Type], packed: bool) {
-        unsafe {
-            llvm::LLVMStructSetBody(ty, els.as_ptr(),
-                                    els.len() as c_uint, packed as Bool)
         }
     }
 

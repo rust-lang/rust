@@ -60,5 +60,3 @@ pub fn check_for_rustc_errors_attr(tcx: TyCtxt) {
         }
     }
 }
-
-__build_diagnostic_array! { librustc_codegen_utils, DIAGNOSTICS }

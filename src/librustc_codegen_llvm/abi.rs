@@ -212,7 +212,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
             if can_store_through_cast_ptr {
-                let cast_ptr_llty = bx.cx().type_ptr_to(cast.llvm_type(bx.cx()));
+                let cast_ptr_llty = bx.type_ptr_to(cast.llvm_type(bx));
                 let cast_dst = bx.pointercast(dst.llval, cast_ptr_llty);
                 bx.store(val, cast_dst, self.layout.align.abi);
             } else {
@@ -231,9 +231,9 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                 //   bitcasting to the struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
-                let scratch_size = cast.size(bx.cx());
-                let scratch_align = cast.align(bx.cx());
-                let llscratch = bx.alloca(cast.llvm_type(bx.cx()), "abi_cast", scratch_align);
+                let scratch_size = cast.size(bx);
+                let scratch_align = cast.align(bx);
+                let llscratch = bx.alloca(cast.llvm_type(bx), "abi_cast", scratch_align);
                 bx.lifetime_start(llscratch, scratch_size);
 
                 // ...where we first store the value...
@@ -245,7 +245,7 @@ impl ArgTypeExt<'ll, 'tcx> for ArgType<'tcx, Ty<'tcx>> {
                     self.layout.align.abi,
                     llscratch,
                     scratch_align,
-                    bx.cx().const_usize(self.layout.size.bytes()),
+                    bx.const_usize(self.layout.size.bytes()),
                     MemFlags::empty()
                 );
 
@@ -299,7 +299,7 @@ impl ArgTypeMethods<'tcx> for Builder<'a, 'll, 'tcx> {
         ty.store(self, val, dst)
     }
     fn memory_ty(&self, ty: &ArgType<'tcx, Ty<'tcx>>) -> &'ll Type {
-        ty.memory_ty(self.cx())
+        ty.memory_ty(self)
     }
 }
 
@@ -780,7 +780,7 @@ impl<'tcx> FnTypeExt<'tcx> for FnType<'tcx, Ty<'tcx>> {
             // by the LLVM verifier.
             if let layout::Int(..) = scalar.value {
                 if !scalar.is_bool() {
-                    let range = scalar.valid_range_exclusive(bx.cx());
+                    let range = scalar.valid_range_exclusive(bx);
                     if range.start != range.end {
                         bx.range_metadata(callsite, range);
                     }

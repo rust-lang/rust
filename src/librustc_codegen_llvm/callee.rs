@@ -81,7 +81,7 @@ pub fn get_fn(
         // other weird situations. Annoying.
         if cx.val_ty(llfn) != llptrty {
             debug!("get_fn: casting {:?} to {:?}", llfn, llptrty);
-            cx.static_ptrcast(llfn, llptrty)
+            cx.const_ptrcast(llfn, llptrty)
         } else {
             debug!("get_fn: not casting pointer!");
             llfn

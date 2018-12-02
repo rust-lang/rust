@@ -337,7 +337,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                         llval,
                                         ll_t_in_const
                                     );
-                                    base::call_assume(&mut bx, cmp);
+                                    bx.assume(cmp);
                                 }
                             }
                         }
@@ -693,11 +693,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::BinOp::Mul => OverflowOp::Mul,
                     _ => unreachable!()
                 };
-                let intrinsic = get_overflow_intrinsic(oop, bx, input_ty);
-                let res = bx.call(intrinsic, &[lhs, rhs], None);
-
-                (bx.extract_value(res, 0),
-                 bx.extract_value(res, 1))
+                bx.checked_binop(oop, input_ty, lhs, rhs)
             }
             mir::BinOp::Shl | mir::BinOp::Shr => {
                 let lhs_llty = bx.cx().val_ty(lhs);
@@ -742,80 +738,6 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // (*) this is only true if the type is suitable
     }
-}
-
-#[derive(Copy, Clone)]
-enum OverflowOp {
-    Add, Sub, Mul
-}
-
-fn get_overflow_intrinsic<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
-    oop: OverflowOp,
-    bx: &mut Bx,
-    ty: Ty
-) -> Bx::Value {
-    use syntax::ast::IntTy::*;
-    use syntax::ast::UintTy::*;
-    use rustc::ty::{Int, Uint};
-
-    let tcx = bx.tcx();
-
-    let new_sty = match ty.sty {
-        Int(Isize) => Int(tcx.sess.target.isize_ty),
-        Uint(Usize) => Uint(tcx.sess.target.usize_ty),
-        ref t @ Uint(_) | ref t @ Int(_) => t.clone(),
-        _ => panic!("tried to get overflow intrinsic for op applied to non-int type")
-    };
-
-    let name = match oop {
-        OverflowOp::Add => match new_sty {
-            Int(I8) => "llvm.sadd.with.overflow.i8",
-            Int(I16) => "llvm.sadd.with.overflow.i16",
-            Int(I32) => "llvm.sadd.with.overflow.i32",
-            Int(I64) => "llvm.sadd.with.overflow.i64",
-            Int(I128) => "llvm.sadd.with.overflow.i128",
-
-            Uint(U8) => "llvm.uadd.with.overflow.i8",
-            Uint(U16) => "llvm.uadd.with.overflow.i16",
-            Uint(U32) => "llvm.uadd.with.overflow.i32",
-            Uint(U64) => "llvm.uadd.with.overflow.i64",
-            Uint(U128) => "llvm.uadd.with.overflow.i128",
-
-            _ => unreachable!(),
-        },
-        OverflowOp::Sub => match new_sty {
-            Int(I8) => "llvm.ssub.with.overflow.i8",
-            Int(I16) => "llvm.ssub.with.overflow.i16",
-            Int(I32) => "llvm.ssub.with.overflow.i32",
-            Int(I64) => "llvm.ssub.with.overflow.i64",
-            Int(I128) => "llvm.ssub.with.overflow.i128",
-
-            Uint(U8) => "llvm.usub.with.overflow.i8",
-            Uint(U16) => "llvm.usub.with.overflow.i16",
-            Uint(U32) => "llvm.usub.with.overflow.i32",
-            Uint(U64) => "llvm.usub.with.overflow.i64",
-            Uint(U128) => "llvm.usub.with.overflow.i128",
-
-            _ => unreachable!(),
-        },
-        OverflowOp::Mul => match new_sty {
-            Int(I8) => "llvm.smul.with.overflow.i8",
-            Int(I16) => "llvm.smul.with.overflow.i16",
-            Int(I32) => "llvm.smul.with.overflow.i32",
-            Int(I64) => "llvm.smul.with.overflow.i64",
-            Int(I128) => "llvm.smul.with.overflow.i128",
-
-            Uint(U8) => "llvm.umul.with.overflow.i8",
-            Uint(U16) => "llvm.umul.with.overflow.i16",
-            Uint(U32) => "llvm.umul.with.overflow.i32",
-            Uint(U64) => "llvm.umul.with.overflow.i64",
-            Uint(U128) => "llvm.umul.with.overflow.i128",
-
-            _ => unreachable!(),
-        },
-    };
-
-    bx.cx().get_intrinsic(&name)
 }
 
 fn cast_int_to_float<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(

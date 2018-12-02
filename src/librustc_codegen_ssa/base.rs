@@ -192,7 +192,7 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
         (_, &ty::Dynamic(ref data, ..)) => {
             let vtable_ptr = cx.layout_of(cx.tcx().mk_mut_ptr(target))
                 .field(cx, FAT_PTR_EXTRA);
-            cx.static_ptrcast(meth::get_vtable(cx, source, data.principal()),
+            cx.const_ptrcast(meth::get_vtable(cx, source, data.principal()),
                             cx.backend_type(vtable_ptr))
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",
@@ -364,14 +364,6 @@ fn cast_shift_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 /// 64-bit MinGW) instead of "full SEH".
 pub fn wants_msvc_seh(sess: &Session) -> bool {
     sess.target.target.options.is_like_msvc
-}
-
-pub fn call_assume<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    val: Bx::Value
-) {
-    let assume_intrinsic = bx.cx().get_intrinsic("llvm.assume");
-    bx.call(assume_intrinsic, &[val], None);
 }
 
 pub fn from_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::Backend;
+use super::BackendTypes;
 use libc::c_uint;
 use rustc::mir::mono::Stats;
 use rustc::session::Session;
@@ -18,7 +18,7 @@ use rustc_mir::monomorphize::partitioning::CodegenUnit;
 use std::cell::RefCell;
 use std::sync::Arc;
 
-pub trait MiscMethods<'tcx>: Backend<'tcx> {
+pub trait MiscMethods<'tcx>: BackendTypes {
     fn vtables(
         &self,
     ) -> &RefCell<FxHashMap<(Ty<'tcx>, ty::PolyExistentialTraitRef<'tcx>), Self::Value>>;
@@ -32,7 +32,6 @@ pub trait MiscMethods<'tcx>: Backend<'tcx> {
     fn stats(&self) -> &RefCell<Stats>;
     fn consume_stats(self) -> RefCell<Stats>;
     fn codegen_unit(&self) -> &Arc<CodegenUnit<'tcx>>;
-    fn statics_to_rauw(&self) -> &RefCell<Vec<(Self::Value, Self::Value)>>;
     fn closure_env_needs_indirect_debuginfo(&self) -> bool;
     fn used_statics(&self) -> &RefCell<Vec<Self::Value>>;
     fn set_frame_pointer_elimination(&self, llfn: Self::Value);

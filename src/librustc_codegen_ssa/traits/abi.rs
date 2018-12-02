@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::HasCodegen;
+use super::BackendTypes;
 use rustc::ty::{FnSig, Instance, Ty};
 use rustc_target::abi::call::FnType;
 
@@ -18,6 +18,6 @@ pub trait AbiMethods<'tcx> {
     fn fn_type_of_instance(&self, instance: &Instance<'tcx>) -> FnType<'tcx, Ty<'tcx>>;
 }
 
-pub trait AbiBuilderMethods<'tcx>: HasCodegen<'tcx> {
+pub trait AbiBuilderMethods<'tcx>: BackendTypes {
     fn apply_attrs_callsite(&mut self, ty: &FnType<'tcx, Ty<'tcx>>, callsite: Self::Value);
 }

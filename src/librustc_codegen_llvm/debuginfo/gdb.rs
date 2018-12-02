@@ -24,11 +24,11 @@ use syntax::attr;
 /// Inserts a side-effect free instruction sequence that makes sure that the
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
 pub fn insert_reference_to_gdb_debug_scripts_section_global(bx: &mut Builder) {
-    if needs_gdb_debug_scripts_section(bx.cx()) {
-        let gdb_debug_scripts_section = get_or_insert_gdb_debug_scripts_section_global(bx.cx());
+    if needs_gdb_debug_scripts_section(bx) {
+        let gdb_debug_scripts_section = get_or_insert_gdb_debug_scripts_section_global(bx);
         // Load just the first byte as that's all that's necessary to force
         // LLVM to keep around the reference to the global.
-        let indices = [bx.cx().const_i32(0), bx.cx().const_i32(0)];
+        let indices = [bx.const_i32(0), bx.const_i32(0)];
         let element = bx.inbounds_gep(gdb_debug_scripts_section, &indices);
         let volative_load_instruction = bx.volatile_load(element);
         unsafe {

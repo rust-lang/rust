@@ -413,8 +413,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // and compile-time agree on values
                         // With floats that won't always be true
                         // so we generate an abort
-                        let fnname = bx.cx().get_intrinsic(&("llvm.trap"));
-                        bx.call(fnname, &[], None);
+                        bx.abort();
                         let llval = bx.cx().const_undef(
                             bx.cx().type_ptr_to(bx.cx().backend_type(layout))
                         );
@@ -424,7 +423,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             mir::Place::Static(box mir::Static { def_id, ty }) => {
                 let layout = cx.layout_of(self.monomorphize(&ty));
-                PlaceRef::new_sized(cx.get_static(def_id), layout, layout.align.abi)
+                PlaceRef::new_sized(bx.get_static(def_id), layout, layout.align.abi)
             },
             mir::Place::Projection(box mir::Projection {
                 ref base,

@@ -195,7 +195,9 @@ pub fn compile_codegen_unit<'ll, 'tcx>(tcx: TyCtxt<'ll, 'tcx, 'tcx>,
             // Run replace-all-uses-with for statics that need it
             for &(old_g, new_g) in cx.statics_to_rauw().borrow().iter() {
                 unsafe {
-                    cx.static_replace_all_uses(old_g, new_g)
+                    let bitcast = llvm::LLVMConstPointerCast(new_g, cx.val_ty(old_g));
+                    llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
+                    llvm::LLVMDeleteGlobal(old_g);
                 }
             }
 

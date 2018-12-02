@@ -484,8 +484,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                         // Allow RalfJ to sleep soundly knowing that even refactorings that remove
                         // the above error (or silence it under some conditions) will not cause UB
-                        let fnname = bx.cx().get_intrinsic(&("llvm.trap"));
-                        bx.call(fnname, &[], None);
+                        bx.abort();
                         // We've errored, so we don't have to produce working code.
                         let layout = bx.cx().layout_of(ty);
                         bx.load_operand(PlaceRef::new_sized(

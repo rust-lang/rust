@@ -171,19 +171,14 @@ pub fn ptrcast(val: &'ll Value, ty: &'ll Type) -> &'ll Value {
     }
 }
 
-impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
-
-    fn static_ptrcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
-        ptrcast(val, ty)
-    }
-
-    fn static_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
+impl CodegenCx<'ll, 'tcx> {
+    crate fn const_bitcast(&self, val: &'ll Value, ty: &'ll Type) -> &'ll Value {
         unsafe {
             llvm::LLVMConstBitCast(val, ty)
         }
     }
 
-    fn static_addr_of_mut(
+    crate fn static_addr_of_mut(
         &self,
         cv: &'ll Value,
         align: Align,
@@ -209,32 +204,7 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         }
     }
 
-    fn static_addr_of(
-        &self,
-        cv: &'ll Value,
-        align: Align,
-        kind: Option<&str>,
-    ) -> &'ll Value {
-        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
-            unsafe {
-                // Upgrade the alignment in cases where the same constant is used with different
-                // alignment requirements
-                let llalign = align.bytes() as u32;
-                if llalign > llvm::LLVMGetAlignment(gv) {
-                    llvm::LLVMSetAlignment(gv, llalign);
-                }
-            }
-            return gv;
-        }
-        let gv = self.static_addr_of_mut(cv, align, kind);
-        unsafe {
-            llvm::LLVMSetGlobalConstant(gv, True);
-        }
-        self.const_globals.borrow_mut().insert(cv, gv);
-        gv
-    }
-
-    fn get_static(&self, def_id: DefId) -> &'ll Value {
+    crate fn get_static(&self, def_id: DefId) -> &'ll Value {
         let instance = Instance::mono(self.tcx, def_id);
         if let Some(&g) = self.instances.borrow().get(&instance) {
             return g;
@@ -353,6 +323,33 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
 
         self.instances.borrow_mut().insert(instance, g);
         g
+    }
+}
+
+impl StaticMethods for CodegenCx<'ll, 'tcx> {
+    fn static_addr_of(
+        &self,
+        cv: &'ll Value,
+        align: Align,
+        kind: Option<&str>,
+    ) -> &'ll Value {
+        if let Some(&gv) = self.const_globals.borrow().get(&cv) {
+            unsafe {
+                // Upgrade the alignment in cases where the same constant is used with different
+                // alignment requirements
+                let llalign = align.bytes() as u32;
+                if llalign > llvm::LLVMGetAlignment(gv) {
+                    llvm::LLVMSetAlignment(gv, llalign);
+                }
+            }
+            return gv;
+        }
+        let gv = self.static_addr_of_mut(cv, align, kind);
+        unsafe {
+            llvm::LLVMSetGlobalConstant(gv, True);
+        }
+        self.const_globals.borrow_mut().insert(cv, gv);
+        gv
     }
 
     fn codegen_static(
@@ -497,10 +494,5 @@ impl StaticMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 self.used_statics.borrow_mut().push(cast);
             }
         }
-    }
-    unsafe fn static_replace_all_uses(&self, old_g: &'ll Value, new_g: &'ll Value) {
-        let bitcast = llvm::LLVMConstPointerCast(new_g, self.val_ty(old_g));
-        llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
-        llvm::LLVMDeleteGlobal(old_g);
     }
 }
