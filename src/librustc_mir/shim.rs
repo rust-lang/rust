@@ -229,7 +229,11 @@ fn build_drop_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // Function arguments should be retagged
             mir.basic_blocks_mut()[START_BLOCK].statements.insert(0, Statement {
                 source_info,
-                kind: StatementKind::Retag { fn_entry: true, place: dropee_ptr.clone() },
+                kind: StatementKind::Retag {
+                    fn_entry: true,
+                    two_phase: false,
+                    place: dropee_ptr.clone(),
+                },
             });
             // We use raw ptr operations, better prepare the alias tracking for that
             mir.basic_blocks_mut()[START_BLOCK].statements.insert(1, Statement {
