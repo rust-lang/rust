@@ -5,6 +5,7 @@ use crate::context::CodegenCx;
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
+use syntax::symbol::LocalInternedString;
 use rustc_codegen_ssa::common::{IntPredicate, TypeKind, RealPredicate};
 use rustc_codegen_ssa::MemFlags;
 use libc::{c_uint, c_char};
@@ -1474,6 +1475,36 @@ impl StaticBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     fn get_static(&mut self, def_id: DefId) -> &'ll Value {
         // Forward to the `get_static` method of `CodegenCx`
         self.cx().get_static(def_id)
+    }
+
+    fn static_panic_msg(
+        &mut self,
+        msg: Option<LocalInternedString>,
+        filename: LocalInternedString,
+        line: Self::Value,
+        col: Self::Value,
+        kind: &str,
+    ) -> Self::Value {
+        let align = self.tcx.data_layout.aggregate_align.abi
+            .max(self.tcx.data_layout.i32_align.abi)
+            .max(self.tcx.data_layout.pointer_align.abi);
+
+        let filename = self.const_str_slice(filename);
+
+        let with_msg_components;
+        let without_msg_components;
+
+        let components = if let Some(msg) = msg {
+            let msg = self.const_str_slice(msg);
+            with_msg_components = [msg, filename, line, col];
+            &with_msg_components as &[_]
+        } else {
+            without_msg_components = [filename, line, col];
+            &without_msg_components as &[_]
+        };
+
+        let struct_ = self.const_struct(&components, false);
+        self.static_addr_of(struct_, align, Some(kind))
     }
 }
 
