@@ -14,6 +14,8 @@ serialize = { path = "../libserialize" }
 syntax_pos = { path = "../libsyntax_pos" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
+serde = "1.0"
+serde_derive = "1.0"
 unicode-width = "0.1.4"
 atty = "0.2"
 termcolor = "1.0"

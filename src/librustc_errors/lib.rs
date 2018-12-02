@@ -26,6 +26,9 @@ extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate rustc_data_structures;
+#[macro_use]
+extern crate serde_derive;
+extern crate serde;
 extern crate serialize as rustc_serialize;
 extern crate syntax_pos;
 extern crate unicode_width;
@@ -66,7 +69,10 @@ use syntax_pos::{BytePos,
                  Span,
                  NO_EXPANSION};
 
-#[derive(Copy, Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Hash,
+    RustcDecodable, RustcEncodable,
+    Serialize, Deserialize,
+)]
 pub enum Applicability {
     MachineApplicable,
     HasPlaceholders,
