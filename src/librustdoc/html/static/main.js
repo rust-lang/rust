@@ -82,8 +82,6 @@ if (!DOMTokenList.prototype.remove) {
                      "attr",
                      "derive"];
 
-    var start = Date.now();
-
     var search_input = document.getElementsByClassName("search-input")[0];
 
     // On the search screen, so you remain on the last tab you opened.
@@ -148,7 +146,7 @@ if (!DOMTokenList.prototype.remove) {
     var TY_PRIMITIVE = itemTypes.indexOf("primitive");
     var TY_KEYWORD = itemTypes.indexOf("keyword");
 
-    onEach(Array.prototype.slice.call(document.getElementsByClassName("js-only")), function(e) {
+    onEachLazy(document.getElementsByClassName("js-only"), function(e) {
         removeClass(e, "js-only");
     });
 
@@ -190,9 +188,8 @@ if (!DOMTokenList.prototype.remove) {
                     x.scrollIntoView();
                 }
             }
-            onEach(Array.prototype.slice.call(document.getElementsByClassName("line-numbers")),
-                   function(e) {
-                onEach(Array.prototype.slice.call(e.getElementsByTagName("span")), function(i_e) {
+            onEachLazy(document.getElementsByClassName("line-numbers"), function(e) {
+                onEachLazy(e.getElementsByTagName("span"), function(i_e) {
                     removeClass(i_e, "line-highlighted");
                 });
             });
@@ -1103,7 +1100,7 @@ if (!DOMTokenList.prototype.remove) {
                     aliases[i].displayPath = pathSplitter(res[0]);
                     aliases[i].fullPath = aliases[i].displayPath + aliases[i].name;
                     aliases[i].href = res[1];
-                    retothers.unshift(aliases[i]);
+                    ret.others.unshift(aliases[i]);
                     if (ret.others.length > MAX_RESULTS) {
                         ret.others.pop();
                     }
@@ -1192,16 +1189,16 @@ if (!DOMTokenList.prototype.remove) {
                 }
                 clearTimeout(hoverTimeout);
                 hoverTimeout = setTimeout(function() {
-                    onEach(document.getElementsByClassName("search-results"), function(e) {
-                        onEach(e.getElementsByClassName("result"), function(i_e) {
+                    onEachLazy(document.getElementsByClassName("search-results"), function(e) {
+                        onEachLazy(e.getElementsByClassName("result"), function(i_e) {
                             removeClass(i_e, "highlighted");
                         });
                     });
                     addClass(el, "highlighted");
                 }, 20);
             };
-            onEach(document.getElementsByClassName("search-results"), function(e) {
-                onEach(e.getElementsByClassName("result"), function(i_e) {
+            onEachLazy(document.getElementsByClassName("search-results"), function(e) {
+                onEachLazy(e.getElementsByClassName("result"), function(i_e) {
                     i_e.onclick = click_func;
                     i_e.onmouseover = mouseover_func;
                 });
@@ -1213,8 +1210,8 @@ if (!DOMTokenList.prototype.remove) {
                 var actives = [[], [], []];
                 // "current" is used to know which tab we're looking into.
                 var current = 0;
-                onEach(document.getElementsByClassName("search-results"), function(e) {
-                    onEach(e.getElementsByClassName("highlighted"), function(e) {
+                onEachLazy(document.getElementsByClassName("search-results"), function(e) {
+                    onEachLazy(e.getElementsByClassName("highlighted"), function(e) {
                         actives[current].push(e);
                     });
                     current += 1;
@@ -1418,7 +1415,7 @@ if (!DOMTokenList.prototype.remove) {
                 td_width = tds[0].offsetWidth;
             }
             var width = search.offsetWidth - 40 - td_width;
-            onEach(Array.prototype.slice.call(search.getElementsByClassName("desc")), function(e) {
+            onEachLazy(search.getElementsByClassName("desc"), function(e) {
                 e.style.width = width + "px";
             });
             initSearchNav();
@@ -1894,9 +1891,7 @@ if (!DOMTokenList.prototype.remove) {
             });
             innerToggle.title = "collapse all docs";
             if (fromAutoCollapse !== true) {
-                onEach(Array.prototype.slice.call(
-                           document.getElementsByClassName("collapse-toggle")),
-                       function(e) {
+                onEachLazy(document.getElementsByClassName("collapse-toggle"), function(e) {
                     collapseDocs(e, "show");
                 });
             }
@@ -1908,9 +1903,7 @@ if (!DOMTokenList.prototype.remove) {
             });
             innerToggle.title = "expand all docs";
             if (fromAutoCollapse !== true) {
-                onEach(Array.prototype.slice.call(
-                           document.getElementsByClassName("collapse-toggle")),
-                       function(e) {
+                onEachLazy(document.getElementsByClassName("collapse-toggle"), function(e) {
                     collapseDocs(e, "hide", pageId);
                 });
             }
@@ -1984,12 +1977,12 @@ if (!DOMTokenList.prototype.remove) {
                 }
                 if (action === "hide") {
                     addClass(relatedDoc, "hidden-by-usual-hider");
-                    onEach(Array.prototype.slice.call(toggle.childNodes), adjustToggle(true));
+                    onEachLazy(toggle.childNodes, adjustToggle(true));
                     addClass(toggle.parentNode, "collapsed");
                 } else if (action === "show") {
                     removeClass(relatedDoc, "hidden-by-usual-hider");
                     removeClass(toggle.parentNode, "collapsed");
-                    onEach(Array.prototype.slice.call(toggle.childNodes), adjustToggle(false));
+                    onEachLazy(toggle.childNodes, adjustToggle(false));
                 }
             }
         } else {
@@ -2022,13 +2015,13 @@ if (!DOMTokenList.prototype.remove) {
             if (action === "show") {
                 removeClass(relatedDoc, "fns-now-collapsed");
                 removeClass(docblock, "hidden-by-usual-hider");
-                onEach(Array.prototype.slice.call(toggle.childNodes), adjustToggle(false));
-                onEach(Array.prototype.slice.call(relatedDoc.childNodes), implHider(false));
+                onEachLazy(toggle.childNodes, adjustToggle(false));
+                onEachLazy(relatedDoc.childNodes, implHider(false));
             } else if (action === "hide") {
                 addClass(relatedDoc, "fns-now-collapsed");
                 addClass(docblock, "hidden-by-usual-hider");
-                onEach(Array.prototype.slice.call(toggle.childNodes), adjustToggle(true));
-                onEach(Array.prototype.slice.call(relatedDoc.childNodes), implHider(true));
+                onEachLazy(toggle.childNodes, adjustToggle(true));
+                onEachLazy(relatedDoc.childNodes, implHider(true));
             }
         }
     }
@@ -2052,9 +2045,7 @@ if (!DOMTokenList.prototype.remove) {
             var impl_list = document.getElementById("implementations-list");
 
             if (impl_list !== null) {
-                onEach(Array.prototype.slice.call(
-                           impl_list.getElementsByClassName("collapse-toggle")),
-                       collapser);
+                onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), collapser);
             }
         }
     }
@@ -2104,9 +2095,9 @@ if (!DOMTokenList.prototype.remove) {
         }
     };
 
-    onEach(Array.prototype.slice.call(document.getElementsByClassName("method")), func);
-    onEach(Array.prototype.slice.call(document.getElementsByClassName("associatedconstant")), func);
-    onEach(Array.prototype.slice.call(document.getElementsByClassName("impl")), funcImpl);
+    onEachLazy(document.getElementsByClassName("method"), func);
+    onEachLazy(document.getElementsByClassName("associatedconstant"), func);
+    onEachLazy(document.getElementsByClassName("impl"), funcImpl);
     var impl_call = function() {};
     if (getCurrentValue("rustdoc-method-docs") !== "false") {
         impl_call = function(e, newToggle, pageId) {
@@ -2127,8 +2118,7 @@ if (!DOMTokenList.prototype.remove) {
     function toggleClicked() {
         if (hasClass(this, "collapsed")) {
             removeClass(this, "collapsed");
-            onEach(Array.prototype.slice.call(this.parentNode.getElementsByClassName("hidden")),
-                   function(x) {
+            onEachLazy(this.parentNode.getElementsByClassName("hidden"), function(x) {
                 if (hasClass(x, "content") === false) {
                     removeClass(x, "hidden");
                     addClass(x, "x");
@@ -2138,8 +2128,7 @@ if (!DOMTokenList.prototype.remove) {
                              "</span>] Hide undocumented items";
         } else {
             addClass(this, "collapsed");
-            onEach(Array.prototype.slice.call(this.parentNode.getElementsByClassName("x")),
-                   function(x) {
+            onEachLazy(this.parentNode.getElementsByClassName("x"), function(x) {
                 if (hasClass(x, "content") === false) {
                     addClass(x, "hidden");
                     removeClass(x, "x");
@@ -2149,8 +2138,8 @@ if (!DOMTokenList.prototype.remove) {
                              "</span>] Show hidden undocumented items";
         }
     }
-    onEach(Array.prototype.slice.call(document.getElementsByClassName("impl-items")), function(e) {
-        onEach(Array.prototype.slice.call(e.getElementsByClassName("associatedconstant")), func);
+    onEachLazy(document.getElementsByClassName("impl-items"), function(e) {
+        onEachLazy(e.getElementsByClassName("associatedconstant"), func);
         var hiddenElems = e.getElementsByClassName("hidden");
         var needToggle = false;
 
@@ -2215,13 +2204,10 @@ if (!DOMTokenList.prototype.remove) {
 
                 e.style.display = "none";
                 addClass(wrap, "collapsed");
-                onEach(Array.prototype.slice.call(inner_toggle.getElementsByClassName("inner")),
-                       function(e) {
+                onEachLazy(inner_toggle.getElementsByClassName("inner"), function(e) {
                     e.innerHTML = labelForToggleButton(true);
                 });
-                onEach(Array.prototype.slice.call(
-                           inner_toggle.getElementsByClassName("toggle-label")),
-                       function(e) {
+                onEachLazy(inner_toggle.getElementsByClassName("toggle-label"), function(e) {
                     e.style.display = "inline-block";
                     if (extra === true) {
                         i_e.innerHTML = " Show " + e.childNodes[0].innerHTML;
@@ -2268,10 +2254,8 @@ if (!DOMTokenList.prototype.remove) {
         }
     }
 
-    onEach(Array.prototype.slice.call(document.getElementsByClassName("docblock")),
-           buildToggleWrapper);
-    onEach(Array.prototype.slice.call(document.getElementsByClassName("sub-variant")),
-           buildToggleWrapper);
+    onEachLazy(document.getElementsByClassName("docblock"), buildToggleWrapper);
+    onEachLazy(document.getElementsByClassName("sub-variant"), buildToggleWrapper);
 
     // In the search display, allows to switch between tabs.
     function printTab(nb) {
@@ -2279,8 +2263,7 @@ if (!DOMTokenList.prototype.remove) {
             currentTab = nb;
         }
         var nb_copy = nb;
-        onEach(Array.prototype.slice.call(document.getElementById("titles").childNodes),
-               function(elem) {
+        onEachLazy(document.getElementById("titles").childNodes, function(elem) {
             if (nb_copy === 0) {
                 addClass(elem, "selected");
             } else {
@@ -2288,8 +2271,7 @@ if (!DOMTokenList.prototype.remove) {
             }
             nb_copy -= 1;
         });
-        onEach(Array.prototype.slice.call(document.getElementById("results").childNodes),
-               function(elem) {
+        onEachLazy(document.getElementById("results").childNodes, function(elem) {
             if (nb === 0) {
                 elem.style.display = "";
             } else {
@@ -2320,7 +2302,7 @@ if (!DOMTokenList.prototype.remove) {
         };
     }
     var attributesToggle = createToggleWrapper(createSimpleToggle(false));
-    onEach(Array.prototype.slice.call(main.getElementsByClassName("attributes")), function(i_e) {
+    onEachLazy(main.getElementsByClassName("attributes"), function(i_e) {
         i_e.parentNode.insertBefore(attributesToggle.cloneNode(true), i_e);
         itemAttributesFunc(i_e);
     });
@@ -2340,8 +2322,7 @@ if (!DOMTokenList.prototype.remove) {
             x.parentNode.insertBefore(node, x);
         };
     }
-    onEach(Array.prototype.slice.call(document.getElementsByClassName("rust-example-rendered")),
-           function(e) {
+    onEachLazy(document.getElementsByClassName("rust-example-rendered"), function(e) {
         if (hasClass(e, "compile_fail")) {
             e.addEventListener("mouseover", function(event) {
                 this.parentElement.previousElementSibling.childNodes[0].style.color = "#f00";
@@ -2379,8 +2360,7 @@ if (!DOMTokenList.prototype.remove) {
         }
     }
 
-    onEach(Array.prototype.slice.call(document.getElementsByClassName("important-traits")),
-           function(e) {
+    onEachLazy(document.getElementsByClassName("important-traits"), function(e) {
         e.onclick = function() {
             showModal(e.lastElementChild.innerHTML);
         };
@@ -2435,7 +2415,7 @@ if (!DOMTokenList.prototype.remove) {
     }
 
     if (main) {
-        onEach(Array.prototype.slice.call(main.childNodes), function(e) {
+        onEachLazy(main.childNodes, function(e) {
             if (e.tagName === "H2" || e.tagName === "H3") {
                 e.nextElementSibling.style.display = "block";
             }

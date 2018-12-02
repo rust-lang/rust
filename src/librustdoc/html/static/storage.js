@@ -19,10 +19,7 @@ var mainTheme = document.getElementById("mainThemeStyle");
 var savedHref = [];
 
 function hasClass(elem, className) {
-    if (!elem || !elem.classList) {
-        return false;
-    }
-    return elem.classList.contains(className);
+    return elem && elem.classList && elem.classList.contains(className);
 }
 
 function addClass(elem, className) {
@@ -40,11 +37,8 @@ function removeClass(elem, className) {
 }
 
 function isHidden(elem) {
-    return (elem.offsetParent === null);
+    return elem.offsetParent === null;
 }
-
-var allcallers = {};
-var resourcesSuffix="";
 
 function onEach(arr, func, reversed) {
     if (arr && arr.length > 0 && func) {
@@ -64,6 +58,13 @@ function onEach(arr, func, reversed) {
         }
     }
     return false;
+}
+
+function onEachLazy(lazyArray, func, reversed) {
+    return onEach(
+        Array.prototype.slice.call(lazyArray),
+        func,
+        reversed);
 }
 
 function usableLocalStorage() {
