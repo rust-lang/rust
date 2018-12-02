@@ -8,5 +8,5 @@ pub trait StaticMethods: BackendTypes {
 }
 
 pub trait StaticBuilderMethods<'tcx>: BackendTypes {
-    fn get_static(&self, def_id: DefId) -> Self::Value;
+    fn get_static(&mut self, def_id: DefId) -> Self::Value;
 }
