@@ -1961,7 +1961,7 @@ if (!DOMTokenList.prototype.remove) {
         }
 
         var relatedDoc;
-        var action;
+        var action = mode;
         if (hasClass(toggle.parentNode, "impl") === false) {
             relatedDoc = toggle.parentNode.nextElementSibling;
             if (hasClass(relatedDoc, "stability")) {
@@ -1997,7 +1997,7 @@ if (!DOMTokenList.prototype.remove) {
             }
 
             if ((!relatedDoc && hasClass(docblock, "docblock") === false) ||
-                (pageId && relatedDoc.getElementById(pageId))) {
+                (pageId && document.getElementById(pageId))) {
                 return;
             }
 
@@ -2026,7 +2026,7 @@ if (!DOMTokenList.prototype.remove) {
         }
     }
 
-    function collapser(e) {
+    function collapser(e, collapse) {
         // inherent impl ids are like "impl" or impl-<number>'.
         // they will never be hidden by default.
         var n = e.parentElement;
@@ -2045,7 +2045,9 @@ if (!DOMTokenList.prototype.remove) {
             var impl_list = document.getElementById("implementations-list");
 
             if (impl_list !== null) {
-                onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), collapser);
+                onEachLazy(impl_list.getElementsByClassName("collapse-toggle"), function(e) {
+                    collapser(e, collapse);
+                });
             }
         }
     }
@@ -2415,6 +2417,9 @@ if (!DOMTokenList.prototype.remove) {
     }
 
     if (main) {
+        onEachLazy(main.getElementsByClassName("loading-content"), function(e) {
+            e.remove();
+        });
         onEachLazy(main.childNodes, function(e) {
             if (e.tagName === "H2" || e.tagName === "H3") {
                 e.nextElementSibling.style.display = "block";
