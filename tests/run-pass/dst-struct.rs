@@ -127,8 +127,9 @@ pub fn main() {
     let f2 : Box<Fat<[isize]>> = f1;
     foo(&*f2);
 
-    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
     let f3 : Box<Fat<[isize]>> =
         Box::<Fat<[_; 3]>>::new(Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] });
     foo(&*f3);
+    let f4 : Box<Fat<[isize]>> = box Fat { f1: 5, f2: "some str", ptr: [1, 2, 3] };
+    foo(&*f4);
 }

@@ -1,7 +1,3 @@
-// We fail to detect this when neither this nor libstd are optimized/have retagging.
-// FIXME: Investigate that.
-// compile-flags: -Zmir-opt-level=0
-
 #![allow(unused_variables)]
 
 fn main() {
