@@ -134,14 +134,10 @@ impl_stable_hash_for!(struct ::syntax::attr::Stability {
     const_stability
 });
 
-impl<'a> HashStable<StableHashingContext<'a>>
-for ::syntax::edition::Edition {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a>,
-                                          hasher: &mut StableHasher<W>) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-    }
-}
+impl_stable_hash_for!(enum ::syntax::edition::Edition {
+    Edition2015,
+    Edition2018,
+});
 
 impl<'a> HashStable<StableHashingContext<'a>>
 for ::syntax::attr::StabilityLevel {

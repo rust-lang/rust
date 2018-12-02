@@ -1493,12 +1493,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             BorrowckMode::Ast => match self.sess.edition() {
                 Edition::Edition2015 => BorrowckMode::Ast,
                 Edition::Edition2018 => BorrowckMode::Migrate,
-
-                // For now, future editions mean Migrate. (But it
-                // would make a lot of sense for it to be changed to
-                // `BorrowckMode::Mir`, depending on how we plan to
-                // time the forcing of full migration to NLL.)
-                _ => BorrowckMode::Migrate,
             },
         }
     }
