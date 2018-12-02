@@ -616,7 +616,7 @@ impl BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         assert_eq!(place.llextra.is_some(), place.layout.is_unsized());
 
         if place.layout.is_zst() {
-            return OperandRef::new_zst(self.cx(), place.layout);
+            return OperandRef::new_zst(self, place.layout);
         }
 
         fn scalar_load_metadata<'a, 'll, 'tcx>(
