@@ -40,7 +40,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Cast(mir::CastKind::Unsize, ref source, _) => {
                 // The destination necessarily contains a fat pointer, so if
                 // it's a scalar pair, it's a fat pointer or newtype thereof.
-                if bx.cx().is_backend_scalar_pair(dest.layout) {
+                if bx.is_backend_scalar_pair(dest.layout) {
                     // into-coerce of a thin pointer to a fat pointer - just
                     // use the operand path.
                     let (mut bx, temp) = self.codegen_rvalue_operand(bx, rvalue);
@@ -87,28 +87,28 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 if dest.layout.is_zst() {
                     return bx;
                 }
-                let zero = bx.cx().const_usize(0);
+                let zero = bx.const_usize(0);
                 let start = dest.project_index(&mut bx, zero).llval;
 
                 if let OperandValue::Immediate(v) = cg_elem.val {
-                    let size = bx.cx().const_usize(dest.layout.size.bytes());
+                    let size = bx.const_usize(dest.layout.size.bytes());
 
                     // Use llvm.memset.p0i8.* to initialize all zero arrays
-                    if bx.cx().is_const_integral(v) && bx.cx().const_to_uint(v) == 0 {
-                        let fill = bx.cx().const_u8(0);
+                    if bx.is_const_integral(v) && bx.const_to_uint(v) == 0 {
+                        let fill = bx.const_u8(0);
                         bx.memset(start, fill, size, dest.align, MemFlags::empty());
                         return bx;
                     }
 
                     // Use llvm.memset.p0i8.* to initialize byte arrays
                     let v = base::from_immediate(&mut bx, v);
-                    if bx.cx().val_ty(v) == bx.cx().type_i8() {
+                    if bx.val_ty(v) == bx.type_i8() {
                         bx.memset(start, v, size, dest.align, MemFlags::empty());
                         return bx;
                     }
                 }
 
-                let count = bx.cx().const_usize(count);
+                let count = bx.const_usize(count);
                 let end = dest.project_index(&mut bx, count).llval;
 
                 let mut header_bx = bx.build_sibling_block("repeat_loop_header");
@@ -116,7 +116,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let next_bx = bx.build_sibling_block("repeat_loop_next");
 
                 bx.br(header_bx.llbb());
-                let current = header_bx.phi(bx.cx().val_ty(start), &[start], &[bx.llbb()]);
+                let current = header_bx.phi(bx.val_ty(start), &[start], &[bx.llbb()]);
 
                 let keep_going = header_bx.icmp(IntPredicate::IntNE, current, end);
                 header_bx.cond_br(keep_going, body_bx.llbb(), next_bx.llbb());
@@ -125,7 +125,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 cg_elem.val.store(&mut body_bx,
                     PlaceRef::new_sized(current, cg_elem.layout, align));
 
-                let next = body_bx.inbounds_gep(current, &[bx.cx().const_usize(1)]);
+                let next = body_bx.inbounds_gep(current, &[bx.const_usize(1)]);
                 body_bx.br(header_bx.llbb());
                 header_bx.add_incoming_to_phi(current, next, body_bx.llbb());
 
@@ -196,13 +196,13 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Cast(ref kind, ref source, mir_cast_ty) => {
                 let operand = self.codegen_operand(&mut bx, source);
                 debug!("cast operand is {:?}", operand);
-                let cast = bx.cx().layout_of(self.monomorphize(&mir_cast_ty));
+                let cast = bx.layout_of(self.monomorphize(&mir_cast_ty));
 
                 let val = match *kind {
                     mir::CastKind::ReifyFnPointer => {
                         match operand.layout.ty.sty {
                             ty::FnDef(def_id, substs) => {
-                                if bx.cx().tcx().has_attr(def_id, "rustc_args_required_const") {
+                                if bx.tcx().has_attr(def_id, "rustc_args_required_const") {
                                     bug!("reifying a fn ptr that requires \
                                           const arguments");
                                 }
@@ -218,8 +218,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         match operand.layout.ty.sty {
                             ty::Closure(def_id, substs) => {
                                 let instance = monomorphize::resolve_closure(
-                                    bx.cx().tcx(), def_id, substs, ty::ClosureKind::FnOnce);
-                                OperandValue::Immediate(bx.cx().get_fn(instance))
+                                    bx.tcx(), def_id, substs, ty::ClosureKind::FnOnce);
+                                OperandValue::Immediate(bx.get_fn(instance))
                             }
                             _ => {
                                 bug!("{} cannot be cast to a fn ptr", operand.layout.ty)
@@ -231,7 +231,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         operand.val
                     }
                     mir::CastKind::Unsize => {
-                        assert!(bx.cx().is_backend_scalar_pair(cast));
+                        assert!(bx.is_backend_scalar_pair(cast));
                         match operand.val {
                             OperandValue::Pair(lldata, llextra) => {
                                 // unsize from a fat pointer - this is a
@@ -242,7 +242,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 // HACK(eddyb) have to bitcast pointers
                                 // until LLVM removes pointee types.
                                 let lldata = bx.pointercast(lldata,
-                                    bx.cx().scalar_pair_element_backend_type(cast, 0, true));
+                                    bx.scalar_pair_element_backend_type(cast, 0, true));
                                 OperandValue::Pair(lldata, llextra)
                             }
                             OperandValue::Immediate(lldata) => {
@@ -257,16 +257,16 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
                     }
-                    mir::CastKind::Misc if bx.cx().is_backend_scalar_pair(operand.layout) => {
+                    mir::CastKind::Misc if bx.is_backend_scalar_pair(operand.layout) => {
                         if let OperandValue::Pair(data_ptr, meta) = operand.val {
-                            if bx.cx().is_backend_scalar_pair(cast) {
+                            if bx.is_backend_scalar_pair(cast) {
                                 let data_cast = bx.pointercast(data_ptr,
-                                    bx.cx().scalar_pair_element_backend_type(cast, 0, true));
+                                    bx.scalar_pair_element_backend_type(cast, 0, true));
                                 OperandValue::Pair(data_cast, meta)
                             } else { // cast to thin-ptr
                                 // Cast of fat-ptr to thin-ptr is an extraction of data-ptr and
                                 // pointer-cast of that pointer to desired pointer type.
-                                let llcast_ty = bx.cx().immediate_backend_type(cast);
+                                let llcast_ty = bx.immediate_backend_type(cast);
                                 let llval = bx.pointercast(data_ptr, llcast_ty);
                                 OperandValue::Immediate(llval)
                             }
@@ -275,10 +275,10 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         }
                     }
                     mir::CastKind::Misc => {
-                        assert!(bx.cx().is_backend_immediate(cast));
-                        let ll_t_out = bx.cx().immediate_backend_type(cast);
+                        assert!(bx.is_backend_immediate(cast));
+                        let ll_t_out = bx.immediate_backend_type(cast);
                         if operand.layout.abi.is_uninhabited() {
-                            let val = OperandValue::Immediate(bx.cx().const_undef(ll_t_out));
+                            let val = OperandValue::Immediate(bx.const_undef(ll_t_out));
                             return (bx, OperandRef {
                                 val,
                                 layout: cast,
@@ -287,14 +287,14 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         let r_t_in = CastTy::from_ty(operand.layout.ty)
                             .expect("bad input type for cast");
                         let r_t_out = CastTy::from_ty(cast.ty).expect("bad output type for cast");
-                        let ll_t_in = bx.cx().immediate_backend_type(operand.layout);
+                        let ll_t_in = bx.immediate_backend_type(operand.layout);
                         match operand.layout.variants {
                             layout::Variants::Single { index } => {
                                 if let Some(def) = operand.layout.ty.ty_adt_def() {
                                     let discr_val = def
-                                        .discriminant_for_variant(bx.cx().tcx(), index)
+                                        .discriminant_for_variant(bx.tcx(), index)
                                         .val;
-                                    let discr = bx.cx().const_uint_big(ll_t_out, discr_val);
+                                    let discr = bx.const_uint_big(ll_t_out, discr_val);
                                     return (bx, OperandRef {
                                         val: OperandValue::Immediate(discr),
                                         layout: cast,
@@ -322,7 +322,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                     // have bound checks, and this is the most
                                     // convenient place to put the `assume`.
                                     let ll_t_in_const =
-                                        bx.cx().const_uint_big(ll_t_in, *scalar.valid_range.end());
+                                        bx.const_uint_big(ll_t_in, *scalar.valid_range.end());
                                     let cmp = bx.icmp(
                                         IntPredicate::IntULE,
                                         llval,
@@ -338,8 +338,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 bx.intcast(llval, ll_t_out, signed)
                             }
                             (CastTy::Float, CastTy::Float) => {
-                                let srcsz = bx.cx().float_width(ll_t_in);
-                                let dstsz = bx.cx().float_width(ll_t_out);
+                                let srcsz = bx.float_width(ll_t_in);
+                                let dstsz = bx.float_width(ll_t_out);
                                 if dstsz > srcsz {
                                     bx.fpext(llval, ll_t_out)
                                 } else if srcsz > dstsz {
@@ -356,7 +356,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             (CastTy::FnPtr, CastTy::Int(_)) =>
                                 bx.ptrtoint(llval, ll_t_out),
                             (CastTy::Int(_), CastTy::Ptr(_)) => {
-                                let usize_llval = bx.intcast(llval, bx.cx().type_isize(), signed);
+                                let usize_llval = bx.intcast(llval, bx.type_isize(), signed);
                                 bx.inttoptr(usize_llval, ll_t_out)
                             }
                             (CastTy::Int(_), CastTy::Float) =>
@@ -383,7 +383,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 // Note: places are indirect, so storing the `llval` into the
                 // destination effectively creates a reference.
-                let val = if !bx.cx().type_has_metadata(ty) {
+                let val = if !bx.type_has_metadata(ty) {
                     OperandValue::Immediate(cg_place.llval)
                 } else {
                     OperandValue::Pair(cg_place.llval, cg_place.llextra.unwrap())
@@ -401,7 +401,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let size = self.evaluate_array_len(&mut bx, place);
                 let operand = OperandRef {
                     val: OperandValue::Immediate(size),
-                    layout: bx.cx().layout_of(bx.tcx().types.usize),
+                    layout: bx.layout_of(bx.tcx().types.usize),
                 };
                 (bx, operand)
             }
@@ -427,7 +427,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 let operand = OperandRef {
                     val: OperandValue::Immediate(llresult),
-                    layout: bx.cx().layout_of(
+                    layout: bx.layout_of(
                         op.ty(bx.tcx(), lhs.layout.ty, rhs.layout.ty)),
                 };
                 (bx, operand)
@@ -442,7 +442,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let operand_ty = bx.tcx().intern_tup(&[val_ty, bx.tcx().types.bool]);
                 let operand = OperandRef {
                     val: result,
-                    layout: bx.cx().layout_of(operand_ty)
+                    layout: bx.layout_of(operand_ty)
                 };
 
                 (bx, operand)
@@ -477,8 +477,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Rvalue::NullaryOp(mir::NullOp::SizeOf, ty) => {
-                assert!(bx.cx().type_is_sized(ty));
-                let val = bx.cx().const_usize(bx.cx().layout_of(ty).size.bytes());
+                assert!(bx.type_is_sized(ty));
+                let val = bx.const_usize(bx.layout_of(ty).size.bytes());
                 let tcx = self.cx.tcx();
                 (bx, OperandRef {
                     val: OperandValue::Immediate(val),
@@ -488,21 +488,21 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Rvalue::NullaryOp(mir::NullOp::Box, content_ty) => {
                 let content_ty = self.monomorphize(&content_ty);
-                let content_layout = bx.cx().layout_of(content_ty);
-                let llsize = bx.cx().const_usize(content_layout.size.bytes());
-                let llalign = bx.cx().const_usize(content_layout.align.abi.bytes());
-                let box_layout = bx.cx().layout_of(bx.tcx().mk_box(content_ty));
-                let llty_ptr = bx.cx().backend_type(box_layout);
+                let content_layout = bx.layout_of(content_ty);
+                let llsize = bx.const_usize(content_layout.size.bytes());
+                let llalign = bx.const_usize(content_layout.align.abi.bytes());
+                let box_layout = bx.layout_of(bx.tcx().mk_box(content_ty));
+                let llty_ptr = bx.backend_type(box_layout);
 
                 // Allocate space:
                 let def_id = match bx.tcx().lang_items().require(ExchangeMallocFnLangItem) {
                     Ok(id) => id,
                     Err(s) => {
-                        bx.cx().sess().fatal(&format!("allocation of `{}` {}", box_layout.ty, s));
+                        bx.sess().fatal(&format!("allocation of `{}` {}", box_layout.ty, s));
                     }
                 };
                 let instance = ty::Instance::mono(bx.tcx(), def_id);
-                let r = bx.cx().get_fn(instance);
+                let r = bx.get_fn(instance);
                 let call = bx.call(r, &[llsize, llalign], None);
                 let val = bx.pointercast(call, llty_ptr);
 
@@ -540,8 +540,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let mir::Place::Local(index) = *place {
             if let LocalRef::Operand(Some(op)) = self.locals[index] {
                 if let ty::Array(_, n) = op.layout.ty.sty {
-                    let n = n.unwrap_usize(bx.cx().tcx());
-                    return bx.cx().const_usize(n);
+                    let n = n.unwrap_usize(bx.tcx());
+                    return bx.const_usize(n);
                 }
             }
         }
@@ -599,7 +599,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::Shr => common::build_unchecked_rshift(bx, input_ty, lhs, rhs),
             mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt |
             mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => if is_unit {
-                bx.cx().const_bool(match op {
+                bx.const_bool(match op {
                     mir::BinOp::Ne | mir::BinOp::Lt | mir::BinOp::Gt => false,
                     mir::BinOp::Eq | mir::BinOp::Le | mir::BinOp::Ge => true,
                     _ => unreachable!()
@@ -673,9 +673,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // with #[rustc_inherit_overflow_checks] and inlined from
         // another crate (mostly core::num generic/#[inline] fns),
         // while the current crate doesn't use overflow checks.
-        if !bx.cx().check_overflow() {
+        if !bx.check_overflow() {
             let val = self.codegen_scalar_binop(bx, op, lhs, rhs, input_ty);
-            return OperandValue::Pair(val, bx.cx().const_bool(false));
+            return OperandValue::Pair(val, bx.const_bool(false));
         }
 
         let (val, of) = match op {
@@ -690,12 +690,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 bx.checked_binop(oop, input_ty, lhs, rhs)
             }
             mir::BinOp::Shl | mir::BinOp::Shr => {
-                let lhs_llty = bx.cx().val_ty(lhs);
-                let rhs_llty = bx.cx().val_ty(rhs);
+                let lhs_llty = bx.val_ty(lhs);
+                let rhs_llty = bx.val_ty(rhs);
                 let invert_mask = common::shift_mask_val(bx, lhs_llty, rhs_llty, true);
                 let outer_bits = bx.and(rhs, invert_mask);
 
-                let of = bx.icmp(IntPredicate::IntNE, outer_bits, bx.cx().const_null(rhs_llty));
+                let of = bx.icmp(IntPredicate::IntNE, outer_bits, bx.const_null(rhs_llty));
                 let val = self.codegen_scalar_binop(bx, op, lhs, rhs, input_ty);
 
                 (val, of)
@@ -745,8 +745,8 @@ fn cast_int_to_float<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     // It's only u128 -> f32 that can cause overflows (i.e., should yield infinity).
     // LLVM's uitofp produces undef in those cases, so we manually check for that case.
     let is_u128_to_f32 = !signed &&
-        bx.cx().int_width(int_ty) == 128 &&
-        bx.cx().float_width(float_ty) == 32;
+        bx.int_width(int_ty) == 128 &&
+        bx.float_width(float_ty) == 32;
     if is_u128_to_f32 {
         // All inputs greater or equal to (f32::MAX + 0.5 ULP) are rounded to infinity,
         // and for everything else LLVM's uitofp works just fine.
@@ -754,9 +754,9 @@ fn cast_int_to_float<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         use rustc_apfloat::Float;
         const MAX_F32_PLUS_HALF_ULP: u128 = ((1 << (Single::PRECISION + 1)) - 1)
                                             << (Single::MAX_EXP - Single::PRECISION as i16);
-        let max = bx.cx().const_uint_big(int_ty, MAX_F32_PLUS_HALF_ULP);
+        let max = bx.const_uint_big(int_ty, MAX_F32_PLUS_HALF_ULP);
         let overflow = bx.icmp(IntPredicate::IntUGE, x, max);
-        let infinity_bits = bx.cx().const_u32(ieee::Single::INFINITY.to_bits() as u32);
+        let infinity_bits = bx.const_u32(ieee::Single::INFINITY.to_bits() as u32);
         let infinity = bx.bitcast(infinity_bits, float_ty);
         let fp = bx.uitofp(x, float_ty);
         bx.select(overflow, infinity, fp)
@@ -782,12 +782,12 @@ fn cast_float_to_int<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         bx.fptoui(x, int_ty)
     };
 
-    if !bx.cx().sess().opts.debugging_opts.saturating_float_casts {
+    if !bx.sess().opts.debugging_opts.saturating_float_casts {
         return fptosui_result;
     }
 
-    let int_width = bx.cx().int_width(int_ty);
-    let float_width = bx.cx().float_width(float_ty);
+    let int_width = bx.int_width(int_ty);
+    let float_width = bx.float_width(float_ty);
     // LLVM's fpto[su]i returns undef when the input x is infinite, NaN, or does not fit into the
     // destination integer type after rounding towards zero. This `undef` value can cause UB in
     // safe code (see issue #10184), so we implement a saturating conversion on top of it:
@@ -842,8 +842,8 @@ fn cast_float_to_int<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
     let mut float_bits_to_llval = |bits| {
         let bits_llval = match float_width  {
-            32 => bx.cx().const_u32(bits as u32),
-            64 => bx.cx().const_u64(bits as u64),
+            32 => bx.const_u32(bits as u32),
+            64 => bx.const_u64(bits as u64),
             n => bug!("unsupported float width {}", n),
         };
         bx.bitcast(bits_llval, float_ty)
@@ -898,8 +898,8 @@ fn cast_float_to_int<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     // performed is ultimately up to the backend, but at least x86 does perform them.
     let less_or_nan = bx.fcmp(RealPredicate::RealULT, x, f_min);
     let greater = bx.fcmp(RealPredicate::RealOGT, x, f_max);
-    let int_max = bx.cx().const_uint_big(int_ty, int_max(signed, int_width));
-    let int_min = bx.cx().const_uint_big(int_ty, int_min(signed, int_width) as u128);
+    let int_max = bx.const_uint_big(int_ty, int_max(signed, int_width));
+    let int_min = bx.const_uint_big(int_ty, int_min(signed, int_width) as u128);
     let s0 = bx.select(less_or_nan, int_min, fptosui_result);
     let s1 = bx.select(greater, int_max, s0);
 
@@ -908,7 +908,7 @@ fn cast_float_to_int<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     // Therefore we only need to execute this step for signed integer types.
     if signed {
         // LLVM has no isNaN predicate, so we use (x == x) instead
-        let zero = bx.cx().const_uint(int_ty, 0);
+        let zero = bx.const_uint(int_ty, 0);
         let cmp = bx.fcmp(RealPredicate::RealOEQ, x, x);
         bx.select(cmp, s1, zero)
     } else {

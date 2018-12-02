@@ -1,6 +1,6 @@
 use rustc::middle::lang_items;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::ty::layout::{self, LayoutOf, HasTyCtxt};
+use rustc::ty::layout::{self, HasTyCtxt};
 use rustc::mir;
 use rustc::mir::interpret::EvalErrorKind;
 use rustc_target::abi::call::{ArgType, FnType, PassMode, IgnoreMode};
@@ -1012,13 +1012,12 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         &mut self,
         bx: &mut Bx
     ) -> PlaceRef<'tcx, Bx::Value> {
-        let cx = bx.cx();
         if let Some(slot) = self.personality_slot {
             slot
         } else {
-            let layout = cx.layout_of(cx.tcx().intern_tup(&[
-                cx.tcx().mk_mut_ptr(cx.tcx().types.u8),
-                cx.tcx().types.i32
+            let layout = bx.layout_of(bx.tcx().intern_tup(&[
+                bx.tcx().mk_mut_ptr(bx.tcx().types.u8),
+                bx.tcx().types.i32
             ]));
             let slot = PlaceRef::alloca(bx, layout, "personalityslot");
             self.personality_slot = Some(slot);

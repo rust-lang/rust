@@ -1,7 +1,7 @@
 use rustc::mir::interpret::{ConstValue, ErrorHandled};
 use rustc::mir;
 use rustc::ty;
-use rustc::ty::layout::{self, Align, LayoutOf, TyLayout};
+use rustc::ty::layout::{self, Align, TyLayout};
 
 use crate::base;
 use crate::MemFlags;
@@ -148,11 +148,11 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
         bx: &mut Bx
     ) -> V {
         if let OperandValue::Pair(a, b) = self.val {
-            let llty = bx.cx().backend_type(self.layout);
+            let llty = bx.backend_type(self.layout);
             debug!("Operand::immediate_or_packed_pair: packing {:?} into {:?}",
                    self, llty);
             // Reconstruct the immediate aggregate.
-            let mut llpair = bx.cx().const_undef(llty);
+            let mut llpair = bx.const_undef(llty);
             let imm_a = base::from_immediate(bx, a);
             let imm_b = base::from_immediate(bx, b);
             llpair = bx.insert_value(llpair, imm_a, 0);
@@ -190,7 +190,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
         bx: &mut Bx,
         i: usize
     ) -> Self {
-        let field = self.layout.field(bx.cx(), i);
+        let field = self.layout.field(bx, i);
         let offset = self.layout.fields.offset(i);
 
         let mut val = match (self.val, &self.layout.abi) {
@@ -209,12 +209,12 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
             // Extract a scalar component from a pair.
             (OperandValue::Pair(a_llval, b_llval), &layout::Abi::ScalarPair(ref a, ref b)) => {
                 if offset.bytes() == 0 {
-                    assert_eq!(field.size, a.value.size(bx.cx()));
+                    assert_eq!(field.size, a.value.size(bx));
                     OperandValue::Immediate(a_llval)
                 } else {
-                    assert_eq!(offset, a.value.size(bx.cx())
-                        .align_to(b.value.align(bx.cx()).abi));
-                    assert_eq!(field.size, b.value.size(bx.cx()));
+                    assert_eq!(offset, a.value.size(bx)
+                        .align_to(b.value.align(bx).abi));
+                    assert_eq!(field.size, b.value.size(bx));
                     OperandValue::Immediate(b_llval)
                 }
             }
@@ -222,7 +222,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
             // `#[repr(simd)]` types are also immediate.
             (OperandValue::Immediate(llval), &layout::Abi::Vector { .. }) => {
                 OperandValue::Immediate(
-                    bx.extract_element(llval, bx.cx().const_usize(i as u64)))
+                    bx.extract_element(llval, bx.const_usize(i as u64)))
             }
 
             _ => bug!("OperandRef::extract_field({:?}): not applicable", self)
@@ -231,7 +231,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
         // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
         // Bools in union fields needs to be truncated.
         let to_immediate_or_cast = |bx: &mut Bx, val, ty| {
-            if ty == bx.cx().type_i1() {
+            if ty == bx.type_i1() {
                 bx.trunc(val, ty)
             } else {
                 bx.bitcast(val, ty)
@@ -240,12 +240,12 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandRef<'tcx, V> {
 
         match val {
             OperandValue::Immediate(ref mut llval) => {
-                *llval = to_immediate_or_cast(bx, *llval, bx.cx().immediate_backend_type(field));
+                *llval = to_immediate_or_cast(bx, *llval, bx.immediate_backend_type(field));
             }
             OperandValue::Pair(ref mut a, ref mut b) => {
-                *a = to_immediate_or_cast(bx, *a, bx.cx()
+                *a = to_immediate_or_cast(bx, *a, bx
                     .scalar_pair_element_backend_type(field, 0, true));
-                *b = to_immediate_or_cast(bx, *b, bx.cx()
+                *b = to_immediate_or_cast(bx, *b, bx
                     .scalar_pair_element_backend_type(field, 1, true));
             }
             OperandValue::Ref(..) => bug!()
@@ -359,7 +359,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> OperandValue<V> {
 
         // Allocate an appropriate region on the stack, and copy the value into it
         let (llsize, _) = glue::size_and_align_of_dst(bx, unsized_ty, Some(llextra));
-        let lldst = bx.array_alloca(bx.cx().type_i8(), llsize, "unsized_tmp", max_align);
+        let lldst = bx.array_alloca(bx.type_i8(), llsize, "unsized_tmp", max_align);
         bx.memcpy(lldst, max_align, llptr, min_align, llsize, flags);
 
         // Store the allocated region and the extra to the indirect place.
@@ -404,7 +404,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // ZSTs don't require any actual memory access.
                         // FIXME(eddyb) deduplicate this with the identical
                         // checks in `codegen_consume` and `extract_field`.
-                        let elem = o.layout.field(bx.cx(), 0);
+                        let elem = o.layout.field(bx, 0);
                         if elem.is_zst() {
                             return Some(OperandRef::new_zst(bx, elem));
                         }
@@ -425,7 +425,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         debug!("codegen_consume(place={:?})", place);
 
         let ty = self.monomorphized_place_ty(place);
-        let layout = bx.cx().layout_of(ty);
+        let layout = bx.layout_of(ty);
 
         // ZSTs don't require any actual memory access.
         if layout.is_zst() {
@@ -471,9 +471,9 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // the above error (or silence it under some conditions) will not cause UB
                         bx.abort();
                         // We've errored, so we don't have to produce working code.
-                        let layout = bx.cx().layout_of(ty);
+                        let layout = bx.layout_of(ty);
                         bx.load_operand(PlaceRef::new_sized(
-                            bx.cx().const_undef(bx.cx().type_ptr_to(bx.cx().backend_type(layout))),
+                            bx.const_undef(bx.type_ptr_to(bx.backend_type(layout))),
                             layout,
                             layout.align.abi,
                         ))

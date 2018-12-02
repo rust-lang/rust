@@ -21,7 +21,7 @@ use rustc::middle::lang_items::StartFnLangItem;
 use rustc::middle::weak_lang_items;
 use rustc::mir::mono::{Stats, CodegenUnitNameBuilder};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, TyLayout, LayoutOf, VariantIdx, HasTyCtxt};
+use rustc::ty::layout::{self, Align, TyLayout, VariantIdx, HasTyCtxt};
 use rustc::ty::query::Providers;
 use rustc::middle::cstore::{self, LinkagePreference};
 use rustc::util::common::{time, print_time_passes_entry};
@@ -162,16 +162,16 @@ pub fn compare_simd_types<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 /// The `old_info` argument is a bit funny. It is intended for use
 /// in an upcast, where the new vtable for an object will be derived
 /// from the old one.
-pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
-    cx: &Cx,
+pub fn unsized_info<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &Bx,
     source: Ty<'tcx>,
     target: Ty<'tcx>,
-    old_info: Option<Cx::Value>,
-) -> Cx::Value {
-    let (source, target) = cx.tcx().struct_lockstep_tails(source, target);
+    old_info: Option<Bx::Value>,
+) -> Bx::Value {
+    let (source, target) = bx.tcx().struct_lockstep_tails(source, target);
     match (&source.sty, &target.sty) {
         (&ty::Array(_, len), &ty::Slice(_)) => {
-            cx.const_usize(len.unwrap_usize(cx.tcx()))
+            bx.const_usize(len.unwrap_usize(bx.tcx()))
         }
         (&ty::Dynamic(..), &ty::Dynamic(..)) => {
             // For now, upcasts are limited to changes in marker
@@ -180,10 +180,10 @@ pub fn unsized_info<'tcx, Cx: CodegenMethods<'tcx>>(
             old_info.expect("unsized_info: missing old info for trait upcast")
         }
         (_, &ty::Dynamic(ref data, ..)) => {
-            let vtable_ptr = cx.layout_of(cx.tcx().mk_mut_ptr(target))
-                .field(cx, FAT_PTR_EXTRA);
-            cx.const_ptrcast(meth::get_vtable(cx, source, data.principal()),
-                            cx.backend_type(vtable_ptr))
+            let vtable_ptr = bx.layout_of(bx.tcx().mk_mut_ptr(target))
+                .field(bx, FAT_PTR_EXTRA);
+            bx.const_ptrcast(meth::get_vtable(bx.cx(), source, data.principal()),
+                            bx.backend_type(vtable_ptr))
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}",
                   source,
@@ -206,24 +206,24 @@ pub fn unsize_thin_ptr<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
          &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) |
         (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }),
          &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            assert!(bx.cx().type_is_sized(a));
-            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
-            (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
+            assert!(bx.type_is_sized(a));
+            let ptr_ty = bx.type_ptr_to(bx.backend_type(bx.layout_of(b)));
+            (bx.pointercast(src, ptr_ty), unsized_info(bx, a, b, None))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_ty.boxed_ty(), dst_ty.boxed_ty());
-            assert!(bx.cx().type_is_sized(a));
-            let ptr_ty = bx.cx().type_ptr_to(bx.cx().backend_type(bx.cx().layout_of(b)));
-            (bx.pointercast(src, ptr_ty), unsized_info(bx.cx(), a, b, None))
+            assert!(bx.type_is_sized(a));
+            let ptr_ty = bx.type_ptr_to(bx.backend_type(bx.layout_of(b)));
+            (bx.pointercast(src, ptr_ty), unsized_info(bx, a, b, None))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
-            let src_layout = bx.cx().layout_of(src_ty);
-            let dst_layout = bx.cx().layout_of(dst_ty);
+            let src_layout = bx.layout_of(src_ty);
+            let dst_layout = bx.layout_of(dst_ty);
             let mut result = None;
             for i in 0..src_layout.fields.count() {
-                let src_f = src_layout.field(bx.cx(), i);
+                let src_f = src_layout.field(bx, i);
                 assert_eq!(src_layout.fields.offset(i).bytes(), 0);
                 assert_eq!(dst_layout.fields.offset(i).bytes(), 0);
                 if src_f.is_zst() {
@@ -231,15 +231,15 @@ pub fn unsize_thin_ptr<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 }
                 assert_eq!(src_layout.size, src_f.size);
 
-                let dst_f = dst_layout.field(bx.cx(), i);
+                let dst_f = dst_layout.field(bx, i);
                 assert_ne!(src_f.ty, dst_f.ty);
                 assert_eq!(result, None);
                 result = Some(unsize_thin_ptr(bx, src, src_f.ty, dst_f.ty));
             }
             let (lldata, llextra) = result.unwrap();
             // HACK(eddyb) have to bitcast pointers until LLVM removes pointee types.
-            (bx.bitcast(lldata, bx.cx().scalar_pair_element_backend_type(dst_layout, 0, true)),
-             bx.bitcast(llextra, bx.cx().scalar_pair_element_backend_type(dst_layout, 1, true)))
+            (bx.bitcast(lldata, bx.scalar_pair_element_backend_type(dst_layout, 0, true)),
+             bx.bitcast(llextra, bx.scalar_pair_element_backend_type(dst_layout, 1, true)))
         }
         _ => bug!("unsize_thin_ptr: called on bad types"),
     }
@@ -261,8 +261,8 @@ pub fn coerce_unsized_into<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
                 // i.e., &'a fmt::Debug+Send => &'a fmt::Debug
                 // So we need to pointercast the base to ensure
                 // the types match up.
-                let thin_ptr = dst.layout.field(bx.cx(), FAT_PTR_ADDR);
-                (bx.pointercast(base, bx.cx().backend_type(thin_ptr)), info)
+                let thin_ptr = dst.layout.field(bx, FAT_PTR_ADDR);
+                (bx.pointercast(base, bx.backend_type(thin_ptr)), info)
             }
             OperandValue::Immediate(base) => {
                 unsize_thin_ptr(bx, base, src_ty, dst_ty)
@@ -323,16 +323,16 @@ fn cast_shift_rhs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> Bx::Value {
     // Shifts may have any size int on the rhs
     if op.is_shift() {
-        let mut rhs_llty = bx.cx().val_ty(rhs);
-        let mut lhs_llty = bx.cx().val_ty(lhs);
-        if bx.cx().type_kind(rhs_llty) == TypeKind::Vector {
-            rhs_llty = bx.cx().element_type(rhs_llty)
+        let mut rhs_llty = bx.val_ty(rhs);
+        let mut lhs_llty = bx.val_ty(lhs);
+        if bx.type_kind(rhs_llty) == TypeKind::Vector {
+            rhs_llty = bx.element_type(rhs_llty)
         }
-        if bx.cx().type_kind(lhs_llty) == TypeKind::Vector {
-            lhs_llty = bx.cx().element_type(lhs_llty)
+        if bx.type_kind(lhs_llty) == TypeKind::Vector {
+            lhs_llty = bx.element_type(lhs_llty)
         }
-        let rhs_sz = bx.cx().int_width(rhs_llty);
-        let lhs_sz = bx.cx().int_width(lhs_llty);
+        let rhs_sz = bx.int_width(rhs_llty);
+        let lhs_sz = bx.int_width(lhs_llty);
         if lhs_sz < rhs_sz {
             bx.trunc(rhs, lhs_llty)
         } else if lhs_sz > rhs_sz {
@@ -360,8 +360,8 @@ pub fn from_immediate<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     val: Bx::Value
 ) -> Bx::Value {
-    if bx.cx().val_ty(val) == bx.cx().type_i1() {
-        bx.zext(val, bx.cx().type_i8())
+    if bx.val_ty(val) == bx.type_i1() {
+        bx.zext(val, bx.type_i8())
     } else {
         val
     }
@@ -384,7 +384,7 @@ pub fn to_immediate_scalar<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     scalar: &layout::Scalar,
 ) -> Bx::Value {
     if scalar.is_bool() {
-        return bx.trunc(val, bx.cx().type_i1());
+        return bx.trunc(val, bx.type_i1());
     }
     val
 }
@@ -403,7 +403,7 @@ pub fn memcpy_ty<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         return;
     }
 
-    bx.memcpy(dst, dst_align, src, src_align, bx.cx().const_usize(size), flags);
+    bx.memcpy(dst, dst_align, src, src_align, bx.const_usize(size), flags);
 }
 
 pub fn codegen_instance<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
