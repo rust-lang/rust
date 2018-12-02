@@ -1,7 +1,6 @@
 use rustc::ty::{self, Ty, TypeFoldable, UpvarSubsts};
 use rustc::ty::layout::{TyLayout, HasTyCtxt};
 use rustc::mir::{self, Mir};
-use rustc::ty::subst::SubstsRef;
 use rustc::session::config::DebugInfo;
 use rustc_mir::monomorphize::Instance;
 use rustc_target::abi::call::{FnType, PassMode, IgnoreMode};
@@ -83,9 +82,6 @@ pub struct FunctionCx<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> {
     /// Debug information for MIR scopes.
     scopes: IndexVec<mir::SourceScope, debuginfo::MirDebugScope<Bx::DIScope>>,
 
-    /// If this function is being monomorphized, this contains the type substitutions used.
-    param_substs: SubstsRef<'tcx>,
-
     /// If this function is a C-variadic function, this contains the `PlaceRef` of the
     /// "spoofed" `VaList`.
     va_list_ref: Option<PlaceRef<'tcx, Bx::Value>>,
@@ -96,7 +92,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         where T: TypeFoldable<'tcx>
     {
         self.cx.tcx().subst_and_normalize_erasing_regions(
-            self.param_substs,
+            self.instance.substs,
             ty::ParamEnv::reveal_all(),
             value,
         )
@@ -203,6 +199,8 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     instance: Instance<'tcx>,
     sig: ty::FnSig<'tcx>,
 ) {
+    assert!(!instance.substs.needs_infer());
+
     let fn_ty = cx.new_fn_type(sig, &[]);
     debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
@@ -245,10 +243,6 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         scopes,
         locals: IndexVec::new(),
         debug_context,
-        param_substs: {
-            assert!(!instance.substs.needs_infer());
-            instance.substs
-        },
         va_list_ref: None,
     };
 
