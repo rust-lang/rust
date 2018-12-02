@@ -90,7 +90,7 @@ declare_clippy_lint! {
 /// ```
 declare_clippy_lint! {
     pub LARGE_DIGIT_GROUPS,
-    style,
+    pedantic,
     "grouping digits into groups that are too large"
 }
 
