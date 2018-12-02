@@ -277,6 +277,7 @@
 #![feature(maybe_uninit_ref)]
 #![feature(maybe_uninit_slice)]
 #![feature(min_specialization)]
+#![feature(needle)]
 #![feature(needs_panic_runtime)]
 #![feature(negative_impls)]
 #![feature(never_type)]
@@ -447,6 +448,8 @@ pub use core::u64;
 pub use core::u8;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::usize;
+#[unstable(feature = "needle", issue = "56345")]
+pub use core::needle;
 
 pub mod f32;
 pub mod f64;
