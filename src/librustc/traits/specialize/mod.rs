@@ -85,6 +85,8 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                         source_substs: &'tcx Substs<'tcx>,
                                         target_node: specialization_graph::Node)
                                         -> &'tcx Substs<'tcx> {
+    debug!("translate_substs({:?}, {:?}, {:?}, {:?})",
+           param_env, source_impl, source_substs, target_node);
     let source_trait_ref = infcx.tcx
                                 .impl_trait_ref(source_impl)
                                 .unwrap()
@@ -119,10 +121,13 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 /// whichever applies.
 pub fn find_associated_item<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
     item: &ty::AssociatedItem,
     substs: &'tcx Substs<'tcx>,
     impl_data: &super::VtableImplData<'tcx, ()>,
 ) -> (DefId, &'tcx Substs<'tcx>) {
+    debug!("find_associated_item({:?}, {:?}, {:?}, {:?})",
+           param_env, item, substs, impl_data);
     assert!(!substs.needs_infer());
 
     let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
@@ -132,7 +137,7 @@ pub fn find_associated_item<'a, 'tcx>(
     match ancestors.defs(tcx, item.ident, item.kind, trait_def_id).next() {
         Some(node_item) => {
             let substs = tcx.infer_ctxt().enter(|infcx| {
-                let param_env = ty::ParamEnv::reveal_all();
+                let param_env = param_env.with_reveal_all();
                 let substs = substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
                 let substs = translate_substs(&infcx, param_env, impl_data.impl_def_id,
                                               substs, node_item.node);
@@ -219,12 +224,17 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                        source_trait_ref: ty::TraitRef<'tcx>,
                                        target_impl: DefId)
                                        -> Result<&'tcx Substs<'tcx>, ()> {
+    debug!("fulfill_implication({:?}, trait_ref={:?} |- {:?} applies)",
+           param_env, source_trait_ref, target_impl);
+
     let selcx = &mut SelectionContext::new(&infcx);
     let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
     let (target_trait_ref, mut obligations) = impl_trait_ref_and_oblig(selcx,
                                                                        param_env,
                                                                        target_impl,
                                                                        target_substs);
+    debug!("fulfill_implication: target_trait_ref={:?}, obligations={:?}",
+           target_trait_ref, obligations);
 
     // do the impls unify? If not, no specialization.
     match infcx.at(&ObligationCause::dummy(), param_env)
