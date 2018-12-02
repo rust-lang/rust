@@ -14,7 +14,7 @@ use super::method::MethodCallee;
 use rustc::infer::{InferCtxt, InferOk};
 use rustc::session::DiagnosticMessageId;
 use rustc::traits::{self, TraitEngine};
-use rustc::ty::{self, Ty, TraitRef};
+use rustc::ty::{self, Ty, TyCtxt, TraitRef};
 use rustc::ty::{ToPredicate, TypeFoldable};
 use rustc::ty::adjustment::{Adjustment, Adjust, OverloadedDeref};
 
@@ -39,6 +39,8 @@ pub struct Autoderef<'a, 'gcx: 'tcx, 'tcx: 'a> {
     at_start: bool,
     include_raw_pointers: bool,
     span: Span,
+    silence_errors: bool,
+    reached_recursion_limit: bool
 }
 
 impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
@@ -57,24 +59,10 @@ impl<'a, 'gcx, 'tcx> Iterator for Autoderef<'a, 'gcx, 'tcx> {
         }
 
         if self.steps.len() >= *tcx.sess.recursion_limit.get() {
-            // We've reached the recursion limit, error gracefully.
-            let suggested_limit = *tcx.sess.recursion_limit.get() * 2;
-            let msg = format!("reached the recursion limit while auto-dereferencing `{:?}`",
-                              self.cur_ty);
-            let error_id = (DiagnosticMessageId::ErrorId(55), Some(self.span), msg);
-            let fresh = tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
-            if fresh {
-                struct_span_err!(tcx.sess,
-                                 self.span,
-                                 E0055,
-                                 "reached the recursion limit while auto-dereferencing `{:?}`",
-                                 self.cur_ty)
-                    .span_label(self.span, "deref recursion limit reached")
-                    .help(&format!(
-                        "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
-                        suggested_limit))
-                    .emit();
+            if !self.silence_errors {
+                report_autoderef_recursion_limit_error(tcx, self.span, self.cur_ty);
             }
+            self.reached_recursion_limit = true;
             return None;
         }
 
@@ -123,6 +111,8 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
             obligations: vec![],
             at_start: true,
             include_raw_pointers: false,
+            silence_errors: false,
+            reached_recursion_limit: false,
             span,
         }
     }
@@ -240,12 +230,44 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         self
     }
 
+    pub fn silence_errors(mut self) -> Self {
+        self.silence_errors = true;
+        self
+    }
+
+    pub fn reached_recursion_limit(&self) -> bool {
+        self.reached_recursion_limit
+    }
+
     pub fn finalize(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) {
         fcx.register_predicates(self.into_obligations());
     }
 
     pub fn into_obligations(self) -> Vec<traits::PredicateObligation<'tcx>> {
         self.obligations
+    }
+}
+
+pub fn report_autoderef_recursion_limit_error<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>, span: Span, ty: Ty<'tcx>)
+{
+    // We've reached the recursion limit, error gracefully.
+    let suggested_limit = *tcx.sess.recursion_limit.get() * 2;
+    let msg = format!("reached the recursion limit while auto-dereferencing `{:?}`",
+                      ty);
+    let error_id = (DiagnosticMessageId::ErrorId(55), Some(span), msg);
+    let fresh = tcx.sess.one_time_diagnostics.borrow_mut().insert(error_id);
+    if fresh {
+        struct_span_err!(tcx.sess,
+                         span,
+                         E0055,
+                         "reached the recursion limit while auto-dereferencing `{:?}`",
+                         ty)
+            .span_label(span, "deref recursion limit reached")
+            .help(&format!(
+                "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
+                suggested_limit))
+            .emit();
     }
 }
 

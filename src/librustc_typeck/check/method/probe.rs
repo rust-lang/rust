@@ -13,7 +13,7 @@ use super::NoMatchData;
 use super::{CandidateSource, ImplSource, TraitSource};
 use super::suggest;
 
-use check::autoderef::Autoderef;
+use check::autoderef::{self, Autoderef};
 use check::FnCtxt;
 use hir::def_id::DefId;
 use hir::def::Def;
@@ -283,19 +283,35 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         from_unsafe_deref: false,
                         unsize: false,
                     }]),
-                    opt_bad_ty: None
+                    opt_bad_ty: None,
+                    reached_recursion_limit: false
                 }
             })
         };
 
+        // If our autoderef loop had reached the recursion limit,
+        // report an overflow error, but continue going on with
+        // the truncated autoderef list.
+        if steps.reached_recursion_limit {
+            self.probe(|_| {
+                let ty = &steps.steps.last().unwrap_or_else(|| {
+                    span_bug!(span, "reached the recursion limit in 0 steps?")
+                }).self_ty;
+                let ty = self.probe_instantiate_query_response(span, &orig_values, ty)
+                    .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
+                autoderef::report_autoderef_recursion_limit_error(self.tcx, span,
+                                                                  ty.value);
+            });
+        }
+
+
         // If we encountered an `_` type or an error type during autoderef, this is
         // ambiguous.
-        if let Some(autoderef_bad_ty) = &steps.opt_bad_ty {
-            let MethodAutoderefBadTy { reached_raw_pointer, ref ty } = **autoderef_bad_ty;
+        if let Some(bad_ty) = &steps.opt_bad_ty {
             if is_suggestion.0 {
                 // Ambiguity was encountered during a suggestion. Just keep going.
                 debug!("ProbeContext: encountered ambiguity in suggestion");
-            } else if reached_raw_pointer && !self.tcx.features().arbitrary_self_types {
+            } else if bad_ty.reached_raw_pointer && !self.tcx.features().arbitrary_self_types {
                 // this case used to be allowed by the compiler,
                 // so we do a future-compat lint here for the 2015 edition
                 // (see https://github.com/rust-lang/rust/issues/46906)
@@ -314,10 +330,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // Encountered a real ambiguity, so abort the lookup. If `ty` is not
                 // an `Err`, report the right "type annotations needed" error pointing
                 // to it.
+                let ty = &bad_ty.ty;
                 let ty = self.probe_instantiate_query_response(span, &orig_values, ty)
                     .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
-                let t = self.structurally_resolved_type(span, ty.value);
-                assert_eq!(t, self.tcx.types.err);
+                let ty = self.structurally_resolved_type(span, ty.value);
+                assert_eq!(ty, self.tcx.types.err);
                 return Err(MethodError::NoMatch(NoMatchData::new(Vec::new(),
                                                                  Vec::new(),
                                                                  Vec::new(),
@@ -365,7 +382,8 @@ fn method_autoderef_steps<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
         let ParamEnvAnd { param_env, value: self_ty } = goal;
 
         let mut autoderef = Autoderef::new(infcx, param_env, ast::DUMMY_NODE_ID, DUMMY_SP, self_ty)
-            .include_raw_pointers();
+            .include_raw_pointers()
+            .silence_errors();
         let mut reached_raw_pointer = false;
         let mut steps: Vec<_> = autoderef.by_ref()
             .map(|(ty, d)| {
@@ -416,7 +434,8 @@ fn method_autoderef_steps<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
 
         MethodAutoderefStepsResult {
             steps: Lrc::new(steps),
-            opt_bad_ty: opt_bad_ty.map(Lrc::new)
+            opt_bad_ty: opt_bad_ty.map(Lrc::new),
+            reached_recursion_limit: autoderef.reached_recursion_limit()
         }
     })
 }

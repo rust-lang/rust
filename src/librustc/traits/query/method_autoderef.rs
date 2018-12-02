@@ -30,7 +30,10 @@ pub struct MethodAutoderefStepsResult<'tcx> {
     /// The valid autoderef steps that could be find.
     pub steps: Lrc<Vec<CandidateStep<'tcx>>>,
     /// If Some(T), a type autoderef reported an error on.
-    pub opt_bad_ty: Option<Lrc<MethodAutoderefBadTy<'tcx>>>
+    pub opt_bad_ty: Option<Lrc<MethodAutoderefBadTy<'tcx>>>,
+    /// If `true`, `steps` has been truncated due to reaching the
+    /// recursion limit.
+    pub reached_recursion_limit: bool,
 }
 
 #[derive(Debug)]
@@ -44,7 +47,7 @@ impl_stable_hash_for!(struct MethodAutoderefBadTy<'tcx> {
 });
 
 impl_stable_hash_for!(struct MethodAutoderefStepsResult<'tcx> {
-    steps, opt_bad_ty
+    reached_recursion_limit, steps, opt_bad_ty
 });
 
 impl_stable_hash_for!(struct CandidateStep<'tcx> {
