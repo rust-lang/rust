@@ -772,6 +772,9 @@ fn write_shared(
     write_minify(cx.dst.join(&format!("settings{}.css", cx.shared.resource_suffix)),
                  static_files::SETTINGS_CSS,
                  options.enable_minification)?;
+    write_minify(cx.dst.join(&format!("noscript{}.css", cx.shared.resource_suffix)),
+                 static_files::NOSCRIPT_CSS,
+                 options.enable_minification)?;
 
     // To avoid "light.css" to be overwritten, we'll first run over the received themes and only
     // then we'll run over the "official" styles.
