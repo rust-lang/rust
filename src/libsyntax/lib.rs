@@ -41,6 +41,10 @@ extern crate syntax_pos;
 extern crate rustc_target;
 #[macro_use] extern crate scoped_tls;
 #[macro_use]
+extern crate serde_derive;
+extern crate serde;
+extern crate serde_json;
+#[macro_use]
 extern crate smallvec;
 
 extern crate serialize as rustc_serialize; // used by deriving

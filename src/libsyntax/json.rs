@@ -31,8 +31,6 @@ use std::io::{self, Write};
 use std::vec;
 use std::sync::{Arc, Mutex};
 
-use rustc_serialize::json::{as_json, as_pretty_json};
-
 pub struct JsonEmitter {
     dst: Box<dyn Write + Send>,
     registry: Option<Registry>,
@@ -82,19 +80,19 @@ impl Emitter for JsonEmitter {
     fn emit(&mut self, db: &DiagnosticBuilder) {
         let data = Diagnostic::from_diagnostic_builder(db, self);
         let result = if self.pretty {
-            writeln!(&mut self.dst, "{}", as_pretty_json(&data))
+            ::serde_json::to_writer_pretty(&mut self.dst, &data)
         } else {
-            writeln!(&mut self.dst, "{}", as_json(&data))
+            ::serde_json::to_writer(&mut self.dst, &data)
         };
-        if let Err(e) = result {
-            panic!("failed to print diagnostics: {:?}", e);
-        }
+        result.unwrap_or_else(|e| panic!("failed to print diagnostics: {:?}", e));
+        self.dst.write(b"\n")
+            .unwrap_or_else(|e| panic!("failed to print diagnostics: {:?}", e));
     }
 }
 
 // The following data types are provided just for serialisation.
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 struct Diagnostic {
     /// The primary error message.
     message: String,
@@ -108,7 +106,7 @@ struct Diagnostic {
     rendered: Option<String>,
 }
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 #[allow(unused_attributes)]
 struct DiagnosticSpan {
     file_name: String,
@@ -136,7 +134,7 @@ struct DiagnosticSpan {
     expansion: Option<Box<DiagnosticSpanMacroExpansion>>,
 }
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 struct DiagnosticSpanLine {
     text: String,
 
@@ -146,7 +144,7 @@ struct DiagnosticSpanLine {
     highlight_end: usize,
 }
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 struct DiagnosticSpanMacroExpansion {
     /// span where macro was applied to generate this code; note that
     /// this may itself derive from a macro (if
@@ -160,7 +158,7 @@ struct DiagnosticSpanMacroExpansion {
     def_site_span: Option<DiagnosticSpan>,
 }
 
-#[derive(RustcEncodable)]
+#[derive(Serialize)]
 struct DiagnosticCode {
     /// The code itself.
     code: String,
