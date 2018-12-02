@@ -61,12 +61,9 @@ pub fn check(path: &Path, bad: &mut bool, quiet: bool) {
 
     let mut contents = String::new();
 
-    super::walk_many(&[&path.join("test/ui-fulldeps"),
-                       &path.join("test/ui"),
-                       &path.join("test/compile-fail"),
-                       &path.join("test/compile-fail-fulldeps"),
-                       &path.join("test/parse-fail"),
-                       &path.join("test/ui"),],
+    super::walk_many(&[&path.join("test/ui"),
+                       &path.join("test/ui-fulldeps"),
+                       &path.join("test/compile-fail")],
                      &mut |path| super::filter_dirs(path),
                      &mut |file| {
         let filename = file.file_name().unwrap().to_string_lossy();

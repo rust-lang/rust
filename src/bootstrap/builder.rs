@@ -389,7 +389,6 @@ impl<'a> Builder<'a> {
                 test::UiFullDeps,
                 test::RunPassFullDeps,
                 test::RunFailFullDeps,
-                test::CompileFailFullDeps,
                 test::Rustdoc,
                 test::Pretty,
                 test::RunPassPretty,

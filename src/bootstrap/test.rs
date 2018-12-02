@@ -832,12 +832,6 @@ host_test!(RunFailFullDeps {
     suite: "run-fail-fulldeps"
 });
 
-host_test!(CompileFailFullDeps {
-    path: "src/test/compile-fail-fulldeps",
-    mode: "compile-fail",
-    suite: "compile-fail-fulldeps"
-});
-
 host_test!(Rustdoc {
     path: "src/test/rustdoc",
     mode: "rustdoc",
