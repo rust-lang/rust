@@ -1658,10 +1658,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         if let Some(name) = self.should_warn(var) {
             if is_argument {
                 self.ir.tcx.lint_hir(lint::builtin::UNUSED_ASSIGNMENTS, hir_id, sp,
-                    &format!("value passed to `{}` is never read (maybe it is overwritten before being read)", name));
+                    &format!("value passed to `{}` is never read
+                     (maybe it is overwritten before being read)", name));
             } else {
                 self.ir.tcx.lint_hir(lint::builtin::UNUSED_ASSIGNMENTS, hir_id, sp,
-                    &format!("value assigned to `{}` is never read (maybe it is overwritten before being read)", name));
+                    &format!("value assigned to `{}` is never read
+                     (maybe it is overwritten before being read)", name));
             }
         }
     }
