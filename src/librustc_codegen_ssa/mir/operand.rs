@@ -460,7 +460,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             mir::Operand::Constant(ref constant) => {
                 let ty = self.monomorphize(&constant.ty);
-                self.eval_mir_constant(bx, constant)
+                self.eval_mir_constant(constant)
                     .and_then(|c| OperandRef::from_const(bx, c))
                     .unwrap_or_else(|err| {
                         match err {

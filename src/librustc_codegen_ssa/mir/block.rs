@@ -657,7 +657,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             span_bug!(span, "shuffle indices must be constant");
                         }
                         mir::Operand::Constant(ref constant) => {
-                            let c = self.eval_mir_constant(&bx, constant);
+                            let c = self.eval_mir_constant(constant);
                             let (llval, ty) = self.simd_shuffle_indices(
                                 &bx,
                                 constant.span,
