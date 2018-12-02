@@ -696,9 +696,6 @@ impl Step for Rustc {
             return;
         }
 
-        // Build libstd docs so that we generate relative links.
-        builder.ensure(Std { stage, target });
-
         // Build rustc.
         builder.ensure(compile::Rustc { compiler, target });
 
@@ -717,12 +714,16 @@ impl Step for Rustc {
 
         // Find dependencies for top level crates.
         let mut compiler_crates = HashSet::new();
-        for root_crate in &["rustc", "rustc_driver", "rustc_codegen_llvm"] {
+        for root_crate in &["rustc_driver", "rustc_codegen_llvm", "rustc_codegen_ssa"] {
             let interned_root_crate = INTERNER.intern_str(root_crate);
             find_compiler_crates(builder, &interned_root_crate, &mut compiler_crates);
         }
 
         for krate in &compiler_crates {
+            // Create all crate output directories first to make sure rustdoc uses
+            // relative links.
+            // FIXME: Cargo should probably do this itself.
+            t!(fs::create_dir_all(out_dir.join(krate)));
             cargo.arg("-p").arg(krate);
         }
 
@@ -796,8 +797,8 @@ impl Step for Rustdoc {
             return;
         }
 
-        // Build libstd docs so that we generate relative links.
-        builder.ensure(Std { stage, target });
+        // Build rustc docs so that we generate relative links.
+        builder.ensure(Rustc { stage, target });
 
         // Build rustdoc.
         builder.ensure(tool::Rustdoc { host: compiler.host });
@@ -820,6 +821,10 @@ impl Step for Rustdoc {
             SourceType::InTree,
             &[]
         );
+
+        // Only include compiler crates, no dependencies of those, such as `libc`.
+        cargo.arg("--no-deps");
+        cargo.arg("-p").arg("rustdoc");
 
         cargo.env("RUSTDOCFLAGS", "--document-private-items");
         builder.run(&mut cargo);
