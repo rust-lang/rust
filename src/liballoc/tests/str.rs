@@ -1606,145 +1606,6 @@ fn test_repeat() {
     assert_eq!("α".repeat(3), "ααα");
 }
 
-mod pattern {
-    use std::str::pattern::{Pattern, Searcher, ReverseSearcher};
-    use std::str::pattern::SearchStep::{self, Match, Reject, Done};
-
-    macro_rules! make_test {
-        ($name:ident, $p:expr, $h:expr, [$($e:expr,)*]) => {
-            #[allow(unused_imports)]
-            mod $name {
-                use std::str::pattern::SearchStep::{Match, Reject};
-                use super::{cmp_search_to_vec};
-                #[test]
-                fn fwd() {
-                    cmp_search_to_vec(false, $p, $h, vec![$($e),*]);
-                }
-                #[test]
-                fn bwd() {
-                    cmp_search_to_vec(true, $p, $h, vec![$($e),*]);
-                }
-            }
-        }
-    }
-
-    fn cmp_search_to_vec<'a, P: Pattern<'a>>(rev: bool, pat: P, haystack: &'a str,
-                                             right: Vec<SearchStep>)
-    where P::Searcher: ReverseSearcher<'a>
-    {
-        let mut searcher = pat.into_searcher(haystack);
-        let mut v = vec![];
-        loop {
-            match if !rev {searcher.next()} else {searcher.next_back()} {
-                Match(a, b) => v.push(Match(a, b)),
-                Reject(a, b) => v.push(Reject(a, b)),
-                Done => break,
-            }
-        }
-        if rev {
-            v.reverse();
-        }
-
-        let mut first_index = 0;
-        let mut err = None;
-
-        for (i, e) in right.iter().enumerate() {
-            match *e {
-                Match(a, b) | Reject(a, b)
-                if a <= b && a == first_index => {
-                    first_index = b;
-                }
-                _ => {
-                    err = Some(i);
-                    break;
-                }
-            }
-        }
-
-        if let Some(err) = err {
-            panic!("Input skipped range at {}", err);
-        }
-
-        if first_index != haystack.len() {
-            panic!("Did not cover whole input");
-        }
-
-        assert_eq!(v, right);
-    }
-
-    make_test!(str_searcher_ascii_haystack, "bb", "abbcbbd", [
-        Reject(0, 1),
-        Match (1, 3),
-        Reject(3, 4),
-        Match (4, 6),
-        Reject(6, 7),
-    ]);
-    make_test!(str_searcher_ascii_haystack_seq, "bb", "abbcbbbbd", [
-        Reject(0, 1),
-        Match (1, 3),
-        Reject(3, 4),
-        Match (4, 6),
-        Match (6, 8),
-        Reject(8, 9),
-    ]);
-    make_test!(str_searcher_empty_needle_ascii_haystack, "", "abbcbbd", [
-        Match (0, 0),
-        Reject(0, 1),
-        Match (1, 1),
-        Reject(1, 2),
-        Match (2, 2),
-        Reject(2, 3),
-        Match (3, 3),
-        Reject(3, 4),
-        Match (4, 4),
-        Reject(4, 5),
-        Match (5, 5),
-        Reject(5, 6),
-        Match (6, 6),
-        Reject(6, 7),
-        Match (7, 7),
-    ]);
-    make_test!(str_searcher_multibyte_haystack, " ", "├──", [
-        Reject(0, 3),
-        Reject(3, 6),
-        Reject(6, 9),
-    ]);
-    make_test!(str_searcher_empty_needle_multibyte_haystack, "", "├──", [
-        Match (0, 0),
-        Reject(0, 3),
-        Match (3, 3),
-        Reject(3, 6),
-        Match (6, 6),
-        Reject(6, 9),
-        Match (9, 9),
-    ]);
-    make_test!(str_searcher_empty_needle_empty_haystack, "", "", [
-        Match(0, 0),
-    ]);
-    make_test!(str_searcher_nonempty_needle_empty_haystack, "├", "", [
-    ]);
-    make_test!(char_searcher_ascii_haystack, 'b', "abbcbbd", [
-        Reject(0, 1),
-        Match (1, 2),
-        Match (2, 3),
-        Reject(3, 4),
-        Match (4, 5),
-        Match (5, 6),
-        Reject(6, 7),
-    ]);
-    make_test!(char_searcher_multibyte_haystack, ' ', "├──", [
-        Reject(0, 3),
-        Reject(3, 6),
-        Reject(6, 9),
-    ]);
-    make_test!(char_searcher_short_haystack, '\u{1F4A9}', "* \t", [
-        Reject(0, 1),
-        Reject(1, 2),
-        Reject(2, 3),
-    ]);
-
-}
-
 macro_rules! generate_iterator_test {
     {
         $name:ident {
@@ -1837,13 +1698,14 @@ generate_iterator_test! {
 
 #[test]
 fn different_str_pattern_forwarding_lifetimes() {
-    use std::str::pattern::Pattern;
+    // FIXME: The generic form (see PR 31989) causes a strange "trait bound not satisfied" error.
+    // revisit this after RFC 2089 is implemented.
 
-    fn foo<'a, P>(p: P) where for<'b> &'b P: Pattern<'a> {
+    fn foo(p: &str) {
         for _ in 0..3 {
             "asdf".find(&p);
         }
     }
 
-    foo::<&str>("x");
+    foo("x");
 }

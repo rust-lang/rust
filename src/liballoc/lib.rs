@@ -91,7 +91,7 @@
 #![feature(needs_allocator)]
 #![feature(nll)]
 #![feature(optin_builtin_traits)]
-#![feature(pattern)]
+#![feature(needle)]
 #![feature(ptr_internals)]
 #![feature(ptr_offset_from)]
 #![feature(rustc_attrs)]

@@ -43,6 +43,15 @@ pub mod memchr;
 mod rotate;
 mod sort;
 
+/// Needle implementations for slices
+#[unstable(
+    feature = "slice_internals",
+    issue = "0",
+    reason = "exposed from core to be reused in std",
+)]
+#[doc(hidden)]
+pub mod needles;
+
 #[repr(C)]
 union Repr<'a, T: 'a> {
     rust: &'a [T],

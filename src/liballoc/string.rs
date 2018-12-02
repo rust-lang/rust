@@ -53,7 +53,8 @@ use core::iter::{FromIterator, FusedIterator};
 use core::ops::{self, Add, AddAssign, Index, IndexMut, RangeBounds};
 use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ptr;
-use core::str::{pattern::Pattern, lossy};
+use core::needle::Needle;
+use core::str::lossy;
 
 use crate::borrow::{Cow, ToOwned};
 use crate::collections::CollectionAllocErr;
@@ -1792,24 +1793,19 @@ impl<'a> Extend<Cow<'a, str>> for String {
 }
 
 /// A convenience impl that delegates to the impl for `&str`
-#[unstable(feature = "pattern",
-           reason = "API not fully fleshed out and ready to be stabilized",
-           issue = "27721")]
-impl<'a, 'b> Pattern<'a> for &'b String {
-    type Searcher = <&'b str as Pattern<'a>>::Searcher;
+#[unstable(feature = "needle", issue = "56345")]
+impl<'a, 'b> Needle<&'a str> for &'b String {
+    type Searcher = <&'b str as Needle<&'a str>>::Searcher;
+    type Consumer = <&'b str as Needle<&'a str>>::Consumer;
 
-    fn into_searcher(self, haystack: &'a str) -> <&'b str as Pattern<'a>>::Searcher {
-        self[..].into_searcher(haystack)
+    #[inline]
+    fn into_searcher(self) -> Self::Searcher {
+        <&'b str as Needle<&'a str>>::into_searcher(&**self)
     }
 
     #[inline]
-    fn is_contained_in(self, haystack: &'a str) -> bool {
-        self[..].is_contained_in(haystack)
-    }
-
-    #[inline]
-    fn is_prefix_of(self, haystack: &'a str) -> bool {
-        self[..].is_prefix_of(haystack)
+    fn into_consumer(self) -> Self::Consumer {
+        <&'b str as Needle<&'a str>>::into_consumer(&**self)
     }
 }
 

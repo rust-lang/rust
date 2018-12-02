@@ -4,19 +4,18 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use self::pattern::Pattern;
-use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
-
 use crate::char;
 use crate::fmt::{self, Write};
 use crate::iter::{Map, Cloned, FusedIterator, TrustedLen, TrustedRandomAccess, Filter};
 use crate::iter::{Flatten, FlatMap, Chain};
 use crate::slice::{self, SliceIndex, Split as SliceSplit};
 use crate::mem;
-use crate::ops::Try;
-use crate::option;
+use crate::needle::{
+    ext, Needle, Searcher, ReverseSearcher, Consumer, ReverseConsumer, DoubleEndedConsumer,
+};
 
-pub mod pattern;
+#[unstable(feature = "str_internals", issue = "0")]
+mod needles;
 
 #[unstable(feature = "str_internals", issue = "0")]
 #[allow(missing_docs)]
@@ -835,476 +834,47 @@ unsafe impl TrustedRandomAccess for Bytes<'_> {
     fn may_have_side_effect() -> bool { false }
 }
 
-/// This macro generates a Clone impl for string pattern API
-/// wrapper types of the form X<'a, P>
-macro_rules! derive_pattern_clone {
-    (clone $t:ident with |$s:ident| $e:expr) => {
-        impl<'a, P: Pattern<'a>> Clone for $t<'a, P>
-            where P::Searcher: Clone
-        {
-            fn clone(&self) -> Self {
-                let $s = self;
-                $e
-            }
-        }
+macro_rules! forward_to_needle_api {
+    ($(#[$link:meta] type $name:ident;)+) => {
+        $(
+            /// Created with the method
+            #[$link]
+            #[stable(feature = "rust1", since = "1.0.0")]
+            pub type $name<'a, P> = ext::$name<&'a str, <P as Needle<&'a str>>::Searcher>;
+        )+
     }
 }
 
-/// This macro generates two public iterator structs
-/// wrapping a private internal one that makes use of the `Pattern` API.
-///
-/// For all patterns `P: Pattern<'a>` the following items will be
-/// generated (generics omitted):
-///
-/// struct $forward_iterator($internal_iterator);
-/// struct $reverse_iterator($internal_iterator);
-///
-/// impl Iterator for $forward_iterator
-/// { /* internal ends up calling Searcher::next_match() */ }
-///
-/// impl DoubleEndedIterator for $forward_iterator
-///       where P::Searcher: DoubleEndedSearcher
-/// { /* internal ends up calling Searcher::next_match_back() */ }
-///
-/// impl Iterator for $reverse_iterator
-///       where P::Searcher: ReverseSearcher
-/// { /* internal ends up calling Searcher::next_match_back() */ }
-///
-/// impl DoubleEndedIterator for $reverse_iterator
-///       where P::Searcher: DoubleEndedSearcher
-/// { /* internal ends up calling Searcher::next_match() */ }
-///
-/// The internal one is defined outside the macro, and has almost the same
-/// semantic as a DoubleEndedIterator by delegating to `pattern::Searcher` and
-/// `pattern::ReverseSearcher` for both forward and reverse iteration.
-///
-/// "Almost", because a `Searcher` and a `ReverseSearcher` for a given
-/// `Pattern` might not return the same elements, so actually implementing
-/// `DoubleEndedIterator` for it would be incorrect.
-/// (See the docs in `str::pattern` for more details)
-///
-/// However, the internal struct still represents a single ended iterator from
-/// either end, and depending on pattern is also a valid double ended iterator,
-/// so the two wrapper structs implement `Iterator`
-/// and `DoubleEndedIterator` depending on the concrete pattern type, leading
-/// to the complex impls seen above.
-macro_rules! generate_pattern_iterators {
-    {
-        // Forward iterator
-        forward:
-            $(#[$forward_iterator_attribute:meta])*
-            struct $forward_iterator:ident;
+forward_to_needle_api! {
+    /// [`split`](../../std/primitive.str.html#method.split)
+    type Split;
 
-        // Reverse iterator
-        reverse:
-            $(#[$reverse_iterator_attribute:meta])*
-            struct $reverse_iterator:ident;
+    /// [`rsplit`](../../std/primitive.str.html#method.rsplit)
+    type RSplit;
 
-        // Stability of all generated items
-        stability:
-            $(#[$common_stability_attribute:meta])*
+    /// [`split_terminator`](../../std/primitive.str.html#method.split_terminator)
+    type SplitTerminator;
 
-        // Internal almost-iterator that is being delegated to
-        internal:
-            $internal_iterator:ident yielding ($iterty:ty);
+    /// [`rsplit_terminator`](../../std/primitive.str.html#method.rsplit_terminator)
+    type RSplitTerminator;
 
-        // Kind of delegation - either single ended or double ended
-        delegate $($t:tt)*
-    } => {
-        $(#[$forward_iterator_attribute])*
-        $(#[$common_stability_attribute])*
-        pub struct $forward_iterator<'a, P: Pattern<'a>>($internal_iterator<'a, P>);
+    /// [`splitn`](../../std/primitive.str.html#method.splitn)
+    type SplitN;
 
-        $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> fmt::Debug for $forward_iterator<'a, P>
-            where P::Searcher: fmt::Debug
-        {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.debug_tuple(stringify!($forward_iterator))
-                    .field(&self.0)
-                    .finish()
-            }
-        }
+    /// [`rsplitn`](../../std/primitive.str.html#method.rsplitn)
+    type RSplitN;
 
-        $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> Iterator for $forward_iterator<'a, P> {
-            type Item = $iterty;
+    /// [`match_indices`](../../std/primitive.str.html#method.match_indices)
+    type MatchIndices;
 
-            #[inline]
-            fn next(&mut self) -> Option<$iterty> {
-                self.0.next()
-            }
-        }
+    /// [`rmatch_indices`](../../std/primitive.str.html#method.rmatch_indices)
+    type RMatchIndices;
 
-        $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> Clone for $forward_iterator<'a, P>
-            where P::Searcher: Clone
-        {
-            fn clone(&self) -> Self {
-                $forward_iterator(self.0.clone())
-            }
-        }
+    /// [`matches`](../../std/primitive.str.html#method.matches)
+    type Matches;
 
-        $(#[$reverse_iterator_attribute])*
-        $(#[$common_stability_attribute])*
-        pub struct $reverse_iterator<'a, P: Pattern<'a>>($internal_iterator<'a, P>);
-
-        $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> fmt::Debug for $reverse_iterator<'a, P>
-            where P::Searcher: fmt::Debug
-        {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                f.debug_tuple(stringify!($reverse_iterator))
-                    .field(&self.0)
-                    .finish()
-            }
-        }
-
-        $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> Iterator for $reverse_iterator<'a, P>
-            where P::Searcher: ReverseSearcher<'a>
-        {
-            type Item = $iterty;
-
-            #[inline]
-            fn next(&mut self) -> Option<$iterty> {
-                self.0.next_back()
-            }
-        }
-
-        $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> Clone for $reverse_iterator<'a, P>
-            where P::Searcher: Clone
-        {
-            fn clone(&self) -> Self {
-                $reverse_iterator(self.0.clone())
-            }
-        }
-
-        #[stable(feature = "fused", since = "1.26.0")]
-        impl<'a, P: Pattern<'a>> FusedIterator for $forward_iterator<'a, P> {}
-
-        #[stable(feature = "fused", since = "1.26.0")]
-        impl<'a, P: Pattern<'a>> FusedIterator for $reverse_iterator<'a, P>
-            where P::Searcher: ReverseSearcher<'a> {}
-
-        generate_pattern_iterators!($($t)* with $(#[$common_stability_attribute])*,
-                                                $forward_iterator,
-                                                $reverse_iterator, $iterty);
-    };
-    {
-        double ended; with $(#[$common_stability_attribute:meta])*,
-                           $forward_iterator:ident,
-                           $reverse_iterator:ident, $iterty:ty
-    } => {
-        $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> DoubleEndedIterator for $forward_iterator<'a, P>
-            where P::Searcher: DoubleEndedSearcher<'a>
-        {
-            #[inline]
-            fn next_back(&mut self) -> Option<$iterty> {
-                self.0.next_back()
-            }
-        }
-
-        $(#[$common_stability_attribute])*
-        impl<'a, P: Pattern<'a>> DoubleEndedIterator for $reverse_iterator<'a, P>
-            where P::Searcher: DoubleEndedSearcher<'a>
-        {
-            #[inline]
-            fn next_back(&mut self) -> Option<$iterty> {
-                self.0.next()
-            }
-        }
-    };
-    {
-        single ended; with $(#[$common_stability_attribute:meta])*,
-                           $forward_iterator:ident,
-                           $reverse_iterator:ident, $iterty:ty
-    } => {}
-}
-
-derive_pattern_clone!{
-    clone SplitInternal
-    with |s| SplitInternal { matcher: s.matcher.clone(), ..*s }
-}
-
-struct SplitInternal<'a, P: Pattern<'a>> {
-    start: usize,
-    end: usize,
-    matcher: P::Searcher,
-    allow_trailing_empty: bool,
-    finished: bool,
-}
-
-impl<'a, P: Pattern<'a>> fmt::Debug for SplitInternal<'a, P> where P::Searcher: fmt::Debug {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitInternal")
-            .field("start", &self.start)
-            .field("end", &self.end)
-            .field("matcher", &self.matcher)
-            .field("allow_trailing_empty", &self.allow_trailing_empty)
-            .field("finished", &self.finished)
-            .finish()
-    }
-}
-
-impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
-    #[inline]
-    fn get_end(&mut self) -> Option<&'a str> {
-        if !self.finished && (self.allow_trailing_empty || self.end - self.start > 0) {
-            self.finished = true;
-            unsafe {
-                let string = self.matcher.haystack().get_unchecked(self.start..self.end);
-                Some(string)
-            }
-        } else {
-            None
-        }
-    }
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        if self.finished { return None }
-
-        let haystack = self.matcher.haystack();
-        match self.matcher.next_match() {
-            Some((a, b)) => unsafe {
-                let elt = haystack.get_unchecked(self.start..a);
-                self.start = b;
-                Some(elt)
-            },
-            None => self.get_end(),
-        }
-    }
-
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a str>
-        where P::Searcher: ReverseSearcher<'a>
-    {
-        if self.finished { return None }
-
-        if !self.allow_trailing_empty {
-            self.allow_trailing_empty = true;
-            match self.next_back() {
-                Some(elt) if !elt.is_empty() => return Some(elt),
-                _ => if self.finished { return None }
-            }
-        }
-
-        let haystack = self.matcher.haystack();
-        match self.matcher.next_match_back() {
-            Some((a, b)) => unsafe {
-                let elt = haystack.get_unchecked(b..self.end);
-                self.end = a;
-                Some(elt)
-            },
-            None => unsafe {
-                self.finished = true;
-                Some(haystack.get_unchecked(self.start..self.end))
-            },
-        }
-    }
-}
-
-generate_pattern_iterators! {
-    forward:
-        /// Created with the method [`split`].
-        ///
-        /// [`split`]: ../../std/primitive.str.html#method.split
-        struct Split;
-    reverse:
-        /// Created with the method [`rsplit`].
-        ///
-        /// [`rsplit`]: ../../std/primitive.str.html#method.rsplit
-        struct RSplit;
-    stability:
-        #[stable(feature = "rust1", since = "1.0.0")]
-    internal:
-        SplitInternal yielding (&'a str);
-    delegate double ended;
-}
-
-generate_pattern_iterators! {
-    forward:
-        /// Created with the method [`split_terminator`].
-        ///
-        /// [`split_terminator`]: ../../std/primitive.str.html#method.split_terminator
-        struct SplitTerminator;
-    reverse:
-        /// Created with the method [`rsplit_terminator`].
-        ///
-        /// [`rsplit_terminator`]: ../../std/primitive.str.html#method.rsplit_terminator
-        struct RSplitTerminator;
-    stability:
-        #[stable(feature = "rust1", since = "1.0.0")]
-    internal:
-        SplitInternal yielding (&'a str);
-    delegate double ended;
-}
-
-derive_pattern_clone!{
-    clone SplitNInternal
-    with |s| SplitNInternal { iter: s.iter.clone(), ..*s }
-}
-
-struct SplitNInternal<'a, P: Pattern<'a>> {
-    iter: SplitInternal<'a, P>,
-    /// The number of splits remaining
-    count: usize,
-}
-
-impl<'a, P: Pattern<'a>> fmt::Debug for SplitNInternal<'a, P> where P::Searcher: fmt::Debug {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitNInternal")
-            .field("iter", &self.iter)
-            .field("count", &self.count)
-            .finish()
-    }
-}
-
-impl<'a, P: Pattern<'a>> SplitNInternal<'a, P> {
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        match self.count {
-            0 => None,
-            1 => { self.count = 0; self.iter.get_end() }
-            _ => { self.count -= 1; self.iter.next() }
-        }
-    }
-
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a str>
-        where P::Searcher: ReverseSearcher<'a>
-    {
-        match self.count {
-            0 => None,
-            1 => { self.count = 0; self.iter.get_end() }
-            _ => { self.count -= 1; self.iter.next_back() }
-        }
-    }
-}
-
-generate_pattern_iterators! {
-    forward:
-        /// Created with the method [`splitn`].
-        ///
-        /// [`splitn`]: ../../std/primitive.str.html#method.splitn
-        struct SplitN;
-    reverse:
-        /// Created with the method [`rsplitn`].
-        ///
-        /// [`rsplitn`]: ../../std/primitive.str.html#method.rsplitn
-        struct RSplitN;
-    stability:
-        #[stable(feature = "rust1", since = "1.0.0")]
-    internal:
-        SplitNInternal yielding (&'a str);
-    delegate single ended;
-}
-
-derive_pattern_clone!{
-    clone MatchIndicesInternal
-    with |s| MatchIndicesInternal(s.0.clone())
-}
-
-struct MatchIndicesInternal<'a, P: Pattern<'a>>(P::Searcher);
-
-impl<'a, P: Pattern<'a>> fmt::Debug for MatchIndicesInternal<'a, P> where P::Searcher: fmt::Debug {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("MatchIndicesInternal")
-            .field(&self.0)
-            .finish()
-    }
-}
-
-impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
-    #[inline]
-    fn next(&mut self) -> Option<(usize, &'a str)> {
-        self.0.next_match().map(|(start, end)| unsafe {
-            (start, self.0.haystack().get_unchecked(start..end))
-        })
-    }
-
-    #[inline]
-    fn next_back(&mut self) -> Option<(usize, &'a str)>
-        where P::Searcher: ReverseSearcher<'a>
-    {
-        self.0.next_match_back().map(|(start, end)| unsafe {
-            (start, self.0.haystack().get_unchecked(start..end))
-        })
-    }
-}
-
-generate_pattern_iterators! {
-    forward:
-        /// Created with the method [`match_indices`].
-        ///
-        /// [`match_indices`]: ../../std/primitive.str.html#method.match_indices
-        struct MatchIndices;
-    reverse:
-        /// Created with the method [`rmatch_indices`].
-        ///
-        /// [`rmatch_indices`]: ../../std/primitive.str.html#method.rmatch_indices
-        struct RMatchIndices;
-    stability:
-        #[stable(feature = "str_match_indices", since = "1.5.0")]
-    internal:
-        MatchIndicesInternal yielding ((usize, &'a str));
-    delegate double ended;
-}
-
-derive_pattern_clone!{
-    clone MatchesInternal
-    with |s| MatchesInternal(s.0.clone())
-}
-
-struct MatchesInternal<'a, P: Pattern<'a>>(P::Searcher);
-
-impl<'a, P: Pattern<'a>> fmt::Debug for MatchesInternal<'a, P> where P::Searcher: fmt::Debug {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("MatchesInternal")
-            .field(&self.0)
-            .finish()
-    }
-}
-
-impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
-    #[inline]
-    fn next(&mut self) -> Option<&'a str> {
-        self.0.next_match().map(|(a, b)| unsafe {
-            // Indices are known to be on utf8 boundaries
-            self.0.haystack().get_unchecked(a..b)
-        })
-    }
-
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a str>
-        where P::Searcher: ReverseSearcher<'a>
-    {
-        self.0.next_match_back().map(|(a, b)| unsafe {
-            // Indices are known to be on utf8 boundaries
-            self.0.haystack().get_unchecked(a..b)
-        })
-    }
-}
-
-generate_pattern_iterators! {
-    forward:
-        /// Created with the method [`matches`].
-        ///
-        /// [`matches`]: ../../std/primitive.str.html#method.matches
-        struct Matches;
-    reverse:
-        /// Created with the method [`rmatches`].
-        ///
-        /// [`rmatches`]: ../../std/primitive.str.html#method.rmatches
-        struct RMatches;
-    stability:
-        #[stable(feature = "str_matches", since = "1.2.0")]
-    internal:
-        MatchesInternal yielding (&'a str);
-    delegate double ended;
+    /// [`rmatches`](../../std/primitive.str.html#method.rmatches)
+    type RMatches;
 }
 
 /// An iterator over the lines of a string, as string slices.
@@ -2824,8 +2394,12 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
-        pat.is_contained_in(self)
+    pub fn contains<'a, P: Needle<&'a str>>(&'a self, pat: P) -> bool
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::contains(self, pat)
     }
 
     /// Returns `true` if the given pattern matches a prefix of this
@@ -2844,8 +2418,12 @@ impl str {
     /// assert!(!bananas.starts_with("nana"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
-        pat.is_prefix_of(self)
+    pub fn starts_with<'a, P: Needle<&'a str>>(&'a self, pat: P) -> bool
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::starts_with(self, pat)
     }
 
     /// Returns `true` if the given pattern matches a suffix of this
@@ -2864,10 +2442,12 @@ impl str {
     /// assert!(!bananas.ends_with("nana"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn ends_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool
-        where P::Searcher: ReverseSearcher<'a>
+    pub fn ends_with<'a, P: Needle<&'a str>>(&'a self, pat: P) -> bool
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: ReverseConsumer<str>,
     {
-        pat.is_suffix_of(self)
+        ext::ends_with(self, pat)
     }
 
     /// Returns the byte index of the first character of this string slice that
@@ -2913,8 +2493,12 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
-        pat.into_searcher(self).next_match().map(|(i, _)| i)
+    pub fn find<'a, P: Needle<&'a str>>(&'a self, pat: P) -> Option<usize>
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::find(self, pat)
     }
 
     /// Returns the byte index of the last character of this string slice that
@@ -2957,10 +2541,12 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
-        where P::Searcher: ReverseSearcher<'a>
+    pub fn rfind<'a, P: Needle<&'a str>>(&'a self, pat: P) -> Option<usize>
+    where
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
     {
-        pat.into_searcher(self).next_match_back().map(|(i, _)| i)
+        ext::rfind(self, pat)
     }
 
     /// An iterator over substrings of this string slice, separated by
@@ -3070,14 +2656,12 @@ impl str {
     /// [`split_whitespace`]: #method.split_whitespace
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
-        Split(SplitInternal {
-            start: 0,
-            end: self.len(),
-            matcher: pat.into_searcher(self),
-            allow_trailing_empty: true,
-            finished: false,
-        })
+    pub fn split<'a, P: Needle<&'a str>>(&'a self, pat: P) -> Split<'a, P>
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::split(self, pat)
     }
 
     /// An iterator over substrings of the given string slice, separated by
@@ -3124,10 +2708,12 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rsplit<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplit<'a, P>
-        where P::Searcher: ReverseSearcher<'a>
+    pub fn rsplit<'a, P: Needle<&'a str>>(&'a self, pat: P) -> RSplit<'a, P>
+    where
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
     {
-        RSplit(self.split(pat).0)
+        ext::rsplit(self, pat)
     }
 
     /// An iterator over substrings of the given string slice, separated by
@@ -3170,11 +2756,12 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
-        SplitTerminator(SplitInternal {
-            allow_trailing_empty: false,
-            ..self.split(pat).0
-        })
+    pub fn split_terminator<'a, P: Needle<&'a str>>(&'a self, pat: P) -> SplitTerminator<'a, P>
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::split_terminator(self, pat)
     }
 
     /// An iterator over substrings of `self`, separated by characters
@@ -3185,7 +2772,7 @@ impl str {
     /// Additional libraries might provide more complex patterns like
     /// regular expressions.
     ///
-    /// Equivalent to [`split`], except that the trailing substring is
+    /// Equivalent to [`rsplit`], except that the trailing substring is
     /// skipped if empty.
     ///
     /// [`split`]: #method.split
@@ -3215,10 +2802,12 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rsplit_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> RSplitTerminator<'a, P>
-        where P::Searcher: ReverseSearcher<'a>
+    pub fn rsplit_terminator<'a, P: Needle<&'a str>>(&'a self, pat: P) -> RSplitTerminator<'a, P>
+    where
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
     {
-        RSplitTerminator(self.split_terminator(pat).0)
+        ext::rsplit_terminator(self, pat)
     }
 
     /// An iterator over substrings of the given string slice, separated by a
@@ -3266,11 +2855,12 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn splitn<'a, P: Pattern<'a>>(&'a self, n: usize, pat: P) -> SplitN<'a, P> {
-        SplitN(SplitNInternal {
-            iter: self.split(pat).0,
-            count: n,
-        })
+    pub fn splitn<'a, P: Needle<&'a str>>(&'a self, n: usize, pat: P) -> SplitN<'a, P>
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::splitn(self, n, pat)
     }
 
     /// An iterator over substrings of this string slice, separated by a
@@ -3315,10 +2905,12 @@ impl str {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rsplitn<'a, P: Pattern<'a>>(&'a self, n: usize, pat: P) -> RSplitN<'a, P>
-        where P::Searcher: ReverseSearcher<'a>
+    pub fn rsplitn<'a, P: Needle<&'a str>>(&'a self, n: usize, pat: P) -> RSplitN<'a, P>
+    where
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
     {
-        RSplitN(self.splitn(n, pat).0)
+        ext::rsplitn(self, n, pat)
     }
 
     /// An iterator over the disjoint matches of a pattern within the given string
@@ -3353,8 +2945,12 @@ impl str {
     /// ```
     #[stable(feature = "str_matches", since = "1.2.0")]
     #[inline]
-    pub fn matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> Matches<'a, P> {
-        Matches(MatchesInternal(pat.into_searcher(self)))
+    pub fn matches<'a, P: Needle<&'a str>>(&'a self, pat: P) -> Matches<'a, P>
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::matches(self, pat)
     }
 
     /// An iterator over the disjoint matches of a pattern within this string slice,
@@ -3388,10 +2984,12 @@ impl str {
     /// ```
     #[stable(feature = "str_matches", since = "1.2.0")]
     #[inline]
-    pub fn rmatches<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatches<'a, P>
-        where P::Searcher: ReverseSearcher<'a>
+    pub fn rmatches<'a, P: Needle<&'a str>>(&'a self, pat: P) -> RMatches<'a, P>
+    where
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
     {
-        RMatches(self.matches(pat).0)
+        ext::rmatches(self, pat)
     }
 
     /// An iterator over the disjoint matches of a pattern within this string
@@ -3432,8 +3030,12 @@ impl str {
     /// ```
     #[stable(feature = "str_match_indices", since = "1.5.0")]
     #[inline]
-    pub fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
-        MatchIndices(MatchIndicesInternal(pat.into_searcher(self)))
+    pub fn match_indices<'a, P: Needle<&'a str>>(&'a self, pat: P) -> MatchIndices<'a, P>
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::match_indices(self, pat)
     }
 
     /// An iterator over the disjoint matches of a pattern within `self`,
@@ -3473,10 +3075,12 @@ impl str {
     /// ```
     #[stable(feature = "str_match_indices", since = "1.5.0")]
     #[inline]
-    pub fn rmatch_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> RMatchIndices<'a, P>
-        where P::Searcher: ReverseSearcher<'a>
+    pub fn rmatch_indices<'a, P: Needle<&'a str>>(&'a self, pat: P) -> RMatchIndices<'a, P>
+    where
+        P::Searcher: ReverseSearcher<str>,
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
     {
-        RMatchIndices(self.match_indices(pat).0)
+        ext::rmatch_indices(self, pat)
     }
 
     /// Returns a string slice with leading and trailing whitespace removed.
@@ -3682,24 +3286,12 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
-        where P::Searcher: DoubleEndedSearcher<'a>
+    pub fn trim_matches<'a, P: Needle<&'a str>>(&'a self, pat: P) -> &'a str
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: DoubleEndedConsumer<str>,
     {
-        let mut i = 0;
-        let mut j = 0;
-        let mut matcher = pat.into_searcher(self);
-        if let Some((a, b)) = matcher.next_reject() {
-            i = a;
-            j = b; // Remember earliest known match, correct it below if
-                   // last match is different
-        }
-        if let Some((_, b)) = matcher.next_reject_back() {
-            j = b;
-        }
-        unsafe {
-            // Searcher is known to return valid indices
-            self.get_unchecked(i..j)
-        }
+        ext::trim(self, pat)
     }
 
     /// Returns a string slice with all prefixes that match a pattern
@@ -3729,16 +3321,12 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
-    pub fn trim_start_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
-        let mut i = self.len();
-        let mut matcher = pat.into_searcher(self);
-        if let Some((a, _)) = matcher.next_reject() {
-            i = a;
-        }
-        unsafe {
-            // Searcher is known to return valid indices
-            self.get_unchecked(i..self.len())
-        }
+    pub fn trim_start_matches<'a, P: Needle<&'a str>>(&'a self, pat: P) -> &'a str
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        ext::trim_start(self, pat)
     }
 
     /// Returns a string slice with all suffixes that match a pattern
@@ -3774,18 +3362,12 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
-    pub fn trim_end_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
-        where P::Searcher: ReverseSearcher<'a>
+    pub fn trim_end_matches<'a, P: Needle<&'a str>>(&'a self, pat: P) -> &'a str
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: ReverseConsumer<str>,
     {
-        let mut j = 0;
-        let mut matcher = pat.into_searcher(self);
-        if let Some((_, b)) = matcher.next_reject_back() {
-            j = b;
-        }
-        unsafe {
-            // Searcher is known to return valid indices
-            self.get_unchecked(0..j)
-        }
+        ext::trim_end(self, pat)
     }
 
     /// Returns a string slice with all prefixes that match a pattern
@@ -3820,7 +3402,11 @@ impl str {
         reason = "superseded by `trim_start_matches`",
         suggestion = "trim_start_matches",
     )]
-    pub fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
+    pub fn trim_left_matches<'a, P: Needle<&'a str>>(&'a self, pat: P) -> &'a str
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
         self.trim_start_matches(pat)
     }
 
@@ -3862,8 +3448,10 @@ impl str {
         reason = "superseded by `trim_end_matches`",
         suggestion = "trim_end_matches",
     )]
-    pub fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
-        where P::Searcher: ReverseSearcher<'a>
+    pub fn trim_right_matches<'a, P: Needle<&'a str>>(&'a self, pat: P) -> &'a str
+    where
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: ReverseConsumer<str>,
     {
         self.trim_end_matches(pat)
     }

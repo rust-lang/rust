@@ -28,8 +28,9 @@
 // It's cleaner to just turn off the unused_imports warning than to fix them.
 #![allow(unused_imports)]
 
-use core::borrow::Borrow;
-use core::str::pattern::{Pattern, Searcher, ReverseSearcher, DoubleEndedSearcher};
+use core::fmt;
+use core::str as core_str;
+use core::needle::{ext, Needle, Searcher, Consumer};
 use core::mem;
 use core::ptr;
 use core::iter::FusedIterator;
@@ -62,8 +63,6 @@ pub use core::str::{from_utf8, from_utf8_mut, Chars, CharIndices, Bytes};
 pub use core::str::{from_utf8_unchecked, from_utf8_unchecked_mut, ParseBoolError};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::SplitWhitespace;
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::pattern;
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub use core::str::EncodeUtf16;
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
@@ -255,15 +254,14 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn replace<'a, P: Pattern<'a>>(&'a self, from: P, to: &str) -> String {
-        let mut result = String::new();
-        let mut last_end = 0;
-        for (start, part) in self.match_indices(from) {
-            result.push_str(unsafe { self.get_unchecked(last_end..start) });
-            result.push_str(to);
-            last_end = start + part.len();
-        }
-        result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
+    pub fn replace<'s: 'a, 'a, P>(&'s self, from: P, to: &'a str) -> String
+    where
+        P: Needle<&'a str>,
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
+        let mut result = String::with_capacity(self.len());
+        ext::replace_with(self, from, |_| to, |s| result.push_str(s));
         result
     }
 
@@ -295,16 +293,15 @@ impl str {
     #[must_use = "this returns the replaced string as a new allocation, \
                   without modifying the original"]
     #[stable(feature = "str_replacen", since = "1.16.0")]
-    pub fn replacen<'a, P: Pattern<'a>>(&'a self, pat: P, to: &str, count: usize) -> String {
+    pub fn replacen<'s: 'a, 'a, P>(&'s self, pat: P, to: &'a str, count: usize) -> String
+    where
+        P: Needle<&'a str>,
+        P::Searcher: Searcher<str>, // FIXME: RFC 2089
+        P::Consumer: Consumer<str>, // FIXME: RFC 2089
+    {
         // Hope to reduce the times of re-allocation
-        let mut result = String::with_capacity(32);
-        let mut last_end = 0;
-        for (start, part) in self.match_indices(pat).take(count) {
-            result.push_str(unsafe { self.get_unchecked(last_end..start) });
-            result.push_str(to);
-            last_end = start + part.len();
-        }
-        result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
+        let mut result = String::with_capacity(self.len());
+        ext::replacen_with(self, pat, |_| to, count, |s| result.push_str(s));
         result
     }
 
