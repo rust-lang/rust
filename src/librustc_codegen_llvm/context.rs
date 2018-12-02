@@ -326,8 +326,8 @@ impl MiscMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         get_fn(self, instance)
     }
 
-    fn get_param(&self, llfn: &'ll Value, index: c_uint) -> &'ll Value {
-        llvm::get_param(llfn, index)
+    fn get_param(&self, llfn: &'ll Value, index: usize) -> &'ll Value {
+        llvm::get_param(llfn, index as c_uint)
     }
 
     fn eh_personality(&self) -> &'ll Value {
