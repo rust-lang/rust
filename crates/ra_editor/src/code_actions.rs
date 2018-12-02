@@ -4,7 +4,7 @@ use ra_syntax::{
     algo::{find_covering_node, find_leaf_at_offset},
     ast::{self, AstNode, AttrsOwner, NameOwner, TypeParamsOwner},
     Direction, SourceFileNode,
-    SyntaxKind::{COMMA, WHITESPACE},
+    SyntaxKind::{COMMA, WHITESPACE, COMMENT},
     SyntaxNodeRef, TextRange, TextUnit,
 };
 
@@ -41,7 +41,8 @@ pub fn add_derive<'a>(
     offset: TextUnit,
 ) -> Option<impl FnOnce() -> LocalEdit + 'a> {
     let nominal = find_node_at_offset::<ast::NominalDef>(file.syntax(), offset)?;
-    Some(move || {
+    let node_start = derive_insertion_offset(nominal)?;
+    return Some(move || {
         let derive_attr = nominal
             .attrs()
             .filter_map(|x| x.as_call())
@@ -51,7 +52,6 @@ pub fn add_derive<'a>(
         let mut edit = EditBuilder::new();
         let offset = match derive_attr {
             None => {
-                let node_start = nominal.syntax().range().start();
                 edit.insert(node_start, "#[derive()]\n".to_string());
                 node_start + TextUnit::of_str("#[derive(")
             }
@@ -61,7 +61,16 @@ pub fn add_derive<'a>(
             edit: edit.finish(),
             cursor_position: Some(offset),
         }
-    })
+    });
+
+    // Insert `derive` after doc comments.
+    fn derive_insertion_offset(nominal: ast::NominalDef) -> Option<TextUnit> {
+        let non_ws_child = nominal
+            .syntax()
+            .children()
+            .find(|it| it.kind() != COMMENT && it.kind() != WHITESPACE)?;
+        Some(non_ws_child.range().start())
+    }
 }
 
 pub fn add_impl<'a>(
@@ -181,7 +190,7 @@ mod tests {
     }
 
     #[test]
-    fn test_add_derive() {
+    fn add_derive_new() {
         check_action(
             "struct Foo { a: i32, <|>}",
             "#[derive(<|>)]\nstruct Foo { a: i32, }",
@@ -192,9 +201,31 @@ mod tests {
             "#[derive(<|>)]\nstruct Foo {  a: i32, }",
             |file, off| add_derive(file, off).map(|f| f()),
         );
+    }
+
+    #[test]
+    fn add_derive_existing() {
         check_action(
             "#[derive(Clone)]\nstruct Foo { a: i32<|>, }",
             "#[derive(Clone<|>)]\nstruct Foo { a: i32, }",
+            |file, off| add_derive(file, off).map(|f| f()),
+        );
+    }
+
+    #[test]
+    fn add_derive_new_with_doc_comment() {
+        check_action(
+            "
+/// `Foo` is a pretty important struct.
+/// It does stuff.
+struct Foo { a: i32<|>, }
+            ",
+            "
+/// `Foo` is a pretty important struct.
+/// It does stuff.
+#[derive(<|>)]
+struct Foo { a: i32, }
+            ",
             |file, off| add_derive(file, off).map(|f| f()),
         );
     }
