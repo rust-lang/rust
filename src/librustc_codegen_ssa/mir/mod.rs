@@ -104,7 +104,7 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         source_info: mir::SourceInfo
     ) {
         let (scope, span) = self.debug_loc(source_info);
-        bx.set_source_location(&self.debug_context, scope, span);
+        bx.set_source_location(&mut self.debug_context, scope, span);
     }
 
     pub fn debug_loc(&self, source_info: mir::SourceInfo) -> (Option<Bx::DIScope>, Span) {
@@ -203,7 +203,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 
     let fn_ty = cx.new_fn_type(sig, &[]);
     debug!("fn_ty: {:?}", fn_ty);
-    let debug_context =
+    let mut debug_context =
         cx.create_function_debug_context(instance, sig, llfn, mir);
     let mut bx = Bx::new_block(cx, llfn, "start");
 
@@ -225,7 +225,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         }).collect();
 
     // Compute debuginfo scopes from MIR scopes.
-    let scopes = cx.create_mir_scopes(mir, &debug_context);
+    let scopes = cx.create_mir_scopes(mir, &mut debug_context);
     let (landing_pads, funclets) = create_funclets(mir, &mut bx, &cleanup_kinds, &block_bxs);
 
     let mut fx = FunctionCx {
@@ -253,7 +253,7 @@ pub fn codegen_mir<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
         // FIXME(dlrobertson): This is ugly. Find a better way of getting the `PlaceRef` or
         // `LocalRef` from `arg_local_refs`
         let mut va_list_ref = None;
-        let args = arg_local_refs(&mut bx, &fx, &fx.scopes, &memory_locals, &mut va_list_ref);
+        let args = arg_local_refs(&mut bx, &fx, &memory_locals, &mut va_list_ref);
         fx.va_list_ref = va_list_ref;
 
         let mut allocate_local = |local| {
@@ -430,10 +430,6 @@ fn create_funclets<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
 fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
     fx: &FunctionCx<'a, 'tcx, Bx>,
-    scopes: &IndexVec<
-        mir::SourceScope,
-        debuginfo::MirDebugScope<Bx::DIScope>
-    >,
     memory_locals: &BitSet<mir::Local>,
     va_list_ref: &mut Option<PlaceRef<'tcx, Bx::Value>>,
 ) -> Vec<LocalRef<'tcx, Bx::Value>> {
@@ -443,7 +439,7 @@ fn arg_local_refs<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>>(
     let mut llarg_idx = fx.fn_ty.ret.is_indirect() as usize;
 
     // Get the argument scope, if it exists and if we need it.
-    let arg_scope = scopes[mir::OUTERMOST_SOURCE_SCOPE];
+    let arg_scope = fx.scopes[mir::OUTERMOST_SOURCE_SCOPE];
     let arg_scope = if bx.sess().opts.debuginfo == DebugInfo::Full {
         arg_scope.scope_metadata
     } else {

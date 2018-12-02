@@ -216,7 +216,7 @@ impl DebugInfoBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
 
     fn set_source_location(
         &mut self,
-        debug_context: &FunctionDebugContext<&'ll DISubprogram>,
+        debug_context: &mut FunctionDebugContext<&'ll DISubprogram>,
         scope: Option<&'ll DIScope>,
         span: Span,
     ) {
@@ -519,7 +519,7 @@ impl DebugInfoMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn create_mir_scopes(
         &self,
         mir: &mir::Mir<'_>,
-        debug_context: &FunctionDebugContext<&'ll DISubprogram>,
+        debug_context: &mut FunctionDebugContext<&'ll DISubprogram>,
     ) -> IndexVec<mir::SourceScope, MirDebugScope<&'ll DIScope>> {
         create_scope_map::create_mir_scopes(self, mir, debug_context)
     }
