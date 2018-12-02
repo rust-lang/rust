@@ -22,6 +22,9 @@ fn float_to_decimal_common_exact<T>(fmt: &mut Formatter, num: &T,
     unsafe {
         let mut buf = MaybeUninit::<[u8; 1024]>::uninitialized(); // enough for f32 and f64
         let mut parts = MaybeUninit::<[flt2dec::Part; 4]>::uninitialized();
+        // FIXME(#53491): Technically, this is calling `get_mut` on an uninitialized
+        // `MaybeUninit` (here and elsewhere in this file).  Revisit this once
+        // we decided whether that is valid or not.
         let formatted = flt2dec::to_exact_fixed_str(flt2dec::strategy::grisu::format_exact,
                                                     *num, sign, precision,
                                                     false, buf.get_mut(), parts.get_mut());
