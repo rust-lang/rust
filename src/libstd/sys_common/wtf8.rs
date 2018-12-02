@@ -22,10 +22,12 @@ use crate::hash::{Hash, Hasher};
 use crate::marker::PhantomData;
 use crate::mem;
 use crate::num::NonZeroU16;
-use crate::ops;
+use crate::ops::{self, Range};
 use crate::slice;
 use crate::str;
 use crate::sys_common::AsInner;
+use crate::needle::{Hay, Span, Searcher, ReverseSearcher, Consumer, ReverseConsumer};
+use core::slice::needles::{NaiveSearcher, SliceSearcher};
 
 const UTF8_REPLACEMENT_CHARACTER: &str = "\u{FFFD}";
 
@@ -905,5 +907,354 @@ mod tests {
                 CharBoundary, OutOfBounds,
             ],
         );
+    }
+}
+
+unsafe impl Hay for Wtf8 {
+    type Index = usize;
+
+    #[inline]
+    fn empty<'a>() -> &'a Self {
+        Wtf8::from_str("")
+    }
+
+    #[inline]
+    fn start_index(&self) -> usize {
+        0
+    }
+
+    #[inline]
+    fn end_index(&self) -> usize {
+        self.len()
+    }
+
+    #[inline]
+    unsafe fn slice_unchecked(&self, range: Range<usize>) -> &Self {
+        &self[range]
+    }
+
+    #[inline]
+    unsafe fn next_index(&self, index: usize) -> usize {
+        let offset = match *self.as_inner().get_unchecked(index) {
+            0x00..=0x7f => 1,
+            0x80..=0xbf => if index == 0 { 3 } else { 2 },
+            0xc0..=0xdf => 2,
+            0xe0..=0xef => 3,
+            0xf0..=0xff => if index + 3 == self.len() { 3 } else { 2 },
+            _ => unreachable!(),
+        };
+        index + offset
+    }
+
+    #[inline]
+    unsafe fn prev_index(&self, index: usize) -> usize {
+        let bytes = self.as_inner();
+        let mut e = index - 1;
+
+        let mut c = *bytes.get_unchecked(e);
+        if c < 0x80 {
+            return e;
+        }
+        e -= 1;
+        c = *bytes.get_unchecked(e);
+        if c >= 0xc0 {
+            return e;
+        }
+        e -= 1;
+        c = *bytes.get_unchecked(e);
+        if c < 0xc0 && e != 0 {
+            e += 1;
+        }
+        e
+    }
+}
+
+#[test]
+fn test_wtf8_next_last_index() {
+    let string = unsafe { Wtf8::from_bytes_unchecked(b"a\xc3\xa9 \xed\xa0\xbd\xf0\x9f\x92\xa9") };
+    unsafe {
+        for w in [0, 1, 3, 4, 7, 9, 11].windows(2) {
+            let i = w[0];
+            let j = w[1];
+            assert_eq!(string.next_index(i), j);
+            assert_eq!(string.prev_index(j), i);
+        }
+    }
+}
+
+#[derive(Debug)]
+enum SurrogateType {
+    Split,
+    Canonical,
+    Empty,
+}
+
+fn extend_subrange(
+    range: Range<usize>,
+    mut subrange: Range<usize>,
+    low_type: SurrogateType,
+    high_type: SurrogateType,
+) -> Range<usize> {
+    subrange.start -= match low_type {
+        SurrogateType::Empty => 0,
+        SurrogateType::Split if subrange.start != range.start + 3 => 2,
+        _ => 3,
+    };
+    subrange.end += match high_type {
+        SurrogateType::Empty => 0,
+        SurrogateType::Split if subrange.end + 3 != range.end => 2,
+        _ => 3,
+    };
+    subrange
+}
+
+#[derive(Debug, Clone)]
+pub struct LowSurrogateSearcher {
+    canonical: u16,
+}
+
+impl LowSurrogateSearcher {
+    #[inline]
+    fn new(ls: LowSurrogate) -> Self {
+        Self {
+            canonical: ls.value() & 0xcfff,
+        }
+    }
+
+    #[inline]
+    fn is_match(&self, tbs: ThreeByteSeq) -> Option<SurrogateType> {
+        let tbs = tbs.value();
+        if (tbs & 0xcfff) as u16 != self.canonical {
+            return None;
+        }
+        match tbs >> 12 {
+            0xedb => Some(SurrogateType::Canonical),
+            0x800..=0xbff => Some(SurrogateType::Split),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct HighSurrogateSearcher {
+    canonical: u32,
+    split: u32,
+}
+
+impl HighSurrogateSearcher {
+    #[inline]
+    fn new(hs: HighSurrogate) -> Self {
+        // the canonical representation
+        //
+        //          c = 1010 jihg 10fe dcba
+        //
+        // rearrange
+        //
+        //  c & 0xf03 = 0000 jihg 0000 00ba
+        //   c & 0xfc = 0000 0000 00fe dc00
+        // ...|...<<2 = 0000 jihg fedc 00ba
+        //  ...+0x100 = 000K JIHG fedc 00ba
+        //
+        // rearrange again
+        //
+        //  s & 0x3ff = 0000 00HG fedc 00ba
+        // s & 0xfc00 = 000K JI00 0000 0000
+        // ...|...<<2 = 0KJI 00HG fedc 00ba
+        //  ...|0x808 = 0KJI 10HG fedc 10ba
+        //
+        // this will be the split representation shifted right by 4 bits.
+
+        let c = hs.value();
+        let s = ((c & 0xf03) | (c & 0x3c) << 2) + 0x100;
+        let s = (s & 0x3ff) | (s & 0xfc00) << 2 | 0x808;
+        Self {
+            canonical: c as u32 | 0xed0000,
+            split: s as u32 | 0xf0000,
+        }
+    }
+
+    #[inline]
+    fn is_match(&self, tbs: ThreeByteSeq) -> Option<SurrogateType> {
+        let tbs = tbs.value();
+        if tbs == self.canonical {
+            Some(SurrogateType::Canonical)
+        } else if tbs >> 4 == self.split {
+            Some(SurrogateType::Split)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Wtf8Searcher<S> {
+    low: Option<LowSurrogateSearcher>,
+    middle: S,
+    high: Option<HighSurrogateSearcher>,
+}
+
+pub fn new_wtf8_searcher(needle: &Wtf8) -> Wtf8Searcher<SliceSearcher<'_, u8>> {
+    let (low, middle, high) = needle.canonicalize();
+    Wtf8Searcher {
+        low: low.map(LowSurrogateSearcher::new),
+        middle: SliceSearcher::new(middle),
+        high: high.map(HighSurrogateSearcher::new),
+    }
+}
+
+pub fn new_wtf8_consumer(needle: &Wtf8) -> Wtf8Searcher<NaiveSearcher<'_, u8>> {
+    let (low, middle, high) = needle.canonicalize();
+    Wtf8Searcher {
+        low: low.map(LowSurrogateSearcher::new),
+        middle: NaiveSearcher::new(middle),
+        high: high.map(HighSurrogateSearcher::new),
+    }
+}
+
+fn compare_boundary_surrogates(
+    low: &Option<LowSurrogateSearcher>,
+    high: &Option<HighSurrogateSearcher>,
+    bytes: &[u8],
+    range: Range<usize>,
+    subrange: Range<usize>,
+) -> Option<(SurrogateType, SurrogateType)> {
+    let low_type = if let Some(low) = low {
+        if subrange.start - range.start < 3 {
+            return None;
+        }
+        let tbs = unsafe { bytes.get_unchecked((subrange.start - 3)..subrange.start) };
+        low.is_match(ThreeByteSeq::new(tbs))?
+    } else {
+        SurrogateType::Empty
+    };
+
+    let high_type = if let Some(high) = high {
+        if range.end - subrange.end < 3 {
+            return None;
+        }
+        let tbs = unsafe { bytes.get_unchecked(subrange.end..(subrange.end + 3)) };
+        high.is_match(ThreeByteSeq::new(tbs))?
+    } else {
+        SurrogateType::Empty
+    };
+
+    Some((low_type, high_type))
+}
+
+fn span_as_inner(span: Span<&Wtf8>) -> Span<&[u8]> {
+    let (hay, range) = span.into_parts();
+    unsafe { Span::from_parts(hay.as_inner(), range) }
+}
+
+unsafe impl<'p> Searcher<Wtf8> for Wtf8Searcher<SliceSearcher<'p, u8>> {
+    #[inline]
+    fn search(&mut self, mut span: Span<&Wtf8>) -> Option<Range<usize>> {
+        let (hay, range) = span.clone().into_parts();
+        while let Some(subrange) = self.middle.search(span_as_inner(span.clone())) {
+            if let Some((low_type, high_type)) = compare_boundary_surrogates(
+                &self.low,
+                &self.high,
+                hay.as_inner(),
+                range.clone(),
+                subrange.clone(),
+            ) {
+                return Some(extend_subrange(range, subrange, low_type, high_type));
+            } else {
+                span = unsafe { Span::from_parts(hay, subrange.end..range.end) };
+            }
+        }
+        None
+    }
+}
+
+unsafe impl<'p> Consumer<Wtf8> for Wtf8Searcher<NaiveSearcher<'p, u8>> {
+    #[inline]
+    fn consume(&mut self, span: Span<&Wtf8>) -> Option<usize> {
+        let (hay, range) = span.into_parts();
+        let bytes = hay[range.clone()].as_inner();
+        let low_len = if self.low.is_some() { 3 } else { 0 };
+        let high_len = if self.high.is_some() { 3 } else { 0 };
+        let middle = self.middle.needle();
+        let mut match_len = low_len + middle.len() + high_len;
+        if bytes.len() < match_len {
+            return None;
+        }
+        let middle_start = low_len;
+        let middle_end = match_len - high_len;
+        if &bytes[middle_start..middle_end] != middle {
+            return None;
+        }
+        if let Some(high) = &self.high {
+            if let SurrogateType::Split = high.is_match(ThreeByteSeq::new(&bytes[middle_end..]))? {
+                if bytes.len() != match_len {
+                    match_len -= 1;
+                }
+            }
+        }
+        if let Some(low) = &self.low {
+            if let SurrogateType::Split = low.is_match(ThreeByteSeq::new(bytes))? {
+                if range.start != 0 {
+                    match_len -= 1;
+                }
+            }
+        }
+        Some(range.start + match_len)
+    }
+}
+
+unsafe impl<'p> ReverseSearcher<Wtf8> for Wtf8Searcher<SliceSearcher<'p, u8>> {
+    #[inline]
+    fn rsearch(&mut self, mut span: Span<&Wtf8>) -> Option<Range<usize>> {
+        let (hay, range) = span.clone().into_parts();
+        while let Some(subrange) = self.middle.rsearch(span_as_inner(span.clone())) {
+            if let Some((low_type, high_type)) = compare_boundary_surrogates(
+                &self.low,
+                &self.high,
+                hay.as_inner(),
+                range.clone(),
+                subrange.clone(),
+            ) {
+                return Some(extend_subrange(range, subrange, low_type, high_type));
+            } else {
+                span = unsafe { Span::from_parts(hay, range.start..subrange.start) };
+            }
+        }
+        None
+    }
+}
+
+unsafe impl<'p> ReverseConsumer<Wtf8> for Wtf8Searcher<NaiveSearcher<'p, u8>> {
+    #[inline]
+    fn rconsume(&mut self, span: Span<&Wtf8>) -> Option<usize> {
+        let (hay, range) = span.into_parts();
+        let bytes = hay[range.clone()].as_inner();
+        let low_len = if self.low.is_some() { 3 } else { 0 };
+        let high_len = if self.high.is_some() { 3 } else { 0 };
+        let middle = self.middle.needle();
+        let mut match_len = low_len + middle.len() + high_len;
+        if bytes.len() < match_len {
+            return None;
+        }
+        let middle_end = bytes.len() - high_len;
+        let middle_start = middle_end - middle.len();
+        if &bytes[middle_start..middle_end] != middle {
+            return None;
+        }
+        if let Some(low) = &self.low {
+            let start_index = bytes.len() - match_len;
+            if let SurrogateType::Split = low.is_match(ThreeByteSeq::new(&bytes[start_index..]))? {
+                if start_index != 0 {
+                    match_len -= 1;
+                }
+            }
+        }
+        if let Some(high) = &self.high {
+            if let SurrogateType::Split = high.is_match(ThreeByteSeq::new(&bytes[middle_end..]))? {
+                if bytes.len() != range.end {
+                    match_len -= 1;
+                }
+            }
+        }
+        Some(range.end - match_len)
     }
 }

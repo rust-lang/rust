@@ -5,9 +5,12 @@ use crate::cmp;
 use crate::hash::{Hash, Hasher};
 use crate::rc::Rc;
 use crate::sync::Arc;
+use crate::needle::{Hay, Haystack, Needle, Span, Searcher, ReverseSearcher, Consumer, ReverseConsumer};
 
-use crate::sys::os_str::{Buf, Slice};
+use crate::sys::os_str::{Buf, Slice, OsStrSearcher};
 use crate::sys_common::{AsInner, IntoInner, FromInner};
+
+use core::slice::needles::{TwoWaySearcher, SliceSearcher, NaiveSearcher};
 
 /// A type that can represent owned, mutable platform-native strings, but is
 /// cheaply inter-convertible with Rust strings.
@@ -1244,5 +1247,168 @@ mod tests {
         assert_eq!(OsString::from_wide(&[0x48, 0x65, 0x6C, 0x6C, 0x6F, 0xD83C]), &os_str[..7]);
         assert_eq!(OsString::from_wide(&[0xDF0E, 0xD83C, 0xDF0F]), &os_str[11..]);
         assert_eq!(OsString::from_wide(&[0xDF0D, 0xD83C]), &os_str[7..11]);
+    }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+unsafe impl Hay for OsStr {
+    type Index = usize;
+
+    #[inline]
+    fn empty<'a>() -> &'a Self {
+        Self::new("")
+    }
+
+    #[inline]
+    fn start_index(&self) -> usize {
+        0
+    }
+
+    #[inline]
+    fn end_index(&self) -> usize {
+        self.len()
+    }
+
+    #[inline]
+    unsafe fn slice_unchecked(&self, range: ops::Range<usize>) -> &Self {
+        &self[range]
+    }
+
+    #[inline]
+    unsafe fn next_index(&self, index: usize) -> usize {
+        self.inner.next_index(index)
+    }
+
+    #[inline]
+    unsafe fn prev_index(&self, index: usize) -> usize {
+        self.inner.prev_index(index)
+    }
+}
+
+// use a macro here since the type of `hay.inner.inner` is platform dependent
+// and we don't want to expose that type.
+macro_rules! span_as_inner {
+    ($span:expr) => {{
+        let (hay, range) = $span.into_parts();
+        unsafe { Span::from_parts(&hay.inner.inner, range) }
+    }}
+}
+
+fn span_as_inner_bytes(span: Span<&OsStr>) -> Span<&[u8]> {
+    let (hay, range) = span.into_parts();
+    unsafe { Span::from_parts(hay.inner.as_bytes_for_searcher(), range) }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+unsafe impl<'p> Searcher<OsStr> for TwoWaySearcher<'p, u8> {
+    #[inline]
+    fn search(&mut self, span: Span<&OsStr>) -> Option<ops::Range<usize>> {
+        self.search(span_as_inner_bytes(span))
+    }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+unsafe impl<'p> ReverseSearcher<OsStr> for TwoWaySearcher<'p, u8> {
+    #[inline]
+    fn rsearch(&mut self, span: Span<&OsStr>) -> Option<ops::Range<usize>> {
+        self.rsearch(span_as_inner_bytes(span))
+    }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+unsafe impl<'p> Consumer<OsStr> for NaiveSearcher<'p, u8> {
+    #[inline]
+    fn consume(&mut self, span: Span<&OsStr>) -> Option<usize> {
+        self.consume(span_as_inner_bytes(span))
+    }
+
+    #[inline]
+    fn trim_start(&mut self, hay: &OsStr) -> usize {
+        self.trim_start(hay.inner.as_bytes_for_searcher())
+    }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+unsafe impl<'p> ReverseConsumer<OsStr> for NaiveSearcher<'p, u8> {
+    #[inline]
+    fn rconsume(&mut self, span: Span<&OsStr>) -> Option<usize> {
+        self.rconsume(span_as_inner_bytes(span))
+    }
+
+    #[inline]
+    fn trim_end(&mut self, hay: &OsStr) -> usize {
+        self.trim_end(hay.inner.as_bytes_for_searcher())
+    }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+unsafe impl<'p> Searcher<OsStr> for OsStrSearcher<SliceSearcher<'p, u8>> {
+    #[inline]
+    fn search(&mut self, span: Span<&OsStr>) -> Option<ops::Range<usize>> {
+        self.search(span_as_inner!(span))
+    }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+unsafe impl<'p> ReverseSearcher<OsStr> for OsStrSearcher<SliceSearcher<'p, u8>> {
+    #[inline]
+    fn rsearch(&mut self, span: Span<&OsStr>) -> Option<ops::Range<usize>> {
+        self.rsearch(span_as_inner!(span))
+    }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+unsafe impl<'p> Consumer<OsStr> for OsStrSearcher<NaiveSearcher<'p, u8>> {
+    #[inline]
+    fn consume(&mut self, span: Span<&OsStr>) -> Option<usize> {
+        self.consume(span_as_inner!(span))
+    }
+
+    #[inline]
+    fn trim_start(&mut self, hay: &OsStr) -> usize {
+        self.trim_start(&hay.inner.inner)
+    }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+unsafe impl<'p> ReverseConsumer<OsStr> for OsStrSearcher<NaiveSearcher<'p, u8>> {
+    #[inline]
+    fn rconsume(&mut self, span: Span<&OsStr>) -> Option<usize> {
+        self.rconsume(span_as_inner!(span))
+    }
+
+    #[inline]
+    fn trim_end(&mut self, hay: &OsStr) -> usize {
+        self.trim_end(&hay.inner.inner)
+    }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+impl<'p, H: Haystack<Target = OsStr>> Needle<H> for &'p OsStr {
+    type Searcher = OsStrSearcher<SliceSearcher<'p, u8>>;
+    type Consumer = OsStrSearcher<NaiveSearcher<'p, u8>>;
+
+    fn into_searcher(self) -> Self::Searcher {
+        self.inner.into_searcher()
+    }
+
+    fn into_consumer(self) -> Self::Consumer {
+        self.inner.into_consumer()
+    }
+}
+
+// FIXME cannot impl `Needle<(_: Haystack<Target = OsStr>)>` due to RFC 1672 being postponed.
+// (need to wait for chalk)
+#[unstable(feature = "needle", issue = "56345")]
+impl<'h, 'p> Needle<&'h OsStr> for &'p str {
+    type Searcher = SliceSearcher<'p, u8>;
+    type Consumer = NaiveSearcher<'p, u8>;
+
+    fn into_searcher(self) -> Self::Searcher {
+        SliceSearcher::new(self.as_bytes())
+    }
+
+    fn into_consumer(self) -> Self::Consumer {
+        NaiveSearcher::new(self.as_bytes())
     }
 }

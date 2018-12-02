@@ -401,7 +401,7 @@ where
     }
 
     #[inline]
-    pub fn next(&mut self, hay: &[T], range: Range<usize>) -> Option<Range<usize>> {
+    pub(crate) fn next(&mut self, hay: &[T], range: Range<usize>) -> Option<Range<usize>> {
         if self.memory != usize::MAX {
             self.do_next::<ShortPeriod>(hay, range)
         } else {
@@ -469,7 +469,7 @@ where
     }
 
     #[inline]
-    pub fn next_back(&mut self, hay: &[T], range: Range<usize>) -> Option<Range<usize>> {
+    pub(crate) fn next_back(&mut self, hay: &[T], range: Range<usize>) -> Option<Range<usize>> {
         if self.memory != usize::MAX {
             self.do_next_back::<ShortPeriod>(hay, range)
         } else {
