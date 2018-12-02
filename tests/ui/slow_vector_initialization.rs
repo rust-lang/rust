@@ -7,6 +7,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![warn(clippy::unsafe_vector_initialization)]
+
 use std::iter::repeat;
 
 fn main() {

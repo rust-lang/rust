@@ -1,71 +1,71 @@
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:23:5
+  --> $DIR/slow_vector_initialization.rs:25:5
    |
-22 |     let mut vec1 = Vec::with_capacity(len);
+24 |     let mut vec1 = Vec::with_capacity(len);
    |                    ----------------------- help: consider replace allocation with: `vec![0; len]`
-23 |     vec1.extend(repeat(0).take(len));
+25 |     vec1.extend(repeat(0).take(len));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `-D clippy::slow-vector-initialization` implied by `-D warnings`
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:27:5
+  --> $DIR/slow_vector_initialization.rs:29:5
    |
-26 |     let mut vec2 = Vec::with_capacity(len - 10);
+28 |     let mut vec2 = Vec::with_capacity(len - 10);
    |                    ---------------------------- help: consider replace allocation with: `vec![0; len - 10]`
-27 |     vec2.extend(repeat(0).take(len - 10));
+29 |     vec2.extend(repeat(0).take(len - 10));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:41:5
+  --> $DIR/slow_vector_initialization.rs:43:5
    |
-40 |     let mut resized_vec = Vec::with_capacity(30);
+42 |     let mut resized_vec = Vec::with_capacity(30);
    |                           ---------------------- help: consider replace allocation with: `vec![0; 30]`
-41 |     resized_vec.resize(30, 0);
+43 |     resized_vec.resize(30, 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:44:5
+  --> $DIR/slow_vector_initialization.rs:46:5
    |
-43 |     let mut extend_vec = Vec::with_capacity(30);
+45 |     let mut extend_vec = Vec::with_capacity(30);
    |                          ---------------------- help: consider replace allocation with: `vec![0; 30]`
-44 |     extend_vec.extend(repeat(0).take(30));
+46 |     extend_vec.extend(repeat(0).take(30));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:51:5
+  --> $DIR/slow_vector_initialization.rs:53:5
    |
-50 |     let mut vec1 = Vec::with_capacity(len);
+52 |     let mut vec1 = Vec::with_capacity(len);
    |                    ----------------------- help: consider replace allocation with: `vec![0; len]`
-51 |     vec1.resize(len, 0);
+53 |     vec1.resize(len, 0);
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:59:5
+  --> $DIR/slow_vector_initialization.rs:61:5
    |
-58 |     let mut vec3 = Vec::with_capacity(len - 10);
+60 |     let mut vec3 = Vec::with_capacity(len - 10);
    |                    ---------------------------- help: consider replace allocation with: `vec![0; len - 10]`
-59 |     vec3.resize(len - 10, 0);
+61 |     vec3.resize(len - 10, 0);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: slow zero-filling initialization
-  --> $DIR/slow_vector_initialization.rs:63:5
+  --> $DIR/slow_vector_initialization.rs:65:5
    |
-62 |     vec1 = Vec::with_capacity(10);
+64 |     vec1 = Vec::with_capacity(10);
    |            ---------------------- help: consider replace allocation with: `vec![0; 10]`
-63 |     vec1.resize(10, 0);
+65 |     vec1.resize(10, 0);
    |     ^^^^^^^^^^^^^^^^^^
 
 error: unsafe vector initialization
-  --> $DIR/slow_vector_initialization.rs:70:9
+  --> $DIR/slow_vector_initialization.rs:72:9
    |
-67 |     let mut unsafe_vec: Vec<u8> = Vec::with_capacity(200);
+69 |     let mut unsafe_vec: Vec<u8> = Vec::with_capacity(200);
    |                                   ----------------------- help: consider replace allocation with: `vec![0; 200]`
 ...
-70 |         unsafe_vec.set_len(200);
+72 |         unsafe_vec.set_len(200);
    |         ^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: #[deny(clippy::unsafe_vector_initialization)] on by default
+   = note: `-D clippy::unsafe-vector-initialization` implied by `-D warnings`
 
 error: aborting due to 8 previous errors
 
