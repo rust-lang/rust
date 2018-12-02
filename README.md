@@ -20,36 +20,6 @@ for example:
 [`unreachable_unchecked`]: https://doc.rust-lang.org/stable/std/hint/fn.unreachable_unchecked.html
 [`copy_nonoverlapping`]: https://doc.rust-lang.org/stable/std/ptr/fn.copy_nonoverlapping.html
 
-## Building Miri
-
-We recommend that you install [rustup] to obtain Rust. Then all you have
-to do is:
-
-```sh
-cargo +nightly build
-```
-
-This uses the very latest Rust version.  If you experience any problem, refer to
-the `rust-version` file which contains a particular Rust nightly version that
-has been tested against the version of miri you are using.  Make sure to use
-that particular `nightly-YYYY-MM-DD` whenever the instructions just say
-`nightly`.
-
-To avoid repeating the nightly version all the time, you can use
-`rustup override set nightly` (or `rustup override set nightly-YYYY-MM-DD`),
-which means `nightly` Rust will automatically be used whenever you are working
-in this directory.
-
-[rustup]: https://www.rustup.rs
-
-## Running Miri on tiny examples
-
-```sh
-cargo +nightly run -- -Zmiri-disable-validation tests/run-pass/vecs.rs # Or whatever test you like.
-```
-
-We have to disable validation because that can lead to errors when libstd is not
-compiled the right way.
 
 ## Running Miri on your own project('s test suite)
 
@@ -59,13 +29,17 @@ Install Miri as a cargo subcommand:
 cargo +nightly install --git https://github.com/solson/miri/ miri
 ```
 
-Be aware that if you used `rustup override set` to fix a particular Rust version
-for the miri directory, that will *not* apply to your own project directory!
-You have to use a consistent Rust version for building miri and your project for
-this to work, so remember to either always specify the nightly version manually,
-overriding it in your project directory as well, or use `rustup default nightly`
-(or `rustup default nightly-YYYY-MM-DD`) to globally make `nightly` the default
-toolchain.
+If this does not work, try using the nightly version given in
+[this file](https://raw.githubusercontent.com/solson/miri/master/rust-version). CI
+should ensure that this nightly always works.
+
+You have to use a consistent Rust version for building miri and your project, so
+remember to either always specify the nightly version manually (like in the
+example above), overriding it in your project directory as well, or use `rustup
+default nightly` (or `rustup default nightly-YYYY-MM-DD`) to globally make
+`nightly` the default toolchain.
+
+Now you can run your project in miri:
 
 1. Run `cargo clean` to eliminate any cached dependencies.  Miri needs your
    dependencies to be compiled the right way, that would not happen if they have
@@ -93,53 +67,79 @@ You may be running `cargo miri` with a different compiler version than the one
 used to build the custom libstd that Miri uses, and Miri failed to detect that.
 Try deleting `~/.cache/miri`.
 
-## Miri `-Z` flags
-
-Several `-Z` flags are relevant for miri:
-
-* `-Zmir-opt-level` controls how many MIR optimizations are performed.  miri
-  overrides the default to be `0`; be advised that using any higher level can
-  make miri miss bugs in your program because they got optimized away.
-* `-Zalways-encode-mir` makes rustc dump MIR even for completely monomorphic
-  functions.  This is needed so that miri can execute such functions, so miri
-  sets this flag per default.
-* `-Zmiri-disable-validation` is a custom `-Z` flag added by miri.  It disables
-  enforcing the validity invariant, which is enforced by default.  This is
-  mostly useful for debugging; it means miri will miss bugs in your program.
-
 ## Development and Debugging
 
-Since the heart of Miri (the main interpreter engine) lives in rustc, working on
-Miri will often require using a locally built rustc. This includes getting a
-trace of the execution, as distributed rustc has `debug!` and `trace!` disabled.
+If you want to hack on miri yourself, great!  Here are some resources you might
+find useful.
 
-The first-time setup for a local rustc looks as follows:
+### Using a nightly rustc
+
+miri heavily relies on internal rustc interfaces to execute MIR.  Still, some
+things (like adding support for a new intrinsic) can be done by working just on
+the miri side.
+
+To prepare, make sure you are using a nightly Rust compiler.  You also need to
+set up a libstd that enables execution with miri:
+
+```sh
+rustup override set nightly # or the nightly in `rust-version`
+cargo run --bin cargo-miri -- miri setup
+```
+
+The last command should end in printing the directory where the libstd was
+built.  Set that as your MIRI_SYSROOT environment variable:
+
+```sh
+export MIRI_SYSROOT=~/.cache/miri/HOST # or whatever the previous command said
+```
+
+### Testing Miri
+
+Now you can run Miri directly, without going through `cargo miri`:
+
+```sh
+cargo run tests/run-pass-fullmir/format.rs # or whatever test you like
+```
+
+You can also run the test suite with `cargo test --release`.  `cargo test
+--release FILTER` only runs those tests that contain `FILTER` in their filename
+(including the base directory, e.g. `cargo test --release fail` will run all
+compile-fail tests).  We recommend using `--release` to make test running take
+less time.
+
+Now you are set up!  You can write a failing test case, and tweak miri until it
+fails no more.
+
+### Using a locally built rustc
+
+Since the heart of Miri (the main interpreter engine) lives in rustc, working on
+Miri will often require using a locally built rustc.  The bug you want to fix
+may actually be on the rustc side, or you just need to get more detailed trace
+of the execution -- in both cases, you should develop miri against a rustc you
+compiled yourself, with debug assertions (and hence tracing) enabled.
+
+The setup for a local rustc works as follows:
 ```sh
 git clone https://github.com/rust-lang/rust/ rustc
 cd rustc
 cp config.toml.example config.toml
 # Now edit `config.toml` and set `debug-assertions = true` and `test-miri = true`.
 # The latter is important to build libstd with the right flags for miri.
+# This step can take 30 minutes and more.
 ./x.py build src/rustc
+# If you change something, you can get a faster rebuild by doing
+./x.py --keep-stage 0 build src/rustc
 # You may have to change the architecture in the next command
 rustup toolchain link custom build/x86_64-unknown-linux-gnu/stage2
-# Now cd to your Miri directory
+# Now cd to your Miri directory, then configure rustup
 rustup override set custom
+# We also need to tell Miri where to find its sysroot. Since we set
+# `test-miri` above, we can just use rustc' sysroot.
+export MIRI_SYSROOT=$(rustc --print sysroot)
 ```
-The `build` step can take 30 minutes and more.
 
-Now you can `cargo build` Miri, and you can `cargo test --release` it.  `cargo
-test --release FILTER` only runs those tests that contain `FILTER` in their
-filename (including the base directory, e.g. `cargo test --release fail` will
-run all compile-fail tests).  We recommend using `--release` to make test
-running take less time.
-
-Notice that the "fullmir" tests only run if you have `MIRI_SYSROOT` set, the
-test runner does not realized that your libstd comes with full MIR.  The
-following will set it correctly:
-```sh
-MIRI_SYSROOT=$(rustc --print sysroot) cargo test --release
-```
+With this, you should now have a working development setup!  See
+["Testing Miri"](#testing-miri) above for how to proceed.
 
 Moreover, you can now run Miri with a trace of all execution steps:
 ```sh
@@ -157,18 +157,28 @@ MIRI_LOG=rustc_mir::interpret=debug,miri::stacked_borrows cargo run tests/run-pa
 In addition, you can set `MIRI_BACKTRACE=1` to get a backtrace of where an
 evaluation error was originally created.
 
-If you changed something in rustc and want to re-build, run
-```
-./x.py --keep-stage 0 build src/rustc
-```
-This avoids rebuilding the entire stage 0, which can save a lot of time.
+### Miri `-Z` flags
+
+Several `-Z` flags are relevant for miri:
+
+* `-Zmir-opt-level` controls how many MIR optimizations are performed.  miri
+  overrides the default to be `0`; be advised that using any higher level can
+  make miri miss bugs in your program because they got optimized away.
+* `-Zalways-encode-mir` makes rustc dump MIR even for completely monomorphic
+  functions.  This is needed so that miri can execute such functions, so miri
+  sets this flag per default.
+* `-Zmiri-disable-validation` is a custom `-Z` flag added by miri.  It disables
+  enforcing the validity invariant, which is enforced by default.  This is
+  mostly useful for debugging; it means miri will miss bugs in your program.
 
 ## Contributing and getting help
 
 Check out the issues on this GitHub repository for some ideas. There's lots that
 needs to be done that I haven't documented in the issues yet, however. For more
-ideas or help with running or hacking on Miri, you can contact me (`scott`) on
-Mozilla IRC in any of the Rust IRC channels (`#rust`, `#rust-offtopic`, etc).
+ideas or help with running or hacking on Miri, you can open an issue here on
+GitHub or contact us (`oli-obk` and `RalfJ`) on the [Rust Zulip].
+
+[Rust Zulip]: https://rust-lang.zulipchat.com
 
 ## History
 
