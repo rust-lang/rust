@@ -1654,8 +1654,9 @@ mod test {
         or_panic!(stream.set_read_timeout(Some(Duration::from_millis(1000))));
 
         let mut buf = [0; 10];
-        let kind = stream.read(&mut buf).err().expect("expected error").kind();
-        assert!(kind == io::ErrorKind::WouldBlock || kind == io::ErrorKind::TimedOut);
+        let kind = stream.read_exact(&mut buf).err().expect("expected error").kind();
+        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
+                "unexpected_error: {:?}", kind);
     }
 
     #[test]
@@ -1675,8 +1676,9 @@ mod test {
         or_panic!(stream.read(&mut buf));
         assert_eq!(b"hello world", &buf[..]);
 
-        let kind = stream.read(&mut buf).err().expect("expected error").kind();
-        assert!(kind == io::ErrorKind::WouldBlock || kind == io::ErrorKind::TimedOut);
+        let kind = stream.read_exact(&mut buf).err().expect("expected error").kind();
+        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
+                "unexpected_error: {:?}", kind);
     }
 
     // Ensure the `set_read_timeout` and `set_write_timeout` calls return errors
