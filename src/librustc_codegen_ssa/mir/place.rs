@@ -80,7 +80,7 @@ impl<'a, 'tcx: 'a, V: CodegenObject> PlaceRef<'tcx, V> {
         Self::alloca(bx, ptr_layout, name)
     }
 
-    pub fn len<Cx: CodegenMethods<'tcx, Value = V>>(
+    pub fn len<Cx: ConstMethods<'tcx, Value = V>>(
         &self,
         cx: &Cx
     ) -> V {
@@ -447,7 +447,8 @@ impl<'a, 'tcx: 'a, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // NB: The layout of a static may be unsized as is the case when working
                 // with a static that is an extern_type.
                 let layout = cx.layout_of(self.monomorphize(&ty));
-                PlaceRef::new_thin_place(bx, bx.get_static(def_id), layout, layout.align.abi)
+                let static_ = bx.get_static(def_id);
+                PlaceRef::new_thin_place(bx, static_, layout, layout.align.abi)
             },
             mir::Place::Projection(box mir::Projection {
                 ref base,
