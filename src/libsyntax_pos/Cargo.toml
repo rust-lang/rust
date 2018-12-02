@@ -13,5 +13,6 @@ serialize = { path = "../libserialize" }
 rustc_data_structures = { path = "../librustc_data_structures" }
 arena = { path = "../libarena" }
 scoped-tls = { version = "0.1.1", features = ["nightly"] }
+serde = { version = "1.0", features = ["serde_derive"] }
 unicode-width = "0.1.4"
 cfg-if = "0.1.2"

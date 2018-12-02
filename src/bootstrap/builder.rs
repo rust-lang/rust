@@ -608,6 +608,7 @@ impl<'a> Builder<'a> {
                     .join(self.target)
                     .join("lib");
                 let _ = fs::remove_dir_all(&sysroot);
+                eprintln!("creating sysroot {:?}", sysroot);
                 t!(fs::create_dir_all(&sysroot));
                 INTERNER.intern_path(sysroot)
             }
@@ -809,6 +810,12 @@ impl<'a> Builder<'a> {
         // (e.g., not building/requiring LLVM).
         if cmd == "check" {
             cargo.env("RUST_CHECK", "1");
+        }
+
+        // Build proc macros both for the host and the target
+        if target != compiler.host && cmd != "check" {
+            cargo.arg("-Zdual-proc-macros");
+            cargo.env("RUST_DUAL_PROC_MACROS", "1");
         }
 
         cargo.arg("-j").arg(self.jobs().to_string());

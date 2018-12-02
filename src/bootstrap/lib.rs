@@ -104,7 +104,7 @@
 //! also check out the `src/bootstrap/README.md` file for more information.
 
 #![deny(bare_trait_objects)]
-#![deny(warnings)]
+//#![deny(warnings)]
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 
@@ -1142,7 +1142,7 @@ impl Build {
         ret
     }
 
-    fn read_stamp_file(&self, stamp: &Path) -> Vec<PathBuf> {
+    fn read_stamp_file(&self, stamp: &Path) -> Vec<(PathBuf, bool)> {
         if self.config.dry_run {
             return Vec::new();
         }
@@ -1155,8 +1155,9 @@ impl Build {
             if part.is_empty() {
                 continue
             }
-            let path = PathBuf::from(t!(str::from_utf8(part)));
-            paths.push(path);
+            let host = part[0] as char == 'h';
+            let path = PathBuf::from(t!(str::from_utf8(&part[1..])));
+            paths.push((path, host));
         }
         paths
     }

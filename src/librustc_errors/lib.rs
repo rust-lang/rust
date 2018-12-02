@@ -16,6 +16,7 @@ extern crate libc;
 #[macro_use]
 extern crate log;
 extern crate rustc_data_structures;
+extern crate serde;
 extern crate serialize as rustc_serialize;
 extern crate syntax_pos;
 extern crate unicode_width;
@@ -34,6 +35,8 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::{error, fmt};
 use std::panic;
+
+use serde::{Serialize, Deserialize};
 
 use termcolor::{ColorSpec, Color};
 
@@ -59,7 +62,8 @@ use syntax_pos::{BytePos,
 /// All suggestions are marked with an `Applicability`. Tools use the applicability of a suggestion
 /// to determine whether it should be automatically applied or if the user should be consulted
 /// before applying the suggestion.
-#[derive(Copy, Clone, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, Debug, PartialEq, Hash,
+         RustcEncodable, RustcDecodable, Serialize, Deserialize)]
 pub enum Applicability {
     /// The suggestion is definitely what the user intended. This suggestion should be
     /// automatically applied.

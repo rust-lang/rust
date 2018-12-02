@@ -25,6 +25,7 @@ extern crate rustc_data_structures;
 
 #[macro_use]
 extern crate scoped_tls;
+extern crate serde;
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 
@@ -35,6 +36,8 @@ extern crate serialize as rustc_serialize; // used by deriving
 extern crate cfg_if;
 
 extern crate unicode_width;
+
+use serde::{Serialize, Deserialize};
 
 pub mod edition;
 pub mod hygiene;
@@ -77,7 +80,10 @@ impl Globals {
 scoped_thread_local!(pub static GLOBALS: Globals);
 
 /// Differentiates between real files and common virtual files.
-#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash, RustcDecodable, RustcEncodable)]
+#[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash,
+    RustcDecodable, RustcEncodable,
+    Serialize, Deserialize,
+)]
 pub enum FileName {
     Real(PathBuf),
     /// A macro.  This includes the full name of the macro, so that there are no clashes.

@@ -22,4 +22,5 @@ crate-type = ["dylib"]
 [dependencies]
 bitflags = "1.0"
 log = "0.4"
+serde = { version = "1.0", features = ["serde_derive"] }
 unicode-width = "0.1.4"
