@@ -6282,7 +6282,7 @@ impl<'a> Parser<'a> {
         self.parse_single_struct_field(lo, vis, attrs)
     }
 
-    /// Parse `pub`, `pub(crate)` and `pub(in path)` plus shortcuts `pub(self)` for `pub(in self)`
+    /// Parse `pub`, `pub(crate)` and `pub(in path)` plus shortcuts `crate` for `pub(crate)`, `pub(self)` for `pub(in self)`
     /// and `pub(super)` for `pub(in super)`.  If the following element can't be a tuple (i.e. it's
     /// a function definition, it's not a tuple struct field) and the contents within the parens
     /// isn't valid, emit a proper diagnostic.
