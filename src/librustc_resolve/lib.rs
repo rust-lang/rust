@@ -2373,13 +2373,9 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
         self.with_current_self_item(item, |this| {
             this.with_type_parameter_rib(HasTypeParameters(generics, ItemRibKind), |this| {
                 let item_def_id = this.definitions.local_def_id(item.id);
-                if this.session.features_untracked().self_in_typedefs {
-                    this.with_self_rib(Def::SelfTy(None, Some(item_def_id)), |this| {
-                        visit::walk_item(this, item);
-                    });
-                } else {
+                this.with_self_rib(Def::SelfTy(None, Some(item_def_id)), |this| {
                     visit::walk_item(this, item);
-                }
+                });
             });
         });
     }
@@ -3185,16 +3181,8 @@ impl<'a, 'crateloader: 'a> Resolver<'a, 'crateloader> {
             if is_self_type(path, ns) {
                 __diagnostic_used!(E0411);
                 err.code(DiagnosticId::Error("E0411".into()));
-                let available_in = if this.session.features_untracked().self_in_typedefs {
-                    "impls, traits, and type definitions"
-                } else {
-                    "traits and impls"
-                };
-                err.span_label(span, format!("`Self` is only available in {}", available_in));
-                if this.current_self_item.is_some() && nightly_options::is_nightly_build() {
-                    err.help("add #![feature(self_in_typedefs)] to the crate attributes \
-                              to enable");
-                }
+                err.span_label(span, format!("`Self` is only available in impls, traits, \
+                                              and type definitions"));
                 return (err, Vec::new());
             }
             if is_self_value(path, ns) {
