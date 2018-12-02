@@ -13,7 +13,6 @@ use rustc::ty::Ty;
 use rustc::ty::layout::{Align, Size};
 use std::ffi::CStr;
 
-use std::borrow::Cow;
 use std::ops::Range;
 use syntax::ast::AsmDialect;
 
@@ -39,11 +38,9 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn cx(&self) -> &Self::CodegenCx;
     fn llfn(&self) -> Self::Value;
     fn llbb(&self) -> Self::BasicBlock;
-    fn count_insn(&self, category: &str);
 
     fn set_value_name(&mut self, value: Self::Value, name: &str);
     fn position_at_end(&mut self, llbb: Self::BasicBlock);
-    fn position_at_start(&mut self, llbb: Self::BasicBlock);
     fn ret_void(&mut self);
     fn ret(&mut self, v: Self::Value);
     fn br(&mut self, dest: Self::BasicBlock);
@@ -161,7 +158,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn icmp(&mut self, op: IntPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn fcmp(&mut self, op: RealPredicate, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
 
-    fn empty_phi(&mut self, ty: Self::Type) -> Self::Value;
     fn phi(
         &mut self,
         ty: Self::Type,
@@ -206,8 +202,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         flags: MemFlags,
     );
 
-    fn minnum(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
-    fn maxnum(&mut self, lhs: Self::Value, rhs: Self::Value) -> Self::Value;
     fn select(
         &mut self,
         cond: Self::Value,
@@ -215,34 +209,8 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         else_val: Self::Value,
     ) -> Self::Value;
 
-    fn va_arg(&mut self, list: Self::Value, ty: Self::Type) -> Self::Value;
     fn extract_element(&mut self, vec: Self::Value, idx: Self::Value) -> Self::Value;
-    fn insert_element(
-        &mut self,
-        vec: Self::Value,
-        elt: Self::Value,
-        idx: Self::Value,
-    ) -> Self::Value;
-    fn shuffle_vector(
-        &mut self,
-        v1: Self::Value,
-        v2: Self::Value,
-        mask: Self::Value,
-    ) -> Self::Value;
     fn vector_splat(&mut self, num_elts: usize, elt: Self::Value) -> Self::Value;
-    fn vector_reduce_fadd_fast(&mut self, acc: Self::Value, src: Self::Value) -> Self::Value;
-    fn vector_reduce_fmul_fast(&mut self, acc: Self::Value, src: Self::Value) -> Self::Value;
-    fn vector_reduce_add(&mut self, src: Self::Value) -> Self::Value;
-    fn vector_reduce_mul(&mut self, src: Self::Value) -> Self::Value;
-    fn vector_reduce_and(&mut self, src: Self::Value) -> Self::Value;
-    fn vector_reduce_or(&mut self, src: Self::Value) -> Self::Value;
-    fn vector_reduce_xor(&mut self, src: Self::Value) -> Self::Value;
-    fn vector_reduce_fmin(&mut self, src: Self::Value) -> Self::Value;
-    fn vector_reduce_fmax(&mut self, src: Self::Value) -> Self::Value;
-    fn vector_reduce_fmin_fast(&mut self, src: Self::Value) -> Self::Value;
-    fn vector_reduce_fmax_fast(&mut self, src: Self::Value) -> Self::Value;
-    fn vector_reduce_min(&mut self, src: Self::Value, is_signed: bool) -> Self::Value;
-    fn vector_reduce_max(&mut self, src: Self::Value, is_signed: bool) -> Self::Value;
     fn extract_value(&mut self, agg_val: Self::Value, idx: u64) -> Self::Value;
     fn insert_value(&mut self, agg_val: Self::Value, elt: Self::Value, idx: u64) -> Self::Value;
 
@@ -252,7 +220,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         pers_fn: Self::Value,
         num_clauses: usize,
     ) -> Self::Value;
-    fn add_clause(&mut self, landing_pad: Self::Value, clause: Self::Value);
     fn set_cleanup(&mut self, landing_pad: Self::Value);
     fn resume(&mut self, exn: Self::Value) -> Self::Value;
     fn cleanup_pad(&mut self, parent: Option<Self::Value>, args: &[Self::Value]) -> Self::Funclet;
@@ -262,7 +229,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
         unwind: Option<Self::BasicBlock>,
     ) -> Self::Value;
     fn catch_pad(&mut self, parent: Self::Value, args: &[Self::Value]) -> Self::Funclet;
-    fn catch_ret(&mut self, funclet: &Self::Funclet, unwind: Self::BasicBlock) -> Self::Value;
     fn catch_switch(
         &mut self,
         parent: Option<Self::Value>,
@@ -292,19 +258,6 @@ pub trait BuilderMethods<'a, 'tcx: 'a>:
     fn add_case(&mut self, s: Self::Value, on_val: Self::Value, dest: Self::BasicBlock);
     fn add_incoming_to_phi(&mut self, phi: Self::Value, val: Self::Value, bb: Self::BasicBlock);
     fn set_invariant_load(&mut self, load: Self::Value);
-
-    /// Returns the ptr value that should be used for storing `val`.
-    fn check_store(&mut self, val: Self::Value, ptr: Self::Value) -> Self::Value;
-
-    /// Returns the args that should be used for a call to `llfn`.
-    fn check_call<'b>(
-        &mut self,
-        typ: &str,
-        llfn: Self::Value,
-        args: &'b [Self::Value],
-    ) -> Cow<'b, [Self::Value]>
-    where
-        [Self::Value]: ToOwned;
 
     /// Called for `StorageLive`
     fn lifetime_start(&mut self, ptr: Self::Value, size: Size);
