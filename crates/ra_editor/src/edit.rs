@@ -26,7 +26,7 @@ impl EditBuilder {
     }
     pub fn finish(self) -> Edit {
         let mut atoms = self.atoms;
-        atoms.sort_by_key(|a| a.delete.start());
+        atoms.sort_by_key(|a| (a.delete.start(), a.delete.end()));
         for (a1, a2) in atoms.iter().zip(atoms.iter().skip(1)) {
             assert!(a1.delete.end() <= a2.delete.start())
         }

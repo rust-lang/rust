@@ -113,7 +113,7 @@ pub fn introduce_variable<'a>(
     let node = find_covering_node(file.syntax(), range);
     let expr = node.ancestors().filter_map(ast::Expr::cast).next()?;
 
-    let anchor_stmt = ahchor_stmt(expr)?;
+    let anchor_stmt = anchor_stmt(expr)?;
     let indent = anchor_stmt.prev_sibling()?;
     if indent.kind() != WHITESPACE {
         return None;
@@ -124,7 +124,12 @@ pub fn introduce_variable<'a>(
 
         buf.push_str("let var_name = ");
         expr.syntax().text().push_to(&mut buf);
-        if expr.syntax().range().start() == anchor_stmt.range().start() {
+        let is_full_stmt = if let Some(expr_stmt) = ast::ExprStmt::cast(anchor_stmt) {
+            Some(expr.syntax()) == expr_stmt.expr().map(|e| e.syntax())
+        } else {
+            false
+        };
+        if is_full_stmt {
             edit.replace(expr.syntax().range(), buf);
         } else {
             buf.push_str(";");
@@ -141,7 +146,7 @@ pub fn introduce_variable<'a>(
 
     /// Statement or last in the block expression, which will follow
     /// the freshly introduced var.
-    fn ahchor_stmt(expr: ast::Expr) -> Option<SyntaxNodeRef> {
+    fn anchor_stmt(expr: ast::Expr) -> Option<SyntaxNodeRef> {
         expr.syntax().ancestors().find(|&node| {
             if ast::Stmt::cast(node).is_some() {
                 return true;
@@ -219,7 +224,7 @@ mod tests {
     }
 
     #[test]
-    fn test_intrdoduce_var_simple() {
+    fn test_introduce_var_simple() {
         check_action_range(
             "
 fn foo() {
@@ -235,7 +240,7 @@ fn foo() {
     }
 
     #[test]
-    fn test_intrdoduce_var_expr_stmt() {
+    fn test_introduce_var_expr_stmt() {
         check_action_range(
             "
 fn foo() {
@@ -250,7 +255,23 @@ fn foo() {
     }
 
     #[test]
-    fn test_intrdoduce_var_last_expr() {
+    fn test_introduce_var_part_of_expr_stmt() {
+        check_action_range(
+            "
+fn foo() {
+    <|>1<|> + 1;
+}",
+            "
+fn foo() {
+    let <|>var_name = 1;
+    var_name + 1;
+}",
+            |file, range| introduce_variable(file, range).map(|f| f()),
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_last_expr() {
         check_action_range(
             "
 fn foo() {
@@ -260,6 +281,22 @@ fn foo() {
 fn foo() {
     let <|>var_name = 1 + 1;
     bar(var_name)
+}",
+            |file, range| introduce_variable(file, range).map(|f| f()),
+        );
+    }
+
+    #[test]
+    fn test_introduce_var_last_full_expr() {
+        check_action_range(
+            "
+fn foo() {
+    <|>bar(1 + 1)<|>
+}",
+            "
+fn foo() {
+    let <|>var_name = bar(1 + 1);
+    var_name
 }",
             |file, range| introduce_variable(file, range).map(|f| f()),
         );
