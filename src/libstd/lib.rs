@@ -274,6 +274,7 @@
 #![feature(link_args)]
 #![feature(linkage)]
 #![feature(maybe_uninit)]
+#![feature(needle)]
 #![feature(needs_panic_runtime)]
 #![feature(never_type)]
 #![feature(nll)]
@@ -437,6 +438,8 @@ pub use core::char;
 pub use core::u128;
 #[stable(feature = "core_hint", since = "1.27.0")]
 pub use core::hint;
+#[unstable(feature = "needle", issue = "56345")]
+pub use core::needle;
 
 pub mod f32;
 pub mod f64;

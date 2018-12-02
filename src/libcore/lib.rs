@@ -211,6 +211,7 @@ pub mod fmt;
 pub mod time;
 
 pub mod unicode;
+pub mod needle;
 
 /* Async */
 pub mod future;
