@@ -1,5 +1,3 @@
-#![allow(unused_variables)]
-
 #[repr(u32)]
 enum Bool { True }
 

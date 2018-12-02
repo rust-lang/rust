@@ -1,5 +1,3 @@
-#![allow(unused_variables)]
-
 fn main() {
     let target = &mut 42;
     let target2 = target as *mut _;
