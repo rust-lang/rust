@@ -210,7 +210,6 @@ pub fn token_to_string(tok: &Token) -> String {
         token::DotDot               => "..".to_string(),
         token::DotDotDot            => "...".to_string(),
         token::DotDotEq             => "..=".to_string(),
-        token::DotEq                => ".=".to_string(),
         token::Comma                => ",".to_string(),
         token::Semi                 => ";".to_string(),
         token::Colon                => ":".to_string(),

@@ -213,7 +213,6 @@ impl FromInternal<(TokenStream, &'_ ParseSess, &'_ mut Vec<Self>)>
                 })
             }
 
-            DotEq => op!('.', '='),
             OpenDelim(..) | CloseDelim(..) => unreachable!(),
             Whitespace | Comment | Shebang(..) | Eof => unreachable!(),
         }
