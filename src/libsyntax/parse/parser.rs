@@ -5508,7 +5508,7 @@ impl<'a> Parser<'a> {
             _ => unreachable!()
         };
         let isolated_self = |this: &mut Self, n| {
-            this.look_ahead(n, |t| t.is_keyword(keywords::SelfValue)) &&
+            this.look_ahead(n, |t| t.is_keyword(keywords::SelfLower)) &&
             this.look_ahead(n + 1, |t| t != &token::ModSep)
         };
 
@@ -6330,7 +6330,7 @@ impl<'a> Parser<'a> {
                 return Ok(vis)
             } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren)) &&
                       self.look_ahead(1, |t| t.is_keyword(keywords::Super) ||
-                                             t.is_keyword(keywords::SelfValue))
+                                             t.is_keyword(keywords::SelfLower))
             {
                 // `pub(self)` or `pub(super)`
                 self.bump(); // `(`
@@ -6782,7 +6782,7 @@ impl<'a> Parser<'a> {
         let error_msg = "crate name using dashes are not valid in `extern crate` statements";
         let suggestion_msg = "if the original crate name uses dashes you need to use underscores \
                               in the code";
-        let mut ident = if self.token.is_keyword(keywords::SelfValue) {
+        let mut ident = if self.token.is_keyword(keywords::SelfLower) {
             self.parse_path_segment_ident()
         } else {
             self.parse_ident()

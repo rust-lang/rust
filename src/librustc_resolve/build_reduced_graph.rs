@@ -145,7 +145,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             }
             _ => None,
         }.map(|ctxt| Segment::from_ident(Ident::new(
-            keywords::CrateRoot.name(), use_tree.prefix.span.shrink_to_lo().with_ctxt(ctxt)
+            keywords::PathRoot.name(), use_tree.prefix.span.shrink_to_lo().with_ctxt(ctxt)
         )));
 
         let prefix = crate_root.into_iter().chain(prefix_iter).collect::<Vec<_>>();
@@ -153,7 +153,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
         let empty_for_self = |prefix: &[Segment]| {
             prefix.is_empty() ||
-            prefix.len() == 1 && prefix[0].ident.name == keywords::CrateRoot.name()
+            prefix.len() == 1 && prefix[0].ident.name == keywords::PathRoot.name()
         };
         match use_tree.kind {
             ast::UseTreeKind::Simple(rename, ..) => {
@@ -164,7 +164,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
 
                 if nested {
                     // Correctly handle `self`
-                    if source.ident.name == keywords::SelfValue.name() {
+                    if source.ident.name == keywords::SelfLower.name() {
                         type_ns_only = true;
 
                         if empty_for_self(&module_path) {
@@ -185,7 +185,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     }
                 } else {
                     // Disallow `self`
-                    if source.ident.name == keywords::SelfValue.name() {
+                    if source.ident.name == keywords::SelfLower.name() {
                         resolve_error(self,
                                       use_tree.span,
                                       ResolutionError::SelfImportsOnlyAllowedWithin);
@@ -205,7 +205,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                             // `crate_name` should not be interpreted as relative.
                             module_path.push(Segment {
                                 ident: Ident {
-                                    name: keywords::CrateRoot.name(),
+                                    name: keywords::PathRoot.name(),
                                     span: source.ident.span,
                                 },
                                 id: Some(self.session.next_node_id()),
@@ -270,7 +270,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                 // Ensure there is at most one `self` in the list
                 let self_spans = items.iter().filter_map(|&(ref use_tree, _)| {
                     if let ast::UseTreeKind::Simple(..) = use_tree.kind {
-                        if use_tree.ident().name == keywords::SelfValue.name() {
+                        if use_tree.ident().name == keywords::SelfLower.name() {
                             return Some(use_tree.span);
                         }
                     }
@@ -305,7 +305,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                     let new_span = prefix[prefix.len() - 1].ident.span;
                     let tree = ast::UseTree {
                         prefix: ast::Path::from_ident(
-                            Ident::new(keywords::SelfValue.name(), new_span)
+                            Ident::new(keywords::SelfLower.name(), new_span)
                         ),
                         kind: ast::UseTreeKind::Simple(
                             Some(Ident::new(keywords::Underscore.name().gensymed(), new_span)),
@@ -344,13 +344,13 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
             }
 
             ItemKind::ExternCrate(orig_name) => {
-                let module = if orig_name.is_none() && ident.name == keywords::SelfValue.name() {
+                let module = if orig_name.is_none() && ident.name == keywords::SelfLower.name() {
                     self.session
                         .struct_span_err(item.span, "`extern crate self;` requires renaming")
                         .span_suggestion(item.span, "try", "extern crate self as name;".into())
                         .emit();
                     return;
-                } else if orig_name == Some(keywords::SelfValue.name()) {
+                } else if orig_name == Some(keywords::SelfLower.name()) {
                     if !self.session.features_untracked().extern_crate_self {
                         emit_feature_err(&self.session.parse_sess, "extern_crate_self", item.span,
                                          GateIssue::Language, "`extern crate self` is unstable");
@@ -783,7 +783,7 @@ impl<'a, 'cl> Resolver<'a, 'cl> {
                         "an `extern crate` loading macros must be at the crate root");
                 }
                 if let ItemKind::ExternCrate(Some(orig_name)) = item.node {
-                    if orig_name == keywords::SelfValue.name() {
+                    if orig_name == keywords::SelfLower.name() {
                         self.session.span_err(attr.span,
                             "`macro_use` is not supported on `extern crate self`");
                     }

@@ -140,7 +140,7 @@ fn cs_clone_shallow(name: &str,
     let mut stmts = Vec::new();
     if is_union {
         // let _: AssertParamIsCopy<Self>;
-        let self_ty = cx.ty_path(cx.path_ident(trait_span, keywords::SelfType.ident()));
+        let self_ty = cx.ty_path(cx.path_ident(trait_span, keywords::SelfUpper.ident()));
         assert_ty_bounds(cx, &mut stmts, self_ty, trait_span, "AssertParamIsCopy");
     } else {
         match *substr.fields {

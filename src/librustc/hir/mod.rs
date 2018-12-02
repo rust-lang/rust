@@ -311,7 +311,7 @@ pub struct Path {
 
 impl Path {
     pub fn is_global(&self) -> bool {
-        !self.segments.is_empty() && self.segments[0].ident.name == keywords::CrateRoot.name()
+        !self.segments.is_empty() && self.segments[0].ident.name == keywords::PathRoot.name()
     }
 }
 

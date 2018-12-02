@@ -625,7 +625,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_path(self.path_ident(span, id))
     }
     fn expr_self(&self, span: Span) -> P<ast::Expr> {
-        self.expr_ident(span, keywords::SelfValue.ident())
+        self.expr_ident(span, keywords::SelfLower.ident())
     }
 
     fn expr_binary(&self, sp: Span, op: ast::BinOpKind,

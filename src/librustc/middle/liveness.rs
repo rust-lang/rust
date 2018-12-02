@@ -1575,7 +1575,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 let sp = ident.span;
                 let var = self.variable(hir_id, sp);
                 // Ignore unused self.
-                if ident.name != keywords::SelfValue.name() {
+                if ident.name != keywords::SelfLower.name() {
                     if !self.warn_about_unused(sp, hir_id, entry_ln, var) {
                         if self.live_on_entry(entry_ln, var).is_none() {
                             self.report_dead_assign(hir_id, sp, var, true);

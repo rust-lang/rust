@@ -349,7 +349,7 @@ declare_keywords! {
     // Special reserved identifiers used internally for elided lifetimes,
     // unnamed method parameters, crate root module, error recovery etc.
     (0,  Invalid,            "")
-    (1,  CrateRoot,          "{{root}}")
+    (1,  PathRoot,           "{{root}}")
     (2,  DollarCrate,        "$crate")
     (3,  Underscore,         "_")
 
@@ -378,8 +378,8 @@ declare_keywords! {
     (25, Pub,                "pub")
     (26, Ref,                "ref")
     (27, Return,             "return")
-    (28, SelfValue,          "self")
-    (29, SelfType,           "Self")
+    (28, SelfLower,          "self")
+    (29, SelfUpper,          "Self")
     (30, Static,             "static")
     (31, Struct,             "struct")
     (32, Super,              "super")
@@ -462,11 +462,11 @@ impl Ident {
     /// A keyword or reserved identifier that can be used as a path segment.
     pub fn is_path_segment_keyword(self) -> bool {
         self.name == keywords::Super.name() ||
-        self.name == keywords::SelfValue.name() ||
-        self.name == keywords::SelfType.name() ||
+        self.name == keywords::SelfLower.name() ||
+        self.name == keywords::SelfUpper.name() ||
         self.name == keywords::Extern.name() ||
         self.name == keywords::Crate.name() ||
-        self.name == keywords::CrateRoot.name() ||
+        self.name == keywords::PathRoot.name() ||
         self.name == keywords::DollarCrate.name()
     }
 
