@@ -223,6 +223,10 @@ fn main() {
         // We always setup
         let ask = subcommand != MiriCommand::Setup;
         setup(ask);
+        if subcommand == MiriCommand::Setup {
+            // Stop here.
+            return;
+        }
 
         // Now run the command.
         for target in list_targets(std::env::args().skip(skip)) {
