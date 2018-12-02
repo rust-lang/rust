@@ -65,11 +65,16 @@ use core::marker::PhantomData;
 use core::mem;
 use core::ops::{self, Index, IndexMut, RangeBounds};
 use core::ops::Bound::{Excluded, Included, Unbounded};
-use core::ptr::{self, NonNull};
-use core::slice::{self, SliceIndex};
+use core::ops::{Index, IndexMut, RangeBounds};
+use core::ops;
+use core::ptr;
+use core::ptr::NonNull;
+use core::slice;
+use core::needle::Needle;
 
-use crate::borrow::{ToOwned, Cow};
 use crate::collections::CollectionAllocErr;
+use crate::borrow::ToOwned;
+use crate::borrow::Cow;
 use crate::boxed::Box;
 use crate::raw_vec::RawVec;
 
@@ -2722,5 +2727,37 @@ impl<T, F> Drop for DrainFilter<'_, T, F>
         unsafe {
             self.vec.set_len(self.old_len - self.del);
         }
+    }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+impl<'p, 'h, T: PartialEq + 'p + 'h> Needle<&'h [T]> for &'p Vec<T> {
+    type Searcher = <&'p [T] as Needle<&'h [T]>>::Searcher;
+    type Consumer = <&'p [T] as Needle<&'h [T]>>::Consumer;
+
+    #[inline]
+    fn into_searcher(self) -> Self::Searcher {
+        <&'p [T] as Needle<&'h [T]>>::into_searcher(&**self)
+    }
+
+    #[inline]
+    fn into_consumer(self) -> Self::Consumer {
+        <&'p [T] as Needle<&'h [T]>>::into_consumer(&**self)
+    }
+}
+
+#[unstable(feature = "needle", issue = "56345")]
+impl<'p, 'h, T: PartialEq + 'p + 'h> Needle<&'h mut [T]> for &'p Vec<T> {
+    type Searcher = <&'p [T] as Needle<&'h mut [T]>>::Searcher;
+    type Consumer = <&'p [T] as Needle<&'h mut [T]>>::Consumer;
+
+    #[inline]
+    fn into_searcher(self) -> Self::Searcher {
+        <&'p [T] as Needle<&'h mut [T]>>::into_searcher(&**self)
+    }
+
+    #[inline]
+    fn into_consumer(self) -> Self::Consumer {
+        <&'p [T] as Needle<&'h mut [T]>>::into_consumer(&**self)
     }
 }

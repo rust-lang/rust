@@ -34,6 +34,8 @@ use crate::result::Result::{Ok, Err};
 use crate::ptr;
 use crate::mem;
 use crate::marker::{Copy, Send, Sync, Sized, self};
+use crate::iter_private::TrustedRandomAccess;
+use crate::needle::{ext, Needle, Searcher, ReverseSearcher, Consumer, ReverseConsumer};
 
 #[unstable(feature = "slice_internals", issue = "0",
            reason = "exposed from core to be reused in std; use the memchr crate")]
@@ -1051,14 +1053,13 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn split<F>(&self, pred: F) -> Split<'_, T, F>
-        where F: FnMut(&T) -> bool
+    pub fn split<'a, F>(&'a self, pred: F) -> Split<'a, T, F>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
     {
-        Split {
-            v: self,
-            pred,
-            finished: false
-        }
+        ext::split(self, pred)
     }
 
     /// Returns an iterator over mutable subslices separated by elements that
@@ -1076,10 +1077,13 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn split_mut<F>(&mut self, pred: F) -> SplitMut<'_, T, F>
-        where F: FnMut(&T) -> bool
+    pub fn split_mut<'a, F>(&'a mut self, pred: F) -> SplitMut<'a, T, F>
+    where
+        F: Needle<&'a mut [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
     {
-        SplitMut { v: self, pred, finished: false }
+        ext::split(self, pred)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1111,10 +1115,13 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "slice_rsplit", since = "1.27.0")]
     #[inline]
-    pub fn rsplit<F>(&self, pred: F) -> RSplit<'_, T, F>
-        where F: FnMut(&T) -> bool
+    pub fn rsplit<'a, F>(&'a self, pred: F) -> RSplit<'a, T, F>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: ReverseSearcher<[T]>,
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
     {
-        RSplit { inner: self.split(pred) }
+        ext::rsplit(self, pred)
     }
 
     /// Returns an iterator over mutable subslices separated by elements that
@@ -1136,10 +1143,13 @@ impl<T> [T] {
     ///
     #[stable(feature = "slice_rsplit", since = "1.27.0")]
     #[inline]
-    pub fn rsplit_mut<F>(&mut self, pred: F) -> RSplitMut<'_, T, F>
-        where F: FnMut(&T) -> bool
+    pub fn rsplit_mut<'a, F>(&'a mut self, pred: F) -> RSplitMut<'a, T, F>
+    where
+        F: Needle<&'a mut [T]>,
+        F::Searcher: ReverseSearcher<[T]>,
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
     {
-        RSplitMut { inner: self.split_mut(pred) }
+        ext::rsplit(self, pred)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1163,15 +1173,13 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn splitn<F>(&self, n: usize, pred: F) -> SplitN<'_, T, F>
-        where F: FnMut(&T) -> bool
+    pub fn splitn<'a, F>(&'a self, n: usize, pred: F) -> SplitN<'a, T, F>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
     {
-        SplitN {
-            inner: GenericSplitN {
-                iter: self.split(pred),
-                count: n
-            }
-        }
+        ext::splitn(self, n, pred)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1193,15 +1201,13 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn splitn_mut<F>(&mut self, n: usize, pred: F) -> SplitNMut<'_, T, F>
-        where F: FnMut(&T) -> bool
+    pub fn splitn_mut<'a, F>(&'a mut self, n: usize, pred: F) -> SplitNMut<'a, T, F>
+    where
+        F: Needle<&'a mut [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
     {
-        SplitNMut {
-            inner: GenericSplitN {
-                iter: self.split_mut(pred),
-                count: n
-            }
-        }
+        ext::splitn(self, n, pred)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1226,15 +1232,13 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rsplitn<F>(&self, n: usize, pred: F) -> RSplitN<'_, T, F>
-        where F: FnMut(&T) -> bool
+    pub fn rsplitn<'a, F>(&'a self, n: usize, pred: F) -> RSplitN<'a, T, F>
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: ReverseSearcher<[T]>,
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
     {
-        RSplitN {
-            inner: GenericSplitN {
-                iter: self.rsplit(pred),
-                count: n
-            }
-        }
+        ext::rsplitn(self, n, pred)
     }
 
     /// Returns an iterator over subslices separated by elements that match
@@ -1257,15 +1261,13 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn rsplitn_mut<F>(&mut self, n: usize, pred: F) -> RSplitNMut<'_, T, F>
-        where F: FnMut(&T) -> bool
+    pub fn rsplitn_mut<'a, F>(&'a mut self, n: usize, pred: F) -> RSplitNMut<'a, T, F>
+    where
+        F: Needle<&'a mut [T]>,
+        F::Searcher: ReverseSearcher<[T]>,
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
     {
-        RSplitNMut {
-            inner: GenericSplitN {
-                iter: self.rsplit_mut(pred),
-                count: n
-            }
-        }
+        ext::rsplitn(self, n, pred)
     }
 
     /// Returns `true` if the slice contains an element with the given value.
@@ -1305,11 +1307,13 @@ impl<T> [T] {
     /// assert!(v.starts_with(&[]));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn starts_with(&self, needle: &[T]) -> bool
-        where T: PartialEq
+    pub fn starts_with<'a, F>(&'a self, needle: F) -> bool
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>, // FIXME: RFC 2089
+        F::Consumer: Consumer<[T]>, // FIXME: RFC 2089
     {
-        let n = needle.len();
-        self.len() >= n && needle == &self[..n]
+        ext::starts_with(self, needle)
     }
 
     /// Returns `true` if `needle` is a suffix of the slice.
@@ -1333,11 +1337,13 @@ impl<T> [T] {
     /// assert!(v.ends_with(&[]));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn ends_with(&self, needle: &[T]) -> bool
-        where T: PartialEq
+    pub fn ends_with<'a, F>(&'a self, needle: F) -> bool
+    where
+        F: Needle<&'a [T]>,
+        F::Searcher: Searcher<[T]>,
+        F::Consumer: ReverseConsumer<[T]>, // FIXME: RFC 2089
     {
-        let (m, n) = (self.len(), needle.len());
-        m >= n && needle == &self[m-n..]
+        ext::ends_with(self, needle)
     }
 
     /// Binary searches this sorted slice for a given element.
@@ -3477,462 +3483,102 @@ impl<'a, T> IterMut<'a, T> {
 
 iterator!{struct IterMut -> *mut T, &'a mut T, mut, {mut}, {}}
 
-/// An internal abstraction over the splitting iterators, so that
-/// splitn, splitn_mut etc can be implemented once.
-#[doc(hidden)]
-trait SplitIter: DoubleEndedIterator {
-    /// Marks the underlying iterator as complete, extracting the remaining
-    /// portion of the slice.
-    fn finish(&mut self) -> Option<Self::Item>;
-}
-
-/// An iterator over subslices separated by elements that match a predicate
-/// function.
-///
-/// This struct is created by the [`split`] method on [slices].
-///
-/// [`split`]: ../../std/primitive.slice.html#method.split
-/// [slices]: ../../std/primitive.slice.html
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct Split<'a, T:'a, P> where P: FnMut(&T) -> bool {
-    v: &'a [T],
-    pred: P,
-    finished: bool
-}
-
-#[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<T: fmt::Debug, P> fmt::Debug for Split<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Split")
-            .field("v", &self.v)
-            .field("finished", &self.finished)
-            .finish()
+macro_rules! forward_to_needle_api {
+    ($($(#[$meta:meta])* type $name:ident; $(#[$meta_mut:meta])* type $name_mut:ident;)+) => {
+        $(
+            $(#[$meta])*
+            pub type $name<'a, T, P> =
+                ext::$name<&'a [T], <P as Needle<&'a [T]>>::Searcher>;
+            $(#[$meta_mut])*
+            pub type $name_mut<'a, T, P> =
+                ext::$name<&'a mut [T], <P as Needle<&'a mut [T]>>::Searcher>;
+        )+
     }
 }
 
-// FIXME(#26925) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T, P> Clone for Split<'_, T, P> where P: Clone + FnMut(&T) -> bool {
-    fn clone(&self) -> Self {
-        Split {
-            v: self.v,
-            pred: self.pred.clone(),
-            finished: self.finished,
-        }
-    }
+forward_to_needle_api! {
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function.
+    ///
+    /// This struct is created by the [`split`] method on [slices].
+    ///
+    /// [`split`]: ../../std/primitive.slice.html#method.split
+    /// [slices]: ../../std/primitive.slice.html
+    #[stable(feature = "rust1", since = "1.0.0")]
+    type Split;
+
+    /// An iterator over the subslices of the vector which are separated
+    /// by elements that match `pred`.
+    ///
+    /// This struct is created by the [`split_mut`] method on [slices].
+    ///
+    /// [`split_mut`]: ../../std/primitive.slice.html#method.split_mut
+    /// [slices]: ../../std/primitive.slice.html
+    #[stable(feature = "rust1", since = "1.0.0")]
+    type SplitMut;
+
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, starting from the end of the slice.
+    ///
+    /// This struct is created by the [`rsplit`] method on [slices].
+    ///
+    /// [`rsplit`]: ../../std/primitive.slice.html#method.rsplit
+    /// [slices]: ../../std/primitive.slice.html
+    #[stable(feature = "slice_rsplit", since = "1.27.0")]
+    type RSplit;
+
+    /// An iterator over the subslices of the vector which are separated
+    /// by elements that match `pred`, starting from the end of the slice.
+    ///
+    /// This struct is created by the [`rsplit_mut`] method on [slices].
+    ///
+    /// [`rsplit_mut`]: ../../std/primitive.slice.html#method.rsplit_mut
+    /// [slices]: ../../std/primitive.slice.html
+    #[stable(feature = "slice_rsplit", since = "1.27.0")]
+    type RSplitMut;
+
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, limited to a given number of splits.
+    ///
+    /// This struct is created by the [`splitn`] method on [slices].
+    ///
+    /// [`splitn`]: ../../std/primitive.slice.html#method.splitn
+    /// [slices]: ../../std/primitive.slice.html
+    #[stable(feature = "rust1", since = "1.0.0")]
+    type SplitN;
+
+    /// An iterator over subslices separated by elements that match a predicate
+    /// function, limited to a given number of splits.
+    ///
+    /// This struct is created by the [`splitn_mut`] method on [slices].
+    ///
+    /// [`splitn_mut`]: ../../std/primitive.slice.html#method.splitn_mut
+    /// [slices]: ../../std/primitive.slice.html
+    #[stable(feature = "rust1", since = "1.0.0")]
+    type SplitNMut;
+
+    /// An iterator over subslices separated by elements that match a
+    /// predicate function, limited to a given number of splits, starting
+    /// from the end of the slice.
+    ///
+    /// This struct is created by the [`rsplitn`] method on [slices].
+    ///
+    /// [`rsplitn`]: ../../std/primitive.slice.html#method.rsplitn
+    /// [slices]: ../../std/primitive.slice.html
+    #[stable(feature = "rust1", since = "1.0.0")]
+    type RSplitN;
+
+    /// An iterator over subslices separated by elements that match a
+    /// predicate function, limited to a given number of splits, starting
+    /// from the end of the slice.
+    ///
+    /// This struct is created by the [`rsplitn_mut`] method on [slices].
+    ///
+    /// [`rsplitn_mut`]: ../../std/primitive.slice.html#method.rsplitn_mut
+    /// [slices]: ../../std/primitive.slice.html
+    #[stable(feature = "rust1", since = "1.0.0")]
+    type RSplitNMut;
 }
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
-    type Item = &'a [T];
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a [T]> {
-        if self.finished { return None; }
-
-        match self.v.iter().position(|x| (self.pred)(x)) {
-            None => self.finish(),
-            Some(idx) => {
-                let ret = Some(&self.v[..idx]);
-                self.v = &self.v[idx + 1..];
-                ret
-            }
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.finished {
-            (0, Some(0))
-        } else {
-            (1, Some(self.v.len() + 1))
-        }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, P> DoubleEndedIterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a [T]> {
-        if self.finished { return None; }
-
-        match self.v.iter().rposition(|x| (self.pred)(x)) {
-            None => self.finish(),
-            Some(idx) => {
-                let ret = Some(&self.v[idx + 1..]);
-                self.v = &self.v[..idx];
-                ret
-            }
-        }
-    }
-}
-
-impl<'a, T, P> SplitIter for Split<'a, T, P> where P: FnMut(&T) -> bool {
-    #[inline]
-    fn finish(&mut self) -> Option<&'a [T]> {
-        if self.finished { None } else { self.finished = true; Some(self.v) }
-    }
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<T, P> FusedIterator for Split<'_, T, P> where P: FnMut(&T) -> bool {}
-
-/// An iterator over the subslices of the vector which are separated
-/// by elements that match `pred`.
-///
-/// This struct is created by the [`split_mut`] method on [slices].
-///
-/// [`split_mut`]: ../../std/primitive.slice.html#method.split_mut
-/// [slices]: ../../std/primitive.slice.html
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct SplitMut<'a, T:'a, P> where P: FnMut(&T) -> bool {
-    v: &'a mut [T],
-    pred: P,
-    finished: bool
-}
-
-#[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<T: fmt::Debug, P> fmt::Debug for SplitMut<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitMut")
-            .field("v", &self.v)
-            .field("finished", &self.finished)
-            .finish()
-    }
-}
-
-impl<'a, T, P> SplitIter for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
-    #[inline]
-    fn finish(&mut self) -> Option<&'a mut [T]> {
-        if self.finished {
-            None
-        } else {
-            self.finished = true;
-            Some(mem::replace(&mut self.v, &mut []))
-        }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, P> Iterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
-    type Item = &'a mut [T];
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a mut [T]> {
-        if self.finished { return None; }
-
-        let idx_opt = { // work around borrowck limitations
-            let pred = &mut self.pred;
-            self.v.iter().position(|x| (*pred)(x))
-        };
-        match idx_opt {
-            None => self.finish(),
-            Some(idx) => {
-                let tmp = mem::replace(&mut self.v, &mut []);
-                let (head, tail) = tmp.split_at_mut(idx);
-                self.v = &mut tail[1..];
-                Some(head)
-            }
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        if self.finished {
-            (0, Some(0))
-        } else {
-            // if the predicate doesn't match anything, we yield one slice
-            // if it matches every element, we yield len+1 empty slices.
-            (1, Some(self.v.len() + 1))
-        }
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, P> DoubleEndedIterator for SplitMut<'a, T, P> where
-    P: FnMut(&T) -> bool,
-{
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a mut [T]> {
-        if self.finished { return None; }
-
-        let idx_opt = { // work around borrowck limitations
-            let pred = &mut self.pred;
-            self.v.iter().rposition(|x| (*pred)(x))
-        };
-        match idx_opt {
-            None => self.finish(),
-            Some(idx) => {
-                let tmp = mem::replace(&mut self.v, &mut []);
-                let (head, tail) = tmp.split_at_mut(idx);
-                self.v = head;
-                Some(&mut tail[1..])
-            }
-        }
-    }
-}
-
-#[stable(feature = "fused", since = "1.26.0")]
-impl<T, P> FusedIterator for SplitMut<'_, T, P> where P: FnMut(&T) -> bool {}
-
-/// An iterator over subslices separated by elements that match a predicate
-/// function, starting from the end of the slice.
-///
-/// This struct is created by the [`rsplit`] method on [slices].
-///
-/// [`rsplit`]: ../../std/primitive.slice.html#method.rsplit
-/// [slices]: ../../std/primitive.slice.html
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-#[derive(Clone)] // Is this correct, or does it incorrectly require `T: Clone`?
-pub struct RSplit<'a, T:'a, P> where P: FnMut(&T) -> bool {
-    inner: Split<'a, T, P>
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<T: fmt::Debug, P> fmt::Debug for RSplit<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RSplit")
-            .field("v", &self.inner.v)
-            .field("finished", &self.inner.finished)
-            .finish()
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<'a, T, P> Iterator for RSplit<'a, T, P> where P: FnMut(&T) -> bool {
-    type Item = &'a [T];
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a [T]> {
-        self.inner.next_back()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<'a, T, P> DoubleEndedIterator for RSplit<'a, T, P> where P: FnMut(&T) -> bool {
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a [T]> {
-        self.inner.next()
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<'a, T, P> SplitIter for RSplit<'a, T, P> where P: FnMut(&T) -> bool {
-    #[inline]
-    fn finish(&mut self) -> Option<&'a [T]> {
-        self.inner.finish()
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<T, P> FusedIterator for RSplit<'_, T, P> where P: FnMut(&T) -> bool {}
-
-/// An iterator over the subslices of the vector which are separated
-/// by elements that match `pred`, starting from the end of the slice.
-///
-/// This struct is created by the [`rsplit_mut`] method on [slices].
-///
-/// [`rsplit_mut`]: ../../std/primitive.slice.html#method.rsplit_mut
-/// [slices]: ../../std/primitive.slice.html
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-pub struct RSplitMut<'a, T:'a, P> where P: FnMut(&T) -> bool {
-    inner: SplitMut<'a, T, P>
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<T: fmt::Debug, P> fmt::Debug for RSplitMut<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RSplitMut")
-            .field("v", &self.inner.v)
-            .field("finished", &self.inner.finished)
-            .finish()
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<'a, T, P> SplitIter for RSplitMut<'a, T, P> where P: FnMut(&T) -> bool {
-    #[inline]
-    fn finish(&mut self) -> Option<&'a mut [T]> {
-        self.inner.finish()
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<'a, T, P> Iterator for RSplitMut<'a, T, P> where P: FnMut(&T) -> bool {
-    type Item = &'a mut [T];
-
-    #[inline]
-    fn next(&mut self) -> Option<&'a mut [T]> {
-        self.inner.next_back()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        self.inner.size_hint()
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<'a, T, P> DoubleEndedIterator for RSplitMut<'a, T, P> where
-    P: FnMut(&T) -> bool,
-{
-    #[inline]
-    fn next_back(&mut self) -> Option<&'a mut [T]> {
-        self.inner.next()
-    }
-}
-
-#[stable(feature = "slice_rsplit", since = "1.27.0")]
-impl<T, P> FusedIterator for RSplitMut<'_, T, P> where P: FnMut(&T) -> bool {}
-
-/// An private iterator over subslices separated by elements that
-/// match a predicate function, splitting at most a fixed number of
-/// times.
-#[derive(Debug)]
-struct GenericSplitN<I> {
-    iter: I,
-    count: usize,
-}
-
-impl<T, I: SplitIter<Item=T>> Iterator for GenericSplitN<I> {
-    type Item = T;
-
-    #[inline]
-    fn next(&mut self) -> Option<T> {
-        match self.count {
-            0 => None,
-            1 => { self.count -= 1; self.iter.finish() }
-            _ => { self.count -= 1; self.iter.next() }
-        }
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let (lower, upper_opt) = self.iter.size_hint();
-        (lower, upper_opt.map(|upper| cmp::min(self.count, upper)))
-    }
-}
-
-/// An iterator over subslices separated by elements that match a predicate
-/// function, limited to a given number of splits.
-///
-/// This struct is created by the [`splitn`] method on [slices].
-///
-/// [`splitn`]: ../../std/primitive.slice.html#method.splitn
-/// [slices]: ../../std/primitive.slice.html
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct SplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
-    inner: GenericSplitN<Split<'a, T, P>>
-}
-
-#[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<T: fmt::Debug, P> fmt::Debug for SplitN<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitN")
-            .field("inner", &self.inner)
-            .finish()
-    }
-}
-
-/// An iterator over subslices separated by elements that match a
-/// predicate function, limited to a given number of splits, starting
-/// from the end of the slice.
-///
-/// This struct is created by the [`rsplitn`] method on [slices].
-///
-/// [`rsplitn`]: ../../std/primitive.slice.html#method.rsplitn
-/// [slices]: ../../std/primitive.slice.html
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct RSplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
-    inner: GenericSplitN<RSplit<'a, T, P>>
-}
-
-#[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<T: fmt::Debug, P> fmt::Debug for RSplitN<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RSplitN")
-            .field("inner", &self.inner)
-            .finish()
-    }
-}
-
-/// An iterator over subslices separated by elements that match a predicate
-/// function, limited to a given number of splits.
-///
-/// This struct is created by the [`splitn_mut`] method on [slices].
-///
-/// [`splitn_mut`]: ../../std/primitive.slice.html#method.splitn_mut
-/// [slices]: ../../std/primitive.slice.html
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct SplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
-    inner: GenericSplitN<SplitMut<'a, T, P>>
-}
-
-#[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<T: fmt::Debug, P> fmt::Debug for SplitNMut<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("SplitNMut")
-            .field("inner", &self.inner)
-            .finish()
-    }
-}
-
-/// An iterator over subslices separated by elements that match a
-/// predicate function, limited to a given number of splits, starting
-/// from the end of the slice.
-///
-/// This struct is created by the [`rsplitn_mut`] method on [slices].
-///
-/// [`rsplitn_mut`]: ../../std/primitive.slice.html#method.rsplitn_mut
-/// [slices]: ../../std/primitive.slice.html
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct RSplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
-    inner: GenericSplitN<RSplitMut<'a, T, P>>
-}
-
-#[stable(feature = "core_impl_debug", since = "1.9.0")]
-impl<T: fmt::Debug, P> fmt::Debug for RSplitNMut<'_, T, P> where P: FnMut(&T) -> bool {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RSplitNMut")
-            .field("inner", &self.inner)
-            .finish()
-    }
-}
-
-macro_rules! forward_iterator {
-    ($name:ident: $elem:ident, $iter_of:ty) => {
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, $elem, P> Iterator for $name<'a, $elem, P> where
-            P: FnMut(&T) -> bool
-        {
-            type Item = $iter_of;
-
-            #[inline]
-            fn next(&mut self) -> Option<$iter_of> {
-                self.inner.next()
-            }
-
-            #[inline]
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                self.inner.size_hint()
-            }
-        }
-
-        #[stable(feature = "fused", since = "1.26.0")]
-        impl<'a, $elem, P> FusedIterator for $name<'a, $elem, P>
-            where P: FnMut(&T) -> bool {}
-    }
-}
-
-forward_iterator! { SplitN: T, &'a [T] }
-forward_iterator! { RSplitN: T, &'a [T] }
-forward_iterator! { SplitNMut: T, &'a mut [T] }
-forward_iterator! { RSplitNMut: T, &'a mut [T] }
 
 /// An iterator over overlapping subslices of length `size`.
 ///
