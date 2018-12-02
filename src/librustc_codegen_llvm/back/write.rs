@@ -371,15 +371,16 @@ pub(crate) unsafe fn optimize(cgcx: &CodegenContext<LlvmCodegenBackend>,
                     .unwrap_or(llvm::CodeGenOptLevel::None);
                 let prepare_for_thin_lto = cgcx.lto == Lto::Thin || cgcx.lto == Lto::ThinLocal ||
                     (cgcx.lto != Lto::Fat && cgcx.opts.debugging_opts.cross_lang_lto.enabled());
+                with_llvm_pmb(llmod, &config, opt_level, prepare_for_thin_lto, &mut |b| {
+                    llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(b, fpm);
+                    llvm::LLVMPassManagerBuilderPopulateModulePassManager(b, mpm);
+                });
+
                 have_name_anon_globals_pass = have_name_anon_globals_pass || prepare_for_thin_lto;
                 if using_thin_buffers && !prepare_for_thin_lto {
                     assert!(addpass("name-anon-globals"));
                     have_name_anon_globals_pass = true;
                 }
-                with_llvm_pmb(llmod, &config, opt_level, prepare_for_thin_lto, &mut |b| {
-                    llvm::LLVMPassManagerBuilderPopulateFunctionPassManager(b, fpm);
-                    llvm::LLVMPassManagerBuilderPopulateModulePassManager(b, mpm);
-                })
             }
 
             for pass in &config.passes {
