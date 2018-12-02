@@ -22,6 +22,7 @@ All contributors are expected to follow the [Rust Code of Conduct](http://www.ru
   * [Linting Clippy with your local changes](#linting-clippy-with-your-local-changes)
   * [How Clippy works](#how-clippy-works)
   * [Fixing nightly build failures](#fixing-build-failures-caused-by-rust)
+* [Issue and PR Triage](#issue-and-pr-triage)
 * [Contributions](#contributions)
 
 ## Getting started
@@ -254,6 +255,20 @@ rustup override set master
 cargo test
 ```
 
+## Issue and PR triage
+
+Clippy is following the [Rust triage procedure][triage] for issues and pull
+requests.
+
+However, we are a smaller project with all contributors being volunteers
+currently. Between writing new lints, fixing issues, reviewing pull requests and
+responding to issues there may not always be enough time to stay on top of it
+all.
+
+Our highest priority is fixing [crashes][l-crash] and [bugs][l-bug]. We don't
+want Clippy to crash on your code and we want it to be as reliable as the
+suggestions from Rust compiler errors.
+
 ## Contributions
 
 Contributions to Clippy should be made in the form of GitHub pull requests. Each pull request will
@@ -282,3 +297,6 @@ or the [MIT](http://opensource.org/licenses/MIT) license.
 [clippy_rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md
 [rfc_stability]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#stability-guarantees
 [rfc_lint_cats]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories
+[triage]: https://forge.rust-lang.org/triage-procedure.html
+[l-crash]: https://github.com/rust-lang/rust-clippy/labels/L-crash%20%3Aboom%3A
+[l-bug]: https://github.com/rust-lang/rust-clippy/labels/L-bug%20%3Abeetle%3A
