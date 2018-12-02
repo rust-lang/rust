@@ -213,7 +213,7 @@ impl Step for Cargo {
         });
         let mut cargo = tool::prepare_tool_cargo(builder,
                                                  compiler,
-                                                 Mode::ToolRustc,
+                                                 Mode::ToolStd,
                                                  self.host,
                                                  "test",
                                                  "src/tools/cargo",

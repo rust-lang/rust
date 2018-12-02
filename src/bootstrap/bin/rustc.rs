@@ -109,6 +109,12 @@ fn main() {
 
         cmd.arg("-Zexternal-macro-backtrace");
 
+        // Link crates to the proc macro crate for the target, but use a host proc macro crate
+        // to actually run the macros
+        if env::var_os("RUST_DUAL_PROC_MACROS").is_some() {
+            cmd.arg("-Zdual-proc-macros");
+        }
+
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of
         // linking all deps statically into the dylib.
@@ -258,13 +264,6 @@ fn main() {
             }
         }
 
-        // Force all crates compiled by this compiler to (a) be unstable and (b)
-        // allow the `rustc_private` feature to link to other unstable crates
-        // also in the sysroot.
-        if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
-            cmd.arg("-Z").arg("force-unstable-if-unmarked");
-        }
-
         if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
             cmd.arg("--remap-path-prefix").arg(&map);
         }
@@ -282,6 +281,14 @@ fn main() {
                 cmd.arg("-C").arg("target-feature=-crt-static");
             }
         }
+    }
+
+    // Force all crates compiled by this compiler to (a) be unstable and (b)
+    // allow the `rustc_private` feature to link to other unstable crates
+    // also in the sysroot. We also do this for host crates, since those
+    // may be proc macros, in which case we might ship them.
+    if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() && (stage != "0" || target.is_some()) {
+        cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
 
     if env::var_os("RUSTC_PARALLEL_COMPILER").is_some() {

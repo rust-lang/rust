@@ -91,7 +91,8 @@ impl Step for ToolBuild {
                 compile::CargoMessage::CompilerArtifact {
                     package_id,
                     features,
-                    filenames
+                    filenames,
+                    target: _,
                 } => {
                     (package_id, features, filenames)
                 }
@@ -513,7 +514,7 @@ impl Step for Cargo {
             compiler: self.compiler,
             target: self.target,
             tool: "cargo",
-            mode: Mode::ToolRustc,
+            mode: Mode::ToolStd,
             path: "src/tools/cargo",
             is_optional_tool: false,
             source_type: SourceType::Submodule,
