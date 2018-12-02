@@ -76,8 +76,7 @@ mod fuchsia_base;
 mod redox_base;
 mod riscv_base;
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash,
-         RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash)]
 pub enum LinkerFlavor {
     Em,
     Gcc,
@@ -86,8 +85,7 @@ pub enum LinkerFlavor {
     Lld(LldFlavor),
 }
 
-#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash,
-         RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash)]
 pub enum LldFlavor {
     Wasm,
     Ld64,
@@ -182,7 +180,7 @@ impl ToJson for PanicStrategy {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Copy, Debug, PartialEq, Hash)]
 pub enum RelroLevel {
     Full,
     Partial,
