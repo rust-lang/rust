@@ -8,7 +8,7 @@ mod suggest;
 
 pub use self::MethodError::*;
 pub use self::CandidateSource::*;
-pub use self::suggest::TraitInfo;
+pub use self::suggest::{SelfSource, TraitInfo};
 
 use check::FnCtxt;
 use namespace::Namespace;
@@ -361,7 +361,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         span: Span,
                         method_name: ast::Ident,
                         self_ty: Ty<'tcx>,
-                        self_ty_hir: &hir::Ty,
+                        qself: &hir::Ty,
                         expr_id: ast::NodeId)
                         -> Result<Def, MethodError<'tcx>> {
         debug!("resolve_ufcs: method_name={:?} self_ty={:?} expr_id={:?}",
@@ -375,11 +375,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // Check if we have an enum variant here.
         if let ty::Adt(adt_def, _) = self_ty.sty {
             if adt_def.is_enum() {
-                if allow_type_alias_enum_variants(tcx, self_ty_hir, span) {
-                    let variant_def = adt_def.variants.iter().find(|vd| {
-                        tcx.hygienic_eq(method_name, vd.ident, adt_def.did)
-                    });
-                    if let Some(variant_def) = variant_def {
+                let variant_def = adt_def.variants.iter().find(|vd| {
+                    tcx.hygienic_eq(method_name, vd.ident, adt_def.did)
+                });
+                if let Some(variant_def) = variant_def {
+                    if allow_type_alias_enum_variants(tcx, qself, span) {
                         let def = Def::VariantCtor(variant_def.did, variant_def.ctor_kind);
                         return Ok(def);
                     }
