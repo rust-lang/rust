@@ -1468,6 +1468,11 @@ fn parse_crate_attrs<'a>(sess: &'a Session, input: &Input) -> PResult<'a, Vec<as
     }
 }
 
+// Temporarily have stack size set to 32MB to deal with various crates with long method
+// chains or deep syntax trees.
+// FIXME(oli-obk): get https://github.com/rust-lang/rust/pull/55617 the finish line
+const STACK_SIZE: usize = 32 * 1024 * 1024; // 32MB
+
 /// Runs `f` in a suitable thread for running `rustc`; returns a `Result` with either the return
 /// value of `f` or -- if a panic occurs -- the panic value.
 ///
@@ -1477,9 +1482,6 @@ pub fn in_named_rustc_thread<F, R>(name: String, f: F) -> Result<R, Box<dyn Any 
     where F: FnOnce() -> R + Send + 'static,
           R: Send + 'static,
 {
-    // Temporarily have stack size set to 16MB to deal with nom-using crates failing
-    const STACK_SIZE: usize = 16 * 1024 * 1024; // 16MB
-
     #[cfg(all(unix, not(target_os = "haiku")))]
     let spawn_thread = unsafe {
         // Fetch the current resource limits
