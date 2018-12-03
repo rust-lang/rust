@@ -330,6 +330,10 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         "if_let_redundant_pattern_matching",
         "this lint has been changed to redundant_pattern_matching",
     );
+    store.register_removed(
+        "unsafe_vector_initialization",
+        "the replacement suggested by this lint had substantially different behavior",
+    );
     // end deprecated lints, do not remove this comment, it’s used in `update_lints`
 
     reg.register_late_lint_pass(box serde_api::Serde);
@@ -495,7 +499,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry<'_>, conf: &Conf) {
         panic_unimplemented::UNIMPLEMENTED,
         shadow::SHADOW_REUSE,
         shadow::SHADOW_SAME,
-        slow_vector_initialization::UNSAFE_VECTOR_INITIALIZATION,
         strings::STRING_ADD,
         write::PRINT_STDOUT,
         write::USE_DEBUG,
