@@ -194,10 +194,9 @@ pub fn render<T: fmt::Display, S: fmt::Display>(
                    .collect::<String>(),
     suffix=page.resource_suffix,
     extra_scripts=extra_scripts.iter().map(|e| {
-        format!("<script src=\"{root_path}{extra_script}{suffix}.js\"></script>",
+        format!("<script src=\"{root_path}{extra_script}.js\"></script>",
                 root_path=page.root_path,
-                extra_script=e,
-                suffix=page.resource_suffix)
+                extra_script=e)
     }).collect::<String>(),
     )
 }

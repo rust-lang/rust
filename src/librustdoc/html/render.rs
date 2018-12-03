@@ -1375,7 +1375,8 @@ impl<'a> SourceCollector<'a> {
         layout::render(&mut w, &self.scx.layout,
                        &page, &(""), &Source(contents),
                        self.scx.css_file_extension.is_some(),
-                       &self.scx.themes, &["source-files", "source-script"])?;
+                       &self.scx.themes, &["source-files",
+                                           &format!("source-script{}", page.resource_suffix)])?;
         w.flush()?;
         self.scx.local_sources.insert(p.clone(), href);
         Ok(())
