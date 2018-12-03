@@ -50,6 +50,7 @@ LL |     let mut x = 3;
    = note: consider using `_x` instead
 
 error: value assigned to `x` is never read
+                     (maybe it is overwritten before being read)
   --> $DIR/liveness-unused.rs:42:5
    |
 LL |     x += 4;
@@ -102,6 +103,7 @@ LL |     let x;
    = note: consider using `_x` instead
 
 error: value assigned to `x` is never read
+                     (maybe it is overwritten before being read)
   --> $DIR/liveness-unused.rs:126:9
    |
 LL |         x = 0;  //~ ERROR value assigned to `x` is never read

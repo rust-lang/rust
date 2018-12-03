@@ -1,4 +1,5 @@
 error: value assigned to `x` is never read
+                     (maybe it is overwritten before being read)
   --> $DIR/liveness-dead.rs:19:13
    |
 LL |     let mut x: isize = 3; //~ ERROR: value assigned to `x` is never read
@@ -11,18 +12,21 @@ LL | #![deny(unused_assignments)]
    |         ^^^^^^^^^^^^^^^^^^
 
 error: value assigned to `x` is never read
+                     (maybe it is overwritten before being read)
   --> $DIR/liveness-dead.rs:27:5
    |
 LL |     x = 4; //~ ERROR: value assigned to `x` is never read
    |     ^
 
 error: value passed to `x` is never read
+                     (maybe it is overwritten before being read)
   --> $DIR/liveness-dead.rs:30:11
    |
 LL | fn f4(mut x: i32) { //~ ERROR: value passed to `x` is never read
    |           ^
 
 error: value assigned to `x` is never read
+                     (maybe it is overwritten before being read)
   --> $DIR/liveness-dead.rs:37:5
    |
 LL |     x = 4; //~ ERROR: value assigned to `x` is never read
