@@ -376,9 +376,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         diag.span_label(span, message);
 
-        match self.give_region_a_name(infcx, mir, mir_def_id, outlived_fr, &mut 1)
-            .source
-        {
+        match self.give_region_a_name(infcx, mir, mir_def_id, outlived_fr, &mut 1).unwrap().source {
             RegionNameSource::NamedEarlyBoundRegion(fr_span)
             | RegionNameSource::NamedFreeRegion(fr_span)
             | RegionNameSource::SynthesizedFreeEnvRegion(fr_span, _)
@@ -521,10 +519,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         );
 
         let counter = &mut 1;
-        let fr_name = self.give_region_a_name(infcx, mir, mir_def_id, fr, counter);
+        let fr_name = self.give_region_a_name(infcx, mir, mir_def_id, fr, counter).unwrap();
         fr_name.highlight_region_name(&mut diag);
         let outlived_fr_name =
-            self.give_region_a_name(infcx, mir, mir_def_id, outlived_fr, counter);
+            self.give_region_a_name(infcx, mir, mir_def_id, outlived_fr, counter).unwrap();
         outlived_fr_name.highlight_region_name(&mut diag);
 
         let mir_def_name = if infcx.tcx.is_closure(mir_def_id) {
@@ -661,7 +659,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         infcx: &InferCtxt<'_, '_, 'tcx>,
         borrow_region: RegionVid,
         outlived_region: RegionVid,
-    ) -> (ConstraintCategory, bool, Span, RegionName) {
+    ) -> (ConstraintCategory, bool, Span, Option<RegionName>) {
         let (category, from_closure, span) =
             self.best_blame_constraint(mir, borrow_region, |r| r == outlived_region);
         let outlived_fr_name =
