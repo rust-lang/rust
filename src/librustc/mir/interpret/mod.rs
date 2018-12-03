@@ -89,7 +89,7 @@ impl ::rustc_serialize::UseSpecializedEncodable for AllocId {}
 impl ::rustc_serialize::UseSpecializedDecodable for AllocId {}
 
 #[derive(RustcDecodable, RustcEncodable)]
-enum AllocKind {
+enum AllocDiscriminant {
     Alloc,
     Fn,
     Static,
@@ -108,18 +108,18 @@ pub fn specialized_encode_alloc_id<
     match alloc_type {
         AllocType::Memory(alloc) => {
             trace!("encoding {:?} with {:#?}", alloc_id, alloc);
-            AllocKind::Alloc.encode(encoder)?;
+            AllocDiscriminant::Alloc.encode(encoder)?;
             alloc.encode(encoder)?;
         }
         AllocType::Function(fn_instance) => {
             trace!("encoding {:?} with {:#?}", alloc_id, fn_instance);
-            AllocKind::Fn.encode(encoder)?;
+            AllocDiscriminant::Fn.encode(encoder)?;
             fn_instance.encode(encoder)?;
         }
         AllocType::Static(did) => {
             // referring to statics doesn't need to know about their allocations,
             // just about its DefId
-            AllocKind::Static.encode(encoder)?;
+            AllocDiscriminant::Static.encode(encoder)?;
             did.encode(encoder)?;
         }
     }
@@ -188,10 +188,10 @@ impl<'s> AllocDecodingSession<'s> {
         let idx = decoder.read_u32()? as usize;
         let pos = self.state.data_offsets[idx] as usize;
 
-        // Decode the AllocKind now so that we know if we have to reserve an
+        // Decode the AllocDiscriminant now so that we know if we have to reserve an
         // AllocId.
         let (alloc_kind, pos) = decoder.with_position(pos, |decoder| {
-            let alloc_kind = AllocKind::decode(decoder)?;
+            let alloc_kind = AllocDiscriminant::decode(decoder)?;
             Ok((alloc_kind, decoder.position()))
         })?;
 
@@ -207,7 +207,7 @@ impl<'s> AllocDecodingSession<'s> {
                 ref mut entry @ State::Empty => {
                     // We are allowed to decode
                     match alloc_kind {
-                        AllocKind::Alloc => {
+                        AllocDiscriminant::Alloc => {
                             // If this is an allocation, we need to reserve an
                             // AllocId so we can decode cyclic graphs.
                             let alloc_id = decoder.tcx().alloc_map.lock().reserve();
@@ -216,7 +216,7 @@ impl<'s> AllocDecodingSession<'s> {
                                 alloc_id);
                             Some(alloc_id)
                         },
-                        AllocKind::Fn | AllocKind::Static => {
+                        AllocDiscriminant::Fn | AllocDiscriminant::Static => {
                             // Fns and statics cannot be cyclic and their AllocId
                             // is determined later by interning
                             *entry = State::InProgressNonAlloc(
@@ -250,7 +250,7 @@ impl<'s> AllocDecodingSession<'s> {
         // Now decode the actual data
         let alloc_id = decoder.with_position(pos, |decoder| {
             match alloc_kind {
-                AllocKind::Alloc => {
+                AllocDiscriminant::Alloc => {
                     let allocation = <&'tcx Allocation as Decodable>::decode(decoder)?;
                     // We already have a reserved AllocId.
                     let alloc_id = alloc_id.unwrap();
@@ -258,7 +258,7 @@ impl<'s> AllocDecodingSession<'s> {
                     decoder.tcx().alloc_map.lock().set_id_same_memory(alloc_id, allocation);
                     Ok(alloc_id)
                 },
-                AllocKind::Fn => {
+                AllocDiscriminant::Fn => {
                     assert!(alloc_id.is_none());
                     trace!("creating fn alloc id");
                     let instance = ty::Instance::decode(decoder)?;
@@ -266,7 +266,7 @@ impl<'s> AllocDecodingSession<'s> {
                     let alloc_id = decoder.tcx().alloc_map.lock().create_fn_alloc(instance);
                     Ok(alloc_id)
                 },
-                AllocKind::Static => {
+                AllocDiscriminant::Static => {
                     assert!(alloc_id.is_none());
                     trace!("creating extern static alloc id at");
                     let did = DefId::decode(decoder)?;
