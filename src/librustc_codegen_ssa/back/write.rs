@@ -1284,6 +1284,21 @@ fn start_executing_work<B: ExtraBackendMethods>(
             // Relinquish accidentally acquired extra tokens
             tokens.truncate(running);
 
+            // If a thread exits successfully then we drop a token associated
+            // with that worker and update our `running` count. We may later
+            // re-acquire a token to continue running more work. We may also not
+            // actually drop a token here if the worker was running with an
+            // "ephemeral token"
+            let mut free_worker = |worker_id| {
+                if main_thread_worker_state == MainThreadWorkerState::LLVMing {
+                    main_thread_worker_state = MainThreadWorkerState::Idle;
+                } else {
+                    running -= 1;
+                }
+
+                free_worker_ids.push(worker_id);
+            };
+
             let msg = coordinator_receive.recv().unwrap();
             match *msg.downcast::<Message<B>>().ok().unwrap() {
                 // Save the token locally and the next turn of the loop will use
@@ -1358,24 +1373,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     assert_eq!(main_thread_worker_state,
                                MainThreadWorkerState::Codegenning);
                 }
-
-                // If a thread exits successfully then we drop a token associated
-                // with that worker and update our `running` count. We may later
-                // re-acquire a token to continue running more work. We may also not
-                // actually drop a token here if the worker was running with an
-                // "ephemeral token"
-                //
-                // Note that if the thread failed that means it panicked, so we
-                // abort immediately.
                 Message::Done { result: Ok(compiled_module), worker_id } => {
-                    if main_thread_worker_state == MainThreadWorkerState::LLVMing {
-                        main_thread_worker_state = MainThreadWorkerState::Idle;
-                    } else {
-                        running -= 1;
-                    }
-
-                    free_worker_ids.push(worker_id);
-
+                    free_worker(worker_id);
                     match compiled_module.kind {
                         ModuleKind::Regular => {
                             compiled_modules.push(compiled_module);
@@ -1392,12 +1391,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                 }
                 Message::NeedsLTO { result, worker_id } => {
                     assert!(!started_lto);
-                    if main_thread_worker_state == MainThreadWorkerState::LLVMing {
-                        main_thread_worker_state = MainThreadWorkerState::Idle;
-                    } else {
-                        running -= 1;
-                    }
-                    free_worker_ids.push(worker_id);
+                    free_worker(worker_id);
                     needs_lto.push(result);
                 }
                 Message::AddImportOnlyModule { module_data, work_product } => {
@@ -1408,6 +1402,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     lto_import_only_modules.push((module_data, work_product));
                     main_thread_worker_state = MainThreadWorkerState::Idle;
                 }
+                // If the thread failed that means it panicked, so we abort immediately.
                 Message::Done { result: Err(()), worker_id: _ } => {
                     bug!("worker thread panicked");
                 }
