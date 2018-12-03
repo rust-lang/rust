@@ -611,7 +611,7 @@ impl serialize::UseSpecializedDecodable for Span {
     }
 }
 
-fn default_span_debug(span: Span, f: &mut fmt::Formatter) -> fmt::Result {
+pub fn default_span_debug(span: Span, f: &mut fmt::Formatter) -> fmt::Result {
     f.debug_struct("Span")
         .field("lo", &span.lo())
         .field("hi", &span.hi())
