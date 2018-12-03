@@ -232,9 +232,10 @@ fn default_hook(info: &PanicInfo) {
 #[thread_local]
 static PANIC_COUNT: Cell<usize> = Cell::new(0);
 
+// This function must not be `#[inline]` because it touches a `#[thread_local]` variable.
+// See: https://github.com/rust-lang/rust/pull/56469#issuecomment-443810577
 #[cfg(not(test))]
 #[doc(hidden)]
-#[inline]
 #[unstable(feature = "update_panic_count", issue = "0")]
 pub fn update_panic_count(amt: isize) -> usize {
     let next = (PANIC_COUNT.get() as isize + amt) as usize;
@@ -311,7 +312,8 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
 }
 
 /// Determines whether the current thread is unwinding because of panic.
-#[inline]
+// This function must not be `#[inline]` because it touches a `#[thread_local]` variable.
+// See: https://github.com/rust-lang/rust/pull/56469#issuecomment-443810577
 pub fn panicking() -> bool {
     PANIC_COUNT.get() != 0
 }
