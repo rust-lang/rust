@@ -15,6 +15,7 @@ pub const BITMASK_MASK: u16 = 0xffff;
 /// parallel.
 ///
 /// This implementation uses a 128-bit SSE value.
+#[derive(Copy, Clone)]
 pub struct Group(x86::__m128i);
 
 impl Group {
@@ -27,16 +28,14 @@ impl Group {
     /// This is guaranteed to be aligned to the group size.
     #[inline]
     pub fn static_empty() -> &'static [u8] {
-        #[repr(C)]
-        struct Dummy {
-            _align: [x86::__m128i; 0],
+        union AlignedBytes {
+            _align: Group,
             bytes: [u8; Group::WIDTH],
         };
-        const DUMMY: Dummy = Dummy {
-            _align: [],
+        const ALIGNED_BYTES: AlignedBytes = AlignedBytes {
             bytes: [EMPTY; Group::WIDTH],
         };
-        &DUMMY.bytes
+        unsafe { &ALIGNED_BYTES.bytes }
     }
 
     /// Loads a group of bytes starting at the given address.
@@ -46,16 +45,18 @@ impl Group {
     }
 
     /// Loads a group of bytes starting at the given address, which must be
-    /// aligned to `WIDTH`.
+    /// aligned to `mem::align_of::<Group>()`.
     #[inline]
     pub unsafe fn load_aligned(ptr: *const u8) -> Group {
+        debug_assert_eq!(ptr as usize & (mem::align_of::<Group>() - 1), 0);
         Group(x86::_mm_load_si128(ptr as *const _))
     }
 
     /// Stores the group of bytes to the given address, which must be
-    /// aligned to `WIDTH`.
+    /// aligned to `mem::align_of::<Group>()`.
     #[inline]
     pub unsafe fn store_aligned(&self, ptr: *mut u8) {
+        debug_assert_eq!(ptr as usize & (mem::align_of::<Group>() - 1), 0);
         x86::_mm_store_si128(ptr as *mut _, self.0);
     }
 
