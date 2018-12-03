@@ -132,12 +132,12 @@ pub struct TypeAndSubsts<'tcx> {
 }
 
 fn allow_type_alias_enum_variants<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                                  ty_hir: &hir::Ty,
+                                                  qself: &hir::Ty,
                                                   span: Span) -> bool {
     let allow_feature = tcx.features().type_alias_enum_variants;
     if !allow_feature {
         // Only print error if we know the type is an alias.
-        if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = ty_hir.node {
+        if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) = qself.node {
             if let Def::TyAlias(_) = path.def {
                 let mut err = tcx.sess.struct_span_err(
                     span,

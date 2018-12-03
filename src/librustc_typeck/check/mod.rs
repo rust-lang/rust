@@ -142,7 +142,7 @@ use self::autoderef::Autoderef;
 use self::callee::DeferredCallResolution;
 use self::coercion::{CoerceMany, DynamicCoerceMany};
 pub use self::compare_method::{compare_impl_method, compare_const_impl};
-use self::method::MethodCallee;
+use self::method::{MethodCallee, SelfSource};
 use self::TupleArgumentsFlag::*;
 
 /// The type of a local binding, including the revealed type for anon types.
@@ -3244,7 +3244,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     self.report_method_error(span,
                                              rcvr_t,
                                              segment.ident,
-                                             Some(rcvr),
+                                             SelfSource::MethodCall(rcvr),
                                              error,
                                              Some(args));
                 }
@@ -4558,7 +4558,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                        span: Span)
                                        -> (Def, Option<Ty<'tcx>>, &'b [hir::PathSegment])
     {
-        let (ty, ty_hir, item_segment) = match *qpath {
+        let (ty, qself, item_segment) = match *qpath {
             hir::QPath::Resolved(ref opt_qself, ref path) => {
                 return (path.def,
                         opt_qself.as_ref().map(|qself| self.to_ty(qself)),
@@ -4575,7 +4575,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             return (*cached_def, Some(ty), slice::from_ref(&**item_segment))
         }
         let item_name = item_segment.ident;
-        let def = match self.resolve_ufcs(span, item_name, ty, ty_hir, node_id) {
+        let def = match self.resolve_ufcs(span, item_name, ty, qself, node_id) {
             Ok(def) => def,
             Err(error) => {
                 let def = match error {
@@ -4583,7 +4583,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     _ => Def::Err,
                 };
                 if item_name.name != keywords::Invalid.name() {
-                    self.report_method_error(span, ty, item_name, None, error, None);
+                    self.report_method_error(span,
+                                             ty,
+                                             item_name,
+                                             SelfSource::QPath(qself),
+                                             error,
+                                             None);
                 }
                 def
             }
@@ -5114,7 +5119,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             // Case 2. Reference to a variant constructor.
             Def::VariantCtor(def_id, ..) => {
-                if tcx.features().type_alias_enum_variants {
+                if self.tcx.features().type_alias_enum_variants {
                     let adt_def = self_ty.and_then(|t| t.ty_adt_def());
                     let (generics_def_id, index) = if let Some(adt_def) = adt_def {
                         debug_assert!(adt_def.is_enum());
@@ -5192,16 +5197,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             node_id,
         );
 
+        let tcx = self.tcx;
+
         let path_segs = self.def_ids_for_path_segments(segments, self_ty, def);
 
         let mut user_self_ty = None;
         match def {
             Def::Method(def_id) |
             Def::AssociatedConst(def_id) => {
-                let container = self.tcx.associated_item(def_id).container;
+                let container = tcx.associated_item(def_id).container;
                 match container {
                     ty::TraitContainer(trait_did) => {
-                        callee::check_legal_trait_for_method_call(self.tcx, span, trait_did)
+                        callee::check_legal_trait_for_method_call(tcx, span, trait_did)
                     }
                     ty::ImplContainer(impl_def_id) => {
                         if segments.len() == 1 {
@@ -5231,7 +5238,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match def {
                 Def::VariantCtor(_, _) if self_ty.is_some() => true,
                 _ => false,
-            };
+            }
         } else {
             false
         };
@@ -5249,7 +5256,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::Local(nid) | Def::Upvar(nid, ..) => {
                 let ty = self.local_ty(span, nid).decl_ty;
                 let ty = self.normalize_associated_types_in(span, &ty);
-                self.write_ty(self.tcx.hir().node_to_hir_id(node_id), ty);
+                self.write_ty(tcx.hir().node_to_hir_id(node_id), ty);
                 return (ty, def);
             }
             _ => {}
@@ -5265,13 +5272,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut infer_args_for_err = FxHashSet::default();
         for &PathSeg(def_id, index) in &path_segs {
             let seg = &segments[index];
-            let generics = self.tcx.generics_of(def_id);
+            let generics = tcx.generics_of(def_id);
             // Argument-position `impl Trait` is treated as a normal generic
             // parameter internally, but we don't allow users to specify the
             // parameter's value explicitly, so we have to do some error-
             // checking here.
             let suppress_errors = AstConv::check_generic_arg_count_for_call(
-                self.tcx,
+                tcx,
                 span,
                 &generics,
                 &seg,
@@ -5284,7 +5291,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         let has_self = path_segs.last().map(|PathSeg(def_id, _)| {
-            self.tcx.generics_of(*def_id).has_self
+            tcx.generics_of(*def_id).has_self
         }).unwrap_or(false);
 
         let mut new_def = def;
@@ -5297,10 +5304,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     Some(adt_def) if adt_def.has_ctor() => {
                         let variant = adt_def.non_enum_variant();
                         new_def = Def::StructCtor(variant.did, variant.ctor_kind);
-                        (variant.did, self.tcx.type_of(variant.did))
+                        (variant.did, tcx.type_of(variant.did))
                     }
                     _ => {
-                        let mut err = self.tcx.sess.struct_span_err(span,
+                        let mut err = tcx.sess.struct_span_err(span,
                             "the `Self` constructor can only be used with tuple or unit structs");
                         if let Some(adt_def) = adt_def {
                             match adt_def.adt_kind() {
@@ -5318,14 +5325,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         }
                         err.emit();
 
-                        (impl_def_id, self.tcx.types.err)
+                        (impl_def_id, tcx.types.err)
                     }
                 }
             }
             Def::VariantCtor(_, _) if self_ty.is_some() => {
                 let def_id = def.def_id();
 
-                let ty = self.tcx.type_of(def_id);
+                let ty = tcx.type_of(def_id);
                 if tcx.features().type_alias_enum_variants {
                     if let Some(self_ty) = self_ty {
                         match ty.ty_adt_def() {
@@ -5343,13 +5350,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 // The things we are substituting into the type should not contain
                 // escaping late-bound regions, and nor should the base type scheme.
-                let ty = self.tcx.type_of(def_id);
+                let ty = tcx.type_of(def_id);
                 (def_id, ty)
             }
         };
 
         let substs = AstConv::create_substs_for_generic_args(
-            self.tcx,
+            tcx,
             def_id,
             &[][..],
             has_self,
@@ -5395,10 +5402,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             // If we have a default, then we it doesn't matter that we're not
                             // inferring the type arguments: we provide the default where any
                             // is missing.
-                            let default = self.tcx.type_of(param.def_id);
+                            let default = tcx.type_of(param.def_id);
                             self.normalize_ty(
                                 span,
-                                default.subst_spanned(self.tcx, substs.unwrap(), Some(span))
+                                default.subst_spanned(tcx, substs.unwrap(), Some(span))
                             ).into()
                         } else {
                             // If no type arguments were provided, we have to infer them.
@@ -5415,7 +5422,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert!(!ty.has_escaping_bound_vars());
 
         // First, store the "user substs" for later.
-        let hir_id = self.tcx.hir().node_to_hir_id(node_id);
+        let hir_id = tcx.hir().node_to_hir_id(node_id);
         self.write_user_substs_from_substs(hir_id, substs, user_self_ty);
 
         // Add all the obligations that are required, substituting and
@@ -5434,7 +5441,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // is inherent, there is no `Self` parameter, instead, the impl needs
             // type parameters, which we can infer by unifying the provided `Self`
             // with the substituted impl type.
-            let ty = self.tcx.type_of(impl_def_id);
+            let ty = tcx.type_of(impl_def_id);
 
             let impl_ty = self.instantiate_type_scheme(span, &substs, &ty);
             match self.at(&self.misc(span), self.param_env).sup(impl_ty, self_ty) {

@@ -1277,7 +1277,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
                                      ref_id: ast::NodeId,
                                      span: Span,
                                      ty: Ty<'tcx>,
-                                     ty_hir: &hir::Ty,
+                                     qself: &hir::Ty,
                                      ty_path_def: Def,
                                      item_segment: &hir::PathSegment)
                                      -> (Ty<'tcx>, Def)
@@ -1292,11 +1292,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> dyn AstConv<'gcx, 'tcx> + 'o {
         // Check if we have an enum variant here.
         if let ty::Adt(adt_def, _) = ty.sty {
             if adt_def.is_enum() {
-                if allow_type_alias_enum_variants(tcx, ty_hir, span) {
-                    let variant_def = adt_def.variants.iter().find(|vd| {
-                        tcx.hygienic_eq(assoc_name, vd.ident, adt_def.did)
-                    });
-                    if let Some(variant_def) = variant_def {
+                let variant_def = adt_def.variants.iter().find(|vd| {
+                    tcx.hygienic_eq(assoc_name, vd.ident, adt_def.did)
+                });
+                if let Some(variant_def) = variant_def {
+                    if allow_type_alias_enum_variants(tcx, qself, span) {
                         let def = Def::Variant(variant_def.did);
                         return (ty, def);
                     }
