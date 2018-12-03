@@ -314,7 +314,6 @@ fn hash_token<'a, 'gcx, W: StableHasherResult>(
         token::Token::DotDot |
         token::Token::DotDotDot |
         token::Token::DotDotEq |
-        token::Token::DotEq |
         token::Token::Comma |
         token::Token::Semi |
         token::Token::Colon |

@@ -703,7 +703,6 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         token::At           => "At",
         token::Dot          => "Dot",
         token::DotDot       => "DotDot",
-        token::DotEq        => "DotEq",
         token::DotDotDot    => "DotDotDot",
         token::DotDotEq     => "DotDotEq",
         token::Comma        => "Comma",

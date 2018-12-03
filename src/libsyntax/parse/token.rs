@@ -163,7 +163,6 @@ pub enum Token {
     DotDot,
     DotDotDot,
     DotDotEq,
-    DotEq, // HACK(durka42) never produced by the parser, only used for libproc_macro
     Comma,
     Semi,
     Colon,
@@ -454,7 +453,6 @@ impl Token {
             Dot => match joint {
                 Dot => DotDot,
                 DotDot => DotDotDot,
-                DotEq => DotDotEq,
                 _ => return None,
             },
             DotDot => match joint {
@@ -477,7 +475,7 @@ impl Token {
                 _ => return None,
             },
 
-            Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot | DotEq |
+            Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot |
             DotDotEq | Comma | Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar |
             Question | OpenDelim(..) | CloseDelim(..) => return None,
 
@@ -606,7 +604,6 @@ impl Token {
             (&DotDot, &DotDot) |
             (&DotDotDot, &DotDotDot) |
             (&DotDotEq, &DotDotEq) |
-            (&DotEq, &DotEq) |
             (&Comma, &Comma) |
             (&Semi, &Semi) |
             (&Colon, &Colon) |
