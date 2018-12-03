@@ -806,9 +806,10 @@ const NOTIFIED: usize = 2;
 /// In other words, each [`Thread`] acts a bit like a spinlock that can be
 /// locked and unlocked using `park` and `unpark`.
 ///
-/// Notice that it would be a valid (but inefficient) implementation to make both [`park`] and
-/// [`unpark`] NOPs that return immediately.  Being unblocked does not imply
-/// any synchronization with someone that unparked this thread, it could also be spurious.
+/// Notice that being unblocked does not imply any synchronization with someone
+/// that unparked this thread, it could also be spurious.
+/// For example, it would be a valid, but inefficient, implementation to make both [`park`] and
+/// [`unpark`] return immediately without doing anything.
 ///
 /// The API is typically used by acquiring a handle to the current thread,
 /// placing that handle in a shared data structure so that other threads can
