@@ -264,8 +264,10 @@ fn generate_lto_work<B: ExtraBackendMethods>(
 
     let (lto_modules, copy_jobs) = if !needs_fat_lto.is_empty() {
         assert!(needs_thin_lto.is_empty());
-        B::run_fat_lto(cgcx, needs_fat_lto, import_only_modules, &mut timeline)
-            .unwrap_or_else(|e| e.raise())
+        assert!(import_only_modules.is_empty());
+        let lto_module = B::run_fat_lto(cgcx, needs_fat_lto, &mut timeline)
+            .unwrap_or_else(|e| e.raise());
+        (vec![lto_module], vec![])
     } else {
         assert!(needs_fat_lto.is_empty());
         B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules, &mut timeline)

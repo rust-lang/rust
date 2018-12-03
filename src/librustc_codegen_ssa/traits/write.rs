@@ -29,9 +29,8 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     fn run_fat_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<ModuleCodegen<Self::Module>>,
-        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
         timeline: &mut Timeline,
-    ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError>;
+    ) -> Result<LtoModuleCodegen<Self>, FatalError>;
     /// Performs thin LTO by performing necessary global analysis and returning two
     /// lists, one of the modules that need optimization and another for modules that
     /// can simply be copied over from the incr. comp. cache.

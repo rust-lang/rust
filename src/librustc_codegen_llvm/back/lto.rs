@@ -144,22 +144,15 @@ fn prepare_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
 /// for further optimization.
 pub(crate) fn run_fat(cgcx: &CodegenContext<LlvmCodegenBackend>,
                       modules: Vec<ModuleCodegen<ModuleLlvm>>,
-                      _cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
                       timeline: &mut Timeline)
-    -> Result<(Vec<LtoModuleCodegen<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError>
+    -> Result<LtoModuleCodegen<LlvmCodegenBackend>, FatalError>
 {
     let diag_handler = cgcx.create_diag_handler();
     let (symbol_white_list, upstream_modules) = prepare_lto(cgcx, timeline, &diag_handler)?;
     let symbol_white_list = symbol_white_list.iter()
                                              .map(|c| c.as_ptr())
                                              .collect::<Vec<_>>();
-    let opt_jobs = fat_lto(cgcx,
-                           &diag_handler,
-                           modules,
-                           upstream_modules,
-                           &symbol_white_list,
-                           timeline);
-    opt_jobs.map(|opt_jobs| (opt_jobs, vec![]))
+    fat_lto(cgcx, &diag_handler, modules, upstream_modules, &symbol_white_list, timeline)
 }
 
 /// Performs thin LTO by performing necessary global analysis and returning two
@@ -195,7 +188,7 @@ fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
            mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
            symbol_white_list: &[*const libc::c_char],
            timeline: &mut Timeline)
-    -> Result<Vec<LtoModuleCodegen<LlvmCodegenBackend>>, FatalError>
+    -> Result<LtoModuleCodegen<LlvmCodegenBackend>, FatalError>
 {
     info!("going for a fat lto");
 
@@ -284,10 +277,10 @@ fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
         timeline.record("passes");
     }
 
-    Ok(vec![LtoModuleCodegen::Fat {
+    Ok(LtoModuleCodegen::Fat {
         module: Some(module),
         _serialized_bitcode: serialized_bitcode,
-    }])
+    })
 }
 
 struct Linker<'a>(&'a mut llvm::Linker<'a>);
