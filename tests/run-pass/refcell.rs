@@ -39,6 +39,13 @@ fn aliasing_mut_and_shr() {
         *aliasing += 4;
         let _shr = &*rc;
         *aliasing += 4;
+        // also turning this into a frozen ref now must work
+        let aliasing = &*aliasing;
+        let _val = *aliasing;
+        let _escape_to_raw = rc as *const _; // this must NOT unfreeze
+        let _val = *aliasing;
+        let _shr = &*rc; // this must NOT unfreeze
+        let _val = *aliasing;
     }
 
     let rc = RefCell::new(23);
@@ -48,7 +55,23 @@ fn aliasing_mut_and_shr() {
     assert_eq!(*rc.borrow(), 23+12);
 }
 
+fn aliasing_frz_and_shr() {
+    fn inner(rc: &RefCell<i32>, aliasing: &i32) {
+        let _val = *aliasing;
+        let _escape_to_raw = rc as *const _; // this must NOT unfreeze
+        let _val = *aliasing;
+        let _shr = &*rc; // this must NOT unfreeze
+        let _val = *aliasing;
+    }
+
+    let rc = RefCell::new(23);
+    let bshr = rc.borrow();
+    inner(&rc, &*bshr);
+    assert_eq!(*rc.borrow(), 23);
+}
+
 fn main() {
     lots_of_funny_borrows();
     aliasing_mut_and_shr();
+    aliasing_frz_and_shr();
 }
