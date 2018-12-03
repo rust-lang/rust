@@ -35,7 +35,7 @@ use syntax_pos::{self, Span};
 use traits::{self, ObligationCause, PredicateObligations, TraitEngine};
 use ty::error::{ExpectedFound, TypeError, UnconstrainedNumeric};
 use ty::fold::TypeFoldable;
-use ty::relate::RelateResult;
+use ty::relate::{RelateResult, TraitObjectMode};
 use ty::subst::{Kind, Substs};
 use ty::{self, GenericParamDefKind, Ty, TyCtxt};
 use ty::{FloatVid, IntVid, TyVid};
@@ -181,6 +181,9 @@ pub struct InferCtxt<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
 
     // This flag is true while there is an active snapshot.
     in_snapshot: Cell<bool>,
+
+    // The TraitObjectMode used here,
+    trait_object_mode: TraitObjectMode,
 
     // A set of constraints that regionck must validate. Each
     // constraint has the form `T:'a`, meaning "some type `T` must
@@ -472,6 +475,7 @@ pub struct InferCtxtBuilder<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     global_tcx: TyCtxt<'a, 'gcx, 'gcx>,
     arena: SyncDroplessArena,
     fresh_tables: Option<RefCell<ty::TypeckTables<'tcx>>>,
+    trait_object_mode: TraitObjectMode,
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
@@ -480,6 +484,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             global_tcx: self,
             arena: SyncDroplessArena::default(),
             fresh_tables: None,
+            trait_object_mode: TraitObjectMode::NoSquash,
         }
     }
 }
@@ -489,6 +494,12 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
     /// will initialize `in_progress_tables` with fresh `TypeckTables`.
     pub fn with_fresh_in_progress_tables(mut self, table_owner: DefId) -> Self {
         self.fresh_tables = Some(RefCell::new(ty::TypeckTables::empty(Some(table_owner))));
+        self
+    }
+
+    pub fn with_trait_object_mode(mut self, mode: TraitObjectMode) -> Self {
+        debug!("with_trait_object_mode: setting mode to {:?}", mode);
+        self.trait_object_mode = mode;
         self
     }
 
@@ -518,6 +529,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
     pub fn enter<R>(&'tcx mut self, f: impl for<'b> FnOnce(InferCtxt<'b, 'gcx, 'tcx>) -> R) -> R {
         let InferCtxtBuilder {
             global_tcx,
+            trait_object_mode,
             ref arena,
             ref fresh_tables,
         } = *self;
@@ -526,6 +538,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             f(InferCtxt {
                 tcx,
                 in_progress_tables,
+                trait_object_mode,
                 projection_cache: Default::default(),
                 type_variables: RefCell::new(type_variable::TypeVariableTable::new()),
                 int_unification_table: RefCell::new(ut::UnificationTable::new()),
@@ -605,6 +618,10 @@ pub struct CombinedSnapshot<'a, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn is_in_snapshot(&self) -> bool {
         self.in_snapshot.get()
+    }
+
+    pub fn trait_object_mode(&self) -> TraitObjectMode {
+        self.trait_object_mode
     }
 
     pub fn freshen<T: TypeFoldable<'tcx>>(&self, t: T) -> T {

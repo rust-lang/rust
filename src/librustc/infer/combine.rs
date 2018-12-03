@@ -347,6 +347,10 @@ impl<'cx, 'gcx, 'tcx> TypeRelation<'cx, 'gcx, 'tcx> for Generalizer<'cx, 'gcx, '
         self.infcx.tcx
     }
 
+    fn trait_object_mode(&self) -> relate::TraitObjectMode {
+        self.infcx.trait_object_mode()
+    }
+
     fn tag(&self) -> &'static str {
         "Generalizer"
     }
