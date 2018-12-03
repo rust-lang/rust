@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// should-fail
+// exact-check
 
-const QUERY = 'string';
+const QUERY = 'hashmap';
 const FILTER_CRATE = 'core';
 
 const EXPECTED = {
     'others': [
-        { 'path': 'std::collections', 'name': 'VecDeque' },
     ],
 };
