@@ -284,7 +284,7 @@ static Optional<Reloc::Model> fromRust(LLVMRustRelocMode RustReloc) {
   report_fatal_error("Bad RelocModel.");
 }
 
-#if LLVM_RUSTLLVM
+#ifdef LLVM_RUSTLLVM
 /// getLongestEntryLength - Return the length of the longest entry in the table.
 ///
 static size_t getLongestEntryLength(ArrayRef<SubtargetFeatureKV> Table) {

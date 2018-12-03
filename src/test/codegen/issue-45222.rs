@@ -69,6 +69,6 @@ fn foo3r(n: u64) -> u64 {
 // CHECK-LABEL: @check_foo3r
 #[no_mangle]
 pub fn check_foo3r() -> u64 {
-    // CHECK: ret i64 500005000000000
-    foo3r(100000)
+    // CHECK: ret i64 500050000000
+    foo3r(10000)
 }

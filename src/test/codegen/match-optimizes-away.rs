@@ -14,6 +14,7 @@
 
 pub enum Three { A, B, C }
 
+#[repr(u16)]
 pub enum Four { A, B, C, D }
 
 #[no_mangle]
@@ -32,7 +33,7 @@ pub fn three_valued(x: Three) -> Three {
 pub fn four_valued(x: Four) -> Four {
     // CHECK-LABEL: @four_valued
     // CHECK-NEXT: {{^.*:$}}
-    // CHECK-NEXT: ret i8 %0
+    // CHECK-NEXT: ret i16 %0
     match x {
         Four::A => Four::A,
         Four::B => Four::B,
