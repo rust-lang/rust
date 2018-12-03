@@ -266,15 +266,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn replace<'a, P: Pattern<'a>>(&'a self, from: P, to: &str) -> String {
-        let mut result = String::new();
-        let mut last_end = 0;
-        for (start, part) in self.match_indices(from) {
-            result.push_str(unsafe { self.get_unchecked(last_end..start) });
-            result.push_str(to);
-            last_end = start + part.len();
-        }
-        result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
-        result
+        replace_helper(&self, from, to, None)
     }
 
     /// Replaces first N matches of a pattern with another string.
@@ -306,16 +298,7 @@ impl str {
                   without modifying the original"]
     #[stable(feature = "str_replacen", since = "1.16.0")]
     pub fn replacen<'a, P: Pattern<'a>>(&'a self, pat: P, to: &str, count: usize) -> String {
-        // Hope to reduce the times of re-allocation
-        let mut result = String::with_capacity(32);
-        let mut last_end = 0;
-        for (start, part) in self.match_indices(pat).take(count) {
-            result.push_str(unsafe { self.get_unchecked(last_end..start) });
-            result.push_str(to);
-            last_end = start + part.len();
-        }
-        result.push_str(unsafe { self.get_unchecked(last_end..self.len()) });
-        result
+        replace_helper(&self, pat, to, Some(count))
     }
 
     /// Returns the lowercase equivalent of this string slice, as a new [`String`].
@@ -621,4 +604,17 @@ impl str {
 #[inline]
 pub unsafe fn from_boxed_utf8_unchecked(v: Box<[u8]>) -> Box<str> {
     Box::from_raw(Box::into_raw(v) as *mut str)
+}
+
+fn replace_helper<'a, P: Pattern<'a>>(s: &'a str, pat: P, to: &str, lim: Option<usize>) -> String {
+    let mut result = String::with_capacity(s.len());
+    let mut last_end = 0;
+    let limit = if let Some(limit) = lim { limit } else { s.len() };
+    for (start, part) in s.match_indices(pat).take(limit) {
+        result.push_str(unsafe { s.get_unchecked(last_end..start) });
+        result.push_str(to);
+        last_end = start + part.len();
+    }
+    result.push_str(unsafe { s.get_unchecked(last_end..s.len()) });
+    result
 }
