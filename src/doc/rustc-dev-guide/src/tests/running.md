@@ -19,8 +19,10 @@ timestamp file for every test can be found under `build/ARCH/test/`.
 To force-rerun a test (e.g. in case the test runner fails to notice
 a change) you can simply remove the timestamp file.
 
-Note that some tests require a Python-enabled gdb. If you are building
-gdb from source, you need to configure with
+Note that some tests require a Python-enabled gdb. You can test if
+your gdb install supports Python by using the `python` command from
+within gdb (type some Python code followed by `CTRL+D` to execute it).
+If you are building gdb from source, you need to configure with
 `--with-python=<path-to-python-binary>`.
 
 ## Running a subset of the test suites
