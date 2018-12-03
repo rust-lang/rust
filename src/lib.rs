@@ -310,26 +310,9 @@ impl<'a, 'mir, 'tcx> Machine<'a, 'mir, 'tcx> for Evaluator<'tcx> {
 
     const STATIC_KIND: Option<MiriMemoryKind> = Some(MiriMemoryKind::MutStatic);
 
+    #[inline(always)]
     fn enforce_validity(ecx: &EvalContext<'a, 'mir, 'tcx, Self>) -> bool {
-        if !ecx.machine.validate {
-            return false;
-        }
-
-        // Some functions are whitelisted until we figure out how to fix them.
-        // We walk up the stack a few frames to also cover their callees.
-        const WHITELIST: &[(&str, &str)] = &[
-            // Uses mem::uninitialized
-            ("std::sys::windows::mutex::Mutex::", ""),
-        ];
-        for frame in ecx.stack().iter()
-            .rev().take(3)
-        {
-            let name = frame.instance.to_string();
-            if WHITELIST.iter().any(|(prefix, suffix)| name.starts_with(prefix) && name.ends_with(suffix)) {
-                return false;
-            }
-        }
-        true
+        ecx.machine.validate
     }
 
     /// Returns Ok() when the function was handled, fail otherwise

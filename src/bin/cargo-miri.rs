@@ -155,6 +155,9 @@ fn setup(ask_user: bool) {
     File::create(dir.join("Xargo.toml")).unwrap()
         .write_all(br#"
 [dependencies.std]
+default_features = false
+# We need the `panic_unwind` feature because we use the `unwind` panic strategy.
+# Using `abort` works for libstd, but then libtest will not compile.
 features = ["panic_unwind"]
 
 [dependencies.test]
