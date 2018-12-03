@@ -224,11 +224,9 @@ macro_rules! eprintln {
 /// the value of a given expression. An example:
 ///
 /// ```rust
-/// #![feature(dbg_macro)]
-///
 /// let a = 2;
 /// let b = dbg!(a * 2) + 1;
-/// //      ^-- prints: [src/main.rs:4] a * 2 = 4
+/// //      ^-- prints: [src/main.rs:2] a * 2 = 4
 /// assert_eq!(b, 5);
 /// ```
 ///
@@ -262,8 +260,6 @@ macro_rules! eprintln {
 /// With a method call:
 ///
 /// ```rust
-/// #![feature(dbg_macro)]
-///
 /// fn foo(n: usize) {
 ///     if let Some(_) = dbg!(n.checked_sub(4)) {
 ///         // ...
@@ -282,8 +278,6 @@ macro_rules! eprintln {
 /// Naive factorial implementation:
 ///
 /// ```rust
-/// #![feature(dbg_macro)]
-///
 /// fn factorial(n: u32) -> u32 {
 ///     if dbg!(n <= 1) {
 ///         dbg!(1)
@@ -312,8 +306,6 @@ macro_rules! eprintln {
 /// The `dbg!(..)` macro moves the input:
 ///
 /// ```compile_fail
-/// #![feature(dbg_macro)]
-///
 /// /// A wrapper around `usize` which importantly is not Copyable.
 /// #[derive(Debug)]
 /// struct NoCopy(usize);
@@ -325,7 +317,7 @@ macro_rules! eprintln {
 ///
 /// [stderr]: https://en.wikipedia.org/wiki/Standard_streams#Standard_error_(stderr)
 #[macro_export]
-#[unstable(feature = "dbg_macro", issue = "54306")]
+#[stable(feature = "dbg_macro", since = "1.32.0")]
 macro_rules! dbg {
     ($val:expr) => {
         // Use of `match` here is intentional because it affects the lifetimes
