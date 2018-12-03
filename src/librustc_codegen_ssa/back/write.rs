@@ -252,7 +252,8 @@ impl<B: WriteBackendMethods> CodegenContext<B> {
 
 fn generate_lto_work<B: ExtraBackendMethods>(
     cgcx: &CodegenContext<B>,
-    modules: Vec<ModuleCodegen<B::Module>>,
+    needs_fat_lto: Vec<ModuleCodegen<B::Module>>,
+    needs_thin_lto: Vec<ModuleCodegen<B::Module>>,
     import_only_modules: Vec<(SerializedModule<B::ModuleBuffer>, WorkProduct)>
 ) -> Vec<(WorkItem<B>, u64)> {
     let mut timeline = cgcx.time_graph.as_ref().map(|tg| {
@@ -260,22 +261,26 @@ fn generate_lto_work<B: ExtraBackendMethods>(
                  CODEGEN_WORK_PACKAGE_KIND,
                  "generate lto")
     }).unwrap_or(Timeline::noop());
-    let (lto_modules, copy_jobs) = B::run_lto(cgcx, modules, import_only_modules, &mut timeline)
-        .unwrap_or_else(|e| e.raise());
 
-    let lto_modules = lto_modules.into_iter().map(|module| {
+    let (lto_modules, copy_jobs) = if !needs_fat_lto.is_empty() {
+        assert!(needs_thin_lto.is_empty());
+        B::run_lto(cgcx, needs_fat_lto, import_only_modules, &mut timeline)
+            .unwrap_or_else(|e| e.raise())
+    } else {
+        assert!(needs_fat_lto.is_empty());
+        B::run_lto(cgcx, needs_thin_lto, import_only_modules, &mut timeline)
+            .unwrap_or_else(|e| e.raise())
+    };
+
+    lto_modules.into_iter().map(|module| {
         let cost = module.cost();
         (WorkItem::LTO(module), cost)
-    });
-
-    let copy_jobs = copy_jobs.into_iter().map(|wp| {
+    }).chain(copy_jobs.into_iter().map(|wp| {
         (WorkItem::CopyPostLtoArtifacts(CachedModuleCodegen {
             name: wp.cgu_name.clone(),
             source: wp,
         }), 0)
-    });
-
-    lto_modules.chain(copy_jobs).collect()
+    })).collect()
 }
 
 pub struct CompiledModules {
@@ -673,7 +678,8 @@ impl<B: WriteBackendMethods> WorkItem<B> {
 
 enum WorkItemResult<M> {
     Compiled(CompiledModule),
-    NeedsLTO(ModuleCodegen<M>),
+    NeedsFatLTO(ModuleCodegen<M>),
+    NeedsThinLTO(ModuleCodegen<M>),
 }
 
 fn execute_work_item<B: ExtraBackendMethods>(
@@ -757,12 +763,16 @@ fn execute_optimize_work_item<B: ExtraBackendMethods>(
         }
     };
 
-    if let ComputedLtoType::No = lto_type {
-        let module = unsafe { B::codegen(cgcx, &diag_handler, module, module_config, timeline)? };
-        Ok(WorkItemResult::Compiled(module))
-    } else {
-        Ok(WorkItemResult::NeedsLTO(module))
-    }
+    Ok(match lto_type {
+        ComputedLtoType::No => {
+            let module = unsafe {
+                B::codegen(cgcx, &diag_handler, module, module_config, timeline)?
+            };
+            WorkItemResult::Compiled(module)
+        }
+        ComputedLtoType::Thin => WorkItemResult::NeedsThinLTO(module),
+        ComputedLtoType::Fat => WorkItemResult::NeedsFatLTO(module),
+    })
 }
 
 fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
@@ -844,7 +854,11 @@ fn execute_lto_work_item<B: ExtraBackendMethods>(
 
 pub enum Message<B: WriteBackendMethods> {
     Token(io::Result<Acquired>),
-    NeedsLTO {
+    NeedsFatLTO {
+        result: ModuleCodegen<B::Module>,
+        worker_id: usize,
+    },
+    NeedsThinLTO {
         result: ModuleCodegen<B::Module>,
         worker_id: usize,
     },
@@ -1143,7 +1157,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
         let mut compiled_modules = vec![];
         let mut compiled_metadata_module = None;
         let mut compiled_allocator_module = None;
-        let mut needs_lto = Vec::new();
+        let mut needs_fat_lto = Vec::new();
+        let mut needs_thin_lto = Vec::new();
         let mut lto_import_only_modules = Vec::new();
         let mut started_lto = false;
         let mut codegen_aborted = false;
@@ -1172,7 +1187,8 @@ fn start_executing_work<B: ExtraBackendMethods>(
               running > 0 ||
               (!codegen_aborted && (
                   work_items.len() > 0 ||
-                  needs_lto.len() > 0 ||
+                  needs_fat_lto.len() > 0 ||
+                  needs_thin_lto.len() > 0 ||
                   lto_import_only_modules.len() > 0 ||
                   main_thread_worker_state != MainThreadWorkerState::Idle
               ))
@@ -1218,12 +1234,17 @@ fn start_executing_work<B: ExtraBackendMethods>(
                    running == 0 &&
                    main_thread_worker_state == MainThreadWorkerState::Idle {
                     assert!(!started_lto);
-                    assert!(needs_lto.len() + lto_import_only_modules.len() > 0);
                     started_lto = true;
-                    let modules = mem::replace(&mut needs_lto, Vec::new());
+
+                    let needs_fat_lto =
+                        mem::replace(&mut needs_fat_lto, Vec::new());
+                    let needs_thin_lto =
+                        mem::replace(&mut needs_thin_lto, Vec::new());
                     let import_only_modules =
                         mem::replace(&mut lto_import_only_modules, Vec::new());
-                    for (work, cost) in generate_lto_work(&cgcx, modules, import_only_modules) {
+
+                    for (work, cost) in generate_lto_work(&cgcx, needs_fat_lto,
+                                                          needs_thin_lto, import_only_modules) {
                         let insertion_index = work_items
                             .binary_search_by_key(&cost, |&(_, cost)| cost)
                             .unwrap_or_else(|e| e);
@@ -1395,10 +1416,15 @@ fn start_executing_work<B: ExtraBackendMethods>(
                         }
                     }
                 }
-                Message::NeedsLTO { result, worker_id } => {
+                Message::NeedsFatLTO { result, worker_id } => {
                     assert!(!started_lto);
                     free_worker(worker_id);
-                    needs_lto.push(result);
+                    needs_fat_lto.push(result);
+                }
+                Message::NeedsThinLTO { result, worker_id } => {
+                    assert!(!started_lto);
+                    free_worker(worker_id);
+                    needs_thin_lto.push(result);
                 }
                 Message::AddImportOnlyModule { module_data, work_product } => {
                     assert!(!started_lto);
@@ -1496,8 +1522,11 @@ fn spawn_work<B: ExtraBackendMethods>(
                     Some(WorkItemResult::Compiled(m)) => {
                         Message::Done::<B> { result: Ok(m), worker_id }
                     }
-                    Some(WorkItemResult::NeedsLTO(m)) => {
-                        Message::NeedsLTO::<B> { result: m, worker_id }
+                    Some(WorkItemResult::NeedsFatLTO(m)) => {
+                        Message::NeedsFatLTO::<B> { result: m, worker_id }
+                    }
+                    Some(WorkItemResult::NeedsThinLTO(m)) => {
+                        Message::NeedsThinLTO::<B> { result: m, worker_id }
                     }
                     None => Message::Done::<B> { result: Err(()), worker_id }
                 };
