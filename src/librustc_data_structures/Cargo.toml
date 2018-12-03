@@ -11,6 +11,7 @@ crate-type = ["dylib"]
 [dependencies]
 ena = "0.11"
 log = "0.4"
+rustc_local_drop_derive = { path = "../librustc_local_drop_derive" }
 rustc_cratesio_shim = { path = "../librustc_cratesio_shim" }
 serialize = { path = "../libserialize" }
 graphviz = { path = "../libgraphviz" }

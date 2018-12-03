@@ -1,0 +1,12 @@
+[package]
+name = "rustc_local_drop_derive"
+version = "0.1.0"
+authors = ["The Rust Project Developers"]
+
+[lib]
+proc-macro = true
+
+[dependencies]
+synstructure = "0.10.1"
+proc-macro2 = "0.4.24"
+quote = "0.6.10"

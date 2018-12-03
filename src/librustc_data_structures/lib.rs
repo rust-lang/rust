@@ -20,6 +20,7 @@
       html_favicon_url = "https://www.rust-lang.org/favicon.ico",
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 
+#![feature(core_intrinsics)]
 #![feature(in_band_lifetimes)]
 #![feature(unboxed_closures)]
 #![feature(fn_traits)]
@@ -42,6 +43,7 @@ extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
 extern crate parking_lot;
+extern crate rustc_local_drop_derive;
 #[macro_use]
 extern crate cfg_if;
 extern crate stable_deref_trait;
@@ -56,9 +58,14 @@ extern crate smallvec;
 #[allow(unused_extern_crates)]
 extern crate rustc_cratesio_shim;
 
+mod rustc_data_structures {
+      pub use ::*;
+}
+
 pub use rustc_serialize::hex::ToHex;
 
 pub mod macros;
+#[macro_use] pub mod local_drop;
 pub mod svh;
 pub mod base_n;
 pub mod bit_set;

@@ -35,7 +35,8 @@
 extern crate alloc;
 extern crate rustc_data_structures;
 
-use rustc_data_structures::sync::MTLock;
+use rustc_data_structures::local_drop::LocalDrop;
+use rustc_data_structures::sync::{MTLock, WorkerLocal};
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -447,12 +448,39 @@ impl<T> SyncTypedArena<T> {
     }
 }
 
-#[derive(Default)]
+struct DropType {
+    drop_fn: unsafe fn(*mut u8),
+    obj: *mut u8,
+}
+
+unsafe fn drop_for_type<T>(to_drop: *mut u8) {
+    std::ptr::drop_in_place(to_drop as *mut T)
+}
+
+impl Drop for DropType {
+    fn drop(&mut self) {
+        unsafe {
+            (self.drop_fn)(self.obj)
+        }
+    }
+}
+
 pub struct SyncDroplessArena {
+    // Ordered so `deferred` gets dropped before the arena
+    // since its destructor can reference memory in the arena
+    deferred: WorkerLocal<RefCell<Vec<DropType>>>,
     lock: MTLock<DroplessArena>,
 }
 
 impl SyncDroplessArena {
+    #[inline]
+    pub fn new() -> Self {
+        SyncDroplessArena {
+            lock: Default::default(),
+            deferred: WorkerLocal::new(|_| Default::default()),
+        }
+    }
+
     #[inline(always)]
     pub fn in_arena<T: ?Sized>(&self, ptr: *const T) -> bool {
         self.lock.lock().in_arena(ptr)
@@ -477,6 +505,26 @@ impl SyncDroplessArena {
     {
         // Extend the lifetime of the result since it's limited to the lock guard
         unsafe { &mut *(self.lock.lock().alloc_slice(slice) as *mut [T]) }
+    }
+
+    #[inline]
+    pub fn promote<T: LocalDrop>(&self, object: T) -> &T {
+        // Validate that T is really LocalDrop at runtime
+        T::check();
+
+        let mem = self.alloc_raw(mem::size_of::<T>(), mem::align_of::<T>()) as *mut _ as *mut T;
+        let result = unsafe {
+            // Write into uninitialized memory.
+            ptr::write(mem, object);
+            &mut *mem
+        };
+        // Record the destructor after doing the allocation as that may panic
+        // and would cause `object` destuctor to run twice if it was recorded before
+        self.deferred.borrow_mut().push(DropType {
+            drop_fn: drop_for_type::<T>,
+            obj: result as *mut T as *mut u8,
+        });
+        result
     }
 }
 

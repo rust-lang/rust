@@ -55,6 +55,7 @@ use util::nodemap::{DefIdMap, DefIdSet, ItemLocalMap};
 use util::nodemap::{FxHashMap, FxHashSet};
 use rustc_data_structures::interner::HashInterner;
 use smallvec::SmallVec;
+use rustc_data_structures::local_drop::LocalDrop;
 use rustc_data_structures::stable_hasher::{HashStable, hash_stable_hashmap,
                                            StableHasher, StableHasherResult,
                                            StableVec};
@@ -92,7 +93,7 @@ impl<'tcx> AllArenas<'tcx> {
     pub fn new() -> Self {
         AllArenas {
             global: WorkerLocal::new(|_| GlobalArenas::default()),
-            interner: SyncDroplessArena::default(),
+            interner: SyncDroplessArena::new(),
         }
     }
 }
@@ -969,6 +970,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             gcx: self.gcx,
             interners: &self.gcx.global_interners,
         }
+    }
+
+    #[inline(always)]
+    pub fn promote<T: LocalDrop>(&self, object: T) -> &'gcx T {
+        self.gcx.global_interners.arena.promote(object)
+    }
+
+    #[inline(always)]
+    pub fn promote_vec<T: LocalDrop>(&self, vec: Vec<T>) -> &'gcx [T] {
+        &self.gcx.global_interners.arena.promote(vec)[..]
     }
 
     pub fn alloc_generics(self, generics: ty::Generics) -> &'gcx ty::Generics {

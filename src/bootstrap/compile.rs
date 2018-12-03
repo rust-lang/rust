@@ -1064,15 +1064,9 @@ pub fn run_cargo(builder: &Builder,
 
             let filename = Path::new(&*filename);
 
-            // If this was an output file in the "host dir" we don't actually
-            // worry about it, it's not relevant for us.
-            if filename.starts_with(&host_root_dir) {
-                continue;
-            }
-
             // If this was output in the `deps` dir then this is a precise file
             // name (hash included) so we start tracking it.
-            if filename.starts_with(&target_deps_dir) {
+            if filename.starts_with(&host_root_dir) || filename.starts_with(&target_deps_dir) {
                 deps.push(filename.to_path_buf());
                 continue;
             }
