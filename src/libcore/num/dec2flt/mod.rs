@@ -149,7 +149,7 @@ macro_rules! from_str_float_impl {
             /// In some situations, some strings that should create a valid float
             /// instead return an error. See [issue #31407] for details.
             ///
-            /// [#31407]: https://github.com/rust-lang/rust/issues/31407
+            /// [issue #31407]: https://github.com/rust-lang/rust/issues/31407
             ///
             /// # Arguments
             ///
