@@ -36,7 +36,7 @@ const CFG: &str = "cfg";
 
 /// For typedef, constants, and statics
 const BASE_CONST: &[&str] = &[
-    label_strs::TypeOfItem,
+    label_strs::TypeOf,
 ];
 
 /// DepNodes for functions + methods
@@ -45,7 +45,7 @@ const BASE_FN: &[&str] = &[
     label_strs::FnSignature,
     label_strs::GenericsOfItem,
     label_strs::PredicatesOfItem,
-    label_strs::TypeOfItem,
+    label_strs::TypeOf,
 
     // And a big part of compilation (that we eventually want to cache) is type inference
     // information:
@@ -80,7 +80,7 @@ const BASE_MIR: &[&str] = &[
 const BASE_STRUCT: &[&str] = &[
     label_strs::GenericsOfItem,
     label_strs::PredicatesOfItem,
-    label_strs::TypeOfItem,
+    label_strs::TypeOf,
 ];
 
 /// Trait definition `DepNode`s.
@@ -179,7 +179,7 @@ const LABELS_TRAIT: &[&[&str]] = &[
 // Fields are kind of separate from their containers, as they can change independently from
 // them. We should at least check
 //
-//     TypeOfItem for these.
+//     TypeOf for these.
 
 type Labels = FxHashSet<String>;
 

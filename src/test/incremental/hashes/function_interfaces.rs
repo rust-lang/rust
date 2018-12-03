@@ -117,7 +117,7 @@ pub fn type_parameter() {}
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg = "cfail2",
-              except = "Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
+              except = "Hir, HirBody, GenericsOfItem, TypeOf, PredicatesOfItem")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn type_parameter<T>() {}
 
@@ -162,7 +162,7 @@ pub fn lifetime_bound<'a, T>() {}
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg = "cfail2",
-              except = "Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
+              except = "Hir, HirBody, GenericsOfItem, TypeOf, PredicatesOfItem")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn lifetime_bound<'a, T: 'a>() {}
 
@@ -196,7 +196,7 @@ pub fn second_lifetime_bound<'a, 'b, T: 'a>() {}
 
 #[cfg(not(cfail1))]
 #[rustc_clean(cfg = "cfail2",
-              except = "Hir, HirBody, GenericsOfItem, TypeOfItem, PredicatesOfItem")]
+              except = "Hir, HirBody, GenericsOfItem, TypeOf, PredicatesOfItem")]
 #[rustc_clean(cfg = "cfail3")]
 pub fn second_lifetime_bound<'a, 'b, T: 'a + 'b>() {}
 

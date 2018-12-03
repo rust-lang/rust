@@ -97,7 +97,7 @@ impl Foo {
 #[rustc_clean(cfg="cfail2", except="Hir,HirBody")]
 #[rustc_clean(cfg="cfail3")]
 impl Foo {
-    #[rustc_dirty(cfg="cfail2", except="TypeOfItem,PredicatesOfItem")]
+    #[rustc_dirty(cfg="cfail2", except="TypeOf,PredicatesOfItem")]
     #[rustc_clean(cfg="cfail3")]
     pub fn method_selfness(&self) { }
 }
@@ -334,7 +334,7 @@ impl Foo {
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(
         cfg="cfail2",
-        except="Hir,HirBody,GenericsOfItem,PredicatesOfItem,TypeOfItem",
+        except="Hir,HirBody,GenericsOfItem,PredicatesOfItem,TypeOf",
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_type_parameter_to_method<T>(&self) { }
@@ -354,7 +354,7 @@ impl Foo {
 impl Foo {
     #[rustc_clean(
         cfg="cfail2",
-        except="Hir,HirBody,GenericsOfItem,PredicatesOfItem,TypeOfItem,TypeckTables"
+        except="Hir,HirBody,GenericsOfItem,PredicatesOfItem,TypeOf,TypeckTables"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_lifetime_bound_to_lifetime_param_of_method<'a, 'b: 'a>(&self) { }
@@ -382,7 +382,7 @@ impl Foo {
     // body will be affected. So if you start to see `TypeckTables`
     // appear dirty, that might be the cause. -nmatsakis
     #[rustc_clean(cfg="cfail2", except="Hir,HirBody,GenericsOfItem,PredicatesOfItem,\
-                                        TypeOfItem")]
+                                        TypeOf")]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_lifetime_bound_to_type_param_of_method<'a, T: 'a>(&self) { }
 }
@@ -447,7 +447,7 @@ impl Bar<u32> {
 impl<T> Bar<T> {
     #[rustc_clean(
         cfg="cfail2",
-        except="GenericsOfItem,FnSignature,TypeckTables,TypeOfItem,MirOptimized,MirBuilt"
+        except="GenericsOfItem,FnSignature,TypeckTables,TypeOf,MirOptimized,MirBuilt"
     )]
     #[rustc_clean(cfg="cfail3")]
     pub fn add_type_parameter_to_impl(&self) { }
