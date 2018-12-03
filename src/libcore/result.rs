@@ -933,6 +933,26 @@ impl<T: Default, E> Result<T, E> {
             Err(_) => Default::default(),
         }
     }
+
+    /// Maps the contained value of an [`Ok`] using the `Into` trait
+    ///
+    /// [`Into`]: ../convert/trait.Into.html
+    pub fn map_into<U>(self) -> Result<U, E>
+    where
+        T: Into<U>
+    {
+        self.map(T::into)
+    }
+    
+    /// Maps the contained value of an [`Err`] using the `Into` trait
+    ///
+    /// [`Into`]: ../convert/trait.Into.html
+    fn map_err_into<F>(self) -> Result<T, F>
+    where
+        E: Into<F>
+    {
+        self.map_err(E::into)
+    }
 }
 
 #[unstable(feature = "inner_deref", reason = "newly added", issue = "50264")]
