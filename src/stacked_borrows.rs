@@ -322,9 +322,7 @@ impl<'tcx> Stack {
             }
             return;
         }
-        if self.frozen_since.is_some() {
-            bug!("Trying to create non-frozen reference to frozen location");
-        }
+        assert!(self.frozen_since.is_none(), "Trying to create non-frozen reference to frozen location");
 
         // Push new item to the stack.
         let itm = match bor {
