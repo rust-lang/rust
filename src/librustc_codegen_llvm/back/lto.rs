@@ -48,18 +48,11 @@ pub fn crate_type_allows_lto(crate_type: config::CrateType) -> bool {
     }
 }
 
-/// Performs LTO, which in the case of full LTO means merging all modules into
-/// a single one and returning it for further optimizing. For ThinLTO, it will
-/// do the global analysis necessary and return two lists, one of the modules
-/// the need optimization and another for modules that can simply be copied over
-/// from the incr. comp. cache.
-pub(crate) fn run(cgcx: &CodegenContext<LlvmCodegenBackend>,
-                  modules: Vec<ModuleCodegen<ModuleLlvm>>,
-                  cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
-                  timeline: &mut Timeline)
-    -> Result<(Vec<LtoModuleCodegen<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError>
+fn prepare_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,
+               timeline: &mut Timeline,
+               diag_handler: &Handler)
+    -> Result<(Vec<CString>, Vec<(SerializedModule<ModuleBuffer>, CString)>), FatalError>
 {
-    let diag_handler = cgcx.create_diag_handler();
     let export_threshold = match cgcx.lto {
         // We're just doing LTO for our one crate
         Lto::ThinLocal => SymbolExportLevel::Rust,
@@ -144,36 +137,56 @@ pub(crate) fn run(cgcx: &CodegenContext<LlvmCodegenBackend>,
         }
     }
 
+    Ok((symbol_white_list, upstream_modules))
+}
+
+/// Performs fat LTO by merging all modules into a single one and returning it
+/// for further optimization.
+pub(crate) fn run_fat(cgcx: &CodegenContext<LlvmCodegenBackend>,
+                      modules: Vec<ModuleCodegen<ModuleLlvm>>,
+                      _cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
+                      timeline: &mut Timeline)
+    -> Result<(Vec<LtoModuleCodegen<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError>
+{
+    let diag_handler = cgcx.create_diag_handler();
+    let (symbol_white_list, upstream_modules) = prepare_lto(cgcx, timeline, &diag_handler)?;
     let symbol_white_list = symbol_white_list.iter()
                                              .map(|c| c.as_ptr())
                                              .collect::<Vec<_>>();
-    match cgcx.lto {
-        Lto::Fat => {
-            assert!(cached_modules.is_empty());
-            let opt_jobs = fat_lto(cgcx,
-                                   &diag_handler,
-                                   modules,
-                                   upstream_modules,
-                                   &symbol_white_list,
-                                   timeline);
-            opt_jobs.map(|opt_jobs| (opt_jobs, vec![]))
-        }
-        Lto::Thin |
-        Lto::ThinLocal => {
-            if cgcx.opts.debugging_opts.cross_lang_lto.enabled() {
-                unreachable!("We should never reach this case if the LTO step \
-                              is deferred to the linker");
-            }
-            thin_lto(cgcx,
-                     &diag_handler,
-                     modules,
-                     upstream_modules,
-                     cached_modules,
-                     &symbol_white_list,
-                     timeline)
-        }
-        Lto::No => unreachable!(),
+    let opt_jobs = fat_lto(cgcx,
+                           &diag_handler,
+                           modules,
+                           upstream_modules,
+                           &symbol_white_list,
+                           timeline);
+    opt_jobs.map(|opt_jobs| (opt_jobs, vec![]))
+}
+
+/// Performs thin LTO by performing necessary global analysis and returning two
+/// lists, one of the modules that need optimization and another for modules that
+/// can simply be copied over from the incr. comp. cache.
+pub(crate) fn run_thin(cgcx: &CodegenContext<LlvmCodegenBackend>,
+                       modules: Vec<ModuleCodegen<ModuleLlvm>>,
+                       cached_modules: Vec<(SerializedModule<ModuleBuffer>, WorkProduct)>,
+                       timeline: &mut Timeline)
+    -> Result<(Vec<LtoModuleCodegen<LlvmCodegenBackend>>, Vec<WorkProduct>), FatalError>
+{
+    let diag_handler = cgcx.create_diag_handler();
+    let (symbol_white_list, upstream_modules) = prepare_lto(cgcx, timeline, &diag_handler)?;
+    let symbol_white_list = symbol_white_list.iter()
+                                             .map(|c| c.as_ptr())
+                                             .collect::<Vec<_>>();
+    if cgcx.opts.debugging_opts.cross_lang_lto.enabled() {
+        unreachable!("We should never reach this case if the LTO step \
+                      is deferred to the linker");
     }
+    thin_lto(cgcx,
+             &diag_handler,
+             modules,
+             upstream_modules,
+             cached_modules,
+             &symbol_white_list,
+             timeline)
 }
 
 fn fat_lto(cgcx: &CodegenContext<LlvmCodegenBackend>,

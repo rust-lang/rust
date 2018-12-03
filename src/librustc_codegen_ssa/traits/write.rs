@@ -24,12 +24,18 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     type ThinData: Send + Sync;
     type ThinBuffer: ThinBufferMethods;
 
-    /// Performs LTO, which in the case of full LTO means merging all modules into
-    /// a single one and returning it for further optimizing. For ThinLTO, it will
-    /// do the global analysis necessary and return two lists, one of the modules
-    /// the need optimization and another for modules that can simply be copied over
-    /// from the incr. comp. cache.
-    fn run_lto(
+    /// Performs fat LTO by merging all modules into a single one and returning it
+    /// for further optimization.
+    fn run_fat_lto(
+        cgcx: &CodegenContext<Self>,
+        modules: Vec<ModuleCodegen<Self::Module>>,
+        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
+        timeline: &mut Timeline,
+    ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError>;
+    /// Performs thin LTO by performing necessary global analysis and returning two
+    /// lists, one of the modules that need optimization and another for modules that
+    /// can simply be copied over from the incr. comp. cache.
+    fn run_thin_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<ModuleCodegen<Self::Module>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,

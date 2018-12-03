@@ -176,13 +176,21 @@ impl WriteBackendMethods for LlvmCodegenBackend {
     fn print_pass_timings(&self) {
             unsafe { llvm::LLVMRustPrintPassTimings(); }
     }
-    fn run_lto(
+    fn run_fat_lto(
         cgcx: &CodegenContext<Self>,
         modules: Vec<ModuleCodegen<Self::Module>>,
         cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
         timeline: &mut Timeline
     ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
-        back::lto::run(cgcx, modules, cached_modules, timeline)
+        back::lto::run_fat(cgcx, modules, cached_modules, timeline)
+    }
+    fn run_thin_lto(
+        cgcx: &CodegenContext<Self>,
+        modules: Vec<ModuleCodegen<Self::Module>>,
+        cached_modules: Vec<(SerializedModule<Self::ModuleBuffer>, WorkProduct)>,
+        timeline: &mut Timeline
+    ) -> Result<(Vec<LtoModuleCodegen<Self>>, Vec<WorkProduct>), FatalError> {
+        back::lto::run_thin(cgcx, modules, cached_modules, timeline)
     }
     unsafe fn optimize(
         cgcx: &CodegenContext<Self>,
