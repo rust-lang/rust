@@ -268,13 +268,6 @@ fn main() {
             }
         }
 
-        // Force all crates compiled by this compiler to (a) be unstable and (b)
-        // allow the `rustc_private` feature to link to other unstable crates
-        // also in the sysroot.
-        if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
-            cmd.arg("-Z").arg("force-unstable-if-unmarked");
-        }
-
         if let Ok(map) = env::var("RUSTC_DEBUGINFO_MAP") {
             cmd.arg("--remap-path-prefix").arg(&map);
         }
@@ -292,6 +285,13 @@ fn main() {
                 cmd.arg("-C").arg("target-feature=-crt-static");
             }
         }
+    }
+
+    // Force all crates compiled by this compiler to (a) be unstable and (b)
+    // allow the `rustc_private` feature to link to other unstable crates
+    // also in the sysroot.
+    if env::var_os("RUSTC_FORCE_UNSTABLE").is_some() {
+        cmd.arg("-Z").arg("force-unstable-if-unmarked");
     }
 
     if env::var_os("RUSTC_PARALLEL_QUERIES").is_some() {
