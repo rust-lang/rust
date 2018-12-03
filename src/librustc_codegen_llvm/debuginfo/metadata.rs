@@ -22,7 +22,7 @@ use abi;
 use value::Value;
 
 use llvm;
-use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor,
+use llvm::debuginfo::{DIArray, DIType, DIFile, DIScope, DIDescriptor,
                       DICompositeType, DILexicalBlock, DIFlags};
 use llvm_util;
 
@@ -35,12 +35,14 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc::ty::Instance;
 use common::CodegenCx;
 use rustc::ty::{self, AdtKind, ParamEnv, Ty, TyCtxt};
-use rustc::ty::layout::{self, Align, HasDataLayout, Integer, IntegerExt, LayoutOf,
+use rustc::ty::layout::{self, Align, Integer, IntegerExt, LayoutOf,
                         PrimitiveExt, Size, TyLayout};
+use rustc::ty::subst::UnpackedKind;
 use rustc::session::config;
 use rustc::util::nodemap::FxHashMap;
 use rustc_fs_util::path_to_c_string;
 use rustc_data_structures::small_c_str::SmallCStr;
+use rustc_target::abi::HasDataLayout;
 
 use libc::{c_uint, c_longlong};
 use std::ffi::CString;
@@ -273,6 +275,7 @@ impl RecursiveTypeDescription<'ll, 'tcx> {
 
                 // ... and attach them to the stub to complete it.
                 set_members_of_composite_type(cx,
+                                              unfinished_type,
                                               member_holding_stub,
                                               member_descriptions);
                 return MetadataCreationResult::new(metadata_stub, true);
@@ -1214,6 +1217,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                     member_description_factory.create_member_descriptions(cx);
 
                 set_members_of_composite_type(cx,
+                                              self.enum_type,
                                               variant_type_metadata,
                                               member_descriptions);
                 vec![
@@ -1254,6 +1258,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         .create_member_descriptions(cx);
 
                     set_members_of_composite_type(cx,
+                                                  self.enum_type,
                                                   variant_type_metadata,
                                                   member_descriptions);
                     MemberDescription {
@@ -1295,6 +1300,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                         member_description_factory.create_member_descriptions(cx);
 
                     set_members_of_composite_type(cx,
+                                                  self.enum_type,
                                                   variant_type_metadata,
                                                   variant_member_descriptions);
 
@@ -1354,6 +1360,7 @@ impl EnumMemberDescriptionFactory<'ll, 'tcx> {
                             .create_member_descriptions(cx);
 
                         set_members_of_composite_type(cx,
+                                                      self.enum_type,
                                                       variant_type_metadata,
                                                       member_descriptions);
 
@@ -1765,13 +1772,15 @@ fn composite_type_metadata(
                                                      containing_scope);
     // ... and immediately create and add the member descriptions.
     set_members_of_composite_type(cx,
+                                  composite_type,
                                   composite_type_metadata,
                                   member_descriptions);
 
     composite_type_metadata
 }
 
-fn set_members_of_composite_type(cx: &CodegenCx<'ll, '_>,
+fn set_members_of_composite_type(cx: &CodegenCx<'ll, 'tcx>,
+                                 composite_type: Ty<'tcx>,
                                  composite_type_metadata: &'ll DICompositeType,
                                  member_descriptions: Vec<MemberDescription<'ll>>) {
     // In some rare cases LLVM metadata uniquing would lead to an existing type
@@ -1815,10 +1824,57 @@ fn set_members_of_composite_type(cx: &CodegenCx<'ll, '_>,
         })
         .collect();
 
+    let type_params = compute_type_parameters(cx, composite_type);
     unsafe {
         let type_array = create_DIArray(DIB(cx), &member_metadata[..]);
-        llvm::LLVMRustDICompositeTypeSetTypeArray(
-            DIB(cx), composite_type_metadata, type_array);
+        llvm::LLVMRustDICompositeTypeReplaceArrays(
+            DIB(cx), composite_type_metadata, Some(type_array), type_params);
+    }
+}
+
+// Compute the type parameters for a type, if any, for the given
+// metadata.
+fn compute_type_parameters(cx: &CodegenCx<'ll, 'tcx>, ty: Ty<'tcx>) -> Option<&'ll DIArray> {
+    if let ty::Adt(def, substs) = ty.sty {
+        if !substs.types().next().is_none() {
+            let generics = cx.tcx.generics_of(def.did);
+            let names = get_parameter_names(cx, generics);
+            let template_params: Vec<_> = substs.iter().zip(names).filter_map(|(kind, name)| {
+                if let UnpackedKind::Type(ty) = kind.unpack() {
+                    let actual_type = cx.tcx.normalize_erasing_regions(ParamEnv::reveal_all(), ty);
+                    let actual_type_metadata =
+                        type_metadata(cx, actual_type, syntax_pos::DUMMY_SP);
+                    let name = SmallCStr::new(&name.as_str());
+                    Some(unsafe {
+
+                        Some(llvm::LLVMRustDIBuilderCreateTemplateTypeParameter(
+                            DIB(cx),
+                            None,
+                            name.as_ptr(),
+                            actual_type_metadata,
+                            unknown_file_metadata(cx),
+                            0,
+                            0,
+                        ))
+                    })
+                } else {
+                    None
+                }
+            }).collect();
+
+            return Some(create_DIArray(DIB(cx), &template_params[..]));
+        }
+    }
+    return Some(create_DIArray(DIB(cx), &[]));
+
+    fn get_parameter_names(cx: &CodegenCx,
+                           generics: &ty::Generics)
+                           -> Vec<InternedString> {
+        let mut names = generics.parent.map_or(vec![], |def_id| {
+            get_parameter_names(cx, cx.tcx.generics_of(def_id))
+        });
+        names.extend(generics.params.iter().map(|param| param.name));
+        names
     }
 }
 

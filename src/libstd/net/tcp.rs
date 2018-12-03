@@ -1548,8 +1548,9 @@ mod tests {
 
         let mut buf = [0; 10];
         let start = Instant::now();
-        let kind = stream.read(&mut buf).err().expect("expected error").kind();
-        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
+        let kind = stream.read_exact(&mut buf).err().expect("expected error").kind();
+        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
+                "unexpected_error: {:?}", kind);
         assert!(start.elapsed() > Duration::from_millis(400));
         drop(listener);
     }
@@ -1570,8 +1571,9 @@ mod tests {
         assert_eq!(b"hello world", &buf[..]);
 
         let start = Instant::now();
-        let kind = stream.read(&mut buf).err().expect("expected error").kind();
-        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut);
+        let kind = stream.read_exact(&mut buf).err().expect("expected error").kind();
+        assert!(kind == ErrorKind::WouldBlock || kind == ErrorKind::TimedOut,
+                "unexpected_error: {:?}", kind);
         assert!(start.elapsed() > Duration::from_millis(400));
         drop(listener);
     }
