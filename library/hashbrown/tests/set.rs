@@ -2,7 +2,7 @@ extern crate hashbrown;
 extern crate rand;
 
 use hashbrown::HashSet;
-use rand::{Rng, SeedableRng, XorShiftRng, distributions::Alphanumeric};
+use rand::{distributions::Alphanumeric, Rng, SeedableRng, XorShiftRng};
 
 #[test]
 fn test_hashset_insert_remove() {
