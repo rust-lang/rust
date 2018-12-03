@@ -209,6 +209,13 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub ORDER_DEPENDENT_TRAIT_OBJECTS,
+    Deny,
+    // FIXME: ENG
+    "trait-object types are different depending on marker-trait order"
+}
+
+declare_lint! {
     pub BAD_REPR,
     Warn,
     "detects incorrect use of `repr` attribute"
@@ -405,6 +412,7 @@ impl LintPass for HardwiredLints {
             PARENTHESIZED_PARAMS_IN_TYPES_AND_MODULES,
             LATE_BOUND_LIFETIME_ARGUMENTS,
             INCOHERENT_FUNDAMENTAL_IMPLS,
+            ORDER_DEPENDENT_TRAIT_OBJECTS,
             DEPRECATED,
             UNUSED_UNSAFE,
             UNUSED_MUT,

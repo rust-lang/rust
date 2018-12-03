@@ -294,6 +294,11 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             edition: None,
         },
         FutureIncompatibleInfo {
+            id: LintId::of(ORDER_DEPENDENT_TRAIT_OBJECTS),
+            reference: "issue #33140 <https://github.com/rust-lang/rust/issues/33140>",
+            edition: None,
+        },
+        FutureIncompatibleInfo {
             id: LintId::of(TYVAR_BEHIND_RAW_POINTER),
             reference: "issue #46906 <https://github.com/rust-lang/rust/issues/46906>",
             edition: Some(Edition::Edition2018),
