@@ -303,14 +303,28 @@ impl<'tcx> Stack {
     /// is met: We cannot push `Uniq` onto frozen stacks.
     /// `kind` indicates which kind of reference is being created.
     fn create(&mut self, bor: Borrow, kind: RefKind) {
-        if self.frozen_since.is_some() {
-            // A frozen location?  Possible if we create a barrier, then push again.
-            assert!(bor.is_shared(), "We should never try creating a unique borrow for a frozen stack");
-            trace!("create: Not doing anything on frozen location");
+        // When creating a frozen reference, freeze.  This ensures F1.
+        // We also do *not* push anything else to the stack, making sure that no nother kind
+        // of access (like writing through raw pointers) is permitted.
+        if kind == RefKind::Frozen {
+            let bor_t = match bor {
+                Borrow::Shr(Some(t)) => t,
+                _ => bug!("Creating illegal borrow {:?} for frozen ref", bor),
+            };
+            // It is possible that we already are frozen (e.g. if we just pushed a barrier,
+            // the redundancy check would not have kicked in).
+            match self.frozen_since {
+                Some(loc_t) => assert!(loc_t <= bor_t, "Trying to freeze location for longer than it was already frozen"),
+                None => {
+                    trace!("create: Freezing");
+                    self.frozen_since = Some(bor_t);
+                }
+            }
             return;
         }
-        // First, push.  We do this even if we will later freeze, because we
-        // will allow mutation of shared data at the expense of unfreezing.
+        assert!(self.frozen_since.is_none(), "Trying to create non-frozen reference to frozen location");
+
+        // Push new item to the stack.
         let itm = match bor {
             Borrow::Uniq(t) => BorStackItem::Uniq(t),
             Borrow::Shr(_) => BorStackItem::Shr,
@@ -324,15 +338,6 @@ impl<'tcx> Stack {
             // This ensures U1.
             trace!("create: Pushing {:?}", itm);
             self.borrows.push(itm);
-        }
-        // Then, maybe freeze.  This is part 2 of ensuring F1.
-        if kind == RefKind::Frozen {
-            let bor_t = match bor {
-                Borrow::Shr(Some(t)) => t,
-                _ => bug!("Creating illegal borrow {:?} for frozen ref", bor),
-            };
-            trace!("create: Freezing");
-            self.frozen_since = Some(bor_t);
         }
     }
 

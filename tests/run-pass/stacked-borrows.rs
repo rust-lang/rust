@@ -4,10 +4,11 @@ fn main() {
     read_does_not_invalidate1();
     read_does_not_invalidate2();
     ref_raw_int_raw();
-    mut_shr_raw();
     mut_raw_then_mut_shr();
+    mut_shr_then_mut_raw();
     mut_raw_mut();
     partially_invalidate_mut();
+    drop_after_sharing();
 }
 
 // Deref a raw ptr to access a field of a large struct, where the field
@@ -53,18 +54,6 @@ fn ref_raw_int_raw() {
     assert_eq!(unsafe { *xraw }, 3);
 }
 
-// Creating a raw from a `&mut` through an `&` works, even if we
-// write through that raw.
-fn mut_shr_raw() {
-    let mut x = 2;
-    {
-        let xref = &mut x;
-        let xraw = &*xref as *const i32 as *mut i32;
-        unsafe { *xraw = 4; }
-    }
-    assert_eq!(x, 4);
-}
-
 // Escape a mut to raw, then share the same mut and use the share, then the raw.
 // That should work.
 fn mut_raw_then_mut_shr() {
@@ -75,6 +64,16 @@ fn mut_raw_then_mut_shr() {
     assert_eq!(*xshr, 2);
     unsafe { *xraw = 4; }
     assert_eq!(x, 4);
+}
+
+// Create first a shared reference and then a raw pointer from a `&mut`
+// should permit mutation through that raw pointer.
+fn mut_shr_then_mut_raw() {
+    let xref = &mut 2;
+    let _xshr = &*xref;
+    let xraw = xref as *mut _;
+    unsafe { *xraw = 3; }
+    assert_eq!(*xref, 3);
 }
 
 // Ensure that if we derive from a mut a raw, and then from that a mut,
@@ -106,4 +105,10 @@ fn partially_invalidate_mut() {
     data.1 += 1; // the deref overlaps with `shard`, but that is okay; the access does not overlap.
     *shard += 1; // so we can still use `shard`.
     assert_eq!(*data, (1, 1));
+}
+
+// Make sure that we can handle the situation where a loaction is frozen when being dropped.
+fn drop_after_sharing() {
+    let x = String::from("hello!");
+    let _len = x.len();
 }
