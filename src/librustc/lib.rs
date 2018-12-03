@@ -148,6 +148,7 @@ pub mod util {
 #[doc(hidden)]
 mod rustc {
     pub use crate::lint;
+    pub use crate::ich;
 }
 
 // FIXME(#27438): right now the unit tests of librustc don't refer to any actual

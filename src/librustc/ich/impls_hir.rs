@@ -157,12 +157,6 @@ impl_stable_hash_for!(struct ast::Label {
     ident
 });
 
-impl_stable_hash_for!(struct hir::Lifetime {
-    hir_id,
-    span,
-    name
-});
-
 impl_stable_hash_for!(struct hir::Path {
     span,
     def,
