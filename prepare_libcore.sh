@@ -17,7 +17,7 @@ pushd $DST_DIR
 git init
 git add .
 git commit -m "Initial commit" -q
-git apply ../../000*.patch
+git apply ../../patches/*.patch
 popd
 
 # `alloc_system` has been merged with libstd, which doesn't build yet.

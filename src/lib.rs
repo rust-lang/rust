@@ -173,6 +173,11 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
         let mut flags_builder = settings::builder();
         flags_builder.enable("is_pic").unwrap();
+        flags_builder.set("enable_verifier", if cfg!(debug_assertions) {
+            "true"
+        } else {
+            "false"
+        }).unwrap();
 
         use rustc::session::config::OptLevel;
         match tcx.sess.opts.optimize {

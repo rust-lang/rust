@@ -14,7 +14,7 @@ script:
   - cargo install xargo || echo "Skipping xargo install"
   - cargo install hyperfine || echo "Skipping hyperfine install"
   - ./prepare_libcore.sh
-  - ./build.sh
+  - ./test.sh
 
 env:
   - RUST_BACKTRACE=1
