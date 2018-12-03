@@ -22,7 +22,7 @@ use core::panic::BoxMeUp;
 use io::prelude::*;
 
 use any::Any;
-use cell::RefCell;
+use cell::{Cell, RefCell};
 use core::panic::{PanicInfo, Location};
 use fmt;
 use intrinsics;
@@ -229,19 +229,17 @@ fn default_hook(info: &PanicInfo) {
     }
 }
 
+#[thread_local]
+static PANIC_COUNT: Cell<usize> = Cell::new(0);
 
 #[cfg(not(test))]
 #[doc(hidden)]
+#[inline]
 #[unstable(feature = "update_panic_count", issue = "0")]
 pub fn update_panic_count(amt: isize) -> usize {
-    use cell::Cell;
-    thread_local! { static PANIC_COUNT: Cell<usize> = Cell::new(0) }
-
-    PANIC_COUNT.with(|c| {
-        let next = (c.get() as isize + amt) as usize;
-        c.set(next);
-        return next
-    })
+    let next = (PANIC_COUNT.get() as isize + amt) as usize;
+    PANIC_COUNT.set(next);
+    next
 }
 
 #[cfg(test)]
@@ -313,8 +311,9 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any + Send>> {
 }
 
 /// Determines whether the current thread is unwinding because of panic.
+#[inline]
 pub fn panicking() -> bool {
-    update_panic_count(0) != 0
+    PANIC_COUNT.get() != 0
 }
 
 /// Entry point of panic from the libcore crate.
