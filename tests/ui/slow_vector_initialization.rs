@@ -13,7 +13,6 @@ fn main() {
     resize_vector();
     extend_vector();
     mixed_extend_resize_vector();
-    unsafe_vector();
 }
 
 fn extend_vector() {
@@ -61,14 +60,6 @@ fn resize_vector() {
     // Reinitialization should be warned
     vec1 = Vec::with_capacity(10);
     vec1.resize(10, 0);
-}
-
-fn unsafe_vector() {
-    let mut unsafe_vec: Vec<u8> = Vec::with_capacity(200);
-
-    unsafe {
-        unsafe_vec.set_len(200);
-    }
 }
 
 fn do_stuff(vec: &mut Vec<u8>) {

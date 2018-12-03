@@ -112,3 +112,14 @@ declare_deprecated_lint! {
     pub IF_LET_REDUNDANT_PATTERN_MATCHING,
     "this lint has been changed to redundant_pattern_matching"
 }
+
+/// **What it does:** Nothing. This lint has been deprecated.
+///
+/// **Deprecation reason:** This lint used to suggest replacing `let mut vec =
+/// Vec::with_capacity(n); vec.set_len(n);` with `let vec = vec![0; n];`. The
+/// replacement has very different performance characteristics so the lint is
+/// deprecated.
+declare_deprecated_lint! {
+    pub UNSAFE_VECTOR_INITIALIZATION,
+    "the replacement suggested by this lint had substantially different behavior"
+}

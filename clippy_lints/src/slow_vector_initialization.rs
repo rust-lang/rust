@@ -39,32 +39,12 @@ declare_clippy_lint! {
     "slow vector initialization"
 }
 
-/// **What it does:** Checks unsafe vector initialization
-///
-/// **Why is this bad?** Changing the length of a vector may expose uninitialized memory, which
-/// can lead to memory safety issues
-///
-/// **Known problems:** None.
-///
-/// **Example:**
-/// ```rust
-/// let mut vec1 = Vec::with_capacity(len);
-/// unsafe {
-///     vec1.set_len(len);
-/// }
-/// ```
-declare_clippy_lint! {
-    pub UNSAFE_VECTOR_INITIALIZATION,
-    correctness,
-    "unsafe vector initialization"
-}
-
 #[derive(Copy, Clone, Default)]
 pub struct Pass;
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(SLOW_VECTOR_INITIALIZATION, UNSAFE_VECTOR_INITIALIZATION,)
+        lint_array!(SLOW_VECTOR_INITIALIZATION,)
     }
 }
 
@@ -90,9 +70,6 @@ enum InitializationType<'tcx> {
 
     /// Resize is a slow initialization with the form `vec.resize(.., 0)`
     Resize(&'tcx Expr),
-
-    /// UnsafeSetLen is a slow initialization with the form `vec.set_len(..)`
-    UnsafeSetLen(&'tcx Expr),
 }
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
@@ -188,14 +165,6 @@ impl Pass {
         vec_alloc: &VecAllocation<'_>,
     ) {
         match initialization {
-            InitializationType::UnsafeSetLen(e) => Self::emit_lint(
-                cx,
-                e,
-                vec_alloc,
-                "unsafe vector initialization",
-                UNSAFE_VECTOR_INITIALIZATION,
-            ),
-
             InitializationType::Extend(e) | InitializationType::Resize(e) => Self::emit_lint(
                 cx,
                 e,
@@ -282,25 +251,6 @@ impl<'a, 'tcx> VectorInitializationVisitor<'a, 'tcx> {
         }
     }
 
-    /// Checks if the given expression is using `set_len` to initialize the vector
-    fn search_unsafe_set_len(&mut self, expr: &'tcx Expr) {
-        if_chain! {
-            if self.initialization_found;
-            if let ExprKind::MethodCall(ref path, _, ref args) = expr.node;
-            if let ExprKind::Path(ref qpath_subj) = args[0].node;
-            if match_qpath(&qpath_subj, &[&self.vec_alloc.variable_name.to_string()]);
-            if path.ident.name == "set_len";
-            if let Some(ref len_arg) = args.get(1);
-
-            // Check that len expression is equals to `with_capacity` expression
-            if SpanlessEq::new(self.cx).eq_expr(len_arg, self.vec_alloc.len_expr);
-
-            then {
-                self.slow_expression = Some(InitializationType::UnsafeSetLen(expr));
-            }
-        }
-    }
-
     /// Returns `true` if give expression is `repeat(0).take(...)`
     fn is_repeat_take(&self, expr: &Expr) -> bool {
         if_chain! {
@@ -349,7 +299,6 @@ impl<'a, 'tcx> Visitor<'tcx> for VectorInitializationVisitor<'a, 'tcx> {
                 StmtKind::Expr(ref expr, _) | StmtKind::Semi(ref expr, _) => {
                     self.search_slow_extend_filling(expr);
                     self.search_slow_resize_filling(expr);
-                    self.search_unsafe_set_len(expr);
                 },
                 _ => (),
             }
