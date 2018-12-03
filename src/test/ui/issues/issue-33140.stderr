@@ -13,7 +13,7 @@ note: lint level defined here
 LL | #![deny(order_dependent_trait_objects)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #33140 <https://github.com/rust-lang/rust/issues/33140>
+   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
 error: conflicting implementations of trait `Trait2` for type `(dyn std::marker::Send + std::marker::Sync + 'static)`: (E0119)
   --> $DIR/issue-33140.rs:35:1
@@ -25,7 +25,7 @@ LL | impl Trait2 for dyn Sync + Send + Sync {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `(dyn std::marker::Send + std::marker::Sync + 'static)`
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #33140 <https://github.com/rust-lang/rust/issues/33140>
+   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
 error: duplicate definitions with name `abc` (E0592)
   --> $DIR/issue-33140.rs:43:5
@@ -42,7 +42,7 @@ LL | |     }
    | |_____- other definition for `abc`
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #33140 <https://github.com/rust-lang/rust/issues/33140>
+   = note: for more information, see issue #56484 <https://github.com/rust-lang/rust/issues/56484>
 
 error: aborting due to 3 previous errors
 

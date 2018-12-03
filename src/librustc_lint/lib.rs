@@ -295,7 +295,7 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         },
         FutureIncompatibleInfo {
             id: LintId::of(ORDER_DEPENDENT_TRAIT_OBJECTS),
-            reference: "issue #33140 <https://github.com/rust-lang/rust/issues/33140>",
+            reference: "issue #56484 <https://github.com/rust-lang/rust/issues/56484>",
             edition: None,
         },
         FutureIncompatibleInfo {
